@@ -1,67 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9943 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42177 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932323Ab1J2SVP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:21:15 -0400
+	id S1750808Ab1JSSi4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 14:38:56 -0400
+Message-ID: <4E9F1939.3030807@RedHat.com>
+Date: Wed, 19 Oct 2011 14:38:49 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS4ERR_STALE_CLIENTID loop
-Date: Sat, 29 Oct 2011 11:21:13 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111029181509.GE12122@fieldses.org>
-References: <20111024104042.GD32587@rd.bbc.co.uk> <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "David Flynn" <davidf@rd.bbc.co.uk>, <linux-nfs@vger.kernel.org>,
-        "Chuck Lever" <chuck.lever@oracle.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
+ a partial write
+References: <1319038470-17750-1-git-send-email-steved@redhat.com> <20111019123626.7a80dfad@corrin.poochiereds.net> <4E9F047B.5000600@RedHat.com> <20111019132230.6cd85a0c@corrin.poochiereds.net> <4E9F0952.2040607@RedHat.com> <20111019173611.GC32028@fieldses.org>
+In-Reply-To: <20111019173611.GC32028@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Saturday, October 29, 2011 8:15 PM
-> To: Myklebust, Trond
-> Cc: David Flynn; linux-nfs@vger.kernel.org; Chuck Lever
-> Subject: Re: NFS4ERR_STALE_CLIENTID loop
+
+
+On 10/19/2011 01:36 PM, J. Bruce Fields wrote:
+> On Wed, Oct 19, 2011 at 01:30:58PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 10/19/2011 01:22 PM, Jeff Layton wrote:
+>>> On Wed, 19 Oct 2011 13:10:19 -0400
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 10/19/2011 12:36 PM, Jeff Layton wrote:
+>>>>> On Wed, 19 Oct 2011 11:34:30 -0400
+>>>>> Steve Dickson <steved@redhat.com> wrote:
+>>>>>
+>>>>>> This patch is a following on to commit 7a802337. Using the
+>>>>>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
+>>>>>> caused the fflush() and fclose() to fail in turn causing
+>>>>>> corruption in the mtab.
+>>>>>>
+>>>>>> The failures were in the internals of both calls. Switch those
+>>>>>> calls with the actual system calls eliminated the failures.
+>>>>>>
+>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>>>> ---
+>>>>>>  support/nfs/nfs_mntent.c |    4 ++--
+>>>>>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>>>>>
+>>>>>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+>>>>>> index a2118a2..b80f270 100644
+>>>>>> --- a/support/nfs/nfs_mntent.c
+>>>>>> +++ b/support/nfs/nfs_mntent.c
+>>>>>> @@ -117,7 +117,7 @@ void
+>>>>>>  nfs_endmntent (mntFILE *mfp) {
+>>>>>>  	if (mfp) {
+>>>>>>  		if (mfp->mntent_fp)
+>>>>>> -			fclose(mfp->mntent_fp);
+>>>>>> +			close(fileno(mfp->mntent_fp));
+>>>>>>  		if (mfp->mntent_file)
+>>>>>>  			free(mfp->mntent_file);
+>>>>>>  		free(mfp);
+>>>>>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+>>>>>>  	free(m3);
+>>>>>>  	free(m4);
+>>>>>>  	if (res >= 0) {
+>>>>>> -		res = fflush(mfp->mntent_fp);
+>>>>>> +		res = fsync(fileno(mfp->mntent_fp));
+>>>>>
+>>>>> fsync doesn't imply an fflush. With this, I think you may end up
+>>>>> without everything being committed to disk if part or all of it is
+>>>>> still in the file stream buffer. You probably want to do an fflush()
+>>>>> and then an fsync here.
+>>>> The problem was with the fflush() call. The call was causing the
+>>>> mount to drop core in turn causing mtab corruption. Changing that
+>>>> call to a fsync() worked just fine... no corruption... every time! 
+>>>>
+>>>
+>>> Ahh, then you have another problem here too then. Most likely it was
+>>> crashing because it caught a SIGXFSZ. Writing out the mtab should not
+>>> be affected by signals.
+>> So calling fflush() generates a SIGXFSZ and call fsync() does not... 
 > 
-> On Sat, Oct 29, 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
-> > OK. This is the first time I've seen this tcpdump.
-> >
-> > The problem seems like a split-brain issue on the server... On the
-one
-> > hand, it is happily telling us that our lease is OK when we RENEW.
-> > Then when we try to use said lease in an OPEN, it is replying with
-> > STALE_CLIENTID.
-> >
-> > IOW: This isn't a problem I can fix on the client whether or not I
-add
-> > exponential backoff. The problem needs to be addressed on the server
-> > by the Solaris folks....
+> fflush() must hit this because it's calling write() to write out the
+> stream buffer....
 > 
-> Is there any simple thing we could do on the client to reduce the
-impact of
-> these sorts of loops?
+> But lock_mtab() should have set SIGXFSZ to be ignored; is that not
+> happening?
+This is the case. The following patch cause SIGXFSZ to be ignored.
 
-WHY? Those loops aren't supposed to happen if the server works according
-to spec.
+diff -up ./utils/mount/fstab.c.orig ./utils/mount/fstab.c
+--- ./utils/mount/fstab.c.orig	2011-10-19 13:28:57.318132000 -0400
++++ ./utils/mount/fstab.c	2011-10-19 14:02:07.715039000 -0400
+@@ -387,8 +387,9 @@ lock_mtab (void) {
+ 		sa.sa_flags = 0;
+ 		sigfillset (&sa.sa_mask);
+   
+-		while (sigismember (&sa.sa_mask, ++sig) != -1
+-		       && sig != SIGCHLD) {
++		while (sigismember (&sa.sa_mask, ++sig) != -1) {
++		    if (sig == SIGCHLD)
++				continue;
+ 			if (sig == SIGALRM)
+ 				sa.sa_handler = setlkw_timeout;
+ 			else
 
-> Given that we know there are bad servers out there it might be nice to
-do if
-> it's not complicated.
+Now all this does is cause mount to ignore the fact that
+the write() during the fflush() fails, which causes the 
+following warning during the umount. 
 
-Again WHY? We can't fix a broken server by backing off correctly formed
-requests. If a server wants us to back off, it will send us
-NFS4ERR_DELAY.
+[mntent]: warning: no final newline at the end of /etc/mtab
+[mntent]: warning: no final newline at the end of /etc/mtab
+[mntent]: warning: no final newline at the end of /etc/mtab
 
-> (Though as a server implementer my purely selfish impulse is to leave
-things
-> as they are since it ensures I'll get bug reports if I screw
-> up....)
+I can live with those warnings.... 
 
-You would have gotten the same bugreport. That said, I refuse to change
-the client to accommodate buggy servers. The solution to the problem of
-buggy servers is to fix those servers.
+steved.
 
-Trond
-
+> 
+>> I really don't see what the problem is is call simply calling fsync()
+>> which clearly works?
+> 
+> We want to make sure the problem's really fixed.
+> 
+> --b.
