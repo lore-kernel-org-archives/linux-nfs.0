@@ -1,143 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:65389 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751899Ab1J1J45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 05:56:57 -0400
-Message-ID: <4EAA7D84.4000901@cn.fujitsu.com>
-Date: Fri, 28 Oct 2011 18:01:40 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] 4.1 ENV: Reduce repetitive codes for open_file and create_file
-References: <4EAA7D37.9070504@cn.fujitsu.com>
-In-Reply-To: <4EAA7D37.9070504@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:35551 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753439Ab1JSUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:39 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] NFSv4: Translate NFS4ERR_BADNAME into ENOENT when applied to a lookup
+Date: Wed, 19 Oct 2011 13:50:12 -0700
+Message-Id: <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce repetitive codes for open_file and create_file
+Both LOOKUP and OPEN operations may return NFS4ERR_BADNAME if we send a
+an invalid name as a filename argument. As far as the application is
+concerned, it just has to know that the file doesn't exist, and so
+ENOENT would be the appropriate reply. We should only return EINVAL
+if the filename is being used to _create_ a new object on the
+remote filesystem.
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- nfs4.1/server41tests/environment.py |   86 ++++++++++++++++++++++-------------
- 1 files changed, 54 insertions(+), 32 deletions(-)
+ fs/nfs/nfs4proc.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index 43cb12b..6e68e83 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -444,12 +444,15 @@ def create_obj(sess, path, kind=NF4DIR, attrs={FATTR4_MODE:0755}):
-     ops = use_obj(path[:-1]) + [op.create(kind, path[-1], attrs)]
-     return sess.compound(ops)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b0c01b2..ba0da50 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1593,8 +1593,14 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 	int status;
  
--def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
--                access=OPEN4_SHARE_ACCESS_BOTH,
--                deny=OPEN4_SHARE_DENY_NONE,
--                mode=GUARDED4, verifier=None, want_deleg=False,
--                # Setting the following should induce server errors
--                seqid=0, clientid=0):
-+def open_create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-+                     access=OPEN4_SHARE_ACCESS_BOTH,
-+                     deny=OPEN4_SHARE_DENY_NONE,
-+		     mode=GUARDED4, verifier=None,
-+		     claim_type=CLAIM_NULL,
-+		     want_deleg=False,
-+		     deleg_type=None,
-+		     open_create=OPEN4_NOCREATE,
-+		     seqid=0, clientid=0):
-     # Set defaults
-     if path is None:
-         dir = sess.c.homedir
-@@ -457,16 +460,47 @@ def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-     else:
-         dir = path[:-1]
-         name = path[-1]
-+
-     if ((mode==EXCLUSIVE4) or (mode==EXCLUSIVE4_1)) and (verifier==None):
-         verifier = sess.c.verifier
-+
-     if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
-         access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
--    # Create the file
-+
-+    # Open the file
-+    if claim_type==CLAIM_NULL:
-+        fh_op = use_obj(dir)
-+    elif claim_type==CLAIM_PREVIOUS:
-+        fh_op = [op.putfh(path)]
-+        name = None
-+
-+    if open_create==OPEN4_CREATE:
-+        openflag=openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier,
-+                                          creatverfattr(verifier, attrs)))
-+        openclaim=open_claim4(CLAIM_NULL, name)
-+    else:
-+        openflag=openflag4(OPEN4_NOCREATE)
-+        openclaim=open_claim4(claim_type, name, deleg_type)
-+
-     open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
--                      openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier,
--                                               creatverfattr(verifier, attrs))),
--                      open_claim4(CLAIM_NULL, name))
--    return sess.compound(use_obj(dir) + [open_op, op.getfh()])
-+                      openflag, openclaim)
-+
-+    return sess.compound(fh_op + [open_op, op.getfh()])
-+
-+def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-+                access=OPEN4_SHARE_ACCESS_BOTH,
-+                deny=OPEN4_SHARE_DENY_NONE,
-+                mode=GUARDED4, verifier=None, want_deleg=False,
-+                # Setting the following should induce server errors
-+                seqid=0, clientid=0):
-+
-+    claim_type=CLAIM_NULL
-+    deleg_type=None
-+    open_create=OPEN4_CREATE
-+
-+    return open_create_file(sess, owner, path, attrs, access, deny, mode,
-+                            verifier, claim_type, want_deleg, deleg_type,
-+                            open_create, seqid, clientid)
+ 	status = nfs4_run_open_task(data, 0);
+-	if (status != 0 || !data->rpc_done)
++	if (!data->rpc_done)
++		return status;
++	if (status != 0) {
++		if (status == -NFS4ERR_BADNAME &&
++				!(o_arg->open_flags & O_CREAT))
++			return -ENOENT;
+ 		return status;
++	}
  
- def open_file(sess, owner, path=None,
-               access=OPEN4_SHARE_ACCESS_READ,
-@@ -476,27 +510,15 @@ def open_file(sess, owner, path=None,
-               deleg_type=None,
-               # Setting the following should induce server errors
-               seqid=0, clientid=0):
--    # Set defaults
--    if path is None:
--        dir = sess.c.homedir
--        name = owner
--    else:
--        dir = path[:-1]
--        name = path[-1]
--    if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
--        access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
--    # Open the file
--    if claim_type==CLAIM_NULL:
--        fh_op = use_obj(dir)
--    elif claim_type==CLAIM_PREVIOUS:
--        fh_op = [op.putfh(path)]
--        name = None
--    if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
--        access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
--    open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
--                      openflag4(OPEN4_NOCREATE),
--                      open_claim4(claim_type, name, deleg_type))
--    return sess.compound(fh_op + [open_op, op.getfh()])
-+
-+    attrs=None
-+    mode=None
-+    verifier=None
-+    open_create=OPEN4_NOCREATE
-+
-+    return open_create_file(sess, owner, path, attrs, access, deny, mode,
-+                            verifier, claim_type, want_deleg, deleg_type,
-+                            open_create, seqid, clientid)
+ 	if (o_arg->open_flags & O_CREAT) {
+ 		update_changeattr(dir, &o_res->cinfo);
+@@ -2455,6 +2461,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
  
- def create_confirm(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-                    access=OPEN4_SHARE_ACCESS_BOTH,
--- 1.7.5.1 -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at http://vger.kernel.org/majordomo-info.html 
+ 		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+ 		switch (status) {
++		case -NFS4ERR_BADNAME:
++			return -ENOENT;
+ 		case -NFS4ERR_MOVED:
+ 			err = nfs4_get_referral(dir, name, fattr, fhandle);
+ 			break;
+-- 
+1.7.6.4
 
