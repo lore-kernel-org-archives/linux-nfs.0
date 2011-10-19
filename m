@@ -1,65 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout0.mh.bbc.co.uk ([132.185.144.151]:37691 "EHLO
-	mailout0.mh.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933606Ab1J2SDG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:03:06 -0400
-Date: Sat, 29 Oct 2011 18:02:27 +0000
-From: David Flynn <davidf@rd.bbc.co.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS4ERR_STALE_CLIENTID loop
-Message-ID: <20111029180227.GC2011@rd.bbc.co.uk>
-References: <20111024104042.GD32587@rd.bbc.co.uk>
- <1319455367.8505.3.camel@lade.trondhjem.org>
- <20111024131734.GE32587@rd.bbc.co.uk>
- <1319463165.2734.1.camel@lade.trondhjem.org>
- <20111024145027.GF32587@rd.bbc.co.uk>
- <1319470302.2734.4.camel@lade.trondhjem.org>
- <20111027221742.GI32587@rd.bbc.co.uk>
- <20111029002500.GA2011@rd.bbc.co.uk>
- <1319909376.2760.11.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1319909376.2760.11.camel@lade.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753363Ab1JSUuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:39 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] NFS: Remove the unused "lookupfh()" version of nfs4_proc_lookup()
+Date: Wed, 19 Oct 2011 13:50:11 -0700
+Message-Id: <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
-> > Using the same kernel, same mountpoint as before, we're currently
-> > experiencing a loop involving NFS4ERR_STALE_CLIENTID.
-...
-> The problem seems like a split-brain issue on the server... On the one
-> hand, it is happily telling us that our lease is OK when we RENEW. Then
-> when we try to use said lease in an OPEN, it is replying with
-> STALE_CLIENTID.
+...and also remove the associated nfs_v4_clientops entry.
 
-Thank you for the quick update, especially at the weekend.  I'm
-wondering if it is possible that the STALE_CLIENTID issue is a by-product
-of the BAD_STATEID issue from earlier.  We have observed several times
-the BAD_STATEID loop, but the CLIENTID problem only seemed to occur when
-all 40+ nodes were all showing problems.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |   62 +++++++++++++----------------------------------
+ include/linux/nfs_xdr.h |    3 --
+ 2 files changed, 17 insertions(+), 48 deletions(-)
 
-After killing off sufficient processes, the some of the machines then
-recovered of their own accord.  So your conclusion that there is a
-server issue sounds reasonable.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0f0b607..b0c01b2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -73,9 +73,6 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+-static int _nfs4_proc_lookup(struct rpc_clnt *client, struct inode *dir,
+-			     const struct qstr *name, struct nfs_fh *fhandle,
+-			     struct nfs_fattr *fattr);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -2408,14 +2405,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	return status;
+ }
+ 
+-static int _nfs4_proc_lookupfh(struct rpc_clnt *clnt, struct nfs_server *server,
+-		const struct nfs_fh *dirfh, const struct qstr *name,
+-		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
++		const struct qstr *name, struct nfs_fh *fhandle,
++		struct nfs_fattr *fattr)
+ {
++	struct nfs_server *server = NFS_SERVER(dir);
+ 	int		       status;
+ 	struct nfs4_lookup_arg args = {
+ 		.bitmask = server->attr_bitmask,
+-		.dir_fh = dirfh,
++		.dir_fh = NFS_FH(dir),
+ 		.name = name,
+ 	};
+ 	struct nfs4_lookup_res res = {
+@@ -2431,40 +2429,8 @@ static int _nfs4_proc_lookupfh(struct rpc_clnt *clnt, struct nfs_server *server,
+ 
+ 	nfs_fattr_init(fattr);
+ 
+-	dprintk("NFS call  lookupfh %s\n", name->name);
+-	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
+-	dprintk("NFS reply lookupfh: %d\n", status);
+-	return status;
+-}
+-
+-static int nfs4_proc_lookupfh(struct nfs_server *server, struct nfs_fh *dirfh,
+-			      struct qstr *name, struct nfs_fh *fhandle,
+-			      struct nfs_fattr *fattr)
+-{
+-	struct nfs4_exception exception = { };
+-	int err;
+-	do {
+-		err = _nfs4_proc_lookupfh(server->client, server, dirfh, name, fhandle, fattr);
+-		/* FIXME: !!!! */
+-		if (err == -NFS4ERR_MOVED) {
+-			err = -EREMOTE;
+-			break;
+-		}
+-		err = nfs4_handle_exception(server, err, &exception);
+-	} while (exception.retry);
+-	return err;
+-}
+-
+-static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+-		const struct qstr *name, struct nfs_fh *fhandle,
+-		struct nfs_fattr *fattr)
+-{
+-	int status;
+-	
+ 	dprintk("NFS call  lookup %s\n", name->name);
+-	status = _nfs4_proc_lookupfh(clnt, NFS_SERVER(dir), NFS_FH(dir), name, fhandle, fattr);
+-	if (status == -NFS4ERR_MOVED)
+-		status = nfs4_get_referral(dir, name, fattr, fhandle);
++	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("NFS reply lookup: %d\n", status);
+ 	return status;
+ }
+@@ -2485,11 +2451,18 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+-		err = nfs4_handle_exception(NFS_SERVER(dir),
+-				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
+-				&exception);
+-		if (err == -EPERM)
++		int status;
++
++		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
++		switch (status) {
++		case -NFS4ERR_MOVED:
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
++			break;
++		case -NFS4ERR_WRONGSEC:
+ 			nfs_fixup_secinfo_attributes(fattr, fhandle);
++		}
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++				status, &exception);
+ 	} while (exception.retry);
+ 	return err;
+ }
+@@ -6270,7 +6243,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.getroot	= nfs4_proc_get_root,
+ 	.getattr	= nfs4_proc_getattr,
+ 	.setattr	= nfs4_proc_setattr,
+-	.lookupfh	= nfs4_proc_lookupfh,
+ 	.lookup		= nfs4_proc_lookup,
+ 	.access		= nfs4_proc_access,
+ 	.readlink	= nfs4_proc_readlink,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index abd615d..1e31e1c 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1197,9 +1197,6 @@ struct nfs_rpc_ops {
+ 
+ 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fsinfo *);
+-	int	(*lookupfh)(struct nfs_server *, struct nfs_fh *,
+-			    struct qstr *, struct nfs_fh *,
+-			    struct nfs_fattr *);
+ 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *);
+ 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
+-- 
+1.7.6.4
 
-On any such possible backoff, the previous case was with quite small
-requests in quite a tight loop that seemed to cause the server grief.
-This morning, a machine with a 10GbE interface had a BAD_STATEID issue
-but involving some much larger writes[1], resulting in 1.6Gbit/sec from
-that machine alone.  Thankfully there was only a second machine with
-1GbE interfaces bringing the total up to 2.5Gbit/sec.
-
-It is this ability for a group of clients to make matters worse that
-is just as bad as any fault with Solaris.
-
-(In a similar vein, it can be just as frustrating trying to get a client
-to stop looping like this - it is often impossible to kill the process
-that triggered the problem; for these, we had to resort to deleting
-the files using NFSv3 (which was working quite happily))
-
-Thank you again,
-..david
-
-[1] Capture: ftp://ftp.kw.bbc.co.uk/davidf/priv/waquahso.pcap
