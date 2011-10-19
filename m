@@ -1,45 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44757 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55040 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755617Ab1JQV4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 17:56:23 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/8] nfsd4: make is_open_owner boolean
-Date: Mon, 17 Oct 2011 17:55:51 -0400
-Message-Id: <1318888557-14719-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1318888557-14719-1-git-send-email-bfields@redhat.com>
-References: <1318888557-14719-1-git-send-email-bfields@redhat.com>
+	id S1754157Ab1JSPed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 11:34:33 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JFYXxU021082
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 11:34:33 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p9JFYWDT009555
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 11:34:32 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes a partial write
+Date: Wed, 19 Oct 2011 11:34:30 -0400
+Message-Id: <1319038470-17750-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This patch is a following on to commit 7a802337. Using the
+tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
+caused the fflush() and fclose() to fail in turn causing
+corruption in the mtab.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+The failures were in the internals of both calls. Switch those
+calls with the actual system calls eliminated the failures.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfsd/state.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ support/nfs/nfs_mntent.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index aa14f06..87eecfd 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -335,13 +335,13 @@ struct nfs4_replay {
- struct nfs4_stateowner {
- 	struct list_head        so_strhash;   /* hash by op_name */
- 	struct list_head        so_stateids;
--	int			so_is_open_owner; /* 1=openowner,0=lockowner */
- 	struct nfs4_client *    so_client;
- 	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
- 	 * sequence id expected from the client: */
- 	u32                     so_seqid;
- 	struct xdr_netobj       so_owner;     /* open owner name */
- 	struct nfs4_replay	so_replay;
-+	bool			so_is_open_owner;
- };
- 
- struct nfs4_openowner {
+diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+index a2118a2..b80f270 100644
+--- a/support/nfs/nfs_mntent.c
++++ b/support/nfs/nfs_mntent.c
+@@ -117,7 +117,7 @@ void
+ nfs_endmntent (mntFILE *mfp) {
+ 	if (mfp) {
+ 		if (mfp->mntent_fp)
+-			fclose(mfp->mntent_fp);
++			close(fileno(mfp->mntent_fp));
+ 		if (mfp->mntent_file)
+ 			free(mfp->mntent_file);
+ 		free(mfp);
+@@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+ 	free(m3);
+ 	free(m4);
+ 	if (res >= 0) {
+-		res = fflush(mfp->mntent_fp);
++		res = fsync(fileno(mfp->mntent_fp));
+ 		if (res < 0)
+ 			/* Avoid leaving a corrupt mtab file */
+ 			ftruncate(fileno(mfp->mntent_fp), length);
 -- 
-1.7.5.4
+1.7.6.2
 
