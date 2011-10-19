@@ -1,59 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:34134 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750996Ab1J1AXV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2011 20:23:21 -0400
-Message-ID: <4EA9F5E8.6060900@panasas.com>
-Date: Thu, 27 Oct 2011 17:23:04 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:57084 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750896Ab1JSAwN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 20:52:13 -0400
+Received: by pzk36 with SMTP id 36so2963913pzk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2011 17:52:12 -0700 (PDT)
+Message-ID: <4E9E1F3A.2090709@tonian.com>
+Date: Tue, 18 Oct 2011 17:52:10 -0700
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd (and lock) changes for 3.2
-References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com> <20111027203412.GB31669@fieldses.org>
-In-Reply-To: <20111027203412.GB31669@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+To: Olga Kornievskaia <aglo@citi.umich.edu>,
+        Michael Groshans <groshans@umich.edu>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfsd: dlm: fix bug in DS tcp/tcp6 address string
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/27/2011 01:34 PM, J. Bruce Fields wrote:
-> On Tue, Oct 25, 2011 at 08:16:08PM -0700, Boaz Harrosh wrote:
->> On 10/25/2011 05:19 AM, J. Bruce Fields wrote:
->>> Boaz Harrosh (1):
->>>       nfsd4: fix failure to end nfsd4 grace period
->>>
->>
->> Bruce hi.
->>
->> As I recall this failure I have experienced in early stages of the
->> 3.1-rcX series. I admit that I always run with Benny's pnfs tree,
->> but I do not think it is patches that Benny added from the 3.2 set
->> I think it is breakage introduced by the 3.1 merge window.
->>
->> Therefor I think that this patch must be sent to Stable@ otherwise
->> surly 3.1 Kernel users are to hit it. (You can escapee it)
-> 
-> We need to test it, but I think you're probably correct,
-> 6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to end
-> nfsd4 grace period" should have been tagged for stable.  Does that also
-> require any previous patches? (E.g.
-> 48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir
-> setting"?)
-> 
+squash into "pnfsd: Correctly set netid to tcp or tcp6 for non-local exports"
 
-right, and all for that dmesg print. But yes! 
+Currently, the code looks for ':' using strcspn that requires a null terminated string
+while the address buffer isn't null terminated.
 
-Well the 3.1 Kernel without them gets stuck. I guess you need to experiment
-with what would be the minimal patchset needed for 3.1 .
+Instead, just use strnchr to look for a ':' and if not found assume
+it's an IPv4 address, otherwise it's IPv6
 
-Tell me if you need help testing that the damage has gone. But basically I have
-a script (4 years old) that does: 
-	server: service nfs stop/start 
-	client: mount
-back to back, The client gets stuck forever.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsdlm.c |    9 ++-------
+ 1 files changed, 2 insertions(+), 7 deletions(-)
 
-> --b.
+diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+index abc4d83..d07a6037 100644
+--- a/fs/nfsd/nfs4pnfsdlm.c
++++ b/fs/nfsd/nfs4pnfsdlm.c
+@@ -328,13 +328,8 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
+ 		memcpy(daddr->r_addr.data + len, ".8.1", 4);
+ 		daddr->r_addr.len = len + 4;
 
-Thanks
-Boaz
+-		if (strcspn(daddr->r_addr.data, ":") - 1 == daddr->r_addr.len) {
+-			daddr->r_netid.data = "tcp";
+-			daddr->r_netid.len = 3;
+-		} else {
+-			daddr->r_netid.data = "tcp6";
+-			daddr->r_netid.len = 4;
+-		}
++		daddr->r_netid.data = "tcp6";
++		daddr->r_netid.len = strnchr(daddr->r_addr.data, len, ':') ? 4 : 3;
+
+ 		fdev.fl_device_list[i].fl_multipath_length = 1;
+ 		fdev.fl_device_list[i].fl_multipath_list = daddr;
+-- 
+1.7.6
+
