@@ -1,125 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga14.intel.com ([143.182.124.37]:48114 "EHLO mga14.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756221Ab1JTP4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 11:56:47 -0400
-Date: Thu, 20 Oct 2011 23:56:42 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
-        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
-        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>,
-        Tang Feng <feng.tang@intel.com>
-Subject: [PATCH 2/2] nfs: scale writeback threshold proportional to dirty
- threshold
-Message-ID: <20111020155642.GB7054@localhost>
-References: <20111020155542.GA7054@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111020155542.GA7054@localhost>
+	id S1753619Ab1JSUuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 16:50:40 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/9] NFS: Don't rely on PageError in nfs_readpage_release_partial
+Date: Wed, 19 Oct 2011 13:50:17 -0700
+Message-Id: <1319057418-9851-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1319057418-9851-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1319057418-9851-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_congestion_kb is to control the max allowed writeback and in-commit
-pages. It's not reasonable for them to outnumber dirty and to-commit
-pages. So each of them should not take more than 1/4 dirty threshold.
+Don't rely on the PageError flag to tell us if one of the partial reads of
+the page failed. Instead, replace that with a dedicated flag in the
+struct nfs_page.
 
-Considering that nfs_init_writepagecache() is called on fresh boot,
-at the time dirty_thresh is much higher than the real dirty limit after
-lots of user space memory consumptions, use 1/8 instead.
+Then clean out redundant uses of the PageError flag: the VM no longer
+checks it for reads.
 
-Feng: fix deadlock by preventing (nfs_congestion_kb == 0)
-
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Feng Tang <feng.tang@intel.com>
-Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/write.c      |   36 +++++++++++++++++-------------------
- mm/page-writeback.c |    6 ++++++
- 2 files changed, 23 insertions(+), 19 deletions(-)
+ fs/nfs/read.c            |    7 ++-----
+ include/linux/nfs_page.h |    1 +
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
---- linux-next.orig/fs/nfs/write.c	2011-10-20 23:45:59.000000000 +0800
-+++ linux-next/fs/nfs/write.c	2011-10-20 23:53:16.000000000 +0800
-@@ -1782,6 +1782,22 @@ out:
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 09829d96..fd58e90 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -276,7 +276,6 @@ nfs_async_read_error(struct list_head *head)
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+-		SetPageError(req->wb_page);
+ 		nfs_readpage_release(req);
+ 	}
  }
- #endif
+@@ -330,7 +329,6 @@ out_bad:
+ 		list_del(&data->list);
+ 		nfs_readdata_free(data);
+ 	}
+-	SetPageError(page);
+ 	nfs_readpage_release(req);
+ 	return -ENOMEM;
+ }
+@@ -460,10 +458,10 @@ static void nfs_readpage_release_partial(void *calldata)
+ 	int status = data->task.tk_status;
  
-+void nfs_update_congestion_thresh(void)
-+{
-+	unsigned long background_thresh;
-+	unsigned long dirty_thresh;
-+
-+	/*
-+	 * Limit to 1/8 dirty threshold, so that writeback+in_commit pages
-+	 * won't overnumber dirty+to_commit pages.
-+	 */
-+	global_dirty_limits(&background_thresh, &dirty_thresh);
-+	dirty_thresh <<= PAGE_SHIFT - 10;
-+	dirty_thresh += 1024;
-+
-+	nfs_congestion_kb = dirty_thresh / 8;
-+}
-+
- int __init nfs_init_writepagecache(void)
- {
- 	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
-@@ -1801,25 +1817,7 @@ int __init nfs_init_writepagecache(void)
- 	if (nfs_commit_mempool == NULL)
- 		return -ENOMEM;
+ 	if (status < 0)
+-		SetPageError(page);
++		set_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags);
  
--	/*
--	 * NFS congestion size, scale with available memory.
--	 *
--	 *  64MB:    8192k
--	 * 128MB:   11585k
--	 * 256MB:   16384k
--	 * 512MB:   23170k
--	 *   1GB:   32768k
--	 *   2GB:   46340k
--	 *   4GB:   65536k
--	 *   8GB:   92681k
--	 *  16GB:  131072k
--	 *
--	 * This allows larger machines to have larger/more transfers.
--	 * Limit the default to 256M
--	 */
--	nfs_congestion_kb = (16*int_sqrt(totalram_pages)) << (PAGE_SHIFT-10);
--	if (nfs_congestion_kb > 256*1024)
--		nfs_congestion_kb = 256*1024;
-+	nfs_update_congestion_thresh();
- 
+ 	if (atomic_dec_and_test(&req->wb_complete)) {
+-		if (!PageError(page))
++		if (!test_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags))
+ 			SetPageUptodate(page);
+ 		nfs_readpage_release(req);
+ 	}
+@@ -656,7 +654,6 @@ readpage_async_filler(void *data, struct page *page)
  	return 0;
- }
---- linux-next.orig/mm/page-writeback.c	2011-10-20 23:45:23.000000000 +0800
-+++ linux-next/mm/page-writeback.c	2011-10-20 23:48:07.000000000 +0800
-@@ -207,6 +207,10 @@ static int calc_period_shift(void)
- 	return 2 + ilog2(dirty_total - 1);
- }
+ out_error:
+ 	error = PTR_ERR(new);
+-	SetPageError(page);
+ out_unlock:
+ 	unlock_page(page);
+ 	return error;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index e2791a2..ab465fe 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -34,6 +34,7 @@ enum {
+ 	PG_NEED_COMMIT,
+ 	PG_NEED_RESCHED,
+ 	PG_PNFS_COMMIT,
++	PG_PARTIAL_READ_FAILED,
+ };
  
-+void __weak nfs_update_congestion_thresh(void)
-+{
-+}
-+
- /*
-  * update the period when the dirty threshold changes.
-  */
-@@ -217,6 +221,7 @@ static void update_completion_period(voi
- 	prop_change_shift(&vm_dirties, shift);
- 
- 	writeback_set_ratelimit();
-+	nfs_update_congestion_thresh();
- }
- 
- int dirty_background_ratio_handler(struct ctl_table *table, int write,
-@@ -447,6 +452,7 @@ unsigned long bdi_dirty_limit(struct bac
- 
- 	return bdi_dirty;
- }
-+EXPORT_SYMBOL_GPL(global_dirty_limits);
- 
- /*
-  * Dirty position control.
+ struct nfs_inode;
+-- 
+1.7.6.4
+
