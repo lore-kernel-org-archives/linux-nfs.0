@@ -1,182 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:47016 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755275Ab1JWRpl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:45:41 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 22/26] vfs: Cache richacl in struct inode
-Date: Sun, 23 Oct 2011 23:13:51 +0530
-Message-Id: <1319391835-5829-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:17647 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752418Ab1JSCD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 22:03:29 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <rees@umich.edu>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Tue, 18 Oct 2011 22:02:39 -0400
+Subject: RE: nfs4: serialize layoutcommit
+Message-ID: <F19688880B763E40B28B2B462677FBF805C4AB9F8B@MX09A.corp.emc.com>
+References: <20111018170123.GB2876@umich.edu>
+ <1318959178.3213.10.camel@lade.trondhjem.org>
+In-Reply-To: <1318959178.3213.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
-
-Cache richacls in struct inode so that this doesn't have to be done
-individually in each filesystem.
-
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/inode.c              |   25 +++++++++++++++++----
- include/linux/fs.h      |   12 ++++++++-
- include/linux/richacl.h |   53 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 83 insertions(+), 7 deletions(-)
-
-diff --git a/fs/inode.c b/fs/inode.c
-index ec79246..1b442cf 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -26,6 +26,7 @@
- #include <linux/ima.h>
- #include <linux/cred.h>
- #include <linux/buffer_head.h> /* for inode_has_buffers */
-+#include <linux/richacl.h>
- #include "internal.h"
- 
- /*
-@@ -192,7 +193,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
- 	inode->i_private = NULL;
- 	inode->i_mapping = mapping;
- #ifdef CONFIG_FS_POSIX_ACL
--	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+	if (IS_POSIXACL(inode))
-+		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode))
-+		inode->i_richacl = ACL_NOT_CACHED;
- #endif
- 
- #ifdef CONFIG_FSNOTIFY
-@@ -242,10 +248,19 @@ void __destroy_inode(struct inode *inode)
- 	security_inode_free(inode);
- 	fsnotify_inode_delete(inode);
- #ifdef CONFIG_FS_POSIX_ACL
--	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_acl);
--	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
--		posix_acl_release(inode->i_default_acl);
-+	if (IS_POSIXACL(inode)) {
-+		if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_acl);
-+		if (inode->i_default_acl &&
-+		    inode->i_default_acl != ACL_NOT_CACHED)
-+			posix_acl_release(inode->i_default_acl);
-+	}
-+#endif
-+#ifdef CONFIG_FS_RICHACL
-+	if (IS_RICHACL(inode)) {
-+		if (inode->i_richacl && inode->i_richacl != ACL_NOT_CACHED)
-+			richacl_put(inode->i_richacl);
-+	}
- #endif
- 	this_cpu_dec(nr_inodes);
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ac1d8e5..771955c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -755,6 +755,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
- #endif
- 
- struct posix_acl;
-+struct richacl;
- #define ACL_NOT_CACHED ((void *)(-1))
- 
- #define IOP_FASTPERM	0x0001
-@@ -773,10 +774,17 @@ struct inode {
- 	gid_t			i_gid;
- 	unsigned int		i_flags;
- 
-+	union {
- #ifdef CONFIG_FS_POSIX_ACL
--	struct posix_acl	*i_acl;
--	struct posix_acl	*i_default_acl;
-+		struct {
-+			struct posix_acl *i_acl;
-+			struct posix_acl *i_default_acl;
-+		};
- #endif
-+#ifdef CONFIG_FS_RICHACL
-+		struct richacl	*i_richacl;
-+#endif
-+	};
- 
- 	const struct inode_operations	*i_op;
- 	struct super_block	*i_sb;
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 88f95d7..a7db341 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -191,6 +191,59 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
- 
-+#ifdef CONFIG_FS_RICHACL
-+static inline struct richacl *get_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl) {
-+		spin_lock(&inode->i_lock);
-+		acl = *p;
-+		if (acl != ACL_NOT_CACHED)
-+			acl = richacl_get(acl);
-+		spin_unlock(&inode->i_lock);
-+	}
-+	return acl;
-+}
-+
-+static inline void set_cached_richacl(struct inode *inode,
-+				      struct richacl *acl)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = richacl_get(acl);
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline void forget_cached_richacl(struct inode *inode)
-+{
-+	struct richacl *old = NULL;
-+	spin_lock(&inode->i_lock);
-+	old = inode->i_richacl;
-+	inode->i_richacl = ACL_NOT_CACHED;
-+	spin_unlock(&inode->i_lock);
-+	if (old != ACL_NOT_CACHED)
-+		richacl_put(old);
-+}
-+
-+static inline int negative_cached_richacl(struct inode *inode)
-+{
-+	struct richacl **p, *acl;
-+
-+	p = &inode->i_richacl;
-+	acl = ACCESS_ONCE(*p);
-+	if (acl)
-+		return 0;
-+	return 1;
-+}
-+
-+#endif
-+
- static inline int
- richacl_is_auto_inherit(const struct richacl *acl)
- {
--- 
-1.7.5.4
-
+U29ycnkgbXkgbGFzdCBtYWlsIHdhcyByZWplY3RlZCBhcyBpdCBjb250YWlucyBIVE1MLi4uIFJl
+c2VudCBoZXJlLg0KDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogbGlu
+dXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2Vy
+Lmtlcm5lbC5vcmddDQo+IE9uIEJlaGFsZiBPZiBUcm9uZCBNeWtsZWJ1c3QNCj4gU2VudDogV2Vk
+bmVzZGF5LCBPY3RvYmVyIDE5LCAyMDExIDE6MzMgQU0NCj4gVG86IEppbSBSZWVzOyBQZW5nIFRh
+bw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogbmZzNDog
+c2VyaWFsaXplIGxheW91dGNvbW1pdA0KPiANCj4gT24gVHVlLCAyMDExLTEwLTE4IGF0IDEzOjAx
+IC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiBJIGJlbGlldmUgdGhpcyBvbmUgaXMgc3RpbGwg
+bmVlZGVkLCBhbmQgaXMgbWlzc2luZyBmcm9tIHlvdXIgdHJlZS4gIEkgY2FuJ3QNCj4gPiByZW1l
+bWJlciB0aGUgc3RhdHVzLCB0aGVyZSB3YXMgYSBsb3Qgb2YgZGlzY3Vzc2lvbiwgYnV0IEkgdGhp
+bmsgdGhpcyB3YXMgdGhlDQo+ID4gZmluYWwgcmVzdWx0LiAgQmVyZ3dvbGY/ICBPdGhlcnM/DQpU
+aGFua3MgYSBsb3QsIEppbS4gSSBiZWxpZXZlIHRoaXMgaXMgdGhlIGxhc3Qgc3RhYmxlIHBpZWNl
+IHdlJ2QgbGlrZSB0byBzZWUgaW4gdXBzdHJlYW0uIFdlIG1heSBuZWVkIG1vcmUgZGlzY3Vzc2lv
+biBvbiB0aGUgcG90ZW50aWFsIHN5c3RlbSB3b3JrcXVldWUgZGVhZGxvY2sgYnV0IGl0IGNhbiB3
+YWl0Lg0KDQo+ID4NCj4gPiBjb21taXQgNTRjZjFhMzM1OThhYmJlNjQzMWI1NzM1NjMxMTZkOGVj
+YzgzNDNiMQ0KPiA+IEF1dGhvcjogUGVuZyBUYW8gPGJlcmd3b2xmQGdtYWlsLmNvbT4NCj4gPiBE
+YXRlOiAgIE1vbiBTZXAgMTIgMjA6NDc6MjEgMjAxMSAtMDcwMA0KPiA+DQo+ID4gICAgIG5mczQ6
+IHNlcmlhbGl6ZSBsYXlvdXRjb21taXQNCj4gPg0KPiA+ICAgICBDdXJyZW50IHBuZnNfbGF5b3V0
+Y29tbWl0X2lub2RlIGNhbiBub3QgaGFuZGxlIHBhcmFsbGVsIGxheW91dGNvbW1pdC4NCj4gPiAg
+ICAgQW5kIGFzIFRyb25kIHN1Z2dlc3RlZCAsIHRoZXJlIGlzIG5vIG5lZWQgZm9yIGNsaWVudCB0
+byBvcHRpbWl6ZSBmb3INCj4gPiAgICAgcGFyYWxsZWwgbGF5b3V0Y29tbWl0LiBTbyBhZGQgTkZT
+X0lOT19MQVlPVVRDT01NSVRUSU5HIGZsYWcgdG8gbWFyaw0KPiA+ICAgICBpbmZsaWdodCBsYXlv
+dXRjb21taXQgYW5kIHNlcmlhbGl6ZSBsYWx5b3V0Y29tbWl0IHdpdGggaXQuIEFsc28gY2FsbA0K
+PiA+ICAgICBtYXJrX2lub2RlX2RpcnR5X3N5bmMgaWYgcG5mc19sYXlvdXRjb21taXRfaW5vZGUg
+ZmFpbHMgdG8gaXNzdWUNCj4gPiAgICAgbGF5b3V0Y29tbWl0LCBzbyB0aGF0IGxheW91dGNvbW1p
+dCBjYW4gYmUgcmV0cmllZCBsYXRlci4NCj4gPiAgICAgSXQgYWxzbyBmaXhlcyB0aGUgcGxzX2xj
+X2xpc3QgY29ycnVwdGlvbiB0aGF0IFZpdGFsaXkgZm91bmQuDQo+ID4NCj4gPiAgICAgUmVwb3J0
+ZWQtYnk6IFZpdGFsaXkgR3VzZXYgPGd1c2V2LnZpdGFsaXlAbmV4ZW50YS5jb20+DQo+ID4gICAg
+IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPg0KPiA+ICAgICBTaWdu
+ZWQtb2ZmLWJ5OiBKaW0gUmVlcyA8cmVlc0B1bWljaC5lZHU+DQo+ID4NCj4gPiBkaWZmIC0tZ2l0
+IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4IDQ3MDBm
+YWUuLmE3Y2UyMTAgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gPiArKysg
+Yi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IEBAIC01OTcwLDYgKzU5NzAsNyBAQCBzdGF0aWMgdm9p
+ZCBuZnM0X2xheW91dGNvbW1pdF9yZWxlYXNlKHZvaWQgKmNhbGxkYXRhKQ0KPiA+ICB7DQo+ID4g
+IAlzdHJ1Y3QgbmZzNF9sYXlvdXRjb21taXRfZGF0YSAqZGF0YSA9IGNhbGxkYXRhOw0KPiA+ICAJ
+c3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsICp0bXA7DQo+ID4gKwl1bnNpZ25lZCBs
+b25nICpiaXRsb2NrID0gJk5GU19JKGRhdGEtPmFyZ3MuaW5vZGUpLT5mbGFnczsNCj4gPg0KPiA+
+ICAJcG5mc19jbGVhbnVwX2xheW91dGNvbW1pdChkYXRhKTsNCj4gPiAgCS8qIE1hdGNoZWQgYnkg
+cmVmZXJlbmNlcyBpbiBwbmZzX3NldF9sYXlvdXRjb21taXQgKi8NCj4gPiBAQCAtNTk3OSw2ICs1
+OTgwLDExIEBAIHN0YXRpYyB2b2lkIG5mczRfbGF5b3V0Y29tbWl0X3JlbGVhc2Uodm9pZCAqY2Fs
+bGRhdGEpDQo+ID4gIAkJCQkgICAgICAgJmxzZWctPnBsc19mbGFncykpDQo+ID4gIAkJCXB1dF9s
+c2VnKGxzZWcpOw0KPiA+ICAJfQ0KPiA+ICsNCj4gPiArCWNsZWFyX2JpdF91bmxvY2soTkZTX0lO
+T19MQVlPVVRDT01NSVRUSU5HLCBiaXRsb2NrKTsNCj4gPiArCXNtcF9tYl9fYWZ0ZXJfY2xlYXJf
+Yml0KCk7DQo+ID4gKwl3YWtlX3VwX2JpdChiaXRsb2NrLCBORlNfSU5PX0xBWU9VVENPTU1JVFRJ
+TkcpOw0KPiA+ICsNCj4gPiAgCXB1dF9ycGNjcmVkKGRhdGEtPmNyZWQpOw0KPiA+ICAJa2ZyZWUo
+ZGF0YSk7DQo+ID4gIH0NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBiL2ZzL25mcy9w
+bmZzLmMNCj4gPiBpbmRleCBlNTUwZTg4Li4wNzE1ZmRhIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25m
+cy9wbmZzLmMNCj4gPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+ID4gQEAgLTE0NDMsMTcgKzE0NDMs
+MzAgQEAgcG5mc19sYXlvdXRjb21taXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwgYm9vbA0K
+PiBzeW5jKQ0KPiA+ICAJLyogTm90ZSBremFsbG9jIGVuc3VyZXMgZGF0YS0+cmVzLnNlcV9yZXMu
+c3Jfc2xvdCA9PSBOVUxMICovDQo+ID4gIAlkYXRhID0ga3phbGxvYyhzaXplb2YoKmRhdGEpLCBH
+RlBfTk9GUyk7DQo+ID4gIAlpZiAoIWRhdGEpIHsNCj4gPiAtCQltYXJrX2lub2RlX2RpcnR5X3N5
+bmMoaW5vZGUpOw0KPiA+ICAJCXN0YXR1cyA9IC1FTk9NRU07DQo+ID4gIAkJZ290byBvdXQ7DQo+
+ID4gIAl9DQo+ID4NCj4gPiArCWlmICghdGVzdF9iaXQoTkZTX0lOT19MQVlPVVRDT01NSVQsICZu
+ZnNpLT5mbGFncykpDQo+ID4gKwkJZ290byBvdXRfZnJlZTsNCj4gPiArCWVsc2UgaWYgKHRlc3Rf
+YW5kX3NldF9iaXQoTkZTX0lOT19MQVlPVVRDT01NSVRUSU5HLCAmbmZzaS0+ZmxhZ3MpKSB7DQo+
+IA0KPiBXZSBkb24ndCBuZWVkIGFuICdlbHNlJyBhZnRlciBhICdnb3RvIG91dCcgOi0pDQpHb29k
+IHBvaW50LiBXaWxsIGNoYW5nZSBpdC4gVGhhbmtzIQ0KDQo+IA0KPiA+ICsJCWlmICghc3luYykg
+ew0KPiA+ICsJCQlzdGF0dXMgPSAtRUFHQUlOOw0KPiA+ICsJCQlnb3RvIG91dF9mcmVlOw0KPiA+
+ICsJCX0NCj4gPiArCQlzdGF0dXMgPSB3YWl0X29uX2JpdF9sb2NrKCZuZnNpLT5mbGFncywgTkZT
+X0lOT19MQVlPVVRDT01NSVRUSU5HLA0KPiA+ICsJCQkJCW5mc193YWl0X2JpdF9raWxsYWJsZSwg
+VEFTS19LSUxMQUJMRSk7DQo+ID4gKwkJaWYgKHN0YXR1cykNCj4gPiArCQkJZ290byBvdXRfZnJl
+ZTsNCj4gPiArCX0NCj4gPiArDQo+ID4gIAlJTklUX0xJU1RfSEVBRCgmZGF0YS0+bHNlZ19saXN0
+KTsNCj4gDQo+IFdoeSBkbyB0aGlzIGJlZm9yZSB0aGUgdGVzdCBvZiBORlNfSU5PX0xBWU9VVENP
+TU1JVD8NCklJUkMsIGl0IHdhcyB0byBmb2xsb3cgeW91ciBjb21tZW50IG9uIHRoZSBwYXRjaCBv
+ZiBjb21taXQgYTliYWU1LCBkbyBub3QgaW5pdCBsaXN0IGluc2lkZSBzcGluIGxvY2sgOikNCg0K
+PiANCj4gPiAJc3Bpbl9sb2NrKCZpbm9kZS0+aV9sb2NrKTsNCj4gPiAgCWlmICghdGVzdF9hbmRf
+Y2xlYXJfYml0KE5GU19JTk9fTEFZT1VUQ09NTUlULCAmbmZzaS0+ZmxhZ3MpKSB7DQo+ID4gKwkJ
+Y2xlYXJfYml0KE5GU19JTk9fTEFZT1VUQ09NTUlUVElORywgJm5mc2ktPmZsYWdzKTsNCj4gPiAg
+CQlzcGluX3VubG9jaygmaW5vZGUtPmlfbG9jayk7DQo+ID4gLQkJa2ZyZWUoZGF0YSk7DQo+ID4g
+LQkJZ290byBvdXQ7DQo+ID4gKwkJd2FrZV91cF9iaXQoJm5mc2ktPmZsYWdzLCBORlNfSU5PX0xB
+WU9VVENPTU1JVFRJTkcpOw0KPiA+ICsJCWdvdG8gb3V0X2ZyZWU7DQo+ID4gIAl9DQo+ID4NCj4g
+PiAgCXBuZnNfbGlzdF93cml0ZV9sc2VnKGlub2RlLCAmZGF0YS0+bHNlZ19saXN0KTsNCj4gPiBA
+QCAtMTQ3NSw2ICsxNDg4LDExIEBAIHBuZnNfbGF5b3V0Y29tbWl0X2lub2RlKHN0cnVjdCBpbm9k
+ZSAqaW5vZGUsIGJvb2wNCj4gc3luYykNCj4gPg0KPiA+ICAJc3RhdHVzID0gbmZzNF9wcm9jX2xh
+eW91dGNvbW1pdChkYXRhLCBzeW5jKTsNCj4gPiAgb3V0Og0KPiA+ICsJaWYgKHN0YXR1cykNCj4g
+PiArCQltYXJrX2lub2RlX2RpcnR5X3N5bmMoaW5vZGUpOw0KPiANCj4gU2hvdWxkbid0IHdlIGJl
+IGRvaW5nIHRoaXMgaW4gbmZzNF9sYXlvdXRjb21taXRfcmVsZWFzZSgpIHRvbz8NCk9yaWdpbmFs
+bHkgSSB0aG91Z2h0IGxheW91dGNvbW1pdCBlcnJvciBoYW5kbGluZyBtYXkgbmVlZCBtb3JlIGNv
+bnNpZGVyYXRpb25zIChsaWtlIHJlZGlydHlpbmcgcGFnZXMuKSBzbyBJIGxlZnQgaXQgYXMgaXQg
+aXMuIEhvd2V2ZXIsIGdpdmVuIGl0IGEgc2Vjb25kIHRob3VnaHQsIGl0IHNlZW1zIHdlIGNhbiBq
+dXN0IG1hcmsgaW5vZGUgZGlydHkgYW5kIGFkZCBJTk9fTkZTX0xBWU9VVENPTU1JVCBmbGFnIGlu
+IGNhc2Ugb2YgbGF5b3V0Y29tbWl0IGZhaWx1cmVzLiBXaGF0IGRvIHlvdSB0aGluaz8gSWYgeW91
+IGFncmVlLCBJIGNhbiBwcm92aWRlIGEgbmV3IHBhdGNoIGRvaW5nIGl0Lg0KDQpUaGFua3MsDQpU
+YW8NCg0KPiANCj4gPiAJZHByaW50aygiPC0tICVzIHN0YXR1cyAlZFxuIiwgX19mdW5jX18sIHN0
+YXR1cyk7DQo+ID4gIAlyZXR1cm4gc3RhdHVzOw0KPiA+ICtvdXRfZnJlZToNCj4gPiArCWtmcmVl
+KGRhdGEpOw0KPiA+ICsJZ290byBvdXQ7DQo+ID4gIH0NCj4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVk
+ZS9saW51eC9uZnNfZnMuaCBiL2luY2x1ZGUvbGludXgvbmZzX2ZzLmgNCj4gPiBpbmRleCBlYWFj
+NzcwLi5jNWIyYjMwIDEwMDY0NA0KPiA+IC0tLSBhL2luY2x1ZGUvbGludXgvbmZzX2ZzLmgNCj4g
+PiArKysgYi9pbmNsdWRlL2xpbnV4L25mc19mcy5oDQo+ID4gQEAgLTIzMCw2ICsyMzAsNyBAQCBz
+dHJ1Y3QgbmZzX2lub2RlIHsNCj4gPiAgI2RlZmluZSBORlNfSU5PX0NPTU1JVAkJKDcpCQkvKiBp
+bm9kZSBpcyBjb21taXR0aW5nIHVuc3RhYmxlDQo+IHdyaXRlcyAqLw0KPiA+ICAjZGVmaW5lIE5G
+U19JTk9fUE5GU19DT01NSVQJKDgpCQkvKiB1c2UgcG5mcyBjb2RlIGZvciBjb21taXQgKi8NCj4g
+PiAgI2RlZmluZSBORlNfSU5PX0xBWU9VVENPTU1JVAkoOSkJCS8qIGxheW91dGNvbW1pdCByZXF1
+aXJlZCAqLw0KPiA+ICsjZGVmaW5lIE5GU19JTk9fTEFZT1VUQ09NTUlUVElORyAoMTApCQkvKiBs
+YXlvdXRjb21taXQgaW5mbGlnaHQgKi8NCj4gPg0KPiA+ICBzdGF0aWMgaW5saW5lIHN0cnVjdCBu
+ZnNfaW5vZGUgKk5GU19JKGNvbnN0IHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ID4gIHsNCj4gDQo+
+IC0tDQo+IFRyb25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4g
+DQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiB3d3cubmV0YXBwLmNv
+bQ0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxp
+bmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
+IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0
+cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
