@@ -1,386 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50021 "EHLO mx2.netapp.com"
+Received: from mga01.intel.com ([192.55.52.88]:17418 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756111Ab1JGRob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Oct 2011 13:44:31 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/3] NFSD: Added fault injection
-Date: Fri,  7 Oct 2011 13:44:26 -0400
-Message-Id: <1318009468-19893-1-git-send-email-bjschuma@netapp.com>
+	id S1752339Ab1JTD7W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Oct 2011 23:59:22 -0400
+Date: Thu, 20 Oct 2011 11:59:18 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
+        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
+        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC][PATCH 1/2] nfs: writeback pages wait queue
+Message-ID: <20111020035918.GA26746@localhost>
+References: <20111003134228.090592370@intel.com>
+ <1318248846.14400.21.camel@laptop>
+ <20111010130722.GA11387@localhost>
+ <20111010131051.GA16847@localhost>
+ <20111018085147.GA27805@localhost>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111018085147.GA27805@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+> @@ -424,6 +419,10 @@ int nfs_writepages(struct address_space 
+>  	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
+>  	nfs_pageio_complete(&pgio);
+>  
+> +	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
+> +			   &nfss->backing_dev_info,
+> +			   nfss->writeback_wait);
+> +
+>  	clear_bit_unlock(NFS_INO_FLUSHING, bitlock);
+>  	smp_mb__after_clear_bit();
+>  	wake_up_bit(bitlock, NFS_INO_FLUSHING);
 
-Fault injection on the NFS server makes it easier to test the client's
-state manager and recovery threads.  Simulating errors on the server is
-easier than finding the right conditions that cause them naturally.
+The "wakeup NFS_INO_FLUSHING after congestion wait" logic looks
+strange, so I tried moving the nfs_wait_congested() _after_
+wake_up_bit()...and got write_bw regressions.
 
-This patch uses debugfs to add a simple framework for fault injection to
-the server.  This framework is a config option, and can be enabled
-through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
-to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
-Writing to any of these files will cause the corresponding action and
-write a log entry to dmesg.
+OK, not knowing what's going on underneath, I'll just stick to the current form.
 
-Changes in v4:
-- Move fault injection function declarations to a new .h file
-- Use the Makefile to selectively compile fault_injection.c
-- Add copyright notices to top of files
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+  
+------------------------  ------------------------  
+                  417.26        -5.5%       394.24  TOTAL write_bw
+                 5179.00       -12.6%      4529.00  TOTAL nfs_nr_commits
+               340466.00       -37.2%    213939.00  TOTAL nfs_nr_writes
+                  722.54       +17.6%       849.42  TOTAL nfs_commit_size
+                    3.75        +6.3%         3.99  TOTAL nfs_write_size
+                15477.38       -14.5%     13235.34  TOTAL nfs_write_queue_time
+                  517.54       +13.0%       585.00  TOTAL nfs_write_rtt_time
+                16011.09       -13.5%     13848.09  TOTAL nfs_write_execute_time
+                  714.65       -43.4%       404.65  TOTAL nfs_commit_queue_time
+                12787.93        +9.2%     13960.35  TOTAL nfs_commit_rtt_time
+                13519.94        +6.4%     14387.44  TOTAL nfs_commit_execute_time
 
-Changes in v3:
-- Code cleanup and better use of generic functions
-- Allow the user to input the number of state objects to delete
-- Remove "forget_everything()" since forgetting a client is basically
-  the same thing
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                   44.42        -0.8%        44.05  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                   78.49        -8.0%        72.22  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                   69.96        -2.4%        68.30  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                   70.59        -3.8%        67.88  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                   76.76        -8.7%        70.09  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                   77.04        -6.9%        71.70  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                  417.26        -5.5%       394.24  TOTAL write_bw
 
-Changes in v2:
-- Replaced "forget all state owners" with "forget all open owners"
-- Include fs/nfsd/fault_inject.c in the patch
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                 2683.00        -1.8%      2634.00  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                  811.00       -43.8%       456.00  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                 1049.00       -16.7%       874.00  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                  474.00        -8.4%       434.00  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                   56.00       -23.2%        43.00  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                  106.00       -17.0%        88.00  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                 5179.00       -12.6%      4529.00  TOTAL nfs_nr_commits
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/Kconfig        |   10 ++++
- fs/nfsd/Makefile       |    1 +
- fs/nfsd/fault_inject.c |   94 +++++++++++++++++++++++++++++++++++++++
- fs/nfsd/fault_inject.h |   28 ++++++++++++
- fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c       |    7 +++
- 6 files changed, 255 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfsd/fault_inject.c
- create mode 100644 fs/nfsd/fault_inject.h
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                17641.00        -2.2%     17257.00  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+               177296.00       -54.1%     81335.00  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                26346.00       +41.6%     37309.00  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                22279.00       +12.7%     25107.00  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                67612.00       -59.7%     27271.00  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                29292.00       -12.4%     25660.00  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+               340466.00       -37.2%    213939.00  TOTAL nfs_nr_writes
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 10e6366..52fdd1c 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -80,3 +80,13 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
-+
-+config NFSD_FAULT_INJECTION
-+	bool "NFS server manual fault injection"
-+	depends on NFSD_V4 && DEBUG_KERNEL
-+	help
-+	  This option enables support for manually injectiong faults
-+	  into the NFS server.  This is intended to be used for
-+	  testing error recovery on the NFS client.
-+
-+	  If unsure, say N.
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..af32ef0 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -6,6 +6,7 @@ obj-$(CONFIG_NFSD)	+= nfsd.o
- 
- nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
- 			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
-+nfsd-$(CONFIG_NFSD_FAULT_INJECTION) += fault_inject.o
- nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
- nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-new file mode 100644
-index 0000000..9f6815b
---- /dev/null
-+++ b/fs/nfsd/fault_inject.c
-@@ -0,0 +1,94 @@
-+/*
-+ * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-+ *
-+ * Uses debugfs to create fault injection points for client testing
-+ */
-+
-+#include <linux/types.h>
-+#include <linux/fs.h>
-+#include <linux/debugfs.h>
-+#include <linux/module.h>
-+
-+#include "state.h"
-+#include "fault_inject.h"
-+
-+struct nfsd_fault_inject_op {
-+	char *action;
-+	char *item;
-+	char *file;
-+	int file_data;
-+	void (*func)(u64);
-+};
-+
-+#define INJECTION_OP(op_action, op_item, op_func)	\
-+{							\
-+	.action = op_action,				\
-+	.item   = op_item,				\
-+	.file   = op_action"_"op_item,			\
-+	.func   = op_func,				\
-+}
-+
-+static struct nfsd_fault_inject_op inject_ops[] = {
-+	INJECTION_OP("forget", "clients",     nfsd_forget_clients),
-+	INJECTION_OP("forget", "locks",       nfsd_forget_locks),
-+	INJECTION_OP("forget", "openowners",  nfsd_forget_openowners),
-+	INJECTION_OP("forget", "delegations", nfsd_forget_delegations),
-+	INJECTION_OP("recall", "delegations", nfsd_recall_delegations),
-+};
-+
-+static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
-+static struct dentry *debug_dir;
-+
-+static int nfsd_inject_set(void *data, u64 val)
-+{
-+	int i;
-+	struct nfsd_fault_inject_op *op;
-+
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		op = &inject_ops[i];
-+		if (&op->file_data == data) {
-+			if (val == 0) {
-+				printk(KERN_INFO "NFSD: Server %sing all %s",
-+				op->action, op->item);
-+			} else {
-+				printk(KERN_INFO "NFSD: Server %sing at most %llu %s",
-+				op->action, val, op->item);
-+			}
-+			op->func(val);
-+		}
-+	}
-+	return 0;
-+}
-+
-+static int nfsd_inject_get(void *data, u64 *val)
-+{
-+	return 0;
-+}
-+
-+DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
-+
-+void nfsd_fault_inject_cleanup(void)
-+{
-+	debugfs_remove_recursive(debug_dir);
-+}
-+
-+int nfsd_fault_inject_init(void)
-+{
-+	unsigned int i;
-+	struct nfsd_fault_inject_op *op;
-+	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
-+
-+	debug_dir = debugfs_create_dir("nfsd", NULL);
-+	if (!debug_dir)
-+		goto fail;
-+
-+	for (i = 0; i < NUM_INJECT_OPS; i++) {
-+		op = &inject_ops[i];
-+		debugfs_create_file(op->file, mode, debug_dir, &op->file_data, &fops_nfsd);
-+	}
-+	return 0;
-+
-+fail:
-+	nfsd_fault_inject_cleanup();
-+	return -ENOMEM;
-+}
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-new file mode 100644
-index 0000000..90bd057
---- /dev/null
-+++ b/fs/nfsd/fault_inject.h
-@@ -0,0 +1,28 @@
-+/*
-+ * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-+ *
-+ * Function definitions for fault injection
-+ */
-+
-+#ifndef LINUX_NFSD_FAULT_INJECT_H
-+#define LINUX_NFSD_FAULT_INJECT_H
-+
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+int nfsd_fault_inject_init(void);
-+void nfsd_fault_inject_cleanup(void);
-+void nfsd_forget_clients(u64);
-+void nfsd_forget_locks(u64);
-+void nfsd_forget_openowners(u64);
-+void nfsd_forget_delegations(u64);
-+void nfsd_recall_delegations(u64);
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+static inline int nfsd_fault_inject_init(void) { return 0; }
-+static inline void nfsd_fault_inject_cleanup(void) {}
-+static inline void nfsd_forget_clients(u64 num) {}
-+static inline void nfsd_forget_locks(u64 num) {}
-+static inline void nfsd_forget_openowners(u64 num) {}
-+static inline void nfsd_forget_delegations(u64 num) {}
-+static inline void nfsd_recall_delegations(u64 num) {}
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
-+#endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 05f4c69..64fa6b0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4358,6 +4358,121 @@ nfs4_check_open_reclaim(clientid_t *clid)
- 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
- }
- 
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+
-+void nfsd_forget_clients(u64 num)
-+{
-+	struct nfs4_client *clp, *next;
-+	int count = 0;
-+
-+	nfs4_lock_state();
-+	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
-+		nfsd4_remove_clid_dir(clp);
-+		expire_client(clp);
-+		if (++count == num)
-+			break;
-+	}
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d clients", count);
-+}
-+
-+static void release_lockowner_sop(struct nfs4_stateowner *sop)
-+{
-+	release_lockowner(lockowner(sop));
-+}
-+
-+static void release_openowner_sop(struct nfs4_stateowner *sop)
-+{
-+	release_openowner(openowner(sop));
-+}
-+
-+static int nfsd_release_n_owners(u64 num,
-+				struct list_head hashtbl[],
-+				unsigned int hashtbl_size,
-+				void (*release_sop)(struct nfs4_stateowner *))
-+{
-+	int i, count = 0;
-+	struct nfs4_stateowner *sop, *next;
-+
-+	for (i = 0; i < hashtbl_size; i++) {
-+		list_for_each_entry_safe(sop, next, &hashtbl[i], so_strhash) {
-+			release_sop(sop);
-+			if (++count == num)
-+				return count;
-+		}
-+	}
-+	return count;
-+}
-+
-+void nfsd_forget_locks(u64 num)
-+{
-+	int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_release_n_owners(num, lock_ownerstr_hashtbl,
-+				     LOCK_HASH_SIZE, release_lockowner_sop);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d locks", count);
-+}
-+
-+void nfsd_forget_openowners(u64 num)
-+{
-+	int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_release_n_owners(num, open_ownerstr_hashtbl,
-+				     OPEN_OWNER_HASH_SIZE, release_openowner_sop);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-+}
-+
-+int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
-+{
-+	int i, count = 0;
-+	struct nfs4_file *fp;
-+	struct nfs4_delegation *dp, *next;
-+
-+	for (i = 0; i < FILE_HASH_SIZE; i++) {
-+		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
-+			list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
-+				deleg_func(dp);
-+				if (++count == num)
-+					return count;
-+			}
-+		}
-+	}
-+	return count;
-+}
-+
-+void nfsd_forget_delegations(u64 num)
-+{
-+	unsigned int count;
-+
-+	nfs4_lock_state();
-+	count = nfsd_process_n_delegations(num, unhash_delegation);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-+}
-+
-+void nfsd_recall_delegations(u64 num)
-+{
-+	unsigned int count;
-+
-+	nfs4_lock_state();
-+	spin_lock(&recall_lock);
-+	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
-+	spin_unlock(&recall_lock);
-+	nfs4_unlock_state();
-+
-+	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
-+}
-+
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
- /* initialization to perform at module load time: */
- 
- int
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index db34a58..e67f30c 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -17,6 +17,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
-+#include "fault_inject.h"
- 
- /*
-  *	We have a single directory with several nodes in it.
-@@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
- 	retval = nfs4_state_init(); /* nfs4 locking state */
- 	if (retval)
- 		return retval;
-+	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-+	if (retval)
-+		goto out_cleanup_fault_injection;
- 	nfsd_stat_init();	/* Statistics */
- 	retval = nfsd_reply_cache_init();
- 	if (retval)
-@@ -1161,6 +1165,8 @@ out_free_cache:
- out_free_stat:
- 	nfsd_stat_shutdown();
- 	nfsd4_free_slabs();
-+out_cleanup_fault_injection:
-+	nfsd_fault_inject_cleanup();
- 	return retval;
- }
- 
-@@ -1174,6 +1180,7 @@ static void __exit exit_nfsd(void)
- 	nfsd_lockd_shutdown();
- 	nfsd_idmap_shutdown();
- 	nfsd4_free_slabs();
-+	nfsd_fault_inject_cleanup();
- 	unregister_filesystem(&nfsd_fs_type);
- }
- 
--- 
-1.7.7
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                    4.97        +1.1%         5.03  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                   29.00       +63.5%        47.43  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                   19.99       +17.0%        23.40  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                   44.66        +5.3%        47.03  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                  408.94       +18.6%       485.03  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                  214.96       +12.3%       241.50  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                  722.54       +17.6%       849.42  TOTAL nfs_commit_size
 
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                    0.76        +1.5%         0.77  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                    0.13      +100.4%         0.27  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                    0.80       -31.1%         0.55  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                    0.95       -14.4%         0.81  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                    0.34      +125.8%         0.76  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                    0.78        +6.5%         0.83  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                    3.75        +6.3%         3.99  TOTAL nfs_write_size
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                  460.14       -29.9%       322.63  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                  718.69       +68.2%      1208.67  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                 5203.60       -26.1%      3843.39  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                  427.40       +93.4%       826.64  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                 7369.68       -18.0%      6041.98  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                 1297.87       -23.6%       992.02  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                15477.38       -14.5%     13235.34  TOTAL nfs_write_queue_time
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                  134.58        -8.9%       122.60  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                   33.24       +48.8%        49.46  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                   89.69       -19.4%        72.31  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                  129.86       -35.3%        84.03  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                   48.33      +239.4%       164.05  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                   81.84       +13.1%        92.55  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                  517.54       +13.0%       585.00  TOTAL nfs_write_rtt_time
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                  595.23       -25.1%       445.75  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                  753.68       +67.4%      1261.46  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                 5294.55       -26.0%      3917.11  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                  559.44       +63.1%       912.46  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                 7424.41       -16.2%      6221.64  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                 1383.78       -21.3%      1089.67  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                16011.09       -13.5%     13848.09  TOTAL nfs_write_execute_time
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                    2.34        +2.5%         2.40  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                    1.59      +488.4%         9.37  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                    2.63       +47.0%         3.86  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                   68.22        -6.5%        63.78  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                  618.34       -52.9%       291.44  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                   21.54       +56.9%        33.80  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                  714.65       -43.4%       404.65  TOTAL nfs_commit_queue_time
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                  766.76        +1.7%       779.63  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                  344.34       +49.3%       514.10  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                  431.90       +15.0%       496.81  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                 3743.78        +5.6%      3954.60  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                 3699.59       +14.0%      4216.05  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                 3801.55        +5.2%      3999.17  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                12787.93        +9.2%     13960.35  TOTAL nfs_commit_rtt_time
+
+3.1.0-rc9-ioless-full-nfs-ino-flushing-next-20111014+  3.1.0-rc9-ioless-full-nfs-wakeup-wait-next-20111014+
+------------------------  ------------------------
+                  769.38        +1.7%       782.27  NFS-thresh=100M/nfs-10dd-4k-32p-32768M-100M:10-X
+                  346.06       +51.3%       523.52  NFS-thresh=100M/nfs-1dd-4k-32p-32768M-100M:10-X
+                  434.96       +15.2%       501.07  NFS-thresh=100M/nfs-2dd-4k-32p-32768M-100M:10-X
+                 3813.17        +5.4%      4020.45  NFS-thresh=1G/nfs-10dd-4k-32p-32768M-1024M:10-X
+                 4318.75        +4.4%      4507.51  NFS-thresh=1G/nfs-1dd-4k-32p-32768M-1024M:10-X
+                 3837.62        +5.6%      4052.61  NFS-thresh=1G/nfs-2dd-4k-32p-32768M-1024M:10-X
+                13519.94        +6.4%     14387.44  TOTAL nfs_commit_execute_time
+
+Thanks,
+Fengguang
