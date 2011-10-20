@@ -1,65 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:51267 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932669Ab1JRPeP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:15 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 03/26] vfs: Pass all mask flags down to iop->check_acl
-Date: Tue, 18 Oct 2011 21:02:38 +0530
-Message-Id: <1318951981-5508-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:44985 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755320Ab1JTCNd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:33 -0400
+Received: by ggnb1 with SMTP id b1so2306912ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:32 -0700 (PDT)
+From: Benny Halevy <benny@tonian.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
+Date: Wed, 19 Oct 2011 19:13:29 -0700
+Message-Id: <1319076809-13512-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4E9F82FC.2000904@tonian.com>
+References: <4E9F82FC.2000904@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+From: Benny Halevy <bhalevy@tonian.com>
 
-Some file permission models differentiate between writing to a file
-(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
-mask flags down to iop->check_acl so that filesystems can distinguish
-between writing and appending.
-
-All users of iop->check_acl pass the mask value back into
-posix_acl_permission(); strip off the additional mask flags there.
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/namei.c     |    2 --
- fs/posix_acl.c |    2 ++
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 2a4574f..276cd30 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -227,8 +227,6 @@ static int acl_permission_check(struct inode *inode, int mask)
- {
- 	unsigned int mode = inode->i_mode;
- 
--	mask &= MAY_READ | MAY_WRITE | MAY_EXEC | MAY_NOT_BLOCK;
--
- 	if (current_user_ns() != inode_userns(inode))
- 		goto other_perms;
- 
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 10027b4..cea4623 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -218,6 +218,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
- 	const struct posix_acl_entry *pa, *pe, *mask_obj;
- 	int found = 0;
- 
-+	want &= MAY_READ | MAY_WRITE | MAY_EXEC | MAY_NOT_BLOCK;
-+
- 	FOREACH_ACL_ENTRY(pa, acl, pe) {
-                 switch(pa->e_tag) {
-                         case ACL_USER_OBJ:
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1a419c0..1a5cb7e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -671,7 +671,7 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
+ 	default:
+ 		return nfserr_bad_xdr;
+ 	}
+-	w &= !NFS4_SHARE_WANT_MASK;
++	w &= ~NFS4_SHARE_WANT_MASK;
+ 	if (!w)
+ 		return nfs_ok;
+ 	switch (w) {
 -- 
-1.7.5.4
+1.7.6
 
