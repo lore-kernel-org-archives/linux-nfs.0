@@ -1,94 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21113 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753738Ab1JMQ7V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Oct 2011 12:59:21 -0400
-Message-ID: <4E9718E3.8040805@RedHat.com>
-Date: Thu, 13 Oct 2011 12:59:15 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Hamo <hamo.by@gmail.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: mount: really return from errno test
-References: <CAO_0yfPgXJJSZNDYXHBSt45J0WQsh5EQVUs0nBN4wb+NoT6hAQ@mail.gmail.com> <40D1A40C-BE0C-4AE0-857D-05531615748E@oracle.com> <4E971329.3000007@RedHat.com>
-In-Reply-To: <4E971329.3000007@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:45538 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755320Ab1JTCNZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:25 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 7so2323875ywf.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:25 -0700 (PDT)
+From: Benny Halevy <benny@tonian.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT
+Date: Wed, 19 Oct 2011 19:13:21 -0700
+Message-Id: <1319076801-13474-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4E9F82FC.2000904@tonian.com>
+References: <4E9F82FC.2000904@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looking further into this issue, I noticed all the following 
-mounts were successful.
+From: Benny Halevy <bhalevy@tonian.com>
 
-# mount -o v3 localhost:/home /mnt/home
-# mount -o v4 localhost:/home /mnt/home
-# mount -o v4 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
-# mount -o v3 [fec0::2:5652:ff:fe20:8459]:/home /mnt/home
+Respect client request for not getting a delegation in NFSv4.1
+Appropriately return delegation "type" NFS4_OPEN_DELEGATE_NONE_EXT
+and WND4_NOT_WANTED reason.
 
-which the mount point, /mnt/home is mounted 4 different times 
-to the same server. 
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4state.c  |   10 ++++++++--
+ fs/nfsd/nfs4xdr.c    |    3 +++
+ include/linux/nfs4.h |   15 ++++++++++++++-
+ 3 files changed, 25 insertions(+), 3 deletions(-)
 
-Is by design or a real problem?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ec361bb..5c3377c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2931,15 +2931,21 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+-	if (nfsd4_has_session(&resp->cstate))
++	if (nfsd4_has_session(&resp->cstate)) {
+ 		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+ 
++		if (open->op_share_access & NFS4_SHARE_WANT_NO_DELEG) {
++			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
++			goto nodeleg;
++		}
++	}
++
+ 	/*
+ 	* Attempt to hand out a delegation. No error return, because the
+ 	* OPEN succeeds even if we fail.
+ 	*/
+ 	nfs4_open_delegation(current_fh, open, stp);
+-
++nodeleg:
+ 	status = nfs_ok;
+ 
+ 	dprintk("%s: stateid=" STATEID_FMT "\n", __func__,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 706ada1..1a419c0 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2842,6 +2842,9 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 		WRITE32(0);   /* XXX: is NULL principal ok? */
+ 		ADJUST_ARGS();
+ 		break;
++	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
++		WRITE32(WND4_NOT_WANTED);	/* only reason for now */
++		break;
+ 	default:
+ 		BUG();
+ 	}
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 32345c2..8cdde4d 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -441,7 +441,20 @@ enum limit_by4 {
+ enum open_delegation_type4 {
+ 	NFS4_OPEN_DELEGATE_NONE = 0,
+ 	NFS4_OPEN_DELEGATE_READ = 1,
+-	NFS4_OPEN_DELEGATE_WRITE = 2
++	NFS4_OPEN_DELEGATE_WRITE = 2,
++	NFS4_OPEN_DELEGATE_NONE_EXT = 3, /* 4.1 */
++};
++
++enum why_no_delegation4 { /* new to v4.1 */
++	WND4_NOT_WANTED = 0,
++	WND4_CONTENTION = 1,
++	WND4_RESOURCE = 2,
++	WND4_NOT_SUPP_FTYPE = 3,
++	WND4_WRITE_DELEG_NOT_SUPP_FTYPE = 4,
++	WND4_NOT_SUPP_UPGRADE = 5,
++	WND4_NOT_SUPP_DOWNGRADE = 6,
++	WND4_CANCELLED = 7,
++	WND4_IS_DIR = 8,
+ };
+ 
+ enum lock_type4 {
+-- 
+1.7.6
 
-steved.
-
-
-On 10/13/2011 12:34 PM, Steve Dickson wrote:
-> Yeah... I believe its this one
->    https://bugzilla.redhat.com/show_bug.cgi?id=744657
-> 
-> On 10/13/2011 10:53 AM, Chuck Lever wrote:
->> What was the presenting problem?  Is there a bugzilla report I can look at?
->>
->> On Oct 11, 2011, at 5:44 AM, Hamo wrote:
->>
->>> We should only try next address family if we meet ECONNREFUSED or EHOSTUNREACH
->>> for v4 or ECONNREFUSED or EOPNOTSUPP or EHOSTUNREACH for v3v2.
->>> Before, only a break in swich can not make the program out of for loop.
->>>
->>> Signed-off-by: Yang Bai <hamo.by@gmail.com>
->>> ---
->>> utils/mount/stropts.c |    6 ++++--
->>> 1 files changed, 4 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>> index 314a806..4032bf3 100644
->>> --- a/utils/mount/stropts.c
->>> +++ b/utils/mount/stropts.c
->>> @@ -665,9 +665,10 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
->>> 		case EHOSTUNREACH:
->>> 			continue;
->>> 		default:
->>> -			break;
->>> +			goto out;
->>> 		}
->>> 	}
->>> +out:
->>> 	return ret;
->>> }
->>>
->>> @@ -751,9 +752,10 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
->>> 		case EHOSTUNREACH:
->>> 			continue;
->>> 		default:
->>> -			break;
->>> +			goto out;
->>> 		}
->>> 	}
->>> +out:
->>> 	return ret;
->>> }
->>>
->>> -- 
->>> 1.7.1
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
