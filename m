@@ -1,238 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753534Ab1JSUuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 16:50:40 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/9] NFS: Get rid of nfs_restart_rpc()
-Date: Wed, 19 Oct 2011 13:50:15 -0700
-Message-Id: <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:58931 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751659Ab1JTTQK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 15:16:10 -0400
+Received: by vws1 with SMTP id 1so2375387vws.19
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 12:16:09 -0700 (PDT)
+Message-ID: <4EA07375.30303@tonian.com>
+Date: Thu, 20 Oct 2011 15:16:05 -0400
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT
+References: <4E9F82FC.2000904@tonian.com> <1319076801-13474-1-git-send-email-benny@tonian.com> <20111020115224.GH5444@fieldses.org> <1456421465-1319114189-cardhu_decombobulator_blackberry.rim.net-173541571-@b18.c3.bise3.blackberry> <20111020124713.GP5444@fieldses.org>
+In-Reply-To: <20111020124713.GP5444@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It can trivially be replaced with rpc_restart_call_prepare.
+On 2011-10-20 08:47, J. Bruce Fields wrote:
+> On Thu, Oct 20, 2011 at 12:36:25PM +0000, Benny Halevy wrote:
+>> OK, I read you.  Just please take note that WANT_NO_DELEG flag is important to simplified clients that do not support delegations, like the one I was testing against in the BAT, and it is the only one in use that I could tell.
+> 
+> If you can suggest an implementation that meets the minimum required by
+> the spec, I'd happily take it....
+> 
+> It might not be much harder: it's probably just a matter of returrning
+> the right OPEN_DELEGATE_NONE_EXT?
+> 
+> Though unfortunately there's not a "why" for "I just didn't feel like
+> giving you one", so we probably would have to make an effort to detect
+> the different case.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Agreed.  It could have been a good to have such a reason.
+
+> 
+> Also, I wonder if it's wise for a client to depend on this--it really is
+> an optional feature as far as I can tell.  It would be safer to teach
+> the client just to handle delegations in the simplest way possible
+> (possibly just return them immediately?).
+> 
+
+That's true.
+
+How about the following? (untested squashme over this patch)
+
+>From ab9e79564fee05a0f3f369fc134bbace1543ac4d Mon Sep 17 00:00:00 2001
+From: Benny Halevy <bhalevy@tonian.com>
+Date: Thu, 20 Oct 2011 08:00:03 -0700
+Subject: [PATCH] SQUASHME: nfsd4: implement why_no_deleg
+
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/internal.h       |   10 ----------
- fs/nfs/nfs4filelayout.c |   12 ++++--------
- fs/nfs/nfs4proc.c       |   17 ++++++++---------
- fs/nfs/read.c           |    2 +-
- fs/nfs/unlink.c         |    4 ++--
- fs/nfs/write.c          |    2 +-
- net/sunrpc/clnt.c       |    4 +++-
- 7 files changed, 19 insertions(+), 32 deletions(-)
+ fs/nfsd/nfs4state.c |   50 +++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4xdr.c   |    7 ++++++-
+ fs/nfsd/xdr4.h      |    1 +
+ 3 files changed, 52 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ab12913..c1a1bd8 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -457,13 +457,3 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
- }
- 
--/*
-- * Helper for restarting RPC calls in the possible presence of NFSv4.1
-- * sessions.
-- */
--static inline int nfs_restart_rpc(struct rpc_task *task, const struct nfs_client *clp)
--{
--	if (nfs4_has_session(clp))
--		return rpc_restart_call_prepare(task);
--	return rpc_restart_call(task);
--}
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 4c78c62..dc52597 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -122,7 +122,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- static int filelayout_read_done_cb(struct rpc_task *task,
- 				struct nfs_read_data *data)
- {
--	struct nfs_client *clp = data->ds_clp;
- 	int reset = 0;
- 
- 	dprintk("%s DS read\n", __func__);
-@@ -134,9 +133,8 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 		if (reset) {
- 			pnfs_set_lo_fail(data->lseg);
- 			nfs4_reset_read(task, data);
--			clp = NFS_SERVER(data->inode)->nfs_client;
- 		}
--		nfs_restart_rpc(task, clp);
-+		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
- 
-@@ -210,10 +208,8 @@ static int filelayout_write_done_cb(struct rpc_task *task,
- 		if (reset) {
- 			pnfs_set_lo_fail(data->lseg);
- 			nfs4_reset_write(task, data);
--			clp = NFS_SERVER(data->inode)->nfs_client;
--		} else
--			clp = data->ds_clp;
--		nfs_restart_rpc(task, clp);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d00c246..2cdd2b3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2914,7 +2914,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_openowner *oo = container_of(stp->st_stateowner, struct nfs4_openowner, oo_owner);
+ 	int cb_up;
+-	int status, flag = 0;
++	int status = 0, flag = 0;
+
+ 	cb_up = nfsd4_cb_channel_good(oo->oo_owner.so_client);
+ 	flag = NFS4_OPEN_DELEGATE_NONE;
+@@ -2955,11 +2955,32 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+ 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
+ 		STATEID_VAL(&dp->dl_stid.sc_stateid));
+ out:
+-	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
+-			&& flag == NFS4_OPEN_DELEGATE_NONE
+-			&& open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
+-		dprintk("NFSD: WARNING: refusing delegation reclaim\n");
+ 	open->op_delegate_type = flag;
++	if (flag == NFS4_OPEN_DELEGATE_NONE) {
++		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
++		    open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
++			dprintk("NFSD: WARNING: refusing delegation reclaim\n");
++
++		if (open->op_deleg_want) {
++			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
++			if (status == -EAGAIN)
++				open->op_why_no_deleg = WND4_CONTENTION;
++			else {
++				open->op_why_no_deleg = WND4_RESOURCE;
++				switch (open->op_deleg_want) {
++				case NFS4_SHARE_WANT_READ_DELEG:
++				case NFS4_SHARE_WANT_WRITE_DELEG:
++				case NFS4_SHARE_WANT_ANY_DELEG:
++					break;
++				case NFS4_SHARE_WANT_CANCEL:
++					open->op_why_no_deleg = WND4_CANCELLED;
++					break;
++				case NFS4_SHARE_WANT_NO_DELEG:
++					BUG();	/* not supposed to get here */
++				}
++			}
 +		}
-+		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
++	}
+ 	return;
+ out_free:
+ 	nfs4_put_delegation(dp);
+@@ -3036,6 +3057,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+
+ 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
+ 			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
++			open->op_why_no_deleg = WND4_NOT_WANTED;
+ 			goto nodeleg;
+ 		}
  	}
- 
-@@ -245,7 +241,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- 			prepare_to_resend_writes(data);
- 			pnfs_set_lo_fail(data->lseg);
- 		} else
--			nfs_restart_rpc(task, data->ds_clp);
-+			rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ba0da50..d2ae413 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3191,7 +3191,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
- 	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
--		nfs_restart_rpc(task, server->nfs_client);
-+		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
- 
-@@ -3241,7 +3241,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
- 	struct inode *inode = data->inode;
- 	
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
--		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
-+		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
- 	if (task->tk_status >= 0) {
-@@ -3298,7 +3298,7 @@ static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_write_data *dat
- 	struct inode *inode = data->inode;
- 
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
--		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
-+		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
- 	nfs_refresh_inode(inode, data->res.fattr);
-@@ -3838,7 +3838,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+@@ -3051,6 +3073,24 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+ 	dprintk("%s: stateid=" STATEID_FMT "\n", __func__,
+ 		STATEID_VAL(&stp->st_stid.sc_stateid));
+ out:
++	/* 4.1 client trying to upgrade/downgrade delegation? */
++	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
++	    open->op_deleg_want) {
++		if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
++		    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
++			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
++			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
++		} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
++			   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
++			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
++			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
++		}
++		/* Otherwise the client must be confused wanting a delegation
++		 * it already has, therefore we don't return
++		 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
++		 */
++	}
++
+ 	if (fp)
+ 		put_nfs4_file(fp);
+ 	if (status == 0 && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 9b838e9..f2c1338 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3035,7 +3035,12 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 		ADJUST_ARGS();
+ 		break;
+ 	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
+-		WRITE32(WND4_NOT_WANTED);	/* only reason for now */
++		WRITE32(open->op_why_no_deleg);
++		switch (open->op_why_no_deleg) {
++		case WND4_CONTENTION:
++		case WND4_RESOURCE:
++			WRITE32(0);	/* deleg signaling not supported yet */
++		}
+ 		break;
  	default:
- 		if (nfs4_async_handle_error(task, data->res.server, NULL) ==
- 				-EAGAIN) {
--			nfs_restart_rpc(task, data->res.server->nfs_client);
-+			rpc_restart_call_prepare(task);
- 			return;
- 		}
- 	}
-@@ -4092,8 +4092,7 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
- 			break;
- 		default:
- 			if (nfs4_async_handle_error(task, calldata->server, NULL) == -EAGAIN)
--				nfs_restart_rpc(task,
--						 calldata->server->nfs_client);
-+				rpc_restart_call_prepare(task);
- 	}
- }
- 
-@@ -4926,7 +4925,7 @@ static void nfs4_get_lease_time_done(struct rpc_task *task, void *calldata)
- 		task->tk_status = 0;
- 		/* fall through */
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
--		nfs_restart_rpc(task, data->clp);
-+		rpc_restart_call_prepare(task);
- 		return;
- 	}
- 	dprintk("<-- %s\n", __func__);
-@@ -5767,7 +5766,7 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 
- 	server = NFS_SERVER(lrp->args.inode);
- 	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
--		nfs_restart_rpc(task, lrp->clp);
-+		rpc_restart_call_prepare(task);
- 		return;
- 	}
- 	spin_lock(&lo->plh_inode->i_lock);
-@@ -5938,7 +5937,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
- 	}
- 
- 	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
--		nfs_restart_rpc(task, server->nfs_client);
-+		rpc_restart_call_prepare(task);
- 		return;
- 	}
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index bfc20b1..e866a7e 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -435,7 +435,7 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
- 	argp->offset += resp->count;
- 	argp->pgbase += resp->count;
- 	argp->count -= resp->count;
--	nfs_restart_rpc(task, NFS_SERVER(data->inode)->nfs_client);
-+	rpc_restart_call_prepare(task);
- }
- 
- /*
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index b2fbbde..4f9319a 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -87,7 +87,7 @@ static void nfs_async_unlink_done(struct rpc_task *task, void *calldata)
- 	struct inode *dir = data->dir;
- 
- 	if (!NFS_PROTO(dir)->unlink_done(task, dir))
--		nfs_restart_rpc(task, NFS_SERVER(dir)->nfs_client);
-+		rpc_restart_call_prepare(task);
- }
- 
- /**
-@@ -369,7 +369,7 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
- 	struct dentry *new_dentry = data->new_dentry;
- 
- 	if (!NFS_PROTO(old_dir)->rename_done(task, old_dir, new_dir)) {
--		nfs_restart_rpc(task, NFS_SERVER(old_dir)->nfs_client);
-+		rpc_restart_call_prepare(task);
- 		return;
- 	}
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2084a64..ad90b0c9 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1305,7 +1305,7 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- 				 */
- 				argp->stable = NFS_FILE_SYNC;
- 			}
--			nfs_restart_rpc(task, server->nfs_client);
-+			rpc_restart_call_prepare(task);
- 			return;
- 		}
- 		if (time_before(complain, jiffies)) {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c5347d2..f0268ea 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -850,7 +850,9 @@ rpc_restart_call_prepare(struct rpc_task *task)
- {
- 	if (RPC_ASSASSINATED(task))
- 		return 0;
--	task->tk_action = rpc_prepare_task;
-+	task->tk_action = call_start;
-+	if (task->tk_ops->rpc_call_prepare != NULL)
-+		task->tk_action = rpc_prepare_task;
- 	return 1;
- }
- EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
+ 		BUG();
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 1e5ca95..d20d87e 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -214,6 +214,7 @@ struct nfsd4_open {
+ 	struct xdr_netobj op_fname;	    /* request - everything but CLAIM_PREV */
+ 	u32		op_delegate_type;   /* request - CLAIM_PREV only */
+ 	stateid_t       op_delegate_stateid; /* request - response */
++	u32		op_why_no_deleg;    /* response - DELEG_NONE_EXT only */
+ 	u32		op_create;     	    /* request */
+ 	u32		op_createmode;      /* request */
+ 	u32		op_bmval[3];        /* request */
 -- 
-1.7.6.4
+1.7.6
 
