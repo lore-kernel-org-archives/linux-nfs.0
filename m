@@ -1,72 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13040 "EHLO mx2.netapp.com"
+Received: from lo.gmane.org ([80.91.229.12]:39884 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933683Ab1JaSkA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 14:40:00 -0400
-Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>,
-        linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>,
-        nfsv4 list <nfsv4@ietf.org>
-Date: Mon, 31 Oct 2011 14:39:59 -0400
-In-Reply-To: <20111031183131.GA1925@umich.edu>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
-	 <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
-	 <1320076148.4714.4.camel@lade.trondhjem.org>
-	 <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
-	 <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com>
-	 <1320082964.4714.23.camel@lade.trondhjem.org> <4EAEE173.80306@tonian.com>
-	 <1320085212.4714.48.camel@lade.trondhjem.org>
-	 <20111031183131.GA1925@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320086399.4714.60.camel@lade.trondhjem.org>
+	id S1750755Ab1JTSIU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 14:08:20 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RGx2R-00080a-9B
+	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 20:08:19 +0200
+Received: from ebox.rath.org ([173.255.235.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 20:08:19 +0200
+Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 20:08:19 +0200
+To: linux-nfs@vger.kernel.org
+From: Nikolaus Rath <Nikolaus@rath.org>
+Subject: Re: Does NFS4 need st_gen?
+Date: Thu, 20 Oct 2011 13:21:31 -0400
+Message-ID: <877h3za89w.fsf@inspiron.ap.columbia.edu>
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+	<20111019171551.GA32028@fieldses.org>
+	<87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+	<20111020120207.GL5444@fieldses.org>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-31 at 14:31 -0400, Jim Rees wrote: 
-> Trond Myklebust wrote:
-> 
->   I don't necessarily disagree with what you are saying, but I have yet to
->   see a single server side implementation of CB_RECALL_ANY, let alone any
->   numbers that indicate performance or responsiveness problems resulting
->   from our existing client-side implementation.
->   
->   I therefore find it hard to understand why optimising this particular
->   code is such a high priority, or why a patch that is adding per-file
->   layoutreturns to initiate_bulk_draining() is going to help anything at
->   all.
-> 
-> Testing between the linux block layout client and the EMC block layout
-> server revealed a deadlock when the server had handed out some number of
-> layouts and couldn't hand out any more.  So now the EMC block layout server
-> implements CB_RECALL_ANY.  So yes, this solves a real world problem, and
-> yes, there is a server that implements this.
-> 
-> We had some discussions at the time, and I don't remember if those were on
-> the linux-nfs list or in some other forum.  We decided that the client was
-> in the best position to decide which layouts were no longer needed, so we
-> needed some way for the server to tell the client to return some layouts
-> without specifying which ones.  CB_RECALL_ANY seemed custom-made for this
-> purpose, so we used it.
-> 
-> I don't think it would be appropriate for the server to recall all layouts
-> when it only needs some of them back.
+"J. Bruce Fields" <bfields@fieldses.org> writes:
+> On Wed, Oct 19, 2011 at 03:11:27PM -0400, Nikolaus Rath wrote:
+>> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>> > On Wed, Oct 19, 2011 at 10:17:43AM -0400, Nikolaus Rath wrote:
+>> >> Does NFS4 still depend on inode generation numbers? I understand that
+>> >> earlier NFS versions used file handles based on inode and generation
+>> >> number, but it seems to me that this shouldn't be required anymore with
+>> >> the (stateful) NFS4.
+>> >
+>> > Yes, it's true that NFSv4 has open and close operations, but filehandles
+>> > are still used a great deal outside of that, and clients are still
+>> > allowed to assume that the same filehandle always refers to the same
+>> > object.
+>> >
+>> > http://www.ietf.org/rfc/rfc3530.txt, section 4.2.1:
+>> >
+>> > 	"If two filehandles from the same server are equal, they MUST
+>> > 	refer to the same file."
+>> 
+>> Duh - that's a disappointment. Thanks for the pointer!
+>
+> Just curious--why do you care?
 
-As I said previously: the current client implementation deals with
-CB_RECALL_ANY by calling initiate_file_draining(), which forgets _all_
-layouts. If that is what we want to continue to use, then sending
-layoutreturn with LAYOUTRETURN4_ALL is appropriate.
-Otherwise, please fix the client to be more selective (in which case
-LAYOUTRETURN4_FILE may be more appropriate) and please remember to
-provide performance numbers to justify the need for optimisation.
+I'm working on a FUSE file system that stores file system metadata in an
+SQL database (http://code.google.com/p/s3ql/). Not having to keep track
+of inode generation numbers would keep the code much simpler, because I
+want to delete inode-rows from the SQL table when the last reference to
+the inode is deleted (so I can't keep track of the generation no).
+
+Now I'll either have to make inodes unique (and run into trouble after
+2^32 inodes have been used), or keep with the current scheme of
+randomizing new inodes (which keeps the probability of problems low
+enough but is ugly).
+
+Best,
+
+   -Nikolaus
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+ »Time flies like an arrow, fruit flies like a Banana.«
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
 
