@@ -1,114 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17125 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60804 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754112Ab1JMVOi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Oct 2011 17:14:38 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/3] NFSv4.1: backchannel dynamic session slots
-Date: Thu, 13 Oct 2011 17:14:29 -0400
-Message-Id: <1318540470-15181-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1318540470-15181-1-git-send-email-andros@netapp.com>
-References: <1318540470-15181-1-git-send-email-andros@netapp.com>
+	id S1751658Ab1JTMcu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 08:32:50 -0400
+Date: Thu, 20 Oct 2011 08:32:42 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [RFC PATCH 0/5] SUNRPC: "RPC pipefs per network namespace"
+ preparations
+Message-ID: <20111020123242.GN5444@fieldses.org>
+References: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
+ <4EA000C6.1040502@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EA000C6.1040502@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Oct 20, 2011 at 03:06:46PM +0400, Stanislav Kinsbursky wrote:
+> Guys, please, spend some of your expensive time to review this patch-set briefly.
 
-Use the new dynamic slot allocator, even though we only currently support
-a single back channel slot.
+I'll try to take a look soon, but I'm travelling tomorrow through the
+31st, and things will be a little hectic.
 
-Fix a bug: Slotid's start from 0 which means we check against
-NFS41_BC_MAX_CALLBACKS - 1.
+Just one quick comment:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback_proc.c |   27 +++++++++++++++++++--------
- fs/nfs/internal.h      |    2 ++
- fs/nfs/nfs4proc.c      |    2 +-
- 3 files changed, 22 insertions(+), 9 deletions(-)
+> >The only problem about I'm not sure how to solve properly yet, is auth gss
+> >pipes creations operations. Hoping for some help with it.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 43926ad..12bd9d0 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -339,10 +339,10 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
- 	dprintk("%s enter. slotid %d seqid %d\n",
- 		__func__, args->csa_slotid, args->csa_sequenceid);
- 
--	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
-+	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
- 		return htonl(NFS4ERR_BADSLOT);
- 
--	slot = tbl->slots + args->csa_slotid;
-+	slot = nfs4_lookup_slot_locked(tbl, args->csa_slotid);
- 	dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
- 
- 	/* Normal */
-@@ -377,6 +377,22 @@ out_ok:
- 	return htonl(NFS4_OK);
- }
- 
-+static bool test_refer_slot(struct nfs4_slot_table *tbl,
-+			    struct referring_call *ref)
-+{
-+	struct nfs4_slot *slot;
-+	bool status = false;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (test_bit(ref->rc_slotid, tbl->used_slots)) {
-+		slot = nfs4_lookup_slot_locked(tbl, ref->rc_slotid);
-+		if (slot->seq_nr == ref->rc_sequenceid)
-+			status = true;
-+	}
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	return status;
-+}
-+
- /*
-  * For each referring call triple, check the session's slot table for
-  * a match.  If the slot is in use and the sequence numbers match, the
-@@ -417,12 +433,7 @@ static bool referring_call_exists(struct nfs_client *clp,
- 				((u32 *)&rclist->rcl_sessionid.data)[2],
- 				((u32 *)&rclist->rcl_sessionid.data)[3],
- 				ref->rc_sequenceid, ref->rc_slotid);
--
--			spin_lock(&tbl->slot_tbl_lock);
--			status = (test_bit(ref->rc_slotid, tbl->used_slots) &&
--				  tbl->slots[ref->rc_slotid].seq_nr ==
--					ref->rc_sequenceid);
--			spin_unlock(&tbl->slot_tbl_lock);
-+			status = test_refer_slot(tbl, ref);
- 			if (status)
- 				goto out;
- 		}
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ab12913..88bd927 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -354,6 +354,8 @@ extern int _nfs4_call_sync_session(struct rpc_clnt *clnt,
- 				   struct nfs4_sequence_args *args,
- 				   struct nfs4_sequence_res *res,
- 				   int cache_reply);
-+struct nfs4_slot *nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl,
-+					  u8 slotid);
- 
- /*
-  * Determine the device name as a string
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index aacab11..7438632 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -433,7 +433,7 @@ nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
-  * puts the request on the slot table waitq and dynamically allocates a
-  * new slot.
-  */
--static struct nfs4_slot *
-+struct nfs4_slot *
- nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl, u8 slotid)
- {
- 	struct nfs4_slot *sp;
--- 
-1.7.4.4
+I suspect one reason it may be a little complicated is the
+upcall-version switching.  The old version is deprecated, and there's no
+need to support the combination of the old version with the a new
+feature like containers.  And now that it's been there a while the
+version-switching code already achieved its goal of avoiding a flag day.
+So, one approach might be:
 
+	- move all the code for the old gss upcall and for the version
+	  switching under a new CONFIG_DEPRECATED_GSS, or similar.
+	- print a warning if the old stuff is used, and plan to rip it
+	  out completely in a future kernel version.
+	- do something that works just in the !CONFIG_DEPRECATED_GSS
+	  case.
+
+Would that help?
+
+--b.
