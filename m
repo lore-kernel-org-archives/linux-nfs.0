@@ -1,70 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:44402 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751085Ab1JNRuw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:50:52 -0400
-Message-ID: <1419910767-1318614648-cardhu_decombobulator_blackberry.rim.net-1274904192-@b18.c3.bise3.blackberry>
-Reply-To: bhalevy@tonian.com
-References: <4E98703E.7040605@panasas.com>
-In-Reply-To: <4E98703E.7040605@panasas.com>
-Subject: Re: [PATCHSET 0/1 0/6] ore: RAID5 Support
-To: "Boaz Harrosh" <bharrosh@panasas.com>, linux-nfs-owner@vger.kernel.org,
-        "Welch, Brent" <welch@panasas.com>, "open-osd" <osd-dev@open-osd.org>,
-        "NFS list" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>
-From: "Benny Halevy" <bhalevy@tonian.com>
-Date: Fri, 14 Oct 2011 17:50:46 +0000
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from lo.gmane.org ([80.91.229.12]:48151 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752837Ab1JTVIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 17:08:23 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RGzqg-0006at-OF
+	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 23:08:22 +0200
+Received: from ebox.rath.org ([173.255.235.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 23:08:22 +0200
+Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 23:08:22 +0200
+To: linux-nfs@vger.kernel.org
+From: Nikolaus Rath <Nikolaus@rath.org>
+Subject: Re: Does NFS4 need st_gen?
+Date: Thu, 20 Oct 2011 16:37:17 -0400
+Message-ID: <871uu79z7m.fsf@inspiron.ap.columbia.edu>
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+	<20111019171551.GA32028@fieldses.org>
+	<87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+	<20111020120207.GL5444@fieldses.org>
+	<877h3za89w.fsf@inspiron.ap.columbia.edu>
+	<20111020195731.GC9987@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-QXdlc29tZSENCg0KQmVubnkNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOglCb2F6
-IEhhcnJvc2ggPGJoYXJyb3NoQHBhbmFzYXMuY29tPg0KU2VuZGVyOglsaW51eC1uZnMtb3duZXJA
-dmdlci5rZXJuZWwub3JnDQpEYXRlOglGcmksIDE0IE9jdCAyMDExIDE5OjI0OjE0IA0KVG86IFdl
-bGNoLCBCcmVudDx3ZWxjaEBwYW5hc2FzLmNvbT47IG9wZW4tb3NkPG9zZC1kZXZAb3Blbi1vc2Qu
-b3JnPjsgTkZTIGxpc3Q8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz47IGxpbnV4LWZzZGV2ZWw8
-bGludXgtZnNkZXZlbEB2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBbUEFUQ0hTRVQgMC8xIDAv
-Nl0gb3JlOiBSQUlENSBTdXBwb3J0DQoNCg0KSSdtIHByb3VkIHRvIHByZXNlbnQgUkFJRDUgc3Vw
-cG9ydCB0byBPUkUuIFdoaWNoIGVuYWJsZXMgcmFpZDUgZm9yIGJvdGgNCmV4b2ZzIGFuZCBwbmZz
-LW9iamVjdHMtbGF5b3V0IGRyaXZlci4NCg0KVGhlIE9SRSB3aXRoIHJhaWQwLzEvNSBhbmQgc29v
-biA2IHN1cHBvcnQgaGFzIGJlY29tZSBhIGNvbXBhY3QgYW5kIGFic3RyYWN0DQpsaWJyYXJ5LCB0
-aGF0IHdpdGggbm90IGEgbG90IG9mIGVmZm9ydCwgY2FuIHN1cHBvcnQgbm90IG9ubHkgT1NEIGJ1
-dCBhbnkNCnR5cGUgb2YgZGV2aWNlcy4gRm9yIGV4YW1wbGUgQlRSRlMsIGRvZXMgaXQgaGF2ZSBh
-IFJBSUQ1IHN1cHBvcnQgeWV0PyBpZg0Kbm90IGl0IGNvdWxkIHVzZSBPUkUuIFRoZSBPUkUgZ2V0
-cyBhIGJ1bmNoIG9mIHBhZ2VzIGF0IHRoZSB0b3AgYW5kIHByb2R1Y2VzDQpiaW9zIGZvciBlYWNo
-IGRldmljZSBhdCB0aGUgYm90dG9tLiBUaGUgbGlib3NkIEFQSSBjYW4gYmUgZWFzaWx5IGFic3Ry
-YWN0ZWQNCmFuZCBiZSB1c2VkIGZvciBibG9jayBkZXZpY2VzLCBqdXN0IHRoZSBzYW1lLiBUaGUg
-UkFJRCBsYXlvdXQgc3VwcG9ydGVkIGJ5DQpPUkUgaXMgdmVyeSByaWNoLCBtdWx0aSBsYXllcmVk
-IHN0cmlwaW5nL21pcnJvcmluZy9yYWlkLiBldmVuIHJlYWNoZXIgdGhlbg0Kc3RhY2tlZCBNRC4g
-WW91IGNhbiByZWFkIGFib3V0IHRoaXMgbGF5b3V0IGhlcmU6DQpodHRwOi8vZ2l0Lm9wZW4tb3Nk
-Lm9yZy9naXR3ZWIuY2dpP3A9aWV0Zi1yZmM1NjY0LmdpdDthPWJsb2JfcGxhaW47Zj1kcmFmdC1p
-ZXRmLW5mc3Y0LXJmYzU2NjRiaXMuaHRtbDtoYj1ib2F6Mg0KU3RhcnQgYXQ6IDUuMy4gIkRhdGEg
-TWFwcGluZyBTY2hlbWVzIiB1cCB0bzoNCjUuNC41LiAiUkFJRCBVc2FnZSBhbmQgSW1wbGVtZW50
-YXRpb24gTm90ZXMiDQoNClRoZXJlIHdoZXJlIHNvbWUgcHJvYmxlbXMgd2l0aCB0aGUgcHJldmlv
-dXMgcGF0Y2hzZXQgaGVyZSBhcmUNCnRoZSBkaWZmZXJlbmNlcyBJIHNxdWFzaGVkIGl0IHRvIGEg
-bmV3IHBhdGNoc2V0IGF0IG9zZC9saW51eC1uZXh0Lg0KDQogW1BBVENIIDEvMV0gU1FVQVNITUU6
-IGludG86IG9yZTogT25seSBJTyBvbmUgZ3JvdXAgYXQgYSB0aW1lIChBUEkgY2hhbmdlKQ0KDQpB
-bmQgd2l0aG91dCBmYXJ0aGVyIGFkbyBIZXJlIGlzIHRoZSBSQUlENSBzdXBwb3J0LiBUaGlzIGlz
-IGhpZ2hseSBjb21wbGljYXRlZA0Kc3R1ZmYsIGZvciBodW1ibGUgbWUgYXQgbGVhc3QsIGFuZCBJ
-IHdvdWxkIGFwcHJlY2lhdGUgYW55IHJldmlldyBhbmQvb3IgY29tbWVudHMNCnlvdSBndXlzIGNh
-biBnaXZlIGl0LiBUaGFua3MgaW4gYWR2YW5jZS4gKFByZXR0eSBQbGVhc2U/IDotKSkNCg0KW1BB
-VENIIDEvNl0gb3JlOiBNYWtlIG9yZV9jYWxjX3N0cmlwZV9pbmZvIEVYUE9SVF9TWU1CT0wNCltQ
-QVRDSCAyLzZdIG9yZTogUkFJRDUgcmVhZA0KW1BBVENIIDMvNl0gb3JlOiBSQUlENSBXcml0ZQ0K
-W1BBVENIIDQvNl0gZXhvZnM6IFN1cHBvcnQgZm9yIFJBSUQ1IHJlYWQtNC13cml0ZSBpbnRlcmZh
-Y2UuDQpbUEFUQ0ggNS82XSBwbmZzLW9iajogU3VwcG9ydCBmb3IgUkFJRDUgcmVhZC00LXdyaXRl
-IGludGVyZmFjZS4NCltQQVRDSCA2LzZdIG9yZTogRW5hYmxlIFJBSUQ1IG1vdW50cw0KDQpBIHRy
-ZWUgd2l0aCBhYm92ZSBwbHVzIGFsbCBwcmVyZXF1aXNpdGVzIGlzIGF0Og0KJCBnaXQgY2xvbmUg
-Z2l0Oi8vb3Blbi1vc2Qub3JnL2xpbnV4LW9wZW4tb3NkIGxpbnV4LW5leHQNCltodHRwOi8vZ2l0
-Lm9wZW4tb3NkLm9yZy9naXR3ZWIuY2dpP3A9bGludXgtb3Blbi1vc2QuZ2l0O2E9c2hvcnRsb2c7
-aD1yZWZzL2hlYWRzL21lcmdlX2FuZF9jb21waWxlXQ0KDQpUaGUgY29kZSBwYXNzZXMgbXkgdGVz
-dHMsIHRoZSBoaWdobGlnaHQgb2Ygd2hpY2ggaXMgZ2l0LWNsb25lIGxpbnV4IGFuZCBjb21wYXJl
-IHRvDQphbmQgaWRlbnRpY2FsIGNsb25lIG9uIGV4dDQuIEJ1dCB0aGVyZSBtdXN0IGJlIG1vbnRo
-IG9mIGZhcnRoZXIgdGVzdGluZyBkb25lIG9uIHRoaXMNCnRvIGdldCBpdCBiZXR0ZXIuIEZvciBl
-eGFtcGxlLiBBbGlnbmVkIG9uIHN0cmlwZSBJTyB3cml0ZSBiYWNrIHNob3VsZCBiZSBpbXByb3Zl
-ZCBvbg0KYWxsIHRoZSB3YXkgZG93biB0byB0aGUgVkZTIGxheWVyLg0KDQpUaGFua3MNCkJvYXoN
-Ci0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJz
-Y3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
-Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
-bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
+"J. Bruce Fields" <bfields@fieldses.org> writes:
+> On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
+>> I'm working on a FUSE file system that stores file system metadata in an
+>> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
+>> of inode generation numbers would keep the code much simpler, because I
+>> want to delete inode-rows from the SQL table when the last reference to
+>> the inode is deleted (so I can't keep track of the generation no).
+>
+> You can use current time, or a counter, or something, as the generation
+> number.
+
+With current time I'm screwed if the system clock doesn't have
+sufficiently fine granularity. With a counter, I either have to remember
+counter values per-inode even after the inode is deleted, or the global
+counter will overflow at some point (in which case I may just as well
+require unique inodes in the first place).
+
+>> Now I'll either have to make inodes unique (and run into trouble after
+>> 2^32 inodes have been used), or keep with the current scheme of
+>> randomizing new inodes (which keeps the probability of problems low
+>> enough but is ugly).
+>
+> With 2^32 inode numbers plus 2^32 generation numbers it should be
+> possible to work something out that doesn't require remembering every
+> old inode.
+
+Certainly. All I'm saying is that the code would be simpler if there was
+no need for generation numbers.
+
+Best,
+
+   -Nikolaus
+
+-- 
+ »Time flies like an arrow, fruit flies like a Banana.«
+
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
 
