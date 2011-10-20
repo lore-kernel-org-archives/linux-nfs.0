@@ -1,31 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout0.mh.bbc.co.uk ([132.185.144.151]:59685 "EHLO
-	mailout0.mh.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754208Ab1JXKkk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 06:40:40 -0400
-Date: Mon, 24 Oct 2011 10:16:59 +0000
-From: David Flynn <davidf@rd.bbc.co.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org
-Subject: Re: NFS4 client blocked (kernel 3.0.4)
-Message-ID: <20111024101659.GC32587@rd.bbc.co.uk>
-References: <20111022082838.GB32587@rd.bbc.co.uk>
- <1319449185.2785.6.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1319449185.2785.6.camel@lade.trondhjem.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:45538 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754085Ab1JTCNN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:13 -0400
+Received: by ywf7 with SMTP id 7so2323875ywf.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:12 -0700 (PDT)
+From: Benny Halevy <benny@tonian.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 3/7] nfsd4: seq->status_flags may be used unitialized
+Date: Wed, 19 Oct 2011 19:13:06 -0700
+Message-Id: <1319076786-13391-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4E9F82FC.2000904@tonian.com>
+References: <4E9F82FC.2000904@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
-> > [105121.204200] INFO: task bash:4457 blocked for more than 120 seconds.
-> > [105121.247424] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> Does 'echo 0 >/proc/sys/sunrpc/rpc_debug' show anything being stuck in
-> the RPC layer?
+From: Benny Halevy <bhalevy@tonian.com>
 
-Unfortunately that system had to be rebooted.  If it occurs again, i
-shall perform the check.
+Reported-by: Gopala Suryanarayana <gsuryanarayana@vmware.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4state.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-Kind regards,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ccdb9b2..ec361bb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1931,11 +1931,13 @@ static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
+ 		atomic_inc(&clp->cl_refcount);
+ 		switch (clp->cl_cb_state) {
+ 		case NFSD4_CB_DOWN:
+-			seq->status_flags |= SEQ4_STATUS_CB_PATH_DOWN;
++			seq->status_flags = SEQ4_STATUS_CB_PATH_DOWN;
+ 			break;
+ 		case NFSD4_CB_FAULT:
+-			seq->status_flags |= SEQ4_STATUS_BACKCHANNEL_FAULT;
++			seq->status_flags = SEQ4_STATUS_BACKCHANNEL_FAULT;
+ 			break;
++		default:
++			seq->status_flags = 0;
+ 		}
+ 	}
+ 	kfree(conn);
+-- 
+1.7.6
 
-..david
