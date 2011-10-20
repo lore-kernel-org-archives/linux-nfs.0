@@ -1,103 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e32.co.us.ibm.com ([32.97.110.150]:45024 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756071Ab1JTRY6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 13:24:58 -0400
-Received: from /spool/local
-	by e32.co.us.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Thu, 20 Oct 2011 11:19:56 -0600
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9KHJVGl108052
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 11:19:32 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9KHJLY5023227
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 11:19:28 -0600
-Date: Thu, 20 Oct 2011 10:19:17 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
-Message-ID: <20111020171917.GA25851@us.ibm.com>
-References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
- <20110919153429.GA16725@us.ibm.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
- <20110921002714.GA31689@us.ibm.com>
- <20110927164335.GA19331@us.ibm.com>
- <20111012171727.GA18925@us.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:57756 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753503Ab1JTQP1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 12:15:27 -0400
+Message-ID: <4EA04903.1030300@panasas.com>
+Date: Thu, 20 Oct 2011 09:14:59 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111012171727.GA18925@us.ibm.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Benny Halevy <bhalevy@tonian.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Benny Halevy <benny@tonian.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
+References: <956652236-1319113365-cardhu_decombobulator_blackberry.rim.net-813536196-@b18.c3.bise3.blackberry> <20111020122601.GK28630@pad.fieldses.org>
+In-Reply-To: <20111020122601.GK28630@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patch fixes the panic that we see often. I didn't see it
-in the git://git.linux-nfs.org/projects/trondmy/linux-nfs.git git tree
-yet as far as I can tell. Any comments on the patch?
-
-Thanks, Malahal.
-
-Malahal Naineni [malahal@us.ibm.com] wrote:
-> Any comments on this patch?
+On 10/20/2011 05:26 AM, J. Bruce Fields wrote:
+> On Thu, Oct 20, 2011 at 12:22:41PM +0000, Benny Halevy wrote:
+>> The other patch was for the deny bits this is for the want mask...
+>> Similar bug, different place :)
 > 
-> Malahal Naineni [malahal@us.ibm.com] wrote:
-> > Malahal Naineni [malahal@us.ibm.com] wrote:
-> > > Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
-> > > > Shouldn't we just skip all nfs_client structures that don't have
-> > > > cl_cons_state set to NFS_CS_READY? I see no reason to display their
-> > > > properties even if they have got far enough as to create an rpc client.
-> > > > 
-> > > > Cheers
-> > > >   Trond
-> > > 
-> > > Sounds good to me. Here is a tested patch.
-> > 
-> > Any comments on this one?
-> > 
-> > Thanks, Malahal.
-> > 
-> > > 
-> > > 
-> > > As soon as the nfs_client gets created, its cl_rpcclient is set to
-> > > ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
-> > > if the client is ready before using the cl_rpcclient pointer.
-> > > 
-> > > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
-> > > ---
-> > >  fs/nfs/client.c |    4 ++++
-> > >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > > index 5833fbb..a54c45e 100644
-> > > --- a/fs/nfs/client.c
-> > > +++ b/fs/nfs/client.c
-> > > @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
-> > >  	/* display one transport per line on subsequent lines */
-> > >  	clp = list_entry(v, struct nfs_client, cl_share_link);
-> > > 
-> > > +	/* Check if the client is initialized */
-> > > +	if (clp->cl_cons_state != NFS_CS_READY)
-> > > +		return 0;
-> > > +
-> > >  	seq_printf(m, "v%u %s %s %3d %s\n",
-> > >  		   clp->rpc_ops->version,
-> > >  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
-> > > -- 
-> > > 1.7.0.4
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Oog, sorry!  OK, applying.
+> 
+> (And in fact I made the same ! for ~ mistake in one other place in the
+> last week that got caught by regression testing before I posted it.  I
+> need to teach my editor to highlight !'s in blinking red, or
+> something....)
 > 
 
+That's easy. Imagine your 8th grade teacher's face on the "!" key. The
+habit will go away fast.
+
+> --b.
+> 
+
+Boaz
