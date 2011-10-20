@@ -1,58 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:21740 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759692Ab1JGKTJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Oct 2011 06:19:09 -0400
-Message-ID: <4E8ED210.1030506@parallels.com>
-Date: Fri, 07 Oct 2011 14:18:56 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "Kirill A. Shutemov" <kas@openvz.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: network-namespace-aware nfsd
-References: <20111005150214.GA18449@fieldses.org> <4E8C9363.9030303@parallels.com> <20111005181959.GB18449@fieldses.org> <4E8D7BED.6020705@parallels.com> <20111006164632.GC21627@fieldses.org>
-In-Reply-To: <20111006164632.GC21627@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:38534 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755320Ab1JTCNl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:41 -0400
+Received: by gyb13 with SMTP id 13so2302978gyb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:40 -0700 (PDT)
+From: Benny Halevy <benny@tonian.com>
+To: " J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 7/7] nfsd4: share_access_to_flags should consider only nfs4.x share_access flags
+Date: Wed, 19 Oct 2011 19:13:37 -0700
+Message-Id: <1319076817-13550-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4E9F82FC.2000904@tonian.com>
+References: <4E9F82FC.2000904@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.10.2011 20:46, J. Bruce Fields пишет:
-> On Thu, Oct 06, 2011 at 01:59:09PM +0400, Stanislav Kinsbursky wrote:
->> 05.10.2011 22:19, J. Bruce Fields пишет:
->>> To start with I suspect it would be OK to share the one lockd thread.
->>>
->>
->> Yep, I think so too. It just will be harder to implement.
->
-> Why do you think it will be harder to implement?
->
+From: Benny Halevy <bhalevy@tonian.com>
 
-Because making lockd kthread per net ns is very easy. :)
+Currently, it will not correctl ignore and nfsv4.1 signal flags if the client
+sends them.
 
-> There may be something about how tasks and namespaces interact that I'm
-> missing here....
->
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-The main problem, as I see it now, is creating and especially destroying lockd 
-rpcbind clients (and per ns data) on CT stop.
-Right now they are destroyed on lockd kthread exit. And we can't make this 
-destruction in per-net operations since those clients holds net ns.
-Thus, nlmclnt_init(done) logic have to be significantly reworked.
-
-> To me it seems like either way we're going to have to add the network
-> namespace as an argument to any data structure lookups that we're doing,
-> and it doesn't really matter whether we get the namespace out of the
-> svc_rqst or someplace else.
->
-
-Yep, seems the same to me.
-
-> --b.
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5c3377c..a687e1a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2555,7 +2555,7 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+ 
+ static int share_access_to_flags(u32 share_access)
+ {
+-	share_access &= ~NFS4_SHARE_WANT_MASK;
++	share_access &= NFS4_SHARE_ACCESS_MASK;
+ 
+ 	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
+ }
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.6
+
