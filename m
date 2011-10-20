@@ -1,94 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:54368 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752554Ab1JTMge (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 08:36:34 -0400
-Received: by iaek3 with SMTP id k3so3363350iae.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 05:36:34 -0700 (PDT)
-Message-ID: <1456421465-1319114189-cardhu_decombobulator_blackberry.rim.net-173541571-@b18.c3.bise3.blackberry>
-Reply-To: bhalevy@tonian.com
+Received: from fieldses.org ([174.143.236.118]:39550 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750695Ab1JTL4a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 07:56:30 -0400
+Date: Thu, 20 Oct 2011 07:56:29 -0400
+To: Benny Halevy <benny@tonian.com>
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH 7/7] nfsd4: share_access_to_flags should consider only
+ nfs4.x share_access flags
+Message-ID: <20111020115629.GJ5444@fieldses.org>
 References: <4E9F82FC.2000904@tonian.com>
-  <1319076801-13474-1-git-send-email-benny@tonian.com>
-  <20111020115224.GH5444@fieldses.org>
-In-Reply-To: <20111020115224.GH5444@fieldses.org>
-Subject: Re: [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Benny Halevy" <benny@tonian.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-From: "Benny Halevy" <bhalevy@tonian.com>
-Date: Thu, 20 Oct 2011 12:36:25 +0000
-Content-Type: text/plain
+ <1319076817-13550-1-git-send-email-benny@tonian.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319076817-13550-1-git-send-email-benny@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T0ssIEkgcmVhZCB5b3UuICBKdXN0IHBsZWFzZSB0YWtlIG5vdGUgdGhhdCBXQU5UX05PX0RFTEVH
-IGZsYWcgaXMgaW1wb3J0YW50IHRvIHNpbXBsaWZpZWQgY2xpZW50cyB0aGF0IGRvIG5vdCBzdXBw
-b3J0IGRlbGVnYXRpb25zLCBsaWtlIHRoZSBvbmUgSSB3YXMgdGVzdGluZyBhZ2FpbnN0IGluIHRo
-ZSBCQVQsIGFuZCBpdCBpcyB0aGUgb25seSBvbmUgaW4gdXNlIHRoYXQgSSBjb3VsZCB0ZWxsLg0K
-DQpCZW5ueQ0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZyb206ICJKLiBCcnVjZSBGaWVs
-ZHMiIDxiZmllbGRzQGZpZWxkc2VzLm9yZz5EYXRlOiBUaHUsIDIwIE9jdCAyMDExIDA3OjUyOjI0
-IA0KVG86IEJlbm55IEhhbGV2eTxiZW5ueUB0b25pYW4uY29tPg0KQ2M6IEouIEJydWNlIEZpZWxk
-czxiZmllbGRzQHJlZGhhdC5jb20+OyA8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz47IEJlbm55
-IEhhbGV2eTxiaGFsZXZ5QHRvbmlhbi5jb20+DQpTdWJqZWN0OiBSZTogW1BBVENIIDUvN10gbmZz
-ZDQ6IGltcGxlbWVudCBORlM0X1NIQVJFX1dBTlRfTk9fREVMRUcsDQogTkZTNF9PUEVOX0RFTEVH
-QVRFX05PTkVfRVhUDQoNCk9uIFdlZCwgT2N0IDE5LCAyMDExIGF0IDA3OjEzOjIxUE0gLTA3MDAs
-IEJlbm55IEhhbGV2eSB3cm90ZToNCj4gRnJvbTogQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHRvbmlh
-bi5jb20+DQo+IA0KPiBSZXNwZWN0IGNsaWVudCByZXF1ZXN0IGZvciBub3QgZ2V0dGluZyBhIGRl
-bGVnYXRpb24gaW4gTkZTdjQuMQ0KPiBBcHByb3ByaWF0ZWx5IHJldHVybiBkZWxlZ2F0aW9uICJ0
-eXBlIiBORlM0X09QRU5fREVMRUdBVEVfTk9ORV9FWFQNCj4gYW5kIFdORDRfTk9UX1dBTlRFRCBy
-ZWFzb24uDQoNCkFzIEkgcmVhZCBpdCwgaWYgd2UncmUgZ29pbmcgdG8gaW1wbGVtZW50IHBhcnQg
-b2YgdGhpcywgdGhlbiB3ZSBoYXZlIHRvDQppbXBsZW1lbnQgYWxsIG9mIGl0LiAgKCJJZiB0aGUg
-c2VydmVyIHN1cHBvcnRzIHRoZSBuZXcgX1dBTlRfIGZsYWdzIGFuZA0KdGhlIGNsaWVudCBzZW5k
-cyBvbmUgb3IgbW9yZSBvZiB0aGUgbmV3IGZsYWdzLCB0aGVuIGluIHRoZSBldmVudCB0aGUNCnNl
-cnZlciBkb2VzIG5vdCByZXR1cm4gYSBkZWxlZ2F0aW9uLCBpdCBNVVNUIHJldHVybiBhIGRlbGVn
-YXRpb24gdHlwZSBvZg0KT1BFTl9ERUxFR0FURV9OT05FX0VYVC4gIFRoZSBmaWVsZCBvbmRfd2h5
-IGluIHRoZSByZXBseSBpbmRpY2F0ZXMgd2h5IG5vDQpkZWxlZ2F0aW9uIHdhcyByZXR1cm5lZCBh
-bmQgd2lsbCBiZSBvbmUgb2YuLi4uIikNCg0KQXMgbG9uZyBhcyB3ZSBkb24ndCBpbXBsZW1lbnQg
-YW55IHdhbnQgZmxhZ3MsIHdlIGVzY2FwZSB0aGF0IE1VU1QuDQoNClNvIEknZCByYXRoZXIgcHV0
-IHRoaXMgYXNpZGUgdGlsbCBpdCdzIG1vcmUgY29tcGxldGUuDQoNCi0tYi4NCg0KPiANCj4gU2ln
-bmVkLW9mZi1ieTogQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHRvbmlhbi5jb20+DQo+IC0tLQ0KPiAg
-ZnMvbmZzZC9uZnM0c3RhdGUuYyAgfCAgIDEwICsrKysrKysrLS0NCj4gIGZzL25mc2QvbmZzNHhk
-ci5jICAgIHwgICAgMyArKysNCj4gIGluY2x1ZGUvbGludXgvbmZzNC5oIHwgICAxNSArKysrKysr
-KysrKysrKy0NCj4gIDMgZmlsZXMgY2hhbmdlZCwgMjUgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlv
-bnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnNkL25mczRzdGF0ZS5jIGIvZnMvbmZzZC9u
-ZnM0c3RhdGUuYw0KPiBpbmRleCBlYzM2MWJiLi41YzMzNzdjIDEwMDY0NA0KPiAtLS0gYS9mcy9u
-ZnNkL25mczRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mc2QvbmZzNHN0YXRlLmMNCj4gQEAgLTI5MzEs
-MTUgKzI5MzEsMjEgQEAgc3RhdGljIGludCBuZnM0X3NldF9kZWxlZ2F0aW9uKHN0cnVjdCBuZnM0
-X2RlbGVnYXRpb24gKmRwLCBpbnQgZmxhZykNCj4gIAl1cGRhdGVfc3RhdGVpZCgmc3RwLT5zdF9z
-dGlkLnNjX3N0YXRlaWQpOw0KPiAgCW1lbWNweSgmb3Blbi0+b3Bfc3RhdGVpZCwgJnN0cC0+c3Rf
-c3RpZC5zY19zdGF0ZWlkLCBzaXplb2Yoc3RhdGVpZF90KSk7DQo+ICANCj4gLQlpZiAobmZzZDRf
-aGFzX3Nlc3Npb24oJnJlc3AtPmNzdGF0ZSkpDQo+ICsJaWYgKG5mc2Q0X2hhc19zZXNzaW9uKCZy
-ZXNwLT5jc3RhdGUpKSB7DQo+ICAJCW9wZW4tPm9wX29wZW5vd25lci0+b29fZmxhZ3MgfD0gTkZT
-NF9PT19DT05GSVJNRUQ7DQo+ICANCj4gKwkJaWYgKG9wZW4tPm9wX3NoYXJlX2FjY2VzcyAmIE5G
-UzRfU0hBUkVfV0FOVF9OT19ERUxFRykgew0KPiArCQkJb3Blbi0+b3BfZGVsZWdhdGVfdHlwZSA9
-IE5GUzRfT1BFTl9ERUxFR0FURV9OT05FX0VYVDsNCj4gKwkJCWdvdG8gbm9kZWxlZzsNCj4gKwkJ
-fQ0KPiArCX0NCj4gKw0KPiAgCS8qDQo+ICAJKiBBdHRlbXB0IHRvIGhhbmQgb3V0IGEgZGVsZWdh
-dGlvbi4gTm8gZXJyb3IgcmV0dXJuLCBiZWNhdXNlIHRoZQ0KPiAgCSogT1BFTiBzdWNjZWVkcyBl
-dmVuIGlmIHdlIGZhaWwuDQo+ICAJKi8NCj4gIAluZnM0X29wZW5fZGVsZWdhdGlvbihjdXJyZW50
-X2ZoLCBvcGVuLCBzdHApOw0KPiAtDQo+ICtub2RlbGVnOg0KPiAgCXN0YXR1cyA9IG5mc19vazsN
-Cj4gIA0KPiAgCWRwcmludGsoIiVzOiBzdGF0ZWlkPSIgU1RBVEVJRF9GTVQgIlxuIiwgX19mdW5j
-X18sDQo+IGRpZmYgLS1naXQgYS9mcy9uZnNkL25mczR4ZHIuYyBiL2ZzL25mc2QvbmZzNHhkci5j
-DQo+IGluZGV4IDcwNmFkYTEuLjFhNDE5YzAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mc2QvbmZzNHhk
-ci5jDQo+ICsrKyBiL2ZzL25mc2QvbmZzNHhkci5jDQo+IEBAIC0yODQyLDYgKzI4NDIsOSBAQCBz
-dGF0aWMgX19iZTMyIG5mc2Q0X2VuY29kZV9iaW5kX2Nvbm5fdG9fc2Vzc2lvbihzdHJ1Y3QgbmZz
-ZDRfY29tcG91bmRyZXMgKnJlc3AsDQo+ICAJCVdSSVRFMzIoMCk7ICAgLyogWFhYOiBpcyBOVUxM
-IHByaW5jaXBhbCBvaz8gKi8NCj4gIAkJQURKVVNUX0FSR1MoKTsNCj4gIAkJYnJlYWs7DQo+ICsJ
-Y2FzZSBORlM0X09QRU5fREVMRUdBVEVfTk9ORV9FWFQ6IC8qIDQuMSAqLw0KPiArCQlXUklURTMy
-KFdORDRfTk9UX1dBTlRFRCk7CS8qIG9ubHkgcmVhc29uIGZvciBub3cgKi8NCj4gKwkJYnJlYWs7
-DQo+ICAJZGVmYXVsdDoNCj4gIAkJQlVHKCk7DQo+ICAJfQ0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVk
-ZS9saW51eC9uZnM0LmggYi9pbmNsdWRlL2xpbnV4L25mczQuaA0KPiBpbmRleCAzMjM0NWMyLi44
-Y2RkZTRkIDEwMDY0NA0KPiAtLS0gYS9pbmNsdWRlL2xpbnV4L25mczQuaA0KPiArKysgYi9pbmNs
-dWRlL2xpbnV4L25mczQuaA0KPiBAQCAtNDQxLDcgKzQ0MSwyMCBAQCBlbnVtIGxpbWl0X2J5NCB7
-DQo+ICBlbnVtIG9wZW5fZGVsZWdhdGlvbl90eXBlNCB7DQo+ICAJTkZTNF9PUEVOX0RFTEVHQVRF
-X05PTkUgPSAwLA0KPiAgCU5GUzRfT1BFTl9ERUxFR0FURV9SRUFEID0gMSwNCj4gLQlORlM0X09Q
-RU5fREVMRUdBVEVfV1JJVEUgPSAyDQo+ICsJTkZTNF9PUEVOX0RFTEVHQVRFX1dSSVRFID0gMiwN
-Cj4gKwlORlM0X09QRU5fREVMRUdBVEVfTk9ORV9FWFQgPSAzLCAvKiA0LjEgKi8NCj4gK307DQo+
-ICsNCj4gK2VudW0gd2h5X25vX2RlbGVnYXRpb240IHsgLyogbmV3IHRvIHY0LjEgKi8NCj4gKwlX
-TkQ0X05PVF9XQU5URUQgPSAwLA0KPiArCVdORDRfQ09OVEVOVElPTiA9IDEsDQo+ICsJV05ENF9S
-RVNPVVJDRSA9IDIsDQo+ICsJV05ENF9OT1RfU1VQUF9GVFlQRSA9IDMsDQo+ICsJV05ENF9XUklU
-RV9ERUxFR19OT1RfU1VQUF9GVFlQRSA9IDQsDQo+ICsJV05ENF9OT1RfU1VQUF9VUEdSQURFID0g
-NSwNCj4gKwlXTkQ0X05PVF9TVVBQX0RPV05HUkFERSA9IDYsDQo+ICsJV05ENF9DQU5DRUxMRUQg
-PSA3LA0KPiArCVdORDRfSVNfRElSID0gOCwNCj4gIH07DQo+ICANCj4gIGVudW0gbG9ja190eXBl
-NCB7DQo+IC0tIA0KPiAxLjcuNg0KPiANCg==
+On Wed, Oct 19, 2011 at 07:13:37PM -0700, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@tonian.com>
+> 
+> Currently, it will not correctl ignore and nfsv4.1 signal flags if the client
+> sends them.
 
+Good catch, but since b6d2f1ca3c1162f51098969e9c52fd099720416a "nfsd4:
+more robust ignoring of WANT bits in OPEN" we're actually doing this
+right from the start, and this is redundant.
+
+(And remembering to mask out the other bits on every use is so
+error-prone, I'm wondering if we should actually put the other bits in a
+separate field entirely.  Either that or maybe provide a little helper
+function to get the access bits and ensure they're never accessed any
+other way.)
+
+--b.
+
+> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 5c3377c..a687e1a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2555,7 +2555,7 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+>  
+>  static int share_access_to_flags(u32 share_access)
+>  {
+> -	share_access &= ~NFS4_SHARE_WANT_MASK;
+> +	share_access &= NFS4_SHARE_ACCESS_MASK;
+>  
+>  	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
+>  }
+> -- 
+> 1.7.6
+> 
