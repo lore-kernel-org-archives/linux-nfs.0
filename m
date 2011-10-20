@@ -1,64 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout0.thls.bbc.co.uk ([132.185.240.35]:57860 "EHLO
-	mailout0.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752663Ab1J2TxF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 15:53:05 -0400
-Date: Sat, 29 Oct 2011 19:52:49 +0000
-From: David Flynn <davidf@rd.bbc.co.uk>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org
-Subject: Re: NFS4ERR_STALE_CLIENTID loop
-Message-ID: <20111029195249.GE2011@rd.bbc.co.uk>
-References: <20111024145027.GF32587@rd.bbc.co.uk>
- <1319470302.2734.4.camel@lade.trondhjem.org>
- <20111027221742.GI32587@rd.bbc.co.uk>
- <20111029002500.GA2011@rd.bbc.co.uk>
- <1319909376.2760.11.camel@lade.trondhjem.org>
- <20111029181509.GE12122@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
- <20111029184759.GG12122@fieldses.org>
- <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:42123 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751659Ab1JTTDY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 15:03:24 -0400
+Date: Thu, 20 Oct 2011 12:03:16 -0700
+Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
+Content-Type: text/plain;
+	charset="utf-8"
+Message-ID: <02cf01cc8f5a$efda6ba5$cc5f630a@hq.netapp.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Malahal Naineni" <malahal@us.ibm.com>
+Cc: <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Myklebust, Trond (Trond.Myklebust@netapp.com) wrote:
-> > -----Original Message-----
-> > From: Chuck Lever [mailto:chuck.lever@oracle.com]
-> > On Oct 29, 2011, at 2:47 PM, J. Bruce Fields wrote:
-> > > Yes, and it's not something I care that strongly about, really, my
-> > > only observation is that this sort of failure (an implementation
-> > > bug on one side or another resulting in a loop) seems to have been
-> > > common (based on no hard data, just my vague memories of list
-> > > threads), and the results fairly obnoxious (possibly even for
-> > > unrelated hosts on the network).
-> > > So if there's some simple way to fail more gracefully it might be
-> > > helpful.
-> >
-> > For what it's worth, I agree that client implementations should
-> > attempt to behave more gracefully in the face of server problems, be
-> > they the result of bugs or the result of other issues specific to
-> > that server.  Problems like this make NFSv4 as a protocol look bad.
+Sorry about that. I'll try to fix it later, but I'm on various planes for most of today so I might not have the ability until tomorrow. 
+
+Malahal Naineni <malahal@us.ibm.com> wrote:
+
+The following patch fixes the panic that we see often. I didn't see it
+in the git://git.linux-nfs.org/projects/trondmy/linux-nfs.git git tree
+yet as far as I can tell. Any comments on the patch?
+
+Thanks, Malahal.
+
+Malahal Naineni [malahal@us.ibm.com] wrote:
+> Any comments on this patch?
 > 
-> I can't see what a client can do in this situation except possibly just
-> give up after a while and throw a SERVER_BROKEN error (which means data
-> loss). That still won't make NFSv4 look good...
+> Malahal Naineni [malahal@us.ibm.com] wrote:
+> > Malahal Naineni [malahal@us.ibm.com] wrote:
+> > > Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
+> > > > Shouldn't we just skip all nfs_client structures that don't have
+> > > > cl_cons_state set to NFS_CS_READY? I see no reason to display their
+> > > > properties even if they have got far enough as to create an rpc client.
+> > > > 
+> > > > Cheers
+> > > >   Trond
+> > > 
+> > > Sounds good to me. Here is a tested patch.
+> > 
+> > Any comments on this one?
+> > 
+> > Thanks, Malahal.
+> > 
+> > > 
+> > > 
+> > > As soon as the nfs_client gets created, its cl_rpcclient is set to
+> > > ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
+> > > if the client is ready before using the cl_rpcclient pointer.
+> > > 
+> > > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> > > ---
+> > >  fs/nfs/client.c |    4 ++++
+> > >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > > index 5833fbb..a54c45e 100644
+> > > --- a/fs/nfs/client.c
+> > > +++ b/fs/nfs/client.c
+> > > @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+> > >  	/* display one transport per line on subsequent lines */
+> > >  	clp = list_entry(v, struct nfs_client, cl_share_link);
+> > > 
+> > > +	/* Check if the client is initialized */
+> > > +	if (clp->cl_cons_state != NFS_CS_READY)
+> > > +		return 0;
+> > > +
+> > >  	seq_printf(m, "v%u %s %s %3d %s\n",
+> > >  		   clp->rpc_ops->version,
+> > >  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+> > > -- 
+> > > 1.7.0.4
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Indeed, it is a quite the dilemma.
-
-I agree that giving and guaranteeing unattended data loss is bad (data
-loss at the behest of an operator is ok, afterall they can always fence
-a broken machine).
-
-Looking at some of the logs again, even going back to the very original
-case, it appears to be about 600us between retries (RTT=400us).  Is
-there any way to make that less aggressive?, eg 1s? -- that'd reduce the
-impact by three orders of magnitude.  What would be the down-side?  How
-often do you expect to get a BAD_STATEID error?
-
-..david
