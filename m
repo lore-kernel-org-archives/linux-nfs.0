@@ -1,44 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:38534 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755320Ab1JTCNl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:41 -0400
-Received: by gyb13 with SMTP id 13so2302978gyb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:40 -0700 (PDT)
-From: Benny Halevy <benny@tonian.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 7/7] nfsd4: share_access_to_flags should consider only nfs4.x share_access flags
-Date: Wed, 19 Oct 2011 19:13:37 -0700
-Message-Id: <1319076817-13550-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4E9F82FC.2000904@tonian.com>
-References: <4E9F82FC.2000904@tonian.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:42505 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753599Ab1JTFU0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 01:20:26 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Wed, 19 Oct 2011 23:20:22 -0600
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V7 08/26] vfs: Add new file and directory create permission flags
+In-Reply-To: <20111019164216.GC30864@fieldses.org>
+References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1318951981-5508-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20111019164216.GC30864@fieldses.org>
+Date: Thu, 20 Oct 2011 10:50:08 +0530
+Message-ID: <87r5285jef.fsf@linux.vnet.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+On Wed, 19 Oct 2011 12:42:16 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Tue, Oct 18, 2011 at 09:02:43PM +0530, Aneesh Kumar K.V wrote:
+> > From: Andreas Gruenbacher <agruen@kernel.org>
+> > 
+> > Some permission models distinguish between the permission to create a
+> > non-directory and a directory.  Pass this information down to
+> > inode_permission() as mask flags
+> ...
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index f3ebf86..60361c6 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -67,6 +67,8 @@ struct inodes_stat_t {
+> >  #define MAY_CHDIR		0x00000040
+> >  /* called from RCU mode, don't block */
+> >  #define MAY_NOT_BLOCK		0x00000080
+> > +#define MAY_CREATE_FILE		0x00000100
+> > +#define MAY_CREATE_DIR		0x00000200
+> 
+> Hm, are the flags in fs/nfsd/vfs.h going to need fixing up?
+> 
+> Looking at the nfsd code....  No, I guess it's OK, nfsd does
+> 
+> 	err = inode_permission(inode, acc & (MAY_READ|MAY_WRITE|MAY_EXEC));
+> 
 
-Currently, it will not correctl ignore and nfsv4.1 signal flags if the client
-sends them.
+nfsd bits need fixing once nfs starts doing richacl permission check.
+The changes I did can be found at
+https://github.com/kvaneesh/linux/commits/richacl-fullset/
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4state.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5c3377c..a687e1a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2555,7 +2555,7 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
- 
- static int share_access_to_flags(u32 share_access)
- {
--	share_access &= ~NFS4_SHARE_WANT_MASK;
-+	share_access &= NFS4_SHARE_ACCESS_MASK;
- 
- 	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
- }
--- 
-1.7.6
+> So we can wait to fix up any collisions until we need to pass these
+> extra bits.
+> 
+
+Yes. And that we will do once we get the VFS and local file system
+changes upstream.
+
+-aneesh
 
