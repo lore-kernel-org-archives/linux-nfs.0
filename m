@@ -1,184 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44190 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754919Ab1JKQlJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Oct 2011 12:41:09 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] nfsd4: move name-length checks to xdr
-Date: Tue, 11 Oct 2011 12:41:02 -0400
-Message-Id: <1318351263-14918-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1318351263-14918-1-git-send-email-bfields@redhat.com>
-References: <1318351263-14918-1-git-send-email-bfields@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:57578 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754995Ab1JTKJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 06:09:01 -0400
+Message-ID: <4E9FF46D.5090003@cn.fujitsu.com>
+Date: Thu, 20 Oct 2011 18:14:05 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] CLNT: add some tests for DESTROY_CLIENTID
+References: <4E9FE273.80500@cn.fujitsu.com> <20111020094355.GE5444@fieldses.org> <4E9FF123.2060704@cn.fujitsu.com> <20111020100202.GF5444@fieldses.org>
+In-Reply-To: <20111020100202.GF5444@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Again, these checks are better in the xdr code.
+Some tests for DESTROY_CLIENTID at pynfs41.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 ---
- fs/nfsd/nfs4state.c |   24 ++----------------------
- fs/nfsd/nfs4xdr.c   |   45 ++++++++++++++++++++++++++++++---------------
- fs/nfsd/xdr4.h      |    3 +--
- 3 files changed, 33 insertions(+), 39 deletions(-)
+ nfs4.1/server41tests/__init__.py            |    1 +
+ nfs4.1/server41tests/st_destroy_clientid.py |   98 +++++++++++++++++++++++++++
+ 2 files changed, 99 insertions(+), 0 deletions(-)
+ create mode 100644 nfs4.1/server41tests/st_destroy_clientid.py
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6bfa293..5f35f35 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1189,17 +1189,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	return clp;
- }
- 
--static int check_name(struct xdr_netobj name)
--{
--	if (name.len == 0) 
--		return 0;
--	if (name.len > NFS4_OPAQUE_LIMIT) {
--		dprintk("NFSD: check_name: name too long(%d)!\n", name.len);
--		return 0;
--	}
--	return 1;
--}
--
- static void
- add_to_unconfirmed(struct nfs4_client *clp, unsigned int strhashval)
- {
-@@ -1442,7 +1431,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		__func__, rqstp, exid, exid->clname.len, exid->clname.data,
- 		addr_str, exid->flags, exid->spa_how);
- 
--	if (!check_name(exid->clname) || (exid->flags & ~EXCHGID4_FLAG_MASK_A))
-+	if (exid->flags & ~EXCHGID4_FLAG_MASK_A)
- 		return nfserr_inval;
- 
- 	/* Currently only support SP4_NONE */
-@@ -1992,19 +1981,13 @@ __be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
- {
--	struct xdr_netobj 	clname = { 
--		.len = setclid->se_namelen,
--		.data = setclid->se_name,
--	};
-+	struct xdr_netobj 	clname = setclid->se_name;
- 	nfs4_verifier		clverifier = setclid->se_verf;
- 	unsigned int 		strhashval;
- 	struct nfs4_client	*conf, *unconf, *new;
- 	__be32 			status;
- 	char                    dname[HEXDIR_LEN];
- 	
--	if (!check_name(clname))
--		return nfserr_inval;
--
- 	status = nfs4_make_rec_clidname(dname, &clname);
- 	if (status)
- 		return status;
-@@ -2523,9 +2506,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *oo = NULL;
- 	__be32 status;
- 
--	if (!check_name(open->op_owner))
--		return nfserr_inval;
--
- 	if (STALE_CLIENTID(&open->op_clientid))
- 		return nfserr_stale_clientid;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 94da8bb..2cab33c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -697,6 +697,23 @@ xdr_error:
- 	return nfserr_bad_xdr;
- }
- 
-+static __be32 nfsd4_decode_opaque(struct nfsd4_compoundargs *argp, struct xdr_netobj *o)
-+{
-+	__be32 *p;
+diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+index 1cc2048..eb92538 100644
+--- a/nfs4.1/server41tests/__init__.py
++++ b/nfs4.1/server41tests/__init__.py
+@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+            "st_compound.py",
+            "st_create_session.py",
+            "st_destroy_session.py",
++           "st_destroy_clientid.py",
+            "st_reclaim_complete.py",
+            "st_secinfo_no_name.py",
+            "st_secinfo.py",
+diff --git a/nfs4.1/server41tests/st_destroy_clientid.py b/nfs4.1/server41tests/st_destroy_clientid.py
+new file mode 100644
+index 0000000..1b193cf
+--- /dev/null
++++ b/nfs4.1/server41tests/st_destroy_clientid.py
+@@ -0,0 +1,98 @@
++from st_create_session import create_session
++from nfs4_const import *
++from environment import check, fail
++import nfs4_ops as op
++import nfs4lib
 +
-+	READ_BUF(4);
-+	READ32(o->len);
++def testSupported(t, env):
++    """ Do a simple DESTROY_CLIENTID
++        destroy an unconfirmed clientid without session
 +
-+	if (o->len == 0 || o->len > NFS4_OPAQUE_LIMIT)
-+		return nfserr_bad_xdr;
++    FLAGS: destroy_clientid all
++    CODE: DESCID1
++    """
++    c = env.c1.new_client(env.testname(t))
 +
-+	READ_BUF(o->len);
-+	SAVEMEM(o->data, o->len);
-+	return nfs_ok;
-+xdr_error:
-+	return nfserr_bad_xdr;
-+}
++    res = env.c1.compound([op.destroy_clientid(c.clientid)])
++    check(res)
 +
- static __be32
- nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- {
-@@ -715,13 +732,12 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 	status = nfsd4_decode_share_deny(argp, &open->op_share_deny);
- 	if (status)
- 		goto xdr_error;
--	READ_BUF(sizeof(clientid_t) + 4);
-+	READ_BUF(sizeof(clientid_t));
- 	COPYMEM(&open->op_clientid, sizeof(clientid_t));
--	READ32(open->op_owner.len);
--
--	/* owner, open_flag */
--	READ_BUF(open->op_owner.len + 4);
--	SAVEMEM(open->op_owner.data, open->op_owner.len);
-+	status = nfsd4_decode_opaque(argp, &open->op_owner);
-+	if (status)
-+		goto xdr_error;
-+	READ_BUF(4);
- 	READ32(open->op_create);
- 	switch (open->op_create) {
- 	case NFS4_OPEN_NOCREATE:
-@@ -964,12 +980,13 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
- {
- 	DECODE_HEAD;
- 
--	READ_BUF(12);
-+	READ_BUF(8);
- 	COPYMEM(setclientid->se_verf.data, 8);
--	READ32(setclientid->se_namelen);
- 
--	READ_BUF(setclientid->se_namelen + 8);
--	SAVEMEM(setclientid->se_name, setclientid->se_namelen);
-+	status = nfsd4_decode_opaque(argp, &setclientid->se_name);
-+	if (status)
-+		return nfserr_bad_xdr;
-+	READ_BUF(8);
- 	READ32(setclientid->se_callback_prog);
- 	READ32(setclientid->se_callback_netid_len);
- 
-@@ -1112,11 +1129,9 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 	READ_BUF(NFS4_VERIFIER_SIZE);
- 	COPYMEM(exid->verifier.data, NFS4_VERIFIER_SIZE);
- 
--	READ_BUF(4);
--	READ32(exid->clname.len);
--
--	READ_BUF(exid->clname.len);
--	SAVEMEM(exid->clname.data, exid->clname.len);
-+	status = nfsd4_decode_opaque(argp, &exid->clname);
-+	if (status)
-+		return nfserr_bad_xdr;
- 
- 	READ_BUF(4);
- 	READ32(exid->flags);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c901214..4c8a7ec 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -317,8 +317,7 @@ struct nfsd4_setattr {
- 
- struct nfsd4_setclientid {
- 	nfs4_verifier	se_verf;            /* request */
--	u32		se_namelen;         /* request */
--	char *		se_name;            /* request */
-+	struct xdr_netobj se_name;
- 	u32		se_callback_prog;   /* request */
- 	u32		se_callback_netid_len;  /* request */
- 	char *		se_callback_netid_val;  /* request */
++def testDestroyCIDWS(t, env):
++    """ destroy an unconfirmed clientid with session
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID2
++    """
++    c1 = env.c1.new_client("%s_1" % env.testname(t))
++    c2 = env.c1.new_client("%s_2" % env.testname(t))
++    sess = c1.create_session()
++
++    res = sess.compound([op.destroy_clientid(c2.clientid)])
++    check(res)
++
++def testDestroyBadCIDWS(t, env):
++    """ destroy a nonexistant clientid without session
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID3
++    """
++    res = env.c1.compound([op.destroy_clientid(0)])
++    check(res, NFS4ERR_STALE_CLIENTID)
++
++def testDestroyBadCIDIS(t, env):
++    """ destroy a nonexistant clientid in session
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID4
++    """
++    c = env.c1.new_client(env.testname(t))
++    sess = c.create_session()
++
++    res = sess.compound([op.destroy_clientid(0)])
++    check(res, NFS4ERR_STALE_CLIENTID)
++
++def testDestroyCIDSessionB(t, env):
++    """ destroy clientid using a session belong to that client
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID5
++    """
++    c = env.c1.new_client(env.testname(t))
++    sess = c.create_session()
++
++    res = sess.compound([op.destroy_clientid(c.clientid)])
++    check(res, NFS4ERR_CLIENTID_BUSY)
++
++def testDestroyCIDCSession(t, env):
++    """ destroy a clientid which contains session without session
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID6
++    """
++    c = env.c1.new_client(env.testname(t))
++    sess = c.create_session()
++
++    res = env.c1.compound([op.destroy_clientid(c.clientid)])
++    check(res, NFS4ERR_CLIENTID_BUSY)
++
++def testDestroyCIDNotOnly(t, env):
++    """ destroy a clientid without session with other compound
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID7
++    """
++    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
++    check(res, NFS4ERR_NOT_ONLY_OP)
++
++def testDestroyCIDTwice(t, env):
++    """ destroy a clientid twice without session
++
++    FLAGS: destroy_clientid all
++    CODE: DESCID8
++    """
++    c = env.c1.new_client(env.testname(t))
++
++    res = env.c1.compound([op.destroy_clientid(c.clientid)])
++    check(res)
++
++    res = env.c1.compound([op.destroy_clientid(c.clientid)])
++    check(res, NFS4ERR_STALE_CLIENTID)
 -- 
-1.7.4.1
+1.7.6
+
 
