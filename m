@@ -1,40 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40748 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53434 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753223Ab1JFDo5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Oct 2011 23:44:57 -0400
-Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: nfsv4 <nfsv4@ietf.org>, linux-nfs <linux-nfs@vger.kernel.org>,
-        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
-Date: Wed, 05 Oct 2011 23:44:56 -0400
-In-Reply-To: <1317871693.14305.5.camel@lade.trondhjem.org>
-References: <800236997.158.1317856908314.JavaMail.root@thunderbeast.private.linuxbox.com>
-	 <1317871693.14305.5.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1317872696.14918.1.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1751019Ab1JTMCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 08:02:08 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RGrK3-0001uo-TZ
+	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 08:02:07 -0400
+Date: Thu, 20 Oct 2011 08:02:07 -0400
+To: linux-nfs@vger.kernel.org
+Subject: Re: Does NFS4 need st_gen?
+Message-ID: <20111020120207.GL5444@fieldses.org>
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+ <20111019171551.GA32028@fieldses.org>
+ <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2011-10-05 at 23:28 -0400, Trond Myklebust wrote: 
-> On Wed, 2011-10-05 at 19:21 -0400, Matt W. Benjamin wrote: 
-> > Currently, the Linux and I believe also the CITI Windows client always propose channels in both directions.  The Linux mainline Linux client doesn't know how to BIND_CONN_TO_SESSION, so trivially it won't negotiate any back channel if a server didn't agree to both directions today, either.  I've experimentally implemented a "fallback" model in a Linux client and (partly in a) Ganesha server.  I'd appreciate any feedback on the idea.
+On Wed, Oct 19, 2011 at 03:11:27PM -0400, Nikolaus Rath wrote:
+> "J. Bruce Fields" <bfields@fieldses.org> writes:
+> > On Wed, Oct 19, 2011 at 10:17:43AM -0400, Nikolaus Rath wrote:
+> >> Does NFS4 still depend on inode generation numbers? I understand that
+> >> earlier NFS versions used file handles based on inode and generation
+> >> number, but it seems to me that this shouldn't be required anymore with
+> >> the (stateful) NFS4.
+> >
+> > Yes, it's true that NFSv4 has open and close operations, but filehandles
+> > are still used a great deal outside of that, and clients are still
+> > allowed to assume that the same filehandle always refers to the same
+> > object.
+> >
+> > http://www.ietf.org/rfc/rfc3530.txt, section 4.2.1:
+> >
+> > 	"If two filehandles from the same server are equal, they MUST
+> > 	refer to the same file."
 > 
-> Yep. As I said, why should we bother adding support for servers that
-> don't? I can function perfectly well without pNFS support or delegation
-> support in such a case. Performance will suck, but why do I care?
+> Duh - that's a disappointment. Thanks for the pointer!
 
-To put it in more basic terms: what you are proposing will add
-development costs to the client and and an extra code burden to maintain
-long term. So what is in it for me?
+Just curious--why do you care?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
