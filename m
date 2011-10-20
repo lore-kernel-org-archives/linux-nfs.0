@@ -1,54 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58052 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933055Ab1JNOmr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 10:42:47 -0400
-Message-ID: <4E9848C1.8040306@panasas.com>
-Date: Fri, 14 Oct 2011 16:35:45 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39539 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751127Ab1JTSzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 14:55:19 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9KItJGE021365
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 14:55:19 -0400
+Message-ID: <4EA06C3F.9010302@RedHat.com>
+Date: Thu, 20 Oct 2011 14:45:19 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Michal Marek <mmarek@suse.cz>, Randy Dunlap <randy.dunlap@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Problems with Kconfig select across directories
-Content-Type: text/plain; charset="UTF-8"
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] rpcdebug: Add missing debug flags
+References: <1319057013-19015-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1319057013-19015-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have this weird problem with Kconfig.
 
-In fs/exofs/Kconfig I have:
 
-# Library to be selected by users
-config ORE
-	tristate
+On 10/19/2011 04:43 PM, Steve Dickson wrote:
+> This patch added the following debug flags:
+> 
+> fscache - enable FSCache debugging
+> pnfs - enable general pNFS debugging
+> pnfs_ld - enable file layout pNFS debugging
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-Then
-config EXOFS_FS
-	tristate "exofs: OSD based file system support"
-	depends on SCSI_OSD_ULD
-	select ORE
-	help ...
+steved.
 
-So far so good. Choosing EXOFS_FS in xmenuconfig works fine as expected.
-But now I add another user say: (It's more complicated but even below does
-not work)
-
-config NFS_FS
-	tristate "NFS client support"
-	depends on INET && FILE_LOCKING
-	select LOCKD
-	select SUNRPC
-	select NFS_ACL_SUPPORT if NFS_V3_ACL
-	select ORE
-	help ...
-
-This does not work. The ORE is not compiled and MODPOST complains.
-(Given EXOFS_FS is not selected since then it will work)
-
-What am I doing wrong? Why can't I "select" in fs/nfs/Kconfig
-an option in fs/exofs/Kconfig? What can I do different?
-
-Thanks
-Boaz
+> ---
+>  support/include/nfs/debug.h |    3 +++
+>  tools/rpcdebug/rpcdebug.c   |    3 +++
+>  2 files changed, 6 insertions(+), 0 deletions(-)
+> 
+> diff --git a/support/include/nfs/debug.h b/support/include/nfs/debug.h
+> index d391e91..dbec5ba 100644
+> --- a/support/include/nfs/debug.h
+> +++ b/support/include/nfs/debug.h
+> @@ -76,6 +76,9 @@ enum {
+>  #define NFSDBG_CALLBACK		0x0100
+>  #define NFSDBG_CLIENT		0x0200
+>  #define NFSDBG_MOUNT		0x0400
+> +#define NFSDBG_FSCACHE		0x0800
+> +#define NFSDBG_PNFS			0x1000
+> +#define NFSDBG_PNFS_LD		0x2000
+>  #define NFSDBG_ALL		0xFFFF
+>  
+>  #endif /* _NFS_DEBUG_H */
+> diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
+> index 275a491..444616d 100644
+> --- a/tools/rpcdebug/rpcdebug.c
+> +++ b/tools/rpcdebug/rpcdebug.c
+> @@ -167,6 +167,9 @@ static struct flagmap {
+>  	FLAG(NFS,       CALLBACK),
+>  	FLAG(NFS,       CLIENT),
+>  	FLAG(NFS,       MOUNT),
+> +	FLAG(NFS,       FSCACHE),
+> +	FLAG(NFS,       PNFS),
+> +	FLAG(NFS,       PNFS_LD),
+>  	FLAG(NFS,	ALL),
+>  
+>  	/* nfsd */
