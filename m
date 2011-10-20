@@ -1,77 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:56586 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751729Ab1JZElo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Oct 2011 00:41:44 -0400
-Message-ID: <4EA78F87.2050109@ogc.us>
-Date: Tue, 25 Oct 2011 23:41:43 -0500
-From: Tom Tucker <tom@ogc.us>
+Received: from fieldses.org ([174.143.236.118]:39161 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754153Ab1JTJn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 05:43:57 -0400
+Date: Thu, 20 Oct 2011 05:43:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] CLNT: add some tests for DESTROY_CLIENTID
+Message-ID: <20111020094355.GE5444@fieldses.org>
+References: <4E9FE273.80500@cn.fujitsu.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfsd (and lock) changes for 3.2
-References: <20111025121924.GA15662@fieldses.org> <20111025123449.GB15662@fieldses.org>
-In-Reply-To: <20111025123449.GB15662@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4E9FE273.80500@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Thu, Oct 20, 2011 at 04:57:23PM +0800, Mi Jinlong wrote:
+> Some tests for DESTROY_CLIENTID at pynfs41.
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  nfs4.1/server41tests/__init__.py            |    1 +
+>  nfs4.1/server41tests/st_destroy_clientid.py |   85 +++++++++++++++++++++++++++
+>  2 files changed, 86 insertions(+), 0 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_destroy_clientid.py
+> 
+> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> index 1cc2048..eb92538 100644
+> --- a/nfs4.1/server41tests/__init__.py
+> +++ b/nfs4.1/server41tests/__init__.py
+> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+>             "st_compound.py",
+>             "st_create_session.py",
+>             "st_destroy_session.py",
+> +           "st_destroy_clientid.py",
+>             "st_reclaim_complete.py",
+>             "st_secinfo_no_name.py",
+>             "st_secinfo.py",
+> diff --git a/nfs4.1/server41tests/st_destroy_clientid.py b/nfs4.1/server41tests/st_destroy_clientid.py
+> new file mode 100644
+> index 0000000..c2ea0c7
+> --- /dev/null
+> +++ b/nfs4.1/server41tests/st_destroy_clientid.py
+> @@ -0,0 +1,85 @@
+> +from st_create_session import create_session
+> +from nfs4_const import *
+> +from environment import check, fail
+> +import nfs4_ops as op
+> +import nfs4lib
+> +
+> +def testSupported(t, env):
+> +    """Do a simple DESTROY_CLIENTID
+> +       destroy an unconfirmed clientid without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID1
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res)
+> +
+> +def testDestroyBadCIDWS(t, env):
+> +    """ destroy an clientid which not exist without session
 
-What does RDMA Non Support mean exactly? Maybe I could help if it's a 
-resource issue?
+s/an clientid which non exist/a nonexistant clientid/
 
-Thanks,
-Tom
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID2
+> +    """
+> +    res = env.c1.compound([op.destroy_clientid(0)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> +
+> +def testDestroyBadCIDIS(t, env):
+> +    """ destroy an clientid which not exist in session
 
-On 10/25/11 7:34 AM, J. Bruce Fields wrote:
-> On Tue, Oct 25, 2011 at 08:19:24AM -0400, bfields wrote:
->> 	- Progress on the basic 4.1 todo's.  Thanks in particular to Mi
->> 	  Jinlong for (among other things) implementing the somewhat
->> 	  tricky DRC limit checking.
->>
->> 	  The 4.1 code is getting closer--it *might* be possible to
->> 	  finish basic 4.1 early as 3.3, at which point we could start
->> 	  on optional features (like pNFS).  But that will depend on
->> 	  people sending patches (and pynfs tests) for the remaining 4.1
->> 	  todo's.
-> I've been keeping the todo list up to date here:
->
-> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
->
-> Some of them I think are relatively straightforward--probably anyone
-> with a little time could dive into them:
->
-> 	- SEQ4_STATUS_RECALLABLE_STATE_REVOKED
->
-> 	- backchannel attribute negotiation
->
-> 	- ACL retention bits
->
-> 	- Clarify RDMA non-support
->
-> Slightly trickier or open-ended; we may need to talk over design first
-> before diving in:
->
-> 	- Make DESTROY_SESSION wait on in-progress requests
->
-> 	- current stateid
->
-> 	- Check 4.0/4.1 interactions
->
-> 	- Callback failure handling
->
-> 	- GSS
->
-> The GSS piece is probably the one I'm most worried about.  What we have
-> seems sufficient for current clients, but I know it's incomplete, and
-> I'm not entirely clear how much work it is to implement the minimum
-> required to ensure that future kerberos-using clients won't break
-> unexpectedly on upgrade to 4.1.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ditto.
 
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID3
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = sess.compound([op.destroy_clientid(0)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> +
+> +def testDestroyCIDThisSession(t, env):
+> +   """ destroy clientid of itself in session
+
+I'd say "destroy clientid using a session belong to that client".
+
+These look OK otherwise, thanks!
+
+There's just one other test I'd suggest: it would be useful to check
+that the clientid has actually been destroyed.  So, destroy the
+clientid, then try using it somehow (maybe by sending a create session?
+Or just trying to use a session that belonged to that client?).
+
+--b.
+
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID4
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = sess.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_CLIENTID_BUSY)
+> +
+> +def testDestroyCIDInSession(t, env):
+> +    """ destroy a clientid of other session without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID5
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_CLIENTID_BUSY)
+> +
+> +def testDestroyCIDNotOnly(t, env):
+> +    """ destroy a clientid without session with other compound
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID6
+> +    """
+> +    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
+> +    check(res, NFS4ERR_NOT_ONLY_OP)
+> +
+> +def testDestroyCIDTwice(t, env):
+> +    """ destroy a clientid without session twice
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID7
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res)
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> -- 
+> 1.7.6
+> 
+> 
