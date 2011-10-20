@@ -1,63 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39779 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753635Ab1J0UZU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Oct 2011 16:25:20 -0400
-Date: Thu, 27 Oct 2011 16:25:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH v3 0/3] SUNRPC: rcbind clients virtualization
-Message-ID: <20111027202514.GA31669@fieldses.org>
-References: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:45024 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756071Ab1JTRY6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 13:24:58 -0400
+Received: from /spool/local
+	by e32.co.us.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 20 Oct 2011 11:19:56 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9KHJVGl108052
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 11:19:32 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9KHJLY5023227
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Oct 2011 11:19:28 -0600
+Date: Thu, 20 Oct 2011 10:19:17 -0700
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
+Message-ID: <20111020171917.GA25851@us.ibm.com>
+References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
+ <20110919153429.GA16725@us.ibm.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
+ <20110921002714.GA31689@us.ibm.com>
+ <20110927164335.GA19331@us.ibm.com>
+ <20111012171727.GA18925@us.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
+In-Reply-To: <20111012171727.GA18925@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 27, 2011 at 10:10:43PM +0300, Stanislav Kinsbursky wrote:
-> v3:
-> 1) First two patches from previous version were squashed.
-> 
-> This patch-set was created in context of clone of git branch:
-> git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
-> and rebased on tag "v3.1".
-> 
-> This patch-set virtualizes rpcbind clients per network namespace context. IOW,
-> each network namespace will have its own pair of rpcbind clients (if they would
-> be created by request).
-> 
-> Note:
-> 1) this patch-set depends on "SUNRPC: make rpcbind clients allocated and
-> destroyed dynamically" patch-set which has been send earlier.
-> 2) init_net pointer is still used instead of current->nsproxy->net_ns,
-> because I'm not sure yet about how to virtualize services. I.e. NFS callback
-> services will be per netns. NFSd service will be per netns too from my pow. But
-> Lockd can be per netns or one for all.
+The following patch fixes the panic that we see often. I didn't see it
+in the git://git.linux-nfs.org/projects/trondmy/linux-nfs.git git tree
+yet as far as I can tell. Any comments on the patch?
 
-I'm not sure what you mean by that; could you explain?
+Thanks, Malahal.
 
---b.
+Malahal Naineni [malahal@us.ibm.com] wrote:
+> Any comments on this patch?
+> 
+> Malahal Naineni [malahal@us.ibm.com] wrote:
+> > Malahal Naineni [malahal@us.ibm.com] wrote:
+> > > Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
+> > > > Shouldn't we just skip all nfs_client structures that don't have
+> > > > cl_cons_state set to NFS_CS_READY? I see no reason to display their
+> > > > properties even if they have got far enough as to create an rpc client.
+> > > > 
+> > > > Cheers
+> > > >   Trond
+> > > 
+> > > Sounds good to me. Here is a tested patch.
+> > 
+> > Any comments on this one?
+> > 
+> > Thanks, Malahal.
+> > 
+> > > 
+> > > 
+> > > As soon as the nfs_client gets created, its cl_rpcclient is set to
+> > > ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
+> > > if the client is ready before using the cl_rpcclient pointer.
+> > > 
+> > > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> > > ---
+> > >  fs/nfs/client.c |    4 ++++
+> > >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > > index 5833fbb..a54c45e 100644
+> > > --- a/fs/nfs/client.c
+> > > +++ b/fs/nfs/client.c
+> > > @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
+> > >  	/* display one transport per line on subsequent lines */
+> > >  	clp = list_entry(v, struct nfs_client, cl_share_link);
+> > > 
+> > > +	/* Check if the client is initialized */
+> > > +	if (clp->cl_cons_state != NFS_CS_READY)
+> > > +		return 0;
+> > > +
+> > >  	seq_printf(m, "v%u %s %s %3d %s\n",
+> > >  		   clp->rpc_ops->version,
+> > >  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
+> > > -- 
+> > > 1.7.0.4
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-> And also we have NFSd file system, which
-> is not virtualized yet.
-> 
-> The following series consists of:
-> 
-> ---
-> 
-> Stanislav Kinsbursky (3):
->       SUNRPC: move rpcbind internals to sunrpc part of network namespace context
->       SUNRPC: optimize net_ns dereferencing in rpcbind creation calls
->       SUNRPC: optimize net_ns dereferencing in rpcbind registering calls
-> 
-> 
->  net/sunrpc/netns.h     |    5 ++
->  net/sunrpc/rpcb_clnt.c |  103 ++++++++++++++++++++++++++----------------------
->  2 files changed, 61 insertions(+), 47 deletions(-)
-> 
-> -- 
-> Signature
