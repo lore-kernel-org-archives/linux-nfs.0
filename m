@@ -1,158 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:56479 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752487Ab1JTIq1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 04:46:27 -0400
-Message-ID: <4E9FE112.3080907@cn.fujitsu.com>
-Date: Thu, 20 Oct 2011 16:51:30 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:54242 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752363Ab1JTT5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 15:57:32 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RGyk7-0002qU-OL
+	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 15:57:31 -0400
+Date: Thu, 20 Oct 2011 15:57:31 -0400
+To: linux-nfs@vger.kernel.org
+Subject: Re: Does NFS4 need st_gen?
+Message-ID: <20111020195731.GC9987@fieldses.org>
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+ <20111019171551.GA32028@fieldses.org>
+ <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+ <20111020120207.GL5444@fieldses.org>
+ <877h3za89w.fsf@inspiron.ap.columbia.edu>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs41: implement DESTROY_CLIENTID operation
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <877h3za89w.fsf@inspiron.ap.columbia.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to rfc5661 18.50, implement DESTROY_CLIENTID operation.
+On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
+> I'm working on a FUSE file system that stores file system metadata in an
+> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
+> of inode generation numbers would keep the code much simpler, because I
+> want to delete inode-rows from the SQL table when the last reference to
+> the inode is deleted (so I can't keep track of the generation no).
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4proc.c  |    2 +-
- fs/nfsd/nfs4state.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c   |   12 +++++++++++-
- fs/nfsd/xdr4.h      |    5 +++++
- 4 files changed, 68 insertions(+), 2 deletions(-)
+You can use current time, or a counter, or something, as the generation
+number.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e807776..8412a22 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1433,7 +1433,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_SEQUENCE",
- 	},
- 	[OP_DESTROY_CLIENTID] = {
--		.op_func = NULL,
-+		.op_func = (nfsd4op_func)nfsd4_destroy_clientid,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_DESTROY_CLIENTID",
- 	},
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3787ec1..d46cbbe 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1858,6 +1858,57 @@ out:
- 	return status;
- }
- 
-+static inline bool has_resources(struct nfs4_client *clp)
-+{
-+	return !list_empty(&clp->cl_openowners)
-+		|| !list_empty(&clp->cl_delegations)
-+		|| !list_empty(&clp->cl_sessions)
-+		|| !list_empty(&clp->cl_callbacks);
-+}
-+
-+__be32
-+nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
-+{
-+	struct nfs4_client *conf, *unconf, *clp;
-+	int status = 0;
-+
-+	nfs4_lock_state();
-+	unconf = find_unconfirmed_client(&dc->clientid);
-+	conf = find_confirmed_client(&dc->clientid);
-+
-+	if (conf) {
-+		clp = conf;
-+
-+		if (!is_client_expired(conf) && has_resources(conf)) {
-+			status = nfserr_clientid_busy;
-+			goto out;
-+		}
-+
-+		/*
-+		 * DESTROY_CLIENTID MAY be preceded with a SEQUENCE operation as
-+		 * long as the client ID derived from the session ID of SEQUENCE
-+		 * is not the same as the client ID to be destroyed. 
-+		 * If the client IDs are the same, then the server MUST return
-+		 * NFS4ERR_CLIENTID_BUSY.
-+		 */
-+		if (cstate->session && conf == cstate->session->se_client) {
-+			status = nfserr_clientid_busy;
-+			goto out;
-+		}
-+	} else if (unconf)
-+		clp = unconf;
-+	else {
-+		status = nfserr_stale_clientid;
-+		goto out;
-+	}
-+
-+	expire_client(clp);
-+out:
-+	nfs4_unlock_state();
-+	dprintk("%s return %d\n", __func__, ntohl(status));
-+	return status;
-+}
-+
- __be32
- nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_reclaim_complete *rc)
- {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c8bf405..5d9fff5 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1326,6 +1326,16 @@ xdr_error:
- 	goto out;
- }
- 
-+static __be32 nfsd4_decode_destroy_clientid(struct nfsd4_compoundargs *argp, struct nfsd4_destroy_clientid *dc)
-+{
-+	DECODE_HEAD;
-+
-+	READ_BUF(8);
-+	COPYMEM(&dc->clientid, 8);
-+
-+	DECODE_TAIL;
-+}
-+
- static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, struct nfsd4_reclaim_complete *rc)
- {
- 	DECODE_HEAD;
-@@ -1447,7 +1457,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_test_stateid,
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_destroy_clientid,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index d2a8d044..d67d680 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -405,6 +405,10 @@ struct nfsd4_destroy_session {
- 	struct nfs4_sessionid	sessionid;
- };
- 
-+struct nfsd4_destroy_clientid {
-+	clientid_t clientid;
-+};
-+
- struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
-@@ -558,6 +562,7 @@ extern __be32 nfsd4_sequence(struct svc_rqst *,
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
-+extern __be32 nfsd4_destroy_clientid(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_destroy_clientid *);
- __be32 nfsd4_reclaim_complete(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_reclaim_complete *);
- extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open);
--- 
-1.7.6
+> Now I'll either have to make inodes unique (and run into trouble after
+> 2^32 inodes have been used), or keep with the current scheme of
+> randomizing new inodes (which keeps the probability of problems low
+> enough but is ugly).
 
+With 2^32 inode numbers plus 2^32 generation numbers it should be
+possible to work something out that doesn't require remembering every
+old inode.
 
+--b.
