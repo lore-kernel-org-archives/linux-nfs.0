@@ -1,111 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29941 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55794 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755041Ab1JYLQ1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 07:16:27 -0400
-Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Tue, 25 Oct 2011 13:16:09 +0200
-In-Reply-To: <20111025101608.12689.68689.stgit@localhost6.localdomain6>
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
-	 <20111025101608.12689.68689.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319541369.2716.1.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1750806Ab1JTLxh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 07:53:37 -0400
+Date: Thu, 20 Oct 2011 07:53:36 -0400
+To: Benny Halevy <benny@tonian.com>
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
+Message-ID: <20111020115336.GI5444@fieldses.org>
+References: <4E9F82FC.2000904@tonian.com>
+ <1319076809-13512-1-git-send-email-benny@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319076809-13512-1-git-send-email-benny@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-10-25 at 14:16 +0300, Stanislav Kinsbursky wrote: 
-> v6:
-> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
-> clients become valid before rpcb_users assignment
-> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
-> my pow).
+Yep, bad mistake on my part--but someone else already caught this, and
+it's already committed to my 3.2 branch.--b.
+
+On Wed, Oct 19, 2011 at 07:13:29PM -0700, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@tonian.com>
 > 
-> v5: fixed races with rpcb_users in rpcb_get_local()
-> 
-> This helpers will be used for dynamical creation and destruction of rpcbind
-> clients.
-> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-> clients has been created already, then we just increase rpcb_users.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 > ---
->  net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 54 insertions(+), 0 deletions(-)
+>  fs/nfsd/nfs4xdr.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> index e45d2fb..9fcdb42 100644
-> --- a/net/sunrpc/rpcb_clnt.c
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
->  static struct rpc_clnt *	rpcb_local_clnt;
->  static struct rpc_clnt *	rpcb_local_clnt4;
->  
-> +DEFINE_SPINLOCK(rpcb_clnt_lock);
-> +unsigned int			rpcb_users;
-> +
->  struct rpcbind_args {
->  	struct rpc_xprt *	r_xprt;
->  
-> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
->  	kfree(map);
->  }
->  
-> +static int rpcb_get_local(void)
-> +{
-> +	int cnt;
-> +
-> +	spin_lock(&rpcb_clnt_lock);
-> +	if (rpcb_users)
-> +		rpcb_users++;
-> +	cnt = rpcb_users;
-> +	spin_unlock(&rpcb_clnt_lock);
-> +
-> +	return cnt;
-> +}
-> +
-> +void rpcb_put_local(void)
-> +{
-> +	struct rpc_clnt *clnt = rpcb_local_clnt;
-> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-> +	int shutdown;
-> +
-> +	spin_lock(&rpcb_clnt_lock);
-> +	if (--rpcb_users == 0) {
-> +		rpcb_local_clnt = NULL;
-> +		rpcb_local_clnt4 = NULL;
-> +	}
-> +	shutdown = !rpcb_users;
-> +	spin_unlock(&rpcb_clnt_lock);
-> +
-> +	if (shutdown) {
-> +		/*
-> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-> +		 */
-> +		if (clnt4)
-> +			rpc_shutdown_client(clnt4);
-> +		if (clnt)
-> +			rpc_shutdown_client(clnt);
-> +	}
-> +	return;
-
-I'm removing this before applying...
-
-> +}
-> +
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 1a419c0..1a5cb7e 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -671,7 +671,7 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
+>  	default:
+>  		return nfserr_bad_xdr;
+>  	}
+> -	w &= !NFS4_SHARE_WANT_MASK;
+> +	w &= ~NFS4_SHARE_WANT_MASK;
+>  	if (!w)
+>  		return nfs_ok;
+>  	switch (w) {
+> -- 
+> 1.7.6
+> 
