@@ -1,46 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53434 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39554 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751019Ab1JTMCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 08:02:08 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1RGrK3-0001uo-TZ
-	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 08:02:07 -0400
-Date: Thu, 20 Oct 2011 08:02:07 -0400
-To: linux-nfs@vger.kernel.org
-Subject: Re: Does NFS4 need st_gen?
-Message-ID: <20111020120207.GL5444@fieldses.org>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
- <20111019171551.GA32028@fieldses.org>
- <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+	id S1750751Ab1JTL7A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Oct 2011 07:59:00 -0400
+Date: Thu, 20 Oct 2011 07:58:59 -0400
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/7] Bakeathon server fixes
+Message-ID: <20111020115859.GK5444@fieldses.org>
+References: <4E9F82FC.2000904@tonian.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+In-Reply-To: <4E9F82FC.2000904@tonian.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 19, 2011 at 03:11:27PM -0400, Nikolaus Rath wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> > On Wed, Oct 19, 2011 at 10:17:43AM -0400, Nikolaus Rath wrote:
-> >> Does NFS4 still depend on inode generation numbers? I understand that
-> >> earlier NFS versions used file handles based on inode and generation
-> >> number, but it seems to me that this shouldn't be required anymore with
-> >> the (stateful) NFS4.
-> >
-> > Yes, it's true that NFSv4 has open and close operations, but filehandles
-> > are still used a great deal outside of that, and clients are still
-> > allowed to assume that the same filehandle always refers to the same
-> > object.
-> >
-> > http://www.ietf.org/rfc/rfc3530.txt, section 4.2.1:
-> >
-> > 	"If two filehandles from the same server are equal, they MUST
-> > 	refer to the same file."
-> 
-> Duh - that's a disappointment. Thanks for the pointer!
+On Wed, Oct 19, 2011 at 07:10:04PM -0700, Benny Halevy wrote:
+> Here's the list of patches I tested here in the Bakeathon.
 
-Just curious--why do you care?
+Thanks, Benny!  I need to run some tests of my own, and then I intend to
+apply the first four (see individual replies for comments on the last
+three).
 
 --b.
+
+> They pass the Connectathon tests over nfsv4.1 (no pnfs)
+> against the linux client, but VMware reports a bug with
+> OPEN with share_access==0x401 (1025)
+> NFS4_SHARE_WANT_NO_DELEG | NFS4_SHARE_ACCESS_READ
+> return NFS4ERR_GRACE for some reason.
+> I haven't been able to track that down yet.
+> 
+> [PATCH 1/7] nfsd4: implement new 4.1 open reclaim types
+> [PATCH 2/7] nfsd41: use SEQ4_STATUS_BACKCHANNEL_FAULT when
+> [PATCH 3/7] nfsd4: seq->status_flags may be used unitialized
+> [PATCH 4/7] nfsd4: allow NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL |
+> [PATCH 5/7] nfsd4: implement NFS4_SHARE_WANT_NO_DELEG,
+> [PATCH 6/7] nfsd4: typo logical vs bitwise negate for want_mask
+> [PATCH 7/7] nfsd4: share_access_to_flags should consider only nfs4.x
