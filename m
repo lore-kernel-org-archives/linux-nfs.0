@@ -1,114 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38573 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753306Ab1J1OWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 10:22:19 -0400
-Date: Fri, 28 Oct 2011 10:22:15 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH v7 3/7] SUNRPC: introduce svc helpers for prepairing
- rpcbind infrastructure
-Message-ID: <20111028142215.GB5193@fieldses.org>
-References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
- <20111028105254.24628.49150.stgit@localhost6.localdomain6>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:64943 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752600Ab1JUOdR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2011 10:33:17 -0400
+Received: by vcge1 with SMTP id e1so3351029vcg.19
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Oct 2011 07:33:16 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111028105254.24628.49150.stgit@localhost6.localdomain6>
+In-Reply-To: <20111021012327.612839b5@neminis.loos.site>
+References: <20111021012327.612839b5@neminis.loos.site>
+Date: Fri, 21 Oct 2011 10:33:16 -0400
+Message-ID: <CAKnQG+d66Driv-D7fTeyh=MP4iNqpTzjXyFEiLE34E3YV2KG_g@mail.gmail.com>
+Subject: Re: sec=krb5 mounts never return
+From: Kevin Coffman <kwc@umich.edu>
+To: Arno Schuring <aelschuring@hotmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 28, 2011 at 02:52:59PM +0300, Stanislav Kinsbursky wrote:
-> This helpers will be used only for those services, that will send portmapper
-> registration calls.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+On Thu, Oct 20, 2011 at 7:23 PM, Arno Schuring <aelschuring@hotmail.com> wrote:
+> Hello list,
+>
+> tl;dr: mount calls with sec=krb5 never return. They appear to get
+> stalled in the kernel on "svc: transport is dead". I need to know
+> if this is a configuration issue, a kernel problem or a userland
+> problem, and how it can be resolved.
+>
+>
+> I've been running a succesful NFS4 setup at home for a year now, but
+> incorporating krb5 security has so far proven fruitless. I believe the
+> Kerberos side of the equation is no longer causing problems; it is used
+> for user authentication too, and nfs security contexts seem to work
+> properly. As said above, the mount request for any Kerberos mount gets
+> halted somewhere in flight:
+>
+> # mount -vvv -t nfs4 -o sec=krb5 genie:/media /mnt
+> mount: fstab path: "/etc/fstab"
+> mount: mtab path:  "/etc/mtab"
+> mount: lock path:  "/etc/mtab~"
+> mount: temp path:  "/etc/mtab.tmp"
+> mount: UID:        0
+> mount: eUID:       0
+> mount: spec:  "genie:/media"
+> mount: node:  "/mnt"
+> mount: types: "nfs4"
+> mount: opts:  "sec=krb5"
+> mount: external mount: argv[0] = "/sbin/mount.nfs4"
+> mount: external mount: argv[1] = "genie:/media"
+> mount: external mount: argv[2] = "/mnt"
+> mount: external mount: argv[3] = "-v"
+> mount: external mount: argv[4] = "-o"
+> mount: external mount: argv[5] = "rw,sec=krb5"
+> mount.nfs4: timeout set for Sun Oct 16 22:52:10 2011
+> mount.nfs4: trying text-based options
+> 'sec=krb5,addr=172.22.21.8,clientaddr=172.22.21.5'
+>
+> And there it just seems to hang (the timeout is ignored completely)
+> until killed via signal or Ctrl-C. The same mount without sec=krb5
+> completes without issue:
+> # mount -v -t nfs4 genie:/media /mnt
+> mount.nfs4: timeout set for Thu Oct 20 23:48:55 2011
+> mount.nfs4: trying text-based options
+> 'addr=172.22.21.8,clientaddr=172.22.21.8'
+> genie:/media on /mnt type nfs4 (rw)
+>
+> The machine is running a fully updated Debian 6.0 (Squeeze). So far I
+> have only tried with one other client (also Squeeze) with similar
+> results. Relevant software versions: kernel 2.6.32 (armel) and
+> nfs-utils 1.2.2.
+>
+>
+> The only suggestion that Google has been able to give me was to verify
+> that the rpcsec_gss_krb5 was loaded, and it is:
+> $ lsmod|grep gss
+> rpcsec_gss_krb5         9026  5
+> auth_rpcgss            33334  4 rpcsec_gss_krb5,nfsd,nfs
+> sunrpc                171216  21 [..]
+>
+> Reproducible with only these exports:
+> # exportfs -v
+> /srv/nfs  172.22.21.8(ro,wdelay,root_squash,no_subtree_check,fsid=0)
+> /srv/nfs  gss/krb5(ro,wdelay,root_squash,no_subtree_check,fsid=0)
+>
+>
+> I can provide a full rpc_debug/svc_debug log if required. I'm not
+> attaching it now because it is somewhat large (well, 60k) and I'm not
+> even sure that user issues are on-topic for this list. What looks
+> suspicious to me is the following excerpt:
+> [600472.772226] nfsd: connect from 172.22.21.8, port=46257
+> [600472.772300] svc: svc_setup_socket created deda1a00 (inet df948900)
+> [600473.431966] svc_recv: found XPT_CLOSE
+> [600473.431982] svc: svc_delete_xprt(deda1a00)
+> [600473.432114] svc: transport deda1a00 is dead, not enqueued
+>
+>
+>
+> I'd be grateful for any pointers,
+> Arno
+> (not subscribed, please keep me in CC)
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
+You should be seeing syslog messages if not, but I'll ask anyway.
+You've got rpc.gssd configured and running on the client, and if this
+is a linux server, rpc.svcgssd configured and running on the server.
+("Configured" more or less means you've got a keytab.)  If they are
+running, what does their output look like?  (Perhaps using "-vvv" to
+get detailed output.)
 
-> 
-> ---
->  include/linux/sunrpc/clnt.h |    2 ++
->  net/sunrpc/rpcb_clnt.c      |    2 +-
->  net/sunrpc/svc.c            |   35 +++++++++++++++++++++++++++++++++++
->  3 files changed, 38 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index db7bcaf..1eb437d 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -135,6 +135,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
->  void		rpc_release_client(struct rpc_clnt *);
->  void		rpc_task_release_client(struct rpc_task *);
->  
-> +int		rpcb_create_local(void);
-> +void		rpcb_put_local(void);
->  int		rpcb_register(u32, u32, int, unsigned short);
->  int		rpcb_v4_register(const u32 program, const u32 version,
->  				 const struct sockaddr *address,
-> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> index 115df11..c144b95 100644
-> --- a/net/sunrpc/rpcb_clnt.c
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -320,7 +320,7 @@ out:
->   * Returns zero on success, otherwise a negative errno value
->   * is returned.
->   */
-> -static int rpcb_create_local(void)
-> +int rpcb_create_local(void)
->  {
->  	static DEFINE_MUTEX(rpcb_create_local_mutex);
->  	int result = 0;
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 6a69a11..d2d61bf 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -354,6 +354,41 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
->  	return &serv->sv_pools[pidx % serv->sv_nrpools];
->  }
->  
-> +static int svc_rpcb_setup(struct svc_serv *serv)
-> +{
-> +	int err;
-> +
-> +	err = rpcb_create_local();
-> +	if (err)
-> +		return err;
-> +
-> +	/* Remove any stale portmap registrations */
-> +	svc_unregister(serv);
-> +	return 0;
-> +}
-> +
-> +static void svc_rpcb_cleanup(struct svc_serv *serv)
-> +{
-> +	svc_unregister(serv);
-> +	rpcb_put_local();
-> +}
-> +
-> +static int svc_uses_rpcbind(struct svc_serv *serv)
-> +{
-> +	struct svc_program	*progp;
-> +	unsigned int		i;
-> +
-> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-> +		for (i = 0; i < progp->pg_nvers; i++) {
-> +			if (progp->pg_vers[i] == NULL)
-> +				continue;
-> +			if (progp->pg_vers[i]->vs_hidden == 0)
-> +				return 1;
-> +		}
-> +	}
-> +
-> +	return 0;
-> +}
->  
->  /*
->   * Create an RPC service
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+K.C.
