@@ -1,55 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:45604 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932861Ab1JRPes (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:48 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 12/26] vfs: Make acl_permission_check() work for richacls
-Date: Tue, 18 Oct 2011 21:02:47 +0530
-Message-Id: <1318951981-5508-13-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from lo.gmane.org ([80.91.229.12]:56786 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754529Ab1JUOIZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Oct 2011 10:08:25 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RHFlm-00054D-FR
+	for linux-nfs@vger.kernel.org; Fri, 21 Oct 2011 16:08:22 +0200
+Received: from ebox.rath.org ([173.255.235.238])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Oct 2011 16:08:22 +0200
+Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Oct 2011 16:08:22 +0200
+To: linux-nfs@vger.kernel.org
+From: Nikolaus Rath <Nikolaus@rath.org>
+Subject: Re: Does NFS4 need st_gen?
+Date: Fri, 21 Oct 2011 09:54:01 -0400
+Message-ID: <87vcrisb5y.fsf@inspiron.ap.columbia.edu>
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
+	<20111019171551.GA32028@fieldses.org>
+	<87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
+	<20111020120207.GL5444@fieldses.org>
+	<877h3za89w.fsf@inspiron.ap.columbia.edu>
+	<20111020195731.GC9987@fieldses.org>
+	<871uu79z7m.fsf@inspiron.ap.columbia.edu>
+	<1319155647.2768.4.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+> On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
+>> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>> > On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
+>> >> I'm working on a FUSE file system that stores file system metadata in an
+>> >> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
+>> >> of inode generation numbers would keep the code much simpler, because I
+>> >> want to delete inode-rows from the SQL table when the last reference to
+>> >> the inode is deleted (so I can't keep track of the generation no).
+>> >
+>> > You can use current time, or a counter, or something, as the generation
+>> > number.
+>> 
+>> With current time I'm screwed if the system clock doesn't have
+>> sufficiently fine granularity. With a counter, I either have to remember
+>> counter values per-inode even after the inode is deleted, or the global
+>> counter will overflow at some point (in which case I may just as well
+>> require unique inodes in the first place).
+>
+> The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
+> do you expect it to take you to create+destroy between 2^256 and 2^1024
+> inodes? I'm guessing that we'll all be long dead and the universe will
+> have undergone heat death before that happens...
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/namei.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+Please stop assuming that I'm stupid or haven't thought about the
+problem at all. The bottleneck is not the length of the NFS file handle,
+but the length of the inode and generation number (both of which are
+restricted to 32bit by FUSE) together with the requirement that not only
+both of them together need to be unique forever, but the inode also
+needs to be unique at any given instant (so they cannot be trivially
+combined to form a 64bit value).
 
-diff --git a/fs/namei.c b/fs/namei.c
-index eb8f918..0c28f95 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -230,6 +230,20 @@ static int acl_permission_check(struct inode *inode, int mask)
- 	if (current_user_ns() != inode_userns(inode))
- 		goto other_perms;
- 
-+	if (IS_RICHACL(inode)) {
-+		int error = check_acl(inode, mask);
-+		if (error != -EAGAIN)
-+			return error;
-+		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
-+			    MAY_CHMOD | MAY_SET_TIMES)) {
-+			/*
-+			 * The file permission bit cannot grant these
-+			 * permissions.
-+			 */
-+			return -EACCES;
-+		}
-+	}
-+
- 	if (likely(current_fsuid() == inode->i_uid))
- 		mode >>= 6;
- 	else {
+Best,
+
+   -Nikolaus
+
 -- 
-1.7.5.4
+ »Time flies like an arrow, fruit flies like a Banana.«
+
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
 
