@@ -1,77 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12732 "EHLO mx2.netapp.com"
+Received: from ebox.rath.org ([173.255.235.238]:41948 "EHLO ebox.rath.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751561Ab1JJVQD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Oct 2011 17:16:03 -0400
-Subject: Re: [PATCH][RFC] nfs: don't redirty inode when ncommit == 0 in
- nfs_commit_unstable_pages
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, mikem@redhat.com
-Date: Mon, 10 Oct 2011 17:15:42 -0400
-In-Reply-To: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
-References: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1318281342.14423.63.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1752700Ab1JUQc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Oct 2011 12:32:57 -0400
+Message-ID: <4EA1994D.6060700@rath.org>
+Date: Fri, 21 Oct 2011 12:09:49 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Does NFS4 need st_gen?
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>	 <20111019171551.GA32028@fieldses.org>	 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>	 <20111020120207.GL5444@fieldses.org>	 <877h3za89w.fsf@inspiron.ap.columbia.edu>	 <20111020195731.GC9987@fieldses.org>	 <871uu79z7m.fsf@inspiron.ap.columbia.edu>	 <1319155647.2768.4.camel@lade.trondhjem.org>	 <87vcrisb5y.fsf@inspiron.ap.columbia.edu> <1319212854.4537.9.camel@lade.trondhjem.org>
+In-Reply-To: <1319212854.4537.9.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-10 at 16:33 -0400, Jeff Layton wrote: 
-> The current test in nfs_commit_unstable_pages does not handle the edge
-> condition properly. When ncommit == 0, then that likely means that the
-> kernel doesn't need to do anything more for the inode. The current test
-> though will return true in that case, and the inode will end up being
-> marked dirty.
+On 10/21/2011 12:00 PM, Trond Myklebust wrote:
+> On Fri, 2011-10-21 at 09:54 -0400, Nikolaus Rath wrote: 
+>> Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+>>> On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
+>>>> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>>>>> On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
+>>>>>> I'm working on a FUSE file system that stores file system metadata in an
+>>>>>> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
+>>>>>> of inode generation numbers would keep the code much simpler, because I
+>>>>>> want to delete inode-rows from the SQL table when the last reference to
+>>>>>> the inode is deleted (so I can't keep track of the generation no).
+>>>>>
+>>>>> You can use current time, or a counter, or something, as the generation
+>>>>> number.
+>>>>
+>>>> With current time I'm screwed if the system clock doesn't have
+>>>> sufficiently fine granularity. With a counter, I either have to remember
+>>>> counter values per-inode even after the inode is deleted, or the global
+>>>> counter will overflow at some point (in which case I may just as well
+>>>> require unique inodes in the first place).
+>>>
+>>> The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
+>>> do you expect it to take you to create+destroy between 2^256 and 2^1024
+>>> inodes? I'm guessing that we'll all be long dead and the universe will
+>>> have undergone heat death before that happens...
+>>
+>> Please stop assuming that I'm stupid or haven't thought about the
+>> problem at all. The bottleneck is not the length of the NFS file handle,
+>> but the length of the inode and generation number (both of which are
+>> restricted to 32bit by FUSE) together with the requirement that not only
+>> both of them together need to be unique forever, but the inode also
+>> needs to be unique at any given instant (so they cannot be trivially
+>> combined to form a 64bit value).
 > 
-> Fix this by not re-marking the inode dirty when ncommit == 0.
+> No. The point is you don't need a generation number if you don't want to
+> implement one...
 > 
-> Mike noticed this problem initially in RHEL5 (2.6.18-based kernel) which
-> has a backported version of 420e3646. The inode cache there was
-> growing very large, but calling sync() would essentially "fix" the
-> problem.
-> 
-> What I'm not clear on is how big a problem this is in mainline kernels
-> as the writeback code there is very different. I think this basically
-> means that the inode will remain dirty until there's a WB_SYNC_ALL
-> flush. Either way, it seems incorrect to mark the inode dirty in this
-> case.
-> 
-> Also, another question I have here -- shouldn't we be holding the i_lock
-> when doing this check?
-> 
-> Reported-by: Mike McLean <mikem@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/write.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 17e20e4..6395e98 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1557,7 +1557,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
->  		/* Don't commit yet if this is a non-blocking flush and there
->  		 * are a lot of outstanding writes for this mapping.
->  		 */
-> -		if (nfsi->ncommit <= (nfsi->npages >> 1))
-> +		if (nfsi->ncommit && nfsi->ncommit <= (nfsi->npages >> 1))
->  			goto out_mark_dirty;
->  
->  		/* don't wait for the COMMIT response */
+> You can use any unique identifier + the inode number, and the unique
+> identifier is only limited by the size of the filehandle.
 
-Umm... The above implementation will actually cause you to call
-nfs_commit_inode() when nfsi->ncommit is zero, which again causes you to
-go through all the hoopla with nfs_commit_set_lock() etc., for a case
-when you know you could just exit...
+So how do you choose the unique identifier? It's limited by FUSE to
+32bit and therefore can't be a global counter, it can't be a timestamp
+because the system clock may not have enough resolution, and it can't be
+a per-inode counter because then I can't discard the counter after the
+inode has been deleted.
 
-Cheers
-  Trond
+Best,
+
+   -Nikolaus
+
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+ »Time flies like an arrow, fruit flies like a Banana.«
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
