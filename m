@@ -1,150 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:65034 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932908Ab1JaPQn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 11:16:43 -0400
-Received: by pzk36 with SMTP id 36so18679160pzk.1
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 08:16:42 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-Date: Mon, 31 Oct 2011 08:15:36 -0700
-Message-Id: <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:16515 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750759Ab1JUSZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Oct 2011 14:25:47 -0400
+Message-ID: <4EA1B919.5060801@netapp.com>
+Date: Fri, 21 Oct 2011 14:25:29 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: fix for open leaks, for 3.2
+References: <1318888557-14719-1-git-send-email-bfields@redhat.com> <20111017215741.GE13368@fieldses.org> <4E9CA591.8050708@netapp.com>
+In-Reply-To: <4E9CA591.8050708@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For blocklayout, we need to issue layoutreturn to return layouts when
-handling CB_RECALL_ANY.
+On 10/17/2011 06:00 PM, Bryan Schumaker wrote:
+> On 10/17/2011 05:57 PM, J. Bruce Fields wrote:
+>> On Mon, Oct 17, 2011 at 05:55:49PM -0400, J. Bruce Fields wrote:
+>>> Bryan Schumaker noticed that we have a longstanding leak of an open
+>>> owner each time the first open with a new open owner fails.
+>>>
+>>> The following patches fix that, along with a few other less likely leaks
+>>> that occur if a memory allocation fails after a file is created.
+>>
+>> By the way, Bryan, I didn't try to write a real test case for that
+>> leak--would it be easy for you to rerun the test you were running before
+>> and verify whether it's gone?
+> 
+> Sure, no problem.  I'll let you know what I find.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/callback_proc.c |   55 +++++++++++++++++++++++++++++++++++++++++-------
- include/linux/nfs4.h   |    3 +-
- 2 files changed, 49 insertions(+), 9 deletions(-)
+Looks like these patches worked.  I never deleted more than one client structure during my test.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 43926ad..11f79c2 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -160,7 +160,8 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- }
- 
- static u32 initiate_bulk_draining(struct nfs_client *clp,
--				  struct cb_layoutrecallargs *args)
-+				  struct cb_layoutrecallargs *args,
-+				  int sendreturn)
- {
- 	struct nfs_server *server;
- 	struct pnfs_layout_hdr *lo;
-@@ -204,12 +205,47 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
- 		pnfs_free_lseg_list(&free_me_list);
-+		if (sendreturn && list_empty(&lo->plh_segs))
-+			pnfs_return_layout(ino);
- 		put_layout_hdr(lo);
- 		iput(ino);
- 	}
- 	return rv;
- }
- 
-+struct recallany_data {
-+	struct nfs_client *clp;
-+	struct work_struct ra_work;
-+};
-+
-+static void layout_recallany_draining(struct work_struct *work)
-+{
-+	struct recallany_data *ra;
-+	struct cb_layoutrecallargs args;
-+
-+	memset(&args, 0, sizeof(args));
-+	ra = container_of(work, struct recallany_data, ra_work);
-+	/* Ignore draining error. Per RFC, if layoutreturns are not sent, it is up
-+	 * to server to handle the situation (e.g., send specific layoutrecalls).
-+	 */
-+	initiate_bulk_draining(ra->clp, &args, 1);
-+	kfree(ra);
-+}
-+
-+static u32 init_recallany_draining(struct nfs_client *clp)
-+{
-+	struct recallany_data *ra;
-+
-+	ra = kmalloc(sizeof(*ra), GFP_NOFS);
-+	if (ra) {
-+		ra->clp = clp;
-+		INIT_WORK(&ra->ra_work, layout_recallany_draining);
-+		schedule_work(&ra->ra_work);
-+		return NFS4_OK;
-+	}
-+	return NFS4ERR_DELAY;
-+}
-+
- static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 				    struct cb_layoutrecallargs *args)
- {
-@@ -220,8 +256,10 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 		goto out;
- 	if (args->cbl_recall_type == RETURN_FILE)
- 		res = initiate_file_draining(clp, args);
-+	if (args->cbl_recall_type == RETURN_ANY)
-+		res = init_recallany_draining(clp);
- 	else
--		res = initiate_bulk_draining(clp, args);
-+		res = initiate_bulk_draining(clp, args, 0);
- 	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
- out:
- 	dprintk("%s returning %i\n", __func__, res);
-@@ -245,15 +283,13 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
- 	return cpu_to_be32(res);
- }
- 
--static void pnfs_recall_all_layouts(struct nfs_client *clp)
-+static __be32 pnfs_recall_all_layouts(struct nfs_client *clp, uint32_t type)
- {
- 	struct cb_layoutrecallargs args;
- 
--	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
- 	memset(&args, 0, sizeof(args));
--	args.cbl_recall_type = RETURN_ALL;
--	/* FIXME we ignore errors, what should we do? */
--	do_callback_layoutrecall(clp, &args);
-+	args.cbl_recall_type = type;
-+	return cpu_to_be32(do_callback_layoutrecall(clp, &args));
- }
- 
- __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
-@@ -533,7 +569,10 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
- 		flags |= FMODE_WRITE;
- 	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
- 		     &args->craa_type_mask))
--		pnfs_recall_all_layouts(cps->clp);
-+		pnfs_recall_all_layouts(cps->clp, RETURN_ALL);
-+	if (test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		status = pnfs_recall_all_layouts(cps->clp, RETURN_ANY);
- 	if (flags)
- 		nfs_expire_all_delegation_types(cps->clp, flags);
- out:
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 76f99e8..1f71a9e 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -597,7 +597,8 @@ enum pnfs_layouttype {
- enum pnfs_layoutreturn_type {
- 	RETURN_FILE = 1,
- 	RETURN_FSID = 2,
--	RETURN_ALL  = 3
-+	RETURN_ALL  = 3,
-+	RETURN_ANY  = 4
- };
- 
- enum pnfs_iomode {
--- 
-1.7.1.262.g5ef3d
+- Bryan
+> 
+> - Bryan
+>>
+>> --b.
+>>
+>>>
+>>> I intend to commit these to for-3.2.  Any review welcomed.
+>>>
+>>> --b.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
