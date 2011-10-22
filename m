@@ -1,54 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60804 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751658Ab1JTMcu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 08:32:50 -0400
-Date: Thu, 20 Oct 2011 08:32:42 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [RFC PATCH 0/5] SUNRPC: "RPC pipefs per network namespace"
- preparations
-Message-ID: <20111020123242.GN5444@fieldses.org>
-References: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
- <4EA000C6.1040502@parallels.com>
+Received: from natasha.panasas.com ([67.152.220.90]:39384 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751211Ab1JVSs2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Oct 2011 14:48:28 -0400
+Message-ID: <4EA30FC7.7080600@panasas.com>
+Date: Sat, 22 Oct 2011 11:47:35 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EA000C6.1040502@parallels.com>
+To: Nikolaus Rath <Nikolaus@rath.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: Does NFS4 need st_gen?
+References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>		 <20111019171551.GA32028@fieldses.org>		 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>		 <20111020120207.GL5444@fieldses.org>		 <877h3za89w.fsf@inspiron.ap.columbia.edu>		 <20111020195731.GC9987@fieldses.org>		 <871uu79z7m.fsf@inspiron.ap.columbia.edu>		 <1319155647.2768.4.camel@lade.trondhjem.org>		 <87vcrisb5y.fsf@inspiron.ap.columbia.edu>	 <1319212854.4537.9.camel@lade.trondhjem.org> <4EA1994D.6060700@rath.org> <1319217023.4537.28.camel@lade.trondhjem.org> <4EA1AF6D.60603@rath.org>
+In-Reply-To: <4EA1AF6D.60603@rath.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2011 at 03:06:46PM +0400, Stanislav Kinsbursky wrote:
-> Guys, please, spend some of your expensive time to review this patch-set briefly.
+On 10/21/2011 10:44 AM, Nikolaus Rath wrote:
+> Yes, with 64bit inodes everything would be fine. But fuse uses 'long'
+> for inodes, so on 32bit systems you only have 32bit inodes even if ino_t
+> is 64bit.
 
-I'll try to take a look soon, but I'm travelling tomorrow through the
-31st, and things will be a little hectic.
+With out knowing any of the details, what kind of brain dead thing is
+putting "long" in an API. What do you do with 32bit user-mode on 64bit
+Kernel.
 
-Just one quick comment:
+32 bits for inode numbers is a broken system for 15 years already.
+Fix the broken FUSE that falsely calls itself File-System and
+stop bitching about NFS. It's FUSE you should be hacking and fixing.
 
-> >The only problem about I'm not sure how to solve properly yet, is auth gss
-> >pipes creations operations. Hoping for some help with it.
+Realy
+Boaz
 
-I suspect one reason it may be a little complicated is the
-upcall-version switching.  The old version is deprecated, and there's no
-need to support the combination of the old version with the a new
-feature like containers.  And now that it's been there a while the
-version-switching code already achieved its goal of avoiding a flag day.
-So, one approach might be:
-
-	- move all the code for the old gss upcall and for the version
-	  switching under a new CONFIG_DEPRECATED_GSS, or similar.
-	- print a warning if the old stuff is used, and plan to rip it
-	  out completely in a future kernel version.
-	- do something that works just in the !CONFIG_DEPRECATED_GSS
-	  case.
-
-Would that help?
-
---b.
