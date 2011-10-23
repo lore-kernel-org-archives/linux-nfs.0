@@ -1,55 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:53458 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933659Ab1JaSbo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 14:31:44 -0400
-Date: Mon, 31 Oct 2011 14:31:31 -0400
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>,
-        linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>,
-        nfsv4 list <nfsv4@ietf.org>
-Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-Message-ID: <20111031183131.GA1925@umich.edu>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
- <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
- <1320076148.4714.4.camel@lade.trondhjem.org>
- <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
- <1320079501.4714.9.camel@lade.trondhjem.org>
- <4EAED61B.7030405@tonian.com>
- <1320082964.4714.23.camel@lade.trondhjem.org>
- <4EAEE173.80306@tonian.com>
- <1320085212.4714.48.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320085212.4714.48.camel@lade.trondhjem.org>
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:45532 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753763Ab1JWRod (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:33 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 05/26] vfs: Add generic IS_ACL() test for acl support
+Date: Sun, 23 Oct 2011 23:13:34 +0530
+Message-Id: <1319391835-5829-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-  I don't necessarily disagree with what you are saying, but I have yet to
-  see a single server side implementation of CB_RECALL_ANY, let alone any
-  numbers that indicate performance or responsiveness problems resulting
-  from our existing client-side implementation.
-  
-  I therefore find it hard to understand why optimising this particular
-  code is such a high priority, or why a patch that is adding per-file
-  layoutreturns to initiate_bulk_draining() is going to help anything at
-  all.
+When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
+models will need the same exception, so introduce a separate IS_ACL()
+test.
 
-Testing between the linux block layout client and the EMC block layout
-server revealed a deadlock when the server had handed out some number of
-layouts and couldn't hand out any more.  So now the EMC block layout server
-implements CB_RECALL_ANY.  So yes, this solves a real world problem, and
-yes, there is a server that implements this.
+The IS_POSIX_ACL() test is still needed so that nfsd can determine when
+the underlying file system supports POSIX ACLs (as opposed to some other
+kind).
 
-We had some discussions at the time, and I don't remember if those were on
-the linux-nfs list or in some other forum.  We decided that the client was
-in the best position to decide which layouts were no longer needed, so we
-needed some way for the server to tell the client to return some layouts
-without specifying which ones.  CB_RECALL_ANY seemed custom-made for this
-purpose, so we used it.
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |    6 +++---
+ include/linux/fs.h |    8 +++++++-
+ 2 files changed, 10 insertions(+), 4 deletions(-)
 
-I don't think it would be appropriate for the server to recall all layouts
-when it only needs some of them back.
+diff --git a/fs/namei.c b/fs/namei.c
+index 9061157..cf8b2f0 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2166,7 +2166,7 @@ static struct file *do_last(struct nameidata *nd, struct path *path,
+ 	/* Negative dentry, just create the file */
+ 	if (!dentry->d_inode) {
+ 		int mode = op->mode;
+-		if (!IS_POSIXACL(dir->d_inode))
++		if (!IS_ACL(dir->d_inode))
+ 			mode &= ~current_umask();
+ 		/*
+ 		 * This write is needed to ensure that a
+@@ -2484,7 +2484,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = may_mknod(mode);
+ 	if (error)
+@@ -2553,7 +2553,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
++	if (!IS_ACL(path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = mnt_want_write(path.mnt);
+ 	if (error)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c1884e9..1994b84 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -201,7 +201,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -279,6 +279,12 @@ struct inodes_stat_t {
+ #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ 
++/*
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
+ 
+-- 
+1.7.5.4
+
