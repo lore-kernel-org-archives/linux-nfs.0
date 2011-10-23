@@ -1,148 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:7891 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933513Ab1JYN5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Oct 2011 09:57:44 -0400
-Subject: [PATCH v2 3/4] SUNRPC: optimize net_ns dereferencing in rpcbind
-	creation calls
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Tue, 25 Oct 2011 17:58:12 +0300
-Message-ID: <20111025135809.5286.40211.stgit@localhost6.localdomain6>
-In-Reply-To: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
-References: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:46642 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754298Ab1JWRpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:45:14 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 15/26] richacl: Compute maximum file masks from an acl
+Date: Sun, 23 Oct 2011 23:13:44 +0530
+Message-Id: <1319391835-5829-16-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static rpcbind creation functions can be parametrized by network namespace
-pointer, calculated only once, instead of using init_net pointer (or taking it
-from current when virtualization will be comleted) in many places.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Compute upper bound owner, group, and other file masks with as few
+permissions as possible without denying any permissions that the NFSv4
+acl in a richacl grants.
 
+This algorithm is used when a file inherits an acl at create time and
+when an acl is set via a mechanism that does not specify file modes
+(such as via nfsd).  When user-space sets an acl, the file masks are
+passed in as part of the xattr.
+
+When setting a richacl, the file masks determine what the file
+permission bits will be set to; see richacl_masks_to_mode().
+
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- net/sunrpc/rpcb_clnt.c |   35 +++++++++++++++++++----------------
- 1 files changed, 19 insertions(+), 16 deletions(-)
+ fs/richacl_base.c       |  128 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |    1 +
+ 2 files changed, 129 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 18eba8e..ef37c55 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -161,10 +161,10 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index bca2093..d73f1b0 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -184,3 +184,131 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
+ 	return a->e_id == b->e_id;
+ #undef WHO_FLAGS
  }
++
++/**
++ * richacl_allowed_to_who  -  mask flags allowed to a specific who value
++ *
++ * Computes the mask values allowed to a specific who value, taking
++ * EVERYONE@ entries into account.
++ */
++static unsigned int richacl_allowed_to_who(struct richacl *acl,
++					   struct richace *who)
++{
++	struct richace *ace;
++	unsigned int allowed = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++		if (richace_is_same_identifier(ace, who) ||
++		    richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				allowed &= ~ace->e_mask;
++		}
++	}
++	return allowed;
++}
++
++/**
++ * richacl_group_class_allowed  -  maximum permissions the group class is allowed
++ *
++ * See richacl_compute_max_masks().
++ */
++static unsigned int richacl_group_class_allowed(struct richacl *acl)
++{
++	struct richace *ace;
++	unsigned int everyone_allowed = 0, group_class_allowed = 0;
++	int had_group_ace = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace) ||
++		    richace_is_owner(ace))
++			continue;
++
++		if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace))
++				everyone_allowed |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				everyone_allowed &= ~ace->e_mask;
++		} else {
++			group_class_allowed |=
++				richacl_allowed_to_who(acl, ace);
++
++			if (richace_is_group(ace))
++				had_group_ace = 1;
++		}
++	}
++	if (!had_group_ace)
++		group_class_allowed |= everyone_allowed;
++	return group_class_allowed;
++}
++
++/**
++ * richacl_compute_max_masks  -  compute upper bound masks
++ *
++ * Computes upper bound owner, group, and other masks so that none of
++ * the mask flags allowed by the acl are disabled (for any choice of the
++ * file owner or group membership).
++ */
++void richacl_compute_max_masks(struct richacl *acl)
++{
++	unsigned int gmask = ~0;
++	struct richace *ace;
++
++	/*
++	 * @gmask contains all permissions which the group class is ever
++	 * allowed.  We use it to avoid adding permissions to the group mask
++	 * from everyone@ allow aces which the group class is always denied
++	 * through other aces.  For example, the following acl would otherwise
++	 * result in a group mask or rw:
++	 *
++	 *	group@:w::deny
++	 *	everyone@:rw::allow
++	 *
++	 * Avoid computing @gmask for acls which do not include any group class
++	 * deny aces: in such acls, the group class is never denied any
++	 * permissions from everyone@ allow aces.
++	 */
++
++restart:
++	acl->a_owner_mask = 0;
++	acl->a_group_mask = 0;
++	acl->a_other_mask = 0;
++
++	richacl_for_each_entry_reverse(ace, acl) {
++		if (richace_is_inherit_only(ace))
++			continue;
++
++		if (richace_is_owner(ace)) {
++			if (richace_is_allow(ace))
++				acl->a_owner_mask |= ace->e_mask;
++			else if (richace_is_deny(ace))
++				acl->a_owner_mask &= ~ace->e_mask;
++		} else if (richace_is_everyone(ace)) {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++				acl->a_other_mask |= ace->e_mask;
++			} else if (richace_is_deny(ace)) {
++				acl->a_owner_mask &= ~ace->e_mask;
++				acl->a_group_mask &= ~ace->e_mask;
++				acl->a_other_mask &= ~ace->e_mask;
++			}
++		} else {
++			if (richace_is_allow(ace)) {
++				acl->a_owner_mask |= ace->e_mask & gmask;
++				acl->a_group_mask |= ace->e_mask & gmask;
++			} else if (richace_is_deny(ace) && gmask == ~0) {
++				gmask = richacl_group_class_allowed(acl);
++				if (likely(gmask != ~0))
++					/* should always be true */
++					goto restart;
++			}
++		}
++	}
++
++	acl->a_flags &= ~ACL4_MASKED;
++}
++EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index fe875fe..14f18b5 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -280,5 +280,6 @@ extern int richace_is_same_identifier(const struct richace *,
+ extern int richacl_masks_to_mode(const struct richacl *);
+ extern unsigned int richacl_mode_to_mask(mode_t);
+ extern unsigned int richacl_want_to_mask(unsigned int);
++extern void richacl_compute_max_masks(struct richacl *);
  
--static int rpcb_get_local(void)
-+static int rpcb_get_local(struct net *net)
- {
- 	int cnt;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	spin_lock(&sn->rpcb_clnt_lock);
- 	if (sn->rpcb_users)
-@@ -202,9 +202,10 @@ void rpcb_put_local(void)
- 	return;
- }
- 
--static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+static void rpcb_set_local(struct net *net, struct rpc_clnt *clnt,
-+			struct rpc_clnt *clnt4)
- {
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	/* Protected by rpcb_create_local_mutex */
- 	sn->rpcb_local_clnt = clnt;
-@@ -212,22 +213,23 @@ static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
- 	smp_wmb(); 
- 	sn->rpcb_users = 1;
- 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
--			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
--			sn->rpcb_local_clnt4);
-+			"%p, rpcb_local_clnt4: %p) for net %p%s\n",
-+			sn->rpcb_local_clnt, sn->rpcb_local_clnt4,
-+			net, (net == &init_net) ? " (init_net)" : "");
- }
- 
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local_unix(void)
-+static int rpcb_create_local_unix(struct net *net)
- {
- 	static const struct sockaddr_un rpcb_localaddr_rpcbind = {
- 		.sun_family		= AF_LOCAL,
- 		.sun_path		= RPCBIND_SOCK_PATHNAME,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= XPRT_TRANSPORT_LOCAL,
- 		.address	= (struct sockaddr *)&rpcb_localaddr_rpcbind,
- 		.addrsize	= sizeof(rpcb_localaddr_rpcbind),
-@@ -260,7 +262,7 @@ static int rpcb_create_local_unix(void)
- 		clnt4 = NULL;
- 	}
- 
--	rpcb_set_local(clnt, clnt4);
-+	rpcb_set_local(net, clnt, clnt4);
- 
- out:
- 	return result;
-@@ -270,7 +272,7 @@ out:
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local_net(void)
-+static int rpcb_create_local_net(struct net *net)
- {
- 	static const struct sockaddr_in rpcb_inaddr_loopback = {
- 		.sin_family		= AF_INET,
-@@ -278,7 +280,7 @@ static int rpcb_create_local_net(void)
- 		.sin_port		= htons(RPCBIND_PORT),
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= (struct sockaddr *)&rpcb_inaddr_loopback,
- 		.addrsize	= sizeof(rpcb_inaddr_loopback),
-@@ -312,7 +314,7 @@ static int rpcb_create_local_net(void)
- 		clnt4 = NULL;
- 	}
- 
--	rpcb_set_local(clnt, clnt4);
-+	rpcb_set_local(net, clnt, clnt4);
- 
- out:
- 	return result;
-@@ -326,16 +328,17 @@ int rpcb_create_local(void)
- {
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
-+	struct net *net = &init_net;
- 
--	if (rpcb_get_local())
-+	if (rpcb_get_local(net))
- 		return result;
- 
- 	mutex_lock(&rpcb_create_local_mutex);
--	if (rpcb_get_local())
-+	if (rpcb_get_local(net))
- 		goto out;
- 
--	if (rpcb_create_local_unix() != 0)
--		result = rpcb_create_local_net();
-+	if (rpcb_create_local_unix(net) != 0)
-+		result = rpcb_create_local_net(net);
- 
- out:
- 	mutex_unlock(&rpcb_create_local_mutex);
+ #endif /* __RICHACL_H */
+-- 
+1.7.5.4
 
