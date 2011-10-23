@@ -1,43 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41751 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751914Ab1JQNjC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 09:39:02 -0400
-Date: Mon, 17 Oct 2011 09:39:01 -0400
-To: Harald Dunkel <harald.dunkel@aixigo.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs3 30% faster than nfs4?
-Message-ID: <20111017133901.GB9809@fieldses.org>
-References: <4E9BDF01.6090106@aixigo.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E9BDF01.6090106@aixigo.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:38583 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751405Ab1JWRoT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:19 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 01/26] vfs: Indicate that the permission functions take all the MAY_* flags
+Date: Sun, 23 Oct 2011 23:13:30 +0530
+Message-Id: <1319391835-5829-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 17, 2011 at 09:53:37AM +0200, Harald Dunkel wrote:
-> Hi folks,
-> 
-> I did a brief test on a local nfs server: Extracting the
-> linux kernel sources on a nfs partition it seems that nfs3
-> is 30% faster than nfs4. For nfs3 I got 5.2MB/sec. Nfs4
-> gave me just 3.8MB/sec. The server was idle except for this
-> test.
-> 
-> Client and server were running 2.6.39 from the Debian backports
-> repository. I just changed the mount option on the client to
-> select nfs3 or nfs4.
-> 
-> I don't want to complain, but I did not expect this huge loss
-> in performance for moving to nfs4. Any helpful comment would be
-> highly appreciated.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-It might be worth looking at /proc/self/mountstats and seeing if you can
-figure out where the time's going in the v4 case.  (Probably
-open/close?)
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-That workload is unlikely to be bandwidth-limited so total time is
-probably the better number to look at instead of bandwidth.
+diff --git a/fs/namei.c b/fs/namei.c
+index 0b3138d..2a4574f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -257,7 +257,7 @@ other_perms:
+ /**
+  * generic_permission -  check for access rights on a Posix-like filesystem
+  * @inode:	inode to check access rights for
+- * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC)
++ * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC, ...)
+  *
+  * Used to check for read/write/execute permissions on a file.
+  * We use "fsuid" for this, letting us set arbitrary permissions
+@@ -331,7 +331,7 @@ static inline int do_inode_permission(struct inode *inode, int mask)
+ /**
+  * inode_permission  -  check for access rights to a given inode
+  * @inode:	inode to check permission on
+- * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC)
++ * @mask:	right to check for (%MAY_READ, %MAY_WRITE, %MAY_EXEC, ...)
+  *
+  * Used to check for read/write/execute permissions on an inode.
+  * We use "fsuid" for this, letting us set arbitrary permissions
+-- 
+1.7.5.4
 
---b.
