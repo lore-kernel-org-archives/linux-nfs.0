@@ -1,36 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:48478 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750755Ab1JYQRg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 12:17:36 -0400
-Received: by ggnb1 with SMTP id b1so648280ggn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 09:17:35 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] Three tiny clean-ups for 3.2 (repost)
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 25 Oct 2011 12:17:32 -0400
-Message-ID: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:46625 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754383Ab1JWRow (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:52 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 10/26] vfs: Make the inode passed to inode_change_ok non-const
+Date: Sun, 23 Oct 2011 23:13:39 +0530
+Message-Id: <1319391835-5829-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I found these nits on the wayward journey to implementing client-side
-migration support.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
+We will need to call iop->permission and iop->get_acl from
+inode_change_ok() for additional permission checks, and both take a
+non-const inode.
+
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/attr.c          |    2 +-
+ include/linux/fs.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Chuck Lever (3):
-      NFS: Remove no-op less-than-zero checks on unsigned variables.
-      NFS: Clean up nfs4_xdr_dec_secinfo()
-      NFS: Fix documenting comment for nfs_create_request()
-
-
- fs/nfs/nfs4filelayout.c |    7 +++----
- fs/nfs/nfs4xdr.c        |    2 --
- fs/nfs/pagelist.c       |    2 +-
- 3 files changed, 4 insertions(+), 7 deletions(-)
-
+diff --git a/fs/attr.c b/fs/attr.c
+index 538e279..f15e9e3 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -26,7 +26,7 @@
+  * Should be called as the first thing in ->setattr implementations,
+  * possibly after taking additional locks.
+  */
+-int inode_change_ok(const struct inode *inode, struct iattr *attr)
++int inode_change_ok(struct inode *inode, struct iattr *attr)
+ {
+ 	unsigned int ia_valid = attr->ia_valid;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index ccece40..724a4f4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2566,7 +2566,7 @@ extern int buffer_migrate_page(struct address_space *,
+ #define buffer_migrate_page NULL
+ #endif
+ 
+-extern int inode_change_ok(const struct inode *, struct iattr *);
++extern int inode_change_ok(struct inode *, struct iattr *);
+ extern int inode_newsize_ok(const struct inode *, loff_t offset);
+ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+ 
 -- 
-Chuck Lever
+1.7.5.4
+
