@@ -1,63 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32121 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753176Ab1JSUne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 16:43:34 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JKhYpN016704
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 16:43:34 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p9JKhXJR014441
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 16:43:34 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] rpcdebug: Add missing debug flags
-Date: Wed, 19 Oct 2011 16:43:33 -0400
-Message-Id: <1319057013-19015-1-git-send-email-steved@redhat.com>
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:39446 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755718Ab1JWRqP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:46:15 -0400
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 12/26] vfs: Make acl_permission_check() work for richacls
+Date: Sun, 23 Oct 2011 23:13:41 +0530
+Message-Id: <1319391835-5829-13-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch added the following debug flags:
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-fscache - enable FSCache debugging
-pnfs - enable general pNFS debugging
-pnfs_ld - enable file layout pNFS debugging
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- support/include/nfs/debug.h |    3 +++
- tools/rpcdebug/rpcdebug.c   |    3 +++
- 2 files changed, 6 insertions(+), 0 deletions(-)
+ fs/namei.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
-diff --git a/support/include/nfs/debug.h b/support/include/nfs/debug.h
-index d391e91..dbec5ba 100644
---- a/support/include/nfs/debug.h
-+++ b/support/include/nfs/debug.h
-@@ -76,6 +76,9 @@ enum {
- #define NFSDBG_CALLBACK		0x0100
- #define NFSDBG_CLIENT		0x0200
- #define NFSDBG_MOUNT		0x0400
-+#define NFSDBG_FSCACHE		0x0800
-+#define NFSDBG_PNFS			0x1000
-+#define NFSDBG_PNFS_LD		0x2000
- #define NFSDBG_ALL		0xFFFF
+diff --git a/fs/namei.c b/fs/namei.c
+index de8c7d3..2685e04 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -230,6 +230,20 @@ static int acl_permission_check(struct inode *inode, int mask)
+ 	if (current_user_ns() != inode_userns(inode))
+ 		goto other_perms;
  
- #endif /* _NFS_DEBUG_H */
-diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
-index 275a491..444616d 100644
---- a/tools/rpcdebug/rpcdebug.c
-+++ b/tools/rpcdebug/rpcdebug.c
-@@ -167,6 +167,9 @@ static struct flagmap {
- 	FLAG(NFS,       CALLBACK),
- 	FLAG(NFS,       CLIENT),
- 	FLAG(NFS,       MOUNT),
-+	FLAG(NFS,       FSCACHE),
-+	FLAG(NFS,       PNFS),
-+	FLAG(NFS,       PNFS_LD),
- 	FLAG(NFS,	ALL),
- 
- 	/* nfsd */
++	if (IS_RICHACL(inode)) {
++		int error = check_acl(inode, mask);
++		if (error != -EAGAIN)
++			return error;
++		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
++			    MAY_CHMOD | MAY_SET_TIMES)) {
++			/*
++			 * The file permission bit cannot grant these
++			 * permissions.
++			 */
++			return -EACCES;
++		}
++	}
++
+ 	if (likely(current_fsuid() == inode->i_uid))
+ 		mode >>= 6;
+ 	else {
 -- 
-1.7.6.2
+1.7.5.4
 
