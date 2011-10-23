@@ -1,87 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33490 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932272Ab1JNRgZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:36:25 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Brent Welch <welch@panasas.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 5/6] pnfs-obj: Support for RAID5 read-4-write interface.
-Date: Fri, 14 Oct 2011 19:36:16 +0200
-Message-ID: <1318613776-3839-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4E98703E.7040605@panasas.com>
-References: <4E98703E.7040605@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:51955 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753389Ab1JWRoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:23 -0400
+Received: from /spool/local
+	by e23smtp08.au.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Sun, 23 Oct 2011 17:43:03 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 02/26] vfs: Add hex format for MAY_* flag values
+Date: Sun, 23 Oct 2011 23:13:31 +0530
+Message-Id: <1319391835-5829-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The ore need suplied a r4w_get_page/r4w_put_page API
-from Filesystem so it can get cache pages to read-into when
-writing parial stripes.
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+We are going to add more flags and having them in hex format
+make it simpler
+
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfs/objlayout/objio_osd.c |   38 ++++++++++++++++++++++++++++++++++++++
- 1 files changed, 38 insertions(+), 0 deletions(-)
+ include/linux/fs.h |   17 +++++++++--------
+ 1 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 3161da6..c807ab9 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -459,6 +459,43 @@ static void _write_done(struct ore_io_state *ios, void *private)
- 	objlayout_write_done(&objios->oir, status, objios->sync);
- }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 277f497..c1884e9 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -58,14 +58,15 @@ struct inodes_stat_t {
  
-+static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
-+{
-+	struct objio_state *objios = priv;
-+	struct nfs_write_data *wdata = objios->oir.rpcdata;
-+	pgoff_t index = offset / PAGE_SIZE;
-+	struct page *page = find_get_page(wdata->inode->i_mapping, index);
-+
-+	if (!page) {
-+		page = find_or_create_page(wdata->inode->i_mapping,
-+						index, GFP_NOFS);
-+		if (unlikely(!page)) {
-+			dprintk("%s: grab_cache_page Failed index=0x%lx\n",
-+				__func__, index);
-+			return NULL;
-+		}
-+		unlock_page(page);
-+	}
-+	if (PageDirty(page) || PageWriteback(page))
-+		*uptodate = true;
-+	else
-+		*uptodate = PageUptodate(page);
-+	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
-+	return page;
-+}
-+
-+static void __r4w_put_page(void *priv, struct page *page)
-+{
-+	dprintk("%s: index=0x%lx\n", __func__, page->index);
-+	page_cache_release(page);
-+	return;
-+}
-+
-+static const struct _ore_r4w_op _r4w_op = {
-+	.get_page = &__r4w_get_page,
-+	.put_page = &__r4w_put_page,
-+};
-+
- int objio_write_pagelist(struct nfs_write_data *wdata, int how)
- {
- 	struct objio_state *objios;
-@@ -472,6 +509,7 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
- 		return ret;
+ #define NR_FILE  8192	/* this can well be larger on a larger system */
  
- 	objios->sync = 0 != (how & FLUSH_SYNC);
-+	objios->ios->r4w = &_r4w_op;
+-#define MAY_EXEC 1
+-#define MAY_WRITE 2
+-#define MAY_READ 4
+-#define MAY_APPEND 8
+-#define MAY_ACCESS 16
+-#define MAY_OPEN 32
+-#define MAY_CHDIR 64
+-#define MAY_NOT_BLOCK 128	/* called from RCU mode, don't block */
++#define MAY_EXEC		0x00000001
++#define MAY_WRITE		0x00000002
++#define MAY_READ		0x00000004
++#define MAY_APPEND		0x00000008
++#define MAY_ACCESS		0x00000010
++#define MAY_OPEN		0x00000020
++#define MAY_CHDIR		0x00000040
++/* called from RCU mode, don't block */
++#define MAY_NOT_BLOCK		0x00000080
  
- 	if (!objios->sync)
- 		objios->ios->done = _write_done;
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
 -- 
-1.7.2.3
+1.7.5.4
 
