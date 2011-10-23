@@ -1,87 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:33596 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751643Ab1JLRRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Oct 2011 13:17:52 -0400
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by e8.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p9CH2RTY014203
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 13:02:27 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9CHHfGH2326706
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 13:17:41 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9CHHS0p027197
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Oct 2011 14:17:28 -0300
-Date: Wed, 12 Oct 2011 10:17:27 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Check validity of cl_rpcclient in nfs_server_list_show
-Message-ID: <20111012171727.GA18925@us.ibm.com>
-References: <1315965305-23757-1-git-send-email-malahal@us.ibm.com>
- <20110919153429.GA16725@us.ibm.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B35626A@SACMVEXC2-PRD.hq.netapp.com>
- <20110921002714.GA31689@us.ibm.com>
- <20110927164335.GA19331@us.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110927164335.GA19331@us.ibm.com>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:51968 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753928Ab1JWRoj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:39 -0400
+Received: from /spool/local
+	by e23smtp08.au.ibm.com with XMail ESMTP
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Sun, 23 Oct 2011 17:43:19 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V8 06/26] vfs: Add IS_RICHACL() test for richacl support
+Date: Sun, 23 Oct 2011 23:13:35 +0530
+Message-Id: <1319391835-5829-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any comments on this patch?
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-Malahal Naineni [malahal@us.ibm.com] wrote:
-> Malahal Naineni [malahal@us.ibm.com] wrote:
-> > Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
-> > > Shouldn't we just skip all nfs_client structures that don't have
-> > > cl_cons_state set to NFS_CS_READY? I see no reason to display their
-> > > properties even if they have got far enough as to create an rpc client.
-> > > 
-> > > Cheers
-> > >   Trond
-> > 
-> > Sounds good to me. Here is a tested patch.
-> 
-> Any comments on this one?
-> 
-> Thanks, Malahal.
-> 
-> > 
-> > 
-> > As soon as the nfs_client gets created, its cl_rpcclient is set to
-> > ERR_PTR(-EINVAL). The rpc client structure is allocated later. Check
-> > if the client is ready before using the cl_rpcclient pointer.
-> > 
-> > Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
-> > ---
-> >  fs/nfs/client.c |    4 ++++
-> >  1 files changed, 4 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 5833fbb..a54c45e 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -1867,6 +1867,10 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
-> >  	/* display one transport per line on subsequent lines */
-> >  	clp = list_entry(v, struct nfs_client, cl_share_link);
-> > 
-> > +	/* Check if the client is initialized */
-> > +	if (clp->cl_cons_state != NFS_CS_READY)
-> > +		return 0;
-> > +
-> >  	seq_printf(m, "v%u %s %s %3d %s\n",
-> >  		   clp->rpc_ops->version,
-> >  		   rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_HEX_ADDR),
-> > -- 
-> > 1.7.0.4
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
+
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ include/linux/fs.h |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1994b84..7b4bfe6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -210,6 +210,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ #define MS_NOSEC	(1<<28)
+ #define MS_BORN		(1<<29)
+ #define MS_ACTIVE	(1<<30)
+@@ -270,6 +271,7 @@ struct inodes_stat_t {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
+ 
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -283,7 +285,7 @@ struct inodes_stat_t {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+ 
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
+-- 
+1.7.5.4
+
