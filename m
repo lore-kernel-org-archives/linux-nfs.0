@@ -1,228 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:37608 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932876Ab1JRPgN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:36:13 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 14/26] richacl: Permission mapping functions
-Date: Tue, 18 Oct 2011 21:02:49 +0530
-Message-Id: <1318951981-5508-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:35738 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752193Ab1J0QFh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2011 12:05:37 -0400
+Received: by mail-iy0-f174.google.com with SMTP id y12so3054806iab.19
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Oct 2011 09:05:37 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>,
+        Jim Rees <rees@umich.edu>
+Subject: [PATCH-v2] nfs4: serialize layoutcommit
+Date: Sun, 23 Oct 2011 20:21:17 -0700
+Message-Id: <1319426477-2111-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Current pnfs_layoutcommit_inode can not handle parallel layoutcommit.
+And as Trond suggested , there is no need for client to optimize for
+parallel layoutcommit. So add NFS_INO_LAYOUTCOMMITTING flag to
+mark inflight layoutcommit and serialize lalyoutcommit with it.
+Also mark_inode_dirty_sync if pnfs_layoutcommit_inode fails to issue
+layoutcommit.
 
-We need to map from POSIX permissions to NFSv4 permissions when a
-chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-is set (which implicitly sets the file permission bits), and from the
-MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-doing an access check in a richacl.
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/richacl_base.c       |  117 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   46 ++++++++++++++++++
- 2 files changed, 163 insertions(+), 0 deletions(-)
+change from v1:
+remove else if after goto.
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 3536626..b6460a9 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -69,6 +69,123 @@ richacl_clone(const struct richacl *acl)
+ fs/nfs/nfs4proc.c      |    6 ++++++
+ fs/nfs/pnfs.c          |   25 ++++++++++++++++++++++---
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d2ae413..b60fddf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5950,6 +5950,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 	struct pnfs_layout_segment *lseg, *tmp;
++	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+ 
+ 	pnfs_cleanup_layoutcommit(data);
+ 	/* Matched by references in pnfs_set_layoutcommit */
+@@ -5959,6 +5960,11 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 				       &lseg->pls_flags))
+ 			put_lseg(lseg);
+ 	}
++
++	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
++	smp_mb__after_clear_bit();
++	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
++
+ 	put_rpccred(data->cred);
+ 	kfree(data);
  }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ee73d9a..a2478bc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1443,17 +1443,31 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	/* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data) {
+-		mark_inode_dirty_sync(inode);
+ 		status = -ENOMEM;
+ 		goto out;
+ 	}
  
- /**
-+ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
-+ * @mask:	%ACE4_* permission mask
-+ *
-+ * See richacl_masks_to_mode().
-+ */
-+static int
-+richacl_mask_to_mode(unsigned int mask)
-+{
-+	int mode = 0;
++	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
++		goto out_free;
 +
-+	if (mask & ACE4_POSIX_MODE_READ)
-+		mode |= MAY_READ;
-+	if (mask & ACE4_POSIX_MODE_WRITE)
-+		mode |= MAY_WRITE;
-+	if (mask & ACE4_POSIX_MODE_EXEC)
-+		mode |= MAY_EXEC;
++	if (test_and_set_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags)) {
++		if (!sync) {
++			status = -EAGAIN;
++			goto out_free;
++		}
++		status = wait_on_bit_lock(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING,
++					nfs_wait_bit_killable, TASK_KILLABLE);
++		if (status)
++			goto out_free;
++	}
 +
-+	return mode;
-+}
-+
-+/**
-+ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
-+ *
-+ * When setting a richacl, we set the file permission bits to indicate maximum
-+ * permissions: for example, we set the Write permission when a mask contains
-+ * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
-+ *
-+ * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
-+ * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
-+ * Such permissions can still be effective, but not for new files or after a
-+ * chmod(), and only if they were set explicitly, for example, by setting a
-+ * richacl.
-+ */
-+int
-+richacl_masks_to_mode(const struct richacl *acl)
-+{
-+	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-+	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-+	       richacl_mask_to_mode(acl->a_other_mask);
-+}
-+EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
-+
-+/**
-+ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-+ *
-+ * When the file permission bits of a file are set with chmod(), this specifies
-+ * the maximum permissions that processes will get.  All permissions beyond
-+ * that will be removed from the file masks, and become ineffective.
-+ *
-+ * We also add in the permissions which are always allowed no matter what the
-+ * acl says.
-+ */
-+unsigned int
-+richacl_mode_to_mask(mode_t mode)
-+{
-+	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
-+
-+	if (mode & MAY_READ)
-+		mask |= ACE4_POSIX_MODE_READ;
-+	if (mode & MAY_WRITE)
-+		mask |= ACE4_POSIX_MODE_WRITE;
-+	if (mode & MAY_EXEC)
-+		mask |= ACE4_POSIX_MODE_EXEC;
-+
-+	return mask;
-+}
-+
-+/**
-+ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-+ * @want:	@want argument of the permission inode operation
-+ *
-+ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
-+ *
-+ * Richacls use the iop->may_create and iop->may_delete hooks which are
-+ * used for checking if creating and deleting files is allowed.  These hooks do
-+ * not use richacl_want_to_mask(), so we do not have to deal with mapping
-+ * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
-+ * here.
-+ */
-+unsigned int
-+richacl_want_to_mask(unsigned int want)
-+{
-+	unsigned int mask = 0;
-+
-+	if (want & MAY_READ)
-+		mask |= ACE4_READ_DATA;
-+	if (want & MAY_DELETE_SELF)
-+		mask |= ACE4_DELETE;
-+	if (want & MAY_TAKE_OWNERSHIP)
-+		mask |= ACE4_WRITE_OWNER;
-+	if (want & MAY_CHMOD)
-+		mask |= ACE4_WRITE_ACL;
-+	if (want & MAY_SET_TIMES)
-+		mask |= ACE4_WRITE_ATTRIBUTES;
-+	if (want & MAY_EXEC)
-+		mask |= ACE4_EXECUTE;
-+	/*
-+	 * differentiate MAY_WRITE from these request
-+	 */
-+	if (want & (MAY_APPEND |
-+		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-+		    MAY_DELETE_CHILD)) {
-+		if (want & MAY_APPEND)
-+			mask |= ACE4_APPEND_DATA;
-+		if (want & MAY_CREATE_FILE)
-+			mask |= ACE4_ADD_FILE;
-+		if (want & MAY_CREATE_DIR)
-+			mask |= ACE4_ADD_SUBDIRECTORY;
-+		if (want & MAY_DELETE_CHILD)
-+			mask |= ACE4_DELETE_CHILD;
-+	} else if (want & MAY_WRITE)
-+		mask |= ACE4_WRITE_DATA;
-+	return mask;
-+}
-+EXPORT_SYMBOL_GPL(richacl_want_to_mask);
-+
-+/**
-  * richace_is_same_identifier  -  are both identifiers the same?
-  */
- int
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 745cfc1..61f1b8a 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -117,6 +117,49 @@ struct richacl {
- 	ACE4_WRITE_OWNER |				\
- 	ACE4_SYNCHRONIZE)
+ 	INIT_LIST_HEAD(&data->lseg_list);
+ 	spin_lock(&inode->i_lock);
+ 	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
++		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
+ 		spin_unlock(&inode->i_lock);
+-		kfree(data);
+-		goto out;
++		wake_up_bit(&nfsi->flags, NFS_INO_LAYOUTCOMMITTING);
++		goto out_free;
+ 	}
  
-+/*
-+ * The POSIX permissions are supersets of the following NFSv4 permissions:
-+ *
-+ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-+ *    of the file system object.
-+ *
-+ *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
-+ *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
-+ *
-+ *  - MAY_EXECUTE maps to ACE4_EXECUTE.
-+ *
-+ *  (Some of these NFSv4 permissions have the same bit values.)
-+ */
-+#define ACE4_POSIX_MODE_READ (			\
-+		ACE4_READ_DATA |		\
-+		ACE4_LIST_DIRECTORY)
-+#define ACE4_POSIX_MODE_WRITE (			\
-+		ACE4_WRITE_DATA |		\
-+		ACE4_ADD_FILE |			\
-+		ACE4_APPEND_DATA |		\
-+		ACE4_ADD_SUBDIRECTORY |		\
-+		ACE4_DELETE_CHILD)
-+#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
-+#define ACE4_POSIX_MODE_ALL (			\
-+		ACE4_POSIX_MODE_READ |		\
-+		ACE4_POSIX_MODE_WRITE |		\
-+		ACE4_POSIX_MODE_EXEC)
-+/*
-+ * These permissions are always allowed
-+ * no matter what the acl says.
-+ */
-+#define ACE4_POSIX_ALWAYS_ALLOWED (	\
-+		ACE4_SYNCHRONIZE |	\
-+		ACE4_READ_ATTRIBUTES |	\
-+		ACE4_READ_ACL)
-+/*
-+ * The owner is implicitly granted
-+ * these permissions under POSIX.
-+ */
-+#define ACE4_POSIX_OWNER_ALLOWED (		\
-+		ACE4_WRITE_ATTRIBUTES |		\
-+		ACE4_WRITE_OWNER |		\
-+		ACE4_WRITE_ACL)
- /**
-  * richacl_get  -  grab another reference to a richacl handle
-  */
-@@ -241,5 +284,8 @@ extern struct richacl *richacl_alloc(int);
- extern int richace_is_same_identifier(const struct richace *,
- 				      const struct richace *);
- extern int richace_set_who(struct richace *, const char *);
-+extern int richacl_masks_to_mode(const struct richacl *);
-+extern unsigned int richacl_mode_to_mask(mode_t);
-+extern unsigned int richacl_want_to_mask(unsigned int);
+ 	pnfs_list_write_lseg(inode, &data->lseg_list);
+@@ -1475,6 +1489,11 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
  
- #endif /* __RICHACL_H */
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
++	if (status)
++		mark_inode_dirty_sync(inode);
+ 	dprintk("<-- %s status %d\n", __func__, status);
+ 	return status;
++out_free:
++	kfree(data);
++	goto out;
+ }
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 60a137b..ab2c634 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -229,6 +229,7 @@ struct nfs_inode {
+ #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
+ #define NFS_INO_PNFS_COMMIT	(8)		/* use pnfs code for commit */
+ #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
++#define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
+ 
+ static inline struct nfs_inode *NFS_I(const struct inode *inode)
+ {
 -- 
-1.7.5.4
+1.7.1.262.g5ef3d
 
