@@ -1,199 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga14.intel.com ([143.182.124.37]:46240 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753494Ab1JTPzr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 11:55:47 -0400
-Date: Thu, 20 Oct 2011 23:55:42 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
-        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
-        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
-Subject: [PATCH 1/2] nfs: writeback pages wait queue
-Message-ID: <20111020155542.GA7054@localhost>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:54402 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755435Ab1JXLgk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 07:36:40 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 24 Oct 2011 05:36:40 -0600
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V8 00/26]  New ACL format for better NFSv4 acl interoperability
+In-Reply-To: <20111024094910.GA28693@infradead.org>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20111024091716.GA1109@fieldses.org> <20111024094910.GA28693@infradead.org>
+Date: Mon, 24 Oct 2011 17:05:28 +0530
+Message-ID: <87fwiiei67.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The generic writeback routines are departing from congestion_wait()
-in preference of get_request_wait(), aka. waiting on the block queues.
+On Mon, 24 Oct 2011 05:49:10 -0400, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Oct 24, 2011 at 05:17:16AM -0400, J. Bruce Fields wrote:
+> > > How do we push these changes to Linus tree ? Andrew, Viro, any comment
+> > > on how we can get this merged upstream ?
+> > 
+> > Andrew, it sounds like you might be willing to shepherd these through?
+> > Let us know what you'd need.
+> 
+> It really has to through the VFS tree.  And to be honest despite the
+> repostings there's been exactly zero progress on getting there.
+> 
+> Please as a first thing submit the various small cleanups indepent
+> of the other changes.  If you can't even those in there's no point
+> in trying. 
 
-Introduce the missing writeback wait queue for NFS, otherwise its
-writeback pages will grow out of control, exhausting all PG_dirty pages.
+I will do this as the next step. The series actually contain them as
+separate patches.
 
-Feng: do more coarse grained throttle on each ->writepages rather than
-on each page, for better performance and avoid throttled-before-send-rpc
-deadlock
+> Second do not repeat the mistakes of the old ACL code,
+> that is don't do too much work inside the filesystems.  Al, Linus
+> and me spent a lot of working on pushing it into common code and
+> it's not done.  For any new ACL model I really want to see zero
+> per-fs code except for callouts in chmod & co and actually
+> setting the xattr vector to a genericly provided one.  And please
+> wire up all common filesystems to actually prove that point.
+> 
 
-CC: Jens Axboe <axboe@kernel.dk>
-CC: Chris Mason <chris.mason@oracle.com>
-CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Feng Tang <feng.tang@intel.com>
-Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
----
- fs/nfs/client.c           |    2 
- fs/nfs/write.c            |   84 +++++++++++++++++++++++++++++++-----
- include/linux/nfs_fs_sb.h |    1 
- 3 files changed, 77 insertions(+), 10 deletions(-)
+This is what is done currently. I have only hooked up ext4 though.
+What I have done is add a new inode operation get_richacl, that 
+returns struct richacl *. Are you suggesting to get rid of that
+and make sure get_acl can return different type of ACL based on
+argument passed ?. IMHO that would end up making the code more complex.
 
---- linux-next.orig/fs/nfs/write.c	2011-10-20 23:08:17.000000000 +0800
-+++ linux-next/fs/nfs/write.c	2011-10-20 23:45:59.000000000 +0800
-@@ -190,11 +190,64 @@ static int wb_priority(struct writeback_
-  * NFS congestion control
-  */
- 
-+#define NFS_WAIT_PAGES	(1024L >> (PAGE_SHIFT - 10))
- int nfs_congestion_kb;
- 
--#define NFS_CONGESTION_ON_THRESH 	(nfs_congestion_kb >> (PAGE_SHIFT-10))
--#define NFS_CONGESTION_OFF_THRESH	\
--	(NFS_CONGESTION_ON_THRESH - (NFS_CONGESTION_ON_THRESH >> 2))
-+/*
-+ * SYNC requests will block on (2*limit) and wakeup on (2*limit-NFS_WAIT_PAGES)
-+ * ASYNC requests will block on (limit) and wakeup on (limit - NFS_WAIT_PAGES)
-+ * In this way SYNC writes will never be blocked by ASYNC ones.
-+ */
-+
-+static void nfs_set_congested(long nr, struct backing_dev_info *bdi)
-+{
-+	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
-+
-+	if (nr > limit && !test_bit(BDI_async_congested, &bdi->state))
-+		set_bdi_congested(bdi, BLK_RW_ASYNC);
-+	else if (nr > 2 * limit && !test_bit(BDI_sync_congested, &bdi->state))
-+		set_bdi_congested(bdi, BLK_RW_SYNC);
-+}
-+
-+static void nfs_wait_congested(int is_sync,
-+			       struct backing_dev_info *bdi,
-+			       wait_queue_head_t *wqh)
-+{
-+	int waitbit = is_sync ? BDI_sync_congested : BDI_async_congested;
-+	DEFINE_WAIT(wait);
-+
-+	if (!test_bit(waitbit, &bdi->state))
-+		return;
-+
-+	for (;;) {
-+		prepare_to_wait(&wqh[is_sync], &wait, TASK_UNINTERRUPTIBLE);
-+		if (!test_bit(waitbit, &bdi->state))
-+			break;
-+
-+		io_schedule();
-+	}
-+	finish_wait(&wqh[is_sync], &wait);
-+}
-+
-+static void nfs_wakeup_congested(long nr,
-+				 struct backing_dev_info *bdi,
-+				 wait_queue_head_t *wqh)
-+{
-+	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
-+
-+	if (nr < 2 * limit - min(limit / 8, NFS_WAIT_PAGES)) {
-+		if (test_bit(BDI_sync_congested, &bdi->state))
-+			clear_bdi_congested(bdi, BLK_RW_SYNC);
-+		if (waitqueue_active(&wqh[BLK_RW_SYNC]))
-+			wake_up(&wqh[BLK_RW_SYNC]);
-+	}
-+	if (nr < limit - min(limit / 8, NFS_WAIT_PAGES)) {
-+		if (test_bit(BDI_async_congested, &bdi->state))
-+			clear_bdi_congested(bdi, BLK_RW_ASYNC);
-+		if (waitqueue_active(&wqh[BLK_RW_ASYNC]))
-+			wake_up(&wqh[BLK_RW_ASYNC]);
-+	}
-+}
- 
- static int nfs_set_page_writeback(struct page *page)
- {
-@@ -205,11 +258,8 @@ static int nfs_set_page_writeback(struct
- 		struct nfs_server *nfss = NFS_SERVER(inode);
- 
- 		page_cache_get(page);
--		if (atomic_long_inc_return(&nfss->writeback) >
--				NFS_CONGESTION_ON_THRESH) {
--			set_bdi_congested(&nfss->backing_dev_info,
--						BLK_RW_ASYNC);
--		}
-+		nfs_set_congested(atomic_long_inc_return(&nfss->writeback),
-+				  &nfss->backing_dev_info);
- 	}
- 	return ret;
- }
-@@ -221,8 +271,10 @@ static void nfs_end_page_writeback(struc
- 
- 	end_page_writeback(page);
- 	page_cache_release(page);
--	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
--		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
-+
-+	nfs_wakeup_congested(atomic_long_dec_return(&nfss->writeback),
-+			     &nfss->backing_dev_info,
-+			     nfss->writeback_wait);
- }
- 
- static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblock)
-@@ -323,10 +375,17 @@ static int nfs_writepage_locked(struct p
- 
- int nfs_writepage(struct page *page, struct writeback_control *wbc)
- {
-+	struct inode *inode = page->mapping->host;
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	int ret;
- 
- 	ret = nfs_writepage_locked(page, wbc);
- 	unlock_page(page);
-+
-+	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
-+			   &nfss->backing_dev_info,
-+			   nfss->writeback_wait);
-+
- 	return ret;
- }
- 
-@@ -342,6 +401,7 @@ static int nfs_writepages_callback(struc
- int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
- {
- 	struct inode *inode = mapping->host;
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	unsigned long *bitlock = &NFS_I(inode)->flags;
- 	struct nfs_pageio_descriptor pgio;
- 	int err;
-@@ -358,6 +418,10 @@ int nfs_writepages(struct address_space 
- 	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
- 	nfs_pageio_complete(&pgio);
- 
-+	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
-+			   &nfss->backing_dev_info,
-+			   nfss->writeback_wait);
-+
- 	clear_bit_unlock(NFS_INO_FLUSHING, bitlock);
- 	smp_mb__after_clear_bit();
- 	wake_up_bit(bitlock, NFS_INO_FLUSHING);
---- linux-next.orig/include/linux/nfs_fs_sb.h	2011-10-20 23:08:17.000000000 +0800
-+++ linux-next/include/linux/nfs_fs_sb.h	2011-10-20 23:45:12.000000000 +0800
-@@ -102,6 +102,7 @@ struct nfs_server {
- 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
- 	struct backing_dev_info	backing_dev_info;
- 	atomic_long_t		writeback;	/* number of writeback pages */
-+	wait_queue_head_t	writeback_wait[2];
- 	int			flags;		/* various flags */
- 	unsigned int		caps;		/* server capabilities */
- 	unsigned int		rsize;		/* read size */
---- linux-next.orig/fs/nfs/client.c	2011-10-20 23:08:17.000000000 +0800
-+++ linux-next/fs/nfs/client.c	2011-10-20 23:45:12.000000000 +0800
-@@ -1066,6 +1066,8 @@ static struct nfs_server *nfs_alloc_serv
- 	INIT_LIST_HEAD(&server->layouts);
- 
- 	atomic_set(&server->active, 0);
-+	init_waitqueue_head(&server->writeback_wait[BLK_RW_SYNC]);
-+	init_waitqueue_head(&server->writeback_wait[BLK_RW_ASYNC]);
- 
- 	server->io_stats = nfs_alloc_iostats();
- 	if (!server->io_stats) {
+
+> I also really hate all the duplication - I want to see a really good
+> reason why all this code needs to be duplicated.  Just look at
+> the mess done to check_acl and the ACL caching in the inode and
+> any normal person would throw up.  There is absolutely no reason
+> to not implement Posix ACLs as a subset of the NFSv4 ACL (not actually
+> a subset in the strict mathematical sense, but close enough).
+> 
+
+Can you explain this more ? What you would like to see changed ?
+
+
+> After all this techical work (which was brought up before) has been
+> done you can resubmit it.  And that point you'd better have very
+> good and very lengthy rationale for why adding an utterly stupid
+> ACL model is supposed to be a good idea.
+
+Thanks for the feedback.
+
+-aneesh
+
