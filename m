@@ -1,47 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:53021 "EHLO ebox.rath.org"
+Received: from fieldses.org ([174.143.236.118]:38650 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750947Ab1JVUsM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Oct 2011 16:48:12 -0400
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu> <20111019171551.GA32028@fieldses.org> <87d3dsdcf4.fsf@inspiron.ap.columbia.edu> <20111020120207.GL5444@fieldses.org> <877h3za89w.fsf@inspiron.ap.columbia.edu> <20111020195731.GC9987@fieldses.org> <871uu79z7m.fsf@inspiron.ap.columbia.edu> <1319155647.2768.4.camel@lade.trondhjem.org> <87vcrisb5y.fsf@inspiron.ap.columbia.edu> <1319212854.4537.9.camel@lade.trondhjem.org> <4EA1994D.6060700@rath.org> <1319217023.4537.28.camel@lade.trondhjem.org> <4EA1AF6D.60603@rath.org> <4EA30FC7.7080600@panasas.com>
-In-Reply-To: <4EA30FC7.7080600@panasas.com>
+	id S1754241Ab1JXJRY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Oct 2011 05:17:24 -0400
+Date: Mon, 24 Oct 2011 05:17:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V8 00/26]  New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20111024091716.GA1109@fieldses.org>
+References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
- charset=UTF-8
-Subject: Re: Does NFS4 need st_gen?
-From: Nikolaus Rath <Nikolaus@rath.org>
-Date: Sat, 22 Oct 2011 16:10:46 -0400
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Message-ID: <76b3967b-5604-43c9-abd1-06c1b3a7e22c@email.android.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> How do we push these changes to Linus tree ? Andrew, Viro, any comment
+> on how we can get this merged upstream ?
+
+Andrew, it sounds like you might be willing to shepherd these through?
+Let us know what you'd need.
+
+--b.
 
 
-Boaz Harrosh <bharrosh@panasas.com> wrote:
 
->On 10/21/2011 10:44 AM, Nikolaus Rath wrote:
->> Yes, with 64bit inodes everything would be fine. But fuse uses 'long'
->> for inodes, so on 32bit systems you only have 32bit inodes even if
->ino_t
->> is 64bit.
->
->With out knowing any of the details, what kind of brain dead thing is
->putting "long" in an API. What do you do with 32bit user-mode on 64bit
->Kernel.
-
-It's called a bug, they are known to appear occasionally in computer software.
-
->
->32 bits for inode numbers is a broken system for 15 years already.
->Fix the broken FUSE that falsely calls itself File-System and
->stop bitching about NFS. It's FUSE you should be hacking and fixing.
-
-I merely answered the question of why I was interested in generation numbers in NFS4.
-
-
-Best,
-Nikolaus 
--- 
-Sent from my Android phone with K-9 Mail. Please excuse my brevity.
+On Sun, Oct 23, 2011 at 11:13:29PM +0530, Aneesh Kumar K.V wrote:
+> Hi,
+> 
+> The following set of patches implements VFS and ext4 changes needed to implement
+> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+> extended by file masks to fit into the standard POSIX file permission model.
+> They are designed to work seamlessly locally as well as across the NFSv4 and
+> CIFS/SMB2 network file system protocols.
+> 
+> A user-space utility for displaying and changing richacls is available at [4]
+> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+> 
+> [4] git://github.com/kvaneesh/richacl-tools.git master
+> 
+> To test richacl on ext4 use tune2fs -O richacl to enable richacl feature and mount
+> the file system using -o acl mount option.
+> 
+> More details regarding richacl can be found at
+> http://acl.bestbits.at/richacl/
+> 
+> Changes from v7:
+> a) Update patches based on review comments.
+> b) Add acked-by:
+> c) Change the richacl xattr format based on review feedback.
+> 
+> git repository With all the patches can be found at
+> git://github.com/kvaneesh/linux.git richacl
+> 
+> IMHO the patches are ready to be merged upstream.
