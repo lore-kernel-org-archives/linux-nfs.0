@@ -1,66 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43234 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:25416 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752146Ab1JUApi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 20:45:38 -0400
-Date: Thu, 20 Oct 2011 20:45:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruen@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
-Message-ID: <20111021004529.GA12745@fieldses.org>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20111019222021.GB1874@fieldses.org>
- <87k4805alx.fsf@linux.vnet.ibm.com>
- <20111020091434.GC5444@fieldses.org>
- <20111020091946.GA23773@infradead.org>
- <20111020102538.GG5444@fieldses.org>
- <1319154390.2270.52.camel@schurl.linbit>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1319154390.2270.52.camel@schurl.linbit>
+	id S1753966Ab1JXJkF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2011 05:40:05 -0400
+Subject: Re: NFS4 client blocked (kernel 3.0.4)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: David Flynn <davidf@rd.bbc.co.uk>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 24 Oct 2011 11:39:45 +0200
+In-Reply-To: <20111022082838.GB32587@rd.bbc.co.uk>
+References: <20111022082838.GB32587@rd.bbc.co.uk>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1319449185.2785.6.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 21, 2011 at 01:46:29AM +0200, Andreas Gruenbacher wrote:
-> On Thu, 2011-10-20 at 06:25 -0400, J. Bruce Fields wrote:
-> > So if we want to do this without strings:
-> > 
-> > > > > +struct richace_xattr {
-> > > > > + __le16          e_type;
-> > > > > + __le16          e_flags;
-> > > > > + __le32          e_mask;
-> > > > > + __le32          e_id;
-> > > > > + char            e_who[0];
-> > 
-> > We could drop that last field and use some predefined values for e_id to
-> > represent owner/group/everyone in the e_type == ACE4_SPECIAL_WHO case.
+On Sat, 2011-10-22 at 08:28 +0000, David Flynn wrote: 
+> Dear all,
 > 
-> That makes sense to me.
+> When mounting a solaris NFS4 export on a v3.0.4 client, we've experienced
+> processes becoming blocked.  Any further attempt to access the mountpoint
+> from another process also blocks.  Other mountpoints are unaffected.
+> I have not identified a test case to reproduce the behaviour.
 > 
-> There seems to be a WELL_KNOWN_SID_TYPE enumeration which maps those
-> kinds of special identifiers to small integers in Windows; maybe it
-> makes sense to use the same numbers for OWNER@, GROUP@, and EVERYONE@.
+> Any thoughts on the matter would be most welcome,
 > 
-> > Then I'm not sure how you'd extend it if you later decided to add
-> > Windows GUID's or whatever.
-> > 
-> > But maybe it's not realistic to expect to be able to do that without a
-> > new interface and on-disk format: how could old software be expected to
-> > deal with acls that didn't use uid's?
+> Kind regards,
 > 
-> The acl itself has a version field, so new formats could be introduced
-> in the future with a new version.
+> ..david
+> 
+> from /proc/mounts:
+> home:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=172.29.190.20,minorversion=0,local_lock=none,addr=172.29.120.140 0 0
+> 
+> [105121.204200] INFO: task bash:4457 blocked for more than 120 seconds.
+> [105121.247424] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> [105121.299955] bash            D ffffffff818050a0     0  4457      1 0x00000000
+> [105121.347840]  ffff8802954b5c28 0000000000000082 ffff8802954b5db8 0000000000012a40
+> [105121.397793]  ffff8802954b5fd8 0000000000012a40 ffff8802954b4000 0000000000012a40
+> [105121.441724]  0000000000012a40 0000000000012a40 ffff8802954b5fd8 0000000000012a40
+> [105121.441728] Call Trace:
+> [105121.441740]  [<ffffffff81110030>] ? __lock_page+0x70/0x70
+> [105121.441744]  [<ffffffff8160007c>] io_schedule+0x8c/0xd0
+> [105121.441746]  [<ffffffff8111003e>] sleep_on_page+0xe/0x20
+> [105121.441749]  [<ffffffff816008ff>] __wait_on_bit+0x5f/0x90
+> [105121.441751]  [<ffffffff81110203>] wait_on_page_bit+0x73/0x80
+> [105121.441756]  [<ffffffff81085bf0>] ? autoremove_wake_function+0x40/0x40
+> [105121.441759]  [<ffffffff8111c5e5>] ? pagevec_lookup_tag+0x25/0x40
+> [105121.441761]  [<ffffffff81110436>] filemap_fdatawait_range+0xf6/0x1a0
+> [105121.441786]  [<ffffffffa023a7d0>] ? nfs_destroy_directcache+0x20/0x20 [nfs]
+> [105121.441789]  [<ffffffff8111bae1>] ? do_writepages+0x21/0x40
+> [105121.441791]  [<ffffffff811116bb>] ? __filemap_fdatawrite_range+0x5b/0x60
+> [105121.441793]  [<ffffffff8111050b>] filemap_fdatawait+0x2b/0x30
+> [105121.441795]  [<ffffffff81112124>] filemap_write_and_wait+0x44/0x60
+> [105121.441803]  [<ffffffffa0232805>] nfs_getattr+0x105/0x120 [nfs]
+> [105121.441806]  [<ffffffff81605e88>] ? do_page_fault+0x258/0x550
+> [105121.441810]  [<ffffffff81175b31>] vfs_getattr+0x51/0x120
+> [105121.441812]  [<ffffffff81175c70>] vfs_fstatat+0x70/0x90
+> [105121.441814]  [<ffffffff81175ccb>] vfs_stat+0x1b/0x20
+> [105121.441816]  [<ffffffff81175f14>] sys_newstat+0x24/0x40
+> [105121.441820]  [<ffffffff8101449a>] ? init_fpu+0x4a/0x150
+> [105121.441822]  [<ffffffff81602955>] ? page_fault+0x25/0x30
+> [105121.441825]  [<ffffffff8160a702>] system_call_fastpath+0x16/0x1b
+> [105121.441837] INFO: task bash:5612 blocked for more than 120 seconds.
+> [105121.441838] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> [105121.441840] bash            D 0000000000000005     0  5612      1 0x00000000
+> [105121.441843]  ffff8801f25d5ca8 0000000000000086 ffff8800163e9b08 0000000000012a40
+> [105121.441845]  ffff8801f25d5fd8 0000000000012a40 ffff8801f25d4000 0000000000012a40
+> [105121.441848]  0000000000012a40 0000000000012a40 ffff8801f25d5fd8 0000000000012a40
+> [105121.441850] Call Trace:
+> [105121.441853]  [<ffffffff81110030>] ? __lock_page+0x70/0x70
+> [105121.441855]  [<ffffffff8160007c>] io_schedule+0x8c/0xd0
+> [105121.441857]  [<ffffffff8111003e>] sleep_on_page+0xe/0x20
+> [105121.441859]  [<ffffffff816008ff>] __wait_on_bit+0x5f/0x90
+> [105121.441861]  [<ffffffff81110203>] wait_on_page_bit+0x73/0x80
+> [105121.441863]  [<ffffffff81085bf0>] ? autoremove_wake_function+0x40/0x40
+> [105121.441866]  [<ffffffff8111c5e5>] ? pagevec_lookup_tag+0x25/0x40
+> [105121.441868]  [<ffffffff81110436>] filemap_fdatawait_range+0xf6/0x1a0
+> [105121.441876]  [<ffffffffa023a7d0>] ? nfs_destroy_directcache+0x20/0x20 [nfs]
+> [105121.441878]  [<ffffffff8111bae1>] ? do_writepages+0x21/0x40
+> [105121.441880]  [<ffffffff811116bb>] ? __filemap_fdatawrite_range+0x5b/0x60
+> [105121.441882]  [<ffffffff81111730>] filemap_write_and_wait_range+0x70/0x80
+> [105121.441886]  [<ffffffff8119cc6a>] vfs_fsync_range+0x5a/0x90
+> [105121.441888]  [<ffffffff8119cd0c>] vfs_fsync+0x1c/0x20
+> [105121.441894]  [<ffffffffa022ec74>] nfs_file_flush+0x54/0x80 [nfs]
+> [105121.441898]  [<ffffffff8116ee7f>] filp_close+0x3f/0x90
+> [105121.441900]  [<ffffffff8116f8a7>] sys_close+0xb7/0x120
+> [105121.441902]  [<ffffffff8160a702>] system_call_fastpath+0x16/0x1b
 
-OK, sounds good.  So let's just assume uid's, and wait to deal with
-anything more complicated until we know what's going to happen.  Aneesh,
-does that sound good?
+Does 'echo 0 >/proc/sys/sunrpc/rpc_debug' show anything being stuck in
+the RPC layer?
 
-And then I think the patches are ready....
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
