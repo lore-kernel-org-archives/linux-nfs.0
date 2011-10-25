@@ -1,79 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:40670 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932637Ab1JaRCx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:02:53 -0400
-Received: by vws1 with SMTP id 1so5033954vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 10:02:53 -0700 (PDT)
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:62181 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750989Ab1JYQSH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 12:18:07 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 3so650637ywm.19
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 09:18:07 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/3] NFS: Remove no-op less-than-zero checks on unsigned
+ variables.
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 25 Oct 2011 12:18:03 -0400
+Message-ID: <20111025161803.5996.75238.stgit@seurat.1015granger.net>
+In-Reply-To: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
+References: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1320079501.4714.9.camel@lade.trondhjem.org>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
- <1320074136-3087-2-git-send-email-bergwolf@gmail.com> <1320076148.4714.4.camel@lade.trondhjem.org>
- <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com> <1320079501.4714.9.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Tue, 1 Nov 2011 01:02:32 +0800
-Message-ID: <CA+a=Yy4O1SvrmvWQtgS6AydejqaTreo4rZHkdDQJjLrFQjee1A@mail.gmail.com>
-Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 1, 2011 at 12:45 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote:
->> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
->> >> For blocklayout, we need to issue layoutreturn to return layouts when
->> >> handling CB_RECALL_ANY.
->> >
->> > Why?
->> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
->> that server wants client to return layout. And server will be waiting
->> for layoutreturn in such case.
->
-> No it doesn't. NFS4_OK means that the client acknowledges that it has
-> been given a new limit on the number of recallable objects it can keep.
-> There is no requirement in the text that it should send layoutreturn or
-> that the server should expect that.
-Per RFC5661 section 20.6.3:
-It is the job of the client to bring down the size of the
-   recallable object set in line with each CB_RECALL_ANY received
+Introduced by commit 16b374ca "NFSv4.1: pnfs: filelayout: add driver's
+LAYOUTGET and GETDEVICEINFO infrastructure" (October 20, 2010).
 
-For layout objects, the only way client can bring down the object
-number is to send layoutreturn.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Besides, the moment client gets CB_RECALL_ANY is likely because server
-reaches some resource threshold. If client doesn't send layoutreturn,
-server can refusing client from getting more layouts.
+ fs/nfs/nfs4filelayout.c |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
 
->
-> In any case, there is no reason to make a difference between block,
-> object and file layouts when it comes to CB_RECALL_ANY. The code to
-> handle it should be the same for all.
->
-object layout isn't handling CB_RECALL_ANY yet. And from current code,
-I was assuming file layouts have their own method at server side to
-handle it (e.g., translating NFS4_OK of CB_RECALL_ANY into client has
-dropped all its layout...).So I made it for block only.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e8915d4..bbc5a21 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -468,9 +468,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 
+ 	fl->dsaddr = dsaddr;
+ 
+-	if (fl->first_stripe_index < 0 ||
+-	    fl->first_stripe_index >= dsaddr->stripe_count) {
+-		dprintk("%s Bad first_stripe_index %d\n",
++	if (fl->first_stripe_index >= dsaddr->stripe_count) {
++		dprintk("%s Bad first_stripe_index %u\n",
+ 				__func__, fl->first_stripe_index);
+ 		goto out_put;
+ 	}
+@@ -571,7 +570,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 
+ 	/* Note that a zero value for num_fh is legal for STRIPE_SPARSE.
+ 	 * Futher checking is done in filelayout_check_layout */
+-	if (fl->num_fh < 0 || fl->num_fh >
++	if (fl->num_fh >
+ 	    max(NFS4_PNFS_MAX_STRIPE_CNT, NFS4_PNFS_MAX_MULTI_CNT))
+ 		goto out_err;
+ 
 
-Thanks,
-Tao
-
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
->
-
-
-
--- 
-Thanks,
--Bergwolf
