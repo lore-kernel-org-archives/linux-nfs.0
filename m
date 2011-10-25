@@ -1,102 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:54034 "EHLO ebox.rath.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:31550 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038Ab1JURoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Oct 2011 13:44:16 -0400
-Message-ID: <4EA1AF6D.60603@rath.org>
-Date: Fri, 21 Oct 2011 13:44:13 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
+	id S933566Ab1JYN5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 09:57:34 -0400
+Subject: [PATCH v2 2/4] SUNRPC: use virtualized rpcbind internals instead of
+	static ones
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 17:58:02 +0300
+Message-ID: <20111025135800.5286.76759.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
+References: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Does NFS4 need st_gen?
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>		 <20111019171551.GA32028@fieldses.org>		 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>		 <20111020120207.GL5444@fieldses.org>		 <877h3za89w.fsf@inspiron.ap.columbia.edu>		 <20111020195731.GC9987@fieldses.org>		 <871uu79z7m.fsf@inspiron.ap.columbia.edu>		 <1319155647.2768.4.camel@lade.trondhjem.org>		 <87vcrisb5y.fsf@inspiron.ap.columbia.edu>	 <1319212854.4537.9.camel@lade.trondhjem.org> <4EA1994D.6060700@rath.org> <1319217023.4537.28.camel@lade.trondhjem.org>
-In-Reply-To: <1319217023.4537.28.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/21/2011 01:10 PM, Trond Myklebust wrote:
-> On Fri, 2011-10-21 at 12:09 -0400, Nikolaus Rath wrote: 
->> On 10/21/2011 12:00 PM, Trond Myklebust wrote:
->>> On Fri, 2011-10-21 at 09:54 -0400, Nikolaus Rath wrote: 
->>>> Trond Myklebust <Trond.Myklebust@netapp.com> writes:
->>>>> On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
->>>>>> "J. Bruce Fields" <bfields@fieldses.org> writes:
->>>>>>> On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
->>>>>>>> I'm working on a FUSE file system that stores file system metadata in an
->>>>>>>> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
->>>>>>>> of inode generation numbers would keep the code much simpler, because I
->>>>>>>> want to delete inode-rows from the SQL table when the last reference to
->>>>>>>> the inode is deleted (so I can't keep track of the generation no).
->>>>>>>
->>>>>>> You can use current time, or a counter, or something, as the generation
->>>>>>> number.
->>>>>>
->>>>>> With current time I'm screwed if the system clock doesn't have
->>>>>> sufficiently fine granularity. With a counter, I either have to remember
->>>>>> counter values per-inode even after the inode is deleted, or the global
->>>>>> counter will overflow at some point (in which case I may just as well
->>>>>> require unique inodes in the first place).
->>>>>
->>>>> The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
->>>>> do you expect it to take you to create+destroy between 2^256 and 2^1024
->>>>> inodes? I'm guessing that we'll all be long dead and the universe will
->>>>> have undergone heat death before that happens...
->>>>
->>>> Please stop assuming that I'm stupid or haven't thought about the
->>>> problem at all. The bottleneck is not the length of the NFS file handle,
->>>> but the length of the inode and generation number (both of which are
->>>> restricted to 32bit by FUSE) together with the requirement that not only
->>>> both of them together need to be unique forever, but the inode also
->>>> needs to be unique at any given instant (so they cannot be trivially
->>>> combined to form a 64bit value).
->>>
->>> No. The point is you don't need a generation number if you don't want to
->>> implement one...
->>>
->>> You can use any unique identifier + the inode number, and the unique
->>> identifier is only limited by the size of the filehandle.
->>
->> So how do you choose the unique identifier? It's limited by FUSE to
->> 32bit and therefore can't be a global counter, it can't be a timestamp
-> 
-> AFAICS fuse gives you a 64-bit inode number and a 32-bit generation
-> counter. 
+This patch makes rpcbind logic works in network namespace context. IOW each
+network namespace will have it's own unique rpcbind internals (clients and
+friends) which is required for registering svc services per network namespace.
 
-Yes, with 64bit inodes everything would be fine. But fuse uses 'long'
-for inodes, so on 32bit systems you only have 32bit inodes even if ino_t
-is 64bit.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ net/sunrpc/rpcb_clnt.c |   64 ++++++++++++++++++++++++++----------------------
+ 1 files changed, 35 insertions(+), 29 deletions(-)
 
-> IOW: start allocating inode numbers incrementally from 0 - 2^64, then
-> each time you overflow the 64-bit inode number counter, bump the
-> generation number. You'll have to skip those inode numbers that are
-> already allocated in the subsequent generations, but the total number of
-> unique combinations is still likely to be more than large enough not to
-> be a worry.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c2054ae..18eba8e 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -23,12 +23,15 @@
+ #include <linux/errno.h>
+ #include <linux/mutex.h>
+ #include <linux/slab.h>
++#include <linux/nsproxy.h>
+ #include <net/ipv6.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprtsock.h>
+ 
++#include "netns.h"
++
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+ #endif
+@@ -111,12 +114,6 @@ static void			rpcb_getport_done(struct rpc_task *, void *);
+ static void			rpcb_map_release(void *data);
+ static struct rpc_program	rpcb_program;
+ 
+-static struct rpc_clnt *	rpcb_local_clnt;
+-static struct rpc_clnt *	rpcb_local_clnt4;
+-
+-DEFINE_SPINLOCK(rpcb_clnt_lock);
+-unsigned int			rpcb_users;
+-
+ struct rpcbind_args {
+ 	struct rpc_xprt *	r_xprt;
+ 
+@@ -167,29 +164,31 @@ static void rpcb_map_release(void *data)
+ static int rpcb_get_local(void)
+ {
+ 	int cnt;
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+-	spin_lock(&rpcb_clnt_lock);
+-	if (rpcb_users)
+-		rpcb_users++;
+-	cnt = rpcb_users;
+-	spin_unlock(&rpcb_clnt_lock);
++	spin_lock(&sn->rpcb_clnt_lock);
++	if (sn->rpcb_users)
++		sn->rpcb_users++;
++	cnt = sn->rpcb_users;
++	spin_unlock(&sn->rpcb_clnt_lock);
+ 
+ 	return cnt;
+ }
+ 
+ void rpcb_put_local(void)
+ {
+-	struct rpc_clnt *clnt = rpcb_local_clnt;
+-	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
++	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+ 	int shutdown;
+ 
+-	spin_lock(&rpcb_clnt_lock);
+-	if (--rpcb_users == 0) {
+-		rpcb_local_clnt = NULL;
+-		rpcb_local_clnt4 = NULL;
++	spin_lock(&sn->rpcb_clnt_lock);
++	if (--sn->rpcb_users == 0) {
++		sn->rpcb_local_clnt = NULL;
++		sn->rpcb_local_clnt4 = NULL;
+ 	}
+-	shutdown = !rpcb_users;
+-	spin_unlock(&rpcb_clnt_lock);
++	shutdown = !sn->rpcb_users;
++	spin_unlock(&sn->rpcb_clnt_lock);
+ 
+ 	if (shutdown) {
+ 		/*
+@@ -205,14 +204,16 @@ void rpcb_put_local(void)
+ 
+ static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
+ {
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++
+ 	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	sn->rpcb_local_clnt = clnt;
++	sn->rpcb_local_clnt4 = clnt4;
+ 	smp_wmb(); 
+-	rpcb_users = 1;
++	sn->rpcb_users = 1;
+ 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
+-			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
+-			rpcb_local_clnt4);
++			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
++			sn->rpcb_local_clnt4);
+ }
+ 
+ /*
+@@ -432,6 +433,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
+ 			"rpcbind\n", (port ? "" : "un"),
+@@ -441,7 +443,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	if (port)
+ 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
+ 
+-	return rpcb_register_call(rpcb_local_clnt, &msg);
++	return rpcb_register_call(sn->rpcb_local_clnt, &msg);
+ }
+ 
+ /*
+@@ -454,6 +456,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin->sin_port);
+ 	int result;
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap);
+ 
+@@ -466,7 +469,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
+ 	if (port)
+ 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
+ 
+-	result = rpcb_register_call(rpcb_local_clnt4, msg);
++	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
+ 	kfree(map->r_addr);
+ 	return result;
+ }
+@@ -481,6 +484,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin6->sin6_port);
+ 	int result;
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap);
+ 
+@@ -493,7 +497,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
+ 	if (port)
+ 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
+ 
+-	result = rpcb_register_call(rpcb_local_clnt4, msg);
++	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
+ 	kfree(map->r_addr);
+ 	return result;
+ }
+@@ -501,6 +505,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
+ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
+ {
+ 	struct rpcbind_args *map = msg->rpc_argp;
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
+ 		"local rpcbind\n",
+@@ -509,7 +514,7 @@ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
+ 	map->r_addr = "";
+ 	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
+ 
+-	return rpcb_register_call(rpcb_local_clnt4, msg);
++	return rpcb_register_call(sn->rpcb_local_clnt4, msg);
+ }
+ 
+ /**
+@@ -567,8 +572,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
++	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+-	if (rpcb_local_clnt4 == NULL)
++	if (sn->rpcb_local_clnt4 == NULL)
+ 		return -EPROTONOSUPPORT;
+ 
+ 	if (address == NULL)
 
-Yes, as I said eariler, it is possible to do with the available 32 + 32
-bits, but it does introduce additional complexity.
-
-
->> because the system clock may not have enough resolution, and it can't be
->> a per-inode counter because then I can't discard the counter after the
->> inode has been deleted.
-> 
-> If you need more unique values, then modify fuse to allow your
-> filesystem to manage the exportfs interface. The fuse ABI is versioned,
-> and can be extended to support new features.
-
-FUSE 3 will have 64bit inodes, and I don't think this feature would make
-it into 2.x.
-
-
-Best,
-
-   -Nikolaus
-
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
-
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
