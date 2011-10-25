@@ -1,63 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50185 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751000Ab1JGDj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Oct 2011 23:39:27 -0400
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:48478 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755Ab1JYQRg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 12:17:36 -0400
+Received: by ggnb1 with SMTP id b1so648280ggn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 09:17:35 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] Three tiny clean-ups for 3.2 (repost)
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 25 Oct 2011 12:17:32 -0400
+Message-ID: <20111025161631.5996.30680.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
-Date: Thu, 6 Oct 2011 20:39:24 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91DDFD@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <1988930626.161.1317955756425.JavaMail.root@thunderbeast.private.linuxbox.com> <953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: "linux-nfs" <linux-nfs@vger.kernel.org>,
-        "nfs-ganesha-devel" <nfs-ganesha-devel@lists.sourceforge.net>,
-        "nfsv4" <nfsv4@ietf.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNYXR0IFcuIEJlbmphbWluIFtt
-YWlsdG86bWF0dEBsaW51eGJveC5jb21dDQo+IFNlbnQ6IFRodXJzZGF5LCBPY3RvYmVyIDA2LCAy
-MDExIDEwOjU1IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnM7IG5m
-cy1nYW5lc2hhLWRldmVsOyBuZnN2NA0KPiBTdWJqZWN0OiBSZTogW25mc3Y0XSBiYWNrIGNoYW5u
-ZWwgZmxhZ3MsIENSRUFURV9TRVNTSU9OLA0KPiBCSU5EX0NPTk5fVE9fU0VTU0lPTg0KPiANCj4g
-SGkgVHJvbmQsDQo+IA0KPiBJIGFwcHJlY2lhdGUgeW91ciBwb2ludCBvZiB2aWV3LiAgSSBhcHBy
-ZWNpYXRlIFJpY2sncyBjb21tZW50cy4gIEkgaG9wZSBzb21lDQo+IG90aGVyIGNvbW1lbnRzIHdp
-bGwgdHJpY2tsZSBpbi4gIERvIEkgdGhpbmsgeW91IGFuZCBSaWNrIGFyZSBzYXlpbmcgdGhlIHNh
-bWUNCj4gdGhpbmc/ICBOb3QgcmVhbGx5LiAgRG8gSSB0aGluayB5b3UncmUgbWFraW5nIHNlbnNl
-IHdoZW4geW91IGltcGx5IEkgd2FudCB0bw0KPiBjaGFuZ2UgdGhlIHN0YW5kYXJkPyAgTm8sIEkg
-ZG9uJ3QgZm9sbG93IHRoYXQuICBCSU5EX0NPTk5fVE9fU0VTU0lPTiBpcyBpbg0KPiB0aGUgcHVi
-bGlzaGVkIHN0YW5kYXJkLiAgQ2FuIEkgc2hvdyBhIGRlZGljYXRlZCBiYWNrIGNoYW5uZWwgaW1w
-cm92ZXMNCg0KSSBuZXZlciBhY2N1c2VkIHlvdSBvZiB0cnlpbmcgdG8gY2hhbmdlIHRoZSBzdGFu
-ZGFyZC4gV2hhdCBJIHNhaWQgd2FzIHRoYXQgeW91IG5lZWQgdG8gY29udmluY2UgbWUgdGhhdCB0
-aGVyZSBpcyBhIGdvb2QgcmVhc29uIHRvIGFjY2VwdCB0d28gaW1wbGVtZW50YXRpb25zIG9mIHRo
-ZSBzYW1lIGZlYXR1cmUgaW4gdGhlIGNsaWVudC4NCg0KPiBwZXJmb3JtYW5jZT8gIE5vdCBhdCBw
-cmVzZW50LiAgVGhhdCdzIGEgc2Vuc2libGUgcXVlc3Rpb24uICBJIHRoaW5rIGlmIHRoZQ0KPiBw
-cm90b2NvbCBpbiBnZW5lcmFsIGlzIGRvaW5nIHdoYXQgaXQgaXMgaW50ZW5kZWQgdG8gZG8sIGl0
-IHNob3VsZCBiZSBwb3NzaWJsZSBmb3INCj4gc29tZSB3b3JrbG9hZHMsIGF0IHNvbWUgcG9pbnQu
-ICAoSWYgY2FsbGJhY2tzIGFyZSwgc29tZWhvdyBnZW5lcmFsbHkNCj4gZGV0cmltZW50YWwgdG8g
-cGVyZm9ybWFuY2UsIGFzIHlvdSBzdGF0ZSwgSSB0aGluayBtYXliZSB3ZSBoYXZlIHNvbWUgbW9y
-ZQ0KPiB3b3JrIHRvIGRvLikgIChJIG5vdGUgb25seSBvbmUgbW9yZSB0aGluZy0tSSBkaWQgcmFp
-c2UgdGhpcyB0b3BpYyBvbiBsaXN0IDEyDQo+IG1vbnRocyBhZ28uICBPbmx5IEJydWNlIGNvbW1l
-bnRlZCwgYXQgdGhlIHRpbWUuKQ0KDQpGYWlyIGVub3VnaCwgYnV0IDEyIG1vbnRocyBhZ28sIHJm
-YzU2NjEgd2FzIGluIGxhc3QgY2FsbCBzdGF0dXMsIGFuZCB3ZSB3ZXJlIGFsbCB0cnlpbmcgdG8g
-bW92ZSBvbiB0byBmaW5hbCBpbXBsZW1lbnRhdGlvbnMuDQoNCkkgaGF2ZSBfYWx3YXlzXyBhcmd1
-ZWQgdGhhdCBjYWxsYmFja3Mgc2hvdWxkIGJlIHRoZSBleGNlcHRpb24gYW5kIG5vdCB0aGUgcnVs
-ZSwgZHVlIHRvIHRoZSBmYWN0IHRoYXQgaW4gcHJldHR5IG11Y2ggYWxsIGNhc2VzIHRoZSBzZXJ2
-ZXIgd2lsbCBoYXZlIHRvIHNlbmQgb3V0IGEgTkZTNEVSUl9ERUxBWSByZXN1bHQgdG8gd2hhdGV2
-ZXIgUlBDIGNhbGwgaXQgaXMgdGhhdCB0cmlnZ2VyZWQgYSBjYWxsYmFjay4gTm90aGluZyBuZXcg
-dGhlcmUgaW4gTkZTdjQuMS4gSSdsbCBhZGQgdGhhdCBub3IgaGFzIGFueWJvZHkgc3VjY2Vzc2Z1
-bGx5IGFyZ3VlZCB0aGF0IHRoZXJlIGlzIGFueSBjaGFuZ2UgaW4gTkZTdjQuMSBjb21wYXJlZCB0
-byBvdXIgZXhpc3RpbmcgTkZTdjQgaW1wbGVtZW50YXRpb25zLiBORlN2NCBkZWxlZ2F0aW9uIGNh
-bGxiYWNrcyBhcmUgKG1lYXN1cmFibHkpIGV4dHJlbWVseSBzbG93LCBhbmQgc28gSSdkIGV4cGVj
-dCB0aGUgZXhhY3Qgc2FtZSBiZWhhdmlvciBmb3IgTkZTdjQuMSBsYXlvdXQgcmVjYWxscyBldGMu
-IE5vdGhpbmcgaGFzIGNoYW5nZWQgaW4gTkZTdjQgY2FsbGJhY2sgdGVjaG5vbG9neSB0byB3YXJy
-YW50IGFuIGV4cGVjdGF0aW9uIG9mIHBlcmZvcm1hbmNlIGltcHJvdmVtZW50cy4NCg0KSU9XOiBO
-b2JvZHkgKGluY2x1ZGluZyB5b3UpIGhhcyBldmVyIGNvbnZpbmNlZCBtZSB0aGF0IHdlIG5lZWQg
-dG8gY29uc2lkZXIgY2FsbGJhY2tzIGFzIGEgc2NhbGFiaWxpdHkgaXNzdWUuIEknZCByZXF1aXJl
-IHNvbWUgcHJldHR5IGZpcm0gZXZpZGVuY2UgYmVmb3JlIEkgY291bGQgYWNjZXB0IHRoYXQgYXMg
-YSBmYWN0LiBTbyBmYXIsIGFsbCBJIGhhdmUgc2VlbiBpcyBtb3JlIG9yIGxlc3MgZWxvcXVlbnQg
-cHJvc2UuIE5vIGhhcmQgbnVtYmVycy4NCg0KVHJvbmQNCg==
+I found these nits on the wayward journey to implementing client-side
+migration support.
+
+---
+
+Chuck Lever (3):
+      NFS: Remove no-op less-than-zero checks on unsigned variables.
+      NFS: Clean up nfs4_xdr_dec_secinfo()
+      NFS: Fix documenting comment for nfs_create_request()
+
+
+ fs/nfs/nfs4filelayout.c |    7 +++----
+ fs/nfs/nfs4xdr.c        |    2 --
+ fs/nfs/pagelist.c       |    2 +-
+ 3 files changed, 4 insertions(+), 7 deletions(-)
+
+-- 
+Chuck Lever
