@@ -1,45 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54242 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:1415 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752363Ab1JTT5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 15:57:32 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1RGyk7-0002qU-OL
-	for linux-nfs@vger.kernel.org; Thu, 20 Oct 2011 15:57:31 -0400
-Date: Thu, 20 Oct 2011 15:57:31 -0400
-To: linux-nfs@vger.kernel.org
-Subject: Re: Does NFS4 need st_gen?
-Message-ID: <20111020195731.GC9987@fieldses.org>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
- <20111019171551.GA32028@fieldses.org>
- <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
- <20111020120207.GL5444@fieldses.org>
- <877h3za89w.fsf@inspiron.ap.columbia.edu>
+	id S1756415Ab1JYKQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 06:16:32 -0400
+Subject: [PATCH v6 2/8] SUNRPC: use rpcbind reference counting helpers
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 14:16:48 +0300
+Message-ID: <20111025101644.12689.45595.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <877h3za89w.fsf@inspiron.ap.columbia.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
-> I'm working on a FUSE file system that stores file system metadata in an
-> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
-> of inode generation numbers would keep the code much simpler, because I
-> want to delete inode-rows from the SQL table when the last reference to
-> the inode is deleted (so I can't keep track of the generation no).
+All is simple: we just increase users counter if rpcbind clients has been
+created already. Otherwise we create them and set users counter to 1.
 
-You can use current time, or a counter, or something, as the generation
-number.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-> Now I'll either have to make inodes unique (and run into trouble after
-> 2^32 inodes have been used), or keep with the current scheme of
-> randomizing new inodes (which keeps the probability of problems low
-> enough but is ugly).
+---
+ net/sunrpc/rpcb_clnt.c |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
 
-With 2^32 inode numbers plus 2^32 generation numbers it should be
-possible to work something out that doesn't require remembering every
-old inode.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 9fcdb42..7e5a0f8 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -259,9 +259,7 @@ static int rpcb_create_local_unix(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -313,9 +311,7 @@ static int rpcb_create_local_net(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -330,11 +326,11 @@ static int rpcb_create_local(void)
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+ 
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		return result;
+ 
+ 	mutex_lock(&rpcb_create_local_mutex);
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		goto out;
+ 
+ 	if (rpcb_create_local_unix() != 0)
 
---b.
