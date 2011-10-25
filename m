@@ -1,38 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55931 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:29941 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755664Ab1JSRPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 13:15:51 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1RGZk7-0008Mn-3V
-	for linux-nfs@vger.kernel.org; Wed, 19 Oct 2011 13:15:51 -0400
-Date: Wed, 19 Oct 2011 13:15:51 -0400
-To: linux-nfs@vger.kernel.org
-Subject: Re: Does NFS4 need st_gen?
-Message-ID: <20111019171551.GA32028@fieldses.org>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755041Ab1JYLQ1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 07:16:27 -0400
+Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
+ rpcbind clients
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 13:16:09 +0200
+In-Reply-To: <20111025101608.12689.68689.stgit@localhost6.localdomain6>
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+	 <20111025101608.12689.68689.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1319541369.2716.1.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 19, 2011 at 10:17:43AM -0400, Nikolaus Rath wrote:
-> Does NFS4 still depend on inode generation numbers? I understand that
-> earlier NFS versions used file handles based on inode and generation
-> number, but it seems to me that this shouldn't be required anymore with
-> the (stateful) NFS4.
+On Tue, 2011-10-25 at 14:16 +0300, Stanislav Kinsbursky wrote: 
+> v6:
+> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
+> clients become valid before rpcb_users assignment
+> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
+> my pow).
+> 
+> v5: fixed races with rpcb_users in rpcb_get_local()
+> 
+> This helpers will be used for dynamical creation and destruction of rpcbind
+> clients.
+> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+> clients has been created already, then we just increase rpcb_users.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 54 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index e45d2fb..9fcdb42 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+>  static struct rpc_clnt *	rpcb_local_clnt;
+>  static struct rpc_clnt *	rpcb_local_clnt4;
+>  
+> +DEFINE_SPINLOCK(rpcb_clnt_lock);
+> +unsigned int			rpcb_users;
+> +
+>  struct rpcbind_args {
+>  	struct rpc_xprt *	r_xprt;
+>  
+> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
+>  	kfree(map);
+>  }
+>  
+> +static int rpcb_get_local(void)
+> +{
+> +	int cnt;
+> +
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (rpcb_users)
+> +		rpcb_users++;
+> +	cnt = rpcb_users;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	return cnt;
+> +}
+> +
+> +void rpcb_put_local(void)
+> +{
+> +	struct rpc_clnt *clnt = rpcb_local_clnt;
+> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
+> +	int shutdown;
+> +
+> +	spin_lock(&rpcb_clnt_lock);
+> +	if (--rpcb_users == 0) {
+> +		rpcb_local_clnt = NULL;
+> +		rpcb_local_clnt4 = NULL;
+> +	}
+> +	shutdown = !rpcb_users;
+> +	spin_unlock(&rpcb_clnt_lock);
+> +
+> +	if (shutdown) {
+> +		/*
+> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+> +		 */
+> +		if (clnt4)
+> +			rpc_shutdown_client(clnt4);
+> +		if (clnt)
+> +			rpc_shutdown_client(clnt);
+> +	}
+> +	return;
 
-Yes, it's true that NFSv4 has open and close operations, but filehandles
-are still used a great deal outside of that, and clients are still
-allowed to assume that the same filehandle always refers to the same
-object.
+I'm removing this before applying...
 
-http://www.ietf.org/rfc/rfc3530.txt, section 4.2.1:
+> +}
+> +
 
-	"If two filehandles from the same server are equal, they MUST
-	refer to the same file."
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
