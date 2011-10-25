@@ -1,90 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8518 "EHLO mx2.netapp.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:49766 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753619Ab1JSUuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 16:50:40 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1752097Ab1JYVQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 17:16:01 -0400
+Received: from /spool/local
+	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Tue, 25 Oct 2011 17:15:45 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p9PLF84j426382
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 17:15:17 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p9PLF8Ut019977
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 17:15:08 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p9PLF8BJ019971
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Oct 2011 17:15:08 -0400
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] NFS: Don't rely on PageError in nfs_readpage_release_partial
-Date: Wed, 19 Oct 2011 13:50:17 -0700
-Message-Id: <1319057418-9851-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1319057418-9851-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1319057418-9851-1-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-2-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-3-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-4-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-5-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-6-git-send-email-Trond.Myklebust@netapp.com>
- <1319057418-9851-7-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Subject: Linux pNFS status meeting 10/27/11
+Message-ID: <OF9EB9ECF6.747F1079-ON88257934.00749808-88257934.0074B77E@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Tue, 25 Oct 2011 14:15:05 -0700
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't rely on the PageError flag to tell us if one of the partial reads of
-the page failed. Instead, replace that with a dedicated flag in the
-struct nfs_page.
+Meeting on Thursday 10/27/11 at 9:30 AM PST (12:30 PM EST)
 
-Then clean out redundant uses of the PageError flag: the VM no longer
-checks it for reads.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/read.c            |    7 ++-----
- include/linux/nfs_page.h |    1 +
- 2 files changed, 3 insertions(+), 5 deletions(-)
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 09829d96..fd58e90 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -276,7 +276,6 @@ nfs_async_read_error(struct list_head *head)
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
--		SetPageError(req->wb_page);
- 		nfs_readpage_release(req);
- 	}
- }
-@@ -330,7 +329,6 @@ out_bad:
- 		list_del(&data->list);
- 		nfs_readdata_free(data);
- 	}
--	SetPageError(page);
- 	nfs_readpage_release(req);
- 	return -ENOMEM;
- }
-@@ -460,10 +458,10 @@ static void nfs_readpage_release_partial(void *calldata)
- 	int status = data->task.tk_status;
- 
- 	if (status < 0)
--		SetPageError(page);
-+		set_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags);
- 
- 	if (atomic_dec_and_test(&req->wb_complete)) {
--		if (!PageError(page))
-+		if (!test_bit(PG_PARTIAL_READ_FAILED, &req->wb_flags))
- 			SetPageUptodate(page);
- 		nfs_readpage_release(req);
- 	}
-@@ -656,7 +654,6 @@ readpage_async_filler(void *data, struct page *page)
- 	return 0;
- out_error:
- 	error = PTR_ERR(new);
--	SetPageError(page);
- out_unlock:
- 	unlock_page(page);
- 	return error;
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index e2791a2..ab465fe 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -34,6 +34,7 @@ enum {
- 	PG_NEED_COMMIT,
- 	PG_NEED_RESCHED,
- 	PG_PNFS_COMMIT,
-+	PG_PARTIAL_READ_FAILED,
- };
- 
- struct nfs_inode;
--- 
-1.7.6.4
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
 
