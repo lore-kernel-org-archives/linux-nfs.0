@@ -1,46 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:45538 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754085Ab1JTCNR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 22:13:17 -0400
-Received: by mail-yw0-f46.google.com with SMTP id 7so2323875ywf.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 19:13:17 -0700 (PDT)
-From: Benny Halevy <benny@tonian.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 4/7] nfsd4: allow NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL | NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED
-Date: Wed, 19 Oct 2011 19:13:13 -0700
-Message-Id: <1319076793-13429-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4E9F82FC.2000904@tonian.com>
-References: <4E9F82FC.2000904@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:5556 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756241Ab1JYOVK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 10:21:10 -0400
+Message-ID: <4EA6C5CB.80008@parallels.com>
+Date: Tue, 25 Oct 2011 18:20:59 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 0/4] Series short description
+References: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025135637.5286.89632.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+Sorry for dummy series description.
+Here is the right one:
 
-RFC5661 says:
-   The client may set one or both of
-   OPEN4_SHARE_ACCESS_WANT_SIGNAL_DELEG_WHEN_RESRC_AVAIL and
-   OPEN4_SHARE_ACCESS_WANT_PUSH_DELEG_WHEN_UNCONTENDED.
+"[PATCH v2 0/4] SUNRPC: rcbind clients virtualization"
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4xdr.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index fdc09a5..706ada1 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -677,6 +677,8 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
- 	switch (w) {
- 	case NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL:
- 	case NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED:
-+	case (NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL |
-+	      NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED):
- 		return nfs_ok;
- 	}
- xdr_error:
 -- 
-1.7.6
-
+Best regards,
+Stanislav Kinsbursky
