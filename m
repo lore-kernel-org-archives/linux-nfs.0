@@ -1,121 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2015 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:30365 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755118Ab1JYMpw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 08:45:52 -0400
-Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Date: Tue, 25 Oct 2011 14:45:50 +0200
-In-Reply-To: <4EA6AE87.5000309@parallels.com>
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
-		 <20111025101608.12689.68689.stgit@localhost6.localdomain6>
-	 <1319541369.2716.1.camel@lade.trondhjem.org>
-	 <4EA6AE87.5000309@parallels.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319546750.2716.5.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S932324Ab1JYKPk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 06:15:40 -0400
+Subject: [PATCH v6 0/8] SUNRPC: make rpcbind clients allocated and destroyed
+	dynamically
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 14:15:58 +0300
+Message-ID: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-10-25 at 16:41 +0400, Stanislav Kinsbursky wrote: 
-> 25.10.2011 15:16, Trond Myklebust пишет:
-> > On Tue, 2011-10-25 at 14:16 +0300, Stanislav Kinsbursky wrote:
-> >> v6:
-> >> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
-> >> clients become valid before rpcb_users assignment
-> >> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
-> >> my pow).
-> >>
-> >> v5: fixed races with rpcb_users in rpcb_get_local()
-> >>
-> >> This helpers will be used for dynamical creation and destruction of rpcbind
-> >> clients.
-> >> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-> >> clients has been created already, then we just increase rpcb_users.
-> >>
-> >> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
-> >>
-> >> ---
-> >>   net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
-> >>   1 files changed, 54 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> >> index e45d2fb..9fcdb42 100644
-> >> --- a/net/sunrpc/rpcb_clnt.c
-> >> +++ b/net/sunrpc/rpcb_clnt.c
-> >> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
-> >>   static struct rpc_clnt *	rpcb_local_clnt;
-> >>   static struct rpc_clnt *	rpcb_local_clnt4;
-> >>
-> >> +DEFINE_SPINLOCK(rpcb_clnt_lock);
-> >> +unsigned int			rpcb_users;
-> >> +
-> >>   struct rpcbind_args {
-> >>   	struct rpc_xprt *	r_xprt;
-> >>
-> >> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
-> >>   	kfree(map);
-> >>   }
-> >>
-> >> +static int rpcb_get_local(void)
-> >> +{
-> >> +	int cnt;
-> >> +
-> >> +	spin_lock(&rpcb_clnt_lock);
-> >> +	if (rpcb_users)
-> >> +		rpcb_users++;
-> >> +	cnt = rpcb_users;
-> >> +	spin_unlock(&rpcb_clnt_lock);
-> >> +
-> >> +	return cnt;
-> >> +}
-> >> +
-> >> +void rpcb_put_local(void)
-> >> +{
-> >> +	struct rpc_clnt *clnt = rpcb_local_clnt;
-> >> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-> >> +	int shutdown;
-> >> +
-> >> +	spin_lock(&rpcb_clnt_lock);
-> >> +	if (--rpcb_users == 0) {
-> >> +		rpcb_local_clnt = NULL;
-> >> +		rpcb_local_clnt4 = NULL;
-> >> +	}
-> >> +	shutdown = !rpcb_users;
-> >> +	spin_unlock(&rpcb_clnt_lock);
-> >> +
-> >> +	if (shutdown) {
-> >> +		/*
-> >> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-> >> +		 */
-> >> +		if (clnt4)
-> >> +			rpc_shutdown_client(clnt4);
-> >> +		if (clnt)
-> >> +			rpc_shutdown_client(clnt);
-> >> +	}
-> >> +	return;
-> >
-> > I'm removing this before applying...
-> >
-> Sorry, but I don't understand what exactly you are removing, and why?
+This patch-set was created in context of clone of git branch:
+git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
+and rebased on tag "v3.1".
 
-The empty 'return' at the end of a void function: it is 100%
-redundant...
+2 Trond:
+Nothing changed against previous patch-set we discussed already.
+If no other issues will appear against it, hoping for soon commit.
+If git repo, mentioned above, is not suitable for development purposes, please,
+reply with the right one.
+
+v6:
+1) Fixes in rpcb_clients management.
+
+v4:
+1) creation and destruction on rpcbind clients now depends on service program
+versions "vs_hidden" flag.
+
+This patch is required for further RPC layer virtualization, because rpcbind
+clients have to be per network namespace.
+To achive this, we have to untie network namespace from rpcbind clients sockets.
+The idea of this patch set is to make rpcbind clients non-static. I.e. rpcbind
+clients will be created during first RPC service creation, and destroyed when
+last RPC service is stopped.
+With this patch set rpcbind clients can be virtualized easely.
+
+The following series consists of:
+
+---
+
+Stanislav Kinsbursky (8):
+      SUNRPC: introduce helpers for reference counted rpcbind clients
+      SUNRPC: use rpcbind reference counting helpers
+      SUNRPC: introduce svc helpers for prepairing rpcbind infrastructure
+      SUNRPC: setup rpcbind clients if service requires it
+      SUNRPC: cleanup service destruction
+      NFSd: call svc rpcbind cleanup explicitly
+      SUNRPC: remove rpcbind clients creation during service registering
+      SUNRPC: remove rpcbind clients destruction on module cleanup
+
+
+ fs/nfsd/nfssvc.c            |    2 +
+ include/linux/sunrpc/clnt.h |    2 +
+ include/linux/sunrpc/svc.h  |    1 
+ net/sunrpc/rpcb_clnt.c      |   89 +++++++++++++++++++++++++++++--------------
+ net/sunrpc/sunrpc_syms.c    |    3 -
+ net/sunrpc/svc.c            |   48 ++++++++++++++++++++++-
+ 6 files changed, 109 insertions(+), 36 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Signature
