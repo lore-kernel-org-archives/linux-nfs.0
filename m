@@ -1,69 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:38185 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755042Ab1JSQgI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 12:36:08 -0400
-Received: by vws1 with SMTP id 1so1397031vws.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 09:36:08 -0700 (PDT)
-Date: Wed, 19 Oct 2011 12:36:26 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
- a partial write
-Message-ID: <20111019123626.7a80dfad@corrin.poochiereds.net>
-In-Reply-To: <1319038470-17750-1-git-send-email-steved@redhat.com>
-References: <1319038470-17750-1-git-send-email-steved@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mailhub.sw.ru ([195.214.232.25]:43518 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932467Ab1JYKQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 06:16:35 -0400
+Subject: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
+	rpcbind clients
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 14:16:36 +0300
+Message-ID: <20111025101608.12689.68689.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 19 Oct 2011 11:34:30 -0400
-Steve Dickson <steved@redhat.com> wrote:
+v6:
+1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
+clients become valid before rpcb_users assignment
+2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
+my pow).
 
-> This patch is a following on to commit 7a802337. Using the
-> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
-> caused the fflush() and fclose() to fail in turn causing
-> corruption in the mtab.
-> 
-> The failures were in the internals of both calls. Switch those
-> calls with the actual system calls eliminated the failures.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  support/nfs/nfs_mntent.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-> index a2118a2..b80f270 100644
-> --- a/support/nfs/nfs_mntent.c
-> +++ b/support/nfs/nfs_mntent.c
-> @@ -117,7 +117,7 @@ void
->  nfs_endmntent (mntFILE *mfp) {
->  	if (mfp) {
->  		if (mfp->mntent_fp)
-> -			fclose(mfp->mntent_fp);
-> +			close(fileno(mfp->mntent_fp));
->  		if (mfp->mntent_file)
->  			free(mfp->mntent_file);
->  		free(mfp);
-> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
->  	free(m3);
->  	free(m4);
->  	if (res >= 0) {
-> -		res = fflush(mfp->mntent_fp);
-> +		res = fsync(fileno(mfp->mntent_fp));
+v5: fixed races with rpcb_users in rpcb_get_local()
 
-fsync doesn't imply an fflush. With this, I think you may end up
-without everything being committed to disk if part or all of it is
-still in the file stream buffer. You probably want to do an fflush()
-and then an fsync here.
+This helpers will be used for dynamical creation and destruction of rpcbind
+clients.
+Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+clients has been created already, then we just increase rpcb_users.
 
->  		if (res < 0)
->  			/* Avoid leaving a corrupt mtab file */
->  			ftruncate(fileno(mfp->mntent_fp), length);
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 54 insertions(+), 0 deletions(-)
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e45d2fb..9fcdb42 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+ static struct rpc_clnt *	rpcb_local_clnt;
+ static struct rpc_clnt *	rpcb_local_clnt4;
+ 
++DEFINE_SPINLOCK(rpcb_clnt_lock);
++unsigned int			rpcb_users;
++
+ struct rpcbind_args {
+ 	struct rpc_xprt *	r_xprt;
+ 
+@@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
+ 	kfree(map);
+ }
+ 
++static int rpcb_get_local(void)
++{
++	int cnt;
++
++	spin_lock(&rpcb_clnt_lock);
++	if (rpcb_users)
++		rpcb_users++;
++	cnt = rpcb_users;
++	spin_unlock(&rpcb_clnt_lock);
++
++	return cnt;
++}
++
++void rpcb_put_local(void)
++{
++	struct rpc_clnt *clnt = rpcb_local_clnt;
++	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
++	int shutdown;
++
++	spin_lock(&rpcb_clnt_lock);
++	if (--rpcb_users == 0) {
++		rpcb_local_clnt = NULL;
++		rpcb_local_clnt4 = NULL;
++	}
++	shutdown = !rpcb_users;
++	spin_unlock(&rpcb_clnt_lock);
++
++	if (shutdown) {
++		/*
++		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
++		 */
++		if (clnt4)
++			rpc_shutdown_client(clnt4);
++		if (clnt)
++			rpc_shutdown_client(clnt);
++	}
++	return;
++}
++
++static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
++{
++	/* Protected by rpcb_create_local_mutex */
++	rpcb_local_clnt = clnt;
++	rpcb_local_clnt4 = clnt4;
++	smp_wmb(); 
++	rpcb_users = 1;
++	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
++			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
++			rpcb_local_clnt4);
++}
++
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+
