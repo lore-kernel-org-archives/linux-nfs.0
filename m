@@ -1,128 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:6330 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:58846 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932399Ab1J1OZA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 10:25:00 -0400
-Subject: [PATCH 3/7] SUNRPC: send notification events on pipefs sb creation
-	and destruction
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Fri, 28 Oct 2011 18:25:43 +0300
-Message-ID: <20111028142542.5796.80283.stgit@localhost6.localdomain6>
-In-Reply-To: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
-References: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+	id S932982Ab1JYMeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 08:34:50 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RIgDR-00048c-Ig
+	for linux-nfs@vger.kernel.org; Tue, 25 Oct 2011 08:34:49 -0400
+Date: Tue, 25 Oct 2011 08:34:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: nfsd (and lock) changes for 3.2
+Message-ID: <20111025123449.GB15662@fieldses.org>
+References: <20111025121924.GA15662@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111025121924.GA15662@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-They will be used to notify subscribers about pipefs superblock creation and
-destruction.
-Subcribers will have to create their dentries on passed superblock on mount
-event and destroy otherwise.
+On Tue, Oct 25, 2011 at 08:19:24AM -0400, bfields wrote:
+> 	- Progress on the basic 4.1 todo's.  Thanks in particular to Mi
+> 	  Jinlong for (among other things) implementing the somewhat
+> 	  tricky DRC limit checking.
+> 
+> 	  The 4.1 code is getting closer--it *might* be possible to
+> 	  finish basic 4.1 early as 3.3, at which point we could start
+> 	  on optional features (like pNFS).  But that will depend on
+> 	  people sending patches (and pynfs tests) for the remaining 4.1
+> 	  todo's.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I've been keeping the todo list up to date here:
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    8 ++++++++
- net/sunrpc/rpc_pipe.c              |   32 ++++++++++++++++++++++++++++++++
- 2 files changed, 40 insertions(+), 0 deletions(-)
+	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index cf14db9..c1cdb2f 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -44,6 +44,14 @@ RPC_I(struct inode *inode)
- 	return container_of(inode, struct rpc_inode, vfs_inode);
- }
- 
-+extern int rpc_pipefs_notifier_register(struct notifier_block *);
-+extern void rpc_pipefs_notifier_unregister(struct notifier_block *);
-+
-+enum {
-+	RPC_PIPEFS_MOUNT,
-+	RPC_PIPEFS_UMOUNT,
-+};
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index a717564..8abeb9d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -28,8 +28,10 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/cache.h>
- #include <linux/nsproxy.h>
-+#include <linux/notifier.h>
- 
- #include "netns.h"
-+#include "sunrpc.h"
- 
- static struct vfsmount *rpc_mnt __read_mostly;
- static int rpc_mount_count;
-@@ -41,6 +43,20 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
- 
- #define RPC_UPCALL_TIMEOUT (30*HZ)
- 
-+static BLOCKING_NOTIFIER_HEAD(rpc_pipefs_notifier_list);
-+
-+int rpc_pipefs_notifier_register(struct notifier_block *nb)
-+{
-+	return blocking_notifier_chain_cond_register(&rpc_pipefs_notifier_list, nb);
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_register);
-+
-+void rpc_pipefs_notifier_unregister(struct notifier_block *nb)
-+{
-+	blocking_notifier_chain_unregister(&rpc_pipefs_notifier_list, nb);
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_unregister);
-+
- static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
- 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
- {
-@@ -1010,6 +1026,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	struct inode *inode;
- 	struct dentry *root;
- 	struct net *net = data;
-+	int err;
- 
- 	sb->s_blocksize = PAGE_CACHE_SIZE;
- 	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
-@@ -1027,8 +1044,20 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
- 		return -ENOMEM;
-+	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
-+					   RPC_PIPEFS_MOUNT,
-+					   sb);
-+	if (err)
-+		goto err_depopulate;
- 	sb->s_fs_info = get_net(net);
- 	return 0;
-+
-+err_depopulate:
-+	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
-+					   RPC_PIPEFS_UMOUNT,
-+					   sb);
-+	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
-+	return err;
- }
- 
- static struct dentry *
-@@ -1043,6 +1072,9 @@ void rpc_kill_sb(struct super_block *sb)
- 	struct net *net = sb->s_fs_info;
- 
- 	put_net(net);
-+	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
-+					   RPC_PIPEFS_UMOUNT,
-+					   sb);
- 	kill_litter_super(sb);
- }
- 
+Some of them I think are relatively straightforward--probably anyone
+with a little time could dive into them:
 
+	- SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+
+	- backchannel attribute negotiation
+
+	- ACL retention bits
+
+	- Clarify RDMA non-support
+
+Slightly trickier or open-ended; we may need to talk over design first
+before diving in:
+
+	- Make DESTROY_SESSION wait on in-progress requests
+
+	- current stateid
+
+	- Check 4.0/4.1 interactions
+
+	- Callback failure handling
+
+	- GSS
+
+The GSS piece is probably the one I'm most worried about.  What we have
+seems sufficient for current clients, but I know it's incomplete, and
+I'm not entirely clear how much work it is to implement the minimum
+required to ensure that future kerberos-using clients won't break
+unexpectedly on upgrade to 4.1.
+
+--b.
