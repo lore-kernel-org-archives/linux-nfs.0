@@ -1,61 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46762 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932819Ab1JRPel (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:41 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 10/26] vfs: Make the inode passed to inode_change_ok non-const
-Date: Tue, 18 Oct 2011 21:02:45 +0530
-Message-Id: <1318951981-5508-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:12688 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932465Ab1JYKRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Oct 2011 06:17:21 -0400
+Subject: [PATCH v6 8/8] SUNRPC: remove rpcbind clients destruction on module
+	cleanup
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 25 Oct 2011 14:17:48 +0300
+Message-ID: <20111025101746.12689.25295.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Rpcbind clients destruction during SUNRPC module removing is obsolete since now
+those clients are destroying during last RPC service shutdown.
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/attr.c          |    2 +-
- include/linux/fs.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/rpcb_clnt.c   |   12 ------------
+ net/sunrpc/sunrpc_syms.c |    3 ---
+ 2 files changed, 0 insertions(+), 15 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 538e279..f15e9e3 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -26,7 +26,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
-  */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 088e4e2..c2054ae 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -1101,15 +1101,3 @@ static struct rpc_program rpcb_program = {
+ 	.version	= rpcb_version,
+ 	.stats		= &rpcb_stats,
+ };
+-
+-/**
+- * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+- *
+- */
+-void cleanup_rpcb_clnt(void)
+-{
+-	if (rpcb_local_clnt4)
+-		rpc_shutdown_client(rpcb_local_clnt4);
+-	if (rpcb_local_clnt)
+-		rpc_shutdown_client(rpcb_local_clnt);
+-}
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 9d08091..8ec9778 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -61,8 +61,6 @@ static struct pernet_operations sunrpc_net_ops = {
+ 
+ extern struct cache_detail unix_gid_cache;
+ 
+-extern void cleanup_rpcb_clnt(void);
+-
+ static int __init
+ init_sunrpc(void)
  {
- 	unsigned int ia_valid = attr->ia_valid;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ccece40..724a4f4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2566,7 +2566,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
- 
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
--- 
-1.7.5.4
+@@ -102,7 +100,6 @@ out:
+ static void __exit
+ cleanup_sunrpc(void)
+ {
+-	cleanup_rpcb_clnt();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+ 	svc_cleanup_xprt_sock();
 
