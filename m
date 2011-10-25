@@ -1,109 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55114 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932931Ab1JRPfH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:07 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 15:33:50 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 16/26] richacl: Update the file masks in chmod()
-Date: Tue, 18 Oct 2011 21:02:51 +0530
-Message-Id: <1318951981-5508-17-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp-1.concepts.nl ([213.197.30.124]:53747 "EHLO
+	smtp-1.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753835Ab1JYWAb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 18:00:31 -0400
+Received: from d594e6a3.dsl.concepts.nl ([213.148.230.163] helo=gnome.loos.site)
+	by smtp-1.concepts.nl with esmtps (TLSv1:AES256-SHA:256)
+	(Exim 4.72)
+	(envelope-from <aelschuring@hotmail.com>)
+	id 1RIp2p-0005uf-7J
+	for linux-nfs@vger.kernel.org; Wed, 26 Oct 2011 00:00:27 +0200
+Received: from [172.22.21.203] (helo=neminis.intra.loos.site)
+	by gnome.loos.site with esmtp (Exim 4.72)
+	(envelope-from <aelschuring@hotmail.com>)
+	id 1RIp2o-0004pZ-Fp
+	for linux-nfs@vger.kernel.org; Wed, 26 Oct 2011 00:00:26 +0200
+Date: Wed, 26 Oct 2011 00:00:25 +0200
+From: Arno Schuring <aelschuring@hotmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: sec=krb5 mounts never return
+Message-ID: <20111026000025.64f1e215@neminis.intra.loos.site>
+In-Reply-To: <20111021012327.612839b5@neminis.loos.site>
+References: <20111021012327.612839b5@neminis.loos.site>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Arno Schuring (aelschuring@hotmail.com on 2011-10-21 01:23 +0200):
+> Hello list,
+> 
+> tl;dr: mount calls with sec=krb5 never return. They appear to get
+> stalled in the kernel on "svc: transport is dead". I need to know
+> if this is a configuration issue, a kernel problem or a userland
+> problem, and how it can be resolved.
 
-Doing a chmod() sets the file mode, which includes the file permission
-bits.  When a file has a richacl, the permissions that the richacl
-grants need to be limited to what the new file permission bits allow.
+This appears to have been reported two months ago against Debian:
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=638157
 
-This is done by setting the file masks in the richacl to what the file
-permission bits map to.  The richacl access check algorithm takes the
-file masks into account, which ensures that the richacl cannot grant too
-many permissions.
+And fixed over a year ago on this list:
+http://www.spinics.net/lists/linux-nfs/msg14723.html
 
-It is possible to explicitly add permissions to the file masks which go
-beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
-permission).  The POSIX.1 standard calls this an alternate file access
-control mechanism.  A subsequent chmod() would ensure that those
-permissions are disabled again.
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |   40 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 41 insertions(+), 0 deletions(-)
+It's a wonderful world, isn't it?
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index a0197ed..a5f215e 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -352,3 +352,43 @@ restart:
- 	acl->a_flags &= ~ACL4_MASKED;
- }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-+
-+/**
-+ * richacl_chmod  -  update the file masks to reflect the new mode
-+ * @mode:	new file permission bits
-+ *
-+ * Return a copy of @acl where the file masks have been replaced by the file
-+ * masks corresponding to the file permission bits in @mode, or returns @acl
-+ * itself if the file masks are already up to date.  Takes over a reference
-+ * to @acl.
-+ */
-+struct richacl *
-+richacl_chmod(struct richacl *acl, mode_t mode)
-+{
-+	unsigned int owner_mask, group_mask, other_mask;
-+	struct richacl *clone;
-+
-+	owner_mask = richacl_mode_to_mask(mode >> 6) |
-+		     ACE4_POSIX_OWNER_ALLOWED;
-+	group_mask = richacl_mode_to_mask(mode >> 3);
-+	other_mask = richacl_mode_to_mask(mode);
-+
-+	if (acl->a_owner_mask == owner_mask &&
-+	    acl->a_group_mask == group_mask &&
-+	    acl->a_other_mask == other_mask &&
-+	    (acl->a_flags & ACL4_MASKED))
-+		return acl;
-+
-+	clone = richacl_clone(acl);
-+	richacl_put(acl);
-+	if (!clone)
-+		return ERR_PTR(-ENOMEM);
-+
-+	clone->a_flags |= ACL4_MASKED;
-+	clone->a_owner_mask = owner_mask;
-+	clone->a_group_mask = group_mask;
-+	clone->a_other_mask = other_mask;
-+
-+	return clone;
-+}
-+EXPORT_SYMBOL_GPL(richacl_chmod);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index ded57e9..be7db1f 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -288,5 +288,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
-+extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- 
- #endif /* __RICHACL_H */
--- 
-1.7.5.4
-
+Best wishes,
+Arno
