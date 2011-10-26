@@ -1,72 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:41948 "EHLO ebox.rath.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752700Ab1JUQc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Oct 2011 12:32:57 -0400
-Message-ID: <4EA1994D.6060700@rath.org>
-Date: Fri, 21 Oct 2011 12:09:49 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
+Received: from natasha.panasas.com ([67.152.220.90]:45773 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754621Ab1JZDQY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 23:16:24 -0400
+Message-ID: <4EA77B78.6080706@panasas.com>
+Date: Tue, 25 Oct 2011 20:16:08 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Does NFS4 need st_gen?
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>	 <20111019171551.GA32028@fieldses.org>	 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>	 <20111020120207.GL5444@fieldses.org>	 <877h3za89w.fsf@inspiron.ap.columbia.edu>	 <20111020195731.GC9987@fieldses.org>	 <871uu79z7m.fsf@inspiron.ap.columbia.edu>	 <1319155647.2768.4.camel@lade.trondhjem.org>	 <87vcrisb5y.fsf@inspiron.ap.columbia.edu> <1319212854.4537.9.camel@lade.trondhjem.org>
-In-Reply-To: <1319212854.4537.9.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd (and lock) changes for 3.2
+References: <20111025121924.GA15662@fieldses.org>
+In-Reply-To: <20111025121924.GA15662@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/21/2011 12:00 PM, Trond Myklebust wrote:
-> On Fri, 2011-10-21 at 09:54 -0400, Nikolaus Rath wrote: 
->> Trond Myklebust <Trond.Myklebust@netapp.com> writes:
->>> On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
->>>> "J. Bruce Fields" <bfields@fieldses.org> writes:
->>>>> On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
->>>>>> I'm working on a FUSE file system that stores file system metadata in an
->>>>>> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
->>>>>> of inode generation numbers would keep the code much simpler, because I
->>>>>> want to delete inode-rows from the SQL table when the last reference to
->>>>>> the inode is deleted (so I can't keep track of the generation no).
->>>>>
->>>>> You can use current time, or a counter, or something, as the generation
->>>>> number.
->>>>
->>>> With current time I'm screwed if the system clock doesn't have
->>>> sufficiently fine granularity. With a counter, I either have to remember
->>>> counter values per-inode even after the inode is deleted, or the global
->>>> counter will overflow at some point (in which case I may just as well
->>>> require unique inodes in the first place).
->>>
->>> The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
->>> do you expect it to take you to create+destroy between 2^256 and 2^1024
->>> inodes? I'm guessing that we'll all be long dead and the universe will
->>> have undergone heat death before that happens...
->>
->> Please stop assuming that I'm stupid or haven't thought about the
->> problem at all. The bottleneck is not the length of the NFS file handle,
->> but the length of the inode and generation number (both of which are
->> restricted to 32bit by FUSE) together with the requirement that not only
->> both of them together need to be unique forever, but the inode also
->> needs to be unique at any given instant (so they cannot be trivially
->> combined to form a 64bit value).
+On 10/25/2011 05:19 AM, J. Bruce Fields wrote:
+> Changes for nfsd (and also a few file-locking changes) are available in
+> the git repository at:
 > 
-> No. The point is you don't need a generation number if you don't want to
-> implement one...
+> 	git://linux-nfs.org/~bfields/linux.git for-3.2
 > 
-> You can use any unique identifier + the inode number, and the unique
-> identifier is only limited by the size of the filehandle.
+> This is the same tree I've always used--I assume you believe it's mine
+> without a need for signing anything.  Feel free to tell me otherwise.
+> 
 
-So how do you choose the unique identifier? It's limited by FUSE to
-32bit and therefore can't be a global counter, it can't be a timestamp
-because the system clock may not have enough resolution, and it can't be
-a per-inode counter because then I can't discard the counter after the
-inode has been deleted.
+<Snip>
 
-Best,
+> 
+> Boaz Harrosh (1):
+>       nfsd4: fix failure to end nfsd4 grace period
+> 
 
-   -Nikolaus
+Bruce hi.
 
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
+As I recall this failure I have experienced in early stages of the
+3.1-rcX series. I admit that I always run with Benny's pnfs tree,
+but I do not think it is patches that Benny added from the 3.2 set
+I think it is breakage introduced by the 3.1 merge window.
 
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+Therefor I think that this patch must be sent to Stable@ otherwise
+surly 3.1 Kernel users are to hit it. (You can escapee it)
+
+Though it has been pulled to Linus tree, without the CC: stable@kernel
+I think you can just send the patch to <stable@kernel.org> and it
+will be included.
+
+(What other 3.1 bug fixes are missing)
+
+Thanks
+Boaz
