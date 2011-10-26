@@ -1,268 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55145 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932993Ab1JRPf3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:29 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 15:34:11 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 21/26] richacl: xattr mapping functions
-Date: Tue, 18 Oct 2011 21:02:56 +0530
-Message-Id: <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:56586 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751729Ab1JZElo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Oct 2011 00:41:44 -0400
+Message-ID: <4EA78F87.2050109@ogc.us>
+Date: Tue, 25 Oct 2011 23:41:43 -0500
+From: Tom Tucker <tom@ogc.us>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfsd (and lock) changes for 3.2
+References: <20111025121924.GA15662@fieldses.org> <20111025123449.GB15662@fieldses.org>
+In-Reply-To: <20111025123449.GB15662@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Hi Bruce,
 
-Map between "system.richacl" xattrs and the in-kernel representation.
+What does RDMA Non Support mean exactly? Maybe I could help if it's a 
+resource issue?
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/Makefile                   |    2 +-
- fs/richacl_xattr.c            |  156 +++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl_xattr.h |   47 ++++++++++++
- 3 files changed, 204 insertions(+), 1 deletions(-)
- create mode 100644 fs/richacl_xattr.c
- create mode 100644 include/linux/richacl_xattr.h
+Thanks,
+Tom
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 1ecf9f2..e217c65 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -49,7 +49,7 @@ obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
- 
- obj-$(CONFIG_FHANDLE)		+= fhandle.o
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o richacl_inode.o
-+richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-new file mode 100644
-index 0000000..02a7986
---- /dev/null
-+++ b/fs/richacl_xattr.c
-@@ -0,0 +1,156 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/fs.h>
-+#include <linux/slab.h>
-+#include <linux/module.h>
-+#include <linux/richacl_xattr.h>
-+
-+MODULE_LICENSE("GPL");
-+
-+/**
-+ * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
-+ */
-+struct richacl *
-+richacl_from_xattr(const void *value, size_t size)
-+{
-+	const struct richacl_xattr *xattr_acl = value;
-+	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
-+	struct richacl *acl;
-+	struct richace *ace;
-+	int count;
-+
-+	if (size < sizeof(struct richacl_xattr) ||
-+	    xattr_acl->a_version != ACL4_XATTR_VERSION ||
-+	    (xattr_acl->a_flags & ~ACL4_VALID_FLAGS))
-+		return ERR_PTR(-EINVAL);
-+
-+	count = le16_to_cpu(xattr_acl->a_count);
-+	if (count > ACL4_XATTR_MAX_COUNT)
-+		return ERR_PTR(-EINVAL);
-+
-+	acl = richacl_alloc(count);
-+	if (!acl)
-+		return ERR_PTR(-ENOMEM);
-+
-+	acl->a_flags = xattr_acl->a_flags;
-+	acl->a_owner_mask = le32_to_cpu(xattr_acl->a_owner_mask);
-+	if (acl->a_owner_mask & ~ACE4_VALID_MASK)
-+		goto fail_einval;
-+	acl->a_group_mask = le32_to_cpu(xattr_acl->a_group_mask);
-+	if (acl->a_group_mask & ~ACE4_VALID_MASK)
-+		goto fail_einval;
-+	acl->a_other_mask = le32_to_cpu(xattr_acl->a_other_mask);
-+	if (acl->a_other_mask & ~ACE4_VALID_MASK)
-+		goto fail_einval;
-+
-+	richacl_for_each_entry(ace, acl) {
-+		const char *who = (void *)(xattr_ace + 1), *end;
-+		ssize_t used = (void *)who - value;
-+
-+		if (used > size)
-+			goto fail_einval;
-+		end = memchr(who, 0, size - used);
-+		if (!end)
-+			goto fail_einval;
-+
-+		ace->e_type = le16_to_cpu(xattr_ace->e_type);
-+		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
-+		ace->e_mask = le32_to_cpu(xattr_ace->e_mask);
-+		ace->u.e_id = le32_to_cpu(xattr_ace->e_id);
-+
-+		if (ace->e_flags & ~ACE4_VALID_FLAGS)
-+			goto fail_einval;
-+		if (ace->e_type > ACE4_ACCESS_DENIED_ACE_TYPE ||
-+		    (ace->e_mask & ~ACE4_VALID_MASK))
-+			goto fail_einval;
-+
-+		if (who == end) {
-+			if (ace->u.e_id == -1)
-+				goto fail_einval;  /* uid/gid needed */
-+		} else if (richace_set_who(ace, who))
-+			goto fail_einval;
-+
-+		xattr_ace = (void *)who + ALIGN(end - who + 1, 4);
-+	}
-+
-+	return acl;
-+
-+fail_einval:
-+	richacl_put(acl);
-+	return ERR_PTR(-EINVAL);
-+}
-+EXPORT_SYMBOL_GPL(richacl_from_xattr);
-+
-+/**
-+ * richacl_xattr_size  -  compute the size of the xattr representation of @acl
-+ */
-+size_t
-+richacl_xattr_size(const struct richacl *acl)
-+{
-+	size_t size = sizeof(struct richacl_xattr);
-+	const struct richace *ace;
-+
-+	richacl_for_each_entry(ace, acl) {
-+		size += sizeof(struct richace_xattr) +
-+			(richace_is_unix_id(ace) ? 4 :
-+			 ALIGN(strlen(ace->u.e_who) + 1, 4));
-+	}
-+	return size;
-+}
-+EXPORT_SYMBOL_GPL(richacl_xattr_size);
-+
-+/**
-+ * richacl_to_xattr  -  convert @acl into its xattr representation
-+ * @acl:	the richacl to convert
-+ * @buffer:	buffer of size richacl_xattr_size(@acl) for the result
-+ */
-+void
-+richacl_to_xattr(const struct richacl *acl, void *buffer)
-+{
-+	struct richacl_xattr *xattr_acl = buffer;
-+	struct richace_xattr *xattr_ace;
-+	const struct richace *ace;
-+
-+	xattr_acl->a_version = ACL4_XATTR_VERSION;
-+	xattr_acl->a_flags = acl->a_flags;
-+	xattr_acl->a_count = cpu_to_le16(acl->a_count);
-+
-+	xattr_acl->a_owner_mask = cpu_to_le32(acl->a_owner_mask);
-+	xattr_acl->a_group_mask = cpu_to_le32(acl->a_group_mask);
-+	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
-+
-+	xattr_ace = (void *)(xattr_acl + 1);
-+	richacl_for_each_entry(ace, acl) {
-+		xattr_ace->e_type = cpu_to_le16(ace->e_type);
-+		xattr_ace->e_flags = cpu_to_le16(ace->e_flags &
-+						 ACE4_VALID_FLAGS);
-+		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
-+		if (richace_is_unix_id(ace)) {
-+			xattr_ace->e_id = cpu_to_le32(ace->u.e_id);
-+			memset(xattr_ace->e_who, 0, 4);
-+			xattr_ace = (void *)xattr_ace->e_who + 4;
-+		} else {
-+			int sz = ALIGN(strlen(ace->u.e_who) + 1, 4);
-+
-+			xattr_ace->e_id = cpu_to_le32(-1);
-+			memset(xattr_ace->e_who + sz - 4, 0, 4);
-+			strcpy(xattr_ace->e_who, ace->u.e_who);
-+			xattr_ace = (void *)xattr_ace->e_who + sz;
-+		}
-+	}
-+}
-+EXPORT_SYMBOL_GPL(richacl_to_xattr);
-diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
-new file mode 100644
-index 0000000..f79ec12
---- /dev/null
-+++ b/include/linux/richacl_xattr.h
-@@ -0,0 +1,47 @@
-+/*
-+ * Copyright (C) 2006, 2010  Novell, Inc.
-+ * Written by Andreas Gruenbacher <agruen@kernel.org>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef __RICHACL_XATTR_H
-+#define __RICHACL_XATTR_H
-+
-+#include <linux/richacl.h>
-+
-+#define RICHACL_XATTR "system.richacl"
-+
-+struct richace_xattr {
-+	__le16		e_type;
-+	__le16		e_flags;
-+	__le32		e_mask;
-+	__le32		e_id;
-+	char		e_who[0];
-+};
-+
-+struct richacl_xattr {
-+	unsigned char	a_version;
-+	unsigned char	a_flags;
-+	__le16		a_count;
-+	__le32		a_owner_mask;
-+	__le32		a_group_mask;
-+	__le32		a_other_mask;
-+};
-+
-+#define ACL4_XATTR_VERSION	0
-+#define ACL4_XATTR_MAX_COUNT	1024
-+
-+extern struct richacl *richacl_from_xattr(const void *, size_t);
-+extern size_t richacl_xattr_size(const struct richacl *acl);
-+extern void richacl_to_xattr(const struct richacl *, void *);
-+
-+#endif /* __RICHACL_XATTR_H */
--- 
-1.7.5.4
+On 10/25/11 7:34 AM, J. Bruce Fields wrote:
+> On Tue, Oct 25, 2011 at 08:19:24AM -0400, bfields wrote:
+>> 	- Progress on the basic 4.1 todo's.  Thanks in particular to Mi
+>> 	  Jinlong for (among other things) implementing the somewhat
+>> 	  tricky DRC limit checking.
+>>
+>> 	  The 4.1 code is getting closer--it *might* be possible to
+>> 	  finish basic 4.1 early as 3.3, at which point we could start
+>> 	  on optional features (like pNFS).  But that will depend on
+>> 	  people sending patches (and pynfs tests) for the remaining 4.1
+>> 	  todo's.
+> I've been keeping the todo list up to date here:
+>
+> 	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
+>
+> Some of them I think are relatively straightforward--probably anyone
+> with a little time could dive into them:
+>
+> 	- SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+>
+> 	- backchannel attribute negotiation
+>
+> 	- ACL retention bits
+>
+> 	- Clarify RDMA non-support
+>
+> Slightly trickier or open-ended; we may need to talk over design first
+> before diving in:
+>
+> 	- Make DESTROY_SESSION wait on in-progress requests
+>
+> 	- current stateid
+>
+> 	- Check 4.0/4.1 interactions
+>
+> 	- Callback failure handling
+>
+> 	- GSS
+>
+> The GSS piece is probably the one I'm most worried about.  What we have
+> seems sufficient for current clients, but I know it's incomplete, and
+> I'm not entirely clear how much work it is to implement the minimum
+> required to ensure that future kerberos-using clients won't break
+> unexpectedly on upgrade to 4.1.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
