@@ -1,80 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:35979 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754171Ab1JRV2w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 17:28:52 -0400
-From: <david.noveck@emc.com>
-To: <Trond.Myklebust@netapp.com>, <matt@linuxbox.com>
-CC: <linux-nfs@vger.kernel.org>, <nfs-ganesha-devel@lists.sourceforge.net>,
-        <nfsv4@ietf.org>
-Date: Tue, 18 Oct 2011 17:28:01 -0400
-Subject: RE: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
-Message-ID: <5DEA8DB993B81040A21CF3CB332489F68611DBBF@MX31A.corp.emc.com>
-References: <1988930626.161.1317955756425.JavaMail.root@thunderbeast.private.linuxbox.com>
-	<953639179.163.1317956101014.JavaMail.root@thunderbeast.private.linuxbox.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91DDFD@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430B91DDFD@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from cantor2.suse.de ([195.135.220.15]:41240 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932308Ab1JZHgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Oct 2011 03:36:12 -0400
+Date: Wed, 26 Oct 2011 18:36:13 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "NFS" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS/sunrpc: don't use a credential with extra groups.
+Message-ID: <20111026183613.3970dc6b@notabene.brown>
+In-Reply-To: <00de01cc93af$bc3812cc$d25f630a@hq.netapp.com>
+References: <00de01cc93af$bc3812cc$d25f630a@hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Qb.8tIFdZJVu9ALDWyYXkpq"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I have _always_ argued that callbacks should be the exception and not the rule, 
+--Sig_/Qb.8tIFdZJVu9ALDWyYXkpq
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Sounds right.
+On Wed, 26 Oct 2011 01:30:34 +0200 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
 
-> due to the fact that in pretty much all cases the server will have to send 
-> out a NFS4ERR_DELAY result to whatever RPC call it is that triggered a callback. 
+> Hi Neil
+>=20
+> I queued this patch up for linux-next testing earlier this morning. I cou=
+ld have included it in the pull I sent to Linus, but I'm trying to be a bit=
+ more strict about integration testing prior to pushing.
+>=20
+> I also added a Cc: stable@kernel.org. I'm assuming that was appropriate.
 
-I may disagree depending on what you mean by "petty much" always.
+Thanks.
+I was in two minds about -stable as it requires special care to trigger the
+bug.  I am certainly not against it though.
 
-V4.1 does have callbacks that are specified so as to useful asynchronously, and
-if people take advantage of them, they won't have this NFS4ERR_DELAY problem.
+(and I fully support your more strict approach to integration testing!  I'll
+take it as an example to aspire to).
 
-Examples are CB_NOTIFY, CB_RECALL_ANY, CB_PUSH_DELEG.  Over time, future versions may
-expand this list and make callbacks less exceptional, although not the rule. 
+Thanks,
+NeilBrown
 
------Original Message-----
-From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Myklebust, Trond
-Sent: Thursday, October 06, 2011 11:39 PM
-To: Matt W. Benjamin
-Cc: linux-nfs; nfs-ganesha-devel; nfsv4
-Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
+--Sig_/Qb.8tIFdZJVu9ALDWyYXkpq
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-> -----Original Message-----
-> From: Matt W. Benjamin [mailto:matt@linuxbox.com]
-> Sent: Thursday, October 06, 2011 10:55 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs; nfs-ganesha-devel; nfsv4
-> Subject: Re: [nfsv4] back channel flags, CREATE_SESSION,
-> BIND_CONN_TO_SESSION
-> 
-> Hi Trond,
-> 
-> I appreciate your point of view.  I appreciate Rick's comments.  I hope some
-> other comments will trickle in.  Do I think you and Rick are saying the same
-> thing?  Not really.  Do I think you're making sense when you imply I want to
-> change the standard?  No, I don't follow that.  BIND_CONN_TO_SESSION is in
-> the published standard.  Can I show a dedicated back channel improves
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
-I never accused you of trying to change the standard. What I said was that you need to convince me that there is a good reason to accept two implementations of the same feature in the client.
+iQIVAwUBTqe4bTnsnt1WYoG5AQJmpQ//et5KA9ogDD51bJZvphuyCAH9AZ3Av6ct
+uee08ephnvK3DBEgicHfP1iU7V7lBq+PZdMqpIUoVpAO09gUscFc+wJZYLYry/6p
+ip/ZVoQfYzHhFqnNpT9Rcsr4KMeB9e3WttL6xBUyb0I1fS4c+HJ8NEFeQhR0uH7y
+/FKlrbGB7QA8oOtOEhbIcsRwaKMf2TExfoqKyD56pZEqYevGNHOaVRiEMWb34mAc
+WZ9lRK8xCpS8+XQHGedCjF3f1X5aL7fCMYnKFkN1FuFeYd+RaFRj9i2uXJpAA3mv
+6BW3xJFL2Y92q7q1t1gx8cWtBFvULaHHV9bK0CDz600TMNocmfHHXxMrcA1HKTSI
+a37Ndw1ZFr8O40I8C7aBJ0Rwbs/HU7UMS9Mwq1S+llrkIF4axrCDSTbK21ZQTJ84
+cW2N8XkI/CExgbLPgdDmw0l1HyPtPdDDJJqHPYgyz9S11Qcq9d0ETCjYP8smaFdh
+Yvo2VMGIgPC82dpjFIw0p/DTgNuwlHp0NiSfP8jEljn0XGucZMxEXAtAkzWhWWA+
+TK+bxipeoUNMkKbZeJPsLwP703mgIcU0aCL0MbjMsUtsAEE3izChUgyaTZRQj+tP
+VT699FghKtw5IIHoLnIqdO9DmEcsCyuSGHcmhKDlwnozAJVe6yE+Zi1mBnPGytQ/
+3WKwg8704Ss=
+=qCk3
+-----END PGP SIGNATURE-----
 
-> performance?  Not at present.  That's a sensible question.  I think if the
-> protocol in general is doing what it is intended to do, it should be possible for
-> some workloads, at some point.  (If callbacks are, somehow generally
-> detrimental to performance, as you state, I think maybe we have some more
-> work to do.)  (I note only one more thing--I did raise this topic on list 12
-> months ago.  Only Bruce commented, at the time.)
-
-Fair enough, but 12 months ago, rfc5661 was in last call status, and we were all trying to move on to final implementations.
-
-I have _always_ argued that callbacks should be the exception and not the rule, due to the fact that in pretty much all cases the server will have to send out a NFS4ERR_DELAY result to whatever RPC call it is that triggered a callback. Nothing new there in NFSv4.1. I'll add that nor has anybody successfully argued that there is any change in NFSv4.1 compared to our existing NFSv4 implementations. NFSv4 delegation callbacks are (measurably) extremely slow, and so I'd expect the exact same behavior for NFSv4.1 layout recalls etc. Nothing has changed in NFSv4 callback technology to warrant an expectation of performance improvements.
-
-IOW: Nobody (including you) has ever convinced me that we need to consider callbacks as a scalability issue. I'd require some pretty firm evidence before I could accept that as a fact. So far, all I have seen is more or less eloquent prose. No hard numbers.
-
-Trond
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
-
+--Sig_/Qb.8tIFdZJVu9ALDWyYXkpq--
