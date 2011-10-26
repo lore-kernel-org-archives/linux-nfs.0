@@ -1,95 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:41537 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755049Ab1JaR5N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:57:13 -0400
-Received: by eye27 with SMTP id 27so5529759eye.19
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 10:57:12 -0700 (PDT)
-Message-ID: <4EAEE173.80306@tonian.com>
-Date: Mon, 31 Oct 2011 19:57:07 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from natasha.panasas.com ([67.152.220.90]:46029 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752771Ab1JZDbr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 23:31:47 -0400
+Message-ID: <4EA77F13.7000807@panasas.com>
+Date: Tue, 25 Oct 2011 20:31:31 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>, nfsv4 list <nfsv4@ietf.org>
-Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>   <1320074136-3087-2-git-send-email-bergwolf@gmail.com>   <1320076148.4714.4.camel@lade.trondhjem.org>   <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>  <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com> <1320082964.4714.23.camel@lade.trondhjem.org>
-In-Reply-To: <1320082964.4714.23.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd (and lock) changes for 3.2
+References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com>
+In-Reply-To: <4EA77B78.6080706@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-10-31 19:42, Trond Myklebust wrote:
-> On Mon, 2011-10-31 at 19:08 +0200, Benny Halevy wrote: 
->> On 2011-10-31 18:45, Trond Myklebust wrote:
->>> On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote: 
->>>> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
->>>> <Trond.Myklebust@netapp.com> wrote:
->>>>> On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
->>>>>> For blocklayout, we need to issue layoutreturn to return layouts when
->>>>>> handling CB_RECALL_ANY.
->>>>>
->>>>> Why?
->>>> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
->>>> that server wants client to return layout. And server will be waiting
->>>> for layoutreturn in such case.
->>>
->>> No it doesn't. NFS4_OK means that the client acknowledges that it has
->>> been given a new limit on the number of recallable objects it can keep.
->>> There is no requirement in the text that it should send layoutreturn or
->>> that the server should expect that.
+On 10/25/2011 08:16 PM, Boaz Harrosh wrote:
+> On 10/25/2011 05:19 AM, J. Bruce Fields wrote:
+>> Changes for nfsd (and also a few file-locking changes) are available in
+>> the git repository at:
 >>
->> The motivation for CB_RECALL_ANY is to reduce the state on the *server* side.
->> Quoting from RFC5661:
->>    The server may decide that it cannot hold all of the state for
->>    recallable objects, such as delegations and layouts, without running
->>    out of resources.  In such a case, while not optimal, the server is
->>    free to recall individual objects to reduce the load.
->> ...
->>    In order to implement an effective reclaim scheme for such objects,
->>    the server's knowledge of available resources must be used to
->>    determine when objects must be recalled with the clients selecting
->>    the actual objects to be returned.
->>                       ^^^^^^^^^^^^^^
->> ...
->>    When a given resource pool is over-utilized, the server can send a
->>    CB_RECALL_ANY to clients holding recallable objects of the types
->>    involved, allowing it to keep a certain number of such objects and
->>    return any excess.
->>    ^^^^^^^^^^^^^^^^^
->> ...
->>    RCA4_TYPE_MASK_FILE_LAYOUT
+>> 	git://linux-nfs.org/~bfields/linux.git for-3.2
 >>
->>       The client is to return layouts of type LAYOUT4_NFSV4_1_FILES.
->>                     ^^^^^^^^^^^^^^^^^
+>> This is the same tree I've always used--I assume you believe it's mine
+>> without a need for signing anything.  Feel free to tell me otherwise.
 >>
->> Isn't that explicit enough?
 > 
-> Leaving aside the fact that the above quotes contain no normative
-> language:
-> Right now, we do a bulk return of all layouts. Doing a layoutreturn for
-> each and every layout in that case is just ridiculous. Either do a
-
-The idea is to return the layouts for files that are the least used,
-not each and every layout.
-
-> LAYOUTRETURN4_ALL after freeing all the layouts, or don't do anything at
-> all and just wait for the server to revoke the layouts for us (which is
-> what we currently do).
-> Both options should be faster than doing a LAYOUTRETURN4_FILE on each
-> and every file that is currently in use.
-
-Doing LAYOUTRETURN4_ALL might cause a bug hiccup if the client needs to then send
-a LAYOUTGET for each and every file that *is* currently in use.
-So serving a CB_RECALL_ANY keeping more than 50% of the recallable objects means
-the client would be better off returning the excess rather than returning everything
-and reclaiming > 50% back.
-
-Waiting for revocation may work well with some servers but would be disastrous in
-terms of performance and responsiveness with others.
-
-Benny
-
+> <Snip>
 > 
-> Trond
+>>
+>> Boaz Harrosh (1):
+>>       nfsd4: fix failure to end nfsd4 grace period
+>>
 > 
+> Bruce hi.
+> 
+> As I recall this failure I have experienced in early stages of the
+> 3.1-rcX series. I admit that I always run with Benny's pnfs tree,
+> but I do not think it is patches that Benny added from the 3.2 set
+> I think it is breakage introduced by the 3.1 merge window.
+> 
+> Therefor I think that this patch must be sent to Stable@ otherwise
+> surly 3.1 Kernel users are to hit it. (You can escapee it)
+> 
+
+Rrrr spell checker for you. Above should be (You can't escape it)
+
+Boaz
+> Though it has been pulled to Linus tree, without the CC: stable@kernel
+> I think you can just send the patch to <stable@kernel.org> and it
+> will be included.
+> 
+> (What other 3.1 bug fixes are missing)
+> 
+> Thanks
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
