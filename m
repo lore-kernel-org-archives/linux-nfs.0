@@ -1,63 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:51119 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752883Ab1JaVQn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:16:43 -0400
-Received: by wwf22 with SMTP id 22so2389379wwf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 14:16:42 -0700 (PDT)
+Received: from natasha.panasas.com ([67.152.220.90]:45924 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752771Ab1JZD1E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Oct 2011 23:27:04 -0400
+Message-ID: <4EA77E00.6090002@panasas.com>
+Date: Tue, 25 Oct 2011 20:26:56 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-In-Reply-To: <4E9E1F3A.2090709@tonian.com>
-References: <4E9E1F3A.2090709@tonian.com>
-Date: Mon, 31 Oct 2011 17:16:41 -0400
-Message-ID: <CAN-5tyEF9j92qhPPPw9__B78Km1rUXC+wEOD642Wxts=N4ZOsg@mail.gmail.com>
-Subject: Re: [PATCH] pnfsd: dlm: fix bug in DS tcp/tcp6 address string
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Michael Groshans <groshans@umich.edu>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Benny Halevy <benny@tonian.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Final disposition of the pNFSD tree
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny, this patch does not fix the issue. Except that now all the
-entries list "tcp6". Previously if you recall first data server entry
-was correct but others listed tcp6 type with it was suppose to be tcp.
+Benny what is the state of the PNFSD tree? Can you sign on it's stability for
+a large scale testing or should I be using the nfsd-3.1 based tree?
 
-On Tue, Oct 18, 2011 at 8:52 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> squash into "pnfsd: Correctly set netid to tcp or tcp6 for non-local exports"
->
-> Currently, the code looks for ':' using strcspn that requires a null terminated string
-> while the address buffer isn't null terminated.
->
-> Instead, just use strnchr to look for a ':' and if not found assume
-> it's an IPv4 address, otherwise it's IPv6
->
-> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-> ---
->  fs/nfsd/nfs4pnfsdlm.c |    9 ++-------
->  1 files changed, 2 insertions(+), 7 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> index abc4d83..d07a6037 100644
-> --- a/fs/nfsd/nfs4pnfsdlm.c
-> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> @@ -328,13 +328,8 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
->                memcpy(daddr->r_addr.data + len, ".8.1", 4);
->                daddr->r_addr.len = len + 4;
->
-> -               if (strcspn(daddr->r_addr.data, ":") - 1 == daddr->r_addr.len) {
-> -                       daddr->r_netid.data = "tcp";
-> -                       daddr->r_netid.len = 3;
-> -               } else {
-> -                       daddr->r_netid.data = "tcp6";
-> -                       daddr->r_netid.len = 4;
-> -               }
-> +               daddr->r_netid.data = "tcp6";
-> +               daddr->r_netid.len = strnchr(daddr->r_addr.data, len, ':') ? 4 : 3;
->
->                fdev.fl_device_list[i].fl_multipath_length = 1;
->                fdev.fl_device_list[i].fl_multipath_list = daddr;
-> --
-> 1.7.6
->
->
+As far as I could see. The last tree that did not have nfsd-3.2 
+new state patches was pnfs-all-3.1-rc8-2011-10-06.
+
+pnfs-all-3.1-rc9-2011-10-17 Had some of them, but I guess not the major
+ones. (Should I test with this one?)
+
+And pnfs-all-3.1-rc10-2011-10-18 (pnfs/pnfs-all-latest) has all of them.
+Is it stable?
+
+My last heavy testing was actually on pnfs-all-3.1-rc6-2011-09-20. If I diff
+that with pnfs-all-3.1-rc8-2011-10-06 on fs/nfsd/ I can still see huge amount
+of for-nfsd-v3.2 changes. I know you have found some bugs, So I guess I'll stick
+with the v3.1-rc6-pnfs based tree for the Server and v3.1 release Kernel + ore-v3.2
+patches.
+
+Do you think you will release a 3.1 based pnfs tree that is completely based on
+the v3.1-nfsd version and the old pnfs tree, without any for-v3.2-pnfsd patches?
+
+Thanks
+Boaz
