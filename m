@@ -1,147 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:57578 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754995Ab1JTKJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 06:09:01 -0400
-Message-ID: <4E9FF46D.5090003@cn.fujitsu.com>
-Date: Thu, 20 Oct 2011 18:14:05 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:59737 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932331Ab1JZI7l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Oct 2011 04:59:41 -0400
+Date: Wed, 26 Oct 2011 04:59:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Tucker <tom@ogc.us>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd (and lock) changes for 3.2
+Message-ID: <20111026085940.GA21404@fieldses.org>
+References: <20111025121924.GA15662@fieldses.org>
+ <20111025123449.GB15662@fieldses.org>
+ <4EA78F87.2050109@ogc.us>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] CLNT: add some tests for DESTROY_CLIENTID
-References: <4E9FE273.80500@cn.fujitsu.com> <20111020094355.GE5444@fieldses.org> <4E9FF123.2060704@cn.fujitsu.com> <20111020100202.GF5444@fieldses.org>
-In-Reply-To: <20111020100202.GF5444@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EA78F87.2050109@ogc.us>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some tests for DESTROY_CLIENTID at pynfs41.
+On Tue, Oct 25, 2011 at 11:41:43PM -0500, Tom Tucker wrote:
+> Hi Bruce,
+> 
+> What does RDMA Non Support mean exactly? Maybe I could help if it's
+> a resource issue?
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/__init__.py            |    1 +
- nfs4.1/server41tests/st_destroy_clientid.py |   98 +++++++++++++++++++++++++++
- 2 files changed, 99 insertions(+), 0 deletions(-)
- create mode 100644 nfs4.1/server41tests/st_destroy_clientid.py
+My notes are here:
 
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index 1cc2048..eb92538 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_compound.py",
-            "st_create_session.py",
-            "st_destroy_session.py",
-+           "st_destroy_clientid.py",
-            "st_reclaim_complete.py",
-            "st_secinfo_no_name.py",
-            "st_secinfo.py",
-diff --git a/nfs4.1/server41tests/st_destroy_clientid.py b/nfs4.1/server41tests/st_destroy_clientid.py
-new file mode 100644
-index 0000000..1b193cf
---- /dev/null
-+++ b/nfs4.1/server41tests/st_destroy_clientid.py
-@@ -0,0 +1,98 @@
-+from st_create_session import create_session
-+from nfs4_const import *
-+from environment import check, fail
-+import nfs4_ops as op
-+import nfs4lib
-+
-+def testSupported(t, env):
-+    """ Do a simple DESTROY_CLIENTID
-+        destroy an unconfirmed clientid without session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID1
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+
-+    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-+    check(res)
-+
-+def testDestroyCIDWS(t, env):
-+    """ destroy an unconfirmed clientid with session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID2
-+    """
-+    c1 = env.c1.new_client("%s_1" % env.testname(t))
-+    c2 = env.c1.new_client("%s_2" % env.testname(t))
-+    sess = c1.create_session()
-+
-+    res = sess.compound([op.destroy_clientid(c2.clientid)])
-+    check(res)
-+
-+def testDestroyBadCIDWS(t, env):
-+    """ destroy a nonexistant clientid without session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID3
-+    """
-+    res = env.c1.compound([op.destroy_clientid(0)])
-+    check(res, NFS4ERR_STALE_CLIENTID)
-+
-+def testDestroyBadCIDIS(t, env):
-+    """ destroy a nonexistant clientid in session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID4
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    res = sess.compound([op.destroy_clientid(0)])
-+    check(res, NFS4ERR_STALE_CLIENTID)
-+
-+def testDestroyCIDSessionB(t, env):
-+    """ destroy clientid using a session belong to that client
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID5
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    res = sess.compound([op.destroy_clientid(c.clientid)])
-+    check(res, NFS4ERR_CLIENTID_BUSY)
-+
-+def testDestroyCIDCSession(t, env):
-+    """ destroy a clientid which contains session without session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID6
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-+    check(res, NFS4ERR_CLIENTID_BUSY)
-+
-+def testDestroyCIDNotOnly(t, env):
-+    """ destroy a clientid without session with other compound
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID7
-+    """
-+    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
-+    check(res, NFS4ERR_NOT_ONLY_OP)
-+
-+def testDestroyCIDTwice(t, env):
-+    """ destroy a clientid twice without session
-+
-+    FLAGS: destroy_clientid all
-+    CODE: DESCID8
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+
-+    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-+    check(res)
-+
-+    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-+    check(res, NFS4ERR_STALE_CLIENTID)
--- 
-1.7.6
+	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#Clarify_RDMA_non-support
 
+Feel free to edit that.  (That also includes a pointer to some notes you
+made on 4.1 and RDMA, though mainly focusing on the client side.)
 
+Initially my minimal goal is just to make sure that the NFSv4.1 server
+errors out cleanly at the start when a client attempts to use RDMA.
+
+--b.
+
+> 
+> Thanks,
+> Tom
+> 
+> On 10/25/11 7:34 AM, J. Bruce Fields wrote:
+> >On Tue, Oct 25, 2011 at 08:19:24AM -0400, bfields wrote:
+> >>	- Progress on the basic 4.1 todo's.  Thanks in particular to Mi
+> >>	  Jinlong for (among other things) implementing the somewhat
+> >>	  tricky DRC limit checking.
+> >>
+> >>	  The 4.1 code is getting closer--it *might* be possible to
+> >>	  finish basic 4.1 early as 3.3, at which point we could start
+> >>	  on optional features (like pNFS).  But that will depend on
+> >>	  people sending patches (and pynfs tests) for the remaining 4.1
+> >>	  todo's.
+> >I've been keeping the todo list up to date here:
+> >
+> >	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
+> >
+> >Some of them I think are relatively straightforward--probably anyone
+> >with a little time could dive into them:
+> >
+> >	- SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+> >
+> >	- backchannel attribute negotiation
+> >
+> >	- ACL retention bits
+> >
+> >	- Clarify RDMA non-support
+> >
+> >Slightly trickier or open-ended; we may need to talk over design first
+> >before diving in:
+> >
+> >	- Make DESTROY_SESSION wait on in-progress requests
+> >
+> >	- current stateid
+> >
+> >	- Check 4.0/4.1 interactions
+> >
+> >	- Callback failure handling
+> >
+> >	- GSS
+> >
+> >The GSS piece is probably the one I'm most worried about.  What we have
+> >seems sufficient for current clients, but I know it's incomplete, and
+> >I'm not entirely clear how much work it is to implement the minimum
+> >required to ensure that future kerberos-using clients won't break
+> >unexpectedly on upgrade to 4.1.
+> >
+> >--b.
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
