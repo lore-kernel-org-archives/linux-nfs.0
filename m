@@ -1,60 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:45103 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752872Ab1JJUeF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Oct 2011 16:34:05 -0400
-Received: by qyk30 with SMTP id 30so2789636qyk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Oct 2011 13:34:04 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:35689 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751401Ab1JZTzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Oct 2011 15:55:53 -0400
+Date: Wed, 26 Oct 2011 15:55:48 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, mikem@redhat.com
-Subject: [PATCH][RFC] nfs: don't redirty inode when ncommit == 0 in nfs_commit_unstable_pages
-Date: Mon, 10 Oct 2011 16:33:58 -0400
-Message-Id: <1318278838-26653-1-git-send-email-jlayton@redhat.com>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Pavel Machek <pavel@ucw.cz>, trond.myklebust@netapp.com,
+        smfrench@gmail.com, linux-pm@lists.linux-foundation.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, john@calva.com,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/4] freezer: make fake_signal_wake_up wake
+ TASK_KILLABLE tasks too
+Message-ID: <20111026155548.4a7c3dd8@corrin.poochiereds.net>
+In-Reply-To: <201110112114.28478.rjw@sisk.pl>
+References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
+	<20111011061847.GB1377@ucw.cz>
+	<20111011061000.3a3a03fe@tlielax.poochiereds.net>
+	<201110112114.28478.rjw@sisk.pl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current test in nfs_commit_unstable_pages does not handle the edge
-condition properly. When ncommit == 0, then that likely means that the
-kernel doesn't need to do anything more for the inode. The current test
-though will return true in that case, and the inode will end up being
-marked dirty.
+On Tue, 11 Oct 2011 21:14:28 +0200
+"Rafael J. Wysocki" <rjw@sisk.pl> wrote:
 
-Fix this by not re-marking the inode dirty when ncommit == 0.
+> On Tuesday, October 11, 2011, Jeff Layton wrote:
+> > On Tue, 11 Oct 2011 08:18:48 +0200
+> > Pavel Machek <pavel@ucw.cz> wrote:
+> > 
+> > > 
+> > > Hi!
+> > > 
+> > > > TASK_KILLABLE is often used to put tasks to sleep for quite some time.
+> > > > One of the most common uses is to put tasks to sleep while waiting for
+> > > > replies from a server on a networked filesystem (such as CIFS or NFS).
+> > > > 
+> > > > Unfortunately, fake_signal_wake_up does not currently wake up tasks
+> > > > that are sleeping in TASK_KILLABLE state. This means that even if the
+> > > > code were in place to allow them to freeze while in this sleep, it
+> > > > wouldn't work anyway.
+> > > > 
+> > > > This patch changes this function to wake tasks in this state as well.
+> > > > This should be harmless -- if the code doing the sleeping doesn't have
+> > > > handling to deal with freezer events, it should just go back to sleep.
+> > > 
+> > > I'm pretty sure this will break something; but that does not mean it
+> > > is bad idea, just that it should be merged early and tested a lot.
+> > > 
+> > 
+> > FWIW, I looked at most of the places in the kernel that do
+> > TASK_KILLABLE sleeps and they look like they'll handle this correctly.
+> > The main one I wasn't sure about was mem_cgroup_handle_oom(), but I
+> > think it'll do the right thing too. I certainly could have missed
+> > something though...
+> > 
+> > In any case, would you mind merging this via the linux-pm tree for 3.2?
+> 
+> I will push it for 3.2.
+> 
 
-Mike noticed this problem initially in RHEL5 (2.6.18-based kernel) which
-has a backported version of 420e3646. The inode cache there was
-growing very large, but calling sync() would essentially "fix" the
-problem.
+Hi Rafael,
 
-What I'm not clear on is how big a problem this is in mainline kernels
-as the writeback code there is very different. I think this basically
-means that the inode will remain dirty until there's a WB_SYNC_ALL
-flush. Either way, it seems incorrect to mark the inode dirty in this
-case.
+Trond asked if you would also be willing to push patches 3 and 4 in
+this series for 3.2 as well [1]? Note that patch #4 got another revision so
+we'll want to make sure that you get that one. I can resend the
+nfs/sunrpc patches if that will help...
 
-Also, another question I have here -- shouldn't we be holding the i_lock
-when doing this check?
+[1]: I think Steve F is going to push patch #2, so that one shouldn't
+be an issue. 
 
-Reported-by: Mike McLean <mikem@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/write.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 17e20e4..6395e98 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1557,7 +1557,7 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
- 		/* Don't commit yet if this is a non-blocking flush and there
- 		 * are a lot of outstanding writes for this mapping.
- 		 */
--		if (nfsi->ncommit <= (nfsi->npages >> 1))
-+		if (nfsi->ncommit && nfsi->ncommit <= (nfsi->npages >> 1))
- 			goto out_mark_dirty;
- 
- 		/* don't wait for the COMMIT response */
 -- 
-1.7.6.4
-
+Jeff Layton <jlayton@redhat.com>
