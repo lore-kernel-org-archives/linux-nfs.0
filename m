@@ -1,82 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46689 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45559 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751573Ab1JSRcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 13:32:46 -0400
-Message-ID: <4E9F09B9.4010202@RedHat.com>
-Date: Wed, 19 Oct 2011 13:32:41 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754118Ab1J0Kye (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 06:54:34 -0400
+Message-ID: <4EA93868.8070404@suse.cz>
+Date: Thu, 27 Oct 2011 12:54:32 +0200
+From: Michal Marek <mmarek@suse.cz>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
- a partial write
-References: <1319038470-17750-1-git-send-email-steved@redhat.com> <20111019123626.7a80dfad@corrin.poochiereds.net> <4E9F047B.5000600@RedHat.com> <20111019172855.GB32028@fieldses.org>
-In-Reply-To: <20111019172855.GB32028@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCH] fs/Makefile: Always inspect exofs/
+References: <4EA5FAD7.4020806@panasas.com>
+In-Reply-To: <4EA5FAD7.4020806@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 10/19/2011 01:28 PM, J. Bruce Fields wrote:
-> On Wed, Oct 19, 2011 at 01:10:19PM -0400, Steve Dickson wrote:
->>
->>
->> On 10/19/2011 12:36 PM, Jeff Layton wrote:
->>> On Wed, 19 Oct 2011 11:34:30 -0400
->>> Steve Dickson <steved@redhat.com> wrote:
->>>
->>>> This patch is a following on to commit 7a802337. Using the
->>>> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
->>>> caused the fflush() and fclose() to fail in turn causing
->>>> corruption in the mtab.
->>>>
->>>> The failures were in the internals of both calls. Switch those
->>>> calls with the actual system calls eliminated the failures.
->>>>
->>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>> ---
->>>>  support/nfs/nfs_mntent.c |    4 ++--
->>>>  1 files changed, 2 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
->>>> index a2118a2..b80f270 100644
->>>> --- a/support/nfs/nfs_mntent.c
->>>> +++ b/support/nfs/nfs_mntent.c
->>>> @@ -117,7 +117,7 @@ void
->>>>  nfs_endmntent (mntFILE *mfp) {
->>>>  	if (mfp) {
->>>>  		if (mfp->mntent_fp)
->>>> -			fclose(mfp->mntent_fp);
->>>> +			close(fileno(mfp->mntent_fp));
->>>>  		if (mfp->mntent_file)
->>>>  			free(mfp->mntent_file);
->>>>  		free(mfp);
->>>> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
->>>>  	free(m3);
->>>>  	free(m4);
->>>>  	if (res >= 0) {
->>>> -		res = fflush(mfp->mntent_fp);
->>>> +		res = fsync(fileno(mfp->mntent_fp));
->>>
->>> fsync doesn't imply an fflush. With this, I think you may end up
->>> without everything being committed to disk if part or all of it is
->>> still in the file stream buffer. You probably want to do an fflush()
->>> and then an fsync here.
->> The problem was with the fflush() call. The call was causing the
->> mount to drop core in turn causing mtab corruption. Changing that
->> call to a fsync() worked just fine... no corruption... every time! 
+On 25.10.2011 01:55, Boaz Harrosh wrote:
 > 
-> Looking at man setrlimit....  If you're worried about RLIMIT_FSIZE, then
-> I guess you need to handle SIGXFSZ and EFBIG returns from write().
+> fs/exofs directory has multiple targets now, of which the
+> ore.ko will be needed by the pnfs-objects-layout-driver
+> (fs/nfs/objlayout).
 > 
-> It looks like lock_mtab() already sets SIGXFSZ to be ignored.  Is a libc
-> bug crashing fflush on EFBIG?  Or maybe the ftruncate is a problem?
-> Maybe you just want to do away with stream IO completely?
-Calling fsync() clearly works. So why are looking for alternative
-solutions??
+> As suggested by: Michal Marek <mmarek@suse.cz>  convert
+> inclusion of exofs/ from obj-$(CONFIG_EXOFS_FS) => obj-$(y).
 
-steved.
- 
+I suggested obj-y verbatim, at least this is what I meant. obj-$(y)
+expands to "obj-" and will do nothing.
+
+Michal
