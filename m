@@ -1,55 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f42.google.com ([209.85.210.42]:57084 "EHLO
-	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750896Ab1JSAwN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 20:52:13 -0400
-Received: by pzk36 with SMTP id 36so2963913pzk.1
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2011 17:52:12 -0700 (PDT)
-Message-ID: <4E9E1F3A.2090709@tonian.com>
-Date: Tue, 18 Oct 2011 17:52:10 -0700
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:56625 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750899Ab1J0Vam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 17:30:42 -0400
+Date: Thu, 27 Oct 2011 17:30:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH v6 5/8] SUNRPC: cleanup service destruction
+Message-ID: <20111027213038.GD31669@fieldses.org>
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+ <20111025101716.12689.81697.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Olga Kornievskaia <aglo@citi.umich.edu>,
-        Michael Groshans <groshans@umich.edu>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfsd: dlm: fix bug in DS tcp/tcp6 address string
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111025101716.12689.81697.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-squash into "pnfsd: Correctly set netid to tcp or tcp6 for non-local exports"
+On Tue, Oct 25, 2011 at 02:17:18PM +0300, Stanislav Kinsbursky wrote:
+> svc_unregister() call have to be removed from svc_destroy() since it will be
+> called in sv_shutdown callback.
 
-Currently, the code looks for ':' using strcspn that requires a null terminated string
-while the address buffer isn't null terminated.
+It would be clearer that you're *moving* this if this were merged with
+the following patch.  And without doing that the series isn't quite
+bisectable, unless I'm missing something.
 
-Instead, just use strnchr to look for a ':' and if not found assume
-it's an IPv4 address, otherwise it's IPv6
+--b.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsdlm.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index abc4d83..d07a6037 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -328,13 +328,8 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
- 		memcpy(daddr->r_addr.data + len, ".8.1", 4);
- 		daddr->r_addr.len = len + 4;
-
--		if (strcspn(daddr->r_addr.data, ":") - 1 == daddr->r_addr.len) {
--			daddr->r_netid.data = "tcp";
--			daddr->r_netid.len = 3;
--		} else {
--			daddr->r_netid.data = "tcp6";
--			daddr->r_netid.len = 4;
--		}
-+		daddr->r_netid.data = "tcp6";
-+		daddr->r_netid.len = strnchr(daddr->r_addr.data, len, ':') ? 4 : 3;
-
- 		fdev.fl_device_list[i].fl_multipath_length = 1;
- 		fdev.fl_device_list[i].fl_multipath_list = daddr;
--- 
-1.7.6
-
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/svc.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 918edc3..407462f 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -530,7 +530,6 @@ svc_destroy(struct svc_serv *serv)
+>  	if (svc_serv_is_pooled(serv))
+>  		svc_pool_map_put();
+>  
+> -	svc_unregister(serv);
+>  	kfree(serv->sv_pools);
+>  	kfree(serv);
+>  }
+> 
