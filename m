@@ -1,62 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54471 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:23903 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752266Ab1JKKGV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Oct 2011 06:06:21 -0400
-Date: Tue, 11 Oct 2011 06:05:31 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Pavel Machek <pavel@ucw.cz>
-Cc: trond.myklebust@netapp.com, smfrench@gmail.com, rjw@sisk.pl,
-        linux-pm@lists.linux-foundation.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, john@Calva.COM,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 0/4] allow freezing of tasks with netfs calls in flight
-Message-ID: <20111011060531.09bc378a@tlielax.poochiereds.net>
-In-Reply-To: <20111011061819.GA1377@ucw.cz>
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com>
-	<20111011061819.GA1377@ucw.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1755084Ab1J0KEH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 06:04:07 -0400
+Message-ID: <4EA92CB5.8040805@parallels.com>
+Date: Thu, 27 Oct 2011 14:04:37 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 1/4] SUNRPC: rpcbind clients internals virtualization
+References: <20111025135637.5286.89632.stgit@localhost6.localdomain6> <20111025135749.5286.57091.stgit@localhost6.localdomain6> <4EA8FD98.9040500@netapp.com>
+In-Reply-To: <4EA8FD98.9040500@netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 11 Oct 2011 08:18:19 +0200
-Pavel Machek <pavel@ucw.cz> wrote:
+27.10.2011 10:43, Bryan Schumaker пишет:
+> On 10/25/2011 10:57 AM, Stanislav Kinsbursky wrote:
+>> This patch moves static rpcbind internals to sunrpc part of network namespace
+>
+> Rather than saying that this patch moves the static internals, could you say that it creates the new network namespace internals?  The next patch switches things over, so it's not really correct to say that this one moves everything.
+>
+> Alternatively, could this patch be merged with the next one so that you create and switch over to the new internals all at once?
+>
+> - Bryan
+>
 
-> Hi!
-> 
-> > We've had a number of reports recently of people with NFS and CIFS
-> > mounts that were unable to suspend or hibernate their machines. Here
-> > are a couple of Fedora bugs that illustrate the problem:
-> > 
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=712088
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=717735
-> > 
-> > When it occurs the problem is pretty clear. We have a task that's
-> > sleeping in the kernel in TASK_KILLABLE sleep, generally waiting
-> > for a reply to come in. Often though, userspace has already taken
-> > down the interface so that reply will never come. The process then
-> > fails to freeze and the suspend fails.
-> 
-> Userspace should not take interface down for suspend (*). Why do that?
-> 
+Yep, you right, Thanks.
+Will resend it.
 
-I suspect that NetworkManager does this to try and allow for the case
-where someone suspends their laptop and then wanders off to another
-network and then resumes. Either way, we still want to allow suspend
-and hibernate to work regardless of what userspace does during the
-process.
+>> context. This will allow to create rcpbind clients per network namespace.
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>>   net/sunrpc/netns.h |    5 +++++
+>>   1 files changed, 5 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+>> index d013bf2..83eede3 100644
+>> --- a/net/sunrpc/netns.h
+>> +++ b/net/sunrpc/netns.h
+>> @@ -9,6 +9,11 @@ struct cache_detail;
+>>   struct sunrpc_net {
+>>   	struct proc_dir_entry *proc_net_rpc;
+>>   	struct cache_detail *ip_map_cache;
+>> +
+>> +	struct rpc_clnt *rpcb_local_clnt;
+>> +	struct rpc_clnt *rpcb_local_clnt4;
+>> +	spinlock_t rpcb_clnt_lock;
+>> +	unsigned int rpcb_users;
+>>   };
+>>
+>>   extern int sunrpc_net_id;
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> > This patch fixes this by allowing the TASK_KILLABLE sleeps in NFS and
-> > CIFS to be awoken by the freezer and then to try to freeze. If a freeze
-> > event does occur, then the code will treat it as if a schedule() has
-> > already occured.
-> 
-> Looks like good idea...
-> 
-> (*) unless absolutely neccessary. openvpn?
-> 
 
-Thanks for looking.
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Stanislav Kinsbursky
