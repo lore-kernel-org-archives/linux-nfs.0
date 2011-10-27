@@ -1,84 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36341 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:23700 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753192Ab1J1J00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 05:26:26 -0400
-Message-ID: <4EAA7565.1040101@parallels.com>
-Date: Fri, 28 Oct 2011 13:27:01 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1751439Ab1J0Gn6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 02:43:58 -0400
+Message-ID: <4EA8FD98.9040500@netapp.com>
+Date: Thu, 27 Oct 2011 02:43:36 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v6 4/8] SUNRPC: setup rpcbind clients if service requires
- it
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6> <20111025101705.12689.68022.stgit@localhost6.localdomain6> <20111027212732.GC31669@fieldses.org>
-In-Reply-To: <20111027212732.GC31669@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH v2 1/4] SUNRPC: rpcbind clients internals virtualization
+References: <20111025135637.5286.89632.stgit@localhost6.localdomain6> <20111025135749.5286.57091.stgit@localhost6.localdomain6>
+In-Reply-To: <20111025135749.5286.57091.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-28.10.2011 01:27, J. Bruce Fields пишет:
-> On Tue, Oct 25, 2011 at 02:17:08PM +0300, Stanislav Kinsbursky wrote:
->> New function ("svc_uses_rpcbind") will be used to detect, that new service will
->> send portmapper register calls. For such services we will create rpcbind
->> clients and remove all stale portmap registrations.
->> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
->> in case of this field wasn't initialized earlier. This will allow to destroy
->> rpcbind clients when no other users of them left.
->>
->> Note: Currently, any creating service will be detected as portmap user.
->> Probably, this is wrong. But now it depends on program versions "vs_hidden"
->> flag.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   net/sunrpc/svc.c |   11 +++++++++--
->>   1 files changed, 9 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index d2d61bf..918edc3 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -454,8 +454,15 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>   		spin_lock_init(&pool->sp_lock);
->>   	}
->>
->> -	/* Remove any stale portmap registrations */
->> -	svc_unregister(serv);
->> +	if (svc_uses_rpcbind(serv)) {
->> +	       	if (svc_rpcb_setup(serv)<  0) {
->> +			kfree(serv->sv_pools);
->> +			kfree(serv);
->> +			return NULL;
->
-> Nit: could we convert this (and the previous failure to allocate
-> sv_pools) to the usual pattern of collecting the cleanup at the end and
-> jumping to it with a goto?
->
+On 10/25/2011 10:57 AM, Stanislav Kinsbursky wrote:
+> This patch moves static rpcbind internals to sunrpc part of network namespace
 
-Sure, we can. I will implement this "goto pattern", is you insist.
+Rather than saying that this patch moves the static internals, could you say that it creates the new network namespace internals?  The next patch switches things over, so it's not really correct to say that this one moves everything.
 
-> Looks fine otherwise.
->
-> --b.
->
->> +		}
->> +		if (!serv->sv_shutdown)
->> +			serv->sv_shutdown = svc_rpcb_cleanup;
->> +	}
->>
->>   	return serv;
->>   }
->>
+Alternatively, could this patch be merged with the next one so that you create and switch over to the new internals all at once?
 
+- Bryan
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> context. This will allow to create rcpbind clients per network namespace.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/netns.h |    5 +++++
+>  1 files changed, 5 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+> index d013bf2..83eede3 100644
+> --- a/net/sunrpc/netns.h
+> +++ b/net/sunrpc/netns.h
+> @@ -9,6 +9,11 @@ struct cache_detail;
+>  struct sunrpc_net {
+>  	struct proc_dir_entry *proc_net_rpc;
+>  	struct cache_detail *ip_map_cache;
+> +
+> +	struct rpc_clnt *rpcb_local_clnt;
+> +	struct rpc_clnt *rpcb_local_clnt4;
+> +	spinlock_t rpcb_clnt_lock;
+> +	unsigned int rpcb_users;
+>  };
+>  
+>  extern int sunrpc_net_id;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
