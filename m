@@ -1,73 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46350 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:8010 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753095Ab1JSTo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 15:44:29 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9JJiSr3002753
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 15:44:29 -0400
-Message-ID: <4E9F289C.2070003@RedHat.com>
-Date: Wed, 19 Oct 2011 15:44:28 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753891Ab1J0SKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 14:10:36 -0400
+Subject: [PATCH v3 2/3] SUNRPC: optimize net_ns dereferencing in rpcbind
+	creation calls
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Thu, 27 Oct 2011 22:11:15 +0300
+Message-ID: <20111027181111.20459.91491.stgit@localhost6.localdomain6>
+In-Reply-To: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
+References: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: mtab corruption when RLIMIT_FSIZE causes
- a partial write
-References: <1319038470-17750-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1319038470-17750-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It turns out this is only a RHEL6 bug. I (stupidly) made the assumption that
-since the RHEL6 patch cleanly applied to upstream, both streams worked
-in the same way... which is not the case. 
+Static rpcbind creation functions can be parametrized by network namespace
+pointer, calculated only once, instead of using init_net pointer (or taking it
+from current when virtualization will be comleted) in many places.
 
-With upstream, this mtab code is not even compiled when the libmount 
-code is enabled. Secondly, with later systems /etc/mtab is symbolically
-linked to /proc/mounts, making the file read-only. Finally when
-/etc/mtabs is a regular file and is writeable, the  SIGXFSZ
-signal is handled properly in lock_mtab() so there is no corruption.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Sorry for the noise.
+---
+ net/sunrpc/rpcb_clnt.c |   35 +++++++++++++++++++----------------
+ 1 files changed, 19 insertions(+), 16 deletions(-)
 
-steved.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 59bd1fb..8c873a8 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -161,10 +161,10 @@ static void rpcb_map_release(void *data)
+ 	kfree(map);
+ }
+ 
+-static int rpcb_get_local(void)
++static int rpcb_get_local(struct net *net)
+ {
+ 	int cnt;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	spin_lock(&sn->rpcb_clnt_lock);
+ 	if (sn->rpcb_users)
+@@ -201,9 +201,10 @@ void rpcb_put_local(void)
+ 	}
+ }
+ 
+-static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
++static void rpcb_set_local(struct net *net, struct rpc_clnt *clnt,
++			struct rpc_clnt *clnt4)
+ {
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	/* Protected by rpcb_create_local_mutex */
+ 	sn->rpcb_local_clnt = clnt;
+@@ -211,22 +212,23 @@ static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
+ 	smp_wmb(); 
+ 	sn->rpcb_users = 1;
+ 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
+-			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
+-			sn->rpcb_local_clnt4);
++			"%p, rpcb_local_clnt4: %p) for net %p%s\n",
++			sn->rpcb_local_clnt, sn->rpcb_local_clnt4,
++			net, (net == &init_net) ? " (init_net)" : "");
+ }
+ 
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local_unix(void)
++static int rpcb_create_local_unix(struct net *net)
+ {
+ 	static const struct sockaddr_un rpcb_localaddr_rpcbind = {
+ 		.sun_family		= AF_LOCAL,
+ 		.sun_path		= RPCBIND_SOCK_PATHNAME,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= net,
+ 		.protocol	= XPRT_TRANSPORT_LOCAL,
+ 		.address	= (struct sockaddr *)&rpcb_localaddr_rpcbind,
+ 		.addrsize	= sizeof(rpcb_localaddr_rpcbind),
+@@ -259,7 +261,7 @@ static int rpcb_create_local_unix(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	rpcb_set_local(clnt, clnt4);
++	rpcb_set_local(net, clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -269,7 +271,7 @@ out:
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local_net(void)
++static int rpcb_create_local_net(struct net *net)
+ {
+ 	static const struct sockaddr_in rpcb_inaddr_loopback = {
+ 		.sin_family		= AF_INET,
+@@ -277,7 +279,7 @@ static int rpcb_create_local_net(void)
+ 		.sin_port		= htons(RPCBIND_PORT),
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= net,
+ 		.protocol	= XPRT_TRANSPORT_TCP,
+ 		.address	= (struct sockaddr *)&rpcb_inaddr_loopback,
+ 		.addrsize	= sizeof(rpcb_inaddr_loopback),
+@@ -311,7 +313,7 @@ static int rpcb_create_local_net(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	rpcb_set_local(clnt, clnt4);
++	rpcb_set_local(net, clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -325,16 +327,17 @@ int rpcb_create_local(void)
+ {
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
++	struct net *net = &init_net;
+ 
+-	if (rpcb_get_local())
++	if (rpcb_get_local(net))
+ 		return result;
+ 
+ 	mutex_lock(&rpcb_create_local_mutex);
+-	if (rpcb_get_local())
++	if (rpcb_get_local(net))
+ 		goto out;
+ 
+-	if (rpcb_create_local_unix() != 0)
+-		result = rpcb_create_local_net();
++	if (rpcb_create_local_unix(net) != 0)
++		result = rpcb_create_local_net(net);
+ 
+ out:
+ 	mutex_unlock(&rpcb_create_local_mutex);
 
-On 10/19/2011 11:34 AM, Steve Dickson wrote:
-> This patch is a following on to commit 7a802337. Using the
-> tool in https://bugzilla.redhat.com/show_bug.cgi?id=695916
-> caused the fflush() and fclose() to fail in turn causing
-> corruption in the mtab.
-> 
-> The failures were in the internals of both calls. Switch those
-> calls with the actual system calls eliminated the failures.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  support/nfs/nfs_mntent.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-> index a2118a2..b80f270 100644
-> --- a/support/nfs/nfs_mntent.c
-> +++ b/support/nfs/nfs_mntent.c
-> @@ -117,7 +117,7 @@ void
->  nfs_endmntent (mntFILE *mfp) {
->  	if (mfp) {
->  		if (mfp->mntent_fp)
-> -			fclose(mfp->mntent_fp);
-> +			close(fileno(mfp->mntent_fp));
->  		if (mfp->mntent_file)
->  			free(mfp->mntent_file);
->  		free(mfp);
-> @@ -147,7 +147,7 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
->  	free(m3);
->  	free(m4);
->  	if (res >= 0) {
-> -		res = fflush(mfp->mntent_fp);
-> +		res = fsync(fileno(mfp->mntent_fp));
->  		if (res < 0)
->  			/* Avoid leaving a corrupt mtab file */
->  			ftruncate(fileno(mfp->mntent_fp), length);
