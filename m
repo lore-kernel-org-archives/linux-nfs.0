@@ -1,42 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:40709 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754109Ab1JSPPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Oct 2011 11:15:14 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RGXrK-0004Qy-9b
-	for linux-nfs@vger.kernel.org; Wed, 19 Oct 2011 17:15:10 +0200
-Received: from ebox.rath.org ([173.255.235.238])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 17:15:10 +0200
-Received: from Nikolaus by ebox.rath.org with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2011 17:15:10 +0200
-To: linux-nfs@vger.kernel.org
-From: Nikolaus Rath <Nikolaus@rath.org>
-Subject: Does NFS4 need st_gen?
-Date: Wed, 19 Oct 2011 10:17:43 -0400
-Message-ID: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from natasha.panasas.com ([67.152.220.90]:41331 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751660Ab1J0BhM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Oct 2011 21:37:12 -0400
+Message-ID: <4EA8B5BF.4050009@panasas.com>
+Date: Wed, 26 Oct 2011 18:37:03 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] This patch is also available for pulling
+References: <4EA8B359.9040007@panasas.com>
+In-Reply-To: <4EA8B359.9040007@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+The following changes since commit 138c4ae9cfda8fdcf9e137457853b09ef8cf8f77:
 
-Does NFS4 still depend on inode generation numbers? I understand that
-earlier NFS versions used file handles based on inode and generation
-number, but it seems to me that this shouldn't be required anymore with
-the (stateful) NFS4.
+  Merge branch 'slab/for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/penberg/linux (2011-10-26 21:46:18 +0200)
 
-Best,
+are available in the git repository at:
 
-   -Nikolaus
+  git://git.open-osd.org/linux-open-osd.git for-linus
 
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
+Boaz Harrosh (1):
+      fs/Makefile: Stupid TYPO breakage of exofs inclusion
 
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+ fs/Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+
+Again I'm so sorry. I can't understand what happened to me
+
+Boaz
