@@ -1,65 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:50050 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932713Ab1JRPeV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:34:21 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 16:29:35 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 04/26] vfs: Add a comment to inode_permission()
-Date: Tue, 18 Oct 2011 21:02:39 +0530
-Message-Id: <1318951981-5508-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10480 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752189Ab1J0Shf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Oct 2011 14:37:35 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p9RIbZ9M005229
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Oct 2011 14:37:35 -0400
+Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p9RIbYul013416
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Oct 2011 14:37:34 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [RFC] [PATCH 1/1] nfs: open-associated setattr shouldn't invalidate own cache
+Date: Thu, 27 Oct 2011 15:09:32 -0400
+Message-Id: <1319742572-6337-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+I'm not sure if this is really the right fix, but it seems silly to me
+that e.g.
+
+    open(O_RDWR|O_TRUNC)
+    write()
+    close()
+    open(O_RDONLY)
+    read()
+
+results in an over-the-wire read (due to the setattr triggered by O_TRUNC).
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/namei.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/inode.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 276cd30..9061157 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -221,7 +221,7 @@ static int check_acl(struct inode *inode, int mask)
- }
- 
- /*
-- * This does basic POSIX ACL permission checking
-+ * This does the basic permission checking
-  */
- static int acl_permission_check(struct inode *inode, int mask)
- {
-@@ -271,7 +271,7 @@ int generic_permission(struct inode *inode, int mask)
- 	int ret;
- 
- 	/*
--	 * Do the basic POSIX ACL permission checks.
-+	 * Do the basic permission checks.
- 	 */
- 	ret = acl_permission_check(inode, mask);
- 	if (ret != -EACCES)
-@@ -335,6 +335,8 @@ static inline int do_inode_permission(struct inode *inode, int mask)
-  * We use "fsuid" for this, letting us set arbitrary permissions
-  * for filesystem access without changing the "normal" uids which
-  * are used for other things.
-+ *
-+ * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 385bc6d..5cdef63 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -429,8 +429,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
+ 		nfs_inode_return_delegation(inode);
+ 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
+-	if (error == 0)
++	if (error)
++		goto out_free;
++	if (attr->ia_valid & ATTR_FILE)
++		nfs_post_op_update_inode_force_wcc(inode, fattr);
++	else
+ 		nfs_refresh_inode(inode, fattr);
++out_free:
+ 	nfs_free_fattr(fattr);
+ out:
+ 	return error;
 -- 
-1.7.5.4
+1.7.1
 
