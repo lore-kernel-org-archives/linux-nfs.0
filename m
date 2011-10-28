@@ -1,24 +1,17 @@
-From: "Upgrade Team" <info-ShpwTOKDv0BzdWU+gccjcV6hYfS7NtTn@public.gmane.org>
-Subject: Web News!!!
-Date: Fri, 28 Oct 2011 17:22:43 +0700 (WIT)
-Message-ID: <766c610ed11c5894da16723bd5ecddb4.squirrel__21486.1507098705$1319798393$gmane$org@webmail.speedmark.co.id>
-Reply-To: web.support-KfVeZMHDAfI@public.gmane.org
+From: lisa hedstrand <lisa_hedstrand-DVMQ0Vekzmh0ubjbjo6WXg@public.gmane.org>
+Subject: Hi
+Date: Fri, 28 Oct 2011 16:46:20 +0530 (IST)
+Message-ID: <1469969121.935001319800580037.JavaMail.root__20511.20658075$1319800588$gmane$org@tilmb17.indiatimes.com>
+Reply-To: lisa hedstrand <lisahedstrand@yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=utf-8
+To: undisclosed-recipients:;
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from speedmark.co.id ([202.51.112.171]:44476 "EHLO
-	mail.fafakids.web.id" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754427Ab1J1Kjm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2011 06:39:42 -0400
+Received: from trx4.indiatimes.com ([223.165.24.215]:55568 "EHLO
+	trx4.indiatimes.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755430Ab1J1LQQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2011 07:16:16 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Accounts User
-
-Visit the link to update your account:
-https://docs.google.com/spreadsheet/viewform?formkey=dExrUTNRLVhpMENsbUwwLVdWLVlZOUE6MQ&theme=0AX42CRMsmRFbUy1iODQwMzFlYi1iZjJhLTRmNmUtODQ0My1iNjJmYTUzNjQ2ZWE&ifq
-
-
-Thanks & Regards
-
+My name is Miss Lisa Please accept my apology if my mode of contacting you will in any way offend you. I am compelled to contact you via this medium because i needed a friend from that part of the world. We will get to know each other in details if my proposition accepted. l am a student in UK but originally from USA.
