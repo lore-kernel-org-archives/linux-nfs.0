@@ -1,112 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39389 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:36824 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755322Ab1J1Kvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 06:51:42 -0400
-Subject: [PATCH v7 1/7] SUNRPC: introduce helpers for reference counted
-	rpcbind clients
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Fri, 28 Oct 2011 14:52:25 +0300
-Message-ID: <20111028105219.24628.39648.stgit@localhost6.localdomain6>
-In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
-References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+	id S1751962Ab1J1KCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 06:02:07 -0400
+Date: Fri, 28 Oct 2011 06:02:04 -0400
+To: Benny Halevy <benny@tonian.com>
+Cc: bfields@netapp.com, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@tonian.com>
+Subject: Re: [PATCH] nfsd4: typo logical vs bitwise negate in
+ nfsd4_decode_share_access
+Message-ID: <20111028100204.GB2604@fieldses.org>
+References: <1319740981-3338-1-git-send-email-benny@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319740981-3338-1-git-send-email-benny@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v6:
-1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
-clients become valid before rpcb_users assignment
-2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
-my pow).
+Oh cripes, another one.  Thanks for catching this one too.
 
-v5: fixed races with rpcb_users in rpcb_get_local()
+--b.
 
-This helpers will be used for dynamical creation and destruction of rpcbind
-clients.
-Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-clients has been created already, then we just increase rpcb_users.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 53 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..9830d87 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
- static struct rpc_clnt *	rpcb_local_clnt;
- static struct rpc_clnt *	rpcb_local_clnt4;
- 
-+DEFINE_SPINLOCK(rpcb_clnt_lock);
-+unsigned int			rpcb_users;
-+
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
- }
- 
-+static int rpcb_get_local(void)
-+{
-+	int cnt;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (rpcb_users)
-+		rpcb_users++;
-+	cnt = rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	return cnt;
-+}
-+
-+void rpcb_put_local(void)
-+{
-+	struct rpc_clnt *clnt = rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	int shutdown;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (--rpcb_users == 0) {
-+		rpcb_local_clnt = NULL;
-+		rpcb_local_clnt4 = NULL;
-+	}
-+	shutdown = !rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	if (shutdown) {
-+		/*
-+		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-+		 */
-+		if (clnt4)
-+			rpc_shutdown_client(clnt4);
-+		if (clnt)
-+			rpc_shutdown_client(clnt);
-+	}
-+}
-+
-+static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+{
-+	/* Protected by rpcb_create_local_mutex */
-+	rpcb_local_clnt = clnt;
-+	rpcb_local_clnt4 = clnt4;
-+	smp_wmb(); 
-+	rpcb_users = 1;
-+	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-+			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
-+			rpcb_local_clnt4);
-+}
-+
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-
+On Thu, Oct 27, 2011 at 08:43:01PM +0200, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@tonian.com>
+> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/nfs4xdr.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 66d095d..b6fa792 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -655,7 +655,7 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
+>  	default:
+>  		return nfserr_bad_xdr;
+>  	}
+> -	w &= !NFS4_SHARE_ACCESS_MASK;
+> +	w &= ~NFS4_SHARE_ACCESS_MASK;
+>  	if (!w)
+>  		return nfs_ok;
+>  	if (!argp->minorversion)
+> -- 
+> 1.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
