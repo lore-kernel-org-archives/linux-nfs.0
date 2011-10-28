@@ -1,131 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31942 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:38573 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932836Ab1JaMI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Oct 2011 08:08:26 -0400
-Subject: [PATCH] SUNRPC: remove non-exclusive pipe creation from RPC pipefs
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	id S1753306Ab1J1OWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 10:22:19 -0400
+Date: Fri, 28 Oct 2011 10:22:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         davem@davemloft.net, devel@openvz.org
-Date: Mon, 31 Oct 2011 16:07:59 +0300
-Message-ID: <20111031120732.7345.69154.stgit@localhost6.localdomain6>
+Subject: Re: [PATCH v7 3/7] SUNRPC: introduce svc helpers for prepairing
+ rpcbind infrastructure
+Message-ID: <20111028142215.GB5193@fieldses.org>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+ <20111028105254.24628.49150.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111028105254.24628.49150.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch-set was created in context of clone of git branch:
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
-and rebased on tag "v3.1".
+On Fri, Oct 28, 2011 at 02:52:59PM +0300, Stanislav Kinsbursky wrote:
+> This helpers will be used only for those services, that will send portmapper
+> registration calls.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-SUNRPC pipefs non-exclusive pipe creation code looks obsolete. IOW, as I see
-it, all pipes are creating with unique full path and only once.
+Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- include/linux/sunrpc/rpc_pipe_fs.h |    1 -
- net/sunrpc/rpc_pipe.c              |   44 +++++-------------------------------
- 2 files changed, 6 insertions(+), 39 deletions(-)
-
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 271e1b2..80606ab 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -30,7 +30,6 @@ struct rpc_inode {
- 	int pipelen;
- 	int nreaders;
- 	int nwriters;
--	int nkern_readwriters;
- 	wait_queue_head_t waitq;
- #define RPC_PIPE_WAIT_FOR_OPEN	1
- 	int flags;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 42e4b6e..a1f23c4 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -558,7 +558,6 @@ static int __rpc_mkpipe(struct inode *dir, struct dentry *dentry,
- 	if (err)
- 		return err;
- 	rpci = RPC_I(dentry->d_inode);
--	rpci->nkern_readwriters = 1;
- 	rpci->private = private;
- 	rpci->flags = flags;
- 	rpci->ops = ops;
-@@ -591,16 +590,12 @@ static int __rpc_unlink(struct inode *dir, struct dentry *dentry)
- static int __rpc_rmpipe(struct inode *dir, struct dentry *dentry)
- {
- 	struct inode *inode = dentry->d_inode;
--	struct rpc_inode *rpci = RPC_I(inode);
- 
--	rpci->nkern_readwriters--;
--	if (rpci->nkern_readwriters != 0)
--		return 0;
- 	rpc_close_pipes(inode);
- 	return __rpc_unlink(dir, dentry);
- }
- 
--static struct dentry *__rpc_lookup_create(struct dentry *parent,
-+static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 					  struct qstr *name)
- {
- 	struct dentry *dentry;
-@@ -608,27 +603,13 @@ static struct dentry *__rpc_lookup_create(struct dentry *parent,
- 	dentry = d_lookup(parent, name);
- 	if (!dentry) {
- 		dentry = d_alloc(parent, name);
--		if (!dentry) {
--			dentry = ERR_PTR(-ENOMEM);
--			goto out_err;
--		}
-+		if (!dentry)
-+			return ERR_PTR(-ENOMEM);
- 	}
--	if (!dentry->d_inode)
-+	if (dentry->d_inode == NULL) {
- 		d_set_d_op(dentry, &rpc_dentry_operations);
--out_err:
--	return dentry;
--}
--
--static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
--					  struct qstr *name)
--{
--	struct dentry *dentry;
--
--	dentry = __rpc_lookup_create(parent, name);
--	if (IS_ERR(dentry))
--		return dentry;
--	if (dentry->d_inode == NULL)
- 		return dentry;
-+	}
- 	dput(dentry);
- 	return ERR_PTR(-EEXIST);
- }
-@@ -816,22 +797,9 @@ struct dentry *rpc_mkpipe(struct dentry *parent, const char *name,
- 	q.hash = full_name_hash(q.name, q.len),
- 
- 	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
--	dentry = __rpc_lookup_create(parent, &q);
-+	dentry = __rpc_lookup_create_exclusive(parent, &q);
- 	if (IS_ERR(dentry))
- 		goto out;
--	if (dentry->d_inode) {
--		struct rpc_inode *rpci = RPC_I(dentry->d_inode);
--		if (rpci->private != private ||
--				rpci->ops != ops ||
--				rpci->flags != flags) {
--			dput (dentry);
--			err = -EBUSY;
--			goto out_err;
--		}
--		rpci->nkern_readwriters++;
--		goto out;
--	}
--
- 	err = __rpc_mkpipe(dir, dentry, umode, &rpc_pipe_fops,
- 			   private, ops, flags);
- 	if (err)
-
+> 
+> ---
+>  include/linux/sunrpc/clnt.h |    2 ++
+>  net/sunrpc/rpcb_clnt.c      |    2 +-
+>  net/sunrpc/svc.c            |   35 +++++++++++++++++++++++++++++++++++
+>  3 files changed, 38 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index db7bcaf..1eb437d 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -135,6 +135,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+>  void		rpc_release_client(struct rpc_clnt *);
+>  void		rpc_task_release_client(struct rpc_task *);
+>  
+> +int		rpcb_create_local(void);
+> +void		rpcb_put_local(void);
+>  int		rpcb_register(u32, u32, int, unsigned short);
+>  int		rpcb_v4_register(const u32 program, const u32 version,
+>  				 const struct sockaddr *address,
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index 115df11..c144b95 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -320,7 +320,7 @@ out:
+>   * Returns zero on success, otherwise a negative errno value
+>   * is returned.
+>   */
+> -static int rpcb_create_local(void)
+> +int rpcb_create_local(void)
+>  {
+>  	static DEFINE_MUTEX(rpcb_create_local_mutex);
+>  	int result = 0;
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 6a69a11..d2d61bf 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -354,6 +354,41 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
+>  	return &serv->sv_pools[pidx % serv->sv_nrpools];
+>  }
+>  
+> +static int svc_rpcb_setup(struct svc_serv *serv)
+> +{
+> +	int err;
+> +
+> +	err = rpcb_create_local();
+> +	if (err)
+> +		return err;
+> +
+> +	/* Remove any stale portmap registrations */
+> +	svc_unregister(serv);
+> +	return 0;
+> +}
+> +
+> +static void svc_rpcb_cleanup(struct svc_serv *serv)
+> +{
+> +	svc_unregister(serv);
+> +	rpcb_put_local();
+> +}
+> +
+> +static int svc_uses_rpcbind(struct svc_serv *serv)
+> +{
+> +	struct svc_program	*progp;
+> +	unsigned int		i;
+> +
+> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
+> +		for (i = 0; i < progp->pg_nvers; i++) {
+> +			if (progp->pg_vers[i] == NULL)
+> +				continue;
+> +			if (progp->pg_vers[i]->vs_hidden == 0)
+> +				return 1;
+> +		}
+> +	}
+> +
+> +	return 0;
+> +}
+>  
+>  /*
+>   * Create an RPC service
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
