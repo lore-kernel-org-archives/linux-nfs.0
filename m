@@ -1,44 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33443 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751421Ab1J0XcA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2011 19:32:00 -0400
-Message-ID: <4EA9E86B.3010408@panasas.com>
-Date: Thu, 27 Oct 2011 16:25:31 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:60353 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752506Ab1J1JyE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 05:54:04 -0400
+Message-ID: <4EAA7CCD.8020309@cn.fujitsu.com>
+Date: Fri, 28 Oct 2011 17:58:37 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-To: Michal Marek <mmarek@suse.cz>
-CC: Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH] fs/Makefile: Always inspect exofs/
-References: <4EA5FAD7.4020806@panasas.com> <4EA93868.8070404@suse.cz>
-In-Reply-To: <4EA93868.8070404@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] 4.1 CLNT: Send reclaim complete before create file at
+ CSESS26
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/27/2011 03:54 AM, Michal Marek wrote:
-> On 25.10.2011 01:55, Boaz Harrosh wrote:
->>
->> fs/exofs directory has multiple targets now, of which the
->> ore.ko will be needed by the pnfs-objects-layout-driver
->> (fs/nfs/objlayout).
->>
->> As suggested by: Michal Marek <mmarek@suse.cz>  convert
->> inclusion of exofs/ from obj-$(CONFIG_EXOFS_FS) => obj-$(y).
-> 
-> I suggested obj-y verbatim, at least this is what I meant. obj-$(y)
-> expands to "obj-" and will do nothing.
-> 
-> Michal
+Send reclaim complete before create file at CSESS26
 
-Thanks Michal.
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_create_session.py |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-Yes that was a stupid, stupid TYPO bug I did and I'm so embarrassed
-I already sent a fix to Linus, he pulled it.
+diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+index f8f59f6..2f351a6 100644
+--- a/nfs4.1/server41tests/st_create_session.py
++++ b/nfs4.1/server41tests/st_create_session.py
+@@ -455,8 +455,10 @@ def testRepTooBig(t, env):
+     name = env.testname(t)
+     c1 = env.c1.new_client(name)
+     # create session with a small ca_maxresponsesize
+-    chan_attrs = channel_attrs4(0,8192,50,8192,128,8,[])
++    chan_attrs = channel_attrs4(0,8192,500,8192,128,8,[])
+     sess1 = c1.create_session(fore_attrs=chan_attrs)
++    sess1.compound([op.reclaim_complete(FALSE)])
++
+     owner = "owner_%s" % name
+     path = sess1.c.homedir + [name]
+     res = create_file(sess1, owner, path, access=OPEN4_SHARE_ACCESS_BOTH)
+-- 
+1.7.5.1
 
-Dear, you have eyes of an hawk, how did you see it? I stared at it for
-15 minutes and did not get it. 
 
-Boaz
