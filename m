@@ -1,132 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:29893 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:15496 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932960Ab1J1OZW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 10:25:22 -0400
-Subject: [PATCH 6/7] SUNRPC: pipefs per-net operations helper introduced
+	id S932229Ab1J1Kwf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 06:52:35 -0400
+Subject: [PATCH v7 4/7] SUNRPC: setup rpcbind clients if service requires it
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Fri, 28 Oct 2011 18:26:07 +0300
-Message-ID: <20111028142607.5796.11555.stgit@localhost6.localdomain6>
-In-Reply-To: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
-References: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+Date: Fri, 28 Oct 2011 14:53:18 +0300
+Message-ID: <20111028105307.24628.89889.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During per-net pipes creation and destruction we have to make sure, that pipefs
-sb exists for the whole creation/destruction cycle. This is done by using
-special mutex which controls pipefs sb reference on network namespace context.
-Helper consists of two parts: first of them (rpc_get_dentry_net) searches for
-dentry with specified name and returns with mutex taken on success. When pipe
-creation or destructions is completed, caller should release this mutex by
-rpc_put_dentry_net call.
+New function ("svc_uses_rpcbind") will be used to detect, that new service will
+send portmapper register calls. For such services we will create rpcbind
+clients and remove all stale portmap registrations.
+Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+in case of this field wasn't initialized earlier. This will allow to destroy
+rpcbind clients when no other users of them left.
+
+Note: Currently, any creating service will be detected as portmap user.
+Probably, this is wrong. But now it depends on program versions "vs_hidden"
+flag.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    4 ++++
- net/sunrpc/netns.h                 |    1 +
- net/sunrpc/rpc_pipe.c              |   36 ++++++++++++++++++++++++++++++++++++
- net/sunrpc/sunrpc_syms.c           |    1 +
- 4 files changed, 42 insertions(+), 0 deletions(-)
+ net/sunrpc/svc.c |   20 ++++++++++++++------
+ 1 files changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 4a327ad..271e1b2 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -55,6 +55,10 @@ enum {
- extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 				      const unsigned char *dir_name);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index d2d61bf..87a67b2 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -436,10 +436,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	serv->sv_pools =
+ 		kcalloc(serv->sv_nrpools, sizeof(struct svc_pool),
+ 			GFP_KERNEL);
+-	if (!serv->sv_pools) {
+-		kfree(serv);
+-		return NULL;
+-	}
++	if (!serv->sv_pools)
++		goto err_serv;
  
-+extern void rpc_pipefs_init_net(struct net *net);
-+extern struct super_block *rpc_get_sb_net(const struct net *net);
-+extern void rpc_put_sb_net(const struct net *net);
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+ 		struct svc_pool *pool = &serv->sv_pools[i];
+@@ -454,10 +452,20 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	/* Remove any stale portmap registrations */
+-	svc_unregister(serv);
++	if (svc_uses_rpcbind(serv)) {
++	       	if (svc_rpcb_setup(serv) < 0)
++			goto err_rpcb;
++		if (!serv->sv_shutdown)
++			serv->sv_shutdown = svc_rpcb_cleanup;
++	}
+ 
+ 	return serv;
 +
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index b384252..11d2f48 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -11,6 +11,7 @@ struct sunrpc_net {
- 	struct cache_detail *ip_map_cache;
- 
- 	struct super_block *pipefs_sb;
-+	struct mutex pipefs_sb_lock;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 5c313d3..cbf213e 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1036,6 +1036,40 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
- 
-+void rpc_pipefs_init_net(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	mutex_init(&sn->pipefs_sb_lock);
-+}
-+
-+/*
-+ * This call will be used for per network namespace operations calls.
-+ * Note: Function will be returned with pipefs_sb_lock taken if superblock was
-+ * found. This lock have to be released by rpc_put_sb_net() when all operations
-+ * will be completed.
-+ */
-+struct super_block *rpc_get_sb_net(const struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	mutex_lock(&sn->pipefs_sb_lock);
-+	if (sn->pipefs_sb)
-+		return sn->pipefs_sb;
-+	mutex_unlock(&sn->pipefs_sb_lock);
++err_rpcb:
++	kfree(serv->sv_pools);
++err_serv:
++	kfree(serv);
 +	return NULL;
-+}
-+EXPORT_SYMBOL_GPL(rpc_get_sb_net);
-+
-+void rpc_put_sb_net(const struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	BUG_ON(sn->pipefs_sb == NULL);
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+}
-+EXPORT_SYMBOL_GPL(rpc_put_sb_net);
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
-@@ -1090,7 +1124,9 @@ void rpc_kill_sb(struct super_block *sb)
- 	struct net *net = sb->s_fs_info;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ }
  
-+	mutex_lock(&sn->pipefs_sb_lock);
- 	sn->pipefs_sb = NULL;
-+	mutex_unlock(&sn->pipefs_sb_lock);
- 	put_net(net);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 9d08091..880de8b 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -38,6 +38,7 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_ipmap;
- 
-+	rpc_pipefs_init_net(net);
- 	return 0;
- 
- err_ipmap:
+ struct svc_serv *
 
