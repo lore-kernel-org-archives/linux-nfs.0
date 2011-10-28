@@ -1,10 +1,10 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:6665 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:44444 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754029Ab1J1JYH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 05:24:07 -0400
-Message-ID: <4EAA74DD.3070708@parallels.com>
-Date: Fri, 28 Oct 2011 13:24:45 +0400
+	id S1755008Ab1J1Jsa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 05:48:30 -0400
+Message-ID: <4EAA7A98.5070502@parallels.com>
+Date: Fri, 28 Oct 2011 13:49:12 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
@@ -15,64 +15,47 @@ CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "davem@davemloft.net" <davem@davemloft.net>,
         "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3 0/3] SUNRPC: rcbind clients virtualization
-References: <20111027180824.20459.23219.stgit@localhost6.localdomain6> <20111027202514.GA31669@fieldses.org>
-In-Reply-To: <20111027202514.GA31669@fieldses.org>
+Subject: Re: [PATCH v6 5/8] SUNRPC: cleanup service destruction
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6> <20111025101716.12689.81697.stgit@localhost6.localdomain6> <20111027213038.GD31669@fieldses.org>
+In-Reply-To: <20111027213038.GD31669@fieldses.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-28.10.2011 00:25, J. Bruce Fields пишет:
-> On Thu, Oct 27, 2011 at 10:10:43PM +0300, Stanislav Kinsbursky wrote:
->> v3:
->> 1) First two patches from previous version were squashed.
->>
->> This patch-set was created in context of clone of git branch:
->> git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
->> and rebased on tag "v3.1".
->>
->> This patch-set virtualizes rpcbind clients per network namespace context. IOW,
->> each network namespace will have its own pair of rpcbind clients (if they would
->> be created by request).
->>
->> Note:
->> 1) this patch-set depends on "SUNRPC: make rpcbind clients allocated and
->> destroyed dynamically" patch-set which has been send earlier.
->> 2) init_net pointer is still used instead of current->nsproxy->net_ns,
->> because I'm not sure yet about how to virtualize services. I.e. NFS callback
->> services will be per netns. NFSd service will be per netns too from my pow. But
->> Lockd can be per netns or one for all.
+28.10.2011 01:30, J. Bruce Fields пишет:
+> On Tue, Oct 25, 2011 at 02:17:18PM +0300, Stanislav Kinsbursky wrote:
+>> svc_unregister() call have to be removed from svc_destroy() since it will be
+>> called in sv_shutdown callback.
 >
-> I'm not sure what you mean by that; could you explain?
+> It would be clearer that you're *moving* this if this were merged with
+> the following patch.  And without doing that the series isn't quite
+> bisectable, unless I'm missing something.
 >
 
-This patch-set was created before you've sent your NFSd plan and we disacussed 
-Lockd per netns.
-So, this sentence: "NFSd service will be per netns too from my pow" is obsolete. 
-And Lockd will be one for all.
-Or you are asking about something else?
+Yes, you are right. Will resend new version soon.
 
 > --b.
 >
->> And also we have NFSd file system, which
->> is not virtualized yet.
 >>
->> The following series consists of:
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
 >>
 >> ---
+>>   net/sunrpc/svc.c |    1 -
+>>   1 files changed, 0 insertions(+), 1 deletions(-)
 >>
->> Stanislav Kinsbursky (3):
->>        SUNRPC: move rpcbind internals to sunrpc part of network namespace context
->>        SUNRPC: optimize net_ns dereferencing in rpcbind creation calls
->>        SUNRPC: optimize net_ns dereferencing in rpcbind registering calls
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 918edc3..407462f 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -530,7 +530,6 @@ svc_destroy(struct svc_serv *serv)
+>>   	if (svc_serv_is_pooled(serv))
+>>   		svc_pool_map_put();
 >>
+>> -	svc_unregister(serv);
+>>   	kfree(serv->sv_pools);
+>>   	kfree(serv);
+>>   }
 >>
->>   net/sunrpc/netns.h     |    5 ++
->>   net/sunrpc/rpcb_clnt.c |  103 ++++++++++++++++++++++++++----------------------
->>   2 files changed, 61 insertions(+), 47 deletions(-)
->>
->> --
->> Signature
 
 
 -- 
