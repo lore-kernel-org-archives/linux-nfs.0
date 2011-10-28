@@ -1,60 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42065 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751256Ab1J2SsD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 29 Oct 2011 14:48:03 -0400
-Date: Sat, 29 Oct 2011 14:47:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS4ERR_STALE_CLIENTID loop
-Message-ID: <20111029184759.GG12122@fieldses.org>
-References: <1319455367.8505.3.camel@lade.trondhjem.org>
- <20111024131734.GE32587@rd.bbc.co.uk>
- <1319463165.2734.1.camel@lade.trondhjem.org>
- <20111024145027.GF32587@rd.bbc.co.uk>
- <1319470302.2734.4.camel@lade.trondhjem.org>
- <20111027221742.GI32587@rd.bbc.co.uk>
- <20111029002500.GA2011@rd.bbc.co.uk>
- <1319909376.2760.11.camel@lade.trondhjem.org>
- <20111029181509.GE12122@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:55414 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752338Ab1J1Jzu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 05:55:50 -0400
+Message-ID: <4EAA7D37.9070504@cn.fujitsu.com>
+Date: Fri, 28 Oct 2011 18:00:23 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: 4.1 ENV: Reduce repetitive codes for open_file and create_file
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 29, 2011 at 11:21:13AM -0700, Myklebust, Trond wrote:
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > On Sat, Oct 29, 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
-> > > OK. This is the first time I've seen this tcpdump.
-> > >
-> > > The problem seems like a split-brain issue on the server... On the
-> one
-> > > hand, it is happily telling us that our lease is OK when we RENEW.
-> > > Then when we try to use said lease in an OPEN, it is replying with
-> > > STALE_CLIENTID.
-> > >
-> > > IOW: This isn't a problem I can fix on the client whether or not I
-> add
-> > > exponential backoff. The problem needs to be addressed on the server
-> > > by the Solaris folks....
-> > 
-> > Is there any simple thing we could do on the client to reduce the
-> impact of
-> > these sorts of loops?
-> 
-> WHY? Those loops aren't supposed to happen if the server works according
-> to spec.
+Reduce repetitive codes for open_file and create_file
 
-Yes, and it's not something I care that strongly about, really, my only
-observation is that this sort of failure (an implementation bug on one
-side or another resulting in a loop) seems to have been common (based on
-no hard data, just my vague memories of list threads), and the results
-fairly obnoxious (possibly even for unrelated hosts on the network).
-So if there's some simple way to fail more gracefully it might be
-helpful.
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/environment.py |   86 ++++++++++++++++++++++-------------
+ 1 files changed, 54 insertions(+), 32 deletions(-)
 
---b.
+diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+index 43cb12b..6e68e83 100644
+--- a/nfs4.1/server41tests/environment.py
++++ b/nfs4.1/server41tests/environment.py
+@@ -444,12 +444,15 @@ def create_obj(sess, path, kind=NF4DIR, attrs={FATTR4_MODE:0755}):
+     ops = use_obj(path[:-1]) + [op.create(kind, path[-1], attrs)]
+     return sess.compound(ops)
+ 
+-def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
+-                access=OPEN4_SHARE_ACCESS_BOTH,
+-                deny=OPEN4_SHARE_DENY_NONE,
+-                mode=GUARDED4, verifier=None, want_deleg=False,
+-                # Setting the following should induce server errors
+-                seqid=0, clientid=0):
++def open_create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
++                     access=OPEN4_SHARE_ACCESS_BOTH,
++                     deny=OPEN4_SHARE_DENY_NONE,
++		     mode=GUARDED4, verifier=None,
++		     claim_type=CLAIM_NULL,
++		     want_deleg=False,
++		     deleg_type=None,
++		     open_create=OPEN4_NOCREATE,
++		     seqid=0, clientid=0):
+     # Set defaults
+     if path is None:
+         dir = sess.c.homedir
+@@ -457,16 +460,47 @@ def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
+     else:
+         dir = path[:-1]
+         name = path[-1]
++
+     if ((mode==EXCLUSIVE4) or (mode==EXCLUSIVE4_1)) and (verifier==None):
+         verifier = sess.c.verifier
++
+     if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
+         access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
+-    # Create the file
++
++    # Open the file
++    if claim_type==CLAIM_NULL:
++        fh_op = use_obj(dir)
++    elif claim_type==CLAIM_PREVIOUS:
++        fh_op = [op.putfh(path)]
++        name = None
++
++    if open_create==OPEN4_CREATE:
++        openflag=openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier,
++                                          creatverfattr(verifier, attrs)))
++        openclaim=open_claim4(CLAIM_NULL, name)
++    else:
++        openflag=openflag4(OPEN4_NOCREATE)
++        openclaim=open_claim4(claim_type, name, deleg_type)
++
+     open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
+-                      openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier,
+-                                               creatverfattr(verifier, attrs))),
+-                      open_claim4(CLAIM_NULL, name))
+-    return sess.compound(use_obj(dir) + [open_op, op.getfh()])
++                      openflag, openclaim)
++
++    return sess.compound(fh_op + [open_op, op.getfh()])
++
++def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
++                access=OPEN4_SHARE_ACCESS_BOTH,
++                deny=OPEN4_SHARE_DENY_NONE,
++                mode=GUARDED4, verifier=None, want_deleg=False,
++                # Setting the following should induce server errors
++                seqid=0, clientid=0):
++
++    claim_type=CLAIM_NULL
++    deleg_type=None
++    open_create=OPEN4_CREATE
++
++    return open_create_file(sess, owner, path, attrs, access, deny, mode,
++                            verifier, claim_type, want_deleg, deleg_type,
++                            open_create, seqid, clientid)
+ 
+ def open_file(sess, owner, path=None,
+               access=OPEN4_SHARE_ACCESS_READ,
+@@ -476,27 +510,15 @@ def open_file(sess, owner, path=None,
+               deleg_type=None,
+               # Setting the following should induce server errors
+               seqid=0, clientid=0):
+-    # Set defaults
+-    if path is None:
+-        dir = sess.c.homedir
+-        name = owner
+-    else:
+-        dir = path[:-1]
+-        name = path[-1]
+-    if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
+-        access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
+-    # Open the file
+-    if claim_type==CLAIM_NULL:
+-        fh_op = use_obj(dir)
+-    elif claim_type==CLAIM_PREVIOUS:
+-        fh_op = [op.putfh(path)]
+-        name = None
+-    if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
+-        access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
+-    open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
+-                      openflag4(OPEN4_NOCREATE),
+-                      open_claim4(claim_type, name, deleg_type))
+-    return sess.compound(fh_op + [open_op, op.getfh()])
++
++    attrs=None
++    mode=None
++    verifier=None
++    open_create=OPEN4_NOCREATE
++
++    return open_create_file(sess, owner, path, attrs, access, deny, mode,
++                            verifier, claim_type, want_deleg, deleg_type,
++                            open_create, seqid, clientid)
+ 
+ def create_confirm(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
+                    access=OPEN4_SHARE_ACCESS_BOTH,
+-- 
+1.7.5.1
+
+
