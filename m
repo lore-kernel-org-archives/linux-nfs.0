@@ -1,68 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:61701 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933822Ab1J2Siz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:38:55 -0400
-Subject: Re: nfsd4_is_junction
-Mime-Version: 1.0 (Apple Message framework v1084)
+Received: from fieldses.org ([174.143.236.118]:38583 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755565Ab1J1OWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 10:22:53 -0400
+Date: Fri, 28 Oct 2011 10:22:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH v7 5/7] SUNRPC: cleanup service destruction
+Message-ID: <20111028142250.GD5193@fieldses.org>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+ <20111028105326.24628.81582.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111029180900.GD12122@fieldses.org>
-Date: Sat, 29 Oct 2011 14:38:34 -0400
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Message-Id: <5E06F04E-9F85-4358-BCC5-F8A118D2AD5E@oracle.com>
-References: <20111029101649.GA12345@infradead.org> <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com> <20111029175548.GB12122@fieldses.org> <7A873A96-ED05-4904-8470-E169B233E951@oracle.com> <20111029180900.GD12122@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20111028105326.24628.81582.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 29, 2011, at 2:09 PM, J. Bruce Fields wrote:
-
-> On Sat, Oct 29, 2011 at 01:58:02PM -0400, Chuck Lever wrote:
->> 
->> On Oct 29, 2011, at 1:55 PM, J. Bruce Fields wrote:
->> 
->>> On Sat, Oct 29, 2011 at 01:47:55PM -0400, Chuck Lever wrote:
->>>> 
->>>> On Oct 29, 2011, at 6:16 AM, Christoph Hellwig wrote:
->>>> 
->>>>> This function should probably grow a check for S_NOSEC instead of
->>>>> hitting the filesystems with an xattr read for every lookup.
->>>> 
->>>> It doesn't perform the xattr read on _every_ lookup, but only when the object has a special set of permission bits.
->>>> 
->>>> But actually, it probably doesn't need that 'type" attribute check at all.  It should delegate that check to mountd.  I assume many of those upcalls would hit in the export cache anyway?
->>> 
->>> You're suggesting doing an upcall on every path that passes the mode-bit
->>> checks?
->>> 
->>> You'd end up populating the export cache with every path that passes
->>> the mode-bit checks.  I don't think that's a good idea.
->> 
->> You just finished telling us that the mode bit checks would prevent doing an attribute read too often.  Again, how often do we think there will be directories with no execute bits set and the sticky bit set?  I think that's going to be exceptionally rare.
+On Fri, Oct 28, 2011 at 02:53:43PM +0300, Stanislav Kinsbursky wrote:
+> svc_unregister() call have to be removed from svc_destroy() since it will be
+> called in sv_shutdown callback.
+> This also means, that we have to call svc_rpcb_cleanup() explicitly from
+> nfsd_last_thread() since this function is registered as service shutdown
+> callback and thus nobody else will done it for us.
 > 
-> Yeah, probably so, but if there's a pathological case where we're wrong
-> then I think excessive xattr reads will be less annoying than excessive
-> upcalls and export cache entries.
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-If we find a pathological case, we should fix it.
+Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-Basically I'd like the kernel check to be as simple as possible not only because it should be fast, but also so that user space can implement junctions flexibly, especially in the early days when we are still unsure of how these need to work.  I think we are better off being flexible to start, and restricting only if we have to.
-
-Or to put it another way, user space, and not the kernel, should arbitrate policy.  The semantics of junctions is a policy, at least for now.
-
-And lastly, right now, I expect that nearly 100% of the time the mode bit test and the xattr test will either both succeed or both fail.  That suggests one of them is redundant.
-
-> And in the cached case: I doubt a lookup in the export cache is really
-> faster than a read of a cached xattr.  But I don't know.
-
-However either case should hit in memory if the path being looked up is hot.  I suspect the mode bit test plus the kernel's export cache should shield mountd from an excessive number of upcalls.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> 
+> ---
+>  fs/nfsd/nfssvc.c           |    2 ++
+>  include/linux/sunrpc/svc.h |    1 +
+>  net/sunrpc/svc.c           |    4 ++--
+>  3 files changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index dc5a1bf..52cd976 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -256,6 +256,8 @@ static void nfsd_last_thread(struct svc_serv *serv)
+>  	nfsd_serv = NULL;
+>  	nfsd_shutdown();
+>  
+> +	svc_rpcb_cleanup(serv);
+> +
+>  	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+>  			    "cache\n");
+>  	nfsd_export_flush();
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 223588a..5e71a30 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -401,6 +401,7 @@ struct svc_procedure {
+>  /*
+>   * Function prototypes.
+>   */
+> +void svc_rpcb_cleanup(struct svc_serv *serv);
+>  struct svc_serv *svc_create(struct svc_program *, unsigned int,
+>  			    void (*shutdown)(struct svc_serv *));
+>  struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 87a67b2..96df2ba 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -367,11 +367,12 @@ static int svc_rpcb_setup(struct svc_serv *serv)
+>  	return 0;
+>  }
+>  
+> -static void svc_rpcb_cleanup(struct svc_serv *serv)
+> +void svc_rpcb_cleanup(struct svc_serv *serv)
+>  {
+>  	svc_unregister(serv);
+>  	rpcb_put_local();
+>  }
+> +EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
+>  
+>  static int svc_uses_rpcbind(struct svc_serv *serv)
+>  {
+> @@ -531,7 +532,6 @@ svc_destroy(struct svc_serv *serv)
+>  	if (svc_serv_is_pooled(serv))
+>  		svc_pool_map_put();
+>  
+> -	svc_unregister(serv);
+>  	kfree(serv->sv_pools);
+>  	kfree(serv);
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
