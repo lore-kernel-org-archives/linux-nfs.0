@@ -1,200 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga14.intel.com ([143.182.124.37]:21230 "EHLO mga14.intel.com"
+Received: from fieldses.org ([174.143.236.118]:40789 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753031Ab1JJNLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Oct 2011 09:11:10 -0400
-Date: Mon, 10 Oct 2011 21:10:51 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
-        Greg Thelen <gthelen@google.com>, Minchan Kim <minchan.kim@gmail.com>,
-        Vivek Goyal <vgoyal@redhat.com>, Andrea Righi <arighi@develer.com>,
-        linux-mm <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>
-Subject: [RFC][PATCH 1/2] nfs: writeback pages wait queue
-Message-ID: <20111010131051.GA16847@localhost>
-References: <20111003134228.090592370@intel.com>
- <1318248846.14400.21.camel@laptop>
- <20111010130722.GA11387@localhost>
+	id S1753369Ab1J1Omz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 10:42:55 -0400
+Date: Fri, 28 Oct 2011 10:42:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: nfsd (and lock) changes for 3.2
+Message-ID: <20111028144252.GB5798@fieldses.org>
+References: <20111025121924.GA15662@fieldses.org>
+ <4EA77B78.6080706@panasas.com>
+ <20111027203412.GB31669@fieldses.org>
+ <4EA9F5E8.6060900@panasas.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111010130722.GA11387@localhost>
+In-Reply-To: <4EA9F5E8.6060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[known bug: this patch will block sync(1) in schecule() if dirty
-threshold is set to as low as 1MB.]
+On Thu, Oct 27, 2011 at 05:23:04PM -0700, Boaz Harrosh wrote:
+> On 10/27/2011 01:34 PM, J. Bruce Fields wrote:
+> > We need to test it, but I think you're probably correct,
+> > 6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to end
+> > nfsd4 grace period" should have been tagged for stable.  Does that also
+> > require any previous patches? (E.g.
+> > 48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir
+> > setting"?)
+> > 
+> 
+> right, and all for that dmesg print. But yes! 
+> 
+> Well the 3.1 Kernel without them gets stuck. I guess you need to experiment
+> with what would be the minimal patchset needed for 3.1 .
+> 
+> Tell me if you need help testing that the damage has gone. But basically I have
+> a script (4 years old) that does: 
+> 	server: service nfs stop/start 
+> 	client: mount
+> back to back, The client gets stuck forever.
 
-The generic writeback routines are departing from congestion_wait()
-in preference of get_request_wait(), aka. waiting on the block queues.
+You and I are pretty sure those patches are needed, and fix the problem.
+But it would probably be a good idea, to make sure.
 
-Introduce the missing writeback wait queue for NFS, otherwise its
-writeback pages will grow out of control, exhausting all PG_dirty pages.
+Would you mind passing both along to stable@kernel.org?  Cc: me and I'll
+ack them.
 
-CC: Jens Axboe <axboe@kernel.dk>
-CC: Chris Mason <chris.mason@oracle.com>
-CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
----
- fs/nfs/client.c           |    2 
- fs/nfs/write.c            |   89 +++++++++++++++++++++++++++++++-----
- include/linux/nfs_fs_sb.h |    1 
- 3 files changed, 81 insertions(+), 11 deletions(-)
-
---- linux-next.orig/fs/nfs/write.c	2011-09-29 20:23:44.000000000 +0800
-+++ linux-next/fs/nfs/write.c	2011-10-05 10:43:28.000000000 +0800
-@@ -189,11 +189,64 @@ static int wb_priority(struct writeback_
-  * NFS congestion control
-  */
- 
-+#define NFS_WAIT_PAGES	(1024L >> (PAGE_SHIFT - 10))
- int nfs_congestion_kb;
- 
--#define NFS_CONGESTION_ON_THRESH 	(nfs_congestion_kb >> (PAGE_SHIFT-10))
--#define NFS_CONGESTION_OFF_THRESH	\
--	(NFS_CONGESTION_ON_THRESH - (NFS_CONGESTION_ON_THRESH >> 2))
-+/*
-+ * SYNC requests will block on (2*limit) and wakeup on (2*limit-NFS_WAIT_PAGES)
-+ * ASYNC requests will block on (limit) and wakeup on (limit - NFS_WAIT_PAGES)
-+ * In this way SYNC writes will never be blocked by ASYNC ones.
-+ */
-+
-+static void nfs_set_congested(long nr, struct backing_dev_info *bdi)
-+{
-+	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
-+
-+	if (nr > limit && !test_bit(BDI_async_congested, &bdi->state))
-+		set_bdi_congested(bdi, BLK_RW_ASYNC);
-+	else if (nr > 2 * limit && !test_bit(BDI_sync_congested, &bdi->state))
-+		set_bdi_congested(bdi, BLK_RW_SYNC);
-+}
-+
-+static void nfs_wait_congested(int is_sync,
-+			       struct backing_dev_info *bdi,
-+			       wait_queue_head_t *wqh)
-+{
-+	int waitbit = is_sync ? BDI_sync_congested : BDI_async_congested;
-+	DEFINE_WAIT(wait);
-+
-+	if (!test_bit(waitbit, &bdi->state))
-+		return;
-+
-+	for (;;) {
-+		prepare_to_wait(&wqh[is_sync], &wait, TASK_UNINTERRUPTIBLE);
-+		if (!test_bit(waitbit, &bdi->state))
-+			break;
-+
-+		io_schedule();
-+	}
-+	finish_wait(&wqh[is_sync], &wait);
-+}
-+
-+static void nfs_wakeup_congested(long nr,
-+				 struct backing_dev_info *bdi,
-+				 wait_queue_head_t *wqh)
-+{
-+	long limit = nfs_congestion_kb >> (PAGE_SHIFT - 10);
-+
-+	if (nr < 2 * limit - min(limit / 8, NFS_WAIT_PAGES)) {
-+		if (test_bit(BDI_sync_congested, &bdi->state))
-+			clear_bdi_congested(bdi, BLK_RW_SYNC);
-+		if (waitqueue_active(&wqh[BLK_RW_SYNC]))
-+			wake_up(&wqh[BLK_RW_SYNC]);
-+	}
-+	if (nr < limit - min(limit / 8, NFS_WAIT_PAGES)) {
-+		if (test_bit(BDI_async_congested, &bdi->state))
-+			clear_bdi_congested(bdi, BLK_RW_ASYNC);
-+		if (waitqueue_active(&wqh[BLK_RW_ASYNC]))
-+			wake_up(&wqh[BLK_RW_ASYNC]);
-+	}
-+}
- 
- static int nfs_set_page_writeback(struct page *page)
- {
-@@ -204,11 +257,8 @@ static int nfs_set_page_writeback(struct
- 		struct nfs_server *nfss = NFS_SERVER(inode);
- 
- 		page_cache_get(page);
--		if (atomic_long_inc_return(&nfss->writeback) >
--				NFS_CONGESTION_ON_THRESH) {
--			set_bdi_congested(&nfss->backing_dev_info,
--						BLK_RW_ASYNC);
--		}
-+		nfs_set_congested(atomic_long_inc_return(&nfss->writeback),
-+				  &nfss->backing_dev_info);
- 	}
- 	return ret;
- }
-@@ -220,8 +270,10 @@ static void nfs_end_page_writeback(struc
- 
- 	end_page_writeback(page);
- 	page_cache_release(page);
--	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
--		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
-+
-+	nfs_wakeup_congested(atomic_long_dec_return(&nfss->writeback),
-+			     &nfss->backing_dev_info,
-+			     nfss->writeback_wait);
- }
- 
- static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblock)
-@@ -322,19 +374,34 @@ static int nfs_writepage_locked(struct p
- 
- int nfs_writepage(struct page *page, struct writeback_control *wbc)
- {
-+	struct inode *inode = page->mapping->host;
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	int ret;
- 
- 	ret = nfs_writepage_locked(page, wbc);
- 	unlock_page(page);
-+
-+	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
-+			   &nfss->backing_dev_info,
-+			   nfss->writeback_wait);
-+
- 	return ret;
- }
- 
--static int nfs_writepages_callback(struct page *page, struct writeback_control *wbc, void *data)
-+static int nfs_writepages_callback(struct page *page,
-+				   struct writeback_control *wbc, void *data)
- {
-+	struct inode *inode = page->mapping->host;
-+	struct nfs_server *nfss = NFS_SERVER(inode);
- 	int ret;
- 
- 	ret = nfs_do_writepage(page, wbc, data);
- 	unlock_page(page);
-+
-+	nfs_wait_congested(wbc->sync_mode == WB_SYNC_ALL,
-+			   &nfss->backing_dev_info,
-+			   nfss->writeback_wait);
-+
- 	return ret;
- }
- 
---- linux-next.orig/include/linux/nfs_fs_sb.h	2011-09-02 09:02:07.000000000 +0800
-+++ linux-next/include/linux/nfs_fs_sb.h	2011-10-04 20:26:03.000000000 +0800
-@@ -102,6 +102,7 @@ struct nfs_server {
- 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
- 	struct backing_dev_info	backing_dev_info;
- 	atomic_long_t		writeback;	/* number of writeback pages */
-+	wait_queue_head_t	writeback_wait[2];
- 	int			flags;		/* various flags */
- 	unsigned int		caps;		/* server capabilities */
- 	unsigned int		rsize;		/* read size */
---- linux-next.orig/fs/nfs/client.c	2011-08-22 13:59:52.000000000 +0800
-+++ linux-next/fs/nfs/client.c	2011-10-04 20:26:03.000000000 +0800
-@@ -1066,6 +1066,8 @@ static struct nfs_server *nfs_alloc_serv
- 	INIT_LIST_HEAD(&server->layouts);
- 
- 	atomic_set(&server->active, 0);
-+	init_waitqueue_head(&server->writeback_wait[BLK_RW_SYNC]);
-+	init_waitqueue_head(&server->writeback_wait[BLK_RW_ASYNC]);
- 
- 	server->io_stats = nfs_alloc_iostats();
- 	if (!server->io_stats) {
+--b.
