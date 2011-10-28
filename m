@@ -1,49 +1,80 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [nfsv4] Reminder on October 2011 BAT
-Date: Fri, 2 Sep 2011 15:04:59 -0700
-Message-ID: <4E61530B.4060801@panasas.com>
-References: <721C2207-5FBE-4886-8B2C-955961564755@netapp.com> <869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: <nfsv4@ietf.org>, "Lieb, Jim" <jlieb@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Brent Welch <bwelch@panasas.com>
-To: Thomas Haynes <thomas@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from natasha.panasas.com ([67.152.220.90]:37981 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756135Ab1IBWFK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2011 18:05:10 -0400
-In-Reply-To: <869E9B5A-E664-43C6-B8BC-BBC0A2158CB8@netapp.com>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mailhub.sw.ru ([195.214.232.25]:22317 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932399Ab1J1OZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 10:25:07 -0400
+Subject: [PATCH 4/7] SUNRPC: pipefs dentry lookup helper introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Fri, 28 Oct 2011 18:25:50 +0300
+Message-ID: <20111028142550.5796.70152.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+References: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/02/2011 11:53 AM, Thomas Haynes wrote:
-> The BAT web page is at:
-> http://www.nfsv4bat.org/Events/2011/October/BAT/index.html
-> 
-> Registration is to send me email.
-> 
-> What I need is the number of attendees from your company, their names (and email)
-> for badging purposes, and the type of equipment you will be bringing.
-> 
-> I'm primarily interested in if the equipment has special power requirements and if
-> it is loud.
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+In all places, where pipefs dentries are created, only directory inode is
+actually required to create new dentry. And all this directories has root
+pipefs dentry as their parent. So we actually don't need this pipefs mount
+point at all if some pipefs lookup method will be provided.
+IOW, all we really need is just superblock and simple lookup method to find
+root's child dentry with appropriate name. And this patch introduces this
+method.
+Note, that no locking implemented in rpc_d_lookup_sb(). So it can be used only
+in case of assurance, that pipefs superblock still exist. IOW, we can use this
+method only in pipefs mount-umount notification subscribers callbacks.
 
-Panasas:
-- Boaz Harrosh bharrosh@panasas.com
-- Jim Lieb <jlieb@panasas.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-equipment: (No special electricity)
-- 4U Panasas shelf - Very noisy
-- 1U Rack PC x 2 - Noisy
-- Laptops
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
+ net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
+ 2 files changed, 19 insertions(+), 0 deletions(-)
 
-We'll need at most 24 IPs
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index c1cdb2f..4a327ad 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -52,6 +52,9 @@ enum {
+ 	RPC_PIPEFS_UMOUNT,
+ };
+ 
++extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++				      const unsigned char *dir_name);
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 8abeb9d..4860a56 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1020,6 +1020,22 @@ static const struct rpc_filelist files[] = {
+ 	},
+ };
+ 
++/*
++ * This call can be used only in RPC pipefs mount notification hooks.
++ */
++struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++			       const unsigned char *dir_name)
++{
++	struct qstr dir = {
++		.name = dir_name,
++		.len = strlen(dir_name),
++		.hash = full_name_hash(dir_name, strlen(dir_name)),
++	};
++
++	return d_lookup(sb->s_root, &dir);
++}
++EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
 
-Thanks
-Boaz
