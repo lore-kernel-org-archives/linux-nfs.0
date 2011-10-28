@@ -1,153 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39161 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:1643 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754153Ab1JTJn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 05:43:57 -0400
-Date: Thu, 20 Oct 2011 05:43:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] CLNT: add some tests for DESTROY_CLIENTID
-Message-ID: <20111020094355.GE5444@fieldses.org>
-References: <4E9FE273.80500@cn.fujitsu.com>
+	id S932206Ab1J1KwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 06:52:04 -0400
+Subject: [PATCH v7 2/7] SUNRPC: use rpcbind reference counting helpers
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Fri, 28 Oct 2011 14:52:47 +0300
+Message-ID: <20111028105232.24628.17668.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E9FE273.80500@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2011 at 04:57:23PM +0800, Mi Jinlong wrote:
-> Some tests for DESTROY_CLIENTID at pynfs41.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/__init__.py            |    1 +
->  nfs4.1/server41tests/st_destroy_clientid.py |   85 +++++++++++++++++++++++++++
->  2 files changed, 86 insertions(+), 0 deletions(-)
->  create mode 100644 nfs4.1/server41tests/st_destroy_clientid.py
-> 
-> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-> index 1cc2048..eb92538 100644
-> --- a/nfs4.1/server41tests/__init__.py
-> +++ b/nfs4.1/server41tests/__init__.py
-> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
->             "st_compound.py",
->             "st_create_session.py",
->             "st_destroy_session.py",
-> +           "st_destroy_clientid.py",
->             "st_reclaim_complete.py",
->             "st_secinfo_no_name.py",
->             "st_secinfo.py",
-> diff --git a/nfs4.1/server41tests/st_destroy_clientid.py b/nfs4.1/server41tests/st_destroy_clientid.py
-> new file mode 100644
-> index 0000000..c2ea0c7
-> --- /dev/null
-> +++ b/nfs4.1/server41tests/st_destroy_clientid.py
-> @@ -0,0 +1,85 @@
-> +from st_create_session import create_session
-> +from nfs4_const import *
-> +from environment import check, fail
-> +import nfs4_ops as op
-> +import nfs4lib
-> +
-> +def testSupported(t, env):
-> +    """Do a simple DESTROY_CLIENTID
-> +       destroy an unconfirmed clientid without session
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID1
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +
-> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> +    check(res)
-> +
-> +def testDestroyBadCIDWS(t, env):
-> +    """ destroy an clientid which not exist without session
+All is simple: we just increase users counter if rpcbind clients has been
+created already. Otherwise we create them and set users counter to 1.
 
-s/an clientid which non exist/a nonexistant clientid/
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID2
-> +    """
-> +    res = env.c1.compound([op.destroy_clientid(0)])
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> +
-> +def testDestroyBadCIDIS(t, env):
-> +    """ destroy an clientid which not exist in session
+---
+ net/sunrpc/rpcb_clnt.c |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
 
-Ditto.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 9830d87..115df11 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -258,9 +258,7 @@ static int rpcb_create_local_unix(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -312,9 +310,7 @@ static int rpcb_create_local_net(void)
+ 		clnt4 = NULL;
+ 	}
+ 
+-	/* Protected by rpcb_create_local_mutex */
+-	rpcb_local_clnt = clnt;
+-	rpcb_local_clnt4 = clnt4;
++	rpcb_set_local(clnt, clnt4);
+ 
+ out:
+ 	return result;
+@@ -329,11 +325,11 @@ static int rpcb_create_local(void)
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+ 
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		return result;
+ 
+ 	mutex_lock(&rpcb_create_local_mutex);
+-	if (rpcb_local_clnt)
++	if (rpcb_get_local())
+ 		goto out;
+ 
+ 	if (rpcb_create_local_unix() != 0)
 
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID3
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +
-> +    res = sess.compound([op.destroy_clientid(0)])
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> +
-> +def testDestroyCIDThisSession(t, env):
-> +   """ destroy clientid of itself in session
-
-I'd say "destroy clientid using a session belong to that client".
-
-These look OK otherwise, thanks!
-
-There's just one other test I'd suggest: it would be useful to check
-that the clientid has actually been destroyed.  So, destroy the
-clientid, then try using it somehow (maybe by sending a create session?
-Or just trying to use a session that belonged to that client?).
-
---b.
-
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID4
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +
-> +    res = sess.compound([op.destroy_clientid(c.clientid)])
-> +    check(res, NFS4ERR_CLIENTID_BUSY)
-> +
-> +def testDestroyCIDInSession(t, env):
-> +    """ destroy a clientid of other session without session
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID5
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +
-> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> +    check(res, NFS4ERR_CLIENTID_BUSY)
-> +
-> +def testDestroyCIDNotOnly(t, env):
-> +    """ destroy a clientid without session with other compound
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID6
-> +    """
-> +    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
-> +    check(res, NFS4ERR_NOT_ONLY_OP)
-> +
-> +def testDestroyCIDTwice(t, env):
-> +    """ destroy a clientid without session twice
-> +
-> +    FLAGS: destroy_clientid all
-> +    CODE: DESCID7
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +
-> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> +    check(res)
-> +
-> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> +    check(res, NFS4ERR_STALE_CLIENTID)
-> -- 
-> 1.7.6
-> 
-> 
