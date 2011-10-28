@@ -1,78 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33298 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752046Ab1JNR1b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:27:31 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Brent Welch <welch@panasas.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 1/6] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-Date: Fri, 14 Oct 2011 19:27:22 +0200
-Message-ID: <1318613242-3581-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <4E98703E.7040605@panasas.com>
-References: <4E98703E.7040605@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:39389 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755322Ab1J1Kvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 06:51:42 -0400
+Subject: [PATCH v7 1/7] SUNRPC: introduce helpers for reference counted
+	rpcbind clients
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Fri, 28 Oct 2011 14:52:25 +0300
+Message-ID: <20111028105219.24628.39648.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ore_calc_stripe_info is needed by exofs::export.c
-for the layout calculations. Make it exportable
+v6:
+1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
+clients become valid before rpcb_users assignment
+2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
+my pow).
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+v5: fixed races with rpcb_users in rpcb_get_local()
+
+This helpers will be used for dynamical creation and destruction of rpcbind
+clients.
+Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
+clients has been created already, then we just increase rpcb_users.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/exofs/ore.c         |    8 +++-----
- include/scsi/osd_ore.h |    3 +++
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 53 insertions(+), 0 deletions(-)
 
-diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
-index 3b1cc3a..d92998d 100644
---- a/fs/exofs/ore.c
-+++ b/fs/exofs/ore.c
-@@ -57,9 +57,6 @@ MODULE_LICENSE("GPL");
-  * 3. Cache some havily used calculations that will be needed by users.
-  */
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index e45d2fb..9830d87 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
+ static struct rpc_clnt *	rpcb_local_clnt;
+ static struct rpc_clnt *	rpcb_local_clnt4;
  
--static void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
--				 struct ore_striping_info *si);
--
- enum { BIO_MAX_PAGES_KMALLOC =
- 		(PAGE_SIZE - sizeof(struct bio)) / sizeof(struct bio_vec),};
- 
-@@ -409,8 +406,8 @@ EXPORT_SYMBOL(ore_check_io);
-  *
-  *	O = L % stripe_unit + N * stripe_unit + M * group_depth * stripe_unit
-  */
--static void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
--				 struct ore_striping_info *si)
-+void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
-+			  struct ore_striping_info *si)
- {
- 	u32	stripe_unit = layout->stripe_unit;
- 	u32	group_width = layout->group_width;
-@@ -443,6 +440,7 @@ static void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
- 	si->group_length = T - H;
- 	si->M = M;
- }
-+EXPORT_SYMBOL(ore_calc_stripe_info);
- 
- static int _add_stripe_unit(struct ore_io_state *ios,  unsigned *cur_pg,
- 		unsigned pgbase, struct ore_per_dev_state *per_dev,
-diff --git a/include/scsi/osd_ore.h b/include/scsi/osd_ore.h
-index af2231a..a8e39d1 100644
---- a/include/scsi/osd_ore.h
-+++ b/include/scsi/osd_ore.h
-@@ -146,6 +146,9 @@ static inline unsigned ore_io_state_size(unsigned numdevs)
- 
- /* ore.c */
- int ore_verify_layout(unsigned total_comps, struct ore_layout *layout);
-+void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
-+			  struct ore_striping_info *si);
++DEFINE_SPINLOCK(rpcb_clnt_lock);
++unsigned int			rpcb_users;
 +
- int ore_get_rw_state(struct ore_layout *layout, struct ore_components *comps,
- 		     bool is_reading, u64 offset, u64 length,
- 		     struct ore_io_state **ios);
--- 
-1.7.2.3
+ struct rpcbind_args {
+ 	struct rpc_xprt *	r_xprt;
+ 
+@@ -161,6 +164,56 @@ static void rpcb_map_release(void *data)
+ 	kfree(map);
+ }
+ 
++static int rpcb_get_local(void)
++{
++	int cnt;
++
++	spin_lock(&rpcb_clnt_lock);
++	if (rpcb_users)
++		rpcb_users++;
++	cnt = rpcb_users;
++	spin_unlock(&rpcb_clnt_lock);
++
++	return cnt;
++}
++
++void rpcb_put_local(void)
++{
++	struct rpc_clnt *clnt = rpcb_local_clnt;
++	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
++	int shutdown;
++
++	spin_lock(&rpcb_clnt_lock);
++	if (--rpcb_users == 0) {
++		rpcb_local_clnt = NULL;
++		rpcb_local_clnt4 = NULL;
++	}
++	shutdown = !rpcb_users;
++	spin_unlock(&rpcb_clnt_lock);
++
++	if (shutdown) {
++		/*
++		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
++		 */
++		if (clnt4)
++			rpc_shutdown_client(clnt4);
++		if (clnt)
++			rpc_shutdown_client(clnt);
++	}
++}
++
++static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
++{
++	/* Protected by rpcb_create_local_mutex */
++	rpcb_local_clnt = clnt;
++	rpcb_local_clnt4 = clnt4;
++	smp_wmb(); 
++	rpcb_users = 1;
++	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
++			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
++			rpcb_local_clnt4);
++}
++
+ /*
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
 
