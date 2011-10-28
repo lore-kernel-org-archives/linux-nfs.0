@@ -1,63 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39671 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:18200 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751268Ab1JTJOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 05:14:43 -0400
-Date: Thu, 20 Oct 2011 05:14:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
-Message-ID: <20111020091434.GC5444@fieldses.org>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20111019222021.GB1874@fieldses.org>
- <87k4805alx.fsf@linux.vnet.ibm.com>
+	id S1754998Ab1J1JlG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 05:41:06 -0400
+Message-ID: <4EAA78DD.2000408@parallels.com>
+Date: Fri, 28 Oct 2011 13:41:49 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87k4805alx.fsf@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3 0/3] SUNRPC: rcbind clients virtualization
+References: <20111027180824.20459.23219.stgit@localhost6.localdomain6> <20111027202514.GA31669@fieldses.org> <4EAA74DD.3070708@parallels.com> <20111028093036.GA2604@fieldses.org>
+In-Reply-To: <20111028093036.GA2604@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2011 at 02:00:02PM +0530, Aneesh Kumar K.V wrote:
-> On Wed, 19 Oct 2011 18:20:21 -0400, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Tue, Oct 18, 2011 at 09:02:56PM +0530, Aneesh Kumar K.V wrote:
-> > > +#define RICHACL_XATTR "system.richacl"
-> > > +
-> > > +struct richace_xattr {
-> > > +	__le16		e_type;
-> > > +	__le16		e_flags;
-> > > +	__le32		e_mask;
-> > > +	__le32		e_id;
-> > > +	char		e_who[0];
-> > > +};
-> > 
-> > Does it really make sense to use a string here just to pick between the
-> > three choices OWNER@, GROUP@, and EVERYONE@?  Why not just another small
-> > integer?  Is the goal to expand this somehow eventually?
-> 
-> I guess Andreas wanted the disk layout to be able to store user@domain
-> format if needed.
+28.10.2011 13:30, J. Bruce Fields пишет:
+> On Fri, Oct 28, 2011 at 01:24:45PM +0400, Stanislav Kinsbursky wrote:
+>> This patch-set was created before you've sent your NFSd plan and we
+>> disacussed Lockd per netns.
+>> So, this sentence: "NFSd service will be per netns too from my pow"
+>> is obsolete. And Lockd will be one for all.
+>
+> I believe lockd should be pert-netns--at least that's what the server
+> needs.
+>
+> (The single lockd thread may handle requests from all netns, but it
+> should behave like a different service depending on netns, so its data
+> structures, etc. will need to be per-ns.
+>
 
-Is that likely?  For that to be useful, tasks would need to be able to
-run as user@domain strings.  And we'd probably want owners and groups to
-also be user@domain strings.
+Sure. Looks like we have misunderstanding here. When I said, that Lockd should 
+be one for all, I meaned, that we will have only one kthread for all ns (not one 
+per ns). Private data will be per net ns, of course.
 
-The container people seem to eventually want to add some kind of
-namespace identifier everywhere:
+BTW, Bruce, please, have a brief look at my e-mail to linux-nfs@vger.kernel.org 
+named "SUNRPC: non-exclusive pipe creation".
+I've done a lot in "RPC pipefs per net ns" task, and going to send first patches 
+soon. But right now I'm really confused will this non-exclusive pipes creation 
+and almost ready so remove this functionality. But I'm afraid, that I've missed 
+something. Would be greatly appreciate for your opinion about my question.
 
-	http://marc.info/?l=linux-kernel&m=131836778427871&w=2
+> --b.
+>
+>> Or you are asking about something else?
+>>
+>>> --b.
+>>>
+>>>> And also we have NFSd file system, which
+>>>> is not virtualized yet.
+>>>>
+>>>> The following series consists of:
+>>>>
+>>>> ---
+>>>>
+>>>> Stanislav Kinsbursky (3):
+>>>>        SUNRPC: move rpcbind internals to sunrpc part of network namespace context
+>>>>        SUNRPC: optimize net_ns dereferencing in rpcbind creation calls
+>>>>        SUNRPC: optimize net_ns dereferencing in rpcbind registering calls
+>>>>
+>>>>
+>>>>   net/sunrpc/netns.h     |    5 ++
+>>>>   net/sunrpc/rpcb_clnt.c |  103 ++++++++++++++++++++++++++----------------------
+>>>>   2 files changed, 61 insertions(+), 47 deletions(-)
+>>>>
+>>>> --
+>>>> Signature
+>>
+>>
+>> --
+>> Best regards,
+>> Stanislav Kinsbursky
 
-in which case I guess we'd likely end up with (uid, user namespace id)
-instead of user@domain?
 
-I suppose the variable-length string field could store that too.
-
-I don't hate the idea, it would make life easier for the NFS server.
-
---b.
-
-> That should make the layout flexible enough so that
-> we won't have to add another xattr later.
+-- 
+Best regards,
+Stanislav Kinsbursky
