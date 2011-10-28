@@ -1,78 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ogre.sisk.pl ([217.79.144.158]:36369 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752424Ab1J0UUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Oct 2011 16:20:09 -0400
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: linux-pm@lists.linux-foundation.org
-Subject: Re: [linux-pm] [PATCH 1/4] freezer: make fake_signal_wake_up wake TASK_KILLABLE tasks too
-Date: Thu, 27 Oct 2011 22:22:39 +0200
-Cc: Jeff Layton <jlayton@redhat.com>, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, smfrench@gmail.com, john@calva.com
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com> <20111026155548.4a7c3dd8@corrin.poochiereds.net> <201110272221.06782.rjw@sisk.pl>
-In-Reply-To: <201110272221.06782.rjw@sisk.pl>
+Received: from natasha.panasas.com ([67.152.220.90]:34134 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750996Ab1J1AXV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2011 20:23:21 -0400
+Message-ID: <4EA9F5E8.6060900@panasas.com>
+Date: Thu, 27 Oct 2011 17:23:04 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201110272222.39962.rjw@sisk.pl>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd (and lock) changes for 3.2
+References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com> <20111027203412.GB31669@fieldses.org>
+In-Reply-To: <20111027203412.GB31669@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday, October 27, 2011, Rafael J. Wysocki wrote:
-> On Wednesday, October 26, 2011, Jeff Layton wrote:
-> > On Tue, 11 Oct 2011 21:14:28 +0200
-> > "Rafael J. Wysocki" <rjw@sisk.pl> wrote:
-> > 
-> > > On Tuesday, October 11, 2011, Jeff Layton wrote:
-> > > > On Tue, 11 Oct 2011 08:18:48 +0200
-> > > > Pavel Machek <pavel@ucw.cz> wrote:
-> > > > 
-> > > > > 
-> > > > > Hi!
-> > > > > 
-> > > > > > TASK_KILLABLE is often used to put tasks to sleep for quite some time.
-> > > > > > One of the most common uses is to put tasks to sleep while waiting for
-> > > > > > replies from a server on a networked filesystem (such as CIFS or NFS).
-> > > > > > 
-> > > > > > Unfortunately, fake_signal_wake_up does not currently wake up tasks
-> > > > > > that are sleeping in TASK_KILLABLE state. This means that even if the
-> > > > > > code were in place to allow them to freeze while in this sleep, it
-> > > > > > wouldn't work anyway.
-> > > > > > 
-> > > > > > This patch changes this function to wake tasks in this state as well.
-> > > > > > This should be harmless -- if the code doing the sleeping doesn't have
-> > > > > > handling to deal with freezer events, it should just go back to sleep.
-> > > > > 
-> > > > > I'm pretty sure this will break something; but that does not mean it
-> > > > > is bad idea, just that it should be merged early and tested a lot.
-> > > > > 
-> > > > 
-> > > > FWIW, I looked at most of the places in the kernel that do
-> > > > TASK_KILLABLE sleeps and they look like they'll handle this correctly.
-> > > > The main one I wasn't sure about was mem_cgroup_handle_oom(), but I
-> > > > think it'll do the right thing too. I certainly could have missed
-> > > > something though...
-> > > > 
-> > > > In any case, would you mind merging this via the linux-pm tree for 3.2?
-> > > 
-> > > I will push it for 3.2.
-> > > 
-> > 
-> > Hi Rafael,
-> > 
-> > Trond asked if you would also be willing to push patches 3 and 4 in
-> > this series for 3.2 as well [1]? Note that patch #4 got another revision so
-> > we'll want to make sure that you get that one. I can resend the
-> > nfs/sunrpc patches if that will help...
-> > 
-> > [1]: I think Steve F is going to push patch #2, so that one shouldn't
-> > be an issue. 
+On 10/27/2011 01:34 PM, J. Bruce Fields wrote:
+> On Tue, Oct 25, 2011 at 08:16:08PM -0700, Boaz Harrosh wrote:
+>> On 10/25/2011 05:19 AM, J. Bruce Fields wrote:
+>>> Boaz Harrosh (1):
+>>>       nfsd4: fix failure to end nfsd4 grace period
+>>>
+>>
+>> Bruce hi.
+>>
+>> As I recall this failure I have experienced in early stages of the
+>> 3.1-rcX series. I admit that I always run with Benny's pnfs tree,
+>> but I do not think it is patches that Benny added from the 3.2 set
+>> I think it is breakage introduced by the 3.1 merge window.
+>>
+>> Therefor I think that this patch must be sent to Stable@ otherwise
+>> surly 3.1 Kernel users are to hit it. (You can escapee it)
 > 
-> Well, I've already sent my pull request.  I can keep these patches in my
-> tree for the next pull request, though (I'm sure there will be fixes against
-> 3.2, so they will go along with those).
+> We need to test it, but I think you're probably correct,
+> 6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to end
+> nfsd4 grace period" should have been tagged for stable.  Does that also
+> require any previous patches? (E.g.
+> 48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir
+> setting"?)
+> 
 
-BTW, do you have current versions handy?  Or hasn't they changed?
+right, and all for that dmesg print. But yes! 
 
-Rafael
+Well the 3.1 Kernel without them gets stuck. I guess you need to experiment
+with what would be the minimal patchset needed for 3.1 .
+
+Tell me if you need help testing that the damage has gone. But basically I have
+a script (4 years old) that does: 
+	server: service nfs stop/start 
+	client: mount
+back to back, The client gets stuck forever.
+
+> --b.
+
+Thanks
+Boaz
