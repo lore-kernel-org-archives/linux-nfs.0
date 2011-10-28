@@ -1,113 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43518 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:7399 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932467Ab1JYKQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Oct 2011 06:16:35 -0400
-Subject: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
-	rpcbind clients
+	id S932210Ab1J1KxS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 06:53:18 -0400
+Subject: [PATCH v7 7/7] SUNRPC: remove rpcbind clients destruction on module
+	cleanup
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Tue, 25 Oct 2011 14:16:36 +0300
-Message-ID: <20111025101608.12689.68689.stgit@localhost6.localdomain6>
-In-Reply-To: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>
+Date: Fri, 28 Oct 2011 14:54:02 +0300
+Message-ID: <20111028105400.24628.78761.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
+References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v6:
-1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
-clients become valid before rpcb_users assignment
-2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
-my pow).
-
-v5: fixed races with rpcb_users in rpcb_get_local()
-
-This helpers will be used for dynamical creation and destruction of rpcbind
-clients.
-Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
-clients has been created already, then we just increase rpcb_users.
+Rpcbind clients destruction during SUNRPC module removing is obsolete since now
+those clients are destroying during last RPC service shutdown.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
- net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 54 insertions(+), 0 deletions(-)
+ net/sunrpc/rpcb_clnt.c   |   12 ------------
+ net/sunrpc/sunrpc_syms.c |    3 ---
+ 2 files changed, 0 insertions(+), 15 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index e45d2fb..9fcdb42 100644
+index 115c691..983b74f 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
- static struct rpc_clnt *	rpcb_local_clnt;
- static struct rpc_clnt *	rpcb_local_clnt4;
+@@ -1100,15 +1100,3 @@ static struct rpc_program rpcb_program = {
+ 	.version	= rpcb_version,
+ 	.stats		= &rpcb_stats,
+ };
+-
+-/**
+- * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
+- *
+- */
+-void cleanup_rpcb_clnt(void)
+-{
+-	if (rpcb_local_clnt4)
+-		rpc_shutdown_client(rpcb_local_clnt4);
+-	if (rpcb_local_clnt)
+-		rpc_shutdown_client(rpcb_local_clnt);
+-}
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 9d08091..8ec9778 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -61,8 +61,6 @@ static struct pernet_operations sunrpc_net_ops = {
  
-+DEFINE_SPINLOCK(rpcb_clnt_lock);
-+unsigned int			rpcb_users;
-+
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
+ extern struct cache_detail unix_gid_cache;
  
-@@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
- }
- 
-+static int rpcb_get_local(void)
-+{
-+	int cnt;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (rpcb_users)
-+		rpcb_users++;
-+	cnt = rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	return cnt;
-+}
-+
-+void rpcb_put_local(void)
-+{
-+	struct rpc_clnt *clnt = rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	int shutdown;
-+
-+	spin_lock(&rpcb_clnt_lock);
-+	if (--rpcb_users == 0) {
-+		rpcb_local_clnt = NULL;
-+		rpcb_local_clnt4 = NULL;
-+	}
-+	shutdown = !rpcb_users;
-+	spin_unlock(&rpcb_clnt_lock);
-+
-+	if (shutdown) {
-+		/*
-+		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
-+		 */
-+		if (clnt4)
-+			rpc_shutdown_client(clnt4);
-+		if (clnt)
-+			rpc_shutdown_client(clnt);
-+	}
-+	return;
-+}
-+
-+static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+{
-+	/* Protected by rpcb_create_local_mutex */
-+	rpcb_local_clnt = clnt;
-+	rpcb_local_clnt4 = clnt4;
-+	smp_wmb(); 
-+	rpcb_users = 1;
-+	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
-+			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
-+			rpcb_local_clnt4);
-+}
-+
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
+-extern void cleanup_rpcb_clnt(void);
+-
+ static int __init
+ init_sunrpc(void)
+ {
+@@ -102,7 +100,6 @@ out:
+ static void __exit
+ cleanup_sunrpc(void)
+ {
+-	cleanup_rpcb_clnt();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+ 	svc_cleanup_xprt_sock();
 
