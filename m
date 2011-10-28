@@ -1,233 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:51992 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754900Ab1JWRpL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:45:11 -0400
-Received: from /spool/local
-	by e23smtp08.au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Sun, 23 Oct 2011 17:43:51 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 14/26] richacl: Permission mapping functions
-Date: Sun, 23 Oct 2011 23:13:43 +0530
-Message-Id: <1319391835-5829-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:36341 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753192Ab1J1J00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 05:26:26 -0400
+Message-ID: <4EAA7565.1040101@parallels.com>
+Date: Fri, 28 Oct 2011 13:27:01 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v6 4/8] SUNRPC: setup rpcbind clients if service requires
+ it
+References: <20111025100826.12689.46944.stgit@localhost6.localdomain6> <20111025101705.12689.68022.stgit@localhost6.localdomain6> <20111027212732.GC31669@fieldses.org>
+In-Reply-To: <20111027212732.GC31669@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+28.10.2011 01:27, J. Bruce Fields пишет:
+> On Tue, Oct 25, 2011 at 02:17:08PM +0300, Stanislav Kinsbursky wrote:
+>> New function ("svc_uses_rpcbind") will be used to detect, that new service will
+>> send portmapper register calls. For such services we will create rpcbind
+>> clients and remove all stale portmap registrations.
+>> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
+>> in case of this field wasn't initialized earlier. This will allow to destroy
+>> rpcbind clients when no other users of them left.
+>>
+>> Note: Currently, any creating service will be detected as portmap user.
+>> Probably, this is wrong. But now it depends on program versions "vs_hidden"
+>> flag.
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>>   net/sunrpc/svc.c |   11 +++++++++--
+>>   1 files changed, 9 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index d2d61bf..918edc3 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -454,8 +454,15 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>   		spin_lock_init(&pool->sp_lock);
+>>   	}
+>>
+>> -	/* Remove any stale portmap registrations */
+>> -	svc_unregister(serv);
+>> +	if (svc_uses_rpcbind(serv)) {
+>> +	       	if (svc_rpcb_setup(serv)<  0) {
+>> +			kfree(serv->sv_pools);
+>> +			kfree(serv);
+>> +			return NULL;
+>
+> Nit: could we convert this (and the previous failure to allocate
+> sv_pools) to the usual pattern of collecting the cleanup at the end and
+> jumping to it with a goto?
+>
 
-We need to map from POSIX permissions to NFSv4 permissions when a
-chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-is set (which implicitly sets the file permission bits), and from the
-MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-doing an access check in a richacl.
+Sure, we can. I will implement this "goto pattern", is you insist.
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |  117 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   47 +++++++++++++++++++
- 2 files changed, 164 insertions(+), 0 deletions(-)
+> Looks fine otherwise.
+>
+> --b.
+>
+>> +		}
+>> +		if (!serv->sv_shutdown)
+>> +			serv->sv_shutdown = svc_rpcb_cleanup;
+>> +	}
+>>
+>>   	return serv;
+>>   }
+>>
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 689e1a6..bca2093 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -56,6 +56,123 @@ richacl_clone(const struct richacl *acl)
- }
- 
- /**
-+ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
-+ * @mask:	%ACE4_* permission mask
-+ *
-+ * See richacl_masks_to_mode().
-+ */
-+static int
-+richacl_mask_to_mode(unsigned int mask)
-+{
-+	int mode = 0;
-+
-+	if (mask & ACE4_POSIX_MODE_READ)
-+		mode |= MAY_READ;
-+	if (mask & ACE4_POSIX_MODE_WRITE)
-+		mode |= MAY_WRITE;
-+	if (mask & ACE4_POSIX_MODE_EXEC)
-+		mode |= MAY_EXEC;
-+
-+	return mode;
-+}
-+
-+/**
-+ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
-+ *
-+ * When setting a richacl, we set the file permission bits to indicate maximum
-+ * permissions: for example, we set the Write permission when a mask contains
-+ * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
-+ *
-+ * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
-+ * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
-+ * Such permissions can still be effective, but not for new files or after a
-+ * chmod(), and only if they were set explicitly, for example, by setting a
-+ * richacl.
-+ */
-+int
-+richacl_masks_to_mode(const struct richacl *acl)
-+{
-+	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-+	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-+	       richacl_mask_to_mode(acl->a_other_mask);
-+}
-+EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
-+
-+/**
-+ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-+ *
-+ * When the file permission bits of a file are set with chmod(), this specifies
-+ * the maximum permissions that processes will get.  All permissions beyond
-+ * that will be removed from the file masks, and become ineffective.
-+ *
-+ * We also add in the permissions which are always allowed no matter what the
-+ * acl says.
-+ */
-+unsigned int
-+richacl_mode_to_mask(mode_t mode)
-+{
-+	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
-+
-+	if (mode & MAY_READ)
-+		mask |= ACE4_POSIX_MODE_READ;
-+	if (mode & MAY_WRITE)
-+		mask |= ACE4_POSIX_MODE_WRITE;
-+	if (mode & MAY_EXEC)
-+		mask |= ACE4_POSIX_MODE_EXEC;
-+
-+	return mask;
-+}
-+
-+/**
-+ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-+ * @want:	@want argument of the permission inode operation
-+ *
-+ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
-+ *
-+ * Richacls use the iop->may_create and iop->may_delete hooks which are
-+ * used for checking if creating and deleting files is allowed.  These hooks do
-+ * not use richacl_want_to_mask(), so we do not have to deal with mapping
-+ * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
-+ * here.
-+ */
-+unsigned int
-+richacl_want_to_mask(unsigned int want)
-+{
-+	unsigned int mask = 0;
-+
-+	if (want & MAY_READ)
-+		mask |= ACE4_READ_DATA;
-+	if (want & MAY_DELETE_SELF)
-+		mask |= ACE4_DELETE;
-+	if (want & MAY_TAKE_OWNERSHIP)
-+		mask |= ACE4_WRITE_OWNER;
-+	if (want & MAY_CHMOD)
-+		mask |= ACE4_WRITE_ACL;
-+	if (want & MAY_SET_TIMES)
-+		mask |= ACE4_WRITE_ATTRIBUTES;
-+	if (want & MAY_EXEC)
-+		mask |= ACE4_EXECUTE;
-+	/*
-+	 * differentiate MAY_WRITE from these request
-+	 */
-+	if (want & (MAY_APPEND |
-+		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-+		    MAY_DELETE_CHILD)) {
-+		if (want & MAY_APPEND)
-+			mask |= ACE4_APPEND_DATA;
-+		if (want & MAY_CREATE_FILE)
-+			mask |= ACE4_ADD_FILE;
-+		if (want & MAY_CREATE_DIR)
-+			mask |= ACE4_ADD_SUBDIRECTORY;
-+		if (want & MAY_DELETE_CHILD)
-+			mask |= ACE4_DELETE_CHILD;
-+	} else if (want & MAY_WRITE)
-+		mask |= ACE4_WRITE_DATA;
-+	return mask;
-+}
-+EXPORT_SYMBOL_GPL(richacl_want_to_mask);
-+
-+/**
-  * richace_is_same_identifier  -  are both identifiers the same?
-  */
- int
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 51d6937..fe875fe 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -119,6 +119,49 @@ struct richacl {
- 	ACE4_WRITE_OWNER |				\
- 	ACE4_SYNCHRONIZE)
- 
-+/*
-+ * The POSIX permissions are supersets of the following NFSv4 permissions:
-+ *
-+ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-+ *    of the file system object.
-+ *
-+ *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
-+ *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
-+ *
-+ *  - MAY_EXECUTE maps to ACE4_EXECUTE.
-+ *
-+ *  (Some of these NFSv4 permissions have the same bit values.)
-+ */
-+#define ACE4_POSIX_MODE_READ (			\
-+		ACE4_READ_DATA |		\
-+		ACE4_LIST_DIRECTORY)
-+#define ACE4_POSIX_MODE_WRITE (			\
-+		ACE4_WRITE_DATA |		\
-+		ACE4_ADD_FILE |			\
-+		ACE4_APPEND_DATA |		\
-+		ACE4_ADD_SUBDIRECTORY |		\
-+		ACE4_DELETE_CHILD)
-+#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
-+#define ACE4_POSIX_MODE_ALL (			\
-+		ACE4_POSIX_MODE_READ |		\
-+		ACE4_POSIX_MODE_WRITE |		\
-+		ACE4_POSIX_MODE_EXEC)
-+/*
-+ * These permissions are always allowed
-+ * no matter what the acl says.
-+ */
-+#define ACE4_POSIX_ALWAYS_ALLOWED (	\
-+		ACE4_SYNCHRONIZE |	\
-+		ACE4_READ_ATTRIBUTES |	\
-+		ACE4_READ_ACL)
-+/*
-+ * The owner is implicitly granted
-+ * these permissions under POSIX.
-+ */
-+#define ACE4_POSIX_OWNER_ALLOWED (		\
-+		ACE4_WRITE_ATTRIBUTES |		\
-+		ACE4_WRITE_OWNER |		\
-+		ACE4_WRITE_ACL)
- /**
-  * richacl_get  -  grab another reference to a richacl handle
-  */
-@@ -234,4 +277,8 @@ richace_is_deny(const struct richace *ace)
- extern struct richacl *richacl_alloc(int);
- extern int richace_is_same_identifier(const struct richace *,
- 				      const struct richace *);
-+extern int richacl_masks_to_mode(const struct richacl *);
-+extern unsigned int richacl_mode_to_mask(mode_t);
-+extern unsigned int richacl_want_to_mask(unsigned int);
-+
- #endif /* __RICHACL_H */
+
 -- 
-1.7.5.4
-
+Best regards,
+Stanislav Kinsbursky
