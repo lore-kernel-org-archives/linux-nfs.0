@@ -1,105 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-1.concepts.nl ([213.197.30.124]:49127 "EHLO
-	smtp-1.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751341Ab1JTXjO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 19:39:14 -0400
-Received: from d594e6a3.dsl.concepts.nl ([213.148.230.163] helo=gnome.loos.site)
-	by smtp-1.concepts.nl with esmtps (TLSv1:AES256-SHA:256)
-	(Exim 4.72)
-	(envelope-from <aelschuring@hotmail.com>)
-	id 1RH1xX-0000xR-H5
-	for linux-nfs@vger.kernel.org; Fri, 21 Oct 2011 01:23:35 +0200
-Received: from [172.22.21.203] (helo=neminis.loos.site)
-	by gnome.loos.site with esmtp (Exim 4.72)
-	(envelope-from <aelschuring@hotmail.com>)
-	id 1RH1xR-0000j2-7A
-	for linux-nfs@vger.kernel.org; Fri, 21 Oct 2011 01:23:29 +0200
-Date: Fri, 21 Oct 2011 01:23:27 +0200
-From: Arno Schuring <aelschuring@hotmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: sec=krb5 mounts never return
-Message-ID: <20111021012327.612839b5@neminis.loos.site>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mailhub.sw.ru ([195.214.232.25]:16473 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932788Ab1J1OZa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Oct 2011 10:25:30 -0400
+Subject: [PATCH 7/7] SUNRPC: added debug messages to RPC pipefs
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Fri, 28 Oct 2011 18:26:14 +0300
+Message-ID: <20111028142614.5796.43437.stgit@localhost6.localdomain6>
+In-Reply-To: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+References: <20111028142245.5796.89937.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello list,
+This patch adds debug messages for notification events.
 
-tl;dr: mount calls with sec=krb5 never return. They appear to get
-stalled in the kernel on "svc: transport is dead". I need to know
-if this is a configuration issue, a kernel problem or a userland
-problem, and how it can be resolved.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ net/sunrpc/rpc_pipe.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-I've been running a succesful NFS4 setup at home for a year now, but
-incorporating krb5 security has so far proven fruitless. I believe the
-Kerberos side of the equation is no longer causing problems; it is used
-for user authentication too, and nfs security contexts seem to work
-properly. As said above, the mount request for any Kerberos mount gets
-halted somewhere in flight:
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index cbf213e..42e4b6e 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -33,6 +33,10 @@
+ #include "netns.h"
+ #include "sunrpc.h"
+ 
++#define RPCDBG_FACILITY RPCDBG_DEBUG
++
++#define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
++
+ static struct vfsmount *rpc_mnt __read_mostly;
+ static int rpc_mount_count;
+ 
+@@ -1095,6 +1099,8 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++	dprintk("RPC:	sending pipefs MOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+ 					   sb);
+@@ -1128,6 +1134,8 @@ void rpc_kill_sb(struct super_block *sb)
+ 	sn->pipefs_sb = NULL;
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+ 	put_net(net);
++	dprintk("RPC:	sending pipefs UMOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
 
-# mount -vvv -t nfs4 -o sec=krb5 genie:/media /mnt
-mount: fstab path: "/etc/fstab"
-mount: mtab path:  "/etc/mtab"
-mount: lock path:  "/etc/mtab~"
-mount: temp path:  "/etc/mtab.tmp"
-mount: UID:        0
-mount: eUID:       0
-mount: spec:  "genie:/media"
-mount: node:  "/mnt"
-mount: types: "nfs4"
-mount: opts:  "sec=krb5"
-mount: external mount: argv[0] = "/sbin/mount.nfs4"
-mount: external mount: argv[1] = "genie:/media"
-mount: external mount: argv[2] = "/mnt"
-mount: external mount: argv[3] = "-v"
-mount: external mount: argv[4] = "-o"
-mount: external mount: argv[5] = "rw,sec=krb5"
-mount.nfs4: timeout set for Sun Oct 16 22:52:10 2011
-mount.nfs4: trying text-based options
-'sec=krb5,addr=172.22.21.8,clientaddr=172.22.21.5'
-
-And there it just seems to hang (the timeout is ignored completely)
-until killed via signal or Ctrl-C. The same mount without sec=krb5
-completes without issue:
-# mount -v -t nfs4 genie:/media /mnt
-mount.nfs4: timeout set for Thu Oct 20 23:48:55 2011
-mount.nfs4: trying text-based options
-'addr=172.22.21.8,clientaddr=172.22.21.8'
-genie:/media on /mnt type nfs4 (rw)
-
-The machine is running a fully updated Debian 6.0 (Squeeze). So far I
-have only tried with one other client (also Squeeze) with similar
-results. Relevant software versions: kernel 2.6.32 (armel) and
-nfs-utils 1.2.2.
-
-
-The only suggestion that Google has been able to give me was to verify
-that the rpcsec_gss_krb5 was loaded, and it is:
-$ lsmod|grep gss
-rpcsec_gss_krb5         9026  5 
-auth_rpcgss            33334  4 rpcsec_gss_krb5,nfsd,nfs
-sunrpc                171216  21 [..]
-
-Reproducible with only these exports:
-# exportfs -v
-/srv/nfs  172.22.21.8(ro,wdelay,root_squash,no_subtree_check,fsid=0)
-/srv/nfs  gss/krb5(ro,wdelay,root_squash,no_subtree_check,fsid=0)
-
-
-I can provide a full rpc_debug/svc_debug log if required. I'm not
-attaching it now because it is somewhat large (well, 60k) and I'm not
-even sure that user issues are on-topic for this list. What looks
-suspicious to me is the following excerpt:
-[600472.772226] nfsd: connect from 172.22.21.8, port=46257
-[600472.772300] svc: svc_setup_socket created deda1a00 (inet df948900)
-[600473.431966] svc_recv: found XPT_CLOSE
-[600473.431982] svc: svc_delete_xprt(deda1a00)
-[600473.432114] svc: transport deda1a00 is dead, not enqueued
-
-
-
-I'd be grateful for any pointers,
-Arno
-(not subscribed, please keep me in CC)
