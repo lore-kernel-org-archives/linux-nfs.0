@@ -1,58 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33661 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:9943 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758305Ab1JFNOe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Oct 2011 09:14:34 -0400
-Message-ID: <4E8DA9A9.5010205@parallels.com>
-Date: Thu, 06 Oct 2011 17:14:17 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
+	id S932323Ab1J2SVP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:21:15 -0400
 MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: NFS4ERR_STALE_CLIENTID loop
+Date: Sat, 29 Oct 2011 11:21:13 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20111029181509.GE12122@fieldses.org>
+References: <20111024104042.GD32587@rd.bbc.co.uk> <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Kirill A. Shutemov" <kas@openvz.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: network-namespace-aware nfsd
-References: <20111005150214.GA18449@fieldses.org> <4E8C9363.9030303@parallels.com> <20111005181959.GB18449@fieldses.org> <4E8D7BED.6020705@parallels.com> <4E8D9F3F.4090004@parallels.com> <20111006131109.GB21627@fieldses.org>
-In-Reply-To: <20111006131109.GB21627@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: "David Flynn" <davidf@rd.bbc.co.uk>, <linux-nfs@vger.kernel.org>,
+        "Chuck Lever" <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/06/2011 05:11 PM, J. Bruce Fields wrote:
-> On Thu, Oct 06, 2011 at 04:29:51PM +0400, Pavel Emelyanov wrote:
->>>> Also, do you think per-namespace version support is important?
->>>>
->>>
->>> Actually, yes, I do.
->>> As I see it, nfsd filesystem have to virtualized to provide flexible control for 
->>> server features. If so, then we need to virtualize program as well.
->>
->> ACK - per namespace version control is required as well.
->>
->> AFAIK it's performed via sysctl-s and this part (sysctls engine I mean) is already
->> namespaces aware, thus it will not be the hard part of the implementation :)
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Saturday, October 29, 2011 8:15 PM
+> To: Myklebust, Trond
+> Cc: David Flynn; linux-nfs@vger.kernel.org; Chuck Lever
+> Subject: Re: NFS4ERR_STALE_CLIENTID loop
 > 
-> It's a special file in the nfsd filesystem.  But I assume that won't be
-> a big deal either.
-
-Well, yes, you're right :)
-
-> By the way, I'm curious: as we do this virtualization step-by-step, is
-> there any way for userspace to tell how far we've gotten?
+> On Sat, Oct 29, 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
+> > OK. This is the first time I've seen this tcpdump.
+> >
+> > The problem seems like a split-brain issue on the server... On the
+one
+> > hand, it is happily telling us that our lease is OK when we RENEW.
+> > Then when we try to use said lease in an OPEN, it is replying with
+> > STALE_CLIENTID.
+> >
+> > IOW: This isn't a problem I can fix on the client whether or not I
+add
+> > exponential backoff. The problem needs to be addressed on the server
+> > by the Solaris folks....
 > 
-> So for example if you have a system that's configured to use some new
-> namespace-based feature, and you boot it to an old kernel, is there some
-> way for it to check at the start and say "sorry, this isn't going to
-> work"?
+> Is there any simple thing we could do on the client to reduce the
+impact of
+> these sorts of loops?
 
-M-m... I'd say - there's no automatic way for doing this. What we can (and probably
-should) do is - audit the nfs/nfsd subsystems and mark places with
-   if (ns != &init_net_ns)
-          return -EOPNOTSUPP
-and remove these parts eventually.
+WHY? Those loops aren't supposed to happen if the server works according
+to spec.
 
-> --b.
-> .
-> 
+> Given that we know there are bad servers out there it might be nice to
+do if
+> it's not complicated.
+
+Again WHY? We can't fix a broken server by backing off correctly formed
+requests. If a server wants us to back off, it will send us
+NFS4ERR_DELAY.
+
+> (Though as a server implementer my purely selfish impulse is to leave
+things
+> as they are since it ensures I'll get bug reports if I screw
+> up....)
+
+You would have gotten the same bugreport. That said, I refuse to change
+the client to accommodate buggy servers. The solution to the problem of
+buggy servers is to fix those servers.
+
+Trond
 
