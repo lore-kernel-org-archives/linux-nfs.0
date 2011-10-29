@@ -1,65 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:51955 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753389Ab1JWRoX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:44:23 -0400
-Received: from /spool/local
-	by e23smtp08.au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Sun, 23 Oct 2011 17:43:03 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 02/26] vfs: Add hex format for MAY_* flag values
-Date: Sun, 23 Oct 2011 23:13:31 +0530
-Message-Id: <1319391835-5829-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:40626 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932323Ab1J2SWD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:22:03 -0400
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: NFS4ERR_STALE_CLIENTID loop
+Date: Sat, 29 Oct 2011 11:22:01 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7475@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20111029180227.GC2011@rd.bbc.co.uk>
+References: <20111024104042.GD32587@rd.bbc.co.uk> <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029180227.GC2011@rd.bbc.co.uk>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "David Flynn" <davidf@rd.bbc.co.uk>
+Cc: <linux-nfs@vger.kernel.org>, "Chuck Lever" <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+> -----Original Message-----
+> From: David Flynn [mailto:davidf@rd.bbc.co.uk]
+> Sent: Saturday, October 29, 2011 8:02 PM
+> To: Myklebust, Trond
+> Cc: David Flynn; linux-nfs@vger.kernel.org; Chuck Lever
+> Subject: Re: NFS4ERR_STALE_CLIENTID loop
+> 
+> * Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
+> > > Using the same kernel, same mountpoint as before, we're currently
+> > > experiencing a loop involving NFS4ERR_STALE_CLIENTID.
+> ...
+> > The problem seems like a split-brain issue on the server... On the
+one
+> > hand, it is happily telling us that our lease is OK when we RENEW.
+> > Then when we try to use said lease in an OPEN, it is replying with
+> > STALE_CLIENTID.
+> 
+> Thank you for the quick update, especially at the weekend.  I'm
+wondering if
+> it is possible that the STALE_CLIENTID issue is a by-product of the
+> BAD_STATEID issue from earlier.  We have observed several times the
+> BAD_STATEID loop, but the CLIENTID problem only seemed to occur when
+all
+> 40+ nodes were all showing problems.
+> 
+> After killing off sufficient processes, the some of the machines then
+> recovered of their own accord.  So your conclusion that there is a
+server issue
+> sounds reasonable.
+> 
+> On any such possible backoff, the previous case was with quite small
+> requests in quite a tight loop that seemed to cause the server grief.
+> This morning, a machine with a 10GbE interface had a BAD_STATEID issue
+but
+> involving some much larger writes[1], resulting in 1.6Gbit/sec from
+that
+> machine alone.  Thankfully there was only a second machine with 1GbE
+> interfaces bringing the total up to 2.5Gbit/sec.
+> 
+> It is this ability for a group of clients to make matters worse that
+is just as bad
+> as any fault with Solaris.
 
-We are going to add more flags and having them in hex format
-make it simpler
+Sure, but gone are the days when NFS had "reference implementations"
+that everyone had to interoperate with. NFSv4 is a fully documented
+protocol which describes how both clients and servers are supposed to
+work. If either the client or server fail to work according to that
+documentation, then bad things will happen.
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- include/linux/fs.h |   17 +++++++++--------
- 1 files changed, 9 insertions(+), 8 deletions(-)
+While I could litter the client code with lots of little tricks to be
+"defensive" in the face of buggy servers, that isn't going to solve
+anything: the server will still be buggy, and the client will still be
+faced with a situation that it cannot resolve.
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 277f497..c1884e9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -58,14 +58,15 @@ struct inodes_stat_t {
- 
- #define NR_FILE  8192	/* this can well be larger on a larger system */
- 
--#define MAY_EXEC 1
--#define MAY_WRITE 2
--#define MAY_READ 4
--#define MAY_APPEND 8
--#define MAY_ACCESS 16
--#define MAY_OPEN 32
--#define MAY_CHDIR 64
--#define MAY_NOT_BLOCK 128	/* called from RCU mode, don't block */
-+#define MAY_EXEC		0x00000001
-+#define MAY_WRITE		0x00000002
-+#define MAY_READ		0x00000004
-+#define MAY_APPEND		0x00000008
-+#define MAY_ACCESS		0x00000010
-+#define MAY_OPEN		0x00000020
-+#define MAY_CHDIR		0x00000040
-+/* called from RCU mode, don't block */
-+#define MAY_NOT_BLOCK		0x00000080
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
--- 
-1.7.5.4
+> (In a similar vein, it can be just as frustrating trying to get a
+client to stop
+> looping like this - it is often impossible to kill the process that
+triggered the
+> problem; for these, we had to resort to deleting the files using NFSv3
+(which
+> was working quite happily))
 
+'kill -9' should in principle work to kill off the process. Was that
+failing to work?
+
+Cheers
+   Trond
