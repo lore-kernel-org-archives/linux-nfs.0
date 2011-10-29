@@ -1,67 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44775 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754311Ab1JQV7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 17:59:49 -0400
-Date: Mon, 17 Oct 2011 17:59:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 4.1 client reconnect bug
-Message-ID: <20111017215949.GF13368@fieldses.org>
-References: <20111017210408.GA13368@fieldses.org>
- <1318888672.2753.43.camel@lade.trondhjem.org>
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:45741 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933496Ab1J2RsJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 13:48:09 -0400
+Subject: Re: nfsd4_is_junction
+Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1318888672.2753.43.camel@lade.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20111029101649.GA12345@infradead.org>
+Date: Sat, 29 Oct 2011 13:47:55 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com>
+References: <20111029101649.GA12345@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 17, 2011 at 02:57:52PM -0700, Trond Myklebust wrote:
-> On Mon, 2011-10-17 at 17:04 -0400, J. Bruce Fields wrote: 
-> > Following up on a pub conversation from a couple weeks ago:
-> > 
-> > The client apparently assumes that (in the absence of state protection)
-> > sending a SEQUENCE over a new tcp connection to the server automatically
-> > associates the new tcp connection with both the forechannel and
-> > backchannel of the session.
-> > 
-> > The server currently assumes that the new tcp connection should be
-> > associated only with the forechannel.
-> > 
-> > RFC 5661 sides with the forechannel-only convention:
-> > 
-> > 	- 2.6.10.6.2: "If the client wants to use additional connections
-> > 	  for the backchannel, then it needs to call
-> > 	  BIND_CONN_TO_SESSION on each connection it wants to use with
-> > 	  the session."
-> > 
-> > 	- 2.10.13.1.2: "If the connection that was lost was the last one
-> > 	  associated with the backchannel, and the client wants to
-> > 	  retain the backchannel and/or prevent revocation of recallable
-> > 	  state, the client needs to reconnect, and if it does, it MUST
-> > 	  associate the connection to the session and backchannel via
-> > 	  BIND_CONN_TO_SESSION."
-> > 
-> > 	- 18.34.3: "If, when the client ID was created, the client opted
-> > 	  for SP4_NONE state protection, the client is not required to
-> > 	  use BIND_CONN_TO_SESSION to associate the connection with the
-> > 	  session, unless the client wishes to associate the connection
-> > 	  with the backchannel."
-> > 
-> > That means that currently if the client attempts to reconnect (e.g. to
-> > resend a timed-out rpc), it will see SEQ4_STATUS_CB_PATH_DOWN_SESSION
-> > set on future SEQUENCE replies.
-> 
-> Agreed, however in this case the BIND_CONN_TO_SESSION can be treated as
-> an optimisation. We should fix it soon, but as long as the existing
-> clients handle the path down error correctly (which we do by starting a
-> recovery thread, then resetting the session), then we are able to
-> function.
-> 
-> IOW: This is something that was on our 'B' list of items to complete
-> (i.e. after basic session+pnfs functionality)...
 
-OK, I think that makes sense.
+On Oct 29, 2011, at 6:16 AM, Christoph Hellwig wrote:
 
---b.
+> This function should probably grow a check for S_NOSEC instead of
+> hitting the filesystems with an xattr read for every lookup.
+
+It doesn't perform the xattr read on _every_ lookup, but only when the object has a special set of permission bits.
+
+But actually, it probably doesn't need that 'type" attribute check at all.  It should delegate that check to mountd.  I assume many of those upcalls would hit in the export cache anyway?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
