@@ -1,190 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:46801 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932904Ab1JRPfA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:00 -0400
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 15/26] richacl: Compute maximum file masks from an acl
-Date: Tue, 18 Oct 2011 21:02:50 +0530
-Message-Id: <1318951981-5508-16-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from fieldses.org ([174.143.236.118]:43642 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933029Ab1J2SJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 29 Oct 2011 14:09:03 -0400
+Date: Sat, 29 Oct 2011 14:09:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_is_junction
+Message-ID: <20111029180900.GD12122@fieldses.org>
+References: <20111029101649.GA12345@infradead.org>
+ <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com>
+ <20111029175548.GB12122@fieldses.org>
+ <7A873A96-ED05-4904-8470-E169B233E951@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <7A873A96-ED05-4904-8470-E169B233E951@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On Sat, Oct 29, 2011 at 01:58:02PM -0400, Chuck Lever wrote:
+> 
+> On Oct 29, 2011, at 1:55 PM, J. Bruce Fields wrote:
+> 
+> > On Sat, Oct 29, 2011 at 01:47:55PM -0400, Chuck Lever wrote:
+> >> 
+> >> On Oct 29, 2011, at 6:16 AM, Christoph Hellwig wrote:
+> >> 
+> >>> This function should probably grow a check for S_NOSEC instead of
+> >>> hitting the filesystems with an xattr read for every lookup.
+> >> 
+> >> It doesn't perform the xattr read on _every_ lookup, but only when the object has a special set of permission bits.
+> >> 
+> >> But actually, it probably doesn't need that 'type" attribute check at all.  It should delegate that check to mountd.  I assume many of those upcalls would hit in the export cache anyway?
+> > 
+> > You're suggesting doing an upcall on every path that passes the mode-bit
+> > checks?
+> > 
+> > You'd end up populating the export cache with every path that passes
+> > the mode-bit checks.  I don't think that's a good idea.
+> 
+> You just finished telling us that the mode bit checks would prevent doing an attribute read too often.  Again, how often do we think there will be directories with no execute bits set and the sticky bit set?  I think that's going to be exceptionally rare.
 
-Compute upper bound owner, group, and other file masks with as few
-permissions as possible without denying any permissions that the NFSv4
-acl in a richacl grants.
+Yeah, probably so, but if there's a pathological case where we're wrong
+then I think excessive xattr reads will be less annoying than excessive
+upcalls and export cache entries.
 
-This algorithm is used when a file inherits an acl at create time and
-when an acl is set via a mechanism that does not specify file modes
-(such as via nfsd).  When user-space sets an acl, the file masks are
-passed in as part of the xattr.
+And in the cached case: I doubt a lookup in the export cache is really
+faster than a read of a cached xattr.  But I don't know.
 
-When setting a richacl, the file masks determine what the file
-permission bits will be set to; see richacl_masks_to_mode().
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |  128 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    1 +
- 2 files changed, 129 insertions(+), 0 deletions(-)
-
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index b6460a9..a0197ed 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -224,3 +224,131 @@ richace_set_who(struct richace *ace, const char *who)
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(richace_set_who);
-+
-+/**
-+ * richacl_allowed_to_who  -  mask flags allowed to a specific who value
-+ *
-+ * Computes the mask values allowed to a specific who value, taking
-+ * EVERYONE@ entries into account.
-+ */
-+static unsigned int richacl_allowed_to_who(struct richacl *acl,
-+					   struct richace *who)
-+{
-+	struct richace *ace;
-+	unsigned int allowed = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_same_identifier(ace, who) ||
-+		    richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				allowed &= ~ace->e_mask;
-+		}
-+	}
-+	return allowed;
-+}
-+
-+/**
-+ * richacl_group_class_allowed  -  maximum permissions the group class is allowed
-+ *
-+ * See richacl_compute_max_masks().
-+ */
-+static unsigned int richacl_group_class_allowed(struct richacl *acl)
-+{
-+	struct richace *ace;
-+	unsigned int everyone_allowed = 0, group_class_allowed = 0;
-+	int had_group_ace = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace) ||
-+		    richace_is_owner(ace))
-+			continue;
-+
-+		if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				everyone_allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				everyone_allowed &= ~ace->e_mask;
-+		} else {
-+			group_class_allowed |=
-+				richacl_allowed_to_who(acl, ace);
-+
-+			if (richace_is_group(ace))
-+				had_group_ace = 1;
-+		}
-+	}
-+	if (!had_group_ace)
-+		group_class_allowed |= everyone_allowed;
-+	return group_class_allowed;
-+}
-+
-+/**
-+ * richacl_compute_max_masks  -  compute upper bound masks
-+ *
-+ * Computes upper bound owner, group, and other masks so that none of
-+ * the mask flags allowed by the acl are disabled (for any choice of the
-+ * file owner or group membership).
-+ */
-+void richacl_compute_max_masks(struct richacl *acl)
-+{
-+	unsigned int gmask = ~0;
-+	struct richace *ace;
-+
-+	/*
-+	 * @gmask contains all permissions which the group class is ever
-+	 * allowed.  We use it to avoid adding permissions to the group mask
-+	 * from everyone@ allow aces which the group class is always denied
-+	 * through other aces.  For example, the following acl would otherwise
-+	 * result in a group mask or rw:
-+	 *
-+	 *	group@:w::deny
-+	 *	everyone@:rw::allow
-+	 *
-+	 * Avoid computing @gmask for acls which do not include any group class
-+	 * deny aces: in such acls, the group class is never denied any
-+	 * permissions from everyone@ allow aces.
-+	 */
-+
-+restart:
-+	acl->a_owner_mask = 0;
-+	acl->a_group_mask = 0;
-+	acl->a_other_mask = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+
-+		if (richace_is_owner(ace)) {
-+			if (richace_is_allow(ace))
-+				acl->a_owner_mask |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				acl->a_owner_mask &= ~ace->e_mask;
-+		} else if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+				acl->a_other_mask |= ace->e_mask;
-+			} else if (richace_is_deny(ace)) {
-+				acl->a_owner_mask &= ~ace->e_mask;
-+				acl->a_group_mask &= ~ace->e_mask;
-+				acl->a_other_mask &= ~ace->e_mask;
-+			}
-+		} else {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask & gmask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+			} else if (richace_is_deny(ace) && gmask == ~0) {
-+				gmask = richacl_group_class_allowed(acl);
-+				if (likely(gmask != ~0))
-+					/* should always be true */
-+					goto restart;
-+			}
-+		}
-+	}
-+
-+	acl->a_flags &= ~ACL4_MASKED;
-+}
-+EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 61f1b8a..ded57e9 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -287,5 +287,6 @@ extern int richace_set_who(struct richace *, const char *);
- extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
-+extern void richacl_compute_max_masks(struct richacl *);
- 
- #endif /* __RICHACL_H */
--- 
-1.7.5.4
-
+--b.
