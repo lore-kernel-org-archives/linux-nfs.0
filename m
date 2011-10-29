@@ -1,65 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24300 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933726Ab1JaSbZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 14:31:25 -0400
-Subject: Re: [nfsv4] [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Date: Mon, 31 Oct 2011 14:31:24 -0400
-In-Reply-To: <553963112.119.1320085390187.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <553963112.119.1320085390187.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320085884.4714.53.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:61701 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933822Ab1J2Siz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:38:55 -0400
+Subject: Re: nfsd4_is_junction
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20111029180900.GD12122@fieldses.org>
+Date: Sat, 29 Oct 2011 14:38:34 -0400
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Message-Id: <5E06F04E-9F85-4358-BCC5-F8A118D2AD5E@oracle.com>
+References: <20111029101649.GA12345@infradead.org> <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com> <20111029175548.GB12122@fieldses.org> <7A873A96-ED05-4904-8470-E169B233E951@oracle.com> <20111029180900.GD12122@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-31 at 14:23 -0400, Matt W. Benjamin wrote: 
-> Hi,
-> 
-> Such a server implementation will certainly not be long in coming.
 
-Good. However until then, we have nothing to test any performance claims
-against.
+On Oct 29, 2011, at 2:09 PM, J. Bruce Fields wrote:
 
-Trond
+> On Sat, Oct 29, 2011 at 01:58:02PM -0400, Chuck Lever wrote:
+>> 
+>> On Oct 29, 2011, at 1:55 PM, J. Bruce Fields wrote:
+>> 
+>>> On Sat, Oct 29, 2011 at 01:47:55PM -0400, Chuck Lever wrote:
+>>>> 
+>>>> On Oct 29, 2011, at 6:16 AM, Christoph Hellwig wrote:
+>>>> 
+>>>>> This function should probably grow a check for S_NOSEC instead of
+>>>>> hitting the filesystems with an xattr read for every lookup.
+>>>> 
+>>>> It doesn't perform the xattr read on _every_ lookup, but only when the object has a special set of permission bits.
+>>>> 
+>>>> But actually, it probably doesn't need that 'type" attribute check at all.  It should delegate that check to mountd.  I assume many of those upcalls would hit in the export cache anyway?
+>>> 
+>>> You're suggesting doing an upcall on every path that passes the mode-bit
+>>> checks?
+>>> 
+>>> You'd end up populating the export cache with every path that passes
+>>> the mode-bit checks.  I don't think that's a good idea.
+>> 
+>> You just finished telling us that the mode bit checks would prevent doing an attribute read too often.  Again, how often do we think there will be directories with no execute bits set and the sticky bit set?  I think that's going to be exceptionally rare.
+> 
+> Yeah, probably so, but if there's a pathological case where we're wrong
+> then I think excessive xattr reads will be less annoying than excessive
+> upcalls and export cache entries.
 
-> ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Mon, 2011-10-31 at 19:57 +0200, Benny Halevy wrote: 
-> 
-> > > 
-> > > Waiting for revocation may work well with some servers but would be
-> > disastrous in
-> > > terms of performance and responsiveness with others.
-> > 
-> > I don't necessarily disagree with what you are saying, but I have yet
-> > to
-> > see a single server side implementation of CB_RECALL_ANY, let alone
-> > any
-> > numbers that indicate performance or responsiveness problems
-> > resulting
-> > from our existing client-side implementation.
-> > 
-> > I therefore find it hard to understand why optimising this particular
-> > code is such a high priority, or why a patch that is adding per-file
-> > layoutreturns to initiate_bulk_draining() is going to help anything
-> > at
-> > all.
-> > 
-> >    Trond
-> > 
-> 
-> 
+If we find a pathological case, we should fix it.
+
+Basically I'd like the kernel check to be as simple as possible not only because it should be fast, but also so that user space can implement junctions flexibly, especially in the early days when we are still unsure of how these need to work.  I think we are better off being flexible to start, and restricting only if we have to.
+
+Or to put it another way, user space, and not the kernel, should arbitrate policy.  The semantics of junctions is a policy, at least for now.
+
+And lastly, right now, I expect that nearly 100% of the time the mode bit test and the xattr test will either both succeed or both fail.  That suggests one of them is redundant.
+
+> And in the cached case: I doubt a lookup in the export cache is really
+> faster than a read of a cached xattr.  But I don't know.
+
+However either case should hit in memory if the path being looked up is hot.  I suspect the mode bit test plus the kernel's export cache should shield mountd from an excessive number of upcalls.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
 
