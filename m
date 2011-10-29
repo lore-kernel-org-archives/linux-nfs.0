@@ -1,53 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:26262 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757126Ab1JRJuq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Oct 2011 05:50:46 -0400
-Message-ID: <4E9D4BF1.9070401@parallels.com>
-Date: Tue, 18 Oct 2011 13:50:41 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mailout0.thls.bbc.co.uk ([132.185.240.35]:57860 "EHLO
+	mailout0.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663Ab1J2TxF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 15:53:05 -0400
+Date: Sat, 29 Oct 2011 19:52:49 +0000
+From: David Flynn <davidf@rd.bbc.co.uk>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org
+Subject: Re: NFS4ERR_STALE_CLIENTID loop
+Message-ID: <20111029195249.GE2011@rd.bbc.co.uk>
+References: <20111024145027.GF32587@rd.bbc.co.uk>
+ <1319470302.2734.4.camel@lade.trondhjem.org>
+ <20111027221742.GI32587@rd.bbc.co.uk>
+ <20111029002500.GA2011@rd.bbc.co.uk>
+ <1319909376.2760.11.camel@lade.trondhjem.org>
+ <20111029181509.GE12122@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com>
+ <20111029184759.GG12122@fieldses.org>
+ <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Benny Halevy <bhalevy@tonian.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Silence compiler warning
-References: <1318810012-15140-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1318810012-15140-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have this warning also:
-fs/nfs/callback_proc.c:116: warning: ‘ino’ may be used uninitialized in this 
-function
+* Myklebust, Trond (Trond.Myklebust@netapp.com) wrote:
+> > -----Original Message-----
+> > From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> > On Oct 29, 2011, at 2:47 PM, J. Bruce Fields wrote:
+> > > Yes, and it's not something I care that strongly about, really, my
+> > > only observation is that this sort of failure (an implementation
+> > > bug on one side or another resulting in a loop) seems to have been
+> > > common (based on no hard data, just my vague memories of list
+> > > threads), and the results fairly obnoxious (possibly even for
+> > > unrelated hosts on the network).
+> > > So if there's some simple way to fail more gracefully it might be
+> > > helpful.
+> >
+> > For what it's worth, I agree that client implementations should
+> > attempt to behave more gracefully in the face of server problems, be
+> > they the result of bugs or the result of other issues specific to
+> > that server.  Problems like this make NFSv4 as a protocol look bad.
+> 
+> I can't see what a client can do in this situation except possibly just
+> give up after a while and throw a SERVER_BROKEN error (which means data
+> loss). That still won't make NFSv4 look good...
 
-17.10.2011 04:06, Jim Rees пишет:
-> fs/nfs/callback_proc.c: In function ‘do_callback_layoutrecall’:
-> fs/nfs/callback_proc.c:115:26: warning: ‘lo’ may be used uninitialized in this function
->
-> No functional change. If no layout is found, we'll return before  using
-> "lo".
->
-> Signed-off-by: Jim Rees<rees@umich.edu>
-> ---
->   fs/nfs/callback_proc.c |    2 +-
->   1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 43926ad..93633f1 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -112,7 +112,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->   				  struct cb_layoutrecallargs *args)
->   {
->   	struct nfs_server *server;
-> -	struct pnfs_layout_hdr *lo;
-> +	struct pnfs_layout_hdr *lo = NULL;
->   	struct inode *ino;
->   	bool found = false;
->   	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+Indeed, it is a quite the dilemma.
 
+I agree that giving and guaranteeing unattended data loss is bad (data
+loss at the behest of an operator is ok, afterall they can always fence
+a broken machine).
 
--- 
-Best regards,
-Stanislav Kinsbursky
+Looking at some of the logs again, even going back to the very original
+case, it appears to be about 600us between retries (RTT=400us).  Is
+there any way to make that less aggressive?, eg 1s? -- that'd reduce the
+impact by three orders of magnitude.  What would be the down-side?  How
+often do you expect to get a BAD_STATEID error?
+
+..david
