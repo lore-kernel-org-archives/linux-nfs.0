@@ -1,58 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ogre.sisk.pl ([217.79.144.158]:33977 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754948Ab1JKTMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Oct 2011 15:12:08 -0400
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 1/4] freezer: make fake_signal_wake_up wake TASK_KILLABLE tasks too
-Date: Tue, 11 Oct 2011 21:14:28 +0200
-Cc: Pavel Machek <pavel@ucw.cz>, trond.myklebust@netapp.com,
-        smfrench@gmail.com, linux-pm@lists.linux-foundation.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, john@calva.com,
-        linux-kernel@vger.kernel.org
-References: <1317210761-11518-1-git-send-email-jlayton@redhat.com> <20111011061847.GB1377@ucw.cz> <20111011061000.3a3a03fe@tlielax.poochiereds.net>
-In-Reply-To: <20111011061000.3a3a03fe@tlielax.poochiereds.net>
+Received: from natasha.panasas.com ([67.152.220.90]:32940 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751039Ab1J2FZs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 01:25:48 -0400
+Message-ID: <4EAB8E4D.5050001@panasas.com>
+Date: Fri, 28 Oct 2011 22:25:33 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201110112114.28478.rjw@sisk.pl>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Benny Halevy <benny@tonian.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] nfsd4: DEBUG: XDR_ERROR()
+References: <1319741351-3794-1-git-send-email-benny@tonian.com> <20111028113443.GA3445@fieldses.org> <4EAA9B73.2030306@tonian.com>
+In-Reply-To: <4EAA9B73.2030306@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday, October 11, 2011, Jeff Layton wrote:
-> On Tue, 11 Oct 2011 08:18:48 +0200
-> Pavel Machek <pavel@ucw.cz> wrote:
+On 10/28/2011 05:09 AM, Benny Halevy wrote:
 > 
-> > 
-> > Hi!
-> > 
-> > > TASK_KILLABLE is often used to put tasks to sleep for quite some time.
-> > > One of the most common uses is to put tasks to sleep while waiting for
-> > > replies from a server on a networked filesystem (such as CIFS or NFS).
-> > > 
-> > > Unfortunately, fake_signal_wake_up does not currently wake up tasks
-> > > that are sleeping in TASK_KILLABLE state. This means that even if the
-> > > code were in place to allow them to freeze while in this sleep, it
-> > > wouldn't work anyway.
-> > > 
-> > > This patch changes this function to wake tasks in this state as well.
-> > > This should be harmless -- if the code doing the sleeping doesn't have
-> > > handling to deal with freezer events, it should just go back to sleep.
-> > 
-> > I'm pretty sure this will break something; but that does not mean it
-> > is bad idea, just that it should be merged early and tested a lot.
-> > 
+> I agree with all of the above but its a project larger than I can
+> chew right now.  This patch just improves the existing mechanism, for
+> development use, to help catch parser bugs rather than actual xdr errors.
 > 
-> FWIW, I looked at most of the places in the kernel that do
-> TASK_KILLABLE sleeps and they look like they'll handle this correctly.
-> The main one I wasn't sure about was mem_cgroup_handle_oom(), but I
-> think it'll do the right thing too. I certainly could have missed
-> something though...
-> 
-> In any case, would you mind merging this via the linux-pm tree for 3.2?
+<>
 
-I will push it for 3.2.
+>>>  
+>>> +#define XDR_ERROR()	do {			\
+>>> +	dprintk("NFSD: xdr error (%s:%d)\n",	\
+>>> +			__FILE__, __LINE__);	\
+>>> +	goto xdr_error;				\
+>>> +} while (0)
+>>> +
 
-Thanks,
-Rafael
+What about a compromise:
+
++#define GOTO_XDR_ERROR()	do {			\
++	dprintk("NFSD: xdr error (%s:%d)\n",	\
++			__FILE__, __LINE__);	\
++	goto xdr_error;				\
++} while (0)
+
+or even:
+
++#define XDR_ERROR_GOTO(xdr_error)	do {	\
++	dprintk("NFSD: xdr error (%s:%d)\n",	\
++			__FILE__, __LINE__);	\
++	goto xdr_error;				\
++} while (0)
+
+and XDR_ERROR_GOTO(xdr_error) every where.
+
+So the patch below stays exactly the same size
+but the goto is not masked out, and no one can
+complain about things happening hidden underground.
+
+Just My $0.017
+Boaz
