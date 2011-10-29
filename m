@@ -1,66 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62826 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39435 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933175Ab1JaPS7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 11:18:59 -0400
-Subject: Re: [PATCH] nfs: Fix unused variable warning.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Rakib Mullick <rakib.mullick@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org
-Date: Mon, 31 Oct 2011 11:18:43 -0400
-In-Reply-To: <1319798192.26450.1.camel@localhost.localdomain>
-References: <1319798192.26450.1.camel@localhost.localdomain>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320074323.4714.2.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S933772Ab1J2SPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 29 Oct 2011 14:15:12 -0400
+Date: Sat, 29 Oct 2011 14:15:09 -0400
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS4ERR_STALE_CLIENTID loop
+Message-ID: <20111029181509.GE12122@fieldses.org>
+References: <20111024104042.GD32587@rd.bbc.co.uk>
+ <1319455367.8505.3.camel@lade.trondhjem.org>
+ <20111024131734.GE32587@rd.bbc.co.uk>
+ <1319463165.2734.1.camel@lade.trondhjem.org>
+ <20111024145027.GF32587@rd.bbc.co.uk>
+ <1319470302.2734.4.camel@lade.trondhjem.org>
+ <20111027221742.GI32587@rd.bbc.co.uk>
+ <20111029002500.GA2011@rd.bbc.co.uk>
+ <1319909376.2760.11.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319909376.2760.11.camel@lade.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-10-28 at 16:36 +0600, Rakib Mullick wrote: 
-> When CONFIG_NFS=y, but CONFIG_NFS_V3_{,V4}=n we get the following warning:
+On Sat, Oct 29, 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
+> OK. This is the first time I've seen this tcpdump.
 > 
-> 	fs/nfs/write.c: In function ‘nfs_writeback_done’:
-> 	fs/nfs/write.c:1246:21: warning: unused variable ‘server’
+> The problem seems like a split-brain issue on the server... On the one
+> hand, it is happily telling us that our lease is OK when we RENEW. Then
+> when we try to use said lease in an OPEN, it is replying with
+> STALE_CLIENTID.
 > 
->  This patch fixes it.
-> 
-> Signed-off-by: Rakib Mullick <rakib.mullick@gmail.com>
-> ---
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 2219c88..e528e5c 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1243,7 +1243,6 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
->  {
->  	struct nfs_writeargs	*argp = &data->args;
->  	struct nfs_writeres	*resp = &data->res;
-> -	struct nfs_server	*server = NFS_SERVER(data->inode);
->  	int status;
->  
->  	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
-> @@ -1272,6 +1271,8 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
->  		 *	 as a dprintk() in order to avoid filling syslog.
->  		 */
->  		static unsigned long    complain;
-> +		struct nfs_server	*server;
-> +		server = NFS_SERVER(data->inode);
->  
->  		/* Note this will print the MDS for a DS write */
->  		if (time_before(complain, jiffies)) {
+> IOW: This isn't a problem I can fix on the client whether or not I add
+> exponential backoff. The problem needs to be addressed on the server by
+> the Solaris folks....
 
-This will still cause a warning if you compile without RPC_DEBUG (e.g.
-if CONFIG_SYSCTL isn't defined).
+Is there any simple thing we could do on the client to reduce the impact
+of these sorts of loops?
 
-Since there is only one user, it seems better to just open-code the
-NFS_SERVER(data->inode) in the dprintk()...
+Given that we know there are bad servers out there it might be nice to
+do if it's not complicated.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+(Though as a server implementer my purely selfish impulse is to leave
+things as they are since it ensures I'll get bug reports if I screw
+up....)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
