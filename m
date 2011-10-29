@@ -1,55 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail09.linbit.com ([212.69.161.110]:49603 "EHLO
-	mail09.linbit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751421Ab1JUX6V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2011 19:58:21 -0400
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
-From: Andreas Gruenbacher <agruen@kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Sat, 22 Oct 2011 01:58:18 +0200
-In-Reply-To: <871uu65vzh.fsf@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <20111019222021.GB1874@fieldses.org> <87k4805alx.fsf@linux.vnet.ibm.com>
-	 <20111020091434.GC5444@fieldses.org> <20111020091946.GA23773@infradead.org>
-	 <20111020102538.GG5444@fieldses.org>
-	 <1319154390.2270.52.camel@schurl.linbit>
-	 <874nz265tq.fsf@linux.vnet.ibm.com> <1319194331.5930.9.camel@schurl.linbit>
-	 <871uu65vzh.fsf@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319241499.5930.24.camel@schurl.linbit>
-Mime-Version: 1.0
+Received: from mailout0.mh.bbc.co.uk ([132.185.144.151]:37691 "EHLO
+	mailout0.mh.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933606Ab1J2SDG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:03:06 -0400
+Date: Sat, 29 Oct 2011 18:02:27 +0000
+From: David Flynn <davidf@rd.bbc.co.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: David Flynn <davidf@rd.bbc.co.uk>, linux-nfs@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS4ERR_STALE_CLIENTID loop
+Message-ID: <20111029180227.GC2011@rd.bbc.co.uk>
+References: <20111024104042.GD32587@rd.bbc.co.uk>
+ <1319455367.8505.3.camel@lade.trondhjem.org>
+ <20111024131734.GE32587@rd.bbc.co.uk>
+ <1319463165.2734.1.camel@lade.trondhjem.org>
+ <20111024145027.GF32587@rd.bbc.co.uk>
+ <1319470302.2734.4.camel@lade.trondhjem.org>
+ <20111027221742.GI32587@rd.bbc.co.uk>
+ <20111029002500.GA2011@rd.bbc.co.uk>
+ <1319909376.2760.11.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1319909376.2760.11.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-10-21 at 18:42 +0530, Aneesh Kumar K.V wrote:
-> diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
-> index 02a7986..31e33b5 100644
-> --- a/fs/richacl_xattr.c
-> +++ b/fs/richacl_xattr.c
-> @@ -58,19 +58,14 @@ richacl_from_xattr(const void *value, size_t size)
->  		goto fail_einval;
->  
->  	richacl_for_each_entry(ace, acl) {
-> -		const char *who = (void *)(xattr_ace + 1), *end;
-> -		ssize_t used = (void *)who - value;
->  
-> -		if (used > size)
-> -			goto fail_einval;
-> -		end = memchr(who, 0, size - used);
-> -		if (!end)
-> +		if (((void *)xattr_ace + sizeof(*xattr_ace)) > (value + size))
->  			goto fail_einval;
+* Trond Myklebust (Trond.Myklebust@netapp.com) wrote:
+> > Using the same kernel, same mountpoint as before, we're currently
+> > experiencing a loop involving NFS4ERR_STALE_CLIENTID.
+...
+> The problem seems like a split-brain issue on the server... On the one
+> hand, it is happily telling us that our lease is OK when we RENEW. Then
+> when we try to use said lease in an OPEN, it is replying with
+> STALE_CLIENTID.
 
-This check can be moved out of the loop now.
+Thank you for the quick update, especially at the weekend.  I'm
+wondering if it is possible that the STALE_CLIENTID issue is a by-product
+of the BAD_STATEID issue from earlier.  We have observed several times
+the BAD_STATEID loop, but the CLIENTID problem only seemed to occur when
+all 40+ nodes were all showing problems.
 
-Other than that, I'm happy with the patch; acked.
+After killing off sufficient processes, the some of the machines then
+recovered of their own accord.  So your conclusion that there is a
+server issue sounds reasonable.
 
-Thanks,
-Andreas
+On any such possible backoff, the previous case was with quite small
+requests in quite a tight loop that seemed to cause the server grief.
+This morning, a machine with a 10GbE interface had a BAD_STATEID issue
+but involving some much larger writes[1], resulting in 1.6Gbit/sec from
+that machine alone.  Thankfully there was only a second machine with
+1GbE interfaces bringing the total up to 2.5Gbit/sec.
 
+It is this ability for a group of clients to make matters worse that
+is just as bad as any fault with Solaris.
+
+(In a similar vein, it can be just as frustrating trying to get a client
+to stop looping like this - it is often impossible to kill the process
+that triggered the problem; for these, we had to resort to deleting
+the files using NFSv3 (which was working quite happily))
+
+Thank you again,
+..david
+
+[1] Capture: ftp://ftp.kw.bbc.co.uk/davidf/priv/waquahso.pcap
