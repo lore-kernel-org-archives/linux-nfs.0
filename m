@@ -1,60 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33206 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751113Ab1JNRYf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2011 13:24:35 -0400
-Message-ID: <4E98703E.7040605@panasas.com>
-Date: Fri, 14 Oct 2011 19:24:14 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49321 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932183Ab1J2Umh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 16:42:37 -0400
 MIME-Version: 1.0
-To: "Welch, Brent" <welch@panasas.com>, open-osd <osd-dev@open-osd.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: [PATCHSET 0/1 0/6] ore: RAID5 Support
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: NFS4ERR_STALE_CLIENTID loop
+Date: Sat, 29 Oct 2011 13:42:34 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7481@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20111029195249.GE2011@rd.bbc.co.uk>
+References: <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com> <20111029184759.GG12122@fieldses.org> <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com> <20111029195249.GE2011@rd.bbc.co.uk>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "David Flynn" <davidf@rd.bbc.co.uk>
+Cc: "Chuck Lever" <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> -----Original Message-----
+> From: David Flynn [mailto:davidf@rd.bbc.co.uk]
+> Sent: Saturday, October 29, 2011 9:53 PM
+> To: Myklebust, Trond
+> Cc: Chuck Lever; J. Bruce Fields; David Flynn;
+linux-nfs@vger.kernel.org
+> Subject: Re: NFS4ERR_STALE_CLIENTID loop
+> 
+> * Myklebust, Trond (Trond.Myklebust@netapp.com) wrote:
+> > > -----Original Message-----
+> > > From: Chuck Lever [mailto:chuck.lever@oracle.com] On Oct 29, 2011,
+> > > at 2:47 PM, J. Bruce Fields wrote:
+> > > > Yes, and it's not something I care that strongly about, really,
+my
+> > > > only observation is that this sort of failure (an implementation
+> > > > bug on one side or another resulting in a loop) seems to have
+been
+> > > > common (based on no hard data, just my vague memories of list
+> > > > threads), and the results fairly obnoxious (possibly even for
+> > > > unrelated hosts on the network).
+> > > > So if there's some simple way to fail more gracefully it might
+be
+> > > > helpful.
+> > >
+> > > For what it's worth, I agree that client implementations should
+> > > attempt to behave more gracefully in the face of server problems,
+be
+> > > they the result of bugs or the result of other issues specific to
+> > > that server.  Problems like this make NFSv4 as a protocol look
+bad.
+> >
+> > I can't see what a client can do in this situation except possibly
+> > just give up after a while and throw a SERVER_BROKEN error (which
+> > means data loss). That still won't make NFSv4 look good...
+> 
+> Indeed, it is a quite the dilemma.
+> 
+> I agree that giving and guaranteeing unattended data loss is bad (data
+loss at
+> the behest of an operator is ok, afterall they can always fence a
+broken
+> machine).
+> 
+> Looking at some of the logs again, even going back to the very
+original case, it
+> appears to be about 600us between retries (RTT=400us).  Is there any
+way to
+> make that less aggressive?, eg 1s? -- that'd reduce the impact by
+three
+> orders of magnitude.  What would be the down-side?  How often do you
+> expect to get a BAD_STATEID error?
 
-I'm proud to present RAID5 support to ORE. Which enables raid5 for both
-exofs and pnfs-objects-layout driver.
+BAD_STATEID is a different matter, and is one that we should have
+resolved in the NFS client in the upstream kernel. At least on newer
+clients, we should be trying to reopen the file and re-establish all
+locks when we get a BAD_STATEID. Can you please remind us which kernel
+you are using?
 
-The ORE with raid0/1/5 and soon 6 support has become a compact and abstract
-library, that with not a lot of effort, can support not only OSD but any
-type of devices. For example BTRFS, does it have a RAID5 support yet? if
-not it could use ORE. The ORE gets a bunch of pages at the top and produces
-bios for each device at the bottom. The libosd API can be easily abstracted
-and be used for block devices, just the same. The RAID layout supported by
-ORE is very rich, multi layered striping/mirroring/raid. even reacher then
-stacked MD. You can read about this layout here:
-http://git.open-osd.org/gitweb.cgi?p=ietf-rfc5664.git;a=blob_plain;f=draft-ietf-nfsv4-rfc5664bis.html;hb=boaz2
-Start at: 5.3. "Data Mapping Schemes" up to:
-5.4.5. "RAID Usage and Implementation Notes"
+That said... Even on new clients, the recovery attempt may fail due to
+the STALE_CLIENTID bug. That will still hit us when we call OPEN in
+order to get a new stateid.
 
-There where some problems with the previous patchset here are
-the differences I squashed it to a new patchset at osd/linux-next.
-
- [PATCH 1/1] SQUASHME: into: ore: Only IO one group at a time (API change)
-
-And without farther ado Here is the RAID5 support. This is highly complicated
-stuff, for humble me at least, and I would appreciate any review and/or comments
-you guys can give it. Thanks in advance. (Pretty Please? :-))
-
-[PATCH 1/6] ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-[PATCH 2/6] ore: RAID5 read
-[PATCH 3/6] ore: RAID5 Write
-[PATCH 4/6] exofs: Support for RAID5 read-4-write interface.
-[PATCH 5/6] pnfs-obj: Support for RAID5 read-4-write interface.
-[PATCH 6/6] ore: Enable RAID5 mounts
-
-A tree with above plus all prerequisites is at:
-$ git clone git://open-osd.org/linux-open-osd linux-next
-[http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=shortlog;h=refs/heads/merge_and_compile]
-
-The code passes my tests, the highlight of which is git-clone linux and compare to
-and identical clone on ext4. But there must be month of farther testing done on this
-to get it better. For example. Aligned on stripe IO write back should be improved on
-all the way down to the VFS layer.
-
-Thanks
-Boaz
+Cheers
+  Trond
