@@ -1,60 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12406 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63907 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752250Ab1JFD2P convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Oct 2011 23:28:15 -0400
-Subject: Re: [nfsv4] back channel flags, CREATE_SESSION, BIND_CONN_TO_SESSION
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: nfsv4 <nfsv4@ietf.org>, linux-nfs <linux-nfs@vger.kernel.org>,
-        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
-Date: Wed, 05 Oct 2011 23:28:13 -0400
-In-Reply-To: <800236997.158.1317856908314.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <800236997.158.1317856908314.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1317871693.14305.5.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1751072Ab1J2TTa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 15:19:30 -0400
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: NFS4ERR_STALE_CLIENTID loop
+Date: Sat, 29 Oct 2011 12:19:13 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7479@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
+References: <1319455367.8505.3.camel@lade.trondhjem.org> <20111024131734.GE32587@rd.bbc.co.uk> <1319463165.2734.1.camel@lade.trondhjem.org> <20111024145027.GF32587@rd.bbc.co.uk> <1319470302.2734.4.camel@lade.trondhjem.org> <20111027221742.GI32587@rd.bbc.co.uk> <20111029002500.GA2011@rd.bbc.co.uk> <1319909376.2760.11.camel@lade.trondhjem.org> <20111029181509.GE12122@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7474@SACMVEXC2-PRD.hq.netapp.com> <20111029184759.GG12122@fieldses.org> <4B27362C-FBC1-4F64-B611-85D5FF6C5359@oracle.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Chuck Lever" <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "David Flynn" <davidf@rd.bbc.co.uk>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2011-10-05 at 19:21 -0400, Matt W. Benjamin wrote: 
-> Hi,
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Saturday, October 29, 2011 8:51 PM
+> To: J. Bruce Fields
+> Cc: Myklebust, Trond; David Flynn; linux-nfs@vger.kernel.org
+> Subject: Re: NFS4ERR_STALE_CLIENTID loop
 > 
-> There seem to be legitimate reasons for an (NFSv4.1) client and/or server to prefer a dedicated callback channel.
+> 
+> On Oct 29, 2011, at 2:47 PM, J. Bruce Fields wrote:
+> 
+> > On Sat, Oct 29, 2011 at 11:21:13AM -0700, Myklebust, Trond wrote:
+> >>> From: J. Bruce Fields [mailto:bfields@fieldses.org] On Sat, Oct
+29,
+> >>> 2011 at 07:29:36PM +0200, Trond Myklebust wrote:
+> >>>> OK. This is the first time I've seen this tcpdump.
+> >>>>
+> >>>> The problem seems like a split-brain issue on the server... On
+the
+> >> one
+> >>>> hand, it is happily telling us that our lease is OK when we
+RENEW.
+> >>>> Then when we try to use said lease in an OPEN, it is replying
+with
+> >>>> STALE_CLIENTID.
+> >>>>
+> >>>> IOW: This isn't a problem I can fix on the client whether or not
+I
+> >> add
+> >>>> exponential backoff. The problem needs to be addressed on the
+> >>>> server by the Solaris folks....
+> >>>
+> >>> Is there any simple thing we could do on the client to reduce the
+> >> impact of
+> >>> these sorts of loops?
+> >>
+> >> WHY? Those loops aren't supposed to happen if the server works
+> >> according to spec.
+> >
+> > Yes, and it's not something I care that strongly about, really, my
+> > only observation is that this sort of failure (an implementation bug
+> > on one side or another resulting in a loop) seems to have been
+common
+> > (based on no hard data, just my vague memories of list threads), and
+> > the results fairly obnoxious (possibly even for unrelated hosts on
+the
+> network).
+> > So if there's some simple way to fail more gracefully it might be
+> > helpful.
+> 
+> For what it's worth, I agree that client implementations should
+attempt to
+> behave more gracefully in the face of server problems, be they the
+result of
+> bugs or the result of other issues specific to that server.  Problems
+like this
+> make NFSv4 as a protocol look bad.
 
-That would be an assertion that is missing a lot of context and
-explanation. Why should my client bother to support such a server?
+I can't see what a client can do in this situation except possibly just
+give up after a while and throw a SERVER_BROKEN error (which means data
+loss). That still won't make NFSv4 look good...
 
-> If a server wants this result, it seems from the language of 18.36.3 that it should indicate it by not setting CREATE_SESSION4_FLAG_CONN_BACK_CHAN in csr_flags in the CREATE_SESSION response, presuming the flag is set in the corresponding csa_flags argument (it's not allowed to set it otherwise).  The client may respond with BIND_CONN_TO_SESSION on a new channel, setting bctsa_dir to CDFC4_BACK.
-
-Nope. The exact wording is:
-
-         If CREATE_SESSION4_FLAG_CONN_BACK_CHAN is set in csa_flags, the
-         client is requesting that the connection over which the
-         CREATE_SESSION operation arrived be associated with the
-         session's backchannel in addition to its fore channel.  If the
-         server agrees, it sets CREATE_SESSION4_FLAG_CONN_BACK_CHAN in
-         the result field csr_flags.  If
-         CREATE_SESSION4_FLAG_CONN_BACK_CHAN is not set in csa_flags,
-         then CREATE_SESSION4_FLAG_CONN_BACK_CHAN MUST NOT be set in
-         csr_flags.
-
-I see nothing there to indicate that the server is able to request a
-dedicated backchannel. All it says is that the server may refuse a
-backchannel on this particular connection.
-
-> Currently, the Linux and I believe also the CITI Windows client always propose channels in both directions.  The Linux mainline Linux client doesn't know how to BIND_CONN_TO_SESSION, so trivially it won't negotiate any back channel if a server didn't agree to both directions today, either.  I've experimentally implemented a "fallback" model in a Linux client and (partly in a) Ganesha server.  I'd appreciate any feedback on the idea.
-
-Yep. As I said, why should we bother adding support for servers that
-don't? I can function perfectly well without pNFS support or delegation
-support in such a case. Performance will suck, but why do I care?
-
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+  Trond
 
