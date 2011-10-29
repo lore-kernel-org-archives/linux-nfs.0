@@ -1,39 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e36.co.us.ibm.com ([32.97.110.154]:49818 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755345Ab1JSNVD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2011 09:21:03 -0400
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Wed, 19 Oct 2011 03:11:07 -0600
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Shea Levy <shea@shealevy.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V7 00/26]  New ACL format for better NFSv4 acl interoperability
-In-Reply-To: <4E9DA6B4.2010906@shealevy.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4E9DA6B4.2010906@shealevy.com>
-Date: Wed, 19 Oct 2011 11:24:46 +0530
-Message-ID: <87zkgx5xw9.fsf@linux.vnet.ibm.com>
+Received: from mailout0.thls.bbc.co.uk ([132.185.240.35]:35557 "EHLO
+	mailout0.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932323Ab1J2S3a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Oct 2011 14:29:30 -0400
+Date: Sat, 29 Oct 2011 18:29:06 +0000
+From: David Flynn <davidf@rd.bbc.co.uk>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, David Flynn <davidf@rd.bbc.co.uk>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFS4ERR_STALE_CLIENTID loop
+Message-ID: <20111029182906.GD2011@rd.bbc.co.uk>
+References: <1319463165.2734.1.camel@lade.trondhjem.org>
+ <20111024145027.GF32587@rd.bbc.co.uk>
+ <1319470302.2734.4.camel@lade.trondhjem.org>
+ <20111027221742.GI32587@rd.bbc.co.uk>
+ <20111029002500.GA2011@rd.bbc.co.uk>
+ <1319909376.2760.11.camel@lade.trondhjem.org>
+ <20111029180227.GC2011@rd.bbc.co.uk>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7475@SACMVEXC2-PRD.hq.netapp.com>
+ <3B165534-0846-4290-AB12-91E06FD8ED11@oracle.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7476@SACMVEXC2-PRD.hq.netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7476@SACMVEXC2-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 18 Oct 2011 12:17:56 -0400, Shea Levy <shea@shealevy.com> wrote:
-> On 10/18/11 11:32 AM, Aneesh Kumar K.V wrote:
-> > More details regarding richacl can be found at
-> > http://acl.bestbits.at/richacl/
-> >
-> FYI, this site says nfs4acls is the successor project of richacls, but 
-> from what I can see it is actually the predecessor. Is my understanding 
-> correct, or is nfs4acls the next-gen product here?
-> 
+* Myklebust, Trond (Trond.Myklebust@netapp.com) wrote:
+> No. Not in this case: the state manager was doing RENEW, then exiting
+> because it was told all is A_OK by the server.
+> The open() system call would be the one that was looping.
 
-You are correct. it is the predecessor.
+Sometimes it worked, somtimes not.  From memory:
+ - kill -9 worked in situations that suffered from NFS4ERR_STALE_CLIENTID
+ - kill -9 failed in situations that suffered from BAD_STATEID
 
--aneesh
-
+..david
