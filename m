@@ -1,51 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-3.desy.de ([131.169.56.86]:62230 "EHLO
-	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755517Ab1J1LYs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2011 07:24:48 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id 30D8E143E
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2011 12:55:01 +0200 (MEST)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 1DEC51352
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2011 12:55:01 +0200 (MEST)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta05701c54783a961601294@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Fri, 28 Oct 2011 12:55:01 +0200
-Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
-	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id F1B153E901
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2011 12:55:00 +0200 (MEST)
-Message-ID: <4EAA893F.2020107@desy.de>
-Date: Fri, 28 Oct 2011 12:51:43 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Reply-To: tigran.mkrtchyan@desy.de
+Received: from mx2.netapp.com ([216.240.18.37]:55428 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754922Ab1JaNyc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 09:54:32 -0400
 MIME-Version: 1.0
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pNFS instance @ amazon.
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH-RFC] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+Date: Mon, 31 Oct 2011 06:54:15 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7515@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4EAE9B60.9040903@tonian.com>
+References: <1319426747-2179-1-git-send-email-bergwolf@gmail.com> <4EAE9B60.9040903@tonian.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Benny Halevy" <bhalevy@tonian.com>, "Peng Tao" <bergwolf@gmail.com>
+Cc: <linux-nfs@vger.kernel.org>, "Peng Tao" <peng_tao@emc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Dear (p)NFS developers,
 
-as promised at BAT I started an instance of our NFS implementation
-on amazon EC2.
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Monday, October 31, 2011 8:58 AM
+> To: Peng Tao
+> Cc: linux-nfs@vger.kernel.org; Myklebust, Trond; Peng Tao
+> Subject: Re: [PATCH-RFC] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+> 
+> On 2011-10-24 05:25, Peng Tao wrote:
+> > Hi, Trond and Benny,
+> >
+> > The patch depends on the pnfs private workqueue for now. So I want
+to
+> > consult you about where to put the work. Is pnfs private workqueue
+> > dropped? If yes, where should I put this kind of work?
+> 
+> I'll defer this to Trond.
+> I'm OK with having a workqueue for pnfs.
 
-ec2-184-72-157-25.compute-1.amazonaws.com : MDS + DS on port 2052.
+I've already commented on this: I see no justification whatsoever for a
+private pnfs workqueue.
 
-export: /
-
-nfsv4.1+pnfs only
-
-It is a microedition VM with a small disk. Currently name IP
-is assigned dynamically on restart.
-
-According to amazon, it runs in US East (Virginia) region.
-
-This is just an experiment :). Let see how many people will test that 
-(and how much it will cost  me :) )
-
-
-Regards,
-    Tigran.
+Cheers
+   Trond
