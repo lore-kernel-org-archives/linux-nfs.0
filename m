@@ -1,52 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48383 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751219Ab1KAC47 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 22:56:59 -0400
-Subject: Re: [PATCH] Silence compiler warning
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 31 Oct 2011 22:56:57 -0400
-In-Reply-To: <20111101024200.GA4382@umich.edu>
-References: <20111101013720.GA4237@umich.edu>
-	 <1320114622.10028.36.camel@lade.trondhjem.org>
-	 <20111101024200.GA4382@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320116217.10028.44.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:61566 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753741Ab1JaQi5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 12:38:57 -0400
+Received: by vws1 with SMTP id 1so5009811vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 09:38:56 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1320076148.4714.4.camel@lade.trondhjem.org>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+ <1320074136-3087-2-git-send-email-bergwolf@gmail.com> <1320076148.4714.4.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 1 Nov 2011 00:38:35 +0800
+Message-ID: <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-10-31 at 22:42 -0400, Jim Rees wrote: 
-> Trond Myklebust wrote:
-> 
->   On Mon, 2011-10-31 at 21:37 -0400, Jim Rees wrote: 
->   > I think this is still needed, isn't it?  I haven't tried compiling
->   > nfs-for-next but I don't see a fix for it in there.
->   
->   AFAICS, this is a bogus warning: if lo is uninitialised, we will
->   automatically exit with a return value of NFS4ERR_NOMATCHING_LAYOUT.
-> 
-> Yes, the warning is bogus.  I just want the damn compiler to shut up so I
-> can see if there are any real warnings.
+On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
+>> For blocklayout, we need to issue layoutreturn to return layouts when
+>> handling CB_RECALL_ANY.
+>
+> Why?
+Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
+that server wants client to return layout. And server will be waiting
+for layoutreturn in such case.
 
-How about cleaning up the whole unnecessary "bool found" crap that has
-it confused? You can easily replace that with a test for 'ino != NULL'.
-We don't usually "fix" compiler bugs by changing valid kernel code, but
-cleanups are acceptable if they help to clarify what is going on.
+Thanks,
+Tao
 
-Oh, another thing: that code will currently race very nicely against
-'umount', and looks capable of triggering the 'VFS: Busy inodes after
-unmount of foo. Self-destruct in 5 seconds.  Have a nice day..." since
-it doesn't do anything to pin the super block while holding a reference
-to the inode.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
