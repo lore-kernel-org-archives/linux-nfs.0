@@ -1,138 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:52044 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755610Ab1JWRqA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2011 13:46:00 -0400
-Received: from /spool/local
-	by e23smtp08.au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Sun, 23 Oct 2011 17:44:41 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V8 26/26] ext4: Add Ext4 compat richacl feature flag
-Date: Sun, 23 Oct 2011 23:13:55 +0530
-Message-Id: <1319391835-5829-27-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:23369 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934111Ab1JaWYh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 18:24:37 -0400
+Subject: Re: [PATCH 1/8] pnfs-obj: Remove redundant EOF from
+ objlayout_io_state
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Date: Mon, 31 Oct 2011 18:24:17 -0400
+In-Reply-To: <1320097506-734-1-git-send-email-bharrosh@panasas.com>
+References: <4EAF146D.5060507@panasas.com>
+	 <1320097506-734-1-git-send-email-bharrosh@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320099857.10028.6.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+On Mon, 2011-10-31 at 14:45 -0700, Boaz Harrosh wrote: 
+> The EOF calculation was done on .read_pagelist(), cached
+> in objlayout_io_state->eof, and set in objlayout_read_done()
+> into nfs_read_data->res.eof.
+> 
+> So set it directly into nfs_read_data->res.eof and avoid
+> the extra member.
+> 
+> This is a slight behaviour change because before eof was
+> *not* set on an error update at objlayout_read_done(). But
+> is that a problem? Is Generic layer so sensitive that it
+> will miss the error IO if eof was set? From my testing
+> I did not see such a problem.
 
-This feature flag can be used to enable richacl on
-the file system. Once enabled the "acl" mount option
-will enable richacl instead of posix acl. The patch also
-removes the richacl mount option.
+That would probably be because the object layout will be recalled if the
+file size changes on the server. If that is not the case, then you do
+need eof detection...
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/ext4.h  |    1 +
- fs/ext4/super.c |   49 +++++++++++++++++++++++++++++++++++--------------
- 2 files changed, 36 insertions(+), 14 deletions(-)
+> Which brings me to a more abstract problem. Why does the
+> LAYOUT driver needs to do this eof calculation? .i.e we
+> are inspecting generic i_size_read() and if spanned by
+> offset + count which is received from generic layer we set
+> eof. It looks like all this can/should be done in generic
+> layer and not at LD. Where does NFS and files-LD do it?
+> It looks like it can be promoted.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6627cc8..c71d9fe 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1350,6 +1350,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_RICHACL		0x0200
- 
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 99d72cf..4a3f0dd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1065,10 +1065,12 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	if (!test_opt(sb, XATTR_USER))
- 		seq_puts(seq, ",nouser_xattr");
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	if ((sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
-+	    !(def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",acl");
--	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
-+	if (!(sb->s_flags & (MS_POSIXACL|MS_RICHACL)) &&
-+	    (def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",noacl");
- #endif
- 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
-@@ -1421,6 +1423,32 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static void enable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
-+		sb->s_flags |= MS_RICHACL;
-+		sb->s_flags &= ~MS_POSIXACL;
-+	} else {
-+		sb->s_flags |= MS_POSIXACL;
-+		sb->s_flags &= ~MS_RICHACL;
-+	}
-+	return;
-+}
-+
-+static void disable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	ext4_msg(sb, KERN_ERR, "acl options not supported");
-+	return;
-+#endif
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	return;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1585,19 +1613,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			ext4_msg(sb, KERN_ERR, "(no)user_xattr options not supported");
- 			break;
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
--			sb->s_flags |= MS_POSIXACL;
-+			enable_acl(sb);
- 			break;
- 		case Opt_noacl:
--			sb->s_flags &= ~MS_POSIXACL;
-+			disable_acl(sb);
- 			break;
--#else
--		case Opt_acl:
--		case Opt_noacl:
--			ext4_msg(sb, KERN_ERR, "(no)acl options not supported");
--			break;
--#endif
- 		case Opt_journal_update:
- 			/* @@@ FIXME */
- 			/* Eventually we will want to be able to create
-@@ -3169,8 +3190,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_EXT4_FS_XATTR
- 	set_opt(sb, XATTR_USER);
- #endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	sb->s_flags |= MS_POSIXACL;
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+		enable_acl(sb);
- #endif
- 	set_opt(sb, MBLK_IO_SUBMIT);
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+No it can't. The eof flag is returned as part of the READ4resok
+structure (i.e. it is part of the READ return value) on both
+read-through-mds and files-type layout reads. Basically, it allows the
+server to tell you _why_ it returned a short read.
+
 -- 
-1.7.5.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
