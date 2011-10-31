@@ -1,114 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9197 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932883Ab1JYMlr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Oct 2011 08:41:47 -0400
-Message-ID: <4EA6AE87.5000309@parallels.com>
-Date: Tue, 25 Oct 2011 16:41:43 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v6 1/8] SUNRPC: introduce helpers for reference counted
- rpcbind clients
-References: <20111025100826.12689.46944.stgit@localhost6.localdomain6>	 <20111025101608.12689.68689.stgit@localhost6.localdomain6> <1319541369.2716.1.camel@lade.trondhjem.org>
-In-Reply-To: <1319541369.2716.1.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:39022 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933253Ab1JaPQh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 11:16:37 -0400
+Received: by qyk27 with SMTP id 27so6351146qyk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 08:16:36 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 1/2 RESEND] NFS4: fix cb_recallany decode error
+Date: Mon, 31 Oct 2011 08:15:35 -0700
+Message-Id: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-25.10.2011 15:16, Trond Myklebust пишет:
-> On Tue, 2011-10-25 at 14:16 +0300, Stanislav Kinsbursky wrote:
->> v6:
->> 1) added write memory barrier to rpcb_set_local to make sure, that rpcbind
->> clients become valid before rpcb_users assignment
->> 2) explicitly set rpcb_users to 1 instead of incrementing it (looks clearer from
->> my pow).
->>
->> v5: fixed races with rpcb_users in rpcb_get_local()
->>
->> This helpers will be used for dynamical creation and destruction of rpcbind
->> clients.
->> Variable rpcb_users is actually a counter of lauched RPC services. If rpcbind
->> clients has been created already, then we just increase rpcb_users.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   net/sunrpc/rpcb_clnt.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++
->>   1 files changed, 54 insertions(+), 0 deletions(-)
->>
->> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
->> index e45d2fb..9fcdb42 100644
->> --- a/net/sunrpc/rpcb_clnt.c
->> +++ b/net/sunrpc/rpcb_clnt.c
->> @@ -114,6 +114,9 @@ static struct rpc_program	rpcb_program;
->>   static struct rpc_clnt *	rpcb_local_clnt;
->>   static struct rpc_clnt *	rpcb_local_clnt4;
->>
->> +DEFINE_SPINLOCK(rpcb_clnt_lock);
->> +unsigned int			rpcb_users;
->> +
->>   struct rpcbind_args {
->>   	struct rpc_xprt *	r_xprt;
->>
->> @@ -161,6 +164,57 @@ static void rpcb_map_release(void *data)
->>   	kfree(map);
->>   }
->>
->> +static int rpcb_get_local(void)
->> +{
->> +	int cnt;
->> +
->> +	spin_lock(&rpcb_clnt_lock);
->> +	if (rpcb_users)
->> +		rpcb_users++;
->> +	cnt = rpcb_users;
->> +	spin_unlock(&rpcb_clnt_lock);
->> +
->> +	return cnt;
->> +}
->> +
->> +void rpcb_put_local(void)
->> +{
->> +	struct rpc_clnt *clnt = rpcb_local_clnt;
->> +	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
->> +	int shutdown;
->> +
->> +	spin_lock(&rpcb_clnt_lock);
->> +	if (--rpcb_users == 0) {
->> +		rpcb_local_clnt = NULL;
->> +		rpcb_local_clnt4 = NULL;
->> +	}
->> +	shutdown = !rpcb_users;
->> +	spin_unlock(&rpcb_clnt_lock);
->> +
->> +	if (shutdown) {
->> +		/*
->> +		 * cleanup_rpcb_clnt - remove xprtsock's sysctls, unregister
->> +		 */
->> +		if (clnt4)
->> +			rpc_shutdown_client(clnt4);
->> +		if (clnt)
->> +			rpc_shutdown_client(clnt);
->> +	}
->> +	return;
->
-> I'm removing this before applying...
->
-Sorry, but I don't understand what exactly you are removing, and why?
+craa_type_mask is bitmap4 according to RFC5661. We need to expect a length before
+extracting its value.
 
->> +}
->> +
->
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+Resend this one as it is a dependency for "[PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY".
 
+ fs/nfs/callback_xdr.c |   11 ++++++-----
+ 1 files changed, 6 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 918ad64..ee1a5b3 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -488,17 +488,18 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
+ 				      struct xdr_stream *xdr,
+ 				      struct cb_recallanyargs *args)
+ {
+-	__be32 *p;
++	uint32_t bitmap[2];
++	__be32 *p, status;
+ 
+ 	args->craa_addr = svc_addr(rqstp);
+ 	p = read_buf(xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return htonl(NFS4ERR_BADXDR);
+ 	args->craa_objs_to_keep = ntohl(*p++);
+-	p = read_buf(xdr, 4);
+-	if (unlikely(p == NULL))
+-		return htonl(NFS4ERR_BADXDR);
+-	args->craa_type_mask = ntohl(*p);
++	status = decode_bitmap(xdr, bitmap);
++	if (unlikely(status))
++		return status;
++	args->craa_type_mask = bitmap[0];
+ 
+ 	return 0;
+ }
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.1.262.g5ef3d
+
