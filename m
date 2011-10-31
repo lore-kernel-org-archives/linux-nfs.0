@@ -1,60 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46437 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752978Ab1JaX7u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 19:59:50 -0400
-Message-ID: <4EAF366C.8040504@panasas.com>
-Date: Mon, 31 Oct 2011 16:59:40 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:40670 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932637Ab1JaRCx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:02:53 -0400
+Received: by vws1 with SMTP id 1so5033954vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 10:02:53 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <1320079501.4714.9.camel@lade.trondhjem.org>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+ <1320074136-3087-2-git-send-email-bergwolf@gmail.com> <1320076148.4714.4.camel@lade.trondhjem.org>
+ <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com> <1320079501.4714.9.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 1 Nov 2011 01:02:32 +0800
+Message-ID: <CA+a=Yy4O1SvrmvWQtgS6AydejqaTreo4rZHkdDQJjLrFQjee1A@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH 1/8] pnfs-obj: Remove redundant EOF from objlayout_io_state
-References: <4EAF146D.5060507@panasas.com>   <1320097506-734-1-git-send-email-bharrosh@panasas.com>  <1320099857.10028.6.camel@lade.trondhjem.org>  <4EAF2521.2010204@panasas.com> <1320103768.10028.25.camel@lade.trondhjem.org>
-In-Reply-To: <1320103768.10028.25.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/31/2011 04:29 PM, Trond Myklebust wrote:
->> In files-type reads in a "condense" layout. You should be careful
->> because in striping it is common place to have eof on some DSs because
->> of file holes even though there are more bits higher on in the file
->> at other DSs. You should check to return back only the answer from the
->> highest logical read DS. (Or I'm wrong in my interpretation?)
-> 
-> In the close-to-open cache consistency, O_DIRECT database, or file
-> locking cases, then either the data has been committed, the file size
-> extended and the DSes updated, 
+On Tue, Nov 1, 2011 at 12:45 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote:
+>> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
+>> >> For blocklayout, we need to issue layoutreturn to return layouts when
+>> >> handling CB_RECALL_ANY.
+>> >
+>> > Why?
+>> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
+>> that server wants client to return layout. And server will be waiting
+>> for layoutreturn in such case.
+>
+> No it doesn't. NFS4_OK means that the client acknowledges that it has
+> been given a new limit on the number of recallable objects it can keep.
+> There is no requirement in the text that it should send layoutreturn or
+> that the server should expect that.
+Per RFC5661 section 20.6.3:
+It is the job of the client to bring down the size of the
+   recallable object set in line with each CB_RECALL_ANY received
 
-I meant in the case all that as happened (Just opened the file) but
-any particular DS can return EOF. Example:
-I have 3 DSs, with stripe unit of say 1K for example.
+For layout objects, the only way client can bring down the object
+number is to send layoutreturn.
 
-The file has been written to 0K..1K and 2K..3K. In dense layout file-size
-on DS2 is zero, right? because it was never written too. So if the client
-is reading 0K..3K (All file), Will it get eof from DS2?
+Besides, the moment client gets CB_RECALL_ANY is likely because server
+reaches some resource threshold. If client doesn't send layoutreturn,
+server can refusing client from getting more layouts.
 
-> or our client must know that the server
-> has incomplete information because it is holding cached writes or
-> layoutcommits that extend the file. In either case, the meaning of the
-> eofs should be obvious.
-> 
+>
+> In any case, there is no reason to make a difference between block,
+> object and file layouts when it comes to CB_RECALL_ANY. The code to
+> handle it should be the same for all.
+>
+object layout isn't handling CB_RECALL_ANY yet. And from current code,
+I was assuming file layouts have their own method at server side to
+handle it (e.g., translating NFS4_OK of CB_RECALL_ANY into client has
+dropped all its layout...).So I made it for block only.
 
-I hope that is taken care of, surly?
+Thanks,
+Tao
 
-> Benny's old pet project of making 'tail -f' work on a log file that is
-> being extended by someone else is, OTOH, subject to screwiness. However
-> that case can be screwy on ordinary read-through-MDS too.
-> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
 
-Ye that one was me too. I still think file length can easily be extended
-only on commit/layout_commit and not on any random write. So the above can
-work. I think there is all that is needed within the protocol for servers that
-*want* to support this. With any compliant client. (Ask me if you don't know how,
-it involves keeping a shadow length per client up until commit, actually with
-pnfs it is easier)
 
-Thanks
-Boaz
+
+-- 
+Thanks,
+-Bergwolf
