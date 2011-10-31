@@ -1,84 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54331 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964805Ab1JFMVw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 08:21:52 -0400
-Message-ID: <4E8D9D56.6020803@panasas.com>
-Date: Thu, 6 Oct 2011 14:21:42 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCHSET 0/5] pnfsd-exofs: Adapt to Latest ore/exofs changes
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:65034 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932908Ab1JaPQn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 11:16:43 -0400
+Received: by pzk36 with SMTP id 36so18679160pzk.1
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 08:16:42 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+Date: Mon, 31 Oct 2011 08:15:36 -0700
+Message-Id: <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny Hi
+For blocklayout, we need to issue layoutreturn to return layouts when
+handling CB_RECALL_ANY.
 
-I'm sending the changes needed to *pnfsd-exofs* branch which are needed
-in order to work with latest, for v3.2, ore/exofs changes.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/callback_proc.c |   55 +++++++++++++++++++++++++++++++++++++++++-------
+ include/linux/nfs4.h   |    3 +-
+ 2 files changed, 49 insertions(+), 9 deletions(-)
 
-Assuming you have set up:
-   git remote add loo git://git.open-osd.org/linux-open-osd.git
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 43926ad..11f79c2 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -160,7 +160,8 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ }
+ 
+ static u32 initiate_bulk_draining(struct nfs_client *clp,
+-				  struct cb_layoutrecallargs *args)
++				  struct cb_layoutrecallargs *args,
++				  int sendreturn)
+ {
+ 	struct nfs_server *server;
+ 	struct pnfs_layout_hdr *lo;
+@@ -204,12 +205,47 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 		list_del_init(&lo->plh_bulk_recall);
+ 		spin_unlock(&ino->i_lock);
+ 		pnfs_free_lseg_list(&free_me_list);
++		if (sendreturn && list_empty(&lo->plh_segs))
++			pnfs_return_layout(ino);
+ 		put_layout_hdr(lo);
+ 		iput(ino);
+ 	}
+ 	return rv;
+ }
+ 
++struct recallany_data {
++	struct nfs_client *clp;
++	struct work_struct ra_work;
++};
++
++static void layout_recallany_draining(struct work_struct *work)
++{
++	struct recallany_data *ra;
++	struct cb_layoutrecallargs args;
++
++	memset(&args, 0, sizeof(args));
++	ra = container_of(work, struct recallany_data, ra_work);
++	/* Ignore draining error. Per RFC, if layoutreturns are not sent, it is up
++	 * to server to handle the situation (e.g., send specific layoutrecalls).
++	 */
++	initiate_bulk_draining(ra->clp, &args, 1);
++	kfree(ra);
++}
++
++static u32 init_recallany_draining(struct nfs_client *clp)
++{
++	struct recallany_data *ra;
++
++	ra = kmalloc(sizeof(*ra), GFP_NOFS);
++	if (ra) {
++		ra->clp = clp;
++		INIT_WORK(&ra->ra_work, layout_recallany_draining);
++		schedule_work(&ra->ra_work);
++		return NFS4_OK;
++	}
++	return NFS4ERR_DELAY;
++}
++
+ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				    struct cb_layoutrecallargs *args)
+ {
+@@ -220,8 +256,10 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 		goto out;
+ 	if (args->cbl_recall_type == RETURN_FILE)
+ 		res = initiate_file_draining(clp, args);
++	if (args->cbl_recall_type == RETURN_ANY)
++		res = init_recallany_draining(clp);
+ 	else
+-		res = initiate_bulk_draining(clp, args);
++		res = initiate_bulk_draining(clp, args, 0);
+ 	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
+ out:
+ 	dprintk("%s returning %i\n", __func__, res);
+@@ -245,15 +283,13 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+ 	return cpu_to_be32(res);
+ }
+ 
+-static void pnfs_recall_all_layouts(struct nfs_client *clp)
++static __be32 pnfs_recall_all_layouts(struct nfs_client *clp, uint32_t type)
+ {
+ 	struct cb_layoutrecallargs args;
+ 
+-	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
+ 	memset(&args, 0, sizeof(args));
+-	args.cbl_recall_type = RETURN_ALL;
+-	/* FIXME we ignore errors, what should we do? */
+-	do_callback_layoutrecall(clp, &args);
++	args.cbl_recall_type = type;
++	return cpu_to_be32(do_callback_layoutrecall(clp, &args));
+ }
+ 
+ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+@@ -533,7 +569,10 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ 		flags |= FMODE_WRITE;
+ 	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
+ 		     &args->craa_type_mask))
+-		pnfs_recall_all_layouts(cps->clp);
++		pnfs_recall_all_layouts(cps->clp, RETURN_ALL);
++	if (test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, (const unsigned long *)
++		     &args->craa_type_mask))
++		status = pnfs_recall_all_layouts(cps->clp, RETURN_ANY);
+ 	if (flags)
+ 		nfs_expire_all_delegation_types(cps->clp, flags);
+ out:
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 76f99e8..1f71a9e 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -597,7 +597,8 @@ enum pnfs_layouttype {
+ enum pnfs_layoutreturn_type {
+ 	RETURN_FILE = 1,
+ 	RETURN_FSID = 2,
+-	RETURN_ALL  = 3
++	RETURN_ALL  = 3,
++	RETURN_ANY  = 4
+ };
+ 
+ enum pnfs_iomode {
+-- 
+1.7.1.262.g5ef3d
 
-For your convenience the patches are also available at:
-
-   git cherry-rebase 5d2d53b7..loo/pnfsd-exofs
-
-You will also need to merge or put somewhere all these changes on the
-linux-open-osd linux-next branch (Actually the ore-devel branch)
-
-   git cherry-rebase loo/linus..loo/ore-devel
-
-Here are the sets of patches in the two groups:
-
-[pnfsd-exofs 5d2d53b7..loo/pnfsd-exofs(6127dbd)]
-
-  This set is based on the base, none SQUASHME, pnfsd-exofs patches
-	[5d2d53b7] pnfsd-exofs: layoutreturn pnfs-obj information decoding
-
-  7638472 SQUASHME: pnfsd-exofs: convert to v3.1 ORE			  - Your original conversion
-  51f3837 SQUASHME: pnfsd-exofs: Convert to ORE 3.1 PART2
-  590139b SQUASHME: pnfsd-exofs: Fix export of only one group layout
-  fba7909 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
-  6127dbd SQUASHME pnfsd-exofs: Serve out a single group layout at a time 
-
-
-
-[ore/exofs/pnfs-obj changes for Linux v3.2 merge window]
-
-  My tree is based on v3.1-rc6 but you might want to base them on your pnfs/pnfs-block branch
-  or have them all in a third branch and merge three branches on the top
-
-  []$ git log --oneline --reverse loo/linus..loo/ore-devel
-
-  a8f8c45 osd: Kconfig remove wrong FIXME
-  1958c7c2 exofs/ore.c: local functions should be static
-  de74b05 exofs/super.c: local functions should be static
-  5bf696d exofs: Rename struct ore_components comps => oc
-  8d2d83a exofs: Remove unused data_map member from exofs_sb_info
-  eb507bc ore: Make ore_striping_info and ore_calc_stripe_info public
-  d866d87 ore/exofs: Change the type of the devices array (API change)
-  6d52274 ore: Only IO one group at a time (API change)
-  a723afe ore: cleanup: Embed an ore_striping_info inside ore_io_state
-  bcad9f7 ore: Remove check for ios->kern_buff in _prepare_for_striping to later
-  c8dfed0 exofs: Support for short read/writes
-  b2e3e8d ore: Support for short read/writes
-  c0ba6d0 ore: Support for partial component table
-  3c5aedd ore/exofs: Define new ore_verify_layout
-  f6ee1e2 ore/exofs: Change ore_check_io API
-  9bb8a8e pnfs-obj: Remove redundant EOF from objlayout_io_state
-  e4ec2af pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
-  8b40d31 pnfs-obj: Get rid of objlayout_{alloc,free}_io_state
-  6b09277 pnfs-obj: Rename objlayout_io_state => objlayout_io_res
-  739c109 pnfs-obj: move to ore 01: ore_layout & ore_components
-  23a91ad pnfs-obj: move to ore 02: move to ORE
-  b82cbb8 pnfs-obj: move to ore 03: Remove old raid engine
-	Up to here is the intended patches for Linux v3.2
-  c0cf571 ore: Make ore_calc_stripe_info EXPORT_SYMBOL
-	This patch is intended for the pnfsd-exofs branch after it will be
-	rebased on ore/exofs for v3.2 above (As is it will not patch there)
-
-Cheers
-Boaz
