@@ -1,63 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37696 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933659Ab1JaS2h convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 14:28:37 -0400
-Subject: Re: [PATCH] nfs: Fix unused variable warning.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Rakib Mullick <rakib.mullick@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org
-Date: Mon, 31 Oct 2011 14:28:36 -0400
-In-Reply-To: <CADZ9YHgR=WHzCfJf7_T_WjHJJHzOnWZsM2bWSACwLHEcHy+h-g@mail.gmail.com>
-References: <1319798192.26450.1.camel@localhost.localdomain>
-	 <1320074323.4714.2.camel@lade.trondhjem.org>
-	 <CADZ9YHhq91+Td03OjWbX0rwHwb6Y7QhicsuDqqAUSy2O8=05BA@mail.gmail.com>
-	 <1320083034.4714.24.camel@lade.trondhjem.org>
-	 <CADZ9YHgR=WHzCfJf7_T_WjHJJHzOnWZsM2bWSACwLHEcHy+h-g@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320085716.4714.52.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:51119 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752883Ab1JaVQn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:16:43 -0400
+Received: by wwf22 with SMTP id 22so2389379wwf.1
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 14:16:42 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4E9E1F3A.2090709@tonian.com>
+References: <4E9E1F3A.2090709@tonian.com>
+Date: Mon, 31 Oct 2011 17:16:41 -0400
+Message-ID: <CAN-5tyEF9j92qhPPPw9__B78Km1rUXC+wEOD642Wxts=N4ZOsg@mail.gmail.com>
+Subject: Re: [PATCH] pnfsd: dlm: fix bug in DS tcp/tcp6 address string
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Michael Groshans <groshans@umich.edu>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-01 at 00:16 +0600, Rakib Mullick wrote: 
-> On Mon, Oct 31, 2011 at 11:43 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Mon, 2011-10-31 at 23:12 +0600, Rakib Mullick wrote:
-> >> On Mon, Oct 31, 2011 at 9:18 PM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> > On Fri, 2011-10-28 at 16:36 +0600, Rakib Mullick wrote:
-> >> +                             data->inode->nfs_client->cl_hostname,
-> >                                 ^^^^^^^^^^^^
-> > NFS_SERVER(data->inode)->nfs_client....
-> 
-> Opss. Sorry, should've more careful, rather doing it quickly :(.
-> data->inode has nothing inside named nfs_client, but didn't even
-> complain. I'll resend it.
-> 
-> Anyway, I found the two following warning in nfs/file.c
-> 
-> fs/nfs/file.c: In function â€˜nfs_file_releaseâ€™:
-> fs/nfs/file.c:140:17: warning: unused variable â€˜dentryâ€™
-> fs/nfs/file.c: In function â€˜nfs_file_readâ€™:
-> fs/nfs/file.c:237:9: warning: unused variable â€˜countâ€™
-> 
-> I'm wanting to send one patch to cleanup all these unused variable
-> issues. Shall I? Or, should I send separate patches?
+Benny, this patch does not fix the issue. Except that now all the
+entries list "tcp6". Previously if you recall first data server entry
+was correct but others listed tcp6 type with it was suppose to be tcp.
 
-Please send 2 patches: the stuff in fs/nfs/file.c looks as if it
-predates the linux-3.1 release, and so we might want to keep those fixes
-in a separate patch.
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+On Tue, Oct 18, 2011 at 8:52 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> squash into "pnfsd: Correctly set netid to tcp or tcp6 for non-local exports"
+>
+> Currently, the code looks for ':' using strcspn that requires a null terminated string
+> while the address buffer isn't null terminated.
+>
+> Instead, just use strnchr to look for a ':' and if not found assume
+> it's an IPv4 address, otherwise it's IPv6
+>
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/nfs4pnfsdlm.c |    9 ++-------
+>  1 files changed, 2 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index abc4d83..d07a6037 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -328,13 +328,8 @@ static int nfsd4_pnfs_dlm_getdevinfo(struct super_block *sb,
+>                memcpy(daddr->r_addr.data + len, ".8.1", 4);
+>                daddr->r_addr.len = len + 4;
+>
+> -               if (strcspn(daddr->r_addr.data, ":") - 1 == daddr->r_addr.len) {
+> -                       daddr->r_netid.data = "tcp";
+> -                       daddr->r_netid.len = 3;
+> -               } else {
+> -                       daddr->r_netid.data = "tcp6";
+> -                       daddr->r_netid.len = 4;
+> -               }
+> +               daddr->r_netid.data = "tcp6";
+> +               daddr->r_netid.len = strnchr(daddr->r_addr.data, len, ':') ? 4 : 3;
+>
+>                fdev.fl_device_list[i].fl_multipath_length = 1;
+>                fdev.fl_device_list[i].fl_multipath_list = daddr;
+> --
+> 1.7.6
+>
+>
