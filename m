@@ -1,88 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38578 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755874Ab1J1OWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Oct 2011 10:22:35 -0400
-Date: Fri, 28 Oct 2011 10:22:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH v7 4/7] SUNRPC: setup rpcbind clients if service
- requires it
-Message-ID: <20111028142232.GC5193@fieldses.org>
-References: <20111028104530.24628.23631.stgit@localhost6.localdomain6>
- <20111028105307.24628.89889.stgit@localhost6.localdomain6>
+Received: from natasha.panasas.com ([67.152.220.90]:46437 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752978Ab1JaX7u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 19:59:50 -0400
+Message-ID: <4EAF366C.8040504@panasas.com>
+Date: Mon, 31 Oct 2011 16:59:40 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111028105307.24628.89889.stgit@localhost6.localdomain6>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: Re: [PATCH 1/8] pnfs-obj: Remove redundant EOF from objlayout_io_state
+References: <4EAF146D.5060507@panasas.com>   <1320097506-734-1-git-send-email-bharrosh@panasas.com>  <1320099857.10028.6.camel@lade.trondhjem.org>  <4EAF2521.2010204@panasas.com> <1320103768.10028.25.camel@lade.trondhjem.org>
+In-Reply-To: <1320103768.10028.25.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 28, 2011 at 02:53:18PM +0300, Stanislav Kinsbursky wrote:
-> New function ("svc_uses_rpcbind") will be used to detect, that new service will
-> send portmapper register calls. For such services we will create rpcbind
-> clients and remove all stale portmap registrations.
-> Also, svc_rpcb_cleanup() will be set as sv_shutdown callback for such services
-> in case of this field wasn't initialized earlier. This will allow to destroy
-> rpcbind clients when no other users of them left.
+On 10/31/2011 04:29 PM, Trond Myklebust wrote:
+>> In files-type reads in a "condense" layout. You should be careful
+>> because in striping it is common place to have eof on some DSs because
+>> of file holes even though there are more bits higher on in the file
+>> at other DSs. You should check to return back only the answer from the
+>> highest logical read DS. (Or I'm wrong in my interpretation?)
 > 
-> Note: Currently, any creating service will be detected as portmap user.
-> Probably, this is wrong. But now it depends on program versions "vs_hidden"
-> flag.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> In the close-to-open cache consistency, O_DIRECT database, or file
+> locking cases, then either the data has been committed, the file size
+> extended and the DSes updated, 
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
+I meant in the case all that as happened (Just opened the file) but
+any particular DS can return EOF. Example:
+I have 3 DSs, with stripe unit of say 1K for example.
 
+The file has been written to 0K..1K and 2K..3K. In dense layout file-size
+on DS2 is zero, right? because it was never written too. So if the client
+is reading 0K..3K (All file), Will it get eof from DS2?
+
+> or our client must know that the server
+> has incomplete information because it is holding cached writes or
+> layoutcommits that extend the file. In either case, the meaning of the
+> eofs should be obvious.
 > 
-> ---
->  net/sunrpc/svc.c |   20 ++++++++++++++------
->  1 files changed, 14 insertions(+), 6 deletions(-)
+
+I hope that is taken care of, surly?
+
+> Benny's old pet project of making 'tail -f' work on a log file that is
+> being extended by someone else is, OTOH, subject to screwiness. However
+> that case can be screwy on ordinary read-through-MDS too.
 > 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index d2d61bf..87a67b2 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -436,10 +436,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  	serv->sv_pools =
->  		kcalloc(serv->sv_nrpools, sizeof(struct svc_pool),
->  			GFP_KERNEL);
-> -	if (!serv->sv_pools) {
-> -		kfree(serv);
-> -		return NULL;
-> -	}
-> +	if (!serv->sv_pools)
-> +		goto err_serv;
->  
->  	for (i = 0; i < serv->sv_nrpools; i++) {
->  		struct svc_pool *pool = &serv->sv_pools[i];
-> @@ -454,10 +452,20 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  		spin_lock_init(&pool->sp_lock);
->  	}
->  
-> -	/* Remove any stale portmap registrations */
-> -	svc_unregister(serv);
-> +	if (svc_uses_rpcbind(serv)) {
-> +	       	if (svc_rpcb_setup(serv) < 0)
-> +			goto err_rpcb;
-> +		if (!serv->sv_shutdown)
-> +			serv->sv_shutdown = svc_rpcb_cleanup;
-> +	}
->  
->  	return serv;
-> +
-> +err_rpcb:
-> +	kfree(serv->sv_pools);
-> +err_serv:
-> +	kfree(serv);
-> +	return NULL;
->  }
->  
->  struct svc_serv *
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Ye that one was me too. I still think file length can easily be extended
+only on commit/layout_commit and not on any random write. So the above can
+work. I think there is all that is needed within the protocol for servers that
+*want* to support this. With any compliant client. (Ask me if you don't know how,
+it involves keeping a shadow length per client up until commit, actually with
+pnfs it is easier)
+
+Thanks
+Boaz
