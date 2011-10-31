@@ -1,138 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:12769 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:27950 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753511Ab1JQMLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 08:11:14 -0400
-Subject: [RFC PATCH 5/5] SUNRPC: pipefs per-net operations helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Mon, 17 Oct 2011 16:10:58 +0300
-Message-ID: <20111017121058.4541.11909.stgit@localhost6.localdomain6>
-In-Reply-To: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-References: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S933097Ab1JaRmq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:42:46 -0400
+Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>, nfsv4 list <nfsv4@ietf.org>
+Date: Mon, 31 Oct 2011 13:42:44 -0400
+In-Reply-To: <4EAED61B.7030405@tonian.com>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+	  <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
+	  <1320076148.4714.4.camel@lade.trondhjem.org>
+	  <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
+	 <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320082964.4714.23.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During per-net operation pipes creation and destruction we have to make sure,
-that pipefs sb exists for the whole creation/destruction procedure.
-This is done by using special mutex which controls pipefs sb reference on network namespace context.
-Helper consist of two parts: first of them (rpc_get_dentry_net) searches for
-dentry with specified name and returns with mutex taken on success. When pipe
-creation is completed, caller should release this mutex by rpc_put_dentry_net
-call.
+On Mon, 2011-10-31 at 19:08 +0200, Benny Halevy wrote: 
+> On 2011-10-31 18:45, Trond Myklebust wrote:
+> > On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote: 
+> >> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
+> >> <Trond.Myklebust@netapp.com> wrote:
+> >>> On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
+> >>>> For blocklayout, we need to issue layoutreturn to return layouts when
+> >>>> handling CB_RECALL_ANY.
+> >>>
+> >>> Why?
+> >> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
+> >> that server wants client to return layout. And server will be waiting
+> >> for layoutreturn in such case.
+> > 
+> > No it doesn't. NFS4_OK means that the client acknowledges that it has
+> > been given a new limit on the number of recallable objects it can keep.
+> > There is no requirement in the text that it should send layoutreturn or
+> > that the server should expect that.
+> 
+> The motivation for CB_RECALL_ANY is to reduce the state on the *server* side.
+> Quoting from RFC5661:
+>    The server may decide that it cannot hold all of the state for
+>    recallable objects, such as delegations and layouts, without running
+>    out of resources.  In such a case, while not optimal, the server is
+>    free to recall individual objects to reduce the load.
+> ...
+>    In order to implement an effective reclaim scheme for such objects,
+>    the server's knowledge of available resources must be used to
+>    determine when objects must be recalled with the clients selecting
+>    the actual objects to be returned.
+>                       ^^^^^^^^^^^^^^
+> ...
+>    When a given resource pool is over-utilized, the server can send a
+>    CB_RECALL_ANY to clients holding recallable objects of the types
+>    involved, allowing it to keep a certain number of such objects and
+>    return any excess.
+>    ^^^^^^^^^^^^^^^^^
+> ...
+>    RCA4_TYPE_MASK_FILE_LAYOUT
+> 
+>       The client is to return layouts of type LAYOUT4_NFSV4_1_FILES.
+>                     ^^^^^^^^^^^^^^^^^
+> 
+> Isn't that explicit enough?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Leaving aside the fact that the above quotes contain no normative
+language:
+Right now, we do a bulk return of all layouts. Doing a layoutreturn for
+each and every layout in that case is just ridiculous. Either do a
+LAYOUTRETURN4_ALL after freeing all the layouts, or don't do anything at
+all and just wait for the server to revoke the layouts for us (which is
+what we currently do).
+Both options should be faster than doing a LAYOUTRETURN4_FILE on each
+and every file that is currently in use.
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    5 ++++
- net/sunrpc/netns.h                 |    1 +
- net/sunrpc/rpc_pipe.c              |   41 ++++++++++++++++++++++++++++++++++++
- net/sunrpc/sunrpc_syms.c           |    1 +
- 4 files changed, 48 insertions(+), 0 deletions(-)
+Trond
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 4a327ad..d48ff0b 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -55,6 +55,11 @@ enum {
- extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 				      const unsigned char *dir_name);
- 
-+extern void rpc_pipefs_init_net(struct net *net);
-+extern struct dentry *rpc_get_dentry_net(const struct net *net,
-+					 const unsigned char *dir_name);
-+extern void rpc_put_dentry_net(const struct net *net, struct dentry *dentry);
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index b384252..11d2f48 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -11,6 +11,7 @@ struct sunrpc_net {
- 	struct cache_detail *ip_map_cache;
- 
- 	struct super_block *pipefs_sb;
-+	struct mutex pipefs_sb_lock;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index a873f03..331be28 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1033,6 +1033,45 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
- 
-+void rpc_pipefs_init_net(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	mutex_init(&sn->pipefs_sb_lock);
-+}
-+
-+/*
-+ * This call will be used for per network namespace operations calls.
-+ * Note: Function will be returned with pipefs_sb_lock taken if dentry was
-+ * found. This lock have to be released by rpc_put_dentry_net() when all
-+ * operations will be completed.
-+ */
-+struct dentry *rpc_get_dentry_net(const struct net *net,
-+				  const unsigned char *dir_name)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct dentry *dentry = ERR_PTR(-ENOENT);
-+
-+	mutex_lock(&sn->pipefs_sb_lock);
-+	if (sn->pipefs_sb) {
-+		dentry = rpc_d_lookup_sb(sn->pipefs_sb, dir_name);
-+		if (dentry)
-+			return dentry;
-+	}
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+	return ERR_PTR(-ENOENT);
-+}
-+EXPORT_SYMBOL_GPL(rpc_get_dentry_net);
-+
-+void rpc_put_dentry_net(const struct net *net, struct dentry *dentry)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	dput(dentry);
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+}
-+EXPORT_SYMBOL_GPL(rpc_put_dentry_net);
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
-@@ -1085,7 +1124,9 @@ void rpc_kill_sb(struct super_block *sb)
- 	struct net *net = sb->s_fs_info;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
-+	mutex_lock(&sn->pipefs_sb_lock);
- 	sn->pipefs_sb = NULL;
-+	mutex_unlock(&sn->pipefs_sb_lock);
- 	put_net(net);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 9d08091..880de8b 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -38,6 +38,7 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_ipmap;
- 
-+	rpc_pipefs_init_net(net);
- 	return 0;
- 
- err_ipmap:
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
