@@ -1,69 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43696 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:43775 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753166Ab1JaVnB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:43:01 -0400
-From: "Welch, Brent" <welch@panasas.com>
-To: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        nfsv4 list <nfsv4@ietf.org>
-Subject: RE: [nfsv4] [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-Date: Mon, 31 Oct 2011 21:42:43 +0000
-Message-ID: <DA636AC7BF798243A4007D3AA0B3D3A733FDCD61@seabiscuit.int.panasas.com>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
-	<1320074136-3087-2-git-send-email-bergwolf@gmail.com>
-	<1320076148.4714.4.camel@lade.trondhjem.org>
-	<CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
-	<1320079501.4714.9.camel@lade.trondhjem.org>	<4EAED61B.7030405@tonian.com>
-	<1320082964.4714.23.camel@lade.trondhjem.org>	<4EAEE173.80306@tonian.com>
-	<1320085212.4714.48.camel@lade.trondhjem.org>
- <20111031183131.GA1925@umich.edu>
-In-Reply-To: <20111031183131.GA1925@umich.edu>
-Content-Type: text/plain; charset="us-ascii"
+	with ESMTP id S1753166Ab1JaVpT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:45:19 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 1/8] pnfs-obj: Remove redundant EOF from objlayout_io_state
+Date: Mon, 31 Oct 2011 14:45:06 -0700
+Message-ID: <1320097506-734-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4EAF146D.5060507@panasas.com>
+References: <4EAF146D.5060507@panasas.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CB_RECALL_ANY was added based on Panasas experience with its own protocols.   When you have
-100's (or 1000's) of clients and millions of files for which you maintain state, it is
-very much worth optimizing how the server can reclaim this state.
-	Brent
+The EOF calculation was done on .read_pagelist(), cached
+in objlayout_io_state->eof, and set in objlayout_read_done()
+into nfs_read_data->res.eof.
 
------Original Message-----
-From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf Of Jim Rees
-Sent: Monday, October 31, 2011 11:32 AM
-To: Trond Myklebust
-Cc: linux-nfs@vger.kernel.org; nfsv4 list
-Subject: Re: [nfsv4] [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+So set it directly into nfs_read_data->res.eof and avoid
+the extra member.
 
-Trond Myklebust wrote:
+This is a slight behaviour change because before eof was
+*not* set on an error update at objlayout_read_done(). But
+is that a problem? Is Generic layer so sensitive that it
+will miss the error IO if eof was set? From my testing
+I did not see such a problem.
 
-  I don't necessarily disagree with what you are saying, but I have yet to
-  see a single server side implementation of CB_RECALL_ANY, let alone any
-  numbers that indicate performance or responsiveness problems resulting
-  from our existing client-side implementation.
-  
-  I therefore find it hard to understand why optimising this particular
-  code is such a high priority, or why a patch that is adding per-file
-  layoutreturns to initiate_bulk_draining() is going to help anything at
-  all.
+Benny please review.
 
-Testing between the linux block layout client and the EMC block layout
-server revealed a deadlock when the server had handed out some number of
-layouts and couldn't hand out any more.  So now the EMC block layout server
-implements CB_RECALL_ANY.  So yes, this solves a real world problem, and
-yes, there is a server that implements this.
+Which brings me to a more abstract problem. Why does the
+LAYOUT driver needs to do this eof calculation? .i.e we
+are inspecting generic i_size_read() and if spanned by
+offset + count which is received from generic layer we set
+eof. It looks like all this can/should be done in generic
+layer and not at LD. Where does NFS and files-LD do it?
+It looks like it can be promoted.
 
-We had some discussions at the time, and I don't remember if those were on
-the linux-nfs list or in some other forum.  We decided that the client was
-in the best position to decide which layouts were no longer needed, so we
-needed some way for the server to tell the client to return some layouts
-without specifying which ones.  CB_RECALL_ANY seemed custom-made for this
-purpose, so we used it.
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objlayout.c |   16 +++++++---------
+ fs/nfs/objlayout/objlayout.h |    1 -
+ 2 files changed, 7 insertions(+), 10 deletions(-)
 
-I don't think it would be appropriate for the server to recall all layouts
-when it only needs some of them back.
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 1d06f8e..1300736 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -287,17 +287,14 @@ static void _rpc_read_complete(struct work_struct *work)
+ void
+ objlayout_read_done(struct objlayout_io_state *state, ssize_t status, bool sync)
+ {
+-	int eof = state->eof;
+-	struct nfs_read_data *rdata;
++	struct nfs_read_data *rdata = state->rpcdata;
+ 
+ 	state->status = status;
+-	dprintk("%s: Begin status=%zd eof=%d\n", __func__, status, eof);
+-	rdata = state->rpcdata;
++	dprintk("%s: Begin status=%zd eof=%d\n", __func__,
++		status, rdata->res.eof);
+ 	rdata->task.tk_status = status;
+-	if (status >= 0) {
++	if (status >= 0)
+ 		rdata->res.count = status;
+-		rdata->res.eof = eof;
+-	}
+ 	objlayout_iodone(state);
+ 	/* must not use state after this point */
+ 
+@@ -330,11 +327,14 @@ enum pnfs_try_status
+ 			status = 0;
+ 			rdata->res.count = 0;
+ 			rdata->res.eof = 1;
++			/*FIXME: do we need to call pnfs_ld_read_done() */
+ 			goto out;
+ 		}
+ 		count = eof - offset;
+ 	}
+ 
++	rdata->res.eof = (offset + count) >= eof;
++
+ 	state = objlayout_alloc_io_state(NFS_I(rdata->inode)->layout,
+ 					 rdata->args.pages, rdata->args.pgbase,
+ 					 offset, count,
+@@ -345,8 +345,6 @@ enum pnfs_try_status
+ 		goto out;
+ 	}
+ 
+-	state->eof = state->offset + state->count >= eof;
+-
+ 	status = objio_read_pagelist(state);
+  out:
+ 	dprintk("%s: Return status %Zd\n", __func__, status);
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index a8244c8..ffb884c 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -86,7 +86,6 @@ struct objlayout_io_state {
+ 
+ 	void *rpcdata;
+ 	int status;             /* res */
+-	int eof;                /* res */
+ 	int committed;          /* res */
+ 
+ 	/* Error reporting (layout_return) */
+-- 
+1.7.6.4
+
