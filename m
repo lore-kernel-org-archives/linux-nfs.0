@@ -1,102 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57750 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755282Ab1JTKCD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Oct 2011 06:02:03 -0400
-Date: Thu, 20 Oct 2011 06:02:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] CLNT: add some tests for DESTROY_CLIENTID
-Message-ID: <20111020100202.GF5444@fieldses.org>
-References: <4E9FE273.80500@cn.fujitsu.com>
- <20111020094355.GE5444@fieldses.org>
- <4E9FF123.2060704@cn.fujitsu.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:41968 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755014Ab1JaObm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 10:31:42 -0400
+Received: by vcge1 with SMTP id e1so4805639vcg.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 07:31:41 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4E9FF123.2060704@cn.fujitsu.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7515@SACMVEXC2-PRD.hq.netapp.com>
+References: <1319426747-2179-1-git-send-email-bergwolf@gmail.com>
+ <4EAE9B60.9040903@tonian.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7515@SACMVEXC2-PRD.hq.netapp.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Mon, 31 Oct 2011 22:31:20 +0800
+Message-ID: <CA+a=Yy5MzunUci462WBJ1JmVbJ70Oo95YzmnvU6qz01E-yM0tA@mail.gmail.com>
+Subject: Re: [PATCH-RFC] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 20, 2011 at 06:00:03PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields:
-> > There's just one other test I'd suggest: it would be useful to check
-> > that the clientid has actually been destroyed.  So, destroy the
-> > clientid, then try using it somehow (maybe by sending a create session?
-> > Or just trying to use a session that belonged to that client?).
-> 
->   I think Case DESCID7 is what you said. 
+Hi, Trond,
 
-Whoops, you're right, I missed it.
+On Mon, Oct 31, 2011 at 9:54 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>
+>
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@tonian.com]
+>> Sent: Monday, October 31, 2011 8:58 AM
+>> To: Peng Tao
+>> Cc: linux-nfs@vger.kernel.org; Myklebust, Trond; Peng Tao
+>> Subject: Re: [PATCH-RFC] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+>>
+>> On 2011-10-24 05:25, Peng Tao wrote:
+>> > Hi, Trond and Benny,
+>> >
+>> > The patch depends on the pnfs private workqueue for now. So I want
+> to
+>> > consult you about where to put the work. Is pnfs private workqueue
+>> > dropped? If yes, where should I put this kind of work?
+>>
+>> I'll defer this to Trond.
+>> I'm OK with having a workqueue for pnfs.
+>
+> I've already commented on this: I see no justification whatsoever for a
+> private pnfs workqueue.
+OK. Thanks a lot for confirming it. I think I can just change this one
+to use the system wq. Will send an updated patch.
 
---b.
 
->   
-> thanks,
-> Mi Jinlong
-> 
-> > 
-> > --b.
-> > 
-> >> +
-> >> +    FLAGS: destroy_clientid all
-> >> +    CODE: DESCID4
-> >> +    """
-> >> +    c = env.c1.new_client(env.testname(t))
-> >> +    sess = c.create_session()
-> >> +
-> >> +    res = sess.compound([op.destroy_clientid(c.clientid)])
-> >> +    check(res, NFS4ERR_CLIENTID_BUSY)
-> >> +
-> >> +def testDestroyCIDInSession(t, env):
-> >> +    """ destroy a clientid of other session without session
-> >> +
-> >> +    FLAGS: destroy_clientid all
-> >> +    CODE: DESCID5
-> >> +    """
-> >> +    c = env.c1.new_client(env.testname(t))
-> >> +    sess = c.create_session()
-> >> +
-> >> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> >> +    check(res, NFS4ERR_CLIENTID_BUSY)
-> >> +
-> >> +def testDestroyCIDNotOnly(t, env):
-> >> +    """ destroy a clientid without session with other compound
-> >> +
-> >> +    FLAGS: destroy_clientid all
-> >> +    CODE: DESCID6
-> >> +    """
-> >> +    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
-> >> +    check(res, NFS4ERR_NOT_ONLY_OP)
-> >> +
-> >> +def testDestroyCIDTwice(t, env):
-> >> +    """ destroy a clientid without session twice
-> >> +
-> >> +    FLAGS: destroy_clientid all
-> >> +    CODE: DESCID7
-> >> +    """
-> >> +    c = env.c1.new_client(env.testname(t))
-> >> +
-> >> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> >> +    check(res)
-> >> +
-> >> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
-> >> +    check(res, NFS4ERR_STALE_CLIENTID)
-> >> -- 
-> >> 1.7.6
-> >>
-> >>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > 
-> 
-> -- 
-> ----
-> thanks
-> Mi Jinlong
-> 
+-- 
+Thanks,
+Tao
