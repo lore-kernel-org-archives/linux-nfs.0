@@ -1,169 +1,271 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:55131 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932943Ab1JRPfM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2011 11:35:12 -0400
-Received: from /spool/local
-	by au.ibm.com with XMail ESMTP
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Tue, 18 Oct 2011 15:33:55 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V7 17/26] richacl: Permission check algorithm
-Date: Tue, 18 Oct 2011 21:02:52 +0530
-Message-Id: <1318951981-5508-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:43789 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932356Ab1JaVp5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 17:45:57 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 2/8] pnfs-obj: Return PNFS_NOT_ATTEMPTED in case of read/write_pagelist
+Date: Mon, 31 Oct 2011 14:45:46 -0700
+Message-ID: <1320097546-775-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4EAF146D.5060507@panasas.com>
+References: <4EAF146D.5060507@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+objlayout driver was always returning PNFS_ATTEMPTED from it's
+read/write_pagelist operations. Even on error. Fix that.
 
-As in the standard POSIX file permission model, each process is the
-owner, group, or other file class.  A process is
+Start by establishing an error return API from io-engine, by
+not returning ssize_t (length-or-error) but returning "int"
+0=OK, 0>Error. And clean up all return types in io-engine.
 
-  - in the owner file class if it owns the file,
-  - in the group file class if it is in the file's owning group or it
-    matches any of the user or group entries, and
-  - in the other file class otherwise.
+Then if io-engine returned error return PNFS_NOT_ATTEMPTED
+to generic layer. (With a dprint)
 
-Each file class is associated with a file mask.
-
-A richacl grants a requested access if the NFSv4 acl in the richacl
-grants the requested permissions (according to the NFSv4 permission
-check algorithm) and the file mask that applies to the process includes
-the requested permissions.
-
-Acked-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/richacl_base.c       |   99 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    2 +
- 2 files changed, 101 insertions(+), 0 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |   32 ++++++++++++++++----------------
+ fs/nfs/objlayout/objlayout.c |   36 +++++++++++++++++++-----------------
+ fs/nfs/objlayout/objlayout.h |    4 ++--
+ 3 files changed, 37 insertions(+), 35 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index a5f215e..e9c2f30 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -392,3 +392,102 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	return clone;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index d0cda12..0c7c9ec 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -142,7 +142,7 @@ struct objio_segment {
  }
- EXPORT_SYMBOL_GPL(richacl_chmod);
-+
-+/**
-+ * richacl_permission  -  richacl permission check algorithm
-+ * @inode:	inode to check
-+ * @acl:	rich acl of the inode
-+ * @mask:	requested access (ACE4_* bitmask)
-+ *
-+ * Checks if the current process is granted @mask flags in @acl.
-+ */
-+int
-+richacl_permission(struct inode *inode, const struct richacl *acl,
-+		   unsigned int mask)
-+{
-+	const struct richace *ace;
-+	unsigned int requested = mask, denied = 0;
-+	int in_owning_group = in_group_p(inode->i_gid);
-+	int in_owner_or_group_class = in_owning_group;
-+
-+	/*
-+	 * We don't need to know which class the process is in when the acl is
-+	 * not masked.
-+	 */
-+	if (!(acl->a_flags & ACL4_MASKED))
-+		in_owner_or_group_class = 1;
-+
-+	/*
-+	 * A process is
-+	 *   - in the owner file class if it owns the file,
-+	 *   - in the group file class if it is in the file's owning group or
-+	 *     it matches any of the user or group entries, and
-+	 *   - in the other file class otherwise.
-+	 */
-+
-+	/*
-+	 * Check if the acl grants the requested access and determine which
-+	 * file class the process is in.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		unsigned int ace_mask = ace->e_mask;
-+
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_owner(ace)) {
-+			if (current_fsuid() != inode->i_uid)
-+				continue;
-+			goto is_owner;
-+		} else if (richace_is_group(ace)) {
-+			if (!in_owning_group)
-+				continue;
-+		} else if (richace_is_unix_id(ace)) {
-+			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
-+				if (!in_group_p(ace->u.e_id))
-+					continue;
-+			} else {
-+				if (current_fsuid() != ace->u.e_id)
-+					continue;
-+			}
-+		} else
-+			goto is_everyone;
-+
-+is_owner:
-+		/* The process is in the owner or group file class. */
-+		in_owner_or_group_class = 1;
-+
-+is_everyone:
-+		/* Check which mask flags the ACE allows or denies. */
-+		if (richace_is_deny(ace))
-+			denied |= ace_mask & mask;
-+		mask &= ~ace_mask;
-+
-+		/*
-+		 * Keep going until we know which file class
-+		 * the process is in.
-+		 */
-+		if (!mask && in_owner_or_group_class)
-+			break;
-+	}
-+	denied |= mask;
-+
-+	if (acl->a_flags & ACL4_MASKED) {
-+		unsigned int file_mask;
-+
-+		/*
-+		 * The file class a process is in determines which file mask
-+		 * applies.  Check if that file mask also grants the requested
-+		 * access.
-+		 */
-+		if (current_fsuid() == inode->i_uid)
-+			file_mask = acl->a_owner_mask;
-+		else if (in_owner_or_group_class)
-+			file_mask = acl->a_group_mask;
-+		else
-+			file_mask = acl->a_other_mask;
-+		denied |= requested & ~file_mask;
-+	}
-+
-+	return denied ? -EACCES : 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_permission);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index be7db1f..86f7339 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -289,5 +289,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-+extern int richacl_permission(struct inode *, const struct richacl *,
-+			      unsigned int);
  
- #endif /* __RICHACL_H */
+ struct objio_state;
+-typedef ssize_t (*objio_done_fn)(struct objio_state *ios);
++typedef int (*objio_done_fn)(struct objio_state *ios);
+ 
+ struct objio_state {
+ 	/* Generic layer */
+@@ -720,7 +720,7 @@ static int _io_rw_pagelist(struct objio_state *ios, gfp_t gfp_flags)
+ 	return 0;
+ }
+ 
+-static ssize_t _sync_done(struct objio_state *ios)
++static int _sync_done(struct objio_state *ios)
+ {
+ 	struct completion *waiting = ios->private;
+ 
+@@ -742,10 +742,10 @@ static void _done_io(struct osd_request *or, void *p)
+ 	kref_put(&ios->kref, _last_io);
+ }
+ 
+-static ssize_t _io_exec(struct objio_state *ios)
++static int _io_exec(struct objio_state *ios)
+ {
+ 	DECLARE_COMPLETION_ONSTACK(wait);
+-	ssize_t status = 0; /* sync status */
++	int ret = 0;
+ 	unsigned i;
+ 	objio_done_fn saved_done_fn = ios->done;
+ 	bool sync = ios->ol_state.sync;
+@@ -771,16 +771,16 @@ static ssize_t _io_exec(struct objio_state *ios)
+ 
+ 	if (sync) {
+ 		wait_for_completion(&wait);
+-		status = saved_done_fn(ios);
++		ret = saved_done_fn(ios);
+ 	}
+ 
+-	return status;
++	return ret;
+ }
+ 
+ /*
+  * read
+  */
+-static ssize_t _read_done(struct objio_state *ios)
++static int _read_done(struct objio_state *ios)
+ {
+ 	ssize_t status;
+ 	int ret = _io_check(ios, false);
+@@ -793,7 +793,7 @@ static ssize_t _read_done(struct objio_state *ios)
+ 		status = ret;
+ 
+ 	objlayout_read_done(&ios->ol_state, status, ios->ol_state.sync);
+-	return status;
++	return ret;
+ }
+ 
+ static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
+@@ -833,7 +833,7 @@ static int _read_mirrors(struct objio_state *ios, unsigned cur_comp)
+ 	return ret;
+ }
+ 
+-static ssize_t _read_exec(struct objio_state *ios)
++static int _read_exec(struct objio_state *ios)
+ {
+ 	unsigned i;
+ 	int ret;
+@@ -847,14 +847,14 @@ static ssize_t _read_exec(struct objio_state *ios)
+ 	}
+ 
+ 	ios->done = _read_done;
+-	return _io_exec(ios); /* In sync mode exec returns the io status */
++	return _io_exec(ios);
+ 
+ err:
+ 	_io_free(ios);
+ 	return ret;
+ }
+ 
+-ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
++int objio_read_pagelist(struct objlayout_io_state *ol_state)
+ {
+ 	struct objio_state *ios = container_of(ol_state, struct objio_state,
+ 					       ol_state);
+@@ -870,7 +870,7 @@ ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state)
+ /*
+  * write
+  */
+-static ssize_t _write_done(struct objio_state *ios)
++static int _write_done(struct objio_state *ios)
+ {
+ 	ssize_t status;
+ 	int ret = _io_check(ios, true);
+@@ -887,7 +887,7 @@ static ssize_t _write_done(struct objio_state *ios)
+ 	}
+ 
+ 	objlayout_write_done(&ios->ol_state, status, ios->ol_state.sync);
+-	return status;
++	return ret;
+ }
+ 
+ static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
+@@ -955,7 +955,7 @@ static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
+ 	return ret;
+ }
+ 
+-static ssize_t _write_exec(struct objio_state *ios)
++static int _write_exec(struct objio_state *ios)
+ {
+ 	unsigned i;
+ 	int ret;
+@@ -969,14 +969,14 @@ static ssize_t _write_exec(struct objio_state *ios)
+ 	}
+ 
+ 	ios->done = _write_done;
+-	return _io_exec(ios); /* In sync mode exec returns the io->status */
++	return _io_exec(ios);
+ 
+ err:
+ 	_io_free(ios);
+ 	return ret;
+ }
+ 
+-ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
++int objio_write_pagelist(struct objlayout_io_state *ol_state, bool stable)
+ {
+ 	struct objio_state *ios = container_of(ol_state, struct objio_state,
+ 					       ol_state);
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 1300736..99c807d 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -315,16 +315,13 @@ enum pnfs_try_status
+ 	loff_t offset = rdata->args.offset;
+ 	size_t count = rdata->args.count;
+ 	struct objlayout_io_state *state;
+-	ssize_t status = 0;
++	int err;
+ 	loff_t eof;
+ 
+-	dprintk("%s: Begin inode %p offset %llu count %d\n",
+-		__func__, rdata->inode, offset, (int)count);
+-
+ 	eof = i_size_read(rdata->inode);
+ 	if (unlikely(offset + count > eof)) {
+ 		if (offset >= eof) {
+-			status = 0;
++			err = 0;
+ 			rdata->res.count = 0;
+ 			rdata->res.eof = 1;
+ 			/*FIXME: do we need to call pnfs_ld_read_done() */
+@@ -341,14 +338,19 @@ enum pnfs_try_status
+ 					 rdata->lseg, rdata,
+ 					 GFP_KERNEL);
+ 	if (unlikely(!state)) {
+-		status = -ENOMEM;
++		err = -ENOMEM;
+ 		goto out;
+ 	}
++	dprintk("%s: inode(%lx) offset 0x%llx count 0x%Zx eof=%d\n",
++		__func__, rdata->inode->i_ino, offset, count, rdata->res.eof);
+ 
+-	status = objio_read_pagelist(state);
++	err = objio_read_pagelist(state);
+  out:
+-	dprintk("%s: Return status %Zd\n", __func__, status);
+-	rdata->pnfs_error = status;
++	if (unlikely(err)) {
++		rdata->pnfs_error = err;
++		dprintk("%s: Returned Error %d\n", __func__, err);
++		return PNFS_NOT_ATTEMPTED;
++	}
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -406,10 +408,7 @@ enum pnfs_try_status
+ 			 int how)
+ {
+ 	struct objlayout_io_state *state;
+-	ssize_t status;
+-
+-	dprintk("%s: Begin inode %p offset %llu count %u\n",
+-		__func__, wdata->inode, wdata->args.offset, wdata->args.count);
++	int err;
+ 
+ 	state = objlayout_alloc_io_state(NFS_I(wdata->inode)->layout,
+ 					 wdata->args.pages,
+@@ -419,16 +418,19 @@ enum pnfs_try_status
+ 					 wdata->lseg, wdata,
+ 					 GFP_NOFS);
+ 	if (unlikely(!state)) {
+-		status = -ENOMEM;
++		err = -ENOMEM;
+ 		goto out;
+ 	}
+ 
+ 	state->sync = how & FLUSH_SYNC;
+ 
+-	status = objio_write_pagelist(state, how & FLUSH_STABLE);
++	err = objio_write_pagelist(state, how & FLUSH_STABLE);
+  out:
+-	dprintk("%s: Return status %Zd\n", __func__, status);
+-	wdata->pnfs_error = status;
++	if (unlikely(err)) {
++		wdata->pnfs_error = err;
++		dprintk("%s: Returned Error %d\n", __func__, err);
++		return PNFS_NOT_ATTEMPTED;
++	}
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+diff --git a/fs/nfs/objlayout/objlayout.h b/fs/nfs/objlayout/objlayout.h
+index ffb884c..4edac9b 100644
+--- a/fs/nfs/objlayout/objlayout.h
++++ b/fs/nfs/objlayout/objlayout.h
+@@ -115,8 +115,8 @@ extern int objio_alloc_io_state(
+ 	gfp_t gfp_flags);
+ extern void objio_free_io_state(struct objlayout_io_state *state);
+ 
+-extern ssize_t objio_read_pagelist(struct objlayout_io_state *ol_state);
+-extern ssize_t objio_write_pagelist(struct objlayout_io_state *ol_state,
++extern int objio_read_pagelist(struct objlayout_io_state *ol_state);
++extern int objio_write_pagelist(struct objlayout_io_state *ol_state,
+ 				    bool stable);
+ 
+ /*
 -- 
-1.7.5.4
+1.7.6.4
 
