@@ -1,80 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:14240 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:19295 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753036Ab1JQMK5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 08:10:57 -0400
-Subject: [RFC PATCH 3/5] SUNRPC: pipefs dentry lookup helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Mon, 17 Oct 2011 16:10:43 +0300
-Message-ID: <20111017121043.4541.76010.stgit@localhost6.localdomain6>
-In-Reply-To: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-References: <20111017120629.4541.67395.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S932268Ab1JaQpT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 12:45:19 -0400
+Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
+Date: Mon, 31 Oct 2011 12:45:01 -0400
+In-Reply-To: <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+	 <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
+	 <1320076148.4714.4.camel@lade.trondhjem.org>
+	 <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320079501.4714.9.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all places, where pipefs dentries are created, only directory inode is
-actually required to create new dentry. And all this directories has root
-pipefs dentry as their parent. So we actually don't need this pipefs mount
-point at all if some pipefs lookup method will be provided.
-IOW, all we really need is just superblock and simple lookup method to find
-root's dentry child dentry with appropriate name. And this patch introduces
-this method.
-Note, that no loking implemented in rpc_d_lookup_sb(). So it can be used only
-in case of assurance, that pipefs superblock still exist. IOW, we can use this
-method only in pipefs mount-umount notificators.
+On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote: 
+> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
+> >> For blocklayout, we need to issue layoutreturn to return layouts when
+> >> handling CB_RECALL_ANY.
+> >
+> > Why?
+> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
+> that server wants client to return layout. And server will be waiting
+> for layoutreturn in such case.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+No it doesn't. NFS4_OK means that the client acknowledges that it has
+been given a new limit on the number of recallable objects it can keep.
+There is no requirement in the text that it should send layoutreturn or
+that the server should expect that.
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
- net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+In any case, there is no reason to make a difference between block,
+object and file layouts when it comes to CB_RECALL_ANY. The code to
+handle it should be the same for all.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index c1cdb2f..4a327ad 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -52,6 +52,9 @@ enum {
- 	RPC_PIPEFS_UMOUNT,
- };
- 
-+extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+				      const unsigned char *dir_name);
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index c90a7e0..a8a8812 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1017,6 +1017,22 @@ static const struct rpc_filelist files[] = {
- 	},
- };
- 
-+/*
-+ * This call can be used only in RPC pipefs mount notification hooks.
-+ */
-+struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+			       const unsigned char *dir_name)
-+{
-+	struct qstr dir = {
-+		.name = dir_name,
-+		.len = strlen(dir_name),
-+		.hash = full_name_hash(dir_name, strlen(dir_name)),
-+	};
-+
-+	return d_lookup(sb->s_root, &dir);
-+}
-+EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
