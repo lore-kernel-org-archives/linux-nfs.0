@@ -1,37 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37373 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933608Ab1J2Rzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 29 Oct 2011 13:55:53 -0400
-Date: Sat, 29 Oct 2011 13:55:48 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd4_is_junction
-Message-ID: <20111029175548.GB12122@fieldses.org>
-References: <20111029101649.GA12345@infradead.org>
- <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com>
+Received: from natasha.panasas.com ([67.152.220.90]:44432 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933918Ab1JaWRL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 18:17:11 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 8/8] pnfs-obj: Support for RAID5 read-4-write interface.
+Date: Mon, 31 Oct 2011 15:16:54 -0700
+Message-ID: <1320099414-1211-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <4EAF146D.5060507@panasas.com>
+References: <4EAF146D.5060507@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <929DFFCE-F92B-4EF6-8C9E-E807AB4FFA9C@oracle.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 29, 2011 at 01:47:55PM -0400, Chuck Lever wrote:
-> 
-> On Oct 29, 2011, at 6:16 AM, Christoph Hellwig wrote:
-> 
-> > This function should probably grow a check for S_NOSEC instead of
-> > hitting the filesystems with an xattr read for every lookup.
-> 
-> It doesn't perform the xattr read on _every_ lookup, but only when the object has a special set of permission bits.
-> 
-> But actually, it probably doesn't need that 'type" attribute check at all.  It should delegate that check to mountd.  I assume many of those upcalls would hit in the export cache anyway?
+The ore need suplied a r4w_get_page/r4w_put_page API
+from Filesystem so it can get cache pages to read-into when
+writing parial stripes.
 
-You're suggesting doing an upcall on every path that passes the mode-bit
-checks?
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 38 insertions(+), 0 deletions(-)
 
-You'd end up populating the export cache with every path that passes
-the mode-bit checks.  I don't think that's a good idea.
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 3161da6..c807ab9 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -459,6 +459,43 @@ static void _write_done(struct ore_io_state *ios, void *private)
+ 	objlayout_write_done(&objios->oir, status, objios->sync);
+ }
+ 
++static struct page *__r4w_get_page(void *priv, u64 offset, bool *uptodate)
++{
++	struct objio_state *objios = priv;
++	struct nfs_write_data *wdata = objios->oir.rpcdata;
++	pgoff_t index = offset / PAGE_SIZE;
++	struct page *page = find_get_page(wdata->inode->i_mapping, index);
++
++	if (!page) {
++		page = find_or_create_page(wdata->inode->i_mapping,
++						index, GFP_NOFS);
++		if (unlikely(!page)) {
++			dprintk("%s: grab_cache_page Failed index=0x%lx\n",
++				__func__, index);
++			return NULL;
++		}
++		unlock_page(page);
++	}
++	if (PageDirty(page) || PageWriteback(page))
++		*uptodate = true;
++	else
++		*uptodate = PageUptodate(page);
++	dprintk("%s: index=0x%lx uptodate=%d\n", __func__, index, *uptodate);
++	return page;
++}
++
++static void __r4w_put_page(void *priv, struct page *page)
++{
++	dprintk("%s: index=0x%lx\n", __func__, page->index);
++	page_cache_release(page);
++	return;
++}
++
++static const struct _ore_r4w_op _r4w_op = {
++	.get_page = &__r4w_get_page,
++	.put_page = &__r4w_put_page,
++};
++
+ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ {
+ 	struct objio_state *objios;
+@@ -472,6 +509,7 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ 		return ret;
+ 
+ 	objios->sync = 0 != (how & FLUSH_SYNC);
++	objios->ios->r4w = &_r4w_op;
+ 
+ 	if (!objios->sync)
+ 		objios->ios->done = _write_done;
+-- 
+1.7.6.4
 
---b.
