@@ -1,56 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32786 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752039Ab1JUAH2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Oct 2011 20:07:28 -0400
-Subject: Re: Does NFS4 need st_gen?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nikolaus Rath <Nikolaus@rath.org>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 20 Oct 2011 19:07:27 -0500
-In-Reply-To: <871uu79z7m.fsf@inspiron.ap.columbia.edu>
-References: <87ipnlcbg8.fsf@inspiron.ap.columbia.edu>
-	 <20111019171551.GA32028@fieldses.org>
-	 <87d3dsdcf4.fsf@inspiron.ap.columbia.edu>
-	 <20111020120207.GL5444@fieldses.org>
-	 <877h3za89w.fsf@inspiron.ap.columbia.edu>
-	 <20111020195731.GC9987@fieldses.org>
-	 <871uu79z7m.fsf@inspiron.ap.columbia.edu>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1319155647.2768.4.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:65131 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932637Ab1JaRIs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 13:08:48 -0400
+Received: by eye27 with SMTP id 27so5485297eye.19
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2011 10:08:47 -0700 (PDT)
+Message-ID: <4EAED61B.7030405@tonian.com>
+Date: Mon, 31 Oct 2011 19:08:43 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>, nfsv4 list <nfsv4@ietf.org>
+Subject: Re: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>  <1320074136-3087-2-git-send-email-bergwolf@gmail.com>  <1320076148.4714.4.camel@lade.trondhjem.org>  <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com> <1320079501.4714.9.camel@lade.trondhjem.org>
+In-Reply-To: <1320079501.4714.9.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-10-20 at 16:37 -0400, Nikolaus Rath wrote: 
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> > On Thu, Oct 20, 2011 at 01:21:31PM -0400, Nikolaus Rath wrote:
-> >> I'm working on a FUSE file system that stores file system metadata in an
-> >> SQL database (http://code.google.com/p/s3ql/). Not having to keep track
-> >> of inode generation numbers would keep the code much simpler, because I
-> >> want to delete inode-rows from the SQL table when the last reference to
-> >> the inode is deleted (so I can't keep track of the generation no).
-> >
-> > You can use current time, or a counter, or something, as the generation
-> > number.
+On 2011-10-31 18:45, Trond Myklebust wrote:
+> On Tue, 2011-11-01 at 00:38 +0800, Peng Tao wrote: 
+>> On Mon, Oct 31, 2011 at 11:49 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>>> On Mon, 2011-10-31 at 08:15 -0700, Peng Tao wrote:
+>>>> For blocklayout, we need to issue layoutreturn to return layouts when
+>>>> handling CB_RECALL_ANY.
+>>>
+>>> Why?
+>> Because replying NFS4_OK to CB_RECALL_ANY indicates that client knows
+>> that server wants client to return layout. And server will be waiting
+>> for layoutreturn in such case.
 > 
-> With current time I'm screwed if the system clock doesn't have
-> sufficiently fine granularity. With a counter, I either have to remember
-> counter values per-inode even after the inode is deleted, or the global
-> counter will overflow at some point (in which case I may just as well
-> require unique inodes in the first place).
+> No it doesn't. NFS4_OK means that the client acknowledges that it has
+> been given a new limit on the number of recallable objects it can keep.
+> There is no requirement in the text that it should send layoutreturn or
+> that the server should expect that.
 
-The filehandle is between 32 (NFSv2) and 128(NFSv4) bytes long. How long
-do you expect it to take you to create+destroy between 2^256 and 2^1024
-inodes? I'm guessing that we'll all be long dead and the universe will
-have undergone heat death before that happens...
+The motivation for CB_RECALL_ANY is to reduce the state on the *server* side.
+Quoting from RFC5661:
+   The server may decide that it cannot hold all of the state for
+   recallable objects, such as delegations and layouts, without running
+   out of resources.  In such a case, while not optimal, the server is
+   free to recall individual objects to reduce the load.
+...
+   In order to implement an effective reclaim scheme for such objects,
+   the server's knowledge of available resources must be used to
+   determine when objects must be recalled with the clients selecting
+   the actual objects to be returned.
+                      ^^^^^^^^^^^^^^
+...
+   When a given resource pool is over-utilized, the server can send a
+   CB_RECALL_ANY to clients holding recallable objects of the types
+   involved, allowing it to keep a certain number of such objects and
+   return any excess.
+   ^^^^^^^^^^^^^^^^^
+...
+   RCA4_TYPE_MASK_FILE_LAYOUT
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+      The client is to return layouts of type LAYOUT4_NFSV4_1_FILES.
+                    ^^^^^^^^^^^^^^^^^
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Isn't that explicit enough?
 
+> 
+> In any case, there is no reason to make a difference between block,
+> object and file layouts when it comes to CB_RECALL_ANY. The code to
+> handle it should be the same for all.
+> 
+
+Agreed.
+
+Benny
