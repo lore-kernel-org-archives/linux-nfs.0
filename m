@@ -1,97 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49706 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:23978 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756807Ab1K3AhG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 19:37:06 -0500
-Message-ID: <1322613425.11286.86.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+	id S1754863Ab1KAQtt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 12:49:49 -0400
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+ fake_signal_wake_up() wake TASK_KILLABLE tasks too"
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Marc Eshel <eshel@almaden.ibm.com>
-Cc: Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com,
-        Boaz Harrosh <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>,
-        Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org,
-        Matt Benjamin <matt@linuxbox.com>
-Date: Tue, 29 Nov 2011 19:37:05 -0500
-In-Reply-To: <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
-			   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
-	 <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
-	 <1322606842.11286.33.camel@lade.trondhjem.org>
-			 <4ED563AC.5040501@panasas.com>
-	 <1322609431.11286.56.camel@lade.trondhjem.org>
-		 <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com>
-	 <1322611689.11286.72.camel@lade.trondhjem.org>
-	 <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Jeff Layton <jlayton@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        Oleg Nesterov <oleg@redhat.com>, linux-pm@vger.kernel.org,
+        linux-cifs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Date: Tue, 01 Nov 2011 12:49:31 -0400
+In-Reply-To: <20111101163059.GR18855@google.com>
+References: <20111031221743.GA18855@google.com>
+	 <201111010024.16659.rjw@sisk.pl> <20111031233059.GI18855@google.com>
+	 <20111101005505.GO18855@google.com>
+	 <20111101041337.39077229@tlielax.poochiereds.net>
+	 <20111101065958.50addab5@tlielax.poochiereds.net>
+	 <20111101163059.GR18855@google.com>
 Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320166171.5019.1.camel@lade.trondhjem.org>
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 16:20 -0800, Marc Eshel wrote: 
-> You ignored my main point, I was talking about the server side, my point 
-> was that there is nothing to build on on the serve side since the pNFS 
-> Linux server is not happening.
-> Marc.
+On Tue, 2011-11-01 at 09:30 -0700, Tejun Heo wrote: 
+> Hello, Jeff.
+> 
+> On Tue, Nov 01, 2011 at 06:59:58AM -0400, Jeff Layton wrote:
+> > > I suppose we could look at going back to the world of complicated
+> > > signal handling and TASK_INTERRUPTIBLE, but that's not a trivial change
+> > > either. The TASK_WAKE_FREEZABLE flag you mention might make more sense
+> > > than doing that.
+> 
+> I see.
+> 
+> > Also, since task state and signal handling clearly isn't my forte...can
+> > you clarify what the main difference is in using a TASK_KILLABLE sleep
+> > vs. TASK_INTERRUPTIBLE with all signals but SIGKILL blocked?
+> >
+> > I know that the process state would end up different (S vs. D state).
+> > Is there anything else we'd need to be concerned with if we converted
+> > all these call sites to use such a scheme in lieu of a new
+> > TASK_WAKE_FREEZABLE flag or similar?
+> 
+> Manipulating sigmask would work in most cases but there are corner
+> cases (e.g. debug signals will force the mask off) and diddling with
+> sigmask in kernel generally isn't a good idea.
+> 
+> If TASK_KILLABLE is only used for killable && freezable, that probably
+> would be the cleanest solution but given the name and the fact that
+> people are in general much more aware of SIGKILL's then freezer, I
+> think adding such assumption is likely to cause very subtle bugs.  For
+> example, mem_cgroup_handle_oom() seems to assume that if it's waken
+> from TASK_KILLABLE either the condition it was waiting for is true or
+> it is dying.
+> 
+> If there are only a handful sites which need this type of behavior,
+> wouldn't something like the following work?
+> 
+> #define wait_event_freezekillable(wq, condition)			\
+> do {									\
+> 	DEFINE_WAIT(__wait);						\
+> 	for (;;) {							\
+> 		prepare_to_wait(&wq, &__wait, TASK_INTERRUPTIBLE);	\
+> 		if (condition || fatal_signal_pending(current))		\
+> 			break;						\
+> 		schedule();						\
+> 		try_to_freeze();					\
+> 	}								\
+> 	finish_wait(&wq, &__wait);					\
+> } while (0)
 
-Sorry. I misunderstood your concern. As far as I know, the main problem
-there is also one of investment: nobody has stepped up to help Bruce
-write a pNFS server.
-
-I'm less worried about this now than I was earlier, because other open
-source efforts are gaining traction (see Ganesha - which is being
-sponsored by IBM, and projects such as Tigran's java based pNFS server).
-The other point is that we've developed client test-rigs that don't
-depend on the availability of a Linux server (newpynfs and the pynfs
-based proxy).
-
-Cheers
-  Trond 
-
-> From:
-> Trond Myklebust <Trond.Myklebust@netapp.com>
-> To:
-> Marc Eshel <eshel@almaden.ibm.com>
-> Cc:
-> Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com, Boaz Harrosh 
-> <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>, Fred Isaman 
-> <iisaman@netapp.com>, linux-nfs@vger.kernel.org, Matt Benjamin 
-> <matt@linuxbox.com>
-> Date:
-> 11/29/2011 04:08 PM
-> Subject:
-> Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-> 
-> 
-> 
-> On Tue, 2011-11-29 at 15:49 -0800, Marc Eshel wrote: 
-> > The only 1 cent that I can add to this argument is that I was led to 
-> > believe by you and others that Linux kernel don't add functionality on 
-> the 
-> > client side that is not supported on the server side. Last time I made 
-> > this point I was told that it is ok if they are of by a version or two. 
-> > You made it clear that this is no longer true and that the Linux client 
-> > and server are now independent of each other. I spent time working on 
-> the 
-> > server side believing that the client and server will progress more or 
-> > less together, disappointed to find out that it is not the case any 
-> more.
-> > Marc. 
-> 
-> I don't know how to manage layout segments in a way that meets the pNFS
-> goals of scalability and performance, and neither you nor the pNFS spec
-> have told me how to do this.
-> 
-> If IBM wants a client that implements layout segments, then it is _your_
-> responsibility to: 
->      A. Convince me that it is an implementable part of the spec. 
->      B. Provide me with an implementation that deals all with the
->         concerns that I have.
-> 
-> IOW: nobody has ever promised IBM that the community would do all your
-> client work for you. EMC, NetApp and Panasas have implemented (most of)
-> the bits that they cared about; any bits that they haven't implemented
-> and that you care about are up to you.
-> 
+Err... Won't this end up busy-waiting if a non-fatal signal is received?
 
 -- 
 Trond Myklebust
