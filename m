@@ -1,33 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47173 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:54479 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932842Ab1KGQXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Nov 2011 11:23:37 -0500
-Message-ID: <4EB80606.90309@RedHat.com>
-Date: Mon, 07 Nov 2011 11:23:34 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753733Ab1KAWOL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 18:14:11 -0400
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RLMaw-00013t-Se
+	for linux-nfs@vger.kernel.org; Tue, 01 Nov 2011 18:14:10 -0400
+Date: Tue, 1 Nov 2011 18:14:10 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Update NFSD MAINTAINER
+Message-ID: <20111101221410.GC1891@fieldses.org>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: rpcbind -h
-References: <20111106155844.GA1790@umich.edu>
-In-Reply-To: <20111106155844.GA1790@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: NeilBrown <neilb@suse.de>
 
+Neil hasn't really been at all active as a maintainer for some years now.
+So move his maintainership to CREDITS
 
-On 11/06/2011 10:58 AM, Jim Rees wrote:
-> Is there some good reason why the rpcbind '-h' option (bind to given
-> address) applies only to the udp listening socket and not to the tcp socket?
-No... sounds like a bug to me...
+(But thanks to Neil for continuing help with nfsd!--jbf)
 
-steved.
-> 
-> And is there any good reason why an nfs3 client not providing any services
-> would need to run rpcbind?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ CREDITS     |    5 +++++
+ MAINTAINERS |    1 -
+ 2 files changed, 5 insertions(+), 1 deletions(-)
+
+diff --git a/CREDITS b/CREDITS
+index 07e32a8..557da47 100644
+--- a/CREDITS
++++ b/CREDITS
+@@ -514,6 +514,11 @@ S: Bessemerstraat 21
+ S: Amsterdam
+ S: The Netherlands
+ 
++N: NeilBrown
++E: neil@brown.name
++P: 4096R/566281B9 1BC6 29EB D390 D870 7B5F  497A 39EC 9EDD 5662 81B9
++D: NFSD Maintainer 2000-2007
++
+ N: Zach Brown
+ E: zab@zabbo.net
+ D: maestro pci sound
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 51d42fb..37fffbc 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -3685,7 +3685,6 @@ S:	Odd Fixes
+ 
+ KERNEL NFSD, SUNRPC, AND LOCKD SERVERS
+ M:	"J. Bruce Fields" <bfields@fieldses.org>
+-M:	Neil Brown <neilb@suse.de>
+ L:	linux-nfs@vger.kernel.org
+ W:	http://nfs.sourceforge.net/
+ S:	Supported
+-- 
+1.7.5.4
+
