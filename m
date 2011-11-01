@@ -1,69 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50901 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:58254 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752854Ab1KDVmz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 17:42:55 -0400
-Date: Fri, 4 Nov 2011 17:42:54 -0400
+	id S1753966Ab1KAORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 10:17:47 -0400
+Date: Tue, 1 Nov 2011 10:17:46 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
+To: Bryan Schumaker <bjschuma@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Remove unnecessary whitespace
-Message-ID: <20111104214254.GJ721@fieldses.org>
-References: <1320171508-14028-1-git-send-email-bjschuma@netapp.com>
+Subject: Re: [PATCH 1/3] NFSD: Added fault injection
+Message-ID: <20111101141746.GD32248@fieldses.org>
+References: <1319455259-3136-1-git-send-email-bjschuma@netapp.com>
+ <20111028212450.GA7441@fieldses.org>
+ <4EAFFD65.4010407@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320171508-14028-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <4EAFFD65.4010407@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 01, 2011 at 02:18:28PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, Nov 01, 2011 at 10:08:37AM -0400, Bryan Schumaker wrote:
+> On Fri 28 Oct 2011 05:24:50 PM EDT, J. Bruce Fields wrote:
+> > On Mon, Oct 24, 2011 at 07:20:57AM -0400, bjschuma@netapp.com wrote:
+> > ...
+> >> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> >> index db34a58..e67f30c 100644
+> >> --- a/fs/nfsd/nfsctl.c
+> >> +++ b/fs/nfsd/nfsctl.c
+> > ...
+> >> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
+> >>  	retval = nfs4_state_init(); /* nfs4 locking state */
+> >>  	if (retval)
+> >>  		return retval;
+> >> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+> >> +	if (retval)
+> >> +		goto out_cleanup_fault_injection;
+> >>  	nfsd_stat_init();	/* Statistics */
+> >>  	retval = nfsd_reply_cache_init();
+> >>  	if (retval)
+> >> @@ -1161,6 +1165,8 @@ out_free_cache:
+> >>  out_free_stat:
+> >>  	nfsd_stat_shutdown();
+> >>  	nfsd4_free_slabs();
+> >> +out_cleanup_fault_injection:
+> >> +	nfsd_fault_inject_cleanup();
+> >
+> > Check the cleanup here again....  The slabs are allocated in state_init,
+> > so you need to do that on nfsd_fault_inject_init, but you *don't* need
+> > the fault_inject_cleanup in that case, since fault_inject_init cleanup
+> > cleans up after itself--that's needed only on later failures.
 > 
-> The close parenthesis was hard to find with it spaced so far over.
+> Would it be better to change the fault_inject_init() function so it 
+> doesn't clean up after itself?  This would keep it consistent with the 
+> other nfsd init functions.
 
-What kind of terminal was Kendrick working with, anyway?
+I don't think so.  The pattern here is pretty common throughout the
+kernel; it's approximately:
 
-If you don't mind the below as a friendly amendment, I'll queue it up
-for 3.3.
+	do_thing1();
+	err = do_thing2();
+	if (err)
+		goto undo_thing1;
+	err = do_thing3();
+	if (err)
+		goto undo_thing2;
+	...
+
+Functions are no-ops on failure, and the caller's just responsible for
+cleaning up previous stuff.
+
+> I didn't realize that slabs were initialized in the state_init()
+> function, I'll fix that.
+
+I'll admit that's confusing.  Any suggestion to make it clearer welcome.
 
 --b.
-
-commit 70aec307e110a2a488e10323b4d2bbd89a3f6485
-Author: Bryan Schumaker <bjschuma@netapp.com>
-Date:   Tue Nov 1 14:18:28 2011 -0400
-
-    NFSD: Remove unnecessary whitespace
-    
-    The close parenthesis was hard to find with it spaced so far over.
-    
-    Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-    [bfields@redhat.com: get all these lines under 80 chars while we're here]
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 4e2ee29..1d1e858 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -340,15 +340,15 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
- }
- 
- /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
--#define NFSD_WRITEONLY_ATTRS_WORD1							    \
--(FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
-+#define NFSD_WRITEONLY_ATTRS_WORD1 \
-+	(FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
- 
- /* These are the only attrs allowed in CREATE/OPEN/SETATTR. */
--#define NFSD_WRITEABLE_ATTRS_WORD0                                                          \
--(FATTR4_WORD0_SIZE              | FATTR4_WORD0_ACL                                         )
--#define NFSD_WRITEABLE_ATTRS_WORD1                                                          \
--(FATTR4_WORD1_MODE              | FATTR4_WORD1_OWNER         | FATTR4_WORD1_OWNER_GROUP     \
-- | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
-+#define NFSD_WRITEABLE_ATTRS_WORD0 \
-+	(FATTR4_WORD0_SIZE | FATTR4_WORD0_ACL)
-+#define NFSD_WRITEABLE_ATTRS_WORD1 \
-+	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
-+	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
- #define NFSD_WRITEABLE_ATTRS_WORD2 0
- 
- #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
