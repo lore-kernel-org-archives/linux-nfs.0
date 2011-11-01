@@ -1,144 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:33034 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933715Ab1KJIyT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:54:19 -0500
-Received: by fagn18 with SMTP id n18so268031fag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 00:54:18 -0800 (PST)
-Message-ID: <4EBB9136.7010603@tonian.com>
-Date: Thu, 10 Nov 2011 10:54:14 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <1320851766-1834-8-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320851766-1834-8-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:45102 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751951Ab1KAS1B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 14:27:01 -0400
+Date: Tue, 1 Nov 2011 14:26:42 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Oleg Nesterov <oleg@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+ fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Message-ID: <20111101142642.66751d56@tlielax.poochiereds.net>
+In-Reply-To: <20111101180601.GV18855@google.com>
+References: <20111031221743.GA18855@google.com>
+	<201111010024.16659.rjw@sisk.pl>
+	<20111031233059.GI18855@google.com>
+	<20111101005505.GO18855@google.com>
+	<20111101041337.39077229@tlielax.poochiereds.net>
+	<20111101065958.50addab5@tlielax.poochiereds.net>
+	<20111101163059.GR18855@google.com>
+	<20111101175953.GB5358@redhat.com>
+	<20111101180601.GV18855@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-09 17:16, Peng Tao wrote:
-> It stores a list of short extents for INVAL->RW conversion.
-> Also add two functions to manipulate them, in preparation to
-> move malloc logic out of end_io.
+On Tue, 1 Nov 2011 11:06:01 -0700
+Tejun Heo <tj@kernel.org> wrote:
+
+> On Tue, Nov 01, 2011 at 06:59:53PM +0100, Oleg Nesterov wrote:
+> > > #define wait_event_freezekillable(wq, condition)			\
+> > > do {									\
+> > > 	DEFINE_WAIT(__wait);						\
+> > > 	for (;;) {							\
+> > > 		prepare_to_wait(&wq, &__wait, TASK_INTERRUPTIBLE);	\
+> > > 		if (condition || fatal_signal_pending(current))		\
+> > > 			break;						\
+> > > 		schedule();						\
+> > 
+> > No, this can't work, afaics.
+> > 
+> > Once the caller recieves a non-fatal signal (gets TIF_SIGPENDING),
+> > schedule() won't block in TASK_INTERRUPTIBLE state.
+> > 
+> > IOW, wait_event_freezekillable() becomes a busy-wait loop.
 > 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
->  fs/nfs/blocklayout/blocklayout.h |    5 +++++
->  fs/nfs/blocklayout/extents.c     |   37 +++++++++++++++++++++++++++++++++++++
->  3 files changed, 48 insertions(+), 0 deletions(-)
+> Yeah yeah, Trond already pointed it out.  I forgot about the
+> sigpending special case in schedule(), which I think is rather odd, oh
+> well.  Any better ideas?
 > 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 815c0c3..cb4ff0f 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -706,11 +706,17 @@ static void
->  release_inval_marks(struct pnfs_inval_markings *marks)
->  {
->  	struct pnfs_inval_tracking *pos, *temp;
-> +	struct pnfs_block_short_extent *se, *stemp;
->  
->  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
->  		list_del(&pos->it_link);
->  		kfree(pos);
->  	}
-> +
-> +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
-> +		list_del(&se->bse_node);
-> +		kfree(se);
-> +	}
->  	return;
->  }
->  
-> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-> index 60728ac..df0e0fb 100644
-> --- a/fs/nfs/blocklayout/blocklayout.h
-> +++ b/fs/nfs/blocklayout/blocklayout.h
-> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
->  	spinlock_t	im_lock;
->  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
->  	sector_t	im_block_size;	/* Server blocksize in sectors */
-> +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion */
->  };
->  
->  struct pnfs_inval_tracking {
-> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
->  {
->  	spin_lock_init(&marks->im_lock);
->  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-> +	INIT_LIST_HEAD(&marks->im_extents);
->  	marks->im_block_size = blocksize;
->  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
->  					   blocksize);
-> @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
->  			 struct pnfs_block_extent *new);
->  int bl_mark_for_commit(struct pnfs_block_extent *be,
->  			sector_t offset, sector_t length);
-> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
-> +struct pnfs_block_short_extent*
-> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
->  
->  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> index 952ea8a..72c7fa1 100644
-> --- a/fs/nfs/blocklayout/extents.c
-> +++ b/fs/nfs/blocklayout/extents.c
-> @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
->  		}
->  	}
->  }
-> +
-> +int
-> +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
-> +	struct pnfs_block_short_extent *new;
-> +
-> +	new = kmalloc(sizeof(*new), GFP_NOFS);
-> +	if (unlikely(!new))
-> +		return -ENOMEM;
-> +
-> +	spin_lock(&marks->im_lock);
-> +	list_add(&new->bse_node, &marks->im_extents);
-> +	spin_unlock(&marks->im_lock);
-> +
-> +	return 0;
-> +}
-> +
-> +struct pnfs_block_short_extent*
-> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
-> +	struct pnfs_block_short_extent *rv = NULL;
-> +
-> +	if (unlikely(num_to_pop <= 0))
-> +		return rv;
 
-How unlikely is it?
-Is doing the extra compare really worth saving the spin_lock?
+This is (obviously) not my area of expertise, but the TAKE_WAKEFREEZE
+flag that you mentioned earlier might be the best way to solve this.
 
-> +
-> +	spin_lock(&marks->im_lock);
-> +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
-> +		rv = list_entry((&marks->im_extents)->next,
-> +				struct pnfs_block_short_extent, bse_node);
-> +		list_del_init(&rv->bse_node);
-> +		if (num_to_pop)
-> +			kfree(rv);
+Tasks that want to be awoken on freezer events can set that flag and we
+can have the freezer code wake them up. For the NFS and CIFS code, we'll
+just ensure that we set that flag
 
-Please correct me if I'm wrong, you don't want to free the last element
-you pop since you want to return it. This is worth a comment...
+This does mean a rather nasty proliferation of new wait_event_* macros,
+and we'll need a new schedule_timeout_freezekillable() variant for the
+new state. It looks fairly straightforward to implement though.
 
-I'd consider moving the decrement expression down here or
-changing the loop to be a for loop to improve its readability.
-In the latter case this will say if (num_to_pop > 1) kfree(rv)
-which is more straight forward IMHO.
-
-Benny
-
-> +	}
-> +	spin_unlock(&marks->im_lock);
-> +
-> +	BUG_ON(num_to_pop > 0);
-> +
-> +	return rv;
-> +}
+-- 
+Jeff Layton <jlayton@redhat.com>
