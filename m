@@ -1,78 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:31719 "EHLO
-	esa-annu.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758321Ab1JGBv5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Oct 2011 21:51:57 -0400
-Date: Thu, 6 Oct 2011 21:42:23 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
-        nfsv4 <nfsv4@ietf.org>, "Matt W. Benjamin" <matt@linuxbox.com>
-Message-ID: <1579920738.2729006.1317951743769.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <1317871693.14305.5.camel@lade.trondhjem.org>
-Subject: Re: [nfsv4] back channel flags, CREATE_SESSION,
- BIND_CONN_TO_SESSION
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mx2.netapp.com ([216.240.18.37]:37512 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752642Ab1KACZy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 22:25:54 -0400
+Subject: Re: [PATCH 1/8] pnfs-obj: Remove redundant EOF from
+ objlayout_io_state
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Brent Welch <welch@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Date: Mon, 31 Oct 2011 22:25:52 -0400
+In-Reply-To: <4EAF366C.8040504@panasas.com>
+References: <4EAF146D.5060507@panasas.com>
+	   <1320097506-734-1-git-send-email-bharrosh@panasas.com>
+	  <1320099857.10028.6.camel@lade.trondhjem.org>
+	  <4EAF2521.2010204@panasas.com>
+	 <1320103768.10028.25.camel@lade.trondhjem.org>
+	 <4EAF366C.8040504@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320114352.10028.33.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Wed, 2011-10-05 at 19:21 -0400, Matt W. Benjamin wrote:
-> > Hi,
-> >
-> > There seem to be legitimate reasons for an (NFSv4.1) client and/or
-> > server to prefer a dedicated callback channel.
+On Mon, 2011-10-31 at 16:59 -0700, Boaz Harrosh wrote: 
+> On 10/31/2011 04:29 PM, Trond Myklebust wrote:
+> >> In files-type reads in a "condense" layout. You should be careful
+> >> because in striping it is common place to have eof on some DSs because
+> >> of file holes even though there are more bits higher on in the file
+> >> at other DSs. You should check to return back only the answer from the
+> >> highest logical read DS. (Or I'm wrong in my interpretation?)
+> > 
+> > In the close-to-open cache consistency, O_DIRECT database, or file
+> > locking cases, then either the data has been committed, the file size
+> > extended and the DSes updated, 
 > 
-> That would be an assertion that is missing a lot of context and
-> explanation. Why should my client bother to support such a server?
+> I meant in the case all that as happened (Just opened the file) but
+> any particular DS can return EOF. Example:
+> I have 3 DSs, with stripe unit of say 1K for example.
 > 
-> > If a server wants this result, it seems from the language of 18.36.3
-> > that it should indicate it by not setting
-> > CREATE_SESSION4_FLAG_CONN_BACK_CHAN in csr_flags in the
-> > CREATE_SESSION response, presuming the flag is set in the
-> > corresponding csa_flags argument (it's not allowed to set it
-> > otherwise). The client may respond with BIND_CONN_TO_SESSION on a
-> > new channel, setting bctsa_dir to CDFC4_BACK.
-> 
-> Nope. The exact wording is:
-> 
-> If CREATE_SESSION4_FLAG_CONN_BACK_CHAN is set in csa_flags, the
-> client is requesting that the connection over which the
-> CREATE_SESSION operation arrived be associated with the
-> session's backchannel in addition to its fore channel. If the
-> server agrees, it sets CREATE_SESSION4_FLAG_CONN_BACK_CHAN in
-> the result field csr_flags. If
-> CREATE_SESSION4_FLAG_CONN_BACK_CHAN is not set in csa_flags,
-> then CREATE_SESSION4_FLAG_CONN_BACK_CHAN MUST NOT be set in
-> csr_flags.
-> 
-> I see nothing there to indicate that the server is able to request a
-> dedicated backchannel. All it says is that the server may refuse a
-> backchannel on this particular connection.
-> 
-> > Currently, the Linux and I believe also the CITI Windows client
-> > always propose channels in both directions. The Linux mainline Linux
-> > client doesn't know how to BIND_CONN_TO_SESSION, so trivially it
-> > won't negotiate any back channel if a server didn't agree to both
-> > directions today, either. I've experimentally implemented a
-> > "fallback" model in a Linux client and (partly in a) Ganesha server.
-> > I'd appreciate any feedback on the idea.
-> 
-> Yep. As I said, why should we bother adding support for servers that
-> don't? I can function perfectly well without pNFS support or
-> delegation
-> support in such a case. Performance will suck, but why do I care?
-> 
-Just fyi, what I have implemented (and I don't intend to change it) is
-what Trond currently has done. For the FreeBSD 4.1 client, it will set
-CREATE_SESSION4_FLAG_CONN_BACK_CHAN in csa_flags, but if the server
-doesn`t set it in csr_flags, I simply assume `no backchannel`. I
-don`t plan on implementing a dedicated back channel. (I suppose that
-could change if there were strong evidence that a dedicated back channel
-did improve performance significantly.)
+> The file has been written to 0K..1K and 2K..3K. In dense layout file-size
+> on DS2 is zero, right? because it was never written too. So if the client
+> is reading 0K..3K (All file), Will it get eof from DS2?
 
-I thought I`d post this mainly to show that there are actually times when I
-agree with Trond;-) rick
+Once the client issues LAYOUTCOMMIT, the server will need to ensure that
+DS2 gets filled too. Dense file layouts aren't supposed to have holes
+according to 13.4.4. (the whole point is to support filesystems like
+NTFS that don't do sparse files).
+
+> > or our client must know that the server
+> > has incomplete information because it is holding cached writes or
+> > layoutcommits that extend the file. In either case, the meaning of the
+> > eofs should be obvious.
+> > 
+> 
+> I hope that is taken care of, surly?
+> 
+> > Benny's old pet project of making 'tail -f' work on a log file that is
+> > being extended by someone else is, OTOH, subject to screwiness. However
+> > that case can be screwy on ordinary read-through-MDS too.
+> > 
+> 
+> Ye that one was me too. I still think file length can easily be extended
+> only on commit/layout_commit and not on any random write. So the above can
+> work. I think there is all that is needed within the protocol for servers that
+> *want* to support this. With any compliant client. (Ask me if you don't know how,
+> it involves keeping a shadow length per client up until commit, actually with
+> pnfs it is easier)
+
+You can't do it safely with MDS only due to the issue of WRITE
+reordering on the wire+server and pNFS just adds more ways to reorder
+those writes. So unless you play games with layout recalls etc. in order
+to order the READs and WRITEs from different clients (which goes against
+the premise that layouts do not constitute a caching protocol) then I
+fail to see how pNFS can help.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
