@@ -1,88 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2348 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39409 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755028Ab1KQBhV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Nov 2011 20:37:21 -0500
-Date: Wed, 16 Nov 2011 20:38:10 -0500
+	id S1752247Ab1KAIOG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 04:14:06 -0400
+Date: Tue, 1 Nov 2011 04:13:37 -0400
 From: Jeff Layton <jlayton@redhat.com>
-Cc: Jim Rees <rees@umich.edu>, John Hughes <john@calvaedi.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-Message-ID: <20111116203810.4e1b9d28@corrin.poochiereds.net>
-In-Reply-To: <20111116203119.1d9c0dd6@corrin.poochiereds.net>
-References: <4EC3FD8B.6000705@calvaedi.com>
-	<20111116144718.78b2e288@corrin.poochiereds.net>
-	<20111116234434.GA12882@umich.edu>
-	<20111116203119.1d9c0dd6@corrin.poochiereds.net>
+To: Tejun Heo <tj@kernel.org>
+Cc: "Rafael J. Wysocki" <rjw@sisk.pl>, Steve French <sfrench@samba.org>,
+        linux-kernel@vger.kernel.org, Oleg Nesterov <oleg@redhat.com>,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+ fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Message-ID: <20111101041337.39077229@tlielax.poochiereds.net>
+In-Reply-To: <20111101005505.GO18855@google.com>
+References: <20111031221743.GA18855@google.com>
+	<201111010024.16659.rjw@sisk.pl>
+	<20111031233059.GI18855@google.com>
+	<20111101005505.GO18855@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Nov 2011 20:31:19 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On Mon, 31 Oct 2011 17:55:05 -0700
+Tejun Heo <tj@kernel.org> wrote:
 
-> On Wed, 16 Nov 2011 18:44:34 -0500
-> Jim Rees <rees@umich.edu> wrote:
+> Hey, again.
 > 
-> > Jeff Layton wrote:
-> > 
-> >   Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
-> >   added EKEYEXPIRED returns in this codepath also added the code to make
-> >   it hang. 
-> >   
-> >   This not a bug, or at least it's intentional behavior. When a krb5
-> >   ticket expires, we *want* the process to hang. Otherwise, people with
-> >   long running jobs will often find that their jobs error out
-> >   inexplicably when their ticket expires.
-> > 
-> > Who decided that?  This seems completely wrong to me.  If my credentials
-> > expire, I want to get permission denied, not a client hang.  In 20 years of
-> > using authenticated file systems I never once wished my process had hung
-> > when my ticket expired.
-> > 
+> On Mon, Oct 31, 2011 at 04:30:59PM -0700, Tejun Heo wrote:
+> > I can't remember one off the top of my head but I'm pretty sure there
+> > at least are few which expect tight inter-locking between sleeps and
+> > wakeups.  I'll look for examples and post reply.  ISTR them being
+> > kernel threads so this might not apply directly but it's still a
+> > dangerous game to play.
 > 
-> I proposed it, we discussed it on the list, and Trond and Steve
-> committed the patches necessary to make it happen. This was back in
-> late 2009/early 2010 though, so my memory is a bit fuzzy...
+> Hmm... I couldn't find KILLABLE used like that but here are two
+> UNINTERRUPTIBLE sleep examples.
 > 
-> > Why should this be any different from any other failure condition?  If you
-> > try to open a file that doesn't exist, do you want your process to hang
-> > instead of getting ENOENT, just in case the file magically appears at some
-> > point in the future?
-> >
+> * kthread_start() depends on the fact that a kthread won't be woken up
+>   from UNINTERRUPTIBLE sleep spuriously.
 > 
-> That's different. Not renewing your credentials is often a temporary
-> situation. Kerberos is different than other authentication methods in
-> that you get a ticket only for a period of time, so expired credentials
-> are not a situation that's common with other authentication methods.
+> * jfs_flush_journal() doesn't check whether the wakeup was spurious
+>   after waiting if !tblkGC_COMMITTED.
 > 
-> > This seems a recipe for disaster.  Suppose I have a cron job that fires once
-> > a minute, and all those jobs hang waiting for a ticket.  I come to work in
-> > the morning and discover I've got 10,000 hung processes.  Or not, because my
-> > computer has crashed from resource exhaustion.
+> Maybe we can re-define KILLABLE as killable && freezable but IMHO that
+> requires pretty strong rationales.  If at all possible, let's not
+> diddle with that if it can be worked around some other way.
 > 
-> The previous situation was also a recipe for disaster, and was often
-> cited as a primary reason why people didn't want to deploy kerberized
-> NFS. Having everything fall down and go boom when your ticket expires
-> is not desirable either.
-> 
-> I suppose we'll have to agree to disagree on this point. That said, I'm
-> open to sane suggestions however that don't regress the behavior for
-> those users who need to be able to cope with expired tickets.
+> Thank you.
 > 
 
-Note too that the gssd code distinguishes between an expired TGT and a
-non-existent credcache. The latter will give you the error you desire
-here. So one possibility is just to remove the credcache from /tmp in
-this situation.
+(cc'ing Trond and the linux-nfs mailing list -- fwiw, he maintains the
+NFS client code -- Bruce is the NFS server maintainer and probably has
+little interest in this thread).
 
-Another possibility might be a new option to rpc.gssd that allows the
-user to select the error that it passes back to the kernel on an
-expired ticket.
+The main reason for this change is primarily that we have people with
+laptops and nfs and cifs mounts that sometimes fail to suspend.
+
+IIUC, the TASK_KILLABLE was mostly added to ensure that file-store
+writes would be uninterruptible, but still allow those tasks to be
+killed if the process is going down anyway.
+
+The intr/nointr mount options in NFS have been deprecated since
+TASK_KILLABLE was added. The scheme now is basically that those sleeps
+ignore any signals except for fatal ones. So, that knob is meaningless
+and has been for a long time now.
+
+cifs never had a working intr/nointr knob, but signal handling while
+waiting for replies was always a difficult thing to handle correctly. I
+don't think the right answer is to go back to using such a knob in cifs
+or nfs.
+
+I suppose we could look at going back to the world of complicated
+signal handling and TASK_INTERRUPTIBLE, but that's not a trivial change
+either. The TASK_WAKE_FREEZABLE flag you mention might make more sense
+than doing that.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
