@@ -1,103 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13796 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752952Ab1KIS7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Nov 2011 13:59:02 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 6/7] NFSv4.1: rename nfs4_free_slot and nfs4_find_slot
-Date: Wed,  9 Nov 2011 13:58:25 -0500
-Message-Id: <1320865106-1791-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1320865106-1791-1-git-send-email-andros@netapp.com>
-References: <1320865106-1791-1-git-send-email-andros@netapp.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:45588 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754864Ab1KAS17 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 14:27:59 -0400
+Date: Tue, 1 Nov 2011 11:27:53 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Oleg Nesterov <oleg@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+ fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Message-ID: <20111101182753.GW18855@google.com>
+References: <20111031221743.GA18855@google.com>
+ <201111010024.16659.rjw@sisk.pl>
+ <20111031233059.GI18855@google.com>
+ <20111101005505.GO18855@google.com>
+ <20111101041337.39077229@tlielax.poochiereds.net>
+ <20111101065958.50addab5@tlielax.poochiereds.net>
+ <20111101163059.GR18855@google.com>
+ <20111101175953.GB5358@redhat.com>
+ <20111101180601.GV18855@google.com>
+ <20111101181329.GA6739@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111101181329.GA6739@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Hello,
 
-These functions deal in slotid's, not slots.
+On Tue, Nov 01, 2011 at 07:13:29PM +0100, Oleg Nesterov wrote:
+> On 11/01, Tejun Heo wrote:
+> >
+> > Yeah yeah, Trond already pointed it out.  I forgot about the
+> > sigpending special case in schedule(), which I think is rather odd,
+> 
+> I disagree with "rather odd" ;)
+> 
+> We have a lot of examples of
+> 
+> 	current->state = TASK_INTERRUPTIBLE;
+> 	...
+> 	if (signal_pending())
+> 		break;
+> 	schedule();
+> 
+> Without that special case in schedule() the code above becomes racy.
+> Just consider __wait_event_interruptible().
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   22 +++++++++++-----------
- 1 files changed, 11 insertions(+), 11 deletions(-)
+But __wait_event_interruptible() does proper set-TASK_*, check
+sigpending and schedule() sequence.  As long as the waker performs
+seg-sigpending, wakeup sequence in the correct order, nothing is
+broken (as w/ any other wakeup conditions).  The special case deals
+with callers which don't check sigpending between set-TASK_* and
+schedule() and that's the part I think is a bit odd.  Whether I feel
+odd or not is irrelevant tho - it's already there.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 525635f..9ec3a13 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -519,9 +519,9 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
- }
- 
- /*
-- * nfs4_free_slot - free a slot and efficiently update slot table.
-+ * nfs4_free_slotid - free a slotid and efficiently update slot table.
-  *
-- * freeing a slot is trivially done by clearing its respective bit
-+ * freeing a slotid is trivially done by clearing its respective bit
-  * in the bitmap.
-  * If the freed slotid equals highest_used_slotid we want to update it
-  * so that the server would be able to size down the slot table if needed,
-@@ -534,7 +534,7 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
-  * Must be called while holding tbl->slot_tbl_lock
-  */
- static void
--nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
-+nfs4_free_slotid(struct nfs4_slot_table *tbl, u8 free_slotid)
- {
- 	int slotid = free_slotid;
- 
-@@ -603,7 +603,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 	}
- 
- 	spin_lock(&tbl->slot_tbl_lock);
--	nfs4_free_slot(tbl, res->sr_slot->slotid);
-+	nfs4_free_slotid(tbl, res->sr_slot->slotid);
- 	nfs4_put_slot_locked(res->sr_slot);
- 	nfs4_check_drain_fc_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
-@@ -674,17 +674,17 @@ static int nfs4_sequence_done(struct rpc_task *task,
- }
- 
- /*
-- * nfs4_find_slot - efficiently look for a free slot
-+ * nfs4_find_slotid - efficiently look for a free slotid
-  *
-- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
-- * If found, we mark the slot as used, update the highest_used_slotid,
-+ * nfs4_find_slotid looks for an unset bit in the used_slots bitmap.
-+ * If found, we mark the slotid as used, update the highest_used_slotid,
-  * and respectively set up the sequence operation args.
-- * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
-+ * The slotid is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
-  *
-  * Note: must be called with under the slot_tbl_lock.
-  */
- static u8
--nfs4_find_slot(struct nfs4_slot_table *tbl)
-+nfs4_find_slotid(struct nfs4_slot_table *tbl)
- {
- 	int slotid;
- 	u8 ret_id = NFS4_MAX_SLOT_TABLE;
-@@ -744,7 +744,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 		return -EAGAIN;
- 	}
- 
--	slotid = nfs4_find_slot(tbl);
-+	slotid = nfs4_find_slotid(tbl);
- 	if (slotid == NFS4_MAX_SLOT_TABLE) {
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
- 		spin_unlock(&tbl->slot_tbl_lock);
-@@ -756,7 +756,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 		/* keep FIFO order */
- 		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
--		nfs4_free_slot(tbl, slotid);
-+		nfs4_free_slotid(tbl, slotid);
- 		spin_unlock(&tbl->slot_tbl_lock);
- 		dprintk("%s task pid %5u sleeping for dynamic slot %d\n",
- 			__func__, task->tk_pid, slotid);
+> > Any better ideas?
+> 
+> Well. As a simple (probably temporary) fix, I'd suggest
+> 
+> 	#define wait_event_freezekillable(wq, condition)
+> 	{
+> 		freezer_do_not_count();
+> 		__retval = wait_event_killable(condition);
+> 		freezer_count();
+> 		__retval;
+> 	}
+> 
+> Do you think it can work?
+
+Yeah, probably.  I was hoping to remove count/do_not_count tho.
+Hmmm... maybe we can just flip PF_NOFREEZE instead with a bit of
+modification, I think.
+
+Thanks.
+
 -- 
-1.7.6.4
-
+tejun
