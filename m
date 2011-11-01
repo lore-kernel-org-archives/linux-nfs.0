@@ -1,37 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49752 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751554Ab1KLANb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 19:13:31 -0500
-Message-ID: <1321056809.8733.2.camel@lade.trondhjem.org>
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Matthew Treinish <treinish@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 11 Nov 2011 19:13:29 -0500
-In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from natasha.panasas.com ([67.152.220.90]:35391 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753691Ab1KARnr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 13:43:47 -0400
+Message-ID: <4EB02FA2.80204@panasas.com>
+Date: Tue, 1 Nov 2011 10:42:58 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: [patchset 0/8] pnfs-obj: Move to ORE for v3.2 merge window
+References: <4EAAFED8.7020600@panasas.com> <1319909073.2760.7.camel@lade.trondhjem.org> <4EAEDFA6.4080303@panasas.com> <4EAF146D.5060507@panasas.com>
+In-Reply-To: <4EAF146D.5060507@panasas.com>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
-> This patch series implements client side support for volatile file handle
-> recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
-> test the client you either need a server that supports volatile file handles or 
-> you can hard code the server to output NFS4ERR_FHEXPIRED instead of
-> NFSERR_STALE. (See the last patch in the series)
+On 10/31/2011 02:34 PM, Boaz Harrosh wrote:
+> 
+> Hi trond
+> 
+> I just re-checked. Compiled both i386 an x86_64 allmodconfig and even
+> merge with latest linus tree. I sign on these patches.
+> 
+> Again they were in linux-next as is, untouched based on exofs tree.
+> And now based on Linus/master [f362f98] They compile and run.
+> 
+> I'll re-post them just in case you decide to need them, as reply to
+> this mail.
+> 
+> Thanks
+> Boaz
 
-WHY do we want to support this kind of "feature"? As you said, the RFC
-doesn't actually help in figuring out how this crap is supposed to work
-in practice, so why do we even consider starting to give a damn?
+Hi Trond
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+We just had a linux-next tree "linux-next: Tree for Nov 1"
+I looked through all the compile logs for the different
+arches it is all clean. So I guess it is ready as it can be.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Cheers
+Boaz
