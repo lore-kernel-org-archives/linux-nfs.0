@@ -1,166 +1,391 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34285 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56453 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752283Ab1KWRqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Nov 2011 12:46:21 -0500
-Date: Wed, 23 Nov 2011 12:46:56 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>
-Cc: Belisko Marek <marek.belisko@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        linux-nfs@vger.kernel.org,
-        Linux PM mailing list <linux-pm@vger.kernel.org>, john@calva.com,
-        Tejun Heo <tj@kernel.org>, trond.myklebust@netapp.com
-Subject: Re: Freezing of tasks failed after 20.01 seconds in kernel
- 3.2.0-rc2
-Message-ID: <20111123124656.35063401@corrin.poochiereds.net>
-In-Reply-To: <4ECCAF76.3090502@linux.vnet.ibm.com>
-References: <CAAfyv36nxYq1EA2pcHi5WR1BdWYHp2sQTY1mMA4Q3JjcOG5RDw@mail.gmail.com>
-	<4ECCAF76.3090502@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751308Ab1KARfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 13:35:37 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/3] NFSD: Added fault injection
+Date: Tue,  1 Nov 2011 13:35:21 -0400
+Message-Id: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 23 Nov 2011 14:01:50 +0530
-"Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> On 11/23/2011 02:50 AM, Belisko Marek wrote:
-> > Using 3.2.0-rc2 on my laptop once I've seen following trace when suspend:
-> > 
-> > [15215.853880] ADDRCONF(NETDEV_CHANGE): wlan0: link becomes ready
-> > [15221.646580] psmouse serio2: bad data from KBC - timeout
-> > [15221.857213] psmouse serio2: bad data from KBC - timeout
-> > [15226.960037] wlan0: no IPv6 routers present
-> > [15278.513091] wlan0: deauthenticating from 00:1e:58:14:6c:44 by local
-> > choice (reason=3)
-> > [15278.537857] cfg80211: All devices are disconnected, going to
-> > restore regulatory settings
-> > [15278.537865] cfg80211: Restoring regulatory settings
-> > [15278.537872] cfg80211: Calling CRDA to update world regulatory domain
-> > [15278.546284] cfg80211: Ignoring regulatory request Set by core since
-> > the driver uses its own custom regulatory domain
-> > [15278.546290] cfg80211: World regulatory domain updated:
-> > [15278.546294] cfg80211:     (start_freq - end_freq @ bandwidth),
-> > (max_antenna_gain, max_eirp)
-> > [15278.546300] cfg80211:     (2402000 KHz - 2472000 KHz @ 40000 KHz),
-> > (300 mBi, 2000 mBm)
-> > [15278.546305] cfg80211:     (2457000 KHz - 2482000 KHz @ 20000 KHz),
-> > (300 mBi, 2000 mBm)
-> > [15278.546310] cfg80211:     (2474000 KHz - 2494000 KHz @ 20000 KHz),
-> > (300 mBi, 2000 mBm)
-> > [15278.546315] cfg80211:     (5170000 KHz - 5250000 KHz @ 40000 KHz),
-> > (300 mBi, 2000 mBm)
-> > [15278.546321] cfg80211:     (5735000 KHz - 5835000 KHz @ 40000 KHz),
-> > (300 mBi, 2000 mBm)
-> > [15280.417945] init: anacron main process (10148) killed by TERM signal
-> > [15281.558943] PM: Syncing filesystems ... done.
-> > [15281.970184] PM: Preparing system for mem sleep
-> > [15282.284192] Freezing user space processes ...
-> > [15302.300305] Freezing of tasks failed after 20.01 seconds (1 tasks
-> > refusing to freeze, wq_busy=0):
-> > [15302.300485] mount.nfs       D f1bb7a1c     0  9987   9985 0x00800004
-> > [15302.300494]  f1bb7a74 00000082 c1539243 f1bb7a1c f9220b89 f1bb79f8
-> > c1026778 c1878340
-> > [15302.300507]  f046cc20 c1878340 c1878340 1e6f8d83 00000de6 c1878340
-> > f4a07340 f046cc20
-> > [15302.300518]  f1a658d0 f3898000 f1bb7a48 c1055e95 00000000 f3898000
-> > 0039d700 00000286
-> > [15302.300530] Call Trace:
-> > [15302.300542]  [<c1539243>] ? _raw_read_unlock_bh+0x13/0x20
-> > [15302.300566]  [<f9220b89>] ? xs_tcp_state_change+0x49/0x280 [sunrpc]
-> > [15302.300574]  [<c1026778>] ? default_spin_lock_flags+0x8/0x10
-> > [15302.300582]  [<c1055e95>] ? mod_timer+0x135/0x260
-> > [15302.300601]  [<f9223003>] ? __rpc_sleep_on_priority+0x173/0x240 [sunrpc]
-> > [15302.300607]  [<c1026778>] ? default_spin_lock_flags+0x8/0x10
-> > [15302.300613]  [<c153901f>] ? _raw_spin_lock_irqsave+0x2f/0x50
-> > [15302.300619]  [<c1537475>] schedule+0x35/0x50
-> > [15302.300637]  [<f922265e>] rpc_wait_bit_killable+0x1e/0x40 [sunrpc]
-> > [15302.300643]  [<c1537b1d>] __wait_on_bit+0x4d/0x70
-> > [15302.300661]  [<f9222640>] ? rpc_queue_empty+0x40/0x40 [sunrpc]
-> > [15302.300679]  [<f9222640>] ? rpc_queue_empty+0x40/0x40 [sunrpc]
-> > [15302.300685]  [<c1537beb>] out_of_line_wait_on_bit+0xab/0xc0
-> > [15302.300692]  [<c1065b50>] ? autoremove_wake_function+0x50/0x50
-> > [15302.300710]  [<f9222d27>] __rpc_execute+0x167/0x270 [sunrpc]
-> > [15302.300716]  [<c1065aee>] ? wake_up_bit+0x5e/0x70
-> > [15302.300734]  [<f9222e68>] rpc_execute+0x38/0x40 [sunrpc]
-> > [15302.300749]  [<f921bd49>] rpc_run_task+0x59/0x70 [sunrpc]
-> > [15302.300765]  [<f921be5e>] rpc_call_sync+0x3e/0x60 [sunrpc]
-> > [15302.300782]  [<f921bec8>] rpc_ping+0x48/0x60 [sunrpc]
-> > [15302.300799]  [<f921c6b7>] rpc_create+0x397/0x4d0 [sunrpc]
-> > [15302.300807]  [<c102c73d>] ? kmap_atomic_prot+0xdd/0x100
-> > [15302.300815]  [<c12b0500>] ? __nla_reserve+0x40/0x50
-> > [15302.300831]  [<f9397a8b>] nfs_create_rpc_client+0xab/0xe0 [nfs]
-> > [15302.300841]  [<f88f0ce9>] ? __fscache_acquire_cookie+0x59/0x270 [fscache]
-> > [15302.300858]  [<f9397b92>] nfs4_init_client+0x62/0x170 [nfs]
-> > [15302.300873]  [<f9398c83>] nfs_get_client+0x353/0x4e0 [nfs]
-> > [15302.300880]  [<c1537e69>] ? mutex_lock+0x19/0x40
-> > [15302.300886]  [<c12afef2>] ? __percpu_counter_init+0x62/0x70
-> > [15302.300901]  [<f9398e6a>] nfs4_set_client+0x5a/0xc0 [nfs]
-> > [15302.300917]  [<f9398f96>] nfs4_create_server+0xc6/0x310 [nfs]
-> > [15302.300936]  [<f93a400e>] nfs4_remote_mount+0x5e/0x2f0 [nfs]
-> > [15302.300943]  [<c1298aa1>] ? ida_get_new_above+0x101/0x1b0
-> > [15302.300951]  [<c112fde6>] mount_fs+0x36/0x170
-> > [15302.300960]  [<c10fcf9f>] ? __alloc_percpu+0xf/0x20
-> > [15302.300967]  [<c1146dae>] ? alloc_vfsmnt+0xae/0x130
-> > [15302.300974]  [<c1147b0b>] vfs_kern_mount+0x4b/0xa0
-> > [15302.300991]  [<f93a35f9>] nfs_do_root_mount+0x69/0x90 [nfs]
-> > [15302.301008]  [<f93a209c>] ? nfs_parse_devname+0x8c/0x1a0 [nfs]
-> > [15302.301026]  [<f93a390f>] nfs4_try_mount+0x3f/0xb0 [nfs]
-> > [15302.301043]  [<f93a2235>] ? nfs4_validate_text_mount_data+0x85/0x100 [nfs]
-> > [15302.301060]  [<f93a47a5>] nfs_fs_mount+0x465/0xb20 [nfs]
-> > [15302.301066]  [<c10fc210>] ? pcpu_alloc_area+0x210/0x320
-> > [15302.301073]  [<c10fbbf8>] ? pcpu_next_pop+0x38/0x50
-> > [15302.301078]  [<c10fca94>] ? pcpu_alloc+0x354/0x830
-> > [15302.301085]  [<c1298aa1>] ? ida_get_new_above+0x101/0x1b0
-> > [15302.301092]  [<c111e375>] ? __kmalloc_track_caller+0xf5/0x1a0
-> > [15302.301097]  [<c1298aa1>] ? ida_get_new_above+0x101/0x1b0
-> > [15302.301104]  [<c112fde6>] mount_fs+0x36/0x170
-> > [15302.301110]  [<c10fcf9f>] ? __alloc_percpu+0xf/0x20
-> > [15302.301116]  [<c1146dae>] ? alloc_vfsmnt+0xae/0x130
-> > [15302.301123]  [<c1147b0b>] vfs_kern_mount+0x4b/0xa0
-> > [15302.301129]  [<c1147bce>] do_kern_mount+0x3e/0xd0
-> > [15302.301135]  [<c1148ec8>] do_mount+0x308/0x6d0
-> > [15302.301142]  [<c11470b8>] ? copy_mount_options+0xa8/0x120
-> > [15302.301148]  [<c11492fb>] sys_mount+0x6b/0xa0
-> > [15302.301154]  [<c15393d4>] syscall_call+0x7/0xb
-> > [15302.301162]
-> > [15302.301165] Restarting tasks ... done.
-> > [15302.359593] video LNXVIDEO:00: Restoring backlight state
-> > [15303.897565] init: anacron main process (10434) killed by TERM signal
-> > [15304.088853] iwlwifi 0000:07:00.0: L1 Disabled; Enabling L0S
-> > [15304.091810] iwlwifi 0000:07:00.0: Radio type=0x1-0x2-0x0
-> > [15304.139846] ADDRCONF(NETDEV_UP): wlan0: link is not ready
-> > [15304.153864] atl1c 0000:09:00.0: irq 46 for MSI/MSI-X
-> > [15304.212718] ADDRCONF(NETDEV_UP): eth0: link is not ready
-> > 
-> > 
-> > Marek
-> > 
-> 
-> Hi Marek,
-> 
-> Thanks for the bug report. But this is a known issue and Jeff Layton
-> is working on a patchset that aims to fix it.
-> 
-> http://www.spinics.net/lists/linux-nfs/msg25585.html
-> 
-> Can you please try it out and see if it fixes the issue for you?
-> 
-> [I am wondering why Jeff did not CC LKML while sending the patchset!]
-> 
-> Adding relevant people and linux-pm mailing list to CC.
->  
-> Thanks,
-> Srivatsa S. Bhat
-> 
+Fault injection on the NFS server makes it easier to test the client's
+state manager and recovery threads.  Simulating errors on the server is
+easier than finding the right conditions that cause them naturally.
 
-Sorry, it was an oversight -- I should have cc'ed LKML. At this point,
-the patchset seems to work as expected, but I need to respin it to
-flesh out the comments. Testing it would be helpful.
+This patch uses debugfs to add a simple framework for fault injection to
+the server.  This framework is a config option, and can be enabled
+through CONFIG_NFSD_FAULT_INJECTION.  Assuming you have debugfs mounted
+to /sys/debug, a set of files will be created in /sys/debug/nfsd/.
+Writing to any of these files will cause the corresponding action and
+write a log entry to dmesg.
 
-I'll be sure to cc LKML when I send the respun set...
+Changes in v6:
+- Check the return code when creating debugfs files
+- Clean up fault injection before freeing slabs
 
-Thanks,
+Changes in v5:
+- Fill out inject_ops[] array without a macro
+- Simplify debug messages and file creation
+
+Changes in v4:
+- Move fault injection function declarations to a new .h file
+- Use the Makefile to selectively compile fault_injection.c
+- Add copyright notices to top of files
+
+Changes in v3:
+- Code cleanup and better use of generic functions
+- Allow the user to input the number of state objects to delete
+- Remove "forget_everything()" since forgetting a client is basically
+  the same thing
+
+Changes in v2:
+- Replaced "forget all state owners" with "forget all open owners"
+- Include fs/nfsd/fault_inject.c in the patch
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/Kconfig        |   10 ++++
+ fs/nfsd/Makefile       |    1 +
+ fs/nfsd/fault_inject.c |   91 ++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/fault_inject.h |   28 ++++++++++++
+ fs/nfsd/nfs4state.c    |  115 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsctl.c       |    7 +++
+ 6 files changed, 252 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfsd/fault_inject.c
+ create mode 100644 fs/nfsd/fault_inject.h
+
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 10e6366..8df1ea4 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -80,3 +80,13 @@ config NFSD_V4
+ 	  available from http://linux-nfs.org/.
+ 
+ 	  If unsure, say N.
++
++config NFSD_FAULT_INJECTION
++	bool "NFS server manual fault injection"
++	depends on NFSD_V4 && DEBUG_KERNEL
++	help
++	  This option enables support for manually injecting faults
++	  into the NFS server.  This is intended to be used for
++	  testing error recovery on the NFS client.
++
++	  If unsure, say N.
+diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+index 9b118ee..af32ef0 100644
+--- a/fs/nfsd/Makefile
++++ b/fs/nfsd/Makefile
+@@ -6,6 +6,7 @@ obj-$(CONFIG_NFSD)	+= nfsd.o
+ 
+ nfsd-y 			:= nfssvc.o nfsctl.o nfsproc.o nfsfh.o vfs.o \
+ 			   export.o auth.o lockd.o nfscache.o nfsxdr.o stats.o
++nfsd-$(CONFIG_NFSD_FAULT_INJECTION) += fault_inject.o
+ nfsd-$(CONFIG_NFSD_V2_ACL) += nfs2acl.o
+ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
+ nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+new file mode 100644
+index 0000000..ce7f075
+--- /dev/null
++++ b/fs/nfsd/fault_inject.c
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
++ *
++ * Uses debugfs to create fault injection points for client testing
++ */
++
++#include <linux/types.h>
++#include <linux/fs.h>
++#include <linux/debugfs.h>
++#include <linux/module.h>
++
++#include "state.h"
++#include "fault_inject.h"
++
++struct nfsd_fault_inject_op {
++	char *file;
++	void (*func)(u64);
++};
++
++static struct nfsd_fault_inject_op inject_ops[] = {
++	{
++		.file   = "forget_clients",
++		.func   = nfsd_forget_clients,
++	},
++	{
++		.file   = "forget_locks",
++		.func   = nfsd_forget_locks,
++	},
++	{
++		.file   = "forget_openowners",
++		.func   = nfsd_forget_openowners,
++	},
++	{
++		.file   = "forget_delegations",
++		.func   = nfsd_forget_delegations,
++	},
++	{
++		.file   = "recall_delegations",
++		.func   = nfsd_recall_delegations,
++	},
++};
++
++static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
++static struct dentry *debug_dir;
++
++static int nfsd_inject_set(void *op_ptr, u64 val)
++{
++	struct nfsd_fault_inject_op *op = op_ptr;
++
++	if (val == 0)
++		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
++	else
++		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
++
++	op->func(val);
++	return 0;
++}
++
++static int nfsd_inject_get(void *data, u64 *val)
++{
++	return 0;
++}
++
++DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
++
++void nfsd_fault_inject_cleanup(void)
++{
++	debugfs_remove_recursive(debug_dir);
++}
++
++int nfsd_fault_inject_init(void)
++{
++	unsigned int i;
++	struct nfsd_fault_inject_op *op;
++	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
++
++	debug_dir = debugfs_create_dir("nfsd", NULL);
++	if (!debug_dir)
++		goto fail;
++
++	for (i = 0; i < NUM_INJECT_OPS; i++) {
++		op = &inject_ops[i];
++		if (!debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd))
++			goto fail;
++	}
++	return 0;
++
++fail:
++	nfsd_fault_inject_cleanup();
++	return -ENOMEM;
++}
+diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
+new file mode 100644
+index 0000000..90bd057
+--- /dev/null
++++ b/fs/nfsd/fault_inject.h
+@@ -0,0 +1,28 @@
++/*
++ * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
++ *
++ * Function definitions for fault injection
++ */
++
++#ifndef LINUX_NFSD_FAULT_INJECT_H
++#define LINUX_NFSD_FAULT_INJECT_H
++
++#ifdef CONFIG_NFSD_FAULT_INJECTION
++int nfsd_fault_inject_init(void);
++void nfsd_fault_inject_cleanup(void);
++void nfsd_forget_clients(u64);
++void nfsd_forget_locks(u64);
++void nfsd_forget_openowners(u64);
++void nfsd_forget_delegations(u64);
++void nfsd_recall_delegations(u64);
++#else /* CONFIG_NFSD_FAULT_INJECTION */
++static inline int nfsd_fault_inject_init(void) { return 0; }
++static inline void nfsd_fault_inject_cleanup(void) {}
++static inline void nfsd_forget_clients(u64 num) {}
++static inline void nfsd_forget_locks(u64 num) {}
++static inline void nfsd_forget_openowners(u64 num) {}
++static inline void nfsd_forget_delegations(u64 num) {}
++static inline void nfsd_recall_delegations(u64 num) {}
++#endif /* CONFIG_NFSD_FAULT_INJECTION */
++
++#endif /* LINUX_NFSD_FAULT_INJECT_H */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 47e94e3..3c3762e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4394,6 +4394,121 @@ nfs4_check_open_reclaim(clientid_t *clid)
+ 	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
+ }
+ 
++#ifdef CONFIG_NFSD_FAULT_INJECTION
++
++void nfsd_forget_clients(u64 num)
++{
++	struct nfs4_client *clp, *next;
++	int count = 0;
++
++	nfs4_lock_state();
++	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
++		nfsd4_remove_clid_dir(clp);
++		expire_client(clp);
++		if (++count == num)
++			break;
++	}
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "NFSD: Forgot %d clients", count);
++}
++
++static void release_lockowner_sop(struct nfs4_stateowner *sop)
++{
++	release_lockowner(lockowner(sop));
++}
++
++static void release_openowner_sop(struct nfs4_stateowner *sop)
++{
++	release_openowner(openowner(sop));
++}
++
++static int nfsd_release_n_owners(u64 num,
++				struct list_head hashtbl[],
++				unsigned int hashtbl_size,
++				void (*release_sop)(struct nfs4_stateowner *))
++{
++	int i, count = 0;
++	struct nfs4_stateowner *sop, *next;
++
++	for (i = 0; i < hashtbl_size; i++) {
++		list_for_each_entry_safe(sop, next, &hashtbl[i], so_strhash) {
++			release_sop(sop);
++			if (++count == num)
++				return count;
++		}
++	}
++	return count;
++}
++
++void nfsd_forget_locks(u64 num)
++{
++	int count;
++
++	nfs4_lock_state();
++	count = nfsd_release_n_owners(num, lock_ownerstr_hashtbl,
++				     LOCK_HASH_SIZE, release_lockowner_sop);
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "NFSD: Forgot %d locks", count);
++}
++
++void nfsd_forget_openowners(u64 num)
++{
++	int count;
++
++	nfs4_lock_state();
++	count = nfsd_release_n_owners(num, open_ownerstr_hashtbl,
++				     OPEN_OWNER_HASH_SIZE, release_openowner_sop);
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
++}
++
++int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
++{
++	int i, count = 0;
++	struct nfs4_file *fp;
++	struct nfs4_delegation *dp, *next;
++
++	for (i = 0; i < FILE_HASH_SIZE; i++) {
++		list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
++			list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
++				deleg_func(dp);
++				if (++count == num)
++					return count;
++			}
++		}
++	}
++	return count;
++}
++
++void nfsd_forget_delegations(u64 num)
++{
++	unsigned int count;
++
++	nfs4_lock_state();
++	count = nfsd_process_n_delegations(num, unhash_delegation);
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
++}
++
++void nfsd_recall_delegations(u64 num)
++{
++	unsigned int count;
++
++	nfs4_lock_state();
++	spin_lock(&recall_lock);
++	count = nfsd_process_n_delegations(num, nfsd_break_one_deleg);
++	spin_unlock(&recall_lock);
++	nfs4_unlock_state();
++
++	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
++}
++
++#endif /* CONFIG_NFSD_FAULT_INJECTION */
++
+ /* initialization to perform at module load time: */
+ 
+ int
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index db34a58..34c841a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -17,6 +17,7 @@
+ #include "idmap.h"
+ #include "nfsd.h"
+ #include "cache.h"
++#include "fault_inject.h"
+ 
+ /*
+  *	We have a single directory with several nodes in it.
+@@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
+ 	retval = nfs4_state_init(); /* nfs4 locking state */
+ 	if (retval)
+ 		return retval;
++	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
++	if (retval)
++		goto out_free_slabs;
+ 	nfsd_stat_init();	/* Statistics */
+ 	retval = nfsd_reply_cache_init();
+ 	if (retval)
+@@ -1160,6 +1164,8 @@ out_free_cache:
+ 	nfsd_reply_cache_shutdown();
+ out_free_stat:
+ 	nfsd_stat_shutdown();
++	nfsd_fault_inject_cleanup();
++out_free_slabs:
+ 	nfsd4_free_slabs();
+ 	return retval;
+ }
+@@ -1174,6 +1180,7 @@ static void __exit exit_nfsd(void)
+ 	nfsd_lockd_shutdown();
+ 	nfsd_idmap_shutdown();
+ 	nfsd4_free_slabs();
++	nfsd_fault_inject_cleanup();
+ 	unregister_filesystem(&nfsd_fs_type);
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7
+
