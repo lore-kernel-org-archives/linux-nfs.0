@@ -1,66 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48036 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755822Ab1KUJvi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 04:51:38 -0500
-Received: by bke11 with SMTP id 11so6316924bke.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Nov 2011 01:51:37 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:49291 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753525Ab1KATFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 15:05:25 -0400
+Date: Tue, 1 Nov 2011 15:05:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Call nfsd4_init_slabs() from init_nfsd()
+Message-ID: <20111101190523.GA1891@fieldses.org>
+References: <1320171487-13966-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
-References: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
-	<081C1E0B-795E-4138-B66A-479F73BB3AC5@netapp.com>
-	<CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
-Date: Mon, 21 Nov 2011 10:51:36 +0100
-Message-ID: <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
-Subject: Re: server reboot recovery is broken with 3.1 (3.2?) with nfsv41 clients
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1320171487-13966-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RHEL6.2 has the same issue. I just rebooted server (mds + ds) during read.
+On Tue, Nov 01, 2011 at 02:18:07PM -0400, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> init_nfsd() was calling free_slabs() during cleanup code, but the call
+> to init_slabs() was hidden in nfsd4_state_init().  This could be
+> confusing to people unfamiliar with the code.
 
-Kernel thread dump attached.
+Good idea.  But: while you're at it, since you just removed the only
+possible error return from nfs4_state_init(), how about going ahead and
+making that a void return.  Probably in the same patch.--b.
 
-Tigran.
-
-On Fri, Nov 18, 2011 at 5:09 PM, Tigran Mkrtchyan
-<tigran.mkrtchyan@desy.de> wrote:
-> Both!
->
-> On Fri, Nov 18, 2011 at 3:08 PM, Adamson, Andy
-> <William.Adamson@netapp.com> wrote:
->>
->> On Nov 18, 2011, at 8:57 AM, Tigran Mkrtchyan wrote:
->>
->>> Dear  nfs hackers,
->>>
->>> it looks like with kernel 3.1 client cant recover from server reboots.
->>> The nfs mount hangs and there are no packages sent from a client to the server.
->>> This was IO with pnfs.
->>
->>
->> Hi Tigran
->>
->> Is this an MDS reboot? DS reboot?
->>
->> Thanks
->>
->> -->Andy
->>>
->>> Regards,
->>>   Tigran.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c |    5 +----
+>  fs/nfsd/nfsctl.c    |    6 +++++-
+>  fs/nfsd/nfsd.h      |    2 ++
+>  3 files changed, 8 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 47e94e3..765b292 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2301,7 +2301,7 @@ nfsd4_free_slabs(void)
+>  	nfsd4_free_slab(&deleg_slab);
+>  }
+>  
+> -static int
+> +int
+>  nfsd4_init_slabs(void)
+>  {
+>  	openowner_slab = kmem_cache_create("nfsd4_openowners",
+> @@ -4401,9 +4401,6 @@ nfs4_state_init(void)
+>  {
+>  	int i, status;
+>  
+> -	status = nfsd4_init_slabs();
+> -	if (status)
+> -		return status;
+>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+>  		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
+>  		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index db34a58..883ea54 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1127,9 +1127,12 @@ static int __init init_nfsd(void)
+>  	int retval;
+>  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+>  
+> -	retval = nfs4_state_init(); /* nfs4 locking state */
+> +	retval = nfsd4_init_slabs();
+>  	if (retval)
+>  		return retval;
+> +	retval = nfs4_state_init(); /* nfs4 locking state */
+> +	if (retval)
+> +		goto out_free_slabs;
+>  	nfsd_stat_init();	/* Statistics */
+>  	retval = nfsd_reply_cache_init();
+>  	if (retval)
+> @@ -1160,6 +1163,7 @@ out_free_cache:
+>  	nfsd_reply_cache_shutdown();
+>  out_free_stat:
+>  	nfsd_stat_shutdown();
+> +out_free_slabs:
+>  	nfsd4_free_slabs();
+>  	return retval;
+>  }
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 58134a2..46f97ba 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -105,6 +105,7 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+>  #ifdef CONFIG_NFSD_V4
+>  extern unsigned int max_delegations;
+>  int nfs4_state_init(void);
+> +int nfsd4_init_slabs(void);
+>  void nfsd4_free_slabs(void);
+>  int nfs4_state_start(void);
+>  void nfs4_state_shutdown(void);
+> @@ -112,6 +113,7 @@ void nfs4_reset_lease(time_t leasetime);
+>  int nfs4_reset_recoverydir(char *recdir);
+>  #else
+>  static inline int nfs4_state_init(void) { return 0; }
+> +static inline int nfsd4_init_slabs(void) { return 0; }
+>  static inline void nfsd4_free_slabs(void) { }
+>  static inline int nfs4_state_start(void) { return 0; }
+>  static inline void nfs4_state_shutdown(void) { }
+> -- 
+> 1.7.7
+> 
