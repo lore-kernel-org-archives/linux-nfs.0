@@ -1,85 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21502 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56453 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752093Ab1KRUeN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 15:34:13 -0500
-Message-ID: <1321648435.2653.53.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: John Hughes <john@calvaedi.com>
-Cc: John Hughes <john@calva.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Fri, 18 Nov 2011 22:33:55 +0200
-In-Reply-To: <4EC6AFA9.9000705@calvaedi.com>
-References: <4EC66D12.2090505@Calva.COM>
-	 <1321641333.2653.15.camel@lade.trondhjem.org>
-	 <4EC6AFA9.9000705@calvaedi.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1750891Ab1KARfi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 13:35:38 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 3/3] NFSD: Added fault injection documentation
+Date: Tue,  1 Nov 2011 13:35:23 -0400
+Message-Id: <1320168923-29671-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
+References: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-18 at 20:19 +0100, John Hughes wrote: 
-> On 11/18/2011 07:35 PM, Trond Myklebust wrote:
-> > On Fri, 2011-11-18 at 15:34 +0100, John Hughes wrote:
-> >    
-> >> Description: Add "-e" (ticket expiry is error) option to rpc.gssd
-> >>    In kernels starting around 2.6.34 the nfs4 server will block all I/O
-> >>    when a user ticket expires.  In earlier kernels the I/O would fail
-> >>    with an EACCESS error.  This patch adds a "-e" option to rpc.gssd
-> >>    which allow the earlier behaviour (EKEYEXPIRED is converted to
-> >>    EACCESS).  This behaviour is particularly useful when user home
-> >>    directories are nfs4 mounted with krb5 security - if the user is
-> >>    absent from their workstation for long enough for the ticket to
-> >>    expire a new ticket will be obtained (via pam_krb5) by the screen
-> >>    unlock process.
-> >>      
-> > You need a big fat warning somewhere that enabling this option WILL
-> > cause data corruption...
-> >    
-> Why?
-> 
-> Because some process may get the EACCES error half way through it's 
-> operation.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-No. Because the process can receive a reply to the write() syscall that
-indicates that the data is safe, but the EKEYEXPIRED error will cause
-the data to be lost when the client tries to actually commit the data to
-disk.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ Documentation/filesystems/nfs/00-INDEX            |    2 +
+ Documentation/filesystems/nfs/fault_injection.txt |   69 +++++++++++++++++++++
+ 2 files changed, 71 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/fault_injection.txt
 
-> Ok, that needs documenting.
-> 
-> So far we seem to have established that the old way of doing things was 
-> bad because it produced non-posix behaviour and could lead to data 
-> corruption if a ticket expires while a process needs it.
-> 
-> And the new way is bad because it leaves people puzzling over hung 
-> workstations in the morning.
-> 
-> The traditional Kerberos/AFS way was to behave the old way, and use 
-> krenew to keep the ticket from expiring if a process needed to be run 
-> overnight.
-
-Which is just wrong: the general intention of kerberos security is to
-ensure that the _user_ has ACKed an operation. Renewing tickets without
-user input would circumvent that intention. If you need to have the job
-run overnight, then ask for a longer lifetime for your ticket.
-
-> What other way is there of fixing the problem if we are going to keep 
-> the "hang 'till a ticket turns up" behaviour?  (rewrite gnome and kde 
-> seems kind of a big job).
-
-Notify the kernel that a ticket is about to expire so that the kernel
-can decide to block the process on the next NFS-related syscall.
-
-Trond
-
+diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
+index a57e124..1716874 100644
+--- a/Documentation/filesystems/nfs/00-INDEX
++++ b/Documentation/filesystems/nfs/00-INDEX
+@@ -2,6 +2,8 @@
+ 	- this file (nfs-related documentation).
+ Exporting
+ 	- explanation of how to make filesystems exportable.
++fault_injection.txt
++	- information for using fault injection on the server
+ knfsd-stats.txt
+ 	- statistics which the NFS server makes available to user space.
+ nfs.txt
+diff --git a/Documentation/filesystems/nfs/fault_injection.txt b/Documentation/filesystems/nfs/fault_injection.txt
+new file mode 100644
+index 0000000..426d166
+--- /dev/null
++++ b/Documentation/filesystems/nfs/fault_injection.txt
+@@ -0,0 +1,69 @@
++
++Fault Injection
++===============
++Fault injection is a method for forcing errors that may not normally occur, or
++may be difficult to reproduce.  Forcing these errors in a controlled environment
++can help the developer find and fix bugs before their code is shipped in a
++production system.  Injecting an error on the Linux NFS server will allow us to
++observe how the client reacts and if it manages to recover its state correctly.
++
++NFSD_FAULT_INJECTION must be selected when configuring the kernel to use this
++feature.
++
++
++Using Fault Injection
++=====================
++On the client, mount the fault injection server through NFS v4.0+ and do some
++work over NFS (open files, take locks, ...).
++
++On the server, mount the debugfs filesystem to <debug_dir> and ls
++<debug_dir>/nfsd.  This will show a list of files that will be used for
++injecting faults on the NFS server.  As root, write a number n to the file
++corresponding to the action you want the server to take.  The server will then
++process the first n items it finds.  So if you want to forget 5 locks, echo '5'
++to <debug_dir>/nfsd/forget_locks.  A value of 0 will tell the server to forget
++all corresponding items.  A log message will be created containing the number
++of items forgotten (check dmesg).
++
++Go back to work on the client and check if the client recovered from the error
++correctly.
++
++
++Available Faults
++================
++forget_clients:
++     The NFS server keeps a list of clients that have placed a mount call.  If
++     this list is cleared, the server will have no knowledge of who the client
++     is, forcing the client to reauthenticate with the server.
++
++forget_openowners:
++     The NFS server keeps a list of what files are currently opened and who
++     they were opened by.  Clearing this list will force the client to reopen
++     its files.
++
++forget_locks:
++     The NFS server keeps a list of what files are currently locked in the VFS.
++     Clearing this list will force the client to reclaim its locks (files are
++     unlocked through the VFS as they are cleared from this list).
++
++forget_delegations:
++     A delegation is used to assure the client that a file, or part of a file,
++     has not changed since the delegation was awarded.  Clearing this list will
++     force the client to reaquire its delegation before accessing the file
++     again.
++
++recall_delegations:
++     Delegations can be recalled by the server when another client attempts to
++     access a file.  This test will notify the client that its delegation has
++     been revoked, forcing the client to reaquire the delegation before using
++     the file again.
++
++
++tools/nfs/inject_faults.sh script
++=================================
++This script has been created to ease the fault injection process.  This script
++will detect the mounted debugfs directory and write to the files located there
++based on the arguments passed by the user.  For example, running
++`inject_faults.sh forget_locks 1` as root will instruct the server to forget
++one lock.  Running `inject_faults forget_locks` will instruct the server to
++forgetall locks.
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.7
 
