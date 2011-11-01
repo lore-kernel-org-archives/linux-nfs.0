@@ -1,38 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.aixigo.de ([80.149.209.52]:52943 "EHLO mail.aixigo.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752740Ab1JQIKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Oct 2011 04:10:34 -0400
-Received: from srvvm01.ac.aixigo.de. (mail.ac.aixigo.de [172.19.96.11])
-	by mail.aixigo.com (8.14.3/8.14.3) with ESMTP id p9H7rcwm003269
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2011 09:53:38 +0200 (CEST)
-Received: from dpcl082.ac.aixigo.de (dpcl082.ac.aixigo.de [172.19.97.128])
-	by srvvm01.ac.aixigo.de. (8.14.3/8.14.3/Debian-9.4) with ESMTP id p9H7rblB032368
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2011 09:53:38 +0200
-Message-ID: <4E9BDF01.6090106@aixigo.de>
-Date: Mon, 17 Oct 2011 09:53:37 +0200
-From: Harald Dunkel <harald.dunkel@aixigo.de>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:34711 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750704Ab1KABhX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2011 21:37:23 -0400
+Date: Mon, 31 Oct 2011 21:37:20 -0400
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] Silence compiler warning
+Message-ID: <20111101013720.GA4237@umich.edu>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: nfs3 30% faster than nfs4?
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+I think this is still needed, isn't it?  I haven't tried compiling
+nfs-for-next but I don't see a fix for it in there.
 
-I did a brief test on a local nfs server: Extracting the
-linux kernel sources on a nfs partition it seems that nfs3
-is 30% faster than nfs4. For nfs3 I got 5.2MB/sec. Nfs4
-gave me just 3.8MB/sec. The server was idle except for this
-test.
+From: Jim Rees <rees@umich.edu>
+Date: Sun, 16 Oct 2011 20:06:52 -0400
+Subject: [PATCH] Silence compiler warning
 
-Client and server were running 2.6.39 from the Debian backports
-repository. I just changed the mount option on the client to
-select nfs3 or nfs4.
+fs/nfs/callback_proc.c: In function ‘do_callback_layoutrecall’:
+fs/nfs/callback_proc.c:115:26: warning: ‘lo’ may be used uninitialized in this function
 
-I don't want to complain, but I did not expect this huge loss
-in performance for moving to nfs4. Any helpful comment would be
-highly appreciated.
+No functional change. If no layout is found, we'll return before  using
+"lo".
 
-Harri
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/callback_proc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 43926ad..f384eb1 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -112,8 +112,8 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 				  struct cb_layoutrecallargs *args)
+ {
+ 	struct nfs_server *server;
+-	struct pnfs_layout_hdr *lo;
+-	struct inode *ino;
++	struct pnfs_layout_hdr *lo = NULL;
++	struct inode *ino = NULL;
+ 	bool found = false;
+ 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+ 	LIST_HEAD(free_me_list);
+-- 
+1.7.4.1
