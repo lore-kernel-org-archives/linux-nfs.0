@@ -1,149 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:26382 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755363Ab1KHKm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 05:42:28 -0500
-Subject: [PATCH v4 2/3] SUNRPC: optimize net_ns dereferencing in rpcbind
-	creation calls
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 14:41:27 +0300
-Message-ID: <20111108104126.1714.42996.stgit@localhost6.localdomain6>
-In-Reply-To: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
-References: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:33095 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751350Ab1KAGXs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 02:23:48 -0400
+Subject: [PATCH] nfs: Remove unused variable from write.c
+From: Rakib Mullick <rakib.mullick@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 01 Nov 2011 12:23:42 +0600
+Message-ID: <1320128622.3340.6.camel@localhost.localdomain>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static rpcbind creation functions can be parametrized by network namespace
-pointer, calculated only once, instead of using init_net pointer (or taking it
-from current when virtualization will be comleted) in many places.
+When CONFIG_NFS=y and CONFIG_NFS_V3_{,V4}=n we get the following warning.
+	
+	fs/nfs/write.c: In function ‘nfs_writeback_done’:
+	fs/nfs/write.c:1246:21: warning: unused variable ‘server’
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+ Remove the variable 'server' to fix the above warning.
 
+
+Signed-off-by: Rakib Mullick <rakib.mullick@gmail.com>
 ---
- net/sunrpc/rpcb_clnt.c |   35 +++++++++++++++++++----------------
- 1 files changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 7d32f19..3df276a 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -161,10 +161,10 @@ static void rpcb_map_release(void *data)
- 	kfree(map);
- }
- 
--static int rpcb_get_local(void)
-+static int rpcb_get_local(struct net *net)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 2219c88..77a8c32 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1243,7 +1243,6 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
  {
- 	int cnt;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct nfs_writeargs	*argp = &data->args;
+ 	struct nfs_writeres	*resp = &data->res;
+-	struct nfs_server	*server = NFS_SERVER(data->inode);
+ 	int status;
  
- 	spin_lock(&sn->rpcb_clnt_lock);
- 	if (sn->rpcb_users)
-@@ -201,9 +201,10 @@ void rpcb_put_local(void)
- 	}
- }
- 
--static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
-+static void rpcb_set_local(struct net *net, struct rpc_clnt *clnt,
-+			struct rpc_clnt *clnt4)
- {
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	/* Protected by rpcb_create_local_mutex */
- 	sn->rpcb_local_clnt = clnt;
-@@ -211,22 +212,23 @@ static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
- 	smp_wmb(); 
- 	sn->rpcb_users = 1;
- 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
--			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
--			sn->rpcb_local_clnt4);
-+			"%p, rpcb_local_clnt4: %p) for net %p%s\n",
-+			sn->rpcb_local_clnt, sn->rpcb_local_clnt4,
-+			net, (net == &init_net) ? " (init_net)" : "");
- }
- 
- /*
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local_unix(void)
-+static int rpcb_create_local_unix(struct net *net)
- {
- 	static const struct sockaddr_un rpcb_localaddr_rpcbind = {
- 		.sun_family		= AF_LOCAL,
- 		.sun_path		= RPCBIND_SOCK_PATHNAME,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= XPRT_TRANSPORT_LOCAL,
- 		.address	= (struct sockaddr *)&rpcb_localaddr_rpcbind,
- 		.addrsize	= sizeof(rpcb_localaddr_rpcbind),
-@@ -259,7 +261,7 @@ static int rpcb_create_local_unix(void)
- 		clnt4 = NULL;
- 	}
- 
--	rpcb_set_local(clnt, clnt4);
-+	rpcb_set_local(net, clnt, clnt4);
- 
- out:
- 	return result;
-@@ -269,7 +271,7 @@ out:
-  * Returns zero on success, otherwise a negative errno value
-  * is returned.
-  */
--static int rpcb_create_local_net(void)
-+static int rpcb_create_local_net(struct net *net)
- {
- 	static const struct sockaddr_in rpcb_inaddr_loopback = {
- 		.sin_family		= AF_INET,
-@@ -277,7 +279,7 @@ static int rpcb_create_local_net(void)
- 		.sin_port		= htons(RPCBIND_PORT),
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= (struct sockaddr *)&rpcb_inaddr_loopback,
- 		.addrsize	= sizeof(rpcb_inaddr_loopback),
-@@ -311,7 +313,7 @@ static int rpcb_create_local_net(void)
- 		clnt4 = NULL;
- 	}
- 
--	rpcb_set_local(clnt, clnt4);
-+	rpcb_set_local(net, clnt, clnt4);
- 
- out:
- 	return result;
-@@ -325,16 +327,17 @@ int rpcb_create_local(void)
- {
- 	static DEFINE_MUTEX(rpcb_create_local_mutex);
- 	int result = 0;
-+	struct net *net = &init_net;
- 
--	if (rpcb_get_local())
-+	if (rpcb_get_local(net))
- 		return result;
- 
- 	mutex_lock(&rpcb_create_local_mutex);
--	if (rpcb_get_local())
-+	if (rpcb_get_local(net))
- 		goto out;
- 
--	if (rpcb_create_local_unix() != 0)
--		result = rpcb_create_local_net();
-+	if (rpcb_create_local_unix(net) != 0)
-+		result = rpcb_create_local_net(net);
- 
- out:
- 	mutex_unlock(&rpcb_create_local_mutex);
+ 	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
+@@ -1277,7 +1276,7 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		if (time_before(complain, jiffies)) {
+ 			dprintk("NFS:       faulty NFS server %s:"
+ 				" (committed = %d) != (stable = %d)\n",
+-				server->nfs_client->cl_hostname,
++			NFS_SERVER(data->inode)->nfs_client->cl_hostname,
+ 				resp->verf->committed, argp->stable);
+ 			complain = jiffies + 300 * HZ;
+ 		}
+
 
