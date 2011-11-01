@@ -1,69 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32838 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40660 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753847Ab1KVMKk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 07:10:40 -0500
-Message-ID: <1321963839.7645.5.camel@lade.trondhjem.org>
-Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andrew Cooper <andrew.cooper3@citrix.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Date: Tue, 22 Nov 2011 14:10:39 +0200
-In-Reply-To: <4ECB8F47.105@citrix.com>
-References: <4EC6A681.30902@citrix.com>
-		  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com>
-		 <1321643673.2653.41.camel@lade.trondhjem.org>
-	 <4EC6B82B.3000701@citrix.com>	 <4ECA94F9.4090503@citrix.com>
-	 <1321961913.3323.67.camel@lade.trondhjem.org> <4ECB8F47.105@citrix.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1753966Ab1KAOWc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 10:22:32 -0400
+Message-ID: <4EB000A6.9040508@netapp.com>
+Date: Tue, 01 Nov 2011 10:22:30 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFSD: Added fault injection
+References: <1319455259-3136-1-git-send-email-bjschuma@netapp.com> <20111028212450.GA7441@fieldses.org> <4EAFFD65.4010407@netapp.com> <20111101141746.GD32248@fieldses.org>
+In-Reply-To: <20111101141746.GD32248@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-22 at 12:02 +0000, Andrew Cooper wrote: 
-> On 22/11/11 11:38, Trond Myklebust wrote:
-> > On Mon, 2011-11-21 at 18:14 +0000, Andrew Cooper wrote: 
-> >> Following some debugging, I believe that the attached patch fixes the
-> >> problem.
-> >>
-> >> Simply returning EAGAIN is not sufficient, as the task does not get
-> >> requeued, and times out 13 seconds later (as per our mount options). 
-> >> Setting the SOCK_ASYNC_NOSPACE bit causes the requeue to happen.
-> >>
-> >> I realize that this is a gross hack and I should probably not be using
-> >> SOCK_ASYNC_NOSPACE in that way.  Is there a better way to achieve the
-> >> same solution?
-> >>
-> > What you are doing will cause the request to be put to sleep with no
-> > guarantee that it will ever be woken up. Why would we want to do that if
-> > there is no report of a tcp window/buffer space congestion?
-> 
-> But the reason we get to this code is because there was a report of
-> space collision.  What would you suggest instead?  Changing
-> xs_{tcp,udp}_send_request() to retry in this case would defeat the point
-> of having xs_nospace().
+On Tue 01 Nov 2011 10:17:46 AM EDT, J. Bruce Fields wrote:
+> On Tue, Nov 01, 2011 at 10:08:37AM -0400, Bryan Schumaker wrote:
+>> On Fri 28 Oct 2011 05:24:50 PM EDT, J. Bruce Fields wrote:
+>>> On Mon, Oct 24, 2011 at 07:20:57AM -0400, bjschuma@netapp.com wrote:
+>>> ...
+>>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>>> index db34a58..e67f30c 100644
+>>>> --- a/fs/nfsd/nfsctl.c
+>>>> +++ b/fs/nfsd/nfsctl.c
+>>> ...
+>>>> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
+>>>>  	retval = nfs4_state_init(); /* nfs4 locking state */
+>>>>  	if (retval)
+>>>>  		return retval;
+>>>> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+>>>> +	if (retval)
+>>>> +		goto out_cleanup_fault_injection;
+>>>>  	nfsd_stat_init();	/* Statistics */
+>>>>  	retval = nfsd_reply_cache_init();
+>>>>  	if (retval)
+>>>> @@ -1161,6 +1165,8 @@ out_free_cache:
+>>>>  out_free_stat:
+>>>>  	nfsd_stat_shutdown();
+>>>>  	nfsd4_free_slabs();
+>>>> +out_cleanup_fault_injection:
+>>>> +	nfsd_fault_inject_cleanup();
+>>>
+>>> Check the cleanup here again....  The slabs are allocated in state_init,
+>>> so you need to do that on nfsd_fault_inject_init, but you *don't* need
+>>> the fault_inject_cleanup in that case, since fault_inject_init cleanup
+>>> cleans up after itself--that's needed only on later failures.
+>>
+>> Would it be better to change the fault_inject_init() function so it 
+>> doesn't clean up after itself?  This would keep it consistent with the 
+>> other nfsd init functions.
+>
+> I don't think so.  The pattern here is pretty common throughout the
+> kernel; it's approximately:
+>
+> 	do_thing1();
+> 	err = do_thing2();
+> 	if (err)
+> 		goto undo_thing1;
+> 	err = do_thing3();
+> 	if (err)
+> 		goto undo_thing2;
+> 	...
+>
+> Functions are no-ops on failure, and the caller's just responsible for
+> cleaning up previous stuff.
 
-I suggest doing absolutely nothing: do what you originally proposed,
-which is to report the EAGAIN so that the client state machine retries
-the socket write.
+Ok, I won't change that.
 
-My point is that this is a context which is _not_ atomic with the
-original report of tcp window/buffer space congestion. There are no
-locks or anything else that will guarantee that the congestion still
-exists, and the fact that the SOCK_ASYNC_NOSPACE flag is now clear
-indicates that this is the case.
-The whole purpose of xs_nospace() is to wait until a congestion
-condition clears. If the congestion clears before we get here, then we
-have no reason to do anything special other than retry.
+>
+>> I didn't realize that slabs were initialized in the state_init()
+>> function, I'll fix that.
+>
+> I'll admit that's confusing.  Any suggestion to make it clearer welcome.
 
-Trond
+Sure.  The comment after the call to nfs4_state_init() is "nfs4 locking 
+state".  Maybe this could be changed to "nfs4 locking state and slabs"? 
+ I can make this change and send it as a separate patch if you would 
+like.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
