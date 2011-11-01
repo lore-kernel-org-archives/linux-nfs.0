@@ -1,112 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63082 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751602Ab1KDUs3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 16:48:29 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 3/4] NFSv4.1: rename nfs4_free_slot and nfs4_find_slot
-Date: Fri,  4 Nov 2011 16:47:48 -0400
-Message-Id: <1320439669-3411-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1320439669-3411-1-git-send-email-andros@netapp.com>
-References: <1320439669-3411-1-git-send-email-andros@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:50184 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750790Ab1KAF3s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 01:29:48 -0400
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <rees@umich.edu>
+CC: <bhalevy@tonian.com>, <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
+        <nfsv4@ietf.org>
+Date: Tue, 1 Nov 2011 01:29:27 -0400
+Subject: RE: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
+Message-ID: <F19688880B763E40B28B2B462677FBF805C4B72E0C@MX09A.corp.emc.com>
+References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
+	 <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
+	 <1320076148.4714.4.camel@lade.trondhjem.org>
+	 <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
+	 <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com>
+	 <1320082964.4714.23.camel@lade.trondhjem.org> <4EAEE173.80306@tonian.com>
+	 <1320085212.4714.48.camel@lade.trondhjem.org>
+	 <20111031183131.GA1925@umich.edu>
+ <1320086399.4714.60.camel@lade.trondhjem.org>
+In-Reply-To: <1320086399.4714.60.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-These functions deal in slotid's, not slots.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   24 ++++++++++++------------
- 1 files changed, 12 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9c8afc1..deb88d9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -438,7 +438,7 @@ nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
- }
- 
- /*
-- * Return the slot associated with the slotid returned by nfs4_find_slot.
-+ * Return the slot associated with the slotid returned by nfs4_find_slotid.
-  * If the slot is not found, it has not been allocated: the NULL return
-  * puts the request on the slot table waitq and dynamically allocates a
-  * new slot.
-@@ -522,9 +522,9 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
- }
- 
- /*
-- * nfs4_free_slot - free a slot and efficiently update slot table.
-+ * nfs4_free_slotid - free a slotid and efficiently update slot table.
-  *
-- * freeing a slot is trivially done by clearing its respective bit
-+ * freeing a slotid is trivially done by clearing its respective bit
-  * in the bitmap.
-  * If the freed slotid equals highest_used_slotid we want to update it
-  * so that the server would be able to size down the slot table if needed,
-@@ -537,7 +537,7 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
-  * Must be called while holding tbl->slot_tbl_lock
-  */
- static void
--nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
-+nfs4_free_slotid(struct nfs4_slot_table *tbl, u8 free_slotid)
- {
- 	int slotid = free_slotid;
- 
-@@ -603,7 +603,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 	}
- 
- 	spin_lock(&tbl->slot_tbl_lock);
--	nfs4_free_slot(tbl, res->sr_slot->slotid);
-+	nfs4_free_slotid(tbl, res->sr_slot->slotid);
- 	nfs4_put_slot_locked(res->sr_slot);
- 	nfs4_check_drain_fc_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
-@@ -674,17 +674,17 @@ static int nfs4_sequence_done(struct rpc_task *task,
- }
- 
- /*
-- * nfs4_find_slot - efficiently look for a free slot
-+ * nfs4_find_slotid - efficiently look for a free slotid
-  *
-- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
-- * If found, we mark the slot as used, update the highest_used_slotid,
-+ * nfs4_find_slotid looks for an unset bit in the used_slots bitmap.
-+ * If found, we mark the slotid as used, update the highest_used_slotid,
-  * and respectively set up the sequence operation args.
-- * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
-+ * The slotid is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
-  *
-  * Note: must be called with under the slot_tbl_lock.
-  */
- static u8
--nfs4_find_slot(struct nfs4_slot_table *tbl)
-+nfs4_find_slotid(struct nfs4_slot_table *tbl)
- {
- 	int slotid;
- 	u8 ret_id = NFS4_MAX_SLOT_TABLE;
-@@ -744,7 +744,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 		return -EAGAIN;
- 	}
- 
--	slotid = nfs4_find_slot(tbl);
-+	slotid = nfs4_find_slotid(tbl);
- 	if (slotid == NFS4_MAX_SLOT_TABLE) {
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
- 		spin_unlock(&tbl->slot_tbl_lock);
-@@ -756,7 +756,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 		/* keep FIFO order */
- 		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
--		nfs4_free_slot(tbl, slotid);
-+		nfs4_free_slotid(tbl, slotid);
- 		spin_unlock(&tbl->slot_tbl_lock);
- 		dprintk("%s task pid %5u sleeping for dynamic slot %d\n",
- 			__func__, task->tk_pid, slotid);
--- 
-1.7.6.4
-
+SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IFRyb25k
+IE15a2xlYnVzdCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiBTZW50OiBU
+dWVzZGF5LCBOb3ZlbWJlciAwMSwgMjAxMSAyOjQwIEFNDQo+IFRvOiBKaW0gUmVlcw0KPiBDYzog
+QmVubnkgSGFsZXZ5OyBQZW5nIFRhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGVuZywg
+VGFvOyBuZnN2NCBsaXN0DQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMi8yXSBuZnM0MTogaGFuZGxl
+IEJMS19MQVlPVVQgQ0JfUkVDQUxMX0FOWQ0KPiANCj4gT24gTW9uLCAyMDExLTEwLTMxIGF0IDE0
+OjMxIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+
+ID4NCj4gPiAgIEkgZG9uJ3QgbmVjZXNzYXJpbHkgZGlzYWdyZWUgd2l0aCB3aGF0IHlvdSBhcmUg
+c2F5aW5nLCBidXQgSSBoYXZlIHlldCB0bw0KPiA+ICAgc2VlIGEgc2luZ2xlIHNlcnZlciBzaWRl
+IGltcGxlbWVudGF0aW9uIG9mIENCX1JFQ0FMTF9BTlksIGxldCBhbG9uZSBhbnkNCj4gPiAgIG51
+bWJlcnMgdGhhdCBpbmRpY2F0ZSBwZXJmb3JtYW5jZSBvciByZXNwb25zaXZlbmVzcyBwcm9ibGVt
+cyByZXN1bHRpbmcNCj4gPiAgIGZyb20gb3VyIGV4aXN0aW5nIGNsaWVudC1zaWRlIGltcGxlbWVu
+dGF0aW9uLg0KPiA+DQo+ID4gICBJIHRoZXJlZm9yZSBmaW5kIGl0IGhhcmQgdG8gdW5kZXJzdGFu
+ZCB3aHkgb3B0aW1pc2luZyB0aGlzIHBhcnRpY3VsYXINCj4gPiAgIGNvZGUgaXMgc3VjaCBhIGhp
+Z2ggcHJpb3JpdHksIG9yIHdoeSBhIHBhdGNoIHRoYXQgaXMgYWRkaW5nIHBlci1maWxlDQo+ID4g
+ICBsYXlvdXRyZXR1cm5zIHRvIGluaXRpYXRlX2J1bGtfZHJhaW5pbmcoKSBpcyBnb2luZyB0byBo
+ZWxwIGFueXRoaW5nIGF0DQo+ID4gICBhbGwuDQo+ID4NCj4gPiBUZXN0aW5nIGJldHdlZW4gdGhl
+IGxpbnV4IGJsb2NrIGxheW91dCBjbGllbnQgYW5kIHRoZSBFTUMgYmxvY2sgbGF5b3V0DQo+ID4g
+c2VydmVyIHJldmVhbGVkIGEgZGVhZGxvY2sgd2hlbiB0aGUgc2VydmVyIGhhZCBoYW5kZWQgb3V0
+IHNvbWUgbnVtYmVyIG9mDQo+ID4gbGF5b3V0cyBhbmQgY291bGRuJ3QgaGFuZCBvdXQgYW55IG1v
+cmUuICBTbyBub3cgdGhlIEVNQyBibG9jayBsYXlvdXQgc2VydmVyDQo+ID4gaW1wbGVtZW50cyBD
+Ql9SRUNBTExfQU5ZLiAgU28geWVzLCB0aGlzIHNvbHZlcyBhIHJlYWwgd29ybGQgcHJvYmxlbSwg
+YW5kDQo+ID4geWVzLCB0aGVyZSBpcyBhIHNlcnZlciB0aGF0IGltcGxlbWVudHMgdGhpcy4NCj4g
+Pg0KPiA+IFdlIGhhZCBzb21lIGRpc2N1c3Npb25zIGF0IHRoZSB0aW1lLCBhbmQgSSBkb24ndCBy
+ZW1lbWJlciBpZiB0aG9zZSB3ZXJlIG9uDQo+ID4gdGhlIGxpbnV4LW5mcyBsaXN0IG9yIGluIHNv
+bWUgb3RoZXIgZm9ydW0uICBXZSBkZWNpZGVkIHRoYXQgdGhlIGNsaWVudCB3YXMNCj4gPiBpbiB0
+aGUgYmVzdCBwb3NpdGlvbiB0byBkZWNpZGUgd2hpY2ggbGF5b3V0cyB3ZXJlIG5vIGxvbmdlciBu
+ZWVkZWQsIHNvIHdlDQo+ID4gbmVlZGVkIHNvbWUgd2F5IGZvciB0aGUgc2VydmVyIHRvIHRlbGwg
+dGhlIGNsaWVudCB0byByZXR1cm4gc29tZSBsYXlvdXRzDQo+ID4gd2l0aG91dCBzcGVjaWZ5aW5n
+IHdoaWNoIG9uZXMuICBDQl9SRUNBTExfQU5ZIHNlZW1lZCBjdXN0b20tbWFkZSBmb3IgdGhpcw0K
+PiA+IHB1cnBvc2UsIHNvIHdlIHVzZWQgaXQuDQo+ID4NCj4gPiBJIGRvbid0IHRoaW5rIGl0IHdv
+dWxkIGJlIGFwcHJvcHJpYXRlIGZvciB0aGUgc2VydmVyIHRvIHJlY2FsbCBhbGwgbGF5b3V0cw0K
+PiA+IHdoZW4gaXQgb25seSBuZWVkcyBzb21lIG9mIHRoZW0gYmFjay4NCj4gDQo+IEFzIEkgc2Fp
+ZCBwcmV2aW91c2x5OiB0aGUgY3VycmVudCBjbGllbnQgaW1wbGVtZW50YXRpb24gZGVhbHMgd2l0
+aA0KPiBDQl9SRUNBTExfQU5ZIGJ5IGNhbGxpbmcgaW5pdGlhdGVfZmlsZV9kcmFpbmluZygpLCB3
+aGljaCBmb3JnZXRzIF9hbGxfDQo+IGxheW91dHMuIElmIHRoYXQgaXMgd2hhdCB3ZSB3YW50IHRv
+IGNvbnRpbnVlIHRvIHVzZSwgdGhlbiBzZW5kaW5nDQo+IGxheW91dHJldHVybiB3aXRoIExBWU9V
+VFJFVFVSTjRfQUxMIGlzIGFwcHJvcHJpYXRlLg0KPiBPdGhlcndpc2UsIHBsZWFzZSBmaXggdGhl
+IGNsaWVudCB0byBiZSBtb3JlIHNlbGVjdGl2ZSAoaW4gd2hpY2ggY2FzZQ0KPiBMQVlPVVRSRVRV
+Uk40X0ZJTEUgbWF5IGJlIG1vcmUgYXBwcm9wcmlhdGUpIGFuZCBwbGVhc2UgcmVtZW1iZXIgdG8N
+Cj4gcHJvdmlkZSBwZXJmb3JtYW5jZSBudW1iZXJzIHRvIGp1c3RpZnkgdGhlIG5lZWQgZm9yIG9w
+dGltaXNhdGlvbi4NCk9LLCBmYWlyIGVub3VnaC4gSSB3aWxsIHdvcmsgb24gdGhlIHNlbGVjdGl2
+ZSBsYXlvdXRyZXR1cm4gYXBwcm9hY2ggd2hlbiBJIGhhdmUgdGhlIHRpbWUgc2xvdC4gQW5kIEkg
+YWdyZWUgaXQgaXMgb2YgbG93IHByaW9yaXR5Lg0KDQpUaGFua3MsDQpUYW8NCg0K
