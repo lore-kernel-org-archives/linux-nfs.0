@@ -1,100 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp1.onthe.net.au ([203.22.196.249]:41798 "EHLO
-	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751415Ab1K3HNZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 02:13:25 -0500
-Date: Wed, 30 Nov 2011 18:13:19 +1100
-From: Chris Dunlop <chris@onthe.net.au>
+Received: from fieldses.org ([174.143.236.118]:42416 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751853Ab1KAU1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 16:27:18 -0400
+Date: Tue, 1 Nov 2011 16:27:16 -0400
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        David Howells <dhowells@redhat.com>, Jan Harkes <jaharkes@cs.cmu.edu>,
-        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Greg Kroah-Hartman <gregkh@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-Message-ID: <20111130071319.GA16711@onthe.net.au>
-References: <1321861008-20611-1-git-send-email-chris@onthe.net.au>
- <20111129082501.GA569@onthe.net.au>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, trond@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+Message-ID: <20111101202715.GB1891@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 29, 2011 at 03:58:07AM -0800, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: Chris Dunlop [mailto:chris@onthe.net.au]
->> Sent: Tuesday, November 29, 2011 3:25 AM
->> 
->> I haven't seen any response to this patch which fixes an Oops in
->> d_revalidate. I hit this using NFS, but various other file systems look to be
->> likewise vulnerable, hence the broadness of the patch. The sequence leading
->> to the Oops is:
->> 
->> lookup_one_len() [fs/namei.c]
->>    calls __lookup_hash() [fs/namei.c] with nd == NULL,
->>       which can then call the file system specific d_revalidate(), passing in nd == NULL
->>          which will then Oops if nd is used without checking
+On Mon, Jul 18, 2011 at 08:09:15PM -0400, Myklebust, Trond wrote:
+> We should already optimize away the unnecessary setting of the size.
+
+Do you remember what commit fixed that?  (Was it an nfs change or a vfs
+change?)
+
+> The problem is that truncate() still requires you to set the ctime, whereas ftruncate() does not iirc.
+
+Staring at the code....  I think you mean the opposite?  I notice
+do_sys_ftruncate() calling
+
+	do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME, file);
+
+and do_sys_truncate() calling
+
+	do_truncate(path.dentry, length, 0, NULL);
+
+where the third argument is getting OR'd with ATTR_FILE to pass into
+notify_change().
+
+Also even when a setattr does get through, I don't understand why it
+should be invalidating our data cache.  Is there some reason it needs
+to, or is this just a case that hasn't seemed worth fixing?
+
+--b.
+
 > 
-> That's because you are "fixing" the wrong bug and if you'd checked the
-> list archives, you'd know that this has already been discussed several
-> times...
-
-Augh! Apologies.
-
-> By allowing stacked filesystems to pass nd==NULL (the VFS doesn't do
-> this), you're circumventing  the lookup intent mechanisms and will hit
-> all sorts of problems further down the road. If you want to fix the
-> problem, then please fix the broken stacking filesystems to stop using
-> lookup_one_len...
-
-OK.
-
-To avoid other people further wasting their and your time on
-exactly the same thing future, how something like the following
-patch, based on your comment in:
-
-http://article.gmane.org/gmane.linux.nfs/40370
-
-...and, if that's acceptable, is it worthwhile doing for the
-other file systems which are likewise currently vulnerable when
-abused by broken layered file systems?
-
-Chris
-
-----------------------------------------------------------------------
-Don't oops when abused by broken layered file systems
-
-Signed-off-by: Chris Dunlop <chris@onthe.net.au>
----
- fs/nfs/dir.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index b238d95..f872f29 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1103,6 +1103,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct nfs_fattr *fattr = NULL;
- 	int error;
- 
-+	/*
-+	 * We don't support layered filesystems that don't do intents
-+	 */
-+	if (nd == NULL)
-+		return -EIO;
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
--- 
-1.7.0.4
-----------------------------------------------------------------------
-
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
+> 
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We recently noticed that NFSv4 iozone read tests that should have been
+> performing at local-cache speeds were running at wire speeds, and found
+> that currently,
+> 
+> 	open(O_RDWR|O_TRUNC)
+> 	write()
+> 	close()
+> 	open(O_RDONLY)
+> 	read()
+> 
+> results in an over-the-wire read (due to a setattr triggered by
+> O_TRUNC).  Even non-O_TRUNC opens send setattrs (of timestamps) in some
+> cases, causing the same problem.
+> 
+> In discussion with Trond, he blames a VFS bug for breaking what should
+> be a single open into an open followed by a setattr.
+> 
+> However, it may make sense even in a case like
+> 
+> 	open(O_RDWR)
+> 	write()
+> 	setattr()
+> 	close()
+> 	open(O_RDONLY)
+> 	read()
+> 
+> to treat the setattr similarly to the write, and not invalidate the
+> client's own cache as long as the setattr is performed under a write
+> open.
+> 
+> (That said, I don't know if this is the correct place in the code to
+> implement that behavior.)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfs/inode.c |    7 ++++++-
+>  1 files changed, 6 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 6f4850d..d4eed06 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+>  	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
+>  		nfs_inode_return_delegation(inode);
+>  	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
+> -	if (error == 0)
+> +	if (error)
+> +		goto out_free;
+> +	if (attr->ia_valid & ATTR_FILE)
+> +		nfs_post_op_update_inode_force_wcc(inode, fattr);
+> +	else
+>  		nfs_refresh_inode(inode, fattr);
+> +out_free:
+>  	nfs_free_fattr(fattr);
+>  out:
+>  	return error;
+> -- 
+> 1.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
