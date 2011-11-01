@@ -1,144 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy8-pub.bluehost.com ([69.89.22.20]:60468 "HELO
-	oproxy8-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757921Ab1K3RBm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 12:01:42 -0500
-Message-ID: <4ED66F32.6070303@xenotime.net>
-Date: Wed, 30 Nov 2011 10:00:18 -0800
-From: Randy Dunlap <rdunlap@xenotime.net>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:62526 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753328Ab1KAV5R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 17:57:17 -0400
+Date: Tue, 1 Nov 2011 14:57:10 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Oleg Nesterov <oleg@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+ fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Message-ID: <20111101215710.GA13803@google.com>
+References: <20111101005505.GO18855@google.com>
+ <20111101041337.39077229@tlielax.poochiereds.net>
+ <20111101065958.50addab5@tlielax.poochiereds.net>
+ <20111101163059.GR18855@google.com>
+ <20111101175953.GB5358@redhat.com>
+ <20111101180601.GV18855@google.com>
+ <20111101181329.GA6739@redhat.com>
+ <20111101182753.GW18855@google.com>
+ <20111101193923.GA9444@redhat.com>
+ <20111101194601.GB9444@redhat.com>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Michal Marek <mmarek@suse.cz>, Stephen Rothwell <sfr@canb.auug.org.au>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
-        linux-next@vger.kernel.org, open-osd <osd-dev@open-osd.org>
-Subject: Re: [osd-dev] [PATCH v3] ore: FIX breakage when MISC_FILESYSTEMS
- is not set
-References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au> <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com> <4ED4238F.4090407@panasas.com> <4ED56C59.208@panasas.com> <4ED5803D.8030906@panasas.com>
-In-Reply-To: <4ED5803D.8030906@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111101194601.GB9444@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 05:00 PM, Boaz Harrosh wrote:
-> On 11/29/2011 03:35 PM, Boaz Harrosh wrote:
->>
->> As Reported by Randy Dunlap
->>
+Hey, Oleg.
+
+On Tue, Nov 01, 2011 at 08:46:01PM +0100, Oleg Nesterov wrote:
+> On 11/01, Oleg Nesterov wrote:
+> >
+> > Or we can add TASK_FREEZABLE (like TASK_WAKEKILL), iirc we already
+> > discussed this some time ago. And probably it makes sense to add the
+> > generic wait_event_state().
 > 
-> Randy Hi
-> 
-> I think I prefer this simple solution for now, instead of
-> the complete move of the ore to lib/
+> Forgot to mention. I think that before anything else we need
+> signal_wake_up_state(). For example, note that none of the callers
+> of signal_wake_up(resume => true) in ptrace code wants to wake up
+> the killable task.
 
-sounds good to me.
+Yeah, agreed for both wait_event_state() and signal_wake_up_state().
+For now, let's go with the count/dont_count.  Can you please write up
+a patch for that?  Jeff, does this seem okay to you?
 
-> It solves the warning problem you reported and let us
-> keep the convenience of selecting everything in one place. As
-> was said there are more dependencies on the way.
-> 
-> I will look into the additional ASYNC_CORE and XOR_BLOCKS selects
-> you mentioned. For some reason it works but I'll try to find a
-> way to break it or prove It is sound.
-> 
-> Please advise?
-
-I'm not terribly worried about them.  If they work, that's fine.
-If they break some day, it's easy to fix.
-or if you prefer to fix it now, you could add something like:
-
-# for ASYNC_XOR selects:
-	select ASYNC_CORE
-	select XOR_BLOCKS
-
-Either way is OK with me.
-
+For TASK_FREEZABLE, I'm not entirely sure.  Combined with
+wait_event_state(), it can definitely reduce the number of different
+variants of wait_event_*().  Let's see.
 
 Thanks.
 
-> Thanks
-> Heart
-> 
->> When MISC_FILESYSTEMS is not enabled:
->>
->> fs/built-in.o: In function `objio_alloc_io_state':
->> objio_osd.c:(.text+0xcb525): undefined reference to `ore_get_rw_state'
->> fs/built-in.o: In function `_write_done':
->> objio_osd.c:(.text+0xcb58d): undefined reference to `ore_check_io'
->> fs/built-in.o: In function `_read_done':
->> ...
->>
->> When MISC_FILESYSTEMS, which is more of a GUI thing then anything else,
->> is not selected. exofs/Kconfig is never examined during Kconfig,
->> and it can not do it's magic stuff to automatically select everything
->> needed.
->>
->> We must split exofs/Kconfig in two. The ore one is always included.
->> And the exofs one is left in it's old place in the menu.
->>
->> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->> ---
->>  fs/Kconfig           |    2 ++
->>  fs/exofs/Kconfig     |   11 -----------
->>  fs/exofs/ore.Kconfig |   12 ++++++++++++
->>  3 files changed, 14 insertions(+), 11 deletions(-)
->>  create mode 100644 fs/exofs/ore.Kconfig
->>
->> diff --git a/fs/Kconfig b/fs/Kconfig
->> index 5f4c45d..fd7bfef 100644
->> --- a/fs/Kconfig
->> +++ b/fs/Kconfig
->> @@ -218,6 +218,8 @@ source "fs/exofs/Kconfig"
->>  
->>  endif # MISC_FILESYSTEMS
->>  
->> +source "fs/exofs/ore.Kconfig"
->> +
->>  menuconfig NETWORK_FILESYSTEMS
->>  	bool "Network File Systems"
->>  	default y
->> diff --git a/fs/exofs/Kconfig b/fs/exofs/Kconfig
->> index da42f32..86194b2 100644
->> --- a/fs/exofs/Kconfig
->> +++ b/fs/exofs/Kconfig
->> @@ -1,14 +1,3 @@
->> -# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
->> -# for every ORE user we do it like this. Any user should add itself here
->> -# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
->> -# selected here, and we default to "ON". So in effect it is like been
->> -# selected by any of the users.
->> -config ORE
->> -	tristate
->> -	depends on EXOFS_FS || PNFS_OBJLAYOUT
->> -	select ASYNC_XOR
->> -	default SCSI_OSD_ULD
->> -
->>  config EXOFS_FS
->>  	tristate "exofs: OSD based file system support"
->>  	depends on SCSI_OSD_ULD
->> diff --git a/fs/exofs/ore.Kconfig b/fs/exofs/ore.Kconfig
->> new file mode 100644
->> index 0000000..1ca7fb7
->> --- /dev/null
->> +++ b/fs/exofs/ore.Kconfig
->> @@ -0,0 +1,12 @@
->> +# ORE - Objects Raid Engine (libore.ko)
->> +#
->> +# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
->> +# for every ORE user we do it like this. Any user should add itself here
->> +# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
->> +# selected here, and we default to "ON". So in effect it is like been
->> +# selected by any of the users.
->> +config ORE
->> +	tristate
->> +	depends on EXOFS_FS || PNFS_OBJLAYOUT
->> +	select ASYNC_XOR
->> +	default SCSI_OSD_ULD
-> 
-> --
-
-
 -- 
-~Randy
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+tejun
