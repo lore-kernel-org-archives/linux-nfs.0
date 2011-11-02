@@ -1,89 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58675 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:59866 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754174Ab1KHNGK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 08:06:10 -0500
-Date: Tue, 8 Nov 2011 14:06:08 +0100
-From: Jan Kara <jack@suse.cz>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Josh Boyer <jwboyer@redhat.com>
-Subject: Re: [PATCH] nfs: Enclose hostname in brackets when needed in
- nfs_do_root_mount
-Message-ID: <20111108130608.GA16554@quack.suse.cz>
-References: <1315004983-10271-1-git-send-email-jack@suse.cz>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430AFD3952@SACMVEXC2-PRD.hq.netapp.com>
- <20110903002231.GI12182@quack.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110903002231.GI12182@quack.suse.cz>
+	id S1751970Ab1KBV0S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Nov 2011 17:26:18 -0400
+Subject: GSSAPI Proxy initiative
+From: Simo Sorce <simo@redhat.com>
+To: linux-nfs@vger.kernel.org, krbdev <krbdev@MIT.EDU>,
+        Andy Adamson <andros@netapp.com>, Steve Dickson <steved@redhat.com>,
+        Nico Williams <nico@cryptonector.com>,
+        Kevin Coffman <kwc@citi.umich.edu>, Bruce Fields <bfields@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>, Greg Hudson <ghudson@MIT.EDU>,
+        Tom Yu <tlyu@MIT.EDU>, Sam Hartman <hartmans@MIT.EDU>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 02 Nov 2011 17:26:10 -0400
+Message-ID: <1320269170.7734.585.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat 03-09-11 02:22:31, Jan Kara wrote:
-> On Fri 02-09-11 16:23:43, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: Jan Kara [mailto:jack@suse.cz]
-> > > Sent: Friday, September 02, 2011 7:10 PM
-> > > To: Myklebust, Trond
-> > > Cc: linux-nfs@vger.kernel.org; Jan Kara; Josh Boyer; Myklebust, Trond
-> > > Subject: [PATCH] nfs: Enclose hostname in brackets when needed in
-> > > nfs_do_root_mount
-> > > 
-> > > When hostname contains colon (e.g. when it is an IPv6 address) it
-> > needs
-> > > to be enclosed in brackets to make parsing of NFS device string
-> > > possible.
-> > > Fix nfs_do_root_mount() to enclose hostname properly when needed. NFS
-> > > code
-> > > actually does not need this as it does not parse the string passed by
-> > > nfs_do_root_mount() but the device string is exposed to userspace in
-> > > /proc/mounts.
-> > > 
-> > > CC: Josh Boyer <jwboyer@redhat.com>
-> > > CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/nfs/super.c |    8 ++++++--
-> > >  1 files changed, 6 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > > index b961cea..42b74f8 100644
-> > > --- a/fs/nfs/super.c
-> > > +++ b/fs/nfs/super.c
-> > > @@ -2694,11 +2694,15 @@ static struct vfsmount
-> > > *nfs_do_root_mount(struct file_system_type *fs_type,
-> > >  	char *root_devname;
-> > >  	size_t len;
-> > > 
-> > > -	len = strlen(hostname) + 3;
-> > > +	len = strlen(hostname) + 5;
-> > >  	root_devname = kmalloc(len, GFP_KERNEL);
-> > >  	if (root_devname == NULL)
-> > >  		return ERR_PTR(-ENOMEM);
-> > > -	snprintf(root_devname, len, "%s:/", hostname);
-> > > +	/* Does hostname needs to be enclosed in brackets? */
-> > > +	if (strchr(hostname, ':'))
-> > > +		snprintf(root_devname, len, "[%s]:/", hostname);
-> > > +	else
-> > > +		snprintf(root_devname, len, "%s:/", hostname);
-> > 
-> > What if the hostname is already enclosed in brackets, as is usually the
-> > case if I enter an IPv6 address instead of a DNS name? Won't this cause
-> > it to be bracketed twice?
-> > 
-> > IOW: If I try to
-> > 
-> > 	mount -t nfs [fe80::20c:29ff:fee9:83e6]:/export /mnt
-> > 
-> > won't the above end up returning a hostname of [[::20c:29ff:fee9:83e6]]?
->   No it won't - I've actually verified my patch with experiment ;). The
-> hostname nfs_do_root_mount() gets is already without possible brackets
-> (these have been removed when we first parsed the string passed from
-> userspace by nfs_parse_devname() - yes, it took me some time to drill
-> through the NFS call stack during mount to actually find out who removes
-> the brackets from the passed hostname and who composes the device name back
-> without them).
-  Ping? Trond, will you merge the patch please? I guess it got somehow
-lost.
+Hello everyone,
+you are all CCed because you either expressed interested, are already
+involved with or may be affected/interested in this initiative.
 
-								Honza
+At the recent MIT Kerberos Conference there has been some renewed
+interested in a concept that has surfaced in GSSAPI related circles a
+few times. That of building a GSSAPI Proxy to allow separation of
+privileges between applications and key handling.
+
+There are various stakeholders that would like to have a solution in
+this areas for various reasons:
+
+== Privilege separation ==
+
+One of the needs that GSSAPI Proxy is able to address is separation of
+privileges. Initiating/accepting is delegated to the GSSAPI Proxy so
+that applications do not have direct access to the key material. This
+helps to avoid exposing keys when network facing applications are
+compromised. On some OSs Mandatory Access Control will help keep those
+keys secure if they are not directly accessible to the applications.
+
+
+== Kernel Network File Systems ==
+
+There are a number of file systems implemented in kernel and especially
+NFS that uses gss-krb5 to negotiate security over the network.
+
+Most implementations use a gssd daemon in user space to handle
+accepting/initiating. In particular in the Linux kernel a few people
+feel that the current implementation is sub-optimal and would like to
+improve it. The functionality needed by the kernel is pretty similar to
+that needed to proxy gssapi for other apps, so it seem like a good idea
+to unify these implementations, or at least use a common protocol so
+that the same implementation can be used if OS vendors/Integrators want
+to do so.
+
+
+== PAC/PAD verification ==
+
+When using Kerberos applications can receive tickets that contain a
+MS-PAC or (in future) a PAD*.
+In some scenarios we want to use the PAC to synthesize a user on the
+target system so that it can create and access files and other
+resources. A PAC/PAD is very useful for file servers for example because
+it can standardize how identities are retrieved w/o forcing file server
+developers to mess with protocols like LDAP and other amenities.
+
+These structures are signed with service keys, the same keys apps have
+currently access to. If key material is left accessible to apps it means
+a compromised application could create a PAC/PAD to attempt privilege
+escalation by injecting this data in the system.
+
+Although these structures are also signed with a KDC key, it would be
+very expensive to require a roundtrip to the KDC to ask for
+verification. It would also make the server reliant on KDC availability
+which is normally not required for kerberos based auth after the ticket
+is acquired.
+
+
+== SSH credential forwarding ? ==
+
+Currently, when using GSSAPI in conjunction with SSH, credentials are
+made available to the remote end by simply copying them over and thus
+giving the remote host direct access to the user creds. Quite a few
+people would prefer to use a ssh-agent like approach instead where
+credentials stay always on the local machine and context establishment
+is proxied over the ssh channel. Although this initiative will *not*
+address this feature, we'd like to build the protocol in such a way that
+it will become easy to implement this mechanism in the future.
+
+
+
+==== Current status ====
+
+I am trying to push this initiative and I am organizing and contacting
+people to enter the planning phase. I have received initial availability
+from some stakeholders in helping to shape this initiative from protocol
+design to transport/interface (esp. against the kernel) design,
+implementation, testing, etc..
+
+Because there are many parties involved I would like to try to keep this
+discussion focused as much as possible to the proxy functionality.
+
+I see this effort involving mainly 3 areas at this stage.
+
+1) design of the protocol
+
+        I this area I had some preliminary discussion with some of the
+        people that are interested in the effort. Due to availability in
+        both kernel and user space implementation is seem like an
+        ONC/RPC - XDR based protocol is the best common denominator and
+        easily implementable by all parties.
+        Nothing is set in stone yet, any idea is welcome.
+        
+2) kernel and user space interfaces to the GSSAPI Proxy Daemon
+
+        For user-space to user-space communication is seem clear that a
+        unix socket is probably the more natural transport to use.
+        
+        From the Linux kernel side deciding on the right upcall
+        mechanism seem not as straight forward. One option seem to be
+        the netlink or rather the connector interface that is layered on
+        top of it. More discussion is definitely needed on this front.
+
+3) Changes to libgssapi to implement transparent proxying for user space
+applications
+
+        Some high level ideas have been floating around on where to hook
+        this proxy layer in libgssapi but it is all in the air for now.
+        Ideas here are very welcome.
+
+
+Additional areas involve the design of the daemon in terms of
+scalability, access control and various security considerations,
+portability (?), etc...
+
+
+
+Any feedback is welcome esp. if you have valuable ideas on the design
+issues.
+We will probably keep cross-posting a bit so that we can involve all
+possible stakeholders, going forward we'll find a way to refocus
+discussions around a few forums depending on what part of the problem
+people is working on.
+If you know other people/lists that should be involved, please feel free
+to forward and include them in the discussion.
+
+
+Regards,
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
