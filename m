@@ -1,61 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42391 "EHLO mx2.netapp.com"
+Received: from ogre.sisk.pl ([217.79.144.158]:46995 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757217Ab1K3AIM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 19:08:12 -0500
-Message-ID: <1322611689.11286.72.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Marc Eshel <eshel@almaden.ibm.com>
-Cc: Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com,
-        Boaz Harrosh <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>,
-        Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org,
-        Matt Benjamin <matt@linuxbox.com>
-Date: Tue, 29 Nov 2011 19:08:09 -0500
-In-Reply-To: <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
-		   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
-	 <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
-	 <1322606842.11286.33.camel@lade.trondhjem.org>
-		 <4ED563AC.5040501@panasas.com>
-	 <1322609431.11286.56.camel@lade.trondhjem.org>
-	 <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752077Ab1KBXIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Nov 2011 19:08:49 -0400
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
+To: Oleg Nesterov <oleg@redhat.com>
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Date: Thu, 3 Nov 2011 00:11:23 +0100
+Cc: Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+References: <20111101041337.39077229@tlielax.poochiereds.net> <20111101215710.GA13803@google.com> <20111102162331.GA31947@redhat.com>
+In-Reply-To: <20111102162331.GA31947@redhat.com>
+MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201111030011.24062.rjw@sisk.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 15:49 -0800, Marc Eshel wrote: 
-> The only 1 cent that I can add to this argument is that I was led to 
-> believe by you and others that Linux kernel don't add functionality on the 
-> client side that is not supported on the server side. Last time I made 
-> this point I was told that it is ok if they are of by a version or two. 
-> You made it clear that this is no longer true and that the Linux client 
-> and server are now independent of each other. I spent time working on the 
-> server side believing that the client and server will progress more or 
-> less together, disappointed to find out that it is not the case any more.
-> Marc. 
+On Wednesday, November 02, 2011, Oleg Nesterov wrote:
+> Hi,
+> 
+> On 11/01, Tejun Heo wrote:
+> >
+> > For now, let's go with the count/dont_count.  Can you please write up
+> > a patch for that?  Jeff, does this seem okay to you?
+> 
+> OK, will do in a minute. On top of
+> "[PATCH pm] freezer: fix wait_event_freezable/__thaw_task races"
+> you sent. (btw, thanks, I forgout about it ;)
+> 
+> Rafael, could you remind why freezer_do_not_count/freezer_count check
+> ->mm != NULL ?
 
-I don't know how to manage layout segments in a way that meets the pNFS
-goals of scalability and performance, and neither you nor the pNFS spec
-have told me how to do this.
+You're asking difficult questions. ;-)
 
-If IBM wants a client that implements layout segments, then it is _your_
-responsibility to: 
-     A. Convince me that it is an implementable part of the spec. 
-     B. Provide me with an implementation that deals all with the
-        concerns that I have.
+The intention was to prevent PF_FREEZER_SKIP from having any effect on
+kernel threads, IIRC.  Anyway, there are only two legitimate users of it
+(vfork and apm_ioctl) and in both cases the task in question is user space.
 
-IOW: nobody has ever promised IBM that the community would do all your
-client work for you. EMC, NetApp and Panasas have implemented (most of)
-the bits that they cared about; any bits that they haven't implemented
-and that you care about are up to you.
+> The comment says "However, we don't want kernel threads to be frozen",
+> but it is not clear anyway. A kernel thread simply shouldn't use this
+> interface if it doesn't want to freeze.
+> 
+> And in any case, PF_KTHREAD looks better if we really need to filter
+> out the kernel threads.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+PF_FREEZER_SKIP was introduced specifically with vfork in mind and I'm not
+sure if it's a good idea to re-use it for something else (at least not for
+something entirely obvious).
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Thanks,
+Rafael
