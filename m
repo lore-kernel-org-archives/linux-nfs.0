@@ -1,121 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15949 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62148 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753184Ab1KJTiW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Nov 2011 14:38:22 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read code path
-Date: Thu, 10 Nov 2011 14:38:16 -0500
-Message-Id: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S932383Ab1KBPyU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Nov 2011 11:54:20 -0400
+Date: Wed, 2 Nov 2011 11:54:53 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+Message-ID: <20111102115453.7e81168f@corrin.poochiereds.net>
+In-Reply-To: <20111102144657.GD7721@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+	<20111101202715.GB1891@fieldses.org>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
+	<20111101204325.522c35b3@corrin.poochiereds.net>
+	<20111102012315.GA5532@fieldses.org>
+	<20111102070742.5354d83c@tlielax.poochiereds.net>
+	<20111102144657.GD7721@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pNFS-specific code belongs in the pnfs layer. It should not be
-hijacking generic NFS read or write code paths.
+On Wed, 2 Nov 2011 10:46:57 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/internal.h |    2 ++
- fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
- fs/nfs/read.c     |   14 ++------------
- 3 files changed, 25 insertions(+), 17 deletions(-)
+> On Wed, Nov 02, 2011 at 07:07:42AM -0400, Jeff Layton wrote:
+> > On Tue, 1 Nov 2011 21:23:15 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Tue, Nov 01, 2011 at 08:43:25PM -0400, Jeff Layton wrote:
+> > > > On Tue, 1 Nov 2011 16:07:27 -0700
+> > > > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > > > > Is the problem perhaps that we should be clearing the
+> > > > > NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets set to
+> > > > > zero?
+> > > > > 
+> > > > 
+> > > > That was my thinking too. Whenever we truncate the i_size to 0, we
+> > > > can safely assume that the pagecache is now valid, and should be able
+> > > > to clear NFS_INO_INVALID_DATA no matter when it was set, right?
+> > > 
+> > > I don't understand why 0 is a special case: why should my setting the
+> > > size ever mean that I have to go reread data from the server?
+> > > 
+> > 
+> > If the server doesn't send pre-op attrs (and linux servers don't) then
+> > you have no way to know whether someone raced in and did writes to the
+> > remaining pages just prior to your truncate.
+> > 
+> > Size 0 is a special case because there are no remaining pages.
+> 
+> Those 3rd-party writes could also arrive between the truncate and the
+> read of the post-op attrs.  Is this setattr/write conflict really any
+> different than write/write conflicts?  In both cases you've got a file
+> open for write on two different clients.
+> 
+> And we live with the same sort of race in the write/write case.  (Hence
+> the nfs_post_op_update_inode_force_wcc in nfs4_write_done_cb.)
+> 
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c1a1bd8..3f4d957 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
- 		struct list_head *head);
- 
-+extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-+		struct inode *inode);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_readdata_release(struct nfs_read_data *rdata);
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index baf7353..8e672a2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
- 
-+static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
-+{
-+	struct nfs_pageio_descriptor pgio;
-+
-+	put_lseg(data->lseg);
-+	data->lseg = NULL;
-+	dprintk("pnfs write error = %d\n", data->pnfs_error);
-+
-+	nfs_pageio_init_read_mds(&pgio, data->inode);
-+
-+	while (!list_empty(&data->pages)) {
-+		struct nfs_page *req = nfs_list_entry(data->pages.next);
-+
-+		nfs_list_remove_request(req);
-+		nfs_pageio_add_request(&pgio, req);
-+	}
-+	nfs_pageio_complete(&pgio);
-+}
-+
- /*
-  * Called by non rpc-based layout drivers
-  */
-@@ -1268,11 +1287,8 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
- 	if (likely(!data->pnfs_error)) {
- 		__nfs4_read_done_cb(data);
- 		data->mds_ops->rpc_call_done(&data->task, data);
--	} else {
--		put_lseg(data->lseg);
--		data->lseg = NULL;
--		dprintk("pnfs write error = %d\n", data->pnfs_error);
--	}
-+	} else
-+		pnfs_ld_handle_read_error(data);
- 	data->mds_ops->rpc_release(data);
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 8b48ec6..cfa175c 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -109,7 +109,7 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
- 	}
- }
- 
--static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
- 		struct inode *inode)
- {
- 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
-@@ -534,23 +534,13 @@ static void nfs_readpage_result_full(struct rpc_task *task, void *calldata)
- static void nfs_readpage_release_full(void *calldata)
- {
- 	struct nfs_read_data *data = calldata;
--	struct nfs_pageio_descriptor pgio;
- 
--	if (data->pnfs_error) {
--		nfs_pageio_init_read_mds(&pgio, data->inode);
--		pgio.pg_recoalesce = 1;
--	}
- 	while (!list_empty(&data->pages)) {
- 		struct nfs_page *req = nfs_list_entry(data->pages.next);
- 
- 		nfs_list_remove_request(req);
--		if (!data->pnfs_error)
--			nfs_readpage_release(req);
--		else
--			nfs_pageio_add_request(&pgio, req);
-+		nfs_readpage_release(req);
- 	}
--	if (data->pnfs_error)
--		nfs_pageio_complete(&pgio);
- 	nfs_readdata_release(calldata);
- }
- 
+
+Yes, I think it is different. When we truncate the file to 0 then we
+don't care if another write races in. We're invalidating all of the
+pages we have cached for the file at that point anyway. If we try to
+reread the file afterward we're going to have to fetch the data from
+the server regardless.
+
+I guess my main point is that we won't have any cached data after a
+truncate to 0, so there's no need to worry about ensuring that the
+cache is eventually invalidated after that. The VFS-level truncate on
+the client is going to take care of that for us anyway. That allows us
+to optimize for this special (but common) case.
+
+A truncate to a non-zero size is different however because we may still
+have lingering cached pages. We will need to invalidate those if the
+server sends pre-op attrs that indicate that something else happened
+prior to the truncate, or if the server doesn't send pre-op attrs at
+all.
+
 -- 
-1.7.7
-
+Jeff Layton <jlayton@redhat.com>
