@@ -1,65 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5069 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61848 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755694Ab1KNSCv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Nov 2011 13:02:51 -0500
-Message-ID: <4EC157C6.7030308@RedHat.com>
-Date: Mon, 14 Nov 2011 13:02:46 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752222Ab1KBBgV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 21:36:21 -0400
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.idmapd: Sections in idmapd.conf are ignored.
-References: <1321283020-15730-1-git-send-email-steved@redhat.com> <20111114174450.GA16366@umich.edu>
-In-Reply-To: <20111114174450.GA16366@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
+Date: Tue, 1 Nov 2011 18:36:18 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7C3B@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <20111102012315.GA5532@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com> <20111101202715.GB1891@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com> <20111101204325.522c35b3@corrin.poochiereds.net> <20111102012315.GA5532@fieldses.org>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Jeff Layton" <jlayton@redhat.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 11/14/2011 12:44 PM, Jim Rees wrote:
-> Steve Dickson wrote:
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Tuesday, November 01, 2011 9:23 PM
+> To: Jeff Layton
+> Cc: Myklebust, Trond; J. Bruce Fields; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate
+own
+> cache
 > 
->   In the parsing routine, conf_parse_line(), a string
->   is not being null terminated which is causing
->   section of the config file to be ignored.
->   
->   https://bugzilla.linux-nfs.org/show_bug.cgi?id=205
->   
->   Signed-off-by: Steve Dickson <steved@redhat.com>
->   ---
->    support/nfs/conffile.c |    3 ++-
->    1 files changed, 2 insertions(+), 1 deletions(-)
->   
->   diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
->   index fa0dc6b..3990578 100644
->   --- a/support/nfs/conffile.c
->   +++ b/support/nfs/conffile.c
->   @@ -256,13 +256,14 @@ conf_parse_line(int trans, char *line, size_t sz)
->    			val++, j++;
->    		if (*val)
->    			i = j;
->   -		section = malloc(i);
->   +		section = malloc(i+1);
->    		if (!section) {
->    			xlog_warn("conf_parse_line: %d: malloc (%lu) failed", ln,
->    						(unsigned long)i);
->    			return;
->    		}
->    		strncpy(section, line, i);
->   +		section[i] = '\0';
->    
->    		if (arg) 
->    			free(arg);
+> On Tue, Nov 01, 2011 at 08:43:25PM -0400, Jeff Layton wrote:
+> > On Tue, 1 Nov 2011 16:07:27 -0700
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> >
+> > > > -----Original Message-----
+> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > Sent: Tuesday, November 01, 2011 4:27 PM
+> > > > To: Myklebust, Trond
+> > > > Cc: J. Bruce Fields; Myklebust, Trond; linux-nfs@vger.kernel.org
+> > > > Subject: Re: [PATCH] nfs: open-associated setattr shouldn't
+> > > > invalidate
+> > > own
+> > > > cache
+> > > >
+> > > > On Mon, Jul 18, 2011 at 08:09:15PM -0400, Myklebust, Trond
+wrote:
+> > > > > We should already optimize away the unnecessary setting of the
+size.
+> > > >
+> > > > Do you remember what commit fixed that?  (Was it an nfs change
+or
+> > > > a
+> > > vfs
+> > > > change?)
+> > >
+> > > It predates the git repository. See the comment about
+> > > "Optimization:" in nfs_setattr().
+> > >
+> > > > > The problem is that truncate() still requires you to set the
+> > > > > ctime,
+> > > whereas
+> > > > ftruncate() does not iirc.
+> > > >
+> > > > Staring at the code....  I think you mean the opposite?  I
+notice
+> > > > do_sys_ftruncate() calling
+> > > >
+> > > > 	do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME,
+file);
+> > > >
+> > > > and do_sys_truncate() calling
+> > > >
+> > > > 	do_truncate(path.dentry, length, 0, NULL);
+> > > >
+> > > > where the third argument is getting OR'd with ATTR_FILE to pass
+> > > > into notify_change().
+> > >
+> > > Sorry, yes. ftruncate() is the one that unconditionally sets the
+> > > mtime/ctime on success according to the POSIX spec.
+> > >
+> >
+> > Even when it's a noop? Blech.
+> >
+> > > > Also even when a setattr does get through, I don't understand
+why
+> > > > it
+> > > should
+> > > > be invalidating our data cache.  Is there some reason it needs
+to,
+> > > > or
+> > > is this just
+> > > > a case that hasn't seemed worth fixing?
+> > >
+> > > Is the problem perhaps that we should be clearing the
+> > > NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets
+set
+> > > to zero?
+> > >
+> >
+> > That was my thinking too. Whenever we truncate the i_size to 0, we
+can
+> > safely assume that the pagecache is now valid, and should be able to
+> > clear NFS_INO_INVALID_DATA no matter when it was set, right?
 > 
-> Use of strdup() would not only make the code simpler but would eliminate the
-> possibility of introducing this kind of bug.
-I thought of that... but from my reading of the code
-the entire string is not wanted, just a section of
-the string is needed...  
+> I don't understand why 0 is a special case: why should my setting the
+size
+> ever mean that I have to go reread data from the server?
 
-thanks!
+Your test case was:
 
-steved.
+open(O_RDWR|O_TRUNCATE)
+write()
+close()
+open(O_RDONLY)
+read()
+...
 
+That truncates _all_ data, so there is nothing left in the data cache
+when we get to the write().
+
+The question therefore is not "Why does setattr clear my cache?".
+
+The question is "Why isn't that write() cached?".
+
+That's why I'm exploring reasons why the cache might get cleared after
+that write(). The other obvious one would be if the server is failing to
+return post-op attributes in the WRITE reply.
+
+Trond
