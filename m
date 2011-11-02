@@ -1,126 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:59068 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754758Ab1K2QER (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:04:17 -0500
-Received: by vcbfk14 with SMTP id fk14so4754106vcb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:04:16 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 3/9] pnfsblock: move find lock page logic out of bl_write_pagelist
-Date: Fri,  2 Dec 2011 20:46:17 -0800
-Message-Id: <1322887583-2719-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
-References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:39041 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753811Ab1KBLdN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Nov 2011 07:33:13 -0400
+Received: by ggnb2 with SMTP id b2so24924ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Nov 2011 04:33:12 -0700 (PDT)
+Message-ID: <1036764024-1320233590-cardhu_decombobulator_blackberry.rim.net-1459612287-@b18.c3.bise3.blackberry>
+Reply-To: bhalevy@tonian.com
+References: <4E9E1F3A.2090709@tonian.com>
+  <CAN-5tyEF9j92qhPPPw9__B78Km1rUXC+wEOD642Wxts=N4ZOsg@mail.gmail.com>
+In-Reply-To: <CAN-5tyEF9j92qhPPPw9__B78Km1rUXC+wEOD642Wxts=N4ZOsg@mail.gmail.com>
+Subject: Re: [PATCH] pnfsd: dlm: fix bug in DS tcp/tcp6 address string
+To: "Olga Kornievskaia" <aglo@citi.umich.edu>, olga.kornievskaia@gmail.com
+Cc: "Michael Groshans" <groshans@umich.edu>,
+        "NFS list" <linux-nfs@vger.kernel.org>
+From: "Benny Halevy" <bhalevy@tonian.com>
+Date: Wed, 2 Nov 2011 11:33:09 +0000
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also avoid unnecessary lock_page if page is handled by others.
-
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
- 1 files changed, 54 insertions(+), 24 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 4ced0b0..c83ad70 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -484,6 +484,55 @@ cleanup:
- 	return ret;
- }
- 
-+/* Find or create a zeroing page marked being writeback.
-+ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-+ * to indicate write out.
-+ */
-+static struct page *
-+bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
-+			struct pnfs_block_extent *cow_read)
-+{
-+	struct page *page;
-+	int locked = 0;
-+	page = find_get_page(inode->i_mapping, index);
-+	if (page)
-+		goto check_page;
-+
-+	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
-+	if (unlikely(!page)) {
-+		dprintk("%s oom\n", __func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	locked = 1;
-+
-+check_page:
-+	/* PageDirty: Other will write this out
-+	 * PageWriteback: Other is writing this out
-+	 * PageUptodate: It was read before
-+	 */
-+	if (PageDirty(page) || PageWriteback(page)) {
-+		print_page(page);
-+		if (locked)
-+			unlock_page(page);
-+		page_cache_release(page);
-+		return NULL;
-+	}
-+
-+	if (!locked) {
-+		lock_page(page);
-+		locked = 1;
-+		goto check_page;
-+	}
-+	if (!PageUptodate(page)) {
-+		/* New page, readin or zero it */
-+		init_page_for_write(page, cow_read);
-+	}
-+	set_page_writeback(page);
-+	unlock_page(page);
-+
-+	return page;
-+}
-+
- static enum pnfs_try_status
- bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- {
-@@ -543,32 +592,13 @@ fill_invalid_ext:
- 			dprintk("%s zero %dth page: index %lu isect %llu\n",
- 				__func__, npg_zero, index,
- 				(unsigned long long)isect);
--			page =
--			    find_or_create_page(wdata->inode->i_mapping, index,
--						GFP_NOFS);
--			if (!page) {
--				dprintk("%s oom\n", __func__);
--				wdata->pnfs_error = -ENOMEM;
-+			page = bl_find_get_zeroing_page(wdata->inode, index,
-+							cow_read);
-+			if (unlikely(IS_ERR(page))) {
-+				wdata->pnfs_error = PTR_ERR(page);
- 				goto out;
--			}
--
--			/* PageDirty: Other will write this out
--			 * PageWriteback: Other is writing this out
--			 * PageUptodate: It was read before
--			 * sector_initialized: already written out
--			 */
--			if (PageDirty(page) || PageWriteback(page)) {
--				print_page(page);
--				unlock_page(page);
--				page_cache_release(page);
-+			} else if (page == NULL)
- 				goto next_page;
--			}
--			if (!PageUptodate(page)) {
--				/* New page, readin or zero it */
--				init_page_for_write(page, cow_read);
--			}
--			set_page_writeback(page);
--			unlock_page(page);
- 
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
- 						       PAGE_CACHE_SECTORS);
--- 
-1.7.1.262.g5ef3d
+SGksIHRoYW5rcyBmb3IgdGVzdGluZyB0aGUgcGF0Y2ghDQpEbyBhbGwgZW50cmllcyBoYXZlIHJf
+bmV0aWQubGVuPT00Pw0KQ2FuIHlvdSBwbGVhc2UgcHJpbnQgcl9hZGRyLmRhdGEgYW5kIHJfYWRk
+ci5sZW4/DQoNCkJlbm55DQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBPbGdh
+IEtvcm5pZXZza2FpYSA8YWdsb0BjaXRpLnVtaWNoLmVkdT4NClNlbmRlcjogb2xnYS5rb3JuaWV2
+c2thaWFAZ21haWwuY29tDQpEYXRlOiBNb24sIDMxIE9jdCAyMDExIDE3OjE2OjQxIA0KVG86IEJl
+bm55IEhhbGV2eTxiaGFsZXZ5QHRvbmlhbi5jb20+DQpDYzogTWljaGFlbCBHcm9zaGFuczxncm9z
+aGFuc0B1bWljaC5lZHU+OyBORlMgbGlzdDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KU3Vi
+amVjdDogUmU6IFtQQVRDSF0gcG5mc2Q6IGRsbTogZml4IGJ1ZyBpbiBEUyB0Y3AvdGNwNiBhZGRy
+ZXNzIHN0cmluZw0KDQpCZW5ueSwgdGhpcyBwYXRjaCBkb2VzIG5vdCBmaXggdGhlIGlzc3VlLiBF
+eGNlcHQgdGhhdCBub3cgYWxsIHRoZQ0KZW50cmllcyBsaXN0ICJ0Y3A2Ii4gUHJldmlvdXNseSBp
+ZiB5b3UgcmVjYWxsIGZpcnN0IGRhdGEgc2VydmVyIGVudHJ5DQp3YXMgY29ycmVjdCBidXQgb3Ro
+ZXJzIGxpc3RlZCB0Y3A2IHR5cGUgd2l0aCBpdCB3YXMgc3VwcG9zZSB0byBiZSB0Y3AuDQoNCk9u
+IFR1ZSwgT2N0IDE4LCAyMDExIGF0IDg6NTIgUE0sIEJlbm55IEhhbGV2eSA8YmhhbGV2eUB0b25p
+YW4uY29tPiB3cm90ZToNCj4gc3F1YXNoIGludG8gInBuZnNkOiBDb3JyZWN0bHkgc2V0IG5ldGlk
+IHRvIHRjcCBvciB0Y3A2IGZvciBub24tbG9jYWwgZXhwb3J0cyINCj4NCj4gQ3VycmVudGx5LCB0
+aGUgY29kZSBsb29rcyBmb3IgJzonIHVzaW5nIHN0cmNzcG4gdGhhdCByZXF1aXJlcyBhIG51bGwg
+dGVybWluYXRlZCBzdHJpbmcNCj4gd2hpbGUgdGhlIGFkZHJlc3MgYnVmZmVyIGlzbid0IG51bGwg
+dGVybWluYXRlZC4NCj4NCj4gSW5zdGVhZCwganVzdCB1c2Ugc3RybmNociB0byBsb29rIGZvciBh
+ICc6JyBhbmQgaWYgbm90IGZvdW5kIGFzc3VtZQ0KPiBpdCdzIGFuIElQdjQgYWRkcmVzcywgb3Ro
+ZXJ3aXNlIGl0J3MgSVB2Ng0KPg0KPiBTaWduZWQtb2ZmLWJ5OiBCZW5ueSBIYWxldnkgPGJoYWxl
+dnlAdG9uaWFuLmNvbT4NCj4gLS0tDQo+IKBmcy9uZnNkL25mczRwbmZzZGxtLmMgfCCgIKA5ICsr
+LS0tLS0tLQ0KPiCgMSBmaWxlcyBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDcgZGVsZXRpb25z
+KC0pDQo+DQo+IGRpZmYgLS1naXQgYS9mcy9uZnNkL25mczRwbmZzZGxtLmMgYi9mcy9uZnNkL25m
+czRwbmZzZGxtLmMNCj4gaW5kZXggYWJjNGQ4My4uZDA3YTYwMzcgMTAwNjQ0DQo+IC0tLSBhL2Zz
+L25mc2QvbmZzNHBuZnNkbG0uYw0KPiArKysgYi9mcy9uZnNkL25mczRwbmZzZGxtLmMNCj4gQEAg
+LTMyOCwxMyArMzI4LDggQEAgc3RhdGljIGludCBuZnNkNF9wbmZzX2RsbV9nZXRkZXZpbmZvKHN0
+cnVjdCBzdXBlcl9ibG9jayAqc2IsDQo+IKAgoCCgIKAgoCCgIKAgoG1lbWNweShkYWRkci0+cl9h
+ZGRyLmRhdGEgKyBsZW4sICIuOC4xIiwgNCk7DQo+IKAgoCCgIKAgoCCgIKAgoGRhZGRyLT5yX2Fk
+ZHIubGVuID0gbGVuICsgNDsNCj4NCj4gLSCgIKAgoCCgIKAgoCCgIGlmIChzdHJjc3BuKGRhZGRy
+LT5yX2FkZHIuZGF0YSwgIjoiKSAtIDEgPT0gZGFkZHItPnJfYWRkci5sZW4pIHsNCj4gLSCgIKAg
+oCCgIKAgoCCgIKAgoCCgIKAgZGFkZHItPnJfbmV0aWQuZGF0YSA9ICJ0Y3AiOw0KPiAtIKAgoCCg
+IKAgoCCgIKAgoCCgIKAgoCBkYWRkci0+cl9uZXRpZC5sZW4gPSAzOw0KPiAtIKAgoCCgIKAgoCCg
+IKAgfSBlbHNlIHsNCj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZGFkZHItPnJfbmV0aWQuZGF0
+YSA9ICJ0Y3A2IjsNCj4gLSCgIKAgoCCgIKAgoCCgIKAgoCCgIKAgZGFkZHItPnJfbmV0aWQubGVu
+ID0gNDsNCj4gLSCgIKAgoCCgIKAgoCCgIH0NCj4gKyCgIKAgoCCgIKAgoCCgIGRhZGRyLT5yX25l
+dGlkLmRhdGEgPSAidGNwNiI7DQo+ICsgoCCgIKAgoCCgIKAgoCBkYWRkci0+cl9uZXRpZC5sZW4g
+PSBzdHJuY2hyKGRhZGRyLT5yX2FkZHIuZGF0YSwgbGVuLCAnOicpID8gNCA6IDM7DQo+DQo+IKAg
+oCCgIKAgoCCgIKAgoGZkZXYuZmxfZGV2aWNlX2xpc3RbaV0uZmxfbXVsdGlwYXRoX2xlbmd0aCA9
+IDE7DQo+IKAgoCCgIKAgoCCgIKAgoGZkZXYuZmxfZGV2aWNlX2xpc3RbaV0uZmxfbXVsdGlwYXRo
+X2xpc3QgPSBkYWRkcjsNCj4gLS0NCj4gMS43LjYNCj4NCj4NCg==
 
