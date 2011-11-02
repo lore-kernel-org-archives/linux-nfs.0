@@ -1,120 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25222 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39067 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753269Ab1K3BBG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 20:01:06 -0500
-Message-ID: <1322614863.11286.106.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
-        bhalevy@tonian.com, Garth Gibson <garth@panasas.com>,
-        Marc Eshel <eshel@almaden.ibm.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Date: Tue, 29 Nov 2011 20:01:03 -0500
-In-Reply-To: <987731612.394.1322614086868.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <987731612.394.1322614086868.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752222Ab1KBBXR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Nov 2011 21:23:17 -0400
+Date: Tue, 1 Nov 2011 21:23:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+Message-ID: <20111102012315.GA5532@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+ <20111101202715.GB1891@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
+ <20111101204325.522c35b3@corrin.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111101204325.522c35b3@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 19:48 -0500, Matt W. Benjamin wrote: 
-> Let me clarify: there are files based servers, our Ceph on Ganesha server is one, which have file allocation not satisfied by whole-file layouts.  I would think that demonstrating this would be sufficient to get support from the Linux client to support appropriate segment management, at any rate, if someone is willing to write and support the required code, or already has.  One of those alternatives is certainly the case.  By the way, we wrote generic pNFS, pNFS files support for Ganesha and, with a big dose of help from Panasas, are taking it to merge.
-
-I really want more than that. Please see the reply that I just sent to
-Boaz: I need a client strategy for managing partial layout segments in
-the case where holding a whole-file layout is not acceptable. Otherwise,
-what we have now should be sufficient...
-
-Trond
-
-> Matt
+On Tue, Nov 01, 2011 at 08:43:25PM -0400, Jeff Layton wrote:
+> On Tue, 1 Nov 2011 16:07:27 -0700
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 > 
-> ----- "Matt W. Benjamin" <matt@linuxbox.com> wrote:
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Tuesday, November 01, 2011 4:27 PM
+> > > To: Myklebust, Trond
+> > > Cc: J. Bruce Fields; Myklebust, Trond; linux-nfs@vger.kernel.org
+> > > Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate
+> > own
+> > > cache
+> > > 
+> > > On Mon, Jul 18, 2011 at 08:09:15PM -0400, Myklebust, Trond wrote:
+> > > > We should already optimize away the unnecessary setting of the size.
+> > > 
+> > > Do you remember what commit fixed that?  (Was it an nfs change or a
+> > vfs
+> > > change?)
+> > 
+> > It predates the git repository. See the comment about "Optimization:" in
+> > nfs_setattr().
+> > 
+> > > > The problem is that truncate() still requires you to set the ctime,
+> > whereas
+> > > ftruncate() does not iirc.
+> > > 
+> > > Staring at the code....  I think you mean the opposite?  I notice
+> > > do_sys_ftruncate() calling
+> > > 
+> > > 	do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME, file);
+> > > 
+> > > and do_sys_truncate() calling
+> > > 
+> > > 	do_truncate(path.dentry, length, 0, NULL);
+> > > 
+> > > where the third argument is getting OR'd with ATTR_FILE to pass into
+> > > notify_change().
+> > 
+> > Sorry, yes. ftruncate() is the one that unconditionally sets the
+> > mtime/ctime on success according to the POSIX spec.
+> > 
 > 
-> > That would be pretty disappointing.  However, based on previous
-> > interactions, my belief would be, the
-> > Linux client will do what can be shown empirically to work better, or
-> > more correctly.
-> > 
-> > Matt
-> > 
-> > ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Tue, 2011-11-29 at 14:40 -0800, Boaz Harrosh wrote:
-> > > > On 11/29/2011 01:57 PM, Trond Myklebust wrote:
-> > > > >> Also Files when they will support segments and servers that
-> > > request segments,
-> > > > >> like the CEPH server, will very much enjoy the above, .i.e:
-> > Tell
-> > > me the amount
-> > > > >> you know you want to write.
-> > > > >
-> > > > > Why would we want to add segment support to the pNFS files
-> > > client???
-> > > > > Segments are a nuisance that multiply the amount of unnecessary
-> > > chitchat
-> > > > > between the client and the MDS without providing any tangible
-> > > > > benefits...
-> > > > >
-> > > >
-> > > > Your kidding right?
-> > > >
-> > > > One: it is mandated by the Standard, This is not an option. So a
-> > > perfectly
-> > > >      Standard complaint server is not Supported by Linux because
-> > we
-> > > don't see
-> > > >      the point.
-> > >
-> > > Bollocks.. Nothing is "mandated by the Standard". If the server
-> > > doesn't
-> > > give us a full layout, then we fall back to write through MDS. Why
-> > > dick
-> > > around with crap that SLOWS YOU DOWN.
-> > >
-> > > > Two: There are already file-layout servers out there (multiple)
-> > > which are
-> > > >      waiting for the Linux files-layout segment support, because
-> > the
-> > > underline
-> > > >      FS requires Segments and now they do not work with the Linux
-> > > client. These
-> > > >      are CEPH and GPFS and more.
-> > >
-> > > Then they will have a _long_ wait....
-> > >
-> > > Trond
-> > >
-> > > --
-> > > Trond Myklebust
-> > > Linux NFS client maintainer
-> > >
-> > > NetApp
-> > > Trond.Myklebust@netapp.com
-> > > www.netapp.com
-> > 
-> > --
-> > 
-> > Matt Benjamin
-> > 
-> > The Linux Box
-> > 206 South Fifth Ave. Suite 150
-> > Ann Arbor, MI  48104
-> > 
-> > http://linuxbox.com
-> > 
-> > tel. 734-761-4689
-> > fax. 734-769-8938
-> > cel. 734-216-5309
+> Even when it's a noop? Blech.
 > 
+> > > Also even when a setattr does get through, I don't understand why it
+> > should
+> > > be invalidating our data cache.  Is there some reason it needs to, or
+> > is this just
+> > > a case that hasn't seemed worth fixing?
+> > 
+> > Is the problem perhaps that we should be clearing the
+> > NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets set to
+> > zero?
+> > 
+> 
+> That was my thinking too. Whenever we truncate the i_size to 0, we
+> can safely assume that the pagecache is now valid, and should be able
+> to clear NFS_INO_INVALID_DATA no matter when it was set, right?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I don't understand why 0 is a special case: why should my setting the
+size ever mean that I have to go reread data from the server?
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
