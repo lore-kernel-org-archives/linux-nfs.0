@@ -1,42 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:41827 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755143Ab1KDNVA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 09:21:00 -0400
-Date: Fri, 4 Nov 2011 09:20:50 -0400
-From: Jim Rees <rees@umich.edu>
-To: Lukas Razik <linux@razik.name>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-Message-ID: <20111104132050.GB13788@umich.edu>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
- <1320353685.18396.119.camel@lade.trondhjem.org>
- <20111103211100.GA8393@umich.edu>
- <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
- <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
- <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
- <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
- <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
- <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25722 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753369Ab1KBQ17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Nov 2011 12:27:59 -0400
+Date: Wed, 2 Nov 2011 17:23:31 +0100
+From: Oleg Nesterov <oleg@redhat.com>
+To: Tejun Heo <tj@kernel.org>, "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Jeff Layton <jlayton@redhat.com>, Steve French <sfrench@samba.org>,
+        linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
+        linux-cifs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Neil Brown <neilb@suse.de>, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
+	fake_signal_wake_up() wake TASK_KILLABLE tasks too"
+Message-ID: <20111102162331.GA31947@redhat.com>
+References: <20111101041337.39077229@tlielax.poochiereds.net> <20111101065958.50addab5@tlielax.poochiereds.net> <20111101163059.GR18855@google.com> <20111101175953.GB5358@redhat.com> <20111101180601.GV18855@google.com> <20111101181329.GA6739@redhat.com> <20111101182753.GW18855@google.com> <20111101193923.GA9444@redhat.com> <20111101194601.GB9444@redhat.com> <20111101215710.GA13803@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
+In-Reply-To: <20111101215710.GA13803@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's still a mystery to me because I use nfsroot all the time and it works
-for me.  But I was never able to get static addressing to work and have had
-to depend on the in-kernel dhcp.  And I have a different ethernet card that
-maybe resets faster.  I have run into problems later in the boot, when user
-space remounts the root, but that's not what you're seeing.
+Hi,
 
-As for a fix...  we're trying to move away from udp transport anyway.  Maybe
-someone should figure out a way to get it to work with tcp?  I have zero
-experience with nfs over udp, at least on linux.  Just for fun, have you
-tried tcp transport (proto=tcp)?
+On 11/01, Tejun Heo wrote:
+>
+> For now, let's go with the count/dont_count.  Can you please write up
+> a patch for that?  Jeff, does this seem okay to you?
 
-As we move toward nfs4 someone will have to give some thought to nfsroot.
-It's hard to imagine we could put enough nfs4 cruft into the kernel (gssd,
-idmapd) to make it work.
+OK, will do in a minute. On top of
+"[PATCH pm] freezer: fix wait_event_freezable/__thaw_task races"
+you sent. (btw, thanks, I forgout about it ;)
+
+Rafael, could you remind why freezer_do_not_count/freezer_count check
+->mm != NULL ?
+
+The comment says "However, we don't want kernel threads to be frozen",
+but it is not clear anyway. A kernel thread simply shouldn't use this
+interface if it doesn't want to freeze.
+
+And in any case, PF_KTHREAD looks better if we really need to filter
+out the kernel threads.
+
+Oleg.
+
