@@ -1,115 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39867 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:1223 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751388Ab1KMVIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Nov 2011 16:08:09 -0500
-Date: Mon, 14 Nov 2011 08:07:45 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20111114080745.57083bfe@notabene.brown>
-In-Reply-To: <20111113163632.GA28574@fieldses.org>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	<1321056809.8733.2.camel@lade.trondhjem.org>
-	<20111112144953.GA3740@infradead.org>
-	<20111113145400.6c7a9be3@notabene.brown>
-	<CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
-	<20111113163632.GA28574@fieldses.org>
+	id S1750889Ab1KBXFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Nov 2011 19:05:21 -0400
+Subject: Re: GSSAPI Proxy initiative
+From: Simo Sorce <simo@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: krbdev <krbdev@mit.edu>, Andy Adamson <andros@netapp.com>,
+        Steve Dickson <steved@redhat.com>,
+        Nico Williams <nico@cryptonector.com>,
+        Kevin Coffman <kwc@citi.umich.edu>, Bruce Fields <bfields@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>, Greg Hudson <ghudson@mit.edu>,
+        Tom Yu <tlyu@mit.edu>, Sam Hartman <hartmans@mit.edu>
+In-Reply-To: <1320269170.7734.585.camel@willson.li.ssimo.org>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 02 Nov 2011 19:05:15 -0400
+Message-ID: <1320275115.7734.595.camel@willson.li.ssimo.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/tz/QxLdoYLLg_tRfqKK/cM6"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tz/QxLdoYLLg_tRfqKK/cM6
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Forgot a footnote. See at the end.
 
-On Sun, 13 Nov 2011 11:36:32 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+On Wed, 2011-11-02 at 17:26 -0400, Simo Sorce wrote:
+> Hello everyone,
+> you are all CCed because you either expressed interested, are already
+> involved with or may be affected/interested in this initiative.
+> 
+> At the recent MIT Kerberos Conference there has been some renewed
+> interested in a concept that has surfaced in GSSAPI related circles a
+> few times. That of building a GSSAPI Proxy to allow separation of
+> privileges between applications and key handling.
+> 
+> There are various stakeholders that would like to have a solution in
+> this areas for various reasons:
+> 
+> == Privilege separation ==
+> 
+> One of the needs that GSSAPI Proxy is able to address is separation of
+> privileges. Initiating/accepting is delegated to the GSSAPI Proxy so
+> that applications do not have direct access to the key material. This
+> helps to avoid exposing keys when network facing applications are
+> compromised. On some OSs Mandatory Access Control will help keep those
+> keys secure if they are not directly accessible to the applications.
+> 
+> 
+> == Kernel Network File Systems ==
+> 
+> There are a number of file systems implemented in kernel and especially
+> NFS that uses gss-krb5 to negotiate security over the network.
+> 
+> Most implementations use a gssd daemon in user space to handle
+> accepting/initiating. In particular in the Linux kernel a few people
+> feel that the current implementation is sub-optimal and would like to
+> improve it. The functionality needed by the kernel is pretty similar to
+> that needed to proxy gssapi for other apps, so it seem like a good idea
+> to unify these implementations, or at least use a common protocol so
+> that the same implementation can be used if OS vendors/Integrators want
+> to do so.
+> 
+> 
+> == PAC/PAD verification ==
+> 
+> When using Kerberos applications can receive tickets that contain a
+> MS-PAC or (in future) a PAD*.
+> In some scenarios we want to use the PAC to synthesize a user on the
+> target system so that it can create and access files and other
+> resources. A PAC/PAD is very useful for file servers for example because
+> it can standardize how identities are retrieved w/o forcing file server
+> developers to mess with protocols like LDAP and other amenities.
+> 
+> These structures are signed with service keys, the same keys apps have
+> currently access to. If key material is left accessible to apps it means
+> a compromised application could create a PAC/PAD to attempt privilege
+> escalation by injecting this data in the system.
+> 
+> Although these structures are also signed with a KDC key, it would be
+> very expensive to require a roundtrip to the KDC to ask for
+> verification. It would also make the server reliant on KDC availability
+> which is normally not required for kerberos based auth after the ticket
+> is acquired.
+> 
+> 
+> == SSH credential forwarding ? ==
+> 
+> Currently, when using GSSAPI in conjunction with SSH, credentials are
+> made available to the remote end by simply copying them over and thus
+> giving the remote host direct access to the user creds. Quite a few
+> people would prefer to use a ssh-agent like approach instead where
+> credentials stay always on the local machine and context establishment
+> is proxied over the ssh channel. Although this initiative will *not*
+> address this feature, we'd like to build the protocol in such a way that
+> it will become easy to implement this mechanism in the future.
+> 
+> 
+> 
+> ==== Current status ====
+> 
+> I am trying to push this initiative and I am organizing and contacting
+> people to enter the planning phase. I have received initial availability
+> from some stakeholders in helping to shape this initiative from protocol
+> design to transport/interface (esp. against the kernel) design,
+> implementation, testing, etc..
+> 
+> Because there are many parties involved I would like to try to keep this
+> discussion focused as much as possible to the proxy functionality.
+> 
+> I see this effort involving mainly 3 areas at this stage.
+> 
+> 1) design of the protocol
+> 
+>         I this area I had some preliminary discussion with some of the
+>         people that are interested in the effort. Due to availability in
+>         both kernel and user space implementation is seem like an
+>         ONC/RPC - XDR based protocol is the best common denominator and
+>         easily implementable by all parties.
+>         Nothing is set in stone yet, any idea is welcome.
+>         
+> 2) kernel and user space interfaces to the GSSAPI Proxy Daemon
+> 
+>         For user-space to user-space communication is seem clear that a
+>         unix socket is probably the more natural transport to use.
+>         
+>         From the Linux kernel side deciding on the right upcall
+>         mechanism seem not as straight forward. One option seem to be
+>         the netlink or rather the connector interface that is layered on
+>         top of it. More discussion is definitely needed on this front.
+> 
+> 3) Changes to libgssapi to implement transparent proxying for user space
+> applications
+> 
+>         Some high level ideas have been floating around on where to hook
+>         this proxy layer in libgssapi but it is all in the air for now.
+>         Ideas here are very welcome.
+> 
+> 
+> Additional areas involve the design of the daemon in terms of
+> scalability, access control and various security considerations,
+> portability (?), etc...
+> 
+> 
+> 
+> Any feedback is welcome esp. if you have valuable ideas on the design
+> issues.
+> We will probably keep cross-posting a bit so that we can involve all
+> possible stakeholders, going forward we'll find a way to refocus
+> discussions around a few forums depending on what part of the problem
+> people is working on.
+> If you know other people/lists that should be involved, please feel free
+> to forward and include them in the discussion.
+> 
+> 
+> Regards,
+> Simo.
 
-> On Sun, Nov 13, 2011 at 02:45:48PM +0100, Tigran Mkrtchyan wrote:
-> > I have a server which runs on top of hadoop. The problem with hadoop
-> > is that there is no way to have persistent file handles. I am
-> > currently working on a way to do that - either simulate them or add a
-> > support for unique file id to hadoop. If linux client will support
-> > volatile file handles then I can stop inventing some workarounds.
->=20
-> I might call that "fixing" rather than inventing workarounds.
->=20
-> Our of curiosity: if we really wanted to support such filesystems, what
-> would we need in the protocol?  Just saying "filehandles aren't stable,
-> deal with it" seems insufficient.=20
 
-1/ no guarantees if the file is not 'open'
-2/ two possible responses to FHEXPIRED:
-    a/ perform a GETATTR and request the 'filehandle' attribute.  Client th=
-en
-       uses that filehandle instead.
-    b/ perform LOOKUP on parent filehandle with same name as before, and use
-       the resulting filehandle.
-   Server specifies which somehow (different error code?  magic attribute
-   flag somewhere?  doesn't really matter)
+*PAD: Stands for Principal Authorization Data,
+see: http://tools.ietf.org/html/draft-ietf-krb-wg-general-pac-01.html
 
-If a server has objects that are never renamed, it can easily use volatile
-file handles.
-If a server has objects which can be renamed and wants to use volatile file
-handles, then if such an object is open and is about to be renamed, it must
-first log to stable storage some mapping to allow it to access the file from
-the old volatile file handle.  And of course it cannot allow renames during
-the grace period, but I think we already have that.
-Also, if the VFH is such that it will be  lost on a reboot, the server must
-log it to stable storage before allowing an open.
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
->=20
-> Say there was some way for the client to indicate which filehandles it
-> currently has in use, and some way for the server to ask the client to
-> return in-use filehandles if there are too many (like DELEG_RECALL_ANY).
-> Then the server could at least place a limit on the number of
-> filehandles that it had to guarantee persistent.
->=20
-> And/or the client could get a callback on rename/link/unlink.  Bah.
->=20
-> Would any of that actually be easier than implementing persistent file
-> handles?
-
-Easier for whom?  Should NFSv4 be designed to make life easier for filesyst=
-em
-implementers, or easier for NFS implementers :-?
-
-While I don't have concrete examples I would not be surprised if there were
-filesystems where implementing limited persistence was practical while
-implementing universal persistence was not.
-
-
-NeilBrown
-
-
---Sig_/tz/QxLdoYLLg_tRfqKK/cM6
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBTsAxpznsnt1WYoG5AQLxAQ//S1rR1Ys3CC9HVEXLcBvSVCKnWD+sf+Y/
-jwi7DHXeVTgceYYpkpoksnJ7afCclAQ0UN4P5WRPnlX1297kdNQ22ma3bM2p+lXC
-ClKy1pgvCfN7ta1+ZBOHq7N6H2FdF7a+QEtTbG10LKPJe6vS71kvtphyebvduIsg
-JyaLOj3a4h+wlVobelNrtPn/SZvRdVcgTX9x6Dqf1M/U6f4eckJ/y1NeC0tkutBG
-tU1yFHSM/7AOjxAdOypAry2Mya5dtdJkpWr5UT5r4om3LWe2Oy6IgyFEzJfOJl19
-iChfxN5/7bp1ul4dfgoHgwAZjblwuzKD9IM/izBp1+yKmiewrC7qZMO5teJvZyil
-JLeF8R2d43QV0Rc4JTTnSc/iYrsdfLixnKdI5p5iz6YK8icJXu/G+c6Fd3Sfr62G
-KSt6AWSZgyjrn7lQBD4d1Ko43a6loSbgwPveaK88lF/KJN+gWNK45kBbK0rQhYZG
-TJZwkhZ58CKDwHGsPi7wos+n9v3VhT5hMNNqvqY+RUadht5W+sQI/jMuPcpwMnmn
-6b2NLA/n7IpWs7sqNLqK/gV0298WJ80zkTPQT3od17FbiLj1npaKvMHD/7NF6+kZ
-ymblmWMA9UXTJIDS38y7kSzg4sEldtOyIxidb0R7F199AAMIbS3FTGhkqwyifauc
-A9kGd5TWqYM=
-=ez0/
------END PGP SIGNATURE-----
-
---Sig_/tz/QxLdoYLLg_tRfqKK/cM6--
