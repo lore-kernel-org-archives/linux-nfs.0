@@ -1,77 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54873 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751802Ab1KPPay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Nov 2011 10:30:54 -0500
-Date: Wed, 16 Nov 2011 10:30:52 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Pavel <free.lan.c2.718r@gmail.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: clients fail to reclaim locks after server reboot or manual
- sm-notify
-Message-ID: <20111116153052.GA20545@fieldses.org>
-References: <loom.20111114T180637-632@post.gmane.org>
- <4EC1678D.902@netapp.com>
- <4EC18E5F.4080101@netapp.com>
- <loom.20111115T142111-739@post.gmane.org>
- <4EC2DE49.5070000@netapp.com>
- <20111115221623.GA12453@fieldses.org>
- <4EC3C7BD.6060407@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:60953 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756065Ab1KBTBx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Nov 2011 15:01:53 -0400
+Message-ID: <4EB19399.10402@panasas.com>
+Date: Wed, 2 Nov 2011 12:01:45 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EC3C7BD.6060407@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [osd-dev] [patchset 0/8] pnfs-obj: Move to ORE for v3.2 merge
+ window
+References: <4EAAFED8.7020600@panasas.com> <1319909073.2760.7.camel@lade.trondhjem.org> <4EAEDFA6.4080303@panasas.com> <4EAF146D.5060507@panasas.com> <4EB02FA2.80204@panasas.com>
+In-Reply-To: <4EB02FA2.80204@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 16, 2011 at 09:25:01AM -0500, Bryan Schumaker wrote:
-> Here is what I'm doing (On debian with 2.6.32):
-> - (On Client) Mount the server: `sudo mount -o vers=3 
-> 192.168.122.202:/home/bjschuma /mnt`
-> - (On Client) Lock a file using nfs-utils/tools/locktest: `./testlk 
-> /mnt/test`
-> - (On Server) Call sm-notify with the server's IP address: `sudo 
-> sm-notify -f -v 192.168.122.202`
-> - dmesg on the client has this message:
->     lockd: spurious grace period reject?!
->     lockd: failed to reclaim lock for pid 2099 (errno -37, status 4)
-> - (In wireshark) The client sends a lock request with the "Reclaim" bit 
-> set to "yes" but the server replies with "NLM_DENIED_GRACE_PERIOD".
-
-That sounds like correct server behavior to me.
-
-Once the server ends the grace period and starts accepting regular
-non-reclaim locks, there's the chance of a situation like:
-
-	client A		client B
-	--------		--------
-
-	acquires lock
-
-		---server reboot---
-		---grace period ends---
-
-				acquires conflicting lock
-				drops conflicting lock
-
-And if the server permits a reclaim of the original lock from client A,
-then it gives client A the impression that it has held its lock
-continuously over this whole time, when in fact someone else has held a
-conflicting lock.
-
-So: no non-reclaim locks are allowed outside the grace period.
-
-If you restart the server, and *then* immediately run sm-notify while
-the new nfsd is still in its grace period, I'd expect the reclaim to
-succeed.
-
-And that may be where the HA setup isn't right--if you're doing
-active/passive failover, then you need to make sure you don't start nfsd
-on the backup machine until just before you send the sm-notify.
-
---b.
-
+On 11/01/2011 10:42 AM, Boaz Harrosh wrote:
+> On 10/31/2011 02:34 PM, Boaz Harrosh wrote:
+>>
+>> Hi trond
+>>
+>> I just re-checked. Compiled both i386 an x86_64 allmodconfig and even
+>> merge with latest linus tree. I sign on these patches.
+>>
+>> Again they were in linux-next as is, untouched based on exofs tree.
+>> And now based on Linus/master [f362f98] They compile and run.
+>>
+>> I'll re-post them just in case you decide to need them, as reply to
+>> this mail.
+>>
+>> Thanks
+>> Boaz
 > 
-> Shouldn't the server be allowing the lock reclaim?  When I tried 
-> yesterday using 3.0 it only triggered DNS packets, I tried again a few 
-> minutes ago and got the same results that I did using .32.
+> Hi Trond
+> 
+> We just had a linux-next tree "linux-next: Tree for Nov 1"
+> I looked through all the compile logs for the different
+> arches it is all clean. So I guess it is ready as it can be.
+> 
+
+Trond? ping? It is possible that the merge window will end this
+Friday/Saturday.
+
+What prevents the pull? 
+
+> Cheers
+> Boaz
+
+Thanks
+Boaz
