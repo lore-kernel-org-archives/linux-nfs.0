@@ -1,41 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:50729 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756571Ab1K2Xr7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 18:47:59 -0500
-Message-ID: <4ED56F22.70106@panasas.com>
-Date: Tue, 29 Nov 2011 15:47:46 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:51719 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751230Ab1KCUov (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 16:44:51 -0400
+Date: Thu, 3 Nov 2011 16:44:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+Message-ID: <20111103204449.GA27393@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+ <20111101202715.GB1891@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
+ <20111101204325.522c35b3@corrin.poochiereds.net>
+ <20111102012315.GA5532@fieldses.org>
+ <20111102070742.5354d83c@tlielax.poochiereds.net>
+ <20111102144657.GD7721@fieldses.org>
+ <20111102115453.7e81168f@corrin.poochiereds.net>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Peng Tao <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
-        <bhalevy@tonian.com>, Garth Gibson <garth@panasas.com>,
-        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>  <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com> <1322607704.11286.38.camel@lade.trondhjem.org>
-In-Reply-To: <1322607704.11286.38.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111102115453.7e81168f@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 03:01 PM, Trond Myklebust wrote:
-> On Tue, 2011-11-29 at 14:40 -0800, Boaz Harrosh wrote:
-> 
->> The reason Netapp don't see a point is not a factor. I have not seen a netapp
->> server doing a top 100 HPC cluster either.
-> 
-> BTW: Stop adding this "NetApp" insinuation bullshit...
-> 
-> I _strongly_ resent the fact that you appear to think I'm incapable of
-> thinking for myself...
-> 
+I'm feeling dense.
 
-OK I take that back, and apologize. Please for give me. No insult intended.
+On Wed, Nov 02, 2011 at 11:54:53AM -0400, Jeff Layton wrote:
+> Yes, I think it is different. When we truncate the file to 0 then we
+> don't care if another write races in.
 
-I got emotional and feared that fireworks we tend to have about the all
-thing. I should have exercised more Control.
+	Client 1		Client 2
+	--------		--------
 
-If any thing it is the opposite, I think you are a brilliant guy, and
-I admire your thinking, hence my big dilemma.
- 
-Heart
+	setattr size to 0
+				write to file
+	get change attribute
+
+If we decide not to invalidate the cache here, then we miss Client 2's
+write.  The same is true if we set the size to something other than 0.
+
+There's a second possible race when Client 2's write comes before the
+setattr, and it's true that that race doesn't matter in the size-0 case
+and does in the other.
+
+But if we were doing a write instead of a setattr, we'd ignore that
+second race.
+
+And I don't understand why something like ftruncate should be treated
+differently from write.  In either case we're modifying a file while
+holding a write open, and I'd expect us to assume in both cases that
+nobody else is doing the same.
+
+> We're invalidating all of the
+> pages we have cached for the file at that point anyway. If we try to
+> reread the file afterward we're going to have to fetch the data from
+> the server regardless.
+> 
+> I guess my main point is that we won't have any cached data after a
+> truncate to 0, so there's no need to worry about ensuring that the
+> cache is eventually invalidated after that. The VFS-level truncate on
+> the client is going to take care of that for us anyway. That allows us
+> to optimize for this special (but common) case.
+> 
+> A truncate to a non-zero size is different however because we may still
+> have lingering cached pages. We will need to invalidate those if the
+> server sends pre-op attrs
+
+There are no pre-op attrs: the Linux v4 client's write compound is
+putfh, write, getattr, with no getattr before the write, and the
+nfs_post_op_update_inode_force_wcc() call in nfs4_write_done_cb() makes
+the client pretends there were pre-op attributes the same as whatever it
+currently has cached in the inode--if I understand it right.
+
+--b.
+
+> that indicate that something else happened
+> prior to the truncate, or if the server doesn't send pre-op attrs at
+> all.
