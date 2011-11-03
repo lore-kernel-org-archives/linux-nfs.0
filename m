@@ -1,116 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36196 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34192 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753613Ab1KAOI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 10:08:59 -0400
-Message-ID: <4EAFFD65.4010407@netapp.com>
-Date: Tue, 01 Nov 2011 10:08:37 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSD: Added fault injection
-References: <1319455259-3136-1-git-send-email-bjschuma@netapp.com> <20111028212450.GA7441@fieldses.org>
-In-Reply-To: <20111028212450.GA7441@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1752616Ab1KCVqq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:46:46 -0400
+Subject: Re: GSSAPI Proxy initiative
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: Nico Williams <nico@cryptonector.com>, dhowells <dhowells@redhat.com>,
+        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
+Date: Thu, 03 Nov 2011 17:46:46 -0400
+In-Reply-To: <1320355818.7734.685.camel@willson.li.ssimo.org>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+	 <CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
+	 <1320332310.7734.643.camel@willson.li.ssimo.org>
+	 <CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
+	 <1320337903.7734.670.camel@willson.li.ssimo.org>
+	 <CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
+	 <1320352784.18396.109.camel@lade.trondhjem.org>
+	 <CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
+	 <1320355818.7734.685.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320356806.18396.149.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri 28 Oct 2011 05:24:50 PM EDT, J. Bruce Fields wrote:
-> On Mon, Oct 24, 2011 at 07:20:57AM -0400, bjschuma@netapp.com wrote:
-> ...
->> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
->> new file mode 100644
->> index 0000000..1ac4134
->> --- /dev/null
->> +++ b/fs/nfsd/fault_inject.c
->> @@ -0,0 +1,90 @@
-> ...
->> +int nfsd_fault_inject_init(void)
->> +{
->> +	unsigned int i;
->> +	struct nfsd_fault_inject_op *op;
->> +	mode_t mode = S_IFREG | S_IRUSR | S_IWUSR;
->> +
->> +	debug_dir = debugfs_create_dir("nfsd", NULL);
->> +	if (!debug_dir)
->> +		goto fail;
->> +
->> +	for (i = 0; i < NUM_INJECT_OPS; i++) {
->> +		op = &inject_ops[i];
->> +		debugfs_create_file(op->file, mode, debug_dir, op, &fops_nfsd);
->
-> I think you need to check the return value and "goto fail" on NULL.
+On Thu, 2011-11-03 at 17:30 -0400, Simo Sorce wrote: 
+> On Thu, 2011-11-03 at 15:53 -0500, Nico Williams wrote:
+> > On Thu, Nov 3, 2011 at 3:39 PM, Trond Myklebust
+> > <Trond.Myklebust@netapp.com> wrote:
+> > >> What I had in mind was something like PAGs or keyrings.  Or, to be
+> > >> much more specific, search for my name and the string "credentials
+> > >> process groups" -- a PAG on steroids.
+> > >>
+> > >> The idea is that the IPC peer can observe the other's
+> > >> PAG/keyring/CPG/whatever and use that to find the correct credentials
+> > >> (authorization is still required though).
+> > >
+> > > Linux already has per-user, per-process and per-thread keyrings which
+> > > offer a high security storage solution for keys. The problem with those
+> > > is that they are difficult to use in an asynchronous context when the
+> > > original user's process/thread context is no longer available to us.
+> > 
+> > For async IPC methods you'd want something like SCM_CREDENTIALS to
+> > give you the keyring/PAG/whatever information you need abou thte peer.
+> >  The ancillary data should be complete enough that you can past the
+> > client process/thread being dead, although it's nice to not have to
+> > process a request from a dead entity...
+> > 
+> > For sync IPC you need something like door_ucred().  And for sync IPC
+> > you can make sure to get SIGCANCEL or equivalent when the client gets
+> > canceled (this is the default in doors).
+> > 
+> > > Ideally, though, that's what we'd like to see used.
+> > 
+> > Agreed!
+> 
+> I have discussed use of the keyring in a private discussion before
+> starting the thread, and it turns out the keyring has a number of
+> limitations that makes it probably unsuitable for this project.
+> 
+> As an upcall mechanism it has some limitations on the size of the
+> payloads, IIRC limited to a page, and that means that you cannot pass
+> blobs carrying big kerberos tickets.
+> 
+> As a storage mechanism for credential caches it also has size limits.
+> Currently the limit is 20k per user which is not even enough to hold a
+> single ticket in some cases. This limit can be increased of course, but
+> then you end keeping around a huge amount of unswappable ram depending
+> on the number of users.
 
-Makes sense.  Thanks for catching that!
+Allowing keys to be swapped out is a really really really really really
+really bad idea when your kernel depends upon them being available as
+part of the memory reclaim process, as would be the case when you are
+talking about NFS, CIFS or AFS dirty page writebacks.
 
->
-> (Do you also need to put the returned dentry on success?  Checking other
-> callers.... No, I guess not, OK.)
->
->> +	}
->> +	return 0;
->> +
->> +fail:
->> +	nfsd_fault_inject_cleanup();
->> +	return -ENOMEM;
->> +}
-> ...
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index db34a58..e67f30c 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
-> ...
->> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
->>  	retval = nfs4_state_init(); /* nfs4 locking state */
->>  	if (retval)
->>  		return retval;
->> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
->> +	if (retval)
->> +		goto out_cleanup_fault_injection;
->>  	nfsd_stat_init();	/* Statistics */
->>  	retval = nfsd_reply_cache_init();
->>  	if (retval)
->> @@ -1161,6 +1165,8 @@ out_free_cache:
->>  out_free_stat:
->>  	nfsd_stat_shutdown();
->>  	nfsd4_free_slabs();
->> +out_cleanup_fault_injection:
->> +	nfsd_fault_inject_cleanup();
->
-> Check the cleanup here again....  The slabs are allocated in state_init,
-> so you need to do that on nfsd_fault_inject_init, but you *don't* need
-> the fault_inject_cleanup in that case, since fault_inject_init cleanup
-> cleans up after itself--that's needed only on later failures.
+> So for long term storage of credentials we will probably not rely on
+> kernel keyrings, nor as an upcall mechanism.
 
-Would it be better to change the fault_inject_init() function so it 
-doesn't clean up after itself?  This would keep it consistent with the 
-other nfsd init functions.  I didn't realize that slabs were 
-initialized in the state_init() function, I'll fix that.
+So this would be an argument for scrapping keyrings from the kernel? If
+they're not good for kerberos tickets, why would we want to keep them at
+all?
+What would you replace them with, given the above requirements
+concerning swapping?
 
-Thanks for the review!
 
-- Bryan
->
-> --b.
->
->>  	return retval;
->>  }
->>  
->> @@ -1174,6 +1180,7 @@ static void __exit exit_nfsd(void)
->>  	nfsd_lockd_shutdown();
->>  	nfsd_idmap_shutdown();
->>  	nfsd4_free_slabs();
->> +	nfsd_fault_inject_cleanup();
->>  	unregister_filesystem(&nfsd_fs_type);
->>  }
->>  
->> -- 
->> 1.7.7
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
