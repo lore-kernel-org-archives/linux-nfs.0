@@ -1,95 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:15902 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753107Ab1K2MlW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 07:41:22 -0500
-From: <tao.peng@emc.com>
-To: <skinsbursky@parallels.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <xemul@parallels.com>, <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <jbottomley@parallels.com>,
-        <bfields@fieldses.org>, <davem@davemloft.net>, <devel@openvz.org>
-Date: Tue, 29 Nov 2011 07:40:19 -0500
-Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
- <20111129091037.20730.59391.stgit@localhost6.localdomain6>
- <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
- <4ED4CDCE.9080804@parallels.com>
-In-Reply-To: <4ED4CDCE.9080804@parallels.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:17115 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752348Ab1KCVj2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:39:28 -0400
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs@vger.kernel.org
+Date: Thu, 03 Nov 2011 17:39:14 -0400
+In-Reply-To: <20111103212036.GB27393@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+	 <20111101202715.GB1891@fieldses.org>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
+	 <20111101204325.522c35b3@corrin.poochiereds.net>
+	 <20111102012315.GA5532@fieldses.org>
+	 <20111102070742.5354d83c@tlielax.poochiereds.net>
+	 <20111102144657.GD7721@fieldses.org>
+	 <20111102115453.7e81168f@corrin.poochiereds.net>
+	 <20111103204449.GA27393@fieldses.org>
+	 <1320354185.18396.124.camel@lade.trondhjem.org>
+	 <20111103212036.GB27393@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320356354.18396.143.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
-eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIE5v
-dmVtYmVyIDI5LCAyMDExIDg6MTkgUE0NCj4gVG86IFBlbmcsIFRhbw0KPiBDYzogVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb207IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IFBhdmVsIEVtZWxp
-YW5vdjsgbmVpbGJAc3VzZS5kZTsNCj4gbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgbGludXgta2Vy
-bmVsQHZnZXIua2VybmVsLm9yZzsgSmFtZXMgQm90dG9tbGV5OyBiZmllbGRzQGZpZWxkc2VzLm9y
-ZzsNCj4gZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsgZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBTdWJqZWN0OiBS
-ZTogW1BBVENIIDQvNV0gTkZTOiByZW1vdmUgUlBDIFBpcGVGUyBtb3VudCBwb2ludCByZWZlcmVu
-Y2UgZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiANCj4gMjkuMTEuMjAxMSAxNjowMCwgdGFv
-LnBlbmdAZW1jLmNvbSDQv9C40YjQtdGCOg0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
-LQ0KPiA+PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGlu
-dXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mDQo+IFN0YW5pc2xhdg0K
-PiA+PiBLaW5zYnVyc2t5DQo+ID4+IFNlbnQ6IFR1ZXNkYXksIE5vdmVtYmVyIDI5LCAyMDExIDY6
-MTEgUE0NCj4gPj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4+IENjOiBsaW51
-eC1uZnNAdmdlci5rZXJuZWwub3JnOyB4ZW11bEBwYXJhbGxlbHMuY29tOyBuZWlsYkBzdXNlLmRl
-OyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4gPj4ga2VybmVsQHZnZXIua2VybmVs
-Lm9yZzsgamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZpZWxkc2VzLm9yZzsgZGF2
-ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gPj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiA+PiBTdWJqZWN0OiBb
-UEFUQ0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZSBm
-cm9tIGJsb2NrbGF5b3V0IHJvdXRpbmVzDQo+ID4+DQo+ID4+IFRoaXMgaXMgYSBjbGVhbnVwIHBh
-dGNoLiBXZSBkb24ndCBuZWVkIHRoaXMgcmVmZXJlbmNlIGFueW1vcmUsIGJlY2F1c2UNCj4gPj4g
-YmxvY2tsYXlvdXQgcGlwZXMgZGVudHJpZXMgbm93IGNyZWF0ZXMgYW5kIGRlc3Ryb3lzIGluIHBl
-ci1uZXQgb3BlcmF0aW9ucyBhbmQNCj4gPj4gb24gUGlwZUZTIG1vdW50L3Vtb3VudCBub3RpZmlj
-YXRpb24uDQo+ID4+IE5vdGUgdGhhdCBuZnM0YmxvY2tsYXlvdXRfcmVnaXN0ZXJfbmV0KCkgbm93
-IHJldHVybnMgMCBpbnN0ZWFkIG9mIC1FTk9FTlQgaW4NCj4gPj4gY2FzZSBvZiBQaXBlRlMgc3Vw
-ZXJibG9jayBhYnNlbmNlLiBUaGlzIGlzIG9rLCBiZWNhdXNlIGJsb2NrbGF5b3V0IHBpcGUgZGVu
-dHJ5DQo+ID4+IHdpbGwgYmUgY3JlYXRlZCBvbiBQaXBlRlMgbW91bnQgZXZlbnQuDQo+ID4gV2hl
-biBpcyB0aGUgInBpcGVmcyBtb3VudCBldmVudCIgZ29pbmcgdG8gaGFwcGVuPyBXaGVuIGluc2Vy
-dGluZyBrZXJuZWwgbW9kdWxlcyBvciB3aGVuIHVzZXIgaXNzdWVzDQo+IG1vdW50IGNvbW1hbmQ/
-DQo+ID4NCj4gDQo+IFdoZW4gdXNlciBpc3N1ZXMgbW91bnQgY29tbWFuZC4NCj4gS2VybmVsIG1v
-dW50cyBvZiBQaXBlRlMgaGFzIGJlZW4gcmVtb3ZlZCB3aXRoIGFsbCB0aGVzZSBwYXRjaCBzZXRz
-IEkndmUgc2VudA0KPiBhbHJlYWR5Lg0KVGhlbiBpdCBpcyBnb2luZyB0byBicmVhayBibG9ja2xh
-eW91dCB1c2VyIHNwYWNlIHByb2dyYW0gYmxrbWFwZCwgd2hpY2ggaXMgc3RhcmVkIGJlZm9yZSBt
-b3VudGluZyBhbnkgZmlsZSBzeXN0ZW0gYW5kIGl0IHRyaWVzIHRvIG9wZW4gdGhlIHBpcGUgZmls
-ZSB3aGVuIHN0YXJ0ZWQuDQpOb3Qgc3VyZSBpZiB5b3UgaW1wbGVtZW50IHRoZSBzYW1lIGxvZ2lj
-IG9uIG5mcyBwaXBlIGFzIHdlbGwuIEJ1dCBpZiB5b3UgZG8sIHRoZW4gbmZzIGNsaWVudCB1c2Vy
-IHNwYWNlIHByb2dyYW0gaWRtYXBkIHdpbGwgZmFpbCB0byBzdGFydCBmb3IgdGhlIHNhbWUgcmVh
-c29uLg0KDQpXaHkgbm90IGp1c3QgZmFpbCB0byBsb2FkIG1vZHVsZSBpZiB5b3UgZmFpbCB0byBp
-bml0aWFsaXplIHBpcGVmcz8gV2hlbiBpcyBycGNfZ2V0X3NiX25ldCgpIGdvaW5nIHRvIGZhaWw/
-DQoNCj4gDQo+IA0KPiA+IFRoYW5rcywNCj4gPiBUYW8NCj4gPg0KPiA+Pg0KPiA+PiBTaWduZWQt
-b2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0K
-PiA+Pg0KPiA+PiAtLS0NCj4gPj4gICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8
-ICAgIDkgKy0tLS0tLS0tDQo+ID4+ICAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyks
-IDggZGVsZXRpb25zKC0pDQo+ID4+DQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlv
-dXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQo+ID4+
-IGluZGV4IGFjZjdhYzkuLjgyMTFmZmQgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy9ibG9ja2xh
-eW91dC9ibG9ja2xheW91dC5jDQo+ID4+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
-eW91dC5jDQo+ID4+IEBAIC0xMDMyLDcgKzEwMzIsNyBAQCBzdGF0aWMgc3RydWN0IGRlbnRyeSAq
-bmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVyX25ldChzdHJ1Y3QgbmV0ICpuZXQsDQo+ID4+DQo+ID4+
-ICAgCXBpcGVmc19zYiA9IHJwY19nZXRfc2JfbmV0KG5ldCk7DQo+ID4+ICAgCWlmICghcGlwZWZz
-X3NiKQ0KPiA+PiAtCQlyZXR1cm4gRVJSX1BUUigtRU5PRU5UKTsNCj4gPj4gKwkJcmV0dXJuIDA7
-DQo+ID4+ICAgCWRlbnRyeSA9IG5mczRibG9ja2xheW91dF9yZWdpc3Rlcl9zYihwaXBlZnNfc2Is
-IHBpcGUpOw0KPiA+PiAgIAlycGNfcHV0X3NiX25ldChuZXQpOw0KPiA+PiAgIAlyZXR1cm4gZGVu
-dHJ5Ow0KPiA+PiBAQCAtMTA4Myw3ICsxMDgzLDYgQEAgc3RhdGljIHN0cnVjdCBwZXJuZXRfb3Bl
-cmF0aW9ucyBuZnM0YmxvY2tsYXlvdXRfbmV0X29wcyA9IHsNCj4gPj4NCj4gPj4gICBzdGF0aWMg
-aW50IF9faW5pdCBuZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiA+PiAgIHsNCj4gPj4gLQlz
-dHJ1Y3QgdmZzbW91bnQgKm1udDsNCj4gPj4gICAJaW50IHJldDsNCj4gPj4NCj4gPj4gICAJZHBy
-aW50aygiJXM6IE5GU3Y0IEJsb2NrIExheW91dCBEcml2ZXIgUmVnaXN0ZXJpbmcuLi5cbiIsIF9f
-ZnVuY19fKTsNCj4gPj4gQEAgLTEwOTMsMTIgKzEwOTIsNiBAQCBzdGF0aWMgaW50IF9faW5pdCBu
-ZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiA+PiAgIAkJZ290byBvdXQ7DQo+ID4+DQo+ID4+
-ICAgCWluaXRfd2FpdHF1ZXVlX2hlYWQoJmJsX3dxKTsNCj4gPj4gLQ0KPiA+PiAtCW1udCA9IHJw
-Y19nZXRfbW91bnQoKTsNCj4gPj4gLQlpZiAoSVNfRVJSKG1udCkpIHsNCj4gPj4gLQkJcmV0ID0g
-UFRSX0VSUihtbnQpOw0KPiA+PiAtCQlnb3RvIG91dF9yZW1vdmU7DQo+ID4+IC0JfQ0KPiA+PiAg
-IAlyZXQgPSBycGNfcGlwZWZzX25vdGlmaWVyX3JlZ2lzdGVyKCZuZnM0YmxvY2tsYXlvdXRfYmxv
-Y2spOw0KPiA+PiAgIAlpZiAocmV0KQ0KPiA+PiAgIAkJZ290byBvdXRfcmVtb3ZlOw0KPiA+Pg0K
-PiA+PiAtLQ0KPiA+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
-ZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
-dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
-ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPg0KPiANCj4g
-DQo+IC0tDQo+IEJlc3QgcmVnYXJkcywNCj4gU3RhbmlzbGF2IEtpbnNidXJza3kNCg0K
+On Thu, 2011-11-03 at 17:20 -0400, J. Bruce Fields wrote: 
+> On Thu, Nov 03, 2011 at 05:03:05PM -0400, Trond Myklebust wrote:
+> > On Thu, 2011-11-03 at 16:44 -0400, J. Bruce Fields wrote: 
+> > > I'm feeling dense.
+> > > 
+> > > On Wed, Nov 02, 2011 at 11:54:53AM -0400, Jeff Layton wrote:
+> > > > Yes, I think it is different. When we truncate the file to 0 then we
+> > > > don't care if another write races in.
+> > > 
+> > > 	Client 1		Client 2
+> > > 	--------		--------
+> > > 
+> > > 	setattr size to 0
+> > > 				write to file
+> > > 	get change attribute
+> > > 
+> > > If we decide not to invalidate the cache here, then we miss Client 2's
+> > > write.  The same is true if we set the size to something other than 0.
+> > 
+> > ?????????
+> > How can we "decide not to invalidate the cache here"? the call to
+> > nfs_vmtruncate() will _always_ call truncate_pagecache().
+> > The only case where we don't call nfs_vmtruncate() is if the client has
+> > already determined that the file size was zero, and optimised away the
+> > setattr call altogether.
+> 
+> Sorry, I'm probably using the wrong language.
+> 
+> I'm using the word "cache" to refer not to the page cache, but more
+> generally to the client's idea of the file state.  Thus if the client,
+> after the above operation, is left believing the file has size 0, I
+> wouldn't say it has invalidated its cache, I'd say it's cached the fact
+> that the file has size zero....
+> 
+> Does what I said make sense, given that?
+
+Nope; I'm still lost.
+
+So if the client is caching a file size of 0, why would it "miss a
+write"? It will soon see that the file size on the server is non-zero.
+In fact, your 'get change attribute' will always be accompanied by a
+'get file size' that will detect the changed size right there...
+
+> > > There's a second possible race when Client 2's write comes before the
+> > > setattr, and it's true that that race doesn't matter in the size-0 case
+> > > and does in the other.
+> > > 
+> > > But if we were doing a write instead of a setattr, we'd ignore that
+> > > second race.
+> > > 
+> > > And I don't understand why something like ftruncate should be treated
+> > > differently from write.  In either case we're modifying a file while
+> > > holding a write open, and I'd expect us to assume in both cases that
+> > > nobody else is doing the same.
+> > 
+> > When did we move to the topic of multiple clients, and why do you think
+> > it is relevant?
+> 
+> We're seeing the client decide that it can no longer trust its idea of
+> the file, presumably because it no longer believes it safe to assume
+> that nobody else has modified it.
+
+Did you look into the race I described yesterday? That doesn't require a
+client 2.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
