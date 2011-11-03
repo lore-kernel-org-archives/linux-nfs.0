@@ -1,43 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32773 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:24583 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752829Ab1KMQpl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Nov 2011 11:45:41 -0500
-Date: Sun, 13 Nov 2011 11:45:36 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20111113164536.GC28574@fieldses.org>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321056809.8733.2.camel@lade.trondhjem.org>
- <20111112144953.GA3740@infradead.org>
- <20111113145400.6c7a9be3@notabene.brown>
- <20111113164240.GB28574@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111113164240.GB28574@fieldses.org>
+	id S933820Ab1KCQKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 12:10:32 -0400
+Subject: Re: GSSAPI Proxy initiative
+From: Simo Sorce <simo@redhat.com>
+To: Nico Williams <nico@cryptonector.com>
+Cc: Love =?ISO-8859-1?Q?H=F6rnquist_=C5strand?= <lha@kth.se>,
+        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
+In-Reply-To: <CAK3OfOj1_W-atibn9BoV0RTcJSO7rxRfKPJenjYBRyTpooto9w@mail.gmail.com>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+	 <CAK3OfOj1_W-atibn9BoV0RTcJSO7rxRfKPJenjYBRyTpooto9w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 03 Nov 2011 12:10:24 -0400
+Message-ID: <1320336624.7734.649.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Nov 13, 2011 at 11:42:40AM -0500, J. Bruce Fields wrote:
-> On Sun, Nov 13, 2011 at 02:54:00PM +1100, NeilBrown wrote:
-> > So if you know the filesystem will only return FHEXPIRED for filehandles
-> > belonging to files that cannot be renamed, then it is perfectly reasonable to
-> > repeat the name lookup to re-access the file after the server forgets about
-> > an old filehandle.  The mount option is how you communicate this knowledge,
-> > because the RFC doesn't provide a way to communicate it.
-> 
-> What about http://tools.ietf.org/html/rfc5661#section-11.11
-> STATUS4_FIXED?
+On Thu, 2011-11-03 at 10:42 -0500, Nico Williams wrote:
+> FYI, I also think Love needs to be on the cc list, if not heimdal-discuss.
 
-Also, could a re-looked-up file be considered sufficiently safe to use
-if all the attributes matched?
+I knew I'd miss someone as said in the first email feel free to keep
+adding people or lists for now.
 
-(I guess not: inode numbers, change attributes, etc., could agree by
-coincidence, so it would never be completely reliable.)
+Incidentally I have been informed that some lists are holding message
+due to too many CCs, so I trimmed out people I *think* are subscribed to
+at least one of the mailing lists above. Apologies if I cut someone not
+on one of the lists.
 
---b.
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
