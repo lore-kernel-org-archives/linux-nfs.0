@@ -1,97 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11874 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756278Ab1K2Xad convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 18:30:33 -0500
-Message-ID: <1322609431.11286.56.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
-        bhalevy@tonian.com, Garth Gibson <garth@panasas.com>,
-        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>,
-        Fred Isaman <iisaman@netapp.com>
-Date: Tue, 29 Nov 2011 18:30:31 -0500
-In-Reply-To: <4ED563AC.5040501@panasas.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
-	   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
-	  <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
-	 <1322606842.11286.33.camel@lade.trondhjem.org>
-	 <4ED563AC.5040501@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from nm12.bullet.mail.ird.yahoo.com ([77.238.189.65]:28834 "HELO
+	nm12.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750792Ab1KCTtM convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 15:49:12 -0400
+Message-ID: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
+Date: Thu, 3 Nov 2011 19:43:16 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 14:58 -0800, Boaz Harrosh wrote: 
-> On 11/29/2011 02:47 PM, Trond Myklebust wrote:
-> > On Tue, 2011-11-29 at 14:40 -0800, Boaz Harrosh wrote: 
-> >> On 11/29/2011 01:57 PM, Trond Myklebust wrote:
-> >>>> Also Files when they will support segments and servers that request segments,
-> >>>> like the CEPH server, will very much enjoy the above, .i.e: Tell me the amount
-> >>>> you know you want to write.
-> >>>
-> >>> Why would we want to add segment support to the pNFS files client???
-> >>> Segments are a nuisance that multiply the amount of unnecessary chitchat
-> >>> between the client and the MDS without providing any tangible
-> >>> benefits...
-> >>>
-> >>
-> >> Your kidding right?
-> >>
-> >> One: it is mandated by the Standard, This is not an option. So a perfectly
-> >>      Standard complaint server is not Supported by Linux because we don't see
-> >>      the point.
-> > 
-> > Bollocks.. Nothing is "mandated by the Standard". If the server doesn't
-> > give us a full layout, then we fall back to write through MDS. Why dick
-> > around with crap that SLOWS YOU DOWN.
-> > 
-> 
-> NO! MAKE YOU FASTER.
-> 
-> The kind of typologies I'm talking about a single layout get ever 1GB is
-> marginal to the gain I get in deploying 100 of DSs. I have thousands of
-> DSs I want to spread the load evenly. I'm limited by the size of the layout
-> (Device info in the case of files) So I'm limited by the number of DSs I can
-> have in a layout. For large files these few devices become an hot spot all
-> the while the rest of the cluster is idle.
+Hello together!
 
-I call "bullshit" on that whole argument...
+My OS: Debian 6.0.3 (squeeze)
+Machines: SUN Enterprise T5120 (USPARC64)
+---
+Issue description:
 
-You've done sod all so far to address the problem of a client managing
-layout segments for a '1000 DS' case. Are you expecting that all pNFS
-object servers out there are going to do that for you? How do I assume
-that a generic pNFS files server is going to do the same? As far as I
-know, the spec is completely moot on the whole subject.
+I've an NFS
+server (cluster1=137.226.167.241) and a
+client (cluster2=137.226.167.242) which should mount it's nfsroot from cluster1.
 
-IOW: I'm not even remotely interested in your "everyday problems" if
-there are no "everyday solutions" that actually fit the generic can of
-spec worms that the pNFS layout segments open.
+The linux-2.6.32 kernel on cluster2 shows this during startup:
+[ 528.982985] IP-Config: Complete:
+[ 528.983049] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+[ 528.983299] host=cluster2, domain=, nis-domain=(none),
+[ 528.983383] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+[ 528.983633] Looking up port of RPC 100003/2 on 137.226.167.241
+[ 530.037059] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+[ 530.056881] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+[ 564.002113] rpcbind: server 137.226.167.241 not responding, timed out
+[ 564.002295] Root-NFS: Unable to get nfsd port number from server, using default
+[ 564.002412] Looking up port of RPC 100005/1 on 137.226.167.241
+[ 564.104137] VFS: Mounted root (nfs filesystem) on device 0:15.
 
-> >> Two: There are already file-layout servers out there (multiple) which are
-> >>      waiting for the Linux files-layout segment support, because the underline
-> >>      FS requires Segments and now they do not work with the Linux client. These
-> >>      are CEPH and GPFS and more.
-> > 
-> > Then they will have a _long_ wait....
-> > 
-> 
-> OK, so now I understand. Because when I was talking to Fred before BAT and during
-> It was very very peculiar to me why he is not already done with that simple stuff.
-> Because usually Fred is such a brilliant fast programmer that I admire, and that simple
-> crap?
-> 
-> But now that explains
+It can mount the nfsroot finally.
 
-Yes. It's all a big conspiracy, and we're deliberately holding Fred's
-genius back in order to disappoint you...
+But if I use kernel linux-2.6.39.4 on cluster2 it can't mount it's nfsroot.
+(I've added "nfsdebug" to the kernel arguments for more debug info):
+[ 407.571521] IP-Config: Complete:
+[ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+[ 407.571793] host=cluster2, domain=, nis-domain=(none),
+[ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+[ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+[ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+[ 407.572927] NFS: parsing nfs mount option 'udp'
+[ 407.572995] NFS: parsing nfs mount option 'nolock'
+[ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+[ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+[ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+[ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+[ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+[ 442.666622] NFS: failed to create MNT RPC client, status=-60
+[ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+[ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+[ 442.667032] VFS: Insert root floppy and press ENTER
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+The NFS _server_ is always the same.
+In 2.6.32, 2.6.33, 2.6.35, 2,6.36 and 2.6.36.4 an NFS mount for nfsroot works fine.
+I've tested these kernels where the issue occurs: 2.6.37, 2.6.38, 2.6.39.4.
+So there's a break between 2.6.36.4 and 2.6.37.
 
+If you need more information - please ask!
+The problem is that I need a kernel >= 2.6.37 because of some other issues...
+So I'm very thankful for each help and I provide all needed information very fast.
+
+
+Regards,
+Lukas
+
+
+PS:
+My kernel-configs:
+http://net.razik.de/linux/T5120/
+
+And here the NFS parts:
+linux-2.6.36.4# grep NFS .config
+ CONFIG_NFS_FS=y
+ CONFIG_NFS_V3=y
+ CONFIG_NFS_V3_ACL=y
+ CONFIG_NFS_V4=y
+ # CONFIG_NFS_V4_1 is not set
+ CONFIG_ROOT_NFS=y
+ # CONFIG_NFS_USE_LEGACY_DNS is not set
+ CONFIG_NFS_USE_KERNEL_DNS=y
+ CONFIG_NFSD=m
+ CONFIG_NFSD_V2_ACL=y
+ CONFIG_NFSD_V3=y
+ CONFIG_NFSD_V3_ACL=y
+ CONFIG_NFSD_V4=y
+ CONFIG_NFS_ACL_SUPPORT=y
+ CONFIG_NFS_COMMON=y
+ CONFIG_NCPFS_NFS_NS=y
+
+
+linux-2.6.37# grep NFS .config
+ CONFIG_NFS_FS=y
+ CONFIG_NFS_V3=y
+ CONFIG_NFS_V3_ACL=y
+ CONFIG_NFS_V4=y
+ # CONFIG_NFS_V4_1 is not set
+ CONFIG_ROOT_NFS=y
+ # CONFIG_NFS_USE_LEGACY_DNS is not set
+ CONFIG_NFS_USE_KERNEL_DNS=y
+ # CONFIG_NFS_USE_NEW_IDMAPPER is not set
+ CONFIG_NFSD=m
+ CONFIG_NFSD_DEPRECATED=y
+ CONFIG_NFSD_V2_ACL=y
+ CONFIG_NFSD_V3=y
+ CONFIG_NFSD_V3_ACL=y
+ CONFIG_NFSD_V4=y
+ CONFIG_NFS_ACL_SUPPORT=y
+ CONFIG_NFS_COMMON=y
+ CONFIG_NCPFS_NFS_NS=y
