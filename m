@@ -1,33 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:42384 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755448Ab1KRBv1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 20:51:27 -0500
-Date: Thu, 17 Nov 2011 20:51:16 -0500
-From: Jim Rees <rees@umich.edu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: John Hughes <john@Calva.COM>, Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-Message-ID: <20111118015116.GA1959@umich.edu>
-References: <4EC3FD8B.6000705@calvaedi.com>
- <20111116144718.78b2e288@corrin.poochiereds.net>
- <20111116234434.GA12882@umich.edu>
- <20111116203119.1d9c0dd6@corrin.poochiereds.net>
- <20111116203810.4e1b9d28@corrin.poochiereds.net>
- <4EC4EA91.5070607@Calva.COM>
- <4EC50882.2080803@Calva.COM>
- <20111117164630.394027e7@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111117164630.394027e7@tlielax.poochiereds.net>
+Received: from mx1.redhat.com ([209.132.183.28]:52244 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755749Ab1KCPZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 11:25:05 -0400
+Date: Thu, 3 Nov 2011 11:27:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Oleg Nesterov <oleg@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] wait_event_freezekillable: use
+ freezer_do_not_count/freezer_count
+Message-ID: <20111103112704.4b905bfc@barsoom.rdu.redhat.com>
+In-Reply-To: <20111103141354.GB4417@google.com>
+References: <20111101163059.GR18855@google.com>
+	<20111101175953.GB5358@redhat.com>
+	<20111101180601.GV18855@google.com>
+	<20111101181329.GA6739@redhat.com>
+	<20111101182753.GW18855@google.com>
+	<20111101193923.GA9444@redhat.com>
+	<20111101194601.GB9444@redhat.com>
+	<20111101215710.GA13803@google.com>
+	<20111102175327.GA4446@redhat.com>
+	<20111103064215.48939e1a@tlielax.poochiereds.net>
+	<20111103141354.GB4417@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I would argue that if you don't want your applications to stop working when
-your ticket expires, you shouldn't let the ticket expire.  If you don't want
-to have to renew your ticket, you should use an infinite ticket lifetime.
+On Thu, 3 Nov 2011 07:13:54 -0700
+Tejun Heo <tj@kernel.org> wrote:
 
-It sounds like you've made up your mind, but I would urge you to make this
-a mount option, analogous to the hard/soft mount option.
+> Hello,
+> 
+> On Thu, Nov 03, 2011 at 06:42:15AM -0400, Jeff Layton wrote:
+> > I'm not sure we really need this macro anymore since this is much
+> > simpler. I could just move cifs back to using wait_event_killable and
+> > simply wrap it in freezer_do_not_count/freezer_count (with some
+> > comments to explain why we're doing that).
+> > 
+> > In any event, I plan to test this scheme out today and will let you
+> > know whether it works...
+> 
+> I think it would be better to put this in a macro as the
+> implementation is likely to change in future and I really don't want
+> to see FREEZER_SKIP scattered around the tree.
+> 
+
+Ok, note though that I also need to do a similar set of changes to the
+nfs and sunrpc code [1].
+
+Those call sites do not use wait_event_* macros though. So I'll either
+need to add a separate set of functions/macros to handle those, or
+sprinkle freezer_do_not_count/freezer_count around the code there...
+
+[1] Here are the older patches that depended on the change to
+fake_signal_wake_up. I'll need to convert these to use the new scheme
+once you guys settle on what it should be:
+
+https://git.samba.org/jlayton/?p=jlayton/linux.git;a=commitdiff;h=0f85cbb747a0f9f8a582ae9bf642e094168001be
+https://git.samba.org/jlayton/?p=jlayton/linux.git;a=commitdiff;h=084535708bcb33dd2448e73be5a0f4cac69bea92
+
+-- 
+Jeff Layton <jlayton@redhat.com>
