@@ -1,52 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13426 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752180Ab1KECiq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 22:38:46 -0400
-Subject: Re: NFSROOT mount fails on SPARC after 2.6.37
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: David Miller <davem@davemloft.net>
-Cc: chuck.lever@oracle.com, netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux@razik.name
-Date: Fri, 04 Nov 2011 22:38:44 -0400
-In-Reply-To: <20111104.220334.1213367819937218830.davem@davemloft.net>
-References: <1320429339.53513.YahooMailNeo@web24704.mail.ird.yahoo.com>
-	 <119BC4C8-E1AB-4415-AF00-B183FC7EB16A@oracle.com>
-	 <20111104.220334.1213367819937218830.davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320460724.2750.24.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+Received: from DMZ-MAILSEC-SCANNER-8.MIT.EDU ([18.7.68.37]:61324 "EHLO
+	dmz-mailsec-scanner-8.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752773Ab1KCV6R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:58:17 -0400
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Nico Williams <nico@cryptonector.com>, dhowells <dhowells@redhat.com>,
+        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
+Subject: Re: GSSAPI Proxy initiative
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
+	<1320332310.7734.643.camel@willson.li.ssimo.org>
+	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
+	<1320337903.7734.670.camel@willson.li.ssimo.org>
+	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
+	<1320352784.18396.109.camel@lade.trondhjem.org>
+From: Tom Yu <tlyu@mit.edu>
+Date: Thu, 03 Nov 2011 17:58:12 -0400
+In-Reply-To: <1320352784.18396.109.camel@lade.trondhjem.org> (Trond Myklebust's message of "Thu, 03 Nov 2011 16:39:44 -0400")
+Message-ID: <ldvsjm4kgwb.fsf@cathode-dark-space.mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-04 at 22:03 -0400, David Miller wrote: 
-> Should be fixed by:
-> 
-> commit 3fb72f1e6e6165c5f495e8dc11c5bbd14c73385c
-> Author: Micha Nelissen <micha@neli.hopto.org>
-> Date:   Thu May 19 10:14:06 2011 +0000
-> 
->     ipconfig wait for carrier
->     
->     v3 -> v4: fix return boolean false instead of 0 for ic_is_init_dev
->     
->     Currently the ip auto configuration has a hardcoded delay of 1 second.
->     When (ethernet) link takes longer to come up (e.g. more than 3 seconds),
->     nfs root may not be found.
->     
->     Remove the hardcoded delay, and wait for carrier on at least one network
->     device.
+Trond Myklebust <Trond.Myklebust@netapp.com> writes:
 
-What will happen if there is more than one NIC, but only one if those
-NICs is being configured with a static IP address (i.e. no auto
-configuration)?
+> Linux already has per-user, per-process and per-thread keyrings which
+> offer a high security storage solution for keys. The problem with those
+> is that they are difficult to use in an asynchronous context when the
+> original user's process/thread context is no longer available to us.
+>
+> Ideally, though, that's what we'd like to see used.
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Perhaps I misunderstand what you're proposing to use the keyring for,
+but I would like to clarify a few things.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Opaque key storage is probably not the right abstraction level to
+represent the kind of privilege separation we want here.  It's clearly
+already possible to use the Linux keyring, TPM, smart cards, etc. to
+achieve opaque key storage.
 
+One of the original goals is privilege separation.  The GSS proxy can
+allow an unprivileged process to perform specific restricted
+operations with key material such as a host key, instead of the mostly
+unrestricted encryption, decryption, etc. access that you would get
+with an opaque or unextractable key model.  The proxy could limit the
+client's use of the key to gss_accept_sec_context(), without allowing
+the sort of generalized cryptographic operations that would allow the
+client to, say, forge a PAC signature.
