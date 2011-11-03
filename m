@@ -1,65 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e33.co.us.ibm.com ([32.97.110.151]:46379 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753664Ab1KKXGC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:06:02 -0500
-Received: from /spool/local
-	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 11 Nov 2011 16:06:02 -0700
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5pmk230064
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:53 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5oMP008879
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:51 -0700
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC 7/7] Added error handling for NFS4ERR_FHEXPIRED
-Date: Fri, 11 Nov 2011 18:04:32 -0500
-Message-Id: <1321052673-22171-8-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from caiajhbdcbbj.dreamhost.com ([208.97.132.119]:59072 "EHLO
+	homiemail-a30.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932244Ab1KCPmX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 11:42:23 -0400
+Received: from homiemail-a30.g.dreamhost.com (localhost [127.0.0.1])
+	by homiemail-a30.g.dreamhost.com (Postfix) with ESMTP id 0F7CA21DE59
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2011 08:42:20 -0700 (PDT)
+Received: from mail-vw0-f46.google.com (mail-vw0-f46.google.com [209.85.212.46])
+	(using TLSv1 with cipher RC4-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: nico@cryptonector.com)
+	by homiemail-a30.g.dreamhost.com (Postfix) with ESMTPSA id BD81921DE55
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2011 08:42:19 -0700 (PDT)
+Received: by vws1 with SMTP id 1so997502vws.19
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Nov 2011 08:42:17 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1320269170.7734.585.camel@willson.li.ssimo.org>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+Date: Thu, 3 Nov 2011 10:42:17 -0500
+Message-ID: <CAK3OfOj1_W-atibn9BoV0RTcJSO7rxRfKPJenjYBRyTpooto9w@mail.gmail.com>
+Subject: Re: GSSAPI Proxy initiative
+From: Nico Williams <nico@cryptonector.com>
+To: Simo Sorce <simo@redhat.com>,
+        =?UTF-8?B?TG92ZSBIw7ZybnF1aXN0IMOFc3RyYW5k?= <lha@kth.se>
+Cc: linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>,
+        Andy Adamson <andros@netapp.com>, Steve Dickson <steved@redhat.com>,
+        Kevin Coffman <kwc@citi.umich.edu>, Bruce Fields <bfields@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>, Greg Hudson <ghudson@mit.edu>,
+        Tom Yu <tlyu@mit.edu>, Sam Hartman <hartmans@mit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Added checks in the nfs4_handle_exception for FHEXPIRED.
-If FHEXPIRED is received from the server and the appropriate
-attributes are enabled then the client calls
-nfs4_fhexpired_recovery() to perform the lookup operation to
-try and recovery the expired vfh.
+FYI, I also think Love needs to be on the cc list, if not heimdal-discuss.
 
-If the mount option is not enabled or the server FH_EXPIRE_TYPE
-doesn't have VOLATILE_ANY then client will convert the
-FHEXPIRED error into ESTALE since recovery isn't possible.
-
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/nfs4proc.c |   10 ++++++++++
- 1 files changed, 10 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ebc5ee9..8ae5c49 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -277,6 +277,16 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 		case -NFS4ERR_STALE_CLIENTID:
- 			nfs4_schedule_lease_recovery(clp);
- 			goto wait_on_recovery;
-+		case -NFS4ERR_FHEXPIRED:
-+			if (server->flags & NFS_MOUNT_VFHRETRY)
-+				if (server->fhexpiretype & NFS4_FH_VOLATILE_ANY) {
-+					ret = nfs4_fhexpired_recovery(server, exception);
-+					if (!ret)
-+						ret = -EAGAIN;
-+					break;
-+				}
-+			ret = -ESTALE;
-+			break;
- #if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
--- 
-1.7.4.4
-
+Nico
+--
