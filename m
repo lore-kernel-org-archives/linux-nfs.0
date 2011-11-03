@@ -1,157 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56357 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752708Ab1K3XnE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Nov 2011 18:43:04 -0500
-Date: Wed, 30 Nov 2011 18:43:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>, Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] svcrpc: avoid memory-corruption on pool shutdown
-Message-ID: <20111130234303.GC354@fieldses.org>
-References: <20111130233925.GA354@fieldses.org>
- <20111130234009.GB354@fieldses.org>
+Received: from nm17.bullet.mail.ird.yahoo.com ([77.238.189.70]:29070 "HELO
+	nm17.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751366Ab1KCXJ1 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 19:09:27 -0400
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
+Message-ID: <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+Date: Thu, 3 Nov 2011 23:09:24 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111130234009.GB354@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Anyone see any remaining hole, or does this finally fix the problem?
 
-Any idea for something simpler?
 
-If not I'll likely commit this for 3.2 and -stable before the end of the
-week.
+Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> 
+> On Nov 3, 2011, at 5:37 PM, Lukas Razik wrote:
+> 
+>>>  On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
+>> 
+>>> 
+>>>>  Trond Myklebust wrote:
+>>>> 
+>>>>>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>>>>  [ 442.666732] NFS: unable to mount server 137.226.167.241, 
+> error -60
+>>>>>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying 
+> floppy.
+>>>>>  [ 442.667032] VFS: Insert root floppy and press ENTER
+>>>>> 
+>>>>    Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
+>>>>    basically the same one that you see in your 2.6.32 trace 
+> (rpcbind:
+>>>>    server 137.226.167.241 not responding, timed out) except that now 
+> it is
+>>>>    a fatal error.
+>>>> 
+>>>>    Any idea why the first RPC calls might be failing here? A switch
+>>>>    misconfiguration or something like that perhaps?
+>>>> 
+>>>>  Wasn't there a change in the way nfs mount options are handled 
+> by the 
+>>>  kernel
+>>>>  for nfsroot about the time of 2.6.39?  Something about changing 
+> from 
+>>>  default
+>>>>  udp to tcp maybe?
+>>> 
+>>>  There was a change, but it was changed back to UDP because of problems 
+> like 
+>>>  this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be 
+> improved.
+>>> 
+>> 
+>>  I don't know if this was a tip to test newest 2.6.39 but as I wrote in 
+> my first email
+>>   http://thread.gmane.org/gmane.linux.nfs/44596
+>>  that's the output of linux-2.6.39.4 with "nfsdebug":
+>> 
+>>  [ 407.571521] IP-Config: Complete:
+>>  [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
+> gw=137.226.167.225,
+>>  [ 407.571793] host=cluster2, domain=, nis-domain=(none),
+>>  [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, 
+> rootpath=
+>>  [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+>>  [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+>>  [ 407.572927] NFS: parsing nfs mount option 'udp'
+>>  [ 407.572995] NFS: parsing nfs mount option 'nolock'
+>>  [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+>>  [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+>>  [ 407.573203] NFS: sending MNT request for 
+> 137.226.167.241:/srv/nfs/cluster2
+>>  [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
+> Control: Rx
+>>  [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>  [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+>>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+>>  [ 442.667032] VFS: Insert root floppy and press ENTER
+>> 
+>>  And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 
+> which I've tested.
+>>  So if anybody of you all have an idea what I could try to do, I'll 
+> follow...
+> 
+> Find out why the very first RPC on your system always fails.  As Trond says, the 
+> only reason this worked on the older kernels is because NFSROOT fell back to a 
+> default port for NFSD.  This is also broken behavior, but in your case it 
+> happened to work so you never noticed it.
+> 
+> I seem to recall there's a way to set the NFS and RPC debugging flags on the 
+> kernel command line so more information can be captured during boot.  But I 
+> don't see it under Documentation/.
+> 
+> You could add a line in fs/nfs/nfsroot.c:nfs_root_debug() to set flags also in 
+> the rpc_debug global variable to gather more information.
+> 
 
---b.
+OK
+I've watched wireshark on cluster1 during start up of cluster2 (with linux-2.6.32) which first tries 10003 and then 10005.
+The result is that cluster1 doesn't get a datagram for port 10003:
+http://net.razik.de/linux/T5120/cluster2_NFSROOT_MOUNT.png
 
-On Wed, Nov 30, 2011 at 06:40:09PM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Socket callbacks use svc_xprt_enqueue() to add an xprt to a
-> pool->sp_sockets list.  In normal operation a server thread will later
-> come along and take the xprt off that list.  On shutdown, after all the
-> threads have exited, we instead manually walk the sv_tempsocks and
-> sv_permsocks lists to find all the xprt's and delete them.
-> 
-> So the sp_sockets lists don't really matter any more.  As a result,
-> we've mostly just ignored them and hoped they would go away.
-> 
-> Which has gotten us into trouble; witness for example ebc63e531cc6
-> "svcrpc: fix list-corrupting race on nfsd shutdown", the result of Ben
-> Greear noticing that a still-running svc_xprt_enqueue() could re-add an
-> xprt to an sp_sockets list just before it was deleted.  The fix was to
-> remove it from the list at the end of svc_delete_xprt().  But that only
-> made corruption less likely--I can see nothing that prevents a
-> svc_xprt_enqueue() from adding another xprt to the list at the same
-> moment that we're removing this xprt from the list.  In fact, despite
-> the earlier xpo_detach(), I don't even see what guarantees that
-> svc_xprt_enqueue() couldn't still be running on this xprt.
-> 
-> So, instead, note that svc_xprt_enqueue() essentially does:
-> 	lock sp_lock
-> 		if XPT_BUSY unset
-> 			add to sp_sockets
-> 	unlock sp_lock
-> 
-> So, if we do:
-> 
-> 	set XPT_BUSY on every xprt.
-> 	Empty every sp_sockets list, under the sp_socks locks.
-> 
-> Then we're left knowing that the sp_sockets lists are all empty and will
-> stay that way, since any svc_xprt_enqueue() will check XPT_BUSY under
-> the sp_lock and see it set.
-> 
-> And *then* we can continue deleting the xprt's.
-> 
-> (Thanks to Jeff Layton for being correctly suspicious of this code....)
-> 
-> Cc: Ben Greear <greearb@candelatech.com>
-> Cc: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  net/sunrpc/svc_xprt.c |   48 +++++++++++++++++++++++++++++-------------------
->  1 files changed, 29 insertions(+), 19 deletions(-)
-> 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 099ddf9..0d80c06 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -894,14 +894,7 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
->  	spin_lock_bh(&serv->sv_lock);
->  	if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
->  		list_del_init(&xprt->xpt_list);
-> -	/*
-> -	 * The only time we're called while xpt_ready is still on a list
-> -	 * is while the list itself is about to be destroyed (in
-> -	 * svc_destroy).  BUT svc_xprt_enqueue could still be attempting
-> -	 * to add new entries to the sp_sockets list, so we can't leave
-> -	 * a freed xprt on it.
-> -	 */
-> -	list_del_init(&xprt->xpt_ready);
-> +	BUG_ON(!list_empty(&xprt->xpt_ready));
->  	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
->  		serv->sv_tmpcnt--;
->  	spin_unlock_bh(&serv->sv_lock);
-> @@ -932,28 +925,45 @@ EXPORT_SYMBOL_GPL(svc_close_xprt);
->  static void svc_close_list(struct list_head *xprt_list)
->  {
->  	struct svc_xprt *xprt;
-> -	struct svc_xprt *tmp;
->  
-> -	/*
-> -	 * The server is shutting down, and no more threads are running.
-> -	 * svc_xprt_enqueue() might still be running, but at worst it
-> -	 * will re-add the xprt to sp_sockets, which will soon get
-> -	 * freed.  So we don't bother with any more locking, and don't
-> -	 * leave the close to the (nonexistent) server threads:
-> -	 */
-> -	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
-> +	list_for_each_entry(xprt, xprt_list, xpt_list) {
->  		set_bit(XPT_CLOSE, &xprt->xpt_flags);
-> -		svc_delete_xprt(xprt);
-> +		set_bit(XPT_BUSY, &xprt->xpt_flags);
->  	}
->  }
->  
->  void svc_close_all(struct svc_serv *serv)
->  {
-> +	struct svc_pool *pool;
-> +	struct svc_xprt *xprt;
-> +	struct svc_xprt *tmp;
-> +	int i;
-> +
->  	svc_close_list(&serv->sv_tempsocks);
->  	svc_close_list(&serv->sv_permsocks);
-> +
-> +	for (i = 0; i < serv->sv_nrpools; i++) {
-> +		pool = &serv->sv_pools[i];
-> +
-> +		spin_lock_bh(&pool->sp_lock);
-> +		while (!list_empty(&pool->sp_sockets)) {
-> +			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
-> +			list_del_init(&xprt->xpt_ready);
-> +		}
-> +		spin_unlock_bh(&pool->sp_lock);
-> +	}
-> +	/*
-> +	 * At this point the sp_sockets lists will stay empty, since
-> +	 * svc_enqueue will not add new entries without taking the
-> +	 * sp_lock and checking XPT_BUSY.
-> +	 */
-> +	list_for_each_entry_safe(xprt, tmp, &serv->sv_tempsocks, xpt_list)
-> +		svc_delete_xprt(xprt);
-> +	list_for_each_entry_safe(xprt, tmp, &serv->sv_permsocks, xpt_list)
-> +		svc_delete_xprt(xprt);
-> +
->  	BUG_ON(!list_empty(&serv->sv_permsocks));
->  	BUG_ON(!list_empty(&serv->sv_tempsocks));
-> -
->  }
->  
->  /*
-> -- 
-> 1.7.5.4
-> 
+The first ARP request in the screenshot came _after_ the <tag> in this kernel log:
+[ 6492.807917] IP-Config: Complete:
+[ 6492.807978]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+[ 6492.808227]      host=cluster2, domain=, nis-domain=(none),
+[ 6492.808312]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+[ 6492.808570] Looking up port of RPC 100003/2 on 137.226.167.241
+[ 6493.886014] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+[ 6493.905840] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+<tag>
+[ 6527.827055] rpcbind: server 137.226.167.241 not responding, timed out
+[ 6527.827237] Root-NFS: Unable to get nfsd port number from server, using default
+[ 6527.827353] Looking up port of RPC 100005/1 on 137.226.167.241
+[ 6527.842212] VFS: Mounted root (nfs filesystem) on device 0:15.
+
+
+So I don't think that it's a problem of the hardware between the machines.
+There's no reason why I wouldn't see an ARP requests from cluster2 which would have been sent _before_ the <tag> if there would be one. I think: cluster2 never sends a request to port 10003.
+What do you think?
