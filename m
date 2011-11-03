@@ -1,113 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33185 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753107Ab1K2JMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 04:12:30 -0500
-Subject: [PATCH 3/5] NFS: blocklayout PipeFS notifier introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 29 Nov 2011 13:10:29 +0300
-Message-ID: <20111129091029.20730.3239.stgit@localhost6.localdomain6>
-In-Reply-To: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+Received: from nm21-vm6.bullet.mail.ird.yahoo.com ([212.82.109.246]:45831 "HELO
+	nm21-vm6.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752256Ab1KCVYz convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 17:24:55 -0400
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org>
+Message-ID: <1320355087.59657.YahooMailNeo@web24703.mail.ird.yahoo.com>
+Date: Thu, 3 Nov 2011 21:18:07 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <1320353685.18396.119.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch subscribes blocklayout pipes to RPC pipefs notifications. Notifier
-is registering on blocklayout module load. This notifier callback is
-responsible for creation/destruction of PipeFS blocklayout pipe dentry.
-Note that no locking required in notifier callback because PipeFS superblock
-pointer is passed as an argument from it's creation or destruction routine and
-thus we can be sure about it's validity.
+> On Thu, 2011-11-03 at 19:43 +0000, Lukas Razik wrote: 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>>  Hello together!
+>> 
+>>  My OS: Debian 6.0.3 (squeeze)
+>>  Machines: SUN Enterprise T5120 (USPARC64)
+>>  ---
+>>  Issue description:
+>> 
+>>  I've an NFS
+>>  server (cluster1=137.226.167.241) and a
+>>  client (cluster2=137.226.167.242) which should mount it's nfsroot from 
+> cluster1.
+>> 
+>>  The linux-2.6.32 kernel on cluster2 shows this during startup:
+>>  [ 528.982985] IP-Config: Complete:
+>>  [ 528.983049] device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
+> gw=137.226.167.225,
+>>  [ 528.983299] host=cluster2, domain=, nis-domain=(none),
+>>  [ 528.983383] bootserver=255.255.255.255, rootserver=137.226.167.241, 
+> rootpath=
+>>  [ 528.983633] Looking up port of RPC 100003/2 on 137.226.167.241
+>>  [ 530.037059] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
+> Control: Rx
+>>  [ 530.056881] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>>  [ 564.002113] rpcbind: server 137.226.167.241 not responding, timed out
+>>  [ 564.002295] Root-NFS: Unable to get nfsd port number from server, using 
+> default
+>>  [ 564.002412] Looking up port of RPC 100005/1 on 137.226.167.241
+>>  [ 564.104137] VFS: Mounted root (nfs filesystem) on device 0:15.
+>> 
+>>  It can mount the nfsroot finally.
+>> 
+>>  But if I use kernel linux-2.6.39.4 on cluster2 it can't mount it's 
+> nfsroot.
+>>  (I've added "nfsdebug" to the kernel arguments for more debug 
+> info):
+>>  [ 407.571521] IP-Config: Complete:
+>>  [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
+> gw=137.226.167.225,
+>>  [ 407.571793] host=cluster2, domain=, nis-domain=(none),
+>>  [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, 
+> rootpath=
+>>  [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+>>  [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+>>  [ 407.572927] NFS: parsing nfs mount option 'udp'
+>>  [ 407.572995] NFS: parsing nfs mount option 'nolock'
+>>  [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+>>  [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+>>  [ 407.573203] NFS: sending MNT request for 
+> 137.226.167.241:/srv/nfs/cluster2
+>>  [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
+> Control: Rx
+>>  [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>  [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+>>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+>>  [ 442.667032] VFS: Insert root floppy and press ENTER
+>> 
+> Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
+> basically the same one that you see in your 2.6.32 trace (rpcbind:
+> server 137.226.167.241 not responding, timed out) except that now it is
+> a fatal error.
+> 
+> Any idea why the first RPC calls might be failing here? A switch
+> misconfiguration or something like that perhaps?
+> 
 
----
- fs/nfs/blocklayout/blocklayout.c |   48 +++++++++++++++++++++++++++++++++++++-
- 1 files changed, 47 insertions(+), 1 deletions(-)
+Honestly, I must state that I also thought of any hardware between the nodes etc. in our computing centre which could cause this fault. Therefore I want to connect the nodes directly but this will take some days (because of bureaucracy)... :(
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index bf20187..acf7ac9 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -984,6 +984,46 @@ static void nfs4blocklayout_unregister_sb(struct super_block *sb,
- 		rpc_unlink(pipe->dentry);
- }
- 
-+static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
-+			   void *ptr)
-+{
-+	struct super_block *sb = ptr;
-+	struct net *net = sb->s_fs_info;
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
-+	struct dentry *dentry;
-+	int ret = 0;
-+
-+	if (!try_module_get(THIS_MODULE))
-+		return 0;
-+
-+	if (nn->bl_device_pipe == NULL)
-+		return 0;
-+
-+	switch (event) {
-+	case RPC_PIPEFS_MOUNT:
-+		dentry = nfs4blocklayout_register_sb(sb, nn->bl_device_pipe);
-+		if (IS_ERR(dentry)) {
-+			ret = PTR_ERR(dentry);
-+			break;
-+		}
-+		nn->bl_device_pipe->dentry = dentry;
-+		break;
-+	case RPC_PIPEFS_UMOUNT:
-+		if (nn->bl_device_pipe->dentry)
-+			nfs4blocklayout_unregister_sb(sb, nn->bl_device_pipe);
-+		break;
-+	default:
-+		ret = -ENOTSUPP;
-+		break;
-+	}
-+	module_put(THIS_MODULE);
-+	return ret;
-+}
-+
-+static struct notifier_block nfs4blocklayout_block = {
-+	.notifier_call = rpc_pipefs_event,
-+};
-+
- static struct dentry *nfs4blocklayout_register_net(struct net *net,
- 						   struct rpc_pipe *pipe)
- {
-@@ -1059,12 +1099,17 @@ static int __init nfs4blocklayout_init(void)
- 		ret = PTR_ERR(mnt);
- 		goto out_remove;
- 	}
--	ret = register_pernet_subsys(&nfs4blocklayout_net_ops);
-+	ret = rpc_pipefs_notifier_register(&nfs4blocklayout_block);
- 	if (ret)
- 		goto out_remove;
-+	ret = register_pernet_subsys(&nfs4blocklayout_net_ops);
-+	if (ret)
-+		goto out_notifier;
- out:
- 	return ret;
- 
-+out_notifier:
-+	rpc_pipefs_notifier_unregister(&nfs4blocklayout_block);
- out_remove:
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- 	return ret;
-@@ -1075,6 +1120,7 @@ static void __exit nfs4blocklayout_exit(void)
- 	dprintk("%s: NFSv4 Block Layout Driver Unregistering...\n",
- 	       __func__);
- 
-+	rpc_pipefs_notifier_unregister(&nfs4blocklayout_block);
- 	unregister_pernet_subsys(&nfs4blocklayout_net_ops);
- 	pnfs_unregister_layoutdriver(&blocklayout_type);
- }
+The next thing is:
+Really all working kernels (<=2.6.36.4) first output
+ Looking up port of RPC 100003/2 on 137.226.167.241
+then
+ Looking up port of RPC 100005/1 on 137.226.167.241
+and then the mount is successful
+ VFS: Mounted root (nfs filesystem) on device 0:15.
 
+So what about >=2.6.37?
+Why don't these kernels try other ports, too?
+Or why do the old kernels try more than one port?
+Why is there no output (even in the nfsdebug mode) that the kernel tries to connect to the RPC service?
+Is there a "easy" possibility to change port 100003 to 100005 in >=2.6.37?
+
+Many thanks for your fast answer!
+
+Regards,
+Lukas
