@@ -1,256 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp1.onthe.net.au ([203.22.196.249]:43342 "EHLO
-	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753275Ab1LAArP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 19:47:15 -0500
-Date: Thu, 1 Dec 2011 11:47:09 +1100
-From: Chris Dunlop <chris@onthe.net.au>
-To: David Howells <dhowells@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Jan Harkes <jaharkes@cs.cmu.edu>,
-        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-Message-ID: <20111201004709.GA26085@onthe.net.au>
-References: <20111130071319.GA16711@onthe.net.au>
- <1321861008-20611-1-git-send-email-chris@onthe.net.au>
- <20111129082501.GA569@onthe.net.au>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
- <24960.1322643283@redhat.com>
+Received: from hapkido.dreamhost.com ([66.33.216.122]:52824 "EHLO
+	hapkido.dreamhost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932193Ab1KCDZm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Nov 2011 23:25:42 -0400
+Received: from homiemail-a32.g.dreamhost.com (caiajhbdccac.dreamhost.com [208.97.132.202])
+	by hapkido.dreamhost.com (Postfix) with ESMTP id 94822195930
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2011 20:25:43 -0700 (PDT)
+Received: from homiemail-a32.g.dreamhost.com (localhost [127.0.0.1])
+	by homiemail-a32.g.dreamhost.com (Postfix) with ESMTP id 8B5C1584058
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2011 20:24:59 -0700 (PDT)
+Received: from mail-vw0-f46.google.com (mail-vw0-f46.google.com [209.85.212.46])
+	(using TLSv1 with cipher RC4-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: nico@cryptonector.com)
+	by homiemail-a32.g.dreamhost.com (Postfix) with ESMTPSA id 567E9584057
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2011 20:24:59 -0700 (PDT)
+Received: by vws1 with SMTP id 1so520420vws.19
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Nov 2011 20:24:58 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <24960.1322643283@redhat.com>
+In-Reply-To: <1320269170.7734.585.camel@willson.li.ssimo.org>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+Date: Wed, 2 Nov 2011 22:24:58 -0500
+Message-ID: <CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
+Subject: Re: GSSAPI Proxy initiative
+From: Nico Williams <nico@cryptonector.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>,
+        Andy Adamson <andros@netapp.com>, Steve Dickson <steved@redhat.com>,
+        Kevin Coffman <kwc@citi.umich.edu>, Bruce Fields <bfields@redhat.com>,
+        Jeffrey Layton <jlayton@redhat.com>, Greg Hudson <ghudson@mit.edu>,
+        Tom Yu <tlyu@mit.edu>, Sam Hartman <hartmans@mit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 08:54:43AM +0000, David Howells wrote:
-> Chris Dunlop <chris@onthe.net.au> wrote:
-> 
->> To avoid other people further wasting their and your time on
->> exactly the same thing future, how something like the following
->> patch, based on your comment in:
->> 
->> http://article.gmane.org/gmane.linux.nfs/40370
->> 
->> ...and, if that's acceptable, is it worthwhile doing for the
->> other file systems which are likewise currently vulnerable when
->> abused by broken layered file systems?
-> 
-> Also, this may get fixed by Al's atomic open patches - but obviously it hasn't
-> been yet...
-> 
->> Don't oops when abused by broken layered file systems
->> 
->> Signed-off-by: Chris Dunlop <chris@onthe.net.au>
-> 
-> Acked-by: David Howells <dhowells@redhat.com>
-> 
-> It's also worth printing a message - this *is* a kernel bug of some description
-> if it happens.
+Hi Simo,
 
-Like the below?  This covers the d_revalidate for 9p, afs, coda,
-hfs, ncpfs, proc, sysfs.
+As you know, I completely agree that we need this.  We have several
+implementations, of course (in Linux, in Solaris, probably elsewhere,
+such as the BSDs, as well as proprietary ones), but all are -to my
+knowledge- focused on providing services to kernel-mode distributed
+filesystems (AFS, NFS, Lustre -- all come to mind).  But we need to
+generalize this into a service for user-land consumers too, not just
+kernel mode consumers.
 
-Note:  jfs isn't susceptible to this problem, but the resolution
-doesn't look like the other file systems, and from the comment
-I'm not sure if the problem was really understood and if it's
-doing the right thing:
+A few thoughts:
 
-static int jfs_ci_revalidate(struct dentry *dentry, struct nameidata *nd)
-{
-        ...
-        /*
-         * This may be nfsd (or something), anyway, we can't see the
-         * intent of this. So, since this can be for creation, drop it.
-         */
-        if (!nd)
-                return 0;
+ - XDR is quite fine for this.
 
-        /*
-         * Drop the negative dentry, in order to make sure to use the
-         * case sensitive name which is specified by user if this is
-         * for creation.
-         */
-        if (nd->flags & (LOOKUP_CREATE | LOOKUP_RENAME_TARGET))
-                return 0;
-        ...
-}
+ - We want stateless GSS daemons, or mostly stateless at least, for
+several reasons:
 
-Chris.
+   a) to protect them against DoS, intentional and not;
+   b) to make GSS daemon restart a non-event (OK, this is a much
+lesser concern).
 
-----------------------------------------------------------------------
-Don't oops when abused by broken layered file systems
+   This basically requires credential handle export and
+partially-established security context export support.  It also
+requires composite name export (to capture name attributes, which
+won't be captured by normal exported names).
 
-Signed-off-by: Chris Dunlop <chris@onthe.net.au>
----
- fs/9p/vfs_dentry.c    |    6 ++++++
- fs/afs/dir.c          |    6 ++++++
- fs/coda/dir.c         |    6 ++++++
- fs/hfs/sysdep.c       |    6 ++++++
- fs/ncpfs/dir.c        |    6 ++++++
- fs/nfs/dir.c          |   12 ++++++++++++
- fs/proc/proc_sysctl.c |    5 +++++
- fs/sysfs/dir.c        |    6 ++++++
- 8 files changed, 53 insertions(+), 0 deletions(-)
+   Statelessness is not strictly necessary, just highly desirable, so
+if this proves difficult (or in some cases credential export turns out
+to not possibly be stateless for some mechanisms/credentials), oh
+well.  But the *protocol* should be designed to facilitate
+statelessness, and certainly not preclude it.
 
-diff --git a/fs/9p/vfs_dentry.c b/fs/9p/vfs_dentry.c
-index e022890..3b082dc 100644
---- a/fs/9p/vfs_dentry.c
-+++ b/fs/9p/vfs_dentry.c
-@@ -106,6 +106,12 @@ static int v9fs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct inode *inode;
- 	struct v9fs_inode *v9inode;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "v9fs_lookup_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 1b0b195..4003d76 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -607,6 +607,12 @@ static int afs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	void *dir_version;
- 	int ret;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "afs_d_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/coda/dir.c b/fs/coda/dir.c
-index 0239433..ede8e77 100644
---- a/fs/coda/dir.c
-+++ b/fs/coda/dir.c
-@@ -544,6 +544,12 @@ static int coda_dentry_revalidate(struct dentry *de, struct nameidata *nd)
- 	struct inode *inode;
- 	struct coda_inode_info *cii;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "coda_dentry_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/hfs/sysdep.c b/fs/hfs/sysdep.c
-index 19cf291..b130d91 100644
---- a/fs/hfs/sysdep.c
-+++ b/fs/hfs/sysdep.c
-@@ -18,6 +18,12 @@ static int hfs_revalidate_dentry(struct dentry *dentry, struct nameidata *nd)
- 	struct inode *inode;
- 	int diff;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "hfs_revalidate_dentry:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/ncpfs/dir.c b/fs/ncpfs/dir.c
-index 9c51f62..6580d1d 100644
---- a/fs/ncpfs/dir.c
-+++ b/fs/ncpfs/dir.c
-@@ -302,6 +302,12 @@ ncp_lookup_validate(struct dentry *dentry, struct nameidata *nd)
- 	if (dentry == dentry->d_sb->s_root)
- 		return 1;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "ncp_lookup_validate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index b238d95..51b3d54 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1103,6 +1103,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct nfs_fattr *fattr = NULL;
- 	int error;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "nfs_lookup_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-@@ -1508,6 +1514,12 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct nfs_open_context *ctx;
- 	int openflags, ret = 0;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "nfs_open_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
-diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index 1a77dbe..20ef3ab 100644
---- a/fs/proc/proc_sysctl.c
-+++ b/fs/proc/proc_sysctl.c
-@@ -389,6 +389,11 @@ static const struct inode_operations proc_sys_dir_operations = {
- 
- static int proc_sys_revalidate(struct dentry *dentry, struct nameidata *nd)
- {
-+	if (!nd) {
-+		printk(KERN_ERR "proc_sys_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 	return !PROC_I(dentry->d_inode)->sysctl->unregistering;
-diff --git a/fs/sysfs/dir.c b/fs/sysfs/dir.c
-index ea9120a..6373450 100644
---- a/fs/sysfs/dir.c
-+++ b/fs/sysfs/dir.c
-@@ -242,6 +242,12 @@ static int sysfs_dentry_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct sysfs_dirent *sd;
- 	int is_dir;
- 
-+	if (!nd) {
-+		printk(KERN_ERR "sysfs_dentry_revalidate:"
-+		       " called from layered filesystem without intents\n");
-+		return -EIO;
-+	}
-+
- 	if (nd->flags & LOOKUP_RCU)
- 		return -ECHILD;
- 
--- 
-1.7.0.4
+   Note: I really don't want to have an extended sub-thread about
+exporting partially-established sec contexts.  We've had that enough
+at KITTEN WG, so unless you (whoever wants to bring this up) are
+familiar with those threads, please don't bring up the subject, and if
+you must, then please use a separate subject.
 
-----------------------------------------------------------------------
+ - I would like mechglues to support mechanisms being provided by
+multiple providers.  This is tricky, and for some mechanisms it will
+not be possible to make this perfect, but it's worthwhile  The reason
+is this: it should be possible to use a proxy for some credentials and
+not a proxy for others (particularly on the initiator side, where a
+user may not have direct access to some of their credentials but maybe
+can always kinit ones that they do have access to).
+
+   This too is a nice to have rather than a critical feature, but if
+we don't have this then we need to make it possible for all GSS apps
+to run with just the proxy provider as the one provider (or: the proxy
+provider *is* the mechglue as far as the application is concerned).
+Otherwise we can get into situations where a library should use the
+proxy while another should not, both in the same process, and that
+could be obnoxious.
+
+ - Finding credentials, and authorization, will be a bit of a problem.
+ How to deal with things like kernel keyrings and KRB5CCNAME-type
+environment variables?
+
+   One possibility is that the proxy client passes everything the
+proxy server needs to the proxy server.  But that still requires that
+the proxy server be able to implement authorization correctly.
+
+   For authorization it will be best to run a proxy for each user or
+{user, session} if there's session isolation, or {user, label} for
+labeled systems.  This approach helps with finding credentials too.
+
+ - But the more GSS proxy server daemon processes we have, the more we
+need to worry about ensuring timely termination.
+
+ - Thus the protocol should look very much like an XDR type for each
+GSS function's input arguments and another for each functions output
+arguments and return value, plus, for functions dealing in exportable
+objects, exported objects on input and output, plus, perhaps,
+environmental / credential location information for certain functions.
+ The environmental / credential location information may not be needed
+in some operating systems (because the proxy server will be able to
+use APIs like door_ucred(3DOOR), on Solaris, to find out what it needs
+about the caller), and in any case will need to be either a typed hole
+a an opaque type defined by each OS.
+
+ - Preferably we should have a set pattern for mapping {argument
+direction, C type} to/from XDR types that can be applied in an
+automated fashion to the GSS C bindings header file(s), thus making it
+possible to avoid having to specify the abstract syntax for the
+protocol.  I believe this is entirely feasible.
+
+   Of course, for extensibility purposes we need to be careful to use
+wide integer XDR types for any C integer types in the API, and in
+particular we may want to use octet strings for flags arguments, just
+in case we widen any of these in a possible future major version of
+the C bindings (yes, the function names would have to change) and so
+that we don't unnecessarily constrain other language bindings.  (Yes,
+I know that for req_flags, for example, widening the argument has
+knock on effects on the wire for actual mechanisms.  I'm only asking
+that we be as forward-looking as possible in the GSS proxy protocol;
+I'm not proposal actual changes to the API.)
+
+ - To make it possible to some day consider the "PGSS" or variant
+proposals, we should make the representation of the minor_status
+argument extensible and both, an input and output.
+
+ - The protocol probably need not be straight up ONC RPC however,
+though where ONC RPC supports suitable IPC interfaces as transports,
+it'd certainly be worth considering.
+
+ - New functions should be possible to add at any time.  For ONC RPC
+this would mean we'd need to have at least a registry of procedure
+numbers.  For a non-ONC RPC protocol we could use function name
+strings to name the functions "on the wire", which would then obviate
+the need for a new registry, simplifying the addition of extensions.
+
+I'll probably have more to add later.
+
+Thanks,
+
+Nico
+--
