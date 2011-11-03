@@ -1,69 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailbigip.dreamhost.com ([208.97.132.5]:37953 "EHLO
-	homiemail-a36.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751230Ab1KCUx1 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 16:53:27 -0400
-Received: from homiemail-a36.g.dreamhost.com (localhost [127.0.0.1])
-	by homiemail-a36.g.dreamhost.com (Postfix) with ESMTP id 59E57778071
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2011 13:53:19 -0700 (PDT)
-Received: from mail-vw0-f46.google.com (mail-vw0-f46.google.com [209.85.212.46])
-	(using TLSv1 with cipher RC4-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: nico@cryptonector.com)
-	by homiemail-a36.g.dreamhost.com (Postfix) with ESMTPSA id A4CDC778061
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2011 13:53:16 -0700 (PDT)
-Received: by vws1 with SMTP id 1so1309047vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Nov 2011 13:53:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1320352784.18396.109.camel@lade.trondhjem.org>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	<1320332310.7734.643.camel@willson.li.ssimo.org>
-	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	<1320337903.7734.670.camel@willson.li.ssimo.org>
-	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	<1320352784.18396.109.camel@lade.trondhjem.org>
-Date: Thu, 3 Nov 2011 15:53:12 -0500
-Message-ID: <CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
-Subject: Re: GSSAPI Proxy initiative
-From: Nico Williams <nico@cryptonector.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Simo Sorce <simo@redhat.com>, linux-nfs@vger.kernel.org,
-        krbdev <krbdev@mit.edu>, dhowells <dhowells@redhat.com>,
-        =?UTF-8?B?TG92ZSBIw7ZybnF1aXN0IMOFc3RyYW5k?= <lha@kth.se>
-Content-Type: text/plain; charset=UTF-8
+Received: from acsinet15.oracle.com ([141.146.126.227]:38499 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752620Ab1KCVwR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:52:17 -0400
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+Date: Thu, 3 Nov 2011 17:51:57 -0400
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+To: Lukas Razik <linux@razik.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 3, 2011 at 3:39 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
->> What I had in mind was something like PAGs or keyrings.  Or, to be
->> much more specific, search for my name and the string "credentials
->> process groups" -- a PAG on steroids.
->>
->> The idea is that the IPC peer can observe the other's
->> PAG/keyring/CPG/whatever and use that to find the correct credentials
->> (authorization is still required though).
->
-> Linux already has per-user, per-process and per-thread keyrings which
-> offer a high security storage solution for keys. The problem with those
-> is that they are difficult to use in an asynchronous context when the
-> original user's process/thread context is no longer available to us.
 
-For async IPC methods you'd want something like SCM_CREDENTIALS to
-give you the keyring/PAG/whatever information you need abou thte peer.
- The ancillary data should be complete enough that you can past the
-client process/thread being dead, although it's nice to not have to
-process a request from a dead entity...
+On Nov 3, 2011, at 5:37 PM, Lukas Razik wrote:
 
-For sync IPC you need something like door_ucred().  And for sync IPC
-you can make sure to get SIGCANCEL or equivalent when the client gets
-canceled (this is the default in doors).
+>> On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
+> 
+>> 
+>>> Trond Myklebust wrote:
+>>> 
+>>>> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>>> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+>>>> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+>>>> [ 442.667032] VFS: Insert root floppy and press ENTER
+>>>> 
+>>>   Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
+>>>   basically the same one that you see in your 2.6.32 trace (rpcbind:
+>>>   server 137.226.167.241 not responding, timed out) except that now it is
+>>>   a fatal error.
+>>> 
+>>>   Any idea why the first RPC calls might be failing here? A switch
+>>>   misconfiguration or something like that perhaps?
+>>> 
+>>> Wasn't there a change in the way nfs mount options are handled by the 
+>> kernel
+>>> for nfsroot about the time of 2.6.39?  Something about changing from 
+>> default
+>>> udp to tcp maybe?
+>> 
+>> There was a change, but it was changed back to UDP because of problems like 
+>> this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be improved.
+>> 
+> 
+> I don't know if this was a tip to test newest 2.6.39 but as I wrote in my first email
+>  http://thread.gmane.org/gmane.linux.nfs/44596
+> that's the output of linux-2.6.39.4 with "nfsdebug":
+> 
+> [ 407.571521] IP-Config: Complete:
+> [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [ 407.571793] host=cluster2, domain=, nis-domain=(none),
+> [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+> [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+> [ 407.572927] NFS: parsing nfs mount option 'udp'
+> [ 407.572995] NFS: parsing nfs mount option 'nolock'
+> [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+> [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+> [ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+> [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+> [ 442.667032] VFS: Insert root floppy and press ENTER
+> 
+> And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 which I've tested.
+> So if anybody of you all have an idea what I could try to do, I'll follow...
 
-> Ideally, though, that's what we'd like to see used.
+Find out why the very first RPC on your system always fails.  As Trond says, the only reason this worked on the older kernels is because NFSROOT fell back to a default port for NFSD.  This is also broken behavior, but in your case it happened to work so you never noticed it.
 
-Agreed!
+I seem to recall there's a way to set the NFS and RPC debugging flags on the kernel command line so more information can be captured during boot.  But I don't see it under Documentation/.
 
-Nico
---
+You could add a line in fs/nfs/nfsroot.c:nfs_root_debug() to set flags also in the rpc_debug global variable to gather more information.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
