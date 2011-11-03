@@ -1,49 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:65230 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754758Ab1K2QEW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:04:22 -0500
-Received: by mail-qw0-f46.google.com with SMTP id c14so2131121qad.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:04:22 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 4/9] pnfsblock: set read/write tk_status to pnfs_error
-Date: Fri,  2 Dec 2011 20:46:18 -0800
-Message-Id: <1322887583-2719-5-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
-References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:53303 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755293Ab1KCPae (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 11:30:34 -0400
+Date: Thu, 3 Nov 2011 08:30:27 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Oleg Nesterov <oleg@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
+        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] wait_event_freezekillable: use
+ freezer_do_not_count/freezer_count
+Message-ID: <20111103153027.GE4417@google.com>
+References: <20111101180601.GV18855@google.com>
+ <20111101181329.GA6739@redhat.com>
+ <20111101182753.GW18855@google.com>
+ <20111101193923.GA9444@redhat.com>
+ <20111101194601.GB9444@redhat.com>
+ <20111101215710.GA13803@google.com>
+ <20111102175327.GA4446@redhat.com>
+ <20111103064215.48939e1a@tlielax.poochiereds.net>
+ <20111103141354.GB4417@google.com>
+ <20111103112704.4b905bfc@barsoom.rdu.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111103112704.4b905bfc@barsoom.rdu.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To pass the IO status to upper layer.
+Hello,
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+On Thu, Nov 03, 2011 at 11:27:04AM -0400, Jeff Layton wrote:
+> Ok, note though that I also need to do a similar set of changes to the
+> nfs and sunrpc code [1].
+> 
+> Those call sites do not use wait_event_* macros though. So I'll either
+> need to add a separate set of functions/macros to handle those, or
+> sprinkle freezer_do_not_count/freezer_count around the code there...
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index c83ad70..883bb27 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -216,6 +216,7 @@ bl_end_par_io_read(void *data)
- {
- 	struct nfs_read_data *rdata = data;
- 
-+	rdata->task.tk_status = rdata->pnfs_error;
- 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
- 	schedule_work(&rdata->task.u.tk_work);
- }
-@@ -405,7 +406,7 @@ static void bl_end_par_io_write(void *data)
- {
- 	struct nfs_write_data *wdata = data;
- 
--	wdata->task.tk_status = 0;
-+	wdata->task.tk_status = wdata->pnfs_error;
- 	wdata->verf.committed = NFS_FILE_SYNC;
- 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
- 	schedule_work(&wdata->task.u.tk_work);
+Yes, I still think it would be better to isolate implementation
+details from users.  I really hate to see the 'count' functions
+scattered around the kernel.
+
+Thank you.
+
 -- 
-1.7.1.262.g5ef3d
-
+tejun
