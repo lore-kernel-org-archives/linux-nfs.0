@@ -1,79 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy7-pub.bluehost.com ([67.222.55.9]:35285 "HELO
-	oproxy7-pub.bluehost.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752809Ab1K2Wkv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 17:40:51 -0500
-Message-ID: <4ED56D2E.6050405@xenotime.net>
-Date: Tue, 29 Nov 2011 15:39:26 -0800
-From: Randy Dunlap <rdunlap@xenotime.net>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@tonian.com>,
-        Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>, Michal Marek <mmarek@suse.cz>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: ore: FIX breakage when MISC_FILESYSTEMS is not set
-References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au>  <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com>  <4ED4238F.4090407@panasas.com> <4ED4CE58.8090107@tonian.com> <1322588023.4174.28.camel@lade.trondhjem.org> <4ED55B3B.9050207@panasas.com>
-In-Reply-To: <4ED55B3B.9050207@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:17283 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751230Ab1KCUzj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 16:55:39 -0400
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Lukas Razik <linux@razik.name>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 03 Nov 2011 16:54:45 -0400
+In-Reply-To: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320353685.18396.119.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 02:22 PM, Boaz Harrosh wrote:
-> On 11/29/2011 09:33 AM, Trond Myklebust wrote:
->> On Tue, 2011-11-29 at 14:21 +0200, Benny Halevy wrote: 
->>> On 2011-11-29 02:13, Boaz Harrosh wrote:
+On Thu, 2011-11-03 at 19:43 +0000, Lukas Razik wrote: 
+> Hello together!
 > 
->>>>
->>>> The solution is to force all users of ORE (exofs, nfs) to manually
->>>> select everything auto-magically selected before.
->>>
->>> How about using "depend ORE" rather than "select ORE"?
->>
->> Right. Make PNFS_OBJLAYOUT and EXOFS_FS depend on ASYNC_XOR (or select
->> it) and then make ORE depend on EXOFS_FS || PNFS_OBJLAYOUT.
->>
->> There should be no need to add the 'select ORE'...
->>
+> My OS: Debian 6.0.3 (squeeze)
+> Machines: SUN Enterprise T5120 (USPARC64)
+> ---
+> Issue description:
 > 
-> No! guys!
+> I've an NFS
+> server (cluster1=137.226.167.241) and a
+> client (cluster2=137.226.167.242) which should mount it's nfsroot from cluster1.
 > 
-> One it will not solve my problem because any
-> solution that needs to inspect exofs/Kconfig file will
-> not work if MISC_FILESYSTEMS is not selected and your
-> solutions involve that.
+> The linux-2.6.32 kernel on cluster2 shows this during startup:
+> [ 528.982985] IP-Config: Complete:
+> [ 528.983049] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [ 528.983299] host=cluster2, domain=, nis-domain=(none),
+> [ 528.983383] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [ 528.983633] Looking up port of RPC 100003/2 on 137.226.167.241
+> [ 530.037059] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [ 530.056881] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> [ 564.002113] rpcbind: server 137.226.167.241 not responding, timed out
+> [ 564.002295] Root-NFS: Unable to get nfsd port number from server, using default
+> [ 564.002412] Looking up port of RPC 100005/1 on 137.226.167.241
+> [ 564.104137] VFS: Mounted root (nfs filesystem) on device 0:15.
 > 
-> And two:
-> All the user needs to do is Select NFS4.1 everything
-> else should be done automatically. He should not need
-> to go to misc-filesystems and select ORE so he can have
-> pnfs-objects. That's a nightmare.
+> It can mount the nfsroot finally.
 > 
-> And anyway the current Kernel rule is that a user of a library
-> needs to select it and all it's dependencies, because select
-> is not recursive. Now I devised a little skim that can avoid
+> But if I use kernel linux-2.6.39.4 on cluster2 it can't mount it's nfsroot.
+> (I've added "nfsdebug" to the kernel arguments for more debug info):
+> [ 407.571521] IP-Config: Complete:
+> [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [ 407.571793] host=cluster2, domain=, nis-domain=(none),
+> [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+> [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+> [ 407.572927] NFS: parsing nfs mount option 'udp'
+> [ 407.572995] NFS: parsing nfs mount option 'nolock'
+> [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+> [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+> [ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+> [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+> [ 442.667032] VFS: Insert root floppy and press ENTER
+> 
+Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
+basically the same one that you see in your 2.6.32 trace (rpcbind:
+server 137.226.167.241 not responding, timed out) except that now it is
+a fatal error.
 
-Since 'select' is not recursive, how does the "select ASYNC_XOR"
-handle ensuring that what it selects (ASYNC_CORE and XOR_BLOCKS)
-have been enabled?
+Any idea why the first RPC calls might be failing here? A switch
+misconfiguration or something like that perhaps?
 
-> that, which is not conventional but works very nice. It was
-> almost good enough only we have the problem that exofs is under
-> that big MISC_FILESYSTEMS nub.
-> 
-> So It's the regular Kernel way, for now.
-> 
-> (The real solution is to move ORE to lib/ which would enable my
->  clever trick. But I don't want to go there only because of that)
-> 
-> I'll fix the typos though
-
-With the patch applied, I am still seeing this kconfig warning:
-
-warning: (PNFS_OBJLAYOUT) selects ORE which has unmet direct dependencies (MISC_FILESYSTEMS)
-
-
+Trond
 -- 
-~Randy
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
