@@ -1,38 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:44334 "EHLO e6.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:34412 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750777Ab1KBTjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 15:39:13 -0400
-Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Wed, 2 Nov 2011 15:37:32 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pA2JbTJj267412
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Nov 2011 15:37:29 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pA2JbTA6001271
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Nov 2011 17:37:29 -0200
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pA2JbTql001266
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Nov 2011 17:37:29 -0200
-To: linux-nfs@vger.kernel.org
+	id S1751381Ab1KCVUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 17:20:38 -0400
+Date: Thu, 3 Nov 2011 17:20:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
+ cache
+Message-ID: <20111103212036.GB27393@fieldses.org>
+References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
+ <20111101202715.GB1891@fieldses.org>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
+ <20111101204325.522c35b3@corrin.poochiereds.net>
+ <20111102012315.GA5532@fieldses.org>
+ <20111102070742.5354d83c@tlielax.poochiereds.net>
+ <20111102144657.GD7721@fieldses.org>
+ <20111102115453.7e81168f@corrin.poochiereds.net>
+ <20111103204449.GA27393@fieldses.org>
+ <1320354185.18396.124.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Subject: Linux pNFS status meeting 11/03/11
-Message-ID: <OF731FEABC.DAE859A5-ON8825793C.006B9DD4-8825793C.006BC0B8@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Wed, 2 Nov 2011 12:37:24 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1320354185.18396.124.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 10103/11 at 9:30 AM PST (12:30 PM EST)
+On Thu, Nov 03, 2011 at 05:03:05PM -0400, Trond Myklebust wrote:
+> On Thu, 2011-11-03 at 16:44 -0400, J. Bruce Fields wrote: 
+> > I'm feeling dense.
+> > 
+> > On Wed, Nov 02, 2011 at 11:54:53AM -0400, Jeff Layton wrote:
+> > > Yes, I think it is different. When we truncate the file to 0 then we
+> > > don't care if another write races in.
+> > 
+> > 	Client 1		Client 2
+> > 	--------		--------
+> > 
+> > 	setattr size to 0
+> > 				write to file
+> > 	get change attribute
+> > 
+> > If we decide not to invalidate the cache here, then we miss Client 2's
+> > write.  The same is true if we set the size to something other than 0.
+> 
+> ?????????
+> How can we "decide not to invalidate the cache here"? the call to
+> nfs_vmtruncate() will _always_ call truncate_pagecache().
+> The only case where we don't call nfs_vmtruncate() is if the client has
+> already determined that the file size was zero, and optimised away the
+> setattr call altogether.
 
+Sorry, I'm probably using the wrong language.
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+I'm using the word "cache" to refer not to the page cache, but more
+generally to the client's idea of the file state.  Thus if the client,
+after the above operation, is left believing the file has size 0, I
+wouldn't say it has invalidated its cache, I'd say it's cached the fact
+that the file has size zero....
 
-Israel Toll-Free: 1-809-417-783
+Does what I said make sense, given that?
 
-Participant Code: 8792872
+> > There's a second possible race when Client 2's write comes before the
+> > setattr, and it's true that that race doesn't matter in the size-0 case
+> > and does in the other.
+> > 
+> > But if we were doing a write instead of a setattr, we'd ignore that
+> > second race.
+> > 
+> > And I don't understand why something like ftruncate should be treated
+> > differently from write.  In either case we're modifying a file while
+> > holding a write open, and I'd expect us to assume in both cases that
+> > nobody else is doing the same.
+> 
+> When did we move to the topic of multiple clients, and why do you think
+> it is relevant?
 
+We're seeing the client decide that it can no longer trust its idea of
+the file, presumably because it no longer believes it safe to assume
+that nobody else has modified it.
+
+--b.
