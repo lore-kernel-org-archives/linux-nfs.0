@@ -1,57 +1,22 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:26739 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753042Ab1K3Co2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 21:44:28 -0500
-From: <tao.peng@emc.com>
-To: <bharrosh@panasas.com>, <rees@umich.edu>
-CC: <bergwolf@gmail.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Date: Tue, 29 Nov 2011 21:44:05 -0500
-Subject: RE: [PATCH 0/9] pnfsblock patches
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B058@MX09A.corp.emc.com>
-References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
- <4ED550DE.5030505@panasas.com> <20111129225853.GA8975@umich.edu>
- <4ED56D42.3090604@panasas.com>
-In-Reply-To: <4ED56D42.3090604@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp.mail.umich.edu ([141.211.14.81]:48157 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755285Ab1KDOn3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:43:29 -0400
+Date: Fri, 4 Nov 2011 10:43:26 -0400
+From: Jim Rees <rees@umich.edu>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
+Message-ID: <20111104144326.GA911@umich.edu>
+References: <1318919979-14606-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1318919979-14606-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDMw
-LCAyMDExIDc6NDAgQU0NCj4gVG86IEppbSBSZWVzDQo+IENjOiBQZW5nIFRhbzsgVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb207IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDog
-UmU6IFtQQVRDSCAwLzldIHBuZnNibG9jayBwYXRjaGVzDQo+IA0KPiBPbiAxMS8yOS8yMDExIDAy
-OjU4IFBNLCBKaW0gUmVlcyB3cm90ZToNCj4gPiBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+ID4NCj4g
-PiAgIE9uIDEyLzAyLzIwMTEgMDg6NDYgUE0sIFBlbmcgVGFvIHdyb3RlOg0KPiA+ICAgPiBIaSwg
-VHJvbmQsDQo+ID4gICA+DQo+ID4gICA+IEZvbGxvd2luZyBhcmUgc29tZSBidWdmaXggYW5kIGlt
-cHJvdmVtZW50cyBmb3IgYmxvY2tsYXlvdXQgZHJpdmVyLiBBbGwgaGF2ZSBiZWVuDQo+ID4gICA+
-IHNlbnQgdG8gdGhlIGxpc3QgYmVmb3JlIGFuZCBoYXZlIGJlZW4gdGVzdGVkIGZvciBzZXZlcmFs
-IHdlZWtzLg0KPiA+ICAgPg0KPiA+DQo+ID4gICBJIG5ldmVyIGdvdCA5IHBhdGNoZXMgaW4gdGhl
-IG1haWwuDQo+ID4NCj4gPiAgIEkgb25seSBoYXZlIDEsMyw0LDUsNiw3DQo+ID4NCj4gPiAgIERv
-IHlvdSBoYXZlIHRoZW0gb24gYSBnaXR3ZWIsIG9yIHJlLXBvc3QgMiw4LDkNCj4gPg0KPiA+IDEt
-NyBhcmUgaW4gYmVubnkncyB0cmVlOg0KPiA+DQo+ID4gJSBnaXQgbG9nIC0tb25lbGluZSAtNyBi
-ZW5ueS9wbmZzLWJsb2NrDQo+ID4gZWMxMWZhZiBwbmZzYmxvY2s6IGFsbG9jIHNob3J0IGV4dGVu
-dCBiZWZvcmUgc3VibWl0IGJpbw0KPiA+IDdjOTNjMzcgcG5mc2Jsb2NrOiBjbGVhbiB1cCBfYWRk
-X2VudHJ5DQo+ID4gODVlOGM4NCBwbmZzYmxvY2s6IHJlbW92ZSBycGNfY2FsbF9vcHMgZnJvbSBz
-dHJ1Y3QgcGFyYWxsZWxfaW8NCj4gPiBhYjBjMDdkIHBuZnNibG9jazogc2V0IHJlYWQvd3JpdGUg
-dGtfc3RhdHVzIHRvIHBuZnNfZXJyb3INCj4gPiA2MGQ1MTM1IHBuZnNibG9jazogbW92ZSBmaW5k
-IGxvY2sgcGFnZSBsb2dpYyBvdXQgb2YgYmxfd3JpdGVfcGFnZWxpc3QNCj4gPiA2NTdjMmY0IHBu
-ZnNibG9jazogYWNxdWlyZSBpbV9sb2NrIGluIF9wcmVsb2FkX3JhbmdlDQo+ID4gZTViMzVkZiBw
-bmZzYmxvY2s6IGNsZWFudXAgYmxfbWFya19zZWN0b3JzX2luaXQNCj4gPg0KPiA+IEkgbmV2ZXIg
-c2F3IDgsOSBhbmQgY2FuJ3QgZmluZCB0aGVtIGluIHRoZSBsaXN0IGFyY2hpdmUuDQo+IA0KPiBB
-Y3R1YWxseSBJIHdhbnRlZCA5LiBJJ20gb2xkIGFuZCBzZW5pbGUgYnV0IEkgZGlkIG5vdCByZW1l
-bWJlcg0KPiBJIGV2ZXIgc2F3IGl0IHNvIEkgd2FzIHdvbmRlcmluZy4NCj4gDQo+IFdlIGtub3cg
-dGhlaXIgbmFtZXMgZnJvbSBbMC85XToNCj4gICBwbmZzYmxvY2s6IGRvbid0IHNwaW5sb2NrIHdo
-ZW4gZnJlZWluZyBibG9ja19kZXYNCj4gICBwbmZzYmxvY2s6IGxpbWl0IGJpbyBwYWdlIGNvdW50
-DQpZb3UgY2FuIGZpbmQgYm90aCB0aGUgOSBwYXRjaGVzIGFuZCB0aGUgNCBsYXlvdXQgc2l6ZSBw
-YXRjaGVzIGF0IGh0dHBzOi8vZ2l0aHViLmNvbS9iZXJnd29sZi9saW51eC90cmVlL3BuZnNibG9j
-ay1mb3ItdHJvbmQNCg0KTG9va3MgbGlrZSBJIG5lZWQgdG8gZmluZCBhbm90aGVyIHdheS9tYWNo
-aW5lL21haWwgYWNjb3VudCB0byBzZW5kIHBhdGNoZXMuLi4NCg0KVGhhbmtzLA0KVGFvDQo+IA0K
-PiBUaGFua3MNCj4gSGVhcnQNCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6
-IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2Yg
-YSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8g
-aW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
+You misspelled "backchannel" in the description.  Also could be a bit more
+descriptive:
+
+NFSv4.1: fix backchannel slotid off-by-one bug
