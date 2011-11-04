@@ -1,104 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:36786 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751531Ab1K3DQ3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 22:16:29 -0500
-From: <tao.peng@emc.com>
-To: <bharrosh@panasas.com>, <bergwolf@gmail.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <bhalevy@tonian.com>
-Date: Tue, 29 Nov 2011 22:16:06 -0500
-Subject: RE: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B073@MX09A.corp.emc.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
- <4ED54FE4.9050008@panasas.com>
-In-Reply-To: <4ED54FE4.9050008@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp.mail.umich.edu ([141.211.12.86]:51707 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932517Ab1KDOqZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:46:25 -0400
+Date: Fri, 4 Nov 2011 10:46:17 -0400
+From: Jim Rees <rees@umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Lukas Razik <linux@razik.name>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Message-ID: <20111104144617.GB911@umich.edu>
+References: <1320353685.18396.119.camel@lade.trondhjem.org>
+ <20111103211100.GA8393@umich.edu>
+ <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
+ <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+ <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
+ <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+ <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+ <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
+ <20111104132050.GB13788@umich.edu>
+ <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDMw
-LCAyMDExIDU6MzQgQU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgYmhhbGV2eUB0b25pYW4uY29tDQo+
-IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMC80XSBuZnM0MTogYWxsb3cgbGF5b3V0Z2V0IGF0IHBuZnNf
-ZG9fbXVsdGlwbGVfd3JpdGVzDQo+IA0KPiBPbiAxMi8wMi8yMDExIDA4OjUyIFBNLCBQZW5nIFRh
-byB3cm90ZToNCj4gPiBJc3N1aW5nIGxheW91dGdldCBhdCAucGdfaW5pdCB3aWxsIGRyb3AgdGhl
-IElPIHNpemUgaW5mb3JtYXRpb24gYW5kIGFzayBmb3IgNEtCDQo+ID4gbGF5b3V0IGV2ZXJ5IHRp
-bWUuIEhvd2V2ZXIsIHRoZSBJTyBzaXplIGluZm9ybWF0aW9uIGlzIHZlcnkgdmFsdWFibGUgZm9y
-IE1EUyB0bw0KPiA+IGRldGVybWluZSBob3cgbXVjaCBsYXlvdXQgaXQgc2hvdWxkIHJldHVybiB0
-byBjbGllbnQuDQo+ID4NCj4gPiBUaGUgcGF0Y2hzZXQgdHJ5IHRvIGFsbG93IExEIG5vdCB0byBz
-ZW5kIGxheW91dGdldCBhdCAucGdfaW5pdCBidXQgaW5zdGVhZCBhdA0KPiA+IHBuZnNfZG9fbXVs
-dGlwbGVfd3JpdGVzLiBTbyB0aGF0IHJlYWwgSU8gc2l6ZSBpcyBwcmVzZXJ2ZWQgYW5kIHNlbnQg
-dG8gTURTLg0KPiA+DQo+ID4gVGVzdHMgYWdhaW5zdCBhIHNlcnZlciB0aGF0IGRvZXMgbm90IGFn
-Z3Jlc3NpdmVseSBwcmUtYWxsb2NhdGUgbGF5b3V0LCBzaG93cw0KPiA+IHRoYXQgdGhlIElPIHNp
-emUgaW5mb3JtYW50aW9uIGlzIHJlYWxseSB1c2VmdWwgdG8gYmxvY2sgbGF5b3V0IE1EUy4NCj4g
-Pg0KPiA+IFRoZSBnZW5lcmljIHBuZnMgbGF5ZXIgY2hhbmdlcyBhcmUgdHJpdmFsIHRvIGZpbGUg
-bGF5b3V0IGFuZCBvYmplY3QgYXMgbG9uZyBhcw0KPiA+IHRoZXkgc3RpbGwgc2VuZCBsYXlvdXRn
-ZXQgYXQgLnBnX2luaXQuDQo+ID4NCj4gDQo+IEkgaGF2ZSBhIGJldHRlciBzb2x1dGlvbiBmb3Ig
-eW91ciBwcm9ibGVtLiBXaGljaCBpcyBhIG11Y2ggc21hbGxlciBhIGNoYW5nZSBhbmQNCj4gSSB0
-aGluayBnaXZlcyB5b3UgbXVjaCBiZXR0ZXIgaGV1cmlzdGljcy4NCj4gDQo+IEtlZXAgdGhlIGxh
-eW91dF9nZXQgZXhhY3RseSB3aGVyZSBpdCBpcywgYnV0IGluc3RlYWQgb2Ygc2VuZGluZyBQQUdF
-X1NJWkUgc2VuZA0KPiB0aGUgYW1vdW50IG9mIGRpcnR5IHBhZ2VzIHlvdSBoYXZlLg0KPiANCj4g
-SWYgaXQgaXMgYSBsaW5lYXIgd3JpdGUgeW91IHdpbGwgYmUgZXhhY3Qgb24gdGhlIG1vbmV5IHdp
-dGggYSBzaW5nbGUgbG9fZ2V0LiBJZg0KPiBpdCBpcyBhbiBoZWF2eSByYW5kb20gd3JpdGUgdGhl
-biB5b3UgbWlnaHQgbmVlZCBtb3JlIGxvX2dldHMgYW5kIHlvdSBtaWdodCBiZSBnZXR0aW5nDQo+
-IHNvbWUgdW51c2VkIHNlZ21lbnRzLiBCdXQgaGVhdnkgcmFuZG9tIHdyaXRlIGlzIHJhcmUgYW5k
-IHNsb3cgYW55d2F5LiBBcyBhIGZpcnN0DQo+IGFwcHJveGltYXRpb24gaXRzIGZpbmUuIChXZSBj
-YW4gbGF0ZXIgZml4IHRoYXQgYXMgd2VsbCkNCkkgd291bGQgc2F5IG5vIHRvIHRoZSBhYm92ZS4u
-LiBGb3Igb2JqZWN0cy9maWxlcyBNRFMsIGl0IG1heSBub3QgaHVydCBtdWNoIHRvIGFsbG9jYXRl
-IHdhc3RpbmcgbGF5b3V0LiBCdXQgZm9yIGJsb2NrbGF5b3V0IHNlcnZlciwgZWFjaCBsYXlvdXQg
-YWxsb2NhdGlvbiBjb25zdW1lcyBtdWNoIG1vcmUgcmVzb3VyY2UgdGhhbiBqdXN0IGdpdmluZyBv
-dXQgc3RyaXBwaW5nIGluZm9ybWF0aW9uIGxpa2Ugb2JqZWN0cy9maWxlcy4gU28gaGVscGluZyBN
-RFMgdG8gZG8gdGhlIGNvcnJlY3QgZGVjaXNpb24gaXMgdGhlIHJpZ2h0IHRoaW5nIGZvciBjbGll
-bnQgdG8gZG8uDQoNCj4gDQo+IFRoZSAucGdfaW5pdCBpcyBkb25lIGFmdGVyIC53cml0ZV9wYWdl
-cyBjYWxsIGZyb20gVkZTIGFuZCBhbGwgdGhlIHRvLWJlLXdyaXR0ZW4NCj4gcGFnZXMgYXJlIGFs
-cmVhZHkgc3RhZ2VkIHRvIGJlIHdyaXR0ZW4uIFNvIHRoZXJlIHNob3VsZCBiZSBhIHdheSB0byBl
-YXNpbHkgZXh0cmFjdA0KPiB0aGF0IGluZm9ybWF0aW9uLg0KPiANCj4gPiBpb3pvbmUgY21kOg0K
-PiA+IC4vaW96b25lIC1yIDFtIC1zIDRHIC13IC1XIC1jIC10IDEwIC1pIDAgLUYgL21udC9pb3pv
-bmUuZGF0YS4xIC9tbnQvaW96b25lLmRhdGEuMiAvbW50L2lvem9uZS5kYXRhLjMNCj4gL21udC9p
-b3pvbmUuZGF0YS40IC9tbnQvaW96b25lLmRhdGEuNSAvbW50L2lvem9uZS5kYXRhLjYgL21udC9p
-b3pvbmUuZGF0YS43IC9tbnQvaW96b25lLmRhdGEuOA0KPiAvbW50L2lvem9uZS5kYXRhLjkgL21u
-dC9pb3pvbmUuZGF0YS4xMA0KPiA+DQo+ID4gQmVmb3IgcGF0Y2g6IGFyb3VuZCAxMk1CL3MgdGhy
-b3VnaHB1dA0KPiA+IEFmdGVyIHBhdGNoOiBhcm91bmQgNzJNQi9zIHRocm91Z2hwdXQNCj4gPg0K
-PiANCj4gWWVzIFllcyB0aGF0IHN0dXBpZCBCcmFpbiBkZWFkIFNlcnZlciBpcyBubyBpbmRpY2F0
-aW9uIGZvciBhbnl0aGluZy4gVGhlIHNlcnZlcg0KPiBzaG91bGQga25vdyBiZXN0IGFib3V0IG9w
-dGltYWwgc2l6ZXMgYW5kIGxheW91dHMuIFBsZWFzZSBkb24ndCBnaXZlIG1lIHRoYXQgc3R1ZmYN
-Cj4gYWdhaW4uDQo+IA0KQWN0dWFsbHkgdGhlIHNlcnZlciBpcyBhbHJlYWR5IGRvaW5nIGxheW91
-dCBwcmUtYWxsb2NhdGlvbi4gSXQgaXMganVzdCB0aGF0IGl0IGRvZXNuJ3Qga25vdyB3aGF0IGNs
-aWVudCByZWFsbHkgd2FudHMgc28gY2Fubm90IGRvIGl0IHRvbyBhZ2dyZXNzaXZlbHkuIFRoYXQn
-cyB3aHkgSSB3YW50ZWQgdG8gbWFrZSBjbGllbnQgdG8gc2VuZCB0aGUgUkVBTCBJTyBzaXplIGlu
-Zm9ybWF0aW9uIHRvIHNlcnZlci4gRnJvbSBwZXJmb3JtYW5jZSBwZXJzcGVjdGl2ZSwgZHJvcHBp
-bmcgSU8gc2l6ZSBpbmZvcm1hdGlvbiBpcyBhbHdheXMgYSBCQUQgVEhJTkcoVE0pIHRvIGRvLiAN
-Cg0KPiBCdXQganVzdCBkbyB0aGUgYWJvdmUgYW5kIHlvdSdsbCBzZWUgdGhhdCBpdCBpcyBwZXJm
-ZWN0Lg0KPiANCj4gQlRXIGRvbid0IGxpbWl0IHRoZSBsb19zZWdtZW50IHNpemUgYnkgdGhlIG1h
-eF9pb19zaXplLiBUaGlzIGlzIHdoeSB5b3UNCj4gaGF2ZSAuYmdfdGVzdCB0byBzaWduYWwgd2hl
-biBJTyBpcyBtYXhlZCBvdXQuDQo+IA0KQWN0dWFsbHkgbG9fc2VnbWVudCBzaXplIGlzIG5ldmVy
-IGxpbWl0ZWQgYnkgbWF4X2lvX3NpemUuIFNlcnZlciBpcyBhbHdheXMgZW50aXRsZWQgdG8gc2Vu
-ZCBsYXJnZXIgbGF5b3V0IHRoYW4gY2xpZW50IGFza3MgZnJvbS4NCg0KPiAtIFRoZSByZWFkIHNl
-Z21lbnRzIHNob3VsZCBiZSBhcyBiaWcgYXMgcG9zc2libGUgKGlfc2l6ZSBsb25nKQ0KPiAtIFRo
-ZSBXcml0ZSBzZWdtZW50cyBzaG91bGQgaWRlYWxseSBiZSBhcyBiaWcgYXMgdGhlIEFwcGxpY2F0
-aW9uDQo+ICAgd2FudHMgdG8gd3JpdGUgdG8uIChBbW91bnQgb2YgZGlydHkgcGFnZXMgYXQgdGlt
-ZSBvZiBuZnMtd3JpdGUtb3V0DQo+ICAgaXMgYSB2ZXJ5IGdvb2QgZmlyc3QgYXBwcm94aW1hdGlv
-bikuDQo+IA0KPiBTbyBJIGd1ZXNzIGl0IGlzOiBJIGhhdGUgdGhlc2UgcGF0Y2hlcywgdG8gbXVj
-aCBtZXNzLCB0b28gbGl0dGxlIGdvb2RuZXNzLg0KSSdtIGFmcmFpZCBJIGNhbid0IGFncmVlIHdp
-dGggeW91Li4uDQoNClRoYW5rcywNClRhbw0KDQo+IA0KPiBUaGFuaw0KPiBCb2F6DQo+IA0KPiA+
-IFBlbmcgVGFvICg0KToNCj4gPiAgIG5mc3Y0MTogZXhwb3J0IHBuZnNfZmluZF9hbGxvY19sYXlv
-dXQNCj4gPiAgIG5mc3Y0MTogYWRkIGFuZCBleHBvcnQgcG5mc19maW5kX2dldF9sYXlvdXRfbG9j
-a2VkDQo+ID4gICBuZnN2NDE6IGdldCBsc2VnIGJlZm9yZSBpc3N1ZSBMRCBJTyBpZiBwZ2lvIGRv
-ZXNuJ3QgY2FycnkgbHNlZw0KPiA+ICAgcG5mc2Jsb2NrOiBkbyBhc2sgZm9yIGxheW91dCBpbiBw
-Z19pbml0DQo+ID4NCj4gPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDU0
-ICsrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+ICBmcy9uZnMvcG5mcy5jICAgICAgICAg
-ICAgICAgICAgICB8ICAgNzQgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0N
-Cj4gPiAgZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgfCAgICA5ICsrKysrDQo+ID4g
-IDMgZmlsZXMgY2hhbmdlZCwgMTM0IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4N
-Cj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
-ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
-IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBo
-dHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IC0tDQo+IFRv
-IHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBs
-aW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5r
-ZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5v
-cmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+Chuck Lever wrote:
+
+  On Nov 4, 2011, at 9:20 AM, Jim Rees wrote:
+  
+  > As for a fix...  we're trying to move away from udp transport anyway.  Maybe
+  > someone should figure out a way to get it to work with tcp?  I have zero
+  > experience with nfs over udp, at least on linux.  Just for fun, have you
+  > tried tcp transport (proto=tcp)?
+  
+  TCP is a real problem in this environment, because it deals poorly with
+  NIC initialization timing issues.  UDP is still the best approach (as long
+  as it is retransmitting appropriately).  To support TCP, ultimately what
+  we need to do is to introduce serialization to make the kernel wait for
+  the NIC to become ready before attempting network activity.
+
+Agreed, but we're grasping at straws here, and this guy just wants it to
+work.  It's something to try.
+
+  > As we move toward nfs4 someone will have to give some thought to nfsroot.
+  > It's hard to imagine we could put enough nfs4 cruft into the kernel (gssd,
+  > idmapd) to make it work.
+  
+  A kernel-level basic id mapper is being considered.  That would allow
+  NFSv4 with AUTH_SYS, if we can get the NIC problems squared away.
+
+Actually I wonder if you could get by with auth_sys, no gss, and no id
+mapping until you get to the point where the root is remounted by user land.
