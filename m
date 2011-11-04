@@ -1,52 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:65221 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755838Ab1KGSCM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 13:02:12 -0500
-Subject: Re: rpcbind -h
-Mime-Version: 1.0 (Apple Message framework v1084)
+Received: from fieldses.org ([174.143.236.118]:59159 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752973Ab1KDWfK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 18:35:10 -0400
+Date: Fri, 4 Nov 2011 18:35:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] CLNT: add some tests for DESTROY_CLIENTID
+Message-ID: <20111104223509.GP721@fieldses.org>
+References: <4E9FE273.80500@cn.fujitsu.com>
+ <20111020094355.GE5444@fieldses.org>
+ <4E9FF123.2060704@cn.fujitsu.com>
+ <20111020100202.GF5444@fieldses.org>
+ <4E9FF46D.5090003@cn.fujitsu.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111107172131.GA1008@umich.edu>
-Date: Mon, 7 Nov 2011 13:01:58 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <17F52BED-5ED9-4FBA-A959-B31A88C800B1@oracle.com>
-References: <20111106155844.GA1790@umich.edu> <3096DDEC-48D3-423A-B674-160B8DA59DE2@oracle.com> <20111107172131.GA1008@umich.edu>
-To: Jim Rees <rees@umich.edu>
+In-Reply-To: <4E9FF46D.5090003@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Oct 20, 2011 at 06:14:05PM +0800, Mi Jinlong wrote:
+> Some tests for DESTROY_CLIENTID at pynfs41.
 
-On Nov 7, 2011, at 12:21 PM, Jim Rees wrote:
+Thanks, applied.
 
-> Chuck Lever wrote:
+(Nit: you use the same description ("add some tests for
+DESTROY_CLIENTID") on both the subject line and in the body of the
+email.  It would be better to use the body for additional detail, or
+just leave it blank if you don't have any.)
+
+--b.
+
 > 
->  On Nov 6, 2011, at 10:58 AM, Jim Rees wrote:
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  nfs4.1/server41tests/__init__.py            |    1 +
+>  nfs4.1/server41tests/st_destroy_clientid.py |   98 +++++++++++++++++++++++++++
+>  2 files changed, 99 insertions(+), 0 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_destroy_clientid.py
 > 
->> Is there some good reason why the rpcbind '-h' option (bind to given
->> address) applies only to the udp listening socket and not to the tcp socket?
+> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> index 1cc2048..eb92538 100644
+> --- a/nfs4.1/server41tests/__init__.py
+> +++ b/nfs4.1/server41tests/__init__.py
+> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+>             "st_compound.py",
+>             "st_create_session.py",
+>             "st_destroy_session.py",
+> +           "st_destroy_clientid.py",
+>             "st_reclaim_complete.py",
+>             "st_secinfo_no_name.py",
+>             "st_secinfo.py",
+> diff --git a/nfs4.1/server41tests/st_destroy_clientid.py b/nfs4.1/server41tests/st_destroy_clientid.py
+> new file mode 100644
+> index 0000000..1b193cf
+> --- /dev/null
+> +++ b/nfs4.1/server41tests/st_destroy_clientid.py
+> @@ -0,0 +1,98 @@
+> +from st_create_session import create_session
+> +from nfs4_const import *
+> +from environment import check, fail
+> +import nfs4_ops as op
+> +import nfs4lib
+> +
+> +def testSupported(t, env):
+> +    """ Do a simple DESTROY_CLIENTID
+> +        destroy an unconfirmed clientid without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID1
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res)
+> +
+> +def testDestroyCIDWS(t, env):
+> +    """ destroy an unconfirmed clientid with session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID2
+> +    """
+> +    c1 = env.c1.new_client("%s_1" % env.testname(t))
+> +    c2 = env.c1.new_client("%s_2" % env.testname(t))
+> +    sess = c1.create_session()
+> +
+> +    res = sess.compound([op.destroy_clientid(c2.clientid)])
+> +    check(res)
+> +
+> +def testDestroyBadCIDWS(t, env):
+> +    """ destroy a nonexistant clientid without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID3
+> +    """
+> +    res = env.c1.compound([op.destroy_clientid(0)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> +
+> +def testDestroyBadCIDIS(t, env):
+> +    """ destroy a nonexistant clientid in session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID4
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = sess.compound([op.destroy_clientid(0)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> +
+> +def testDestroyCIDSessionB(t, env):
+> +    """ destroy clientid using a session belong to that client
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID5
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = sess.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_CLIENTID_BUSY)
+> +
+> +def testDestroyCIDCSession(t, env):
+> +    """ destroy a clientid which contains session without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID6
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_CLIENTID_BUSY)
+> +
+> +def testDestroyCIDNotOnly(t, env):
+> +    """ destroy a clientid without session with other compound
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID7
+> +    """
+> +    res = env.c1.compound([op.destroy_clientid(0), op.reclaim_complete(TRUE)])
+> +    check(res, NFS4ERR_NOT_ONLY_OP)
+> +
+> +def testDestroyCIDTwice(t, env):
+> +    """ destroy a clientid twice without session
+> +
+> +    FLAGS: destroy_clientid all
+> +    CODE: DESCID8
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res)
+> +
+> +    res = env.c1.compound([op.destroy_clientid(c.clientid)])
+> +    check(res, NFS4ERR_STALE_CLIENTID)
+> -- 
+> 1.7.6
 > 
->  Yes.  See the mail archives.  I believe we've discussed this thoroughly
->  within the past six months to a year.  If there's any bug here, it's that
->  "-h" is not well documented.
 > 
-> It's documented well enough but I'm still in the dark about the reason.  I
-> don't recall the discussion and can't find it in the archives.  The search
-> box on spinics isn't working for me, it returns results from the entire web,
-> not just the list archive.
-> 
-> As I said before, I was hoping for the equivalent of "portmap -l".  I was
-> ready to code up a patch of some kind but now have a workaround (mount with
-> nolock and don't run rpcbind at all).
-
-I wouldn't object to having a "local only" option that turns off the AF_INET[6] listener and just listens on the AF_LOCAL socket, but that may be problematic until we have a complete transition away from glibc RPC, which still uses AF_INET loopback extensively.
-
-Glad you found a work-around.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
