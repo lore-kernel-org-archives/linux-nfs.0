@@ -1,127 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:59799 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754533Ab1KIPRh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 10:17:37 -0500
-Received: by qao25 with SMTP id 25so1563469qao.19
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 07:17:36 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 3/8] pnfsblock: move find lock page logic out of bl_write_pagelist
-Date: Wed,  9 Nov 2011 07:16:01 -0800
-Message-Id: <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63082 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751602Ab1KDUs3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 16:48:29 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 3/4] NFSv4.1: rename nfs4_free_slot and nfs4_find_slot
+Date: Fri,  4 Nov 2011 16:47:48 -0400
+Message-Id: <1320439669-3411-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1320439669-3411-1-git-send-email-andros@netapp.com>
+References: <1320439669-3411-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also avoid unnecessary lock_page if page is handled by others.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
+These functions deal in slotid's, not slots.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
- 1 files changed, 54 insertions(+), 24 deletions(-)
+ fs/nfs/nfs4proc.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 4ced0b0..e8e13f3 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -484,6 +484,56 @@ cleanup:
- 	return ret;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9c8afc1..deb88d9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -438,7 +438,7 @@ nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
  }
  
-+/* Find or create a zeroing page marked being writeback.
-+ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-+ * to indicate write out.
-+ */
-+static struct page*
-+bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
-+			struct pnfs_block_extent *cow_read)
-+{
-+	struct page* page;
-+	int locked = 0;
-+	page = find_get_page(inode->i_mapping, index);
-+	if (page)
-+		goto check_page;
-+
-+	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
-+	if (unlikely(!page)) {
-+		dprintk("%s oom\n", __func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	locked = 1;
-+
-+check_page:
-+	/* PageDirty: Other will write this out
-+	 * PageWriteback: Other is writing this out
-+	 * PageUptodate: It was read before
-+	 */
-+	if (PageDirty(page) || PageWriteback(page)) {
-+		print_page(page);
-+		if (locked)
-+			unlock_page(page);
-+		page_cache_release(page);
-+		return NULL;
-+	}
-+
-+	if (!locked) {
-+		lock_page(page);
-+		if (PageDirty(page) || PageWriteback(page))
-+			unlock_page(page);
-+		return NULL;
-+	}
-+	if (!PageUptodate(page)) {
-+		/* New page, readin or zero it */
-+		init_page_for_write(page, cow_read);
-+	}
-+	set_page_writeback(page);
-+	unlock_page(page);
-+
-+	return page;
-+}
-+
- static enum pnfs_try_status
- bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- {
-@@ -543,32 +593,12 @@ fill_invalid_ext:
- 			dprintk("%s zero %dth page: index %lu isect %llu\n",
- 				__func__, npg_zero, index,
- 				(unsigned long long)isect);
--			page =
--			    find_or_create_page(wdata->inode->i_mapping, index,
--						GFP_NOFS);
--			if (!page) {
--				dprintk("%s oom\n", __func__);
--				wdata->pnfs_error = -ENOMEM;
-+			page = bl_find_get_zeroing_page(wdata->inode, index, cow_read);
-+			if (unlikely(IS_ERR(page))) {
-+				wdata->pnfs_error = PTR_ERR(page);
- 				goto out;
--			}
--
--			/* PageDirty: Other will write this out
--			 * PageWriteback: Other is writing this out
--			 * PageUptodate: It was read before
--			 * sector_initialized: already written out
--			 */
--			if (PageDirty(page) || PageWriteback(page)) {
--				print_page(page);
--				unlock_page(page);
--				page_cache_release(page);
-+			} else if (page == NULL)
- 				goto next_page;
--			}
--			if (!PageUptodate(page)) {
--				/* New page, readin or zero it */
--				init_page_for_write(page, cow_read);
--			}
--			set_page_writeback(page);
--			unlock_page(page);
+ /*
+- * Return the slot associated with the slotid returned by nfs4_find_slot.
++ * Return the slot associated with the slotid returned by nfs4_find_slotid.
+  * If the slot is not found, it has not been allocated: the NULL return
+  * puts the request on the slot table waitq and dynamically allocates a
+  * new slot.
+@@ -522,9 +522,9 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+ }
  
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
- 						       PAGE_CACHE_SECTORS);
+ /*
+- * nfs4_free_slot - free a slot and efficiently update slot table.
++ * nfs4_free_slotid - free a slotid and efficiently update slot table.
+  *
+- * freeing a slot is trivially done by clearing its respective bit
++ * freeing a slotid is trivially done by clearing its respective bit
+  * in the bitmap.
+  * If the freed slotid equals highest_used_slotid we want to update it
+  * so that the server would be able to size down the slot table if needed,
+@@ -537,7 +537,7 @@ void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
+  * Must be called while holding tbl->slot_tbl_lock
+  */
+ static void
+-nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
++nfs4_free_slotid(struct nfs4_slot_table *tbl, u8 free_slotid)
+ {
+ 	int slotid = free_slotid;
+ 
+@@ -603,7 +603,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 	}
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	nfs4_free_slot(tbl, res->sr_slot->slotid);
++	nfs4_free_slotid(tbl, res->sr_slot->slotid);
+ 	nfs4_put_slot_locked(res->sr_slot);
+ 	nfs4_check_drain_fc_complete(res->sr_session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+@@ -674,17 +674,17 @@ static int nfs4_sequence_done(struct rpc_task *task,
+ }
+ 
+ /*
+- * nfs4_find_slot - efficiently look for a free slot
++ * nfs4_find_slotid - efficiently look for a free slotid
+  *
+- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
+- * If found, we mark the slot as used, update the highest_used_slotid,
++ * nfs4_find_slotid looks for an unset bit in the used_slots bitmap.
++ * If found, we mark the slotid as used, update the highest_used_slotid,
+  * and respectively set up the sequence operation args.
+- * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
++ * The slotid is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
+  *
+  * Note: must be called with under the slot_tbl_lock.
+  */
+ static u8
+-nfs4_find_slot(struct nfs4_slot_table *tbl)
++nfs4_find_slotid(struct nfs4_slot_table *tbl)
+ {
+ 	int slotid;
+ 	u8 ret_id = NFS4_MAX_SLOT_TABLE;
+@@ -744,7 +744,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		return -EAGAIN;
+ 	}
+ 
+-	slotid = nfs4_find_slot(tbl);
++	slotid = nfs4_find_slotid(tbl);
+ 	if (slotid == NFS4_MAX_SLOT_TABLE) {
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+@@ -756,7 +756,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		/* keep FIFO order */
+ 		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+-		nfs4_free_slot(tbl, slotid);
++		nfs4_free_slotid(tbl, slotid);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		dprintk("%s task pid %5u sleeping for dynamic slot %d\n",
+ 			__func__, task->tk_pid, slotid);
 -- 
-1.7.1.262.g5ef3d
+1.7.6.4
 
