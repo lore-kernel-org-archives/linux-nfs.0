@@ -1,64 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:47636 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752377Ab1KJWun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 17:50:43 -0500
-Message-ID: <4EBC5538.7010002@panasas.com>
-Date: Thu, 10 Nov 2011 14:50:32 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45380 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752451Ab1KDIDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 04:03:45 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pA483jJi016127
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Nov 2011 04:03:45 -0400
 MIME-Version: 1.0
-To: Benny Halevy <benny@tonian.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <20147.40030.333964.631999@regina.usersys.redhat.com>
+Date: Fri, 4 Nov 2011 19:03:42 +1100
+From: Max Matveev <makc@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] RDMA: RPCRDMA_MAX_DATA_SEGS cause i686 stack to blow.
+In-Reply-To: <1320346359-1515-1-git-send-email-steved@redhat.com>
+References: <1320346359-1515-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu,  3 Nov 2011 14:52:38 -0400, Steve Dickson wrote:
 
-If we had a layout on the file the nfs4_file would be referenced and we should
-have found it. Since we don't then it means all layouts where ROC and at this
-point we returned all of them on file close.
+ steved> Commit 2773395b3 increased RPCRDMA_MAX_DATA_SEGS from 8
+ steved> to 64 which significantly increases throughput with the
+ steved> RDMA transport.
 
-So why does the Linux wonderful forgetfull client returnes it's ROC layouts on
-inode evict() (I hit this on umount at client). Actually this is on me, because
-it is a bug in Generic client code, but can only manifest with pnf-obj after an
-IO error.
+ steved> Unfortunately making RPCRDMA_MAX_DATA_SEGS that large blows
+ steved> the stack on i686 builds during compilation. So the
+ steved> RPCRDMA_MAX_PHYSREG_DATA_SEGS is used to allocated data on
+ steved> the stack.
 
-Sign-off-by: Boaz Harrosh
----
- fs/nfsd/nfs4pnfsd.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+How is it supposed to work if you "advertise" 256K r/wsize (64 * 4k)
+but only post enough buffers to deal with 64K worth of data?
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index f30fa65..eb4a044 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1109,7 +1109,15 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 			printk(KERN_ERR "%s: RETURN_FILE: no nfs4_file for "
- 				"ino %p:%lu\n",
- 				__func__, ino, ino ? ino->i_ino : 0L);
--			goto out;
-+			/* If we had a layout on the file the nfs4_file would
-+			 * be referenced and we should have found it. Since we
-+			 * don't then it means all layouts where ROC and at this
-+			 * point we returned all of them on file close.
-+			 * TODO:
-+			 * Benny this is what Bruce calls a client spam, we might
-+			 * want to degrade the print level to dprintk.
-+			 */
-+			goto out_no_fs_call;
- 		}
- 
- 		/* Check the stateid */
-@@ -1163,6 +1173,7 @@ out:
- 	/* call exported filesystem layout_return (ignore return-code) */
- 	fs_layout_return(sb, ino, lrp, 0, recall_cookie);
- 
-+out_no_fs_call:
- 	dprintk("pNFS %s: exit status %d \n", __func__, status);
- 	return status;
- }
--- 
-1.7.6.2
+max
 
