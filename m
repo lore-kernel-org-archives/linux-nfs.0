@@ -1,576 +1,756 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.citrix.com ([66.165.176.89]:5098 "EHLO SMTP.CITRIX.COM"
+Received: from mx2.netapp.com ([216.240.18.37]:63082 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754533Ab1KIPCX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Nov 2011 10:02:23 -0500
-From: Ian Campbell <ian.campbell@citrix.com>
-To: netdev@vger.kernel.org
-CC: Ian Campbell <ian.campbell@citrix.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
-        James Morris <jmorris@namei.org>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Patrick McHardy <kaber@trash.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>, drbd-user@lists.linbit.com,
-        devel@driverdev.osuosl.org, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, ceph-devel@vger.kernel.org,
-        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] net: add paged frag destructor support to kernel_sendpage.
-Date: Wed, 9 Nov 2011 15:02:06 +0000
-Message-ID: <1320850927-30240-3-git-send-email-ian.campbell@citrix.com>
-In-Reply-To: <1320850895.955.172.camel@zakaz.uk.xensource.com>
-References: <1320850895.955.172.camel@zakaz.uk.xensource.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751016Ab1KDUs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 16:48:28 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 2/4] NFSv4.1: dynamic session slots
+Date: Fri,  4 Nov 2011 16:47:47 -0400
+Message-Id: <1320439669-3411-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1320439669-3411-1-git-send-email-andros@netapp.com>
+References: <1320439669-3411-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This requires adding a new argument to various sendpage hooks up and down the
-stack. At the moment this parameter is always NULL.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
-Cc: James Morris <jmorris@namei.org>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Patrick McHardy <kaber@trash.net>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Greg Kroah-Hartman <gregkh@suse.de>
-Cc: drbd-user@lists.linbit.com
-Cc: devel@driverdev.osuosl.org
-Cc: cluster-devel@redhat.com
-Cc: ocfs2-devel@oss.oracle.com
-Cc: netdev@vger.kernel.org
-Cc: ceph-devel@vger.kernel.org
-Cc: rds-devel@oss.oracle.com
-Cc: linux-nfs@vger.kernel.org
+The session fore/backchannel slot tables implementation is changed from a
+static array to an hlist hashed on slotid. Slotid's are values 0..N where N
+is initially negotiated between the client and server via the CREATE_SESSION
+call, and can be dynamically changed by the server during an active session.
+
+The slot table init/reset code called by nfs4_proc_create_session has been
+refactored: nfs4_setup_slot_tables calls either nfs4_init_slot_table OR
+nfs4_reset_slot_table.
+
+A new struct nfs4_slot_table field, allocated_slots, counts the
+number of dynamically allocated_slots and is dec'ed/inc'ed in the
+nfs4_remove_slot_locked/nfs4_insert_slot_locked functions.
+
+When there are no allocated slots (mount), nfs4_setup_slot_tables calls
+nfs4_init_slot_tbl on both the fc and bc tables which allocates an initial
+number of session slots equal to the inital number of dynamic rpc_slots
+created upon transport creation (xprt->min_reqs).
+
+Slots are dynamically allocated as needed upto the CREATE_SESSION negotiated
+max_reqs value. An upcoming patch set will respond to the NFSv4.1 server's
+increase in the max_reqs of the slot table (via SEQUENCE target_highest_slotid)
+by dynamically adding slots in this same manner.
+
+For session reset the session is drained (inactive). The (old) session has
+allocated fc/bc slot tables which we will reuse.  nfs4_reset_slot_table
+only reduces the allocated_slots if the new max_reqs negotiated by the reset
+CREATE_SESSION is less than the number of allocated_slots. The resultant slot
+table is then re-initialized.
+
+CB_SLOT_RECALL is changed only in that it now shares code with session
+reset - it also calls nfs4_reduce_slots_locked.
+
+Slots are referenced while in use so that the slot table size can be
+adjusted down without session draining for CB_SLOT_RECALL (an upcoming patch),
+and for responding to an NFSv4.1 server's decreasing the number of slots
+via SEQUENCE target_highest_slotid.
+
+The backchannel also uses the new dynamic slot allocator, even though we only
+currently support a single back channel slot.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- drivers/block/drbd/drbd_main.c           |    1 +
- drivers/scsi/iscsi_tcp.c                 |    4 ++--
- drivers/scsi/iscsi_tcp.h                 |    3 ++-
- drivers/staging/pohmelfs/trans.c         |    3 ++-
- drivers/target/iscsi/iscsi_target_util.c |    3 ++-
- fs/dlm/lowcomms.c                        |    4 ++--
- fs/ocfs2/cluster/tcp.c                   |    1 +
- include/linux/net.h                      |    6 +++++-
- include/net/inet_common.h                |    4 +++-
- include/net/ip.h                         |    4 +++-
- include/net/sock.h                       |    8 +++++---
- include/net/tcp.h                        |    4 +++-
- net/ceph/messenger.c                     |    2 +-
- net/core/sock.c                          |    6 +++++-
- net/ipv4/af_inet.c                       |    9 ++++++---
- net/ipv4/ip_output.c                     |    6 ++++--
- net/ipv4/tcp.c                           |   24 ++++++++++++++++--------
- net/ipv4/udp.c                           |   11 ++++++-----
- net/ipv4/udp_impl.h                      |    5 +++--
- net/rds/tcp_send.c                       |    1 +
- net/socket.c                             |   11 +++++++----
- net/sunrpc/svcsock.c                     |    6 +++---
- net/sunrpc/xprtsock.c                    |    2 +-
- 23 files changed, 84 insertions(+), 44 deletions(-)
+ fs/nfs/callback_proc.c    |   25 +++-
+ fs/nfs/internal.h         |    2 +
+ fs/nfs/nfs4_fs.h          |    1 +
+ fs/nfs/nfs4proc.c         |  346 +++++++++++++++++++++++++++++++++------------
+ fs/nfs/nfs4state.c        |   12 +--
+ fs/nfs/nfs4xdr.c          |   19 ++--
+ include/linux/nfs_fs_sb.h |   12 +-
+ include/linux/nfs_xdr.h   |    5 +-
+ 8 files changed, 295 insertions(+), 127 deletions(-)
 
-diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
-index 0358e55..49c7346 100644
---- a/drivers/block/drbd/drbd_main.c
-+++ b/drivers/block/drbd/drbd_main.c
-@@ -2584,6 +2584,7 @@ static int _drbd_send_page(struct drbd_conf *mdev, struct page *page,
- 	set_fs(KERNEL_DS);
- 	do {
- 		sent = mdev->data.socket->ops->sendpage(mdev->data.socket, page,
-+							NULL,
- 							offset, len,
- 							msg_flags);
- 		if (sent == -EAGAIN) {
-diff --git a/drivers/scsi/iscsi_tcp.c b/drivers/scsi/iscsi_tcp.c
-index 7724414..2eb6801 100644
---- a/drivers/scsi/iscsi_tcp.c
-+++ b/drivers/scsi/iscsi_tcp.c
-@@ -283,8 +283,8 @@ static int iscsi_sw_tcp_xmit_segment(struct iscsi_tcp_conn *tcp_conn,
- 		if (!segment->data) {
- 			sg = segment->sg;
- 			offset += segment->sg_offset + sg->offset;
--			r = tcp_sw_conn->sendpage(sk, sg_page(sg), offset,
--						  copy, flags);
-+			r = tcp_sw_conn->sendpage(sk, sg_page(sg), NULL,
-+						  offset, copy, flags);
- 		} else {
- 			struct msghdr msg = { .msg_flags = flags };
- 			struct kvec iov = {
-diff --git a/drivers/scsi/iscsi_tcp.h b/drivers/scsi/iscsi_tcp.h
-index 666fe09..1e23265 100644
---- a/drivers/scsi/iscsi_tcp.h
-+++ b/drivers/scsi/iscsi_tcp.h
-@@ -52,7 +52,8 @@ struct iscsi_sw_tcp_conn {
- 	uint32_t		sendpage_failures_cnt;
- 	uint32_t		discontiguous_hdr_cnt;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 54cea8a..8039a41 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -342,7 +342,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+ 	if (args->csa_slotid >= NFS41_BC_MAX_CALLBACKS)
+ 		return htonl(NFS4ERR_BADSLOT);
  
--	ssize_t (*sendpage)(struct socket *, struct page *, int, size_t, int);
-+	ssize_t (*sendpage)(struct socket *, struct page *,
-+			    struct skb_frag_destructor *, int, size_t, int);
- };
+-	slot = tbl->slots + args->csa_slotid;
++	slot = nfs4_lookup_slot_locked(tbl, args->csa_slotid);
+ 	dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
  
- struct iscsi_sw_tcp_host {
-diff --git a/drivers/staging/pohmelfs/trans.c b/drivers/staging/pohmelfs/trans.c
-index 36a2535..f897fdb 100644
---- a/drivers/staging/pohmelfs/trans.c
-+++ b/drivers/staging/pohmelfs/trans.c
-@@ -104,7 +104,8 @@ static int netfs_trans_send_pages(struct netfs_trans *t, struct netfs_state *st)
- 		msg.msg_flags = MSG_WAITALL | (attached_pages == 1 ? 0 :
- 				MSG_MORE);
+ 	/* Normal */
+@@ -377,6 +377,22 @@ out_ok:
+ 	return htonl(NFS4_OK);
+ }
  
--		err = kernel_sendpage(st->socket, page, 0, size, msg.msg_flags);
-+		err = kernel_sendpage(st->socket, page, NULL,
-+				      0, size, msg.msg_flags);
- 		if (err <= 0) {
- 			printk("%s: %d/%d failed to send transaction page: t: %p, gen: %u, size: %u, err: %d.\n",
- 					__func__, i, t->page_num, t, t->gen, size, err);
-diff --git a/drivers/target/iscsi/iscsi_target_util.c b/drivers/target/iscsi/iscsi_target_util.c
-index f00137f..1ce98e9 100644
---- a/drivers/target/iscsi/iscsi_target_util.c
-+++ b/drivers/target/iscsi/iscsi_target_util.c
-@@ -1297,7 +1297,8 @@ send_hdr:
- 		u32 sub_len = min_t(u32, data_len, space);
- send_pg:
- 		tx_sent = conn->sock->ops->sendpage(conn->sock,
--					sg_page(sg), sg->offset + offset, sub_len, 0);
-+					sg_page(sg), NULL,
-+					sg->offset + offset, sub_len, 0);
- 		if (tx_sent != sub_len) {
- 			if (tx_sent == -EAGAIN) {
- 				pr_err("tcp_sendpage() returned"
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index 990626e..98ace05 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -1342,8 +1342,8 @@ static void send_to_sock(struct connection *con)
- 
- 		ret = 0;
- 		if (len) {
--			ret = kernel_sendpage(con->sock, e->page, offset, len,
--					      msg_flags);
-+			ret = kernel_sendpage(con->sock, e->page, NULL,
-+					      offset, len, msg_flags);
- 			if (ret == -EAGAIN || ret == 0) {
- 				if (ret == -EAGAIN &&
- 				    test_bit(SOCK_ASYNC_NOSPACE, &con->sock->flags) &&
-diff --git a/fs/ocfs2/cluster/tcp.c b/fs/ocfs2/cluster/tcp.c
-index db5ee4b..81366a0 100644
---- a/fs/ocfs2/cluster/tcp.c
-+++ b/fs/ocfs2/cluster/tcp.c
-@@ -982,6 +982,7 @@ static void o2net_sendpage(struct o2net_sock_container *sc,
- 		mutex_lock(&sc->sc_send_lock);
- 		ret = sc->sc_sock->ops->sendpage(sc->sc_sock,
- 						 virt_to_page(kmalloced_virt),
-+						 NULL,
- 						 (long)kmalloced_virt & ~PAGE_MASK,
- 						 size, MSG_DONTWAIT);
- 		mutex_unlock(&sc->sc_send_lock);
-diff --git a/include/linux/net.h b/include/linux/net.h
-index b299230..db562ba 100644
---- a/include/linux/net.h
-+++ b/include/linux/net.h
-@@ -157,6 +157,7 @@ struct kiocb;
- struct sockaddr;
- struct msghdr;
- struct module;
-+struct skb_frag_destructor;
- 
- struct proto_ops {
- 	int		family;
-@@ -203,6 +204,7 @@ struct proto_ops {
- 	int		(*mmap)	     (struct file *file, struct socket *sock,
- 				      struct vm_area_struct * vma);
- 	ssize_t		(*sendpage)  (struct socket *sock, struct page *page,
-+				      struct skb_frag_destructor *destroy,
- 				      int offset, size_t size, int flags);
- 	ssize_t 	(*splice_read)(struct socket *sock,  loff_t *ppos,
- 				       struct pipe_inode_info *pipe, size_t len, unsigned int flags);
-@@ -273,7 +275,9 @@ extern int kernel_getsockopt(struct socket *sock, int level, int optname,
- 			     char *optval, int *optlen);
- extern int kernel_setsockopt(struct socket *sock, int level, int optname,
- 			     char *optval, unsigned int optlen);
--extern int kernel_sendpage(struct socket *sock, struct page *page, int offset,
-+extern int kernel_sendpage(struct socket *sock, struct page *page,
-+			   struct skb_frag_destructor *destroy,
-+			   int offset,
- 			   size_t size, int flags);
- extern int kernel_sock_ioctl(struct socket *sock, int cmd, unsigned long arg);
- extern int kernel_sock_shutdown(struct socket *sock,
-diff --git a/include/net/inet_common.h b/include/net/inet_common.h
-index 22fac98..91cd8d0 100644
---- a/include/net/inet_common.h
-+++ b/include/net/inet_common.h
-@@ -21,7 +21,9 @@ extern int inet_dgram_connect(struct socket *sock, struct sockaddr * uaddr,
- extern int inet_accept(struct socket *sock, struct socket *newsock, int flags);
- extern int inet_sendmsg(struct kiocb *iocb, struct socket *sock,
- 			struct msghdr *msg, size_t size);
--extern ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
-+extern ssize_t inet_sendpage(struct socket *sock, struct page *page,
-+			     struct skb_frag_destructor *frag,
-+			     int offset,
- 			     size_t size, int flags);
- extern int inet_recvmsg(struct kiocb *iocb, struct socket *sock,
- 			struct msghdr *msg, size_t size, int flags);
-diff --git a/include/net/ip.h b/include/net/ip.h
-index eca0ef7..d34030c 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -114,7 +114,9 @@ extern int		ip_append_data(struct sock *sk, struct flowi4 *fl4,
- 				struct rtable **rt,
- 				unsigned int flags);
- extern int		ip_generic_getfrag(void *from, char *to, int offset, int len, int odd, struct sk_buff *skb);
--extern ssize_t		ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
-+extern ssize_t		ip_append_page(struct sock *sk, struct flowi4 *fl4,
-+				struct page *page,
-+				struct skb_frag_destructor *destroy,
- 				int offset, size_t size, int flags);
- extern struct sk_buff  *__ip_make_skb(struct sock *sk,
- 				      struct flowi4 *fl4,
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 5ac682f..95ebafd 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -774,6 +774,7 @@ struct proto {
- 					size_t len, int noblock, int flags, 
- 					int *addr_len);
- 	int			(*sendpage)(struct sock *sk, struct page *page,
-+					struct skb_frag_destructor *destroy,
- 					int offset, size_t size, int flags);
- 	int			(*bind)(struct sock *sk, 
- 					struct sockaddr *uaddr, int addr_len);
-@@ -1162,9 +1163,10 @@ extern int			sock_no_mmap(struct file *file,
- 					     struct socket *sock,
- 					     struct vm_area_struct *vma);
- extern ssize_t			sock_no_sendpage(struct socket *sock,
--						struct page *page,
--						int offset, size_t size, 
--						int flags);
-+					struct page *page,
-+					struct skb_frag_destructor *destroy,
-+					int offset, size_t size,
-+					int flags);
++static bool test_refer_slot(struct nfs4_slot_table *tbl,
++			    struct referring_call *ref)
++{
++	struct nfs4_slot *slot;
++	bool status = false;
++
++	spin_lock(&tbl->slot_tbl_lock);
++	if (test_bit(ref->rc_slotid, tbl->used_slots)) {
++		slot = nfs4_lookup_slot_locked(tbl, ref->rc_slotid);
++		if (slot->seq_nr == ref->rc_sequenceid)
++			status = true;
++	}
++	spin_unlock(&tbl->slot_tbl_lock);
++	return status;
++}
++
+ /*
+  * For each referring call triple, check the session's slot table for
+  * a match.  If the slot is in use and the sequence numbers match, the
+@@ -417,12 +433,7 @@ static bool referring_call_exists(struct nfs_client *clp,
+ 				((u32 *)&rclist->rcl_sessionid.data)[2],
+ 				((u32 *)&rclist->rcl_sessionid.data)[3],
+ 				ref->rc_sequenceid, ref->rc_slotid);
+-
+-			spin_lock(&tbl->slot_tbl_lock);
+-			status = (test_bit(ref->rc_slotid, tbl->used_slots) &&
+-				  tbl->slots[ref->rc_slotid].seq_nr ==
+-					ref->rc_sequenceid);
+-			spin_unlock(&tbl->slot_tbl_lock);
++			status = test_refer_slot(tbl, ref);
+ 			if (status)
+ 				goto out;
+ 		}
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index c1a1bd8..4451abf 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -354,6 +354,8 @@ extern int _nfs4_call_sync_session(struct rpc_clnt *clnt,
+ 				   struct nfs4_sequence_args *args,
+ 				   struct nfs4_sequence_res *res,
+ 				   int cache_reply);
++struct nfs4_slot *nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl,
++					  u8 slotid);
  
  /*
-  * Functions to fill in entries in struct proto_ops when a protocol
-diff --git a/include/net/tcp.h b/include/net/tcp.h
-index e147f42..99fe8f3 100644
---- a/include/net/tcp.h
-+++ b/include/net/tcp.h
-@@ -322,7 +322,9 @@ extern void *tcp_v4_tw_get_peer(struct sock *sk);
- extern int tcp_v4_tw_remember_stamp(struct inet_timewait_sock *tw);
- extern int tcp_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
- 		       size_t size);
--extern int tcp_sendpage(struct sock *sk, struct page *page, int offset,
-+extern int tcp_sendpage(struct sock *sk, struct page *page,
-+			struct skb_frag_destructor *destroy,
-+			int offset,
- 			size_t size, int flags);
- extern int tcp_ioctl(struct sock *sk, int cmd, unsigned long arg);
- extern int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
-diff --git a/net/ceph/messenger.c b/net/ceph/messenger.c
-index 9918e9e..65b6fc0 100644
---- a/net/ceph/messenger.c
-+++ b/net/ceph/messenger.c
-@@ -849,7 +849,7 @@ static int write_partial_msg_pages(struct ceph_connection *con)
- 				cpu_to_le32(crc32c(tmpcrc, base, len));
- 			con->out_msg_pos.did_page_crc = 1;
- 		}
--		ret = kernel_sendpage(con->sock, page,
-+		ret = kernel_sendpage(con->sock, page, NULL,
- 				      con->out_msg_pos.page_pos + page_shift,
- 				      len,
- 				      MSG_DONTWAIT | MSG_NOSIGNAL |
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 5a08762..8fef547 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -1860,7 +1860,9 @@ int sock_no_mmap(struct file *file, struct socket *sock, struct vm_area_struct *
- }
- EXPORT_SYMBOL(sock_no_mmap);
+  * Determine the device name as a string
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 693ae22..ff87169 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -242,6 +242,7 @@ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
+ extern int nfs4_proc_create_session(struct nfs_client *);
+ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
++extern void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl);
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
+ extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b60fddf..9c8afc1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -346,6 +346,182 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ #if defined(CONFIG_NFS_V4_1)
  
--ssize_t sock_no_sendpage(struct socket *sock, struct page *page, int offset, size_t size, int flags)
-+ssize_t sock_no_sendpage(struct socket *sock, struct page *page,
-+			 struct skb_frag_destructor *destroy,
-+			 int offset, size_t size, int flags)
+ /*
++ * Session dynamic slot table helper functions
++ */
++
++static inline u32 slot_tbl_hash(const u8 slotid)
++{
++	return (u32)slotid % SLOT_TABLE_SIZE;
++}
++
++static void nfs4_init_slot(struct nfs4_slot *new, u8 slotid, int ivalue)
++{
++	INIT_HLIST_NODE(&new->slot_node);
++	new->slotid = slotid;
++	new->seq_nr = ivalue;
++	atomic_set(&new->ref, 1);
++}
++
++static void nfs4_insert_slot_locked(struct nfs4_slot_table *tbl,
++					   struct nfs4_slot *new)
++{
++	u32 hash = slot_tbl_hash(new->slotid);
++
++	hlist_add_head(&new->slot_node, &tbl->slots[hash]);
++	tbl->allocated_slots++;
++}
++
++/*
++ * Allocate a slot for the next slotid (tbl->allocated_slotid)
++ */
++static int nfs4_alloc_add_slot(struct nfs4_slot_table *tbl,
++			       int ivalue, int slotid,
++			       gfp_t gfp_flags)
++{
++	struct nfs4_slot *new;
++	struct rpc_task *task;
++
++	dprintk("--> %s slotid=%u tbl->allocated_slots=%d\n", __func__,
++		slotid, tbl->allocated_slots);
++	new = kzalloc(sizeof(struct nfs4_slot), gfp_flags);
++	if (!new)
++		return -ENOMEM;
++	/* tbl->allocated_slots holds the next unallocated slotid */
++	nfs4_init_slot(new, slotid, ivalue);
++	spin_lock(&tbl->slot_tbl_lock);
++	if (tbl->allocated_slots != slotid) {
++		spin_unlock(&tbl->slot_tbl_lock);
++		kfree(new);
++		dprintk("%s slotid %u already allocated\n", __func__,
++			slotid);
++		return 0;
++	}
++	nfs4_insert_slot_locked(tbl, new);
++
++	/* Only for dynamic allocation called from nfs41_seup_sequence which
++ 	 * puts tasks waiting for an allocated slot on the slot_tbl_waitq */
++	task = rpc_wake_up_next(&tbl->slot_tbl_waitq);
++	if (task)
++		dprintk("%s woke up task %5u\n", __func__, task->tk_pid);
++	spin_unlock(&tbl->slot_tbl_lock);
++	return 0;
++}
++
++/*
++ * Allocate the minimal number of slots required by the transport.
++ * Called at session creation.
++ */
++static int nfs4_prealloc_slots(struct nfs4_slot_table *tbl, int num, int ivalue)
++{
++	int i;
++
++	for (i = 0; i < num; i++) {
++		if (nfs4_alloc_add_slot(tbl, ivalue, tbl->allocated_slots,
++		    GFP_NOFS) != 0)
++			return -ENOMEM;
++	}
++	return 0;
++}
++
++/*
++ * Allocate the next slotid. If allocation fails, next request will retry.
++ */
++static void
++nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
++{
++
++	if (slotid != tbl->allocated_slots) {
++		dprintk("%s slotid %u already allocated\n", __func__, slotid);
++		return;
++	}
++	nfs4_alloc_add_slot(tbl, 1, slotid, GFP_NOWAIT);
++}
++
++/*
++ * Return the slot associated with the slotid returned by nfs4_find_slot.
++ * If the slot is not found, it has not been allocated: the NULL return
++ * puts the request on the slot table waitq and dynamically allocates a
++ * new slot.
++ */
++struct nfs4_slot *
++nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl, u8 slotid)
++{
++	struct nfs4_slot *sp;
++	struct hlist_node *n;
++	u32 hash = slot_tbl_hash(slotid);
++
++	hlist_for_each_entry(sp, n, &tbl->slots[hash], slot_node) {
++		if (sp->slotid == slotid)
++			return sp;
++	}
++	return NULL;
++}
++
++static inline void nfs4_put_slot_locked(struct nfs4_slot *slot)
++{
++	if (atomic_dec_and_test(&slot->ref)) {
++		BUG_ON(!hlist_unhashed(&slot->slot_node));
++		kfree(slot);
++	}
++}
++
++static inline void nfs4_get_slot(struct nfs4_slot *slot)
++{
++	atomic_inc(&slot->ref);
++}
++
++static void nfs4_remove_slot_locked(struct nfs4_slot_table *tbl,
++			     struct nfs4_slot *slot)
++{
++	dprintk("--> %s slotid %d ref %d\n", __func__, slot->slotid,
++		atomic_read(&slot->ref));
++	hlist_del_init(&slot->slot_node);
++	tbl->allocated_slots--;
++	nfs4_put_slot_locked(slot);
++}
++
++static void nfs4_free_all_slots(struct nfs4_slot_table *tbl)
++{
++	struct nfs4_slot *slotp;
++	int i;
++
++	spin_lock(&tbl->slot_tbl_lock);
++	for (i = 0; i < SLOT_TABLE_SIZE; i++) {
++		while (!hlist_empty(&tbl->slots[i])) {
++			slotp = hlist_entry(tbl->slots[i].first,
++					    struct nfs4_slot, slot_node);
++			nfs4_remove_slot_locked(tbl, slotp);
++		}
++		/* re-initialize hlist_head */
++		tbl->slots[i].first = NULL;
++	}
++	spin_unlock(&tbl->slot_tbl_lock);
++}
++
++/*
++ * Remove num_dec number of contiguous slotids starting from highest
++ * allocated slotid
++ *
++ * Note: set the new tbl->max_slots prior to calling.
++ */
++void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
++{
++	struct nfs4_slot *removeme;
++	int i, rm_slotid = tbl->allocated_slots - 1;
++	int num_dec = tbl->allocated_slots - tbl->max_slots;
++
++	/* Reset of the slot table can make num_dec <= 0 */
++	if (num_dec <= 0)
++		return;
++	for (i = 0; i < num_dec; i++) {
++		removeme = nfs4_lookup_slot_locked(tbl, rm_slotid);
++		BUG_ON(removeme == NULL);
++		nfs4_remove_slot_locked(tbl, removeme);
++		rm_slotid--;
++	}
++}
++
++/*
+  * nfs4_free_slot - free a slot and efficiently update slot table.
+  *
+  * freeing a slot is trivially done by clearing its respective bit
+@@ -361,9 +537,8 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+  * Must be called while holding tbl->slot_tbl_lock
+  */
+ static void
+-nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *free_slot)
++nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
  {
- 	ssize_t res;
- 	struct msghdr msg = {.msg_flags = flags};
-@@ -1870,6 +1872,8 @@ ssize_t sock_no_sendpage(struct socket *sock, struct page *page, int offset, siz
- 	iov.iov_len = size;
- 	res = kernel_sendmsg(sock, &msg, &iov, 1, size);
- 	kunmap(page);
-+	/* kernel_sendmsg copies so we can destroy immediately */
-+	skb_frag_destructor_unref(destroy);
- 	return res;
- }
- EXPORT_SYMBOL(sock_no_sendpage);
-diff --git a/net/ipv4/af_inet.c b/net/ipv4/af_inet.c
-index 1b5096a..99f7fd0 100644
---- a/net/ipv4/af_inet.c
-+++ b/net/ipv4/af_inet.c
-@@ -745,7 +745,9 @@ int inet_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
- }
- EXPORT_SYMBOL(inet_sendmsg);
+-	int free_slotid = free_slot - tbl->slots;
+ 	int slotid = free_slotid;
  
--ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
-+ssize_t inet_sendpage(struct socket *sock, struct page *page,
-+		      struct skb_frag_destructor *destroy,
-+		      int offset,
- 		      size_t size, int flags)
- {
- 	struct sock *sk = sock->sk;
-@@ -758,8 +760,9 @@ ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
+ 	BUG_ON(slotid < 0 || slotid >= NFS4_MAX_SLOT_TABLE);
+@@ -428,7 +603,8 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 	}
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	nfs4_free_slot(tbl, res->sr_slot);
++	nfs4_free_slot(tbl, res->sr_slot->slotid);
++	nfs4_put_slot_locked(res->sr_slot);
+ 	nfs4_check_drain_fc_complete(res->sr_session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	res->sr_slot = NULL;
+@@ -469,10 +645,9 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
+ 		 * of RFC5661.
+ 		 */
+-		dprintk("%s: slot=%td seq=%d: Operation in progress\n",
++		dprintk("%s: slot=%u seq=%d: Operation in progress\n",
+ 			__func__,
+-			res->sr_slot - res->sr_session->fc_slot_table.slots,
+-			res->sr_slot->seq_nr);
++			res->sr_slot->slotid, res->sr_slot->seq_nr);
+ 		goto out_retry;
+ 	default:
+ 		/* Just update the slot sequence no. */
+@@ -576,16 +751,26 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		dprintk("<-- %s: no free slots\n", __func__);
  		return -EAGAIN;
- 
- 	if (sk->sk_prot->sendpage)
--		return sk->sk_prot->sendpage(sk, page, offset, size, flags);
--	return sock_no_sendpage(sock, page, offset, size, flags);
-+		return sk->sk_prot->sendpage(sk, page, destroy,
-+					     offset, size, flags);
-+	return sock_no_sendpage(sock, page, destroy, offset, size, flags);
- }
- EXPORT_SYMBOL(inet_sendpage);
- 
-diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
-index 3252e06..753dc7b 100644
---- a/net/ipv4/ip_output.c
-+++ b/net/ipv4/ip_output.c
-@@ -1116,6 +1116,7 @@ int ip_append_data(struct sock *sk, struct flowi4 *fl4,
- }
- 
- ssize_t	ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
-+		       struct skb_frag_destructor *destroy,
- 		       int offset, size_t size, int flags)
- {
- 	struct inet_sock *inet = inet_sk(sk);
-@@ -1229,11 +1230,12 @@ ssize_t	ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
- 		i = skb_shinfo(skb)->nr_frags;
- 		if (len > size)
- 			len = size;
--		if (skb_can_coalesce(skb, i, page, NULL, offset)) {
-+		if (skb_can_coalesce(skb, i, page, destroy, offset)) {
- 			skb_frag_size_add(&skb_shinfo(skb)->frags[i-1], len);
- 		} else if (i < MAX_SKB_FRAGS) {
--			get_page(page);
- 			skb_fill_page_desc(skb, i, page, offset, len);
-+			skb_frag_set_destructor(skb, i, destroy);
-+			skb_frag_ref(skb, i);
- 		} else {
- 			err = -EMSGSIZE;
- 			goto error;
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 018de0c..56ef323 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -757,7 +757,10 @@ static int tcp_send_mss(struct sock *sk, int *size_goal, int flags)
- 	return mss_now;
- }
- 
--static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffset,
-+static ssize_t do_tcp_sendpages(struct sock *sk,
-+				struct page **pages,
-+				struct skb_frag_destructor **destructors,
-+				int poffset,
- 			 size_t psize, int flags)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
-@@ -783,6 +786,8 @@ static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffse
- 	while (psize > 0) {
- 		struct sk_buff *skb = tcp_write_queue_tail(sk);
- 		struct page *page = pages[poffset / PAGE_SIZE];
-+		struct skb_frag_destructor *destroy =
-+			destructors ? destructors[poffset / PAGE_SIZE] : NULL;
- 		int copy, i, can_coalesce;
- 		int offset = poffset % PAGE_SIZE;
- 		int size = min_t(size_t, psize, PAGE_SIZE - offset);
-@@ -804,7 +809,7 @@ new_segment:
- 			copy = size;
- 
- 		i = skb_shinfo(skb)->nr_frags;
--		can_coalesce = skb_can_coalesce(skb, i, page, NULL, offset);
-+		can_coalesce = skb_can_coalesce(skb, i, page, destroy, offset);
- 		if (!can_coalesce && i >= MAX_SKB_FRAGS) {
- 			tcp_mark_push(tp, skb);
- 			goto new_segment;
-@@ -815,8 +820,9 @@ new_segment:
- 		if (can_coalesce) {
- 			skb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], copy);
- 		} else {
--			get_page(page);
- 			skb_fill_page_desc(skb, i, page, offset, copy);
-+			skb_frag_set_destructor(skb, i, destroy);
-+			skb_frag_ref(skb, i);
- 		}
- 
- 		skb->len += copy;
-@@ -871,18 +877,20 @@ out_err:
- 	return sk_stream_error(sk, flags, err);
- }
- 
--int tcp_sendpage(struct sock *sk, struct page *page, int offset,
--		 size_t size, int flags)
-+int tcp_sendpage(struct sock *sk, struct page *page,
-+		 struct skb_frag_destructor *destroy,
-+		 int offset, size_t size, int flags)
- {
- 	ssize_t res;
- 
- 	if (!(sk->sk_route_caps & NETIF_F_SG) ||
- 	    !(sk->sk_route_caps & NETIF_F_ALL_CSUM))
--		return sock_no_sendpage(sk->sk_socket, page, offset, size,
--					flags);
-+		return sock_no_sendpage(sk->sk_socket, page, destroy,
-+					offset, size, flags);
- 
- 	lock_sock(sk);
--	res = do_tcp_sendpages(sk, &page, offset, size, flags);
-+	res = do_tcp_sendpages(sk, &page, &destroy,
-+			       offset, size, flags);
- 	release_sock(sk);
- 	return res;
- }
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index ebaa96b..b653015 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -1028,8 +1028,9 @@ do_confirm:
- }
- EXPORT_SYMBOL(udp_sendmsg);
- 
--int udp_sendpage(struct sock *sk, struct page *page, int offset,
--		 size_t size, int flags)
-+int udp_sendpage(struct sock *sk, struct page *page,
-+		 struct skb_frag_destructor *destroy,
-+		 int offset, size_t size, int flags)
- {
- 	struct inet_sock *inet = inet_sk(sk);
- 	struct udp_sock *up = udp_sk(sk);
-@@ -1057,11 +1058,11 @@ int udp_sendpage(struct sock *sk, struct page *page, int offset,
  	}
++	slot = nfs4_lookup_slot_locked(tbl, slotid);
++	if (slot == NULL) {
++		/* keep FIFO order */
++		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
++		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
++		nfs4_free_slot(tbl, slotid);
++		spin_unlock(&tbl->slot_tbl_lock);
++		dprintk("%s task pid %5u sleeping for dynamic slot %d\n",
++			__func__, task->tk_pid, slotid);
++		nfs4_dynamic_alloc_slot(tbl, slotid);
++		return -EAGAIN;
++	}
++	nfs4_get_slot(slot);
+ 	spin_unlock(&tbl->slot_tbl_lock);
  
- 	ret = ip_append_page(sk, &inet->cork.fl.u.ip4,
--			     page, offset, size, flags);
-+			     page, destroy, offset, size, flags);
- 	if (ret == -EOPNOTSUPP) {
- 		release_sock(sk);
--		return sock_no_sendpage(sk->sk_socket, page, offset,
--					size, flags);
-+		return sock_no_sendpage(sk->sk_socket, page, destroy,
-+					offset, size, flags);
- 	}
- 	if (ret < 0) {
- 		udp_flush_pending_frames(sk);
-diff --git a/net/ipv4/udp_impl.h b/net/ipv4/udp_impl.h
-index aaad650..4923d82 100644
---- a/net/ipv4/udp_impl.h
-+++ b/net/ipv4/udp_impl.h
-@@ -23,8 +23,9 @@ extern int	compat_udp_getsockopt(struct sock *sk, int level, int optname,
- #endif
- extern int	udp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
- 			    size_t len, int noblock, int flags, int *addr_len);
--extern int	udp_sendpage(struct sock *sk, struct page *page, int offset,
--			     size_t size, int flags);
-+extern int	udp_sendpage(struct sock *sk, struct page *page,
-+			     struct skb_frag_destructor *destroy,
-+			     int offset, size_t size, int flags);
- extern int	udp_queue_rcv_skb(struct sock * sk, struct sk_buff *skb);
- extern void	udp_destroy_sock(struct sock *sk);
+ 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
+-	slot = tbl->slots + slotid;
+ 	args->sa_session = session;
+-	args->sa_slotid = slotid;
++	args->sa_slot = slot;
+ 	args->sa_cache_this = cache_reply;
  
-diff --git a/net/rds/tcp_send.c b/net/rds/tcp_send.c
-index 1b4fd68..71503ad 100644
---- a/net/rds/tcp_send.c
-+++ b/net/rds/tcp_send.c
-@@ -119,6 +119,7 @@ int rds_tcp_xmit(struct rds_connection *conn, struct rds_message *rm,
- 	while (sg < rm->data.op_nents) {
- 		ret = tc->t_sock->ops->sendpage(tc->t_sock,
- 						sg_page(&rm->data.op_sg[sg]),
-+						NULL,
- 						rm->data.op_sg[sg].offset + off,
- 						rm->data.op_sg[sg].length - off,
- 						MSG_DONTWAIT|MSG_NOSIGNAL);
-diff --git a/net/socket.c b/net/socket.c
-index 2877647..cbd5728 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -795,7 +795,7 @@ static ssize_t sock_sendpage(struct file *file, struct page *page,
- 	if (more)
- 		flags |= MSG_MORE;
- 
--	return kernel_sendpage(sock, page, offset, size, flags);
-+	return kernel_sendpage(sock, page, NULL, offset, size, flags);
- }
- 
- static ssize_t sock_splice_read(struct file *file, loff_t *ppos,
-@@ -3352,15 +3352,18 @@ int kernel_setsockopt(struct socket *sock, int level, int optname,
- }
- EXPORT_SYMBOL(kernel_setsockopt);
- 
--int kernel_sendpage(struct socket *sock, struct page *page, int offset,
-+int kernel_sendpage(struct socket *sock, struct page *page,
-+		    struct skb_frag_destructor *destroy,
-+		    int offset,
- 		    size_t size, int flags)
- {
- 	sock_update_classid(sock->sk);
- 
- 	if (sock->ops->sendpage)
--		return sock->ops->sendpage(sock, page, offset, size, flags);
-+		return sock->ops->sendpage(sock, page, destroy,
-+					   offset, size, flags);
- 
--	return sock_no_sendpage(sock, page, offset, size, flags);
-+	return sock_no_sendpage(sock, page, destroy, offset, size, flags);
- }
- EXPORT_SYMBOL(kernel_sendpage);
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 767d494..852a258 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -183,7 +183,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
- 	/* send head */
- 	if (slen == xdr->head[0].iov_len)
- 		flags = 0;
--	len = kernel_sendpage(sock, headpage, headoffset,
-+	len = kernel_sendpage(sock, headpage, NULL, headoffset,
- 				  xdr->head[0].iov_len, flags);
- 	if (len != xdr->head[0].iov_len)
+-	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
+-
+ 	res->sr_session = session;
+ 	res->sr_slot = slot;
+ 	res->sr_renewal_time = jiffies;
+@@ -614,9 +799,9 @@ int nfs4_setup_sequence(const struct nfs_server *server,
  		goto out;
-@@ -196,7 +196,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
- 	while (pglen > 0) {
- 		if (slen == size)
- 			flags = 0;
--		result = kernel_sendpage(sock, *ppage, base, size, flags);
-+		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
- 		if (result > 0)
- 			len += result;
- 		if (result != size)
-@@ -210,7 +210,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	}
  
- 	/* send tail */
- 	if (xdr->tail[0].iov_len) {
--		result = kernel_sendpage(sock, tailpage, tailoffset,
-+		result = kernel_sendpage(sock, tailpage, NULL, tailoffset,
- 				   xdr->tail[0].iov_len, 0);
- 		if (result > 0)
- 			len += result;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d7f97ef..f79e40e9 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -408,7 +408,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
- 		remainder -= len;
- 		if (remainder != 0 || more)
- 			flags |= MSG_MORE;
--		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
-+		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
- 		if (remainder == 0 || err != len)
- 			break;
- 		sent += err;
+-	dprintk("--> %s clp %p session %p sr_slot %td\n",
++	dprintk("--> %s clp %p session %p sr_slot %d\n",
+ 		__func__, session->clp, session, res->sr_slot ?
+-			res->sr_slot - session->fc_slot_table.slots : -1);
++			res->sr_slot->slotid : -1);
+ 
+ 	ret = nfs41_setup_sequence(session, args, res, cache_reply,
+ 				   task);
+@@ -4977,127 +5162,110 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
+ }
+ 
+ /*
+- * Reset a slot table
++ * Reset a slot table. Session has been drained and reset with new slot table
++ * parameters from create_session.
++ * Keep all allocated slots that fit into new slot table max_reqs parameter.
++ * Set tbl->max_slots to new value.
++ * Adjust tbl->allocated_slots if needed.
++ * Initiaize allocated slots seq_nr to ivalue.
++ * Reset highest_used_slotid to -1.
+  */
+-static int nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 max_reqs,
++static void nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 new_max_reqs,
+ 				 int ivalue)
+ {
+-	struct nfs4_slot *new = NULL;
++	struct nfs4_slot *sp;
++	struct hlist_node *n;
+ 	int i;
+-	int ret = 0;
+ 
+-	dprintk("--> %s: max_reqs=%u, tbl->max_slots %d\n", __func__,
+-		max_reqs, tbl->max_slots);
+-
+-	/* Does the newly negotiated max_reqs match the existing slot table? */
+-	if (max_reqs != tbl->max_slots) {
+-		ret = -ENOMEM;
+-		new = kmalloc(max_reqs * sizeof(struct nfs4_slot),
+-			      GFP_NOFS);
+-		if (!new)
+-			goto out;
+-		ret = 0;
+-		kfree(tbl->slots);
+-	}
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	if (new) {
+-		tbl->slots = new;
+-		tbl->max_slots = max_reqs;
+-	}
+-	for (i = 0; i < tbl->max_slots; ++i)
+-		tbl->slots[i].seq_nr = ivalue;
+-	spin_unlock(&tbl->slot_tbl_lock);
+-	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+-		tbl, tbl->slots, tbl->max_slots);
+-out:
+-	dprintk("<-- %s: return %d\n", __func__, ret);
+-	return ret;
+-}
+ 
+-/*
+- * Reset the forechannel and backchannel slot tables
+- */
+-static int nfs4_reset_slot_tables(struct nfs4_session *session)
+-{
+-	int status;
++	dprintk("--> %s new_max_reqs %d tbl->allocated_slots %d\n", __func__,
++		new_max_reqs, tbl->allocated_slots);
+ 
+-	status = nfs4_reset_slot_table(&session->fc_slot_table,
+-			session->fc_attrs.max_reqs, 1);
+-	if (status)
+-		return status;
++	tbl->max_slots = new_max_reqs;
++	nfs4_reduce_slots_locked(tbl);
++	tbl->highest_used_slotid = -1;
+ 
+-	status = nfs4_reset_slot_table(&session->bc_slot_table,
+-			session->bc_attrs.max_reqs, 0);
+-	return status;
++	for (i = 0; i < SLOT_TABLE_SIZE; i++) {
++		hlist_for_each_entry(sp, n, &tbl->slots[i], slot_node)
++			sp->seq_nr = ivalue;
++	}
++	spin_unlock(&tbl->slot_tbl_lock);
++	dprintk("<-- %s: tbl=%p max_slots=%d tbl->allocated_slots=%d\n",
++		__func__, tbl, tbl->max_slots, tbl->allocated_slots);
++	return;
+ }
+ 
+-/* Destroy the slot table */
++/* Destroy the sessions slot tables */
+ static void nfs4_destroy_slot_tables(struct nfs4_session *session)
+ {
+-	if (session->fc_slot_table.slots != NULL) {
+-		kfree(session->fc_slot_table.slots);
+-		session->fc_slot_table.slots = NULL;
+-	}
+-	if (session->bc_slot_table.slots != NULL) {
+-		kfree(session->bc_slot_table.slots);
+-		session->bc_slot_table.slots = NULL;
+-	}
+-	return;
++	dprintk("--> %s\n", __func__);
++
++	nfs4_free_all_slots(&session->fc_slot_table);
++	nfs4_free_all_slots(&session->bc_slot_table);
+ }
+ 
+-/*
+- * Initialize slot table
+- */
+ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+-		int max_slots, int ivalue)
++		int max_slots, int num_prealloc, int ivalue)
+ {
+-	struct nfs4_slot *slot;
+-	int ret = -ENOMEM;
++	int ret;
+ 
+ 	BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
+ 
+ 	dprintk("--> %s: max_reqs=%u\n", __func__, max_slots);
+ 
+-	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_NOFS);
+-	if (!slot)
++	ret = nfs4_prealloc_slots(tbl, num_prealloc, ivalue);
++	if (ret) {
++		nfs4_free_all_slots(tbl);
+ 		goto out;
++	}
+ 	ret = 0;
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+ 	tbl->max_slots = max_slots;
+-	tbl->slots = slot;
+ 	tbl->highest_used_slotid = -1;  /* no slot is currently used */
+ 	spin_unlock(&tbl->slot_tbl_lock);
+-	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+-		tbl, tbl->slots, tbl->max_slots);
++	dprintk("%s: tbl=%p max_slots=%d, tbl->allocated_slots=%d\n", __func__,
++		tbl, tbl->max_slots, tbl->allocated_slots);
+ out:
+ 	dprintk("<-- %s: return %d\n", __func__, ret);
+ 	return ret;
+ }
+ 
+ /*
+- * Initialize the forechannel and backchannel tables
++ * Initialize or reset the forechannel and backchannel tables
++ * Note: kzalloc of nfs4_sessions initiallizes tbl->slots[] hlist heads
+  */
+-static int nfs4_init_slot_tables(struct nfs4_session *session)
++static int nfs4_setup_slot_tables(struct nfs4_session *session)
+ {
+ 	struct nfs4_slot_table *tbl;
+ 	int status = 0;
+ 
++	dprintk("--> %s\n", __func__);
+ 	tbl = &session->fc_slot_table;
+-	if (tbl->slots == NULL) {
++	if (tbl->allocated_slots == 0) {
+ 		status = nfs4_init_slot_table(tbl,
+-				session->fc_attrs.max_reqs, 1);
++				session->fc_attrs.max_reqs,
++				session->clp->cl_rpcclient->cl_xprt->min_reqs,
++				1);
+ 		if (status)
+ 			return status;
+-	}
++	} else
++		nfs4_reset_slot_table(&session->fc_slot_table,
++				      session->fc_attrs.max_reqs, 1);
+ 
+ 	tbl = &session->bc_slot_table;
+-	if (tbl->slots == NULL) {
++	if (tbl->allocated_slots == 0) {
+ 		status = nfs4_init_slot_table(tbl,
+-				session->bc_attrs.max_reqs, 0);
++				session->bc_attrs.max_reqs,
++				/* Backchannel max_reqs == 1 */
++				session->bc_attrs.max_reqs,
++				0);
+ 		if (status)
+ 			nfs4_destroy_slot_tables(session);
+-	}
++	} else
++		nfs4_reset_slot_table(&session->bc_slot_table,
++				      session->bc_attrs.max_reqs, 0);
+ 
+ 	return status;
+ }
+@@ -5286,13 +5454,9 @@ int nfs4_proc_create_session(struct nfs_client *clp)
+ 	if (status)
+ 		goto out;
+ 
+-	/* Init and reset the fore channel */
+-	status = nfs4_init_slot_tables(session);
+-	dprintk("slot table initialization returned %d\n", status);
+-	if (status)
+-		goto out;
+-	status = nfs4_reset_slot_tables(session);
+-	dprintk("slot table reset returned %d\n", status);
++	/* Setup the fore and back channel slot tables */
++	status = nfs4_setup_slot_tables(session);
++	dprintk("slot table setup returned %d\n", status);
+ 	if (status)
+ 		goto out;
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 39914be..8260865 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1573,26 +1573,16 @@ static int nfs4_recall_slot(struct nfs_client *clp)
+ {
+ 	struct nfs4_slot_table *fc_tbl = &clp->cl_session->fc_slot_table;
+ 	struct nfs4_channel_attrs *fc_attrs = &clp->cl_session->fc_attrs;
+-	struct nfs4_slot *new, *old;
+-	int i;
+ 
+ 	nfs4_begin_drain_session(clp);
+-	new = kmalloc(fc_tbl->target_max_slots * sizeof(struct nfs4_slot),
+-		      GFP_NOFS);
+-        if (!new)
+-		return -ENOMEM;
+ 
+ 	spin_lock(&fc_tbl->slot_tbl_lock);
+-	for (i = 0; i < fc_tbl->target_max_slots; i++)
+-		new[i].seq_nr = fc_tbl->slots[i].seq_nr;
+-	old = fc_tbl->slots;
+-	fc_tbl->slots = new;
+ 	fc_tbl->max_slots = fc_tbl->target_max_slots;
++	nfs4_reduce_slots_locked(fc_tbl);
+ 	fc_tbl->target_max_slots = 0;
+ 	fc_attrs->max_reqs = fc_tbl->max_slots;
+ 	spin_unlock(&fc_tbl->slot_tbl_lock);
+ 
+-	kfree(old);
+ 	nfs4_end_drain_session(clp);
+ 	return 0;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e6161b2..f9fd96d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1872,7 +1872,6 @@ static void encode_sequence(struct xdr_stream *xdr,
+ #if defined(CONFIG_NFS_V4_1)
+ 	struct nfs4_session *session = args->sa_session;
+ 	struct nfs4_slot_table *tp;
+-	struct nfs4_slot *slot;
+ 	__be32 *p;
+ 
+ 	if (!session)
+@@ -1880,9 +1879,6 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 
+ 	tp = &session->fc_slot_table;
+ 
+-	WARN_ON(args->sa_slotid == NFS4_MAX_SLOT_TABLE);
+-	slot = tp->slots + args->sa_slotid;
+-
+ 	p = reserve_space(xdr, 4 + NFS4_MAX_SESSIONID_LEN + 16);
+ 	*p++ = cpu_to_be32(OP_SEQUENCE);
+ 
+@@ -1896,11 +1892,11 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 		((u32 *)session->sess_id.data)[1],
+ 		((u32 *)session->sess_id.data)[2],
+ 		((u32 *)session->sess_id.data)[3],
+-		slot->seq_nr, args->sa_slotid,
++		args->sa_slot->seq_nr, args->sa_slot->slotid,
+ 		tp->highest_used_slotid, args->sa_cache_this);
+ 	p = xdr_encode_opaque_fixed(p, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
+-	*p++ = cpu_to_be32(slot->seq_nr);
+-	*p++ = cpu_to_be32(args->sa_slotid);
++	*p++ = cpu_to_be32(args->sa_slot->seq_nr);
++	*p++ = cpu_to_be32(args->sa_slot->slotid);
+ 	*p++ = cpu_to_be32(tp->highest_used_slotid);
+ 	*p = cpu_to_be32(args->sa_cache_this);
+ 	hdr->nops++;
+@@ -5361,13 +5357,16 @@ static int decode_sequence(struct xdr_stream *xdr,
+ 	/* seqid */
+ 	dummy = be32_to_cpup(p++);
+ 	if (dummy != res->sr_slot->seq_nr) {
+-		dprintk("%s Invalid sequence number\n", __func__);
++		dprintk("%s Invalid sequence number %d for "
++			"[slotid:seq_nr] [%d:%d]\n", __func__,
++			dummy, res->sr_slot->slotid, res->sr_slot->seq_nr);
+ 		goto out_err;
+ 	}
+ 	/* slot id */
+ 	dummy = be32_to_cpup(p++);
+-	if (dummy != res->sr_slot - res->sr_session->fc_slot_table.slots) {
+-		dprintk("%s Invalid slot id\n", __func__);
++	if (dummy != res->sr_slot->slotid) {
++		dprintk("%s Invalid slot id %d for [slotid:seq_nr] [%d:%d]\n",
++		__func__, dummy, res->sr_slot->slotid, res->sr_slot->seq_nr);
+ 		goto out_err;
+ 	}
+ 	/* highest slot id - currently not processed */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b5479df..11a15c0 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -193,12 +193,15 @@ struct nfs_server {
+ 
+ /* Sessions */
+ #define SLOT_TABLE_SZ (NFS4_MAX_SLOT_TABLE/(8*sizeof(long)))
++#define SLOT_TABLE_BITS		5
++#define SLOT_TABLE_SIZE		(1 << SLOT_TABLE_BITS)
+ struct nfs4_slot_table {
+-	struct nfs4_slot *slots;		/* seqid per slot */
++	struct hlist_head slots[SLOT_TABLE_SIZE];  /* seqid per slot */
+ 	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
+ 	spinlock_t	slot_tbl_lock;
+ 	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
+-	int		max_slots;		/* # slots in table */
++	int		allocated_slots;	/* # slots in table */
++	int		max_slots;		/* max # slots in table */
+ 	int		highest_used_slotid;	/* sent to server on each SEQ.
+ 						 * op for dynamic resizing */
+ 	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
+@@ -206,11 +209,6 @@ struct nfs4_slot_table {
+ 	struct completion complete;
+ };
+ 
+-static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
+-{
+-	return sp - tbl->slots;
+-}
+-
+ /*
+  * Session related parameters
+  */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c74595b..1ceedc5 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -168,12 +168,15 @@ struct nfs4_channel_attrs {
+ 
+ /* nfs41 sessions slot seqid */
+ struct nfs4_slot {
++	struct hlist_node	slot_node;
++	atomic_t		ref;
+ 	u32		 	seq_nr;
++	u8			slotid;
+ };
+ 
+ struct nfs4_sequence_args {
+ 	struct nfs4_session	*sa_session;
+-	u8			sa_slotid;
++	struct nfs4_slot	*sa_slot;
+ 	u8			sa_cache_this;
+ };
+ 
 -- 
-1.7.2.5
+1.7.6.4
 
