@@ -1,51 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:40644 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753573Ab1KURk2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 12:40:28 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: rjw@sisk.pl
-Cc: linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
-        tj@kernel.org, trond.myklebust@netapp.com
-Subject: [PATCH 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
-Date: Mon, 21 Nov 2011 12:40:19 -0500
-Message-Id: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:43731 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933040Ab1KDRp7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 13:45:59 -0400
+Date: Fri, 4 Nov 2011 13:45:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: stable@kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: nfsd (and lock) changes for 3.2
+Message-ID: <20111104174556.GA721@fieldses.org>
+References: <20111025121924.GA15662@fieldses.org>
+ <4EA77B78.6080706@panasas.com>
+ <20111027203412.GB31669@fieldses.org>
+ <4EA9F5E8.6060900@panasas.com>
+ <20111028144252.GB5798@fieldses.org>
+ <20111104160439.GA32756@fieldses.org>
+ <4EB417C8.4000502@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EB417C8.4000502@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is a second (third?) attempt at fixing the issues with
-suspending a machine that has an active NFS mount.
+On Fri, Nov 04, 2011 at 09:50:16AM -0700, Boaz Harrosh wrote:
+> On 11/04/2011 09:04 AM, J. Bruce Fields wrote:
+> > Boaz points out that I forgot to add stable cc's to two commits:
+> > 
+> > 	48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir setting"
+> > 	6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to
+> > 	end nfsd4 grace period"
+> > 
+> > which fix a regression introduced by
+> > ab1350b2b3c1dd2e465a6abdda608d8c44facfb8 "nfsd41: Deny new lock before
+> > RECLAIM_COMPLETE done" (first included in v3.1-rc1).
+> > 
+> > Included below for reference, but I assume simplest for you will be to
+> > cherry-pick the above two sha1's.
+> > 
+> > Thanks!
+> > 
+> > --b.
+> > 
+> 
+> Bruce hi, thanks
+> 
+> Yesterday I hit this bug again. I rebased on Benny's tree which did not have them
+> for some reason. It's hunting me. ;-)
+> 
+> Just for Future reference, these patches were suppose to be submitted very early around
+> rc3 when we found them. This is what the -rcX are for, to test and fix what was broken
+> in the merge window.
+> 
+> Please forgive me I should have followed it through, but was too busy and forgot.
+> 
+> But in general you should always have an rc-fixes branch and bug fixes patches
+> should go there
 
-The bug reported against Fedora is here:
+More specifically (and especially later in the -rc's) Linus has ask that
+we raise the bar somewhat above just "bug fixes"--but yes, this was a
+regression with a pretty simple fix, so I should have gotten it in.
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=717735
+> and not into the linux-next branch. And yes both branches should
+> be included in linux-next.
 
-This patchset is a bit different from the original one. Instead of
-attempting to make TASK_KILLABLE sleeps wake up when the freezer runs,
-this one makes the freezer skip those processes when it runs.
+Agreed.  Feel free to yell when you see something I missed.  I'm feeling
+spread a little thin....
 
-This is the method that Tejun, Rafael, and Oleg have recommended for
-now. Long term, it might make more sense to add a new TASK_WAKEFREEZE
-flag or something and awake tasks based on that, and have them then
-call try_to_freeze() when awoken. For now though this seems to work
-as expected.
-
-So far, results with this patchset have been good, but it seems like
-it's a bit late for 3.2. I'd like to see this go in early for 3.3,
-probably via Rafael's tree.
-
-Jeff Layton (2):
-  sunrpc: make rpc_wait_bit_killable handle freeze events
-  nfs: make TASK_KILLABLE sleeps attempt to freeze
-
- fs/nfs/inode.c          |    3 ++-
- fs/nfs/nfs3proc.c       |    3 ++-
- fs/nfs/nfs4proc.c       |    5 +++--
- fs/nfs/proc.c           |    3 ++-
- include/linux/freezer.h |   22 ++++++++++++++++++++++
- net/sunrpc/sched.c      |    3 ++-
- 6 files changed, 33 insertions(+), 6 deletions(-)
-
--- 
-1.7.6.4
-
+--b.
