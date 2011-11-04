@@ -1,45 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail2.shareable.org ([80.68.89.115]:41339 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753123Ab1KWAbA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 19:31:00 -0500
-Date: Wed, 23 Nov 2011 00:30:57 +0000
-From: Jamie Lokier <jamie@shareable.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
-        Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Message-ID: <20111123003057.GA2385@jl-vm1.vm.bytemark.co.uk>
-References: <20110609231606.GB22215@fieldses.org>
- <E1QUwaT-00HRZw-74@intern.SerNet.DE>
- <20110610134859.GA27837@fieldses.org>
- <20110721000758.GD27871@fieldses.org>
- <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
- <20110821165029.GA9296@fieldses.org>
- <20111121124650.GA12942@jl-vm1.vm.bytemark.co.uk>
- <20111122214441.GB23243@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:13152 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932564Ab1KDObd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:31:33 -0400
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id pA4EVW8a023867
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Nov 2011 07:31:33 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111122214441.GB23243@fieldses.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
+Date: Fri, 4 Nov 2011 07:31:31 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA925D@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <1318919979-14606-1-git-send-email-andros@netapp.com>
+References: <1318919979-14606-1-git-send-email-andros@netapp.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> > Fyi, fanotify is also synchronous:
+> -----Original Message-----
+> From: Adamson, Andy
+> Sent: Tuesday, October 18, 2011 2:40 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org; Adamson, Andy
+> Subject: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
 > 
-> Oh, I didn't know that, apologies for the confusion.
+> From: Andy Adamson <andros@netapp.com>
 > 
-> > It blocks the conflicting operation
-> > until the fanotify-using application allows it to proceed - or
-> > alternatively it can prevent the conflicting operating from proceeding
-> > at all.
+> Slotid's start from 0 which means we check against
+> NFS41_BC_MAX_CALLBACKS - 1.
 > 
-> Just grepping for "fsnotify" (which fanotify is built on?) I find a lot
-> of hooks in the vfs that all appear to have void returns and to be
-> called after the operation is done.  How does it fail an operation?  No
-> doubt I'm missing something.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c index
+> 98ff5fc..12bd9d0 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -339,7 +339,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct
+> cb_sequenceargs * args)
+>  	dprintk("%s enter. slotid %d seqid %d\n",
+>  		__func__, args->csa_slotid, args->csa_sequenceid);
+> 
+> -	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
+> +	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
+>  		return htonl(NFS4ERR_BADSLOT);
 
-The hook is fsnotify_perm(), called in security/security.c.
+Why not just replace '>' with '>='?
 
--- Jamie
+Cheers
+  Trond
