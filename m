@@ -1,136 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18708 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755433Ab1KHLKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 06:10:19 -0500
-Subject: [PATCH v2] SUNRPC: remove non-exclusive pipe creation from RPC pipefs
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 15:09:19 +0300
-Message-ID: <20111108110833.5785.46542.stgit@localhost6.localdomain6>
+Received: from caiajhbdcahe.dreamhost.com ([208.97.132.74]:44400 "EHLO
+	homiemail-a29.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753076Ab1KDQUK convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 12:20:10 -0400
+Received: from homiemail-a29.g.dreamhost.com (localhost [127.0.0.1])
+	by homiemail-a29.g.dreamhost.com (Postfix) with ESMTP id E3F5C674074
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 09:20:09 -0700 (PDT)
+Received: from mail-vx0-f174.google.com (mail-vx0-f174.google.com [209.85.220.174])
+	(using TLSv1 with cipher RC4-SHA (128/128 bits))
+	(No client certificate requested)
+	(Authenticated sender: nico@cryptonector.com)
+	by homiemail-a29.g.dreamhost.com (Postfix) with ESMTPSA id B3EF367406A
+	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 09:20:09 -0700 (PDT)
+Received: by vcbf1 with SMTP id f1so494619vcb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 09:20:08 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <CF863033-2ED4-4B68-B90C-54D315C67E27@netapp.com>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
+	<1320332310.7734.643.camel@willson.li.ssimo.org>
+	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
+	<1320337903.7734.670.camel@willson.li.ssimo.org>
+	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
+	<1320352784.18396.109.camel@lade.trondhjem.org>
+	<CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
+	<1320355818.7734.685.camel@willson.li.ssimo.org>
+	<1320356806.18396.149.camel@lade.trondhjem.org>
+	<1320357606.7734.697.camel@willson.li.ssimo.org>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
+	<CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
+	<CF863033-2ED4-4B68-B90C-54D315C67E27@netapp.com>
+Date: Fri, 4 Nov 2011 11:20:08 -0500
+Message-ID: <CAK3OfOgdgPEe85z152Hi06E8GwpZZJ9ch-Vq1GneMCW6nBZ6pw@mail.gmail.com>
+Subject: Re: GSSAPI Proxy initiative
+From: Nico Williams <nico@cryptonector.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Simo Sorce <simo@redhat.com>, dhowells <dhowells@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        krbdev <krbdev@mit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch-set was created in context of clone of git branch:
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+On Fri, Nov 4, 2011 at 10:55 AM, Adamson, Andy
+<William.Adamson@netapp.com> wrote:
+> On Nov 4, 2011, at 11:13 AM, Nico Williams wrote:
+>> Ideally we could store in each RPCSEC_GSS context (not GSS context)
+>> enough state on the client side to recover quickly when the server
+>> reboots.
+>
+> You mean not to use the user Kerberos credential to re-establish the GSS context with the server?
 
-v2:
-1) Rebased of current repo state (i.e. all commits were pulled before apply)
+Kerberos has tickets.  Other GSS mechanisms don't.  The GSS-API
+completely abstracts this, so there's no way to extract a service
+ticket and store it alongside the context (RPCSEC_GSS, in this case)
+where you might need it in the future.  Storing all of a GSS-API
+credential (think of a whole ccache) in kernel memory is not an option
+either (ccaches have unbounded size).
 
-I feel it is ready for inclusion if no objections will appear.
+Moreover, if we do this in a light-weight enough fashion we might be
+able to handle all of the recovery path in kernel-mode, with no
+dependence on upcalls.  But if we didn't by somehow extracting the
+service ticket and storing it in the RPCSEC_GSS context we'd probably
+still need to upcall to make use of it.
 
-SUNRPC pipefs non-exclusive pipe creation code looks obsolete. IOW, as I see
-it, all pipes are creating with unique full path and only once.
+>> How would we do this?  Suppose the server gives the client a
+>> "ticket", and a key much like the Kerberos ticket session key is
+>> agreed upon or sent by the server -- that could be stored in the
+>> RPCSEC_GSS context and could be used to recover it quickly for
+>> recovery from server reboot.  I'm eliding a lot of details here, but I
+>> believe this is fundamentally workable.
+>
+> So re-establish the RPCSEC_GSS session lost at the server on server reboot by storing enough additional info on the client?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Yes.  And not just server reboot.  The server is free to lose
+RPCSEC_GSS contexts any time it wants to.
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    1 -
- net/sunrpc/rpc_pipe.c              |   44 +++++-------------------------------
- 2 files changed, 6 insertions(+), 39 deletions(-)
+Basically, we need a fast re-authentication facility that is easy to
+code entirely in kernel-mode.  Thinking of it this way I would not
+reuse any Kerberos tech for this.  The server would return a ticket in
+RPCSEC_GSS context establishment, but the ticket would consist of
+{secret key index, encrypted octet string} and the server and client
+would both compute a "session key" (for proving ticket possession)
+with GSS_Pseudo_random() (this way we can make this work even when the
+GSS mech only does MICs and not wrap tokens).  To re-authenticate the
+client would send the ticket and an authenticator just like in
+Kerberos, but simpler.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index e4ea430..08aae01 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -30,7 +30,6 @@ struct rpc_inode {
- 	int pipelen;
- 	int nreaders;
- 	int nwriters;
--	int nkern_readwriters;
- 	wait_queue_head_t waitq;
- #define RPC_PIPE_WAIT_FOR_OPEN	1
- 	int flags;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index bfddd68..e2f7b7f 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -555,7 +555,6 @@ static int __rpc_mkpipe(struct inode *dir, struct dentry *dentry,
- 	if (err)
- 		return err;
- 	rpci = RPC_I(dentry->d_inode);
--	rpci->nkern_readwriters = 1;
- 	rpci->private = private;
- 	rpci->flags = flags;
- 	rpci->ops = ops;
-@@ -588,16 +587,12 @@ static int __rpc_unlink(struct inode *dir, struct dentry *dentry)
- static int __rpc_rmpipe(struct inode *dir, struct dentry *dentry)
- {
- 	struct inode *inode = dentry->d_inode;
--	struct rpc_inode *rpci = RPC_I(inode);
- 
--	rpci->nkern_readwriters--;
--	if (rpci->nkern_readwriters != 0)
--		return 0;
- 	rpc_close_pipes(inode);
- 	return __rpc_unlink(dir, dentry);
- }
- 
--static struct dentry *__rpc_lookup_create(struct dentry *parent,
-+static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 					  struct qstr *name)
- {
- 	struct dentry *dentry;
-@@ -605,27 +600,13 @@ static struct dentry *__rpc_lookup_create(struct dentry *parent,
- 	dentry = d_lookup(parent, name);
- 	if (!dentry) {
- 		dentry = d_alloc(parent, name);
--		if (!dentry) {
--			dentry = ERR_PTR(-ENOMEM);
--			goto out_err;
--		}
-+		if (!dentry)
-+			return ERR_PTR(-ENOMEM);
- 	}
--	if (!dentry->d_inode)
-+	if (dentry->d_inode == NULL) {
- 		d_set_d_op(dentry, &rpc_dentry_operations);
--out_err:
--	return dentry;
--}
--
--static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
--					  struct qstr *name)
--{
--	struct dentry *dentry;
--
--	dentry = __rpc_lookup_create(parent, name);
--	if (IS_ERR(dentry))
--		return dentry;
--	if (dentry->d_inode == NULL)
- 		return dentry;
-+	}
- 	dput(dentry);
- 	return ERR_PTR(-EEXIST);
- }
-@@ -813,22 +794,9 @@ struct dentry *rpc_mkpipe(struct dentry *parent, const char *name,
- 	q.hash = full_name_hash(q.name, q.len),
- 
- 	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
--	dentry = __rpc_lookup_create(parent, &q);
-+	dentry = __rpc_lookup_create_exclusive(parent, &q);
- 	if (IS_ERR(dentry))
- 		goto out;
--	if (dentry->d_inode) {
--		struct rpc_inode *rpci = RPC_I(dentry->d_inode);
--		if (rpci->private != private ||
--				rpci->ops != ops ||
--				rpci->flags != flags) {
--			dput (dentry);
--			err = -EBUSY;
--			goto out_err;
--		}
--		rpci->nkern_readwriters++;
--		goto out;
--	}
--
- 	err = __rpc_mkpipe(dir, dentry, umode, &rpc_pipe_fops,
- 			   private, ops, flags);
- 	if (err)
-
+Nico
+--
