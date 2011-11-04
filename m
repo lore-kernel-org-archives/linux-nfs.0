@@ -1,113 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:59122 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755950Ab1K2QKM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:10:12 -0500
-Received: by vbbfc26 with SMTP id fc26so4879229vbb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:10:11 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 4/4] pnfsblock: do ask for layout in pg_init
-Date: Fri,  2 Dec 2011 20:52:45 -0800
-Message-Id: <1322887965-2938-5-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63082 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751038Ab1KDUsa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 16:48:30 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 4/4] NFSv4.1: do not drain session on CB_RECALL_SLOT
+Date: Fri,  4 Nov 2011 16:47:49 -0400
+Message-Id: <1320439669-3411-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1320439669-3411-1-git-send-email-andros@netapp.com>
+References: <1320439669-3411-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Asking for layout in pg_init will always make client ask for only 4KB
-layout in every layoutget. This way, client drops the IO size information
-that is meaningful for MDS in handing out layout.
+From: Andy Adamson <andros@netapp.com>
 
-In stead, if layout is not find in cache, do not send layoutget
-at once. Wait until before issuing IO in pnfs_do_multiple_reads/writes
-because that is where we know the real size of current IO. By telling the
-real IO size to MDS, MDS will have a better chance to give proper layout.
+Dynamic slots allow for reducing the number of active slots without
+the need to drain the session.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++-
- 1 files changed, 52 insertions(+), 2 deletions(-)
+ fs/nfs/callback_proc.c |    6 +++++-
+ fs/nfs/nfs4_fs.h       |    1 -
+ fs/nfs/nfs4state.c     |   36 ------------------------------------
+ 3 files changed, 5 insertions(+), 38 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 48cfac3..fd585fe 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -39,6 +39,7 @@
- #include <linux/prefetch.h>
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 8039a41..4e4ee2a 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -578,8 +578,12 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
+ 	if (args->crsa_target_max_slots == fc_tbl->max_slots)
+ 		goto out;
  
- #include "blocklayout.h"
-+#include "../internal.h"
++        spin_lock(&fc_tbl->slot_tbl_lock);
+ 	fc_tbl->target_max_slots = args->crsa_target_max_slots;
+-	nfs41_handle_recall_slot(cps->clp);
++        fc_tbl->max_slots = fc_tbl->target_max_slots;
++        nfs4_reduce_slots_locked(fc_tbl);
++        cps->clp->cl_session->fc_attrs.max_reqs = fc_tbl->max_slots;
++        spin_unlock(&fc_tbl->slot_tbl_lock);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ff87169..a1f889a 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -22,7 +22,6 @@ enum nfs4_client_state {
+ 	NFS4CLNT_DELEGRETURN,
+ 	NFS4CLNT_LAYOUTRECALL,
+ 	NFS4CLNT_SESSION_RESET,
+-	NFS4CLNT_RECALL_SLOT,
+ 	NFS4CLNT_LEASE_CONFIRM,
+ 	NFS4CLNT_SERVER_SCOPE_MISMATCH,
+ };
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 8260865..c08fb3b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1479,12 +1479,6 @@ void nfs4_schedule_session_recovery(struct nfs4_session *session)
+ }
+ EXPORT_SYMBOL_GPL(nfs4_schedule_session_recovery);
  
- #define NFSDBG_FACILITY	NFSDBG_PNFS_LD
+-void nfs41_handle_recall_slot(struct nfs_client *clp)
+-{
+-	set_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
+-	nfs4_schedule_state_manager(clp);
+-}
+-
+ static void nfs4_reset_all_state(struct nfs_client *clp)
+ {
+ 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
+@@ -1559,8 +1553,6 @@ static int nfs4_reset_session(struct nfs_client *clp)
+ 		goto out;
+ 	}
+ 	clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+-	/* create_session negotiated new slot table */
+-	clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state);
  
-@@ -990,14 +991,63 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
+ 	 /* Let the state manager reestablish state */
+ 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+@@ -1569,28 +1561,9 @@ out:
+ 	return status;
  }
  
-+/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
-+#define PNFSBLK_MAXRSIZE (0x1<<22)
-+#define PNFSBLK_MAXWSIZE (0x1<<21)
-+static void
-+bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	struct inode *ino = pgio->pg_inode;
-+	struct pnfs_layout_hdr *lo;
-+
-+	BUG_ON(pgio->pg_lseg != NULL);
-+	spin_lock(&ino->i_lock);
-+	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_KERNEL);
-+	if (!lo || test_bit(lo_fail_bit(IOMODE_READ), &lo->plh_flags)) {
-+		spin_unlock(&ino->i_lock);
-+		nfs_pageio_reset_read_mds(pgio);
-+		return;
-+	}
-+
-+	pgio->pg_bsize = PNFSBLK_MAXRSIZE;
-+	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
-+						req_offset(req),
-+						req->wb_bytes,
-+						IOMODE_READ);
-+	spin_unlock(&ino->i_lock);
-+}
-+
-+static void
-+bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	struct inode *ino = pgio->pg_inode;
-+	struct pnfs_layout_hdr *lo;
-+
-+	BUG_ON(pgio->pg_lseg != NULL);
-+	spin_lock(&ino->i_lock);
-+	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_NOFS);
-+	if (!lo || test_bit(lo_fail_bit(IOMODE_RW), &lo->plh_flags)) {
-+		spin_unlock(&ino->i_lock);
-+		nfs_pageio_reset_write_mds(pgio);
-+		return;
-+	}
-+
-+	pgio->pg_bsize = PNFSBLK_MAXWSIZE;
-+	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
-+						req_offset(req),
-+						req->wb_bytes,
-+						IOMODE_RW);
-+	spin_unlock(&ino->i_lock);
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = pnfs_generic_pg_init_read,
-+	.pg_init = bl_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
+-static int nfs4_recall_slot(struct nfs_client *clp)
+-{
+-	struct nfs4_slot_table *fc_tbl = &clp->cl_session->fc_slot_table;
+-	struct nfs4_channel_attrs *fc_attrs = &clp->cl_session->fc_attrs;
+-
+-	nfs4_begin_drain_session(clp);
+-
+-	spin_lock(&fc_tbl->slot_tbl_lock);
+-	fc_tbl->max_slots = fc_tbl->target_max_slots;
+-	nfs4_reduce_slots_locked(fc_tbl);
+-	fc_tbl->target_max_slots = 0;
+-	fc_attrs->max_reqs = fc_tbl->max_slots;
+-	spin_unlock(&fc_tbl->slot_tbl_lock);
+-
+-	nfs4_end_drain_session(clp);
+-	return 0;
+-}
+-
+ #else /* CONFIG_NFS_V4_1 */
+ static int nfs4_reset_session(struct nfs_client *clp) { return 0; }
+ static int nfs4_end_drain_session(struct nfs_client *clp) { return 0; }
+-static int nfs4_recall_slot(struct nfs_client *clp) { return 0; }
+ #endif /* CONFIG_NFS_V4_1 */
  
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
-+	.pg_init = bl_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+ /* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
+@@ -1699,15 +1672,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			nfs_client_return_marked_delegations(clp);
+ 			continue;
+ 		}
+-		/* Recall session slots */
+-		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)
+-		   && nfs4_has_session(clp)) {
+-			status = nfs4_recall_slot(clp);
+-			if (status < 0)
+-				goto out_error;
+-			continue;
+-		}
+-
+ 
+ 		nfs4_clear_state_manager_bit(clp);
+ 		/* Did we race with an attempt to give us more work? */
 -- 
-1.7.1.262.g5ef3d
+1.7.6.4
 
