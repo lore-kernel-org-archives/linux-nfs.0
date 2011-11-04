@@ -1,80 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:42697 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754032Ab1KKXGP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Nov 2011 18:06:15 -0500
-Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 11 Nov 2011 18:06:14 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5ole3526844
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 18:05:50 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5n6b022315
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 21:05:50 -0200
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC 6/7] Perform recovery on both inodes for rename.
-Date: Fri, 11 Nov 2011 18:04:31 -0500
-Message-Id: <1321052673-22171-7-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from nm14.bullet.mail.ird.yahoo.com ([77.238.189.67]:47778 "HELO
+	nm14.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750813Ab1KDBAF convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Nov 2011 21:00:05 -0400
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <20111103235922.GA12527@umich.edu>
+Message-ID: <1320368399.51438.YahooMailNeo@web24715.mail.ird.yahoo.com>
+Date: Fri, 4 Nov 2011 00:59:59 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: Jim Rees <rees@umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <20111103235922.GA12527@umich.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rename is a special case because it passes 2 file handles to the server. If the
-server replies with NFS4ERR_FHEXPIRED we can't tell which of the to file handles
-are expired.
+> I suspect some kind of timing problem, where the network interface hasn't
 
-To remedy this, on receiving FHEXPIRED, rename will first call
-nfs4_fhexpired_recovery() with the old_dir inode. If this succeeds it will then
-call nfs4_fhexpired_recovery() with the new_dir inode. This will bypass
-nfs4_handle_exception() on FHEXPIRED errors for renames. Allow us to run
-recovery on each of the inodes.
+> come up yet at the time the portmap request is made.  What does your nfsroot
+> kernel option look like?  What happens if you add ",port=2049" to the 
+> end of
+> your nfsroot kernel option?
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/nfs4proc.c |   23 ++++++++++++++++++-----
- 1 files changed, 18 insertions(+), 5 deletions(-)
+That's my kernel line (and it's exactly the same for all kernel versions I used):
+root=/dev/nfs rw nfsroot=137.226.167.241:/srv/nfs/cluster2 ip=137.226.167.242::137.226.167.225:255.255.255.224:cluster2:eth0:off nfsrootdebug
+(I know that nfsrootdebug isn't available in older kernels but it doesn't matter...)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 50bb823..ebc5ee9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2907,13 +2907,26 @@ out:
- static int nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = old_dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
--		err = nfs4_handle_exception(NFS_SERVER(old_dir),
--				_nfs4_proc_rename(old_dir, old_name,
--					new_dir, new_name),
--				&exception);
-+		err = _nfs4_proc_rename(old_dir, old_name, new_dir, new_name);
-+		if (err == -NFS4ERR_FHEXPIRED) {
-+			err = nfs4_fhexpired_recovery(NFS_SERVER(old_dir),
-+					&exception);
-+			if (err == -EAGAIN) {
-+				exception.inode = new_dir;
-+				err = nfs4_fhexpired_recovery(
-+						NFS_SERVER(old_dir),
-+						&exception);
-+			}
-+			return err;
-+		}
-+		err = nfs4_handle_exception(NFS_SERVER(old_dir), err,
-+					&exception);
- 	} while (exception.retry);
- 	return err;
- }
--- 
-1.7.4.4
+With ",port=2049" I get this from linux-2.6.29.4:
+[  252.932407] IP-Config: Complete:
+[  252.932476]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+[  252.932680]      host=cluster2, domain=, nis-domain=(none),
+[  252.932794]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+[  252.933230] Root-NFS: nfsroot=/srv/nfs/cluster2,port=2049
+[  252.933523] NFS: nfs mount opts='udp,port=2049,nolock,addr=137.226.167.241'
+[  252.933583] NFS:   parsing nfs mount option 'udp'
+[  252.933621] NFS:   parsing nfs mount option 'port=2049'
+[  252.933675] NFS:   parsing nfs mount option 'nolock'
+[  252.933722] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+[  252.933787] NFS: MNTPATH: '/srv/nfs/cluster2'
+[  252.933823] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+[  254.038874] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+[  254.059251] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+[  288.023684] NFS: failed to create MNT RPC client, status=-60
+[  288.023793] NFS: unable to mount server 137.226.167.241, error -60
+[  288.023929] VFS: Unable to mount root fs via NFS, trying floppy.
+[  288.024092] VFS: Insert root floppy and press ENTER
 
+So the result is the same as before...
+In the past I also tried higher "timeo" and I think higher "retrans" values but also without a positive effect...
