@@ -1,140 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49392 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753245Ab1KGTtF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 14:49:05 -0500
-Message-ID: <1320695343.7987.7.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] sunrpc: wake up SOFTCONN tasks when a connection error
- happens.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Date: Mon, 07 Nov 2011 14:49:03 -0500
-In-Reply-To: <20111107150654.1c045aad@notabene.brown>
-References: <20111107150654.1c045aad@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:48577 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932832Ab1KDRb2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 13:31:28 -0400
+Received: by mail-vw0-f46.google.com with SMTP id 1so2106332vws.19
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 10:31:28 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] nfs: move nfs_file_operations declaration to bottom of file.c (try #2)
+Date: Fri,  4 Nov 2011 13:31:22 -0400
+Message-Id: <1320427882-9102-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1320427882-9102-1-git-send-email-jlayton@redhat.com>
+References: <1320427882-9102-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2011-11-06 at 20:06 -0800, NeilBrown wrote: 
-> hi all,
->  It being over a year since I last raised this I thought it might be time to
->  try again.
-> 
->  The problem is that an NFSv4 mount request (the default) to an unrouteable
->  server results in a 3 minute timeout instead of an instant failure.
-> 
->  This is easy to test by simply removing your default route then trying to
->  mount something outside your local network.
-> 
->  This patch causes any SOFTCONN task to be woken up as soon as a connection
->  error occurs so that it can fail promptly.  The failure reasons gets passed
->  back and as it is not ETIMEDOUT it causes immediate failure.
-> 
->  Is this a reasonable approach?
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> 
-> 
-> From a1aea8fc3977ffa9951c3d7f27dbb1905e5f560f Mon Sep 17 00:00:00 2001
-> From: NeilBrown <neilb@suse.de>
-> Date: Mon, 7 Nov 2011 15:00:17 +1100
-> Subject: [PATCH] sunrpc: wake up SOFTCONN tasks when a connection error
->  happens.
-> 
-> A 'SOFTCONN' task should fail if there is an error or a major timeout
-> during connection.
-> 
-> However errors are currently converted into a timeout (60seconds for
-> TCP) which is treated as a minor timeout and 3 of these are required
-> before failure.
-> 
-> The result of this is that if you try to mount an NFSv4 filesystem
-> (which doesn't require rpcbind and the failure modes that provides)
-> from a server which you do not have a route to (an so get
-> NETUNREACHABLE), you have an unnecessary 3 minutes timeout.
-> 
-> So when ENETUNREACH is reported for a connection - or other errors
-> which are fatal, wake up any SOFTCONN tasks with that error - rather
-> than letting them wait 60 seconds and then generate ETIMEDOUT.
-> 
-> This causes the above mentioned mount attempt to fail instantly.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  include/linux/sunrpc/sched.h |    1 +
->  net/sunrpc/sched.c           |   29 +++++++++++++++++++++++++++++
->  net/sunrpc/xprtsock.c        |    6 +++++-
->  3 files changed, 35 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index e775689..b85451b 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -236,6 +236,7 @@ void		rpc_wake_up_queued_task(struct rpc_wait_queue *,
->  void		rpc_wake_up(struct rpc_wait_queue *);
->  struct rpc_task *rpc_wake_up_next(struct rpc_wait_queue *);
->  void		rpc_wake_up_status(struct rpc_wait_queue *, int);
-> +void		rpc_wake_up_softconn_status(struct rpc_wait_queue *, int);
->  int		rpc_queue_empty(struct rpc_wait_queue *);
->  void		rpc_delay(struct rpc_task *, unsigned long);
->  void *		rpc_malloc(struct rpc_task *, size_t);
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index d12ffa5..d92000a 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -543,6 +543,35 @@ void rpc_wake_up_status(struct rpc_wait_queue *queue, int status)
->  }
->  EXPORT_SYMBOL_GPL(rpc_wake_up_status);
->  
-> +/**
-> + * rpc_wake_up_softconn_status - wake up all SOFTCONN rpc_tasks and set their
-> + * status value.
-> + * @queue: rpc_wait_queue on which the tasks are sleeping
-> + * @status: status value to set
-> + *
-> + * Grabs queue->lock
-> + */
-> +void rpc_wake_up_softconn_status(struct rpc_wait_queue *queue, int status)
-> +{
-> +	struct rpc_task *task, *next;
-> +	struct list_head *head;
-> +
-> +	spin_lock_bh(&queue->lock);
-> +	head = &queue->tasks[queue->maxpriority];
-> +	for (;;) {
-> +		list_for_each_entry_safe(task, next, head, u.tk_wait.list)
-> +			if (RPC_IS_SOFTCONN(task)) {
-> +				task->tk_status = status;
-> +				rpc_wake_up_task_queue_locked(queue, task);
-> +			}
+...a remove a set of forward declarations.
 
-This is basically rpc_wake_up_status() with an extra conditional test
-(which again is just rpc_wake_up() with an extra status argument).
-Should we consider merging these functions?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/file.c |   59 ++++++++++++++++++--------------------------------------
+ 1 files changed, 19 insertions(+), 40 deletions(-)
 
-> +		if (head == &queue->tasks[0])
-> +			break;
-> +		head--;
-> +	}
-> +	spin_unlock_bh(&queue->lock);
-> +}
-> +EXPORT_SYMBOL_GPL(rpc_wake_up_softconn_status);
-
-Why do we want to export this?
-
-
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index fedf176..531a3ba 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -40,48 +40,8 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_FILE
+ 
+-static int nfs_file_open(struct inode *, struct file *);
+-static int nfs_file_release(struct inode *, struct file *);
+-static loff_t nfs_file_llseek(struct file *file, loff_t offset, int origin);
+-static int  nfs_file_mmap(struct file *, struct vm_area_struct *);
+-static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+-					struct pipe_inode_info *pipe,
+-					size_t count, unsigned int flags);
+-static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+-				unsigned long nr_segs, loff_t pos);
+-static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+-					struct file *filp, loff_t *ppos,
+-					size_t count, unsigned int flags);
+-static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+-				unsigned long nr_segs, loff_t pos);
+-static int  nfs_file_flush(struct file *, fl_owner_t id);
+-static int  nfs_file_fsync(struct file *, loff_t, loff_t, int datasync);
+-static int nfs_check_flags(int flags);
+-static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl);
+-static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl);
+-static int nfs_setlease(struct file *file, long arg, struct file_lock **fl);
+-
+ static const struct vm_operations_struct nfs_file_vm_ops;
+ 
+-const struct file_operations nfs_file_operations = {
+-	.llseek		= nfs_file_llseek,
+-	.read		= do_sync_read,
+-	.write		= do_sync_write,
+-	.aio_read	= nfs_file_read,
+-	.aio_write	= nfs_file_write,
+-	.mmap		= nfs_file_mmap,
+-	.open		= nfs_file_open,
+-	.flush		= nfs_file_flush,
+-	.release	= nfs_file_release,
+-	.fsync		= nfs_file_fsync,
+-	.lock		= nfs_lock,
+-	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.splice_write	= nfs_file_splice_write,
+-	.check_flags	= nfs_check_flags,
+-	.setlease	= nfs_setlease,
+-};
+-
+ const struct inode_operations nfs_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+@@ -890,6 +850,25 @@ static int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
+ 	return -EINVAL;
+ }
+ 
++const struct file_operations nfs_file_operations = {
++	.llseek		= nfs_file_llseek,
++	.read		= do_sync_read,
++	.write		= do_sync_write,
++	.aio_read	= nfs_file_read,
++	.aio_write	= nfs_file_write,
++	.mmap		= nfs_file_mmap,
++	.open		= nfs_file_open,
++	.flush		= nfs_file_flush,
++	.release	= nfs_file_release,
++	.fsync		= nfs_file_fsync,
++	.lock		= nfs_lock,
++	.flock		= nfs_flock,
++	.splice_read	= nfs_file_splice_read,
++	.splice_write	= nfs_file_splice_write,
++	.check_flags	= nfs_check_flags,
++	.setlease	= nfs_setlease,
++};
++
+ #ifdef CONFIG_NFS_V4
+ static int
+ nfs4_file_open(struct inode *inode, struct file *filp)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.6.4
 
