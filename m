@@ -1,52 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:61708 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753435Ab1KUUmg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 15:42:36 -0500
-Date: Mon, 21 Nov 2011 12:42:30 -0800
-From: Tejun Heo <tj@kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: rjw@sisk.pl, linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
-        john@calva.com, trond.myklebust@netapp.com
-Subject: Re: [PATCH 1/2] sunrpc: make rpc_wait_bit_killable handle freeze
- events
-Message-ID: <20111121204230.GE25776@google.com>
-References: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
- <1321897221-2278-2-git-send-email-jlayton@redhat.com>
- <20111121175644.GF15314@google.com>
- <20111121153615.7e876801@corrin.poochiereds.net>
- <20111121204141.GD25776@google.com>
+Received: from fieldses.org ([174.143.236.118]:44603 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751926Ab1KDWKv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 18:10:51 -0400
+Date: Fri, 4 Nov 2011 18:10:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3 0/3] SUNRPC: rcbind clients virtualization
+Message-ID: <20111104221045.GL721@fieldses.org>
+References: <20111027180824.20459.23219.stgit@localhost6.localdomain6>
+ <20111027202514.GA31669@fieldses.org>
+ <4EAA74DD.3070708@parallels.com>
+ <20111028093036.GA2604@fieldses.org>
+ <4EAA78DD.2000408@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111121204141.GD25776@google.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4EAA78DD.2000408@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 21, 2011 at 12:41:41PM -0800, Tejun Heo wrote:
-> Hello, Jeff.
+On Fri, Oct 28, 2011 at 01:41:49PM +0400, Stanislav Kinsbursky wrote:
+> 28.10.2011 13:30, J. Bruce Fields пишет:
+> >On Fri, Oct 28, 2011 at 01:24:45PM +0400, Stanislav Kinsbursky wrote:
+> >>This patch-set was created before you've sent your NFSd plan and we
+> >>disacussed Lockd per netns.
+> >>So, this sentence: "NFSd service will be per netns too from my pow"
+> >>is obsolete. And Lockd will be one for all.
+> >
+> >I believe lockd should be pert-netns--at least that's what the server
+> >needs.
+> >
+> >(The single lockd thread may handle requests from all netns, but it
+> >should behave like a different service depending on netns, so its data
+> >structures, etc. will need to be per-ns.
+> >
 > 
-> On Mon, Nov 21, 2011 at 03:36:15PM -0500, Jeff Layton wrote:
-> > I suppose you're suggesting something like this?
-> > 
-> > 	freezer_do_not_count();
-> > 	if (!try_to_freeze())
-> > 		schedule();
-> > 	freezer_count();
+> Sure. Looks like we have misunderstanding here. When I said, that
+> Lockd should be one for all, I meaned, that we will have only one
+> kthread for all ns (not one per ns). Private data will be per net
+> ns, of course.
 > 
-> No,
-> 
-> 	freezer_do_not_count();
-> 	schedule();
-> 	freezer_count();
-> 	try_to_freeze();
-> 
-> freezer_count() may make %current eligible for freezing again, so it
-> has to check whether freezing condition is pending afterwards.
+> BTW, Bruce, please, have a brief look at my e-mail to
+> linux-nfs@vger.kernel.org named "SUNRPC: non-exclusive pipe
+> creation".
+> I've done a lot in "RPC pipefs per net ns" task, and going to send
+> first patches soon. But right now I'm really confused will this
+> non-exclusive pipes creation and almost ready so remove this
+> functionality. But I'm afraid, that I've missed something. Would be
+> greatly appreciate for your opinion about my question.
 
-Ooh, freezer_count() already has that.  Heh, call me an idiot.  The
-proposed code seems correct then.
+Sorry for the delay--it looks reasonable to me on a quick skim, but I'm
+assuming it's Trond that will need to review this.
 
-Thanks.
+--b.
 
--- 
-tejun
+> 
+> >--b.
+> >
+> >>Or you are asking about something else?
+> >>
+> >>>--b.
+> >>>
+> >>>>And also we have NFSd file system, which
+> >>>>is not virtualized yet.
+> >>>>
+> >>>>The following series consists of:
+> >>>>
+> >>>>---
+> >>>>
+> >>>>Stanislav Kinsbursky (3):
+> >>>>       SUNRPC: move rpcbind internals to sunrpc part of network namespace context
+> >>>>       SUNRPC: optimize net_ns dereferencing in rpcbind creation calls
+> >>>>       SUNRPC: optimize net_ns dereferencing in rpcbind registering calls
+> >>>>
+> >>>>
+> >>>>  net/sunrpc/netns.h     |    5 ++
+> >>>>  net/sunrpc/rpcb_clnt.c |  103 ++++++++++++++++++++++++++----------------------
+> >>>>  2 files changed, 61 insertions(+), 47 deletions(-)
+> >>>>
+> >>>>--
+> >>>>Signature
+> >>
+> >>
+> >>--
+> >>Best regards,
+> >>Stanislav Kinsbursky
+> 
+> 
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
