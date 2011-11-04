@@ -1,47 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:39821 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754512Ab1KISDH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 13:03:07 -0500
+Received: from fieldses.org ([174.143.236.118]:52741 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753132Ab1KDWSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 18:18:04 -0400
+Date: Fri, 4 Nov 2011 18:18:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] 4.1 CLNT: Create session before using at OPEN6
+Message-ID: <20111104221803.GM721@fieldses.org>
+References: <4EAA7C9C.6050601@cn.fujitsu.com>
+ <20111104215211.GK721@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <1320850927-30240-3-git-send-email-ian.campbell@citrix.com>
-References: <1320850895.955.172.camel@zakaz.uk.xensource.com> <1320850927-30240-3-git-send-email-ian.campbell@citrix.com>
-From: =?ISO-8859-2?Q?Micha=B3_Miros=B3aw?= <mirqus@gmail.com>
-Date: Wed, 9 Nov 2011 19:02:44 +0100
-Message-ID: <CAHXqBFKXV14WrKRipaeMJ9_fpWDH_ud_2UjpKYKHKN08t3m-yw@mail.gmail.com>
-Subject: Re: [PATCH 3/4] net: add paged frag destructor support to kernel_sendpage.
-To: Ian Campbell <ian.campbell@citrix.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
-        James Morris <jmorris@namei.org>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Patrick McHardy <kaber@trash.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>, drbd-user@lists.linbit.com,
-        devel@driverdev.osuosl.org, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, ceph-devel@vger.kernel.org,
-        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111104215211.GK721@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2011/11/9 Ian Campbell <ian.campbell@citrix.com>:
-> This requires adding a new argument to various sendpage hooks up and down the
-> stack. At the moment this parameter is always NULL.
-[...]
-> --- a/include/linux/net.h
-> +++ b/include/linux/net.h
-> @@ -203,6 +204,7 @@ struct proto_ops {
->        ssize_t         (*sendpage)  (struct socket *sock, struct page *page,
-> +                                     struct skb_frag_destructor *destroy,
->                                      int offset, size_t size, int flags);
+On Fri, Nov 04, 2011 at 05:52:11PM -0400, J. Bruce Fields wrote:
+> On Fri, Oct 28, 2011 at 05:57:48PM +0800, Mi Jinlong wrote:
+> > 4.1 CLNT: Create session before using at OPEN6
+> 
+> Makes sense--but then how did this test ever work?
 
-Maybe you could instead add new op like sendfrag() that would get
-already prepared skb_frag_struct? In the end all page data ends up
-described in skb_frag_struct, so this would reduce copying this
-information all over network stack. This might be a bigger change,
-though.
+Oh, I see, it didn't--I just added it to the skip-list for my tests
+without investigating.
 
-Best Regards,
-Michał Mirosław
+Thanks, applied!
+
+--b.
+
+> 
+> --b.
+> 
+> > 
+> > Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> > ---
+> >  nfs4.1/server41tests/st_open.py |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+> > index 2aa3ec4..bd995a5 100644
+> > --- a/nfs4.1/server41tests/st_open.py
+> > +++ b/nfs4.1/server41tests/st_open.py
+> > @@ -192,7 +192,7 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+> >      FLAGS: open all
+> >      CODE: OPEN6
+> >      """
+> > -    sess1 = env.c1.new_client(env.testname(t))
+> > +    sess1 = env.c1.new_client_session(env.testname(t))
+> >  
+> >      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1)
+> >      check(res)
+> > -- 
+> > 1.7.5.1
+> > 
+> > 
