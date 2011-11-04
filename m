@@ -1,125 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:45297 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757485Ab1KQNNu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 08:13:50 -0500
-Message-ID: <4EC50882.2080803@Calva.COM>
-Date: Thu, 17 Nov 2011 14:13:38 +0100
-From: John Hughes <john@Calva.COM>
+Received: from mx2.netapp.com ([216.240.18.37]:7253 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932185Ab1KDOkk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 10:40:40 -0400
+Message-ID: <4EB3F957.2060309@netapp.com>
+Date: Fri, 04 Nov 2011 10:40:23 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Jim Rees <rees@umich.edu>, Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-References: <4EC3FD8B.6000705@calvaedi.com>	<20111116144718.78b2e288@corrin.poochiereds.net>	<20111116234434.GA12882@umich.edu>	<20111116203119.1d9c0dd6@corrin.poochiereds.net> <20111116203810.4e1b9d28@corrin.poochiereds.net> <4EC4EA91.5070607@Calva.COM>
-In-Reply-To: <4EC4EA91.5070607@Calva.COM>
-Content-Type: multipart/mixed;
- boundary="------------010100050907000402030400"
+To: andros@netapp.com
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
+References: <1318919979-14606-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1318919979-14606-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------010100050907000402030400
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+"backchennel" in the subject should be "backchannel"
 
-On 17/11/11 12:05, John Hughes wrote:
-> On 17/11/11 02:38, Jeff Layton wrote:
->> Note too that the gssd code distinguishes between an expired TGT and a
->> non-existent credcache. The latter will give you the error you desire
->> here. So one possibility is just to remove the credcache from /tmp in
->> this situation.
->
-> Something to scan /tmp for expired credentials and zap em?  rpc.gssd 
-> would communicate that to the kernel?
->
-> Whadaya know, that works.
-Here's a dumb perl script that could be run from, for example, .xsession 
-to automatically destroy expired ticket caches.
+- Bryan
 
-Would need a bit of trickery to make it go away on end of session and 
-something in /etc/pm/sleep.d to send it a SIGALRM when the system wakes 
-from suspend or hibernate.
+On 10/18/2011 02:39 AM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Slotid's start from 0 which means we check against
+> NFS41_BC_MAX_CALLBACKS - 1.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 98ff5fc..12bd9d0 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -339,7 +339,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
+>  	dprintk("%s enter. slotid %d seqid %d\n",
+>  		__func__, args->csa_slotid, args->csa_sequenceid);
+>  
+> -	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
+> +	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
+>  		return htonl(NFS4ERR_BADSLOT);
+>  
+>  	slot = nfs4_lookup_slot_locked(tbl, args->csa_slotid);
 
-It has a potential race between destroying an expired ticket and a new 
-ticket being granted.
-
-I guess now I'll look at a hack to rpc.gssd for a neater way of doing this.
-
-
-
-
-
---------------010100050907000402030400
-Content-Type: text/plain;
- name="monitor-tickets"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="monitor-tickets"
-
-#! /usr/bin/perl -w
-
-my $ALARMED = 0;
-
-$SIG{ALRM} = sub { ++$ALARMED; };
-
-use POSIX qw(mktime);
-
-# Work out ticket expiry
-
-# Valid starting     Expires            Service principal
-# 11/17/11 10:34:23  11/17/11 20:34:23  krbtgt/CALVAEDI.COM@CALVAEDI.COM
-# 	renew until 11/18/11 10:34:23
-# 11/17/11 10:34:23  11/17/11 20:34:23  nfs/olympic.calvaedi.com@CALVAEDI.COM
-# 	renew until 11/18/11 10:34:23
-# 11/17/11 11:24:24  11/17/11 20:34:23  host/olympic.calvaedi.com@CALVAEDI.COM
-# 	renew until 11/18/11 10:34:23
-
-# Eurgh - non localised, US format dates.
-
-sub expiry {
-	local *KLIST;
-	open KLIST, "/usr/bin/klist | " or return;
-	my $expiry;
-	while (<KLIST>) {
-		if (m((\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+)  krbtgt)) {
-			$expiry = mktime ($6, $5, $4, $2, $1 - 1, 100 +  $3);
-			last;
-		}
-	}
-
-	$expiry;
-}
-
-
-for (;;) {
-	my $sleepytime = 60;
-
-	my $expiry = expiry ();
-	
-	if (defined $expiry) {
-		my $left = $expiry - time;
-		if ($left <= 0) {
-			# Ticket expired, zap it.  Potential race with
-			# new ticket creation.
-			print "Destroy expired ticket\n";
-			system "/usr/bin/kdestroy";
-		}
-		else {
-			$sleepytime = $left;
-		}
-	}
-
-	if ($ALARMED) {
-		$ALARMED = 0;
-		next;
-	}
-
-	# If machine freezes during this sleap how long will
-	# it sleep for?
-	print "Sleeping for $sleepytime seconds\n";
-	sleep $sleepytime;
-}
-
---------------010100050907000402030400--
