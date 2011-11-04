@@ -1,83 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:38499 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752620Ab1KCVwR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:52:17 -0400
+Received: from rcsinet15.oracle.com ([148.87.113.117]:46115 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751193Ab1KDWzv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 18:55:51 -0400
 Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
 Mime-Version: 1.0 (Apple Message framework v1084)
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
-Date: Thu, 3 Nov 2011 17:51:57 -0400
+In-Reply-To: <1320421602.96030.YahooMailNeo@web24707.mail.ird.yahoo.com>
+Date: Fri, 4 Nov 2011 18:55:30 -0400
 Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+Message-Id: <85479822-C31D-450A-A361-046A0E920F3D@oracle.com>
+References: <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <20111104132050.GB13788@umich.edu> <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com> <20111104144617.GB911@umich.edu> <1320421602.96030.YahooMailNeo@web24707.mail.ird.yahoo.com>
 To: Lukas Razik <linux@razik.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 3, 2011, at 5:37 PM, Lukas Razik wrote:
+On Nov 4, 2011, at 11:46 AM, Lukas Razik wrote:
 
->> On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
+>>   > As for a fix...  we're trying to move away from udp transport 
 > 
+>> anyway.  Maybe
+>>   > someone should figure out a way to get it to work with tcp?  I have zero
+>>   > experience with nfs over udp, at least on linux.  Just for fun, have you
+>>   > tried tcp transport (proto=tcp)?
+>>   
+>>   TCP is a real problem in this environment, because it deals poorly with
+>>   NIC initialization timing issues.  UDP is still the best approach (as long
+>>   as it is retransmitting appropriately).  To support TCP, ultimately what
+>>   we need to do is to introduce serialization to make the kernel wait for
+>>   the NIC to become ready before attempting network activity.
 >> 
->>> Trond Myklebust wrote:
->>> 
->>>> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
->>>> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
->>>> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
->>>> [ 442.667032] VFS: Insert root floppy and press ENTER
->>>> 
->>>   Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
->>>   basically the same one that you see in your 2.6.32 trace (rpcbind:
->>>   server 137.226.167.241 not responding, timed out) except that now it is
->>>   a fatal error.
->>> 
->>>   Any idea why the first RPC calls might be failing here? A switch
->>>   misconfiguration or something like that perhaps?
->>> 
->>> Wasn't there a change in the way nfs mount options are handled by the 
->> kernel
->>> for nfsroot about the time of 2.6.39?  Something about changing from 
->> default
->>> udp to tcp maybe?
->> 
->> There was a change, but it was changed back to UDP because of problems like 
->> this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be improved.
->> 
+>> Agreed, but we're grasping at straws here, and this guy just wants it to
+>> work.  It's something to try.
 > 
-> I don't know if this was a tip to test newest 2.6.39 but as I wrote in my first email
->  http://thread.gmane.org/gmane.linux.nfs/44596
-> that's the output of linux-2.6.39.4 with "nfsdebug":
+> I've tried that but "proto=tcp" is no way to change the protocol in linux-2.6.39.4.
+> It uses the udp protocol and in "Documentation/filesystems/nfs/nfsroot.txt" there's no "proto" option (or something similar).
+> [11140.866623] IP-Config: Complete:
+> [11140.866692]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [11140.866895]      host=cluster2, domain=, nis-domain=(none),
+> [11140.867008]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [11140.867431] Root-NFS: nfsroot=/srv/nfs/cluster2,proto=tcp,retrans=10,timeo=60
+> [11140.867728] NFS: nfs mount opts='udp,proto=tcp,retrans=10,timeo=60,nolock,addr=137.226.167.241'
+> [11140.867797] NFS:   parsing nfs mount option 'udp'
+> [11140.867836] NFS:   parsing nfs mount option 'proto=tcp'
+
+"proto=tcp" worked; see below.  NFS mount options are parsed left-to-right.  "proto=tcp" overrides "udp", which is to its left.
+
+> [11140.867895] NFS:   parsing nfs mount option 'retrans=10'
+> [11140.867946] NFS:   parsing nfs mount option 'timeo=60'
+> [11140.867996] NFS:   parsing nfs mount option 'nolock'
+> [11140.868043] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+> [11140.868106] NFS: MNTPATH: '/srv/nfs/cluster2'
+> [11140.868142] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+> [11141.912761] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [11141.933177] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> [11143.873095] NFS: failed to create MNT RPC client, status=-65
+> [11143.873205] NFS: unable to mount server 137.226.167.241, error -65
+
+You got a different result: -65 is EHOSTUNREACH.  And actually, I would have expected that error from the UDP case as well.
+
+> [11143.873339] VFS: Unable to mount root fs via NFS, trying floppy.
+> [11143.873494] VFS: Insert root floppy and press ENTER
 > 
-> [ 407.571521] IP-Config: Complete:
-> [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-> [ 407.571793] host=cluster2, domain=, nis-domain=(none),
-> [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-> [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
-> [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
-> [ 407.572927] NFS: parsing nfs mount option 'udp'
-> [ 407.572995] NFS: parsing nfs mount option 'nolock'
-> [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
-> [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
-> [ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
-> [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-> [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
-> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
-> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
-> [ 442.667032] VFS: Insert root floppy and press ENTER
+> Now I'll try the other workaround idea: netboot from tftp (to bring eth0 up) and subsequent nfsroot mount.
+> Therefore I need a customized (and rather small) kernel...
 > 
-> And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 which I've tested.
-> So if anybody of you all have an idea what I could try to do, I'll follow...
-
-Find out why the very first RPC on your system always fails.  As Trond says, the only reason this worked on the older kernels is because NFSROOT fell back to a default port for NFSD.  This is also broken behavior, but in your case it happened to work so you never noticed it.
-
-I seem to recall there's a way to set the NFS and RPC debugging flags on the kernel command line so more information can be captured during boot.  But I don't see it under Documentation/.
-
-You could add a line in fs/nfs/nfsroot.c:nfs_root_debug() to set flags also in the rpc_debug global variable to gather more information.
+> Regards,
+> Lukas
 
 -- 
 Chuck Lever
