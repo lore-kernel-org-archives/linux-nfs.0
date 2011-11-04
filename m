@@ -1,105 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17677 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:33504 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753184Ab1KJU02 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Nov 2011 15:26:28 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQSq1013214
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:28 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQPED022338
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:27 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] nfsidmap: Added -v flag
-Date: Thu, 10 Nov 2011 15:26:25 -0500
-Message-Id: <1320956785-18004-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1320956785-18004-1-git-send-email-steved@redhat.com>
-References: <1320956785-18004-1-git-send-email-steved@redhat.com>
+	id S1752854Ab1KDVgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 17:36:00 -0400
+Date: Fri, 4 Nov 2011 17:36:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Call nfsd4_init_slabs() from init_nfsd()
+Message-ID: <20111104213559.GI721@fieldses.org>
+References: <1320171487-13966-1-git-send-email-bjschuma@netapp.com>
+ <20111101190523.GA1891@fieldses.org>
+ <4EB0478B.7060100@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EB0478B.7060100@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To aid in debugging, the -v flag can now be specified
-on the command to enable verbose logging in both
-the nfsidmap command and libnfsidmap library routines.
+On Tue, Nov 01, 2011 at 03:24:59PM -0400, Bryan Schumaker wrote:
+> On Tue 01 Nov 2011 03:05:23 PM EDT, J. Bruce Fields wrote:
+> > On Tue, Nov 01, 2011 at 02:18:07PM -0400, bjschuma@netapp.com wrote:
+> >> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>
+> >> init_nfsd() was calling free_slabs() during cleanup code, but the call
+> >> to init_slabs() was hidden in nfsd4_state_init().  This could be
+> >> confusing to people unfamiliar with the code.
+> >
+> > Good idea.  But: while you're at it, since you just removed the only
+> > possible error return from nfs4_state_init(), how about going ahead and
+> > making that a void return.  Probably in the same patch.--b.
+> 
+> Sure.  How about this?
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
- utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
- 2 files changed, 24 insertions(+), 3 deletions(-)
+Works for me; thanks!
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 134d9bc..d74189a 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -12,6 +12,7 @@
- #include <syslog.h>
- #include "xlog.h"
- 
-+int verbose = 0;
- /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
- 
- #define MAX_ID_LEN   11
-@@ -108,6 +109,12 @@ int main(int argc, char **argv)
- 	xlog_syslog(1);
- 	xlog_stderr(0);
- 
-+	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
-+		verbose = 1;
-+		nfs4_set_debug(1, NULL);
-+		argc--, argv++;
-+	}
-+
- 	if (argc < 3) {
- 		xlog_err("Bad arg count. Check /etc/request-key.conf");
- 		return 1;
-@@ -126,6 +133,11 @@ int main(int argc, char **argv)
- 
- 	key = strtol(argv[1], NULL, 10);
- 
-+	if (verbose) {
-+		xlog_warn("key: %ld type: %s value: %s timeout %ld",
-+			key, type, value, timeout);
-+	}
-+
- 	if (strcmp(type, "uid") == 0)
- 		rc = id_lookup(value, key, USER);
- 	else if (strcmp(type, "gid") == 0)
-diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-index 2381908..aa4d94b 100644
---- a/utils/nfsidmap/nfsidmap.man
-+++ b/utils/nfsidmap/nfsidmap.man
-@@ -5,6 +5,8 @@
- .TH nfsidmap 5 "1 October 2010"
- .SH NAME
- nfsidmap \- The NFS idmapper upcall program
-+.SH SYNOPSIS
-+.B "nfsidmap [-v] key user [timeout]"
- .SH DESCRIPTION
- The file
- .I /usr/sbin/nfsidmap
-@@ -14,9 +16,16 @@ the upcall and cache the result.
- .I /usr/sbin/nfsidmap
- should only be called by request-key, and will perform the translation and
- initialize a key with the resulting information.
--.PP
--NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
--feature.
-+.SH OPTIONS
-+.TP
-+.B -v
-+Enables verbose logging in both the
-+.B nfsidmap
-+binary and in the library routines
-+that are used.
-+.B Note,
-+the -v flag has to be the first argument on the
-+command to enable the logging.
- .SH CONFIGURING
- The file
- .I /etc/request-key.conf
--- 
-1.7.6.4
+--b.
 
+> 
+> init_nfsd() was calling free_slabs() during cleanup code, but the call
+> to init_slabs() was hidden in nfsd4_state_init().  This could be
+> confusing to people unfamiliar with the code.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c |   10 +++-------
+>  fs/nfsd/nfsctl.c    |    3 ++-
+>  fs/nfsd/nfsd.h      |    6 ++++--
+>  3 files changed, 9 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 47e94e3..5d6b2b1 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2301,7 +2301,7 @@ nfsd4_free_slabs(void)
+>  	nfsd4_free_slab(&deleg_slab);
+>  }
+>  
+> -static int
+> +int
+>  nfsd4_init_slabs(void)
+>  {
+>  	openowner_slab = kmem_cache_create("nfsd4_openowners",
+> @@ -4396,14 +4396,11 @@ nfs4_check_open_reclaim(clientid_t *clid)
+>  
+>  /* initialization to perform at module load time: */
+>  
+> -int
+> +void
+>  nfs4_state_init(void)
+>  {
+> -	int i, status;
+> +	int i;
+>  
+> -	status = nfsd4_init_slabs();
+> -	if (status)
+> -		return status;
+>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+>  		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
+>  		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
+> @@ -4427,7 +4424,6 @@ nfs4_state_init(void)
+>  	INIT_LIST_HEAD(&client_lru);
+>  	INIT_LIST_HEAD(&del_recall_lru);
+>  	reclaim_str_hashtbl_size = 0;
+> -	return 0;
+>  }
+>  
+>  static void
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index db34a58..912b17e 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1127,9 +1127,10 @@ static int __init init_nfsd(void)
+>  	int retval;
+>  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 
+> okir@monad.swb.de).\n");
+>  
+> -	retval = nfs4_state_init(); /* nfs4 locking state */
+> +	retval = nfsd4_init_slabs();
+>  	if (retval)
+>  		return retval;
+> +	nfs4_state_init();
+>  	nfsd_stat_init();	/* Statistics */
+>  	retval = nfsd_reply_cache_init();
+>  	if (retval)
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 58134a2..4e2ee29 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -104,14 +104,16 @@ static inline int nfsd_v4client(struct svc_rqst 
+> *rq)
+>   */
+>  #ifdef CONFIG_NFSD_V4
+>  extern unsigned int max_delegations;
+> -int nfs4_state_init(void);
+> +void nfs4_state_init(void);
+> +int nfsd4_init_slabs(void);
+>  void nfsd4_free_slabs(void);
+>  int nfs4_state_start(void);
+>  void nfs4_state_shutdown(void);
+>  void nfs4_reset_lease(time_t leasetime);
+>  int nfs4_reset_recoverydir(char *recdir);
+>  #else
+> -static inline int nfs4_state_init(void) { return 0; }
+> +static inline void nfs4_state_init(void) { }
+> +static inline int nfsd4_init_slabs(void) { return 0; }
+>  static inline void nfsd4_free_slabs(void) { }
+>  static inline int nfs4_state_start(void) { return 0; }
+>  static inline void nfs4_state_shutdown(void) { }
+> -- 
+> 1.7.7
+> >
+> >>
+> >> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> >> ---
+> >>  fs/nfsd/nfs4state.c |    5 +----
+> >>  fs/nfsd/nfsctl.c    |    6 +++++-
+> >>  fs/nfsd/nfsd.h      |    2 ++
+> >>  3 files changed, 8 insertions(+), 5 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >> index 47e94e3..765b292 100644
+> >> --- a/fs/nfsd/nfs4state.c
+> >> +++ b/fs/nfsd/nfs4state.c
+> >> @@ -2301,7 +2301,7 @@ nfsd4_free_slabs(void)
+> >>  	nfsd4_free_slab(&deleg_slab);
+> >>  }
+> >>  
+> >> -static int
+> >> +int
+> >>  nfsd4_init_slabs(void)
+> >>  {
+> >>  	openowner_slab = kmem_cache_create("nfsd4_openowners",
+> >> @@ -4401,9 +4401,6 @@ nfs4_state_init(void)
+> >>  {
+> >>  	int i, status;
+> >>  
+> >> -	status = nfsd4_init_slabs();
+> >> -	if (status)
+> >> -		return status;
+> >>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+> >>  		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
+> >>  		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
+> >> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> >> index db34a58..883ea54 100644
+> >> --- a/fs/nfsd/nfsctl.c
+> >> +++ b/fs/nfsd/nfsctl.c
+> >> @@ -1127,9 +1127,12 @@ static int __init init_nfsd(void)
+> >>  	int retval;
+> >>  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+> >>  
+> >> -	retval = nfs4_state_init(); /* nfs4 locking state */
+> >> +	retval = nfsd4_init_slabs();
+> >>  	if (retval)
+> >>  		return retval;
+> >> +	retval = nfs4_state_init(); /* nfs4 locking state */
+> >> +	if (retval)
+> >> +		goto out_free_slabs;
+> >>  	nfsd_stat_init();	/* Statistics */
+> >>  	retval = nfsd_reply_cache_init();
+> >>  	if (retval)
+> >> @@ -1160,6 +1163,7 @@ out_free_cache:
+> >>  	nfsd_reply_cache_shutdown();
+> >>  out_free_stat:
+> >>  	nfsd_stat_shutdown();
+> >> +out_free_slabs:
+> >>  	nfsd4_free_slabs();
+> >>  	return retval;
+> >>  }
+> >> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> >> index 58134a2..46f97ba 100644
+> >> --- a/fs/nfsd/nfsd.h
+> >> +++ b/fs/nfsd/nfsd.h
+> >> @@ -105,6 +105,7 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+> >>  #ifdef CONFIG_NFSD_V4
+> >>  extern unsigned int max_delegations;
+> >>  int nfs4_state_init(void);
+> >> +int nfsd4_init_slabs(void);
+> >>  void nfsd4_free_slabs(void);
+> >>  int nfs4_state_start(void);
+> >>  void nfs4_state_shutdown(void);
+> >> @@ -112,6 +113,7 @@ void nfs4_reset_lease(time_t leasetime);
+> >>  int nfs4_reset_recoverydir(char *recdir);
+> >>  #else
+> >>  static inline int nfs4_state_init(void) { return 0; }
+> >> +static inline int nfsd4_init_slabs(void) { return 0; }
+> >>  static inline void nfsd4_free_slabs(void) { }
+> >>  static inline int nfs4_state_start(void) { return 0; }
+> >>  static inline void nfs4_state_shutdown(void) { }
+> >> -- 
+> >> 1.7.7
+> >>
+> 
+> 
