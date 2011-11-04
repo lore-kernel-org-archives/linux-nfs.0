@@ -1,55 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46079 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932097Ab1KBR56 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 13:57:58 -0400
-Date: Wed, 2 Nov 2011 18:53:27 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>
-Cc: "Rafael J. Wysocki" <rjw@sisk.pl>, Steve French <sfrench@samba.org>,
-        linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
-        linux-cifs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>, trond.myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] wait_event_freezekillable: use
-	freezer_do_not_count/freezer_count
-Message-ID: <20111102175327.GA4446@redhat.com>
-References: <20111101041337.39077229@tlielax.poochiereds.net> <20111101065958.50addab5@tlielax.poochiereds.net> <20111101163059.GR18855@google.com> <20111101175953.GB5358@redhat.com> <20111101180601.GV18855@google.com> <20111101181329.GA6739@redhat.com> <20111101182753.GW18855@google.com> <20111101193923.GA9444@redhat.com> <20111101194601.GB9444@redhat.com> <20111101215710.GA13803@google.com>
+	id S1752578Ab1KDOJn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:09:43 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111101215710.GA13803@google.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Date: Fri, 4 Nov 2011 07:09:41 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA9256@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <20111104132050.GB13788@umich.edu> <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Chuck Lever" <chuck.lever@oracle.com>, "Jim Rees" <rees@umich.edu>
+Cc: "Lukas Razik" <linux@razik.name>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fake_signal_wake_up() should not wake up the TASK_KILLABLE tasks,
-we are going to fix this. This means that wait_event_freezekillable()
-can't rely on wakeup from freezer. Reimplement it using
-freezer_do_not_count/freezer_count. This is not really nice, just
-a simple fix for now.
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Friday, November 04, 2011 10:02 AM
+> To: Jim Rees
+> Cc: Lukas Razik; Myklebust, Trond; Linux NFS Mailing List
+> Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+> 
+> 
+> On Nov 4, 2011, at 9:20 AM, Jim Rees wrote:
+> > As we move toward nfs4 someone will have to give some thought to
+> nfsroot.
+> > It's hard to imagine we could put enough nfs4 cruft into the kernel
+> > (gssd,
+> > idmapd) to make it work.
+> 
+> A kernel-level basic id mapper is being considered.  That would allow
+NFSv4
+> with AUTH_SYS, if we can get the NIC problems squared away.
 
-Signed-off-by: Oleg Nesterov <oleg@redhat.com>
----
-
- include/linux/freezer.h |   10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
-
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -143,13 +143,9 @@ static inline void set_freezable_with_si
- #define wait_event_freezekillable(wq, condition)			\
- ({									\
- 	int __retval;							\
--	for (;;) {							\
--		__retval = wait_event_killable(wq,			\
--				(condition) || freezing(current));	\
--		if (__retval || (condition))				\
--			break;						\
--		try_to_freeze();					\
--	}								\
-+	freezer_do_not_count();						\
-+	__retval = wait_event_killable(wq, (condition));		\
-+	freezer_count();						\
- 	__retval;							\
- })
+We already have a solution for NFSv4 and nfsroot: use auth_sys and set
+the nfs4_disable_idmapping flag. That does require an rfc3530-bis
+compatible server, but it shouldn't be long before we see those
+appearing in the wild...
  
-
+Trond
