@@ -1,74 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58947 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:27755 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753688Ab1KWQge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Nov 2011 11:36:34 -0500
-Date: Wed, 23 Nov 2011 11:36:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH 0/6] SUNRPC: make RPC clients use
- network-namespace-aware PipeFS routines
-Message-ID: <20111123163632.GB30672@fieldses.org>
-References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+	id S932878Ab1KDREy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 13:04:54 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH 2/2] nfs: when attempting to open a directory, fall back on normal lookup (try #4)
+Date: Fri, 4 Nov 2011 10:04:52 -0700
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA9337@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <1320413608-17032-2-git-send-email-jlayton@redhat.com>
+References: <1320413608-17032-1-git-send-email-jlayton@redhat.com> <1320413608-17032-2-git-send-email-jlayton@redhat.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Jeff Layton" <jlayton@redhat.com>
+Cc: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 23, 2011 at 02:51:10PM +0300, Stanislav Kinsbursky wrote:
-> This patch set was created in context of clone of git
-> branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-> tag: v3.1
+> -----Original Message-----
+> From: Jeff Layton [mailto:jlayton@redhat.com]
+> Sent: Friday, November 04, 2011 9:33 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: [PATCH 2/2] nfs: when attempting to open a directory, fall
+back on
+> normal lookup (try #4)
 > 
-> This patch set depends on previous patch sets titled:
-> 1) "SUNRPC: initial part of making pipefs work in net ns"
-> 2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
+> commit d953126 changed how nfs_atomic_lookup handles an -EISDIR return
+> from an OPEN call. Prior to that patch, that caused the client to fall
+back to
+> doing a normal lookup. When that patch went in, the code began
+returning
+> that error to userspace. The d_revalidate codepath however never had
+the
+> corresponding change, so it was still possible to end up with a NULL
+ctx-
+> >state pointer after that.
 > 
-> This patch set is a first part of reworking SUNPRC PipeFS users.
-> It makes SUNRPC clients using PipeFS nofitications for directory and GSS pipes
-> dentries creation. With this patch set RPC clients and GSS auth creations
-> routines doesn't force SUNRPC PipeFS mount point creation which actually means,
-> that they now can work without PipeFS dentries.
+> That patch caused a regression. When we attempt to open a directory
+that
+> does not have a cached dentry, that open now errors out with EISDIR.
+If you
+> attempt the same open with a cached dentry, it will succeed.
+> 
+> Fix this by reverting the change in nfs_atomic_lookup and allowing
+attempts
+> to open directories to fall back to a normal lookup
+> 
+> Also, add a NFSv4-specific f_ops->open routine that just returns
+-ENOTDIR.
+> This should never be called if things are working properly, but if it
+ever is,
+> then the dprintk may help in debugging.
+> 
+> To facilitate this, a new file_operations field is also added to the
+nfs_rpc_ops
+> struct.
+> 
+> Cc: stable@kernel.org
 
-I'm not following very well.  (My fault, I haven't been paying
-attention.)  Could you summarize the itended behavior of pipefs after
-all this is done?
+Just one last request: can you reverse the order of the patches so that
+this one becomes 1/2? That would lose the dependency on the first patch,
+making the 'Cc: stable' bit more palatable.
 
-So there's a separate superblock (and separate dentries) for each
-namespace?
+BTW: it is now 'stable@vger.kernel.org'...
 
-What decides which clients are visible in which network namespaces?
+Also note that I'm quite ready to send these 2 patches as a post-rc1
+bugfix. Doing so shouldn't be a problem for Linus, since this is a
+regression w.r.t. older NFSv4 behaviour.
 
---b.
+Cheers
+  Trond
 
-> 
-> The following series consists of:
-> 
-> ---
-> 
-> Stanislav Kinsbursky (6):
->       SUNRPC: handle RPC client pipefs dentries by network namespace aware routines
->       SUNRPC: handle GSS AUTH pipes by network namespace aware routines
->       SUNRPC: subscribe RPC clients to pipefs notifications
->       SUNRPC: remove RPC client pipefs dentries after unregister
->       SUNRPC: remove RPC pipefs mount point manipulations from RPC clients code
->       SUNRPC: remove RPC PipeFS mount point reference from RPC client
-> 
-> 
->  fs/nfs/idmap.c                 |    4 +
->  fs/nfsd/nfs4callback.c         |    2 -
->  include/linux/nfs.h            |    2 -
->  include/linux/sunrpc/auth.h    |    2 +
->  include/linux/sunrpc/clnt.h    |    2 -
->  net/sunrpc/auth_gss/auth_gss.c |  101 +++++++++++++++++++++------
->  net/sunrpc/clnt.c              |  151 +++++++++++++++++++++++++++++++---------
->  net/sunrpc/rpc_pipe.c          |   19 +++--
->  net/sunrpc/sunrpc.h            |    2 +
->  9 files changed, 218 insertions(+), 67 deletions(-)
-> 
-> -- 
-> Signature
+
