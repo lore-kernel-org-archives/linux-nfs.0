@@ -1,72 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57312 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932535Ab1KOWQZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Nov 2011 17:16:25 -0500
-Date: Tue, 15 Nov 2011 17:16:23 -0500
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Pavel <free.lan.c2.718r@gmail.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: clients fail to reclaim locks after server reboot or manual
- sm-notify
-Message-ID: <20111115221623.GA12453@fieldses.org>
-References: <loom.20111114T180637-632@post.gmane.org>
- <4EC1678D.902@netapp.com>
- <4EC18E5F.4080101@netapp.com>
- <loom.20111115T142111-739@post.gmane.org>
- <4EC2DE49.5070000@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:46391 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932807Ab1KDQ5R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 12:57:17 -0400
+Message-ID: <4EB417C8.4000502@panasas.com>
+Date: Fri, 4 Nov 2011 09:50:16 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EC2DE49.5070000@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <stable@kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd (and lock) changes for 3.2
+References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com> <20111027203412.GB31669@fieldses.org> <4EA9F5E8.6060900@panasas.com> <20111028144252.GB5798@fieldses.org> <20111104160439.GA32756@fieldses.org>
+In-Reply-To: <20111104160439.GA32756@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 15, 2011 at 04:48:57PM -0500, Bryan Schumaker wrote:
-> On 11/15/2011 10:50 AM, Pavel wrote:
-> > Bryan Schumaker <bjschuma@...> writes:
-> > 
-> >>
-> >> On Mon 14 Nov 2011 02:10:05 PM EST, Bryan Schumaker wrote:
-> >>> Hello Pavel,
-> >>>
-> >>> What kernel version is Debian using?  I haven't been able to reproduce the 
-> > problem using 3.0 (But I'm on
-> >> Archlinux, so there might be other differences).
-> > 
-> > Thanks, Bryan, for your reply.
-> > 
-> > Debian is using Linux kernel version 2.6.32 - I haven't upgraded it.
-> > 
-> >> It might also be useful if you could share the /etc/exports file on the 
-> >> server.
-> >>
-> >> Thanks!
-> >>
-> >> - Bryan
-> > 
-> > Thank you for the question - that was my rude mistake. For managing exports I'm 
-> > using OCF resource agent 'exportfs'. It uses Linux build-in command 'exportfs' 
-> > to export shares and /etc/exports file is empty. However Heartbeat starts much 
-> > later than NFS...Now it is clear why this wasn't working. Setting up share that 
-> > doesn't rely on Heartbeat resources, resolves the issue.
-> > 
-> > Still though, the first test was just to make sure NFS functions the way it is 
-> > supposed to, and not the goal - the second/main question remains open. When I 
-> > run sm-notify in this case, shares are already exported and all the other needed 
-> > resources are available as well. Why doesn't sm-notify work? It doesn't work 
-> > even in case of single server test. As of using files from /var/lib/nfs/sm/ when 
-> > notifying clients from the other node in cluster, it should be okay with -v 
-> > option of sm-notify, because it is a common practice to store the whole 
-> > /var/lib/nfs folder on shared storage in Active/Passive clusters and trigger sm-
-> > notify from the active node. It would be awesome if you could give me a clue.
+On 11/04/2011 09:04 AM, J. Bruce Fields wrote:
+> Boaz points out that I forgot to add stable cc's to two commits:
 > 
-> I'm seeing the same thing you are using some Debian VMs I set up yesterday afternoon.  It does look like the server is replying with NLM_DENIED_GRACE_PERIOD when sm-notify is used.  Bruce, any idea what's going on here?
-
-Sorry, I'm having trouble keeping up....  What exactly do you do, on
-which machine, and what do you then see happen?
-
---b.
-
+> 	48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir setting"
+> 	6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to
+> 	end nfsd4 grace period"
 > 
-> When I try using my Linux 3.0 / Archlinux machines I don't see any NLM requests due to sm-notify.  I'm not sure that's correct...
+> which fix a regression introduced by
+> ab1350b2b3c1dd2e465a6abdda608d8c44facfb8 "nfsd41: Deny new lock before
+> RECLAIM_COMPLETE done" (first included in v3.1-rc1).
+> 
+> Included below for reference, but I assume simplest for you will be to
+> cherry-pick the above two sha1's.
+> 
+> Thanks!
+> 
+> --b.
+> 
+
+Bruce hi, thanks
+
+Yesterday I hit this bug again. I rebased on Benny's tree which did not have them
+for some reason. It's hunting me. ;-)
+
+Just for Future reference, these patches were suppose to be submitted very early around
+rc3 when we found them. This is what the -rcX are for, to test and fix what was broken
+in the merge window.
+
+Please forgive me I should have followed it through, but was too busy and forgot.
+
+But in general you should always have an rc-fixes branch and bug fixes patches
+should go there and not into the linux-next branch. And yes both branches should
+be included in linux-next.
+
+This way there is nothing to forget
+
+Thanks
+Boaz
