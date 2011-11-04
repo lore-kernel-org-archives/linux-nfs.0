@@ -1,71 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:50184 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750790Ab1KAF3s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 01:29:48 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>, <rees@umich.edu>
-CC: <bhalevy@tonian.com>, <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
-        <nfsv4@ietf.org>
-Date: Tue, 1 Nov 2011 01:29:27 -0400
-Subject: RE: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-Message-ID: <F19688880B763E40B28B2B462677FBF805C4B72E0C@MX09A.corp.emc.com>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
-	 <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
-	 <1320076148.4714.4.camel@lade.trondhjem.org>
-	 <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
-	 <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com>
-	 <1320082964.4714.23.camel@lade.trondhjem.org> <4EAEE173.80306@tonian.com>
-	 <1320085212.4714.48.camel@lade.trondhjem.org>
-	 <20111031183131.GA1925@umich.edu>
- <1320086399.4714.60.camel@lade.trondhjem.org>
-In-Reply-To: <1320086399.4714.60.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from smtp.mail.umich.edu ([141.211.14.81]:41827 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755143Ab1KDNVA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 09:21:00 -0400
+Date: Fri, 4 Nov 2011 09:20:50 -0400
+From: Jim Rees <rees@umich.edu>
+To: Lukas Razik <linux@razik.name>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Message-ID: <20111104132050.GB13788@umich.edu>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
+ <1320353685.18396.119.camel@lade.trondhjem.org>
+ <20111103211100.GA8393@umich.edu>
+ <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
+ <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+ <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
+ <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+ <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+ <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksIFRyb25kLA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IFRyb25k
-IE15a2xlYnVzdCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tXQ0KPiBTZW50OiBU
-dWVzZGF5LCBOb3ZlbWJlciAwMSwgMjAxMSAyOjQwIEFNDQo+IFRvOiBKaW0gUmVlcw0KPiBDYzog
-QmVubnkgSGFsZXZ5OyBQZW5nIFRhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGVuZywg
-VGFvOyBuZnN2NCBsaXN0DQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMi8yXSBuZnM0MTogaGFuZGxl
-IEJMS19MQVlPVVQgQ0JfUkVDQUxMX0FOWQ0KPiANCj4gT24gTW9uLCAyMDExLTEwLTMxIGF0IDE0
-OjMxIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+
-ID4NCj4gPiAgIEkgZG9uJ3QgbmVjZXNzYXJpbHkgZGlzYWdyZWUgd2l0aCB3aGF0IHlvdSBhcmUg
-c2F5aW5nLCBidXQgSSBoYXZlIHlldCB0bw0KPiA+ICAgc2VlIGEgc2luZ2xlIHNlcnZlciBzaWRl
-IGltcGxlbWVudGF0aW9uIG9mIENCX1JFQ0FMTF9BTlksIGxldCBhbG9uZSBhbnkNCj4gPiAgIG51
-bWJlcnMgdGhhdCBpbmRpY2F0ZSBwZXJmb3JtYW5jZSBvciByZXNwb25zaXZlbmVzcyBwcm9ibGVt
-cyByZXN1bHRpbmcNCj4gPiAgIGZyb20gb3VyIGV4aXN0aW5nIGNsaWVudC1zaWRlIGltcGxlbWVu
-dGF0aW9uLg0KPiA+DQo+ID4gICBJIHRoZXJlZm9yZSBmaW5kIGl0IGhhcmQgdG8gdW5kZXJzdGFu
-ZCB3aHkgb3B0aW1pc2luZyB0aGlzIHBhcnRpY3VsYXINCj4gPiAgIGNvZGUgaXMgc3VjaCBhIGhp
-Z2ggcHJpb3JpdHksIG9yIHdoeSBhIHBhdGNoIHRoYXQgaXMgYWRkaW5nIHBlci1maWxlDQo+ID4g
-ICBsYXlvdXRyZXR1cm5zIHRvIGluaXRpYXRlX2J1bGtfZHJhaW5pbmcoKSBpcyBnb2luZyB0byBo
-ZWxwIGFueXRoaW5nIGF0DQo+ID4gICBhbGwuDQo+ID4NCj4gPiBUZXN0aW5nIGJldHdlZW4gdGhl
-IGxpbnV4IGJsb2NrIGxheW91dCBjbGllbnQgYW5kIHRoZSBFTUMgYmxvY2sgbGF5b3V0DQo+ID4g
-c2VydmVyIHJldmVhbGVkIGEgZGVhZGxvY2sgd2hlbiB0aGUgc2VydmVyIGhhZCBoYW5kZWQgb3V0
-IHNvbWUgbnVtYmVyIG9mDQo+ID4gbGF5b3V0cyBhbmQgY291bGRuJ3QgaGFuZCBvdXQgYW55IG1v
-cmUuICBTbyBub3cgdGhlIEVNQyBibG9jayBsYXlvdXQgc2VydmVyDQo+ID4gaW1wbGVtZW50cyBD
-Ql9SRUNBTExfQU5ZLiAgU28geWVzLCB0aGlzIHNvbHZlcyBhIHJlYWwgd29ybGQgcHJvYmxlbSwg
-YW5kDQo+ID4geWVzLCB0aGVyZSBpcyBhIHNlcnZlciB0aGF0IGltcGxlbWVudHMgdGhpcy4NCj4g
-Pg0KPiA+IFdlIGhhZCBzb21lIGRpc2N1c3Npb25zIGF0IHRoZSB0aW1lLCBhbmQgSSBkb24ndCBy
-ZW1lbWJlciBpZiB0aG9zZSB3ZXJlIG9uDQo+ID4gdGhlIGxpbnV4LW5mcyBsaXN0IG9yIGluIHNv
-bWUgb3RoZXIgZm9ydW0uICBXZSBkZWNpZGVkIHRoYXQgdGhlIGNsaWVudCB3YXMNCj4gPiBpbiB0
-aGUgYmVzdCBwb3NpdGlvbiB0byBkZWNpZGUgd2hpY2ggbGF5b3V0cyB3ZXJlIG5vIGxvbmdlciBu
-ZWVkZWQsIHNvIHdlDQo+ID4gbmVlZGVkIHNvbWUgd2F5IGZvciB0aGUgc2VydmVyIHRvIHRlbGwg
-dGhlIGNsaWVudCB0byByZXR1cm4gc29tZSBsYXlvdXRzDQo+ID4gd2l0aG91dCBzcGVjaWZ5aW5n
-IHdoaWNoIG9uZXMuICBDQl9SRUNBTExfQU5ZIHNlZW1lZCBjdXN0b20tbWFkZSBmb3IgdGhpcw0K
-PiA+IHB1cnBvc2UsIHNvIHdlIHVzZWQgaXQuDQo+ID4NCj4gPiBJIGRvbid0IHRoaW5rIGl0IHdv
-dWxkIGJlIGFwcHJvcHJpYXRlIGZvciB0aGUgc2VydmVyIHRvIHJlY2FsbCBhbGwgbGF5b3V0cw0K
-PiA+IHdoZW4gaXQgb25seSBuZWVkcyBzb21lIG9mIHRoZW0gYmFjay4NCj4gDQo+IEFzIEkgc2Fp
-ZCBwcmV2aW91c2x5OiB0aGUgY3VycmVudCBjbGllbnQgaW1wbGVtZW50YXRpb24gZGVhbHMgd2l0
-aA0KPiBDQl9SRUNBTExfQU5ZIGJ5IGNhbGxpbmcgaW5pdGlhdGVfZmlsZV9kcmFpbmluZygpLCB3
-aGljaCBmb3JnZXRzIF9hbGxfDQo+IGxheW91dHMuIElmIHRoYXQgaXMgd2hhdCB3ZSB3YW50IHRv
-IGNvbnRpbnVlIHRvIHVzZSwgdGhlbiBzZW5kaW5nDQo+IGxheW91dHJldHVybiB3aXRoIExBWU9V
-VFJFVFVSTjRfQUxMIGlzIGFwcHJvcHJpYXRlLg0KPiBPdGhlcndpc2UsIHBsZWFzZSBmaXggdGhl
-IGNsaWVudCB0byBiZSBtb3JlIHNlbGVjdGl2ZSAoaW4gd2hpY2ggY2FzZQ0KPiBMQVlPVVRSRVRV
-Uk40X0ZJTEUgbWF5IGJlIG1vcmUgYXBwcm9wcmlhdGUpIGFuZCBwbGVhc2UgcmVtZW1iZXIgdG8N
-Cj4gcHJvdmlkZSBwZXJmb3JtYW5jZSBudW1iZXJzIHRvIGp1c3RpZnkgdGhlIG5lZWQgZm9yIG9w
-dGltaXNhdGlvbi4NCk9LLCBmYWlyIGVub3VnaC4gSSB3aWxsIHdvcmsgb24gdGhlIHNlbGVjdGl2
-ZSBsYXlvdXRyZXR1cm4gYXBwcm9hY2ggd2hlbiBJIGhhdmUgdGhlIHRpbWUgc2xvdC4gQW5kIEkg
-YWdyZWUgaXQgaXMgb2YgbG93IHByaW9yaXR5Lg0KDQpUaGFua3MsDQpUYW8NCg0K
+It's still a mystery to me because I use nfsroot all the time and it works
+for me.  But I was never able to get static addressing to work and have had
+to depend on the in-kernel dhcp.  And I have a different ethernet card that
+maybe resets faster.  I have run into problems later in the boot, when user
+space remounts the root, but that's not what you're seeing.
+
+As for a fix...  we're trying to move away from udp transport anyway.  Maybe
+someone should figure out a way to get it to work with tcp?  I have zero
+experience with nfs over udp, at least on linux.  Just for fun, have you
+tried tcp transport (proto=tcp)?
+
+As we move toward nfs4 someone will have to give some thought to nfsroot.
+It's hard to imagine we could put enough nfs4 cruft into the kernel (gssd,
+idmapd) to make it work.
