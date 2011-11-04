@@ -1,123 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13796 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752595Ab1KIS67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Nov 2011 13:58:59 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 2/7] NFSv4.1: cleanup init and reset of session slot tables
-Date: Wed,  9 Nov 2011 13:58:21 -0500
-Message-Id: <1320865106-1791-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1320865106-1791-1-git-send-email-andros@netapp.com>
-References: <1320865106-1791-1-git-send-email-andros@netapp.com>
+Received: from nm10.bullet.mail.ird.yahoo.com ([77.238.189.39]:36602 "HELO
+	nm10.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752871Ab1KDJoU convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 05:44:20 -0400
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+Message-ID: <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
+Date: Fri, 4 Nov 2011 09:44:18 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+>>  OK
 
-We are either initializing or resetting a session. Initialize or reset
-the session slot tables accordingly.
+>>  I've watched wireshark on cluster1 during start up of cluster2 (with 
+> linux-2.6.32) which first tries 10003 and then 10005.
+>>  The result is that cluster1 doesn't get a datagram for port 10003:
+>>  http://net.razik.de/linux/T5120/cluster2_NFSROOT_MOUNT.png
+>> 
+>>  The first ARP request in the screenshot came _after_ the <tag> in 
+> this kernel log:
+>>  [ 6492.807917] IP-Config: Complete:
+>>  [ 6492.807978]      device=eth0, addr=137.226.167.242, 
+> mask=255.255.255.224, gw=137.226.167.225,
+>>  [ 6492.808227]      host=cluster2, domain=, nis-domain=(none),
+>>  [ 6492.808312]      bootserver=255.255.255.255, rootserver=137.226.167.241, 
+> rootpath=
+>>  [ 6492.808570] Looking up port of RPC 100003/2 on 137.226.167.241
+>>  [ 6493.886014] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
+> Control: Rx
+>>  [ 6493.905840] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>>  <tag>
+>>  [ 6527.827055] rpcbind: server 137.226.167.241 not responding, timed out
+>>  [ 6527.827237] Root-NFS: Unable to get nfsd port number from server, using 
+> default
+>>  [ 6527.827353] Looking up port of RPC 100005/1 on 137.226.167.241
+>>  [ 6527.842212] VFS: Mounted root (nfs filesystem) on device 0:15.
+>> 
+>> 
+>>  So I don't think that it's a problem of the hardware between the 
+> machines.
+>>  There's no reason why I wouldn't see an ARP requests from cluster2 
+> which would have been sent _before_ the <tag> if there would be one. I 
+> think: cluster2 never sends a request to port 10003.
+>>  What do you think?
+> 
+> It agrees with our initial assessment that the first RPC request is failing.  
+> The RPC client never gets the request through cluster2's network stack 
+> because the NIC hasn't re-initialized when the request is sent.
+> 
+> It looks like your system does a PXE boot, which provides the IP configuration 
+> shown above.  But then the kernel resets the NIC.  During that reset, the kernel 
+> is attempting to contact the NFS server to mount the root file system.
+> 
+> We've set up NFSROOT to use UDP so that it will be relatively immune to 
+> these initialization order problems.  The RPC client should be retrying the lost 
+> request, but apparently it isn't.  What if you added "retrans=10" 
+> to cluster2's mount options?  (on the chance that mount option setting would 
+> be copied to the rpcbind client's RPC transport...)
+> 
+> IMO the correct way to fix this is to provide proper serialization in the 
+> networking layer so that RPC requests are not even attempted until the NIC is 
+> ready to carry traffic.  That may be a pipe dream though.
+> 
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   59 +++++++++++++++++++---------------------------------
- 1 files changed, 22 insertions(+), 37 deletions(-)
+I thank you three very much for your help! Now I'm sure that I haven't misconfigured anything...
+But I don't see a work around to get the NFSROOT mounted during start up of a kernel >=2.6.37 .
+It would be very sad with these nice Oracle (SUN) machines if no one could use them because of this bug.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b60fddf..ef098a8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5014,23 +5014,6 @@ out:
- 	return ret;
- }
- 
--/*
-- * Reset the forechannel and backchannel slot tables
-- */
--static int nfs4_reset_slot_tables(struct nfs4_session *session)
--{
--	int status;
--
--	status = nfs4_reset_slot_table(&session->fc_slot_table,
--			session->fc_attrs.max_reqs, 1);
--	if (status)
--		return status;
--
--	status = nfs4_reset_slot_table(&session->bc_slot_table,
--			session->bc_attrs.max_reqs, 0);
--	return status;
--}
--
- /* Destroy the slot table */
- static void nfs4_destroy_slot_tables(struct nfs4_session *session)
- {
-@@ -5076,29 +5059,35 @@ out:
- }
- 
- /*
-- * Initialize the forechannel and backchannel tables
-+ * Initialize or reset the forechannel and backchannel tables
-  */
--static int nfs4_init_slot_tables(struct nfs4_session *session)
-+static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- {
- 	struct nfs4_slot_table *tbl;
--	int status = 0;
-+	int status;
- 
--	tbl = &session->fc_slot_table;
-+	dprintk("--> %s\n", __func__);
-+	/* Fore channel */
-+	tbl = &ses->fc_slot_table;
- 	if (tbl->slots == NULL) {
--		status = nfs4_init_slot_table(tbl,
--				session->fc_attrs.max_reqs, 1);
-+		status = nfs4_init_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
-+		if (status) /* -ENOMEM */
-+			return status;
-+	} else {
-+		status = nfs4_reset_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
- 		if (status)
- 			return status;
- 	}
--
--	tbl = &session->bc_slot_table;
-+	/* Back channel */
-+	tbl = &ses->bc_slot_table;
- 	if (tbl->slots == NULL) {
--		status = nfs4_init_slot_table(tbl,
--				session->bc_attrs.max_reqs, 0);
-+		status = nfs4_init_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
- 		if (status)
--			nfs4_destroy_slot_tables(session);
--	}
--
-+			/* Fore and back channel share a connection so get
-+			 * both slot tables or neither */
-+			nfs4_destroy_slot_tables(ses);
-+	} else
-+		status = nfs4_reset_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
- 	return status;
- }
- 
-@@ -5286,13 +5275,9 @@ int nfs4_proc_create_session(struct nfs_client *clp)
- 	if (status)
- 		goto out;
- 
--	/* Init and reset the fore channel */
--	status = nfs4_init_slot_tables(session);
--	dprintk("slot table initialization returned %d\n", status);
--	if (status)
--		goto out;
--	status = nfs4_reset_slot_tables(session);
--	dprintk("slot table reset returned %d\n", status);
-+	/* Init or reset the session slot tables */
-+	status = nfs4_setup_session_slot_tables(session);
-+	dprintk("slot table setup returned %d\n", status);
- 	if (status)
- 		goto out;
- 
--- 
-1.7.6.4
+Do you know a kernel developer who maybe would try to write a patch for this problem?
+Or do you have another idea what I could do?
 
+Regards,
+Lukas
