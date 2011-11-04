@@ -1,128 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp02.citrix.com ([66.165.176.63]:28984 "EHLO
-	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932402Ab1KJLP0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 06:15:26 -0500
-Message-ID: <4EBBB247.40805@citrix.com>
-Date: Thu, 10 Nov 2011 11:15:19 +0000
-From: Andrew Cooper <andrew.cooper3@citrix.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
- TCP
-References: <4EBAC88D.40902@citrix.com> <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>
-In-Reply-To: <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from acsinet15.oracle.com ([141.146.126.227]:46874 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750813Ab1KDBGp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 21:06:45 -0400
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+Date: Thu, 3 Nov 2011 21:06:28 -0400
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+To: Lukas Razik <linux@razik.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/11/11 22:36, Chuck Lever wrote:
-> On Nov 9, 2011, at 1:38 PM, Andrew Cooper wrote:
->
->> Hello,
->>
->> I am debugging an issue for a customer whereby an NFS mount undergoes an
->> unexpected timeout and throws an EIO.
->>
->> Using synchronous mounts results in no problems whatsoever, whereas
->> using asynchronous mounts causes the problem to occur.
->>
->> The problem exists only on 10GiB networks: I can't repro on slower
->> networks at all, even if it is the same 10GiB network link limited to
->> 1GiB.  It reproduces on multiple versions of XenServer (both Xen 3 and
->> Xen 4) with a 2.6.32 based dom0 kernel multiple different 10GiB network
->> cards (be2net and bnx2x specifically tested).  It also reproduces
->> against multiple different netapp servers running different firmware
->> versions.  It also appears to reproduces with NFSv3 and NFSv4, although
->> the customer setup uses NFSv3
->>
->> The difference between mount commands are "noac" for the synchronous
->> case as opposed to "actimeo=0" for the asynchronous case.
->>
->> The /proc/mounts entry for async is:
->> 10.70.148.3:/vol/camb5e3b16tmp/82ab4a02-c10f-144a-e8c2-2ae04f213b2a
->> /var/run/sr-mount/82ab4a02-c10f-144a-e8c2-2ae04f213b2a nfs
->> rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
->> 0 0
->>
->> while the entry for sync is:
->> 10.70.148.3:/vol/camb5e3b15tmp/bc11aad3-b345-519f-1661-50e16bed6cdb
->> /var/run/sr-mount/bc11aad3-b345-519f-1661-50e16bed6cdb nfs
->> rw,sync,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
->> 0 0
-> Using the "soft" mount option means that any NFS level timeout is communicated to applications as EIO.  The client appears to be working as expected.  Do you see this problem if you replace the "soft" mount option with the "hard" mount option?
 
-I am aware of soft mounts and EIOs.  I forgot to say that it also
-appears with hard mounts, with the difference that the client eventually
-retries and continues.
+On Nov 3, 2011, at 7:09 PM, Lukas Razik wrote:
 
-> Also, timeo=133 is actually a 13.3 second timeout setting.  The value of the timeo= mount option is in deciseconds.  This is unreasonably short for RPC over TCP, especially if the server becomes loaded.  A more reasonable timeout setting for RPC over TCP is 600.
+> 
+> 
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> 
+>> On Nov 3, 2011, at 5:37 PM, Lukas Razik wrote:
+>> 
+>>>> On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
+>>> 
+>>>> 
+>>>>> Trond Myklebust wrote:
+>>>>> 
+>>>>>> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>>>>> [ 442.666732] NFS: unable to mount server 137.226.167.241, 
+>> error -60
+>>>>>> [ 442.666868] VFS: Unable to mount root fs via NFS, trying 
+>> floppy.
+>>>>>> [ 442.667032] VFS: Insert root floppy and press ENTER
+>>>>>> 
+>>>>>    Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
+>>>>>    basically the same one that you see in your 2.6.32 trace 
+>> (rpcbind:
+>>>>>    server 137.226.167.241 not responding, timed out) except that now 
+>> it is
+>>>>>    a fatal error.
+>>>>> 
+>>>>>    Any idea why the first RPC calls might be failing here? A switch
+>>>>>    misconfiguration or something like that perhaps?
+>>>>> 
+>>>>> Wasn't there a change in the way nfs mount options are handled 
+>> by the 
+>>>> kernel
+>>>>> for nfsroot about the time of 2.6.39?  Something about changing 
+>> from 
+>>>> default
+>>>>> udp to tcp maybe?
+>>>> 
+>>>> There was a change, but it was changed back to UDP because of problems 
+>> like 
+>>>> this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be 
+>> improved.
+>>>> 
+>>> 
+>>> I don't know if this was a tip to test newest 2.6.39 but as I wrote in 
+>> my first email
+>>>   http://thread.gmane.org/gmane.linux.nfs/44596
+>>> that's the output of linux-2.6.39.4 with "nfsdebug":
+>>> 
+>>> [ 407.571521] IP-Config: Complete:
+>>> [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
+>> gw=137.226.167.225,
+>>> [ 407.571793] host=cluster2, domain=, nis-domain=(none),
+>>> [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, 
+>> rootpath=
+>>> [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
+>>> [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+>>> [ 407.572927] NFS: parsing nfs mount option 'udp'
+>>> [ 407.572995] NFS: parsing nfs mount option 'nolock'
+>>> [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
+>>> [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
+>>> [ 407.573203] NFS: sending MNT request for 
+>> 137.226.167.241:/srv/nfs/cluster2
+>>> [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
+>> Control: Rx
+>>> [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>>> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
+>>> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
+>>> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
+>>> [ 442.667032] VFS: Insert root floppy and press ENTER
+>>> 
+>>> And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 
+>> which I've tested.
+>>> So if anybody of you all have an idea what I could try to do, I'll 
+>> follow...
+>> 
+>> Find out why the very first RPC on your system always fails.  As Trond says, the 
+>> only reason this worked on the older kernels is because NFSROOT fell back to a 
+>> default port for NFSD.  This is also broken behavior, but in your case it 
+>> happened to work so you never noticed it.
+>> 
+>> I seem to recall there's a way to set the NFS and RPC debugging flags on the 
+>> kernel command line so more information can be captured during boot.  But I 
+>> don't see it under Documentation/.
+>> 
+>> You could add a line in fs/nfs/nfsroot.c:nfs_root_debug() to set flags also in 
+>> the rpc_debug global variable to gather more information.
+>> 
+> 
+> OK
+> I've watched wireshark on cluster1 during start up of cluster2 (with linux-2.6.32) which first tries 10003 and then 10005.
+> The result is that cluster1 doesn't get a datagram for port 10003:
+> http://net.razik.de/linux/T5120/cluster2_NFSROOT_MOUNT.png
+> 
+> The first ARP request in the screenshot came _after_ the <tag> in this kernel log:
+> [ 6492.807917] IP-Config: Complete:
+> [ 6492.807978]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [ 6492.808227]      host=cluster2, domain=, nis-domain=(none),
+> [ 6492.808312]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [ 6492.808570] Looking up port of RPC 100003/2 on 137.226.167.241
+> [ 6493.886014] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [ 6493.905840] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> <tag>
+> [ 6527.827055] rpcbind: server 137.226.167.241 not responding, timed out
+> [ 6527.827237] Root-NFS: Unable to get nfsd port number from server, using default
+> [ 6527.827353] Looking up port of RPC 100005/1 on 137.226.167.241
+> [ 6527.842212] VFS: Mounted root (nfs filesystem) on device 0:15.
+> 
+> 
+> So I don't think that it's a problem of the hardware between the machines.
+> There's no reason why I wouldn't see an ARP requests from cluster2 which would have been sent _before_ the <tag> if there would be one. I think: cluster2 never sends a request to port 10003.
+> What do you think?
 
-I am aware of this as well.  The decisions about NFS options are done by
-a separate team who have justified their decision to use softmounts with
-a short timeo.  In our use case, the userland process needs to be
-informed very quickly if the server goes down so it can fail over to the
-backup.  13 seconds was considered the longest acceptable time for
-virtual machines to be without their disks.
+It agrees with our initial assessment that the first RPC request is failing.  The RPC client never gets the request through cluster2's network stack because the NIC hasn't re-initialized when the request is sent.
 
-The problem here is that some bug in the kernel is causing userland to
-think the server has gone down while it is perfectly healthy and running
-normally.
+It looks like your system does a PXE boot, which provides the IP configuration shown above.  But then the kernel resets the NIC.  During that reset, the kernel is attempting to contact the NFS server to mount the root file system.
 
-> The difference between what you describe as a "synchronous" mount and an "asynchronous" mount is that the asynchronous mount can send multiple NFS WRITE operations for one file on the wire to the server concurrently.  The "synchronous" mount throttles write traffic, and requires each WRITE to complete at the server before the client sends the next WRITE.  You can see that the "asynchronous" mount can send a lot more traffic per unit time, and thus may result in the client waiting longer for WRITEs to complete.
+We've set up NFSROOT to use UDP so that it will be relatively immune to these initialization order problems.  The RPC client should be retrying the lost request, but apparently it isn't.  What if you added "retrans=10" to cluster2's mount options?  (on the chance that mount option setting would be copied to the rpcbind client's RPC transport...)
 
-I did an analysis of the latency between write requests and replies.  At
-any one time in the stream, there are no more than 4 oustanding
-requests, and the maximum latency between request and reply (as seen by
-the client) is 50ms
-
->> The bug itself feels very like a timing issue to me.  It becomes
->> substantially easier to reproduce if the kernel has a high workload:
->> Different options involve disabling things like TSO offload on the
->> network card or dd'ing from /dev/urandom to /tmp, but the problem cant
->> be reproduced occasionally without any artificial extra workload.  The
->> problem itself can be reprodued with a simple dd from /dev/zero onto the
->> nfs mount, which proceeds to transfer at ~220MBps until the EIO is hit.
->>
->> I have analyzed the TCP stream using TCPdump and Wireshark.  Everything
->> appears fine, with no NFS errors at all.  However, the client sticks a
->> TCP FIN in the final continuation of one of its 64k block writes, in the
->> middle of writing the file.
->>
->> The server ACKs the outstanding packets, and sends a Write Reply
->> (without error), but does not send its own FIN.  Then, 15 seconds later,
->> the client sends a TCP RST, and throws an EIO back to userspace.
->>
->> I am aware that sending a RST after 15 seconds is expected behavior
->> following changeset 7d1e8255cf959fba7ee2317550dfde39f0b936ae, in an
->> attempt to prevent deadlocks for a half closed TCP connection.  I have
->> searched through the commit log all the way to tip, but can not find a
->> commit making any reference to problems similar to this.
->>
->> What I am struggling to work out is why the client is sending a FIN in
->> the middle of an otherwise fine and error-free NFS stream.  using
->> "rpcdebug -m rpc -s trans" only says "disconnected" without giving a
->> reason for disconnecting.
->>
->> Is there a different debug flag I can use to find out why NFS thinks it
->> needs to disconnect, or does anyone have any suggestions as to where I
->> should start debugging the code?  I suspect the problem is in the sunrpc
->> subsystem but I am not very familiar with code this high level in the
->> kernel.
->>
->> Any help greatly appreciated
->>
->> -- 
->> Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
->> T: +44 (0)1223 225 900, http://www.citrix.com
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+IMO the correct way to fix this is to provide proper serialization in the networking layer so that RPC requests are not even attempted until the NIC is ready to carry traffic.  That may be a pipe dream though.
 
 -- 
-Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
-T: +44 (0)1223 225 900, http://www.citrix.com
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
