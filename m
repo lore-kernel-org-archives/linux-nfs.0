@@ -1,226 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:35386 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:61899 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754538Ab1KWKxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Nov 2011 05:53:05 -0500
-Subject: [PATCH 3/6] SUNRPC: subscribe RPC clients to pipefs notifications
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Date: Wed, 23 Nov 2011 14:51:39 +0300
-Message-ID: <20111123105139.11077.92092.stgit@localhost6.localdomain6>
-In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
-References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1755898Ab1KDQZa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 12:25:30 -0400
+Subject: Re: GSSAPI Proxy initiative
+From: Simo Sorce <simo@redhat.com>
+To: Nico Williams <nico@cryptonector.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        dhowells <dhowells@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        krbdev <krbdev@mit.edu>
+In-Reply-To: <CAK3OfOgdgPEe85z152Hi06E8GwpZZJ9ch-Vq1GneMCW6nBZ6pw@mail.gmail.com>
+References: <1320269170.7734.585.camel@willson.li.ssimo.org>
+	 <CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
+	 <1320332310.7734.643.camel@willson.li.ssimo.org>
+	 <CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
+	 <1320337903.7734.670.camel@willson.li.ssimo.org>
+	 <CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
+	 <1320352784.18396.109.camel@lade.trondhjem.org>
+	 <CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
+	 <1320355818.7734.685.camel@willson.li.ssimo.org>
+	 <1320356806.18396.149.camel@lade.trondhjem.org>
+	 <1320357606.7734.697.camel@willson.li.ssimo.org>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
+	 <CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
+	 <CF863033-2ED4-4B68-B90C-54D315C67E27@netapp.com>
+	 <CAK3OfOgdgPEe85z152Hi06E8GwpZZJ9ch-Vq1GneMCW6nBZ6pw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 04 Nov 2011 12:25:25 -0400
+Message-ID: <1320423925.7734.732.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch subscribes RPC clients to RPC pipefs notifications. RPC clients
-notifier block is registering with pipefs initialization during SUNRPC module
-init.
-This notifier callback is responsible for RPC client PipeFS directory and GSS
-pipes creation. For pipes creation and destruction two additional callbacks
-were added to struct rpc_authops.
-Note that no locking required in notifier callback because PipeFS superblock
-pointer is passed as an argument from it's creation or destruction routine and
-thus we can be sure about it's validity.
+On Fri, 2011-11-04 at 11:20 -0500, Nico Williams wrote:
+> On Fri, Nov 4, 2011 at 10:55 AM, Adamson, Andy
+> <William.Adamson@netapp.com> wrote:
+> > On Nov 4, 2011, at 11:13 AM, Nico Williams wrote:
+> >> Ideally we could store in each RPCSEC_GSS context (not GSS context)
+> >> enough state on the client side to recover quickly when the server
+> >> reboots.
+> >
+> > You mean not to use the user Kerberos credential to re-establish the GSS context with the server?
+> 
+> Kerberos has tickets.  Other GSS mechanisms don't.  The GSS-API
+> completely abstracts this, so there's no way to extract a service
+> ticket and store it alongside the context (RPCSEC_GSS, in this case)
+> where you might need it in the future.  Storing all of a GSS-API
+> credential (think of a whole ccache) in kernel memory is not an option
+> either (ccaches have unbounded size).
+> 
+> Moreover, if we do this in a light-weight enough fashion we might be
+> able to handle all of the recovery path in kernel-mode, with no
+> dependence on upcalls.  But if we didn't by somehow extracting the
+> service ticket and storing it in the RPCSEC_GSS context we'd probably
+> still need to upcall to make use of it.
+> 
+> >> How would we do this?  Suppose the server gives the client a
+> >> "ticket", and a key much like the Kerberos ticket session key is
+> >> agreed upon or sent by the server -- that could be stored in the
+> >> RPCSEC_GSS context and could be used to recover it quickly for
+> >> recovery from server reboot.  I'm eliding a lot of details here, but I
+> >> believe this is fundamentally workable.
+> >
+> > So re-establish the RPCSEC_GSS session lost at the server on server reboot by storing enough additional info on the client?
+> 
+> Yes.  And not just server reboot.  The server is free to lose
+> RPCSEC_GSS contexts any time it wants to.
+> 
+> Basically, we need a fast re-authentication facility that is easy to
+> code entirely in kernel-mode.  Thinking of it this way I would not
+> reuse any Kerberos tech for this.  The server would return a ticket in
+> RPCSEC_GSS context establishment, but the ticket would consist of
+> {secret key index, encrypted octet string} and the server and client
+> would both compute a "session key" (for proving ticket possession)
+> with GSS_Pseudo_random() (this way we can make this work even when the
+> GSS mech only does MICs and not wrap tokens).  To re-authenticate the
+> client would send the ticket and an authenticator just like in
+> Kerberos, but simpler.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I agree this would be a very nice feature for fast reconnects in NFSv4,
+but it looks more and more out of topic.
+Time to move this sub-thread to the NFSv4 WG ?
 
----
- include/linux/sunrpc/auth.h    |    2 +
- net/sunrpc/auth_gss/auth_gss.c |   10 ++++--
- net/sunrpc/clnt.c              |   70 +++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/rpc_pipe.c          |   19 +++++++----
- net/sunrpc/sunrpc.h            |    2 +
- 5 files changed, 93 insertions(+), 10 deletions(-)
+Simo.
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index febc4db..83f493f 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -98,6 +98,8 @@ struct rpc_authops {
- 
- 	struct rpc_cred *	(*lookup_cred)(struct rpc_auth *, struct auth_cred *, int);
- 	struct rpc_cred *	(*crcreate)(struct rpc_auth*, struct auth_cred *, int);
-+	int			(*pipes_create)(struct rpc_auth *);
-+	void			(*pipes_destroy)(struct rpc_auth *);
- };
- 
- struct rpc_credops {
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 248acd0..66293dc 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -784,8 +784,10 @@ static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
- 	struct gss_auth *gss_auth;
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
--	rpc_unlink(gss_auth->pipe[0]->dentry);
--	rpc_unlink(gss_auth->pipe[1]->dentry);
-+	if (gss_auth->pipe[0]->dentry)
-+		rpc_unlink(gss_auth->pipe[0]->dentry);
-+	if (gss_auth->pipe[1]->dentry)
-+		rpc_unlink(gss_auth->pipe[1]->dentry);
- }
- 
- static int gss_pipes_dentries_create(struct rpc_auth *auth)
-@@ -1628,7 +1630,9 @@ static const struct rpc_authops authgss_ops = {
- 	.create		= gss_create,
- 	.destroy	= gss_destroy,
- 	.lookup_cred	= gss_lookup_cred,
--	.crcreate	= gss_create_cred
-+	.crcreate	= gss_create_cred,
-+	.pipes_create	= gss_pipes_dentries_create,
-+	.pipes_destroy	= gss_pipes_dentries_destroy,
- };
- 
- static const struct rpc_credops gss_credops = {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 008c755..61c76ae 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -95,8 +95,11 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
- 
- static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- {
--	if (clnt->cl_path.dentry)
-+	if (clnt->cl_path.dentry) {
-+		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
-+			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
- 		rpc_remove_client_dir(clnt->cl_path.dentry);
-+	}
- 	clnt->cl_path.dentry = NULL;
- }
- 
-@@ -174,6 +177,71 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- 	return 0;
- }
- 
-+static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
-+				struct super_block *sb)
-+{
-+	struct dentry *dentry;
-+	int err = 0;
-+
-+	switch (event) {
-+	case RPC_PIPEFS_MOUNT:
-+		if (clnt->cl_program->pipe_dir_name == NULL)
-+			break;
-+		dentry = rpc_setup_pipedir_sb(sb, clnt,
-+					      clnt->cl_program->pipe_dir_name);
-+		BUG_ON(dentry == NULL);
-+		if (IS_ERR(dentry))
-+			return PTR_ERR(dentry);
-+		clnt->cl_path.dentry = dentry;
-+		if (clnt->cl_auth->au_ops->pipes_create) {
-+			err = clnt->cl_auth->au_ops->pipes_create(clnt->cl_auth);
-+			if (err)
-+				__rpc_clnt_remove_pipedir(clnt);
-+		}
-+		break;
-+	case RPC_PIPEFS_UMOUNT:
-+		__rpc_clnt_remove_pipedir(clnt);
-+		break;
-+	default:
-+		printk(KERN_ERR "%s: unknown event: %ld\n", __func__, event);
-+		return -ENOTSUPP;
-+	}
-+	return err;
-+}
-+
-+static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
-+			    void *ptr)
-+{
-+	struct super_block *sb = ptr;
-+	struct rpc_clnt *clnt;
-+	int error = 0;
-+
-+	spin_lock(&rpc_client_lock);
-+	list_for_each_entry(clnt, &all_clients, cl_clients) {
-+		if (clnt->cl_xprt->xprt_net != sb->s_fs_info)
-+			continue;
-+		error = __rpc_pipefs_event(clnt, event, sb);
-+		if (error)
-+			break;
-+	}
-+	spin_unlock(&rpc_client_lock);
-+	return error;
-+}
-+
-+static struct notifier_block rpc_clients_block = {
-+	.notifier_call	= rpc_pipefs_event,
-+};
-+
-+int rpc_clients_notifier_register(void)
-+{
-+	return rpc_pipefs_notifier_register(&rpc_clients_block);
-+}
-+
-+void rpc_clients_notifier_unregister(void)
-+{
-+	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
-+}
-+
- static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
- {
- 	struct rpc_program	*program = args->program;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 8e59580..1ea0dcf 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -918,7 +918,7 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 
- /**
-  * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-- * @dentry: directory to remove
-+ * @clnt: rpc client
-  */
- int rpc_remove_client_dir(struct dentry *dentry)
- {
-@@ -1169,17 +1169,24 @@ int register_rpc_pipefs(void)
- 				init_once);
- 	if (!rpc_inode_cachep)
- 		return -ENOMEM;
-+	err = rpc_clients_notifier_register();
-+	if (err)
-+		goto err_notifier;
- 	err = register_filesystem(&rpc_pipe_fs_type);
--	if (err) {
--		kmem_cache_destroy(rpc_inode_cachep);
--		return err;
--	}
--
-+	if (err)
-+		goto err_register;
- 	return 0;
-+
-+err_register:
-+	rpc_clients_notifier_unregister();
-+err_notifier:
-+	kmem_cache_destroy(rpc_inode_cachep);
-+	return err;
- }
- 
- void unregister_rpc_pipefs(void)
- {
-+	rpc_clients_notifier_unregister();
- 	kmem_cache_destroy(rpc_inode_cachep);
- 	unregister_filesystem(&rpc_pipe_fs_type);
- }
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 90c292e..14c9f6d 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -47,5 +47,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
- 		    struct page *headpage, unsigned long headoffset,
- 		    struct page *tailpage, unsigned long tailoffset);
- 
-+int rpc_clients_notifier_register(void);
-+void rpc_clients_notifier_unregister(void);
- #endif /* _NET_SUNRPC_SUNRPC_H */
- 
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
