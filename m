@@ -1,122 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52018 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:18850 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756461Ab1KHW7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 17:59:09 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] nfsd4: hash lockowners to simplify RELEASE_LOCKOWNER
-Date: Tue,  8 Nov 2011 17:59:03 -0500
-Message-Id: <1320793145-29070-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20111108225751.GD27413@fieldses.org>
-References: <20111108225751.GD27413@fieldses.org>
+	id S1753981Ab1KHPGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 10:06:43 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4: include bitmap in nfsv4 get acl data
+Date: Sat,  5 Nov 2011 03:21:52 -0400
+Message-Id: <1320477712-1717-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-Hash lockowners on just the owner string rather than on (owner, inode).
-This makes the owner-string lookup needed for RELEASE_LOCKOWNER simpler
-(currently it's doing at a linear search through the entire hash
-table!).  That may come at the expense of making (owner, inode) lookups
-more expensive if a client reuses the same lockowner across multiple
-files.  We might add a separate lookup for that.
+The NFSv4 bitmap size is unbounded: a server can return an arbitrary
+sized bitmap in an FATTR4_WORD0_ACL request.  Replace using the
+nfs4_fattr_bitmap_maxsz as a guess to the maximum bitmask returned by a server
+with the inclusion of the bitmap (xdr length plus bitmasks) and the acl data
+xdr length to the (cached) acl page data.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+This is a general solution to commit e5012d1f "NFSv4.1: update
+nfs4_fattr_bitmap_maxsz" and fixes hitting a BUG_ON in xdr_shrink_bufhead
+when getting ACLs.
+
+Cc:stable@kernel.org
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   42 ++++++++++++++----------------------------
- 1 files changed, 14 insertions(+), 28 deletions(-)
+ fs/nfs/nfs4proc.c |   20 ++++++++++++++++++--
+ fs/nfs/nfs4xdr.c  |   15 ++++++++++++---
+ 2 files changed, 30 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1d6812d..eec9900 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3746,15 +3746,6 @@ last_byte_offset(u64 start, u64 len)
- 	return end > start ? end - 1: NFS4_MAX_UINT64;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index deb88d9..97014dd 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3671,6 +3671,22 @@ static void nfs4_zap_acl_attr(struct inode *inode)
+ 	nfs4_set_cached_acl(inode, NULL);
  }
  
--static inline unsigned int
--lock_ownerstr_hashval(struct inode *inode, u32 cl_id,
--		struct xdr_netobj *ownername)
--{
--	return (file_hashval(inode) + cl_id
--			+ opaque_hashval(ownername->data, ownername->len))
--		& LOCK_HASH_MASK;
--}
--
- static struct list_head	lock_ownerstr_hashtbl[LOCK_HASH_SIZE];
- 
- /*
-@@ -3824,7 +3815,7 @@ static struct nfs4_lockowner *
- find_lockowner_str(struct inode *inode, clientid_t *clid,
- 		struct xdr_netobj *owner)
- {
--	unsigned int hashval = lock_ownerstr_hashval(inode, clid->cl_id, owner);
-+	unsigned int hashval = open_ownerstr_hashval(clid->cl_id, owner);
- 	struct nfs4_lockowner *lo;
- 	struct nfs4_stateowner *op;
- 
-@@ -3847,7 +3838,7 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
-  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
-  * occurred. 
-  *
-- * strhashval = lock_ownerstr_hashval 
-+ * strhashval = open_ownerstr_hashval
-  */
- 
- static struct nfs4_lockowner *
-@@ -3922,7 +3913,7 @@ __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct n
- 				struct nfs4_ol_stateid, st_perstateowner);
- 		return nfs_ok;
- 	}
--	strhashval = lock_ownerstr_hashval(fi->fi_inode, cl->cl_clientid.cl_id,
-+	strhashval = open_ownerstr_hashval(cl->cl_clientid.cl_id,
- 			&lock->v.new.owner);
- 	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 	if (lo == NULL)
-@@ -4286,7 +4277,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	struct nfs4_ol_stateid *stp;
- 	struct xdr_netobj *owner = &rlockowner->rl_owner;
- 	struct list_head matches;
--	int i;
-+	unsigned int hashval = open_ownerstr_hashval(clid->cl_id, owner);
- 	__be32 status;
- 
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
-@@ -4301,22 +4292,17 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	nfs4_lock_state();
- 
- 	status = nfserr_locks_held;
--	/* XXX: we're doing a linear search through all the lockowners.
--	 * Yipes!  For now we'll just hope clients aren't really using
--	 * release_lockowner much, but eventually we have to fix these
--	 * data structures. */
- 	INIT_LIST_HEAD(&matches);
--	for (i = 0; i < LOCK_HASH_SIZE; i++) {
--		list_for_each_entry(sop, &lock_ownerstr_hashtbl[i], so_strhash) {
--			if (!same_owner_str(sop, owner, clid))
--				continue;
--			list_for_each_entry(stp, &sop->so_stateids,
--					st_perstateowner) {
--				lo = lockowner(sop);
--				if (check_for_locks(stp->st_file, lo))
--					goto out;
--				list_add(&lo->lo_list, &matches);
--			}
++/*
++ * The bitmap xdr length, bitmasks, and the attr xdr length are stored in
++ * the acl cache to handle variable length bitmasks. Just copy the acl data.
++ */
++static void nfs4_copy_acl(char *buf, char *acl_data, size_t acl_len)
++{
++	__be32 *q, *p = (__be32 *)acl_data;
++	int32_t len;
 +
-+	list_for_each_entry(sop, &lock_ownerstr_hashtbl[hashval], so_strhash) {
-+		if (!same_owner_str(sop, owner, clid))
-+			continue;
-+		list_for_each_entry(stp, &sop->so_stateids,
-+				st_perstateowner) {
-+			lo = lockowner(sop);
-+			if (check_for_locks(stp->st_file, lo))
-+				goto out;
-+			list_add(&lo->lo_list, &matches);
- 		}
++	len = be32_to_cpup(p); /* number of bitmasks */
++	len += 2;  /* add words for bitmap and attr xdr len */
++	q = p + len;
++	len = len << 2; /* convert to bytes for acl_len math */
++	memcpy(buf, (char *)q, acl_len - len);
++}
++
+ static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_t buflen)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -3688,7 +3704,7 @@ static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_
+ 	ret = -ERANGE; /* see getxattr(2) man page */
+ 	if (acl->len > buflen)
+ 		goto out;
+-	memcpy(buf, acl->data, acl->len);
++	nfs4_copy_acl(buf, acl->data, acl->len);
+ out_len:
+ 	ret = acl->len;
+ out:
+@@ -3763,7 +3779,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		if (res.acl_len > buflen)
+ 			goto out_free;
+ 		if (localpage)
+-			memcpy(buf, resp_buf, res.acl_len);
++			nfs4_copy_acl(buf, resp_buf, res.acl_len);
  	}
- 	/* Clients probably won't expect us to return with some (but not all)
+ 	ret = res.acl_len;
+ out_free:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index f9fd96d..9c07380 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2513,7 +2513,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+-	replen = hdr.replen + op_decode_hdr_maxsz + nfs4_fattr_bitmap_maxsz + 1;
++	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+ 	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
+ 
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+@@ -4955,7 +4955,7 @@ decode_restorefh(struct xdr_stream *xdr)
+ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 		size_t *acl_len)
+ {
+-	__be32 *savep;
++	__be32 *savep, *bm_p;
+ 	uint32_t attrlen,
+ 		 bitmap[3] = {0};
+ 	struct kvec *iov = req->rq_rcv_buf.head;
+@@ -4964,6 +4964,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	*acl_len = 0;
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+ 		goto out;
++	bm_p = xdr->p;
+ 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
+ 		goto out;
+ 	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
+@@ -4972,12 +4973,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+ 		return -EIO;
+ 	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
+-		size_t hdrlen;
++		size_t hdrlen, len;
+ 		u32 recvd;
+ 
++		/*The bitmap (xdr len + bitmasks) and the attr xdr len words
++		 * are stored with the acl data to handle the problem of
++		 * variable length bitmasks.*/
++		xdr->p = bm_p;
++		len = be32_to_cpup(bm_p);
++		len += 2; /* add bitmap and attr xdr len words */
++
+ 		/* We ignore &savep and don't do consistency checks on
+ 		 * the attr length.  Let userspace figure it out.... */
+ 		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
++		attrlen += len << 2; /* attrlen is in bytes */
+ 		recvd = req->rq_rcv_buf.len - hdrlen;
+ 		if (attrlen > recvd) {
+ 			dprintk("NFS: server cheating in getattr"
 -- 
-1.7.5.4
+1.7.6.4
 
