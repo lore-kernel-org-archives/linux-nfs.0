@@ -1,85 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:53780 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751954Ab1KDBeu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 21:34:50 -0400
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>, <bhalevy@tonian.com>, <bharrosh@panasas.com>
-CC: <linux-nfs@vger.kernel.org>, <rees@umich.edu>
-Date: Thu, 3 Nov 2011 21:33:58 -0400
-Subject: RE: [PATCH 2/2] nfs41: handle BLK_LAYOUT CB_RECALL_ANY
-Message-ID: <F19688880B763E40B28B2B462677FBF805C4B73157@MX09A.corp.emc.com>
-References: <1320074136-3087-1-git-send-email-bergwolf@gmail.com>
-	 <1320074136-3087-2-git-send-email-bergwolf@gmail.com>
-	 <1320076148.4714.4.camel@lade.trondhjem.org>
-	 <CA+a=Yy4L4GDsQL6hHG4DRLNPmvkMBpk4mW9ofWbQob+z2a1G2A@mail.gmail.com>
-	 <1320079501.4714.9.camel@lade.trondhjem.org> <4EAED61B.7030405@tonian.com>
-	 <1320082964.4714.23.camel@lade.trondhjem.org> <4EAEE173.80306@tonian.com>
-	 <1320085212.4714.48.camel@lade.trondhjem.org>
-	 <20111031183131.GA1925@umich.edu>
- <1320086399.4714.60.camel@lade.trondhjem.org>
- <F19688880B763E40B28B2B462677FBF805C4B72E0C@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805C4B72E0C@MX09A.corp.emc.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:17391 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752978Ab1KECce convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 22:32:34 -0400
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Lukas Razik <linux@razik.name>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Fri, 04 Nov 2011 22:31:17 -0400
+In-Reply-To: <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
+	  <1320353685.18396.119.camel@lade.trondhjem.org>
+	  <20111103211100.GA8393@umich.edu>
+	  <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
+	  <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
+	  <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
+	  <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
+	  <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
+	  <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
+	  <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
+	  <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com>
+	 <1320455965.2750.9.camel@lade.trondhjem.org>
+	 <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1320460277.2750.20.camel@lade.trondhjem.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksIA0KDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4LW5mcy1v
-d25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwu
-b3JnXQ0KPiBPbiBCZWhhbGYgT2YgdGFvLnBlbmdAZW1jLmNvbQ0KPiBTZW50OiBUdWVzZGF5LCBO
-b3ZlbWJlciAwMSwgMjAxMSAxOjI5IFBNDQo+IFRvOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bTsgcmVlc0B1bWljaC5lZHUNCj4gQ2M6IGJoYWxldnlAdG9uaWFuLmNvbTsgYmVyZ3dvbGZAZ21h
-aWwuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOw0KPiBuZnN2NEBpZXRmLm9yZw0KPiBT
-dWJqZWN0OiBSRTogW1BBVENIIDIvMl0gbmZzNDE6IGhhbmRsZSBCTEtfTEFZT1VUIENCX1JFQ0FM
-TF9BTlkNCj4gDQo+IEhpLCBUcm9uZCwNCj4gDQo+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0t
-LS0NCj4gPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbV0NCj4gPiBTZW50OiBUdWVzZGF5LCBOb3ZlbWJlciAwMSwgMjAxMSAyOjQwIEFNDQo+
-ID4gVG86IEppbSBSZWVzDQo+ID4gQ2M6IEJlbm55IEhhbGV2eTsgUGVuZyBUYW87IGxpbnV4LW5m
-c0B2Z2VyLmtlcm5lbC5vcmc7IFBlbmcsIFRhbzsgbmZzdjQgbGlzdA0KPiA+IFN1YmplY3Q6IFJl
-OiBbUEFUQ0ggMi8yXSBuZnM0MTogaGFuZGxlIEJMS19MQVlPVVQgQ0JfUkVDQUxMX0FOWQ0KPiA+
-DQo+ID4gT24gTW9uLCAyMDExLTEwLTMxIGF0IDE0OjMxIC0wNDAwLCBKaW0gUmVlcyB3cm90ZToN
-Cj4gPiA+IFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+DQo+ID4gPiAgIEkgZG9uJ3QgbmVj
-ZXNzYXJpbHkgZGlzYWdyZWUgd2l0aCB3aGF0IHlvdSBhcmUgc2F5aW5nLCBidXQgSSBoYXZlIHll
-dCB0bw0KPiA+ID4gICBzZWUgYSBzaW5nbGUgc2VydmVyIHNpZGUgaW1wbGVtZW50YXRpb24gb2Yg
-Q0JfUkVDQUxMX0FOWSwgbGV0IGFsb25lIGFueQ0KPiA+ID4gICBudW1iZXJzIHRoYXQgaW5kaWNh
-dGUgcGVyZm9ybWFuY2Ugb3IgcmVzcG9uc2l2ZW5lc3MgcHJvYmxlbXMgcmVzdWx0aW5nDQo+ID4g
-PiAgIGZyb20gb3VyIGV4aXN0aW5nIGNsaWVudC1zaWRlIGltcGxlbWVudGF0aW9uLg0KPiA+ID4N
-Cj4gPiA+ICAgSSB0aGVyZWZvcmUgZmluZCBpdCBoYXJkIHRvIHVuZGVyc3RhbmQgd2h5IG9wdGlt
-aXNpbmcgdGhpcyBwYXJ0aWN1bGFyDQo+ID4gPiAgIGNvZGUgaXMgc3VjaCBhIGhpZ2ggcHJpb3Jp
-dHksIG9yIHdoeSBhIHBhdGNoIHRoYXQgaXMgYWRkaW5nIHBlci1maWxlDQo+ID4gPiAgIGxheW91
-dHJldHVybnMgdG8gaW5pdGlhdGVfYnVsa19kcmFpbmluZygpIGlzIGdvaW5nIHRvIGhlbHAgYW55
-dGhpbmcgYXQNCj4gPiA+ICAgYWxsLg0KPiA+ID4NCj4gPiA+IFRlc3RpbmcgYmV0d2VlbiB0aGUg
-bGludXggYmxvY2sgbGF5b3V0IGNsaWVudCBhbmQgdGhlIEVNQyBibG9jayBsYXlvdXQNCj4gPiA+
-IHNlcnZlciByZXZlYWxlZCBhIGRlYWRsb2NrIHdoZW4gdGhlIHNlcnZlciBoYWQgaGFuZGVkIG91
-dCBzb21lIG51bWJlciBvZg0KPiA+ID4gbGF5b3V0cyBhbmQgY291bGRuJ3QgaGFuZCBvdXQgYW55
-IG1vcmUuICBTbyBub3cgdGhlIEVNQyBibG9jayBsYXlvdXQgc2VydmVyDQo+ID4gPiBpbXBsZW1l
-bnRzIENCX1JFQ0FMTF9BTlkuICBTbyB5ZXMsIHRoaXMgc29sdmVzIGEgcmVhbCB3b3JsZCBwcm9i
-bGVtLCBhbmQNCj4gPiA+IHllcywgdGhlcmUgaXMgYSBzZXJ2ZXIgdGhhdCBpbXBsZW1lbnRzIHRo
-aXMuDQo+ID4gPg0KPiA+ID4gV2UgaGFkIHNvbWUgZGlzY3Vzc2lvbnMgYXQgdGhlIHRpbWUsIGFu
-ZCBJIGRvbid0IHJlbWVtYmVyIGlmIHRob3NlIHdlcmUgb24NCj4gPiA+IHRoZSBsaW51eC1uZnMg
-bGlzdCBvciBpbiBzb21lIG90aGVyIGZvcnVtLiAgV2UgZGVjaWRlZCB0aGF0IHRoZSBjbGllbnQg
-d2FzDQo+ID4gPiBpbiB0aGUgYmVzdCBwb3NpdGlvbiB0byBkZWNpZGUgd2hpY2ggbGF5b3V0cyB3
-ZXJlIG5vIGxvbmdlciBuZWVkZWQsIHNvIHdlDQo+ID4gPiBuZWVkZWQgc29tZSB3YXkgZm9yIHRo
-ZSBzZXJ2ZXIgdG8gdGVsbCB0aGUgY2xpZW50IHRvIHJldHVybiBzb21lIGxheW91dHMNCj4gPiA+
-IHdpdGhvdXQgc3BlY2lmeWluZyB3aGljaCBvbmVzLiAgQ0JfUkVDQUxMX0FOWSBzZWVtZWQgY3Vz
-dG9tLW1hZGUgZm9yIHRoaXMNCj4gPiA+IHB1cnBvc2UsIHNvIHdlIHVzZWQgaXQuDQo+ID4gPg0K
-PiA+ID4gSSBkb24ndCB0aGluayBpdCB3b3VsZCBiZSBhcHByb3ByaWF0ZSBmb3IgdGhlIHNlcnZl
-ciB0byByZWNhbGwgYWxsIGxheW91dHMNCj4gPiA+IHdoZW4gaXQgb25seSBuZWVkcyBzb21lIG9m
-IHRoZW0gYmFjay4NCj4gPg0KPiA+IEFzIEkgc2FpZCBwcmV2aW91c2x5OiB0aGUgY3VycmVudCBj
-bGllbnQgaW1wbGVtZW50YXRpb24gZGVhbHMgd2l0aA0KPiA+IENCX1JFQ0FMTF9BTlkgYnkgY2Fs
-bGluZyBpbml0aWF0ZV9maWxlX2RyYWluaW5nKCksIHdoaWNoIGZvcmdldHMgX2FsbF8NCj4gPiBs
-YXlvdXRzLiBJZiB0aGF0IGlzIHdoYXQgd2Ugd2FudCB0byBjb250aW51ZSB0byB1c2UsIHRoZW4g
-c2VuZGluZw0KPiA+IGxheW91dHJldHVybiB3aXRoIExBWU9VVFJFVFVSTjRfQUxMIGlzIGFwcHJv
-cHJpYXRlLg0KPiA+IE90aGVyd2lzZSwgcGxlYXNlIGZpeCB0aGUgY2xpZW50IHRvIGJlIG1vcmUg
-c2VsZWN0aXZlIChpbiB3aGljaCBjYXNlDQo+ID4gTEFZT1VUUkVUVVJONF9GSUxFIG1heSBiZSBt
-b3JlIGFwcHJvcHJpYXRlKSBhbmQgcGxlYXNlIHJlbWVtYmVyIHRvDQo+ID4gcHJvdmlkZSBwZXJm
-b3JtYW5jZSBudW1iZXJzIHRvIGp1c3RpZnkgdGhlIG5lZWQgZm9yIG9wdGltaXNhdGlvbi4NCj4g
-T0ssIGZhaXIgZW5vdWdoLiBJIHdpbGwgd29yayBvbiB0aGUgc2VsZWN0aXZlIGxheW91dHJldHVy
-biBhcHByb2FjaCB3aGVuIEkgaGF2ZSB0aGUNCj4gdGltZSBzbG90LiBBbmQgSSBhZ3JlZSBpdCBp
-cyBvZiBsb3cgcHJpb3JpdHkuDQpJIGhlYXJkIHRoYXQgdGhlcmUgYXJlIHNvbWUgZGlzY3Vzc2lv
-bnMgYWJvdXQgdGhpcyBpbiBsYXN0IHBuZnMgTGludXggc3RhdHVzIG1lZXRpbmcuIFNvcnJ5IEkg
-d2Fzbid0IGluIHRoZSBtZWV0aW5nIGJ1dCBwbGVhc2Ugc29tZW9uZSB1cGRhdGUgYnJpZWZseSB3
-aGF0IHRoZSBjb25jbHVzaW9uIGlzPyBJcyB0aGUgYWJvdmUgc29sdXRpb24gc3RpbGwgdmFsaWQ/
-IEp1c3QgZG9uJ3Qgd2FudCB0byBnbyB3cm9uZyBkaXJlY3Rpb24gYWdhaW4uLi4gOi1QDQoNClRo
-YW5rcywNClRhbw0K
+On Sat, 2011-11-05 at 02:14 +0000, Lukas Razik wrote: 
+> ***IMPORTANT HINT***
+> 
+> In the test belowI've tried to ping the NFS client (cluster2) as soon as I've got the
+> 
+> ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> message.
+> 
+> 
+> And at first I've got no answers from the client. But 10-20sec later I've got pongs back.
+> So the NIC comes up some seconds later than the message "link becomes ready" is shown...
+> In the case of 'mountproto=tcp' it comes up after the kernel panic. So that's much too late.
+> 
+
+So, once again...
+
+What kind of switch is this client connected to, and how is that switch
+configured?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
