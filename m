@@ -1,759 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:53862 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752803Ab1KNK0e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 05:26:34 -0500
-Received: by fagn18 with SMTP id n18so2844718fag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 02:26:33 -0800 (PST)
-Message-ID: <4EC0ECD2.20105@tonian.com>
-Date: Mon, 14 Nov 2011 12:26:26 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from nm1-vm0.bullet.mail.ird.yahoo.com ([77.238.189.95]:42716 "HELO
+	nm1-vm0.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752180Ab1KECOP convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Nov 2011 22:14:15 -0400
+References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>  <1320353685.18396.119.camel@lade.trondhjem.org>  <20111103211100.GA8393@umich.edu>  <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>  <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>  <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>  <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>  <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>  <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>  <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>  <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com> <1320455965.2750.9.camel@lade.trondhjem.org>
+Message-ID: <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
+Date: Sat, 5 Nov 2011 02:14:12 +0000 (GMT)
+From: Lukas Razik <linux@razik.name>
+Reply-To: Lukas Razik <linux@razik.name>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <1320455965.2750.9.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: tao.peng@emc.com
-CC: bjschuma@netapp.com, bergwolf@gmail.com, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: [PATCH-v2 7/7] pnfsblock: alloc short extent before submit bio
-References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com> <1320938728-3715-8-git-send-email-bergwolf@gmail.com> <4EBBFF3F.8000509@netapp.com> <F19688880B763E40B28B2B462677FBF805DD054CAA@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805DD054CAA@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tao, The patch below doesn't apply.
-Can you please re-send a clean patch, with tab indents (vs. spaces).
+***IMPORTANT HINT***
 
-Thanks,
+In the test belowI've tried to ping the NFS client (cluster2) as soon as I've got the
 
-Benny
+ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+message.
 
-On 2011-11-11 04:05, tao.peng@emc.com wrote:
-> Hi, Bryan,
-> 
->> -----Original Message-----
->> From: Bryan Schumaker [mailto:bjschuma@netapp.com]
->> Sent: Friday, November 11, 2011 12:44 AM
->> To: Peng Tao
->> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; bhalevy@tonian.com;
->> Peng, Tao
->> Subject: Re: [PATCH-v2 7/7] pnfsblock: alloc short extent before submit bio
->>
->> On 11/10/2011 10:25 AM, Peng Tao wrote:
->>> As discussed earlier, it is better for block client to allocate memory for
->>> tracking extents state before submitting bio. So the patch does it by allocating
->>> a short_extent for every INVALID extent touched by write pagelist and for
->>> every zeroing page we created, saving them in layout header. Then in end_io we
->>> can just use them to create commit list items and avoid memory allocation there.
->>>
->>> Signed-off-by: Peng Tao <peng_tao@emc.com>
->>> ---
->>>  fs/nfs/blocklayout/blocklayout.c |   74
->> +++++++++++++++++++++++++++++--------
->>>  fs/nfs/blocklayout/blocklayout.h |    9 ++++-
->>>  fs/nfs/blocklayout/extents.c     |   62 +++++++++++++++++++++++++++-----
->>>  3 files changed, 119 insertions(+), 26 deletions(-)
->>>
->>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->>> index 3eaea2b..3fdfb29 100644
->>> --- a/fs/nfs/blocklayout/blocklayout.c
->>> +++ b/fs/nfs/blocklayout/blocklayout.c
->>> @@ -90,8 +90,9 @@ static int is_writable(struct pnfs_block_extent *be, sector_t
->> isect)
->>>   */
->>>  struct parallel_io {
->>>     struct kref refcnt;
->>> -   void (*pnfs_callback) (void *data);
->>> +   void (*pnfs_callback) (void *data, int num_se);
->>>     void *data;
->>> +   int bse_count;
->>>  };
->>>
->>>  static inline struct parallel_io *alloc_parallel(void *data)
->>> @@ -102,6 +103,7 @@ static inline struct parallel_io *alloc_parallel(void *data)
->>>     if (rv) {
->>>             rv->data = data;
->>>             kref_init(&rv->refcnt);
->>> +           rv->bse_count = 0;
->>>     }
->>>     return rv;
->>>  }
->>> @@ -116,7 +118,7 @@ static void destroy_parallel(struct kref *kref)
->>>     struct parallel_io *p = container_of(kref, struct parallel_io, refcnt);
->>>
->>>     dprintk("%s enter\n", __func__);
->>> -   p->pnfs_callback(p->data);
->>> +   p->pnfs_callback(p->data, p->bse_count);
->>>     kfree(p);
->>>  }
->>>
->>> @@ -211,7 +213,7 @@ static void bl_read_cleanup(struct work_struct *work)
->>>  }
->>>
->>>  static void
->>> -bl_end_par_io_read(void *data)
->>> +bl_end_par_io_read(void *data, int unused)
->>>  {
->>>     struct nfs_read_data *rdata = data;
->>>
->>> @@ -312,6 +314,7 @@ static void mark_extents_written(struct pnfs_block_layout
->> *bl,
->>>  {
->>>     sector_t isect, end;
->>>     struct pnfs_block_extent *be;
->>> +   struct pnfs_block_short_extent *se;
->>>
->>>     dprintk("%s(%llu, %u)\n", __func__, offset, count);
->>>     if (count == 0)
->>> @@ -324,8 +327,11 @@ static void mark_extents_written(struct
->> pnfs_block_layout *bl,
->>>             be = bl_find_get_extent(bl, isect, NULL);
->>>             BUG_ON(!be); /* FIXME */
->>>             len = min(end, be->be_f_offset + be->be_length) - isect;
->>> -           if (be->be_state == PNFS_BLOCK_INVALID_DATA)
->>> -                   bl_mark_for_commit(be, isect, len); /* What if fails? */
->>> +           if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
->>> +                   se = bl_pop_one_short_extent(be->be_inval);
->>> +                   BUG_ON(!se);
->>> +                   bl_mark_for_commit(be, isect, len, se);
->>> +           }
->>>             isect += len;
->>>             bl_put_extent(be);
->>>     }
->>> @@ -347,7 +353,8 @@ static void bl_end_io_write_zero(struct bio *bio, int err)
->>>             end_page_writeback(page);
->>>             page_cache_release(page);
->>>     } while (bvec >= bio->bi_io_vec);
->>> -   if (!uptodate) {
->>> +
->>> +   if (unlikely(!uptodate)) {
->>>             if (!wdata->pnfs_error)
->>>                     wdata->pnfs_error = -EIO;
->>>             pnfs_set_lo_fail(wdata->lseg);
->>> @@ -356,7 +363,6 @@ static void bl_end_io_write_zero(struct bio *bio, int err)
->>>     put_parallel(par);
->>>  }
->>>
->>> -/* This is basically copied from mpage_end_io_read */
->>>  static void bl_end_io_write(struct bio *bio, int err)
->>>  {
->>>     struct parallel_io *par = bio->bi_private;
->>> @@ -382,7 +388,7 @@ static void bl_write_cleanup(struct work_struct *work)
->>>     dprintk("%s enter\n", __func__);
->>>     task = container_of(work, struct rpc_task, u.tk_work);
->>>     wdata = container_of(task, struct nfs_write_data, task);
->>> -   if (!wdata->pnfs_error) {
->>> +   if (likely(!wdata->pnfs_error)) {
->>>             /* Marks for LAYOUTCOMMIT */
->>>             mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
->>>                                  wdata->args.offset, wdata->args.count);
->>> @@ -391,10 +397,15 @@ static void bl_write_cleanup(struct work_struct *work)
->>>  }
->>>
->>>  /* Called when last of bios associated with a bl_write_pagelist call finishes */
->>> -static void bl_end_par_io_write(void *data)
->>> +static void bl_end_par_io_write(void *data, int num_se)
->>>  {
->>>     struct nfs_write_data *wdata = data;
->>>
->>> +   if (unlikely(wdata->pnfs_error)) {
->>> +           bl_free_short_extents(&BLK_LSEG2EXT(wdata->lseg)->bl_inval,
->>> +                                   num_se);
->>> +   }
->>> +
->>>     wdata->task.tk_status = wdata->pnfs_error;
->>>     wdata->verf.committed = NFS_FILE_SYNC;
->>>     INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
->>> @@ -547,7 +558,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->>>      */
->>>     par = alloc_parallel(wdata);
->>>     if (!par)
->>> -           return PNFS_NOT_ATTEMPTED;
->>> +           goto out_mds;
->>>     par->pnfs_callback = bl_end_par_io_write;
->>>     /* At this point, have to be more careful with error handling */
->>>
->>> @@ -555,12 +566,15 @@ bl_write_pagelist(struct nfs_write_data *wdata, int
->> sync)
->>>     be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg), isect, &cow_read);
->>>     if (!be || !is_writable(be, isect)) {
->>>             dprintk("%s no matching extents!\n", __func__);
->>> -           wdata->pnfs_error = -EINVAL;
->>> -           goto out;
->>> +           goto out_mds;
->>>     }
->>>
->>>     /* First page inside INVALID extent */
->>>     if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
->>> +           if (likely(!bl_push_one_short_extent(be->be_inval)))
->>> +                   par->bse_count++;
->>> +           else
->>> +                   goto out_mds;
->>>             temp = offset >> PAGE_CACHE_SHIFT;
->>>             npg_zero = do_div(temp, npg_per_block);
->>>             isect = (sector_t) (((offset - npg_zero * PAGE_CACHE_SIZE) &
->>> @@ -598,6 +612,19 @@ fill_invalid_ext:
->>>                             wdata->pnfs_error = ret;
->>>                             goto out;
->>>                     }
->>> +                   if (likely(!bl_push_one_short_extent(be->be_inval)))
->>> +                           par->bse_count++;
->>> +                   else {
->>> +                           end_page_writeback(page);
->>> +                           page_cache_release(page);
->>> +                           wdata->pnfs_error = -ENOMEM;
->>> +                           goto out;
->>> +                   }
->>> +                   /* FIXME: This should be done in bi_end_io */
->>> +                   mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
->>> +                                        page->index << PAGE_CACHE_SHIFT,
->>> +                                        PAGE_CACHE_SIZE);
->>> +
->>>                     bio = bl_add_page_to_bio(bio, npg_zero, WRITE,
->>>                                              isect, page, be,
->>>                                              bl_end_io_write_zero, par);
->>> @@ -606,10 +633,6 @@ fill_invalid_ext:
->>>                             bio = NULL;
->>>                             goto out;
->>>                     }
->>> -                   /* FIXME: This should be done in bi_end_io */
->>> -                   mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
->>> -                                        page->index << PAGE_CACHE_SHIFT,
->>> -                                        PAGE_CACHE_SIZE);
->>>  next_page:
->>>                     isect += PAGE_CACHE_SECTORS;
->>>                     extent_length -= PAGE_CACHE_SECTORS;
->>> @@ -633,6 +656,15 @@ next_page:
->>>                             wdata->pnfs_error = -EINVAL;
->>>                             goto out;
->>>                     }
->>> +                   if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
->>> +                           if (likely(!bl_push_one_short_extent(
->>> +                                                           be->be_inval)))
->>> +                                   par->bse_count++;
->>> +                           else {
->>> +                                   wdata->pnfs_error = -ENOMEM;
->>> +                                   goto out;
->>> +                           }
->>> +                   }
->>>                     extent_length = be->be_length -
->>>                         (isect - be->be_f_offset);
->>>             }
->>> @@ -680,6 +712,10 @@ out:
->>>     bl_submit_bio(WRITE, bio);
->>>     put_parallel(par);
->>>     return PNFS_ATTEMPTED;
->>> +out_mds:
->>> +   bl_put_extent(be);
->>> +   kfree(par);
->>> +   return PNFS_NOT_ATTEMPTED;
->>>  }
->>>
->>>  /* FIXME - range ignored */
->>> @@ -706,11 +742,17 @@ static void
->>>  release_inval_marks(struct pnfs_inval_markings *marks)
->>>  {
->>>     struct pnfs_inval_tracking *pos, *temp;
->>> +   struct pnfs_block_short_extent *se, *stemp;
->>>
->>>     list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
->>>             list_del(&pos->it_link);
->>>             kfree(pos);
->>>     }
->>> +
->>> +   list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
->>> +           list_del(&se->bse_node);
->>> +           kfree(se);
->>> +   }
->>>     return;
->>>  }
->>>
->>> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
->>> index 60728ac..e31a2df 100644
->>> --- a/fs/nfs/blocklayout/blocklayout.h
->>> +++ b/fs/nfs/blocklayout/blocklayout.h
->>> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
->>>     spinlock_t      im_lock;
->>>     struct my_tree  im_tree;        /* Sectors that need LAYOUTCOMMIT */
->>>     sector_t        im_block_size;  /* Server blocksize in sectors */
->>> +   struct list_head im_extents;    /* Short extents for INVAL->RW conversion */
->>>  };
->>>
->>>  struct pnfs_inval_tracking {
->>> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
->> *marks, sector_t blocksize)
->>>  {
->>>     spin_lock_init(&marks->im_lock);
->>>     INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
->>> +   INIT_LIST_HEAD(&marks->im_extents);
->>>     marks->im_block_size = blocksize;
->>>     marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
->>>                                        blocksize);
->>> @@ -199,6 +201,11 @@ void clean_pnfs_block_layoutupdate(struct
->> pnfs_block_layout *bl,
->>>  int bl_add_merge_extent(struct pnfs_block_layout *bl,
->>>                      struct pnfs_block_extent *new);
->>>  int bl_mark_for_commit(struct pnfs_block_extent *be,
->>> -                   sector_t offset, sector_t length);
->>> +                   sector_t offset, sector_t length,
->>> +                   struct pnfs_block_short_extent *new);
->>> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
->>> +struct pnfs_block_short_extent *
->>> +bl_pop_one_short_extent(struct pnfs_inval_markings *marks);
->>> +void bl_free_short_extents(struct pnfs_inval_markings *marks, int num_to_free);
->>>
->>>  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
->>> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
->>> index d0f52ed..db66e68 100644
->>> --- a/fs/nfs/blocklayout/extents.c
->>> +++ b/fs/nfs/blocklayout/extents.c
->>> @@ -369,20 +369,18 @@ static void add_to_commitlist(struct pnfs_block_layout
->> *bl,
->>>
->>>  /* Note the range described by offset, length is guaranteed to be contained
->>>   * within be.
->>> + * new will be freed, either by this function or add_to_commitlist if they
->>> + * decide not to use it, or after LAYOUTCOMMIT uses it in the commitlist.
->>>   */
->>>  int bl_mark_for_commit(struct pnfs_block_extent *be,
->>> -               sector_t offset, sector_t length)
->>> +               sector_t offset, sector_t length,
->>> +               struct pnfs_block_short_extent *new)
->>>  {
->>>     sector_t new_end, end = offset + length;
->>> -   struct pnfs_block_short_extent *new;
->>>     struct pnfs_block_layout *bl = container_of(be->be_inval,
->>>                                                 struct pnfs_block_layout,
->>>                                                 bl_inval);
->>>
->>> -   new = kmalloc(sizeof(*new), GFP_NOFS);
->>> -   if (!new)
->>> -           return -ENOMEM;
->>> -
->>>     mark_written_sectors(be->be_inval, offset, length);
->>>     /* We want to add the range to commit list, but it must be
->>>      * block-normalized, and verified that the normalized range has
->>> @@ -412,9 +410,6 @@ int bl_mark_for_commit(struct pnfs_block_extent *be,
->>>     new->bse_mdev = be->be_mdev;
->>>
->>>     spin_lock(&bl->bl_ext_lock);
->>> -   /* new will be freed, either by add_to_commitlist if it decides not
->>> -    * to use it, or after LAYOUTCOMMIT uses it in the commitlist.
->>> -    */
->>>     add_to_commitlist(bl, new);
->>>     spin_unlock(&bl->bl_ext_lock);
->>>     return 0;
->>> @@ -862,3 +857,52 @@ clean_pnfs_block_layoutupdate(struct
->> pnfs_block_layout *bl,
->>>             }
->>>     }
->>>  }
->>> +
->>> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks)
->>> +{
->>> +   struct pnfs_block_short_extent *new;
->>> +
->>> +   new = kmalloc(sizeof(*new), GFP_NOFS);
->>> +   if (unlikely(!new))
->>> +           return -ENOMEM;
->>> +
->>> +   spin_lock(&marks->im_lock);
->>> +   list_add(&new->bse_node, &marks->im_extents);
->>> +   spin_unlock(&marks->im_lock);
->>> +
->>> +   return 0;
->>> +}
->>> +
->>> +struct pnfs_block_short_extent *
->>> +bl_pop_one_short_extent(struct pnfs_inval_markings *marks)
->>> +{
->>> +   struct pnfs_block_short_extent *rv = NULL;
->>> +
->>> +   spin_lock(&marks->im_lock);
->>> +   if (!list_empty(&marks->im_extents)) {
->>> +           rv = list_entry((&marks->im_extents)->next,
->>> +                           struct pnfs_block_short_extent, bse_node);
->>> +           list_del_init(&rv->bse_node);
->>> +   }
->>> +   spin_unlock(&marks->im_lock);
->>> +
->>> +   return rv;
->>> +}
->>> +
->>> +void bl_free_short_extents(struct pnfs_inval_markings *marks, int num_to_free)
->>> +{
->>> +   struct pnfs_block_short_extent *se = NULL, *tmp;
->>> +
->>> +   BUG_ON(num_to_free <= 0);
->>
->> Why is it a bug if num_to_free is <= 0?  Couldn't you do:
->>
->> if (num_to_free <= 0)
->>       return;
->>
->> instead?
-> It used to be a sanity check but was changed to BUG_ON in the second version.
-> Yeah, after giving it a second thought, I think it necessary to keep the sanity check. There are cases that num_to_free can be zero. E.g., a write_pagelist touches no INVALID extents, and one bio fails with disk failure. Then we will come to calling bl_free_short_extents() with num_to_free == 0. So the BUG_ON is really a bug itself... I will change it back to a normal sanity check.
-> 
-> Thanks,
-> Tao
-> 
-> From d4f49b042411da140c95559895c57a00a1920fdd Mon Sep 17 00:00:00 2001
-> From: Peng Tao <bergwolf@gmail.com>
-> Date: Thu, 10 Nov 2011 03:57:00 -0500
-> Subject: [PATCH 7/7] pnfsblock: alloc short extent before submit bio
-> 
-> As discussed earlier, it is better for block client to allocate memory for
-> tracking extents state before submitting bio. So the patch does it by allocating
-> a short_extent for every INVALID extent touched by write pagelist and for
-> every zeroing page we created, saving them in layout header. Then in end_io we
-> can just use them to create commit list items and avoid memory allocation there.
-> 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |   74 +++++++++++++++++++++++++++++--------
->  fs/nfs/blocklayout/blocklayout.h |    9 ++++-
->  fs/nfs/blocklayout/extents.c     |   63 +++++++++++++++++++++++++++-----
->  3 files changed, 120 insertions(+), 26 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 7fc69c9..1dd2983 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -90,8 +90,9 @@ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
->   */
->  struct parallel_io {
->         struct kref refcnt;
-> -       void (*pnfs_callback) (void *data);
-> +       void (*pnfs_callback) (void *data, int num_se);
->         void *data;
-> +       int bse_count;
->  };
-> 
->  static inline struct parallel_io *alloc_parallel(void *data)
-> @@ -102,6 +103,7 @@ static inline struct parallel_io *alloc_parallel(void *data)
->         if (rv) {
->                 rv->data = data;
->                 kref_init(&rv->refcnt);
-> +               rv->bse_count = 0;
->         }
->         return rv;
->  }
-> @@ -116,7 +118,7 @@ static void destroy_parallel(struct kref *kref)
->         struct parallel_io *p = container_of(kref, struct parallel_io, refcnt);
-> 
->         dprintk("%s enter\n", __func__);
-> -       p->pnfs_callback(p->data);
-> +       p->pnfs_callback(p->data, p->bse_count);
->         kfree(p);
->  }
-> 
-> @@ -211,7 +213,7 @@ static void bl_read_cleanup(struct work_struct *work)
->  }
-> 
->  static void
-> -bl_end_par_io_read(void *data)
-> +bl_end_par_io_read(void *data, int unused)
->  {
->         struct nfs_read_data *rdata = data;
-> 
-> @@ -312,6 +314,7 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
->  {
->         sector_t isect, end;
->         struct pnfs_block_extent *be;
-> +       struct pnfs_block_short_extent *se;
-> 
->         dprintk("%s(%llu, %u)\n", __func__, offset, count);
->         if (count == 0)
-> @@ -324,8 +327,11 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
->                 be = bl_find_get_extent(bl, isect, NULL);
->                 BUG_ON(!be); /* FIXME */
->                 len = min(end, be->be_f_offset + be->be_length) - isect;
-> -               if (be->be_state == PNFS_BLOCK_INVALID_DATA)
-> -                       bl_mark_for_commit(be, isect, len); /* What if fails? */
-> +               if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-> +                       se = bl_pop_one_short_extent(be->be_inval);
-> +                       BUG_ON(!se);
-> +                       bl_mark_for_commit(be, isect, len, se);
-> +               }
->                 isect += len;
->                 bl_put_extent(be);
->         }
-> @@ -347,7 +353,8 @@ static void bl_end_io_write_zero(struct bio *bio, int err)
->                 end_page_writeback(page);
->                 page_cache_release(page);
->         } while (bvec >= bio->bi_io_vec);
-> -       if (!uptodate) {
-> +
-> +       if (unlikely(!uptodate)) {
->                 if (!wdata->pnfs_error)
->                         wdata->pnfs_error = -EIO;
->                 pnfs_set_lo_fail(wdata->lseg);
-> @@ -356,7 +363,6 @@ static void bl_end_io_write_zero(struct bio *bio, int err)
->         put_parallel(par);
->  }
-> 
-> -/* This is basically copied from mpage_end_io_read */
->  static void bl_end_io_write(struct bio *bio, int err)
->  {
->         struct parallel_io *par = bio->bi_private;
-> @@ -382,7 +388,7 @@ static void bl_write_cleanup(struct work_struct *work)
->         dprintk("%s enter\n", __func__);
->         task = container_of(work, struct rpc_task, u.tk_work);
->         wdata = container_of(task, struct nfs_write_data, task);
-> -       if (!wdata->pnfs_error) {
-> +       if (likely(!wdata->pnfs_error)) {
->                 /* Marks for LAYOUTCOMMIT */
->                 mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
->                                      wdata->args.offset, wdata->args.count);
-> @@ -391,10 +397,15 @@ static void bl_write_cleanup(struct work_struct *work)
->  }
-> 
->  /* Called when last of bios associated with a bl_write_pagelist call finishes */
-> -static void bl_end_par_io_write(void *data)
-> +static void bl_end_par_io_write(void *data, int num_se)
->  {
->         struct nfs_write_data *wdata = data;
-> 
-> +       if (unlikely(wdata->pnfs_error)) {
-> +               bl_free_short_extents(&BLK_LSEG2EXT(wdata->lseg)->bl_inval,
-> +                                       num_se);
-> +       }
-> +
->         wdata->task.tk_status = wdata->pnfs_error;
->         wdata->verf.committed = NFS_FILE_SYNC;
->         INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
-> @@ -547,7 +558,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->          */
->         par = alloc_parallel(wdata);
->         if (!par)
-> -               return PNFS_NOT_ATTEMPTED;
-> +               goto out_mds;
->         par->pnfs_callback = bl_end_par_io_write;
->         /* At this point, have to be more careful with error handling */
-> 
-> @@ -555,12 +566,15 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
->         be = bl_find_get_extent(BLK_LSEG2EXT(wdata->lseg), isect, &cow_read);
->         if (!be || !is_writable(be, isect)) {
->                 dprintk("%s no matching extents!\n", __func__);
-> -               wdata->pnfs_error = -EINVAL;
-> -               goto out;
-> +               goto out_mds;
->         }
-> 
->         /* First page inside INVALID extent */
->         if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-> +               if (likely(!bl_push_one_short_extent(be->be_inval)))
-> +                       par->bse_count++;
-> +               else
-> +                       goto out_mds;
->                 temp = offset >> PAGE_CACHE_SHIFT;
->                 npg_zero = do_div(temp, npg_per_block);
->                 isect = (sector_t) (((offset - npg_zero * PAGE_CACHE_SIZE) &
-> @@ -598,6 +612,19 @@ fill_invalid_ext:
->                                 wdata->pnfs_error = ret;
->                                 goto out;
->                         }
-> +                       if (likely(!bl_push_one_short_extent(be->be_inval)))
-> +                               par->bse_count++;
-> +                       else {
-> +                               end_page_writeback(page);
-> +                               page_cache_release(page);
-> +                               wdata->pnfs_error = -ENOMEM;
-> +                               goto out;
-> +                       }
-> +                       /* FIXME: This should be done in bi_end_io */
-> +                       mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
-> +                                            page->index << PAGE_CACHE_SHIFT,
-> +                                            PAGE_CACHE_SIZE);
-> +
->                         bio = bl_add_page_to_bio(bio, npg_zero, WRITE,
->                                                  isect, page, be,
->                                                  bl_end_io_write_zero, par);
-> @@ -606,10 +633,6 @@ fill_invalid_ext:
->                                 bio = NULL;
->                                 goto out;
->                         }
-> -                       /* FIXME: This should be done in bi_end_io */
-> -                       mark_extents_written(BLK_LSEG2EXT(wdata->lseg),
-> -                                            page->index << PAGE_CACHE_SHIFT,
-> -                                            PAGE_CACHE_SIZE);
->  next_page:
->                         isect += PAGE_CACHE_SECTORS;
->                         extent_length -= PAGE_CACHE_SECTORS;
-> @@ -633,6 +656,15 @@ next_page:
->                                 wdata->pnfs_error = -EINVAL;
->                                 goto out;
->                         }
-> +                       if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
-> +                               if (likely(!bl_push_one_short_extent(
-> +                                                               be->be_inval)))
-> +                                       par->bse_count++;
-> +                               else {
-> +                                       wdata->pnfs_error = -ENOMEM;
-> +                                       goto out;
-> +                               }
-> +                       }
->                         extent_length = be->be_length -
->                             (isect - be->be_f_offset);
->                 }
-> @@ -680,6 +712,10 @@ out:
->         bl_submit_bio(WRITE, bio);
->         put_parallel(par);
->         return PNFS_ATTEMPTED;
-> +out_mds:
-> +       bl_put_extent(be);
-> +       kfree(par);
-> +       return PNFS_NOT_ATTEMPTED;
->  }
-> 
->  /* FIXME - range ignored */
-> @@ -706,11 +742,17 @@ static void
->  release_inval_marks(struct pnfs_inval_markings *marks)
->  {
->         struct pnfs_inval_tracking *pos, *temp;
-> +       struct pnfs_block_short_extent *se, *stemp;
-> 
->         list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
->                 list_del(&pos->it_link);
->                 kfree(pos);
->         }
-> +
-> +       list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
-> +               list_del(&se->bse_node);
-> +               kfree(se);
-> +       }
->         return;
->  }
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-> index 60728ac..e31a2df 100644
-> --- a/fs/nfs/blocklayout/blocklayout.h
-> +++ b/fs/nfs/blocklayout/blocklayout.h
-> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
->         spinlock_t      im_lock;
->         struct my_tree  im_tree;        /* Sectors that need LAYOUTCOMMIT */
->         sector_t        im_block_size;  /* Server blocksize in sectors */
-> +       struct list_head im_extents;    /* Short extents for INVAL->RW conversion */
->  };
-> 
->  struct pnfs_inval_tracking {
-> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
->  {
->         spin_lock_init(&marks->im_lock);
->         INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-> +       INIT_LIST_HEAD(&marks->im_extents);
->         marks->im_block_size = blocksize;
->         marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
->                                            blocksize);
-> @@ -199,6 +201,11 @@ void clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
->  int bl_add_merge_extent(struct pnfs_block_layout *bl,
->                          struct pnfs_block_extent *new);
->  int bl_mark_for_commit(struct pnfs_block_extent *be,
-> -                       sector_t offset, sector_t length);
-> +                       sector_t offset, sector_t length,
-> +                       struct pnfs_block_short_extent *new);
-> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
-> +struct pnfs_block_short_extent *
-> +bl_pop_one_short_extent(struct pnfs_inval_markings *marks);
-> +void bl_free_short_extents(struct pnfs_inval_markings *marks, int num_to_free);
-> 
->  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> index d0f52ed..6ce5a8d 100644
-> --- a/fs/nfs/blocklayout/extents.c
-> +++ b/fs/nfs/blocklayout/extents.c
-> @@ -369,20 +369,18 @@ static void add_to_commitlist(struct pnfs_block_layout *bl,
-> 
->  /* Note the range described by offset, length is guaranteed to be contained
->   * within be.
-> + * new will be freed, either by this function or add_to_commitlist if they
-> + * decide not to use it, or after LAYOUTCOMMIT uses it in the commitlist.
->   */
->  int bl_mark_for_commit(struct pnfs_block_extent *be,
-> -                   sector_t offset, sector_t length)
-> +                   sector_t offset, sector_t length,
-> +                   struct pnfs_block_short_extent *new)
->  {
->         sector_t new_end, end = offset + length;
-> -       struct pnfs_block_short_extent *new;
->         struct pnfs_block_layout *bl = container_of(be->be_inval,
->                                                     struct pnfs_block_layout,
->                                                     bl_inval);
-> 
-> -       new = kmalloc(sizeof(*new), GFP_NOFS);
-> -       if (!new)
-> -               return -ENOMEM;
-> -
->         mark_written_sectors(be->be_inval, offset, length);
->         /* We want to add the range to commit list, but it must be
->          * block-normalized, and verified that the normalized range has
-> @@ -412,9 +410,6 @@ int bl_mark_for_commit(struct pnfs_block_extent *be,
->         new->bse_mdev = be->be_mdev;
-> 
->         spin_lock(&bl->bl_ext_lock);
-> -       /* new will be freed, either by add_to_commitlist if it decides not
-> -        * to use it, or after LAYOUTCOMMIT uses it in the commitlist.
-> -        */
->         add_to_commitlist(bl, new);
->         spin_unlock(&bl->bl_ext_lock);
->         return 0;
-> @@ -862,3 +857,53 @@ clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
->                 }
->         }
->  }
-> +
-> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks)
-> +{
-> +       struct pnfs_block_short_extent *new;
-> +
-> +       new = kmalloc(sizeof(*new), GFP_NOFS);
-> +       if (unlikely(!new))
-> +               return -ENOMEM;
-> +
-> +       spin_lock(&marks->im_lock);
-> +       list_add(&new->bse_node, &marks->im_extents);
-> +       spin_unlock(&marks->im_lock);
-> +
-> +       return 0;
-> +}
-> +
-> +struct pnfs_block_short_extent *
-> +bl_pop_one_short_extent(struct pnfs_inval_markings *marks)
-> +{
-> +       struct pnfs_block_short_extent *rv = NULL;
-> +
-> +       spin_lock(&marks->im_lock);
-> +       if (!list_empty(&marks->im_extents)) {
-> +               rv = list_entry((&marks->im_extents)->next,
-> +                               struct pnfs_block_short_extent, bse_node);
-> +               list_del_init(&rv->bse_node);
-> +       }
-> +       spin_unlock(&marks->im_lock);
-> +
-> +       return rv;
-> +}
-> +
-> +void bl_free_short_extents(struct pnfs_inval_markings *marks, int num_to_free)
-> +{
-> +       struct pnfs_block_short_extent *se = NULL, *tmp;
-> +
-> +       if (num_to_free <= 0)
-> +               return;
-> +
-> +       spin_lock(&marks->im_lock);
-> +       list_for_each_entry_safe(se, tmp, &marks->im_extents, bse_node) {
-> +               list_del(&se->bse_node);
-> +               kfree(se);
-> +               if (--num_to_free == 0)
-> +                       break;
-> +       }
-> +       spin_unlock(&marks->im_lock);
-> +
-> +       BUG_ON(num_to_free > 0);
-> +}
-> --
-> 1.7.4.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+And at first I've got no answers from the client. But 10-20sec later I've got pongs back.
+So the NIC comes up some seconds later than the message "link becomes ready" is shown...
+In the case of 'mountproto=tcp' it comes up after the kernel panic. So that's much too late.
+
+
+
+[  126.134520] ADDRCONF(NETDEV_UP): eth0: link is not ready
+[  128.282991] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+[  128.305364] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+[  128.326199] IP-Config: Complete:
+[  128.326269]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=255.255.255.255,
+[  128.326471]      host=137.226.167.242, domain=, nis-domain=(none),
+[  128.326586]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+[  128.327055] Root-NFS: nfsroot=/srv/nfs/cluster2,mountproto=tcp
+[  128.327404] NFS: nfs mount opts='vers=2,udp,rsize=4096,wsize=4096,mountproto=tcp,nolock,addr=137.226.167.241'
+[  128.327477] NFS:   parsing nfs mount option 'vers=2'
+[  128.327538] NFS:   parsing nfs mount option 'udp'
+[  128.327573] NFS:   parsing nfs mount option 'rsize=4096'
+[  128.327623] NFS:   parsing nfs mount option 'wsize=4096'
+[  128.327673] NFS:   parsing nfs mount option 'mountproto=tcp'
+[  128.327728] NFS:   parsing nfs mount option 'nolock'
+[  128.327774] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+[  128.327838] NFS: MNTPATH: '/srv/nfs/cluster2'
+[  128.327873] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+[  128.327942] RPC:       set up xprt to 137.226.167.241 (autobind) via tcp
+[  128.327992] RPC:       created transport fffff807fdec0800 with 128 slots
+[  128.328042] RPC:       creating mount client for 137.226.167.241 (xprt fffff807fdec0800)
+[  128.328103] RPC:       creating UNIX authenticator for client fffff807fdea0600
+[  128.328168] RPC:       new task initialized, procpid 1
+[  128.328213] RPC:       allocated task fffff807fe38e000
+[  128.328260] RPC:     1 __rpc_execute flags=0x680
+[  128.328295] RPC:     1 call_start mount1 proc NULL (sync)
+[  128.328341] RPC:     1 call_reserve (status 0)
+[  128.328376] RPC:     1 reserved req fffff807fdea0400 xid 39411b74
+[  128.328425] RPC:       wake_up_next(fffff807fdec0978 "xprt_sending")
+[  128.328474] RPC:     1 call_reserveresult (status 0)
+[  128.328518] RPC:     1 call_refresh (status 0)
+[  128.328551] RPC:     1 holding NULL cred 00000000008b8cf0
+[  128.328597] RPC:     1 refreshing NULL cred 00000000008b8cf0
+[  128.328643] RPC:     1 call_refreshresult (status 0)
+[  128.328687] RPC:     1 call_allocate (status 0)
+[  128.328722] RPC:     1 allocated buffer of size 96 at fffff807fdec1000
+[  128.328770] RPC:     1 call_bind (status 0)
+[  128.328804] RPC:     1 rpcb_getport_async(137.226.167.241, 100005, 1, 6)
+[  128.328854] RPC:     1 sleep_on(queue "xprt_binding" time 4294893514)
+[  128.328902] RPC:     1 added to queue fffff807fdec08c8 "xprt_binding"
+[  128.328949] RPC:     1 setting alarm for 60000 ms
+[  128.328986] RPC:     1 rpcb_getport_async: trying rpcbind version 2
+[  128.329046] RPC:       set up xprt to 137.226.167.241 (port 111) via tcp
+[  128.329096] RPC:       created transport fffff807fdec1800 with 128 slots
+[  128.329146] RPC:       creating rpcbind client for 137.226.167.241 (xprt fffff807fdec1800)
+[  128.329204] RPC:       creating UNIX authenticator for client fffff807fdea0c00
+[  128.329262] RPC:       new task initialized, procpid 1
+[  128.329306] RPC:       allocated task fffff807fe38e0e0
+[  128.329358] RPC:       rpc_release_client(fffff807fdea0c00)
+[  128.329406] RPC:     1 sync task going to sleep
+[  128.329446] RPC:     2 __rpc_execute flags=0x681
+[  128.329482] RPC:     2 call_start rpcbind2 proc GETPORT (async)
+[  128.329529] RPC:     2 call_reserve (status 0)
+[  128.329563] RPC:     2 reserved req fffff807fdea0a00 xid 54cf8ddb
+[  128.329610] RPC:       wake_up_next(fffff807fdec1978 "xprt_sending")
+[  128.329659] RPC:     2 call_reserveresult (status 0)
+[  128.329703] RPC:     2 call_refresh (status 0)
+[  128.329735] RPC:     2 looking up UNIX cred
+[  128.329765] RPC:       looking up UNIX cred
+[  128.329809] RPC:       allocating UNIX cred for uid 0 gid 0
+[  128.329859] RPC:     2 refreshing UNIX cred fffff807fe37c900
+[  128.329906] RPC:     2 call_refreshresult (status 0)
+[  128.329950] RPC:     2 call_allocate (status 0)
+[  128.329984] RPC:     2 allocated buffer of size 416 at fffff807fdec2000
+[  128.330032] RPC:     2 call_bind (status 0)
+[  128.330064] RPC:     2 call_connect xprt fffff807fdec1800 is not connected
+[  128.330114] RPC:     2 xprt_connect xprt fffff807fdec1800 is not connected
+[  128.330165] RPC:     2 sleep_on(queue "xprt_pending" time 4294893515)
+[  128.330213] RPC:     2 added to queue fffff807fdec1a28 "xprt_pending"
+[  128.330260] RPC:     2 setting alarm for 60000 ms
+[  128.330294] RPC:       xs_connect scheduled xprt fffff807fdec1800
+[  128.330453] RPC:       xs_bind 0.0.0.0:0: ok (0)
+[  128.330490] RPC:       worker connecting xprt fffff807fdec1800 via tcp to 137.226.167.241 (port 111)
+[  128.330650] RPC:       fffff807fdec1800 connect status 36 connected 0 sock state 2
+[  131.335657] RPC:       xs_error_report client fffff807fdec1800...
+[  131.335665] RPC:       error 65
+[  131.335822] RPC:     2 __rpc_wake_up_task (now 4294894266)
+[  131.335924] RPC:     2 disabling timer
+[  131.335985] RPC:     2 removed from queue fffff807fdec1a28 "xprt_pending"
+[  131.336061] RPC:       __rpc_wake_up_task done
+[  131.336097] RPC:       xs_tcp_state_change client fffff807fdec1800...
+[  131.336146] RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+[  131.336194] RPC:       disconnected transport fffff807fdec1800
+[  131.336291] RPC:     2 __rpc_execute flags=0x681
+[  131.336355] RPC:     2 xprt_connect_status: retrying
+[  131.336399] RPC:     2 call_connect_status (status -11)
+[  131.336473] RPC:     2 call_transmit (status 0)
+[  131.336504] RPC:     2 xprt_prepare_transmit
+[  131.336565] RPC:     2 rpc_xdr_encode (status 0)
+[  131.336599] RPC:     2 marshaling UNIX cred fffff807fe37c900
+[  131.336676] RPC:     2 using AUTH_UNIX cred fffff807fe37c900 to wrap rpc data
+[  131.336757] RPC:     2 encoding PMAP_GETPORT call (100005, 1, 6, 0)
+[  131.336805] RPC:     2 xprt_transmit(96)
+[  131.336873] RPC:       xs_tcp_send_request(96) = -65
+[  131.336946] RPC:       sendmsg returned unrecognized error 65
+[  131.336993] RPC:       xs_tcp_state_change client fffff807fdec1800...
+[  131.337071] RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+[  131.337146] RPC:       disconnected transport fffff807fdec1800
+[  131.337195] RPC:       wake_up_next(fffff807fdec1978 "xprt_sending")
+[  131.337273] RPC:       setting port for xprt fffff807fdec0800 to 0
+[  131.337352] RPC:     2 rpcb_getport_done(status -65, port 0)
+[  131.337398] RPC:     2 return 0, status -65
+[  131.337456] RPC:     2 release task
+[  131.337490] RPC:       freeing buffer of size 416 at fffff807fdec2000
+[  131.337568] RPC:     2 release request fffff807fdea0a00
+[  131.337642] RPC:       wake_up_next(fffff807fdec1ad8 "xprt_backlog")
+[  131.337690] RPC:       rpc_release_client(fffff807fdea0c00)
+[  131.337764] RPC:       destroying rpcbind client for 137.226.167.241
+[  131.337841] RPC:       destroying transport fffff807fdec1800
+[  131.337921] RPC:       xs_destroy xprt fffff807fdec1800
+[  131.338045] RPC:       xs_close xprt fffff807fdec1800
+[  131.338134] RPC:       disconnected transport fffff807fdec1800
+[  131.338184] RPC:     2 freeing task
+[  131.338245] RPC:     1 __rpc_wake_up_task (now 4294894266)
+[  131.338317] RPC:     1 disabling timer
+[  131.338348] RPC:     1 removed from queue fffff807fdec08c8 "xprt_binding"
+[  131.338429] RPC:       __rpc_wake_up_task done
+[  131.338443] RPC:     1 sync task resuming
+[  131.338454] RPC:     1 remote rpcbind unreachable: -65
+[  131.338466] RPC:     1 return 0, status -65
+[  131.338473] RPC:     1 release task
+[  131.338483] RPC:       freeing buffer of size 96 at fffff807fdec1000
+[  131.338495] RPC:     1 release request fffff807fdea0400
+[  131.338505] RPC:       wake_up_next(fffff807fdec0ad8 "xprt_backlog")
+[  131.338517] RPC:       rpc_release_client(fffff807fdea0600)
+[  131.338527] RPC:     1 freeing task
+[  131.338537] RPC:       shutting down mount client for 137.226.167.241
+[  131.338548] RPC:       rpc_release_client(fffff807fdea0600)
+[  131.338559] RPC:       destroying UNIX authenticator 00000000008b8d78
+[  131.338572] RPC:       destroying mount client for 137.226.167.241
+[  131.338584] NFS: failed to create MNT RPC client, status=-65
+[  131.338593] NFS: unable to mount server 137.226.167.241, error -65
+[  131.338627] VFS: Unable to mount root fs via NFS, trying floppy.
+[  131.338687] List of all partitions:
+[  131.338697] No filesystem could mount root, tried: 
+[  131.338713] Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(2,0)
+[  131.338723] Call Trace:
+[  131.338752]  [00000000008c6d18] mount_block_root+0x210/0x228
+[  131.338767]  [00000000008c6df4] mount_root+0xc4/0xd4
+[  131.338781]  [00000000008c6f80] prepare_namespace+0x17c/0x1c0
+[  131.338795]  [00000000008c6250] kernel_init+0x140/0x158
+[  131.338816]  [000000000042ac68] kernel_thread+0x30/0x48
+[  131.338835]  [0000000000767840] rest_init+0x18/0x74
+[  131.338941] Press Stop-A (L1-A) to return to the boot prom
+[  131.339844] RPC:       destroying transport fffff807fdec0800
+[  131.339948] RPC:       xs_destroy xprt fffff807fdec0800
+[  131.340039] RPC:       xs_close xprt fffff807fdec0800
+[  131.340114] RPC:       disconnected transport fffff807fdec0800
+[  138.467087] eth0: no IPv6 routers present
