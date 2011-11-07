@@ -1,146 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:54713 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139Ab1K3Du6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 22:50:58 -0500
-Message-ID: <4ED5A808.8050705@panasas.com>
-Date: Tue, 29 Nov 2011 19:50:32 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: <tao.peng@emc.com>
-CC: <bergwolf@gmail.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com> <4ED54FE4.9050008@panasas.com> <F19688880B763E40B28B2B462677FBF805E3A4B073@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805E3A4B073@MX09A.corp.emc.com>
+Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750722Ab1KGVMv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 16:12:51 -0500
+Message-ID: <1320700367.7987.13.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 1/1] RPC: print warning before hanging due to bad server
+ reply
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
+Date: Mon, 07 Nov 2011 16:12:47 -0500
+In-Reply-To: <1320692643-27423-1-git-send-email-iisaman@netapp.com>
+References: <1320692643-27423-1-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 07:16 PM, tao.peng@emc.com wrote:
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Boaz
->> Harrosh
->> Sent: Wednesday, November 30, 2011 5:34 AM
->> To: Peng Tao
->> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; bhalevy@tonian.com
->> Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
->>
->> On 12/02/2011 08:52 PM, Peng Tao wrote:
->>> Issuing layoutget at .pg_init will drop the IO size information and ask for 4KB
->>> layout every time. However, the IO size information is very valuable for MDS to
->>> determine how much layout it should return to client.
->>>
->>> The patchset try to allow LD not to send layoutget at .pg_init but instead at
->>> pnfs_do_multiple_writes. So that real IO size is preserved and sent to MDS.
->>>
->>> Tests against a server that does not aggressively pre-allocate layout, shows
->>> that the IO size informantion is really useful to block layout MDS.
->>>
->>> The generic pnfs layer changes are trival to file layout and object as long as
->>> they still send layoutget at .pg_init.
->>>
->>
->> I have a better solution for your problem. Which is a much smaller a change and
->> I think gives you much better heuristics.
->>
->> Keep the layout_get exactly where it is, but instead of sending PAGE_SIZE send
->> the amount of dirty pages you have.
->>
->> If it is a linear write you will be exact on the money with a single lo_get. If
->> it is an heavy random write then you might need more lo_gets and you might be getting
->> some unused segments. But heavy random write is rare and slow anyway. As a first
->> approximation its fine. (We can later fix that as well)
->
-> I would say no to the above... For objects/files MDS, it may not hurt
-> much to allocate wasting layout. But for blocklayout server, each
-> layout allocation consumes much more resource than just giving out
-> stripping information like objects/files. 
-
-That's fine, for the linear IO like iozone below my way is just the same
-as yours. For the random IO I'm not sure how much better will your solution
-be. Not by much.
-
-I want a solution for objects as well. But I cannot use yours because I need
-a layout before the final request consolidation. Solve my problem too.
-
-> So helping MDS to do the
-> correct decision is the right thing for client to do.
-
-I agree. All I'm saying is that there is available information at the time
-of .pg_init to send that number just fine. Have you looked? it's all there
-NFS core can tell you how many pages have passed ->write_pages.
-
+On Mon, 2011-11-07 at 14:04 -0500, Fred Isaman wrote: 
+> If a server incorrectly returns RPC_PROG_MISMATCH in the midst
+> of nfsv4 traffic, the client will hang in various difficult to
+> debug states.  Change a dprintk to a printk to ensure a
+> relevant log message is sent in this case.
 > 
->>
->> The .pg_init is done after .write_pages call from VFS and all the to-be-written
->> pages are already staged to be written. So there should be a way to easily extract
->> that information.
->>
->>> iozone cmd:
->>> ./iozone -r 1m -s 4G -w -W -c -t 10 -i 0 -F /mnt/iozone.data.1 /mnt/iozone.data.2 /mnt/iozone.data.3
->> /mnt/iozone.data.4 /mnt/iozone.data.5 /mnt/iozone.data.6 /mnt/iozone.data.7 /mnt/iozone.data.8
->> /mnt/iozone.data.9 /mnt/iozone.data.10
->>>
->>> Befor patch: around 12MB/s throughput
->>> After patch: around 72MB/s throughput
->>>
->>
->> Yes Yes that stupid Brain dead Server is no indication for anything. The server
->> should know best about optimal sizes and layouts. Please don't give me that stuff
->> again.
->>
-> Actually the server is already doing layout pre-allocation. It is
-> just that it doesn't know what client really wants so cannot do it
-> too aggressively. That's why I wanted to make client to send the REAL
-> IO size information to server. From performance perspective, dropping
-> IO size information is always a BAD THING(TM) to do.
-
-I totally agree. I want it too. There is a way to do it in pg_init time
-all the information is there it only needs to be passed to layout_get.
-
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  net/sunrpc/clnt.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
 > 
->> BTW don't limit the lo_segment size by the max_io_size. This is why you
->> have .bg_test to signal when IO is maxed out.
->>
-> Actually lo_segment size is never limited by max_io_size. Server is
-> always entitled to send larger layout than client asks from.
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index c5347d2..2d9b77e 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -31,6 +31,7 @@
+>  #include <linux/in.h>
+>  #include <linux/in6.h>
+>  #include <linux/un.h>
+> +#include <linux/ratelimit.h>
+>  
+>  #include <linux/sunrpc/clnt.h>
+>  #include <linux/sunrpc/rpc_pipe_fs.h>
+> @@ -1736,8 +1737,9 @@ rpc_verify_header(struct rpc_task *task)
+>  		error = -EPFNOSUPPORT;
+>  		goto out_err;
+>  	case RPC_PROG_MISMATCH:
+> -		dprintk("RPC: %5u %s: program %u, version %u unsupported by "
+> -				"server %s\n", task->tk_pid, __func__,
+> +		printk_ratelimited("RPC: %5u %s: program %u, version %u "
+> +				"unsupported by server %s\n",
+> +				task->tk_pid, __func__,
+>  				(unsigned int)task->tk_client->cl_prog,
+>  				(unsigned int)task->tk_client->cl_vers,
+>  				task->tk_client->cl_server);
 
-You miss my point. In your last patch you have
+1) The above will trigger every time the client tries to autonegotiate
+the NFS version (i.e. on pretty much every mount in some cases). That
+makes it unacceptable unless you add some kind of extra protection.
 
-+/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
-+#define PNFSBLK_MAXRSIZE (0x1<<22)
-+#define PNFSBLK_MAXWSIZE (0x1<<21)
+2) Why is PROG_MISMATCH special, when compared to PROG_UNAVAIL,
+PROC_UNAVAIL and/or GARBAGE_ARGS?
 
-I don't know what these number mean but they kind of look like IO limits
-and not segment limits. If I'm wrong then sorry. What are these numbers?
+Trond
 
-If a client has 1G of dirty pages to write why not get the full layout
-at once. Where does the 4M limit comes from?
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 
->> - The read segments should be as big as possible (i_size long)
->> - The Write segments should ideally be as big as the Application
->>   wants to write to. (Amount of dirty pages at time of nfs-write-out
->>   is a very good first approximation).
->>
->> So I guess it is: I hate these patches, to much mess, too little goodness.
-> I'm afraid I can't agree with you...
-> 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-Sure you do. You did the hard work and now I'm telling you you need to do
-more work. I'm sorry for that. But I want a solution for me and I think
-there is a simple solution that will satisfy both of our needs.
-
-Sorry for that. If I had time I would do it. Only I have harder real BUGS
-to fix on my plate.
-
-If you could look into it It will be very nice. And thank you for working
-on this so far. Only that current solution is not optimal and I will need
-to continue on it later, if left as is.
-
-> Thanks,
-> Tao
-> 
-
-Thanks
