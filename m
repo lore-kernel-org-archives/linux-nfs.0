@@ -1,89 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40660 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753966Ab1KAOWc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 10:22:32 -0400
-Message-ID: <4EB000A6.9040508@netapp.com>
-Date: Tue, 01 Nov 2011 10:22:30 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:39704 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750722Ab1KGVSj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 16:18:39 -0500
+Received: by faan17 with SMTP id n17so441967faa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Nov 2011 13:18:38 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSD: Added fault injection
-References: <1319455259-3136-1-git-send-email-bjschuma@netapp.com> <20111028212450.GA7441@fieldses.org> <4EAFFD65.4010407@netapp.com> <20111101141746.GD32248@fieldses.org>
-In-Reply-To: <20111101141746.GD32248@fieldses.org>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <1320699485.7987.9.camel@lade.trondhjem.org>
+References: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
+	<1320699485.7987.9.camel@lade.trondhjem.org>
+Date: Mon, 7 Nov 2011 22:18:38 +0100
+Message-ID: <CAGue13pZvA-fBfudje_UccAosLpy0VVUzgr2YHM_57nPamyWTQ@mail.gmail.com>
+Subject: Re: regression in referrals resolution
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 01 Nov 2011 10:17:46 AM EDT, J. Bruce Fields wrote:
-> On Tue, Nov 01, 2011 at 10:08:37AM -0400, Bryan Schumaker wrote:
->> On Fri 28 Oct 2011 05:24:50 PM EDT, J. Bruce Fields wrote:
->>> On Mon, Oct 24, 2011 at 07:20:57AM -0400, bjschuma@netapp.com wrote:
->>> ...
->>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>>> index db34a58..e67f30c 100644
->>>> --- a/fs/nfsd/nfsctl.c
->>>> +++ b/fs/nfsd/nfsctl.c
->>> ...
->>>> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
->>>>  	retval = nfs4_state_init(); /* nfs4 locking state */
->>>>  	if (retval)
->>>>  		return retval;
->>>> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
->>>> +	if (retval)
->>>> +		goto out_cleanup_fault_injection;
->>>>  	nfsd_stat_init();	/* Statistics */
->>>>  	retval = nfsd_reply_cache_init();
->>>>  	if (retval)
->>>> @@ -1161,6 +1165,8 @@ out_free_cache:
->>>>  out_free_stat:
->>>>  	nfsd_stat_shutdown();
->>>>  	nfsd4_free_slabs();
->>>> +out_cleanup_fault_injection:
->>>> +	nfsd_fault_inject_cleanup();
->>>
->>> Check the cleanup here again....  The slabs are allocated in state_init,
->>> so you need to do that on nfsd_fault_inject_init, but you *don't* need
->>> the fault_inject_cleanup in that case, since fault_inject_init cleanup
->>> cleans up after itself--that's needed only on later failures.
+On Mon, Nov 7, 2011 at 9:58 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2011-11-07 at 21:29 +0100, Tigran Mkrtchyan wrote:
+>> Hi,
 >>
->> Would it be better to change the fault_inject_init() function so it 
->> doesn't clean up after itself?  This would keep it consistent with the 
->> other nfsd init functions.
+>>
+>> today we was running test with referrals and notice that 'current'
+>> 3.1+ has a regression.
+>> The referrals are resolved, but client returns IO error :
 >
-> I don't think so.  The pattern here is pretty common throughout the
-> kernel; it's approximately:
->
-> 	do_thing1();
-> 	err = do_thing2();
-> 	if (err)
-> 		goto undo_thing1;
-> 	err = do_thing3();
-> 	if (err)
-> 		goto undo_thing2;
-> 	...
->
-> Functions are no-ops on failure, and the caller's just responsible for
-> cleaning up previous stuff.
+> Doh! I expect that the following should fix it...
 
-Ok, I won't change that.
+In did!
 
+Thanks,
+   Tigran.
 >
->> I didn't realize that slabs were initialized in the state_init()
->> function, I'll fix that.
+> Thanks
+>  Trond
+> 8<--------------------------------------------------------------------------
+> From 91207dc6fd4fbe5f758dd2558e927bcd0c411581 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Mon, 7 Nov 2011 15:50:32 -0500
+> Subject: [PATCH] NFS: Fix a regression in the referral code
 >
-> I'll admit that's confusing.  Any suggestion to make it clearer welcome.
-
-Sure.  The comment after the call to nfs4_state_init() is "nfs4 locking 
-state".  Maybe this could be changed to "nfs4 locking state and slabs"? 
- I can make this change and send it as a separate patch if you would 
-like.
+> Fix a regression that was introduced by commit
+> 0c2e53f11a6dae9e3af5f50f5ad0382e7c3e0cfa (NFS: Remove the unused
+> "lookupfh()" version of nfs4_proc_lookup()).
 >
-> --b.
+> In the case where the lookup gets an NFS4ERR_MOVED, we want to return
+> the result of nfs4_get_referral(). Instead, that value is getting
+> clobbered by the call to nfs4_handle_exception()...
+>
+> Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 069cb80..be2bbac 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2464,8 +2464,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+>                case -NFS4ERR_BADNAME:
+>                        return -ENOENT;
+>                case -NFS4ERR_MOVED:
+> -                       err = nfs4_get_referral(dir, name, fattr, fhandle);
+> -                       break;
+> +                       return nfs4_get_referral(dir, name, fattr, fhandle);
+>                case -NFS4ERR_WRONGSEC:
+>                        nfs_fixup_secinfo_attributes(fattr, fhandle);
+>                }
+> --
+> 1.7.7
+>
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
