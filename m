@@ -1,104 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:44854 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755792Ab1KOEPs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 23:15:48 -0500
-Received: by mail-bw0-f46.google.com with SMTP id 11so6679225bke.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 20:15:48 -0800 (PST)
-Message-ID: <4EC1E770.2060608@tonian.com>
-Date: Tue, 15 Nov 2011 06:15:44 +0200
-From: Benny Halevy <benny@tonian.com>
-MIME-Version: 1.0
-CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
-References: <4EC13EEA.3030404@tonian.com> <4EC16E3A.9040405@panasas.com> <4EC1E68B.60405@tonian.com>
-In-Reply-To: <4EC1E68B.60405@tonian.com>
-Content-Type: text/plain; charset=UTF-8
-To: unlisted-recipients:; (no To-header on input)
+Received: from rcsinet15.oracle.com ([148.87.113.117]:65221 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755838Ab1KGSCM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 13:02:12 -0500
+Subject: Re: rpcbind -h
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20111107172131.GA1008@umich.edu>
+Date: Mon, 7 Nov 2011 13:01:58 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <17F52BED-5ED9-4FBA-A959-B31A88C800B1@oracle.com>
+References: <20111106155844.GA1790@umich.edu> <3096DDEC-48D3-423A-B674-160B8DA59DE2@oracle.com> <20111107172131.GA1008@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-15 06:11, Benny Halevy wrote:
-> On 2011-11-14 21:38, Boaz Harrosh wrote:
->> On 11/14/2011 08:16 AM, Benny Halevy wrote:
->>> I merged the following patches into pnfs-all-3.1-2011-11-14
->>> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
->>>
->>> pnfs-block:
->>>   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
->>>   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
->>>   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
->>>   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
->>>   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
->>>   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
->>>
->>> pnfsd:
->>>   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
->>>
->>
->> What happened to the PNFSD dbg Channel. Was that submitted before?
->>
->> Boaz 
-> 
-> It's there,  I probably screwed the base date for my git-log-since-tree-oneline
-> script.
-> 
-> Anyhow, here is the list of patches that are still in the major branches
-> since pnfs-all-3.0-2011-08-10:
-> (according to the script :)
-> 
-> ore-devel:
->   Boaz Harrosh     b133b98 RFC: do_xor_speed Broken on UML do to jiffies
-> 
-> pnfs-block:
->   Benny Halevy     9158412 pnfs: clean up initiate_file_draining layout lookup
->   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
->   Peng Tao         657c2f4 pnfsblock: acquire im_lock in _preload_range
->   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
->   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
->   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
->   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
->   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
-> 
-> nfsd-upstream:
->   Benny Halevy     546e4fa nfsd4: share_access_to_flags should consider only nfs4.x share_access flags
->   Benny Halevy     e8e8efb nfsd4: split out share_access want and signel flags while decoding
->   Benny Halevy     89be556 nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg
->   Benny Halevy     7fa5486 nfsd4: DEBUG: XDR_ERROR()
-> 
-> pnfsd:
->   Benny Halevy     f89ea60 pnfsd: layout state allocation
->   Benny Halevy     7b50379 SQUASHME: update_layout_stateid_locked
->   Benny Halevy     bb72dee pnfsd: layout recall layout state
->   Benny Halevy     2a9eb41 SQUASHME: pnfsd: initialize fi_layout_states
->   Benny Halevy     f5f8a59 SQUASHME: pnfsd: layout recall statid processing
->   Boaz Harrosh     5111e3f SQUASHME: pnfsd: Compile warning in pnfs-all-3.1-2011-10-31-1
->   Boaz Harrosh     d7e7bec Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under NFSDDBG_PNFS
->   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
-> 
-> pnfsd-exofs:
->   Boaz Harrosh     cb40981 SQUASHME: pnfsd-exofs: Fix export of only one group layout
->   Boaz Harrosh     a076d46 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
->   Benny Halevy     ef4e804 SQUASHME: pnfsd-exofs: missing arg to ore_calc_stripe_info call
-> 
-> spnfs:
->   Benny Halevy     141caa1 SQUASHME: spnfs: use struct path in vfs_path_lookup as of v3.0
-> 
-> spnfs-block:
->   Benny Halevy     27f1cb8 SQUASHME: spnfs-block: use struct path in vfs_path_lookup as of v3.0
->   Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
->   Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
 
-And here's the current tree layout:
+On Nov 7, 2011, at 12:21 PM, Jim Rees wrote:
 
-master (v3.2-rc1)
-	ore-devel
-		pnfs-block
-		nfsd-upstream
-			nfsd41
-				pnfsd
-					pnfsd-exofs
-						pnfsd-lexp
-							spnfs
-								spnfs-block
-									pnfs-all-latest
+> Chuck Lever wrote:
+> 
+>  On Nov 6, 2011, at 10:58 AM, Jim Rees wrote:
+> 
+>> Is there some good reason why the rpcbind '-h' option (bind to given
+>> address) applies only to the udp listening socket and not to the tcp socket?
+> 
+>  Yes.  See the mail archives.  I believe we've discussed this thoroughly
+>  within the past six months to a year.  If there's any bug here, it's that
+>  "-h" is not well documented.
+> 
+> It's documented well enough but I'm still in the dark about the reason.  I
+> don't recall the discussion and can't find it in the archives.  The search
+> box on spinics isn't working for me, it returns results from the entire web,
+> not just the list archive.
+> 
+> As I said before, I was hoping for the equivalent of "portmap -l".  I was
+> ready to code up a patch of some kind but now have a workaround (mount with
+> nolock and don't run rpcbind at all).
+
+I wouldn't object to having a "local only" option that turns off the AF_INET[6] listener and just listens on the AF_LOCAL socket, but that may be problematic until we have a complete transition away from glibc RPC, which still uses AF_INET loopback extensively.
+
+Glad you found a work-around.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
