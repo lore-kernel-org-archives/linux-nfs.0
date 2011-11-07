@@ -1,126 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:7837 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:15974 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756418Ab1KVOnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 09:43:17 -0500
-Subject: [PATCH 4/6] SUNPRC: cleanup RPC PipeFS pipes upcall interface
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 22 Nov 2011 18:41:59 +0300
-Message-ID: <20111122144159.479.68045.stgit@localhost6.localdomain6>
-In-Reply-To: <20111122134514.479.9848.stgit@localhost6.localdomain6>
-References: <20111122134514.479.9848.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751876Ab1KGU6W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 15:58:22 -0500
+Message-ID: <1320699485.7987.9.camel@lade.trondhjem.org>
+Subject: Re: regression in referrals resolution
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: tigran.mkrtchyan@desy.de
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Date: Mon, 07 Nov 2011 15:58:05 -0500
+In-Reply-To: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
+References: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RPC pipe upcall doesn't requires only private pipe data. Thus RPC inode
-references in this code can be removed.
+On Mon, 2011-11-07 at 21:29 +0100, Tigran Mkrtchyan wrote: 
+> Hi,
+> 
+> 
+> today we was running test with referrals and notice that 'current'
+> 3.1+ has a regression.
+> The referrals are resolved, but client returns IO error :
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Doh! I expect that the following should fix it...
 
+Thanks
+  Trond
+8<-------------------------------------------------------------------------- 
+>From 91207dc6fd4fbe5f758dd2558e927bcd0c411581 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Mon, 7 Nov 2011 15:50:32 -0500
+Subject: [PATCH] NFS: Fix a regression in the referral code
+
+Fix a regression that was introduced by commit
+0c2e53f11a6dae9e3af5f50f5ad0382e7c3e0cfa (NFS: Remove the unused
+"lookupfh()" version of nfs4_proc_lookup()).
+
+In the case where the lookup gets an NFS4ERR_MOVED, we want to return
+the result of nfs4_get_referral(). Instead, that value is getting
+clobbered by the call to nfs4_handle_exception()...
+
+Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
- fs/nfs/blocklayout/blocklayoutdm.c  |    2 +-
- fs/nfs/idmap.c                      |    4 ++--
- include/linux/sunrpc/rpc_pipe_fs.h  |    2 +-
- net/sunrpc/auth_gss/auth_gss.c      |    3 +--
- net/sunrpc/rpc_pipe.c               |    3 +--
- 6 files changed, 7 insertions(+), 9 deletions(-)
+ fs/nfs/nfs4proc.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index a83b393..44dc348 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -168,7 +168,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
- 	add_wait_queue(&bl_wq, &wq);
--	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
- 		goto out;
- 	}
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-index d055c75..3c38244 100644
---- a/fs/nfs/blocklayout/blocklayoutdm.c
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -66,7 +66,7 @@ static void dev_remove(dev_t dev)
- 	msg.len = sizeof(bl_msg) + bl_msg.totallen;
- 
- 	add_wait_queue(&bl_wq, &wq);
--	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
- 		goto out;
- 	}
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index f20801a..7e3d8dd 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -508,7 +508,7 @@ nfs_idmap_id(struct idmap *idmap, struct idmap_hashtable *h,
- 	msg.len = sizeof(*im);
- 
- 	add_wait_queue(&idmap->idmap_wq, &wq);
--	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&idmap->idmap_wq, &wq);
- 		goto out;
- 	}
-@@ -569,7 +569,7 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
- 
- 	add_wait_queue(&idmap->idmap_wq, &wq);
- 
--	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&idmap->idmap_wq, &wq);
- 		goto out;
- 	}
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index c2fa330..ad78bea 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -64,7 +64,7 @@ extern void rpc_put_sb_net(const struct net *net);
- 
- extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
- 				       char __user *, size_t);
--extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
-+extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, struct qstr *, struct rpc_clnt *);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 70a7953..40227ef 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -475,8 +475,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
- 		return gss_new;
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
--		struct inode *inode = &gss_new->inode->vfs_inode;
--		int res = rpc_queue_upcall(inode, &gss_new->msg);
-+		int res = rpc_queue_upcall(gss_new->inode->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index edf140a..0eed975 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -110,9 +110,8 @@ rpc_timeout_upcall_queue(struct work_struct *work)
-  * initialize the fields of @msg (other than @msg->list) appropriately.
-  */
- int
--rpc_queue_upcall(struct inode *inode, struct rpc_pipe_msg *msg)
-+rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- {
--	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
- 	int res = -EPIPE;
- 
- 	spin_lock(&pipe->lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 069cb80..be2bbac 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2464,8 +2464,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 		case -NFS4ERR_BADNAME:
+ 			return -ENOENT;
+ 		case -NFS4ERR_MOVED:
+-			err = nfs4_get_referral(dir, name, fattr, fhandle);
+-			break;
++			return nfs4_get_referral(dir, name, fattr, fhandle);
+ 		case -NFS4ERR_WRONGSEC:
+ 			nfs_fixup_secinfo_attributes(fattr, fhandle);
+ 		}
+-- 
+1.7.7
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
