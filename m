@@ -1,40 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:7814 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753792Ab1K2JTd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 04:19:33 -0500
-Message-ID: <4ED4A32F.90503@parallels.com>
-Date: Tue, 29 Nov 2011 13:17:35 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:47768 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932618Ab1KGRVj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 12:21:39 -0500
+Date: Mon, 7 Nov 2011 12:21:31 -0500
+From: Jim Rees <rees@umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: rpcbind -h
+Message-ID: <20111107172131.GA1008@umich.edu>
+References: <20111106155844.GA1790@umich.edu>
+ <3096DDEC-48D3-423A-B674-160B8DA59DE2@oracle.com>
 MIME-Version: 1.0
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce
- context
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-In-Reply-To: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <3096DDEC-48D3-423A-B674-160B8DA59DE2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Trond.
-This is the final part of SUNRPC PipeFS virtualization.
-I hope, that you'll find some time to review all series.
+Chuck Lever wrote:
 
-You can clone my working tree to have a look at what will be at the end:
+  On Nov 6, 2011, at 10:58 AM, Jim Rees wrote:
+  
+  > Is there some good reason why the rpcbind '-h' option (bind to given
+  > address) applies only to the udp listening socket and not to the tcp socket?
+  
+  Yes.  See the mail archives.  I believe we've discussed this thoroughly
+  within the past six months to a year.  If there's any bug here, it's that
+  "-h" is not well documented.
 
-git://github.com/skinsbursky/nfs-per-net-ns.git
+It's documented well enough but I'm still in the dark about the reason.  I
+don't recall the discussion and can't find it in the archives.  The search
+box on spinics isn't working for me, it returns results from the entire web,
+not just the list archive.
 
-BTW, I can provide a simple "sandbox" (a kind of container with it's own network 
-namespace and veth device inside) which I use to test my changes.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+As I said before, I was hoping for the equivalent of "portmap -l".  I was
+ready to code up a patch of some kind but now have a workaround (mount with
+nolock and don't run rpcbind at all).
