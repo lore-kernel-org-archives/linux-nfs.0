@@ -1,189 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:47646 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751646Ab1KQUgZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:36:25 -0500
-Received: by fagn18 with SMTP id n18so3467162fag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Nov 2011 12:36:23 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:20477 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753534Ab1KGOQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Nov 2011 09:16:13 -0500
+Message-ID: <4EB7E829.6020106@netapp.com>
+Date: Mon, 07 Nov 2011 09:16:09 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <1321561563-5862-2-git-send-email-steved@redhat.com>
-References: <1321561563-5862-1-git-send-email-steved@redhat.com>
-	<1321561563-5862-2-git-send-email-steved@redhat.com>
-Date: Thu, 17 Nov 2011 21:36:23 +0100
-Message-ID: <CAGue13rrgKUiiWEF47ixjhWuZ9AK9Ax7UWmSMqkzPAe_rPqMFg@mail.gmail.com>
-Subject: Re: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Remove unnecessary whitespace
+References: <1320171508-14028-1-git-send-email-bjschuma@netapp.com> <20111104214254.GJ721@fieldses.org>
+In-Reply-To: <20111104214254.GJ721@fieldses.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 17, 2011 at 9:26 PM, Steve Dickson <steved@redhat.com> wrote:
-> Introduce the '-c [keyring]' command line argument
-> which will clear the giving keyring of the keys.
-> If a keyring not supplied the default 'id_resolver'
-> keyring will be used.
+On Fri 04 Nov 2011 05:42:54 PM EDT, J. Bruce Fields wrote:
+> On Tue, Nov 01, 2011 at 02:18:28PM -0400, bjschuma@netapp.com wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> The close parenthesis was hard to find with it spaced so far over.
 >
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/nfsidmap/nfsidmap.c   |   62 +++++++++++++++++++++++++++++++++++++++---
->  utils/nfsidmap/nfsidmap.man |   14 ++++++++-
->  2 files changed, 69 insertions(+), 7 deletions(-)
+> What kind of terminal was Kendrick working with, anyway?
 >
-> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-> index 6a09f38..2625dc1 100644
-> --- a/utils/nfsidmap/nfsidmap.c
-> +++ b/utils/nfsidmap/nfsidmap.c
-> @@ -13,12 +13,14 @@
->  #include "xlog.h"
->
->  int verbose = 0;
-> -char *usage="Usage: %s [-v] [-t timeout] key desc";
-> +char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
->
->  #define MAX_ID_LEN   11
->  #define IDMAP_NAMESZ 128
->  #define USER  1
->  #define GROUP 0
-> +#define DEFAULT_KEYRING "id_resolver"
-> +#define PROCKEYS "/proc/keys"
->
->  /*
->  * Find either a user or group id based on the name@domain string
-> @@ -87,6 +89,47 @@ int name_lookup(char *id, key_serial_t key, int type)
->  out:
->        return rc;
->  }
-> +/*
-> + * Clear all the keys on the given keyring
-> + */
-> +static int keyring_clear(char *keyring)
-> +{
-> +       FILE *fp;
-> +       char buf[BUFSIZ];
-> +       key_serial_t key;
-> +
-> +       xlog_syslog(0);
-> +       if (keyring == NULL)
-> +               keyring = DEFAULT_KEYRING;
-> +
-> +       if ((fp = fopen(PROCKEYS, "r")) == NULL) {
+> If you don't mind the below as a friendly amendment, I'll queue it up
+> for 3.3.
 
-The same comment here: fp never closed.
+That looks like a good improvement to me.
 
-Tigran.
-> +               xlog_err("fopen(%s) failed: %m", PROCKEYS);
-> +               return 1;
-> +       }
-> +
-> +       while(fgets(buf, BUFSIZ, fp) != NULL) {
-> +               if (strstr(buf, "keyring") == NULL)
-> +                       continue;
-> +               if (strstr(buf, keyring) == NULL)
-> +                       continue;
-> +               if (verbose) {
-> +                       *(strchr(buf, '\n')) = '\0';
-> +                       xlog_warn("clearing '%s'", buf);
-> +               }
-> +               /*
-> +                * The key is the first arugment in the string
-> +                */
-> +               *(strchr(buf, ' ')) = '\0';
-> +               sscanf(buf, "%x", &key);
-> +               if (keyctl_clear(key) < 0) {
-> +                       xlog_err("keyctl_clear(0x%x) failed: %m", key);
-> +                       return 1;
-> +               }
-> +               return 0;
-> +       }
-> +       xlog_err("'%s' keyring was not found.", keyring);
-> +       return 1;
-> +}
+- Bryan
 >
->  int main(int argc, char **argv)
->  {
-> @@ -96,7 +139,8 @@ int main(int argc, char **argv)
->        int rc = 1, opt;
->        int timeout = 600;
->        key_serial_t key;
-> -       char *progname;
-> +       char *progname, *keyring = NULL;
-> +       int clearring;
+> --b.
 >
->        /* Set the basename */
->        if ((progname = strrchr(argv[0], '/')) != NULL)
-> @@ -105,11 +149,12 @@ int main(int argc, char **argv)
->                progname = argv[0];
+> commit 70aec307e110a2a488e10323b4d2bbd89a3f6485
+> Author: Bryan Schumaker <bjschuma@netapp.com>
+> Date:   Tue Nov 1 14:18:28 2011 -0400
 >
->        xlog_open(progname);
-> -       xlog_syslog(1);
-> -       xlog_stderr(0);
+>     NFSD: Remove unnecessary whitespace
+>     
+>     The close parenthesis was hard to find with it spaced so far over.
+>     
+>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>     [bfields@redhat.com: get all these lines under 80 chars while we're here]
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 >
-> -       while ((opt = getopt(argc, argv, "t:v")) != -1) {
-> +       while ((opt = getopt(argc, argv, "ct:v")) != -1) {
->                switch (opt) {
-> +               case 'c':
-> +                       clearring++;
-> +                       break;
->                case 'v':
->                        verbose++;
->                        break;
-> @@ -122,6 +167,13 @@ int main(int argc, char **argv)
->                }
->        }
->
-> +       if (clearring) {
-> +               keyring = ((argc - optind) ? argv[optind] : NULL);
-> +               rc = keyring_clear(keyring);
-> +               return rc;
-> +       }
-> +
-> +       xlog_stderr(0);
->        if ((argc - optind) != 2) {
->                xlog_err("Bad arg count. Check /etc/request-key.conf");
->                xlog_warn(usage, progname);
-> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-> index c67aab6..db65a1f 100644
-> --- a/utils/nfsidmap/nfsidmap.man
-> +++ b/utils/nfsidmap/nfsidmap.man
-> @@ -6,7 +6,7 @@
->  .SH NAME
->  nfsidmap \- The NFS idmapper upcall program
->  .SH SYNOPSIS
-> -.B "nfsidmap [-v] [-t timeout] key desc"
-> +.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
->  .SH DESCRIPTION
->  The file
->  .I /usr/sbin/nfsidmap
-> @@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
->  translate user and group names into ids. Idmapper uses request-key to perform
->  the upcall and cache the result.
->  .I /usr/sbin/nfsidmap
-> -should only be called by request-key, and will perform the translation and
-> +is called by /sbin/request-key, and will perform the translation and
->  initialize a key with the resulting information.
-> +.PP
-> +.I nfsidmap
-> +can also used to clear the keyring of all the keys.
-> +This is useful when all the mappings have failed to due to an DNS outage
-> +or some other error resulting in all the cached uid/gid to be invalid.
->  .SH OPTIONS
->  .TP
-> +.B -c [keyring]
-> +Clear the keyring of all the keys. If a
-> +keyring is not supplied the default
-> +keyring 'id_resolver' will be used.
-> +.TP
->  .B -t timeout
->  Set the expiration timer, in seconds, on the key.
->  The default is 600 seconds (10 mins).
-> --
-> 1.7.7
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 4e2ee29..1d1e858 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -340,15 +340,15 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+>  }
+>  
+>  /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
+> -#define NFSD_WRITEONLY_ATTRS_WORD1							    \
+> -(FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
+> +#define NFSD_WRITEONLY_ATTRS_WORD1 \
+> +	(FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
+>  
+>  /* These are the only attrs allowed in CREATE/OPEN/SETATTR. */
+> -#define NFSD_WRITEABLE_ATTRS_WORD0                                                          \
+> -(FATTR4_WORD0_SIZE              | FATTR4_WORD0_ACL                                         )
+> -#define NFSD_WRITEABLE_ATTRS_WORD1                                                          \
+> -(FATTR4_WORD1_MODE              | FATTR4_WORD1_OWNER         | FATTR4_WORD1_OWNER_GROUP     \
+> - | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+> +#define NFSD_WRITEABLE_ATTRS_WORD0 \
+> +	(FATTR4_WORD0_SIZE | FATTR4_WORD0_ACL)
+> +#define NFSD_WRITEABLE_ATTRS_WORD1 \
+> +	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+> +	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+>  #define NFSD_WRITEABLE_ATTRS_WORD2 0
+>  
+>  #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+
+
