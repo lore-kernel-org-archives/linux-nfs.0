@@ -1,81 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26419 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34860 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754824Ab1KLRQz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 12:16:55 -0500
-Message-ID: <1321118198.7782.5.camel@lade.trondhjem.org>
-Subject: Re: [PATCH/RFC 5/7] Added VFH FHEXPIRED recovery functions.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Malahal Naineni <malahal@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Sat, 12 Nov 2011 12:16:38 -0500
-In-Reply-To: <20111112034534.GB15724@us.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	 <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
-	 <1321057673.8733.13.camel@lade.trondhjem.org>
-	 <20111112034534.GB15724@us.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1751352Ab1KGTEI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Nov 2011 14:04:08 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: [PATCH 1/1] RPC: print warning before hanging due to bad server reply
+Date: Mon,  7 Nov 2011 14:04:03 -0500
+Message-Id: <1320692643-27423-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-11 at 19:45 -0800, Malahal Naineni wrote: 
-> Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
-> > > +static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
-> > > +	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-> > > +{
-> > > +	struct nfs4_exception exception = { };
-> > > +	int err;
-> > > +	do {
-> > > +		int status;
-> > > +
-> > > +		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
-> > > +		switch (status) {
-> > > +		case -NFS4ERR_BADNAME:
-> > > +			return -ENOENT;
-> > > +		case -NFS4ERR_MOVED:
-> > > +			err = nfs4_get_referral(dir, name, fattr, fhandle);
-> > > +			break;
-> > > +		case -NFS4ERR_FHEXPIRED:
-> > > +			return -NFS4ERR_FHEXPIRED;
-> > > +		case -NFS4ERR_WRONGSEC:
-> > > +			nfs_fixup_secinfo_attributes(fattr, fhandle);
-> > 
-> > case -NFS4ERR_ACCESS:
-> >                  ???????
-> > 
-> > > +		}
-> > > +		err = nfs4_handle_exception(NFS_SERVER(dir),
-> > > +					status, &exception);
-> > > +	} while (exception.retry);
-> > > +	return err;
-> > > +}
-> > > +
-> > 
-> > What execution context is this function going to be running under and
-> > what guarantees that it actually has the right file access credentials
-> > to allow it to perform a lookup?
-> 
-> I imagine, it is in the context of the process that received FHEXPIRED
-> error. It may not have credentials to perform a lookup on parent
-> directories. If it doesn't, that would end up with ESTALE with Matt's
-> patches, right Matt?
+If a server incorrectly returns RPC_PROG_MISMATCH in the midst
+of nfsv4 traffic, the client will hang in various difficult to
+debug states.  Change a dprintk to a printk to ensure a
+relevant log message is sent in this case.
 
-My point is that if you don't have the ability to pass a credential as
-an argument, then you won't be able to recover from something like an
-OPEN, READ or WRITE, which all happen in the rpciod context, nor can you
-recover from the state recovery thread context.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ net/sunrpc/clnt.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-Note also that you are doing synchronous I/O, and so you will need a
-recovery thread context anyway in order to recover from stuff running in
-the rpciod context...
-
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c5347d2..2d9b77e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -31,6 +31,7 @@
+ #include <linux/in.h>
+ #include <linux/in6.h>
+ #include <linux/un.h>
++#include <linux/ratelimit.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+@@ -1736,8 +1737,9 @@ rpc_verify_header(struct rpc_task *task)
+ 		error = -EPFNOSUPPORT;
+ 		goto out_err;
+ 	case RPC_PROG_MISMATCH:
+-		dprintk("RPC: %5u %s: program %u, version %u unsupported by "
+-				"server %s\n", task->tk_pid, __func__,
++		printk_ratelimited("RPC: %5u %s: program %u, version %u "
++				"unsupported by server %s\n",
++				task->tk_pid, __func__,
+ 				(unsigned int)task->tk_client->cl_prog,
+ 				(unsigned int)task->tk_client->cl_vers,
+ 				task->tk_client->cl_server);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
