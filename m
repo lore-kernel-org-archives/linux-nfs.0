@@ -1,86 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8365 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:44178 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750944Ab1KMKQJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Nov 2011 05:16:09 -0500
-Date: Sun, 13 Nov 2011 12:17:14 +0200
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: Ian Campbell <Ian.Campbell@citrix.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
-Message-ID: <20111113101713.GB15322@redhat.com>
-References: <1320850895.955.172.camel@zakaz.uk.xensource.com>
- <1320850927-30240-4-git-send-email-ian.campbell@citrix.com>
- <20111111123824.GA23902@redhat.com>
- <1321017627.955.254.camel@zakaz.uk.xensource.com>
+	id S932404Ab1KHLOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 06:14:10 -0500
+Subject: [PATCH v2 7/7] SUNRPC: added debug messages to RPC pipefs
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 08 Nov 2011 15:13:10 +0300
+Message-ID: <20111108111310.6206.97621.stgit@localhost6.localdomain6>
+In-Reply-To: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
+References: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321017627.955.254.camel@zakaz.uk.xensource.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 11, 2011 at 01:20:27PM +0000, Ian Campbell wrote:
-> On Fri, 2011-11-11 at 12:38 +0000, Michael S. Tsirkin wrote:
-> > On Wed, Nov 09, 2011 at 03:02:07PM +0000, Ian Campbell wrote:
-> > > This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> > > at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> > > wire. If this happens to an NFS WRITE RPC then the write() system call
-> > > completes and the userspace process can continue, potentially modifying data
-> > > referenced by the retransmission before the retransmission occurs.
-> > > 
-> > > Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> > > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > Cc: "David S. Miller" <davem@davemloft.net>
-> > > Cc: Neil Brown <neilb@suse.de>
-> > > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Cc: netdev@vger.kernel.org
-> > 
-> > So this blocks the system call until all page references
-> > are gone, right?
-> 
-> Right. The alternative is to return to userspace while the network stack
-> still has a reference to the buffer which was passed in -- that's the
-> exact class of problem this patch is supposed to fix.
+This patch adds debug messages for notification events.
 
-BTW, the increased latency and the overhead extra wakeups might for some
-workloads be greater than the cost of the data copy.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-> > But, there's no upper limit on how long the
-> > page is referenced, correct?
-> 
-> Correct.
-> 
-> >  consider a bridged setup
-> > with an skb queued at a tap device - this cause one process
-> > to block another one by virtue of not consuming a cloned skb?
-> 
-> Hmm, yes.
-> 
-> One approach might be to introduce the concept of an skb timeout to the
-> stack as a whole and cancel (or deep copy) after that timeout occurs.
-> That's going to be tricky though I suspect...
+---
+ net/sunrpc/rpc_pipe.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-Further, an application might use signals such as SIGALARM,
-delaying them significantly will cause trouble.
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index e40ec55..0cafd59 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -33,6 +33,10 @@
+ #include "netns.h"
+ #include "sunrpc.h"
+ 
++#define RPCDBG_FACILITY RPCDBG_DEBUG
++
++#define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
++
+ static struct vfsmount *rpc_mnt __read_mostly;
+ static int rpc_mount_count;
+ 
+@@ -1083,6 +1087,8 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++	dprintk("RPC:	sending pipefs MOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+ 					   sb);
+@@ -1116,6 +1122,8 @@ void rpc_kill_sb(struct super_block *sb)
+ 	sn->pipefs_sb = NULL;
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+ 	put_net(net);
++	dprintk("RPC:	sending pipefs UMOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
 
-> A simpler option would be to have an end points such as a tap device
-
-Which end points would that be? Doesn't this affect a packet socket
-with matching filters? A userspace TCP socket that happens to
-reside on the same box?  It also seems that at least with a tap device
-an skb can get queued in a qdisk, also indefinitely, right?
-
-> which can swallow skbs for arbitrary times implement a policy in this
-> regard, either to deep copy or drop after a timeout?
-> 
-> Ian.
-
-Or deep copy immediately?
-
--- 
-MST
