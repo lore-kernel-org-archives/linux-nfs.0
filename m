@@ -1,90 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:38149 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751250Ab1KPSNv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2011 13:13:51 -0500
-Message-ID: <4EC3FD8B.6000705@calvaedi.com>
-Date: Wed, 16 Nov 2011 19:14:35 +0100
-From: John Hughes <john@calvaedi.com>
+Received: from mx1.redhat.com ([209.132.183.28]:20653 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752163Ab1KHICA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 03:02:00 -0500
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] Don't hang user processes if Kerberos ticket for nfs4 mount
- expires
-Content-Type: multipart/mixed;
- boundary="------------080701090702090605060104"
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <20152.57839.274405.760444@regina.usersys.redhat.com>
+Date: Tue, 8 Nov 2011 19:01:51 +1100
+From: Max Matveev <makc@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: rpcbind -h
+In-Reply-To: <20111107172131.GA1008@umich.edu>
+References: <20111106155844.GA1790@umich.edu>
+	<3096DDEC-48D3-423A-B674-160B8DA59DE2@oracle.com>
+	<20111107172131.GA1008@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------080701090702090605060104
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Mon, 7 Nov 2011 12:21:31 -0500, Jim Rees wrote:
 
-With recent kernels if the Kerberos ticket for a nfs4 mount expires any 
-user process trying to access the mount hangs until a new ticket is 
-obtained.  Simultaneously a (luckily rate-limited, but still seemingly 
-endless) stream of "Error: state manager encountered RPCSEC_GSS session 
-expired against NFSv4 server" messages is written to the kernel log.
+ rees> Chuck Lever wrote:
+ rees>   On Nov 6, 2011, at 10:58 AM, Jim Rees wrote:
+  
+ >> Is there some good reason why the rpcbind '-h' option (bind to given
+ >> address) applies only to the udp listening socket and not to the tcp socket?
+  
+ rees>   Yes.  See the mail archives.  I believe we've discussed this
+ rees>   thoroughly within the past six months to a year.  If there's
+ rees>   any bug here, it's that "-h" is not well documented.
 
-In a common setup with user home directories nfs4 mounted on 
-workstations one of the processes that is likely to hang is the 
-screen-unlock function which would normally (via pam_krb5 or similar) 
-get the new ticket.
+ rees> It's documented well enough but I'm still in the dark about the
+ rees> reason.  I
 
-In older kernels the EKEYEXPIRED error would be passed to userland, 
-which would usualy just give up.
+Chuck's quote from the manpage reminded me - -h was used to work
+around the address selection: if server has more then one address the
+reply may use any of them. Some clients don't like it.
 
-This patch restores the old behavior, which makes nfs4 mounted home 
-directories usable for me.
+This issue should go away after
 
+commit 74ef3df0236c55185225c62fba34953f2582da72
+Author: Olaf Kirch <okir@suse.de>
+Date:   Wed Mar 2 10:09:24 2011 -0500
 
+was added to libtirpc.
 
+ rees> As I said before, I was hoping for the equivalent of "portmap
+ rees> -l".  I was ready to code up a patch of some kind but now have
+ rees> a workaround (mount with nolock and don't run rpcbind at all).
 
---------------080701090702090605060104
-Content-Type: text/x-patch;
- name="nfs4-ekeyexpired.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nfs4-ekeyexpired.patch"
+iptables is another option.
 
-Signed-off-by: John Hughes <john@calva.com>
+max
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4700fae..dc28a78 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -302,7 +302,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
--		case -EKEYEXPIRED:
- 			ret = nfs4_delay(server->client, &exception->timeout);
- 			if (ret != 0)
- 				break;
-@@ -3732,7 +3731,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
--		case -EKEYEXPIRED:
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 39914be..2bee41e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1377,8 +1377,9 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			/* Zero session reset errors */
- 			return 0;
- 		case -EKEYEXPIRED:
--			/* Nothing we can do */
--			nfs4_warn_keyexpired(clp->cl_hostname);
-+			/* Nothing we can do, so do nothing.  Don't even
-+			   print a warning message, this is not a kernel
-+			   problem */
- 			return 0;
- 	}
- 	return error;
-
---------------080701090702090605060104--
