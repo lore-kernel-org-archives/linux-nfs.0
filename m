@@ -1,82 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17283 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:12296 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751230Ab1KCUzj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 16:55:39 -0400
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Lukas Razik <linux@razik.name>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 03 Nov 2011 16:54:45 -0400
-In-Reply-To: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320353685.18396.119.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S932196Ab1KHLOA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 06:14:00 -0500
+Subject: [PATCH v2 6/7] SUNRPC: pipefs per-net operations helper introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 08 Nov 2011 15:13:02 +0300
+Message-ID: <20111108111302.6206.3017.stgit@localhost6.localdomain6>
+In-Reply-To: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
+References: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-11-03 at 19:43 +0000, Lukas Razik wrote: 
-> Hello together!
-> 
-> My OS: Debian 6.0.3 (squeeze)
-> Machines: SUN Enterprise T5120 (USPARC64)
-> ---
-> Issue description:
-> 
-> I've an NFS
-> server (cluster1=137.226.167.241) and a
-> client (cluster2=137.226.167.242) which should mount it's nfsroot from cluster1.
-> 
-> The linux-2.6.32 kernel on cluster2 shows this during startup:
-> [ 528.982985] IP-Config: Complete:
-> [ 528.983049] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-> [ 528.983299] host=cluster2, domain=, nis-domain=(none),
-> [ 528.983383] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-> [ 528.983633] Looking up port of RPC 100003/2 on 137.226.167.241
-> [ 530.037059] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-> [ 530.056881] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> [ 564.002113] rpcbind: server 137.226.167.241 not responding, timed out
-> [ 564.002295] Root-NFS: Unable to get nfsd port number from server, using default
-> [ 564.002412] Looking up port of RPC 100005/1 on 137.226.167.241
-> [ 564.104137] VFS: Mounted root (nfs filesystem) on device 0:15.
-> 
-> It can mount the nfsroot finally.
-> 
-> But if I use kernel linux-2.6.39.4 on cluster2 it can't mount it's nfsroot.
-> (I've added "nfsdebug" to the kernel arguments for more debug info):
-> [ 407.571521] IP-Config: Complete:
-> [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-> [ 407.571793] host=cluster2, domain=, nis-domain=(none),
-> [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-> [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
-> [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
-> [ 407.572927] NFS: parsing nfs mount option 'udp'
-> [ 407.572995] NFS: parsing nfs mount option 'nolock'
-> [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
-> [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
-> [ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
-> [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-> [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> [ 442.666622] NFS: failed to create MNT RPC client, status=-60
-> [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
-> [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
-> [ 442.667032] VFS: Insert root floppy and press ENTER
-> 
-Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
-basically the same one that you see in your 2.6.32 trace (rpcbind:
-server 137.226.167.241 not responding, timed out) except that now it is
-a fatal error.
+During per-net pipes creation and destruction we have to make sure, that pipefs
+sb exists for the whole creation/destruction cycle. This is done by using
+special mutex which controls pipefs sb reference on network namespace context.
+Helper consists of two parts: first of them (rpc_get_dentry_net) searches for
+dentry with specified name and returns with mutex taken on success. When pipe
+creation or destructions is completed, caller should release this mutex by
+rpc_put_dentry_net call.
 
-Any idea why the first RPC calls might be failing here? A switch
-misconfiguration or something like that perhaps?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
+ net/sunrpc/netns.h                 |    1 +
+ net/sunrpc/rpc_pipe.c              |   36 ++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sunrpc_syms.c           |    1 +
+ 4 files changed, 41 insertions(+), 0 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 4585985..f32490c 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -53,6 +53,9 @@ enum {
+ 
+ extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ 				      const unsigned char *dir_name);
++extern void rpc_pipefs_init_net(struct net *net);
++extern struct super_block *rpc_get_sb_net(const struct net *net);
++extern void rpc_put_sb_net(const struct net *net);
+ 
+ extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
+ 				       char __user *, size_t);
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index b384252..11d2f48 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -11,6 +11,7 @@ struct sunrpc_net {
+ 	struct cache_detail *ip_map_cache;
+ 
+ 	struct super_block *pipefs_sb;
++	struct mutex pipefs_sb_lock;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 831e81d..e40ec55 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1024,6 +1024,40 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ }
+ EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
+ 
++void rpc_pipefs_init_net(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	mutex_init(&sn->pipefs_sb_lock);
++}
++
++/*
++ * This call will be used for per network namespace operations calls.
++ * Note: Function will be returned with pipefs_sb_lock taken if superblock was
++ * found. This lock have to be released by rpc_put_sb_net() when all operations
++ * will be completed.
++ */
++struct super_block *rpc_get_sb_net(const struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	mutex_lock(&sn->pipefs_sb_lock);
++	if (sn->pipefs_sb)
++		return sn->pipefs_sb;
++	mutex_unlock(&sn->pipefs_sb_lock);
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(rpc_get_sb_net);
++
++void rpc_put_sb_net(const struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	BUG_ON(sn->pipefs_sb == NULL);
++	mutex_unlock(&sn->pipefs_sb_lock);
++}
++EXPORT_SYMBOL_GPL(rpc_put_sb_net);
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
+@@ -1078,7 +1112,9 @@ void rpc_kill_sb(struct super_block *sb)
+ 	struct net *net = sb->s_fs_info;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	mutex_lock(&sn->pipefs_sb_lock);
+ 	sn->pipefs_sb = NULL;
++	mutex_unlock(&sn->pipefs_sb_lock);
+ 	put_net(net);
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 8ec9778..7086d11 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -38,6 +38,7 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_ipmap;
+ 
++	rpc_pipefs_init_net(net);
+ 	return 0;
+ 
+ err_ipmap:
 
