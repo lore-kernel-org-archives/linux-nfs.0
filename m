@@ -1,54 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36464 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756172Ab1KVVFS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 16:05:18 -0500
-Date: Tue, 22 Nov 2011 16:05:18 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [RFC] NFS: Cache state owners after files are closed
-Message-ID: <20111122210517.GH21451@fieldses.org>
-References: <20111122174225.1866.25410.stgit@degas.1015granger.net>
- <20111122193638.GB21451@fieldses.org>
- <5CE4FEAE-3432-4F87-ABC8-DBFE4FAF91C7@oracle.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:56266 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754221Ab1KHEdi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 23:33:38 -0500
+Received: by ggnb2 with SMTP id b2so121024ggn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Nov 2011 20:33:38 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5CE4FEAE-3432-4F87-ABC8-DBFE4FAF91C7@oracle.com>
+In-Reply-To: <1617B125-3EFF-42EB-8F1B-A1D57E6ADC12@oracle.com>
+References: <CAO_0yfP8XRH0+Gdn43QSncUFFPPmwbsxx2ZFdPpFTjKAQeuyAw@mail.gmail.com>
+ <1617B125-3EFF-42EB-8F1B-A1D57E6ADC12@oracle.com>
+From: Hamo <hamo.by@gmail.com>
+Date: Tue, 8 Nov 2011 12:33:17 +0800
+Message-ID: <CAO_0yfPOmVdoBOgXOaBDO5QsJyzX+5-8+cnEhKgYUp7eOkqZ1g@mail.gmail.com>
+Subject: Re: [PATCH] mount.nfs: ensure AF priority when mounting
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, jlayton@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 22, 2011 at 03:14:03PM -0500, Chuck Lever wrote:
-> 
-> On Nov 22, 2011, at 2:36 PM, J. Bruce Fields wrote:
-> 
-> > On Tue, Nov 22, 2011 at 12:52:53PM -0500, Chuck Lever wrote:
-> >> Servers have a finite amount of memory to store NFSv4 open and lock
-> >> owners.  Moreover, servers may have a difficult time determining when
-> >> they can reap their state owner table, thanks to gray areas in the
-> >> NFSv4 protocol specification.
-> > 
-> > What's the gray area?
-> > 
-> > Reminding myself: OK, I guess it's the NFSv4.0 close-replay problem.
-> > You have to keep around enough information about a closed stateid to
-> > handle a replay.  If a client reuses the stateowner than you can purge
-> > that as soon as you bump the sequence number, otherwise you have to keep
-> > it around a while (how long is unclear).
-> 
->                     ^^^^^^^^^^^^^^^^^^^^
-> That's the problem.
-> 
-> When the server can't store any more state owners, it has to use heuristics to reap unused state owners, or it can have the client perform state recovery to determine which state owners the client wants to keep around.  Or, it can return NFS4ERR_RESOURCE and hope for the best.
+On Tue, Nov 8, 2011 at 12:01 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Nov 7, 2011, at 10:14 PM, Hamo wrote:
+>
+>> On different architectures, getaddrinfo() may return different
+>> orders of address families. This may confuse the users.
+>> This patch fixes this problem by ensuring that we first try
+>> through IPv6(if present), then through IPv4.
+>> Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=750729
+>
+> By the way, this bug isn't public (I can't access it, anyway).  If RH can't make it public, perhaps a copy of the relevant parts of the bug can be created in bugzilla.linux-nfs.org?  Otherwise, it's hard to tell what you are trying to fix so we can do a thorough patch review.
+>
+> (Also, I'm not sure why you copied lkml and linux-fsdevel on this NFS-specific user space patch).
+>
 
-Yeah.  All the Linux server currently does is keep them around for a
-lease period, then purge them.
+Hi Chuck,
+added you in the CC list so that you can view this bug.
+I miss-added those two mailing lists, thanks for pointing out this.
 
-That strikes me as too short a time to catch a lot of replays, but
-possibly too long in the face of a client creating a lot of new
-openowners.
-
-Anyway, making the client less agressive seems like the most important
-thing, thanks.
-
---b.
+Thanks,
+Yang
