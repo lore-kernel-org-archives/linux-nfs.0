@@ -1,69 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:50722 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751565Ab1K2MBh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 07:01:37 -0500
-From: <tao.peng@emc.com>
-To: <skinsbursky@parallels.com>, <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <xemul@parallels.com>, <neilb@suse.de>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <jbottomley@parallels.com>, <bfields@fieldses.org>,
-        <davem@davemloft.net>, <devel@openvz.org>
-Date: Tue, 29 Nov 2011 07:00:56 -0500
-Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
-	blocklayout routines
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
- <20111129091037.20730.59391.stgit@localhost6.localdomain6>
-In-Reply-To: <20111129091037.20730.59391.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:52020 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756460Ab1KHW7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 17:59:09 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] nfsd4: add a separate (lockowner, inode) lookup
+Date: Tue,  8 Nov 2011 17:59:05 -0500
+Message-Id: <1320793145-29070-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20111108225751.GD27413@fieldses.org>
+References: <20111108225751.GD27413@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFN0YW5pc2xhdg0KPiBLaW5zYnVyc2t5DQo+IFNlbnQ6IFR1ZXNkYXksIE5vdmVt
-YmVyIDI5LCAyMDExIDY6MTEgUE0NCj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+
-IENjOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyB4ZW11bEBwYXJhbGxlbHMuY29tOyBuZWls
-YkBzdXNlLmRlOyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4ga2VybmVsQHZnZXIu
-a2VybmVsLm9yZzsgamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZpZWxkc2VzLm9y
-ZzsgZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBTdWJqZWN0OiBb
-UEFUQ0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZSBm
-cm9tIGJsb2NrbGF5b3V0IHJvdXRpbmVzDQo+IA0KPiBUaGlzIGlzIGEgY2xlYW51cCBwYXRjaC4g
-V2UgZG9uJ3QgbmVlZCB0aGlzIHJlZmVyZW5jZSBhbnltb3JlLCBiZWNhdXNlDQo+IGJsb2NrbGF5
-b3V0IHBpcGVzIGRlbnRyaWVzIG5vdyBjcmVhdGVzIGFuZCBkZXN0cm95cyBpbiBwZXItbmV0IG9w
-ZXJhdGlvbnMgYW5kDQo+IG9uIFBpcGVGUyBtb3VudC91bW91bnQgbm90aWZpY2F0aW9uLg0KPiBO
-b3RlIHRoYXQgbmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVyX25ldCgpIG5vdyByZXR1cm5zIDAgaW5z
-dGVhZCBvZiAtRU5PRU5UIGluDQo+IGNhc2Ugb2YgUGlwZUZTIHN1cGVyYmxvY2sgYWJzZW5jZS4g
-VGhpcyBpcyBvaywgYmVjYXVzZSBibG9ja2xheW91dCBwaXBlIGRlbnRyeQ0KPiB3aWxsIGJlIGNy
-ZWF0ZWQgb24gUGlwZUZTIG1vdW50IGV2ZW50Lg0KV2hlbiBpcyB0aGUgInBpcGVmcyBtb3VudCBl
-dmVudCIgZ29pbmcgdG8gaGFwcGVuPyBXaGVuIGluc2VydGluZyBrZXJuZWwgbW9kdWxlcyBvciB3
-aGVuIHVzZXIgaXNzdWVzIG1vdW50IGNvbW1hbmQ/DQoNClRoYW5rcywNClRhbw0KDQo+IA0KPiBT
-aWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxz
-LmNvbT4NCj4gDQo+IC0tLQ0KPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAg
-ICA5ICstLS0tLS0tLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyksIDggZGVs
-ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
-b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBpbmRleCBhY2Y3YWM5
-Li44MjExZmZkIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQu
-Yw0KPiArKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBAQCAtMTAzMiw3
-ICsxMDMyLDcgQEAgc3RhdGljIHN0cnVjdCBkZW50cnkgKm5mczRibG9ja2xheW91dF9yZWdpc3Rl
-cl9uZXQoc3RydWN0IG5ldCAqbmV0LA0KPiANCj4gIAlwaXBlZnNfc2IgPSBycGNfZ2V0X3NiX25l
-dChuZXQpOw0KPiAgCWlmICghcGlwZWZzX3NiKQ0KPiAtCQlyZXR1cm4gRVJSX1BUUigtRU5PRU5U
-KTsNCj4gKwkJcmV0dXJuIDA7DQo+ICAJZGVudHJ5ID0gbmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVy
-X3NiKHBpcGVmc19zYiwgcGlwZSk7DQo+ICAJcnBjX3B1dF9zYl9uZXQobmV0KTsNCj4gIAlyZXR1
-cm4gZGVudHJ5Ow0KPiBAQCAtMTA4Myw3ICsxMDgzLDYgQEAgc3RhdGljIHN0cnVjdCBwZXJuZXRf
-b3BlcmF0aW9ucyBuZnM0YmxvY2tsYXlvdXRfbmV0X29wcyA9IHsNCj4gDQo+ICBzdGF0aWMgaW50
-IF9faW5pdCBuZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiAgew0KPiAtCXN0cnVjdCB2ZnNt
-b3VudCAqbW50Ow0KPiAgCWludCByZXQ7DQo+IA0KPiAgCWRwcmludGsoIiVzOiBORlN2NCBCbG9j
-ayBMYXlvdXQgRHJpdmVyIFJlZ2lzdGVyaW5nLi4uXG4iLCBfX2Z1bmNfXyk7DQo+IEBAIC0xMDkz
-LDEyICsxMDkyLDYgQEAgc3RhdGljIGludCBfX2luaXQgbmZzNGJsb2NrbGF5b3V0X2luaXQodm9p
-ZCkNCj4gIAkJZ290byBvdXQ7DQo+IA0KPiAgCWluaXRfd2FpdHF1ZXVlX2hlYWQoJmJsX3dxKTsN
-Cj4gLQ0KPiAtCW1udCA9IHJwY19nZXRfbW91bnQoKTsNCj4gLQlpZiAoSVNfRVJSKG1udCkpIHsN
-Cj4gLQkJcmV0ID0gUFRSX0VSUihtbnQpOw0KPiAtCQlnb3RvIG91dF9yZW1vdmU7DQo+IC0JfQ0K
-PiAgCXJldCA9IHJwY19waXBlZnNfbm90aWZpZXJfcmVnaXN0ZXIoJm5mczRibG9ja2xheW91dF9i
-bG9jayk7DQo+ICAJaWYgKHJldCkNCj4gIAkJZ290byBvdXRfcmVtb3ZlOw0KPiANCj4gLS0NCj4g
-VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
-IGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
-Lmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
-Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Address the possible performance regression mentioned in "nfsd4: hash
+lockowners to simplify RELEASE_LOCKOWNER" by providing a separate
+(lockowner, inode) hash.
+
+Really, I doubt this matters much, but I think it's likely we'll change
+these data structures here and I'd rather that the need for (owner,
+inode) lookups be well-documented.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   29 +++++++++++++++++++++++------
+ fs/nfsd/state.h     |    1 +
+ 2 files changed, 24 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index dcbe7f3..d4bd698 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -514,6 +514,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 
+ 	list_del(&lo->lo_owner.so_strhash);
+ 	list_del(&lo->lo_perstateid);
++	list_del(&lo->lo_owner_ino_hash);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+@@ -3722,6 +3723,10 @@ out:
+ 
+ #define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
+ 
++#define LOCKOWNER_INO_HASH_BITS 8
++#define LOCKOWNER_INO_HASH_SIZE (1 << LOCKOWNER_INO_HASH_BITS)
++#define LOCKOWNER_INO_HASH_MASK (LOCKOWNER_INO_HASH_SIZE - 1)
++
+ static inline u64
+ end_offset(u64 start, u64 len)
+ {
+@@ -3742,6 +3747,15 @@ last_byte_offset(u64 start, u64 len)
+ 	return end > start ? end - 1: NFS4_MAX_UINT64;
+ }
+ 
++static unsigned int lockowner_ino_hashval(struct inode *inode, u32 cl_id, struct xdr_netobj *ownername)
++{
++	return (file_hashval(inode) + cl_id
++			+ opaque_hashval(ownername->data, ownername->len))
++		& LOCKOWNER_INO_HASH_MASK;
++}
++
++static struct list_head lockowner_ino_hashtbl[LOCKOWNER_INO_HASH_SIZE];
++
+ /*
+  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
+  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
+@@ -3809,14 +3823,10 @@ static struct nfs4_lockowner *
+ find_lockowner_str(struct inode *inode, clientid_t *clid,
+ 		struct xdr_netobj *owner)
+ {
+-	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
++	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
+ 	struct nfs4_lockowner *lo;
+-	struct nfs4_stateowner *op;
+ 
+-	list_for_each_entry(op, &ownerstr_hashtbl[hashval], so_strhash) {
+-		if (op->so_is_open_owner)
+-			continue;
+-		lo = lockowner(op);
++	list_for_each_entry(lo, &lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
+ 		if (same_lockowner_ino(lo, inode, clid, owner))
+ 			return lo;
+ 	}
+@@ -3825,7 +3835,12 @@ find_lockowner_str(struct inode *inode, clientid_t *clid,
+ 
+ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp)
+ {
++	struct inode *inode = open_stp->st_file->fi_inode;
++	unsigned int inohash = lockowner_ino_hashval(inode,
++			clp->cl_clientid.cl_id, &lo->lo_owner.so_owner);
++
+ 	list_add(&lo->lo_owner.so_strhash, &ownerstr_hashtbl[strhashval]);
++	list_add(&lo->lo_owner_ino_hash, &lockowner_ino_hashtbl[inohash]);
+ 	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
+ }
+ 
+@@ -4548,6 +4563,8 @@ nfs4_state_init(void)
+ 	for (i = 0; i < OWNER_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&ownerstr_hashtbl[i]);
+ 	}
++	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
++		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
+ 	memset(&onestateid, ~0, sizeof(stateid_t));
+ 	INIT_LIST_HEAD(&close_lru);
+ 	INIT_LIST_HEAD(&client_lru);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index a3cf384..89c2cd8 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -366,6 +366,7 @@ struct nfs4_openowner {
+ 
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
++	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
+ 	struct list_head        lo_perstateid; /* for lockowners only */
+ 	struct list_head	lo_list; /* for temporary uses */
+ };
+-- 
+1.7.5.4
+
