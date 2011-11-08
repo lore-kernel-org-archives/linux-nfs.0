@@ -1,62 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:38927 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754512Ab1KIDwE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2011 22:52:04 -0500
-Message-ID: <4EB9F8D6.1080302@panasas.com>
-Date: Tue, 8 Nov 2011 19:51:50 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:53739 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932500Ab1KHUqC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2011 15:46:02 -0500
+Date: Tue, 8 Nov 2011 23:45:55 +0300
+From: Alexey Dobriyan <adobriyan@gmail.com>
+To: Julia Lawall <julia.lawall@lip6.fr>
+Cc: Julia Lawall <julia@diku.dk>, "J. Bruce Fields" <bfields@fieldses.org>,
+        kernel-janitors@vger.kernel.org, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/5] net/sunrpc: use kstrtoul, etc
+Message-ID: <20111108204555.GA4379@p183.telecom.by>
+References: <1320586010-21931-1-git-send-email-julia@diku.dk>
+ <1320586010-21931-3-git-send-email-julia@diku.dk>
+ <20111108193817.GA3453@p183.telecom.by>
+ <alpine.DEB.2.02.1111082113380.1880@hadrien>
 MIME-Version: 1.0
-To: Benny Halevy <benny@tonian.com>, NFS list <linux-nfs@vger.kernel.org>
-CC: Steve Dickson <steved@redhat.com>
-Subject: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under
- NFSDDBG_PNFS
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.DEB.2.02.1111082113380.1880@hadrien>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Nov 08, 2011 at 09:19:30PM +0100, Julia Lawall wrote:
+> 
+> 
+> On Tue, 8 Nov 2011, Alexey Dobriyan wrote:
+> 
+> > On Sun, Nov 06, 2011 at 02:26:47PM +0100, Julia Lawall wrote:
+> >> @@
+> >> expression a,b;
+> >> {int,long} *c;
+> >> @@
+> >>
+> >> -strict_strtoul
+> >> +kstrtoul
+> >
+> > No, no, no!
+> 
+> Sorry, this was not the real rule I used for the strtoul case.  Instead I 
+> used the following:
+> 
+> @@
+> typedef ulong;
+> expression a,b;
+> {ulong,unsigned long,unsigned int,size_t} *c;
+> @@
+> 
+> -strict_strtoul
+> +kstrtoul
+>   (a,b,c)
+> 
+> But now I have seen that there is a separate function for integers, so I 
+> have made a rule to use that function when the type is unsigned int.
+> 
+> > In every case see the type or real data and use appropriate function.
+> > kstrtou8() for ports.
+> 
+> The type of the destination variable in all of these cases is unsigned 
+> long.  But maybe that is not enough information to make the 
+> transformation in the right way.
 
-I've been squinting  at pnfsd dprints for ages and aching under the wait. So I headed
-up to the nfsd/debug.h to add a PNFS channel, and what do you know? there is one!
-It's used by nfs4pnfsds.c. Surly  nfs4pnfsd.c is more _PNFS than _PROC.
+That's because previous functions following libc didn't accept anything
+less than unsigned long.
 
-While at it I changed  nfs4pnfsdlm.c to, also already defined, NFSDDBG_FILELAYOUT
-which was unused before this patch.
+For these conversion, one should literally look at every usecase and
+see what types data have for real (not unsigned long) and
+make conversion and remove explicit EINVAL checks if necesasry.
 
-CC: Steve Dickson <steved@redhat.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfsd/nfs4pnfsd.c   |    2 +-
- fs/nfsd/nfs4pnfsdlm.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+In sunrpc case: switch to kstrtou8 + remove "> 255" check.
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 18b8fca..f514ebe 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -23,7 +23,7 @@
- 
- #include "pnfsd.h"
- 
--#define NFSDDBG_FACILITY                NFSDDBG_PROC
-+#define NFSDDBG_FACILITY                NFSDDBG_PNFS
- 
- /* Globals */
- static u32 current_layoutid = 1;
-diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-index abc4d83..0f0441a 100644
---- a/fs/nfsd/nfs4pnfsdlm.c
-+++ b/fs/nfsd/nfs4pnfsdlm.c
-@@ -30,7 +30,7 @@
- #include "nfsfh.h"
- #include "nfsd.h"
- 
--#define NFSDDBG_FACILITY                NFSDDBG_PROC
-+#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
- 
- /* Just use a linked list. Do not expect more than 32 dlm_device_entries
-  * the first implementation will just use one device per cluster file system
--- 
-1.7.6.2
-
-
+This program doesn't and won't do that.
