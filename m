@@ -1,43 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:30022 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751582Ab1K3Fn6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 00:43:58 -0500
-From: <tao.peng@emc.com>
-To: <rees@umich.edu>, <bergwolf@gmail.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <bhalevy@tonian.com>
-Date: Wed, 30 Nov 2011 00:43:21 -0500
-Subject: RE: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B0BD@MX09A.corp.emc.com>
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
- <20111129174830.GA3001@umich.edu>
-In-Reply-To: <20111129174830.GA3001@umich.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from mailhub.sw.ru ([195.214.232.25]:33218 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755212Ab1KHKmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 05:42:36 -0500
+Subject: [PATCH v4 3/3] SUNRPC: optimize net_ns dereferencing in rpcbind
+	registering calls
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 08 Nov 2011 14:41:36 +0300
+Message-ID: <20111108104135.1714.83981.stgit@localhost6.localdomain6>
+In-Reply-To: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
+References: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBKaW0gUmVlcyBbbWFpbHRvOnJl
-ZXNAdW1pY2guZWR1XQ0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDMwLCAyMDExIDE6NDkg
-QU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbTsgbGlu
-dXgtbmZzQHZnZXIua2VybmVsLm9yZzsgYmhhbGV2eUB0b25pYW4uY29tOyBQZW5nLCBUYW8NCj4g
-U3ViamVjdDogUmU6IFtQQVRDSC1SRVNFTkQgNC80XSBwbmZzYmxvY2s6IGRvIG5vdCBhc2sgZm9y
-IGxheW91dCBpbiBwZ19pbml0DQo+IA0KPiBQZW5nIFRhbyB3cm90ZToNCj4gDQo+ICAgQXNraW5n
-IGZvciBsYXlvdXQgaW4gcGdfaW5pdCB3aWxsIGFsd2F5cyBtYWtlIGNsaWVudCBhc2sgZm9yIG9u
-bHkgNEtCDQo+ICAgbGF5b3V0IGluIGV2ZXJ5IGxheW91dGdldC4gVGhpcyB3YXksIGNsaWVudCBk
-cm9wcyB0aGUgSU8gc2l6ZSBpbmZvcm1hdGlvbg0KPiAgIHRoYXQgaXMgbWVhbmluZ2Z1bCBmb3Ig
-TURTIGluIGhhbmRpbmcgb3V0IGxheW91dC4NCj4gDQo+ICAgSW4gc3RlYWQsIGlmIGxheW91dCBp
-cyBub3QgZmluZCBpbiBjYWNoZSwgZG8gbm90IHNlbmQgbGF5b3V0Z2V0DQo+ICAgYXQgb25jZS4g
-V2FpdCB1bnRpbCBiZWZvcmUgaXNzdWluZyBJTyBpbiBwbmZzX2RvX211bHRpcGxlX3JlYWRzL3dy
-aXRlcw0KPiAgIGJlY2F1c2UgdGhhdCBpcyB3aGVyZSB3ZSBrbm93IHRoZSByZWFsIHNpemUgb2Yg
-Y3VycmVudCBJTy4gQnkgdGVsbGluZyB0aGUNCj4gICByZWFsIElPIHNpemUgdG8gTURTLCBNRFMg
-d2lsbCBoYXZlIGEgYmV0dGVyIGNoYW5jZSB0byBnaXZlIHByb3BlciBsYXlvdXQuDQo+IA0KPiAg
-IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPg0KPiAgIC0tLQ0KPiAg
-IFJlc2VuZCB0byBmaXggcGF0Y2ggdGl0bGUuIFNvcnJ5IGZvciB0aGUgbm9pc2UuLi4NCj4gDQo+
-IFlvdSBtYXkgd2FudCB0byBmaXggdGhlIHBhdGNoIGRhdGUgdG9vLCBvbiB0aGlzIHNlcmllcyBh
-bmQgdGhlIG90aGVyIHNlcmllcw0KPiB5b3Ugc2VudCBlYXJsaWVyIChsYXRlcj8pLiAgSSBrbm93
-IENoaW5hIGlzIGluIGEgbGF0ZXIgdGltZXpvbmUgYnV0IEkgZG9uJ3QNCj4gdGhpbmsgaXQncyB0
-aGF0IG11Y2ggbGF0ZXIuDQpTb3JyeS4uLiBsb29rIGxpa2UgdGhlIGRhdGUgb2YgdGhlIG1hY2hp
-bmUgSSB1c2VkIHRvIHNlbmQgcGF0Y2hlcyBpcyBzb21laG93IG1lc3NlZCB1cC4gSSB3aWxsIHBh
-eSBhdHRlbnRpb24gdG8gaXQgbmV4dCB0aW1lLg0KDQpUaGFua3MsDQpUYW8NCg==
+Static rpcbind registering functions can be parametrized by network namespace
+pointer, calculated only once, instead of using init_net pointer (or taking it
+from current when virtualization will be comleted) in many places.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ net/sunrpc/rpcb_clnt.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 3df276a..371d229 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -451,14 +451,14 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ /*
+  * Fill in AF_INET family-specific arguments to register
+  */
+-static int rpcb_register_inet4(const struct sockaddr *sap,
++static int rpcb_register_inet4(struct sunrpc_net *sn,
++			       const struct sockaddr *sap,
+ 			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin->sin_port);
+ 	int result;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
+ 
+@@ -479,14 +479,14 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
+ /*
+  * Fill in AF_INET6 family-specific arguments to register
+  */
+-static int rpcb_register_inet6(const struct sockaddr *sap,
++static int rpcb_register_inet6(struct sunrpc_net *sn,
++			       const struct sockaddr *sap,
+ 			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+ 	unsigned short port = ntohs(sin6->sin6_port);
+ 	int result;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
+ 
+@@ -504,10 +504,10 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
+ 	return result;
+ }
+ 
+-static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
++static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
++					     struct rpc_message *msg)
+ {
+ 	struct rpcbind_args *map = msg->rpc_argp;
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+ 
+ 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
+ 		"local rpcbind\n",
+@@ -580,13 +580,13 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 		return -EPROTONOSUPPORT;
+ 
+ 	if (address == NULL)
+-		return rpcb_unregister_all_protofamilies(&msg);
++		return rpcb_unregister_all_protofamilies(sn, &msg);
+ 
+ 	switch (address->sa_family) {
+ 	case AF_INET:
+-		return rpcb_register_inet4(address, &msg);
++		return rpcb_register_inet4(sn, address, &msg);
+ 	case AF_INET6:
+-		return rpcb_register_inet6(address, &msg);
++		return rpcb_register_inet6(sn, address, &msg);
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
+
