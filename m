@@ -1,51 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:50359 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932395Ab1KIR3X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 12:29:23 -0500
-Message-ID: <4EBAB863.1030303@panasas.com>
-Date: Wed, 9 Nov 2011 09:29:07 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:46096 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932297Ab1KHLNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Nov 2011 06:13:44 -0500
+Subject: [PATCH v2 4/7] SUNRPC: pipefs dentry lookup helper introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 08 Nov 2011 15:12:45 +0300
+Message-ID: <20111108111245.6206.5308.stgit@localhost6.localdomain6>
+In-Reply-To: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
+References: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: <tigran.mkrtchyan@desy.de>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: failed to compile kernel due to object layout
-References: <CAGue13qr5iq=yhCA5BEzeoX94-ha7y4-fXMxH6C1g0nUia2Ceg@mail.gmail.com>
-In-Reply-To: <CAGue13qr5iq=yhCA5BEzeoX94-ha7y4-fXMxH6C1g0nUia2Ceg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/09/2011 02:48 AM, Tigran Mkrtchyan wrote:
-> Hi Boaz,
-> 
-> did I miss configured something?
-> 
-> Kernel: arch/x86/boot/bzImage is ready  (#59)
-> ERROR: "ore_read" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> ERROR: "ore_put_io_state" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> ERROR: "ore_write" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> ERROR: "ore_check_io" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> ERROR: "ore_verify_layout" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> ERROR: "ore_get_rw_state" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
-> WARNING: modpost: Found 3 section mismatch(es).
-> To see full details build your kernel with:
-> 'make CONFIG_DEBUG_SECTION_MISMATCH=y'
-> make[1]: *** [__modpost] Error 1
-> make: *** [modules] Error 2
-> tigran@anahit:~/nfs-2.6>
-> 
-> 
-> config file attached.
-> 
-> Tigran.
+In all places, where pipefs dentries are created, only directory inode is
+actually required to create new dentry. And all this directories has root
+pipefs dentry as their parent. So we actually don't need this pipefs mount
+point at all if some pipefs lookup method will be provided.
+IOW, all we really need is just superblock and simple lookup method to find
+root's child dentry with appropriate name. And this patch introduces this
+method.
+Note, that no locking implemented in rpc_d_lookup_sb(). So it can be used only
+in case of assurance, that pipefs superblock still exist. IOW, we can use this
+method only in pipefs mount-umount notification subscribers callbacks.
 
-Which tree is this?
-Because in Benny's tree there was such a problem. But in Linus 3.2-rc1 it 
-should be already fixed.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-In some version of Benny's tree it is terminally broken. (No why out)
-You'll need a patch. Tell me which tree and I'll make one for you
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
+ net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
+ 2 files changed, 19 insertions(+), 0 deletions(-)
 
-Sorry
-Boaz
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 733ef50..4585985 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -51,6 +51,9 @@ enum {
+ 	RPC_PIPEFS_UMOUNT,
+ };
+ 
++extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++				      const unsigned char *dir_name);
++
+ extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
+ 				       char __user *, size_t);
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 07fb7dd..1de840d 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1008,6 +1008,22 @@ static const struct rpc_filelist files[] = {
+ 	},
+ };
+ 
++/*
++ * This call can be used only in RPC pipefs mount notification hooks.
++ */
++struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++			       const unsigned char *dir_name)
++{
++	struct qstr dir = {
++		.name = dir_name,
++		.len = strlen(dir_name),
++		.hash = full_name_hash(dir_name, strlen(dir_name)),
++	};
++
++	return d_lookup(sb->s_root, &dir);
++}
++EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
+
