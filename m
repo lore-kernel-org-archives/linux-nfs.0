@@ -1,274 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.ctxuk.citrix.com ([62.200.22.115]:59600 "EHLO
-	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752210Ab1KKNUm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 08:20:42 -0500
-Subject: Re: [PATCH 4/4] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
-From: Ian Campbell <Ian.Campbell@citrix.com>
-To: "Michael S. Tsirkin" <mst@redhat.com>
-CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 11 Nov 2011 13:20:27 +0000
-In-Reply-To: <20111111123824.GA23902@redhat.com>
-References: <1320850895.955.172.camel@zakaz.uk.xensource.com>
-	 <1320850927-30240-4-git-send-email-ian.campbell@citrix.com>
-	 <20111111123824.GA23902@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1321017627.955.254.camel@zakaz.uk.xensource.com>
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:45540 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751617Ab1KIWge convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 17:36:34 -0500
+Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over TCP
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4EBAC88D.40902@citrix.com>
+Date: Wed, 9 Nov 2011 17:36:22 -0500
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-Id: <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>
+References: <4EBAC88D.40902@citrix.com>
+To: Andrew Cooper <andrew.cooper3@citrix.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-11 at 12:38 +0000, Michael S. Tsirkin wrote:
-> On Wed, Nov 09, 2011 at 03:02:07PM +0000, Ian Campbell wrote:
-> > This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> > at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> > wire. If this happens to an NFS WRITE RPC then the write() system call
-> > completes and the userspace process can continue, potentially modifying data
-> > referenced by the retransmission before the retransmission occurs.
-> > 
-> > Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Cc: "David S. Miller" <davem@davemloft.net>
-> > Cc: Neil Brown <neilb@suse.de>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > Cc: linux-nfs@vger.kernel.org
-> > Cc: netdev@vger.kernel.org
+
+On Nov 9, 2011, at 1:38 PM, Andrew Cooper wrote:
+
+> Hello,
 > 
-> So this blocks the system call until all page references
-> are gone, right?
-
-Right. The alternative is to return to userspace while the network stack
-still has a reference to the buffer which was passed in -- that's the
-exact class of problem this patch is supposed to fix.
-
-> But, there's no upper limit on how long the
-> page is referenced, correct?
-
-Correct.
-
->  consider a bridged setup
-> with an skb queued at a tap device - this cause one process
-> to block another one by virtue of not consuming a cloned skb?
-
-Hmm, yes.
-
-One approach might be to introduce the concept of an skb timeout to the
-stack as a whole and cancel (or deep copy) after that timeout occurs.
-That's going to be tricky though I suspect...
-
-A simpler option would be to have an end points such as a tap device
-which can swallow skbs for arbitrary times implement a policy in this
-regard, either to deep copy or drop after a timeout?
-
-Ian.
-
+> I am debugging an issue for a customer whereby an NFS mount undergoes an
+> unexpected timeout and throws an EIO.
 > 
-> > ---
-> >  include/linux/sunrpc/xdr.h  |    2 ++
-> >  include/linux/sunrpc/xprt.h |    5 ++++-
-> >  net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
-> >  net/sunrpc/svcsock.c        |    3 ++-
-> >  net/sunrpc/xprt.c           |   13 +++++++++++++
-> >  net/sunrpc/xprtsock.c       |    3 ++-
-> >  6 files changed, 45 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-> > index a20970e..172f81e 100644
-> > --- a/include/linux/sunrpc/xdr.h
-> > +++ b/include/linux/sunrpc/xdr.h
-> > @@ -16,6 +16,7 @@
-> >  #include <asm/byteorder.h>
-> >  #include <asm/unaligned.h>
-> >  #include <linux/scatterlist.h>
-> > +#include <linux/skbuff.h>
-> >  
-> >  /*
-> >   * Buffer adjustment
-> > @@ -57,6 +58,7 @@ struct xdr_buf {
-> >  			tail[1];	/* Appended after page data */
-> >  
-> >  	struct page **	pages;		/* Array of contiguous pages */
-> > +	struct skb_frag_destructor *destructor;
-> >  	unsigned int	page_base,	/* Start of page data */
-> >  			page_len,	/* Length of page data */
-> >  			flags;		/* Flags for data disposition */
-> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> > index 15518a1..75131eb 100644
-> > --- a/include/linux/sunrpc/xprt.h
-> > +++ b/include/linux/sunrpc/xprt.h
-> > @@ -92,7 +92,10 @@ struct rpc_rqst {
-> >  						/* A cookie used to track the
-> >  						   state of the transport
-> >  						   connection */
-> > -	
-> > +	struct skb_frag_destructor destructor;	/* SKB paged fragment
-> > +						 * destructor for
-> > +						 * transmitted pages*/
-> > +
-> >  	/*
-> >  	 * Partial send handling
-> >  	 */
-> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> > index c5347d2..919538d 100644
-> > --- a/net/sunrpc/clnt.c
-> > +++ b/net/sunrpc/clnt.c
-> > @@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
-> >  static void	call_reserveresult(struct rpc_task *task);
-> >  static void	call_allocate(struct rpc_task *task);
-> >  static void	call_decode(struct rpc_task *task);
-> > +static void	call_complete(struct rpc_task *task);
-> >  static void	call_bind(struct rpc_task *task);
-> >  static void	call_bind_status(struct rpc_task *task);
-> >  static void	call_transmit(struct rpc_task *task);
-> > @@ -1113,6 +1114,8 @@ rpc_xdr_encode(struct rpc_task *task)
-> >  			 (char *)req->rq_buffer + req->rq_callsize,
-> >  			 req->rq_rcvsize);
-> >  
-> > +	req->rq_snd_buf.destructor = &req->destructor;
-> > +
-> >  	p = rpc_encode_header(task);
-> >  	if (p == NULL) {
-> >  		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
-> > @@ -1276,6 +1279,7 @@ call_connect_status(struct rpc_task *task)
-> >  static void
-> >  call_transmit(struct rpc_task *task)
-> >  {
-> > +	struct rpc_rqst *req = task->tk_rqstp;
-> >  	dprint_status(task);
-> >  
-> >  	task->tk_action = call_status;
-> > @@ -1309,8 +1313,8 @@ call_transmit(struct rpc_task *task)
-> >  	call_transmit_status(task);
-> >  	if (rpc_reply_expected(task))
-> >  		return;
-> > -	task->tk_action = rpc_exit_task;
-> > -	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
-> > +	task->tk_action = call_complete;
-> > +	skb_frag_destructor_unref(&req->destructor);
-> >  }
-> >  
-> >  /*
-> > @@ -1383,7 +1387,8 @@ call_bc_transmit(struct rpc_task *task)
-> >  		return;
-> >  	}
-> >  
-> > -	task->tk_action = rpc_exit_task;
-> > +	task->tk_action = call_complete;
-> > +	skb_frag_destructor_unref(&req->destructor);
-> >  	if (task->tk_status < 0) {
-> >  		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
-> >  			"error: %d\n", task->tk_status);
-> > @@ -1423,7 +1428,6 @@ call_bc_transmit(struct rpc_task *task)
-> >  			"error: %d\n", task->tk_status);
-> >  		break;
-> >  	}
-> > -	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
-> >  }
-> >  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
-> >  
-> > @@ -1589,12 +1593,14 @@ call_decode(struct rpc_task *task)
-> >  		return;
-> >  	}
-> >  
-> > -	task->tk_action = rpc_exit_task;
-> > +	task->tk_action = call_complete;
-> >  
-> >  	if (decode) {
-> >  		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
-> >  						      task->tk_msg.rpc_resp);
-> >  	}
-> > +	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
-> > +	skb_frag_destructor_unref(&req->destructor);
-> >  	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
-> >  			task->tk_status);
-> >  	return;
-> > @@ -1609,6 +1615,17 @@ out_retry:
-> >  	}
-> >  }
-> >  
-> > +/*
-> > + * 8.	Wait for pages to be released by the network stack.
-> > + */
-> > +static void
-> > +call_complete(struct rpc_task *task)
-> > +{
-> > +	dprintk("RPC: %5u call_complete result %d\n",
-> > +		task->tk_pid, task->tk_status);
-> > +	task->tk_action = rpc_exit_task;
-> > +}
-> > +
-> >  static __be32 *
-> >  rpc_encode_header(struct rpc_task *task)
-> >  {
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 852a258..3685cad 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -196,7 +196,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
-> >  	while (pglen > 0) {
-> >  		if (slen == size)
-> >  			flags = 0;
-> > -		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
-> > +		result = kernel_sendpage(sock, *ppage, xdr->destructor,
-> > +					 base, size, flags);
-> >  		if (result > 0)
-> >  			len += result;
-> >  		if (result != size)
-> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > index f4385e4..925aa0c 100644
-> > --- a/net/sunrpc/xprt.c
-> > +++ b/net/sunrpc/xprt.c
-> > @@ -1103,6 +1103,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
-> >  	xprt->xid = net_random();
-> >  }
-> >  
-> > +static int xprt_complete_skb_pages(void *calldata)
-> > +{
-> > +	struct rpc_task *task = calldata;
-> > +	struct rpc_rqst	*req = task->tk_rqstp;
-> > +
-> > +	dprintk("RPC: %5u completing skb pages\n", task->tk_pid);
-> > +	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
-> > +	return 0;
-> > +}
-> > +
-> >  static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
-> >  {
-> >  	struct rpc_rqst	*req = task->tk_rqstp;
-> > @@ -1115,6 +1125,9 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
-> >  	req->rq_xid     = xprt_alloc_xid(xprt);
-> >  	req->rq_release_snd_buf = NULL;
-> >  	xprt_reset_majortimeo(req);
-> > +	atomic_set(&req->destructor.ref, 1);
-> > +	req->destructor.destroy = &xprt_complete_skb_pages;
-> > +	req->destructor.data = task;
-> >  	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
-> >  			req, ntohl(req->rq_xid));
-> >  }
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index f79e40e9..af3a106 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
-> >  		remainder -= len;
-> >  		if (remainder != 0 || more)
-> >  			flags |= MSG_MORE;
-> > -		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
-> > +		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
-> > +					  base, len, flags);
-> >  		if (remainder == 0 || err != len)
-> >  			break;
-> >  		sent += err;
-> > -- 
-> > 1.7.2.5
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe netdev" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Using synchronous mounts results in no problems whatsoever, whereas
+> using asynchronous mounts causes the problem to occur.
+> 
+> The problem exists only on 10GiB networks: I can't repro on slower
+> networks at all, even if it is the same 10GiB network link limited to
+> 1GiB.  It reproduces on multiple versions of XenServer (both Xen 3 and
+> Xen 4) with a 2.6.32 based dom0 kernel multiple different 10GiB network
+> cards (be2net and bnx2x specifically tested).  It also reproduces
+> against multiple different netapp servers running different firmware
+> versions.  It also appears to reproduces with NFSv3 and NFSv4, although
+> the customer setup uses NFSv3
+> 
+> The difference between mount commands are "noac" for the synchronous
+> case as opposed to "actimeo=0" for the asynchronous case.
+> 
+> The /proc/mounts entry for async is:
+> 10.70.148.3:/vol/camb5e3b16tmp/82ab4a02-c10f-144a-e8c2-2ae04f213b2a
+> /var/run/sr-mount/82ab4a02-c10f-144a-e8c2-2ae04f213b2a nfs
+> rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
+> 0 0
+> 
+> while the entry for sync is:
+> 10.70.148.3:/vol/camb5e3b15tmp/bc11aad3-b345-519f-1661-50e16bed6cdb
+> /var/run/sr-mount/bc11aad3-b345-519f-1661-50e16bed6cdb nfs
+> rw,sync,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
+> 0 0
+
+Using the "soft" mount option means that any NFS level timeout is communicated to applications as EIO.  The client appears to be working as expected.  Do you see this problem if you replace the "soft" mount option with the "hard" mount option?
+
+Also, timeo=133 is actually a 13.3 second timeout setting.  The value of the timeo= mount option is in deciseconds.  This is unreasonably short for RPC over TCP, especially if the server becomes loaded.  A more reasonable timeout setting for RPC over TCP is 600.
+
+The difference between what you describe as a "synchronous" mount and an "asynchronous" mount is that the asynchronous mount can send multiple NFS WRITE operations for one file on the wire to the server concurrently.  The "synchronous" mount throttles write traffic, and requires each WRITE to complete at the server before the client sends the next WRITE.  You can see that the "asynchronous" mount can send a lot more traffic per unit time, and thus may result in the client waiting longer for WRITEs to complete.
+
+> The bug itself feels very like a timing issue to me.  It becomes
+> substantially easier to reproduce if the kernel has a high workload:
+> Different options involve disabling things like TSO offload on the
+> network card or dd'ing from /dev/urandom to /tmp, but the problem cant
+> be reproduced occasionally without any artificial extra workload.  The
+> problem itself can be reprodued with a simple dd from /dev/zero onto the
+> nfs mount, which proceeds to transfer at ~220MBps until the EIO is hit.
+> 
+> I have analyzed the TCP stream using TCPdump and Wireshark.  Everything
+> appears fine, with no NFS errors at all.  However, the client sticks a
+> TCP FIN in the final continuation of one of its 64k block writes, in the
+> middle of writing the file.
+> 
+> The server ACKs the outstanding packets, and sends a Write Reply
+> (without error), but does not send its own FIN.  Then, 15 seconds later,
+> the client sends a TCP RST, and throws an EIO back to userspace.
+> 
+> I am aware that sending a RST after 15 seconds is expected behavior
+> following changeset 7d1e8255cf959fba7ee2317550dfde39f0b936ae, in an
+> attempt to prevent deadlocks for a half closed TCP connection.  I have
+> searched through the commit log all the way to tip, but can not find a
+> commit making any reference to problems similar to this.
+> 
+> What I am struggling to work out is why the client is sending a FIN in
+> the middle of an otherwise fine and error-free NFS stream.  using
+> "rpcdebug -m rpc -s trans" only says "disconnected" without giving a
+> reason for disconnecting.
+> 
+> Is there a different debug flag I can use to find out why NFS thinks it
+> needs to disconnect, or does anyone have any suggestions as to where I
+> should start debugging the code?  I suspect the problem is in the sunrpc
+> subsystem but I am not very familiar with code this high level in the
+> kernel.
+> 
+> Any help greatly appreciated
+> 
+> -- 
+> Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+> T: +44 (0)1223 225 900, http://www.citrix.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
