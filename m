@@ -1,58 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:62526 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753328Ab1KAV5R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 17:57:17 -0400
-Date: Tue, 1 Nov 2011 14:57:10 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Oleg Nesterov <oleg@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
-        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
- fake_signal_wake_up() wake TASK_KILLABLE tasks too"
-Message-ID: <20111101215710.GA13803@google.com>
-References: <20111101005505.GO18855@google.com>
- <20111101041337.39077229@tlielax.poochiereds.net>
- <20111101065958.50addab5@tlielax.poochiereds.net>
- <20111101163059.GR18855@google.com>
- <20111101175953.GB5358@redhat.com>
- <20111101180601.GV18855@google.com>
- <20111101181329.GA6739@redhat.com>
- <20111101182753.GW18855@google.com>
- <20111101193923.GA9444@redhat.com>
- <20111101194601.GB9444@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:50359 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932395Ab1KIR3X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 12:29:23 -0500
+Message-ID: <4EBAB863.1030303@panasas.com>
+Date: Wed, 9 Nov 2011 09:29:07 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111101194601.GB9444@redhat.com>
+To: <tigran.mkrtchyan@desy.de>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: failed to compile kernel due to object layout
+References: <CAGue13qr5iq=yhCA5BEzeoX94-ha7y4-fXMxH6C1g0nUia2Ceg@mail.gmail.com>
+In-Reply-To: <CAGue13qr5iq=yhCA5BEzeoX94-ha7y4-fXMxH6C1g0nUia2Ceg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey, Oleg.
-
-On Tue, Nov 01, 2011 at 08:46:01PM +0100, Oleg Nesterov wrote:
-> On 11/01, Oleg Nesterov wrote:
-> >
-> > Or we can add TASK_FREEZABLE (like TASK_WAKEKILL), iirc we already
-> > discussed this some time ago. And probably it makes sense to add the
-> > generic wait_event_state().
+On 11/09/2011 02:48 AM, Tigran Mkrtchyan wrote:
+> Hi Boaz,
 > 
-> Forgot to mention. I think that before anything else we need
-> signal_wake_up_state(). For example, note that none of the callers
-> of signal_wake_up(resume => true) in ptrace code wants to wake up
-> the killable task.
+> did I miss configured something?
+> 
+> Kernel: arch/x86/boot/bzImage is ready  (#59)
+> ERROR: "ore_read" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> ERROR: "ore_put_io_state" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> ERROR: "ore_write" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> ERROR: "ore_check_io" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> ERROR: "ore_verify_layout" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> ERROR: "ore_get_rw_state" [fs/nfs/objlayout/objlayoutdriver.ko] undefined!
+> WARNING: modpost: Found 3 section mismatch(es).
+> To see full details build your kernel with:
+> 'make CONFIG_DEBUG_SECTION_MISMATCH=y'
+> make[1]: *** [__modpost] Error 1
+> make: *** [modules] Error 2
+> tigran@anahit:~/nfs-2.6>
+> 
+> 
+> config file attached.
+> 
+> Tigran.
 
-Yeah, agreed for both wait_event_state() and signal_wake_up_state().
-For now, let's go with the count/dont_count.  Can you please write up
-a patch for that?  Jeff, does this seem okay to you?
+Which tree is this?
+Because in Benny's tree there was such a problem. But in Linus 3.2-rc1 it 
+should be already fixed.
 
-For TASK_FREEZABLE, I'm not entirely sure.  Combined with
-wait_event_state(), it can definitely reduce the number of different
-variants of wait_event_*().  Let's see.
+In some version of Benny's tree it is terminally broken. (No why out)
+You'll need a patch. Tell me which tree and I'll make one for you
 
-Thanks.
-
--- 
-tejun
+Sorry
+Boaz
