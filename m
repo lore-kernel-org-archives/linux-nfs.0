@@ -1,92 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:47849 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751786Ab1KNOdW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 09:33:22 -0500
-Message-ID: <4EC126B0.204@Calva.COM>
-Date: Mon, 14 Nov 2011 15:33:20 +0100
-From: John Hughes <john@Calva.COM>
-MIME-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:46443 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754406Ab1KIPRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 10:17:22 -0500
+Received: by yenr9 with SMTP id r9so769186yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 07:17:22 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
 To: linux-nfs@vger.kernel.org
-CC: John Hughes <john@Calva.COM>
-Subject: Re: [BUG] nfs4 client loops printing "Error: state manager encountered
- RPCSEC_GSS session expired" if kerberos ticket expires
-References: <4EBBF7AB.8030907@Calva.COM>
-In-Reply-To: <4EBBF7AB.8030907@Calva.COM>
-Content-Type: multipart/mixed;
- boundary="------------010804070609020203080806"
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 1/8] pnfsblock: cleanup bl_mark_sectors_init
+Date: Wed,  9 Nov 2011 07:15:59 -0800
+Message-Id: <1320851766-1834-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------010804070609020203080806
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+It does not need to manipulate on partial initialized blocks.
+Writeback code takes care of it.
 
-Here is a ridiculously stupid patch that fixes the behaviour to be 
-closer to what I want.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    6 +--
+ fs/nfs/blocklayout/blocklayout.h |    3 +-
+ fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
+ 3 files changed, 8 insertions(+), 77 deletions(-)
 
-Now, if the krb5 ticket has expired processes get a EKEYEXPIRED error 
-and the kernel doesn't waste its time printing "ticket expired" errors.
-
- From the point of view of someone who has their home directory nfs 
-mounted they go home after work, when they get back in the morning they 
-give their password to the screensaver, pam_krb5 gets a new ticket and 
-everything works.
-
-(Without this hack the screensaver hangs before presenting the password 
-prompt, presumably accessing something in the home directory).
-
-Anyone care to comment?
-
-
---------------010804070609020203080806
-Content-Type: text/x-patch;
- name="nfs4-hack.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nfs4-hack.patch"
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4700fae..3101f84 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -302,7 +302,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
-+#if 0			/* JH hack - don't handle KRB5 ticket expiry */
- 		case -EKEYEXPIRED:
-+#endif
- 			ret = nfs4_delay(server->client, &exception->timeout);
- 			if (ret != 0)
- 				break;
-@@ -3732,7 +3734,9 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
-+#if 0			/* JH hack - don't handle KRB5 ticket expiry */
- 		case -EKEYEXPIRED:
-+#endif
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 39914be..0137ec9 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1376,10 +1376,12 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
- 			/* Zero session reset errors */
- 			return 0;
-+#if 0			/* JH hack: If there is nothing to do, do nothing */
- 		case -EKEYEXPIRED:
- 			/* Nothing we can do */
- 			nfs4_warn_keyexpired(clp->cl_hostname);
- 			return 0;
-+#endif
- 	}
- 	return error;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 281ae95..4ced0b0 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -571,8 +571,7 @@ fill_invalid_ext:
+ 			unlock_page(page);
+ 
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+@@ -621,8 +620,7 @@ next_page:
+ 		}
+ 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 42acf7e..60728ac 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -186,8 +186,7 @@ struct pnfs_block_extent *
+ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent **cow_read);
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages);
++			     sector_t offset, sector_t length);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *bl_alloc_extent(void);
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 19fa7b0..0fc1321 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
+ 	return status;
  }
+ 
+-static void set_needs_init(sector_t *array, sector_t offset)
+-{
+-	sector_t *p = array;
+-
+-	dprintk("%s enter\n", __func__);
+-	if (!p)
+-		return;
+-	while (*p < offset)
+-		p++;
+-	if (*p == offset)
+-		return;
+-	else if (*p == ~0) {
+-		*p++ = offset;
+-		*p = ~0;
+-		return;
+-	} else {
+-		sector_t *save = p;
+-		dprintk("%s Adding %llu\n", __func__, (u64)offset);
+-		while (*p != ~0)
+-			p++;
+-		p++;
+-		memmove(save + 1, save, (char *)p - (char *)save);
+-		*save = offset;
+-		return;
+-	}
+-}
+-
+ /* We are relying on page lock to serialize this */
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
+ {
+@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
+ 
+ /* Marks sectors in [offest, offset_length) as having been initialized.
+  * All lengths are step-aligned, where step is min(pagesize, blocksize).
+- * Notes where partial block is initialized, and helps prepare it for
+- * complete initialization later.
++ * Currently assumes offset is page-aligned
+  */
+-/* Currently assumes offset is page-aligned */
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages)
++			     sector_t offset, sector_t length)
+ {
+-	sector_t s, start, end;
+-	sector_t *array = NULL; /* Pages to mark */
++	sector_t start, end;
+ 
+ 	dprintk("%s(offset=%llu,len=%llu) enter\n",
+ 		__func__, (u64)offset, (u64)length);
+-	s = max((sector_t) 3,
+-		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
+-	dprintk("%s set max=%llu\n", __func__, (u64)s);
+-	if (pages) {
+-		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
+-		if (!array)
+-			goto outerr;
+-		array[0] = ~0;
+-	}
+ 
+ 	start = normalize(offset, marks->im_block_size);
+ 	end = normalize_up(offset + length, marks->im_block_size);
+@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+ 		goto outerr;
+ 
+ 	spin_lock(&marks->im_lock);
+-
+-	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
+-	     s < offset; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s pre-area pages\n", __func__);
+-		/* Portion of used block is not initialized */
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+ 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
+ 		goto out_unlock;
+-	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
+-	     s < end; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s post-area pages\n", __func__);
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+-
+ 	spin_unlock(&marks->im_lock);
+ 
+-	if (pages) {
+-		if (array[0] == ~0) {
+-			kfree(array);
+-			*pages = NULL;
+-		} else
+-			*pages = array;
+-	}
+ 	return 0;
+ 
+- out_unlock:
++out_unlock:
+ 	spin_unlock(&marks->im_lock);
+- outerr:
+-	if (pages) {
+-		kfree(array);
+-		*pages = NULL;
+-	}
++outerr:
+ 	return -ENOMEM;
+ }
+ 
+-- 
+1.7.1.262.g5ef3d
 
---------------010804070609020203080806--
