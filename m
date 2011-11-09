@@ -1,44 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:55931 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754470Ab1KLQUR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 11:20:17 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RPFMV-0003Gq-BQ
-	for linux-nfs@vger.kernel.org; Sat, 12 Nov 2011 10:19:19 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] nss_getpwnam: ignore case when comparing domain names
-Date: Sat, 12 Nov 2011 10:21:50 -0500
-Message-Id: <1321111310-9481-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:61125 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756575Ab1KITy7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Nov 2011 14:54:59 -0500
+Date: Wed, 9 Nov 2011 14:55:33 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] NFSv4: include bitmap in nfsv4 get acl data
+Message-ID: <20111109145533.248c0523@corrin.poochiereds.net>
+In-Reply-To: <1320477712-1717-1-git-send-email-andros@netapp.com>
+References: <1320477712-1717-1-git-send-email-andros@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nss_getpwnam() fails to find the password entry when the
-DNS domain name has both upper and lower characters,
-which is wrong. Case need to be ignored when comparing
-domain names.
+On Sat,  5 Nov 2011 03:21:52 -0400
+andros@netapp.com wrote:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- nss.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The NFSv4 bitmap size is unbounded: a server can return an arbitrary
+> sized bitmap in an FATTR4_WORD0_ACL request.  Replace using the
+> nfs4_fattr_bitmap_maxsz as a guess to the maximum bitmask returned by a server
+> with the inclusion of the bitmap (xdr length plus bitmasks) and the acl data
+> xdr length to the (cached) acl page data.
+> 
+> This is a general solution to commit e5012d1f "NFSv4.1: update
+> nfs4_fattr_bitmap_maxsz" and fixes hitting a BUG_ON in xdr_shrink_bufhead
+> when getting ACLs.
+> 
+> Cc:stable@kernel.org
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c |   20 ++++++++++++++++++--
+>  fs/nfs/nfs4xdr.c  |   15 ++++++++++++---
+>  2 files changed, 30 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index deb88d9..97014dd 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3671,6 +3671,22 @@ static void nfs4_zap_acl_attr(struct inode *inode)
+>  	nfs4_set_cached_acl(inode, NULL);
+>  }
+>  
+> +/*
+> + * The bitmap xdr length, bitmasks, and the attr xdr length are stored in
+> + * the acl cache to handle variable length bitmasks. Just copy the acl data.
+> + */
+> +static void nfs4_copy_acl(char *buf, char *acl_data, size_t acl_len)
+> +{
+> +	__be32 *q, *p = (__be32 *)acl_data;
+> +	int32_t len;
+> +
+> +	len = be32_to_cpup(p); /* number of bitmasks */
+> +	len += 2;  /* add words for bitmap and attr xdr len */
+> +	q = p + len;
+> +	len = len << 2; /* convert to bytes for acl_len math */
+> +	memcpy(buf, (char *)q, acl_len - len);
+> +}
+> +
+>  static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_t buflen)
+>  {
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+> @@ -3688,7 +3704,7 @@ static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_
+>  	ret = -ERANGE; /* see getxattr(2) man page */
+>  	if (acl->len > buflen)
+>  		goto out;
+> -	memcpy(buf, acl->data, acl->len);
+> +	nfs4_copy_acl(buf, acl->data, acl->len);
+>  out_len:
+>  	ret = acl->len;
+>  out:
+> @@ -3763,7 +3779,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>  		if (res.acl_len > buflen)
+>  			goto out_free;
+>  		if (localpage)
+> -			memcpy(buf, resp_buf, res.acl_len);
+> +			nfs4_copy_acl(buf, resp_buf, res.acl_len);
+>  	}
+>  	ret = res.acl_len;
+>  out_free:
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index f9fd96d..9c07380 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -2513,7 +2513,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  	encode_compound_hdr(xdr, req, &hdr);
+>  	encode_sequence(xdr, &args->seq_args, &hdr);
+>  	encode_putfh(xdr, args->fh, &hdr);
+> -	replen = hdr.replen + op_decode_hdr_maxsz + nfs4_fattr_bitmap_maxsz + 1;
+> +	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+>  	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
+>  
+>  	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+> @@ -4955,7 +4955,7 @@ decode_restorefh(struct xdr_stream *xdr)
+>  static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>  		size_t *acl_len)
+>  {
+> -	__be32 *savep;
+> +	__be32 *savep, *bm_p;
+>  	uint32_t attrlen,
+>  		 bitmap[3] = {0};
+>  	struct kvec *iov = req->rq_rcv_buf.head;
+> @@ -4964,6 +4964,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>  	*acl_len = 0;
+>  	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+>  		goto out;
+> +	bm_p = xdr->p;
+>  	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
+>  		goto out;
+>  	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
+> @@ -4972,12 +4973,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>  	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
+>  		return -EIO;
+>  	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
+> -		size_t hdrlen;
+> +		size_t hdrlen, len;
+>  		u32 recvd;
+>  
+> +		/*The bitmap (xdr len + bitmasks) and the attr xdr len words
+> +		 * are stored with the acl data to handle the problem of
+> +		 * variable length bitmasks.*/
+> +		xdr->p = bm_p;
+> +		len = be32_to_cpup(bm_p);
+> +		len += 2; /* add bitmap and attr xdr len words */
+> +
+>  		/* We ignore &savep and don't do consistency checks on
+>  		 * the attr length.  Let userspace figure it out.... */
+>  		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
+> +		attrlen += len << 2; /* attrlen is in bytes */
+>  		recvd = req->rq_rcv_buf.len - hdrlen;
+>  		if (attrlen > recvd) {
+>  			dprintk("NFS: server cheating in getattr"
 
-diff --git a/nss.c b/nss.c
-index 04aff19..b2b1227 100644
---- a/nss.c
-+++ b/nss.c
-@@ -141,7 +141,7 @@ static char *strip_domain(const char *name, const char *domain)
- 	if (c == NULL && domain == NULL) {
- 		len = strlen(name) + 1;
- 	} else {
--		if (domain && strcmp(c + 1, domain) != 0)
-+		if (domain && strcasecmp(c + 1, domain) != 0)
- 			goto out;
- 		len = c - name;
- 	}
--- 
-1.7.7
+Nice work... I think this looks good:
 
+Acked-by: Jeff Layton <jlayton@redhat.com>
