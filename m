@@ -1,57 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ogre.sisk.pl ([217.79.144.158]:46995 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752077Ab1KBXIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 19:08:49 -0400
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Oleg Nesterov <oleg@redhat.com>
-Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make fake_signal_wake_up() wake TASK_KILLABLE tasks too"
-Date: Thu, 3 Nov 2011 00:11:23 +0100
-Cc: Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>,
-        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
-        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-References: <20111101041337.39077229@tlielax.poochiereds.net> <20111101215710.GA13803@google.com> <20111102162331.GA31947@redhat.com>
-In-Reply-To: <20111102162331.GA31947@redhat.com>
-MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201111030011.24062.rjw@sisk.pl>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:36831 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754406Ab1KIPRo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 10:17:44 -0500
+Received: by gyc15 with SMTP id 15so1820770gyc.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 07:17:43 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 4/8] pnfsblock: set read/write tk_status to pnfs_error
+Date: Wed,  9 Nov 2011 07:16:02 -0800
+Message-Id: <1320851766-1834-5-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday, November 02, 2011, Oleg Nesterov wrote:
-> Hi,
-> 
-> On 11/01, Tejun Heo wrote:
-> >
-> > For now, let's go with the count/dont_count.  Can you please write up
-> > a patch for that?  Jeff, does this seem okay to you?
-> 
-> OK, will do in a minute. On top of
-> "[PATCH pm] freezer: fix wait_event_freezable/__thaw_task races"
-> you sent. (btw, thanks, I forgout about it ;)
-> 
-> Rafael, could you remind why freezer_do_not_count/freezer_count check
-> ->mm != NULL ?
+To pass the IO status to upper layer.
 
-You're asking difficult questions. ;-)
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-The intention was to prevent PF_FREEZER_SKIP from having any effect on
-kernel threads, IIRC.  Anyway, there are only two legitimate users of it
-(vfork and apm_ioctl) and in both cases the task in question is user space.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index e8e13f3..cc13cb0 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -216,6 +216,7 @@ bl_end_par_io_read(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
+ 
++	rdata->task.tk_status = rdata->pnfs_error;
+ 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+@@ -405,7 +406,7 @@ static void bl_end_par_io_write(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
+-	wdata->task.tk_status = 0;
++	wdata->task.tk_status = wdata->pnfs_error;
+ 	wdata->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+ 	schedule_work(&wdata->task.u.tk_work);
+-- 
+1.7.1.262.g5ef3d
 
-> The comment says "However, we don't want kernel threads to be frozen",
-> but it is not clear anyway. A kernel thread simply shouldn't use this
-> interface if it doesn't want to freeze.
-> 
-> And in any case, PF_KTHREAD looks better if we really need to filter
-> out the kernel threads.
-
-PF_FREEZER_SKIP was introduced specifically with vfork in mind and I'm not
-sure if it's a good idea to re-use it for something else (at least not for
-something entirely obvious).
-
-Thanks,
-Rafael
