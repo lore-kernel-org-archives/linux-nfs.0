@@ -1,88 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:50967 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528Ab1KNQB0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 11:01:26 -0500
-Received: by wyh15 with SMTP id 15so6015565wyh.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 08:01:25 -0800 (PST)
-Message-ID: <4EC13B4E.5040706@tonian.com>
-Date: Mon, 14 Nov 2011 18:01:18 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:46234 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751700Ab1KIKZR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 05:25:17 -0500
+Received: by faan17 with SMTP id n17so1480623faa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 02:25:16 -0800 (PST)
 MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <CAGue13pZvA-fBfudje_UccAosLpy0VVUzgr2YHM_57nPamyWTQ@mail.gmail.com>
+References: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
+	<1320699485.7987.9.camel@lade.trondhjem.org>
+	<CAGue13pZvA-fBfudje_UccAosLpy0VVUzgr2YHM_57nPamyWTQ@mail.gmail.com>
+Date: Wed, 9 Nov 2011 11:25:16 +0100
+Message-ID: <CAGue13qFrbAzdctJsTyHUzRNGxbp+mjRoM_j7qiZdGip=H_Dcw@mail.gmail.com>
+Subject: Re: regression in referrals resolution
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read code
- path
-References: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>  <4EC0F7AF.3010904@tonian.com> <1321285777.2632.1.camel@lade.trondhjem.org>
-In-Reply-To: <1321285777.2632.1.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-14 17:49, Trond Myklebust wrote:
-> On Mon, 2011-11-14 at 13:12 +0200, Benny Halevy wrote: 
->> On 2011-11-10 21:38, Trond Myklebust wrote:
->>> pNFS-specific code belongs in the pnfs layer. It should not be
->>> hijacking generic NFS read or write code paths.
+Hi Trond,
+
+your fix is still not in bugfixes branch yet....
+
+
+Regards,
+   Tigran.
+
+On Mon, Nov 7, 2011 at 10:18 PM, Tigran Mkrtchyan
+<tigran.mkrtchyan@desy.de> wrote:
+> On Mon, Nov 7, 2011 at 9:58 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Mon, 2011-11-07 at 21:29 +0100, Tigran Mkrtchyan wrote:
+>>> Hi,
 >>>
->>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>> ---
->>>  fs/nfs/internal.h |    2 ++
->>>  fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
->>>  fs/nfs/read.c     |   14 ++------------
->>>  3 files changed, 25 insertions(+), 17 deletions(-)
 >>>
->>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->>> index c1a1bd8..3f4d957 100644
->>> --- a/fs/nfs/internal.h
->>> +++ b/fs/nfs/internal.h
->>> @@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
->>>  extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
->>>  		struct list_head *head);
->>>  
->>> +extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
->>> +		struct inode *inode);
->>>  extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
->>>  extern void nfs_readdata_release(struct nfs_read_data *rdata);
->>>  
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index baf7353..8e672a2 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->>>  }
->>>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
->>>  
->>> +static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
->>> +{
->>> +	struct nfs_pageio_descriptor pgio;
->>> +
->>> +	put_lseg(data->lseg);
->>> +	data->lseg = NULL;
->>> +	dprintk("pnfs write error = %d\n", data->pnfs_error);
+>>> today we was running test with referrals and notice that 'current'
+>>> 3.1+ has a regression.
+>>> The referrals are resolved, but client returns IO error :
 >>
->> should be "read error", might as well fix this while you're at it :)
-> 
-> Sure...
-> 
->>> +
->>> +	nfs_pageio_init_read_mds(&pgio, data->inode);
->>> +
->>> +	while (!list_empty(&data->pages)) {
->>> +		struct nfs_page *req = nfs_list_entry(data->pages.next);
->>> +
->>> +		nfs_list_remove_request(req);
->>> +		nfs_pageio_add_request(&pgio, req);
->>> +	}
+>> Doh! I expect that the following should fix it...
+>
+> In did!
+>
+> Thanks,
+>   Tigran.
 >>
->> What about pgio.pg_recoalesce?
-> 
-> It was incorrect to set it in the first place. This is an ordinary
-> coalesce...
-> 
-
-I see.  Please just document that in the commit message...
-
-Thanks,
-
-Benny
+>> Thanks
+>>  Trond
+>> 8<--------------------------------------------------------------------------
+>> From 91207dc6fd4fbe5f758dd2558e927bcd0c411581 Mon Sep 17 00:00:00 2001
+>> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Date: Mon, 7 Nov 2011 15:50:32 -0500
+>> Subject: [PATCH] NFS: Fix a regression in the referral code
+>>
+>> Fix a regression that was introduced by commit
+>> 0c2e53f11a6dae9e3af5f50f5ad0382e7c3e0cfa (NFS: Remove the unused
+>> "lookupfh()" version of nfs4_proc_lookup()).
+>>
+>> In the case where the lookup gets an NFS4ERR_MOVED, we want to return
+>> the result of nfs4_get_referral(). Instead, that value is getting
+>> clobbered by the call to nfs4_handle_exception()...
+>>
+>> Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    3 +--
+>>  1 files changed, 1 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 069cb80..be2bbac 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2464,8 +2464,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+>>                case -NFS4ERR_BADNAME:
+>>                        return -ENOENT;
+>>                case -NFS4ERR_MOVED:
+>> -                       err = nfs4_get_referral(dir, name, fattr, fhandle);
+>> -                       break;
+>> +                       return nfs4_get_referral(dir, name, fattr, fhandle);
+>>                case -NFS4ERR_WRONGSEC:
+>>                        nfs_fixup_secinfo_attributes(fattr, fhandle);
+>>                }
+>> --
+>> 1.7.7
+>>
+>>
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>>
+>> NetApp
+>> Trond.Myklebust@netapp.com
+>> www.netapp.com
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
