@@ -1,178 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:50758 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755420Ab1KJJiE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:38:04 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Date: Thu, 10 Nov 2011 04:37:23 -0500
-Subject: RE: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C45@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
- <1320851766-1834-8-git-send-email-bergwolf@gmail.com>
- <4EBB9136.7010603@tonian.com> <4EBB9778.3020900@tonian.com>
-In-Reply-To: <4EBB9778.3020900@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from smtp.citrix.com ([66.165.176.89]:12983 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750917Ab1KISiH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Nov 2011 13:38:07 -0500
+Message-ID: <4EBAC88D.40902@citrix.com>
+Date: Wed, 9 Nov 2011 18:38:05 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
 MIME-Version: 1.0
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: unexpected NFS timeouts, related to sync/async soft mounts over TCP
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Thursday, November 10, 2011 5:21 PM
-> To: Peng Tao
-> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
-> Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-> 
-> On 2011-11-10 10:54, Benny Halevy wrote:
-> > On 2011-11-09 17:16, Peng Tao wrote:
-> >> It stores a list of short extents for INVAL->RW conversion.
-> >> Also add two functions to manipulate them, in preparation to
-> >> move malloc logic out of end_io.
-> >>
-> >> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> >> ---
-> >>  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
-> >>  fs/nfs/blocklayout/blocklayout.h |    5 +++++
-> >>  fs/nfs/blocklayout/extents.c     |   37
-> +++++++++++++++++++++++++++++++++++++
-> >>  3 files changed, 48 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> >> index 815c0c3..cb4ff0f 100644
-> >> --- a/fs/nfs/blocklayout/blocklayout.c
-> >> +++ b/fs/nfs/blocklayout/blocklayout.c
-> >> @@ -706,11 +706,17 @@ static void
-> >>  release_inval_marks(struct pnfs_inval_markings *marks)
-> >>  {
-> >>  	struct pnfs_inval_tracking *pos, *temp;
-> >> +	struct pnfs_block_short_extent *se, *stemp;
-> >>
-> >>  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
-> >>  		list_del(&pos->it_link);
-> >>  		kfree(pos);
-> >>  	}
-> >> +
-> >> +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
-> >> +		list_del(&se->bse_node);
-> >> +		kfree(se);
-> >> +	}
-> >>  	return;
-> >>  }
-> >>
-> >> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-> >> index 60728ac..df0e0fb 100644
-> >> --- a/fs/nfs/blocklayout/blocklayout.h
-> >> +++ b/fs/nfs/blocklayout/blocklayout.h
-> >> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
-> >>  	spinlock_t	im_lock;
-> >>  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
-> >>  	sector_t	im_block_size;	/* Server blocksize in sectors */
-> >> +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion
-> */
-> >>  };
-> >>
-> >>  struct pnfs_inval_tracking {
-> >> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
-> *marks, sector_t blocksize)
-> >>  {
-> >>  	spin_lock_init(&marks->im_lock);
-> >>  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-> >> +	INIT_LIST_HEAD(&marks->im_extents);
-> >>  	marks->im_block_size = blocksize;
-> >>  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
-> >>  					   blocksize);
-> >> @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
-> >>  			 struct pnfs_block_extent *new);
-> >>  int bl_mark_for_commit(struct pnfs_block_extent *be,
-> >>  			sector_t offset, sector_t length);
-> >> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
-> >> +struct pnfs_block_short_extent*
-> >> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
-> >>
-> >>  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-> >> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> >> index 952ea8a..72c7fa1 100644
-> >> --- a/fs/nfs/blocklayout/extents.c
-> >> +++ b/fs/nfs/blocklayout/extents.c
-> >> @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct
-> pnfs_block_layout *bl,
-> >>  		}
-> >>  	}
-> >>  }
-> >> +
-> >> +int
-> >> +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
-> >> +	struct pnfs_block_short_extent *new;
-> >> +
-> >> +	new = kmalloc(sizeof(*new), GFP_NOFS);
-> >> +	if (unlikely(!new))
-> >> +		return -ENOMEM;
-> >> +
-> >> +	spin_lock(&marks->im_lock);
-> >> +	list_add(&new->bse_node, &marks->im_extents);
-> >> +	spin_unlock(&marks->im_lock);
-> >> +
-> >> +	return 0;
-> >> +}
-> >> +
-> >> +struct pnfs_block_short_extent*
-> >> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
-> >> +	struct pnfs_block_short_extent *rv = NULL;
-> 
-> The use case for bl_pop_short_extent comes only in the next patch
-> so it should be introduced there in principle, along with its use.
-I was hoping not to create too large single patch... But since you asked, I will merge them into one.
+Hello,
 
-> 
-> With that in mind, there is one call site with num_to_pop == 1
-> in which you don't free any entry, and the other with num_to_pop == num_se
-> which seems to free all the members of the list, but the last one,
-> which is then freed by the caller.
-> 
-> This tells me you crammed two functions into one and you better
-> have one that pops a single element and another to destroy the list.
-Good point. I thought there might be more users of the function when I first wrote it but apparently I am wrong...
-I will split it into bl_pop_one_short_extent() and bl_free_short_extents() as you suggested.
+I am debugging an issue for a customer whereby an NFS mount undergoes an
+unexpected timeout and throws an EIO.
 
-Thank you very much!
-Tao
+Using synchronous mounts results in no problems whatsoever, whereas
+using asynchronous mounts causes the problem to occur.
 
-> 
-> Benny
-> 
-> >> +
-> >> +	if (unlikely(num_to_pop <= 0))
-> >> +		return rv;
-> >
-> > How unlikely is it?
-> > Is doing the extra compare really worth saving the spin_lock?
-> >
-> >> +
-> >> +	spin_lock(&marks->im_lock);
-> >> +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
-> >> +		rv = list_entry((&marks->im_extents)->next,
-> >> +				struct pnfs_block_short_extent, bse_node);
-> >> +		list_del_init(&rv->bse_node);
-> >> +		if (num_to_pop)
-> >> +			kfree(rv);
-> >
-> > Please correct me if I'm wrong, you don't want to free the last element
-> > you pop since you want to return it. This is worth a comment...
-> >
-> > I'd consider moving the decrement expression down here or
-> > changing the loop to be a for loop to improve its readability.
-> > In the latter case this will say if (num_to_pop > 1) kfree(rv)
-> > which is more straight forward IMHO.
-> >
-> > Benny
-> >
-> >> +	}
-> >> +	spin_unlock(&marks->im_lock);
-> >> +
-> >> +	BUG_ON(num_to_pop > 0);
-> >> +
-> >> +	return rv;
-> >> +}
+The problem exists only on 10GiB networks: I can't repro on slower
+networks at all, even if it is the same 10GiB network link limited to
+1GiB.  It reproduces on multiple versions of XenServer (both Xen 3 and
+Xen 4) with a 2.6.32 based dom0 kernel multiple different 10GiB network
+cards (be2net and bnx2x specifically tested).  It also reproduces
+against multiple different netapp servers running different firmware
+versions.  It also appears to reproduces with NFSv3 and NFSv4, although
+the customer setup uses NFSv3
+
+The difference between mount commands are "noac" for the synchronous
+case as opposed to "actimeo=0" for the asynchronous case.
+
+The /proc/mounts entry for async is:
+10.70.148.3:/vol/camb5e3b16tmp/82ab4a02-c10f-144a-e8c2-2ae04f213b2a
+/var/run/sr-mount/82ab4a02-c10f-144a-e8c2-2ae04f213b2a nfs
+rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
+0 0
+
+while the entry for sync is:
+10.70.148.3:/vol/camb5e3b15tmp/bc11aad3-b345-519f-1661-50e16bed6cdb
+/var/run/sr-mount/bc11aad3-b345-519f-1661-50e16bed6cdb nfs
+rw,sync,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,soft,proto=tcp,port=65535,timeo=133,retrans=0,sec=sys,mountport=65535,addr=10.70.148.3
+0 0
+
+The bug itself feels very like a timing issue to me.  It becomes
+substantially easier to reproduce if the kernel has a high workload:
+Different options involve disabling things like TSO offload on the
+network card or dd'ing from /dev/urandom to /tmp, but the problem cant
+be reproduced occasionally without any artificial extra workload.  The
+problem itself can be reprodued with a simple dd from /dev/zero onto the
+nfs mount, which proceeds to transfer at ~220MBps until the EIO is hit.
+
+I have analyzed the TCP stream using TCPdump and Wireshark.  Everything
+appears fine, with no NFS errors at all.  However, the client sticks a
+TCP FIN in the final continuation of one of its 64k block writes, in the
+middle of writing the file.
+
+The server ACKs the outstanding packets, and sends a Write Reply
+(without error), but does not send its own FIN.  Then, 15 seconds later,
+the client sends a TCP RST, and throws an EIO back to userspace.
+
+I am aware that sending a RST after 15 seconds is expected behavior
+following changeset 7d1e8255cf959fba7ee2317550dfde39f0b936ae, in an
+attempt to prevent deadlocks for a half closed TCP connection.  I have
+searched through the commit log all the way to tip, but can not find a
+commit making any reference to problems similar to this.
+
+What I am struggling to work out is why the client is sending a FIN in
+the middle of an otherwise fine and error-free NFS stream.  using
+"rpcdebug -m rpc -s trans" only says "disconnected" without giving a
+reason for disconnecting.
+
+Is there a different debug flag I can use to find out why NFS thinks it
+needs to disconnect, or does anyone have any suggestions as to where I
+should start debugging the code?  I suspect the problem is in the sunrpc
+subsystem but I am not very familiar with code this high level in the
+kernel.
+
+Any help greatly appreciated
+
+-- 
+Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+T: +44 (0)1223 225 900, http://www.citrix.com
 
