@@ -1,52 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38334 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756378Ab1KNVQj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Nov 2011 16:16:39 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAELGds8010855
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 16:16:39 -0500
-Message-ID: <4EC18536.5010708@RedHat.com>
-Date: Mon, 14 Nov 2011 16:16:38 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail4-relais-sop.national.inria.fr ([192.134.164.105]:20120
+	"EHLO mail4-relais-sop.national.inria.fr" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751130Ab1KIGPf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 01:15:35 -0500
+Date: Wed, 9 Nov 2011 07:15:32 +0100 (CET)
+From: Julia Lawall <julia.lawall@lip6.fr>
+To: Alexey Dobriyan <adobriyan@gmail.com>
+cc: "J. Bruce Fields" <bfields@fieldses.org>, kernel-janitors@vger.kernel.org,
+        Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/5] net/sunrpc: use kstrtoul, etc
+In-Reply-To: <alpine.DEB.2.02.1111082113380.1880@hadrien>
+Message-ID: <alpine.DEB.2.02.1111090710000.1899@hadrien>
+References: <1320586010-21931-1-git-send-email-julia@diku.dk> <1320586010-21931-3-git-send-email-julia@diku.dk> <20111108193817.GA3453@p183.telecom.by> <alpine.DEB.2.02.1111082113380.1880@hadrien>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] nss_getpwnam: ignore case when comparing domain names
-References: <1321111310-9481-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1321111310-9481-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In looking through some examples, I see, e.g.:
 
+ 	if (strict_strtoul(buf, 10, &val) < 0)
+  		return -EINVAL;
+ 	if (val < 1 || val > 2)
+  		return -EINVAL;
 
-On 11/12/2011 10:21 AM, Steve Dickson wrote:
-> nss_getpwnam() fails to find the password entry when the
-> DNS domain name has both upper and lower characters,
-> which is wrong. Case need to be ignored when comparing
-> domain names.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+In this case the only valid values are 1 and 2, which are much smaller 
+than the u8 range.  Is it useful to use kstrtou8 anyway?  I see that 
+kstrtou8 returns -ERANGE not -EINVAL when the value is out of bounds.  If 
+kstrtou8 is to be used, should the subsequent if (val < 1 || val > 2) now 
+return -ERANGE to be consistent?
 
-steved.
-
-> ---
->  nss.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/nss.c b/nss.c
-> index 04aff19..b2b1227 100644
-> --- a/nss.c
-> +++ b/nss.c
-> @@ -141,7 +141,7 @@ static char *strip_domain(const char *name, const char *domain)
->  	if (c == NULL && domain == NULL) {
->  		len = strlen(name) + 1;
->  	} else {
-> -		if (domain && strcmp(c + 1, domain) != 0)
-> +		if (domain && strcasecmp(c + 1, domain) != 0)
->  			goto out;
->  		len = c - name;
->  	}
+julia
