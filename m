@@ -1,53 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56762 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752333Ab1KJU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Nov 2011 15:26:07 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQ68u024948
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:06 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pAAKQ5Dh030911
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:06 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] Enable the in-kernel ID mapping upcall mechanism
-Date: Thu, 10 Nov 2011 15:26:02 -0500
-Message-Id: <1320956763-17935-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1320956763-17935-1-git-send-email-steved@redhat.com>
-References: <1320956763-17935-1-git-send-email-steved@redhat.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:59799 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754533Ab1KIPRh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 10:17:37 -0500
+Received: by qao25 with SMTP id 25so1563469qao.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 07:17:36 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 3/8] pnfsblock: move find lock page logic out of bl_write_pagelist
+Date: Wed,  9 Nov 2011 07:16:01 -0800
+Message-Id: <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To solve deadlocks that can occur between the rpc.idmapd daemon
-and the kernel, enables the in-kernel upcall mechanism that 
-uses the key rings to start the user/group ids.
+Also avoid unnecessary lock_page if page is handled by others.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/Kconfig |   10 ++--------
- 1 files changed, 2 insertions(+), 8 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
+ 1 files changed, 54 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index dbcd821..94ad028 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -134,12 +134,6 @@ config NFS_USE_KERNEL_DNS
- 	default y
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 4ced0b0..e8e13f3 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -484,6 +484,56 @@ cleanup:
+ 	return ret;
+ }
  
- config NFS_USE_NEW_IDMAPPER
--	bool "Use the new idmapper upcall routine"
-+	bool "Use the idmapper upcall routine"
- 	depends on NFS_V4 && KEYS
--	help
--	  Say Y here if you want NFS to use the new idmapper upcall functions.
--	  You will need /sbin/request-key (usually provided by the keyutils
--	  package).  For details, read
--	  <file:Documentation/filesystems/nfs/idmapper.txt>.
++/* Find or create a zeroing page marked being writeback.
++ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
++ * to indicate write out.
++ */
++static struct page*
++bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
++			struct pnfs_block_extent *cow_read)
++{
++	struct page* page;
++	int locked = 0;
++	page = find_get_page(inode->i_mapping, index);
++	if (page)
++		goto check_page;
++
++	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
++	if (unlikely(!page)) {
++		dprintk("%s oom\n", __func__);
++		return ERR_PTR(-ENOMEM);
++	}
++	locked = 1;
++
++check_page:
++	/* PageDirty: Other will write this out
++	 * PageWriteback: Other is writing this out
++	 * PageUptodate: It was read before
++	 */
++	if (PageDirty(page) || PageWriteback(page)) {
++		print_page(page);
++		if (locked)
++			unlock_page(page);
++		page_cache_release(page);
++		return NULL;
++	}
++
++	if (!locked) {
++		lock_page(page);
++		if (PageDirty(page) || PageWriteback(page))
++			unlock_page(page);
++		return NULL;
++	}
++	if (!PageUptodate(page)) {
++		/* New page, readin or zero it */
++		init_page_for_write(page, cow_read);
++	}
++	set_page_writeback(page);
++	unlock_page(page);
++
++	return page;
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+@@ -543,32 +593,12 @@ fill_invalid_ext:
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+ 				__func__, npg_zero, index,
+ 				(unsigned long long)isect);
+-			page =
+-			    find_or_create_page(wdata->inode->i_mapping, index,
+-						GFP_NOFS);
+-			if (!page) {
+-				dprintk("%s oom\n", __func__);
+-				wdata->pnfs_error = -ENOMEM;
++			page = bl_find_get_zeroing_page(wdata->inode, index, cow_read);
++			if (unlikely(IS_ERR(page))) {
++				wdata->pnfs_error = PTR_ERR(page);
+ 				goto out;
+-			}
 -
--	  If you are unsure, say N.
-+	default y
+-			/* PageDirty: Other will write this out
+-			 * PageWriteback: Other is writing this out
+-			 * PageUptodate: It was read before
+-			 * sector_initialized: already written out
+-			 */
+-			if (PageDirty(page) || PageWriteback(page)) {
+-				print_page(page);
+-				unlock_page(page);
+-				page_cache_release(page);
++			} else if (page == NULL)
+ 				goto next_page;
+-			}
+-			if (!PageUptodate(page)) {
+-				/* New page, readin or zero it */
+-				init_page_for_write(page, cow_read);
+-			}
+-			set_page_writeback(page);
+-			unlock_page(page);
+ 
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+ 						       PAGE_CACHE_SECTORS);
 -- 
-1.7.6.4
+1.7.1.262.g5ef3d
 
