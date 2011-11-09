@@ -1,117 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:41495 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757742Ab1K3Mdz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 07:33:55 -0500
-Received: by bkas6 with SMTP id s6so808293bka.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 04:33:53 -0800 (PST)
-Message-ID: <4ED622AB.5050205@tonian.com>
-Date: Wed, 30 Nov 2011 14:33:47 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:37118 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752741Ab1KITzM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Nov 2011 14:55:12 -0500
+Date: Wed, 9 Nov 2011 14:55:10 -0500
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <benny@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint
+ under NFSDDBG_PNFS
+Message-ID: <20111109195510.GA2227@fieldses.org>
+References: <4EB9F8D6.1080302@panasas.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, Peng Tao <bergwolf@gmail.com>,
-        linux-nfs@vger.kernel.org, Garth Gibson <garth@panasas.com>,
-        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>,
-        Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>     <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>    <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>   <1322606842.11286.33.camel@lade.trondhjem.org>   <4ED563AC.5040501@panasas.com>  <1322609431.11286.56.camel@lade.trondhjem.org>  <4ED577AE.2060209@panasas.com> <1322614718.11286.104.camel@lade.trondhjem.org>
-In-Reply-To: <1322614718.11286.104.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EB9F8D6.1080302@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-30 02:58, Trond Myklebust wrote:
-> On Tue, 2011-11-29 at 16:24 -0800, Boaz Harrosh wrote: 
->> On 11/29/2011 03:30 PM, Trond Myklebust wrote:
->>> On Tue, 2011-11-29 at 14:58 -0800, Boaz Harrosh wrote: 
->>>>
->>>> The kind of typologies I'm talking about a single layout get ever 1GB is
->>>> marginal to the gain I get in deploying 100 of DSs. I have thousands of
->>>> DSs I want to spread the load evenly. I'm limited by the size of the layout
->>>> (Device info in the case of files) So I'm limited by the number of DSs I can
->>>> have in a layout. For large files these few devices become an hot spot all
->>>> the while the rest of the cluster is idle.
->>>
->>> I call "bullshit" on that whole argument...
->>>
->>> You've done sod all so far to address the problem of a client managing
->>
->> sod? I don't know this word?
+On Tue, Nov 08, 2011 at 07:51:50PM -0800, Boaz Harrosh wrote:
 > 
-> 'sod all' == 'nothing'
-> 
-> it's an English slang...
-> 
->>> layout segments for a '1000 DS' case. Are you expecting that all pNFS
->>> object servers out there are going to do that for you? How do I assume
->>> that a generic pNFS files server is going to do the same? As far as I
->>> know, the spec is completely moot on the whole subject.
->>>
->>
->> What? The all segments thing is in the Generic part of the spec and is not
->> at all specific or even specified in the objects and blocks RFCs.
-> 
-> ..and it doesn't say _anything_ about how a client is supposed to manage
-> them in order to maximise efficiency.
-> 
->> There is no layout in the spec, there are only layout_segments. Actually
->> what we call layout_segments, in the spec, it is simply called a layout.
->>
->> The client asks for a layout (segment) and gets one. An ~0 length one
->> is just a special case. Without layout_get (segment) there is no optional
->> pnfs support.
->>
->> So we are reading two different specs because to me it clearly says
->> layout - which is a segment.
->>
->> Because the way I read it the pNFS is optional in 4.1. But if I'm a
->> pNFS client I need to expect layouts (segments)
->>
->>> IOW: I'm not even remotely interested in your "everyday problems" if
->>> there are no "everyday solutions" that actually fit the generic can of
->>> spec worms that the pNFS layout segments open.
->>
->> That I don't understand. What "spec worms that the pNFS layout segments open"
->> Are you seeing. Because it works pretty simple for me. And I don't see the
->> big difference for files. One thing I learned for the past is that when you
->> have concerns I should understand them and start to address them. Because
->> your insights are usually on the Money. If you are concerned then there is
->> something I should fix.
-> 
-> I'm saying that if I need to manage layouts that deal with >1000 DSes,
-> then I presumably need a strategy for ensuring that I return/forget
-> segments that are no longer needed, and I need a strategy for ensuring
-> that I always hold the segments that I do need; otherwise, I could just
-> ask for a full-file layout and deal with the 1000 DSes (which is what we
-> do today)...111
+> I've been squinting  at pnfsd dprints for ages and aching under the wait. So I headed
+> up to the nfsd/debug.h to add a PNFS channel, and what do you know? there is one!
+> It's used by nfs4pnfsds.c. Surly  nfs4pnfsd.c is more _PNFS than _PROC.
 
-How about LRU based caching to start with?
+Hey now, nfs4pnfsd.c has enough problems of its own without being
+accused of surliness.
+
+--b.
 
 > 
-> My problem is that the spec certainly doesn't give me any guidance as to
-> such a strategy, and I haven't seen anybody else step up to the plate.
-> In fact, I strongly suspect that such a strategy is going to be very
-> application specific.
-
-
-The spec doesn't give much guidance to the client as per data caching
-replacement algorithms either and still we cache data in the client and
-do our best to accommodate the application needs.
-
+> While at it I changed  nfs4pnfsdlm.c to, also already defined, NFSDDBG_FILELAYOUT
+> which was unused before this patch.
 > 
-> IOW: I don't accept that a layout-segment based solution is useful
-> without some form of strategy for telling me which segments to keep and
-> which to throw out when I start hitting client resource limits. I also
-> haven't seen any strategy out there for setting loga_length (as opposed
-> to loga_minlength) in the LAYOUTGET requests: as far as I know that is
-> going to be heavily application-dependent in the 1000-DS world.
+> CC: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfsd/nfs4pnfsd.c   |    2 +-
+>  fs/nfsd/nfs4pnfsdlm.c |    2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
 > 
-
-My approach has always been: the client should ask for what it knows about
-and the server may optimize over it.  If the client can anticipate the
-application behavior, a-la sequential read-ahead it can attempt to
-use that, but the server has better knowledge of the entire cluster workload
-to determine the appropriate layout segment range.
-
-Benny
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index 18b8fca..f514ebe 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -23,7 +23,7 @@
+>  
+>  #include "pnfsd.h"
+>  
+> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+> +#define NFSDDBG_FACILITY                NFSDDBG_PNFS
+>  
+>  /* Globals */
+>  static u32 current_layoutid = 1;
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index abc4d83..0f0441a 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -30,7 +30,7 @@
+>  #include "nfsfh.h"
+>  #include "nfsd.h"
+>  
+> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+> +#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
+>  
+>  /* Just use a linked list. Do not expect more than 32 dlm_device_entries
+>   * the first implementation will just use one device per cluster file system
+> -- 
+> 1.7.6.2
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
