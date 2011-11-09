@@ -1,154 +1,576 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38993 "EHLO relay.sw.ru"
+Received: from smtp.citrix.com ([66.165.176.89]:5098 "EHLO SMTP.CITRIX.COM"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754900Ab1KWKx3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Nov 2011 05:53:29 -0500
-Subject: [PATCH 6/6] SUNRPC: remove RPC PipeFS mount point reference from RPC
-	client
-To: bfields@fieldses.org, Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Date: Wed, 23 Nov 2011 14:52:04 +0300
-Message-ID: <20111123105204.11077.54113.stgit@localhost6.localdomain6>
-In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
-References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+	id S1754533Ab1KIPCX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Nov 2011 10:02:23 -0500
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org
+CC: Ian Campbell <ian.campbell@citrix.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        "Pekka Savola (ipv6)" <pekkas@netcore.fi>,
+        James Morris <jmorris@namei.org>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Patrick McHardy <kaber@trash.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>, drbd-user@lists.linbit.com,
+        devel@driverdev.osuosl.org, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com, ceph-devel@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 3/4] net: add paged frag destructor support to kernel_sendpage.
+Date: Wed, 9 Nov 2011 15:02:06 +0000
+Message-ID: <1320850927-30240-3-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1320850895.955.172.camel@zakaz.uk.xensource.com>
+References: <1320850895.955.172.camel@zakaz.uk.xensource.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cleanup patch. We don't need this reference anymore.
+This requires adding a new argument to various sendpage hooks up and down the
+stack. At the moment this parameter is always NULL.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
+Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
+Cc: James Morris <jmorris@namei.org>
+Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Greg Kroah-Hartman <gregkh@suse.de>
+Cc: drbd-user@lists.linbit.com
+Cc: devel@driverdev.osuosl.org
+Cc: cluster-devel@redhat.com
+Cc: ocfs2-devel@oss.oracle.com
+Cc: netdev@vger.kernel.org
+Cc: ceph-devel@vger.kernel.org
+Cc: rds-devel@oss.oracle.com
+Cc: linux-nfs@vger.kernel.org
 ---
- fs/nfs/idmap.c                 |    4 ++--
- include/linux/sunrpc/clnt.h    |    2 +-
- net/sunrpc/auth_gss/auth_gss.c |    8 ++++----
- net/sunrpc/clnt.c              |   21 ++++++++++-----------
- 4 files changed, 17 insertions(+), 18 deletions(-)
+ drivers/block/drbd/drbd_main.c           |    1 +
+ drivers/scsi/iscsi_tcp.c                 |    4 ++--
+ drivers/scsi/iscsi_tcp.h                 |    3 ++-
+ drivers/staging/pohmelfs/trans.c         |    3 ++-
+ drivers/target/iscsi/iscsi_target_util.c |    3 ++-
+ fs/dlm/lowcomms.c                        |    4 ++--
+ fs/ocfs2/cluster/tcp.c                   |    1 +
+ include/linux/net.h                      |    6 +++++-
+ include/net/inet_common.h                |    4 +++-
+ include/net/ip.h                         |    4 +++-
+ include/net/sock.h                       |    8 +++++---
+ include/net/tcp.h                        |    4 +++-
+ net/ceph/messenger.c                     |    2 +-
+ net/core/sock.c                          |    6 +++++-
+ net/ipv4/af_inet.c                       |    9 ++++++---
+ net/ipv4/ip_output.c                     |    6 ++++--
+ net/ipv4/tcp.c                           |   24 ++++++++++++++++--------
+ net/ipv4/udp.c                           |   11 ++++++-----
+ net/ipv4/udp_impl.h                      |    5 +++--
+ net/rds/tcp_send.c                       |    1 +
+ net/socket.c                             |   11 +++++++----
+ net/sunrpc/svcsock.c                     |    6 +++---
+ net/sunrpc/xprtsock.c                    |    2 +-
+ 23 files changed, 84 insertions(+), 44 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index b09a7f1..60698a1 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -370,8 +370,8 @@ nfs_idmap_new(struct nfs_client *clp)
- 		return error;
- 	}
+diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
+index 0358e55..49c7346 100644
+--- a/drivers/block/drbd/drbd_main.c
++++ b/drivers/block/drbd/drbd_main.c
+@@ -2584,6 +2584,7 @@ static int _drbd_send_page(struct drbd_conf *mdev, struct page *page,
+ 	set_fs(KERNEL_DS);
+ 	do {
+ 		sent = mdev->data.socket->ops->sendpage(mdev->data.socket, page,
++							NULL,
+ 							offset, len,
+ 							msg_flags);
+ 		if (sent == -EAGAIN) {
+diff --git a/drivers/scsi/iscsi_tcp.c b/drivers/scsi/iscsi_tcp.c
+index 7724414..2eb6801 100644
+--- a/drivers/scsi/iscsi_tcp.c
++++ b/drivers/scsi/iscsi_tcp.c
+@@ -283,8 +283,8 @@ static int iscsi_sw_tcp_xmit_segment(struct iscsi_tcp_conn *tcp_conn,
+ 		if (!segment->data) {
+ 			sg = segment->sg;
+ 			offset += segment->sg_offset + sg->offset;
+-			r = tcp_sw_conn->sendpage(sk, sg_page(sg), offset,
+-						  copy, flags);
++			r = tcp_sw_conn->sendpage(sk, sg_page(sg), NULL,
++						  offset, copy, flags);
+ 		} else {
+ 			struct msghdr msg = { .msg_flags = flags };
+ 			struct kvec iov = {
+diff --git a/drivers/scsi/iscsi_tcp.h b/drivers/scsi/iscsi_tcp.h
+index 666fe09..1e23265 100644
+--- a/drivers/scsi/iscsi_tcp.h
++++ b/drivers/scsi/iscsi_tcp.h
+@@ -52,7 +52,8 @@ struct iscsi_sw_tcp_conn {
+ 	uint32_t		sendpage_failures_cnt;
+ 	uint32_t		discontiguous_hdr_cnt;
  
--	if (clp->cl_rpcclient->cl_path.dentry)
--		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_path.dentry,
-+	if (clp->cl_rpcclient->cl_dentry)
-+		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_dentry,
- 				"idmap", idmap, pipe);
- 	if (IS_ERR(pipe->dentry)) {
- 		error = PTR_ERR(pipe->dentry);
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index db7bcaf..9fe39bc 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -56,7 +56,7 @@ struct rpc_clnt {
+-	ssize_t (*sendpage)(struct socket *, struct page *, int, size_t, int);
++	ssize_t (*sendpage)(struct socket *, struct page *,
++			    struct skb_frag_destructor *, int, size_t, int);
+ };
  
- 	int			cl_nodelen;	/* nodename length */
- 	char 			cl_nodename[UNX_MAXNODENAME];
--	struct path		cl_path;
-+	struct dentry *		cl_dentry;
- 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
- 	struct rpc_rtt		cl_rtt_default;
- 	struct rpc_timeout	cl_timeout_default;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 66293dc..8673220 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -799,12 +799,12 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
- 	clnt = gss_auth->client;
+ struct iscsi_sw_tcp_host {
+diff --git a/drivers/staging/pohmelfs/trans.c b/drivers/staging/pohmelfs/trans.c
+index 36a2535..f897fdb 100644
+--- a/drivers/staging/pohmelfs/trans.c
++++ b/drivers/staging/pohmelfs/trans.c
+@@ -104,7 +104,8 @@ static int netfs_trans_send_pages(struct netfs_trans *t, struct netfs_state *st)
+ 		msg.msg_flags = MSG_WAITALL | (attached_pages == 1 ? 0 :
+ 				MSG_MORE);
  
--	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_path.dentry,
-+	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
- 						      "gssd",
- 						      clnt, gss_auth->pipe[1]);
- 	if (IS_ERR(gss_auth->pipe[1]->dentry))
- 		return PTR_ERR(gss_auth->pipe[1]->dentry);
--	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_path.dentry,
-+	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
- 						      gss_auth->mech->gm_name,
- 						      clnt, gss_auth->pipe[0]);
- 	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
-@@ -826,7 +826,7 @@ static void gss_pipes_dentries_destroy_net(struct rpc_clnt *clnt,
+-		err = kernel_sendpage(st->socket, page, 0, size, msg.msg_flags);
++		err = kernel_sendpage(st->socket, page, NULL,
++				      0, size, msg.msg_flags);
+ 		if (err <= 0) {
+ 			printk("%s: %d/%d failed to send transaction page: t: %p, gen: %u, size: %u, err: %d.\n",
+ 					__func__, i, t->page_num, t, t->gen, size, err);
+diff --git a/drivers/target/iscsi/iscsi_target_util.c b/drivers/target/iscsi/iscsi_target_util.c
+index f00137f..1ce98e9 100644
+--- a/drivers/target/iscsi/iscsi_target_util.c
++++ b/drivers/target/iscsi/iscsi_target_util.c
+@@ -1297,7 +1297,8 @@ send_hdr:
+ 		u32 sub_len = min_t(u32, data_len, space);
+ send_pg:
+ 		tx_sent = conn->sock->ops->sendpage(conn->sock,
+-					sg_page(sg), sg->offset + offset, sub_len, 0);
++					sg_page(sg), NULL,
++					sg->offset + offset, sub_len, 0);
+ 		if (tx_sent != sub_len) {
+ 			if (tx_sent == -EAGAIN) {
+ 				pr_err("tcp_sendpage() returned"
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 990626e..98ace05 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1342,8 +1342,8 @@ static void send_to_sock(struct connection *con)
  
- 	sb = rpc_get_sb_net(net);
- 	if (sb) {
--		if (clnt->cl_path.dentry)
-+		if (clnt->cl_dentry)
- 			gss_pipes_dentries_destroy(auth);
- 		rpc_put_sb_net(net);
- 	}
-@@ -841,7 +841,7 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
+ 		ret = 0;
+ 		if (len) {
+-			ret = kernel_sendpage(con->sock, e->page, offset, len,
+-					      msg_flags);
++			ret = kernel_sendpage(con->sock, e->page, NULL,
++					      offset, len, msg_flags);
+ 			if (ret == -EAGAIN || ret == 0) {
+ 				if (ret == -EAGAIN &&
+ 				    test_bit(SOCK_ASYNC_NOSPACE, &con->sock->flags) &&
+diff --git a/fs/ocfs2/cluster/tcp.c b/fs/ocfs2/cluster/tcp.c
+index db5ee4b..81366a0 100644
+--- a/fs/ocfs2/cluster/tcp.c
++++ b/fs/ocfs2/cluster/tcp.c
+@@ -982,6 +982,7 @@ static void o2net_sendpage(struct o2net_sock_container *sc,
+ 		mutex_lock(&sc->sc_send_lock);
+ 		ret = sc->sc_sock->ops->sendpage(sc->sc_sock,
+ 						 virt_to_page(kmalloced_virt),
++						 NULL,
+ 						 (long)kmalloced_virt & ~PAGE_MASK,
+ 						 size, MSG_DONTWAIT);
+ 		mutex_unlock(&sc->sc_send_lock);
+diff --git a/include/linux/net.h b/include/linux/net.h
+index b299230..db562ba 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -157,6 +157,7 @@ struct kiocb;
+ struct sockaddr;
+ struct msghdr;
+ struct module;
++struct skb_frag_destructor;
  
- 	sb = rpc_get_sb_net(net);
- 	if (sb) {
--		if (clnt->cl_path.dentry)
-+		if (clnt->cl_dentry)
- 			err = gss_pipes_dentries_create(auth);
- 		rpc_put_sb_net(net);
- 	}
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index eb2595f..3971aaa 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -95,12 +95,12 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ struct proto_ops {
+ 	int		family;
+@@ -203,6 +204,7 @@ struct proto_ops {
+ 	int		(*mmap)	     (struct file *file, struct socket *sock,
+ 				      struct vm_area_struct * vma);
+ 	ssize_t		(*sendpage)  (struct socket *sock, struct page *page,
++				      struct skb_frag_destructor *destroy,
+ 				      int offset, size_t size, int flags);
+ 	ssize_t 	(*splice_read)(struct socket *sock,  loff_t *ppos,
+ 				       struct pipe_inode_info *pipe, size_t len, unsigned int flags);
+@@ -273,7 +275,9 @@ extern int kernel_getsockopt(struct socket *sock, int level, int optname,
+ 			     char *optval, int *optlen);
+ extern int kernel_setsockopt(struct socket *sock, int level, int optname,
+ 			     char *optval, unsigned int optlen);
+-extern int kernel_sendpage(struct socket *sock, struct page *page, int offset,
++extern int kernel_sendpage(struct socket *sock, struct page *page,
++			   struct skb_frag_destructor *destroy,
++			   int offset,
+ 			   size_t size, int flags);
+ extern int kernel_sock_ioctl(struct socket *sock, int cmd, unsigned long arg);
+ extern int kernel_sock_shutdown(struct socket *sock,
+diff --git a/include/net/inet_common.h b/include/net/inet_common.h
+index 22fac98..91cd8d0 100644
+--- a/include/net/inet_common.h
++++ b/include/net/inet_common.h
+@@ -21,7 +21,9 @@ extern int inet_dgram_connect(struct socket *sock, struct sockaddr * uaddr,
+ extern int inet_accept(struct socket *sock, struct socket *newsock, int flags);
+ extern int inet_sendmsg(struct kiocb *iocb, struct socket *sock,
+ 			struct msghdr *msg, size_t size);
+-extern ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
++extern ssize_t inet_sendpage(struct socket *sock, struct page *page,
++			     struct skb_frag_destructor *frag,
++			     int offset,
+ 			     size_t size, int flags);
+ extern int inet_recvmsg(struct kiocb *iocb, struct socket *sock,
+ 			struct msghdr *msg, size_t size, int flags);
+diff --git a/include/net/ip.h b/include/net/ip.h
+index eca0ef7..d34030c 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -114,7 +114,9 @@ extern int		ip_append_data(struct sock *sk, struct flowi4 *fl4,
+ 				struct rtable **rt,
+ 				unsigned int flags);
+ extern int		ip_generic_getfrag(void *from, char *to, int offset, int len, int odd, struct sk_buff *skb);
+-extern ssize_t		ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
++extern ssize_t		ip_append_page(struct sock *sk, struct flowi4 *fl4,
++				struct page *page,
++				struct skb_frag_destructor *destroy,
+ 				int offset, size_t size, int flags);
+ extern struct sk_buff  *__ip_make_skb(struct sock *sk,
+ 				      struct flowi4 *fl4,
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 5ac682f..95ebafd 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -774,6 +774,7 @@ struct proto {
+ 					size_t len, int noblock, int flags, 
+ 					int *addr_len);
+ 	int			(*sendpage)(struct sock *sk, struct page *page,
++					struct skb_frag_destructor *destroy,
+ 					int offset, size_t size, int flags);
+ 	int			(*bind)(struct sock *sk, 
+ 					struct sockaddr *uaddr, int addr_len);
+@@ -1162,9 +1163,10 @@ extern int			sock_no_mmap(struct file *file,
+ 					     struct socket *sock,
+ 					     struct vm_area_struct *vma);
+ extern ssize_t			sock_no_sendpage(struct socket *sock,
+-						struct page *page,
+-						int offset, size_t size, 
+-						int flags);
++					struct page *page,
++					struct skb_frag_destructor *destroy,
++					int offset, size_t size,
++					int flags);
  
- static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ /*
+  * Functions to fill in entries in struct proto_ops when a protocol
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index e147f42..99fe8f3 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -322,7 +322,9 @@ extern void *tcp_v4_tw_get_peer(struct sock *sk);
+ extern int tcp_v4_tw_remember_stamp(struct inet_timewait_sock *tw);
+ extern int tcp_sendmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
+ 		       size_t size);
+-extern int tcp_sendpage(struct sock *sk, struct page *page, int offset,
++extern int tcp_sendpage(struct sock *sk, struct page *page,
++			struct skb_frag_destructor *destroy,
++			int offset,
+ 			size_t size, int flags);
+ extern int tcp_ioctl(struct sock *sk, int cmd, unsigned long arg);
+ extern int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
+diff --git a/net/ceph/messenger.c b/net/ceph/messenger.c
+index 9918e9e..65b6fc0 100644
+--- a/net/ceph/messenger.c
++++ b/net/ceph/messenger.c
+@@ -849,7 +849,7 @@ static int write_partial_msg_pages(struct ceph_connection *con)
+ 				cpu_to_le32(crc32c(tmpcrc, base, len));
+ 			con->out_msg_pos.did_page_crc = 1;
+ 		}
+-		ret = kernel_sendpage(con->sock, page,
++		ret = kernel_sendpage(con->sock, page, NULL,
+ 				      con->out_msg_pos.page_pos + page_shift,
+ 				      len,
+ 				      MSG_DONTWAIT | MSG_NOSIGNAL |
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 5a08762..8fef547 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -1860,7 +1860,9 @@ int sock_no_mmap(struct file *file, struct socket *sock, struct vm_area_struct *
+ }
+ EXPORT_SYMBOL(sock_no_mmap);
+ 
+-ssize_t sock_no_sendpage(struct socket *sock, struct page *page, int offset, size_t size, int flags)
++ssize_t sock_no_sendpage(struct socket *sock, struct page *page,
++			 struct skb_frag_destructor *destroy,
++			 int offset, size_t size, int flags)
  {
--	if (clnt->cl_path.dentry) {
-+	if (clnt->cl_dentry) {
- 		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
- 			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
--		rpc_remove_client_dir(clnt->cl_path.dentry);
-+		rpc_remove_client_dir(clnt->cl_dentry);
- 	}
--	clnt->cl_path.dentry = NULL;
-+	clnt->cl_dentry = NULL;
+ 	ssize_t res;
+ 	struct msghdr msg = {.msg_flags = flags};
+@@ -1870,6 +1872,8 @@ ssize_t sock_no_sendpage(struct socket *sock, struct page *page, int offset, siz
+ 	iov.iov_len = size;
+ 	res = kernel_sendmsg(sock, &msg, &iov, 1, size);
+ 	kunmap(page);
++	/* kernel_sendmsg copies so we can destroy immediately */
++	skb_frag_destructor_unref(destroy);
+ 	return res;
+ }
+ EXPORT_SYMBOL(sock_no_sendpage);
+diff --git a/net/ipv4/af_inet.c b/net/ipv4/af_inet.c
+index 1b5096a..99f7fd0 100644
+--- a/net/ipv4/af_inet.c
++++ b/net/ipv4/af_inet.c
+@@ -745,7 +745,9 @@ int inet_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
+ }
+ EXPORT_SYMBOL(inet_sendmsg);
+ 
+-ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
++ssize_t inet_sendpage(struct socket *sock, struct page *page,
++		      struct skb_frag_destructor *destroy,
++		      int offset,
+ 		      size_t size, int flags)
+ {
+ 	struct sock *sk = sock->sk;
+@@ -758,8 +760,9 @@ ssize_t inet_sendpage(struct socket *sock, struct page *page, int offset,
+ 		return -EAGAIN;
+ 
+ 	if (sk->sk_prot->sendpage)
+-		return sk->sk_prot->sendpage(sk, page, offset, size, flags);
+-	return sock_no_sendpage(sock, page, offset, size, flags);
++		return sk->sk_prot->sendpage(sk, page, destroy,
++					     offset, size, flags);
++	return sock_no_sendpage(sock, page, destroy, offset, size, flags);
+ }
+ EXPORT_SYMBOL(inet_sendpage);
+ 
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 3252e06..753dc7b 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -1116,6 +1116,7 @@ int ip_append_data(struct sock *sk, struct flowi4 *fl4,
  }
  
- static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
-@@ -151,20 +151,19 @@ static int
- rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ ssize_t	ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
++		       struct skb_frag_destructor *destroy,
+ 		       int offset, size_t size, int flags)
  {
- 	struct super_block *pipefs_sb;
--	struct path path;
-+	struct dentry *dentry;
- 
--	clnt->cl_path.mnt = ERR_PTR(-ENOENT);
--	clnt->cl_path.dentry = NULL;
-+	clnt->cl_dentry = NULL;
- 	if (dir_name == NULL)
- 		return 0;
- 	pipefs_sb = rpc_get_sb_net(clnt->cl_xprt->xprt_net);
- 	if (!pipefs_sb)
- 		return 0;
--	path.dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
-+	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
- 	rpc_put_sb_net(clnt->cl_xprt->xprt_net);
--	if (IS_ERR(path.dentry))
--		return PTR_ERR(path.dentry);
--	clnt->cl_path = path;
-+	if (IS_ERR(dentry))
-+		return PTR_ERR(dentry);
-+	clnt->cl_dentry = dentry;
- 	return 0;
+ 	struct inet_sock *inet = inet_sk(sk);
+@@ -1229,11 +1230,12 @@ ssize_t	ip_append_page(struct sock *sk, struct flowi4 *fl4, struct page *page,
+ 		i = skb_shinfo(skb)->nr_frags;
+ 		if (len > size)
+ 			len = size;
+-		if (skb_can_coalesce(skb, i, page, NULL, offset)) {
++		if (skb_can_coalesce(skb, i, page, destroy, offset)) {
+ 			skb_frag_size_add(&skb_shinfo(skb)->frags[i-1], len);
+ 		} else if (i < MAX_SKB_FRAGS) {
+-			get_page(page);
+ 			skb_fill_page_desc(skb, i, page, offset, len);
++			skb_frag_set_destructor(skb, i, destroy);
++			skb_frag_ref(skb, i);
+ 		} else {
+ 			err = -EMSGSIZE;
+ 			goto error;
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 018de0c..56ef323 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -757,7 +757,10 @@ static int tcp_send_mss(struct sock *sk, int *size_goal, int flags)
+ 	return mss_now;
  }
  
-@@ -183,7 +182,7 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
- 		BUG_ON(dentry == NULL);
- 		if (IS_ERR(dentry))
- 			return PTR_ERR(dentry);
--		clnt->cl_path.dentry = dentry;
-+		clnt->cl_dentry = dentry;
- 		if (clnt->cl_auth->au_ops->pipes_create) {
- 			err = clnt->cl_auth->au_ops->pipes_create(clnt->cl_auth);
- 			if (err)
+-static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffset,
++static ssize_t do_tcp_sendpages(struct sock *sk,
++				struct page **pages,
++				struct skb_frag_destructor **destructors,
++				int poffset,
+ 			 size_t psize, int flags)
+ {
+ 	struct tcp_sock *tp = tcp_sk(sk);
+@@ -783,6 +786,8 @@ static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffse
+ 	while (psize > 0) {
+ 		struct sk_buff *skb = tcp_write_queue_tail(sk);
+ 		struct page *page = pages[poffset / PAGE_SIZE];
++		struct skb_frag_destructor *destroy =
++			destructors ? destructors[poffset / PAGE_SIZE] : NULL;
+ 		int copy, i, can_coalesce;
+ 		int offset = poffset % PAGE_SIZE;
+ 		int size = min_t(size_t, psize, PAGE_SIZE - offset);
+@@ -804,7 +809,7 @@ new_segment:
+ 			copy = size;
+ 
+ 		i = skb_shinfo(skb)->nr_frags;
+-		can_coalesce = skb_can_coalesce(skb, i, page, NULL, offset);
++		can_coalesce = skb_can_coalesce(skb, i, page, destroy, offset);
+ 		if (!can_coalesce && i >= MAX_SKB_FRAGS) {
+ 			tcp_mark_push(tp, skb);
+ 			goto new_segment;
+@@ -815,8 +820,9 @@ new_segment:
+ 		if (can_coalesce) {
+ 			skb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], copy);
+ 		} else {
+-			get_page(page);
+ 			skb_fill_page_desc(skb, i, page, offset, copy);
++			skb_frag_set_destructor(skb, i, destroy);
++			skb_frag_ref(skb, i);
+ 		}
+ 
+ 		skb->len += copy;
+@@ -871,18 +877,20 @@ out_err:
+ 	return sk_stream_error(sk, flags, err);
+ }
+ 
+-int tcp_sendpage(struct sock *sk, struct page *page, int offset,
+-		 size_t size, int flags)
++int tcp_sendpage(struct sock *sk, struct page *page,
++		 struct skb_frag_destructor *destroy,
++		 int offset, size_t size, int flags)
+ {
+ 	ssize_t res;
+ 
+ 	if (!(sk->sk_route_caps & NETIF_F_SG) ||
+ 	    !(sk->sk_route_caps & NETIF_F_ALL_CSUM))
+-		return sock_no_sendpage(sk->sk_socket, page, offset, size,
+-					flags);
++		return sock_no_sendpage(sk->sk_socket, page, destroy,
++					offset, size, flags);
+ 
+ 	lock_sock(sk);
+-	res = do_tcp_sendpages(sk, &page, offset, size, flags);
++	res = do_tcp_sendpages(sk, &page, &destroy,
++			       offset, size, flags);
+ 	release_sock(sk);
+ 	return res;
+ }
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index ebaa96b..b653015 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -1028,8 +1028,9 @@ do_confirm:
+ }
+ EXPORT_SYMBOL(udp_sendmsg);
+ 
+-int udp_sendpage(struct sock *sk, struct page *page, int offset,
+-		 size_t size, int flags)
++int udp_sendpage(struct sock *sk, struct page *page,
++		 struct skb_frag_destructor *destroy,
++		 int offset, size_t size, int flags)
+ {
+ 	struct inet_sock *inet = inet_sk(sk);
+ 	struct udp_sock *up = udp_sk(sk);
+@@ -1057,11 +1058,11 @@ int udp_sendpage(struct sock *sk, struct page *page, int offset,
+ 	}
+ 
+ 	ret = ip_append_page(sk, &inet->cork.fl.u.ip4,
+-			     page, offset, size, flags);
++			     page, destroy, offset, size, flags);
+ 	if (ret == -EOPNOTSUPP) {
+ 		release_sock(sk);
+-		return sock_no_sendpage(sk->sk_socket, page, offset,
+-					size, flags);
++		return sock_no_sendpage(sk->sk_socket, page, destroy,
++					offset, size, flags);
+ 	}
+ 	if (ret < 0) {
+ 		udp_flush_pending_frames(sk);
+diff --git a/net/ipv4/udp_impl.h b/net/ipv4/udp_impl.h
+index aaad650..4923d82 100644
+--- a/net/ipv4/udp_impl.h
++++ b/net/ipv4/udp_impl.h
+@@ -23,8 +23,9 @@ extern int	compat_udp_getsockopt(struct sock *sk, int level, int optname,
+ #endif
+ extern int	udp_recvmsg(struct kiocb *iocb, struct sock *sk, struct msghdr *msg,
+ 			    size_t len, int noblock, int flags, int *addr_len);
+-extern int	udp_sendpage(struct sock *sk, struct page *page, int offset,
+-			     size_t size, int flags);
++extern int	udp_sendpage(struct sock *sk, struct page *page,
++			     struct skb_frag_destructor *destroy,
++			     int offset, size_t size, int flags);
+ extern int	udp_queue_rcv_skb(struct sock * sk, struct sk_buff *skb);
+ extern void	udp_destroy_sock(struct sock *sk);
+ 
+diff --git a/net/rds/tcp_send.c b/net/rds/tcp_send.c
+index 1b4fd68..71503ad 100644
+--- a/net/rds/tcp_send.c
++++ b/net/rds/tcp_send.c
+@@ -119,6 +119,7 @@ int rds_tcp_xmit(struct rds_connection *conn, struct rds_message *rm,
+ 	while (sg < rm->data.op_nents) {
+ 		ret = tc->t_sock->ops->sendpage(tc->t_sock,
+ 						sg_page(&rm->data.op_sg[sg]),
++						NULL,
+ 						rm->data.op_sg[sg].offset + off,
+ 						rm->data.op_sg[sg].length - off,
+ 						MSG_DONTWAIT|MSG_NOSIGNAL);
+diff --git a/net/socket.c b/net/socket.c
+index 2877647..cbd5728 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -795,7 +795,7 @@ static ssize_t sock_sendpage(struct file *file, struct page *page,
+ 	if (more)
+ 		flags |= MSG_MORE;
+ 
+-	return kernel_sendpage(sock, page, offset, size, flags);
++	return kernel_sendpage(sock, page, NULL, offset, size, flags);
+ }
+ 
+ static ssize_t sock_splice_read(struct file *file, loff_t *ppos,
+@@ -3352,15 +3352,18 @@ int kernel_setsockopt(struct socket *sock, int level, int optname,
+ }
+ EXPORT_SYMBOL(kernel_setsockopt);
+ 
+-int kernel_sendpage(struct socket *sock, struct page *page, int offset,
++int kernel_sendpage(struct socket *sock, struct page *page,
++		    struct skb_frag_destructor *destroy,
++		    int offset,
+ 		    size_t size, int flags)
+ {
+ 	sock_update_classid(sock->sk);
+ 
+ 	if (sock->ops->sendpage)
+-		return sock->ops->sendpage(sock, page, offset, size, flags);
++		return sock->ops->sendpage(sock, page, destroy,
++					   offset, size, flags);
+ 
+-	return sock_no_sendpage(sock, page, offset, size, flags);
++	return sock_no_sendpage(sock, page, destroy, offset, size, flags);
+ }
+ EXPORT_SYMBOL(kernel_sendpage);
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 767d494..852a258 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -183,7 +183,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	/* send head */
+ 	if (slen == xdr->head[0].iov_len)
+ 		flags = 0;
+-	len = kernel_sendpage(sock, headpage, headoffset,
++	len = kernel_sendpage(sock, headpage, NULL, headoffset,
+ 				  xdr->head[0].iov_len, flags);
+ 	if (len != xdr->head[0].iov_len)
+ 		goto out;
+@@ -196,7 +196,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	while (pglen > 0) {
+ 		if (slen == size)
+ 			flags = 0;
+-		result = kernel_sendpage(sock, *ppage, base, size, flags);
++		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
+ 		if (result > 0)
+ 			len += result;
+ 		if (result != size)
+@@ -210,7 +210,7 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 
+ 	/* send tail */
+ 	if (xdr->tail[0].iov_len) {
+-		result = kernel_sendpage(sock, tailpage, tailoffset,
++		result = kernel_sendpage(sock, tailpage, NULL, tailoffset,
+ 				   xdr->tail[0].iov_len, 0);
+ 		if (result > 0)
+ 			len += result;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d7f97ef..f79e40e9 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -408,7 +408,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
++		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
+-- 
+1.7.2.5
 
