@@ -1,38 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from brutus.rcsd.ms ([68.216.50.44]:39193 "EHLO mailgw2.rcsd.ms"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753603Ab1KZSYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 Nov 2011 13:24:22 -0500
-Reply-To: <alert01@cpll.cn>
-From: "E-Mail Account Maintenance" <info@upc.nl>
-Subject: E-Mail Account Maintenance
-Date: Sat, 26 Nov 2011 23:47:06 +0530
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="Windows-1251"
-Message-Id: <7807_1322331428_4ED12D24_7807_5913770_1_20111126181544.251328B8C29@mail4.rcsd.ms>
-To: undisclosed-recipients:;
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:63715 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933924Ab1KJP1C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 10:27:02 -0500
+Received: by mail-gx0-f174.google.com with SMTP id b2so3072148ggn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 07:27:02 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH-v2 6/7] pnfsblock: clean up _add_entry
+Date: Thu, 10 Nov 2011 07:25:27 -0800
+Message-Id: <1320938728-3715-7-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
+References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+It is wrong to kmalloc in _add_entry() as it is inside
+spinlock. memory should be already allocated _add_entry() is called.
 
- Beste UPC gebruiker,
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/extents.c |    8 +-------
+ 1 files changed, 1 insertions(+), 7 deletions(-)
 
- Willen wij u mededelen dat wij momenteel uitvoeren van gepland onderhouden
- upgrade van onze UPC webmail service en als gevolg van deze onze UPC klant 
- is
- Om uw UPC account, zodat u om ons uw e-mail account gegevens die zijn als 
- volgt:
-
- * User name:
- * Wachtwoord:
- * Geboortedatum:
-
- Doet u dit niet binnen 48 uur zal onmiddellijk maken van uw UPC account
- gedeactiveerd uit onze database.
-
-This message may contain confidential and/or proprietary
-information, and is intended for the person/entity to
-whom it was originally addressed. Any use by others is
-strictly prohibited.
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index f383524..d0f52ed 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -110,13 +110,7 @@ static int _add_entry(struct my_tree *tree, u64 s, int32_t tag,
+ 		return 0;
+ 	} else {
+ 		struct pnfs_inval_tracking *new;
+-		if (storage)
+-			new = storage;
+-		else {
+-			new = kmalloc(sizeof(*new), GFP_NOFS);
+-			if (!new)
+-				return -ENOMEM;
+-		}
++		new = storage;
+ 		new->it_sector = s;
+ 		new->it_tags = (1 << tag);
+ 		list_add(&new->it_link, &pos->it_link);
+-- 
+1.7.1.262.g5ef3d
 
