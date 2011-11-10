@@ -1,25 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:42103 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751876Ab1KLTPb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 14:15:31 -0500
-Date: Sat, 12 Nov 2011 14:15:26 -0500
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsidmap: Added -v and -t flags
-Message-ID: <20111112191526.GB25581@umich.edu>
-References: <1321113346-10106-1-git-send-email-steved@redhat.com>
- <1321113346-10106-3-git-send-email-steved@redhat.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:36600 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932301Ab1KJI45 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:56:57 -0500
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
+Date: Thu, 10 Nov 2011 03:56:30 -0500
+Subject: RE: [PATCH 6/8] pnfsblock: clean up _add_entry
+Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C32@MX09A.corp.emc.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+ <1320851766-1834-7-git-send-email-bergwolf@gmail.com>
+ <4EBB8EDD.9090107@tonian.com>
+In-Reply-To: <4EBB8EDD.9090107@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321113346-10106-3-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
 
-  +	arg = malloc(sizeof(char) * strlen(argv[optind]) + 1);
-  +	strcpy(arg, argv[optind]);
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Thursday, November 10, 2011 4:44 PM
+> To: Peng Tao
+> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
+> Subject: Re: [PATCH 6/8] pnfsblock: clean up _add_entry
+> 
+> On 2011-11-09 17:16, Peng Tao wrote:
+> > It is wrong to kmalloc in _add_entry() as it is inside
+> > spinlock. memory should be already allocated _add_entry() is called.
+> 
+> What about the call from _set_range, it is passing NULL?
+When _set_range() calls with NULL, it is called from mark_written_sectors(). For each sector, we must first mark it init in
+bl_mark_sectors_init() before marking it written. And memory for the entry is allocated in bl_mark_sectors_init(). So if
+we don't find the entry somehow in mark_written_sectors(), there must be some bug out there. That is the BUG_ON added for.
 
-strdup() would have been simpler.  But don't re-do it just for this.
+Thanks,
+Tao
+
+> 
+> > So BUG instead if we fail to find a match and no memory preallocated.
+> >
+> > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > ---
+> >  fs/nfs/blocklayout/extents.c |    9 ++-------
+> >  1 files changed, 2 insertions(+), 7 deletions(-)
+> >
+> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+> > index f383524..952ea8a 100644
+> > --- a/fs/nfs/blocklayout/extents.c
+> > +++ b/fs/nfs/blocklayout/extents.c
+> > @@ -110,13 +110,8 @@ static int _add_entry(struct my_tree *tree, u64 s, int32_t
+> tag,
+> >  		return 0;
+> >  	} else {
+> >  		struct pnfs_inval_tracking *new;
+> > -		if (storage)
+> > -			new = storage;
+> > -		else {
+> > -			new = kmalloc(sizeof(*new), GFP_NOFS);
+> > -			if (!new)
+> > -				return -ENOMEM;
+> > -		}
+> > +		BUG_ON(!storage);
+> 
+> The BUG isn't needed as you dereference the pointer right away.
+> 
+> Benny
+> 
+> > +		new = storage;
+> >  		new->it_sector = s;
+> >  		new->it_tags = (1 << tag);
+> >  		list_add(&new->it_link, &pos->it_link);
+
