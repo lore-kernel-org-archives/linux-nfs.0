@@ -1,124 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:53481 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751142Ab1K3M6H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 07:58:07 -0500
-Received: by bkas6 with SMTP id s6so836091bka.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 04:58:05 -0800 (PST)
-Message-ID: <4ED62857.7090804@tonian.com>
-Date: Wed, 30 Nov 2011 14:57:59 +0200
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:55777 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757386Ab1KJGaN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 01:30:13 -0500
+Received: by mail-fx0-f46.google.com with SMTP id n18so168697fag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 22:30:12 -0800 (PST)
+Message-ID: <4EBB6F71.9030603@tonian.com>
+Date: Thu, 10 Nov 2011 08:30:09 +0200
 From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Subject: Re: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SQUASHME: Compile warning in pnfs-all-3.1-2011-10-31-1
+References: <4EB82384.7080106@panasas.com>
+In-Reply-To: <4EB82384.7080106@panasas.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-03 06:56, Peng Tao wrote:
-> Asking for layout in pg_init will always make client ask for only 4KB
-> layout in every layoutget. This way, client drops the IO size information
-> that is meaningful for MDS in handing out layout.
+On 2011-11-07 20:29, Boaz Harrosh wrote:
 > 
-> In stead, if layout is not find in cache, do not send layoutget
-> at once. Wait until before issuing IO in pnfs_do_multiple_reads/writes
-> because that is where we know the real size of current IO. By telling the
-> real IO size to MDS, MDS will have a better chance to give proper layout.
+> Fix this:
+> fs/nfsd/nfs4pnfsd.c: In function 'cl_has_file_layout':
+> fs/nfsd/nfs4pnfsd.c:1093:20: warning: unused variable 'stid' [-Wunused-variable]
 > 
-> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> ---
-> Resend to fix patch title. Sorry for the noise...
-> 
->  fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++-
->  1 files changed, 52 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 48cfac3..fd585fe 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -39,6 +39,7 @@
->  #include <linux/prefetch.h>
->  
->  #include "blocklayout.h"
-> +#include "../internal.h"
->  
->  #define NFSDBG_FACILITY	NFSDBG_PNFS_LD
->  
-> @@ -990,14 +991,63 @@ bl_clear_layoutdriver(struct nfs_server *server)
->  	return 0;
->  }
->  
-> +/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
+> Was something forgotten? or It's really not needed any longer?
 
-Why is that?
-What do these arbitrary numbers represent?
-If these limits depend on some other system sizes they should reflect the dependency
-as part of their calculation.
+It isn't needed anymore post f2ed73ef28b85cb2abc9da6ca98a03daf4b36d0d
+which searches for clientid on the nfs4_file's fi_layout_states list.
+
+Thanks!
 
 Benny
 
-> +#define PNFSBLK_MAXRSIZE (0x1<<22)
-> +#define PNFSBLK_MAXWSIZE (0x1<<21)
-> +static void
-> +bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-> +{
-> +	struct inode *ino = pgio->pg_inode;
-> +	struct pnfs_layout_hdr *lo;
-> +
-> +	BUG_ON(pgio->pg_lseg != NULL);
-> +	spin_lock(&ino->i_lock);
-> +	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_KERNEL);
-> +	if (!lo || test_bit(lo_fail_bit(IOMODE_READ), &lo->plh_flags)) {
-> +		spin_unlock(&ino->i_lock);
-> +		nfs_pageio_reset_read_mds(pgio);
-> +		return;
-> +	}
-> +
-> +	pgio->pg_bsize = PNFSBLK_MAXRSIZE;
-> +	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
-> +						req_offset(req),
-> +						req->wb_bytes,
-> +						IOMODE_READ);
-> +	spin_unlock(&ino->i_lock);
-> +}
-> +
-> +static void
-> +bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-> +{
-> +	struct inode *ino = pgio->pg_inode;
-> +	struct pnfs_layout_hdr *lo;
-> +
-> +	BUG_ON(pgio->pg_lseg != NULL);
-> +	spin_lock(&ino->i_lock);
-> +	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_NOFS);
-> +	if (!lo || test_bit(lo_fail_bit(IOMODE_RW), &lo->plh_flags)) {
-> +		spin_unlock(&ino->i_lock);
-> +		nfs_pageio_reset_write_mds(pgio);
-> +		return;
-> +	}
-> +
-> +	pgio->pg_bsize = PNFSBLK_MAXWSIZE;
-> +	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
-> +						req_offset(req),
-> +						req->wb_bytes,
-> +						IOMODE_RW);
-> +	spin_unlock(&ino->i_lock);
-> +}
-> +
->  static const struct nfs_pageio_ops bl_pg_read_ops = {
-> -	.pg_init = pnfs_generic_pg_init_read,
-> +	.pg_init = bl_pg_init_read,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_readpages,
->  };
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfsd/nfs4pnfsd.c |    1 -
+>  1 files changed, 0 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index d2860c9..ca5c18a 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -1090,7 +1090,6 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
+>  static bool
+>  cl_has_file_layout(struct nfs4_client *clp, struct nfs4_file *fp, stateid_t *lsid)
+>  {
+> -	struct nfs4_stid *stid;
+>  	struct nfs4_layout_state *ls;
 >  
->  static const struct nfs_pageio_ops bl_pg_write_ops = {
-> -	.pg_init = pnfs_generic_pg_init_write,
-> +	.pg_init = bl_pg_init_write,
->  	.pg_test = pnfs_generic_pg_test,
->  	.pg_doio = pnfs_generic_pg_writepages,
->  };
+>  	spin_lock(&layout_lock);
