@@ -1,67 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30147 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40477 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755754Ab1KRWhg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:37:36 -0500
-Message-ID: <1321655828.10541.23.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: John Hughes <john@calvaedi.com>
-Cc: Jim Rees <rees@umich.edu>, John Hughes <john@Calva.COM>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Sat, 19 Nov 2011 00:37:08 +0200
-In-Reply-To: <4EC6DD4D.1010008@calvaedi.com>
-References: <4EC66D12.2090505@Calva.COM>
-		 <1321641333.2653.15.camel@lade.trondhjem.org>
-		 <4EC6AFA9.9000705@calvaedi.com>
-		 <1321648435.2653.53.camel@lade.trondhjem.org>
-		 <20111118205749.GA1680@umich.edu>
-	 <1321650239.2653.68.camel@lade.trondhjem.org>
-	 <4EC6DD4D.1010008@calvaedi.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752292Ab1KJU0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Nov 2011 15:26:06 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQ5bm007127
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:06 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pAAKQ5Dg030911
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:05 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] Enable the in-kernel id mapping to be on by default.
+Date: Thu, 10 Nov 2011 15:26:01 -0500
+Message-Id: <1320956763-17935-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-18 at 23:33 +0100, John Hughes wrote: 
-> On 11/18/2011 10:03 PM, Trond Myklebust wrote:
-> > On Fri, 2011-11-18 at 15:57 -0500, Jim Rees wrote:
-> >    
-> >>
-> >> The write() syscall doesn't indicate whether the data is safe or not.  That
-> >> would be the close() syscall.
-> >>      
-> > fsync(). Which may succeed if the user renews their ticket first.
-> > However you may still have data loss if dirty data has been lost because
-> > of EKEYEXPIRED returns on the WRITE RPC call...
-> >    
-> Only if the write(2) returned EKEYEXPIRED, surely,
+This patch set enables the in-kernel id mapping upcall
+mechanism, which will fix deadlocks that can occur 
+between the rpc.idmapd daemon and the kernel. 
 
-What part of "write is asynchronous" is so hard to understand?
+This set also correct the binary name in the kernel 
+documentation
 
-> > Also, for the fsync() to return EKEYEXPIRED _after_ the user has renewed
-> > their ticket would seem counter-intuitive to most people.
-> >    
-> 
-> I would want to know if data was lost.
-> 
-> Intuition means nothing if I get an error.
-> 
-> If it were possible I'd like:
-> 
-> 1. write works
-> 1a. WRITE RPC fails, data stays in cache
-> 2. ticket renewed
-> 3. fsync works, data written
+Steve Dickson (2):
+  Enable the in-kernel ID mapping upcall mechanism
+  Renamed the binary that handles the upcalls to /usr/sbin/nfsidmap
 
-Which is _exactly_ how it works today, so what is the problem?
+ Documentation/filesystems/nfs/idmapper.txt |   22 +++++++++++-----------
+ fs/nfs/Kconfig                             |   10 ++--------
+ 2 files changed, 13 insertions(+), 19 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.6.4
 
