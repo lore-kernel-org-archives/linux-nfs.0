@@ -1,116 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56453 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750891Ab1KARfi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 13:35:38 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 3/3] NFSD: Added fault injection documentation
-Date: Tue,  1 Nov 2011 13:35:23 -0400
-Message-Id: <1320168923-29671-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
-References: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:34160 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751672Ab1KJIuD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:50:03 -0500
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
+Date: Thu, 10 Nov 2011 03:49:34 -0500
+Subject: RE: [PATCH 3/8] pnfsblock: move find lock page logic out of
+ bl_write_pagelist
+Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C30@MX09A.corp.emc.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+ <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
+ <4EBB8C14.2090209@tonian.com>
+In-Reply-To: <4EBB8C14.2090209@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- Documentation/filesystems/nfs/00-INDEX            |    2 +
- Documentation/filesystems/nfs/fault_injection.txt |   69 +++++++++++++++++++++
- 2 files changed, 71 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs/fault_injection.txt
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+> On Behalf Of Benny Halevy
+> Sent: Thursday, November 10, 2011 4:32 PM
+> To: Peng Tao
+> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
+> Subject: Re: [PATCH 3/8] pnfsblock: move find lock page logic out of
+> bl_write_pagelist
+> 
+> On 2011-11-09 17:16, Peng Tao wrote:
+> > Also avoid unnecessary lock_page if page is handled by others.
+> >
+> > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > ---
+> >  fs/nfs/blocklayout/blocklayout.c |   78
+> ++++++++++++++++++++++++++------------
+> >  1 files changed, 54 insertions(+), 24 deletions(-)
+> >
+> > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> > index 4ced0b0..e8e13f3 100644
+> > --- a/fs/nfs/blocklayout/blocklayout.c
+> > +++ b/fs/nfs/blocklayout/blocklayout.c
+> > @@ -484,6 +484,56 @@ cleanup:
+> >  	return ret;
+> >  }
+> >
+> > +/* Find or create a zeroing page marked being writeback.
+> > + * Return ERR_PTR on error, NULL to indicate skip this page and page itself
+> > + * to indicate write out.
+> > + */
+> > +static struct page*
+> 
+> coding style nit: "page *" rather than "page*"
+> 
+> > +bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
+> > +			struct pnfs_block_extent *cow_read)
+> > +{
+> > +	struct page* page;
+> 
+> checkpatch nit:
+> ERROR: "foo* bar" should be "foo *bar"
+Thank you! Will change both.
 
-diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
-index a57e124..1716874 100644
---- a/Documentation/filesystems/nfs/00-INDEX
-+++ b/Documentation/filesystems/nfs/00-INDEX
-@@ -2,6 +2,8 @@
- 	- this file (nfs-related documentation).
- Exporting
- 	- explanation of how to make filesystems exportable.
-+fault_injection.txt
-+	- information for using fault injection on the server
- knfsd-stats.txt
- 	- statistics which the NFS server makes available to user space.
- nfs.txt
-diff --git a/Documentation/filesystems/nfs/fault_injection.txt b/Documentation/filesystems/nfs/fault_injection.txt
-new file mode 100644
-index 0000000..426d166
---- /dev/null
-+++ b/Documentation/filesystems/nfs/fault_injection.txt
-@@ -0,0 +1,69 @@
-+
-+Fault Injection
-+===============
-+Fault injection is a method for forcing errors that may not normally occur, or
-+may be difficult to reproduce.  Forcing these errors in a controlled environment
-+can help the developer find and fix bugs before their code is shipped in a
-+production system.  Injecting an error on the Linux NFS server will allow us to
-+observe how the client reacts and if it manages to recover its state correctly.
-+
-+NFSD_FAULT_INJECTION must be selected when configuring the kernel to use this
-+feature.
-+
-+
-+Using Fault Injection
-+=====================
-+On the client, mount the fault injection server through NFS v4.0+ and do some
-+work over NFS (open files, take locks, ...).
-+
-+On the server, mount the debugfs filesystem to <debug_dir> and ls
-+<debug_dir>/nfsd.  This will show a list of files that will be used for
-+injecting faults on the NFS server.  As root, write a number n to the file
-+corresponding to the action you want the server to take.  The server will then
-+process the first n items it finds.  So if you want to forget 5 locks, echo '5'
-+to <debug_dir>/nfsd/forget_locks.  A value of 0 will tell the server to forget
-+all corresponding items.  A log message will be created containing the number
-+of items forgotten (check dmesg).
-+
-+Go back to work on the client and check if the client recovered from the error
-+correctly.
-+
-+
-+Available Faults
-+================
-+forget_clients:
-+     The NFS server keeps a list of clients that have placed a mount call.  If
-+     this list is cleared, the server will have no knowledge of who the client
-+     is, forcing the client to reauthenticate with the server.
-+
-+forget_openowners:
-+     The NFS server keeps a list of what files are currently opened and who
-+     they were opened by.  Clearing this list will force the client to reopen
-+     its files.
-+
-+forget_locks:
-+     The NFS server keeps a list of what files are currently locked in the VFS.
-+     Clearing this list will force the client to reclaim its locks (files are
-+     unlocked through the VFS as they are cleared from this list).
-+
-+forget_delegations:
-+     A delegation is used to assure the client that a file, or part of a file,
-+     has not changed since the delegation was awarded.  Clearing this list will
-+     force the client to reaquire its delegation before accessing the file
-+     again.
-+
-+recall_delegations:
-+     Delegations can be recalled by the server when another client attempts to
-+     access a file.  This test will notify the client that its delegation has
-+     been revoked, forcing the client to reaquire the delegation before using
-+     the file again.
-+
-+
-+tools/nfs/inject_faults.sh script
-+=================================
-+This script has been created to ease the fault injection process.  This script
-+will detect the mounted debugfs directory and write to the files located there
-+based on the arguments passed by the user.  For example, running
-+`inject_faults.sh forget_locks 1` as root will instruct the server to forget
-+one lock.  Running `inject_faults forget_locks` will instruct the server to
-+forgetall locks.
--- 
-1.7.7
+
+> 
+> > +	int locked = 0;
+> > +	page = find_get_page(inode->i_mapping, index);
+> > +	if (page)
+> > +		goto check_page;
+> > +
+> > +	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
+> > +	if (unlikely(!page)) {
+> > +		dprintk("%s oom\n", __func__);
+> > +		return ERR_PTR(-ENOMEM);
+> > +	}
+> > +	locked = 1;
+> 
+> Why not just call find_or_create_page in the first place?
+> dealing with both the locked and unlocked cases here just
+> seems to add unneeded complexity.
+It is to avoid lock page when possible. find_or_create_page() calls find_and_lock_page() but there are cases that the page is already locked by someone (e.g., in nfs_writepage_locked()) and current process has to wait. Pressure tests show many such contention. So I want to optimize it out.
+
+Thanks,
+Tao
+> 
+> Benny
+> 
+> > +
+> > +check_page:
+> > +	/* PageDirty: Other will write this out
+> > +	 * PageWriteback: Other is writing this out
+> > +	 * PageUptodate: It was read before
+> > +	 */
+> > +	if (PageDirty(page) || PageWriteback(page)) {
+> > +		print_page(page);
+> > +		if (locked)
+> > +			unlock_page(page);
+> > +		page_cache_release(page);
+> > +		return NULL;
+> > +	}
+> > +
+> > +	if (!locked) {
+> > +		lock_page(page);
+> > +		if (PageDirty(page) || PageWriteback(page))
+> > +			unlock_page(page);
+> > +		return NULL;
+> > +	}
+> > +	if (!PageUptodate(page)) {
+> > +		/* New page, readin or zero it */
+> > +		init_page_for_write(page, cow_read);
+> > +	}
+> > +	set_page_writeback(page);
+> > +	unlock_page(page);
+> > +
+> > +	return page;
+> > +}
+> > +
+> >  static enum pnfs_try_status
+> >  bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+> >  {
+> > @@ -543,32 +593,12 @@ fill_invalid_ext:
+> >  			dprintk("%s zero %dth page: index %lu isect %llu\n",
+> >  				__func__, npg_zero, index,
+> >  				(unsigned long long)isect);
+> > -			page =
+> > -			    find_or_create_page(wdata->inode->i_mapping, index,
+> > -						GFP_NOFS);
+> > -			if (!page) {
+> > -				dprintk("%s oom\n", __func__);
+> > -				wdata->pnfs_error = -ENOMEM;
+> > +			page = bl_find_get_zeroing_page(wdata->inode, index, cow_read);
+> > +			if (unlikely(IS_ERR(page))) {
+> > +				wdata->pnfs_error = PTR_ERR(page);
+> >  				goto out;
+> > -			}
+> > -
+> > -			/* PageDirty: Other will write this out
+> > -			 * PageWriteback: Other is writing this out
+> > -			 * PageUptodate: It was read before
+> > -			 * sector_initialized: already written out
+> > -			 */
+> > -			if (PageDirty(page) || PageWriteback(page)) {
+> > -				print_page(page);
+> > -				unlock_page(page);
+> > -				page_cache_release(page);
+> > +			} else if (page == NULL)
+> >  				goto next_page;
+> > -			}
+> > -			if (!PageUptodate(page)) {
+> > -				/* New page, readin or zero it */
+> > -				init_page_for_write(page, cow_read);
+> > -			}
+> > -			set_page_writeback(page);
+> > -			unlock_page(page);
+> >
+> >  			ret = bl_mark_sectors_init(be->be_inval, isect,
+> >  						       PAGE_CACHE_SECTORS);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
