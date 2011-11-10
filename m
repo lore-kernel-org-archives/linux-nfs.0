@@ -1,46 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp02.citrix.com ([66.165.176.63]:45639 "EHLO
-	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755716Ab1KOOhA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Nov 2011 09:37:00 -0500
-Message-ID: <4EC2790A.80706@citrix.com>
-Date: Tue, 15 Nov 2011 14:36:58 +0000
-From: Andrew Cooper <andrew.cooper3@citrix.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:35461 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277Ab1KJHGs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 02:06:48 -0500
+Received: by fagn18 with SMTP id n18so192856fag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 23:06:46 -0800 (PST)
+Message-ID: <4EBB7803.1050004@tonian.com>
+Date: Thu, 10 Nov 2011 09:06:43 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
- TCP
-References: <4EBAC88D.40902@citrix.com>		 <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>		 <4EBBB247.40805@citrix.com>		 <2E3D3F87-479E-4096-B086-C8F83A0147B5@oracle.com>		 <4EBBF35B.5000606@citrix.com>	 <1320957784.11956.16.camel@lade.trondhjem.org>	 <4EBCF98E.6050101@citrix.com> <1321051132.4810.16.camel@lade.trondhjem.org> <4EC114BD.1010600@citrix.com>
-In-Reply-To: <4EC114BD.1010600@citrix.com>
-Content-Type: text/plain; charset="UTF-8"
+To: tao.peng@emc.com
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/8] pnfsblock cleanup and fixes
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <F19688880B763E40B28B2B462677FBF805DD054B4F@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805DD054B4F@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for a slow reply - this is unfortunately not the only bug I am
-working on.
+On 2011-11-10 04:09, tao.peng@emc.com wrote:
+> Benny, hi,
+> 
+> These patches fail to apply to pnfs-latest branch because of conflicts with pnfs private workqueue patches. Since Trond has decided not to take pnfs private workqueue patches, would you please drop them so that new patches can apply? I can send you revert patches if you want.
 
-After further testing, this problem does actually reproduce with
-synchronous mounts as well as asynchronous mounts.  It just takes some
-extreme stress testing to reproduce with synchronous mounts.
+No problem.  I'll take them out.
 
-After some debugging in xs_tcp_shutdown()  (a cheeky dump_stack()), it
-appears that periodically xprt_autoclose() is closing the TCP connection.
+Benny
 
-It appears that some of the time, the server correctly FIN+ACKs the
-first FIN, at which point the TCP connection is torn down and set back
-up, with no interruption to the NFS session.  However, some of the time,
-the server does not FIN+ACK the clients FIN, at which point the client
-waits 15 seconds and RST's the TCP connection, leading to the errors seen.
-
-What is the purpose of xprt_autoclose() ? I assume it is to
-automatically close idle connections.  Am I correct in assuming that it
-should not be attempting to close an active connection?
-
-Thanks,
-
--- 
-Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
-T: +44 (0)1223 225 900, http://www.citrix.com
-
+> 
+> Thanks,
+> Tao
+> 
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+>> On Behalf Of Peng Tao
+>> Sent: Wednesday, November 09, 2011 11:16 PM
+>> To: linux-nfs@vger.kernel.org
+>> Cc: Trond.Myklebust@netapp.com; bhalevy@tonian.com
+>> Subject: [PATCH 0/8] pnfsblock cleanup and fixes
+>>
+>> Hi, Trond and Benny,
+>>
+>> Bellow are some pnfsblock patches that I have tested for days. Most of them
+>> are cleanup and small improvements. Only
+>> [PATCH 2/8] pnfsblock: acquire im_lock in _preload_range
+>> needs to go into stable.
+>>
+>> Thanks,
+>> Tao
+>>
+>> Peng Tao (8):
+>>   pnfsblock: cleanup bl_mark_sectors_init
+>>   pnfsblock: acquire im_lock in _preload_range
+>>   pnfsblock: move find lock page logic out of bl_write_pagelist
+>>   pnfsblock: set read/write tk_status to pnfs_error
+>>   pnfsblock: remove rpc_call_ops from struct parallel_io
+>>   pnfsblock: clean up _add_entry
+>>   pnfsblock: add im_extents to pnfs_inval_markings
+>>   pnfsblock: alloc short extent before submit bio
+>>
+>>  fs/nfs/blocklayout/blocklayout.c |  176 +++++++++++++++++++++++++-------------
+>>  fs/nfs/blocklayout/blocklayout.h |   11 ++-
+>>  fs/nfs/blocklayout/extents.c     |  146 ++++++++++++--------------------
+>>  3 files changed, 180 insertions(+), 153 deletions(-)
+>>
