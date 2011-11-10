@@ -1,101 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33218 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755212Ab1KHKmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 05:42:36 -0500
-Subject: [PATCH v4 3/3] SUNRPC: optimize net_ns dereferencing in rpcbind
-	registering calls
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 14:41:36 +0300
-Message-ID: <20111108104135.1714.83981.stgit@localhost6.localdomain6>
-In-Reply-To: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
-References: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:34432 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753835Ab1KJG4E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 01:56:04 -0500
+Received: by mail-fx0-f46.google.com with SMTP id n18so185212fag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 22:56:03 -0800 (PST)
+Message-ID: <4EBB757F.7080509@tonian.com>
+Date: Thu, 10 Nov 2011 08:55:59 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under
+ NFSDDBG_PNFS
+References: <4EB9F8D6.1080302@panasas.com> <20111109195510.GA2227@fieldses.org>
+In-Reply-To: <20111109195510.GA2227@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static rpcbind registering functions can be parametrized by network namespace
-pointer, calculated only once, instead of using init_net pointer (or taking it
-from current when virtualization will be comleted) in many places.
+On 2011-11-09 21:55, J. Bruce Fields wrote:
+> On Tue, Nov 08, 2011 at 07:51:50PM -0800, Boaz Harrosh wrote:
+>>
+>> I've been squinting  at pnfsd dprints for ages and aching under the wait. So I headed
+>> up to the nfsd/debug.h to add a PNFS channel, and what do you know? there is one!
+>> It's used by nfs4pnfsds.c. Surly  nfs4pnfsd.c is more _PNFS than _PROC.
+> 
+> Hey now, nfs4pnfsd.c has enough problems of its own without being
+> accused of surliness.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+:-)
 
----
- net/sunrpc/rpcb_clnt.c |   18 +++++++++---------
- 1 files changed, 9 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 3df276a..371d229 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -451,14 +451,14 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- /*
-  * Fill in AF_INET family-specific arguments to register
-  */
--static int rpcb_register_inet4(const struct sockaddr *sap,
-+static int rpcb_register_inet4(struct sunrpc_net *sn,
-+			       const struct sockaddr *sap,
- 			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin->sin_port);
- 	int result;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -479,14 +479,14 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- /*
-  * Fill in AF_INET6 family-specific arguments to register
-  */
--static int rpcb_register_inet6(const struct sockaddr *sap,
-+static int rpcb_register_inet6(struct sunrpc_net *sn,
-+			       const struct sockaddr *sap,
- 			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin6->sin6_port);
- 	int result;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -504,10 +504,10 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	return result;
- }
- 
--static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
-+static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
-+					     struct rpc_message *msg)
- {
- 	struct rpcbind_args *map = msg->rpc_argp;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
- 		"local rpcbind\n",
-@@ -580,13 +580,13 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 		return -EPROTONOSUPPORT;
- 
- 	if (address == NULL)
--		return rpcb_unregister_all_protofamilies(&msg);
-+		return rpcb_unregister_all_protofamilies(sn, &msg);
- 
- 	switch (address->sa_family) {
- 	case AF_INET:
--		return rpcb_register_inet4(address, &msg);
-+		return rpcb_register_inet4(sn, address, &msg);
- 	case AF_INET6:
--		return rpcb_register_inet6(address, &msg);
-+		return rpcb_register_inet6(sn, address, &msg);
- 	}
- 
- 	return -EAFNOSUPPORT;
-
+> 
+> --b.
+> 
+>>
+>> While at it I changed  nfs4pnfsdlm.c to, also already defined, NFSDDBG_FILELAYOUT
+>> which was unused before this patch.
+>>
+>> CC: Steve Dickson <steved@redhat.com>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4pnfsd.c   |    2 +-
+>>  fs/nfsd/nfs4pnfsdlm.c |    2 +-
+>>  2 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+>> index 18b8fca..f514ebe 100644
+>> --- a/fs/nfsd/nfs4pnfsd.c
+>> +++ b/fs/nfsd/nfs4pnfsd.c
+>> @@ -23,7 +23,7 @@
+>>  
+>>  #include "pnfsd.h"
+>>  
+>> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+>> +#define NFSDDBG_FACILITY                NFSDDBG_PNFS
+>>  
+>>  /* Globals */
+>>  static u32 current_layoutid = 1;
+>> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+>> index abc4d83..0f0441a 100644
+>> --- a/fs/nfsd/nfs4pnfsdlm.c
+>> +++ b/fs/nfsd/nfs4pnfsdlm.c
+>> @@ -30,7 +30,7 @@
+>>  #include "nfsfh.h"
+>>  #include "nfsd.h"
+>>  
+>> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+>> +#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
+>>  
+>>  /* Just use a linked list. Do not expect more than 32 dlm_device_entries
+>>   * the first implementation will just use one device per cluster file system
+>> -- 
+>> 1.7.6.2
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
