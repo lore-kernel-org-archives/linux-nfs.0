@@ -1,50 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from DMZ-MAILSEC-SCANNER-8.MIT.EDU ([18.7.68.37]:61324 "EHLO
-	dmz-mailsec-scanner-8.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752773Ab1KCV6R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 17:58:17 -0400
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Nico Williams <nico@cryptonector.com>, dhowells <dhowells@redhat.com>,
-        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
-Subject: Re: GSSAPI Proxy initiative
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	<1320332310.7734.643.camel@willson.li.ssimo.org>
-	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	<1320337903.7734.670.camel@willson.li.ssimo.org>
-	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	<1320352784.18396.109.camel@lade.trondhjem.org>
-From: Tom Yu <tlyu@mit.edu>
-Date: Thu, 03 Nov 2011 17:58:12 -0400
-In-Reply-To: <1320352784.18396.109.camel@lade.trondhjem.org> (Trond Myklebust's message of "Thu, 03 Nov 2011 16:39:44 -0400")
-Message-ID: <ldvsjm4kgwb.fsf@cathode-dark-space.mit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:37919 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756697Ab1KJP0m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 10:26:42 -0500
+Received: by yenr9 with SMTP id r9so2025609yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 07:26:42 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH-v2 3/7] pnfsblock: move find lock page logic out of bl_write_pagelist
+Date: Thu, 10 Nov 2011 07:25:24 -0800
+Message-Id: <1320938728-3715-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
+References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+Also avoid unnecessary lock_page if page is handled by others.
 
-> Linux already has per-user, per-process and per-thread keyrings which
-> offer a high security storage solution for keys. The problem with those
-> is that they are difficult to use in an asynchronous context when the
-> original user's process/thread context is no longer available to us.
->
-> Ideally, though, that's what we'd like to see used.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
+ 1 files changed, 54 insertions(+), 24 deletions(-)
 
-Perhaps I misunderstand what you're proposing to use the keyring for,
-but I would like to clarify a few things.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 4ced0b0..e84bd9e 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -484,6 +484,55 @@ cleanup:
+ 	return ret;
+ }
+ 
++/* Find or create a zeroing page marked being writeback.
++ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
++ * to indicate write out.
++ */
++static struct page *
++bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
++			struct pnfs_block_extent *cow_read)
++{
++	struct page *page;
++	bool locked = false;
++	page = find_get_page(inode->i_mapping, index);
++	if (page)
++		goto check_page;
++
++	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
++	if (unlikely(!page)) {
++		dprintk("%s oom\n", __func__);
++		return ERR_PTR(-ENOMEM);
++	}
++	locked = true;
++
++check_page:
++	/* PageDirty: Other will write this out
++	 * PageWriteback: Other is writing this out
++	 * PageUptodate: It was read before
++	 */
++	if (PageDirty(page) || PageWriteback(page)) {
++		print_page(page);
++		if (locked)
++			unlock_page(page);
++		page_cache_release(page);
++		return NULL;
++	}
++
++	if (!locked) {
++		lock_page(page);
++		locked = true;
++		goto check_page;
++	}
++	if (!PageUptodate(page)) {
++		/* New page, readin or zero it */
++		init_page_for_write(page, cow_read);
++	}
++	set_page_writeback(page);
++	unlock_page(page);
++
++	return page;
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ {
+@@ -543,32 +592,13 @@ fill_invalid_ext:
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+ 				__func__, npg_zero, index,
+ 				(unsigned long long)isect);
+-			page =
+-			    find_or_create_page(wdata->inode->i_mapping, index,
+-						GFP_NOFS);
+-			if (!page) {
+-				dprintk("%s oom\n", __func__);
+-				wdata->pnfs_error = -ENOMEM;
++			page = bl_find_get_zeroing_page(wdata->inode, index,
++							cow_read);
++			if (unlikely(IS_ERR(page))) {
++				wdata->pnfs_error = PTR_ERR(page);
+ 				goto out;
+-			}
+-
+-			/* PageDirty: Other will write this out
+-			 * PageWriteback: Other is writing this out
+-			 * PageUptodate: It was read before
+-			 * sector_initialized: already written out
+-			 */
+-			if (PageDirty(page) || PageWriteback(page)) {
+-				print_page(page);
+-				unlock_page(page);
+-				page_cache_release(page);
++			} else if (page == NULL)
+ 				goto next_page;
+-			}
+-			if (!PageUptodate(page)) {
+-				/* New page, readin or zero it */
+-				init_page_for_write(page, cow_read);
+-			}
+-			set_page_writeback(page);
+-			unlock_page(page);
+ 
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+ 						       PAGE_CACHE_SECTORS);
+-- 
+1.7.1.262.g5ef3d
 
-Opaque key storage is probably not the right abstraction level to
-represent the kind of privilege separation we want here.  It's clearly
-already possible to use the Linux keyring, TPM, smart cards, etc. to
-achieve opaque key storage.
-
-One of the original goals is privilege separation.  The GSS proxy can
-allow an unprivileged process to perform specific restricted
-operations with key material such as a host key, instead of the mostly
-unrestricted encryption, decryption, etc. access that you would get
-with an opaque or unextractable key model.  The proxy could limit the
-client's use of the key to gss_accept_sec_context(), without allowing
-the sort of generalized cryptographic operations that would allow the
-client to, say, forge a PAC signature.
