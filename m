@@ -1,93 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caiajhbdcahe.dreamhost.com ([208.97.132.74]:44400 "EHLO
-	homiemail-a29.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753076Ab1KDQUK convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 12:20:10 -0400
-Received: from homiemail-a29.g.dreamhost.com (localhost [127.0.0.1])
-	by homiemail-a29.g.dreamhost.com (Postfix) with ESMTP id E3F5C674074
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 09:20:09 -0700 (PDT)
-Received: from mail-vx0-f174.google.com (mail-vx0-f174.google.com [209.85.220.174])
-	(using TLSv1 with cipher RC4-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: nico@cryptonector.com)
-	by homiemail-a29.g.dreamhost.com (Postfix) with ESMTPSA id B3EF367406A
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 09:20:09 -0700 (PDT)
-Received: by vcbf1 with SMTP id f1so494619vcb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 09:20:08 -0700 (PDT)
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:40887 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755410Ab1KJJj7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:39:59 -0500
+Received: by fagn18 with SMTP id n18so304557fag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 01:39:57 -0800 (PST)
+Message-ID: <4EBB9BEA.1080802@tonian.com>
+Date: Thu, 10 Nov 2011 11:39:54 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-In-Reply-To: <CF863033-2ED4-4B68-B90C-54D315C67E27@netapp.com>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	<1320332310.7734.643.camel@willson.li.ssimo.org>
-	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	<1320337903.7734.670.camel@willson.li.ssimo.org>
-	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	<1320352784.18396.109.camel@lade.trondhjem.org>
-	<CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
-	<1320355818.7734.685.camel@willson.li.ssimo.org>
-	<1320356806.18396.149.camel@lade.trondhjem.org>
-	<1320357606.7734.697.camel@willson.li.ssimo.org>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
-	<CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
-	<CF863033-2ED4-4B68-B90C-54D315C67E27@netapp.com>
-Date: Fri, 4 Nov 2011 11:20:08 -0500
-Message-ID: <CAK3OfOgdgPEe85z152Hi06E8GwpZZJ9ch-Vq1GneMCW6nBZ6pw@mail.gmail.com>
-Subject: Re: GSSAPI Proxy initiative
-From: Nico Williams <nico@cryptonector.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Simo Sorce <simo@redhat.com>, dhowells <dhowells@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
-        krbdev <krbdev@mit.edu>
-Content-Type: text/plain; charset=UTF-8
+To: tao.peng@emc.com
+CC: bergwolf@gmail.com, linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
+Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <1320851766-1834-8-git-send-email-bergwolf@gmail.com> <4EBB9136.7010603@tonian.com> <4EBB9778.3020900@tonian.com> <F19688880B763E40B28B2B462677FBF805DD054C45@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805DD054C45@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 4, 2011 at 10:55 AM, Adamson, Andy
-<William.Adamson@netapp.com> wrote:
-> On Nov 4, 2011, at 11:13 AM, Nico Williams wrote:
->> Ideally we could store in each RPCSEC_GSS context (not GSS context)
->> enough state on the client side to recover quickly when the server
->> reboots.
->
-> You mean not to use the user Kerberos credential to re-establish the GSS context with the server?
+On 2011-11-10 11:37, tao.peng@emc.com wrote:
+>> -----Original Message-----
+>> From: Benny Halevy [mailto:bhalevy@tonian.com]
+>> Sent: Thursday, November 10, 2011 5:21 PM
+>> To: Peng Tao
+>> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
+>> Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
+>>
+>> On 2011-11-10 10:54, Benny Halevy wrote:
+>>> On 2011-11-09 17:16, Peng Tao wrote:
+>>>> It stores a list of short extents for INVAL->RW conversion.
+>>>> Also add two functions to manipulate them, in preparation to
+>>>> move malloc logic out of end_io.
+>>>>
+>>>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>>>> ---
+>>>>  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
+>>>>  fs/nfs/blocklayout/blocklayout.h |    5 +++++
+>>>>  fs/nfs/blocklayout/extents.c     |   37
+>> +++++++++++++++++++++++++++++++++++++
+>>>>  3 files changed, 48 insertions(+), 0 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>>>> index 815c0c3..cb4ff0f 100644
+>>>> --- a/fs/nfs/blocklayout/blocklayout.c
+>>>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>>>> @@ -706,11 +706,17 @@ static void
+>>>>  release_inval_marks(struct pnfs_inval_markings *marks)
+>>>>  {
+>>>>  	struct pnfs_inval_tracking *pos, *temp;
+>>>> +	struct pnfs_block_short_extent *se, *stemp;
+>>>>
+>>>>  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
+>>>>  		list_del(&pos->it_link);
+>>>>  		kfree(pos);
+>>>>  	}
+>>>> +
+>>>> +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
+>>>> +		list_del(&se->bse_node);
+>>>> +		kfree(se);
+>>>> +	}
+>>>>  	return;
+>>>>  }
+>>>>
+>>>> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+>>>> index 60728ac..df0e0fb 100644
+>>>> --- a/fs/nfs/blocklayout/blocklayout.h
+>>>> +++ b/fs/nfs/blocklayout/blocklayout.h
+>>>> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
+>>>>  	spinlock_t	im_lock;
+>>>>  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
+>>>>  	sector_t	im_block_size;	/* Server blocksize in sectors */
+>>>> +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion
+>> */
+>>>>  };
+>>>>
+>>>>  struct pnfs_inval_tracking {
+>>>> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
+>> *marks, sector_t blocksize)
+>>>>  {
+>>>>  	spin_lock_init(&marks->im_lock);
+>>>>  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
+>>>> +	INIT_LIST_HEAD(&marks->im_extents);
+>>>>  	marks->im_block_size = blocksize;
+>>>>  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
+>>>>  					   blocksize);
+>>>> @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+>>>>  			 struct pnfs_block_extent *new);
+>>>>  int bl_mark_for_commit(struct pnfs_block_extent *be,
+>>>>  			sector_t offset, sector_t length);
+>>>> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
+>>>> +struct pnfs_block_short_extent*
+>>>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
+>>>>
+>>>>  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+>>>> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+>>>> index 952ea8a..72c7fa1 100644
+>>>> --- a/fs/nfs/blocklayout/extents.c
+>>>> +++ b/fs/nfs/blocklayout/extents.c
+>>>> @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct
+>> pnfs_block_layout *bl,
+>>>>  		}
+>>>>  	}
+>>>>  }
+>>>> +
+>>>> +int
+>>>> +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
+>>>> +	struct pnfs_block_short_extent *new;
+>>>> +
+>>>> +	new = kmalloc(sizeof(*new), GFP_NOFS);
+>>>> +	if (unlikely(!new))
+>>>> +		return -ENOMEM;
+>>>> +
+>>>> +	spin_lock(&marks->im_lock);
+>>>> +	list_add(&new->bse_node, &marks->im_extents);
+>>>> +	spin_unlock(&marks->im_lock);
+>>>> +
+>>>> +	return 0;
+>>>> +}
+>>>> +
+>>>> +struct pnfs_block_short_extent*
+>>>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
+>>>> +	struct pnfs_block_short_extent *rv = NULL;
+>>
+>> The use case for bl_pop_short_extent comes only in the next patch
+>> so it should be introduced there in principle, along with its use.
+> I was hoping not to create too large single patch... But since you asked, I will merge them into one.
+> 
+>>
+>> With that in mind, there is one call site with num_to_pop == 1
+>> in which you don't free any entry, and the other with num_to_pop == num_se
+>> which seems to free all the members of the list, but the last one,
+>> which is then freed by the caller.
+>>
+>> This tells me you crammed two functions into one and you better
+>> have one that pops a single element and another to destroy the list.
+> Good point. I thought there might be more users of the function when I first wrote it but apparently I am wrong...
+> I will split it into bl_pop_one_short_extent() and bl_free_short_extents() as you suggested.
 
-Kerberos has tickets.  Other GSS mechanisms don't.  The GSS-API
-completely abstracts this, so there's no way to extract a service
-ticket and store it alongside the context (RPCSEC_GSS, in this case)
-where you might need it in the future.  Storing all of a GSS-API
-credential (think of a whole ccache) in kernel memory is not an option
-either (ccaches have unbounded size).
+Terrific.
 
-Moreover, if we do this in a light-weight enough fashion we might be
-able to handle all of the recovery path in kernel-mode, with no
-dependence on upcalls.  But if we didn't by somehow extracting the
-service ticket and storing it in the RPCSEC_GSS context we'd probably
-still need to upcall to make use of it.
+> 
+> Thank you very much!
 
->> How would we do this?  Suppose the server gives the client a
->> "ticket", and a key much like the Kerberos ticket session key is
->> agreed upon or sent by the server -- that could be stored in the
->> RPCSEC_GSS context and could be used to recover it quickly for
->> recovery from server reboot.  I'm eliding a lot of details here, but I
->> believe this is fundamentally workable.
->
-> So re-establish the RPCSEC_GSS session lost at the server on server reboot by storing enough additional info on the client?
+Thanks you for doing all the hard work!
 
-Yes.  And not just server reboot.  The server is free to lose
-RPCSEC_GSS contexts any time it wants to.
+Benny
 
-Basically, we need a fast re-authentication facility that is easy to
-code entirely in kernel-mode.  Thinking of it this way I would not
-reuse any Kerberos tech for this.  The server would return a ticket in
-RPCSEC_GSS context establishment, but the ticket would consist of
-{secret key index, encrypted octet string} and the server and client
-would both compute a "session key" (for proving ticket possession)
-with GSS_Pseudo_random() (this way we can make this work even when the
-GSS mech only does MICs and not wrap tokens).  To re-authenticate the
-client would send the ticket and an authenticator just like in
-Kerberos, but simpler.
-
-Nico
---
+> Tao
+> 
+>>
+>> Benny
+>>
+>>>> +
+>>>> +	if (unlikely(num_to_pop <= 0))
+>>>> +		return rv;
+>>>
+>>> How unlikely is it?
+>>> Is doing the extra compare really worth saving the spin_lock?
+>>>
+>>>> +
+>>>> +	spin_lock(&marks->im_lock);
+>>>> +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
+>>>> +		rv = list_entry((&marks->im_extents)->next,
+>>>> +				struct pnfs_block_short_extent, bse_node);
+>>>> +		list_del_init(&rv->bse_node);
+>>>> +		if (num_to_pop)
+>>>> +			kfree(rv);
+>>>
+>>> Please correct me if I'm wrong, you don't want to free the last element
+>>> you pop since you want to return it. This is worth a comment...
+>>>
+>>> I'd consider moving the decrement expression down here or
+>>> changing the loop to be a for loop to improve its readability.
+>>> In the latter case this will say if (num_to_pop > 1) kfree(rv)
+>>> which is more straight forward IMHO.
+>>>
+>>> Benny
+>>>
+>>>> +	}
+>>>> +	spin_unlock(&marks->im_lock);
+>>>> +
+>>>> +	BUG_ON(num_to_pop > 0);
+>>>> +
+>>>> +	return rv;
+>>>> +}
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
