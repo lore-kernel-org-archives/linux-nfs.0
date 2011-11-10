@@ -1,183 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:65230 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754758Ab1K2QEG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:04:06 -0500
-Received: by qadc14 with SMTP id c14so2131121qad.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:04:05 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
-Subject: [PATCH 1/9] pnfsblock: cleanup bl_mark_sectors_init
-Date: Fri,  2 Dec 2011 20:46:15 -0800
-Message-Id: <1322887583-2719-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
-References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:64312 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932206Ab1KJIcZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:32:25 -0500
+Received: by fagn18 with SMTP id n18so252313fag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 00:32:24 -0800 (PST)
+Message-ID: <4EBB8C14.2090209@tonian.com>
+Date: Thu, 10 Nov 2011 10:32:20 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH 3/8] pnfsblock: move find lock page logic out of bl_write_pagelist
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It does not need to manipulate on partial initialized blocks.
-Writeback code takes care of it.
+On 2011-11-09 17:16, Peng Tao wrote:
+> Also avoid unnecessary lock_page if page is handled by others.
+> 
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
+>  1 files changed, 54 insertions(+), 24 deletions(-)
+> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 4ced0b0..e8e13f3 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -484,6 +484,56 @@ cleanup:
+>  	return ret;
+>  }
+>  
+> +/* Find or create a zeroing page marked being writeback.
+> + * Return ERR_PTR on error, NULL to indicate skip this page and page itself
+> + * to indicate write out.
+> + */
+> +static struct page*
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |    6 +--
- fs/nfs/blocklayout/blocklayout.h |    3 +-
- fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
- 3 files changed, 8 insertions(+), 77 deletions(-)
+coding style nit: "page *" rather than "page*"
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 281ae95..4ced0b0 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -571,8 +571,7 @@ fill_invalid_ext:
- 			unlock_page(page);
- 
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
--						       PAGE_CACHE_SECTORS,
--						       NULL);
-+						       PAGE_CACHE_SECTORS);
- 			if (unlikely(ret)) {
- 				dprintk("%s bl_mark_sectors_init fail %d\n",
- 					__func__, ret);
-@@ -621,8 +620,7 @@ next_page:
- 		}
- 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
--						       PAGE_CACHE_SECTORS,
--						       NULL);
-+						       PAGE_CACHE_SECTORS);
- 			if (unlikely(ret)) {
- 				dprintk("%s bl_mark_sectors_init fail %d\n",
- 					__func__, ret);
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 42acf7e..60728ac 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -186,8 +186,7 @@ struct pnfs_block_extent *
- bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent **cow_read);
- int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
--			     sector_t offset, sector_t length,
--			     sector_t **pages);
-+			     sector_t offset, sector_t length);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *bl_alloc_extent(void);
- int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 19fa7b0..0fc1321 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
- 	return status;
- }
- 
--static void set_needs_init(sector_t *array, sector_t offset)
--{
--	sector_t *p = array;
--
--	dprintk("%s enter\n", __func__);
--	if (!p)
--		return;
--	while (*p < offset)
--		p++;
--	if (*p == offset)
--		return;
--	else if (*p == ~0) {
--		*p++ = offset;
--		*p = ~0;
--		return;
--	} else {
--		sector_t *save = p;
--		dprintk("%s Adding %llu\n", __func__, (u64)offset);
--		while (*p != ~0)
--			p++;
--		p++;
--		memmove(save + 1, save, (char *)p - (char *)save);
--		*save = offset;
--		return;
--	}
--}
--
- /* We are relying on page lock to serialize this */
- int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
- {
-@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
- 
- /* Marks sectors in [offest, offset_length) as having been initialized.
-  * All lengths are step-aligned, where step is min(pagesize, blocksize).
-- * Notes where partial block is initialized, and helps prepare it for
-- * complete initialization later.
-+ * Currently assumes offset is page-aligned
-  */
--/* Currently assumes offset is page-aligned */
- int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
--			     sector_t offset, sector_t length,
--			     sector_t **pages)
-+			     sector_t offset, sector_t length)
- {
--	sector_t s, start, end;
--	sector_t *array = NULL; /* Pages to mark */
-+	sector_t start, end;
- 
- 	dprintk("%s(offset=%llu,len=%llu) enter\n",
- 		__func__, (u64)offset, (u64)length);
--	s = max((sector_t) 3,
--		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
--	dprintk("%s set max=%llu\n", __func__, (u64)s);
--	if (pages) {
--		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
--		if (!array)
--			goto outerr;
--		array[0] = ~0;
--	}
- 
- 	start = normalize(offset, marks->im_block_size);
- 	end = normalize_up(offset + length, marks->im_block_size);
-@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
- 		goto outerr;
- 
- 	spin_lock(&marks->im_lock);
--
--	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
--	     s < offset; s += PAGE_CACHE_SECTORS) {
--		dprintk("%s pre-area pages\n", __func__);
--		/* Portion of used block is not initialized */
--		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
--			set_needs_init(array, s);
--	}
- 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
- 		goto out_unlock;
--	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
--	     s < end; s += PAGE_CACHE_SECTORS) {
--		dprintk("%s post-area pages\n", __func__);
--		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
--			set_needs_init(array, s);
--	}
--
- 	spin_unlock(&marks->im_lock);
- 
--	if (pages) {
--		if (array[0] == ~0) {
--			kfree(array);
--			*pages = NULL;
--		} else
--			*pages = array;
--	}
- 	return 0;
- 
-- out_unlock:
-+out_unlock:
- 	spin_unlock(&marks->im_lock);
-- outerr:
--	if (pages) {
--		kfree(array);
--		*pages = NULL;
--	}
-+outerr:
- 	return -ENOMEM;
- }
- 
--- 
-1.7.1.262.g5ef3d
+> +bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
+> +			struct pnfs_block_extent *cow_read)
+> +{
+> +	struct page* page;
 
+checkpatch nit:
+ERROR: "foo* bar" should be "foo *bar"
+
+> +	int locked = 0;
+> +	page = find_get_page(inode->i_mapping, index);
+> +	if (page)
+> +		goto check_page;
+> +
+> +	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
+> +	if (unlikely(!page)) {
+> +		dprintk("%s oom\n", __func__);
+> +		return ERR_PTR(-ENOMEM);
+> +	}
+> +	locked = 1;
+
+Why not just call find_or_create_page in the first place?
+dealing with both the locked and unlocked cases here just
+seems to add unneeded complexity.
+
+Benny
+
+> +
+> +check_page:
+> +	/* PageDirty: Other will write this out
+> +	 * PageWriteback: Other is writing this out
+> +	 * PageUptodate: It was read before
+> +	 */
+> +	if (PageDirty(page) || PageWriteback(page)) {
+> +		print_page(page);
+> +		if (locked)
+> +			unlock_page(page);
+> +		page_cache_release(page);
+> +		return NULL;
+> +	}
+> +
+> +	if (!locked) {
+> +		lock_page(page);
+> +		if (PageDirty(page) || PageWriteback(page))
+> +			unlock_page(page);
+> +		return NULL;
+> +	}
+> +	if (!PageUptodate(page)) {
+> +		/* New page, readin or zero it */
+> +		init_page_for_write(page, cow_read);
+> +	}
+> +	set_page_writeback(page);
+> +	unlock_page(page);
+> +
+> +	return page;
+> +}
+> +
+>  static enum pnfs_try_status
+>  bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+>  {
+> @@ -543,32 +593,12 @@ fill_invalid_ext:
+>  			dprintk("%s zero %dth page: index %lu isect %llu\n",
+>  				__func__, npg_zero, index,
+>  				(unsigned long long)isect);
+> -			page =
+> -			    find_or_create_page(wdata->inode->i_mapping, index,
+> -						GFP_NOFS);
+> -			if (!page) {
+> -				dprintk("%s oom\n", __func__);
+> -				wdata->pnfs_error = -ENOMEM;
+> +			page = bl_find_get_zeroing_page(wdata->inode, index, cow_read);
+> +			if (unlikely(IS_ERR(page))) {
+> +				wdata->pnfs_error = PTR_ERR(page);
+>  				goto out;
+> -			}
+> -
+> -			/* PageDirty: Other will write this out
+> -			 * PageWriteback: Other is writing this out
+> -			 * PageUptodate: It was read before
+> -			 * sector_initialized: already written out
+> -			 */
+> -			if (PageDirty(page) || PageWriteback(page)) {
+> -				print_page(page);
+> -				unlock_page(page);
+> -				page_cache_release(page);
+> +			} else if (page == NULL)
+>  				goto next_page;
+> -			}
+> -			if (!PageUptodate(page)) {
+> -				/* New page, readin or zero it */
+> -				init_page_for_write(page, cow_read);
+> -			}
+> -			set_page_writeback(page);
+> -			unlock_page(page);
+>  
+>  			ret = bl_mark_sectors_init(be->be_inval, isect,
+>  						       PAGE_CACHE_SECTORS);
