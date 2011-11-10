@@ -1,89 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:33180 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752780Ab1KOEMA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 23:12:00 -0500
-Received: by bke11 with SMTP id 11so6677120bke.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 20:11:59 -0800 (PST)
-Message-ID: <4EC1E68B.60405@tonian.com>
-Date: Tue, 15 Nov 2011 06:11:55 +0200
-From: Benny Halevy <benny@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
-References: <4EC13EEA.3030404@tonian.com> <4EC16E3A.9040405@panasas.com>
-In-Reply-To: <4EC16E3A.9040405@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:50260 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752582Ab1KJU0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Nov 2011 15:26:07 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQ7Ti024956
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:07 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pAAKQ5Di030911
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:06 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] idmapper.txt: Fix the upcall binary name.
+Date: Thu, 10 Nov 2011 15:26:03 -0500
+Message-Id: <1320956763-17935-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1320956763-17935-1-git-send-email-steved@redhat.com>
+References: <1320956763-17935-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-14 21:38, Boaz Harrosh wrote:
-> On 11/14/2011 08:16 AM, Benny Halevy wrote:
->> I merged the following patches into pnfs-all-3.1-2011-11-14
->> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
->>
->> pnfs-block:
->>   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
->>   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
->>   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
->>   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
->>   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
->>   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
->>
->> pnfsd:
->>   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
->>
-> 
-> What happened to the PNFSD dbg Channel. Was that submitted before?
-> 
-> Boaz 
+The binary that handles the upcalls from is kernel is called
+nfsidmap not nfs.idmap.
 
-It's there,  I probably screwed the base date for my git-log-since-tree-oneline
-script.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ Documentation/filesystems/nfs/idmapper.txt |   22 +++++++++++-----------
+ 1 files changed, 11 insertions(+), 11 deletions(-)
 
-Anyhow, here is the list of patches that are still in the major branches
-since pnfs-all-3.0-2011-08-10:
-(according to the script :)
+diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
+index 120fd3c..9c1925a 100644
+--- a/Documentation/filesystems/nfs/idmapper.txt
++++ b/Documentation/filesystems/nfs/idmapper.txt
+@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
+ translate user and group names into ids.  Part of this translation involves
+ performing an upcall to userspace to request the information.  Id mapper will
+ user request-key to perform this upcall and cache the result.  The program
+-/usr/sbin/nfs.idmap should be called by request-key, and will perform the
++/usr/sbin/nfsidmap should be called by request-key, and will perform the
+ translation and initialize a key with the resulting information.
+ 
+  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
+@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
+ 
+ #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+ #======	=======	===============	===============	===============================
+-create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
++create	id_resolver	*	*		/usr/sbin/nfsidmap %k %d 600
+ 
+-This will direct all id_resolver requests to the program /usr/sbin/nfs.idmap.
++This will direct all id_resolver requests to the program /usr/sbin/nfsidmap.
+ The last parameter, 600, defines how many seconds into the future the key will
+-expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
+-is not specified, nfs.idmap will default to 600 seconds.
++expire.  This parameter is optional for /usr/sbin/nfsidmap.  When the timeout
++is not specified, nfsidmap will default to 600 seconds.
+ 
+ id mapper uses for key descriptions:
+ 	  uid:  Find the UID for the given user
+@@ -40,28 +40,28 @@ would edit your request-key.conf so it look similar to this:
+ #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+ #======	=======	===============	===============	===============================
+ create	id_resolver	uid:*	*		/some/other/program %k %d 600
+-create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
++create	id_resolver	*	*		/usr/sbin/nfsidmap %k %d 600
+ 
+ Notice that the new line was added above the line for the generic program.
+ request-key will find the first matching line and corresponding program.  In
+ this case, /some/other/program will handle all uid lookups and
+-/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
++/usr/sbin/nfsidmap will handle gid, user, and group lookups.
+ 
+ See <file:Documentation/security/keys-request-key.txt> for more information
+ about the request-key function.
+ 
+ 
+ =========
+-nfs.idmap
++nfsidmap
+ =========
+-nfs.idmap is designed to be called by request-key, and should not be run "by
++nfsidmap is designed to be called by request-key, and should not be run "by
+ hand".  This program takes two arguments, a serialized key and a key
+ description.  The serialized key is first converted into a key_serial_t, and
+ then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
+ 
+-The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
++The actual lookups are performed by functions found in nfsidmap.h.  nfsidmap
+ determines the correct function to call by looking at the first part of the
+ description string.  For example, a uid lookup description will appear as
+ "uid:user@domain".
+ 
+-nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
++nfsidmap will return 0 if the key was instantiated, and non-zero otherwise.
+-- 
+1.7.6.4
 
-ore-devel:
-  Boaz Harrosh     b133b98 RFC: do_xor_speed Broken on UML do to jiffies
-
-pnfs-block:
-  Benny Halevy     9158412 pnfs: clean up initiate_file_draining layout lookup
-  Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
-  Peng Tao         657c2f4 pnfsblock: acquire im_lock in _preload_range
-  Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
-  Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
-  Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
-  Peng Tao         7c93c37 pnfsblock: clean up _add_entry
-  Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
-
-nfsd-upstream:
-  Benny Halevy     546e4fa nfsd4: share_access_to_flags should consider only nfs4.x share_access flags
-  Benny Halevy     e8e8efb nfsd4: split out share_access want and signel flags while decoding
-  Benny Halevy     89be556 nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg
-  Benny Halevy     7fa5486 nfsd4: DEBUG: XDR_ERROR()
-
-pnfsd:
-  Benny Halevy     f89ea60 pnfsd: layout state allocation
-  Benny Halevy     7b50379 SQUASHME: update_layout_stateid_locked
-  Benny Halevy     bb72dee pnfsd: layout recall layout state
-  Benny Halevy     2a9eb41 SQUASHME: pnfsd: initialize fi_layout_states
-  Benny Halevy     f5f8a59 SQUASHME: pnfsd: layout recall statid processing
-  Boaz Harrosh     5111e3f SQUASHME: pnfsd: Compile warning in pnfs-all-3.1-2011-10-31-1
-  Boaz Harrosh     d7e7bec Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under NFSDDBG_PNFS
-  Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
-
-pnfsd-exofs:
-  Boaz Harrosh     cb40981 SQUASHME: pnfsd-exofs: Fix export of only one group layout
-  Boaz Harrosh     a076d46 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
-  Benny Halevy     ef4e804 SQUASHME: pnfsd-exofs: missing arg to ore_calc_stripe_info call
-
-spnfs:
-  Benny Halevy     141caa1 SQUASHME: spnfs: use struct path in vfs_path_lookup as of v3.0
-
-spnfs-block:
-  Benny Halevy     27f1cb8 SQUASHME: spnfs-block: use struct path in vfs_path_lookup as of v3.0
-  Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
-  Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
