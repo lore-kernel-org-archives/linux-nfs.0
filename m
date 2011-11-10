@@ -1,43 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52015 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753552Ab1KHW5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 17:57:54 -0500
-Date: Tue, 8 Nov 2011 17:57:51 -0500
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/25] nfsd4 state cleanup
-Message-ID: <20111108225751.GD27413@fieldses.org>
-References: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1316000721-3289-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-pz0-f42.google.com ([209.85.210.42]:49461 "EHLO
+	mail-pz0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933924Ab1KJP0s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 10:26:48 -0500
+Received: by mail-pz0-f42.google.com with SMTP id 36so1483528pzk.1
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 07:26:48 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH-v2 4/7] pnfsblock: set read/write tk_status to pnfs_error
+Date: Thu, 10 Nov 2011 07:25:25 -0800
+Message-Id: <1320938728-3715-5-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
+References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 14, 2011 at 07:44:56AM -0400, J. Bruce Fields wrote:
-> And then also still to do:
-> 	- close replays: we keep around a stateid to handle close
-> 	  replays only in the case where it's the last stateid for an
-> 	  openowner, but that's not sufficient.
-> 	- the data structures aren't really right for the things we need
-> 	  to do: e.g. release_lockowner currently does a linear search
-> 	  through all the lockowners!
+To pass the IO status to upper layer.
 
-OK, done, with the following patches, and that was the last thing on
-this particular todo list.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-I've also started a for-3.3 tree based on v3.2-rc1, including Bryan's
-patches and some previous state code patches (not the following yet).
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index e84bd9e..8ad8014 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -216,6 +216,7 @@ bl_end_par_io_read(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
+ 
++	rdata->task.tk_status = rdata->pnfs_error;
+ 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+@@ -405,7 +406,7 @@ static void bl_end_par_io_write(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
+-	wdata->task.tk_status = 0;
++	wdata->task.tk_status = wdata->pnfs_error;
+ 	wdata->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+ 	schedule_work(&wdata->task.u.tk_work);
+-- 
+1.7.1.262.g5ef3d
 
---b.
-
-> 	- multiple client-to-lockowner locks for a given (owner, file)
-> 	  aren't handled right.
-> 	- I need to look again at doing a better job of distinguishing
-> 	  the bad, expired, and stale cases for stateid's.
-> 
-> I was hoping to have that ready for 3.2 but unfortunately keep running
-> across small bugs or cleanup opportunities like these along the way;
-> perhaps next week....
