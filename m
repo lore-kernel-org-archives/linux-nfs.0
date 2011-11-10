@@ -1,54 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28263 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752441Ab1KOGeD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Nov 2011 01:34:03 -0500
-Message-ID: <1321338825.8267.2.camel@lade.trondhjem.org>
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Christoph Hellwig <hch@infradead.org>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Date: Tue, 15 Nov 2011 08:33:45 +0200
-In-Reply-To: <20111114080745.57083bfe@notabene.brown>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	 <1321056809.8733.2.camel@lade.trondhjem.org>
-	 <20111112144953.GA3740@infradead.org>
-	 <20111113145400.6c7a9be3@notabene.brown>
-	 <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
-	 <20111113163632.GA28574@fieldses.org>
-	 <20111114080745.57083bfe@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mexforward.lss.emc.com ([128.222.32.20]:18599 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752151Ab1KJCJi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 21:09:38 -0500
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Date: Wed, 9 Nov 2011 21:09:13 -0500
+Subject: RE: [PATCH 0/8] pnfsblock cleanup and fixes
+Message-ID: <F19688880B763E40B28B2B462677FBF805DD054B4F@MX09A.corp.emc.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
+Benny, hi,
 
-> If a server has objects that are never renamed, it can easily use volatile
-> file handles.
-> If a server has objects which can be renamed and wants to use volatile file
-> handles, then if such an object is open and is about to be renamed, it must
-> first log to stable storage some mapping to allow it to access the file from
-> the old volatile file handle.  And of course it cannot allow renames during
-> the grace period, but I think we already have that.
-> Also, if the VFH is such that it will be  lost on a reboot, the server must
-> log it to stable storage before allowing an open.
+These patches fail to apply to pnfs-latest branch because of conflicts with pnfs private workqueue patches. Since Trond has decided not to take pnfs private workqueue patches, would you please drop them so that new patches can apply? I can send you revert patches if you want.
 
-BTW: If the namespace is stable, then the server can easily implement
-permanent filehandles. Use a hash of the pathname as the filehandle, and
-set up a hidden directory ('/.filehandles') containing symlinks that map
-said hash back to the correct pathname. No need for volatile
-filehandles.
+Thanks,
+Tao
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+> On Behalf Of Peng Tao
+> Sent: Wednesday, November 09, 2011 11:16 PM
+> To: linux-nfs@vger.kernel.org
+> Cc: Trond.Myklebust@netapp.com; bhalevy@tonian.com
+> Subject: [PATCH 0/8] pnfsblock cleanup and fixes
+> 
+> Hi, Trond and Benny,
+> 
+> Bellow are some pnfsblock patches that I have tested for days. Most of them
+> are cleanup and small improvements. Only
+> [PATCH 2/8] pnfsblock: acquire im_lock in _preload_range
+> needs to go into stable.
+> 
+> Thanks,
+> Tao
+> 
+> Peng Tao (8):
+>   pnfsblock: cleanup bl_mark_sectors_init
+>   pnfsblock: acquire im_lock in _preload_range
+>   pnfsblock: move find lock page logic out of bl_write_pagelist
+>   pnfsblock: set read/write tk_status to pnfs_error
+>   pnfsblock: remove rpc_call_ops from struct parallel_io
+>   pnfsblock: clean up _add_entry
+>   pnfsblock: add im_extents to pnfs_inval_markings
+>   pnfsblock: alloc short extent before submit bio
+> 
+>  fs/nfs/blocklayout/blocklayout.c |  176 +++++++++++++++++++++++++-------------
+>  fs/nfs/blocklayout/blocklayout.h |   11 ++-
+>  fs/nfs/blocklayout/extents.c     |  146 ++++++++++++--------------------
+>  3 files changed, 180 insertions(+), 153 deletions(-)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
