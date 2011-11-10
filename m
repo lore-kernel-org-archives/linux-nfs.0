@@ -1,47 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27027 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753029Ab1K1PmQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 10:42:16 -0500
-Message-ID: <1322494933.6125.21.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] NFSV4 :All lock operations should be sent to the server
- for resolution
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Mon, 28 Nov 2011 10:42:13 -0500
-In-Reply-To: <4ED32AAB.8010800@cn.fujitsu.com>
-References: <4D2FF124.7020500@cn.fujitsu.com>
-		 <20110114181600.GA15352@fieldses.org>
-	 <1295029762.3576.9.camel@heimdal.trondhjem.org>
-	 <4ED32AAB.8010800@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mexforward.lss.emc.com ([128.222.32.20]:40330 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932184Ab1KJJIc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:08:32 -0500
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
+Date: Thu, 10 Nov 2011 04:08:06 -0500
+Subject: RE: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
+Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C38@MX09A.corp.emc.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+ <1320851766-1834-8-git-send-email-bergwolf@gmail.com>
+ <4EBB9136.7010603@tonian.com>
+In-Reply-To: <4EBB9136.7010603@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-11-28 at 14:31 +0800, Mi Jinlong wrote: 
-> Hi Trond,
+
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Thursday, November 10, 2011 4:54 PM
+> To: Peng Tao
+> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
+> Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
 > 
-> Trond Myklebust:
-> > The ability to cache locks is one of the main reasons for holding
-> > delegations in the first place. Sure, the spec allows for non-posix
-> > locking, but the Linux client doesn't.
+> On 2011-11-09 17:16, Peng Tao wrote:
+> > It stores a list of short extents for INVAL->RW conversion.
+> > Also add two functions to manipulate them, in preparation to
+> > move malloc logic out of end_io.
+> >
+> > Signed-off-by: Peng Tao <peng_tao@emc.com>
+> > ---
+> >  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
+> >  fs/nfs/blocklayout/blocklayout.h |    5 +++++
+> >  fs/nfs/blocklayout/extents.c     |   37
+> +++++++++++++++++++++++++++++++++++++
+> >  3 files changed, 48 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> > index 815c0c3..cb4ff0f 100644
+> > --- a/fs/nfs/blocklayout/blocklayout.c
+> > +++ b/fs/nfs/blocklayout/blocklayout.c
+> > @@ -706,11 +706,17 @@ static void
+> >  release_inval_marks(struct pnfs_inval_markings *marks)
+> >  {
+> >  	struct pnfs_inval_tracking *pos, *temp;
+> > +	struct pnfs_block_short_extent *se, *stemp;
+> >
+> >  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
+> >  		list_del(&pos->it_link);
+> >  		kfree(pos);
+> >  	}
+> > +
+> > +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
+> > +		list_del(&se->bse_node);
+> > +		kfree(se);
+> > +	}
+> >  	return;
+> >  }
+> >
+> > diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+> > index 60728ac..df0e0fb 100644
+> > --- a/fs/nfs/blocklayout/blocklayout.h
+> > +++ b/fs/nfs/blocklayout/blocklayout.h
+> > @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
+> >  	spinlock_t	im_lock;
+> >  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
+> >  	sector_t	im_block_size;	/* Server blocksize in sectors */
+> > +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion
+> */
+> >  };
+> >
+> >  struct pnfs_inval_tracking {
+> > @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
+> *marks, sector_t blocksize)
+> >  {
+> >  	spin_lock_init(&marks->im_lock);
+> >  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
+> > +	INIT_LIST_HEAD(&marks->im_extents);
+> >  	marks->im_block_size = blocksize;
+> >  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
+> >  					   blocksize);
+> > @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+> >  			 struct pnfs_block_extent *new);
+> >  int bl_mark_for_commit(struct pnfs_block_extent *be,
+> >  			sector_t offset, sector_t length);
+> > +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
+> > +struct pnfs_block_short_extent*
+> > +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
+> >
+> >  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+> > index 952ea8a..72c7fa1 100644
+> > --- a/fs/nfs/blocklayout/extents.c
+> > +++ b/fs/nfs/blocklayout/extents.c
+> > @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct
+> pnfs_block_layout *bl,
+> >  		}
+> >  	}
+> >  }
+> > +
+> > +int
+> > +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
+> > +	struct pnfs_block_short_extent *new;
+> > +
+> > +	new = kmalloc(sizeof(*new), GFP_NOFS);
+> > +	if (unlikely(!new))
+> > +		return -ENOMEM;
+> > +
+> > +	spin_lock(&marks->im_lock);
+> > +	list_add(&new->bse_node, &marks->im_extents);
+> > +	spin_unlock(&marks->im_lock);
+> > +
+> > +	return 0;
+> > +}
+> > +
+> > +struct pnfs_block_short_extent*
+> > +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
+> > +	struct pnfs_block_short_extent *rv = NULL;
+> > +
+> > +	if (unlikely(num_to_pop <= 0))
+> > +		return rv;
 > 
->   Would you mind tell me some about why we not support non-posix locking at NFS ?
+> How unlikely is it?
+> Is doing the extra compare really worth saving the spin_lock?
+Never... I should really replace it with a BUG_ON.
 
-For the very obvious reason that Linux applications are coded under the
-assumption that the kernel implements POSIX locking semantics. Why would
-we want to implement support for NFS features that can cause perfectly
-correctly coded applications to hang and crash?
+> 
+> > +
+> > +	spin_lock(&marks->im_lock);
+> > +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
+> > +		rv = list_entry((&marks->im_extents)->next,
+> > +				struct pnfs_block_short_extent, bse_node);
+> > +		list_del_init(&rv->bse_node);
+> > +		if (num_to_pop)
+> > +			kfree(rv);
+> 
+> Please correct me if I'm wrong, you don't want to free the last element
+> you pop since you want to return it. This is worth a comment...
+Yes, you are right. Will add some comments above the function.
 
-Trond
+> 
+> I'd consider moving the decrement expression down here or
+> changing the loop to be a for loop to improve its readability.
+> In the latter case this will say if (num_to_pop > 1) kfree(rv)
+> which is more straight forward IMHO.
+How about following?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+BUG_ON(num_to_pop <= 0);
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+list_for_each_entry_safe() {
+list_del_init(&rv->bse_node);
+if (num_to_pop-- > 1)
+   kfree(rv);
+}
+
+Thanks,
+Tao
+
+> 
+> Benny
+> 
+> > +	}
+> > +	spin_unlock(&marks->im_lock);
+> > +
+> > +	BUG_ON(num_to_pop > 0);
+> > +
+> > +	return rv;
+> > +}
 
