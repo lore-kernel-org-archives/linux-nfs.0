@@ -1,62 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36921 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:6649 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752416Ab1K1NfU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Nov 2011 08:35:20 -0500
-Subject: [PATCH 0/6] NFS: create clients and IDMAP pipes per network namespace
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 28 Nov 2011 17:33:20 +0300
-Message-ID: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
+	id S1753427Ab1KJVZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Nov 2011 16:25:43 -0500
+Message-ID: <4EBC4153.9090003@RedHat.com>
+Date: Thu, 10 Nov 2011 16:25:39 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Jim Rees <rees@umich.edu>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsidmap: Added -v flag
+References: <1320956785-18004-1-git-send-email-steved@redhat.com> <1320956785-18004-3-git-send-email-steved@redhat.com> <20111110211117.GA2011@umich.edu>
+In-Reply-To: <20111110211117.GA2011@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set was created in context of clone of git
-branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-tag: v3.1
-
-This patch set depends on previous patch sets titled:
-1) "SUNRPC: initial part of making pipefs work in net ns"
-2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
-3) "SUNRPC: make RPC clients use network-namespace-aware PipeFS routines"
-
-Actually, this patch set consists of two tightly connected parts:
-1) NFS clients creation per network namespace
-2) IDMAP pipe dentries creation in owner client network namesapce context
-
-This patch set is the third part of making "PipeFS per network namespace".
-
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (6):
-      SUNRPC: fix pipe->ops cleanup on pipe dentry unlink
-      NFS: make NFS client allocated per network namespace context
-      NFS: pass NFS client owner network namespace to RPC client creation routine
-      NFS: create callback transports in parent transport network namespace
-      NFS: handle NFS idmap pipe PipeFS dentries by network namespace aware routines
-      NFS: idmap PipeFS notifier introduced
 
 
- fs/nfs/callback.c                  |   10 +--
- fs/nfs/client.c                    |   22 ++++--
- fs/nfs/idmap.c                     |  136 ++++++++++++++++++++++++++++++++++--
- fs/nfs/internal.h                  |    6 ++
- fs/nfs/mount_clnt.c                |    4 +
- fs/nfs/super.c                     |    4 +
- include/linux/nfs_fs_sb.h          |    1 
- include/linux/nfs_idmap.h          |   13 +--
- include/linux/sunrpc/rpc_pipe_fs.h |    7 ++
- net/sunrpc/clnt.c                  |    1 
- net/sunrpc/rpc_pipe.c              |   67 ++++++++++--------
- 11 files changed, 208 insertions(+), 63 deletions(-)
+On 11/10/2011 04:11 PM, Jim Rees wrote:
+> Steve Dickson wrote:
+> 
+>   To aid in debugging, the -v flag can now be specified
+>   on the command to enable verbose logging in both
+>   the nfsidmap command and libnfsidmap library routines.
+>   
+>   Signed-off-by: Steve Dickson <steved@redhat.com>
+>   ---
+>    utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
+>    utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
+>    2 files changed, 24 insertions(+), 3 deletions(-)
+>   
+>   diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>   index 134d9bc..d74189a 100644
+>   --- a/utils/nfsidmap/nfsidmap.c
+>   +++ b/utils/nfsidmap/nfsidmap.c
+>   @@ -12,6 +12,7 @@
+>    #include <syslog.h>
+>    #include "xlog.h"
+>    
+>   +int verbose = 0;
+>    /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
+>    
+>    #define MAX_ID_LEN   11
+>   @@ -108,6 +109,12 @@ int main(int argc, char **argv)
+>    	xlog_syslog(1);
+>    	xlog_stderr(0);
+>    
+>   +	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
+>   +		verbose = 1;
+>   +		nfs4_set_debug(1, NULL);
+>   +		argc--, argv++;
+>   +	}
+>   +
+> 
+> Ugh.  Is there some reason not to use getopt() like all the other utils do?
+I was waiting for this comment ;-) 
 
--- 
-Signature
+I decided to go with how the command was originally written
+because this command is only call from the kernel so a user
+should execute it (except for debugging).  
+
+The arguments are vary static on where they need to be
+no command line. So its either going to work or not,
+which means there is no real need for a usage error (expect
+for the one I added). 
+
+Finally, is there real need for a while loop and switch statement 
+for on simple case? I thought not... 
+
+Those are my thoughts.. 
+
+steved.
+
