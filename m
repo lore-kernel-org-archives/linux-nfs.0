@@ -1,126 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48762 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753236Ab1KJU01 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Nov 2011 15:26:27 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQRid025009
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:27 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pAAKQPEC022338
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 15:26:27 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsidmap: Added Error Logging
-Date: Thu, 10 Nov 2011 15:26:24 -0500
-Message-Id: <1320956785-18004-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1320956785-18004-1-git-send-email-steved@redhat.com>
-References: <1320956785-18004-1-git-send-email-steved@redhat.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:55682 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201Ab1KJJVB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:21:01 -0500
+Received: by fagn18 with SMTP id n18so288871fag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 01:20:59 -0800 (PST)
+Message-ID: <4EBB9778.3020900@tonian.com>
+Date: Thu, 10 Nov 2011 11:20:56 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <1320851766-1834-8-git-send-email-bergwolf@gmail.com> <4EBB9136.7010603@tonian.com>
+In-Reply-To: <4EBB9136.7010603@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since this binary is being called by the kernel,
-errors need to be logged to the syslog for
-help in debugging problems.
+On 2011-11-10 10:54, Benny Halevy wrote:
+> On 2011-11-09 17:16, Peng Tao wrote:
+>> It stores a list of short extents for INVAL->RW conversion.
+>> Also add two functions to manipulate them, in preparation to
+>> move malloc logic out of end_io.
+>>
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> ---
+>>  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
+>>  fs/nfs/blocklayout/blocklayout.h |    5 +++++
+>>  fs/nfs/blocklayout/extents.c     |   37 +++++++++++++++++++++++++++++++++++++
+>>  3 files changed, 48 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>> index 815c0c3..cb4ff0f 100644
+>> --- a/fs/nfs/blocklayout/blocklayout.c
+>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>> @@ -706,11 +706,17 @@ static void
+>>  release_inval_marks(struct pnfs_inval_markings *marks)
+>>  {
+>>  	struct pnfs_inval_tracking *pos, *temp;
+>> +	struct pnfs_block_short_extent *se, *stemp;
+>>  
+>>  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
+>>  		list_del(&pos->it_link);
+>>  		kfree(pos);
+>>  	}
+>> +
+>> +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
+>> +		list_del(&se->bse_node);
+>> +		kfree(se);
+>> +	}
+>>  	return;
+>>  }
+>>  
+>> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+>> index 60728ac..df0e0fb 100644
+>> --- a/fs/nfs/blocklayout/blocklayout.h
+>> +++ b/fs/nfs/blocklayout/blocklayout.h
+>> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
+>>  	spinlock_t	im_lock;
+>>  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
+>>  	sector_t	im_block_size;	/* Server blocksize in sectors */
+>> +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion */
+>>  };
+>>  
+>>  struct pnfs_inval_tracking {
+>> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings *marks, sector_t blocksize)
+>>  {
+>>  	spin_lock_init(&marks->im_lock);
+>>  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
+>> +	INIT_LIST_HEAD(&marks->im_extents);
+>>  	marks->im_block_size = blocksize;
+>>  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
+>>  					   blocksize);
+>> @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
+>>  			 struct pnfs_block_extent *new);
+>>  int bl_mark_for_commit(struct pnfs_block_extent *be,
+>>  			sector_t offset, sector_t length);
+>> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
+>> +struct pnfs_block_short_extent*
+>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
+>>  
+>>  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+>> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+>> index 952ea8a..72c7fa1 100644
+>> --- a/fs/nfs/blocklayout/extents.c
+>> +++ b/fs/nfs/blocklayout/extents.c
+>> @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+>>  		}
+>>  	}
+>>  }
+>> +
+>> +int
+>> +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
+>> +	struct pnfs_block_short_extent *new;
+>> +
+>> +	new = kmalloc(sizeof(*new), GFP_NOFS);
+>> +	if (unlikely(!new))
+>> +		return -ENOMEM;
+>> +
+>> +	spin_lock(&marks->im_lock);
+>> +	list_add(&new->bse_node, &marks->im_extents);
+>> +	spin_unlock(&marks->im_lock);
+>> +
+>> +	return 0;
+>> +}
+>> +
+>> +struct pnfs_block_short_extent*
+>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
+>> +	struct pnfs_block_short_extent *rv = NULL;
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsidmap/Makefile.am |    2 +-
- utils/nfsidmap/nfsidmap.c  |   34 ++++++++++++++++++++++++++++++----
- 2 files changed, 31 insertions(+), 5 deletions(-)
+The use case for bl_pop_short_extent comes only in the next patch
+so it should be introduced there in principle, along with its use.
 
-diff --git a/utils/nfsidmap/Makefile.am b/utils/nfsidmap/Makefile.am
-index f837b91..037aa79 100644
---- a/utils/nfsidmap/Makefile.am
-+++ b/utils/nfsidmap/Makefile.am
-@@ -4,6 +4,6 @@ man8_MANS = nfsidmap.man
- 
- sbin_PROGRAMS	= nfsidmap
- nfsidmap_SOURCES = nfsidmap.c
--nfsidmap_LDADD = -lnfsidmap -lkeyutils
-+nfsidmap_LDADD = -lnfsidmap -lkeyutils ../../support/nfs/libnfs.a
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 2d87381..134d9bc 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -10,6 +10,7 @@
- #include <nfsidmap.h>
- 
- #include <syslog.h>
-+#include "xlog.h"
- 
- /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
- 
-@@ -36,9 +37,15 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
- 		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
- 		sprintf(id, "%u", gid);
- 	}
-+	if (rc < 0)
-+		xlog_err("id_lookup: %s: failed: %m",
-+			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
- 
--	if (rc == 0)
-+	if (rc == 0) {
- 		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-+		if (rc < 0)
-+			xlog_err("id_lookup: keyctl_instantiate failed: %m");
-+	}
- 
- 	return rc;
- }
-@@ -57,6 +64,7 @@ int name_lookup(char *id, key_serial_t key, int type)
- 	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
- 	if (rc != 0) {
- 		rc = -1;
-+		xlog_err("name_lookup: nfs4_get_default_domain failed: %m");
- 		goto out;
- 	}
- 
-@@ -67,10 +75,15 @@ int name_lookup(char *id, key_serial_t key, int type)
- 		gid = atoi(id);
- 		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
- 	}
-+	if (rc < 0)
-+		xlog_err("name_lookup: %s: failed: %m",
-+			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
- 
--	if (rc == 0)
-+	if (rc == 0) {
- 		rc = keyctl_instantiate(key, &name, strlen(name), 0);
--
-+		if (rc < 0)
-+			xlog_err("name_lookup: keyctl_instantiate failed: %m");
-+	}
- out:
- 	return rc;
- }
-@@ -83,9 +96,22 @@ int main(int argc, char **argv)
- 	int rc = 1;
- 	int timeout = 600;
- 	key_serial_t key;
-+	char *progname;
-+
-+	/* Set the basename */
-+	if ((progname = strrchr(argv[0], '/')) != NULL)
-+		progname++;
-+	else
-+		progname = argv[0];
- 
--	if (argc < 3)
-+	xlog_open(progname);
-+	xlog_syslog(1);
-+	xlog_stderr(0);
-+
-+	if (argc < 3) {
-+		xlog_err("Bad arg count. Check /etc/request-key.conf");
- 		return 1;
-+	}
- 
- 	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
- 	strcpy(arg, argv[2]);
--- 
-1.7.6.4
+With that in mind, there is one call site with num_to_pop == 1
+in which you don't free any entry, and the other with num_to_pop == num_se
+which seems to free all the members of the list, but the last one,
+which is then freed by the caller.
 
+This tells me you crammed two functions into one and you better
+have one that pops a single element and another to destroy the list.
+
+Benny
+
+>> +
+>> +	if (unlikely(num_to_pop <= 0))
+>> +		return rv;
+> 
+> How unlikely is it?
+> Is doing the extra compare really worth saving the spin_lock?
+> 
+>> +
+>> +	spin_lock(&marks->im_lock);
+>> +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
+>> +		rv = list_entry((&marks->im_extents)->next,
+>> +				struct pnfs_block_short_extent, bse_node);
+>> +		list_del_init(&rv->bse_node);
+>> +		if (num_to_pop)
+>> +			kfree(rv);
+> 
+> Please correct me if I'm wrong, you don't want to free the last element
+> you pop since you want to return it. This is worth a comment...
+> 
+> I'd consider moving the decrement expression down here or
+> changing the loop to be a for loop to improve its readability.
+> In the latter case this will say if (num_to_pop > 1) kfree(rv)
+> which is more straight forward IMHO.
+> 
+> Benny
+> 
+>> +	}
+>> +	spin_unlock(&marks->im_lock);
+>> +
+>> +	BUG_ON(num_to_pop > 0);
+>> +
+>> +	return rv;
+>> +}
