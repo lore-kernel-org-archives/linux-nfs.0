@@ -1,94 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:34013 "EHLO
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:34432 "EHLO
 	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751832Ab1KNR5k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 12:57:40 -0500
-Received: by fagn18 with SMTP id n18so3272905fag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 09:57:38 -0800 (PST)
-Message-ID: <4EC1568E.9090708@tonian.com>
-Date: Mon, 14 Nov 2011 19:57:34 +0200
+	with ESMTP id S1753835Ab1KJGzk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 01:55:40 -0500
+Received: by fagn18 with SMTP id n18so185212fag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 22:55:39 -0800 (PST)
+Message-ID: <4EBB7568.5030706@tonian.com>
+Date: Thu, 10 Nov 2011 08:55:36 +0200
 From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
-References: <4EC13EEA.3030404@tonian.com> <CA+a=Yy66VOW+nY3LZHxymZv5j5TAehFRav2EC4_kgDqrDVD2EQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy66VOW+nY3LZHxymZv5j5TAehFRav2EC4_kgDqrDVD2EQ@mail.gmail.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>
+Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under
+ NFSDDBG_PNFS
+References: <4EB9F8D6.1080302@panasas.com>
+In-Reply-To: <4EB9F8D6.1080302@panasas.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-14 19:23, Peng Tao wrote:
-> On Tue, Nov 15, 2011 at 12:16 AM, Benny Halevy <bhalevy@tonian.com> wrote:
->> I merged the following patches into pnfs-all-3.1-2011-11-14
->> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
->>
->> pnfs-block:
->>  Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
->>  Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
->>  Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
->>  Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
->>  Peng Tao         7c93c37 pnfsblock: clean up _add_entry
->>  Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
-> Thanks, Benny. It seems this one is still missing.
-> http://www.spinics.net/lists/linux-nfs/msg25358.html
+On 2011-11-09 05:51, Boaz Harrosh wrote:
 > 
-> Would you please merge it as well? verg keeps dropping the patch so I
-> sent it as an attachment. Did you get it?
+> I've been squinting  at pnfsd dprints for ages and aching under the wait. So I headed
+> up to the nfsd/debug.h to add a PNFS channel, and what do you know? there is one!
+> It's used by nfs4pnfsds.c. Surly  nfs4pnfsd.c is more _PNFS than _PROC.
+> 
+> While at it I changed  nfs4pnfsdlm.c to, also already defined, NFSDDBG_FILELAYOUT
+> which was unused before this patch.
+> 
+> CC: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-Argh, sorry, it's actually already merged. It's just that my
-reporting script happened to miss it.
-657c2f4 pnfsblock: acquire im_lock in _preload_range
-
-> 
-> BTW, checkpatch.pl doesn't complain anything on the patch:
-> $./scripts/checkpatch.pl 0002-pnfsblock-acquire-im_lock-in-_preload_range.patch
-> total: 0 errors, 0 warnings, 36 lines checked
-> 
-> 0002-pnfsblock-acquire-im_lock-in-_preload_range.patch has no obvious
-> style problems and is ready for submission.
-> 
-> 
->>
->> pnfsd:
->>  Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
->>
->> spnfs-block:
->>  Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
->>  Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
->>
->> Both versions pass connectathon tests against pnfsd-lexp server using the files layout.
->>
->> Block layout fails as the server ctl process crashes as follows:
-> Was it working before?
-> 
-
-It's been languished for quite a while so the answer is
-that it worked before, once upon a time.
+Makes sense. Thanks!
 
 Benny
 
-> Thanks,
-> Tao
->>
->> kernel: nfsv4 compound op #2/2: 47 (OP_GETDEVICEINFO)
->> kernel: nfsd4_getdevinfo: layout_type 3 dev_id 28d:1f maxcnt 135168
->> kernel: nfsd4_getdevinfo: sb ffff88002c535cd0
->> kernel: pnfs_set_device_notify: -->
->> kernel: renewing client (clientid 4ec13510/00000003)
->> kernel: pnfs_set_device_notify: Incr device count (clnt ffff88002d310000) to 2
->> kernel: nfsd4_encode_getdevinfo: err 0
->> kernel: device_slice: dev_id=0:31
->> kernel: device_slice: ret=1
->> kernel: ctl[1028]: segfault at 497 ip 00007f74b7909f24 sp 00007fffd2a43948 error 4 in libc-2.13.90.so[7f74b788d000+192000]
->>
->> Benny
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> ---
+>  fs/nfsd/nfs4pnfsd.c   |    2 +-
+>  fs/nfsd/nfs4pnfsdlm.c |    2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index 18b8fca..f514ebe 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -23,7 +23,7 @@
+>  
+>  #include "pnfsd.h"
+>  
+> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+> +#define NFSDDBG_FACILITY                NFSDDBG_PNFS
+>  
+>  /* Globals */
+>  static u32 current_layoutid = 1;
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index abc4d83..0f0441a 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -30,7 +30,7 @@
+>  #include "nfsfh.h"
+>  #include "nfsd.h"
+>  
+> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
+> +#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
+>  
+>  /* Just use a linked list. Do not expect more than 32 dlm_device_entries
+>   * the first implementation will just use one device per cluster file system
