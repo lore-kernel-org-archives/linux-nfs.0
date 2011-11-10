@@ -1,92 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e32.co.us.ibm.com ([32.97.110.150]:56639 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754049Ab1KKXGX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:06:23 -0500
-Received: from /spool/local
-	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 11 Nov 2011 16:06:22 -0700
-Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5o9s140156
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
-Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5o5D018960
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC 1/7] New mount option for volatile filehandle recovery
-Date: Fri, 11 Nov 2011 18:04:26 -0500
-Message-Id: <1321052673-22171-2-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:34667 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755325Ab1KJIv0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:51:26 -0500
+From: <tao.peng@emc.com>
+To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
+Date: Thu, 10 Nov 2011 03:51:04 -0500
+Subject: RE: [PATCH 0/8] pnfsblock cleanup and fixes
+Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C31@MX09A.corp.emc.com>
+References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+ <4EBB8D4E.7080300@tonian.com>
+In-Reply-To: <4EBB8D4E.7080300@tonian.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The new 'vfhretry' mount option will be used to enable the volatile filehandle
-recovery routines in the client. On an expired filehandle recover the client
-will attempt to recover by performing a lookup on the name of the file.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
+> On Behalf Of Benny Halevy
+> Sent: Thursday, November 10, 2011 4:38 PM
+> To: Peng Tao
+> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com
+> Subject: Re: [PATCH 0/8] pnfsblock cleanup and fixes
+> 
+> On 2011-11-09 17:15, Peng Tao wrote:
+> > Hi, Trond and Benny,
+> >
+> > Bellow are some pnfsblock patches that I have tested for days. Most of them
+> > are cleanup and small improvements. Only
+> > [PATCH 2/8] pnfsblock: acquire im_lock in _preload_range
+> > needs to go into stable.
+> >
+> > Thanks,
+> > Tao
+> >
+> > Peng Tao (8):
+> >   pnfsblock: cleanup bl_mark_sectors_init
+> >   pnfsblock: acquire im_lock in _preload_range
+> 
+> I can't find this patch in my mailbox.
+> It looks like you did not send it...
+> http://thread.gmane.org/gmane.linux.nfs/44761
+I have it in both of my mailbox. Not sure why linux-nfs drops it... Anyway, I will resend it.
 
-This mechanism of recovery isn't necessarily safe for a posix filesystem so
-using the mount option will allow the user to enable this at their own risk. If the mount option is not turned on, the FHEXPIRED error will be converted to
-ESTALE.
-
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/super.c            |    6 ++++++
- include/linux/nfs_mount.h |    1 +
- 2 files changed, 7 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 480b3b6..7eef204 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -87,6 +87,7 @@ enum {
- 	Opt_sharecache, Opt_nosharecache,
- 	Opt_resvport, Opt_noresvport,
- 	Opt_fscache, Opt_nofscache,
-+	Opt_vfhretry,
- 
- 	/* Mount options that take integer arguments */
- 	Opt_port,
-@@ -149,6 +150,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_noresvport, "noresvport" },
- 	{ Opt_fscache, "fsc" },
- 	{ Opt_nofscache, "nofsc" },
-+	{ Opt_vfhretry, "vfhretry" },
- 
- 	{ Opt_port, "port=%s" },
- 	{ Opt_rsize, "rsize=%s" },
-@@ -650,6 +652,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
- 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
- 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
-+		{ NFS_MOUNT_VFHRETRY, ",vfhretry", ""},
- 		{ 0, NULL, NULL }
- 	};
- 	const struct proc_nfs_info *nfs_infop;
-@@ -1203,6 +1206,9 @@ static int nfs_parse_mount_options(char *raw,
- 			kfree(mnt->fscache_uniq);
- 			mnt->fscache_uniq = NULL;
- 			break;
-+		case Opt_vfhretry:
-+			mnt->flags |= NFS_MOUNT_VFHRETRY;
-+			break;
- 
- 		/*
- 		 * options that take numeric values
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 576bddd..dba0e23 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -73,5 +73,6 @@ struct nfs_mount_data {
- 
- #define NFS_MOUNT_LOCAL_FLOCK	0x100000
- #define NFS_MOUNT_LOCAL_FCNTL	0x200000
-+#define NFS_MOUNT_VFHRETRY	0x400000
- 
- #endif
--- 
-1.7.4.4
+Thanks,
+Tao
+> 
+> Benny
+> 
+> >   pnfsblock: move find lock page logic out of bl_write_pagelist
+> >   pnfsblock: set read/write tk_status to pnfs_error
+> >   pnfsblock: remove rpc_call_ops from struct parallel_io
+> >   pnfsblock: clean up _add_entry
+> >   pnfsblock: add im_extents to pnfs_inval_markings
+> >   pnfsblock: alloc short extent before submit bio
+> >
+> >  fs/nfs/blocklayout/blocklayout.c |  176
+> +++++++++++++++++++++++++-------------
+> >  fs/nfs/blocklayout/blocklayout.h |   11 ++-
+> >  fs/nfs/blocklayout/extents.c     |  146 ++++++++++++--------------------
+> >  3 files changed, 180 insertions(+), 153 deletions(-)
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
