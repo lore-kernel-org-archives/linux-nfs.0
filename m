@@ -1,63 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:18599 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752151Ab1KJCJi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 21:09:38 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-Date: Wed, 9 Nov 2011 21:09:13 -0500
-Subject: RE: [PATCH 0/8] pnfsblock cleanup and fixes
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054B4F@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:47990 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932785Ab1KJQLZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 11:11:25 -0500
+Received: from [192.168.6.103] (bovic.calvaedi.com [192.168.6.103])
+	(authenticated (0 bits))
+	by oceanic.CalvaEDI.COM (8.11.1-20030923/8.11.1/6.32) with ESMTP id pAAGBN405763
+	(using TLSv1/SSLv3 with cipher RC4-MD5 (128 bits) verified NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 17:11:23 +0100 (CET)
+Message-ID: <4EBBF7AB.8030907@Calva.COM>
+Date: Thu, 10 Nov 2011 17:11:23 +0100
+From: John Hughes <john@Calva.COM>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: [BUG] nfs4 client loops printing "Error: state manager encountered
+ RPCSEC_GSS session expired" if kerberos ticket expires
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny, hi,
+We mount user home directories (using automount) from an nfs4 server 
+with sec=krb5.
 
-These patches fail to apply to pnfs-latest branch because of conflicts with pnfs private workqueue patches. Since Trond has decided not to take pnfs private workqueue patches, would you please drop them so that new patches can apply? I can send you revert patches if you want.
+Using older kernels (2.6.32 for example) when the user ticket expires 
+attempts to access the mount get EPERM.  This is no big deal, the 
+workstation is probably in the screensaver so the user enters her 
+password, a new ticket is granted and everything carries on.
 
-Thanks,
-Tao
+At some point (before or after 2.6.39) this behaviour changed.
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of Peng Tao
-> Sent: Wednesday, November 09, 2011 11:16 PM
-> To: linux-nfs@vger.kernel.org
-> Cc: Trond.Myklebust@netapp.com; bhalevy@tonian.com
-> Subject: [PATCH 0/8] pnfsblock cleanup and fixes
-> 
-> Hi, Trond and Benny,
-> 
-> Bellow are some pnfsblock patches that I have tested for days. Most of them
-> are cleanup and small improvements. Only
-> [PATCH 2/8] pnfsblock: acquire im_lock in _preload_range
-> needs to go into stable.
-> 
-> Thanks,
-> Tao
-> 
-> Peng Tao (8):
->   pnfsblock: cleanup bl_mark_sectors_init
->   pnfsblock: acquire im_lock in _preload_range
->   pnfsblock: move find lock page logic out of bl_write_pagelist
->   pnfsblock: set read/write tk_status to pnfs_error
->   pnfsblock: remove rpc_call_ops from struct parallel_io
->   pnfsblock: clean up _add_entry
->   pnfsblock: add im_extents to pnfs_inval_markings
->   pnfsblock: alloc short extent before submit bio
-> 
->  fs/nfs/blocklayout/blocklayout.c |  176 +++++++++++++++++++++++++-------------
->  fs/nfs/blocklayout/blocklayout.h |   11 ++-
->  fs/nfs/blocklayout/extents.c     |  146 ++++++++++++--------------------
->  3 files changed, 180 insertions(+), 153 deletions(-)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Now attempts to access the mount point hang and an endless stream of:
+
+Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server xxxx
+
+
+messages is printed to the kernel log.  The user doesn't get prompted 
+for a password and can only get a new ticket by moving to a text console 
+and logging in again (which unblocks things).
+
+(This is Debian bug 
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=648155 and Ubuntu bug 
+https://bugs.launchpad.net/ubuntu/+bug/794112 ).
+
+The client is Debian Sid, with kernel 3.1.0-rc10 on a Dell core i5 based 
+Optiplex 390.  (The same problem occurs in the standard Debian 3.0 kernel).
+
+Linux cretic 3.1.0-rc10 #1 SMP Thu Nov 10 11:45:46 CET 2011 x86_64 GNU/Linux
+
+The server is Debian Squeeze, kernel 2.6.32.
+
+What should I be trying to do to debug this?
+
 
