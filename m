@@ -1,173 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:40330 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932184Ab1KJJIc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:08:32 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Date: Thu, 10 Nov 2011 04:08:06 -0500
-Subject: RE: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C38@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
- <1320851766-1834-8-git-send-email-bergwolf@gmail.com>
- <4EBB9136.7010603@tonian.com>
-In-Reply-To: <4EBB9136.7010603@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:16464 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757560Ab1KKOzX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Nov 2011 09:55:23 -0500
+Message-ID: <4EBD3754.6070602@RedHat.com>
+Date: Fri, 11 Nov 2011 09:55:16 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Jim Rees <rees@umich.edu>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsidmap: Added -v flag
+References: <1320956785-18004-1-git-send-email-steved@redhat.com> <1320956785-18004-3-git-send-email-steved@redhat.com> <20111110211117.GA2011@umich.edu> <4EBC4153.9090003@RedHat.com> <20111111002210.GA2902@umich.edu>
+In-Reply-To: <20111111002210.GA2902@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Thursday, November 10, 2011 4:54 PM
-> To: Peng Tao
-> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
-> Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-> 
-> On 2011-11-09 17:16, Peng Tao wrote:
-> > It stores a list of short extents for INVAL->RW conversion.
-> > Also add two functions to manipulate them, in preparation to
-> > move malloc logic out of end_io.
-> >
-> > Signed-off-by: Peng Tao <peng_tao@emc.com>
-> > ---
-> >  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
-> >  fs/nfs/blocklayout/blocklayout.h |    5 +++++
-> >  fs/nfs/blocklayout/extents.c     |   37
-> +++++++++++++++++++++++++++++++++++++
-> >  3 files changed, 48 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> > index 815c0c3..cb4ff0f 100644
-> > --- a/fs/nfs/blocklayout/blocklayout.c
-> > +++ b/fs/nfs/blocklayout/blocklayout.c
-> > @@ -706,11 +706,17 @@ static void
-> >  release_inval_marks(struct pnfs_inval_markings *marks)
-> >  {
-> >  	struct pnfs_inval_tracking *pos, *temp;
-> > +	struct pnfs_block_short_extent *se, *stemp;
-> >
-> >  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
-> >  		list_del(&pos->it_link);
-> >  		kfree(pos);
-> >  	}
-> > +
-> > +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
-> > +		list_del(&se->bse_node);
-> > +		kfree(se);
-> > +	}
-> >  	return;
-> >  }
-> >
-> > diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-> > index 60728ac..df0e0fb 100644
-> > --- a/fs/nfs/blocklayout/blocklayout.h
-> > +++ b/fs/nfs/blocklayout/blocklayout.h
-> > @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
-> >  	spinlock_t	im_lock;
-> >  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
-> >  	sector_t	im_block_size;	/* Server blocksize in sectors */
-> > +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion
-> */
-> >  };
-> >
-> >  struct pnfs_inval_tracking {
-> > @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
-> *marks, sector_t blocksize)
-> >  {
-> >  	spin_lock_init(&marks->im_lock);
-> >  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
-> > +	INIT_LIST_HEAD(&marks->im_extents);
-> >  	marks->im_block_size = blocksize;
-> >  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
-> >  					   blocksize);
-> > @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
-> >  			 struct pnfs_block_extent *new);
-> >  int bl_mark_for_commit(struct pnfs_block_extent *be,
-> >  			sector_t offset, sector_t length);
-> > +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
-> > +struct pnfs_block_short_extent*
-> > +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
-> >
-> >  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> > index 952ea8a..72c7fa1 100644
-> > --- a/fs/nfs/blocklayout/extents.c
-> > +++ b/fs/nfs/blocklayout/extents.c
-> > @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct
-> pnfs_block_layout *bl,
-> >  		}
-> >  	}
-> >  }
-> > +
-> > +int
-> > +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
-> > +	struct pnfs_block_short_extent *new;
-> > +
-> > +	new = kmalloc(sizeof(*new), GFP_NOFS);
-> > +	if (unlikely(!new))
-> > +		return -ENOMEM;
-> > +
-> > +	spin_lock(&marks->im_lock);
-> > +	list_add(&new->bse_node, &marks->im_extents);
-> > +	spin_unlock(&marks->im_lock);
-> > +
-> > +	return 0;
-> > +}
-> > +
-> > +struct pnfs_block_short_extent*
-> > +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
-> > +	struct pnfs_block_short_extent *rv = NULL;
-> > +
-> > +	if (unlikely(num_to_pop <= 0))
-> > +		return rv;
-> 
-> How unlikely is it?
-> Is doing the extra compare really worth saving the spin_lock?
-Never... I should really replace it with a BUG_ON.
 
+On 11/10/2011 07:23 PM, Jim Rees wrote:
+> Steve Dickson wrote:
 > 
-> > +
-> > +	spin_lock(&marks->im_lock);
-> > +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
-> > +		rv = list_entry((&marks->im_extents)->next,
-> > +				struct pnfs_block_short_extent, bse_node);
-> > +		list_del_init(&rv->bse_node);
-> > +		if (num_to_pop)
-> > +			kfree(rv);
+>   
+>   
+>   On 11/10/2011 04:11 PM, Jim Rees wrote:
+>   > Steve Dickson wrote:
+>   > 
+>   >   To aid in debugging, the -v flag can now be specified
+>   >   on the command to enable verbose logging in both
+>   >   the nfsidmap command and libnfsidmap library routines.
+>   >   
+>   >   Signed-off-by: Steve Dickson <steved@redhat.com>
+>   >   ---
+>   >    utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
+>   >    utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
+>   >    2 files changed, 24 insertions(+), 3 deletions(-)
+>   >   
+>   >   diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>   >   index 134d9bc..d74189a 100644
+>   >   --- a/utils/nfsidmap/nfsidmap.c
+>   >   +++ b/utils/nfsidmap/nfsidmap.c
+>   >   @@ -12,6 +12,7 @@
+>   >    #include <syslog.h>
+>   >    #include "xlog.h"
+>   >    
+>   >   +int verbose = 0;
+>   >    /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
+>   >    
+>   >    #define MAX_ID_LEN   11
+>   >   @@ -108,6 +109,12 @@ int main(int argc, char **argv)
+>   >    	xlog_syslog(1);
+>   >    	xlog_stderr(0);
+>   >    
+>   >   +	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
+>   >   +		verbose = 1;
+>   >   +		nfs4_set_debug(1, NULL);
+>   >   +		argc--, argv++;
+>   >   +	}
+>   >   +
+>   > 
+>   > Ugh.  Is there some reason not to use getopt() like all the other utils do?
+>   I was waiting for this comment ;-)
 > 
-> Please correct me if I'm wrong, you don't want to free the last element
-> you pop since you want to return it. This is worth a comment...
-Yes, you are right. Will add some comments above the function.
-
+> I'm always happy to play your straight man.
 > 
-> I'd consider moving the decrement expression down here or
-> changing the loop to be a for loop to improve its readability.
-> In the latter case this will say if (num_to_pop > 1) kfree(rv)
-> which is more straight forward IMHO.
-How about following?
-
-BUG_ON(num_to_pop <= 0);
-
-list_for_each_entry_safe() {
-list_del_init(&rv->bse_node);
-if (num_to_pop-- > 1)
-   kfree(rv);
-}
-
-Thanks,
-Tao
-
+>   I decided to go with how the command was originally written
+>   because this command is only call from the kernel so a user
+>   should execute it (except for debugging).  
+>   
+>   The arguments are vary static on where they need to be
+>   no command line. So its either going to work or not,
+>   which means there is no real need for a usage error (expect
+>   for the one I added). 
+>   
+>   Finally, is there real need for a while loop and switch statement 
+>   for on simple case? I thought not...
 > 
-> Benny
-> 
-> > +	}
-> > +	spin_unlock(&marks->im_lock);
-> > +
-> > +	BUG_ON(num_to_pop > 0);
-> > +
-> > +	return rv;
-> > +}
+> It's more work for the next guy who comes along and wants to add another
+> option, especially if the new option takes an argument.
+I still think its overkill but I'm always a fan 
+of making easier for the next guys down the line...
+I'll re-spin it... 
+
+steved.
 
