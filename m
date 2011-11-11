@@ -1,34 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:46800 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932536Ab1KCPAU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2011 11:00:20 -0400
-Subject: Re: rpcbind listen on localhost only?
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111103025154.GA10875@umich.edu>
-Date: Thu, 3 Nov 2011 11:00:07 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <50A0FDE4-6E60-410A-98BD-0BA3F32D5DE9@oracle.com>
-References: <20111103025154.GA10875@umich.edu>
-To: Jim Rees <rees@umich.edu>
+Received: from natasha.panasas.com ([67.152.220.90]:54706 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757076Ab1KKUJq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 15:09:46 -0500
+Message-ID: <4EBD80FE.7070702@panasas.com>
+Date: Fri, 11 Nov 2011 12:09:34 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Benny Halevy <benny@tonian.com>, Fred Isaman <iisaman@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
+References: <4EBC5538.7010002@panasas.com> <1320977270.24288.21.camel@lade.trondhjem.org>
+In-Reply-To: <1320977270.24288.21.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 11/10/2011 06:07 PM, Trond Myklebust wrote:
+> On Thu, 2011-11-10 at 14:50 -0800, Boaz Harrosh wrote: 
+>> So why does the Linux wonderful forgetfull client returnes it's ROC layouts on
+>> inode evict() (I hit this on umount at client). Actually this is on me, because
+>> it is a bug in Generic client code, but can only manifest with pnf-obj after an
+>> IO error.
+> 
+> Client patches are still welcome...
+> 
 
-On Nov 2, 2011, at 10:51 PM, Jim Rees wrote:
+I'm on it. There is still a pnfs-objects-std-violation that I need to fix
+in regards to IO errors and layout-returns. So the above will be a part
+of that as well.
 
-> How do I get rpcbind to only listen on localhost and not on INADDR_ANY,
-> equivalent to the "-l" option to portmap?  The man page implies that
-> "-h 127.0.0.1" should do it, but that doesn't work.
-
-I imagine this doesn't work because for localhost, rpcbind listens on AF_LOCAL socket /var/run/rpcbind.sock.  This allows authentication of the registrand.  Normally this interface isn't exposed directly to applications: they use the APIs in libtirpc (or glibc) to access the local rpcbind service.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Thanks
+Boaz
