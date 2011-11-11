@@ -1,37 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:35420 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757124Ab1K3Qi6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 11:38:58 -0500
-Message-ID: <4ED65A94.3040303@panasas.com>
-Date: Wed, 30 Nov 2011 08:32:20 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Michal Marek <mmarek@suse.cz>
-CC: Randy Dunlap <rdunlap@xenotime.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Stephen Rothwell <sfr@canb.auug.org.au>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
-        <linux-next@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [PATCH v3] ore: FIX breakage when MISC_FILESYSTEMS is not set
-References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au> <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com> <4ED4238F.4090407@panasas.com> <4ED56C59.208@panasas.com> <4ED5E9E1.9050709@suse.cz>
-In-Reply-To: <4ED5E9E1.9050709@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
+Received: from e32.co.us.ibm.com ([32.97.110.150]:56639 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754049Ab1KKXGX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:06:23 -0500
+Received: from /spool/local
+	by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 11 Nov 2011 16:06:22 -0700
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5o9s140156
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5o5D018960
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC 1/7] New mount option for volatile filehandle recovery
+Date: Fri, 11 Nov 2011 18:04:26 -0500
+Message-Id: <1321052673-22171-2-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/30/2011 12:31 AM, Michal Marek wrote:
-> 
-> I suggest you name it Kconfig.ore. We have a couple of Kconfig.* files
-> in the tree, so let's be consistent.
-> 
+The new 'vfhretry' mount option will be used to enable the volatile filehandle
+recovery routines in the client. On an expired filehandle recover the client
+will attempt to recover by performing a lookup on the name of the file.
 
-Thanks Michal.
+This mechanism of recovery isn't necessarily safe for a posix filesystem so
+using the mount option will allow the user to enable this at their own risk. If the mount option is not turned on, the FHEXPIRED error will be converted to
+ESTALE.
 
-Yes that makes sense. Actually I like it better.
-Will change and push
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/super.c            |    6 ++++++
+ include/linux/nfs_mount.h |    1 +
+ 2 files changed, 7 insertions(+), 0 deletions(-)
 
-> Michal
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 480b3b6..7eef204 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -87,6 +87,7 @@ enum {
+ 	Opt_sharecache, Opt_nosharecache,
+ 	Opt_resvport, Opt_noresvport,
+ 	Opt_fscache, Opt_nofscache,
++	Opt_vfhretry,
+ 
+ 	/* Mount options that take integer arguments */
+ 	Opt_port,
+@@ -149,6 +150,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_noresvport, "noresvport" },
+ 	{ Opt_fscache, "fsc" },
+ 	{ Opt_nofscache, "nofsc" },
++	{ Opt_vfhretry, "vfhretry" },
+ 
+ 	{ Opt_port, "port=%s" },
+ 	{ Opt_rsize, "rsize=%s" },
+@@ -650,6 +652,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+ 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
+ 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
++		{ NFS_MOUNT_VFHRETRY, ",vfhretry", ""},
+ 		{ 0, NULL, NULL }
+ 	};
+ 	const struct proc_nfs_info *nfs_infop;
+@@ -1203,6 +1206,9 @@ static int nfs_parse_mount_options(char *raw,
+ 			kfree(mnt->fscache_uniq);
+ 			mnt->fscache_uniq = NULL;
+ 			break;
++		case Opt_vfhretry:
++			mnt->flags |= NFS_MOUNT_VFHRETRY;
++			break;
+ 
+ 		/*
+ 		 * options that take numeric values
+diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+index 576bddd..dba0e23 100644
+--- a/include/linux/nfs_mount.h
++++ b/include/linux/nfs_mount.h
+@@ -73,5 +73,6 @@ struct nfs_mount_data {
+ 
+ #define NFS_MOUNT_LOCAL_FLOCK	0x100000
+ #define NFS_MOUNT_LOCAL_FCNTL	0x200000
++#define NFS_MOUNT_VFHRETRY	0x400000
+ 
+ #endif
+-- 
+1.7.4.4
 
-Boaz
