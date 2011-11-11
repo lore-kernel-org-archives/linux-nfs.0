@@ -1,114 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26404 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752620Ab1KCWAQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 18:00:16 -0400
-Subject: Re: GSSAPI Proxy initiative
-From: Simo Sorce <simo@redhat.com>
+Received: from smtp02.citrix.com ([66.165.176.63]:60867 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751412Ab1KKKbp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 05:31:45 -0500
+Message-ID: <4EBCF98E.6050101@citrix.com>
+Date: Fri, 11 Nov 2011 10:31:42 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
+MIME-Version: 1.0
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Nico Williams <nico@cryptonector.com>, dhowells <dhowells@redhat.com>,
-        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
-In-Reply-To: <1320356806.18396.149.camel@lade.trondhjem.org>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	 <CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	 <1320332310.7734.643.camel@willson.li.ssimo.org>
-	 <CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	 <1320337903.7734.670.camel@willson.li.ssimo.org>
-	 <CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	 <1320352784.18396.109.camel@lade.trondhjem.org>
-	 <CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
-	 <1320355818.7734.685.camel@willson.li.ssimo.org>
-	 <1320356806.18396.149.camel@lade.trondhjem.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
+ TCP
+References: <4EBAC88D.40902@citrix.com>	 <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>	 <4EBBB247.40805@citrix.com>	 <2E3D3F87-479E-4096-B086-C8F83A0147B5@oracle.com>	 <4EBBF35B.5000606@citrix.com> <1320957784.11956.16.camel@lade.trondhjem.org>
+In-Reply-To: <1320957784.11956.16.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 03 Nov 2011 18:00:06 -0400
-Message-ID: <1320357606.7734.697.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-11-03 at 17:46 -0400, Trond Myklebust wrote:
-> On Thu, 2011-11-03 at 17:30 -0400, Simo Sorce wrote: 
-> > On Thu, 2011-11-03 at 15:53 -0500, Nico Williams wrote:
-> > > On Thu, Nov 3, 2011 at 3:39 PM, Trond Myklebust
-> > > <Trond.Myklebust@netapp.com> wrote:
-> > > >> What I had in mind was something like PAGs or keyrings.  Or, to be
-> > > >> much more specific, search for my name and the string "credentials
-> > > >> process groups" -- a PAG on steroids.
-> > > >>
-> > > >> The idea is that the IPC peer can observe the other's
-> > > >> PAG/keyring/CPG/whatever and use that to find the correct credentials
-> > > >> (authorization is still required though).
-> > > >
-> > > > Linux already has per-user, per-process and per-thread keyrings which
-> > > > offer a high security storage solution for keys. The problem with those
-> > > > is that they are difficult to use in an asynchronous context when the
-> > > > original user's process/thread context is no longer available to us.
-> > > 
-> > > For async IPC methods you'd want something like SCM_CREDENTIALS to
-> > > give you the keyring/PAG/whatever information you need abou thte peer.
-> > >  The ancillary data should be complete enough that you can past the
-> > > client process/thread being dead, although it's nice to not have to
-> > > process a request from a dead entity...
-> > > 
-> > > For sync IPC you need something like door_ucred().  And for sync IPC
-> > > you can make sure to get SIGCANCEL or equivalent when the client gets
-> > > canceled (this is the default in doors).
-> > > 
-> > > > Ideally, though, that's what we'd like to see used.
-> > > 
-> > > Agreed!
-> > 
-> > I have discussed use of the keyring in a private discussion before
-> > starting the thread, and it turns out the keyring has a number of
-> > limitations that makes it probably unsuitable for this project.
-> > 
-> > As an upcall mechanism it has some limitations on the size of the
-> > payloads, IIRC limited to a page, and that means that you cannot pass
-> > blobs carrying big kerberos tickets.
-> > 
-> > As a storage mechanism for credential caches it also has size limits.
-> > Currently the limit is 20k per user which is not even enough to hold a
-> > single ticket in some cases. This limit can be increased of course, but
-> > then you end keeping around a huge amount of unswappable ram depending
-> > on the number of users.
-> 
-> Allowing keys to be swapped out is a really really really really really
-> really bad idea when your kernel depends upon them being available as
-> part of the memory reclaim process, as would be the case when you are
-> talking about NFS, CIFS or AFS dirty page writebacks.
+On 10/11/11 20:43, Trond Myklebust wrote:
+> On Thu, 2011-11-10 at 15:52 +0000, Andrew Cooper wrote: 
+>> On 10/11/11 15:29, Chuck Lever wrote:
+>>> On Nov 10, 2011, at 6:15 AM, Andrew Cooper wrote:
+>>>
+>>>> On 09/11/11 22:36, Chuck Lever wrote:
+>>>>> On Nov 9, 2011, at 1:38 PM, Andrew Cooper wrote:
+>> Sorry.  I am not sure I was clear.  An EIO does not present itself with
+>> a hard mount, but a TCP FIN is still injected into the stream by the
+>> client, causing 15 seconds of deadlock, eventually fixed by sending a
+>> RST and restarting with a new TCP stream.  At this point, softmounts
+>> throw an EIO while hardmounts restart and continue successfully.
+>>
+>> My problem is not the EIO on softmount or lack of EIO for hardmout, but
+>> the fact that the client sees fit to try and close the TCP stream while
+>> an apparently otherwise healthy NFS session is ongoing.
+> The client will attempt to close the TCP connection on any RPC level
+> error. That can happen, e.g., if the server sends a faulty RPC/TCP
+> record fragment header or some other garbage data.
+>
+> I'm assuming that you've checked that the TCP parameters are set to sane
+> values for a 10GigE connection (i.e. tcp_timestamps is on) so that there
+> is no corruption happening at that level?
+>
+> Cheers
+>   Trond
 
-You do not need long term keys on existing mounts which is the only case
-where you have anything to release, gss context session keys will be
-kept in the kernel but need not be shared with anything.
-It is ok to use keyring if that's deemed the right place for session
-keys, but I think you already have structures where you currently store
-them so I don't thik you necessarily need to change that part of the
-kernel implementation.
+I have a TCPdump/wireshark analysis of the entire packet stream (4GiB). 
+I cant see any RPC level errors (rpc.replystat != 0 yields no matches). 
+What specifically would I be looking for?  Wireshark seems not to have
+any problem decoding any of the RPC packets, so I hope that indicates no
+RPC level corruption.
 
-> > So for long term storage of credentials we will probably not rely on
-> > kernel keyrings, nor as an upcall mechanism.
-> 
-> So this would be an argument for scrapping keyrings from the kernel? If
-> they're not good for kerberos tickets, why would we want to keep them at
-> all?
+There is one case where the server sends a double write reply for the
+same write, with different length fields.  However, this is a good 20
+seconds before the FIN is sent, so I was hoping that it was unrelated.
+Might it not be?
 
-See above.
+As for TCP timestamps; I have a Timestamp option in each TCP packet. 
+Nothing appears corrupted.  What would I be looking for with corrupted
+timestamps?
 
-We could also break the tickets so that only the valuable part is kept
-in the keyring, and the rest (encrypted with the session key) in a file.
-I don;t think this influences the GSSAPI Proxy protocol and mechanism.
-It is an implementation detail we can discuss within the linux specific
-implementation.
-
-> What would you replace them with, given the above requirements
-> concerning swapping?
-
-Currently credential caches are stored in files, is there a problem with
-that model ? Do you need access to credential caches from the kernel
-when under memory pressure ?  
-
-Simo.
+Thanks,
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+T: +44 (0)1223 225 900, http://www.citrix.com
 
