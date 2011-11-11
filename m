@@ -1,54 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:47120 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756315Ab1KWPYF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Nov 2011 10:24:05 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RTEda-0003qX-By
-	for linux-nfs@vger.kernel.org; Wed, 23 Nov 2011 10:21:26 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] nfsidmap: Allow admins to clean up id mappings that have (ver 3)
-Date: Wed, 23 Nov 2011 10:24:00 -0500
-Message-Id: <1322061842-1806-1-git-send-email-steved@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:15120 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932792Ab1KKQIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Nov 2011 11:08:02 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] KEYS: Allow special keyrings to be cleared
+To: jmorris@redhat.com
+Cc: keyrings@linux-nfs.org, linux-security-module@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Fri, 11 Nov 2011 16:07:53 +0000
+Message-ID: <20111111160753.5190.36069.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In working with the new idmapper, it became very apparent that
-keys created from bad id mapping were very persistent and were
-not easy disposed of. Unlike with rpc.idmapd, to git rid 
-of bad id mapping one just needed to restart the daemon. 
+The kernel contains some special internal keyrings, for instance the DNS
+resolver keyring :
 
-So I've added some functionality to the nfsidmap command
-that will allow admins to:
+2a93faf1 I-----     1 perm 1f030000     0     0 keyring   .dns_resolver: empty
 
-    - remove all the keys on the keyring.
-    - remove a particular key from the keying.
+It would occasionally be useful to allow the contents of such keyrings to be
+flushed by root (cache invalidation).
 
-The intention is to allow admins a way to clean up the id
-name space when name resolution mechanisms, like NIS or LDAP, 
-fail and leave a large number (or small number) of id mapping 
-pointing to nobody. 
+Allow a flag to be set on a keyring to mark that someone possessing the
+sysadmin capability can clear the keyring, even without normal write access to
+the keyring.
 
-Note, for the second patch to work, there need to be a small 
-kernel patch that will change the per-key permissions to
-allow root to revoke them.
+Set this flag on the special keyrings created by the DNS resolver, the NFS
+identity mapper and the CIFS identity mapper.
 
-Version 2:
-- Added the fclose() calls as requested by the code review
-Version 3:
-- Confined the -c flag to only remove keys from the id_resolver keyring.
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: Steve Dickson <steved@redhat.com>
+---
 
-Steve Dickson (2):
-  nfsidmap: Allow keys to be cleared from the keyring
-  nfsidmap: Allow a particular key to be revoked.
+ Documentation/networking/dns_resolver.txt |    4 ++++
+ Documentation/security/keys.txt           |    4 ++++
+ fs/cifs/cifsacl.c                         |    1 +
+ fs/nfs/idmap.c                            |    1 +
+ include/linux/key.h                       |    1 +
+ net/dns_resolver/dns_key.c                |    1 +
+ security/keys/keyctl.c                    |   15 ++++++++++++++-
+ 7 files changed, 26 insertions(+), 1 deletions(-)
 
- utils/nfsidmap/nfsidmap.c   |  148 +++++++++++++++++++++++++++++++++++++++++--
- utils/nfsidmap/nfsidmap.man |   25 +++++++-
- 2 files changed, 167 insertions(+), 6 deletions(-)
-
--- 
-1.7.7
+diff --git a/Documentation/networking/dns_resolver.txt b/Documentation/networking/dns_resolver.txt
+index 7f531ad..d86adcd 100644
+--- a/Documentation/networking/dns_resolver.txt
++++ b/Documentation/networking/dns_resolver.txt
+@@ -102,6 +102,10 @@ implemented in the module can be called after doing:
+      If _expiry is non-NULL, the expiry time (TTL) of the result will be
+      returned also.
+ 
++The kernel maintains an internal keyring in which it caches looked up keys.
++This can be cleared by any process that has the CAP_SYS_ADMIN capability by
++the use of KEYCTL_KEYRING_CLEAR on the keyring ID.
++
+ 
+ ===============================
+ READING DNS KEYS FROM USERSPACE
+diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
+index 4d75931..713ec23 100644
+--- a/Documentation/security/keys.txt
++++ b/Documentation/security/keys.txt
+@@ -554,6 +554,10 @@ The keyctl syscall functions are:
+      process must have write permission on the keyring, and it must be a
+      keyring (or else error ENOTDIR will result).
+ 
++     This function can also be used to clear special kernel keyrings if they
++     are appropriately marked if the user has CAP_SYS_ADMIN capability.  The
++     DNS resolver cache keyring is an example of this.
++
+ 
+  (*) Link a key into a keyring:
+ 
+diff --git a/fs/cifs/cifsacl.c b/fs/cifs/cifsacl.c
+index 72ddf23..854749d 100644
+--- a/fs/cifs/cifsacl.c
++++ b/fs/cifs/cifsacl.c
+@@ -556,6 +556,7 @@ init_cifs_idmap(void)
+ 
+ 	/* instruct request_key() to use this special keyring as a cache for
+ 	 * the results it looks up */
++	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
+ 	cred->thread_keyring = keyring;
+ 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+ 	root_cred = cred;
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 47d1c6f..d5a80f8 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -115,6 +115,7 @@ int nfs_idmap_init(void)
+ 	if (ret < 0)
+ 		goto failed_put_key;
+ 
++	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
+ 	cred->thread_keyring = keyring;
+ 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+ 	id_resolver_cache = cred;
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 183a6af..3ac4128 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -155,6 +155,7 @@ struct key {
+ #define KEY_FLAG_IN_QUOTA	3	/* set if key consumes quota */
+ #define KEY_FLAG_USER_CONSTRUCT	4	/* set if key is being constructed in userspace */
+ #define KEY_FLAG_NEGATIVE	5	/* set if key is negative */
++#define KEY_FLAG_ROOT_CAN_CLEAR	6	/* set if key can be cleared by root without permission */
+ 
+ 	/* the description string
+ 	 * - this is used to match a key against search criteria
+diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
+index fa000d2..c73bba3 100644
+--- a/net/dns_resolver/dns_key.c
++++ b/net/dns_resolver/dns_key.c
+@@ -281,6 +281,7 @@ static int __init init_dns_resolver(void)
+ 
+ 	/* instruct request_key() to use this special keyring as a cache for
+ 	 * the results it looks up */
++	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
+ 	cred->thread_keyring = keyring;
+ 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+ 	dns_resolver_cache = cred;
+diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
+index 0b3f5d7..6523599 100644
+--- a/security/keys/keyctl.c
++++ b/security/keys/keyctl.c
+@@ -388,11 +388,24 @@ long keyctl_keyring_clear(key_serial_t ringid)
+ 	keyring_ref = lookup_user_key(ringid, KEY_LOOKUP_CREATE, KEY_WRITE);
+ 	if (IS_ERR(keyring_ref)) {
+ 		ret = PTR_ERR(keyring_ref);
++
++		/* Root is permitted to invalidate certain special keyrings */
++		if (capable(CAP_SYS_ADMIN)) {
++			keyring_ref = lookup_user_key(ringid, 0, 0);
++			if (IS_ERR(keyring_ref))
++				goto error;
++			if (test_bit(KEY_FLAG_ROOT_CAN_CLEAR,
++				     &key_ref_to_ptr(keyring_ref)->flags))
++				goto clear;
++			goto error_put;
++		}
++
+ 		goto error;
+ 	}
+ 
++clear:
+ 	ret = keyring_clear(key_ref_to_ptr(keyring_ref));
+-
++error_put:
+ 	key_ref_put(keyring_ref);
+ error:
+ 	return ret;
 
