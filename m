@@ -1,33 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:49138
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751874Ab1KLOuA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 09:50:00 -0500
-Date: Sat, 12 Nov 2011 09:49:53 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Matthew Treinish <treinish@linux.vnet.ibm.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20111112144953.GA3740@infradead.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:46379 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753664Ab1KKXGC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:06:02 -0500
+Received: from /spool/local
+	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 11 Nov 2011 16:06:02 -0700
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5pmk230064
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:53 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5oMP008879
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:51 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC 7/7] Added error handling for NFS4ERR_FHEXPIRED
+Date: Fri, 11 Nov 2011 18:04:32 -0500
+Message-Id: <1321052673-22171-8-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
 References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321056809.8733.2.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321056809.8733.2.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
-> On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
-> > This patch series implements client side support for volatile file handle
-> > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
-> > test the client you either need a server that supports volatile file handles or 
-> > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
-> > NFSERR_STALE. (See the last patch in the series)
-> 
-> WHY do we want to support this kind of "feature"? As you said, the RFC
-> doesn't actually help in figuring out how this crap is supposed to work
-> in practice, so why do we even consider starting to give a damn?
+Added checks in the nfs4_handle_exception for FHEXPIRED.
+If FHEXPIRED is received from the server and the appropriate
+attributes are enabled then the client calls
+nfs4_fhexpired_recovery() to perform the lookup operation to
+try and recovery the expired vfh.
 
-*nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
-outright rejecting it.
+If the mount option is not enabled or the server FH_EXPIRE_TYPE
+doesn't have VOLATILE_ANY then client will convert the
+FHEXPIRED error into ESTALE since recovery isn't possible.
+
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/nfs4proc.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ebc5ee9..8ae5c49 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -277,6 +277,16 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 			nfs4_schedule_lease_recovery(clp);
+ 			goto wait_on_recovery;
++		case -NFS4ERR_FHEXPIRED:
++			if (server->flags & NFS_MOUNT_VFHRETRY)
++				if (server->fhexpiretype & NFS4_FH_VOLATILE_ANY) {
++					ret = nfs4_fhexpired_recovery(server, exception);
++					if (!ret)
++						ret = -EAGAIN;
++					break;
++				}
++			ret = -ESTALE;
++			break;
+ #if defined(CONFIG_NFS_V4_1)
+ 		case -NFS4ERR_BADSESSION:
+ 		case -NFS4ERR_BADSLOT:
+-- 
+1.7.4.4
+
