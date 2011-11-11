@@ -1,127 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:37919 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756697Ab1KJP0m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 10:26:42 -0500
-Received: by yenr9 with SMTP id r9so2025609yen.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 07:26:42 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH-v2 3/7] pnfsblock: move find lock page logic out of bl_write_pagelist
-Date: Thu, 10 Nov 2011 07:25:24 -0800
-Message-Id: <1320938728-3715-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
-References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:38606 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756025Ab1KKMwk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 07:52:40 -0500
+Date: Fri, 11 Nov 2011 07:52:30 -0500
+From: Jim Rees <rees@umich.edu>
+To: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
+ TCP
+Message-ID: <20111111125230.GA14491@umich.edu>
+References: <4EBAC88D.40902@citrix.com>
+ <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>
+ <4EBBB247.40805@citrix.com>
+ <2E3D3F87-479E-4096-B086-C8F83A0147B5@oracle.com>
+ <4EBBF35B.5000606@citrix.com>
+ <1320957784.11956.16.camel@lade.trondhjem.org>
+ <4EBCF98E.6050101@citrix.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EBCF98E.6050101@citrix.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also avoid unnecessary lock_page if page is handled by others.
+Andrew Cooper wrote:
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
- 1 files changed, 54 insertions(+), 24 deletions(-)
+  As for TCP timestamps; I have a Timestamp option in each TCP packet. 
+  Nothing appears corrupted.  What would I be looking for with corrupted
+  timestamps?
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 4ced0b0..e84bd9e 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -484,6 +484,55 @@ cleanup:
- 	return ret;
- }
- 
-+/* Find or create a zeroing page marked being writeback.
-+ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-+ * to indicate write out.
-+ */
-+static struct page *
-+bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
-+			struct pnfs_block_extent *cow_read)
-+{
-+	struct page *page;
-+	bool locked = false;
-+	page = find_get_page(inode->i_mapping, index);
-+	if (page)
-+		goto check_page;
-+
-+	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
-+	if (unlikely(!page)) {
-+		dprintk("%s oom\n", __func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	locked = true;
-+
-+check_page:
-+	/* PageDirty: Other will write this out
-+	 * PageWriteback: Other is writing this out
-+	 * PageUptodate: It was read before
-+	 */
-+	if (PageDirty(page) || PageWriteback(page)) {
-+		print_page(page);
-+		if (locked)
-+			unlock_page(page);
-+		page_cache_release(page);
-+		return NULL;
-+	}
-+
-+	if (!locked) {
-+		lock_page(page);
-+		locked = true;
-+		goto check_page;
-+	}
-+	if (!PageUptodate(page)) {
-+		/* New page, readin or zero it */
-+		init_page_for_write(page, cow_read);
-+	}
-+	set_page_writeback(page);
-+	unlock_page(page);
-+
-+	return page;
-+}
-+
- static enum pnfs_try_status
- bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- {
-@@ -543,32 +592,13 @@ fill_invalid_ext:
- 			dprintk("%s zero %dth page: index %lu isect %llu\n",
- 				__func__, npg_zero, index,
- 				(unsigned long long)isect);
--			page =
--			    find_or_create_page(wdata->inode->i_mapping, index,
--						GFP_NOFS);
--			if (!page) {
--				dprintk("%s oom\n", __func__);
--				wdata->pnfs_error = -ENOMEM;
-+			page = bl_find_get_zeroing_page(wdata->inode, index,
-+							cow_read);
-+			if (unlikely(IS_ERR(page))) {
-+				wdata->pnfs_error = PTR_ERR(page);
- 				goto out;
--			}
--
--			/* PageDirty: Other will write this out
--			 * PageWriteback: Other is writing this out
--			 * PageUptodate: It was read before
--			 * sector_initialized: already written out
--			 */
--			if (PageDirty(page) || PageWriteback(page)) {
--				print_page(page);
--				unlock_page(page);
--				page_cache_release(page);
-+			} else if (page == NULL)
- 				goto next_page;
--			}
--			if (!PageUptodate(page)) {
--				/* New page, readin or zero it */
--				init_page_for_write(page, cow_read);
--			}
--			set_page_writeback(page);
--			unlock_page(page);
- 
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
- 						       PAGE_CACHE_SECTORS);
--- 
-1.7.1.262.g5ef3d
-
+I had a faulty NAT once that was changing the ts ecr in the syn ack packet,
+causing the other end to send rst.  I can't remember if wireshark flagged
+this as bad or I found it manually.  I do remember that there was no log
+message from the linux kernel.  I'll bet there's some tool that will read a
+pcap and verify the timestamps.
