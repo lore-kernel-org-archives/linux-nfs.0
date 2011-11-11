@@ -1,76 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:38861 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755117Ab1KNLPD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 06:15:03 -0500
-Received: by fagn18 with SMTP id n18so2879237fag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 03:15:02 -0800 (PST)
-Message-ID: <4EC0F831.2060200@tonian.com>
-Date: Mon, 14 Nov 2011 13:14:57 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Benny Halevy <benny@tonian.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
-References: <4EBC5538.7010002@panasas.com>
-In-Reply-To: <4EBC5538.7010002@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from e34.co.us.ibm.com ([32.97.110.152]:54590 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754032Ab1KKXGR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:06:17 -0500
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 11 Nov 2011 16:06:16 -0700
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5oY1031488
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:51 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5oQv003209
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com, Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH/RFC 4/7] Save root file handle in nfs_server.
+Date: Fri, 11 Nov 2011 18:04:29 -0500
+Message-Id: <1321052673-22171-5-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-11 00:50, Boaz Harrosh wrote:
-> 
-> If we had a layout on the file the nfs4_file would be referenced and we should
-> have found it. Since we don't then it means all layouts where ROC and at this
-> point we returned all of them on file close.
-> 
-> So why does the Linux wonderful forgetfull client returnes it's ROC layouts on
-> inode evict() (I hit this on umount at client). Actually this is on me, because
-> it is a bug in Generic client code, but can only manifest with pnf-obj after an
-> IO error.
-> 
-> Sign-off-by: Boaz Harrosh
-> ---
->  fs/nfsd/nfs4pnfsd.c |   13 ++++++++++++-
->  1 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-> index f30fa65..eb4a044 100644
-> --- a/fs/nfsd/nfs4pnfsd.c
-> +++ b/fs/nfsd/nfs4pnfsd.c
-> @@ -1109,7 +1109,15 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
->  			printk(KERN_ERR "%s: RETURN_FILE: no nfs4_file for "
->  				"ino %p:%lu\n",
->  				__func__, ino, ino ? ino->i_ino : 0L);
-> -			goto out;
-> +			/* If we had a layout on the file the nfs4_file would
-> +			 * be referenced and we should have found it. Since we
-> +			 * don't then it means all layouts where ROC and at this
+Save each FSID's root directory file handle in the
+export's local nfs_server structure on the client.
+This FH can later be used by the migration recovery
+logic.
 
-I'll s/where/were/
+NB: Saving the root FH is done only for NFSv4 mounts.
 
-> +			 * point we returned all of them on file close.
-> +			 * TODO:
-> +			 * Benny this is what Bruce calls a client spam, we might
-> +			 * want to degrade the print level to dprintk.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/client.c           |    1 +
+ fs/nfs/getroot.c          |    7 +++++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 9 insertions(+), 0 deletions(-)
 
-Agreed, if this case is not an exception no need to shout about it.
-I'll make this change.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 44dedfe..641f69f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1108,6 +1108,7 @@ void nfs_free_server(struct nfs_server *server)
+ 	nfs_put_client(server->nfs_client);
+ 
+ 	nfs_free_iostats(server->io_stats);
++	nfs_free_fhandle(server->rootfh);
+ 	bdi_destroy(&server->backing_dev_info);
+ 	kfree(server);
+ 	nfs_release_automount_timer();
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index dcb6154..51ca63b 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -232,6 +232,13 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 		ret = ERR_CAST(inode);
+ 		goto out;
+ 	}
++	server->rootfh = nfs_alloc_fhandle();
++	if (server->rootfh == NULL) {
++		dprintk("nfs_get_root: alloc rootfh failed\n");
++		ret = ERR_PTR(-ENOMEM);
++		goto out;
++	}
++	nfs_copy_fh(server->rootfh, mntfh);
+ 
+ 	error = nfs_superblock_set_dummy_root(sb, inode);
+ 	if (error != 0) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 706c92b..5261fa1 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -157,6 +157,7 @@ struct nfs_server {
+ 	struct list_head	layouts;
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
++	struct nfs_fh		*rootfh;
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 
+-- 
+1.7.4.4
 
-Benny
-
-> +			 */
-> +			goto out_no_fs_call;
->  		}
->  
->  		/* Check the stateid */
-> @@ -1163,6 +1173,7 @@ out:
->  	/* call exported filesystem layout_return (ignore return-code) */
->  	fs_layout_return(sb, ino, lrp, 0, recall_cookie);
->  
-> +out_no_fs_call:
->  	dprintk("pNFS %s: exit status %d \n", __func__, status);
->  	return status;
->  }
