@@ -1,43 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15978 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43077 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755713Ab1KDRcg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 13:32:36 -0400
-Date: Fri, 4 Nov 2011 13:32:30 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfs: when attempting to open a directory, fall back
- on normal lookup (try #4)
-Message-ID: <20111104133230.26f79122@tlielax.poochiereds.net>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA9337@SACMVEXC2-PRD.hq.netapp.com>
-References: <1320413608-17032-1-git-send-email-jlayton@redhat.com>
-	<1320413608-17032-2-git-send-email-jlayton@redhat.com>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA9337@SACMVEXC2-PRD.hq.netapp.com>
+	id S1753644Ab1KLA1z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 19:27:55 -0500
+Message-ID: <1321057673.8733.13.camel@lade.trondhjem.org>
+Subject: Re: [PATCH/RFC 5/7] Added VFH FHEXPIRED recovery functions.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Matthew Treinish <treinish@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 11 Nov 2011 19:27:53 -0500
+In-Reply-To: <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+	 <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 4 Nov 2011 10:04:52 -0700
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
+> +static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
+> +	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+> +{
+> +	struct nfs4_exception exception = { };
+> +	int err;
+> +	do {
+> +		int status;
+> +
+> +		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+> +		switch (status) {
+> +		case -NFS4ERR_BADNAME:
+> +			return -ENOENT;
+> +		case -NFS4ERR_MOVED:
+> +			err = nfs4_get_referral(dir, name, fattr, fhandle);
+> +			break;
+> +		case -NFS4ERR_FHEXPIRED:
+> +			return -NFS4ERR_FHEXPIRED;
+> +		case -NFS4ERR_WRONGSEC:
+> +			nfs_fixup_secinfo_attributes(fattr, fhandle);
 
-> 
-> Just one last request: can you reverse the order of the patches so that
-> this one becomes 1/2? That would lose the dependency on the first patch,
-> making the 'Cc: stable' bit more palatable.
-> 
-> BTW: it is now 'stable@vger.kernel.org'...
-> 
-> Also note that I'm quite ready to send these 2 patches as a post-rc1
-> bugfix. Doing so shouldn't be a problem for Linus, since this is a
-> regression w.r.t. older NFSv4 behaviour.
-> 
+case -NFS4ERR_ACCESS:
+                 ???????
 
-Good point on the reordering...
+> +		}
+> +		err = nfs4_handle_exception(NFS_SERVER(dir),
+> +					status, &exception);
+> +	} while (exception.retry);
+> +	return err;
+> +}
+> +
 
-Resent and the Cc: stable line is now fixed.
-
-Thanks,
+What execution context is this function going to be running under and
+what guarantees that it actually has the right file access credentials
+to allow it to perform a lookup?
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
