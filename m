@@ -1,186 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:48577 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932832Ab1KDRb1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 13:31:27 -0400
-Received: by vws1 with SMTP id 1so2106332vws.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 10:31:26 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs: when attempting to open a directory, fall back on normal lookup (try #5)
-Date: Fri,  4 Nov 2011 13:31:21 -0400
-Message-Id: <1320427882-9102-1-git-send-email-jlayton@redhat.com>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:53943 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752839Ab1KLDp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Nov 2011 22:45:57 -0500
+Received: from /spool/local
+	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Fri, 11 Nov 2011 22:45:40 -0500
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAC3jb3u297612
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 22:45:38 -0500
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAC3jaTS026067
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 20:45:36 -0700
+Received: from malahal ([9.47.25.235])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pAC3janJ026003
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 20:45:36 -0700
+Date: Fri, 11 Nov 2011 19:45:34 -0800
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 5/7] Added VFH FHEXPIRED recovery functions.
+Message-ID: <20111112034534.GB15724@us.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321057673.8733.13.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1321057673.8733.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit d953126 changed how nfs_atomic_lookup handles an -EISDIR return
-from an OPEN call. Prior to that patch, that caused the client to fall
-back to doing a normal lookup. When that patch went in, the code began
-returning that error to userspace. The d_revalidate codepath however
-never had the corresponding change, so it was still possible to end up
-with a NULL ctx->state pointer after that.
+Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
+> On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
+> > +static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
+> > +	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+> > +{
+> > +	struct nfs4_exception exception = { };
+> > +	int err;
+> > +	do {
+> > +		int status;
+> > +
+> > +		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+> > +		switch (status) {
+> > +		case -NFS4ERR_BADNAME:
+> > +			return -ENOENT;
+> > +		case -NFS4ERR_MOVED:
+> > +			err = nfs4_get_referral(dir, name, fattr, fhandle);
+> > +			break;
+> > +		case -NFS4ERR_FHEXPIRED:
+> > +			return -NFS4ERR_FHEXPIRED;
+> > +		case -NFS4ERR_WRONGSEC:
+> > +			nfs_fixup_secinfo_attributes(fattr, fhandle);
+> 
+> case -NFS4ERR_ACCESS:
+>                  ???????
+> 
+> > +		}
+> > +		err = nfs4_handle_exception(NFS_SERVER(dir),
+> > +					status, &exception);
+> > +	} while (exception.retry);
+> > +	return err;
+> > +}
+> > +
+> 
+> What execution context is this function going to be running under and
+> what guarantees that it actually has the right file access credentials
+> to allow it to perform a lookup?
 
-That patch caused a regression. When we attempt to open a directory that
-does not have a cached dentry, that open now errors out with EISDIR. If
-you attempt the same open with a cached dentry, it will succeed.
+I imagine, it is in the context of the process that received FHEXPIRED
+error. It may not have credentials to perform a lookup on parent
+directories. If it doesn't, that would end up with ESTALE with Matt's
+patches, right Matt?
 
-Fix this by reverting the change in nfs_atomic_lookup and allowing
-attempts to open directories to fall back to a normal lookup
-
-Also, add a NFSv4-specific f_ops->open routine that just returns
--ENOTDIR. This should never be called if things are working properly,
-but if it ever is, then the dprintk may help in debugging.
-
-To facilitate this, a new file_operations field is also added to the
-nfs_rpc_ops struct.
-
-Cc: stable@kernel.org
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/dir.c            |    2 +-
- fs/nfs/file.c           |   32 ++++++++++++++++++++++++++++++++
- fs/nfs/inode.c          |    2 +-
- fs/nfs/nfs3proc.c       |    1 +
- fs/nfs/nfs4proc.c       |    1 +
- fs/nfs/proc.c           |    1 +
- include/linux/nfs_fs.h  |    3 +++
- include/linux/nfs_xdr.h |    1 +
- 8 files changed, 41 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index b238d95..ac28990 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1468,12 +1468,12 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
- 				res = NULL;
- 				goto out;
- 			/* This turned out not to be a regular file */
-+			case -EISDIR:
- 			case -ENOTDIR:
- 				goto no_open;
- 			case -ELOOP:
- 				if (!(nd->intent.open.flags & O_NOFOLLOW))
- 					goto no_open;
--			/* case -EISDIR: */
- 			/* case -EINVAL: */
- 			default:
- 				res = ERR_CAST(inode);
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 91c01f0..fedf176 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -889,3 +889,35 @@ static int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
- 			file->f_path.dentry->d_name.name, arg);
- 	return -EINVAL;
- }
-+
-+#ifdef CONFIG_NFS_V4
-+static int
-+nfs4_file_open(struct inode *inode, struct file *filp)
-+{
-+	/*
-+	 * NFSv4 opens are handled in d_lookup and d_revalidate. If we get to
-+	 * this point, then something is very wrong
-+	 */
-+	dprintk("NFS: %s called! inode=%p filp=%p\n", __func__, inode, filp);
-+	return -ENOTDIR;
-+}
-+
-+const struct file_operations nfs4_file_operations = {
-+	.llseek		= nfs_file_llseek,
-+	.read		= do_sync_read,
-+	.write		= do_sync_write,
-+	.aio_read	= nfs_file_read,
-+	.aio_write	= nfs_file_write,
-+	.mmap		= nfs_file_mmap,
-+	.open		= nfs4_file_open,
-+	.flush		= nfs_file_flush,
-+	.release	= nfs_file_release,
-+	.fsync		= nfs_file_fsync,
-+	.lock		= nfs_lock,
-+	.flock		= nfs_flock,
-+	.splice_read	= nfs_file_splice_read,
-+	.splice_write	= nfs_file_splice_write,
-+	.check_flags	= nfs_check_flags,
-+	.setlease	= nfs_setlease,
-+};
-+#endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f36543a..bf3a57b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -292,7 +292,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		 */
- 		inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->file_inode_ops;
- 		if (S_ISREG(inode->i_mode)) {
--			inode->i_fop = &nfs_file_operations;
-+			inode->i_fop = NFS_SB(sb)->nfs_client->rpc_ops->file_ops;
- 			inode->i_data.a_ops = &nfs_file_aops;
- 			inode->i_data.backing_dev_info = &NFS_SB(sb)->backing_dev_info;
- 		} else if (S_ISDIR(inode->i_mode)) {
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index cc1d1e1..9194395 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -854,6 +854,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.dentry_ops	= &nfs_dentry_operations,
- 	.dir_inode_ops	= &nfs3_dir_inode_operations,
- 	.file_inode_ops	= &nfs3_file_inode_operations,
-+	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs3_proc_get_root,
- 	.getattr	= nfs3_proc_getattr,
- 	.setattr	= nfs3_proc_setattr,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6c3db05..a17af37 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6248,6 +6248,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.dentry_ops	= &nfs4_dentry_operations,
- 	.dir_inode_ops	= &nfs4_dir_inode_operations,
- 	.file_inode_ops	= &nfs4_file_inode_operations,
-+	.file_ops	= &nfs4_file_operations,
- 	.getroot	= nfs4_proc_get_root,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4dda8b5..0c672588 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -711,6 +711,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.dentry_ops	= &nfs_dentry_operations,
- 	.dir_inode_ops	= &nfs_dir_inode_operations,
- 	.file_inode_ops	= &nfs_file_inode_operations,
-+	.file_ops	= &nfs_file_operations,
- 	.getroot	= nfs_proc_get_root,
- 	.getattr	= nfs_proc_getattr,
- 	.setattr	= nfs_proc_setattr,
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 60a137b..062a3d0 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -409,6 +409,9 @@ extern const struct inode_operations nfs_file_inode_operations;
- extern const struct inode_operations nfs3_file_inode_operations;
- #endif /* CONFIG_NFS_V3 */
- extern const struct file_operations nfs_file_operations;
-+#ifdef CONFIG_NFS_V4
-+extern const struct file_operations nfs4_file_operations;
-+#endif /* CONFIG_NFS_V4 */
- extern const struct address_space_operations nfs_file_aops;
- extern const struct address_space_operations nfs_dir_aops;
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index c74595b..2a7c533 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1192,6 +1192,7 @@ struct nfs_rpc_ops {
- 	const struct dentry_operations *dentry_ops;
- 	const struct inode_operations *dir_inode_ops;
- 	const struct inode_operations *file_inode_ops;
-+	const struct file_operations *file_ops;
- 
- 	int	(*getroot) (struct nfs_server *, struct nfs_fh *,
- 			    struct nfs_fsinfo *);
--- 
-1.7.6.4
+--Malahal.
 
