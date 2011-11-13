@@ -1,62 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43077 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48399 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753644Ab1KLA1z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 19:27:55 -0500
-Message-ID: <1321057673.8733.13.camel@lade.trondhjem.org>
-Subject: Re: [PATCH/RFC 5/7] Added VFH FHEXPIRED recovery functions.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Matthew Treinish <treinish@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 11 Nov 2011 19:27:53 -0500
-In-Reply-To: <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
+	id S1752320Ab1KMQmv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Nov 2011 11:42:51 -0500
+Date: Sun, 13 Nov 2011 11:42:40 -0500
+To: NeilBrown <neilb@suse.de>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20111113164240.GB28574@fieldses.org>
 References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	 <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <1321056809.8733.2.camel@lade.trondhjem.org>
+ <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111113145400.6c7a9be3@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
-> +static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
-> +	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-> +{
-> +	struct nfs4_exception exception = { };
-> +	int err;
-> +	do {
-> +		int status;
-> +
-> +		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
-> +		switch (status) {
-> +		case -NFS4ERR_BADNAME:
-> +			return -ENOENT;
-> +		case -NFS4ERR_MOVED:
-> +			err = nfs4_get_referral(dir, name, fattr, fhandle);
-> +			break;
-> +		case -NFS4ERR_FHEXPIRED:
-> +			return -NFS4ERR_FHEXPIRED;
-> +		case -NFS4ERR_WRONGSEC:
-> +			nfs_fixup_secinfo_attributes(fattr, fhandle);
+On Sun, Nov 13, 2011 at 02:54:00PM +1100, NeilBrown wrote:
+> So if you know the filesystem will only return FHEXPIRED for filehandles
+> belonging to files that cannot be renamed, then it is perfectly reasonable to
+> repeat the name lookup to re-access the file after the server forgets about
+> an old filehandle.  The mount option is how you communicate this knowledge,
+> because the RFC doesn't provide a way to communicate it.
 
-case -NFS4ERR_ACCESS:
-                 ???????
+What about http://tools.ietf.org/html/rfc5661#section-11.11
+STATUS4_FIXED?
 
-> +		}
-> +		err = nfs4_handle_exception(NFS_SERVER(dir),
-> +					status, &exception);
-> +	} while (exception.retry);
-> +	return err;
-> +}
-> +
-
-What execution context is this function going to be running under and
-what guarantees that it actually has the right file access credentials
-to allow it to perform a lookup?
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
