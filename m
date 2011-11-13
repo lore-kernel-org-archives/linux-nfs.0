@@ -1,81 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51719 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751230Ab1KCUov (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 16:44:51 -0400
-Date: Thu, 3 Nov 2011 16:44:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
- cache
-Message-ID: <20111103204449.GA27393@fieldses.org>
-References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
- <20111101202715.GB1891@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
- <20111101204325.522c35b3@corrin.poochiereds.net>
- <20111102012315.GA5532@fieldses.org>
- <20111102070742.5354d83c@tlielax.poochiereds.net>
- <20111102144657.GD7721@fieldses.org>
- <20111102115453.7e81168f@corrin.poochiereds.net>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:44649 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751937Ab1KMNpt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Nov 2011 08:45:49 -0500
+Received: by bke11 with SMTP id 11so4920959bke.19
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Nov 2011 05:45:48 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111102115453.7e81168f@corrin.poochiereds.net>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20111113145400.6c7a9be3@notabene.brown>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+	<1321056809.8733.2.camel@lade.trondhjem.org>
+	<20111112144953.GA3740@infradead.org>
+	<20111113145400.6c7a9be3@notabene.brown>
+Date: Sun, 13 Nov 2011 14:45:48 +0100
+Message-ID: <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NeilBrown <neilb@suse.de>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm feeling dense.
+I have a server which runs on top of hadoop. The problem with hadoop
+is that there is no way to have persistent file handles. I am
+currently working on a way to do that - either simulate them or add a
+support for unique file id to hadoop. If linux client will support
+volatile file handles then I can stop inventing some workarounds.
 
-On Wed, Nov 02, 2011 at 11:54:53AM -0400, Jeff Layton wrote:
-> Yes, I think it is different. When we truncate the file to 0 then we
-> don't care if another write races in.
+Tigran.
 
-	Client 1		Client 2
-	--------		--------
-
-	setattr size to 0
-				write to file
-	get change attribute
-
-If we decide not to invalidate the cache here, then we miss Client 2's
-write.  The same is true if we set the size to something other than 0.
-
-There's a second possible race when Client 2's write comes before the
-setattr, and it's true that that race doesn't matter in the size-0 case
-and does in the other.
-
-But if we were doing a write instead of a setattr, we'd ignore that
-second race.
-
-And I don't understand why something like ftruncate should be treated
-differently from write.  In either case we're modifying a file while
-holding a write open, and I'd expect us to assume in both cases that
-nobody else is doing the same.
-
-> We're invalidating all of the
-> pages we have cached for the file at that point anyway. If we try to
-> reread the file afterward we're going to have to fetch the data from
-> the server regardless.
-> 
-> I guess my main point is that we won't have any cached data after a
-> truncate to 0, so there's no need to worry about ensuring that the
-> cache is eventually invalidated after that. The VFS-level truncate on
-> the client is going to take care of that for us anyway. That allows us
-> to optimize for this special (but common) case.
-> 
-> A truncate to a non-zero size is different however because we may still
-> have lingering cached pages. We will need to invalidate those if the
-> server sends pre-op attrs
-
-There are no pre-op attrs: the Linux v4 client's write compound is
-putfh, write, getattr, with no getattr before the write, and the
-nfs_post_op_update_inode_force_wcc() call in nfs4_write_done_cb() makes
-the client pretends there were pre-op attributes the same as whatever it
-currently has cached in the inode--if I understand it right.
-
---b.
-
-> that indicate that something else happened
-> prior to the truncate, or if the server doesn't send pre-op attrs at
-> all.
+On Sun, Nov 13, 2011 at 4:54 AM, NeilBrown <neilb@suse.de> wrote:
+> On Sat, 12 Nov 2011 09:49:53 -0500 Christoph Hellwig <hch@infradead.org>
+> wrote:
+>
+>> On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
+>> > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote:
+>> > > This patch series implements client side support for volatile file handle
+>> > > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
+>> > > test the client you either need a server that supports volatile file handles or
+>> > > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
+>> > > NFSERR_STALE. (See the last patch in the series)
+>> >
+>> > WHY do we want to support this kind of "feature"? As you said, the RFC
+>> > doesn't actually help in figuring out how this crap is supposed to work
+>> > in practice, so why do we even consider starting to give a damn?
+>>
+>> *nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
+>> outright rejecting it.
+>
+> Hence the suggested mount option.
+>
+> A server might not be able to provide stable file handles, but can ensure
+> that files don't get renamed - for these filesystems, the name is a
+> reliable stable handle for the file (it just doesn't fit in the NFSv4 file
+> handle structure).
+>
+> So if you know the filesystem will only return FHEXPIRED for filehandles
+> belonging to files that cannot be renamed, then it is perfectly reasonable to
+> repeat the name lookup to re-access the file after the server forgets about
+> an old filehandle.  The mount option is how you communicate this knowledge,
+> because the RFC doesn't provide a way to communicate it.
+>
+> NeilBrown
+>
+>
+>
