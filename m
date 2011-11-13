@@ -1,125 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:55324 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756620Ab1KROfE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 09:35:04 -0500
-Message-ID: <4EC66D12.2090505@Calva.COM>
-Date: Fri, 18 Nov 2011 15:34:58 +0100
-From: John Hughes <john@Calva.COM>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket expiry.
- Try 2 with added man pages.
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:39867 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751388Ab1KMVIJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Nov 2011 16:08:09 -0500
+Date: Mon, 14 Nov 2011 08:07:45 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20111114080745.57083bfe@notabene.brown>
+In-Reply-To: <20111113163632.GA28574@fieldses.org>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+	<1321056809.8733.2.camel@lade.trondhjem.org>
+	<20111112144953.GA3740@infradead.org>
+	<20111113145400.6c7a9be3@notabene.brown>
+	<CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+	<20111113163632.GA28574@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/tz/QxLdoYLLg_tRfqKK/cM6"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Description: Add "-e" (ticket expiry is error) option to rpc.gssd
-  In kernels starting around 2.6.34 the nfs4 server will block all I/O
-  when a user ticket expires.  In earlier kernels the I/O would fail
-  with an EACCESS error.  This patch adds a "-e" option to rpc.gssd
-  which allow the earlier behaviour (EKEYEXPIRED is converted to
-  EACCESS).  This behaviour is particularly useful when user home
-  directories are nfs4 mounted with krb5 security - if the user is
-  absent from their workstation for long enough for the ticket to
-  expire a new ticket will be obtained (via pam_krb5) by the screen
-  unlock process.
-Author: John Hughes<john@calva.com>
-Signed-off-by: John Hughes<john@calva.com>
-Bug-Debian: http://bugs.debian.org/648155
-Bug-Ubuntu: https://launchpad.net/bugs/648155
+--Sig_/tz/QxLdoYLLg_tRfqKK/cM6
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
---- nfs-utils-1.2.5.orig/utils/gssd/gssd_proc.c
-+++ nfs-utils-1.2.5/utils/gssd/gssd_proc.c
-@@ -1007,7 +1007,7 @@ process_krb5_upcall(struct clnt_info *cl
-  		/* Tell krb5 gss which credentials cache to use */
-  		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
-  			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
--			if (err == -EKEYEXPIRED)
-+			if (err == -EKEYEXPIRED&&  !ticket_expiry_is_error)
-  				downcall_err = -EKEYEXPIRED;
-  			else if (!err)
-  				create_resp = create_auth_rpc_client(clp,&rpc_clnt,&auth, uid,
---- nfs-utils-1.2.5.orig/utils/gssd/gssd.c
-+++ nfs-utils-1.2.5/utils/gssd/gssd.c
-@@ -63,6 +63,7 @@ int  use_memcache = 0;
-  int  root_uses_machine_creds = 1;
-  unsigned int  context_timeout = 0;
-  char *preferred_realm = NULL;
-+int ticket_expiry_is_error = 0;
+On Sun, 13 Nov 2011 11:36:32 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-  void
-  sig_die(int signal)
-@@ -85,7 +86,7 @@ sig_hup(int signal)
-  static void
-  usage(char *progname)
-  {
--	fprintf(stderr, "usage: %s [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-+	fprintf(stderr, "usage: %s [-e] [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
-  		progname);
-  	exit(1);
-  }
-@@ -102,8 +103,11 @@ main(int argc, char *argv[])
-  	char *progname;
+> On Sun, Nov 13, 2011 at 02:45:48PM +0100, Tigran Mkrtchyan wrote:
+> > I have a server which runs on top of hadoop. The problem with hadoop
+> > is that there is no way to have persistent file handles. I am
+> > currently working on a way to do that - either simulate them or add a
+> > support for unique file id to hadoop. If linux client will support
+> > volatile file handles then I can stop inventing some workarounds.
+>=20
+> I might call that "fixing" rather than inventing workarounds.
+>=20
+> Our of curiosity: if we really wanted to support such filesystems, what
+> would we need in the protocol?  Just saying "filehandles aren't stable,
+> deal with it" seems insufficient.=20
 
-  	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, "efvrmnMp:k:d:t:R:")) != -1) {
-  		switch (opt) {
-+			case 'e':
-+				ticket_expiry_is_error = 1;
-+				break;
-  			case 'f':
-  				fg = 1;
-  				break;
---- nfs-utils-1.2.5.orig/utils/gssd/gssd.h
-+++ nfs-utils-1.2.5/utils/gssd/gssd.h
-@@ -66,6 +66,7 @@ extern int			use_memcache;
-  extern int			root_uses_machine_creds;
-  extern unsigned int 		context_timeout;
-  extern char			*preferred_realm;
-+extern int			ticket_expiry_is_error;
+1/ no guarantees if the file is not 'open'
+2/ two possible responses to FHEXPIRED:
+    a/ perform a GETATTR and request the 'filehandle' attribute.  Client th=
+en
+       uses that filehandle instead.
+    b/ perform LOOKUP on parent filehandle with same name as before, and use
+       the resulting filehandle.
+   Server specifies which somehow (different error code?  magic attribute
+   flag somewhere?  doesn't really matter)
 
-  TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
+If a server has objects that are never renamed, it can easily use volatile
+file handles.
+If a server has objects which can be renamed and wants to use volatile file
+handles, then if such an object is open and is about to be renamed, it must
+first log to stable storage some mapping to allow it to access the file from
+the old volatile file handle.  And of course it cannot allow renames during
+the grace period, but I think we already have that.
+Also, if the VFH is such that it will be  lost on a reboot, the server must
+log it to stable storage before allowing an open.
 
-diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-index 073379d..e2b7b7a 100644
---- a/utils/gssd/gssd.man
-+++ b/utils/gssd/gssd.man
-@@ -6,7 +6,7 @@
-  .SH NAME
-  rpc.gssd \- rpcsec_gss daemon
-  .SH SYNOPSIS
--.B "rpc.gssd [-f] [-n] [-k keytab] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
-+.B "rpc.gssd [-e] [-f] [-n] [-k keytab] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
-  .SH DESCRIPTION
-  The rpcsec_gss protocol gives a means of using the gss-api generic security
-  api to provide security for protocols using rpc (in particular, nfs).  Before
-@@ -20,6 +20,25 @@ daemon uses files in the rpc_pipefs filesystem to communicate with the kernel.
+>=20
+> Say there was some way for the client to indicate which filehandles it
+> currently has in use, and some way for the server to ask the client to
+> return in-use filehandles if there are too many (like DELEG_RECALL_ANY).
+> Then the server could at least place a limit on the number of
+> filehandles that it had to guarantee persistent.
+>=20
+> And/or the client could get a callback on rename/link/unlink.  Bah.
+>=20
+> Would any of that actually be easier than implementing persistent file
+> handles?
 
-  .SH OPTIONS
-  .TP
-+.TO
-+.B -e
-+Versions of
-+.B rpc.gssd
-+before 1.2.2 reported ticket expiry to the kernel as
-+.B EACCESS
-+(permission denied).  More recent versions return
-+.B EKEYEXPIRED
-+which causes recent kernels to block all I/O to a nfs mount until a new
-+key is obtained.  The
-+.B -e
-+option restores the old behaviour.
-+
-+This is useful in the common case that the user home directories are
-+nfs mounted.  Without the
-+.B -e
-+option the user may have difficulty getting a new ticket as she will
-+only find out about the expiry of the old one when her processes hang.
-+.TP
-  .B -f
-  Runs
-  .B rpc.gssd
+Easier for whom?  Should NFSv4 be designed to make life easier for filesyst=
+em
+implementers, or easier for NFS implementers :-?
 
+While I don't have concrete examples I would not be surprised if there were
+filesystems where implementing limited persistence was practical while
+implementing universal persistence was not.
+
+
+NeilBrown
+
+
+--Sig_/tz/QxLdoYLLg_tRfqKK/cM6
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBTsAxpznsnt1WYoG5AQLxAQ//S1rR1Ys3CC9HVEXLcBvSVCKnWD+sf+Y/
+jwi7DHXeVTgceYYpkpoksnJ7afCclAQ0UN4P5WRPnlX1297kdNQ22ma3bM2p+lXC
+ClKy1pgvCfN7ta1+ZBOHq7N6H2FdF7a+QEtTbG10LKPJe6vS71kvtphyebvduIsg
+JyaLOj3a4h+wlVobelNrtPn/SZvRdVcgTX9x6Dqf1M/U6f4eckJ/y1NeC0tkutBG
+tU1yFHSM/7AOjxAdOypAry2Mya5dtdJkpWr5UT5r4om3LWe2Oy6IgyFEzJfOJl19
+iChfxN5/7bp1ul4dfgoHgwAZjblwuzKD9IM/izBp1+yKmiewrC7qZMO5teJvZyil
+JLeF8R2d43QV0Rc4JTTnSc/iYrsdfLixnKdI5p5iz6YK8icJXu/G+c6Fd3Sfr62G
+KSt6AWSZgyjrn7lQBD4d1Ko43a6loSbgwPveaK88lF/KJN+gWNK45kBbK0rQhYZG
+TJZwkhZ58CKDwHGsPi7wos+n9v3VhT5hMNNqvqY+RUadht5W+sQI/jMuPcpwMnmn
+6b2NLA/n7IpWs7sqNLqK/gV0298WJ80zkTPQT3od17FbiLj1npaKvMHD/7NF6+kZ
+ymblmWMA9UXTJIDS38y7kSzg4sEldtOyIxidb0R7F199AAMIbS3FTGhkqwyifauc
+A9kGd5TWqYM=
+=ez0/
+-----END PGP SIGNATURE-----
+
+--Sig_/tz/QxLdoYLLg_tRfqKK/cM6--
