@@ -1,102 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33154 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:38195 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754670Ab1KWSAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Nov 2011 13:00:17 -0500
-Message-ID: <4ECD3441.80405@parallels.com>
-Date: Wed, 23 Nov 2011 21:58:25 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/6] SUNRPC: make RPC clients use network-namespace-aware
- PipeFS routines
-References: <20111123104945.11077.10270.stgit@localhost6.localdomain6> <20111123163632.GB30672@fieldses.org>
-In-Reply-To: <20111123163632.GB30672@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1753216Ab1KMDyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 12 Nov 2011 22:54:12 -0500
+Date: Sun, 13 Nov 2011 14:54:00 +1100
+From: NeilBrown <neilb@suse.de>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20111113145400.6c7a9be3@notabene.brown>
+In-Reply-To: <20111112144953.GA3740@infradead.org>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+	<1321056809.8733.2.camel@lade.trondhjem.org>
+	<20111112144953.GA3740@infradead.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/A_VzDHN9BdS8JaXsy0pgKp+"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-23.11.2011 20:36, J. Bruce Fields пишет:
-> On Wed, Nov 23, 2011 at 02:51:10PM +0300, Stanislav Kinsbursky wrote:
->> This patch set was created in context of clone of git
->> branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
->> tag: v3.1
->>
->> This patch set depends on previous patch sets titled:
->> 1) "SUNRPC: initial part of making pipefs work in net ns"
->> 2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
->>
->> This patch set is a first part of reworking SUNPRC PipeFS users.
->> It makes SUNRPC clients using PipeFS nofitications for directory and GSS pipes
->> dentries creation. With this patch set RPC clients and GSS auth creations
->> routines doesn't force SUNRPC PipeFS mount point creation which actually means,
->> that they now can work without PipeFS dentries.
->
-> I'm not following very well.  (My fault, I haven't been paying
-> attention.)  Could you summarize the itended behavior of pipefs after
-> all this is done?
->
-> So there's a separate superblock (and separate dentries) for each
-> namespace?
->
+--Sig_/A_VzDHN9BdS8JaXsy0pgKp+
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Yes, you right.
-So, here is a brief summary of what will be at the end:
+On Sat, 12 Nov 2011 09:49:53 -0500 Christoph Hellwig <hch@infradead.org>
+wrote:
 
-1) PipeFS superblock will be per net ns.
+> On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
+> > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote:=20
+> > > This patch series implements client side support for volatile file ha=
+ndle
+> > > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcac=
+he. To
+> > > test the client you either need a server that supports volatile file =
+handles or=20
+> > > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
+> > > NFSERR_STALE. (See the last patch in the series)
+> >=20
+> > WHY do we want to support this kind of "feature"? As you said, the RFC
+> > doesn't actually help in figuring out how this crap is supposed to work
+> > in practice, so why do we even consider starting to give a damn?
+>=20
+> *nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
+> outright rejecting it.
 
-2) Superblock holds net ns, which is taken from current. Struct net will have 
-link ot pipefs superblock (it can be NULL, if PipeFS wasn't mounted yet or 
-already unmounted).
+Hence the suggested mount option.
 
-3) Notifications will be send on superblock creation and destruction.
+A server might not be able to provide stable file handles, but can ensure
+that files don't get renamed - for these filesystems, the name is a
+reliable stable handle for the file (it just doesn't fit in the NFSv4 file
+handle structure).
 
-4) All kernel mount point creation and destruction calls (rpc_get_mount() and 
-rpc_put_mount()) will be removed. I.e. this superblock will be created only from 
-user-space.
+So if you know the filesystem will only return FHEXPIRED for filehandles
+belonging to files that cannot be renamed, then it is perfectly reasonable =
+to
+repeat the name lookup to re-access the file after the server forgets about
+an old filehandle.  The mount option is how you communicate this knowledge,
+because the RFC doesn't provide a way to communicate it.
 
-5) Kernel pipes and dentries will be created or destroyed:
-1. During per-net operations (only for static NFS stuff: dns_resolve cache, pnfs 
-blocklayout and idmap pipes).
-2. On notification events (all directories, files and pipes in proper 
-callbacks). Notification subscribers:
-a. rpc clients (responsible for client dentries and gss pipes creation),
-b. nfs clients (responsible nfs idmap pipes),
-c. nfs dns_resolve cache,
-d. pnfs blocklayout pipes,
-
-6) PipeFS dentries creation logic:
-a) All directories and files creators - will try to create them as usual. But if 
-fail - then no problem here. I.e. dentries will be created on PipeFS mount 
-notification call.
-b) Pipes creators - will create new structure rpc_pipe (all pipe stuff from rpc 
-inode) nad then try to create pipe denties. If fail - then, again, no problem. 
-Dentries will be be created on PipeFS mount notification call.
+NeilBrown
 
 
-Almost all (exept 5.2.b - forgot about it during debasing and resending) is done 
-and ready to send.
 
-> What decides which clients are visible in which network namespaces?
->
+--Sig_/A_VzDHN9BdS8JaXsy0pgKp+
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-Clients dentries will be created in proper superblock from the beginning. I.e. 
-rpc clients transports have struct net reference. NFS clients will have such 
-reference too. Struct net will have reference to pipefs superblock.
-Currently, for dentry creation all we need is parent dentry. Some of creators 
-(like GSS pipes) takes parent dentry from associated struct (like rpc_clnt). For 
-others parent dentry can be found by simple d_lookup() starting from sb->root 
-(reminder: sb can be taken from net).
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
+iQIVAwUBTr8/WDnsnt1WYoG5AQJThhAAp/2svBIlNw1ctzuZ5yCqvP5E2V6F/HiV
+rOuYLW8KQRuMEgXYdXF87WVKpPzTvASlJCL1PmUiqf0sJ0AgVi2ZO0TzPVqspr/2
+h6McaqxERRxJMPw6r1C7B9QBXchTu6Yiw0FZuLcTnEva9/ZCwQCNrjWLwSOVcYqp
+ysQje+tyusXSMbpFx66EvjcasiCKGj2T+9vXwYTMlx/M3jssHmLDWlwtauxxjlck
+g+Tqh/u4mmwQUC9RIVFGeXN6/hU6DTAEPuRpILqxMn+pOzcqoMpBTSeL6gHsrY6X
+OTA30axTELAq7zoW8m9Cp6HftKdppWIbjGBbzu4Bkd2ThZJQ3M1ys0rYEPqjRXBE
+EKueGY56uPIqtSp5NpIPjmmkqs+Db1lqw4Z7hU6z7tBkG4Wd38hAwWy28HAgXaU1
+2x9oPuTgd6pcMGmg/8SnptYZpFDcUwZCitUxKhcrn7hUaHxfCzOhuiuXZhnr0NVZ
+45PoD6vPTjTCqXrB68bZviikYc+0fJ1d4dFN7lcwIPs/wziE4tMahbyTJaB1HwVm
+t2p4DxltJqY346SOyZB4d6/5sneGYnDwpBzCBrTp2aBpewbARovnwCaJ2JN4tQ0A
+VZxi6C4sClaz2tiIPaTkraIBCE0ZW/ud1LEFdZW51rdIOf6fjRk+5oRrxBf1eBTg
+sKup+lvjEgI=
+=gpz/
+-----END PGP SIGNATURE-----
 
--- 
-Best regards,
-Stanislav Kinsbursky
+--Sig_/A_VzDHN9BdS8JaXsy0pgKp+--
