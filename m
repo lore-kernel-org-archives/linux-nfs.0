@@ -1,268 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4458 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:50738 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753800Ab1KVW6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 17:58:24 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 3/4] NFS: Add functions for adding new NFS versions
-Date: Tue, 22 Nov 2011 17:58:03 -0500
-Message-Id: <1322002684-20436-5-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
-References: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
+	id S1752854Ab1KNCTo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Nov 2011 21:19:44 -0500
+Date: Mon, 14 Nov 2011 13:19:29 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Subject: Rename dir on server can cause client to get ESTALE
+Message-ID: <20111114131929.7b341444@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/MgYtagTC2P559_TzXi0XDZl"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Sig_/MgYtagTC2P559_TzXi0XDZl
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-These functions and structures allow us to add modular NFS versions at
-runtime, rather than requiring them to be compiled directly into the NFS
-kernel module.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c         |   65 +++++++++++++++++++++++++++++++++++++++++++---
- fs/nfs/file.c           |    2 +
- fs/nfs/internal.h       |   15 +++++++++++
- fs/nfs/mount_clnt.c     |    1 +
- fs/nfs/nfs3/nfs3proc.c  |    2 +-
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/proc.c           |    2 +-
- fs/nfs/super.c          |    1 +
- include/linux/nfs_xdr.h |    6 ++--
- 9 files changed, 85 insertions(+), 11 deletions(-)
+hi,
+  I've run into another issue that seems to related to FS_REVAL_DOT.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index c32a21f..9e77056 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -87,6 +87,21 @@ retry:
- static int nfs4_disable_idmapping = 0;
- 
- /*
-+ * NFS versions
-+ */
-+static struct nfs_version_ops *nfs_version_ops[5] = {
-+	[2] = NULL,
-+	[3] = NULL,
-+	[4] = NULL,
-+};
-+
-+static struct nfs_rpc_ops *nfs_ops[5] = {
-+	[2]	= &nfs_v2_clientops,
-+	[3]	= &nfs_v3_clientops,
-+	[4]	= &nfs_v4_clientops,
-+};
-+
-+/*
-  * RPC cruft for NFS
-  */
- static struct rpc_version *nfs_version[5] = {
-@@ -137,6 +152,45 @@ struct nfs_client_initdata {
- 	u32 minorversion;
- };
- 
-+void nfs_register_version(unsigned int version, struct nfs_version_ops *ops)
-+{
-+	nfs_version_ops[version] = ops;
-+	nfs_version[version] = ops->nfs_rpc;
-+	nfs_ops[version] = ops->nfs_ops;
-+#ifdef CONFIG_NFS_V3_ACL
-+	nfsacl_version[version] = ops->nfs_acl;
-+#endif
-+}
-+EXPORT_SYMBOL_GPL(nfs_register_version);
-+
-+void nfs_unregister_version(unsigned int version)
-+{
-+	struct nfs_version_ops *ops = nfs_version_ops[version];
-+	if (ops != NULL) {
-+		nfs_version_ops[version] = NULL;
-+		nfs_version[version] = NULL;
-+		nfs_ops[version] = NULL;
-+#ifdef CONFIG_NFS_V3_ACL
-+		nfsacl_version[version] = NULL;
-+#endif
-+	}
-+}
-+EXPORT_SYMBOL_GPL(nfs_unregister_version);
-+
-+void nfs_version_ref(unsigned int version)
-+{
-+	struct nfs_version_ops *nfs = nfs_version_ops[version];
-+	if (nfs != NULL)
-+		nfs->version_ref();
-+}
-+
-+void nfs_version_unref(unsigned int version)
-+{
-+	struct nfs_version_ops *nfs = nfs_version_ops[version];
-+	if (nfs != NULL)
-+		nfs->version_unref();
-+}
-+
- /*
-  * Allocate a shared client record
-  *
-@@ -825,7 +879,7 @@ static int nfs_init_server(struct nfs_server *server,
- 		.hostname = data->nfs_server.hostname,
- 		.addr = (const struct sockaddr *)&data->nfs_server.address,
- 		.addrlen = data->nfs_server.addrlen,
--		.rpc_ops = &nfs_v2_clientops,
-+		.rpc_ops = nfs_ops[data->version],
- 		.proto = data->nfs_server.protocol,
- 	};
- 	struct rpc_timeout timeparms;
-@@ -834,10 +888,10 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	dprintk("--> nfs_init_server()\n");
- 
--#ifdef CONFIG_NFS_V3
--	if (data->version == 3)
--		cl_init.rpc_ops = &nfs_v3_clientops;
--#endif
-+	if (cl_init.rpc_ops == NULL) {
-+		error = -EPROTONOSUPPORT;
-+		goto out;
-+	}
- 
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
-@@ -899,6 +953,7 @@ static int nfs_init_server(struct nfs_server *server,
- error:
- 	server->nfs_client = NULL;
- 	nfs_put_client(clp);
-+out:
- 	dprintk("<-- nfs_init_server() = xerror %d\n", error);
- 	return error;
- }
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index eca56d4..90389ca 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -19,6 +19,7 @@
- #include <linux/time.h>
- #include <linux/kernel.h>
- #include <linux/errno.h>
-+#include <linux/export.h>
- #include <linux/fcntl.h>
- #include <linux/stat.h>
- #include <linux/nfs_fs.h>
-@@ -865,6 +866,7 @@ const struct file_operations nfs_file_operations = {
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= nfs_setlease,
- };
-+EXPORT_SYMBOL_GPL(nfs_file_operations);
- 
- #ifdef CONFIG_NFS_V4
- static int
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 3f4d957..93a0ba2 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -68,6 +68,21 @@ struct nfs_clone_mount {
- 	rpc_authflavor_t authflavor;
- };
- 
-+struct nfs_version_ops {
-+	struct rpc_version *nfs_rpc;
-+	struct nfs_rpc_ops *nfs_ops;
-+#ifdef CONFIG_NFS_V3_ACL
-+	struct rpc_version *nfs_acl;
-+#endif
-+	void (*version_ref)(void);
-+	void (*version_unref)(void);
-+};
-+
-+void nfs_register_version(unsigned int, struct nfs_version_ops *);
-+void nfs_unregister_version(unsigned int);
-+void nfs_version_ref(unsigned int);
-+void nfs_version_unref(unsigned int);
-+
- /*
-  * Note: RFC 1813 doesn't limit the number of auth flavors that
-  * a server can return, so make something up.
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index d4c2d6b..323a105 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -190,6 +190,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 		goto out_mnt_err;
- 
- 	dprintk("NFS: MNT request succeeded\n");
-+	nfs_version_ref(info->version);
- 	status = 0;
- 
- out:
-diff --git a/fs/nfs/nfs3/nfs3proc.c b/fs/nfs/nfs3/nfs3proc.c
-index f37ddb9..593a44c 100644
---- a/fs/nfs/nfs3/nfs3proc.c
-+++ b/fs/nfs/nfs3/nfs3proc.c
-@@ -848,7 +848,7 @@ nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- 	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
- }
- 
--const struct nfs_rpc_ops nfs_v3_clientops = {
-+struct nfs_rpc_ops nfs_v3_clientops = {
- 	.version	= 3,			/* protocol version */
- 	.dentry_ops	= &nfs_dentry_operations,
- 	.dir_inode_ops	= &nfs3_dir_inode_operations,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index be2bbac..58bb8d2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6247,7 +6247,7 @@ static const struct inode_operations nfs4_file_inode_operations = {
- 	.removexattr	= generic_removexattr,
- };
- 
--const struct nfs_rpc_ops nfs_v4_clientops = {
-+struct nfs_rpc_ops nfs_v4_clientops = {
- 	.version	= 4,			/* protocol version */
- 	.dentry_ops	= &nfs4_dentry_operations,
- 	.dir_inode_ops	= &nfs4_dir_inode_operations,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index f48125d..d3eb291 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -705,7 +705,7 @@ out_einval:
- 	return -EINVAL;
- }
- 
--const struct nfs_rpc_ops nfs_v2_clientops = {
-+struct nfs_rpc_ops nfs_v2_clientops = {
- 	.version	= 2,		       /* protocol version */
- 	.dentry_ops	= &nfs_dentry_operations,
- 	.dir_inode_ops	= &nfs_dir_inode_operations,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 1347774..96967ff 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2334,6 +2334,7 @@ static void nfs_kill_super(struct super_block *s)
- 
- 	kill_anon_super(s);
- 	nfs_fscache_release_super_cookie(s);
-+	nfs_version_unref(server->nfs_client->rpc_ops->version);
- 	nfs_free_server(server);
- }
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2a7c533..6004f5c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1260,9 +1260,9 @@ struct nfs_rpc_ops {
- /*
-  * Function vectors etc. for the NFS client
-  */
--extern const struct nfs_rpc_ops	nfs_v2_clientops;
--extern const struct nfs_rpc_ops	nfs_v3_clientops;
--extern const struct nfs_rpc_ops	nfs_v4_clientops;
-+extern struct nfs_rpc_ops	nfs_v2_clientops;
-+extern struct nfs_rpc_ops	nfs_v3_clientops;
-+extern struct nfs_rpc_ops	nfs_v4_clientops;
- extern struct rpc_version	nfs_version2;
- extern struct rpc_version	nfs_version3;
- extern struct rpc_version	nfs_version4;
--- 
-1.7.7.4
+The script below makes the details precise, but the essence is that if I 'c=
+d'
+into a directory on the client, then rename it on the server, then it is
+possible that the client will start getting ESTALE when accessing '.' - even
+though the directory still exists.
 
+The ESTALE is generated because nfs_lookup_revalidate fails on the dentry, =
+so=20
+complete_walk (in fs/namei.c) gets failure from d_revalidate() and so sets =
+the
+status to -ESTALE.
+
+nfs_lookup_revalidate fails because when it repeats the lookup it sees a
+different directory (as you will see the script creates a new directory with
+the old name).
+
+I think it only makes sense to do a ->lookup revalidate of the dentry at the
+end of the path when there was a real non '.' or '..' name leading to the
+dentry.  If we were just looking up '.', we want to revalidate the inode, b=
+ut
+not the dentry.
+
+Unfortunately I cannot see how that distinction could be introduced into the
+current path-walk code.
+
+Any ideas?
+
+Thanks,
+NeilBrown
+
+
+SERVER=3Deli     # name of server.  ssh access required.
+DIR=3D/home      # directory on server to mount
+MPOINT=3D/mnt    # location on client to mount it.
+TMP=3D/neilb/tmp # path to scratch area in $DIR
+
+sudo umount $MPOINT
+sudo mount -o vers=3D3 $SERVER:$DIR $MPOINT
+
+cd /
+ssh $SERVER "rm -r $DIR$TMP/*dir*"
+ssh $SERVER "mkdir $DIR$TMP/adir"
+while [ ! -d $MPOINT$TMP/adir ];
+do echo -n . ; sleep 2;
+done
+cd $MPOINT$TMP/adir || exit
+echo "Entered directory"
+ls -la > /dev/null
+ssh $SERVER "cd $DIR$TMP; mv adir adir.moved"
+echo "Moved directory on server"
+ls -la > /dev/null
+echo -n "Waiting for move to be visible on client"
+while ls -la $MPOINT$TMP/adir >/dev/null 2>&1
+do echo -n .=20
+   sleep 3
+   (cd / ; ssh $SERVER "cd $DIR$TMP; mkdir bdir ; rmdir bdir" )
+done
+echo
+echo "Make replacement directory on server"
+(cd / ; ssh $SERVER "cd $DIR$TMP; mkdir adir")
+ls -la $MPOINT$TMP/adir
+ls -la
+
+
+--Sig_/MgYtagTC2P559_TzXi0XDZl
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBTsB6tjnsnt1WYoG5AQIqPg//fnuQ3UNYSZbVbmAECojx+lTwKGKWcldW
+Rl7OPx+LGnq9mvWeVhP8Nsb7QU7T6JHsGrrRZlMPHmddG9EwOKWJV2WLo2MaM/D4
+vwN9FfpTeQ13socpjyDQSnSZfYgzwNDYNrfy/hadbWk6lcR7AUoK1VnriizWUOT1
+Wtq6ek8YTfaNENJmZ+iSPs9kqRrQ+MGVoIOvQg1lwny9leZhBBhgxD180pbhIJZs
+vuCjv/44hWjMl/cqfvwzPBOwDikQzL4BaPvYhpyjNbfRpYbrfWb8HyhG7bYpkYKI
+oPOKkZBxWtjNXxhpP+WHZ3tEzxyxIZUtVMRDTb8q8ud/07a1gtZ5k1pQXNh/gqPV
+o8lwbAOuv4jkk7UfJpyFrSJ1g1zf+r5gTyLuC6RvcIISZo6rpk5geTXNUq017huG
+Eh5i4g94Dj7m3/beh2jc7SQUv6a4Tt1CBib5Iec+fYG9TWVrwz9ksZZzjNm1k9Zx
+eJRdC+Ygna4D+2VRhOU3EeegsT6BMz33ATdKU41LfZ9TYorOqWpcXN7dcp8zcpM7
+bZHKMyGXhxkl569glWSFlc8V4AInZoxWcKloLYlNmEpouwt+a4llJFbRhkwzllEW
+zMxwabQBh+UMzgZSQuvE1zijhAoqlM+DTS/J9ueP6WzWIz111Lexa/EQMSl9qiv5
+jNRohrq8pzY=
+=dSTB
+-----END PGP SIGNATURE-----
+
+--Sig_/MgYtagTC2P559_TzXi0XDZl--
