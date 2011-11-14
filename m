@@ -1,166 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:46890 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754834Ab1K1UBm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 15:01:42 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: rjw@sisk.pl
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
-        trond.myklebust@netapp.com, marek.belisko@gmail.com,
-        awilliam@redhat.com
-Subject: [PATCH v3 2/2] nfs: make TASK_KILLABLE sleeps attempt to freeze
-Date: Mon, 28 Nov 2011 15:01:28 -0500
-Message-Id: <1322510488-21189-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1322510488-21189-1-git-send-email-jlayton@redhat.com>
-References: <1322510488-21189-1-git-send-email-jlayton@redhat.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:46031 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755112Ab1KNLMw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 06:12:52 -0500
+Received: by fagn18 with SMTP id n18so2877536fag.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 03:12:51 -0800 (PST)
+Message-ID: <4EC0F7AF.3010904@tonian.com>
+Date: Mon, 14 Nov 2011 13:12:47 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read code
+ path
+References: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Wrap the TASK_KILLABLE sleeps in NFS layer in freezer_do_not_count and
-freezer_count calls. This allows the freezer to skip these processes
-when they are sleeping while looping on EJUKEBOX or NFS4ERR_DELAY sorts
-of errors.
+On 2011-11-10 21:38, Trond Myklebust wrote:
+> pNFS-specific code belongs in the pnfs layer. It should not be
+> hijacking generic NFS read or write code paths.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/internal.h |    2 ++
+>  fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
+>  fs/nfs/read.c     |   14 ++------------
+>  3 files changed, 25 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index c1a1bd8..3f4d957 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+>  extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+>  		struct list_head *head);
+>  
+> +extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+> +		struct inode *inode);
+>  extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+>  extern void nfs_readdata_release(struct nfs_read_data *rdata);
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index baf7353..8e672a2 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+>  
+> +static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
+> +{
+> +	struct nfs_pageio_descriptor pgio;
+> +
+> +	put_lseg(data->lseg);
+> +	data->lseg = NULL;
+> +	dprintk("pnfs write error = %d\n", data->pnfs_error);
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/inode.c          |    3 ++-
- fs/nfs/nfs3proc.c       |    3 ++-
- fs/nfs/nfs4proc.c       |    5 +++--
- fs/nfs/proc.c           |    3 ++-
- include/linux/freezer.h |   19 +++++++++++++++++++
- 5 files changed, 28 insertions(+), 5 deletions(-)
+should be "read error", might as well fix this while you're at it :)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 50a15fa..bf3a57b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -38,6 +38,7 @@
- #include <linux/nfs_xdr.h>
- #include <linux/slab.h>
- #include <linux/compat.h>
-+#include <linux/freezer.h>
- 
- #include <asm/system.h>
- #include <asm/uaccess.h>
-@@ -77,7 +78,7 @@ int nfs_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	schedule();
-+	freezable_schedule();
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d4bc9ed9..9194395 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -17,6 +17,7 @@
- #include <linux/nfs_page.h>
- #include <linux/lockd/bind.h>
- #include <linux/nfs_mount.h>
-+#include <linux/freezer.h>
- 
- #include "iostat.h"
- #include "internal.h"
-@@ -32,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- 		res = rpc_call_sync(clnt, msg, flags);
- 		if (res != -EJUKEBOX && res != -EKEYEXPIRED)
- 			break;
--		schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
-+		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
- 	} while (!fatal_signal_pending(current));
- 	return res;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index be2bbac..b28bb19 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -53,6 +53,7 @@
- #include <linux/sunrpc/bc_xprt.h>
- #include <linux/xattr.h>
- #include <linux/utsname.h>
-+#include <linux/freezer.h>
- 
- #include "nfs4_fs.h"
- #include "delegation.h"
-@@ -241,7 +242,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- 		*timeout = NFS4_POLL_RETRY_MIN;
- 	if (*timeout > NFS4_POLL_RETRY_MAX)
- 		*timeout = NFS4_POLL_RETRY_MAX;
--	schedule_timeout_killable(*timeout);
-+	freezable_schedule_timeout_killable(*timeout);
- 	if (fatal_signal_pending(current))
- 		res = -ERESTARTSYS;
- 	*timeout <<= 1;
-@@ -3950,7 +3951,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- static unsigned long
- nfs4_set_lock_task_retry(unsigned long timeout)
- {
--	schedule_timeout_killable(timeout);
-+	freezable_schedule_timeout_killable(timeout);
- 	timeout <<= 1;
- 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
- 		return NFS4_LOCK_MAXTIMEOUT;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index f48125d..0c672588 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -41,6 +41,7 @@
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
- #include <linux/lockd/bind.h>
-+#include <linux/freezer.h>
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
-@@ -59,7 +60,7 @@ nfs_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- 		res = rpc_call_sync(clnt, msg, flags);
- 		if (res != -EKEYEXPIRED)
- 			break;
--		schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
-+		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
- 	} while (!fatal_signal_pending(current));
- 	return res;
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index fda3ac6..fc68c53 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -154,6 +154,22 @@ static inline void set_freezable_with_signal(void)
- })
- 
- /*
-+ * Like schedule_timeout_killable(), but should not block the freezer. It may
-+ * end up returning immediately if it ends up racing with the freezer. Callers
-+ * must be able to deal with the loose wakeup timing that can occur when the
-+ * freezer races in. When that occurs, this function will return the timeout
-+ * value instead of 0.
-+ */
-+#define freezable_schedule_timeout_killable(timeout)			\
-+({									\
-+	freezer_do_not_count();						\
-+	if (!try_to_freeze())						\
-+		return timeout;						\
-+	schedule_timeout_killable(timeout);				\
-+	freezer_count();						\
-+})
-+
-+/*
-  * Freezer-friendly wrappers around wait_event_interruptible(),
-  * wait_event_killable() and wait_event_interruptible_timeout(), originally
-  * defined in <linux/wait.h>
-@@ -215,6 +231,9 @@ static inline void set_freezable_with_signal(void) {}
- 
- #define freezable_schedule()  schedule()
- 
-+#define freezable_schedule_timeout_killable(timeout)			\
-+	schedule_timeout_killable(timeout)
-+
- #define wait_event_freezable(wq, condition)				\
- 		wait_event_interruptible(wq, condition)
- 
--- 
-1.7.6.4
+> +
+> +	nfs_pageio_init_read_mds(&pgio, data->inode);
+> +
+> +	while (!list_empty(&data->pages)) {
+> +		struct nfs_page *req = nfs_list_entry(data->pages.next);
+> +
+> +		nfs_list_remove_request(req);
+> +		nfs_pageio_add_request(&pgio, req);
+> +	}
 
+What about pgio.pg_recoalesce?
+
+Benny
+
+> +	nfs_pageio_complete(&pgio);
+> +}
+> +
+>  /*
+>   * Called by non rpc-based layout drivers
+>   */
+> @@ -1268,11 +1287,8 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
+>  	if (likely(!data->pnfs_error)) {
+>  		__nfs4_read_done_cb(data);
+>  		data->mds_ops->rpc_call_done(&data->task, data);
+> -	} else {
+> -		put_lseg(data->lseg);
+> -		data->lseg = NULL;
+> -		dprintk("pnfs write error = %d\n", data->pnfs_error);
+> -	}
+> +	} else
+> +		pnfs_ld_handle_read_error(data);
+>  	data->mds_ops->rpc_release(data);
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 8b48ec6..cfa175c 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -109,7 +109,7 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+>  	}
+>  }
+>  
+> -static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+> +void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+>  		struct inode *inode)
+>  {
+>  	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
+> @@ -534,23 +534,13 @@ static void nfs_readpage_result_full(struct rpc_task *task, void *calldata)
+>  static void nfs_readpage_release_full(void *calldata)
+>  {
+>  	struct nfs_read_data *data = calldata;
+> -	struct nfs_pageio_descriptor pgio;
+>  
+> -	if (data->pnfs_error) {
+> -		nfs_pageio_init_read_mds(&pgio, data->inode);
+> -		pgio.pg_recoalesce = 1;
+> -	}
+>  	while (!list_empty(&data->pages)) {
+>  		struct nfs_page *req = nfs_list_entry(data->pages.next);
+>  
+>  		nfs_list_remove_request(req);
+> -		if (!data->pnfs_error)
+> -			nfs_readpage_release(req);
+> -		else
+> -			nfs_pageio_add_request(&pgio, req);
+> +		nfs_readpage_release(req);
+>  	}
+> -	if (data->pnfs_error)
+> -		nfs_pageio_complete(&pgio);
+>  	nfs_readdata_release(calldata);
+>  }
+>  
