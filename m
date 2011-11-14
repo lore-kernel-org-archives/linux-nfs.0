@@ -1,25 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:47949 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753054Ab1K3GZ6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 01:25:58 -0500
-Received: by eaak14 with SMTP id k14so207203eaa.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 22:25:56 -0800 (PST)
-Message-ID: <4ED5CC71.9070306@tonian.com>
-Date: Wed, 30 Nov 2011 08:25:53 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:46825 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754388Ab1KNXxt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Nov 2011 18:53:49 -0500
+Date: Mon, 14 Nov 2011 18:53:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <benny@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint
+ under NFSDDBG_PNFS
+Message-ID: <20111114235347.GA4243@fieldses.org>
+References: <4EB9F8D6.1080302@panasas.com>
+ <20111109195510.GA2227@fieldses.org>
+ <4EBBF605.9050403@panasas.com>
+ <20111114230923.GA3718@fieldses.org>
+ <4EC1A5CD.9040500@panasas.com>
 MIME-Version: 1.0
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: spnfs
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EC1A5CD.9040500@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As for the lack of interest in spnfs and the lack of active
-maintaining for the code I would like to drop it from my tree.
-The code will still be accessible from the old branches and tags.
-If you have any objection please let me know soon.
+On Mon, Nov 14, 2011 at 03:35:41PM -0800, Boaz Harrosh wrote:
+> On 11/14/2011 03:09 PM, J. Bruce Fields wrote:
+> > On Thu, Nov 10, 2011 at 08:04:21AM -0800, Boaz Harrosh wrote:
+> > 
+> > You mean the overuse of the state lock, or something else?
+> > 
+> 
+> Yes and the places that causes to unlock / lock because of
+> recursion or bad lock ordering.
 
-Thanks,
+That's purely a pNFS problem, right?
 
-Benny
+--b.
