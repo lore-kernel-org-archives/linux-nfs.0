@@ -1,91 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:34472 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755586Ab1KPKmU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2011 05:42:20 -0500
-Received: from [192.168.6.99] (coptic.calvaedi.com [192.168.6.99])
-	(authenticated (0 bits))
-	by oceanic.CalvaEDI.COM (8.11.1-20030923/8.11.1/6.32) with ESMTP id pAGAgH424457
-	(using TLSv1/SSLv3 with cipher RC4-MD5 (128 bits) verified NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2011 11:42:18 +0100 (CET)
-Message-ID: <4EC39389.9050603@Calva.COM>
-Date: Wed, 16 Nov 2011 11:42:17 +0100
-From: John Hughes <john@Calva.COM>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:38543 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752723Ab1KNJKA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 04:10:00 -0500
+Received: by bke11 with SMTP id 11so5680110bke.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 01:09:58 -0800 (PST)
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: [BUG] nfs4 client loops printing "Error: state manager encountered
- RPCSEC_GSS session expired" if kerberos ticket expires
-References: <4EBBF7AB.8030907@Calva.COM> <4EC126B0.204@Calva.COM>
-In-Reply-To: <4EC126B0.204@Calva.COM>
-Content-Type: multipart/mixed;
- boundary="------------090600030801010909050708"
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20111113180633.GA4084@Gelgoog.pok.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+	<1321056809.8733.2.camel@lade.trondhjem.org>
+	<20111112144953.GA3740@infradead.org>
+	<20111113145400.6c7a9be3@notabene.brown>
+	<20111113180633.GA4084@Gelgoog.pok.ibm.com>
+Date: Mon, 14 Nov 2011 10:09:58 +0100
+Message-ID: <CAGue13qMD24f0FRAknyqsj9=rzDvmqPMUb0rf_dDRhyk5SXKHQ@mail.gmail.com>
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NeilBrown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------090600030801010909050708
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-
-On 14/11/11 15:33, John Hughes wrote:
-> Here is a ridiculously stupid patch that fixes the behaviour to be 
-> closer to what I want.
+On Sun, Nov 13, 2011 at 7:06 PM, Matthew Treinish
+<treinish@linux.vnet.ibm.com> wrote:
+> On Sun, Nov 13, 2011 at 02:54:00PM +1100, NeilBrown wrote:
+>> On Sat, 12 Nov 2011 09:49:53 -0500 Christoph Hellwig <hch@infradead.org>
+>> wrote:
+>>
+>> > On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
+>> > > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote:
+>> > > > This patch series implements client side support for volatile file handle
+>> > > > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
+>> > > > test the client you either need a server that supports volatile file handles or
+>> > > > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
+>> > > > NFSERR_STALE. (See the last patch in the series)
+>> > >
+>> > > WHY do we want to support this kind of "feature"? As you said, the RFC
+>> > > doesn't actually help in figuring out how this crap is supposed to work
+>> > > in practice, so why do we even consider starting to give a damn?
+>> >
+>> > *nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
+>> > outright rejecting it.
+>>
+>> Hence the suggested mount option.
+>>
+>> A server might not be able to provide stable file handles, but can ensure
+>> that files don't get renamed - for these filesystems, the name is a
+>> reliable stable handle for the file (it just doesn't fit in the NFSv4 file
+>> handle structure).
+>>
+>> So if you know the filesystem will only return FHEXPIRED for filehandles
+>> belonging to files that cannot be renamed, then it is perfectly reasonable to
+>> repeat the name lookup to re-access the file after the server forgets about
+>> an old filehandle.  The mount option is how you communicate this knowledge,
+>> because the RFC doesn't provide a way to communicate it.
+>>
+> This was one of 2 reasons for implementing this, and we actually run into this with
+> certain z/OS systems, because the z/OS NFS server currently uses FHEXPIRED in this way.
 >
-> Now, if the krb5 ticket has expired processes get a EKEYEXPIRED error 
-> and the kernel doesn't waste its time printing "ticket expired" errors.
-A slight modification of the patch is needed to avoid scads of "state 
-manager failed" errors, if we get EKEYEXPIRED in 
-nfs4_recovery_handle_error we *should* return zero, but we don't want to 
-call nfs4_warn_keyexpired (there is no reason to log this, it's not a 
-kernel problem).
+> The other thought was that this could be used for migration/replication
+> between file synced servers. So, if we wanted to switch/move to another server where
+> the file names were the same but all the inode numbers were different you could use
+> this to refresh the invalid file handles on the new server.
 
-Here's a cleaner version of the patch.
+If my scec reading is correct, then spec does not enforce you to use
+the same file handles on redirected server. This is of course you you
+want to return NFS4ERR_MOVED.
 
-Does anybody care about this?  Will anybody read this message?
+Tigran.
 
-
---------------090600030801010909050708
-Content-Type: text/x-patch;
- name="nfs4-ekeyexpired.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nfs4-ekeyexpired.patch"
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4700fae..dc28a78 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -302,7 +302,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
--		case -EKEYEXPIRED:
- 			ret = nfs4_delay(server->client, &exception->timeout);
- 			if (ret != 0)
- 				break;
-@@ -3732,7 +3731,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
--		case -EKEYEXPIRED:
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 39914be..2bee41e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1377,8 +1377,9 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 			/* Zero session reset errors */
- 			return 0;
- 		case -EKEYEXPIRED:
--			/* Nothing we can do */
--			nfs4_warn_keyexpired(clp->cl_hostname);
-+			/* Nothing we can do, so do nothing.  Don't even
-+			   print a warning message, this is not a kernel
-+			   problem */
- 			return 0;
- 	}
- 	return error;
-
---------------090600030801010909050708--
+>
+> -Matt Treinish
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
