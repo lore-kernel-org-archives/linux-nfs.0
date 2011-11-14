@@ -1,68 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:34432 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753835Ab1KJGzk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 01:55:40 -0500
-Received: by fagn18 with SMTP id n18so185212fag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 22:55:39 -0800 (PST)
-Message-ID: <4EBB7568.5030706@tonian.com>
-Date: Thu, 10 Nov 2011 08:55:36 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:34354 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751786Ab1KNAnH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Nov 2011 19:43:07 -0500
+Date: Sun, 13 Nov 2011 19:42:54 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20111114004254.GA30681@fieldses.org>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321056809.8733.2.camel@lade.trondhjem.org>
+ <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>
-Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under
- NFSDDBG_PNFS
-References: <4EB9F8D6.1080302@panasas.com>
-In-Reply-To: <4EB9F8D6.1080302@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111114080745.57083bfe@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-09 05:51, Boaz Harrosh wrote:
+On Mon, Nov 14, 2011 at 08:07:45AM +1100, NeilBrown wrote:
+> On Sun, 13 Nov 2011 11:36:32 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> I've been squinting  at pnfsd dprints for ages and aching under the wait. So I headed
-> up to the nfsd/debug.h to add a PNFS channel, and what do you know? there is one!
-> It's used by nfs4pnfsds.c. Surly  nfs4pnfsd.c is more _PNFS than _PROC.
+> > On Sun, Nov 13, 2011 at 02:45:48PM +0100, Tigran Mkrtchyan wrote:
+> > > I have a server which runs on top of hadoop. The problem with hadoop
+> > > is that there is no way to have persistent file handles. I am
+> > > currently working on a way to do that - either simulate them or add a
+> > > support for unique file id to hadoop. If linux client will support
+> > > volatile file handles then I can stop inventing some workarounds.
+> > 
+> > I might call that "fixing" rather than inventing workarounds.
+> > 
+> > Our of curiosity: if we really wanted to support such filesystems, what
+> > would we need in the protocol?  Just saying "filehandles aren't stable,
+> > deal with it" seems insufficient. 
 > 
-> While at it I changed  nfs4pnfsdlm.c to, also already defined, NFSDDBG_FILELAYOUT
-> which was unused before this patch.
+> 1/ no guarantees if the file is not 'open'
+> 2/ two possible responses to FHEXPIRED:
+>     a/ perform a GETATTR and request the 'filehandle' attribute.  Client then
+>        uses that filehandle instead.
+>     b/ perform LOOKUP on parent filehandle with same name as before, and use
+>        the resulting filehandle.
+>    Server specifies which somehow (different error code?  magic attribute
+>    flag somewhere?  doesn't really matter)
 > 
-> CC: Steve Dickson <steved@redhat.com>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> If a server has objects that are never renamed, it can easily use volatile
+> file handles.
+> If a server has objects which can be renamed and wants to use volatile file
+> handles, then if such an object is open and is about to be renamed, it must
+> first log to stable storage some mapping to allow it to access the file from
+> the old volatile file handle.
 
-Makes sense. Thanks!
+I think then there's no limit to the lifetime of those log entries, or
+to the size of the log?
 
-Benny
+--b.
 
-> ---
->  fs/nfsd/nfs4pnfsd.c   |    2 +-
->  fs/nfsd/nfs4pnfsdlm.c |    2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-> index 18b8fca..f514ebe 100644
-> --- a/fs/nfsd/nfs4pnfsd.c
-> +++ b/fs/nfsd/nfs4pnfsd.c
-> @@ -23,7 +23,7 @@
->  
->  #include "pnfsd.h"
->  
-> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
-> +#define NFSDDBG_FACILITY                NFSDDBG_PNFS
->  
->  /* Globals */
->  static u32 current_layoutid = 1;
-> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
-> index abc4d83..0f0441a 100644
-> --- a/fs/nfsd/nfs4pnfsdlm.c
-> +++ b/fs/nfsd/nfs4pnfsdlm.c
-> @@ -30,7 +30,7 @@
->  #include "nfsfh.h"
->  #include "nfsd.h"
->  
-> -#define NFSDDBG_FACILITY                NFSDDBG_PROC
-> +#define NFSDDBG_FACILITY                NFSDDBG_FILELAYOUT
->  
->  /* Just use a linked list. Do not expect more than 32 dlm_device_entries
->   * the first implementation will just use one device per cluster file system
+> And of course it cannot allow renames during
+> the grace period, but I think we already have that.
+> Also, if the VFH is such that it will be  lost on a reboot, the server must
+> log it to stable storage before allowing an open.
+
+
