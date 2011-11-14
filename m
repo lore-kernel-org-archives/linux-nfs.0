@@ -1,64 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54479 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753733Ab1KAWOL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 18:14:11 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1RLMaw-00013t-Se
-	for linux-nfs@vger.kernel.org; Tue, 01 Nov 2011 18:14:10 -0400
-Date: Tue, 1 Nov 2011 18:14:10 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] Update NFSD MAINTAINER
-Message-ID: <20111101221410.GC1891@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:40435 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751717Ab1KNPDp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 10:03:45 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RPy21-0007vp-3z
+	for linux-nfs@vger.kernel.org; Mon, 14 Nov 2011 10:01:11 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.idmapd: Sections in idmapd.conf are ignored.
+Date: Mon, 14 Nov 2011 10:03:40 -0500
+Message-Id: <1321283020-15730-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: NeilBrown <neilb@suse.de>
+In the parsing routine, conf_parse_line(), a string
+is not being null terminated which is causing
+section of the config file to be ignored.
 
-Neil hasn't really been at all active as a maintainer for some years now.
-So move his maintainership to CREDITS
+https://bugzilla.linux-nfs.org/show_bug.cgi?id=205
 
-(But thanks to Neil for continuing help with nfsd!--jbf)
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- CREDITS     |    5 +++++
- MAINTAINERS |    1 -
- 2 files changed, 5 insertions(+), 1 deletions(-)
+ support/nfs/conffile.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/CREDITS b/CREDITS
-index 07e32a8..557da47 100644
---- a/CREDITS
-+++ b/CREDITS
-@@ -514,6 +514,11 @@ S: Bessemerstraat 21
- S: Amsterdam
- S: The Netherlands
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index fa0dc6b..3990578 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -256,13 +256,14 @@ conf_parse_line(int trans, char *line, size_t sz)
+ 			val++, j++;
+ 		if (*val)
+ 			i = j;
+-		section = malloc(i);
++		section = malloc(i+1);
+ 		if (!section) {
+ 			xlog_warn("conf_parse_line: %d: malloc (%lu) failed", ln,
+ 						(unsigned long)i);
+ 			return;
+ 		}
+ 		strncpy(section, line, i);
++		section[i] = '\0';
  
-+N: NeilBrown
-+E: neil@brown.name
-+P: 4096R/566281B9 1BC6 29EB D390 D870 7B5F  497A 39EC 9EDD 5662 81B9
-+D: NFSD Maintainer 2000-2007
-+
- N: Zach Brown
- E: zab@zabbo.net
- D: maestro pci sound
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 51d42fb..37fffbc 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -3685,7 +3685,6 @@ S:	Odd Fixes
- 
- KERNEL NFSD, SUNRPC, AND LOCKD SERVERS
- M:	"J. Bruce Fields" <bfields@fieldses.org>
--M:	Neil Brown <neilb@suse.de>
- L:	linux-nfs@vger.kernel.org
- W:	http://nfs.sourceforge.net/
- S:	Supported
+ 		if (arg) 
+ 			free(arg);
 -- 
-1.7.5.4
+1.7.7
 
