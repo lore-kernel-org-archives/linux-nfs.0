@@ -1,52 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:47980 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751651Ab1KLStd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 13:49:33 -0500
-Date: Sat, 12 Nov 2011 13:49:24 -0500
-From: Jim Rees <rees@umich.edu>
-To: Lukas Razik <linux@razik.name>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-Message-ID: <20111112184804.GA25581@umich.edu>
-References: <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
- <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
- <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
- <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com>
- <1320455965.2750.9.camel@lade.trondhjem.org>
- <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
- <1320460311.2750.21.camel@lade.trondhjem.org>
- <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com>
- <20111105130517.GA16090@umich.edu>
- <1321097734.7117.YahooMailNeo@web24701.mail.ird.yahoo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321097734.7117.YahooMailNeo@web24701.mail.ird.yahoo.com>
+Received: from mx2.netapp.com ([216.240.18.37]:37333 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752028Ab1KNPty convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 10:49:54 -0500
+Message-ID: <1321285777.2632.1.camel@lade.trondhjem.org>
+Subject: Re: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read
+ code path
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 14 Nov 2011 17:49:37 +0200
+In-Reply-To: <4EC0F7AF.3010904@tonian.com>
+References: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <4EC0F7AF.3010904@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lukas Razik wrote:
+On Mon, 2011-11-14 at 13:12 +0200, Benny Halevy wrote: 
+> On 2011-11-10 21:38, Trond Myklebust wrote:
+> > pNFS-specific code belongs in the pnfs layer. It should not be
+> > hijacking generic NFS read or write code paths.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/nfs/internal.h |    2 ++
+> >  fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
+> >  fs/nfs/read.c     |   14 ++------------
+> >  3 files changed, 25 insertions(+), 17 deletions(-)
+> > 
+> > diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> > index c1a1bd8..3f4d957 100644
+> > --- a/fs/nfs/internal.h
+> > +++ b/fs/nfs/internal.h
+> > @@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+> >  extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+> >  		struct list_head *head);
+> >  
+> > +extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+> > +		struct inode *inode);
+> >  extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+> >  extern void nfs_readdata_release(struct nfs_read_data *rdata);
+> >  
+> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > index baf7353..8e672a2 100644
+> > --- a/fs/nfs/pnfs.c
+> > +++ b/fs/nfs/pnfs.c
+> > @@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+> >  }
+> >  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+> >  
+> > +static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
+> > +{
+> > +	struct nfs_pageio_descriptor pgio;
+> > +
+> > +	put_lseg(data->lseg);
+> > +	data->lseg = NULL;
+> > +	dprintk("pnfs write error = %d\n", data->pnfs_error);
+> 
+> should be "read error", might as well fix this while you're at it :)
 
-  I've connected the systems directly (without a switch between them).
-  It seems that the problem came from the switch because now the newer kernels also mount their NFSROOTs during start up without problems.
-  
-  Assuming that the ports of the switch really run in STP mode - two questions:
-  1. Is it unusual that the ports of a switch where computers are connected to run in STP mode?
-  2. If that's not unusual: Wouldn't it be useful if the new linux kernels could mount an NFSROOT even when the system is plugged into an STP port?
+Sure...
 
-STP ports are normally won't start forwarding packets until they have
-decided there are no loops.  The usual way to configure a data center switch
-is to leave the trunks in this configuration, and set portfast on the ports
-that have end systems (like your server) on them.  I think "portfast" is the
-Cisco term for this, other vendors might call it something else.  Portfast
-ports are still running stp, they just start out in forwarding mode and only
-switch to learning mode if they detect a problem.
+> > +
+> > +	nfs_pageio_init_read_mds(&pgio, data->inode);
+> > +
+> > +	while (!list_empty(&data->pages)) {
+> > +		struct nfs_page *req = nfs_list_entry(data->pages.next);
+> > +
+> > +		nfs_list_remove_request(req);
+> > +		nfs_pageio_add_request(&pgio, req);
+> > +	}
+> 
+> What about pgio.pg_recoalesce?
 
-The question for us is how long should an nfsroot client wait for the server
-to reply.  It sounds like the client used to wait longer than it does now.
-It seems to me the client should wait at least 90 seconds so that the
-situation you're in (servers on non-portfast ports) will work.  I would
-think they should wait indefinitely, since there's not much else they can
-do.
+It was incorrect to set it in the first place. This is an ordinary
+coalesce...
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
