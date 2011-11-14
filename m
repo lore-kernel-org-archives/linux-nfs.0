@@ -1,132 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm17.bullet.mail.ird.yahoo.com ([77.238.189.70]:29070 "HELO
-	nm17.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751366Ab1KCXJ1 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 19:09:27 -0400
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
-Message-ID: <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
-Date: Thu, 3 Nov 2011 23:09:24 +0000 (GMT)
-From: Lukas Razik <linux@razik.name>
-Reply-To: Lukas Razik <linux@razik.name>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:59950 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753107Ab1KNPbH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 10:31:07 -0500
+References: <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com> <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com> <1320455965.2750.9.camel@lade.trondhjem.org> <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com> <1320460311.2750.21.camel@lade.trondhjem.org> <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com> <20111105130517.GA16090@umich.edu> <1321097734.7117.YahooMailNeo@web24701.mail.ird.yahoo.com> <20111112184804.GA25581@umich.edu> <1E7FF4C1-B7BA-4429-92ED-DC90D6B269C4@oracle.com> <1321146230.5436.YahooMailNeo@web24710.mail.ird.yahoo.com> <DE923535-CDF1-418D-BDA0-7450E292A272@oracle.com> <1321219739.17997.YahooMailNeo@web24711.mail.ird.yahoo.com> <1321222753.13412.YahooMailNeo@web24707.mail.ird.yahoo.com>
+In-Reply-To: <1321222753.13412.YahooMailNeo@web24707.mail.ird.yahoo.com>
+Mime-Version: 1.0 (iPad Mail 8L1)
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <880B98E2-6B78-4D52-A640-B4C717A0B58A@oracle.com>
 Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
+Date: Mon, 14 Nov 2011 10:31:26 -0500
+To: Lukas Razik <linux@razik.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Yes, that's what I intended.  Thanks for testing the idea.
 
+Sent from my iPad
 
-Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> 
-> On Nov 3, 2011, at 5:37 PM, Lukas Razik wrote:
-> 
->>>  On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
->> 
->>> 
->>>>  Trond Myklebust wrote:
->>>> 
->>>>>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
->>>>>  [ 442.666732] NFS: unable to mount server 137.226.167.241, 
-> error -60
->>>>>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying 
-> floppy.
->>>>>  [ 442.667032] VFS: Insert root floppy and press ENTER
->>>>> 
->>>>    Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
->>>>    basically the same one that you see in your 2.6.32 trace 
-> (rpcbind:
->>>>    server 137.226.167.241 not responding, timed out) except that now 
-> it is
->>>>    a fatal error.
->>>> 
->>>>    Any idea why the first RPC calls might be failing here? A switch
->>>>    misconfiguration or something like that perhaps?
->>>> 
->>>>  Wasn't there a change in the way nfs mount options are handled 
-> by the 
->>>  kernel
->>>>  for nfsroot about the time of 2.6.39?  Something about changing 
-> from 
->>>  default
->>>>  udp to tcp maybe?
->>> 
->>>  There was a change, but it was changed back to UDP because of problems 
-> like 
->>>  this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be 
-> improved.
->>> 
->> 
->>  I don't know if this was a tip to test newest 2.6.39 but as I wrote in 
-> my first email
->>   http://thread.gmane.org/gmane.linux.nfs/44596
->>  that's the output of linux-2.6.39.4 with "nfsdebug":
->> 
->>  [ 407.571521] IP-Config: Complete:
->>  [ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
-> gw=137.226.167.225,
->>  [ 407.571793] host=cluster2, domain=, nis-domain=(none),
->>  [ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, 
-> rootpath=
->>  [ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
->>  [ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
->>  [ 407.572927] NFS: parsing nfs mount option 'udp'
->>  [ 407.572995] NFS: parsing nfs mount option 'nolock'
->>  [ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
->>  [ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
->>  [ 407.573203] NFS: sending MNT request for 
-> 137.226.167.241:/srv/nfs/cluster2
->>  [ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
-> Control: Rx
->>  [ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
->>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
->>  [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
->>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
->>  [ 442.667032] VFS: Insert root floppy and press ENTER
->> 
->>  And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 
-> which I've tested.
->>  So if anybody of you all have an idea what I could try to do, I'll 
-> follow...
-> 
-> Find out why the very first RPC on your system always fails.  As Trond says, the 
-> only reason this worked on the older kernels is because NFSROOT fell back to a 
-> default port for NFSD.  This is also broken behavior, but in your case it 
-> happened to work so you never noticed it.
-> 
-> I seem to recall there's a way to set the NFS and RPC debugging flags on the 
-> kernel command line so more information can be captured during boot.  But I 
-> don't see it under Documentation/.
-> 
-> You could add a line in fs/nfs/nfsroot.c:nfs_root_debug() to set flags also in 
-> the rpc_debug global variable to gather more information.
-> 
+On Nov 13, 2011, at 5:19 PM, Lukas Razik <linux@razik.name> wrote:
 
-OK
-I've watched wireshark on cluster1 during start up of cluster2 (with linux-2.6.32) which first tries 10003 and then 10005.
-The result is that cluster1 doesn't get a datagram for port 10003:
-http://net.razik.de/linux/T5120/cluster2_NFSROOT_MOUNT.png
-
-The first ARP request in the screenshot came _after_ the <tag> in this kernel log:
-[ 6492.807917] IP-Config: Complete:
-[ 6492.807978]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-[ 6492.808227]      host=cluster2, domain=, nis-domain=(none),
-[ 6492.808312]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-[ 6492.808570] Looking up port of RPC 100003/2 on 137.226.167.241
-[ 6493.886014] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-[ 6493.905840] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-<tag>
-[ 6527.827055] rpcbind: server 137.226.167.241 not responding, timed out
-[ 6527.827237] Root-NFS: Unable to get nfsd port number from server, using default
-[ 6527.827353] Looking up port of RPC 100005/1 on 137.226.167.241
-[ 6527.842212] VFS: Mounted root (nfs filesystem) on device 0:15.
-
-
-So I don't think that it's a problem of the hardware between the machines.
-There's no reason why I wouldn't see an ARP requests from cluster2 which would have been sent _before_ the <tag> if there would be one. I think: cluster2 never sends a request to port 10003.
-What do you think?
+>> [ 1764.189975] ADDRCONF(NETDEV_UP): eth0: link is not ready
+> 
+>> [ 1765.212110] IP-Config: Complete:
+>> [ 1765.212180]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, 
+>> gw=137.226.167.225,
+>> [ 1765.212383]      host=137.226.167.242, domain=, nis-domain=(none),
+>> [ 1765.212498]      bootserver=255.255.255.255, rootserver=137.226.167.241, 
+>> rootpath=
+>> [ 1765.212943] VFS: 1. attempt to mount root fs via NFS.
+>> [ 1765.212992] Root-NFS: nfsroot=/srv/nfs/cluster2
+>> [ 1765.213265] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+>> [ 1765.213315] NFS:   parsing nfs mount option 'udp'
+>> [ 1765.213353] NFS:   parsing nfs mount option 'nolock'
+>> [ 1765.213399] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+>> [ 1765.213467] NFS: MNTPATH: '/srv/nfs/cluster2'
+>> [ 1765.213501] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+>> [ 1766.298480] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: 
+>> Rx
+>> [ 1766.318949] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+>> [ 1800.284325] NFS: failed to create MNT RPC client, status=-60
+>> [ 1800.284435] NFS: unable to mount server 137.226.167.241, error -60
+>> [ 1800.284571] VFS: 2. attempt to mount root fs via NFS.
+>> [ 1800.284682] Root-NFS: nfsroot=/srv/nfs/cluster2
+>> [ 1800.285051] NFS: nfs mount 
+>> opts='udp,nolock,addr=137.226.167.241,nolock,addr=137.226.167.241'
+>> [ 1800.285167] NFS:   parsing nfs mount option 'udp'
+>> [ 1800.285233] NFS:   parsing nfs mount option 'nolock'
+>> [ 1800.285337] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+>> [ 1800.285455] NFS:   parsing nfs mount option 'nolock'
+>> [ 1800.285531] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+> 
+> Chuck, I've seen that it's wrong to wrap mount_nfs_root() with while() because then we get a multiple occurrence of some mount options. Hence I've edited mount_nfs_root() itself so that the options will be set only once.
+> Maybe that's better?
+> --- linux-2.6.39.4/init/do_mounts.c        2011-08-03 21:43:28.000000000 +0200
+> +++ linux-2.6.39.4-fix/init/do_mounts.c     2011-11-13 23:05:13.000000000 +0100
+> @@ -363,12 +363,18 @@
+>  static int __init mount_nfs_root(void)
+>  {
+>         char *root_dev, *root_data;
+> +       char attempt;
+>  
+>         if (nfs_root_data(&root_dev, &root_data) != 0)
+>                 return 0;
+> -       if (do_mount_root(root_dev, "nfs", root_mountflags, root_data) != 0)
+> -               return 0;
+> -       return 1;
+> +
+> +       for(attempt = 1; attempt <= 3; attempt++) {
+> +               printk(KERN_INFO "VFS: %d. attempt to mount root fs via NFS.\n", attempt);
+> +               if (do_mount_root(root_dev, "nfs", root_mountflags, root_data) == 0)
+> +                       return 1;
+> +       }
+> +
+> +       return 0;
+>  }
+>  #endif
+> 
+> --
+> Regards,
+> Lukas
+> 
+> 
+> PS: That's the new behaviour:
+> [ 4416.829621] ADDRCONF(NETDEV_UP): eth0: link is not ready
+> [ 4417.851657] IP-Config: Complete:
+> [ 4417.851729]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
+> [ 4417.851931]      host=137.226.167.242, domain=, nis-domain=(none),
+> [ 4417.852045]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
+> [ 4417.852493] Root-NFS: nfsroot=/srv/nfs/cluster2
+> [ 4417.852539] VFS: 1. attempt to mount root fs via NFS.
+> [ 4417.852814] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+> [ 4417.852893] NFS:   parsing nfs mount option 'udp'
+> [ 4417.852930] NFS:   parsing nfs mount option 'nolock'
+> [ 4417.852977] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+> [ 4417.853073] NFS: MNTPATH: '/srv/nfs/cluster2'
+> [ 4417.853137] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+> [ 4418.933894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
+> [ 4418.954252] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+> [ 4452.967331] NFS: failed to create MNT RPC client, status=-60
+> [ 4452.967441] NFS: unable to mount server 137.226.167.241, error -60
+> [ 4452.967577] VFS: 2. attempt to mount root fs via NFS.
+> [ 4452.967978] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
+> [ 4452.968085] NFS:   parsing nfs mount option 'udp'
+> [ 4452.968150] NFS:   parsing nfs mount option 'nolock'
+> [ 4452.968197] NFS:   parsing nfs mount option 'addr=137.226.167.241'
+> [ 4452.968333] NFS: MNTPATH: '/srv/nfs/cluster2'
+> [ 4452.968397] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
+> [ 4452.974480] NFS: received 1 auth flavors
+> [ 4452.974543] NFS:   auth flavor[0]: 1
+> [ 4452.974723] NFS: MNT request succeeded
+> [ 4452.974785] NFS: using auth flavor 1
+> [ 4452.979498] VFS: Mounted root (nfs filesystem) on device 0:13.
+> INIT: version 2.88 booting
