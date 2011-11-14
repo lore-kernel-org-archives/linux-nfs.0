@@ -1,59 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm21.bullet.mail.ird.yahoo.com ([212.82.108.136]:22686 "HELO
-	nm21.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751952Ab1KDPEb convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 11:04:31 -0400
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
-Message-ID: <1320418678.59917.YahooMailNeo@web24712.mail.ird.yahoo.com>
-Date: Fri, 4 Nov 2011 14:57:58 +0000 (GMT)
-From: Lukas Razik <linux@razik.name>
-Reply-To: Lukas Razik <linux@razik.name>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54765 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754011Ab1KNTio (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 14:38:44 -0500
+Message-ID: <4EC16E3A.9040405@panasas.com>
+Date: Mon, 14 Nov 2011 11:38:34 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+To: Benny Halevy <bhalevy@tonian.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
+References: <4EC13EEA.3030404@tonian.com>
+In-Reply-To: <4EC13EEA.3030404@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>  It would be very sad with these nice Oracle (SUN) machines if no one could 
-
-> use them because of this bug.
+On 11/14/2011 08:16 AM, Benny Halevy wrote:
+> I merged the following patches into pnfs-all-3.1-2011-11-14
+> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
 > 
-> If you boot via tftp, I bet this problem will go away because the network 
-> interface will be working by the time the NFSROOT mount is attempted.
-
-Yes this could be a workaround but there is another problem with boot via tftp (and OpenBoot) which another team member is trying to solve...
-
-
-> The NFSROOT code assumes that if kernel IP configuration worked, then the NIC is 
-> already up.  That is clearly not the case if you boot from your local disk.
-
-Yes, that's surely not the standard way: To mount nfsroot although you have a local disk...
-
-
->>  Do you know a kernel developer who maybe would try to write a patch for 
-> this problem?
->>  Or do you have another idea what I could do?
+> pnfs-block:
+>   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
+>   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
+>   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
+>   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
+>   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
+>   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
 > 
-> As for a patch: no-one can write a patch unless we understand precisely why the 
-> first RPC fails.  I already explained how to add a line or two to 
-> fs/nfs/nfsroot.c to give us more information.  If you need a patch to do this, I 
-> can send one later today.
-> 
-> I might be able to reproduce it here, now that I understand your set up, but it 
-> would require building a partial NFSROOT environment.  I can't get to that 
-> until next week.
+> pnfsd:
+>   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
 > 
 
-If you have the time for the patch, it would be very nice! Otherwise I'll try it as soon as I can.
-The problem is that the system should work as soon as possible. So it would be nice to have a work around.
-In parallel, I'll give you all information I have and test all patches you give me as long as you all are interested.
+What happened to the PNFSD dbg Channel. Was that submitted before?
 
-So now I'm trying the proposed workaroundsand after that I'll try to add the lines you wrote about (ASAP)...
+Boaz 
 
-Regards,
-Lukas
+> spnfs-block:
+>   Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
+>   Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
+> 
+> Both versions pass connectathon tests against pnfsd-lexp server using the files layout.
+> 
+> Block layout fails as the server ctl process crashes as follows:
+> 
+> kernel: nfsv4 compound op #2/2: 47 (OP_GETDEVICEINFO)
+> kernel: nfsd4_getdevinfo: layout_type 3 dev_id 28d:1f maxcnt 135168
+> kernel: nfsd4_getdevinfo: sb ffff88002c535cd0
+> kernel: pnfs_set_device_notify: -->
+> kernel: renewing client (clientid 4ec13510/00000003)
+> kernel: pnfs_set_device_notify: Incr device count (clnt ffff88002d310000) to 2
+> kernel: nfsd4_encode_getdevinfo: err 0
+> kernel: device_slice: dev_id=0:31
+> kernel: device_slice: ret=1
+> kernel: ctl[1028]: segfault at 497 ip 00007f74b7909f24 sp 00007fffd2a43948 error 4 in libc-2.13.90.so[7f74b788d000+192000]
+> 
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
