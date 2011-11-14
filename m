@@ -1,76 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm17-vm0.bullet.mail.ird.yahoo.com ([77.238.189.214]:39320 "HELO
-	nm17-vm0.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751873Ab1KCVhX convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 17:37:23 -0400
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
-Message-ID: <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
-Date: Thu, 3 Nov 2011 21:37:21 +0000 (GMT)
-From: Lukas Razik <linux@razik.name>
-Reply-To: Lukas Razik <linux@razik.name>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:60261 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753324Ab1KNVMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Nov 2011 16:12:49 -0500
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Mon, 14 Nov 2011 16:12:47 -0500
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAELCFTm329316
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 16:12:16 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAELCEP6016512
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 16:12:14 -0500
+Date: Mon, 14 Nov 2011 16:12:13 -0500
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Malahal Naineni <malahal@us.ibm.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 5/7] Added VFH FHEXPIRED recovery functions.
+Message-ID: <20111114211213.GA3747@Gelgoog.pok.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321052673-22171-6-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321057673.8733.13.camel@lade.trondhjem.org>
+ <20111112034534.GB15724@us.ibm.com>
+ <1321118198.7782.5.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1321118198.7782.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Nov 3, 2011, at 5:11 PM, Jim Rees wrote:
+On Sat, Nov 12, 2011 at 12:16:38PM -0500, Trond Myklebust wrote:
+> > > > +static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
+> > > > +	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+> > > > +{
+> > > > +	struct nfs4_exception exception = { };
+> > > > +	int err;
+> > > > +	do {
+> > > > +		int status;
+> > > > +
+> > > > +		status = _nfs4_proc_lookup(clnt, dir, name, fhandle, fattr);
+> > > > +		switch (status) {
+> > > > +		case -NFS4ERR_BADNAME:
+> > > > +			return -ENOENT;
+> > > > +		case -NFS4ERR_MOVED:
+> > > > +			err = nfs4_get_referral(dir, name, fattr, fhandle);
+> > > > +			break;
+> > > > +		case -NFS4ERR_FHEXPIRED:
+> > > > +			return -NFS4ERR_FHEXPIRED;
+> > > > +		case -NFS4ERR_WRONGSEC:
+> > > > +			nfs_fixup_secinfo_attributes(fattr, fhandle);
+> > > 
+> > > case -NFS4ERR_ACCESS:
+> > >                  ???????
+> > > 
+> > > > +		}
+> > > > +		err = nfs4_handle_exception(NFS_SERVER(dir),
+> > > > +					status, &exception);
+> > > > +	} while (exception.retry);
+> > > > +	return err;
+> > > > +}
+> > > > +
+> > > 
+> > > What execution context is this function going to be running under and
+> > > what guarantees that it actually has the right file access credentials
+> > > to allow it to perform a lookup?
+> > 
+> > I imagine, it is in the context of the process that received FHEXPIRED
+> > error. It may not have credentials to perform a lookup on parent
+> > directories. If it doesn't, that would end up with ESTALE with Matt's
+> > patches, right Matt?
+Yes, the current code should be run in the context of the process that 
+received the FHEXPIRED. I think that if the server returns NFS4ERR_ACCESS
+(or EACCESS?) that my patches will keep that error. The only time my patches
+return ESTALE right now is if either the mount option is not used, or the 
+server doesn't use NFS4_FH_VOLATILE_ANY. Any other errors received during 
+recovery are returned like they normally would be.
 
 > 
->>  Trond Myklebust wrote:
->> 
->>>  [ 442.666622] NFS: failed to create MNT RPC client, status=-60
->>>  [ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
->>>  [ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
->>>  [ 442.667032] VFS: Insert root floppy and press ENTER
->>> 
->>   Error 60 is ETIMEDOUT on SPARC, so it seems that the problem is
->>   basically the same one that you see in your 2.6.32 trace (rpcbind:
->>   server 137.226.167.241 not responding, timed out) except that now it is
->>   a fatal error.
->> 
->>   Any idea why the first RPC calls might be failing here? A switch
->>   misconfiguration or something like that perhaps?
->> 
->>  Wasn't there a change in the way nfs mount options are handled by the 
-> kernel
->>  for nfsroot about the time of 2.6.39?  Something about changing from 
-> default
->>  udp to tcp maybe?
+> My point is that if you don't have the ability to pass a credential as
+> an argument, then you won't be able to recover from something like an
+> OPEN, READ or WRITE, which all happen in the rpciod context, nor can you
+> recover from the state recovery thread context.
 > 
-> There was a change, but it was changed back to UDP because of problems like 
-> this.  Behavior in 3.0 or the latest 2.6.39 stable kernel may be improved.
+> Note also that you are doing synchronous I/O, and so you will need a
+> recovery thread context anyway in order to recover from stuff running in
+> the rpciod context...
 > 
 
-I don't know if this was a tip to test newest 2.6.39 but as I wrote in my first email
- http://thread.gmane.org/gmane.linux.nfs/44596
-that's the output of linux-2.6.39.4 with "nfsdebug":
+Hmm, I didn't even think about that when I wrote this... 
 
-[ 407.571521] IP-Config: Complete:
-[ 407.571589] device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-[ 407.571793] host=cluster2, domain=, nis-domain=(none),
-[ 407.571907] bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-[ 407.572332] Root-NFS: nfsroot=/srv/nfs/cluster2
-[ 407.572726] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
-[ 407.572927] NFS: parsing nfs mount option 'udp'
-[ 407.572995] NFS: parsing nfs mount option 'nolock'
-[ 407.573071] NFS: parsing nfs mount option 'addr=137.226.167.241'
-[ 407.573139] NFS: MNTPATH: '/srv/nfs/cluster2'
-[ 407.573203] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
-[ 408.617894] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-[ 408.638319] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-[ 442.666622] NFS: failed to create MNT RPC client, status=-60
-[ 442.666732] NFS: unable to mount server 137.226.167.241, error -60
-[ 442.666868] VFS: Unable to mount root fs via NFS, trying floppy.
-[ 442.667032] VFS: Insert root floppy and press ENTER
+So, how would you suggest I go about correcting this? Should I add a rpc_cred
+argument to the vfh lookup and then try to switch the context on ACCESS errors?
 
-And this behaviour is exactly the same as in all other 2.6.37 - 2.6.39.4 which I've tested.
-So if anybody of you all have an idea what I could try to do, I'll follow...
+Thanks,
 
-Regards,
-Lukas
+Matt Treinish
+
