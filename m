@@ -1,100 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58643 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:59992 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753521Ab1K2ATl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 19:19:41 -0500
-Message-ID: <4ED4238F.4090407@panasas.com>
-Date: Mon, 28 Nov 2011 16:13:03 -0800
+	with ESMTP id S1753425Ab1KNXgA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 18:36:00 -0500
+Message-ID: <4EC1A5CD.9040500@panasas.com>
+Date: Mon, 14 Nov 2011 15:35:41 -0800
 From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Randy Dunlap <rdunlap@xenotime.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Stephen Rothwell <sfr@canb.auug.org.au>, <linux-next@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
-        Michal Marek <mmarek@suse.cz>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: ore: FIX breakage when MISC_FILESYSTEMS is not set
-References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au> <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com>
-In-Reply-To: <4ED422CC.60706@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Benny Halevy <benny@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under
+ NFSDDBG_PNFS
+References: <4EB9F8D6.1080302@panasas.com> <20111109195510.GA2227@fieldses.org> <4EBBF605.9050403@panasas.com> <20111114230923.GA3718@fieldses.org>
+In-Reply-To: <20111114230923.GA3718@fieldses.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 11/14/2011 03:09 PM, J. Bruce Fields wrote:
+> On Thu, Nov 10, 2011 at 08:04:21AM -0800, Boaz Harrosh wrote:
+> 
+> You mean the overuse of the state lock, or something else?
+> 
 
-As Reported by Randy Dunlap
+Yes and the places that causes to unlock / lock because of
+recursion or bad lock ordering.
 
-When MISC_FILESYSTEMS is not enabled:
+So it's not as clean as it could be
 
-fs/built-in.o: In function `objio_alloc_io_state':
-objio_osd.c:(.text+0xcb525): undefined reference to `ore_get_rw_state'
-fs/built-in.o: In function `_write_done':
-objio_osd.c:(.text+0xcb58d): undefined reference to `ore_check_io'
-fs/built-in.o: In function `_read_done':
-...
+Thanks
+Boaz
 
-When MISC_FILESYSTEMS, which is more of a GUI thing then anything else,
-is not selected. exofs/Kconfig is never examined during Kconfig,
-and it can not do it's magic stuff to automatically select everything
-needed.
-
-The solution is to force all users of ORE (exofs, nfs) to manually
-select everything auto-magically selected before.
-
-(This is  why it is a bad idea to put libraries in random parts of
- the tree)
-
-Reported-by: Randy Dunlap <rdunlap@xenotime.net>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/Kconfig |   17 +++++++++--------
- fs/nfs/Kconfig   |    2 ++
- 2 files changed, 11 insertions(+), 8 deletions(-)
-
-diff --git a/fs/exofs/Kconfig b/fs/exofs/Kconfig
-index da42f32..6b05d99 100644
---- a/fs/exofs/Kconfig
-+++ b/fs/exofs/Kconfig
-@@ -1,17 +1,18 @@
--# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
--# for every ORE user we do it like this. Any user should add itself here
--# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
--# selected here, and we default to "ON". So in effect it is like been
--# selected by any of the users.
-+# ORE - Objects Raid Engine (libore.ko)
-+# This library needs to be selected by it's users for example the below EXOFS
-+# filesystem.
-+# All users must do:
-+#	depends on SCSI_OSD_ULD
-+#	select ASYNC_XOR
-+#	select ORE
- config ORE
- 	tristate
--	depends on EXOFS_FS || PNFS_OBJLAYOUT
--	select ASYNC_XOR
--	default SCSI_OSD_ULD
- 
- config EXOFS_FS
- 	tristate "exofs: OSD based file system support"
- 	depends on SCSI_OSD_ULD
-+	select ASYNC_XOR
-+	select ORE
- 	help
- 	  EXOFS is a file system that uses an OSD storage device,
- 	  as its backing storage.
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index dbcd821..3708d76 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -96,6 +96,8 @@ config PNFS_BLOCK
- config PNFS_OBJLAYOUT
- 	tristate
- 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
-+	select ASYNC_XOR
-+	select ORE
- 	default m
- 
- config ROOT_NFS
--- 
-1.7.6.4
-
+> --b.
+> 
+>> Though it's better then the rest of the NFSD code.
 
