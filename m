@@ -1,141 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61125 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756575Ab1KITy7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Nov 2011 14:54:59 -0500
-Date: Wed, 9 Nov 2011 14:55:33 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] NFSv4: include bitmap in nfsv4 get acl data
-Message-ID: <20111109145533.248c0523@corrin.poochiereds.net>
-In-Reply-To: <1320477712-1717-1-git-send-email-andros@netapp.com>
-References: <1320477712-1717-1-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:54768 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752215Ab1KNRXe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 12:23:34 -0500
+Received: by vws1 with SMTP id 1so5261918vws.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 09:23:34 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <4EC13EEA.3030404@tonian.com>
+References: <4EC13EEA.3030404@tonian.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 15 Nov 2011 01:23:13 +0800
+Message-ID: <CA+a=Yy66VOW+nY3LZHxymZv5j5TAehFRav2EC4_kgDqrDVD2EQ@mail.gmail.com>
+Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat,  5 Nov 2011 03:21:52 -0400
-andros@netapp.com wrote:
+On Tue, Nov 15, 2011 at 12:16 AM, Benny Halevy <bhalevy@tonian.com> wrote:
+> I merged the following patches into pnfs-all-3.1-2011-11-14
+> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
+>
+> pnfs-block:
+>  Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
+>  Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
+>  Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
+>  Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
+>  Peng Tao         7c93c37 pnfsblock: clean up _add_entry
+>  Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
+Thanks, Benny. It seems this one is still missing.
+http://www.spinics.net/lists/linux-nfs/msg25358.html
 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> The NFSv4 bitmap size is unbounded: a server can return an arbitrary
-> sized bitmap in an FATTR4_WORD0_ACL request.  Replace using the
-> nfs4_fattr_bitmap_maxsz as a guess to the maximum bitmask returned by a server
-> with the inclusion of the bitmap (xdr length plus bitmasks) and the acl data
-> xdr length to the (cached) acl page data.
-> 
-> This is a general solution to commit e5012d1f "NFSv4.1: update
-> nfs4_fattr_bitmap_maxsz" and fixes hitting a BUG_ON in xdr_shrink_bufhead
-> when getting ACLs.
-> 
-> Cc:stable@kernel.org
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |   20 ++++++++++++++++++--
->  fs/nfs/nfs4xdr.c  |   15 ++++++++++++---
->  2 files changed, 30 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index deb88d9..97014dd 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3671,6 +3671,22 @@ static void nfs4_zap_acl_attr(struct inode *inode)
->  	nfs4_set_cached_acl(inode, NULL);
->  }
->  
-> +/*
-> + * The bitmap xdr length, bitmasks, and the attr xdr length are stored in
-> + * the acl cache to handle variable length bitmasks. Just copy the acl data.
-> + */
-> +static void nfs4_copy_acl(char *buf, char *acl_data, size_t acl_len)
-> +{
-> +	__be32 *q, *p = (__be32 *)acl_data;
-> +	int32_t len;
-> +
-> +	len = be32_to_cpup(p); /* number of bitmasks */
-> +	len += 2;  /* add words for bitmap and attr xdr len */
-> +	q = p + len;
-> +	len = len << 2; /* convert to bytes for acl_len math */
-> +	memcpy(buf, (char *)q, acl_len - len);
-> +}
-> +
->  static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_t buflen)
->  {
->  	struct nfs_inode *nfsi = NFS_I(inode);
-> @@ -3688,7 +3704,7 @@ static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_
->  	ret = -ERANGE; /* see getxattr(2) man page */
->  	if (acl->len > buflen)
->  		goto out;
-> -	memcpy(buf, acl->data, acl->len);
-> +	nfs4_copy_acl(buf, acl->data, acl->len);
->  out_len:
->  	ret = acl->len;
->  out:
-> @@ -3763,7 +3779,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->  		if (res.acl_len > buflen)
->  			goto out_free;
->  		if (localpage)
-> -			memcpy(buf, resp_buf, res.acl_len);
-> +			nfs4_copy_acl(buf, resp_buf, res.acl_len);
->  	}
->  	ret = res.acl_len;
->  out_free:
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index f9fd96d..9c07380 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -2513,7 +2513,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
->  	encode_compound_hdr(xdr, req, &hdr);
->  	encode_sequence(xdr, &args->seq_args, &hdr);
->  	encode_putfh(xdr, args->fh, &hdr);
-> -	replen = hdr.replen + op_decode_hdr_maxsz + nfs4_fattr_bitmap_maxsz + 1;
-> +	replen = hdr.replen + op_decode_hdr_maxsz + 1;
->  	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
->  
->  	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
-> @@ -4955,7 +4955,7 @@ decode_restorefh(struct xdr_stream *xdr)
->  static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  		size_t *acl_len)
->  {
-> -	__be32 *savep;
-> +	__be32 *savep, *bm_p;
->  	uint32_t attrlen,
->  		 bitmap[3] = {0};
->  	struct kvec *iov = req->rq_rcv_buf.head;
-> @@ -4964,6 +4964,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  	*acl_len = 0;
->  	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
->  		goto out;
-> +	bm_p = xdr->p;
->  	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
->  		goto out;
->  	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
-> @@ -4972,12 +4973,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
->  		return -EIO;
->  	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
-> -		size_t hdrlen;
-> +		size_t hdrlen, len;
->  		u32 recvd;
->  
-> +		/*The bitmap (xdr len + bitmasks) and the attr xdr len words
-> +		 * are stored with the acl data to handle the problem of
-> +		 * variable length bitmasks.*/
-> +		xdr->p = bm_p;
-> +		len = be32_to_cpup(bm_p);
-> +		len += 2; /* add bitmap and attr xdr len words */
-> +
->  		/* We ignore &savep and don't do consistency checks on
->  		 * the attr length.  Let userspace figure it out.... */
->  		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
-> +		attrlen += len << 2; /* attrlen is in bytes */
->  		recvd = req->rq_rcv_buf.len - hdrlen;
->  		if (attrlen > recvd) {
->  			dprintk("NFS: server cheating in getattr"
+Would you please merge it as well? verg keeps dropping the patch so I
+sent it as an attachment. Did you get it?
 
-Nice work... I think this looks good:
+BTW, checkpatch.pl doesn't complain anything on the patch:
+$./scripts/checkpatch.pl 0002-pnfsblock-acquire-im_lock-in-_preload_range.patch
+total: 0 errors, 0 warnings, 36 lines checked
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+0002-pnfsblock-acquire-im_lock-in-_preload_range.patch has no obvious
+style problems and is ready for submission.
+
+
+>
+> pnfsd:
+>  Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
+>
+> spnfs-block:
+>  Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
+>  Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
+>
+> Both versions pass connectathon tests against pnfsd-lexp server using the files layout.
+>
+> Block layout fails as the server ctl process crashes as follows:
+Was it working before?
+
+Thanks,
+Tao
+>
+> kernel: nfsv4 compound op #2/2: 47 (OP_GETDEVICEINFO)
+> kernel: nfsd4_getdevinfo: layout_type 3 dev_id 28d:1f maxcnt 135168
+> kernel: nfsd4_getdevinfo: sb ffff88002c535cd0
+> kernel: pnfs_set_device_notify: -->
+> kernel: renewing client (clientid 4ec13510/00000003)
+> kernel: pnfs_set_device_notify: Incr device count (clnt ffff88002d310000) to 2
+> kernel: nfsd4_encode_getdevinfo: err 0
+> kernel: device_slice: dev_id=0:31
+> kernel: device_slice: ret=1
+> kernel: ctl[1028]: segfault at 497 ip 00007f74b7909f24 sp 00007fffd2a43948 error 4 in libc-2.13.90.so[7f74b788d000+192000]
+>
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
