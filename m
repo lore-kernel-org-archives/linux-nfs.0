@@ -1,30 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:43924 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751863Ab1KIRPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Nov 2011 12:15:38 -0500
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Wed, 9 Nov 2011 12:15:29 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pA9HFDAQ218994
-	for <linux-nfs@vger.kernel.org>; Wed, 9 Nov 2011 12:15:13 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pA9HFDqd003766
-	for <linux-nfs@vger.kernel.org>; Wed, 9 Nov 2011 15:15:13 -0200
-In-Reply-To: <OF731FEABC.DAE859A5-ON8825793C.006B9DD4-8825793C.006BC0B8@us.ibm.com>
-References: <OF731FEABC.DAE859A5-ON8825793C.006B9DD4-8825793C.006BC0B8@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: Marc Eshel <eshel@almaden.ibm.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:44854 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755792Ab1KOEPs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 23:15:48 -0500
+Received: by mail-bw0-f46.google.com with SMTP id 11so6679225bke.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 20:15:48 -0800 (PST)
+Message-ID: <4EC1E770.2060608@tonian.com>
+Date: Tue, 15 Nov 2011 06:15:44 +0200
+From: Benny Halevy <benny@tonian.com>
 MIME-Version: 1.0
-Subject: Linux pNFS status meeting 11/10/11  -- CANCELED
-Message-ID: <OF262EFE56.F90DA700-ON88257943.005E94A3-88257943.005EB4B7@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Wed, 9 Nov 2011 09:14:53 -0800
-Content-Type: text/plain; charset="US-ASCII"
+CC: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pnfs git tree status pnfs-all-3.1-2011-11-14 pnfs-all-3.2-rc1-2011-11-14
+References: <4EC13EEA.3030404@tonian.com> <4EC16E3A.9040405@panasas.com> <4EC1E68B.60405@tonian.com>
+In-Reply-To: <4EC1E68B.60405@tonian.com>
+Content-Type: text/plain; charset=UTF-8
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Canceled.
+On 2011-11-15 06:11, Benny Halevy wrote:
+> On 2011-11-14 21:38, Boaz Harrosh wrote:
+>> On 11/14/2011 08:16 AM, Benny Halevy wrote:
+>>> I merged the following patches into pnfs-all-3.1-2011-11-14
+>>> and rebased the tree onto v3.2-rc1 as pnfs-all-3.2-rc1-2011-11-14.
+>>>
+>>> pnfs-block:
+>>>   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
+>>>   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
+>>>   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
+>>>   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
+>>>   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
+>>>   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
+>>>
+>>> pnfsd:
+>>>   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
+>>>
+>>
+>> What happened to the PNFSD dbg Channel. Was that submitted before?
+>>
+>> Boaz 
+> 
+> It's there,  I probably screwed the base date for my git-log-since-tree-oneline
+> script.
+> 
+> Anyhow, here is the list of patches that are still in the major branches
+> since pnfs-all-3.0-2011-08-10:
+> (according to the script :)
+> 
+> ore-devel:
+>   Boaz Harrosh     b133b98 RFC: do_xor_speed Broken on UML do to jiffies
+> 
+> pnfs-block:
+>   Benny Halevy     9158412 pnfs: clean up initiate_file_draining layout lookup
+>   Peng Tao         e5b35df pnfsblock: cleanup bl_mark_sectors_init
+>   Peng Tao         657c2f4 pnfsblock: acquire im_lock in _preload_range
+>   Peng Tao         60d5135 pnfsblock: move find lock page logic out of bl_write_pagelist
+>   Peng Tao         ab0c07d pnfsblock: set read/write tk_status to pnfs_error
+>   Peng Tao         85e8c84 pnfsblock: remove rpc_call_ops from struct parallel_io
+>   Peng Tao         7c93c37 pnfsblock: clean up _add_entry
+>   Peng Tao         ec11faf pnfsblock: alloc short extent before submit bio
+> 
+> nfsd-upstream:
+>   Benny Halevy     546e4fa nfsd4: share_access_to_flags should consider only nfs4.x share_access flags
+>   Benny Halevy     e8e8efb nfsd4: split out share_access want and signel flags while decoding
+>   Benny Halevy     89be556 nfsd4: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg
+>   Benny Halevy     7fa5486 nfsd4: DEBUG: XDR_ERROR()
+> 
+> pnfsd:
+>   Benny Halevy     f89ea60 pnfsd: layout state allocation
+>   Benny Halevy     7b50379 SQUASHME: update_layout_stateid_locked
+>   Benny Halevy     bb72dee pnfsd: layout recall layout state
+>   Benny Halevy     2a9eb41 SQUASHME: pnfsd: initialize fi_layout_states
+>   Benny Halevy     f5f8a59 SQUASHME: pnfsd: layout recall statid processing
+>   Boaz Harrosh     5111e3f SQUASHME: pnfsd: Compile warning in pnfs-all-3.1-2011-10-31-1
+>   Boaz Harrosh     d7e7bec Subject: [PATCH] SQUASHME: pnfsd: nfs4pnfsd.c should dprint under NFSDDBG_PNFS
+>   Boaz Harrosh     5e57e48 SQUASHME: pnfsd: Don't call fs_layout_return on a none-file
+> 
+> pnfsd-exofs:
+>   Boaz Harrosh     cb40981 SQUASHME: pnfsd-exofs: Fix export of only one group layout
+>   Boaz Harrosh     a076d46 SQUASHME: pnfsd-exofs: Type & Name of the devices array changed
+>   Benny Halevy     ef4e804 SQUASHME: pnfsd-exofs: missing arg to ore_calc_stripe_info call
+> 
+> spnfs:
+>   Benny Halevy     141caa1 SQUASHME: spnfs: use struct path in vfs_path_lookup as of v3.0
+> 
+> spnfs-block:
+>   Benny Halevy     27f1cb8 SQUASHME: spnfs-block: use struct path in vfs_path_lookup as of v3.0
+>   Benny Halevy     400ab8f SQUASHME: spnfs-block: fix oops in device_slice
+>   Benny Halevy     bd6bc0a SQUASHME: spnfs-block: add dprints for device_slice
 
+And here's the current tree layout:
+
+master (v3.2-rc1)
+	ore-devel
+		pnfs-block
+		nfsd-upstream
+			nfsd41
+				pnfsd
+					pnfsd-exofs
+						pnfsd-lexp
+							spnfs
+								spnfs-block
+									pnfs-all-latest
