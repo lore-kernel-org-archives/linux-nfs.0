@@ -1,156 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24578 "EHLO mx1.redhat.com"
+Received: from lo.gmane.org ([80.91.229.12]:40709 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755721Ab1K0FiX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 Nov 2011 00:38:23 -0500
-From: Cong Wang <amwang@redhat.com>
-To: linux-kernel@vger.kernel.org
-Cc: akpm@linux-foundation.org, Cong Wang <amwang@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Subject: [PATCH 55/62] sunrpc: remove the second argument of k[un]map_atomic()
-Date: Sun, 27 Nov 2011 13:27:35 +0800
-Message-Id: <1322371662-26166-56-git-send-email-amwang@redhat.com>
-In-Reply-To: <1322371662-26166-1-git-send-email-amwang@redhat.com>
-References: <1322371662-26166-1-git-send-email-amwang@redhat.com>
+	id S1756437Ab1KOPvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Nov 2011 10:51:05 -0500
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RQLHo-0006CH-0B
+	for linux-nfs@vger.kernel.org; Tue, 15 Nov 2011 16:51:00 +0100
+Received: from nat12.iteam.ua ([194.146.132.141])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Nov 2011 16:50:59 +0100
+Received: from free.lan.c2.718r by nat12.iteam.ua with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Nov 2011 16:50:59 +0100
+To: linux-nfs@vger.kernel.org
+From: Pavel <free.lan.c2.718r@gmail.com>
+Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
+Date: Tue, 15 Nov 2011 15:50:47 +0000 (UTC)
+Message-ID: <loom.20111115T142111-739@post.gmane.org>
+References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Bryan Schumaker <bjschuma@...> writes:
 
-Signed-off-by: Cong Wang <amwang@redhat.com>
----
- net/sunrpc/auth_gss/gss_krb5_wrap.c |    4 ++--
- net/sunrpc/socklib.c                |    4 ++--
- net/sunrpc/xdr.c                    |   20 ++++++++++----------
- net/sunrpc/xprtrdma/rpc_rdma.c      |    8 ++++----
- 4 files changed, 18 insertions(+), 18 deletions(-)
+> 
+> On Mon 14 Nov 2011 02:10:05 PM EST, Bryan Schumaker wrote:
+> > Hello Pavel,
+> >
+> > What kernel version is Debian using?  I haven't been able to reproduce the 
+problem using 3.0 (But I'm on
+> Archlinux, so there might be other differences).
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 2763e3e..38f388c 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -82,9 +82,9 @@ gss_krb5_remove_padding(struct xdr_buf *buf, int blocksize)
- 					>>PAGE_CACHE_SHIFT;
- 		unsigned int offset = (buf->page_base + len - 1)
- 					& (PAGE_CACHE_SIZE - 1);
--		ptr = kmap_atomic(buf->pages[last], KM_USER0);
-+		ptr = kmap_atomic(buf->pages[last]);
- 		pad = *(ptr + offset);
--		kunmap_atomic(ptr, KM_USER0);
-+		kunmap_atomic(ptr);
- 		goto out;
- 	} else
- 		len -= buf->page_len;
-diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
-index 145e6784..0a648c5 100644
---- a/net/sunrpc/socklib.c
-+++ b/net/sunrpc/socklib.c
-@@ -114,7 +114,7 @@ ssize_t xdr_partial_copy_from_skb(struct xdr_buf *xdr, unsigned int base, struct
- 		}
- 
- 		len = PAGE_CACHE_SIZE;
--		kaddr = kmap_atomic(*ppage, KM_SKB_SUNRPC_DATA);
-+		kaddr = kmap_atomic(*ppage);
- 		if (base) {
- 			len -= base;
- 			if (pglen < len)
-@@ -127,7 +127,7 @@ ssize_t xdr_partial_copy_from_skb(struct xdr_buf *xdr, unsigned int base, struct
- 			ret = copy_actor(desc, kaddr, len);
- 		}
- 		flush_dcache_page(*ppage);
--		kunmap_atomic(kaddr, KM_SKB_SUNRPC_DATA);
-+		kunmap_atomic(kaddr);
- 		copied += ret;
- 		if (ret != len || !desc->count)
- 			goto out;
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 277ebd4..c04aff8 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -122,9 +122,9 @@ xdr_terminate_string(struct xdr_buf *buf, const u32 len)
- {
- 	char *kaddr;
- 
--	kaddr = kmap_atomic(buf->pages[0], KM_USER0);
-+	kaddr = kmap_atomic(buf->pages[0]);
- 	kaddr[buf->page_base + len] = '\0';
--	kunmap_atomic(kaddr, KM_USER0);
-+	kunmap_atomic(kaddr);
- }
- EXPORT_SYMBOL_GPL(xdr_terminate_string);
- 
-@@ -232,12 +232,12 @@ _shift_data_right_pages(struct page **pages, size_t pgto_base,
- 		pgto_base -= copy;
- 		pgfrom_base -= copy;
- 
--		vto = kmap_atomic(*pgto, KM_USER0);
--		vfrom = kmap_atomic(*pgfrom, KM_USER1);
-+		vto = kmap_atomic(*pgto);
-+		vfrom = kmap_atomic(*pgfrom);
- 		memmove(vto + pgto_base, vfrom + pgfrom_base, copy);
- 		flush_dcache_page(*pgto);
--		kunmap_atomic(vfrom, KM_USER1);
--		kunmap_atomic(vto, KM_USER0);
-+		kunmap_atomic(vfrom);
-+		kunmap_atomic(vto);
- 
- 	} while ((len -= copy) != 0);
- }
-@@ -267,9 +267,9 @@ _copy_to_pages(struct page **pages, size_t pgbase, const char *p, size_t len)
- 		if (copy > len)
- 			copy = len;
- 
--		vto = kmap_atomic(*pgto, KM_USER0);
-+		vto = kmap_atomic(*pgto);
- 		memcpy(vto + pgbase, p, copy);
--		kunmap_atomic(vto, KM_USER0);
-+		kunmap_atomic(vto);
- 
- 		len -= copy;
- 		if (len == 0)
-@@ -311,9 +311,9 @@ _copy_from_pages(char *p, struct page **pages, size_t pgbase, size_t len)
- 		if (copy > len)
- 			copy = len;
- 
--		vfrom = kmap_atomic(*pgfrom, KM_USER0);
-+		vfrom = kmap_atomic(*pgfrom);
- 		memcpy(p, vfrom + pgbase, copy);
--		kunmap_atomic(vfrom, KM_USER0);
-+		kunmap_atomic(vfrom);
- 
- 		pgbase += copy;
- 		if (pgbase == PAGE_CACHE_SIZE) {
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 554d081..1776e57 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -338,9 +338,9 @@ rpcrdma_inline_pullup(struct rpc_rqst *rqst, int pad)
- 			curlen = copy_len;
- 		dprintk("RPC:       %s: page %d destp 0x%p len %d curlen %d\n",
- 			__func__, i, destp, copy_len, curlen);
--		srcp = kmap_atomic(ppages[i], KM_SKB_SUNRPC_DATA);
-+		srcp = kmap_atomic(ppages[i]);
- 		memcpy(destp, srcp+page_base, curlen);
--		kunmap_atomic(srcp, KM_SKB_SUNRPC_DATA);
-+		kunmap_atomic(srcp);
- 		rqst->rq_svec[0].iov_len += curlen;
- 		destp += curlen;
- 		copy_len -= curlen;
-@@ -639,10 +639,10 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 			dprintk("RPC:       %s: page %d"
- 				" srcp 0x%p len %d curlen %d\n",
- 				__func__, i, srcp, copy_len, curlen);
--			destp = kmap_atomic(ppages[i], KM_SKB_SUNRPC_DATA);
-+			destp = kmap_atomic(ppages[i]);
- 			memcpy(destp + page_base, srcp, curlen);
- 			flush_dcache_page(ppages[i]);
--			kunmap_atomic(destp, KM_SKB_SUNRPC_DATA);
-+			kunmap_atomic(destp);
- 			srcp += curlen;
- 			copy_len -= curlen;
- 			if (copy_len == 0)
--- 
-1.7.4.4
+Thanks, Bryan, for your reply.
+
+Debian is using Linux kernel version 2.6.32 - I haven't upgraded it.
+
+> It might also be useful if you could share the /etc/exports file on the 
+> server.
+> 
+> Thanks!
+> 
+> - Bryan
+
+Thank you for the question - that was my rude mistake. For managing exports I'm 
+using OCF resource agent 'exportfs'. It uses Linux build-in command 'exportfs' 
+to export shares and /etc/exports file is empty. However Heartbeat starts much 
+later than NFS...Now it is clear why this wasn't working. Setting up share that 
+doesn't rely on Heartbeat resources, resolves the issue.
+
+Still though, the first test was just to make sure NFS functions the way it is 
+supposed to, and not the goal - the second/main question remains open. When I 
+run sm-notify in this case, shares are already exported and all the other needed 
+resources are available as well. Why doesn't sm-notify work? It doesn't work 
+even in case of single server test. As of using files from /var/lib/nfs/sm/ when 
+notifying clients from the other node in cluster, it should be okay with -v 
+option of sm-notify, because it is a common practice to store the whole 
+/var/lib/nfs folder on shared storage in Active/Passive clusters and trigger sm-
+notify from the active node. It would be awesome if you could give me a clue.
+
+> >
+> > - Bryan
+> >
+> > On Mon 14 Nov 2011 12:11:56 PM EST, Pavel wrote:
+> >> Hi! I'm trying to set up an NFS server (particularly an A/A NFS cluster) 
+and 
+> >> having issues with locking and reboot notifications. These are the tests I 
+have 
+> >> done:
+> >>
+> >> 1. The simplest test includes single NFS server machine (Debian Squeeze), 
+> >> running nfs-kernel-server (nfs-utils 1.2.2-4) and a single client machine 
+(same 
+> >> OS), that mounts a share with “-o 'vers=3'” option. From the client I lock 
+some 
+> >> file on share using 'testlk -w <filename>' (testlk from 
+nfsutils/tools/locktest) 
+> >> so that a corresponding file appears in /var/lib/nfs/sm/ on server. Then I 
+> >> reboot the server and this is what I get in client logs:
+> >>
+> >> lockd: request from 127.0.0.1, port=1007
+> >> lockd: SM_NOTIFY     called
+> >> lockd: host nfs-server1 (192.168.0.101) rebooted, cnt 2
+> >> lockd: get host nfs-server1
+> >> lockd: get host nfs-server1
+> >> lockd: release host nfs-server1
+> >> lockd: reclaiming locks for host nfs-server1
+> >> lockd: rebind host nfs-server1
+> >> lockd: call procedure 2 on nfs-server1
+> >> lockd: nlm_bind_host nfs-server1 (192.168.0.101)
+> >> lockd: rpc_call returned error 13
+> >> lockd: failed to reclaim lock for pid 1555 (errno -13, status 0)
+> >> NLM: done reclaiming locks for host nfs-server1
+> >> lockd: release host nfs-server1
+> >>
+> >> 2. As I'm building a cluster I'll need to notify clients when NFS resource 
+> >> migrates (since it is an A/A cluster nfs-kernel-server is always running on 
+all 
+> >> nodes and shares migrate using exportfs resource agent), but manually 
+calling 
+> >> sm-notify ('sm-notify -f -v <virtual IP of share>') from either the initial 
+for 
+> >> that share or backup node results in the following (client logs):
+> >>
+> >> lockd: request from 127.0.0.1, port=637
+> >> lockd: SM_NOTIFY     called
+> >> lockd: host B (192.168.0.110) rebooted, cnt 2
+> >> lockd: get host B
+> >> lockd: get host B
+> >> lockd: release host B
+> >> lockd: reclaiming locks for host B
+> >> lockd: rebind host B
+> >> lockd: call procedure 2 on B
+> >> lockd: nlm_bind_host B (192.168.0.110)
+> >> lockd: server in grace period
+> >> lockd: spurious grace period reject?!
+> >> lockd: failed to reclaim lock for pid 2508 (errno -37, status 4)
+> >> NLM: done reclaiming locks for host B
+> >> lockd: release host B
+> >>
+> >> even though grace period is intended for lock reclamation. B/w after such 
+> >> invocation no files, corresponding to the notified clients, appear in 
+> >> /var/lib/nfs/sm/ on server for about 10 minutes, if I try locking from any 
+of 
+> >> these notified clients, even though locking itself is ok. Locking from 
+other 
+> >> clients generates files for them instantly.
+> >>
+> >> As of the rest: simple concurrent lock tests from couple of clients work 
+fine as 
+> >> well as server frees locks of rebooted clients.
+> >>
+> >> I'm new to NFS an may be missing obvious things, but I've already spent 
+several 
+> >> days googling around, but don't seem to find any solution.
+> >> Any help or guidance is highly appreciated. Thanks!
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@...
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@...
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@...
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
+
+
 
