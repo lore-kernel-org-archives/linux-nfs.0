@@ -1,91 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64998 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:62064 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751527Ab1KNTKH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Nov 2011 14:10:07 -0500
-Message-ID: <4EC1678D.902@netapp.com>
-Date: Mon, 14 Nov 2011 14:10:05 -0500
+	id S1751383Ab1KPUVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 15:21:44 -0500
+Message-ID: <4EC41B46.60002@netapp.com>
+Date: Wed, 16 Nov 2011 15:21:26 -0500
 From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Pavel <free.lan.c2.718r@gmail.com>
-CC: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Pavel A <free.lan.c2.718r@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
-References: <loom.20111114T180637-632@post.gmane.org>
-In-Reply-To: <loom.20111114T180637-632@post.gmane.org>
-Content-Type: text/plain; charset=UTF-8
+References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com> <loom.20111115T142111-739@post.gmane.org> <4EC2DE49.5070000@netapp.com> <20111115221623.GA12453@fieldses.org> <4EC3C7BD.6060407@netapp.com> <20111116153052.GA20545@fieldses.org> <4EC3F4E3.7050803@netapp.com> <CAA-yEOLYRSxxOWPEe+e_C4T=qkQcKenzw=PNjq4cACYYXA8ncA@mail.gmail.com> <20111116200837.GD2955@pad.fieldses.org>
+In-Reply-To: <20111116200837.GD2955@pad.fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Pavel,
+On 11/16/2011 03:08 PM, J. Bruce Fields wrote:
+> On Wed, Nov 16, 2011 at 09:09:07PM +0200, Pavel A wrote:
+>> I've read about this issue here:
+>> http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html
+>>
+>> /*-----
+>> In the event of server failure (e.g. server reboot or lock daemon
+>> restart), all client locks are lost. However, the clients are not
+>> informed of this, and because the other operations (read, write, and
+>> so on) are not visibly interrupted, they have no reliable way to
+>> prevent other clients from obtaining a lock on a file they think they
+>> have locked.
+>> -----*/
+> 
+> That's incorrect.  Perhaps the article is out of date, I don't know.
 
-What kernel version is Debian using?  I haven't been able to reproduce the problem using 3.0 (But I'm on Archlinux, so there might be other differences).
+Looks like it was written about 11 years ago, so I'll believe that it's out of date.
 
 - Bryan
 
-On Mon 14 Nov 2011 12:11:56 PM EST, Pavel wrote:
-> Hi! I'm trying to set up an NFS server (particularly an A/A NFS cluster) and 
-> having issues with locking and reboot notifications. These are the tests I have 
-> done:
->
-> 1. The simplest test includes single NFS server machine (Debian Squeeze), 
-> running nfs-kernel-server (nfs-utils 1.2.2-4) and a single client machine (same 
-> OS), that mounts a share with “-o 'vers=3'” option. From the client I lock some 
-> file on share using 'testlk -w <filename>' (testlk from nfsutils/tools/locktest) 
-> so that a corresponding file appears in /var/lib/nfs/sm/ on server. Then I 
-> reboot the server and this is what I get in client logs:
->
-> lockd: request from 127.0.0.1, port=1007
-> lockd: SM_NOTIFY     called
-> lockd: host nfs-server1 (192.168.0.101) rebooted, cnt 2
-> lockd: get host nfs-server1
-> lockd: get host nfs-server1
-> lockd: release host nfs-server1
-> lockd: reclaiming locks for host nfs-server1
-> lockd: rebind host nfs-server1
-> lockd: call procedure 2 on nfs-server1
-> lockd: nlm_bind_host nfs-server1 (192.168.0.101)
-> lockd: rpc_call returned error 13
-> lockd: failed to reclaim lock for pid 1555 (errno -13, status 0)
-> NLM: done reclaiming locks for host nfs-server1
-> lockd: release host nfs-server1
->
-> 2. As I'm building a cluster I'll need to notify clients when NFS resource 
-> migrates (since it is an A/A cluster nfs-kernel-server is always running on all 
-> nodes and shares migrate using exportfs resource agent), but manually calling 
-> sm-notify ('sm-notify -f -v <virtual IP of share>') from either the initial for 
-> that share or backup node results in the following (client logs):
->
-> lockd: request from 127.0.0.1, port=637
-> lockd: SM_NOTIFY     called
-> lockd: host B (192.168.0.110) rebooted, cnt 2
-> lockd: get host B
-> lockd: get host B
-> lockd: release host B
-> lockd: reclaiming locks for host B
-> lockd: rebind host B
-> lockd: call procedure 2 on B
-> lockd: nlm_bind_host B (192.168.0.110)
-> lockd: server in grace period
-> lockd: spurious grace period reject?!
-> lockd: failed to reclaim lock for pid 2508 (errno -37, status 4)
-> NLM: done reclaiming locks for host B
-> lockd: release host B
->
-> even though grace period is intended for lock reclamation. B/w after such 
-> invocation no files, corresponding to the notified clients, appear in 
-> /var/lib/nfs/sm/ on server for about 10 minutes, if I try locking from any of 
-> these notified clients, even though locking itself is ok. Locking from other 
-> clients generates files for them instantly.
->
-> As of the rest: simple concurrent lock tests from couple of clients work fine as 
-> well as server frees locks of rebooted clients.
->
-> I'm new to NFS an may be missing obvious things, but I've already spent several 
-> days googling around, but don't seem to find any solution.
-> Any help or guidance is highly appreciated. Thanks!
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+>> Can't get this. If there is a grace period after reboot and clients
+>> can successfully reclaim locks, then how other clients can obtain
+>> locks?
+> 
+> That's right, in the absence of bugs, if a client succesfully reclaims a
+> lock, then it knows that no other client can have acquired that lock in
+> the interim: since the reclaim succeeded, that means the server is still
+> in the grace period, which means the only other locks that it has
+> allowed are also reclaims.  If some reclaim conflicts with this lock,
+> then the other client must have reclaimed a lock that it didn't actually
+> hold before (hence must be buggy).
+> 
+>>> You need to restart nfsd on the node that is taking over.  That means
+>>> that clients usings both filesystems (A and B) will have to do lock
+>>> recovery, when in theory only those using volume B should have to, and
+>>> that is suboptimal.  But it is also correct.
+>>>
+>>
+>> Seems to work. As of a more optimal solution: what do you think of the
+>> contents of /proc/locks? May it be possible to use this info to then
+>> perform locking locally on the other node (after failover)?
+> 
+> No, I don't think so.  And I'd be careful about using /proc/locks for
+> anything but debugging.
+> 
+> --b.
 
