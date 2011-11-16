@@ -1,74 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51586 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757303Ab1K3Amz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 19:42:55 -0500
-Message-ID: <4ED57C04.6010905@panasas.com>
-Date: Tue, 29 Nov 2011 16:42:44 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:42599 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753637Ab1KPR2H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 12:28:07 -0500
+Date: Wed, 16 Nov 2011 12:28:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pasha Z <free.lan.c2.718r@gmail.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: clients fail to reclaim locks after server reboot or manual
+ sm-notify
+Message-ID: <20111116172804.GB20545@fieldses.org>
+References: <loom.20111114T180637-632@post.gmane.org>
+ <4EC1678D.902@netapp.com>
+ <4EC18E5F.4080101@netapp.com>
+ <loom.20111115T142111-739@post.gmane.org>
+ <4EC2DE49.5070000@netapp.com>
+ <20111115221623.GA12453@fieldses.org>
+ <4EC3C7BD.6060407@netapp.com>
+ <20111116153052.GA20545@fieldses.org>
+ <CAA-yEOLE=j2uArOQimnVdwF1jjx-RWU712==2PQGf49AB30RuA@mail.gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Marc Eshel <eshel@almaden.ibm.com>, Peng Tao <bergwolf@gmail.com>,
-        <bhalevy@tonian.com>, Garth Gibson <garth@panasas.com>,
-        Fred Isaman <iisaman@netapp.com>, <linux-nfs@vger.kernel.org>,
-        Matt Benjamin <matt@linuxbox.com>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com> 	   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>  <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>  <1322606842.11286.33.camel@lade.trondhjem.org> 	 <4ED563AC.5040501@panasas.com>  <1322609431.11286.56.camel@lade.trondhjem.org>  <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com> <1322611689.11286.72.camel@lade.trondhjem.org>
-In-Reply-To: <1322611689.11286.72.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAA-yEOLE=j2uArOQimnVdwF1jjx-RWU712==2PQGf49AB30RuA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2011 04:08 PM, Trond Myklebust wrote:
-> On Tue, 2011-11-29 at 15:49 -0800, Marc Eshel wrote: 
->> The only 1 cent that I can add to this argument is that I was led to 
->> believe by you and others that Linux kernel don't add functionality on the 
->> client side that is not supported on the server side. Last time I made 
->> this point I was told that it is ok if they are of by a version or two. 
->> You made it clear that this is no longer true and that the Linux client 
->> and server are now independent of each other. I spent time working on the 
->> server side believing that the client and server will progress more or 
->> less together, disappointed to find out that it is not the case any more.
->> Marc. 
+On Wed, Nov 16, 2011 at 07:15:42PM +0200, Pasha Z wrote:
+> 2011/11/16 J. Bruce Fields <bfields@fieldses.org>:
+> > On Wed, Nov 16, 2011 at 09:25:01AM -0500, Bryan Schumaker wrote:
+> >> Here is what I'm doing (On debian with 2.6.32):
+> >> - (On Client) Mount the server: `sudo mount -o vers=3
+> >> 192.168.122.202:/home/bjschuma /mnt`
+> >> - (On Client) Lock a file using nfs-utils/tools/locktest: `./testlk
+> >> /mnt/test`
+> >> - (On Server) Call sm-notify with the server's IP address: `sudo
+> >> sm-notify -f -v 192.168.122.202`
+> >> - dmesg on the client has this message:
+> >>     lockd: spurious grace period reject?!
+> >>     lockd: failed to reclaim lock for pid 2099 (errno -37, status 4)
+> >> - (In wireshark) The client sends a lock request with the "Reclaim" bit
+> >> set to "yes" but the server replies with "NLM_DENIED_GRACE_PERIOD".
+> >
+> > That sounds like correct server behavior to me.
+> >
+> > Once the server ends the grace period and starts accepting regular
+> > non-reclaim locks, there's the chance of a situation like:
+> >
+> >        client A                client B
+> >        --------                --------
+> >
+> >        acquires lock
+> >
+> >                ---server reboot---
+> >                ---grace period ends---
+> >
+> >                                acquires conflicting lock
+> >                                drops conflicting lock
+> >
+> > And if the server permits a reclaim of the original lock from client A,
+> > then it gives client A the impression that it has held its lock
+> > continuously over this whole time, when in fact someone else has held a
+> > conflicting lock.
 > 
-> I don't know how to manage layout segments in a way that meets the pNFS
-> goals of scalability and performance, and neither you nor the pNFS spec
-> have told me how to do this.
+> Hm...This is how NFS behaves on real server reboot:
+> 
+> client A                client B
+>    --------                --------
+>        ---server started, serving regular locks---
+> acquires lock
+> 
+>        ---server rebooted--- (at this point sm-notify is called automatically)
+> client A reacquires lock
+>       ---grace period ends---
+> 
+>                            cannot acquire lock,
+>                            client A is holding it.
 
-This I do not understand. What is the problem with current implementation?
-I use these segments every day and see performance through the roof. I'm
-able to saturate any cluster I throw at it and am happy as bliss. And it's
-surprisingly stable. My IO flow is full of segments and recalls, and it
-works surprisingly well.
-
-(I intend to send some hard numbers next week. But believe me they are
- amassing)
+Yes.
 
 > 
-> If IBM wants a client that implements layout segments, then it is _your_
-> responsibility to: 
->      A. Convince me that it is an implementable part of the spec. 
+> Shouldn't manual 'sm-notify -f' behave as the same way
+> as real server reboot?
 
-Sure
+No, sm-notify does *not* restart knfsd (so does not cause knfsd to drop
+existing locks or to enter a new grace period).  It *only* sends NSM
+notifications.
 
->      B. Provide me with an implementation that deals all with the
->         concerns that I have.
+> I can't see how your example can take place.
+> If client B acquires lock, then client A has to have
+> released it some time before.
+
+No, in my example above, there is a real server reboot; client A's lock
+is lost in the reboot, it does not reclaim the lock in time, and so
+client B is able to grab the lock.
+
+> > So: no non-reclaim locks are allowed outside the grace period.
 > 
+> I'm sorry, is that what you meant?
 
-What concerns are that. If it's the COMMITs then I think I know what
-todo.
+To restate it ing different words: locks with the reclaim bit will fail
+outside of the grace period.
 
-> IOW: nobody has ever promised IBM that the community would do all your
-> client work for you. EMC, NetApp and Panasas have implemented (most of)
-> the bits that they cared about; any bits that they haven't implemented
-> and that you care about are up to you.
+> As of HA setup. It is as follows, so you can understand, what I plan to use
+> sm-notify for:
 > 
+> Some background:
+> 
+> I'm building an Active/Active NFS cluster and nfs-kernel-server is
+> always running
+> on all nodes. Note: each node in cluster exports shares, different from
+> other nodes (they do not overlap), so clients never access same files through
+> more than one server node and a usual file system (not cluster one) is
+> used for storage.
+> What I'm doing is moving NFS share (with resources underneath: virtual
+> IP, drbd storage)
+> between the nodes with exportfs OCF resource agent.
+> 
+> This is how this setup is described here: http://ben.timby.com/?p=109
+> 
+> /*-----
+> I have need for an active-active NFS cluster. For review, and active-active
+> cluster is two boxes that export two resources (one each). Each box acts as a
+> backup for the other box’s resource. This way, both boxes actively
+> serve clients
+>  (albeit for different NFS exports).
+> 
+> *** To be clear, this means that half my users use Volume A and half
+> of them use
+>  Volume B. Server A exports Volume A and Server B exports Volume B. If server A
+> fails, Server B will export both volumes. I use DRBD to synchronize the primary
+> server to the secondary server, for each volume. You can think of this like
+> cross-replication, where Server A replicates changes to Volume A to Server B. I
+> hope this makes it clear how this setup works. ***
+> -----*/
+> 
+> The goal:
+> 
+> The solution by the link above allows to move NFS shares between the nodes, but
+> doesn't support locking. Therefore I'll need to inform clients when share
+> migrates to the other node (due to a node failure or manually), so
+> that they can
+>  reclaim locks (given that files from /var/lib/nfs/sm are transferred to the
+> other node).
+> 
+> The problem:
+> 
+> When I run sm-notify manually ('sm-notify -f -v <virtual IP of
+> share>'), clients
+>  fail to reclaim locks. The log on the client looks like this:
+> 
+> lockd: request from 127.0.0.1, port=637
+> lockd: SM_NOTIFY     called
+> lockd: host B (192.168.0.110) rebooted, cnt 2
+> lockd: get host B
+> lockd: get host B
+> lockd: release host B
+> lockd: reclaiming locks for host B
+> lockd: rebind host B
+> lockd: call procedure 2 on B
+> lockd: nlm_bind_host B (192.168.0.110)
+> lockd: server in grace period
+> lockd: spurious grace period reject?!
+> lockd: failed to reclaim lock for pid 2508 (errno -37, status 4)
+> NLM: done reclaiming locks for host B
+> lockd: release host B
 
-I think I'll pick this up. Me or some interested people I know. Until now
-it was said that Fred is working on that and we waited patiently for him
-to do it out of respect and to save any wasted efforts. But if it's dropped
-on the floor, then I'm all the gladder to pick it up. Just give me the green
-light because I do not want to duplicate efforts.
+You need to restart nfsd on the node that is taking over.  That means
+that clients usings both filesystems (A and B) will have to do lock
+recovery, when in theory only those using volume B should have to, and
+that is suboptimal.  But it is also correct.
 
-Thanks
-Heart
+--b.
