@@ -1,86 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16464 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:32887 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757560Ab1KKOzX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Nov 2011 09:55:23 -0500
-Message-ID: <4EBD3754.6070602@RedHat.com>
-Date: Fri, 11 Nov 2011 09:55:16 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsidmap: Added -v flag
-References: <1320956785-18004-1-git-send-email-steved@redhat.com> <1320956785-18004-3-git-send-email-steved@redhat.com> <20111110211117.GA2011@umich.edu> <4EBC4153.9090003@RedHat.com> <20111111002210.GA2902@umich.edu>
-In-Reply-To: <20111111002210.GA2902@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S932728Ab1KPAqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Nov 2011 19:46:42 -0500
+Date: Wed, 16 Nov 2011 11:46:31 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>, Josef Bacik <josef@redhat.com>,
+        Jan Kara <jack@suse.cz>, Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH] NFS - fix recent breakage to NFS error handling.
+Message-ID: <20111116114631.3bf69abf@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/nqypx_4LzjHkD+XnnKIyI9/"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/nqypx_4LzjHkD+XnnKIyI9/
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+=46rom c6d615d2b97fe305cbf123a8751ced859dca1d5e Mon Sep 17 00:00:00 2001
+From: NeilBrown <neilb@suse.de>
+Date: Wed, 16 Nov 2011 09:39:05 +1100
+Subject: [PATCH] NFS - fix recent breakage to NFS error handling.
+
+commit 02c24a82187d5a628c68edfe71ae60dc135cd178 made a small and
+presumably unintended change to write error handling in NFS.
+
+Previously an error from filemap_write_and_wait_range would only be of
+interest if nfs_file_fsync did not return an error.  After this commit,
+an error from filemap_write_and_wait_range would mean that (the rest of)
+nfs_file_fsync would not even be called.
+
+This means that:
+ 1/ you are more likely to see EIO than e.g. EDQUOT or ENOSPC.
+ 2/ NFS_CONTEXT_ERROR_WRITE remains set for longer so more writes are
+    synchronous.
+
+This patch restores previous behaviour.
+
+Cc: stable@kernel.org
+Cc: Josef Bacik <josef@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/file.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 0a1f831..3099d55 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -312,13 +312,13 @@ nfs_file_fsync(struct file *file, loff_t start, loff_=
+t end, int datasync)
+ 			datasync);
+=20
+ 	ret =3D filemap_write_and_wait_range(inode->i_mapping, start, end);
+-	if (ret)
+-		return ret;
+ 	mutex_lock(&inode->i_mutex);
+=20
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+ 	have_error =3D test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ 	status =3D nfs_commit_inode(inode, FLUSH_SYNC);
++	if (status >=3D 0 && ret < 0)
++		status =3D ret;
+ 	have_error |=3D test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ 	if (have_error)
+ 		ret =3D xchg(&ctx->error, 0);
+--=20
+1.7.7.3
 
 
-On 11/10/2011 07:23 PM, Jim Rees wrote:
-> Steve Dickson wrote:
-> 
->   
->   
->   On 11/10/2011 04:11 PM, Jim Rees wrote:
->   > Steve Dickson wrote:
->   > 
->   >   To aid in debugging, the -v flag can now be specified
->   >   on the command to enable verbose logging in both
->   >   the nfsidmap command and libnfsidmap library routines.
->   >   
->   >   Signed-off-by: Steve Dickson <steved@redhat.com>
->   >   ---
->   >    utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
->   >    utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
->   >    2 files changed, 24 insertions(+), 3 deletions(-)
->   >   
->   >   diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->   >   index 134d9bc..d74189a 100644
->   >   --- a/utils/nfsidmap/nfsidmap.c
->   >   +++ b/utils/nfsidmap/nfsidmap.c
->   >   @@ -12,6 +12,7 @@
->   >    #include <syslog.h>
->   >    #include "xlog.h"
->   >    
->   >   +int verbose = 0;
->   >    /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
->   >    
->   >    #define MAX_ID_LEN   11
->   >   @@ -108,6 +109,12 @@ int main(int argc, char **argv)
->   >    	xlog_syslog(1);
->   >    	xlog_stderr(0);
->   >    
->   >   +	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
->   >   +		verbose = 1;
->   >   +		nfs4_set_debug(1, NULL);
->   >   +		argc--, argv++;
->   >   +	}
->   >   +
->   > 
->   > Ugh.  Is there some reason not to use getopt() like all the other utils do?
->   I was waiting for this comment ;-)
-> 
-> I'm always happy to play your straight man.
-> 
->   I decided to go with how the command was originally written
->   because this command is only call from the kernel so a user
->   should execute it (except for debugging).  
->   
->   The arguments are vary static on where they need to be
->   no command line. So its either going to work or not,
->   which means there is no real need for a usage error (expect
->   for the one I added). 
->   
->   Finally, is there real need for a while loop and switch statement 
->   for on simple case? I thought not...
-> 
-> It's more work for the next guy who comes along and wants to add another
-> option, especially if the new option takes an argument.
-I still think its overkill but I'm always a fan 
-of making easier for the next guys down the line...
-I'll re-spin it... 
+--Sig_/nqypx_4LzjHkD+XnnKIyI9/
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-steved.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
+iQIVAwUBTsMH5znsnt1WYoG5AQK9+Q//Q8sR7u/SHDbnj6I/8z0PP4d1LB3L1rMW
+rUku6Yr0ZGjkTRkuh0s8F8Se0hYqYpeKaM16Ptux87mjGKiojfA+MO+YZOORpbfh
+7Qb50d+cm5V6sttcokV4sqyUi9TyoLKUGxN/EGApGqtmOi7Dx7w6yQfUNDVmsyHD
+db3eWUGBLzrOZiXVY5hA5qCmIW8Nom7oE7mD8ZcvJi0BZ43hD8RIG05w8iEocWLa
+34pmy1hREHOH+NpnPYiD0uzllVCUjNdy/5QjNsM2XY8yGMae6FrzIwu9/t+IeAp1
+QdB6Q4jZ3p6gALiwNkZokSHeT6SclWVCo0JEV2guQOe8bGmvs/opHyQVL/Cklmk9
+SWiexfhmi2IiajHtM76vLx2qb1+50/Mr7SV5+mgVb+PMQ3kz8G5vn3I7rxXvvNeZ
+nyLxip/3Not+me+rvk2ol2S7SRGWL3lSZH+vyvgdwrMUFPvoZskeYlAzvkyvXEnX
+6EH3B8Pt7hXmdDZMTg/DZ2ZvrYwDqX3wNwkp/CKzBnb+E3b6Ve2Oxxj9J7yTrXC3
+jSj3TnoBt6Q0uz/yhvQmZdhqEPHTBFVjfC/+gMQl8nEDq2SYGAXlZDNtRdMGj/A1
+0zVP3/cej33N+0bFAUsutx75Cub0cts5iQWYzt0LOrDU2nagH0QWzX5eIvXLScoS
+fVZD76GXBgA=
+=1NcK
+-----END PGP SIGNATURE-----
+
+--Sig_/nqypx_4LzjHkD+XnnKIyI9/--
