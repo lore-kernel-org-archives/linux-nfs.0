@@ -1,136 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:57783 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751416Ab1K3NSG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:18:06 -0500
-Received: by vbbfc26 with SMTP id fc26so301052vbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:18:05 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:11864 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757500Ab1KPRh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 12:37:57 -0500
+Message-ID: <4EC3F4E3.7050803@netapp.com>
+Date: Wed, 16 Nov 2011 12:37:39 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <4ED62857.7090804@tonian.com>
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com> <4ED62857.7090804@tonian.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 30 Nov 2011 21:17:41 +0800
-Message-ID: <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com>
-Subject: Re: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Peng Tao <peng_tao@emc.com>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Pavel <free.lan.c2.718r@gmail.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
+References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com> <loom.20111115T142111-739@post.gmane.org> <4EC2DE49.5070000@netapp.com> <20111115221623.GA12453@fieldses.org> <4EC3C7BD.6060407@netapp.com> <20111116153052.GA20545@fieldses.org>
+In-Reply-To: <20111116153052.GA20545@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 8:57 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2011-12-03 06:56, Peng Tao wrote:
->> Asking for layout in pg_init will always make client ask for only 4KB
->> layout in every layoutget. This way, client drops the IO size information
->> that is meaningful for MDS in handing out layout.
->>
->> In stead, if layout is not find in cache, do not send layoutget
->> at once. Wait until before issuing IO in pnfs_do_multiple_reads/writes
->> because that is where we know the real size of current IO. By telling the
->> real IO size to MDS, MDS will have a better chance to give proper layout.
->>
->> Signed-off-by: Peng Tao <peng_tao@emc.com>
->> ---
->> Resend to fix patch title. Sorry for the noise...
->>
->>  fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++-
->>  1 files changed, 52 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->> index 48cfac3..fd585fe 100644
->> --- a/fs/nfs/blocklayout/blocklayout.c
->> +++ b/fs/nfs/blocklayout/blocklayout.c
->> @@ -39,6 +39,7 @@
->>  #include <linux/prefetch.h>
->>
->>  #include "blocklayout.h"
->> +#include "../internal.h"
->>
->>  #define NFSDBG_FACILITY      NFSDBG_PNFS_LD
->>
->> @@ -990,14 +991,63 @@ bl_clear_layoutdriver(struct nfs_server *server)
->>       return 0;
->>  }
->>
->> +/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
->
-> Why is that?
-> What do these arbitrary numbers represent?
-> If these limits depend on some other system sizes they should reflect the dependency
-> as part of their calculation.
-What I wanted to add here is a limit to stop pg_test() (like object's
-max_io_size) and 2MB is just an experience value...
+On 11/16/2011 10:30 AM, J. Bruce Fields wrote:
+> On Wed, Nov 16, 2011 at 09:25:01AM -0500, Bryan Schumaker wrote:
+>> Here is what I'm doing (On debian with 2.6.32):
+>> - (On Client) Mount the server: `sudo mount -o vers=3 
+>> 192.168.122.202:/home/bjschuma /mnt`
+>> - (On Client) Lock a file using nfs-utils/tools/locktest: `./testlk 
+>> /mnt/test`
+>> - (On Server) Call sm-notify with the server's IP address: `sudo 
+>> sm-notify -f -v 192.168.122.202`
+>> - dmesg on the client has this message:
+>>     lockd: spurious grace period reject?!
+>>     lockd: failed to reclaim lock for pid 2099 (errno -37, status 4)
+>> - (In wireshark) The client sends a lock request with the "Reclaim" bit 
+>> set to "yes" but the server replies with "NLM_DENIED_GRACE_PERIOD".
+> 
+> That sounds like correct server behavior to me.
+> 
+> Once the server ends the grace period and starts accepting regular
+> non-reclaim locks, there's the chance of a situation like:
+> 
+> 	client A		client B
+> 	--------		--------
+> 
+> 	acquires lock
+> 
+> 		---server reboot---
+> 		---grace period ends---
+> 
+> 				acquires conflicting lock
+> 				drops conflicting lock
+> 
+> And if the server permits a reclaim of the original lock from client A,
+> then it gives client A the impression that it has held its lock
+> continuously over this whole time, when in fact someone else has held a
+> conflicting lock.
+> 
+> So: no non-reclaim locks are allowed outside the grace period.
 
-Thanks,
-Tao
->
-> Benny
->
->> +#define PNFSBLK_MAXRSIZE (0x1<<22)
->> +#define PNFSBLK_MAXWSIZE (0x1<<21)
->> +static void
->> +bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> +{
->> +     struct inode *ino = pgio->pg_inode;
->> +     struct pnfs_layout_hdr *lo;
->> +
->> +     BUG_ON(pgio->pg_lseg != NULL);
->> +     spin_lock(&ino->i_lock);
->> +     lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_KERNEL);
->> +     if (!lo || test_bit(lo_fail_bit(IOMODE_READ), &lo->plh_flags)) {
->> +             spin_unlock(&ino->i_lock);
->> +             nfs_pageio_reset_read_mds(pgio);
->> +             return;
->> +     }
->> +
->> +     pgio->pg_bsize = PNFSBLK_MAXRSIZE;
->> +     pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
->> +                                             req_offset(req),
->> +                                             req->wb_bytes,
->> +                                             IOMODE_READ);
->> +     spin_unlock(&ino->i_lock);
->> +}
->> +
->> +static void
->> +bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> +{
->> +     struct inode *ino = pgio->pg_inode;
->> +     struct pnfs_layout_hdr *lo;
->> +
->> +     BUG_ON(pgio->pg_lseg != NULL);
->> +     spin_lock(&ino->i_lock);
->> +     lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_NOFS);
->> +     if (!lo || test_bit(lo_fail_bit(IOMODE_RW), &lo->plh_flags)) {
->> +             spin_unlock(&ino->i_lock);
->> +             nfs_pageio_reset_write_mds(pgio);
->> +             return;
->> +     }
->> +
->> +     pgio->pg_bsize = PNFSBLK_MAXWSIZE;
->> +     pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
->> +                                             req_offset(req),
->> +                                             req->wb_bytes,
->> +                                             IOMODE_RW);
->> +     spin_unlock(&ino->i_lock);
->> +}
->> +
->>  static const struct nfs_pageio_ops bl_pg_read_ops = {
->> -     .pg_init = pnfs_generic_pg_init_read,
->> +     .pg_init = bl_pg_init_read,
->>       .pg_test = pnfs_generic_pg_test,
->>       .pg_doio = pnfs_generic_pg_readpages,
->>  };
+I see where I was confused.  I thought that running sm-notify also restarted the grace period.
+
+- Bryan
+
+> 
+> If you restart the server, and *then* immediately run sm-notify while
+> the new nfsd is still in its grace period, I'd expect the reclaim to
+> succeed.
+> 
+> And that may be where the HA setup isn't right--if you're doing
+> active/passive failover, then you need to make sure you don't start nfsd
+> on the backup machine until just before you send the sm-notify.
+> 
+> --b.
+> 
 >>
->>  static const struct nfs_pageio_ops bl_pg_write_ops = {
->> -     .pg_init = pnfs_generic_pg_init_write,
->> +     .pg_init = bl_pg_init_write,
->>       .pg_test = pnfs_generic_pg_test,
->>       .pg_doio = pnfs_generic_pg_writepages,
->>  };
+>> Shouldn't the server be allowing the lock reclaim?  When I tried 
+>> yesterday using 3.0 it only triggered DNS packets, I tried again a few 
+>> minutes ago and got the same results that I did using .32.
 
-
-
--- 
-Thanks,
-Tao
