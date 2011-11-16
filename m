@@ -1,70 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:43003 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932713Ab1KGQVT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 11:21:19 -0500
-Received: by faan17 with SMTP id n17so159017faa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Nov 2011 08:21:18 -0800 (PST)
-Message-ID: <4EB80576.4080301@tonian.com>
-Date: Mon, 07 Nov 2011 18:21:10 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:59947 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753879Ab1KPV4G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2011 16:56:06 -0500
+Received: by yenq3 with SMTP id q3so226915yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2011 13:56:05 -0800 (PST)
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd (and lock) changes for 3.2
-References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com> <20111027203412.GB31669@fieldses.org> <4EA9F5E8.6060900@panasas.com> <20111028144252.GB5798@fieldses.org> <20111104160439.GA32756@fieldses.org> <4EB417C8.4000502@panasas.com>
-In-Reply-To: <4EB417C8.4000502@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <4EC41B46.60002@netapp.com>
+References: <loom.20111114T180637-632@post.gmane.org>
+	<4EC1678D.902@netapp.com>
+	<4EC18E5F.4080101@netapp.com>
+	<loom.20111115T142111-739@post.gmane.org>
+	<4EC2DE49.5070000@netapp.com>
+	<20111115221623.GA12453@fieldses.org>
+	<4EC3C7BD.6060407@netapp.com>
+	<20111116153052.GA20545@fieldses.org>
+	<4EC3F4E3.7050803@netapp.com>
+	<CAA-yEOLYRSxxOWPEe+e_C4T=qkQcKenzw=PNjq4cACYYXA8ncA@mail.gmail.com>
+	<20111116200837.GD2955@pad.fieldses.org>
+	<4EC41B46.60002@netapp.com>
+Date: Wed, 16 Nov 2011 23:56:05 +0200
+Message-ID: <CAA-yEOL=vsCzVfYicpwgTqYuq6m5LUQ0inzMJ_uz8mynV=vuAw@mail.gmail.com>
+Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
+From: Pavel A <free.lan.c2.718r@gmail.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-04 18:50, Boaz Harrosh wrote:
-> On 11/04/2011 09:04 AM, J. Bruce Fields wrote:
->> Boaz points out that I forgot to add stable cc's to two commits:
+2011/11/16 Bryan Schumaker <bjschuma@netapp.com>:
+> On 11/16/2011 03:08 PM, J. Bruce Fields wrote:
+>> On Wed, Nov 16, 2011 at 09:09:07PM +0200, Pavel A wrote:
+>>> I've read about this issue here:
+>>> http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html
+>>>
+>>> /*-----
+>>> In the event of server failure (e.g. server reboot or lock daemon
+>>> restart), all client locks are lost. However, the clients are not
+>>> informed of this, and because the other operations (read, write, and
+>>> so on) are not visibly interrupted, they have no reliable way to
+>>> prevent other clients from obtaining a lock on a file they think they
+>>> have locked.
+>>> -----*/
 >>
->> 	48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir setting"
->> 	6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to
->> 	end nfsd4 grace period"
+>> That's incorrect.  Perhaps the article is out of date, I don't know.
+>
+> Looks like it was written about 11 years ago, so I'll believe that it's out of date.
+
+Yes, should have watched out for that.
+
+>
+> - Bryan
+>
 >>
->> which fix a regression introduced by
->> ab1350b2b3c1dd2e465a6abdda608d8c44facfb8 "nfsd41: Deny new lock before
->> RECLAIM_COMPLETE done" (first included in v3.1-rc1).
+>>> Can't get this. If there is a grace period after reboot and clients
+>>> can successfully reclaim locks, then how other clients can obtain
+>>> locks?
 >>
->> Included below for reference, but I assume simplest for you will be to
->> cherry-pick the above two sha1's.
+>> That's right, in the absence of bugs, if a client succesfully reclaims a
+>> lock, then it knows that no other client can have acquired that lock in
+>> the interim: since the reclaim succeeded, that means the server is still
+>> in the grace period, which means the only other locks that it has
+>> allowed are also reclaims.  If some reclaim conflicts with this lock,
+>> then the other client must have reclaimed a lock that it didn't actually
+>> hold before (hence must be buggy).
 >>
->> Thanks!
+>>>> You need to restart nfsd on the node that is taking over.  That means
+>>>> that clients usings both filesystems (A and B) will have to do lock
+>>>> recovery, when in theory only those using volume B should have to, and
+>>>> that is suboptimal.  But it is also correct.
+>>>>
+>>>
+>>> Seems to work. As of a more optimal solution: what do you think of the
+>>> contents of /proc/locks? May it be possible to use this info to then
+>>> perform locking locally on the other node (after failover)?
+>>
+>> No, I don't think so.  And I'd be careful about using /proc/locks for
+>> anything but debugging.
 >>
 >> --b.
->>
-> 
-> Bruce hi, thanks
-> 
-> Yesterday I hit this bug again. I rebased on Benny's tree which did not have them
-> for some reason. It's hunting me. ;-)
-
-That's odd.  What tip did you use?  These patches should be there:
-8474c1e95786608a79849070b34f93924fcad087
-530b7be2fbd79a8758230d53fc5f050d5c1561ba
-
-Benny
-
-> 
-> Just for Future reference, these patches were suppose to be submitted very early around
-> rc3 when we found them. This is what the -rcX are for, to test and fix what was broken
-> in the merge window.
-> 
-> Please forgive me I should have followed it through, but was too busy and forgot.
-> 
-> But in general you should always have an rc-fixes branch and bug fixes patches
-> should go there and not into the linux-next branch. And yes both branches should
-> be included in linux-next.
-> 
-> This way there is nothing to forget
-> 
-> Thanks
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+Well, looks like this is it.
+Thank you very much, Bruce, Bryan - you real helped me to keep this going :)
