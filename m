@@ -1,74 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:34667 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755325Ab1KJIv0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 03:51:26 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Date: Thu, 10 Nov 2011 03:51:04 -0500
-Subject: RE: [PATCH 0/8] pnfsblock cleanup and fixes
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C31@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
- <4EBB8D4E.7080300@tonian.com>
-In-Reply-To: <4EBB8D4E.7080300@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:45678 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751599Ab1KPTq3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 14:46:29 -0500
+Date: Wed, 16 Nov 2011 14:47:18 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: John Hughes <john@calvaedi.com>
+Cc: Trond Myklebust <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+Message-ID: <20111116144718.78b2e288@corrin.poochiereds.net>
+In-Reply-To: <4EC3FD8B.6000705@calvaedi.com>
+References: <4EC3FD8B.6000705@calvaedi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of Benny Halevy
-> Sent: Thursday, November 10, 2011 4:38 PM
-> To: Peng Tao
-> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com
-> Subject: Re: [PATCH 0/8] pnfsblock cleanup and fixes
-> 
-> On 2011-11-09 17:15, Peng Tao wrote:
-> > Hi, Trond and Benny,
-> >
-> > Bellow are some pnfsblock patches that I have tested for days. Most of them
-> > are cleanup and small improvements. Only
-> > [PATCH 2/8] pnfsblock: acquire im_lock in _preload_range
-> > needs to go into stable.
-> >
-> > Thanks,
-> > Tao
-> >
-> > Peng Tao (8):
-> >   pnfsblock: cleanup bl_mark_sectors_init
-> >   pnfsblock: acquire im_lock in _preload_range
-> 
-> I can't find this patch in my mailbox.
-> It looks like you did not send it...
-> http://thread.gmane.org/gmane.linux.nfs/44761
-I have it in both of my mailbox. Not sure why linux-nfs drops it... Anyway, I will resend it.
+On Wed, 16 Nov 2011 19:14:35 +0100
+John Hughes <john@calvaedi.com> wrote:
 
-Thanks,
-Tao
+> With recent kernels if the Kerberos ticket for a nfs4 mount expires any 
+> user process trying to access the mount hangs until a new ticket is 
+> obtained.  Simultaneously a (luckily rate-limited, but still seemingly 
+> endless) stream of "Error: state manager encountered RPCSEC_GSS session 
+> expired against NFSv4 server" messages is written to the kernel log.
 > 
-> Benny
+> In a common setup with user home directories nfs4 mounted on 
+> workstations one of the processes that is likely to hang is the 
+> screen-unlock function which would normally (via pam_krb5 or similar) 
+> get the new ticket.
 > 
-> >   pnfsblock: move find lock page logic out of bl_write_pagelist
-> >   pnfsblock: set read/write tk_status to pnfs_error
-> >   pnfsblock: remove rpc_call_ops from struct parallel_io
-> >   pnfsblock: clean up _add_entry
-> >   pnfsblock: add im_extents to pnfs_inval_markings
-> >   pnfsblock: alloc short extent before submit bio
-> >
-> >  fs/nfs/blocklayout/blocklayout.c |  176
-> +++++++++++++++++++++++++-------------
-> >  fs/nfs/blocklayout/blocklayout.h |   11 ++-
-> >  fs/nfs/blocklayout/extents.c     |  146 ++++++++++++--------------------
-> >  3 files changed, 180 insertions(+), 153 deletions(-)
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> In older kernels the EKEYEXPIRED error would be passed to userland, 
+> which would usualy just give up.
+> 
+> This patch restores the old behavior, which makes nfs4 mounted home 
+> directories usable for me.
+> 
 
+Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
+added EKEYEXPIRED returns in this codepath also added the code to make
+it hang. 
+
+This not a bug, or at least it's intentional behavior. When a krb5
+ticket expires, we *want* the process to hang. Otherwise, people with
+long running jobs will often find that their jobs error out
+inexplicably when their ticket expires.
+
+The patches that introduced this behavior went into 2.6.34. See the
+commits around 2c64348 (and some preceding ones in the rpc layer).
+
+If you want to fix this use case, you'll need to come up with a scheme
+that doesn't regress this behavior. I think that you'll really need to
+ensure that whatever process you expect to re-fetch your TGT is not
+dependent on accessing kerberized nfs mounts. That really seems like an
+untenable chicken and egg situation.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
