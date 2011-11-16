@@ -1,60 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:44503 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752738Ab1KSJeH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Nov 2011 04:34:07 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        Christoph Hellwig <hch@infradead.org>, agruen@kernel.org,
-        akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Serge E. Hallyn" <serge@hallyn.com>
-References: <1318951981-5508-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<1318951981-5508-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<20111019222021.GB1874@fieldses.org>
-	<87k4805alx.fsf@linux.vnet.ibm.com>
-	<20111020091434.GC5444@fieldses.org>
-	<20111020091946.GA23773@infradead.org>
-	<87aa8w53kj.fsf@linux.vnet.ibm.com>
-	<20111020174915.GA9987@fieldses.org>
-	<E394C0CC-6124-42FD-9962-A061DC4784E3@dilger.ca>
-Date: Sat, 19 Nov 2011 01:35:11 -0800
-In-Reply-To: <E394C0CC-6124-42FD-9962-A061DC4784E3@dilger.ca> (Andreas
-	Dilger's message of "Thu, 20 Oct 2011 13:49:33 -0600")
-Message-ID: <m1lircxxo0.fsf@fess.ebiederm.org>
+Received: from smtp.citrix.com ([66.165.176.89]:59964 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754638Ab1KPOvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 09:51:05 -0500
+Message-ID: <4EC3CDD7.801@citrix.com>
+Date: Wed, 16 Nov 2011 14:51:03 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Subject: Re: [PATCH -V7 21/26] richacl: xattr mapping functions
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
+ TCP
+References: <4EBAC88D.40902@citrix.com>		 <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>		 <4EBBB247.40805@citrix.com>		 <2E3D3F87-479E-4096-B086-C8F83A0147B5@oracle.com>		 <4EBBF35B.5000606@citrix.com>	 <1320957784.11956.16.camel@lade.trondhjem.org>	 <4EBCF98E.6050101@citrix.com> <1321051132.4810.16.camel@lade.trondhjem.org> <4EC114BD.1010600@citrix.com> <4EC2790A.80706@citrix.com>
+In-Reply-To: <4EC2790A.80706@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andreas Dilger <adilger@dilger.ca> writes:
+Further debugging shows that the FINs are being inserted because of a
+call to xs_tcp_release_xprt(), where req->rq_bytes_sent !=
+req->rq_snd_buf.len
 
-> Just as an FYI, from back when we were trying to port Lustre to Solaris,
-> Solaris itself uses a 64-bit "FUID" (32-bit UID + 32-bit namespace) to
-> handle this.
+Some of the time, the netapp server FIN+ACKs and the TCP connection goes
+down and back up without adversely affecting the NFS session.  However,
+some of the time, the server does not FIN+ACK the clients FIN, causing a
+15 second timeout before the client RSTs the TCP connection, causing the
+visible problems to the NFS session.
+
+I would say that the netapp not FIN+ACKing is a bug in itself, but I
+would also say that it is a bug for the client to not be able to send
+all of its send buffer.
+
+Are there cases where not sending its send buffer is expected, or is it
+a state which should be avoided?
+
+~Andrew
+
+On 15/11/11 14:36, Andrew Cooper wrote:
+> Sorry for a slow reply - this is unfortunately not the only bug I am
+> working on.
 >
-> It has a table for arbitrary mapping of 128-bit Windows domains to a
-> 32-bit FUID namespace (don't know much detail here, sorry), and it is
-> (reasonably) expected that a single system will not be in more than
-> 2^32 namespaces at once.  This keeps the datatypes sane (u64 or 2x u32)
-> and doesn't put much complexity into the filesystem/kernel.  For most
-> uses, the high 32-bit value is 0 (local Unix domain).
+> After further testing, this problem does actually reproduce with
+> synchronous mounts as well as asynchronous mounts.  It just takes some
+> extreme stress testing to reproduce with synchronous mounts.
+>
+> After some debugging in xs_tcp_shutdown()  (a cheeky dump_stack()), it
+> appears that periodically xprt_autoclose() is closing the TCP connection.
+>
+> It appears that some of the time, the server correctly FIN+ACKs the
+> first FIN, at which point the TCP connection is torn down and set back
+> up, with no interruption to the NFS session.  However, some of the time,
+> the server does not FIN+ACK the clients FIN, at which point the client
+> waits 15 seconds and RST's the TCP connection, leading to the errors seen.
+>
+> What is the purpose of xprt_autoclose() ? I assume it is to
+> automatically close idle connections.  Am I correct in assuming that it
+> should not be attempting to close an active connection?
+>
+> Thanks,
+>
 
-Interesting.  For now it looks to me like a fixed partitions of a uid
-into a namespace identifier and a normal uid is a brittle path to walk.
+-- 
+Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+T: +44 (0)1223 225 900, http://www.citrix.com
 
-I am looking at using something slightly more dynamic.  Here for your
-user namespace you get this range of uids.  That nests better and
-allows for more flexibility in the future.
-
-I think I can mostly keep filesystems where they don't care.  With just
-a few places changes where we take the filesystem uid and map it into
-what we store in the vfs cache.  And when we read the uid value out
-of the vfs cache and map it into the id value that the filesystem
-needs.
-
-Eric
