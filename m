@@ -1,123 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:37419 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753281Ab1KLPzs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 10:55:48 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RPFtL-0003Ia-Ue
-	for linux-nfs@vger.kernel.org; Sat, 12 Nov 2011 10:53:16 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsidmap: Added Error Logging
-Date: Sat, 12 Nov 2011 10:55:45 -0500
-Message-Id: <1321113346-10106-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1321113346-10106-1-git-send-email-steved@redhat.com>
-References: <1321113346-10106-1-git-send-email-steved@redhat.com>
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:45297 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757485Ab1KQNNu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 08:13:50 -0500
+Message-ID: <4EC50882.2080803@Calva.COM>
+Date: Thu, 17 Nov 2011 14:13:38 +0100
+From: John Hughes <john@Calva.COM>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: Jim Rees <rees@umich.edu>, Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+References: <4EC3FD8B.6000705@calvaedi.com>	<20111116144718.78b2e288@corrin.poochiereds.net>	<20111116234434.GA12882@umich.edu>	<20111116203119.1d9c0dd6@corrin.poochiereds.net> <20111116203810.4e1b9d28@corrin.poochiereds.net> <4EC4EA91.5070607@Calva.COM>
+In-Reply-To: <4EC4EA91.5070607@Calva.COM>
+Content-Type: multipart/mixed;
+ boundary="------------010100050907000402030400"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since this binary is being called by the kernel, errors
-need to be logged to the syslog for help in debugging problems.
+This is a multi-part message in MIME format.
+--------------010100050907000402030400
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsidmap/Makefile.am |    2 +-
- utils/nfsidmap/nfsidmap.c  |   34 ++++++++++++++++++++++++++++++----
- 2 files changed, 31 insertions(+), 5 deletions(-)
+On 17/11/11 12:05, John Hughes wrote:
+> On 17/11/11 02:38, Jeff Layton wrote:
+>> Note too that the gssd code distinguishes between an expired TGT and a
+>> non-existent credcache. The latter will give you the error you desire
+>> here. So one possibility is just to remove the credcache from /tmp in
+>> this situation.
+>
+> Something to scan /tmp for expired credentials and zap em?  rpc.gssd 
+> would communicate that to the kernel?
+>
+> Whadaya know, that works.
+Here's a dumb perl script that could be run from, for example, .xsession 
+to automatically destroy expired ticket caches.
 
-diff --git a/utils/nfsidmap/Makefile.am b/utils/nfsidmap/Makefile.am
-index f837b91..037aa79 100644
---- a/utils/nfsidmap/Makefile.am
-+++ b/utils/nfsidmap/Makefile.am
-@@ -4,6 +4,6 @@ man8_MANS = nfsidmap.man
- 
- sbin_PROGRAMS	= nfsidmap
- nfsidmap_SOURCES = nfsidmap.c
--nfsidmap_LDADD = -lnfsidmap -lkeyutils
-+nfsidmap_LDADD = -lnfsidmap -lkeyutils ../../support/nfs/libnfs.a
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 2d87381..134d9bc 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -10,6 +10,7 @@
- #include <nfsidmap.h>
- 
- #include <syslog.h>
-+#include "xlog.h"
- 
- /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
- 
-@@ -36,9 +37,15 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
- 		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
- 		sprintf(id, "%u", gid);
- 	}
-+	if (rc < 0)
-+		xlog_err("id_lookup: %s: failed: %m",
-+			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
- 
--	if (rc == 0)
-+	if (rc == 0) {
- 		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-+		if (rc < 0)
-+			xlog_err("id_lookup: keyctl_instantiate failed: %m");
-+	}
- 
- 	return rc;
- }
-@@ -57,6 +64,7 @@ int name_lookup(char *id, key_serial_t key, int type)
- 	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
- 	if (rc != 0) {
- 		rc = -1;
-+		xlog_err("name_lookup: nfs4_get_default_domain failed: %m");
- 		goto out;
- 	}
- 
-@@ -67,10 +75,15 @@ int name_lookup(char *id, key_serial_t key, int type)
- 		gid = atoi(id);
- 		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
- 	}
-+	if (rc < 0)
-+		xlog_err("name_lookup: %s: failed: %m",
-+			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
- 
--	if (rc == 0)
-+	if (rc == 0) {
- 		rc = keyctl_instantiate(key, &name, strlen(name), 0);
--
-+		if (rc < 0)
-+			xlog_err("name_lookup: keyctl_instantiate failed: %m");
-+	}
- out:
- 	return rc;
- }
-@@ -83,9 +96,22 @@ int main(int argc, char **argv)
- 	int rc = 1;
- 	int timeout = 600;
- 	key_serial_t key;
-+	char *progname;
-+
-+	/* Set the basename */
-+	if ((progname = strrchr(argv[0], '/')) != NULL)
-+		progname++;
-+	else
-+		progname = argv[0];
- 
--	if (argc < 3)
-+	xlog_open(progname);
-+	xlog_syslog(1);
-+	xlog_stderr(0);
-+
-+	if (argc < 3) {
-+		xlog_err("Bad arg count. Check /etc/request-key.conf");
- 		return 1;
-+	}
- 
- 	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
- 	strcpy(arg, argv[2]);
--- 
-1.7.7
+Would need a bit of trickery to make it go away on end of session and 
+something in /etc/pm/sleep.d to send it a SIGALRM when the system wakes 
+from suspend or hibernate.
 
+It has a potential race between destroying an expired ticket and a new 
+ticket being granted.
+
+I guess now I'll look at a hack to rpc.gssd for a neater way of doing this.
+
+
+
+
+
+--------------010100050907000402030400
+Content-Type: text/plain;
+ name="monitor-tickets"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="monitor-tickets"
+
+#! /usr/bin/perl -w
+
+my $ALARMED = 0;
+
+$SIG{ALRM} = sub { ++$ALARMED; };
+
+use POSIX qw(mktime);
+
+# Work out ticket expiry
+
+# Valid starting     Expires            Service principal
+# 11/17/11 10:34:23  11/17/11 20:34:23  krbtgt/CALVAEDI.COM@CALVAEDI.COM
+# 	renew until 11/18/11 10:34:23
+# 11/17/11 10:34:23  11/17/11 20:34:23  nfs/olympic.calvaedi.com@CALVAEDI.COM
+# 	renew until 11/18/11 10:34:23
+# 11/17/11 11:24:24  11/17/11 20:34:23  host/olympic.calvaedi.com@CALVAEDI.COM
+# 	renew until 11/18/11 10:34:23
+
+# Eurgh - non localised, US format dates.
+
+sub expiry {
+	local *KLIST;
+	open KLIST, "/usr/bin/klist | " or return;
+	my $expiry;
+	while (<KLIST>) {
+		if (m((\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+)  krbtgt)) {
+			$expiry = mktime ($6, $5, $4, $2, $1 - 1, 100 +  $3);
+			last;
+		}
+	}
+
+	$expiry;
+}
+
+
+for (;;) {
+	my $sleepytime = 60;
+
+	my $expiry = expiry ();
+	
+	if (defined $expiry) {
+		my $left = $expiry - time;
+		if ($left <= 0) {
+			# Ticket expired, zap it.  Potential race with
+			# new ticket creation.
+			print "Destroy expired ticket\n";
+			system "/usr/bin/kdestroy";
+		}
+		else {
+			$sleepytime = $left;
+		}
+	}
+
+	if ($ALARMED) {
+		$ALARMED = 0;
+		next;
+	}
+
+	# If machine freezes during this sleap how long will
+	# it sleep for?
+	print "Sleeping for $sleepytime seconds\n";
+	sleep $sleepytime;
+}
+
+--------------010100050907000402030400--
