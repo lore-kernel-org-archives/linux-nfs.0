@@ -1,114 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23142 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753105Ab1KCWRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 18:17:04 -0400
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: GSSAPI Proxy initiative
-Date: Thu, 3 Nov 2011 15:16:48 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <1320357606.7734.697.camel@willson.li.ssimo.org>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org> <CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com> <1320332310.7734.643.camel@willson.li.ssimo.org> <CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com> <1320337903.7734.670.camel@willson.li.ssimo.org> <CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com> <1320352784.18396.109.camel@lade.trondhjem.org> <CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com> <1320355818.7734.685.camel@willson.li.ssimo.org> <1320356806.18396.149.camel@lade.trondhjem.org> <1320357606.7734.697.camel@willson.li.ssimo.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Simo Sorce" <simo@redhat.com>
-Cc: "Nico Williams" <nico@cryptonector.com>, "dhowells" <dhowells@redhat.com>,
-        <linux-nfs@vger.kernel.org>, "krbdev" <krbdev@mit.edu>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:41753 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755323Ab1KQU0G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:26:06 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RR8Uc-0003Ga-Lx
+	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 15:23:30 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
+Date: Thu, 17 Nov 2011 15:26:02 -0500
+Message-Id: <1321561563-5862-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1321561563-5862-1-git-send-email-steved@redhat.com>
+References: <1321561563-5862-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTaW1vIFNvcmNlIFttYWlsdG86
-c2ltb0ByZWRoYXQuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMDMsIDIwMTEgNjow
-MCBQTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogTmljbyBXaWxsaWFtczsgZGhvd2Vs
-bHM7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IGtyYmRldg0KPiBTdWJqZWN0OiBSZTogR1NT
-QVBJIFByb3h5IGluaXRpYXRpdmUNCj4gDQo+IE9uIFRodSwgMjAxMS0xMS0wMyBhdCAxNzo0NiAt
-MDQwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxMS0xMS0wMyBhdCAx
-NzozMCAtMDQwMCwgU2ltbyBTb3JjZSB3cm90ZToNCj4gPiA+IE9uIFRodSwgMjAxMS0xMS0wMyBh
-dCAxNTo1MyAtMDUwMCwgTmljbyBXaWxsaWFtcyB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBOb3Yg
-MywgMjAxMSBhdCAzOjM5IFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+ID4gPFRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiA+ID4gPj4gV2hhdCBJIGhhZCBpbiBtaW5kIHdh
-cyBzb21ldGhpbmcgbGlrZSBQQUdzIG9yIGtleXJpbmdzLiAgT3IsIHRvDQo+ID4gPiA+ID4+IGJl
-IG11Y2ggbW9yZSBzcGVjaWZpYywgc2VhcmNoIGZvciBteSBuYW1lIGFuZCB0aGUgc3RyaW5nDQo+
-ID4gPiA+ID4+ICJjcmVkZW50aWFscyBwcm9jZXNzIGdyb3VwcyIgLS0gYSBQQUcgb24gc3Rlcm9p
-ZHMuDQo+ID4gPiA+ID4+DQo+ID4gPiA+ID4+IFRoZSBpZGVhIGlzIHRoYXQgdGhlIElQQyBwZWVy
-IGNhbiBvYnNlcnZlIHRoZSBvdGhlcidzDQo+ID4gPiA+ID4+IFBBRy9rZXlyaW5nL0NQRy93aGF0
-ZXZlciBhbmQgdXNlIHRoYXQgdG8gZmluZCB0aGUgY29ycmVjdA0KPiA+ID4gPiA+PiBjcmVkZW50
-aWFscyAoYXV0aG9yaXphdGlvbiBpcyBzdGlsbCByZXF1aXJlZCB0aG91Z2gpLg0KPiA+ID4gPiA+
-DQo+ID4gPiA+ID4gTGludXggYWxyZWFkeSBoYXMgcGVyLXVzZXIsIHBlci1wcm9jZXNzIGFuZCBw
-ZXItdGhyZWFkIGtleXJpbmdzDQo+ID4gPiA+ID4gd2hpY2ggb2ZmZXIgYSBoaWdoIHNlY3VyaXR5
-IHN0b3JhZ2Ugc29sdXRpb24gZm9yIGtleXMuIFRoZQ0KPiA+ID4gPiA+IHByb2JsZW0gd2l0aCB0
-aG9zZSBpcyB0aGF0IHRoZXkgYXJlIGRpZmZpY3VsdCB0byB1c2UgaW4gYW4NCj4gPiA+ID4gPiBh
-c3luY2hyb25vdXMgY29udGV4dCB3aGVuIHRoZSBvcmlnaW5hbCB1c2VyJ3MgcHJvY2Vzcy90aHJl
-YWQNCj4gY29udGV4dCBpcyBubyBsb25nZXIgYXZhaWxhYmxlIHRvIHVzLg0KPiA+ID4gPg0KPiA+
-ID4gPiBGb3IgYXN5bmMgSVBDIG1ldGhvZHMgeW91J2Qgd2FudCBzb21ldGhpbmcgbGlrZSBTQ01f
-Q1JFREVOVElBTFMNCj4gdG8NCj4gPiA+ID4gZ2l2ZSB5b3UgdGhlIGtleXJpbmcvUEFHL3doYXRl
-dmVyIGluZm9ybWF0aW9uIHlvdSBuZWVkIGFib3UgdGh0ZQ0KPiBwZWVyLg0KPiA+ID4gPiAgVGhl
-IGFuY2lsbGFyeSBkYXRhIHNob3VsZCBiZSBjb21wbGV0ZSBlbm91Z2ggdGhhdCB5b3UgY2FuIHBh
-c3QNCj4gPiA+ID4gdGhlIGNsaWVudCBwcm9jZXNzL3RocmVhZCBiZWluZyBkZWFkLCBhbHRob3Vn
-aCBpdCdzIG5pY2UgdG8gbm90DQo+ID4gPiA+IGhhdmUgdG8gcHJvY2VzcyBhIHJlcXVlc3QgZnJv
-bSBhIGRlYWQgZW50aXR5Li4uDQo+ID4gPiA+DQo+ID4gPiA+IEZvciBzeW5jIElQQyB5b3UgbmVl
-ZCBzb21ldGhpbmcgbGlrZSBkb29yX3VjcmVkKCkuICBBbmQgZm9yIHN5bmMNCj4gPiA+ID4gSVBD
-IHlvdSBjYW4gbWFrZSBzdXJlIHRvIGdldCBTSUdDQU5DRUwgb3IgZXF1aXZhbGVudCB3aGVuIHRo
-ZQ0KPiA+ID4gPiBjbGllbnQgZ2V0cyBjYW5jZWxlZCAodGhpcyBpcyB0aGUgZGVmYXVsdCBpbiBk
-b29ycykuDQo+ID4gPiA+DQo+ID4gPiA+ID4gSWRlYWxseSwgdGhvdWdoLCB0aGF0J3Mgd2hhdCB3
-ZSdkIGxpa2UgdG8gc2VlIHVzZWQuDQo+ID4gPiA+DQo+ID4gPiA+IEFncmVlZCENCj4gPiA+DQo+
-ID4gPiBJIGhhdmUgZGlzY3Vzc2VkIHVzZSBvZiB0aGUga2V5cmluZyBpbiBhIHByaXZhdGUgZGlz
-Y3Vzc2lvbiBiZWZvcmUNCj4gPiA+IHN0YXJ0aW5nIHRoZSB0aHJlYWQsIGFuZCBpdCB0dXJucyBv
-dXQgdGhlIGtleXJpbmcgaGFzIGEgbnVtYmVyIG9mDQo+ID4gPiBsaW1pdGF0aW9ucyB0aGF0IG1h
-a2VzIGl0IHByb2JhYmx5IHVuc3VpdGFibGUgZm9yIHRoaXMgcHJvamVjdC4NCj4gPiA+DQo+ID4g
-PiBBcyBhbiB1cGNhbGwgbWVjaGFuaXNtIGl0IGhhcyBzb21lIGxpbWl0YXRpb25zIG9uIHRoZSBz
-aXplIG9mIHRoZQ0KPiA+ID4gcGF5bG9hZHMsIElJUkMgbGltaXRlZCB0byBhIHBhZ2UsIGFuZCB0
-aGF0IG1lYW5zIHRoYXQgeW91IGNhbm5vdA0KPiA+ID4gcGFzcyBibG9icyBjYXJyeWluZyBiaWcg
-a2VyYmVyb3MgdGlja2V0cy4NCj4gPiA+DQo+ID4gPiBBcyBhIHN0b3JhZ2UgbWVjaGFuaXNtIGZv
-ciBjcmVkZW50aWFsIGNhY2hlcyBpdCBhbHNvIGhhcyBzaXplIGxpbWl0cy4NCj4gPiA+IEN1cnJl
-bnRseSB0aGUgbGltaXQgaXMgMjBrIHBlciB1c2VyIHdoaWNoIGlzIG5vdCBldmVuIGVub3VnaCB0
-byBob2xkDQo+ID4gPiBhIHNpbmdsZSB0aWNrZXQgaW4gc29tZSBjYXNlcy4gVGhpcyBsaW1pdCBj
-YW4gYmUgaW5jcmVhc2VkIG9mDQo+ID4gPiBjb3Vyc2UsIGJ1dCB0aGVuIHlvdSBlbmQga2VlcGlu
-ZyBhcm91bmQgYSBodWdlIGFtb3VudCBvZg0KPiB1bnN3YXBwYWJsZQ0KPiA+ID4gcmFtIGRlcGVu
-ZGluZyBvbiB0aGUgbnVtYmVyIG9mIHVzZXJzLg0KPiA+DQo+ID4gQWxsb3dpbmcga2V5cyB0byBi
-ZSBzd2FwcGVkIG91dCBpcyBhIHJlYWxseSByZWFsbHkgcmVhbGx5IHJlYWxseQ0KPiA+IHJlYWxs
-eSByZWFsbHkgYmFkIGlkZWEgd2hlbiB5b3VyIGtlcm5lbCBkZXBlbmRzIHVwb24gdGhlbSBiZWlu
-Zw0KPiA+IGF2YWlsYWJsZSBhcyBwYXJ0IG9mIHRoZSBtZW1vcnkgcmVjbGFpbSBwcm9jZXNzLCBh
-cyB3b3VsZCBiZSB0aGUgY2FzZQ0KPiA+IHdoZW4geW91IGFyZSB0YWxraW5nIGFib3V0IE5GUywg
-Q0lGUyBvciBBRlMgZGlydHkgcGFnZSB3cml0ZWJhY2tzLg0KPiANCj4gWW91IGRvIG5vdCBuZWVk
-IGxvbmcgdGVybSBrZXlzIG9uIGV4aXN0aW5nIG1vdW50cyB3aGljaCBpcyB0aGUgb25seSBjYXNl
-DQo+IHdoZXJlIHlvdSBoYXZlIGFueXRoaW5nIHRvIHJlbGVhc2UsIGdzcyBjb250ZXh0IHNlc3Np
-b24ga2V5cyB3aWxsIGJlIGtlcHQgaW4NCj4gdGhlIGtlcm5lbCBidXQgbmVlZCBub3QgYmUgc2hh
-cmVkIHdpdGggYW55dGhpbmcuDQoNClRoYXQncyBub3Qgc3VmZmljaWVudC4gU2VlIGJlbG93Lg0K
-DQo+IEl0IGlzIG9rIHRvIHVzZSBrZXlyaW5nIGlmIHRoYXQncyBkZWVtZWQgdGhlIHJpZ2h0IHBs
-YWNlIGZvciBzZXNzaW9uIGtleXMsIGJ1dCBJDQo+IHRoaW5rIHlvdSBhbHJlYWR5IGhhdmUgc3Ry
-dWN0dXJlcyB3aGVyZSB5b3UgY3VycmVudGx5IHN0b3JlIHRoZW0gc28gSSBkb24ndA0KPiB0aGlr
-IHlvdSBuZWNlc3NhcmlseSBuZWVkIHRvIGNoYW5nZSB0aGF0IHBhcnQgb2YgdGhlIGtlcm5lbCBp
-bXBsZW1lbnRhdGlvbi4NCg0KTm8sIGJ1dCB3ZSBzdGlsbCBuZWVkIHRvIGJlIGFibGUgdG8gZG8g
-cmVjb3Zlcnkgb2YgcnBjc2VjX2dzcyBjb250ZXh0cyBvbmNlIHRoZXkgYXJlIGJyb2tlbiwgYW5k
-IHJpZ2h0IG5vdyB3ZSBoYXZlIGEgbWFqb3IgZmxhdyBkdWUgdG8gdGhlIGZhY3QgdGhhdCByZWNv
-dmVyeSBkZXBlbmRzIG9uIGEgbG90IG9mIHNtYWxsIHByb2Nlc3NlcyBhbmQgZGF0YSB0aGF0IGlz
-IGFsbG93ZWQgdG8gYmUgc3dhcHBlZCBvdXQgYXQgdGhlIG1vbWVudCB3aGVuIHdlIG5lZWQgdGhl
-bSB0aGUgbW9zdCAoaS5lLiBpbiBhIG1lbW9yeSByZWNsYWltIHNpdHVhdGlvbikuDQoNCklmIHRo
-ZSBzZXJ2ZXIgcmVib290cyB3aGlsZSBvdXIgY2xpZW50IGlzIGluIHRoZSBtaWRkbGUgb2Ygd3Jp
-dGluZyBiYWNrIGEgZmlsZSAob3Igc2V2ZXJhbCBmaWxlcyksIHRoZW4gdGhlIGNsaWVudCBuZWVk
-cyB0byByZWNvdmVyIHRob3NlIHJwY3NlY19nc3MgY29udGV4dHMgdGhhdCBhdXRoZW50aWNhdGUg
-dGhlIHByb2Nlc3NlcyB3aGljaCBvd24gYW55IGRpcnR5IHBhZ2VzIHRoYXQgcmVtYWluIHRvIGJl
-IHdyaXR0ZW4gb3V0Lg0KS2V5IHNlY3VyaXR5IGlzIGFuIGlycmVsZXZhbnQgY29uY2VybiBvbmNl
-IHlvdXIga2VybmVsIGRlYWRsb2NrcyBpbiBhbiBPT00gc3RhdGUuDQoNCj4gPiA+IFNvIGZvciBs
-b25nIHRlcm0gc3RvcmFnZSBvZiBjcmVkZW50aWFscyB3ZSB3aWxsIHByb2JhYmx5IG5vdCByZWx5
-IG9uDQo+ID4gPiBrZXJuZWwga2V5cmluZ3MsIG5vciBhcyBhbiB1cGNhbGwgbWVjaGFuaXNtLg0K
-PiA+DQo+ID4gU28gdGhpcyB3b3VsZCBiZSBhbiBhcmd1bWVudCBmb3Igc2NyYXBwaW5nIGtleXJp
-bmdzIGZyb20gdGhlIGtlcm5lbD8NCj4gPiBJZiB0aGV5J3JlIG5vdCBnb29kIGZvciBrZXJiZXJv
-cyB0aWNrZXRzLCB3aHkgd291bGQgd2Ugd2FudCB0byBrZWVwDQo+ID4gdGhlbSBhdCBhbGw/DQo+
-IA0KPiBTZWUgYWJvdmUuDQo+IA0KPiBXZSBjb3VsZCBhbHNvIGJyZWFrIHRoZSB0aWNrZXRzIHNv
-IHRoYXQgb25seSB0aGUgdmFsdWFibGUgcGFydCBpcyBrZXB0IGluIHRoZQ0KPiBrZXlyaW5nLCBh
-bmQgdGhlIHJlc3QgKGVuY3J5cHRlZCB3aXRoIHRoZSBzZXNzaW9uIGtleSkgaW4gYSBmaWxlLg0K
-PiBJIGRvbjt0IHRoaW5rIHRoaXMgaW5mbHVlbmNlcyB0aGUgR1NTQVBJIFByb3h5IHByb3RvY29s
-IGFuZCBtZWNoYW5pc20uDQo+IEl0IGlzIGFuIGltcGxlbWVudGF0aW9uIGRldGFpbCB3ZSBjYW4g
-ZGlzY3VzcyB3aXRoaW4gdGhlIGxpbnV4IHNwZWNpZmljDQo+IGltcGxlbWVudGF0aW9uLg0KPiAN
-Cj4gPiBXaGF0IHdvdWxkIHlvdSByZXBsYWNlIHRoZW0gd2l0aCwgZ2l2ZW4gdGhlIGFib3ZlIHJl
-cXVpcmVtZW50cw0KPiA+IGNvbmNlcm5pbmcgc3dhcHBpbmc/DQo+IA0KPiBDdXJyZW50bHkgY3Jl
-ZGVudGlhbCBjYWNoZXMgYXJlIHN0b3JlZCBpbiBmaWxlcywgaXMgdGhlcmUgYSBwcm9ibGVtIHdp
-dGggdGhhdA0KPiBtb2RlbCA/IERvIHlvdSBuZWVkIGFjY2VzcyB0byBjcmVkZW50aWFsIGNhY2hl
-cyBmcm9tIHRoZSBrZXJuZWwgd2hlbg0KPiB1bmRlciBtZW1vcnkgcHJlc3N1cmUgPw0KDQoNClll
-cywgdGhlcmUgaXMgYSBtYWpvciBwcm9ibGVtIHdpdGggdGhhdCBtb2RlbCwgYW5kIHllcyB3ZSBk
-byBwb3RlbnRpYWxseSBuZWVkIGFjY2VzcyB0byBjcmVkZW50aWFsIGNhY2hlcyB3aGVuIGluIGEg
-cmVjb3Zlcnkgc2l0dWF0aW9uICh3aGljaCBpcyBhIHNpdHVhdGlvbiB3aGVuIHdlIGFyZSB1c3Vh
-bGx5IHVuZGVyIG1lbW9yeSBwcmVzc3VyZSkuDQoNClRyb25kDQo=
+Introduce the '-c [keyring]' command line argument
+which will clear the giving keyring of the keys.
+If a keyring not supplied the default 'id_resolver'
+keyring will be used.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsidmap/nfsidmap.c   |   62 +++++++++++++++++++++++++++++++++++++++---
+ utils/nfsidmap/nfsidmap.man |   14 ++++++++-
+ 2 files changed, 69 insertions(+), 7 deletions(-)
+
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 6a09f38..2625dc1 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -13,12 +13,14 @@
+ #include "xlog.h"
+ 
+ int verbose = 0;
+-char *usage="Usage: %s [-v] [-t timeout] key desc";
++char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+ 
+ #define MAX_ID_LEN   11
+ #define IDMAP_NAMESZ 128
+ #define USER  1
+ #define GROUP 0
++#define DEFAULT_KEYRING "id_resolver"
++#define PROCKEYS "/proc/keys"
+ 
+ /*
+  * Find either a user or group id based on the name@domain string
+@@ -87,6 +89,47 @@ int name_lookup(char *id, key_serial_t key, int type)
+ out:
+ 	return rc;
+ }
++/*
++ * Clear all the keys on the given keyring
++ */
++static int keyring_clear(char *keyring)
++{
++	FILE *fp;
++	char buf[BUFSIZ];
++	key_serial_t key;
++
++	xlog_syslog(0);
++	if (keyring == NULL)
++		keyring = DEFAULT_KEYRING;
++
++	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
++		xlog_err("fopen(%s) failed: %m", PROCKEYS);
++		return 1;
++	}
++
++	while(fgets(buf, BUFSIZ, fp) != NULL) {
++		if (strstr(buf, "keyring") == NULL)
++			continue;
++		if (strstr(buf, keyring) == NULL)
++			continue;
++		if (verbose) {
++			*(strchr(buf, '\n')) = '\0';
++			xlog_warn("clearing '%s'", buf);
++		}
++		/*
++		 * The key is the first arugment in the string
++		 */
++		*(strchr(buf, ' ')) = '\0';
++		sscanf(buf, "%x", &key);
++		if (keyctl_clear(key) < 0) {
++			xlog_err("keyctl_clear(0x%x) failed: %m", key);
++			return 1;
++		}
++		return 0;
++	}
++	xlog_err("'%s' keyring was not found.", keyring);
++	return 1;
++}
+ 
+ int main(int argc, char **argv)
+ {
+@@ -96,7 +139,8 @@ int main(int argc, char **argv)
+ 	int rc = 1, opt;
+ 	int timeout = 600;
+ 	key_serial_t key;
+-	char *progname;
++	char *progname, *keyring = NULL;
++	int clearring;
+ 
+ 	/* Set the basename */
+ 	if ((progname = strrchr(argv[0], '/')) != NULL)
+@@ -105,11 +149,12 @@ int main(int argc, char **argv)
+ 		progname = argv[0];
+ 
+ 	xlog_open(progname);
+-	xlog_syslog(1);
+-	xlog_stderr(0);
+ 
+-	while ((opt = getopt(argc, argv, "t:v")) != -1) {
++	while ((opt = getopt(argc, argv, "ct:v")) != -1) {
+ 		switch (opt) {
++		case 'c':
++			clearring++;
++			break;
+ 		case 'v':
+ 			verbose++;
+ 			break;
+@@ -122,6 +167,13 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
++	if (clearring) {
++		keyring = ((argc - optind) ? argv[optind] : NULL);
++		rc = keyring_clear(keyring);
++		return rc;		
++	}
++
++	xlog_stderr(0);
+ 	if ((argc - optind) != 2) {
+ 		xlog_err("Bad arg count. Check /etc/request-key.conf");
+ 		xlog_warn(usage, progname);
+diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+index c67aab6..db65a1f 100644
+--- a/utils/nfsidmap/nfsidmap.man
++++ b/utils/nfsidmap/nfsidmap.man
+@@ -6,7 +6,7 @@
+ .SH NAME
+ nfsidmap \- The NFS idmapper upcall program
+ .SH SYNOPSIS
+-.B "nfsidmap [-v] [-t timeout] key desc"
++.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
+ .SH DESCRIPTION
+ The file
+ .I /usr/sbin/nfsidmap
+@@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
+ translate user and group names into ids. Idmapper uses request-key to perform
+ the upcall and cache the result.
+ .I /usr/sbin/nfsidmap
+-should only be called by request-key, and will perform the translation and
++is called by /sbin/request-key, and will perform the translation and
+ initialize a key with the resulting information.
++.PP
++.I nfsidmap
++can also used to clear the keyring of all the keys.  
++This is useful when all the mappings have failed to due to an DNS outage
++or some other error resulting in all the cached uid/gid to be invalid.
+ .SH OPTIONS
+ .TP
++.B -c [keyring]
++Clear the keyring of all the keys. If a
++keyring is not supplied the default 
++keyring 'id_resolver' will be used.
++.TP
+ .B -t timeout
+ Set the expiration timer, in seconds, on the key.
+ The default is 600 seconds (10 mins).
+-- 
+1.7.7
+
