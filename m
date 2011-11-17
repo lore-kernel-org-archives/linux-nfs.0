@@ -1,61 +1,235 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:57904 "EHLO
-	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756544Ab1KRVqO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 16:46:14 -0500
-Date: Fri, 18 Nov 2011 15:47:28 -0500
-From: Nick Bowler <nbowler@elliptictech.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: John Hughes <john@calvaedi.com>, John Hughes <john@calva.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-Message-ID: <20111118204728.GA5761@elliptictech.com>
-References: <4EC66D12.2090505@Calva.COM>
- <1321641333.2653.15.camel@lade.trondhjem.org>
- <4EC6AFA9.9000705@calvaedi.com>
- <1321648435.2653.53.camel@lade.trondhjem.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:52438 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751947Ab1KQUez convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:34:55 -0500
+Received: by bke11 with SMTP id 11so2525484bke.19
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Nov 2011 12:34:53 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321648435.2653.53.camel@lade.trondhjem.org>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <1321561563-5862-3-git-send-email-steved@redhat.com>
+References: <1321561563-5862-1-git-send-email-steved@redhat.com>
+	<1321561563-5862-3-git-send-email-steved@redhat.com>
+Date: Thu, 17 Nov 2011 21:34:52 +0100
+Message-ID: <CAGue13q8FhAcQxp-nT5k1sbQndy=qxaKrAxzuyFF2cA-mPB7tw@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfsidmap: Allow a particular key to be revoked.
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-18 22:33 +0200, Trond Myklebust wrote:
-> On Fri, 2011-11-18 at 20:19 +0100, John Hughes wrote: 
-> > On 11/18/2011 07:35 PM, Trond Myklebust wrote:
-> > > On Fri, 2011-11-18 at 15:34 +0100, John Hughes wrote:
-> > >    
-> > >> Description: Add "-e" (ticket expiry is error) option to rpc.gssd
-> > >>    In kernels starting around 2.6.34 the nfs4 server will block all I/O
-> > >>    when a user ticket expires.  In earlier kernels the I/O would fail
-> > >>    with an EACCESS error.  This patch adds a "-e" option to rpc.gssd
-> > >>    which allow the earlier behaviour (EKEYEXPIRED is converted to
-> > >>    EACCESS).  This behaviour is particularly useful when user home
-> > >>    directories are nfs4 mounted with krb5 security - if the user is
-> > >>    absent from their workstation for long enough for the ticket to
-> > >>    expire a new ticket will be obtained (via pam_krb5) by the screen
-> > >>    unlock process.
-> > >>      
-> > > You need a big fat warning somewhere that enabling this option WILL
-> > > cause data corruption...
-> > >    
-> > Why?
-> > 
-> > Because some process may get the EACCES error half way through it's 
-> > operation.
-> 
-> No. Because the process can receive a reply to the write() syscall that
-> indicates that the data is safe, but the EKEYEXPIRED error will cause
-> the data to be lost when the client tries to actually commit the data to
-> disk.
+On Thu, Nov 17, 2011 at 9:26 PM, Steve Dickson <steved@redhat.com> wrote:
+> Introducing three new command line arguments
+> that allow particular keys to be revoke
+>
+>  -u will remove a uid key
+>  -g will revoke a gid key
+>  -r will revoke both the uid and gid keys
+>
+> The user name has also needs to be supply
+> with these new flags.
+>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/nfsidmap/nfsidmap.c   |   84 ++++++++++++++++++++++++++++++++++++++++--
+>  utils/nfsidmap/nfsidmap.man |   23 ++++++++++--
+>  2 files changed, 99 insertions(+), 8 deletions(-)
+>
+> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+> index 2625dc1..7b64cd4 100644
+> --- a/utils/nfsidmap/nfsidmap.c
+> +++ b/utils/nfsidmap/nfsidmap.c
+> @@ -13,7 +13,7 @@
+>  #include "xlog.h"
+>
+>  int verbose = 0;
+> -char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+> +char *usage="Usage: %s [-v] [[-u|-g|-r key]] | [-c [keyring]] | [[-t timeout] key desc]";
+>
+>  #define MAX_ID_LEN   11
+>  #define IDMAP_NAMESZ 128
+> @@ -22,6 +22,9 @@ char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+>  #define DEFAULT_KEYRING "id_resolver"
+>  #define PROCKEYS "/proc/keys"
+>
+> +#define UIDKEYS 0x1
+> +#define GIDKEYS 0x2
+> +
+>  /*
+>  * Find either a user or group id based on the name@domain string
+>  */
+> @@ -130,6 +133,63 @@ static int keyring_clear(char *keyring)
+>        xlog_err("'%s' keyring was not found.", keyring);
+>        return 1;
+>  }
+> +/*
+> + * Revoke a key
+> + */
+> +static int key_revoke(char *keystr, int keymask)
+> +{
+> +       FILE *fp;
+> +       char buf[BUFSIZ], *ptr;
+> +       key_serial_t key;
+> +       int mask;
+> +
+> +       xlog_syslog(0);
+> +
+> +       if ((fp = fopen(PROCKEYS, "r")) == NULL) {
 
-But on a local disk, a successful return from the write syscall doesn't
-mean "the data is safe".  It seems odd to me that NFS should provide
-this guarantee while a local disk does not.
+May be not critical, but you never closing fp.
 
-Is this guarantee documented anywhere?
+Tigran.
 
-Cheers,
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+> +               xlog_err("fopen(%s) failed: %m", PROCKEYS);
+> +               return 1;
+> +       }
+> +
+> +       while(fgets(buf, BUFSIZ, fp) != NULL) {
+> +               if (strstr(buf, "keyring") != NULL)
+> +                       continue;
+> +
+> +               mask = 0;
+> +               if ((ptr = strstr(buf, "uid:")) != NULL)
+> +                       mask = UIDKEYS;
+> +               else if ((ptr = strstr(buf, "gid:")) != NULL)
+> +                       mask = GIDKEYS;
+> +               else
+> +                       continue;
+> +
+> +               if ((keymask & mask) == 0)
+> +                       continue;
+> +
+> +               if (strncmp(ptr+4, keystr, strlen(keystr)) != NULL)
+> +                       continue;
+> +
+> +               if (verbose) {
+> +                       *(strchr(buf, '\n')) = '\0';
+> +                       xlog_warn("revoking '%s'", buf);
+> +               }
+> +               /*
+> +                * The key is the first arugment in the string
+> +                */
+> +               *(strchr(buf, ' ')) = '\0';
+> +               sscanf(buf, "%x", &key);
+> +
+> +               if (keyctl_revoke(key) < 0) {
+> +                       xlog_err("keyctl_revoke(0x%x) failed: %m", key);
+> +                       return 1;
+> +               }
+> +
+> +               keymask &= ~mask;
+> +               if (keymask == 0)
+> +                       return 0;
+> +       }
+> +       xlog_err("'%s' key was not found.", keystr);
+> +       return 1;
+> +}
+>
+>  int main(int argc, char **argv)
+>  {
+> @@ -139,8 +199,8 @@ int main(int argc, char **argv)
+>        int rc = 1, opt;
+>        int timeout = 600;
+>        key_serial_t key;
+> -       char *progname, *keyring = NULL;
+> -       int clearring;
+> +       char *progname, *keyring = NULL, *keystr = NULL;
+> +       int clearring, keymask = 0;
+>
+>        /* Set the basename */
+>        if ((progname = strrchr(argv[0], '/')) != NULL)
+> @@ -150,8 +210,20 @@ int main(int argc, char **argv)
+>
+>        xlog_open(progname);
+>
+> -       while ((opt = getopt(argc, argv, "ct:v")) != -1) {
+> +       while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
+>                switch (opt) {
+> +               case 'u':
+> +                       keymask = UIDKEYS;
+> +                       keystr = strdup(optarg);
+> +                       break;
+> +               case 'g':
+> +                       keymask = GIDKEYS;
+> +                       keystr = strdup(optarg);
+> +                       break;
+> +               case 'r':
+> +                       keymask = GIDKEYS|UIDKEYS;
+> +                       keystr = strdup(optarg);
+> +                       break;
+>                case 'c':
+>                        clearring++;
+>                        break;
+> @@ -167,6 +239,10 @@ int main(int argc, char **argv)
+>                }
+>        }
+>
+> +       if (keystr) {
+> +               rc = key_revoke(keystr, keymask);
+> +               return rc;
+> +       }
+>        if (clearring) {
+>                keyring = ((argc - optind) ? argv[optind] : NULL);
+>                rc = keyring_clear(keyring);
+> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+> index db65a1f..216afd1 100644
+> --- a/utils/nfsidmap/nfsidmap.man
+> +++ b/utils/nfsidmap/nfsidmap.man
+> @@ -6,7 +6,11 @@
+>  .SH NAME
+>  nfsidmap \- The NFS idmapper upcall program
+>  .SH SYNOPSIS
+> -.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
+> +.B "nfsidmap [-v] [-t timeout] key desc"
+> +.br
+> +.B "nfsidmap [-v] [-c [keyring]]"
+> +.br
+> +.B "nfsidmap [-v] [-u|-g|-r user]"
+>  .SH DESCRIPTION
+>  The file
+>  .I /usr/sbin/nfsidmap
+> @@ -18,9 +22,11 @@ is called by /sbin/request-key, and will perform the translation and
+>  initialize a key with the resulting information.
+>  .PP
+>  .I nfsidmap
+> -can also used to clear the keyring of all the keys.
+> -This is useful when all the mappings have failed to due to an DNS outage
+> -or some other error resulting in all the cached uid/gid to be invalid.
+> +can also used to clear the keyring of all the keys or
+> +revoke one particular key.
+> +This is useful when the id mappings have failed to due
+> +to a lookup error resulting in all the cached uids/gids to be set
+> +to the user id nobody.
+>  .SH OPTIONS
+>  .TP
+>  .B -c [keyring]
+> @@ -28,10 +34,19 @@ Clear the keyring of all the keys. If a
+>  keyring is not supplied the default
+>  keyring 'id_resolver' will be used.
+>  .TP
+> +.B -g user
+> +Revoke the gid key of the given user.
+> +.TP
+> +.B -r user
+> +Revoke both the uid and gid key of the given user.
+> +.TP
+>  .B -t timeout
+>  Set the expiration timer, in seconds, on the key.
+>  The default is 600 seconds (10 mins).
+>  .TP
+> +.B -u user
+> +Revoke the uid key of the given user.
+> +.TP
+>  .B -v
+>  Increases the verbosity of the output to syslog
+>  (can be specified multiple times).
+> --
+> 1.7.7
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
