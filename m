@@ -1,85 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caiajhbdcagg.dreamhost.com ([208.97.132.66]:59381 "EHLO
-	homiemail-a34.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754667Ab1KDPNk convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 11:13:40 -0400
-Received: from homiemail-a34.g.dreamhost.com (localhost [127.0.0.1])
-	by homiemail-a34.g.dreamhost.com (Postfix) with ESMTP id 557AA10062
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 08:13:40 -0700 (PDT)
-Received: from mail-vw0-f46.google.com (mail-vw0-f46.google.com [209.85.212.46])
-	(using TLSv1 with cipher RC4-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: nico@cryptonector.com)
-	by homiemail-a34.g.dreamhost.com (Postfix) with ESMTPSA id BB2101005D
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 08:13:39 -0700 (PDT)
-Received: by vws1 with SMTP id 1so1970656vws.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 08:13:38 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	<1320332310.7734.643.camel@willson.li.ssimo.org>
-	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	<1320337903.7734.670.camel@willson.li.ssimo.org>
-	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	<1320352784.18396.109.camel@lade.trondhjem.org>
-	<CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
-	<1320355818.7734.685.camel@willson.li.ssimo.org>
-	<1320356806.18396.149.camel@lade.trondhjem.org>
-	<1320357606.7734.697.camel@willson.li.ssimo.org>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
-Date: Fri, 4 Nov 2011 10:13:38 -0500
-Message-ID: <CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
-Subject: Re: GSSAPI Proxy initiative
-From: Nico Williams <nico@cryptonector.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Simo Sorce <simo@redhat.com>, dhowells <dhowells@redhat.com>,
-        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:57475 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752238Ab1KQVvk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 16:51:40 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RR9pR-0003K1-GQ
+	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 16:49:05 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] nfsidmap: Allow admins to clean up id mappings that have (ver 2)
+Date: Thu, 17 Nov 2011 16:51:34 -0500
+Message-Id: <1321566696-7298-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 3, 2011 at 5:16 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
->> It is ok to use keyring if that's deemed the right place for session keys, but I
->> think you already have structures where you currently store them so I don't
->> thik you necessarily need to change that part of the kernel implementation.
->
-> No, but we still need to be able to do recovery of rpcsec_gss contexts once they are broken, and right now we have a major flaw due to the fact that recovery depends on a lot of small processes and data that is allowed to be swapped out at the moment when we need them the most (i.e. in a memory reclaim situation).
->
-> If the server reboots while our client is in the middle of writing back a file (or several files), then the client needs to recover those rpcsec_gss contexts that authenticate the processes which own any dirty pages that remain to be written out.
-> Key security is an irrelevant concern once your kernel deadlocks in an OOM state.
+In working with the new idmapper, it became very apparent that
+keys created from bad id mapping were very persistent and were
+not easy disposed of. Unlike with rpc.idmapd, to git rid 
+of bad id mapping one just needed to restart the daemon. 
 
-Ah, this problem.  Hopefully the client has enough resources to thrash
-a lot in the process but still manage to recover.  A better solution
-(see below) is possible, but will require more protocol/mechanism
-work.
+So I've added some functionality to the nfsidmap command
+that will allow admins to:
 
->> Currently credential caches are stored in files, is there a problem with that
->> model ? Do you need access to credential caches from the kernel when
->> under memory pressure ?
->
-> Yes, there is a major problem with that model, and yes we do potentially need access to credential caches when in a recovery situation (which is a situation when we are usually under memory pressure).
+    - remove all the keys on the keyring.
+    - remove a particular key from the keying.
 
-Ideally we could store in each RPCSEC_GSS context (not GSS context)
-enough state on the client side to recover quickly when the server
-reboots.  How would we do this?  Suppose the server gives the client a
-"ticket", and a key much like the Kerberos ticket session key is
-agreed upon or sent by the server -- that could be stored in the
-RPCSEC_GSS context and could be used to recover it quickly for
-recovery from server reboot.  I'm eliding a lot of details here, but I
-believe this is fundamentally workable.
+The intention is to allow admins a way to clean up the id
+name space when name resolution mechanisms, like NIS or LDAP, 
+fail and leave a large number (or small number) of id mapping 
+pointing to nobody. 
 
-A similar solution would be to store some GSS "sub-credential" in the
-RPCSEC_GSS context, but this would work for Kerberos and maybe not so
-well for other mechanisms -- and even with Kerberos, the service
-ticket might be expired when it comes time to recover.  So I prefer
-the RPCSEC_GSS-level solution I mentioned above.
+Note, for the second patch to work, there need to be a small 
+kernel patch that will change the per-key permissions to
+allow root to revoke them.
 
-If you agree with me on this then this sub-thread will be best moved
-to the NFSv4 WG, particularly if we agree on a protocol-level
-solution.
+Version 2:
+- Added the fclose() calls as requested by the code review
 
-Nico
---
+Steve Dickson (2):
+  nfsidmap: Allow all keys to clear on the keyring
+  nfsidmap: Allow a particular key to be revoked.
+
+ utils/nfsidmap/nfsidmap.c   |  145 +++++++++++++++++++++++++++++++++++++++++--
+ utils/nfsidmap/nfsidmap.man |   27 ++++++++-
+ 2 files changed, 166 insertions(+), 6 deletions(-)
+
+-- 
+1.7.7
+
