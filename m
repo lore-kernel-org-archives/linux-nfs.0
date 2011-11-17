@@ -1,152 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18948 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753479Ab1K2NQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 08:16:33 -0500
-Message-ID: <4ED4DA80.9080303@parallels.com>
-Date: Tue, 29 Nov 2011 17:13:36 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:43519 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755461Ab1KQJhN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 04:37:13 -0500
+Message-ID: <4EC4D5BE.2030906@Calva.COM>
+Date: Thu, 17 Nov 2011 10:37:02 +0100
+From: John Hughes <john@Calva.COM>
 MIME-Version: 1.0
-To: "tao.peng@emc.com" <tao.peng@emc.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6> <20111129091037.20730.59391.stgit@localhost6.localdomain6> <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com> <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Jeff Layton <jlayton@redhat.com>
+CC: Trond Myklebust <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+References: <4EC3FD8B.6000705@calvaedi.com> <20111116144718.78b2e288@corrin.poochiereds.net>
+In-Reply-To: <20111116144718.78b2e288@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-29.11.2011 16:40, tao.peng@emc.com пишет:
->> -----Original Message-----
->> From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
->> Sent: Tuesday, November 29, 2011 8:19 PM
->> To: Peng, Tao
->> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Pavel Emelianov; neilb@suse.de;
->> netdev@vger.kernel.org; linux-kernel@vger.kernel.org; James Bottomley; bfields@fieldses.org;
->> davem@davemloft.net; devel@openvz.org
->> Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from blocklayout routines
->>
->> 29.11.2011 16:00, tao.peng@emc.com пишет:
->>>> -----Original Message-----
->>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of
->> Stanislav
->>>> Kinsbursky
->>>> Sent: Tuesday, November 29, 2011 6:11 PM
->>>> To: Trond.Myklebust@netapp.com
->>>> Cc: linux-nfs@vger.kernel.org; xemul@parallels.com; neilb@suse.de; netdev@vger.kernel.org; linux-
->>>> kernel@vger.kernel.org; jbottomley@parallels.com; bfields@fieldses.org; davem@davemloft.net;
->>>> devel@openvz.org
->>>> Subject: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from blocklayout routines
->>>>
->>>> This is a cleanup patch. We don't need this reference anymore, because
->>>> blocklayout pipes dentries now creates and destroys in per-net operations and
->>>> on PipeFS mount/umount notification.
->>>> Note that nfs4blocklayout_register_net() now returns 0 instead of -ENOENT in
->>>> case of PipeFS superblock absence. This is ok, because blocklayout pipe dentry
->>>> will be created on PipeFS mount event.
->>> When is the "pipefs mount event" going to happen? When inserting kernel modules or when user issues
->> mount command?
->>>
->>
->> When user issues mount command.
->> Kernel mounts of PipeFS has been removed with all these patch sets I've sent
->> already.
-> Then it is going to break blocklayout user space program blkmapd, which is stared before mounting any file system and it tries to open the pipe file when started.
-
-Sorry, but I don't get it. Probably we have misunderstanding here.
-You said, that "blkmapd ... tries to open the pipe file when started". This pipe 
-file is located on PipeFS, isn't it?
-If yes, then PipeFS have to be mounted already in user-space. And if it has been 
-mounted - then pipe dentry is present.
-IOW, pipe (without dentry) will be created on module load. Pipe dentry will be 
-created right after that (like it was before) if PipeFS was mounted from 
-user-space. If not - then pipe dentry will be created  on PipeFS (!) mount (not 
-NFS or pNFS mount) from user-space.
-
-Or I'm missing something in your reply?
-
-> Not sure if you implement the same logic on nfs pipe as well. But if you do, then nfs client user space program idmapd will fail to start for the same reason.
+On 16/11/11 20:47, Jeff Layton wrote:
+> On Wed, 16 Nov 2011 19:14:35 +0100
+> John Hughes<john@calvaedi.com>  wrote:
 >
-
-The same logic here.
-
-> Why not just fail to load module if you fail to initialize pipefs? When is rpc_get_sb_net() going to fail?
->
-
-Sorry, but I don't understand, what is your idea. And why do we need to fail at all.
-BTW, rpc_get_sb_net() just checks, was PipeFS mounted in passed net, or not. If 
-not - not a problem. Dentries will be created on mount event. If yes, then it 
-returns locked PipeFS sb and the next step is dentry creation.
-
+>> With recent kernels if the Kerberos ticket for a nfs4 mount expires any
+>> user process trying to access the mount hangs until a new ticket is
+>> obtained.  Simultaneously a (luckily rate-limited, but still seemingly
+>> endless) stream of "Error: state manager encountered RPCSEC_GSS session
+>> expired against NFSv4 server" messages is written to the kernel log.
+[...]
+>> This patch restores the old behavior, which makes nfs4 mounted home
+>> directories usable for me.
 >>
->>
->>> Thanks,
->>> Tao
->>>
->>>>
->>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>>
->>>> ---
->>>>    fs/nfs/blocklayout/blocklayout.c |    9 +--------
->>>>    1 files changed, 1 insertions(+), 8 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->>>> index acf7ac9..8211ffd 100644
->>>> --- a/fs/nfs/blocklayout/blocklayout.c
->>>> +++ b/fs/nfs/blocklayout/blocklayout.c
->>>> @@ -1032,7 +1032,7 @@ static struct dentry *nfs4blocklayout_register_net(struct net *net,
->>>>
->>>>    	pipefs_sb = rpc_get_sb_net(net);
->>>>    	if (!pipefs_sb)
->>>> -		return ERR_PTR(-ENOENT);
->>>> +		return 0;
->>>>    	dentry = nfs4blocklayout_register_sb(pipefs_sb, pipe);
->>>>    	rpc_put_sb_net(net);
->>>>    	return dentry;
->>>> @@ -1083,7 +1083,6 @@ static struct pernet_operations nfs4blocklayout_net_ops = {
->>>>
->>>>    static int __init nfs4blocklayout_init(void)
->>>>    {
->>>> -	struct vfsmount *mnt;
->>>>    	int ret;
->>>>
->>>>    	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
->>>> @@ -1093,12 +1092,6 @@ static int __init nfs4blocklayout_init(void)
->>>>    		goto out;
->>>>
->>>>    	init_waitqueue_head(&bl_wq);
->>>> -
->>>> -	mnt = rpc_get_mount();
->>>> -	if (IS_ERR(mnt)) {
->>>> -		ret = PTR_ERR(mnt);
->>>> -		goto out_remove;
->>>> -	}
->>>>    	ret = rpc_pipefs_notifier_register(&nfs4blocklayout_block);
->>>>    	if (ret)
->>>>    		goto out_remove;
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->>
->> --
->> Best regards,
->> Stanislav Kinsbursky
->
+> Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
+> added EKEYEXPIRED returns in this codepath also added the code to make
+> it hang.
 
+You are, of course, right.  userland used to get EPERM.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> This not a bug, or at least it's intentional behavior. When a krb5
+> ticket expires, we *want* the process to hang. Otherwise, people with
+> long running jobs will often find that their jobs error out
+> inexplicably when their ticket expires.
+I thought that was what kstart/krenew were for.
+> The patches that introduced this behavior went into 2.6.34. See the
+> commits around 2c64348 (and some preceding ones in the rpc layer).
+
+Ah, I'm a Debian user - 2.6.32 for the moment, soon to be 3.?
+
+> If you want to fix this use case, you'll need to come up with a scheme
+> that doesn't regress this behavior. I think that you'll really need to
+> ensure that whatever process you expect to re-fetch your TGT is not
+> dependent on accessing kerberized nfs mounts. That really seems like an
+> untenable chicken and egg situation.
+
+Ow.  "Fixing" (at least) Gnome-3 and Gnome-2 screen-lock/screensavers.
+
+How about a mount option to chose between the two behaviours?
+
