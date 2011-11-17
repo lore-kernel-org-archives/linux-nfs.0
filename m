@@ -1,81 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:35515 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753573Ab1KURka (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 12:40:30 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:9958 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754630Ab1KQBab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 20:30:31 -0500
+Date: Wed, 16 Nov 2011 20:31:19 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: rjw@sisk.pl
-Cc: linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
-        tj@kernel.org, trond.myklebust@netapp.com
-Subject: [PATCH 1/2] sunrpc: make rpc_wait_bit_killable handle freeze events
-Date: Mon, 21 Nov 2011 12:40:20 -0500
-Message-Id: <1321897221-2278-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
-References: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: John Hughes <john@calvaedi.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+Message-ID: <20111116203119.1d9c0dd6@corrin.poochiereds.net>
+In-Reply-To: <20111116234434.GA12882@umich.edu>
+References: <4EC3FD8B.6000705@calvaedi.com>
+	<20111116144718.78b2e288@corrin.poochiereds.net>
+	<20111116234434.GA12882@umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the freezer to skip wait_on_bit_killable sleeps in the sunrpc
-layer. This should allow suspend and hibernate events to proceed, even
-when there are RPC's pending on the wire.
+On Wed, 16 Nov 2011 18:44:34 -0500
+Jim Rees <rees@umich.edu> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/freezer.h |   12 ++++++++++++
- net/sunrpc/sched.c      |    3 ++-
- 2 files changed, 14 insertions(+), 1 deletions(-)
+> Jeff Layton wrote:
+> 
+>   Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
+>   added EKEYEXPIRED returns in this codepath also added the code to make
+>   it hang. 
+>   
+>   This not a bug, or at least it's intentional behavior. When a krb5
+>   ticket expires, we *want* the process to hang. Otherwise, people with
+>   long running jobs will often find that their jobs error out
+>   inexplicably when their ticket expires.
+> 
+> Who decided that?  This seems completely wrong to me.  If my credentials
+> expire, I want to get permission denied, not a client hang.  In 20 years of
+> using authenticated file systems I never once wished my process had hung
+> when my ticket expired.
+> 
 
-diff --git a/include/linux/freezer.h b/include/linux/freezer.h
-index a5386e3..8b60dd0 100644
---- a/include/linux/freezer.h
-+++ b/include/linux/freezer.h
-@@ -135,6 +135,16 @@ static inline void set_freezable_with_signal(void)
- }
- 
- /*
-+ * Freezer-friendly macro around schedule() in the kernel.
-+ */
-+#define freezable_schedule()						\
-+({									\
-+	freezer_do_not_count();						\
-+	schedule();							\
-+	freezer_count();						\
-+})
-+
-+/*
-  * Freezer-friendly wrappers around wait_event_interruptible(),
-  * wait_event_killable() and wait_event_interruptible_timeout(), originally
-  * defined in <linux/wait.h>
-@@ -194,6 +204,8 @@ static inline int freezer_should_skip(struct task_struct *p) { return 0; }
- static inline void set_freezable(void) {}
- static inline void set_freezable_with_signal(void) {}
- 
-+#define freezable_schedule()  schedule()
-+
- #define wait_event_freezable(wq, condition)				\
- 		wait_event_interruptible(wq, condition)
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index d12ffa5..5317b93 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -18,6 +18,7 @@
- #include <linux/smp.h>
- #include <linux/spinlock.h>
- #include <linux/mutex.h>
-+#include <linux/freezer.h>
- 
- #include <linux/sunrpc/clnt.h>
- 
-@@ -231,7 +232,7 @@ static int rpc_wait_bit_killable(void *word)
- {
- 	if (fatal_signal_pending(current))
- 		return -ERESTARTSYS;
--	schedule();
-+	freezable_schedule();
- 	return 0;
- }
- 
+I proposed it, we discussed it on the list, and Trond and Steve
+committed the patches necessary to make it happen. This was back in
+late 2009/early 2010 though, so my memory is a bit fuzzy...
+
+> Why should this be any different from any other failure condition?  If you
+> try to open a file that doesn't exist, do you want your process to hang
+> instead of getting ENOENT, just in case the file magically appears at some
+> point in the future?
+>
+
+That's different. Not renewing your credentials is often a temporary
+situation. Kerberos is different than other authentication methods in
+that you get a ticket only for a period of time, so expired credentials
+are not a situation that's common with other authentication methods.
+
+> This seems a recipe for disaster.  Suppose I have a cron job that fires once
+> a minute, and all those jobs hang waiting for a ticket.  I come to work in
+> the morning and discover I've got 10,000 hung processes.  Or not, because my
+> computer has crashed from resource exhaustion.
+
+The previous situation was also a recipe for disaster, and was often
+cited as a primary reason why people didn't want to deploy kerberized
+NFS. Having everything fall down and go boom when your ticket expires
+is not desirable either.
+
+I suppose we'll have to agree to disagree on this point. That said, I'm
+open to sane suggestions however that don't regress the behavior for
+those users who need to be able to cope with expired tickets.
+
 -- 
-1.7.6.4
-
+Jeff Layton <jlayton@redhat.com>
