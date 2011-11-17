@@ -1,58 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35599 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59687 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752377Ab1K2RT1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 12:19:27 -0500
-Message-ID: <1322587165.4174.20.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, skinsbursky@parallels.com,
-        linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Date: Tue, 29 Nov 2011 12:19:25 -0500
-In-Reply-To: <20111129164252.GA19528@fieldses.org>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-	 <20111129091037.20730.59391.stgit@localhost6.localdomain6>
-	 <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
-	 <4ED4CDCE.9080804@parallels.com>
-	 <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
-	 <1322579906.3619.1.camel@lade.trondhjem.org>
-	 <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
-	 <1322584830.4174.16.camel@lade.trondhjem.org>
-	 <20111129164252.GA19528@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+	id S1752144Ab1KQVrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Nov 2011 16:47:01 -0500
+Date: Thu, 17 Nov 2011 16:46:30 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: John Hughes <john@Calva.COM>
+Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+Message-ID: <20111117164630.394027e7@tlielax.poochiereds.net>
+In-Reply-To: <4EC50882.2080803@Calva.COM>
+References: <4EC3FD8B.6000705@calvaedi.com>
+	<20111116144718.78b2e288@corrin.poochiereds.net>
+	<20111116234434.GA12882@umich.edu>
+	<20111116203119.1d9c0dd6@corrin.poochiereds.net>
+	<20111116203810.4e1b9d28@corrin.poochiereds.net>
+	<4EC4EA91.5070607@Calva.COM>
+	<4EC50882.2080803@Calva.COM>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote: 
-> On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
-> > I mean that I'm perfectly entitled to do
-> > 
-> > 'modprobe -r blocklayoutdriver'
-> > 
-> > and when I do that, then I expect blkmapd to close the rpc pipe and wait
-> > for a new one to be created just like rpc.idmapd and rpc.gssd do when I
-> > remove the nfs and sunrpc modules.
-> 
-> The rpc pipefs mount doesn't hold a reference on the sunrpc module?
+On Thu, 17 Nov 2011 14:13:38 +0100
+John Hughes <john@Calva.COM> wrote:
 
-I stand corrected: the mount does hold a reference to the sunrpc
-module. 
-However nothing holds a reference to the blocklayoutdriver module, so
-the main point that the "blocklayout" pipe can disappear from underneath
-the blkmapd stands.
+> On 17/11/11 12:05, John Hughes wrote:
+> > On 17/11/11 02:38, Jeff Layton wrote:
+> >> Note too that the gssd code distinguishes between an expired TGT and a
+> >> non-existent credcache. The latter will give you the error you desire
+> >> here. So one possibility is just to remove the credcache from /tmp in
+> >> this situation.
+> >
+> > Something to scan /tmp for expired credentials and zap em?  rpc.gssd 
+> > would communicate that to the kernel?
+> >
+> > Whadaya know, that works.
+> Here's a dumb perl script that could be run from, for example, .xsession 
+> to automatically destroy expired ticket caches.
+> 
+> Would need a bit of trickery to make it go away on end of session and 
+> something in /etc/pm/sleep.d to send it a SIGALRM when the system wakes 
+> from suspend or hibernate.
+> 
+> It has a potential race between destroying an expired ticket and a new 
+> ticket being granted.
+> 
+> I guess now I'll look at a hack to rpc.gssd for a neater way of doing this.
+> 
+
+Ok, I can remember a bit more about the genesis of this scheme...
+
+At the time the argument went something like this:
+
+No one expects that when their krb5 ticket expires that their
+applications will fail. A case in point is something like a krb5 ssh
+session. If I had a valid ticket when I initiated the session, then it
+we would consider it a bug if it were to suddenly die when the ticket
+expired.
+
+Contrast that however with applications running on a kerberized NFS
+mount. As soon as the ticket expires they start failing with
+non-transient errors. This is probably the case as well with screen
+locker you're using, but it's apparently able to recover enough to
+allow the TGT to be renewed. I expect though, that you may have other
+less visible programs that are dying in this situation or are getting
+unexpected errors.
+
+The current behavior was really intended as a first approximation. I
+fully expected that it would need some refinement, but AFAIK, no one
+has complained loudly about the current behavior until now, so I
+haven't seen need to mess with it.
+
+I'm not that familiar with kstart, but I assume that it gets a
+renewable TGT and just renews it as needed? I have to wonder if that
+sort of tool might be verboten in security conscious sites (the very
+sort that want kerberized nfs).
+
+If we decide that making this behavior switchable is the right thing to
+do, then what you'll probably want to do is add a new command-line
+option to rpc.gssd, and make it conditionally return -EKEYEXPIRED or
+-EACCES in the downcall based on it. It should be a fairly simple
+patch. See process_krb5_upcall() in rpc.gssd...
+
+Long term, we probably need to consider this use-case in the GSSAPI
+proxy initiative that Simo has been scoping out. It would be nice to
+have a solution that would work for both home directory configurations
+and long-running jobs without needing these sorts of hacks.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Jeff Layton <jlayton@redhat.com>
