@@ -1,94 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60940 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:2348 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752988Ab1KVW0e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 17:26:34 -0500
-Date: Tue, 22 Nov 2011 17:26:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] 4.1 CLNT: Test Case for OPEN file with claim_type is
- CLAIM_FH
-Message-ID: <20111122222632.GA23818@fieldses.org>
-References: <4EC46E76.5040907@cn.fujitsu.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EC46E76.5040907@cn.fujitsu.com>
+	id S1755028Ab1KQBhV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Nov 2011 20:37:21 -0500
+Date: Wed, 16 Nov 2011 20:38:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
+Cc: Jim Rees <rees@umich.edu>, John Hughes <john@calvaedi.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+Message-ID: <20111116203810.4e1b9d28@corrin.poochiereds.net>
+In-Reply-To: <20111116203119.1d9c0dd6@corrin.poochiereds.net>
+References: <4EC3FD8B.6000705@calvaedi.com>
+	<20111116144718.78b2e288@corrin.poochiereds.net>
+	<20111116234434.GA12882@umich.edu>
+	<20111116203119.1d9c0dd6@corrin.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 17, 2011 at 10:16:22AM +0800, Mi Jinlong wrote:
+On Wed, 16 Nov 2011 20:31:19 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> On Wed, 16 Nov 2011 18:44:34 -0500
+> Jim Rees <rees@umich.edu> wrote:
 > 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
->  1 files changed, 37 insertions(+), 1 deletions(-)
+> > Jeff Layton wrote:
+> > 
+> >   Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
+> >   added EKEYEXPIRED returns in this codepath also added the code to make
+> >   it hang. 
+> >   
+> >   This not a bug, or at least it's intentional behavior. When a krb5
+> >   ticket expires, we *want* the process to hang. Otherwise, people with
+> >   long running jobs will often find that their jobs error out
+> >   inexplicably when their ticket expires.
+> > 
+> > Who decided that?  This seems completely wrong to me.  If my credentials
+> > expire, I want to get permission denied, not a client hang.  In 20 years of
+> > using authenticated file systems I never once wished my process had hung
+> > when my ticket expired.
+> > 
 > 
-> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-> index bd995a5..87b58b3 100644
-> --- a/nfs4.1/server41tests/st_open.py
-> +++ b/nfs4.1/server41tests/st_open.py
-> @@ -1,6 +1,6 @@
->  from st_create_session import create_session
->  from nfs4_const import *
-> -from environment import check, checklist, fail, create_file, open_file
-> +from environment import check, checklist, fail, create_file, open_file, close_file
->  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
->  from nfs4_type import creatverfattr, fattr4
->  import nfs4_ops as op
-> @@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
->      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
->                          verifier = "Justtest")
->      check(res, NFS4ERR_EXIST)
-> +
-> +def testOPENClaimFH(t, env):
-> +    """OPEN file with claim_type is CLAIM_FH
-> +
-> +    FLAGS: open all
-> +    CODE: OPEN7
-> +    """
-> +    sess1 = env.c1.new_client_session(env.testname(t))
-> +    res = create_file(sess1, env.testname(t))
-> +    check(res)
-> +
-> +    fh = res.resarray[-1].object
-> +    stateid = res.resarray[-2].stateid
-> +    res = close_file(sess1, fh, stateid=stateid)
-> +    check(res)
-> +
-> +    claim = open_claim4(CLAIM_FH)
-> +    how = openflag4(OPEN4_NOCREATE)
-> +    oowner = open_owner4(0, "My Open Owner 2")
-> +    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
-> +                      oowner, how, claim)
-> +    res = sess1.compound([op.putfh(fh), open_op])
-> +    check(res)
-
-You could just stop here.  But I suppose I don't see a problem with
-doing some IO to the file too just to make sure the open is usable.
-
-> +
-> +    stateid = res.resarray[-1].stateid
-> +    stateid.seqid = 0
-
-Why are you modifying the seqid?
-
-> +    data = "write test data"
-> +    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
-> +    check(res)
-> +    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
-> +    check(res)
-> +    if not res.resarray[-1].eof:
-> +        fail("EOF not set on read")
-> +    desired = "\0"*5 + data
-
-Why the five nulls?  I don't understand this code....
-
---b.
-
-> +    if res.resarray[-1].data != desired:
-> +        fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
-> -- 
-> 1.7.7
+> I proposed it, we discussed it on the list, and Trond and Steve
+> committed the patches necessary to make it happen. This was back in
+> late 2009/early 2010 though, so my memory is a bit fuzzy...
 > 
+> > Why should this be any different from any other failure condition?  If you
+> > try to open a file that doesn't exist, do you want your process to hang
+> > instead of getting ENOENT, just in case the file magically appears at some
+> > point in the future?
+> >
 > 
+> That's different. Not renewing your credentials is often a temporary
+> situation. Kerberos is different than other authentication methods in
+> that you get a ticket only for a period of time, so expired credentials
+> are not a situation that's common with other authentication methods.
+> 
+> > This seems a recipe for disaster.  Suppose I have a cron job that fires once
+> > a minute, and all those jobs hang waiting for a ticket.  I come to work in
+> > the morning and discover I've got 10,000 hung processes.  Or not, because my
+> > computer has crashed from resource exhaustion.
+> 
+> The previous situation was also a recipe for disaster, and was often
+> cited as a primary reason why people didn't want to deploy kerberized
+> NFS. Having everything fall down and go boom when your ticket expires
+> is not desirable either.
+> 
+> I suppose we'll have to agree to disagree on this point. That said, I'm
+> open to sane suggestions however that don't regress the behavior for
+> those users who need to be able to cope with expired tickets.
+> 
+
+Note too that the gssd code distinguishes between an expired TGT and a
+non-existent credcache. The latter will give you the error you desire
+here. So one possibility is just to remove the credcache from /tmp in
+this situation.
+
+Another possibility might be a new option to rpc.gssd that allows the
+user to select the error that it passes back to the kernel on an
+expired ticket.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
