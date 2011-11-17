@@ -1,103 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.eu.citrix.com ([62.200.22.115]:17502 "EHLO
-	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754097Ab1KRTzU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 14:55:20 -0500
-Message-ID: <4EC6B82B.3000701@citrix.com>
-Date: Fri, 18 Nov 2011 19:55:23 +0000
-From: Andrew Cooper <andrew.cooper3@citrix.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
-References: <4EC6A681.30902@citrix.com>  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com> <1321643673.2653.41.camel@lade.trondhjem.org>
-In-Reply-To: <1321643673.2653.41.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:41752 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754277Ab1KQU0G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:26:06 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RR8Uc-0003Ga-Ck
+	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 15:23:30 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] nfsidmap: Allow admins to clean up id mappings that have failed
+Date: Thu, 17 Nov 2011 15:26:01 -0500
+Message-Id: <1321561563-5862-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18/11/2011 19:14, Trond Myklebust wrote:
-> On Fri, 2011-11-18 at 19:04 +0000, Andrew Cooper wrote: 
->> On 18/11/11 18:52, Trond Myklebust wrote:
->>> On Fri, 2011-11-18 at 18:40 +0000, Andrew Cooper wrote: 
->>>> Hello,
->>>>
->>>> As described originally in
->>>> http://www.spinics.net/lists/linux-nfs/msg25314.html, we were
->>>> encountering a bug whereby the NFS session was unexpectedly timing out.
->>>>
->>>> I believe I have found the source of the race condition causing the timeout.
->>>>
->>>> Brief overview of setup:
->>>>   10GiB network, NFS mounted using TCP.  Problem reproduces with
->>>> multiple different NICs, with synchronous or asynchronous mounts, and
->>>> with soft and hard mounts.  Reproduces on 2.6.32 and I am currently
->>>> trying to reproduce with mainline. (I don't have physical access to the
->>>> servers so installing stuff is not fantastically easy)
->>>>
->>>>
->>>>
->>>> In net/sunrpc/xprtsock.c:xs_tcp_send_request(), we try to write data to
->>>> the sock buffer using xs_sendpages()
->>>>
->>>> When the sock buffer is nearly fully, we get an EAGAIN from
->>>> xs_sendpages() which causes a break out of the loop.  Lower down the
->>>> function, we switch on status which cases us to call xs_nospace() with
->>>> the task.
->>>>
->>>> In xs_nospace(), we test the SOCK_ASYNC_NOSPACE bit from the socket, and
->>>> in the rare case where that bit is clear, we return 0 instead of
->>>> EAGAIN.  This promptly overwrites status in xs_tcp_send_request().
->>>>
->>>> The result is that xs_tcp_release_xprt() finds a request which has no
->>>> error, but has not sent all of the bytes in its send buffer.  It cleans
->>>> up by setting XPRT_CLOSE_WAIT which causes xprt_clear_locked() to queue
->>>> xprt->task_cleanup, which closes the TCP connection.
->>>>
->>>>
->>>> Under normal operation, the TCP connection goes down and back up without
->>>> interruption to the NFS layer.  However, when the NFS server hangs in a
->>>> half closed state, the client forces a RST of the TCP connection,
->>>> leading to the timeout.
->>>>
->>>> I have tried a few naive fixes such as changing the default return value
->>>> in xs_nospace() from 0 to -EAGAIN (meaning that 0 will never be
->>>> returned) but this causes a kernel memory leak.  Can someone who a
->>>> better understanding of these interactions than me have a look?  It
->>>> seems that the if (test_bit()) test in xs_nospace() should have an else
->>>> clause.
->>> I fully agree with your analysis. The correct thing to do here is to
->>> always return either EAGAIN or ENOTCONN. Thank you very much for working
->>> this one out!
->>>
->>> Trond
->> Returning EAGAIN seems to cause a kernel memory leak, as the oomkiller
->> starts going after processes holding large amounts of LowMem.  Returning
-> The EAGAIN should trigger a retry of the send.
->
->> ENOTCONN causes the NFS session to complain about a timeout in the logs,
->> and in the case of a softmout, give an EIO to the calling process.
-> Correct. ENOTCONN means that the connection was lost.
->
->> >From the looks of the TCP stream, and from the the looks of some
->> targeted debugging, nothing is actually wrong, so the client should not
->> be trying to FIN the TCP connection.  Is it possible that there is a
->> more sinister reason for SOCK_ASYNC_NOSPACE being clear?
-> Normally, it means that we're out of the out-of-write-buffer condition
-> that caused the socket to fail (i.e. the socket has made progress
-> sending more data, so that we can now resume sending more). Returning
-> EAGAIN in that condition is correct.
+In working with the new idmapper, it became very apparent that
+keys created from bad id mapping were very persistent and were
+not easy disposed of. Unlike with rpc.idmapd, to git rid 
+of bad id mapping one just needed to restart the daemon. 
 
-Following my latest set of tests, I would have to say that we are in the
-abnormal case.  Removing the test_bit check and always requeuing causes
-the next call to xs_sendpages() to return with an ENOTCONN.  I guess I
-have some more debugging to do.
+So I've added some functionality to the nfsidmap command
+that will allow admins to:
 
->
->> I can attempt to find which of the many calls to clear that bit is
->> actually causing the problem, but I have a feeing that is going to a
->> little more tricky to narrow down.
->>
+    - remove all the keys on the keyring.
+    - remove a particular key from the keying.
 
-~Andrew
+The intention is to allow admins a way to clean up the id
+name space when name resolution mechanisms, like NIS or LDAP, 
+fail and leave a large number (or small number) of id mapping 
+pointing to nobody. 
+
+Note, for the second patch to work, there need to be a small 
+kernel patch that will change the per-key permissions to
+allow root to revoke them.
+
+Steve Dickson (2):
+  nfsidmap: Allow all keys to clear on the keyring
+  nfsidmap: Allow a particular key to be revoked.
+
+ utils/nfsidmap/nfsidmap.c   |  138 +++++++++++++++++++++++++++++++++++++++++--
+ utils/nfsidmap/nfsidmap.man |   27 ++++++++-
+ 2 files changed, 159 insertions(+), 6 deletions(-)
+
+-- 
+1.7.7
+
