@@ -1,133 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18850 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753981Ab1KHPGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 10:06:43 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4: include bitmap in nfsv4 get acl data
-Date: Sat,  5 Nov 2011 03:21:52 -0400
-Message-Id: <1320477712-1717-1-git-send-email-andros@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:47646 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751646Ab1KQUgZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:36:25 -0500
+Received: by fagn18 with SMTP id n18so3467162fag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Nov 2011 12:36:23 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <1321561563-5862-2-git-send-email-steved@redhat.com>
+References: <1321561563-5862-1-git-send-email-steved@redhat.com>
+	<1321561563-5862-2-git-send-email-steved@redhat.com>
+Date: Thu, 17 Nov 2011 21:36:23 +0100
+Message-ID: <CAGue13rrgKUiiWEF47ixjhWuZ9AK9Ax7UWmSMqkzPAe_rPqMFg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Nov 17, 2011 at 9:26 PM, Steve Dickson <steved@redhat.com> wrote:
+> Introduce the '-c [keyring]' command line argument
+> which will clear the giving keyring of the keys.
+> If a keyring not supplied the default 'id_resolver'
+> keyring will be used.
+>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/nfsidmap/nfsidmap.c   |   62 +++++++++++++++++++++++++++++++++++++++---
+>  utils/nfsidmap/nfsidmap.man |   14 ++++++++-
+>  2 files changed, 69 insertions(+), 7 deletions(-)
+>
+> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+> index 6a09f38..2625dc1 100644
+> --- a/utils/nfsidmap/nfsidmap.c
+> +++ b/utils/nfsidmap/nfsidmap.c
+> @@ -13,12 +13,14 @@
+>  #include "xlog.h"
+>
+>  int verbose = 0;
+> -char *usage="Usage: %s [-v] [-t timeout] key desc";
+> +char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+>
+>  #define MAX_ID_LEN   11
+>  #define IDMAP_NAMESZ 128
+>  #define USER  1
+>  #define GROUP 0
+> +#define DEFAULT_KEYRING "id_resolver"
+> +#define PROCKEYS "/proc/keys"
+>
+>  /*
+>  * Find either a user or group id based on the name@domain string
+> @@ -87,6 +89,47 @@ int name_lookup(char *id, key_serial_t key, int type)
+>  out:
+>        return rc;
+>  }
+> +/*
+> + * Clear all the keys on the given keyring
+> + */
+> +static int keyring_clear(char *keyring)
+> +{
+> +       FILE *fp;
+> +       char buf[BUFSIZ];
+> +       key_serial_t key;
+> +
+> +       xlog_syslog(0);
+> +       if (keyring == NULL)
+> +               keyring = DEFAULT_KEYRING;
+> +
+> +       if ((fp = fopen(PROCKEYS, "r")) == NULL) {
 
-The NFSv4 bitmap size is unbounded: a server can return an arbitrary
-sized bitmap in an FATTR4_WORD0_ACL request.  Replace using the
-nfs4_fattr_bitmap_maxsz as a guess to the maximum bitmask returned by a server
-with the inclusion of the bitmap (xdr length plus bitmasks) and the acl data
-xdr length to the (cached) acl page data.
+The same comment here: fp never closed.
 
-This is a general solution to commit e5012d1f "NFSv4.1: update
-nfs4_fattr_bitmap_maxsz" and fixes hitting a BUG_ON in xdr_shrink_bufhead
-when getting ACLs.
-
-Cc:stable@kernel.org
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   20 ++++++++++++++++++--
- fs/nfs/nfs4xdr.c  |   15 ++++++++++++---
- 2 files changed, 30 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index deb88d9..97014dd 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3671,6 +3671,22 @@ static void nfs4_zap_acl_attr(struct inode *inode)
- 	nfs4_set_cached_acl(inode, NULL);
- }
- 
-+/*
-+ * The bitmap xdr length, bitmasks, and the attr xdr length are stored in
-+ * the acl cache to handle variable length bitmasks. Just copy the acl data.
-+ */
-+static void nfs4_copy_acl(char *buf, char *acl_data, size_t acl_len)
-+{
-+	__be32 *q, *p = (__be32 *)acl_data;
-+	int32_t len;
-+
-+	len = be32_to_cpup(p); /* number of bitmasks */
-+	len += 2;  /* add words for bitmap and attr xdr len */
-+	q = p + len;
-+	len = len << 2; /* convert to bytes for acl_len math */
-+	memcpy(buf, (char *)q, acl_len - len);
-+}
-+
- static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_t buflen)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -3688,7 +3704,7 @@ static inline ssize_t nfs4_read_cached_acl(struct inode *inode, char *buf, size_
- 	ret = -ERANGE; /* see getxattr(2) man page */
- 	if (acl->len > buflen)
- 		goto out;
--	memcpy(buf, acl->data, acl->len);
-+	nfs4_copy_acl(buf, acl->data, acl->len);
- out_len:
- 	ret = acl->len;
- out:
-@@ -3763,7 +3779,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		if (res.acl_len > buflen)
- 			goto out_free;
- 		if (localpage)
--			memcpy(buf, resp_buf, res.acl_len);
-+			nfs4_copy_acl(buf, resp_buf, res.acl_len);
- 	}
- 	ret = res.acl_len;
- out_free:
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index f9fd96d..9c07380 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2513,7 +2513,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
--	replen = hdr.replen + op_decode_hdr_maxsz + nfs4_fattr_bitmap_maxsz + 1;
-+	replen = hdr.replen + op_decode_hdr_maxsz + 1;
- 	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
- 
- 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
-@@ -4955,7 +4955,7 @@ decode_restorefh(struct xdr_stream *xdr)
- static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 		size_t *acl_len)
- {
--	__be32 *savep;
-+	__be32 *savep, *bm_p;
- 	uint32_t attrlen,
- 		 bitmap[3] = {0};
- 	struct kvec *iov = req->rq_rcv_buf.head;
-@@ -4964,6 +4964,7 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 	*acl_len = 0;
- 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
- 		goto out;
-+	bm_p = xdr->p;
- 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
- 		goto out;
- 	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
-@@ -4972,12 +4973,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
- 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACL - 1U)))
- 		return -EIO;
- 	if (likely(bitmap[0] & FATTR4_WORD0_ACL)) {
--		size_t hdrlen;
-+		size_t hdrlen, len;
- 		u32 recvd;
- 
-+		/*The bitmap (xdr len + bitmasks) and the attr xdr len words
-+		 * are stored with the acl data to handle the problem of
-+		 * variable length bitmasks.*/
-+		xdr->p = bm_p;
-+		len = be32_to_cpup(bm_p);
-+		len += 2; /* add bitmap and attr xdr len words */
-+
- 		/* We ignore &savep and don't do consistency checks on
- 		 * the attr length.  Let userspace figure it out.... */
- 		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
-+		attrlen += len << 2; /* attrlen is in bytes */
- 		recvd = req->rq_rcv_buf.len - hdrlen;
- 		if (attrlen > recvd) {
- 			dprintk("NFS: server cheating in getattr"
--- 
-1.7.6.4
-
+Tigran.
+> +               xlog_err("fopen(%s) failed: %m", PROCKEYS);
+> +               return 1;
+> +       }
+> +
+> +       while(fgets(buf, BUFSIZ, fp) != NULL) {
+> +               if (strstr(buf, "keyring") == NULL)
+> +                       continue;
+> +               if (strstr(buf, keyring) == NULL)
+> +                       continue;
+> +               if (verbose) {
+> +                       *(strchr(buf, '\n')) = '\0';
+> +                       xlog_warn("clearing '%s'", buf);
+> +               }
+> +               /*
+> +                * The key is the first arugment in the string
+> +                */
+> +               *(strchr(buf, ' ')) = '\0';
+> +               sscanf(buf, "%x", &key);
+> +               if (keyctl_clear(key) < 0) {
+> +                       xlog_err("keyctl_clear(0x%x) failed: %m", key);
+> +                       return 1;
+> +               }
+> +               return 0;
+> +       }
+> +       xlog_err("'%s' keyring was not found.", keyring);
+> +       return 1;
+> +}
+>
+>  int main(int argc, char **argv)
+>  {
+> @@ -96,7 +139,8 @@ int main(int argc, char **argv)
+>        int rc = 1, opt;
+>        int timeout = 600;
+>        key_serial_t key;
+> -       char *progname;
+> +       char *progname, *keyring = NULL;
+> +       int clearring;
+>
+>        /* Set the basename */
+>        if ((progname = strrchr(argv[0], '/')) != NULL)
+> @@ -105,11 +149,12 @@ int main(int argc, char **argv)
+>                progname = argv[0];
+>
+>        xlog_open(progname);
+> -       xlog_syslog(1);
+> -       xlog_stderr(0);
+>
+> -       while ((opt = getopt(argc, argv, "t:v")) != -1) {
+> +       while ((opt = getopt(argc, argv, "ct:v")) != -1) {
+>                switch (opt) {
+> +               case 'c':
+> +                       clearring++;
+> +                       break;
+>                case 'v':
+>                        verbose++;
+>                        break;
+> @@ -122,6 +167,13 @@ int main(int argc, char **argv)
+>                }
+>        }
+>
+> +       if (clearring) {
+> +               keyring = ((argc - optind) ? argv[optind] : NULL);
+> +               rc = keyring_clear(keyring);
+> +               return rc;
+> +       }
+> +
+> +       xlog_stderr(0);
+>        if ((argc - optind) != 2) {
+>                xlog_err("Bad arg count. Check /etc/request-key.conf");
+>                xlog_warn(usage, progname);
+> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+> index c67aab6..db65a1f 100644
+> --- a/utils/nfsidmap/nfsidmap.man
+> +++ b/utils/nfsidmap/nfsidmap.man
+> @@ -6,7 +6,7 @@
+>  .SH NAME
+>  nfsidmap \- The NFS idmapper upcall program
+>  .SH SYNOPSIS
+> -.B "nfsidmap [-v] [-t timeout] key desc"
+> +.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
+>  .SH DESCRIPTION
+>  The file
+>  .I /usr/sbin/nfsidmap
+> @@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
+>  translate user and group names into ids. Idmapper uses request-key to perform
+>  the upcall and cache the result.
+>  .I /usr/sbin/nfsidmap
+> -should only be called by request-key, and will perform the translation and
+> +is called by /sbin/request-key, and will perform the translation and
+>  initialize a key with the resulting information.
+> +.PP
+> +.I nfsidmap
+> +can also used to clear the keyring of all the keys.
+> +This is useful when all the mappings have failed to due to an DNS outage
+> +or some other error resulting in all the cached uid/gid to be invalid.
+>  .SH OPTIONS
+>  .TP
+> +.B -c [keyring]
+> +Clear the keyring of all the keys. If a
+> +keyring is not supplied the default
+> +keyring 'id_resolver' will be used.
+> +.TP
+>  .B -t timeout
+>  Set the expiration timer, in seconds, on the key.
+>  The default is 600 seconds (10 mins).
+> --
+> 1.7.7
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
