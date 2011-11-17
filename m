@@ -1,52 +1,226 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:43491 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751201Ab1KLDgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Nov 2011 22:36:03 -0500
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 11 Nov 2011 22:36:02 -0500
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAC3ZiKb3477580
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 22:35:44 -0500
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAC3ZNkj026124
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 20:35:23 -0700
-Received: from malahal ([9.47.25.235])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pAC3ZMnK026087
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 20:35:22 -0700
-Date: Fri, 11 Nov 2011 19:35:20 -0800
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 1/7] New mount option for volatile filehandle
- recovery
-Message-ID: <20111112033520.GA15724@us.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321052673-22171-2-git-send-email-treinish@linux.vnet.ibm.com>
- <1321057177.8733.8.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321057177.8733.8.camel@lade.trondhjem.org>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:57477 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752554Ab1KQVvk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 16:51:40 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RR9pS-0003K1-2s
+	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 16:49:06 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] nfsidmap: Allow a particular key to be revoked.
+Date: Thu, 17 Nov 2011 16:51:36 -0500
+Message-Id: <1321566696-7298-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1321566696-7298-1-git-send-email-steved@redhat.com>
+References: <1321566696-7298-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote: 
-> > The new 'vfhretry' mount option will be used to enable the volatile filehandle
-> > recovery routines in the client. On an expired filehandle recover the client
-> > will attempt to recover by performing a lookup on the name of the file.
-> > 
-> > This mechanism of recovery isn't necessarily safe for a posix filesystem so
-> > using the mount option will allow the user to enable this at their own risk. If the mount option is not turned on, the FHEXPIRED error will be converted to
-> > ESTALE.
-> 
-> Either we handle NFS4ERR_FHEXPIRED, or we don't... What is the
-> justification for wanting to turn this off on a per-mount basis?
+Introducing three new command line arguments
+that allow particular keys to be revoke
 
-VFH should work with read-only file systems. Is there a way to find if
-the exported file system is read-only? If there is, Matt should use that
-instead of using this mount option.
+  -u will remove a uid key
+  -g will revoke a gid key
+  -r will revoke both the uid and gid keys
 
---Malahal.
+The user name has also needs to be supply
+with these new flags.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsidmap/nfsidmap.c   |   88 +++++++++++++++++++++++++++++++++++++++++--
+ utils/nfsidmap/nfsidmap.man |   23 +++++++++--
+ 2 files changed, 103 insertions(+), 8 deletions(-)
+
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 84a57fe..33ba9e7 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -13,7 +13,7 @@
+ #include "xlog.h"
+ 
+ int verbose = 0;
+-char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
++char *usage="Usage: %s [-v] [[-u|-g|-r key]] | [-c [keyring]] | [[-t timeout] key desc]";
+ 
+ #define MAX_ID_LEN   11
+ #define IDMAP_NAMESZ 128
+@@ -22,6 +22,9 @@ char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+ #define DEFAULT_KEYRING "id_resolver"
+ #define PROCKEYS "/proc/keys"
+ 
++#define UIDKEYS 0x1
++#define GIDKEYS 0x2
++
+ /*
+  * Find either a user or group id based on the name@domain string
+  */
+@@ -133,6 +136,67 @@ static int keyring_clear(char *keyring)
+ 	fclose(fp);
+ 	return 1;
+ }
++/*
++ * Revoke a key 
++ */
++static int key_revoke(char *keystr, int keymask)
++{
++	FILE *fp;
++	char buf[BUFSIZ], *ptr;
++	key_serial_t key;
++	int mask;
++
++	xlog_syslog(0);
++
++	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
++		xlog_err("fopen(%s) failed: %m", PROCKEYS);
++		return 1;
++	}
++
++	while(fgets(buf, BUFSIZ, fp) != NULL) {
++		if (strstr(buf, "keyring") != NULL)
++			continue;
++
++		mask = 0;
++		if ((ptr = strstr(buf, "uid:")) != NULL)
++			mask = UIDKEYS;
++		else if ((ptr = strstr(buf, "gid:")) != NULL)
++			mask = GIDKEYS;
++		else 
++			continue;
++
++		if ((keymask & mask) == 0)
++			continue;
++
++		if (strncmp(ptr+4, keystr, strlen(keystr)) != NULL)
++			continue;
++
++		if (verbose) {
++			*(strchr(buf, '\n')) = '\0';
++			xlog_warn("revoking '%s'", buf);
++		}
++		/*
++		 * The key is the first arugment in the string
++		 */
++		*(strchr(buf, ' ')) = '\0';
++		sscanf(buf, "%x", &key);
++
++		if (keyctl_revoke(key) < 0) {
++			xlog_err("keyctl_revoke(0x%x) failed: %m", key);
++			fclose(fp);
++			return 1;
++		}
++
++		keymask &= ~mask;
++		if (keymask == 0) {
++			fclose(fp);
++			return 0;
++		}
++	}
++	xlog_err("'%s' key was not found.", keystr);
++	fclose(fp);
++	return 1;
++}
+ 
+ int main(int argc, char **argv)
+ {
+@@ -142,8 +206,8 @@ int main(int argc, char **argv)
+ 	int rc = 1, opt;
+ 	int timeout = 600;
+ 	key_serial_t key;
+-	char *progname, *keyring = NULL;
+-	int clearring;
++	char *progname, *keyring = NULL, *keystr = NULL;
++	int clearring, keymask = 0;
+ 
+ 	/* Set the basename */
+ 	if ((progname = strrchr(argv[0], '/')) != NULL)
+@@ -153,8 +217,20 @@ int main(int argc, char **argv)
+ 
+ 	xlog_open(progname);
+ 
+-	while ((opt = getopt(argc, argv, "ct:v")) != -1) {
++	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
+ 		switch (opt) {
++		case 'u':
++			keymask = UIDKEYS;
++			keystr = strdup(optarg);
++			break;
++		case 'g':
++			keymask = GIDKEYS;
++			keystr = strdup(optarg);
++			break;
++		case 'r':
++			keymask = GIDKEYS|UIDKEYS;
++			keystr = strdup(optarg);
++			break;
+ 		case 'c':
+ 			clearring++;
+ 			break;
+@@ -170,6 +246,10 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
++	if (keystr) {
++		rc = key_revoke(keystr, keymask);
++		return rc;		
++	}
+ 	if (clearring) {
+ 		keyring = ((argc - optind) ? argv[optind] : NULL);
+ 		rc = keyring_clear(keyring);
+diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+index db65a1f..216afd1 100644
+--- a/utils/nfsidmap/nfsidmap.man
++++ b/utils/nfsidmap/nfsidmap.man
+@@ -6,7 +6,11 @@
+ .SH NAME
+ nfsidmap \- The NFS idmapper upcall program
+ .SH SYNOPSIS
+-.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
++.B "nfsidmap [-v] [-t timeout] key desc"
++.br
++.B "nfsidmap [-v] [-c [keyring]]"
++.br
++.B "nfsidmap [-v] [-u|-g|-r user]"
+ .SH DESCRIPTION
+ The file
+ .I /usr/sbin/nfsidmap
+@@ -18,9 +22,11 @@ is called by /sbin/request-key, and will perform the translation and
+ initialize a key with the resulting information.
+ .PP
+ .I nfsidmap
+-can also used to clear the keyring of all the keys.  
+-This is useful when all the mappings have failed to due to an DNS outage
+-or some other error resulting in all the cached uid/gid to be invalid.
++can also used to clear the keyring of all the keys or 
++revoke one particular key.  
++This is useful when the id mappings have failed to due 
++to a lookup error resulting in all the cached uids/gids to be set 
++to the user id nobody.
+ .SH OPTIONS
+ .TP
+ .B -c [keyring]
+@@ -28,10 +34,19 @@ Clear the keyring of all the keys. If a
+ keyring is not supplied the default 
+ keyring 'id_resolver' will be used.
+ .TP
++.B -g user
++Revoke the gid key of the given user.
++.TP
++.B -r user
++Revoke both the uid and gid key of the given user.
++.TP
+ .B -t timeout
+ Set the expiration timer, in seconds, on the key.
+ The default is 600 seconds (10 mins).
+ .TP
++.B -u user
++Revoke the uid key of the given user.
++.TP
+ .B -v
+ Increases the verbosity of the output to syslog 
+ (can be specified multiple times).
+-- 
+1.7.7
 
