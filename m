@@ -1,76 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15974 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751876Ab1KGU6W convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 15:58:22 -0500
-Message-ID: <1320699485.7987.9.camel@lade.trondhjem.org>
-Subject: Re: regression in referrals resolution
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: tigran.mkrtchyan@desy.de
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Date: Mon, 07 Nov 2011 15:58:05 -0500
-In-Reply-To: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
-References: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:57476 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752538Ab1KQVvk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 16:51:40 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RR9pR-0003K1-Rp
+	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 16:49:06 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
+Date: Thu, 17 Nov 2011 16:51:35 -0500
+Message-Id: <1321566696-7298-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1321566696-7298-1-git-send-email-steved@redhat.com>
+References: <1321566696-7298-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-11-07 at 21:29 +0100, Tigran Mkrtchyan wrote: 
-> Hi,
-> 
-> 
-> today we was running test with referrals and notice that 'current'
-> 3.1+ has a regression.
-> The referrals are resolved, but client returns IO error :
+Introduce the '-c [keyring]' command line argument
+which will clear the giving keyring of the keys.
+If a keyring not supplied the default 'id_resolver'
+keyring will be used.
 
-Doh! I expect that the following should fix it...
-
-Thanks
-  Trond
-8<-------------------------------------------------------------------------- 
->From 91207dc6fd4fbe5f758dd2558e927bcd0c411581 Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Mon, 7 Nov 2011 15:50:32 -0500
-Subject: [PATCH] NFS: Fix a regression in the referral code
-
-Fix a regression that was introduced by commit
-0c2e53f11a6dae9e3af5f50f5ad0382e7c3e0cfa (NFS: Remove the unused
-"lookupfh()" version of nfs4_proc_lookup()).
-
-In the case where the lookup gets an NFS4ERR_MOVED, we want to return
-the result of nfs4_get_referral(). Instead, that value is getting
-clobbered by the call to nfs4_handle_exception()...
-
-Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/nfs4proc.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ utils/nfsidmap/nfsidmap.c   |   65 +++++++++++++++++++++++++++++++++++++++---
+ utils/nfsidmap/nfsidmap.man |   14 ++++++++-
+ 2 files changed, 72 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 069cb80..be2bbac 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2464,8 +2464,7 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 		case -NFS4ERR_BADNAME:
- 			return -ENOENT;
- 		case -NFS4ERR_MOVED:
--			err = nfs4_get_referral(dir, name, fattr, fhandle);
--			break;
-+			return nfs4_get_referral(dir, name, fattr, fhandle);
- 		case -NFS4ERR_WRONGSEC:
- 			nfs_fixup_secinfo_attributes(fattr, fhandle);
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 6a09f38..84a57fe 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -13,12 +13,14 @@
+ #include "xlog.h"
+ 
+ int verbose = 0;
+-char *usage="Usage: %s [-v] [-t timeout] key desc";
++char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
+ 
+ #define MAX_ID_LEN   11
+ #define IDMAP_NAMESZ 128
+ #define USER  1
+ #define GROUP 0
++#define DEFAULT_KEYRING "id_resolver"
++#define PROCKEYS "/proc/keys"
+ 
+ /*
+  * Find either a user or group id based on the name@domain string
+@@ -87,6 +89,50 @@ int name_lookup(char *id, key_serial_t key, int type)
+ out:
+ 	return rc;
+ }
++/*
++ * Clear all the keys on the given keyring
++ */
++static int keyring_clear(char *keyring)
++{
++	FILE *fp;
++	char buf[BUFSIZ];
++	key_serial_t key;
++
++	xlog_syslog(0);
++	if (keyring == NULL)
++		keyring = DEFAULT_KEYRING;
++
++	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
++		xlog_err("fopen(%s) failed: %m", PROCKEYS);
++		return 1;
++	}
++
++	while(fgets(buf, BUFSIZ, fp) != NULL) {
++		if (strstr(buf, "keyring") == NULL)
++			continue;
++		if (strstr(buf, keyring) == NULL)
++			continue;
++		if (verbose) {
++			*(strchr(buf, '\n')) = '\0';
++			xlog_warn("clearing '%s'", buf);
++		}
++		/*
++		 * The key is the first arugment in the string
++		 */
++		*(strchr(buf, ' ')) = '\0';
++		sscanf(buf, "%x", &key);
++		if (keyctl_clear(key) < 0) {
++			xlog_err("keyctl_clear(0x%x) failed: %m", key);
++			fclose(fp);
++			return 1;
++		}
++		fclose(fp);
++		return 0;
++	}
++	xlog_err("'%s' keyring was not found.", keyring);
++	fclose(fp);
++	return 1;
++}
+ 
+ int main(int argc, char **argv)
+ {
+@@ -96,7 +142,8 @@ int main(int argc, char **argv)
+ 	int rc = 1, opt;
+ 	int timeout = 600;
+ 	key_serial_t key;
+-	char *progname;
++	char *progname, *keyring = NULL;
++	int clearring;
+ 
+ 	/* Set the basename */
+ 	if ((progname = strrchr(argv[0], '/')) != NULL)
+@@ -105,11 +152,12 @@ int main(int argc, char **argv)
+ 		progname = argv[0];
+ 
+ 	xlog_open(progname);
+-	xlog_syslog(1);
+-	xlog_stderr(0);
+ 
+-	while ((opt = getopt(argc, argv, "t:v")) != -1) {
++	while ((opt = getopt(argc, argv, "ct:v")) != -1) {
+ 		switch (opt) {
++		case 'c':
++			clearring++;
++			break;
+ 		case 'v':
+ 			verbose++;
+ 			break;
+@@ -122,6 +170,13 @@ int main(int argc, char **argv)
  		}
+ 	}
+ 
++	if (clearring) {
++		keyring = ((argc - optind) ? argv[optind] : NULL);
++		rc = keyring_clear(keyring);
++		return rc;		
++	}
++
++	xlog_stderr(0);
+ 	if ((argc - optind) != 2) {
+ 		xlog_err("Bad arg count. Check /etc/request-key.conf");
+ 		xlog_warn(usage, progname);
+diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+index c67aab6..db65a1f 100644
+--- a/utils/nfsidmap/nfsidmap.man
++++ b/utils/nfsidmap/nfsidmap.man
+@@ -6,7 +6,7 @@
+ .SH NAME
+ nfsidmap \- The NFS idmapper upcall program
+ .SH SYNOPSIS
+-.B "nfsidmap [-v] [-t timeout] key desc"
++.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
+ .SH DESCRIPTION
+ The file
+ .I /usr/sbin/nfsidmap
+@@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
+ translate user and group names into ids. Idmapper uses request-key to perform
+ the upcall and cache the result.
+ .I /usr/sbin/nfsidmap
+-should only be called by request-key, and will perform the translation and
++is called by /sbin/request-key, and will perform the translation and
+ initialize a key with the resulting information.
++.PP
++.I nfsidmap
++can also used to clear the keyring of all the keys.  
++This is useful when all the mappings have failed to due to an DNS outage
++or some other error resulting in all the cached uid/gid to be invalid.
+ .SH OPTIONS
+ .TP
++.B -c [keyring]
++Clear the keyring of all the keys. If a
++keyring is not supplied the default 
++keyring 'id_resolver' will be used.
++.TP
+ .B -t timeout
+ Set the expiration timer, in seconds, on the key.
+ The default is 600 seconds (10 mins).
 -- 
 1.7.7
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
