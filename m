@@ -1,58 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:35815 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751362Ab1KHTiY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2011 14:38:24 -0500
-Date: Tue, 8 Nov 2011 22:38:18 +0300
-From: Alexey Dobriyan <adobriyan@gmail.com>
-To: Julia Lawall <julia@diku.dk>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, kernel-janitors@vger.kernel.org,
-        Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/5] net/sunrpc: use kstrtoul, etc
-Message-ID: <20111108193817.GA3453@p183.telecom.by>
-References: <1320586010-21931-1-git-send-email-julia@diku.dk>
- <1320586010-21931-3-git-send-email-julia@diku.dk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320586010-21931-3-git-send-email-julia@diku.dk>
+Received: from mx2.netapp.com ([216.240.18.37]:60185 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753969Ab1KRTOu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 14:14:50 -0500
+Message-ID: <1321643673.2653.41.camel@lade.trondhjem.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Date: Fri, 18 Nov 2011 21:14:33 +0200
+In-Reply-To: <4EC6AC47.60404@citrix.com>
+References: <4EC6A681.30902@citrix.com>
+	 <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Nov 06, 2011 at 02:26:47PM +0100, Julia Lawall wrote:
-> @@
-> expression a,b;
-> {int,long} *c;
-> @@
+On Fri, 2011-11-18 at 19:04 +0000, Andrew Cooper wrote: 
+> On 18/11/11 18:52, Trond Myklebust wrote:
+> > On Fri, 2011-11-18 at 18:40 +0000, Andrew Cooper wrote: 
+> >> Hello,
+> >>
+> >> As described originally in
+> >> http://www.spinics.net/lists/linux-nfs/msg25314.html, we were
+> >> encountering a bug whereby the NFS session was unexpectedly timing out.
+> >>
+> >> I believe I have found the source of the race condition causing the timeout.
+> >>
+> >> Brief overview of setup:
+> >>   10GiB network, NFS mounted using TCP.  Problem reproduces with
+> >> multiple different NICs, with synchronous or asynchronous mounts, and
+> >> with soft and hard mounts.  Reproduces on 2.6.32 and I am currently
+> >> trying to reproduce with mainline. (I don't have physical access to the
+> >> servers so installing stuff is not fantastically easy)
+> >>
+> >>
+> >>
+> >> In net/sunrpc/xprtsock.c:xs_tcp_send_request(), we try to write data to
+> >> the sock buffer using xs_sendpages()
+> >>
+> >> When the sock buffer is nearly fully, we get an EAGAIN from
+> >> xs_sendpages() which causes a break out of the loop.  Lower down the
+> >> function, we switch on status which cases us to call xs_nospace() with
+> >> the task.
+> >>
+> >> In xs_nospace(), we test the SOCK_ASYNC_NOSPACE bit from the socket, and
+> >> in the rare case where that bit is clear, we return 0 instead of
+> >> EAGAIN.  This promptly overwrites status in xs_tcp_send_request().
+> >>
+> >> The result is that xs_tcp_release_xprt() finds a request which has no
+> >> error, but has not sent all of the bytes in its send buffer.  It cleans
+> >> up by setting XPRT_CLOSE_WAIT which causes xprt_clear_locked() to queue
+> >> xprt->task_cleanup, which closes the TCP connection.
+> >>
+> >>
+> >> Under normal operation, the TCP connection goes down and back up without
+> >> interruption to the NFS layer.  However, when the NFS server hangs in a
+> >> half closed state, the client forces a RST of the TCP connection,
+> >> leading to the timeout.
+> >>
+> >> I have tried a few naive fixes such as changing the default return value
+> >> in xs_nospace() from 0 to -EAGAIN (meaning that 0 will never be
+> >> returned) but this causes a kernel memory leak.  Can someone who a
+> >> better understanding of these interactions than me have a look?  It
+> >> seems that the if (test_bit()) test in xs_nospace() should have an else
+> >> clause.
+> > I fully agree with your analysis. The correct thing to do here is to
+> > always return either EAGAIN or ENOTCONN. Thank you very much for working
+> > this one out!
+> >
+> > Trond
 > 
-> -strict_strtoul
-> +kstrtoul
+> Returning EAGAIN seems to cause a kernel memory leak, as the oomkiller
+> starts going after processes holding large amounts of LowMem.  Returning
 
-No, no, no!
+The EAGAIN should trigger a retry of the send.
 
-In every case see the type or real data and use appropriate function.
-kstrtou8() for ports.
-This program creates lots of bogus patches in this case.
+> ENOTCONN causes the NFS session to complain about a timeout in the logs,
+> and in the case of a softmout, give an EIO to the calling process.
 
-> --- a/net/sunrpc/addr.c
-> +++ b/net/sunrpc/addr.c
-> @@ -322,7 +322,7 @@ size_t rpc_uaddr2sockaddr(const char *ua
->  	c = strrchr(buf, '.');
->  	if (unlikely(c == NULL))
->  		return 0;
-> -	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
-> +	if (unlikely(kstrtoul(c + 1, 10, &portlo) != 0))
->  		return 0;
->  	if (unlikely(portlo > 255))
->  		return 0;
-> @@ -331,7 +331,7 @@ size_t rpc_uaddr2sockaddr(const char *ua
->  	c = strrchr(buf, '.');
->  	if (unlikely(c == NULL))
->  		return 0;
-> -	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
-> +	if (unlikely(kstrtoul(c + 1, 10, &porthi) != 0))
->  		return 0;
->  	if (unlikely(porthi > 255))
->  		return 0;
+Correct. ENOTCONN means that the connection was lost.
+
+> >From the looks of the TCP stream, and from the the looks of some
+> targeted debugging, nothing is actually wrong, so the client should not
+> be trying to FIN the TCP connection.  Is it possible that there is a
+> more sinister reason for SOCK_ASYNC_NOSPACE being clear?
+
+Normally, it means that we're out of the out-of-write-buffer condition
+that caused the socket to fail (i.e. the socket has made progress
+sending more data, so that we can now resume sending more). Returning
+EAGAIN in that condition is correct.
+
+> I can attempt to find which of the many calls to clear that bit is
+> actually causing the problem, but I have a feeing that is going to a
+> little more tricky to narrow down.
+> 
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
