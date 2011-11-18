@@ -1,70 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755419Ab1K2NgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 08:36:15 -0500
+Received: from smtp.mail.umich.edu ([141.211.14.81]:42384 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755448Ab1KRBv1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 20:51:27 -0500
+Date: Thu, 17 Nov 2011 20:51:16 -0500
+From: Jim Rees <rees@umich.edu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: John Hughes <john@Calva.COM>, Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
+ mount expires
+Message-ID: <20111118015116.GA1959@umich.edu>
+References: <4EC3FD8B.6000705@calvaedi.com>
+ <20111116144718.78b2e288@corrin.poochiereds.net>
+ <20111116234434.GA12882@umich.edu>
+ <20111116203119.1d9c0dd6@corrin.poochiereds.net>
+ <20111116203810.4e1b9d28@corrin.poochiereds.net>
+ <4EC4EA91.5070607@Calva.COM>
+ <4EC50882.2080803@Calva.COM>
+ <20111117164630.394027e7@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from blocklayout routines
-Date: Tue, 29 Nov 2011 05:35:51 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6> <20111129091037.20730.59391.stgit@localhost6.localdomain6> <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com> <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: <tao.peng@emc.com>, <skinsbursky@parallels.com>
-Cc: <linux-nfs@vger.kernel.org>, <xemul@parallels.com>, <neilb@suse.de>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <jbottomley@parallels.com>, <bfields@fieldses.org>,
-        <davem@davemloft.net>, <devel@openvz.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111117164630.394027e7@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiB0YW8ucGVuZ0BlbWMuY29tIFtt
-YWlsdG86dGFvLnBlbmdAZW1jLmNvbV0NCj4gU2VudDogVHVlc2RheSwgTm92ZW1iZXIgMjksIDIw
-MTEgNzo0MCBBTQ0KPiBUbzogc2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbQ0KPiBDYzogTXlrbGVi
-dXN0LCBUcm9uZDsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgeGVtdWxAcGFyYWxsZWxzLmNv
-bTsNCj4gbmVpbGJAc3VzZS5kZTsgbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgbGludXgta2VybmVs
-QHZnZXIua2VybmVsLm9yZzsNCj4gamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZp
-ZWxkc2VzLm9yZzsgZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBT
-dWJqZWN0OiBSRTogW1BBVENIIDQvNV0gTkZTOiByZW1vdmUgUlBDIFBpcGVGUyBtb3VudCBwb2lu
-dCByZWZlcmVuY2UNCj4gZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiANCj4gPiAtLS0tLU9y
-aWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IFN0YW5pc2xhdiBLaW5zYnVyc2t5IFttYWls
-dG86c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbV0NCj4gPiBTZW50OiBUdWVzZGF5LCBOb3ZlbWJl
-ciAyOSwgMjAxMSA4OjE5IFBNDQo+ID4gVG86IFBlbmcsIFRhbw0KPiA+IENjOiBUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGF2ZWwNCj4gPiBF
-bWVsaWFub3Y7IG5laWxiQHN1c2UuZGU7IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7DQo+ID4gbGlu
-dXgta2VybmVsQHZnZXIua2VybmVsLm9yZzsgSmFtZXMgQm90dG9tbGV5OyBiZmllbGRzQGZpZWxk
-c2VzLm9yZzsNCj4gPiBkYXZlbUBkYXZlbWxvZnQubmV0OyBkZXZlbEBvcGVudnoub3JnDQo+ID4g
-U3ViamVjdDogUmU6IFtQQVRDSCA0LzVdIE5GUzogcmVtb3ZlIFJQQyBQaXBlRlMgbW91bnQgcG9p
-bnQgcmVmZXJlbmNlDQo+ID4gZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiA+DQo+ID4gMjku
-MTEuMjAxMSAxNjowMCwgdGFvLnBlbmdAZW1jLmNvbSDQv9C40YjQtdGCOg0KPiA+ID4+IC0tLS0t
-T3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4gPj4gRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIu
-a2VybmVsLm9yZw0KPiA+ID4+IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9y
-Z10gT24gQmVoYWxmIE9mDQo+ID4gU3RhbmlzbGF2DQo+ID4gPj4gS2luc2J1cnNreQ0KPiA+ID4+
-IFNlbnQ6IFR1ZXNkYXksIE5vdmVtYmVyIDI5LCAyMDExIDY6MTEgUE0NCj4gPiA+PiBUbzogVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gPiA+PiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
-Lm9yZzsgeGVtdWxAcGFyYWxsZWxzLmNvbTsgbmVpbGJAc3VzZS5kZTsNCj4gPiA+PiBuZXRkZXZA
-dmdlci5rZXJuZWwub3JnOyBsaW51eC0ga2VybmVsQHZnZXIua2VybmVsLm9yZzsNCj4gPiA+PiBq
-Ym90dG9tbGV5QHBhcmFsbGVscy5jb207IGJmaWVsZHNAZmllbGRzZXMub3JnOw0KPiA+ID4+IGRh
-dmVtQGRhdmVtbG9mdC5uZXQ7IGRldmVsQG9wZW52ei5vcmcNCj4gPiA+PiBTdWJqZWN0OiBbUEFU
-Q0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZQ0KPiA+
-ID4+IGZyb20gYmxvY2tsYXlvdXQgcm91dGluZXMNCj4gPiA+Pg0KPiA+ID4+IFRoaXMgaXMgYSBj
-bGVhbnVwIHBhdGNoLiBXZSBkb24ndCBuZWVkIHRoaXMgcmVmZXJlbmNlIGFueW1vcmUsDQo+ID4g
-Pj4gYmVjYXVzZSBibG9ja2xheW91dCBwaXBlcyBkZW50cmllcyBub3cgY3JlYXRlcyBhbmQgZGVz
-dHJveXMgaW4NCj4gPiA+PiBwZXItbmV0IG9wZXJhdGlvbnMgYW5kIG9uIFBpcGVGUyBtb3VudC91
-bW91bnQgbm90aWZpY2F0aW9uLg0KPiA+ID4+IE5vdGUgdGhhdCBuZnM0YmxvY2tsYXlvdXRfcmVn
-aXN0ZXJfbmV0KCkgbm93IHJldHVybnMgMCBpbnN0ZWFkIG9mDQo+ID4gPj4gLUVOT0VOVCBpbiBj
-YXNlIG9mIFBpcGVGUyBzdXBlcmJsb2NrIGFic2VuY2UuIFRoaXMgaXMgb2ssIGJlY2F1c2UNCj4g
-PiA+PiBibG9ja2xheW91dCBwaXBlIGRlbnRyeSB3aWxsIGJlIGNyZWF0ZWQgb24gUGlwZUZTIG1v
-dW50IGV2ZW50Lg0KPiA+ID4gV2hlbiBpcyB0aGUgInBpcGVmcyBtb3VudCBldmVudCIgZ29pbmcg
-dG8gaGFwcGVuPyBXaGVuIGluc2VydGluZw0KPiA+ID4ga2VybmVsIG1vZHVsZXMgb3Igd2hlbiB1
-c2VyIGlzc3Vlcw0KPiA+IG1vdW50IGNvbW1hbmQ/DQo+ID4gPg0KPiA+DQo+ID4gV2hlbiB1c2Vy
-IGlzc3VlcyBtb3VudCBjb21tYW5kLg0KPiA+IEtlcm5lbCBtb3VudHMgb2YgUGlwZUZTIGhhcyBi
-ZWVuIHJlbW92ZWQgd2l0aCBhbGwgdGhlc2UgcGF0Y2ggc2V0cw0KPiA+IEkndmUgc2VudCBhbHJl
-YWR5Lg0KPiBUaGVuIGl0IGlzIGdvaW5nIHRvIGJyZWFrIGJsb2NrbGF5b3V0IHVzZXIgc3BhY2Ug
-cHJvZ3JhbSBibGttYXBkLCB3aGljaCBpcw0KPiBzdGFyZWQgYmVmb3JlIG1vdW50aW5nIGFueSBm
-aWxlIHN5c3RlbSBhbmQgaXQgdHJpZXMgdG8gb3BlbiB0aGUgcGlwZSBmaWxlDQo+IHdoZW4gc3Rh
-cnRlZC4NCg0KV2h5IG9uIGVhcnRoIGlzIGJsa21hcGQgZG9pbmcgdGhpcyBpbnN0ZWFkIG9mIGxp
-c3RlbmluZyBmb3IgZmlsZSBjcmVhdGlvbiBub3RpZmljYXRpb25zIGxpa2UgdGhlIG90aGVyIHJw
-Y19waXBlZnMgZGFlbW9ucyBkbz8NCg0KVHJvbmQNCg0K
+I would argue that if you don't want your applications to stop working when
+your ticket expires, you shouldn't let the ticket expire.  If you don't want
+to have to renew your ticket, you should use an infinite ticket lifetime.
+
+It sounds like you've made up your mind, but I would urge you to make this
+a mount option, analogous to the hard/soft mount option.
