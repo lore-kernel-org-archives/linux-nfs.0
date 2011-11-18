@@ -1,40 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:37417 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754101Ab1KLPzs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 10:55:48 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RPFtL-0003Ia-7K
-	for linux-nfs@vger.kernel.org; Sat, 12 Nov 2011 10:53:15 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] Added error logging and verbosity flag (ver #2)
-Date: Sat, 12 Nov 2011 10:55:44 -0500
-Message-Id: <1321113346-10106-1-git-send-email-steved@redhat.com>
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:56929 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752320Ab1KRQwA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 11:52:00 -0500
+Message-ID: <4EC68D29.7030005@Calva.COM>
+Date: Fri, 18 Nov 2011 17:51:53 +0100
+From: John Hughes <john@Calva.COM>
+MIME-Version: 1.0
+To: peter.staubach@emc.com
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Don't spam kernel log with EKEYEXPIRED and EACCESS errors
+References: <4EC685D1.2000900@Calva.COM> <5E6794FC7B8FCA41A704019BE3C70E8B9422FC09@MX31A.corp.emc.com>
+In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B9422FC09@MX31A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here the second version of this patch series. In this
-version, as suggested, nfsidmap now uses getopt()
-to parse the command line arguments. While I was
-there I so convert the timeout value to be specified
-by '-t' flag instead of being the last value on the
-command line.
+On 18/11/11 17:27, peter.staubach@emc.com wrote:
+> Given that the poor user will be sitting, with almost nothing working because of the expired ticket, how does the user figure out what is going on or how does the admin help him?
+>
+> Some guidance seems like a good thing.  Is there really a problem with these messages being printed to the log?
+If you're sat at your console with nothing responding how are you going 
+to see the log messages?
 
-I also prove this new debugging is helpful and needed,
-because it help me find a bug in the libnfsidmap lib.
+The "ticket expired" messages are rate limited.
 
-Steve Dickson (2):
-  nfsidmap: Added Error Logging
-  nfsidmap: Added -v and -t flags
-
- utils/nfsidmap/Makefile.am  |    2 +-
- utils/nfsidmap/nfsidmap.c   |   77 +++++++++++++++++++++++++++++++++---------
- utils/nfsidmap/nfsidmap.man |   26 ++++++++++----
- 3 files changed, 79 insertions(+), 26 deletions(-)
-
--- 
-1.7.7
+The "Error: state manager failed on NFSv4 server" messages are not rate 
+limited, but if you use my "rpc.gssd -e" hack they'll be written to the 
+log every 5 seconds all night long.
 
