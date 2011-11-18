@@ -1,80 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:45217 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753714Ab1KKAX3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 19:23:29 -0500
-Date: Thu, 10 Nov 2011 19:23:25 -0500
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsidmap: Added -v flag
-Message-ID: <20111111002210.GA2902@umich.edu>
-References: <1320956785-18004-1-git-send-email-steved@redhat.com>
- <1320956785-18004-3-git-send-email-steved@redhat.com>
- <20111110211117.GA2011@umich.edu>
- <4EBC4153.9090003@RedHat.com>
+Received: from smtp.eu.citrix.com ([62.200.22.115]:17502 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754097Ab1KRTzU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 14:55:20 -0500
+Message-ID: <4EC6B82B.3000701@citrix.com>
+Date: Fri, 18 Nov 2011 19:55:23 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EBC4153.9090003@RedHat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+References: <4EC6A681.30902@citrix.com>  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com> <1321643673.2653.41.camel@lade.trondhjem.org>
+In-Reply-To: <1321643673.2653.41.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
+On 18/11/2011 19:14, Trond Myklebust wrote:
+> On Fri, 2011-11-18 at 19:04 +0000, Andrew Cooper wrote: 
+>> On 18/11/11 18:52, Trond Myklebust wrote:
+>>> On Fri, 2011-11-18 at 18:40 +0000, Andrew Cooper wrote: 
+>>>> Hello,
+>>>>
+>>>> As described originally in
+>>>> http://www.spinics.net/lists/linux-nfs/msg25314.html, we were
+>>>> encountering a bug whereby the NFS session was unexpectedly timing out.
+>>>>
+>>>> I believe I have found the source of the race condition causing the timeout.
+>>>>
+>>>> Brief overview of setup:
+>>>>   10GiB network, NFS mounted using TCP.  Problem reproduces with
+>>>> multiple different NICs, with synchronous or asynchronous mounts, and
+>>>> with soft and hard mounts.  Reproduces on 2.6.32 and I am currently
+>>>> trying to reproduce with mainline. (I don't have physical access to the
+>>>> servers so installing stuff is not fantastically easy)
+>>>>
+>>>>
+>>>>
+>>>> In net/sunrpc/xprtsock.c:xs_tcp_send_request(), we try to write data to
+>>>> the sock buffer using xs_sendpages()
+>>>>
+>>>> When the sock buffer is nearly fully, we get an EAGAIN from
+>>>> xs_sendpages() which causes a break out of the loop.  Lower down the
+>>>> function, we switch on status which cases us to call xs_nospace() with
+>>>> the task.
+>>>>
+>>>> In xs_nospace(), we test the SOCK_ASYNC_NOSPACE bit from the socket, and
+>>>> in the rare case where that bit is clear, we return 0 instead of
+>>>> EAGAIN.  This promptly overwrites status in xs_tcp_send_request().
+>>>>
+>>>> The result is that xs_tcp_release_xprt() finds a request which has no
+>>>> error, but has not sent all of the bytes in its send buffer.  It cleans
+>>>> up by setting XPRT_CLOSE_WAIT which causes xprt_clear_locked() to queue
+>>>> xprt->task_cleanup, which closes the TCP connection.
+>>>>
+>>>>
+>>>> Under normal operation, the TCP connection goes down and back up without
+>>>> interruption to the NFS layer.  However, when the NFS server hangs in a
+>>>> half closed state, the client forces a RST of the TCP connection,
+>>>> leading to the timeout.
+>>>>
+>>>> I have tried a few naive fixes such as changing the default return value
+>>>> in xs_nospace() from 0 to -EAGAIN (meaning that 0 will never be
+>>>> returned) but this causes a kernel memory leak.  Can someone who a
+>>>> better understanding of these interactions than me have a look?  It
+>>>> seems that the if (test_bit()) test in xs_nospace() should have an else
+>>>> clause.
+>>> I fully agree with your analysis. The correct thing to do here is to
+>>> always return either EAGAIN or ENOTCONN. Thank you very much for working
+>>> this one out!
+>>>
+>>> Trond
+>> Returning EAGAIN seems to cause a kernel memory leak, as the oomkiller
+>> starts going after processes holding large amounts of LowMem.  Returning
+> The EAGAIN should trigger a retry of the send.
+>
+>> ENOTCONN causes the NFS session to complain about a timeout in the logs,
+>> and in the case of a softmout, give an EIO to the calling process.
+> Correct. ENOTCONN means that the connection was lost.
+>
+>> >From the looks of the TCP stream, and from the the looks of some
+>> targeted debugging, nothing is actually wrong, so the client should not
+>> be trying to FIN the TCP connection.  Is it possible that there is a
+>> more sinister reason for SOCK_ASYNC_NOSPACE being clear?
+> Normally, it means that we're out of the out-of-write-buffer condition
+> that caused the socket to fail (i.e. the socket has made progress
+> sending more data, so that we can now resume sending more). Returning
+> EAGAIN in that condition is correct.
 
-  
-  
-  On 11/10/2011 04:11 PM, Jim Rees wrote:
-  > Steve Dickson wrote:
-  > 
-  >   To aid in debugging, the -v flag can now be specified
-  >   on the command to enable verbose logging in both
-  >   the nfsidmap command and libnfsidmap library routines.
-  >   
-  >   Signed-off-by: Steve Dickson <steved@redhat.com>
-  >   ---
-  >    utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
-  >    utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
-  >    2 files changed, 24 insertions(+), 3 deletions(-)
-  >   
-  >   diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-  >   index 134d9bc..d74189a 100644
-  >   --- a/utils/nfsidmap/nfsidmap.c
-  >   +++ b/utils/nfsidmap/nfsidmap.c
-  >   @@ -12,6 +12,7 @@
-  >    #include <syslog.h>
-  >    #include "xlog.h"
-  >    
-  >   +int verbose = 0;
-  >    /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
-  >    
-  >    #define MAX_ID_LEN   11
-  >   @@ -108,6 +109,12 @@ int main(int argc, char **argv)
-  >    	xlog_syslog(1);
-  >    	xlog_stderr(0);
-  >    
-  >   +	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
-  >   +		verbose = 1;
-  >   +		nfs4_set_debug(1, NULL);
-  >   +		argc--, argv++;
-  >   +	}
-  >   +
-  > 
-  > Ugh.  Is there some reason not to use getopt() like all the other utils do?
-  I was waiting for this comment ;-)
+Following my latest set of tests, I would have to say that we are in the
+abnormal case.  Removing the test_bit check and always requeuing causes
+the next call to xs_sendpages() to return with an ENOTCONN.  I guess I
+have some more debugging to do.
 
-I'm always happy to play your straight man.
+>
+>> I can attempt to find which of the many calls to clear that bit is
+>> actually causing the problem, but I have a feeing that is going to a
+>> little more tricky to narrow down.
+>>
 
-  I decided to go with how the command was originally written
-  because this command is only call from the kernel so a user
-  should execute it (except for debugging).  
-  
-  The arguments are vary static on where they need to be
-  no command line. So its either going to work or not,
-  which means there is no real need for a usage error (expect
-  for the one I added). 
-  
-  Finally, is there real need for a while loop and switch statement 
-  for on simple case? I thought not...
-
-It's more work for the next guy who comes along and wants to add another
-option, especially if the new option takes an argument.
+~Andrew
