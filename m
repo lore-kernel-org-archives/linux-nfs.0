@@ -1,87 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56453 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750891Ab1KARfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 13:35:37 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/3] NFSD: Added fault injection script
-Date: Tue,  1 Nov 2011 13:35:22 -0400
-Message-Id: <1320168923-29671-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
-References: <1320168923-29671-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:53738 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754933Ab1KRN57 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 08:57:59 -0500
+Received: by fagn18 with SMTP id n18so4304340fag.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Nov 2011 05:57:58 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+Date: Fri, 18 Nov 2011 14:57:58 +0100
+Message-ID: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
+Subject: server reboot recovery is broken with 3.1 (3.2?) with nfsv41 clients
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Dear  nfs hackers,
 
-This script provides a convenient way to use the NFSD fault injection
-framework.  Fault injection writes to dmesg using the KERN_INFO flag, so
-this script will compare the before and after output of `dmesg` to show
-the user what happened
+it looks like with kernel 3.1 client cant recover from server reboots.
+The nfs mount hangs and there are no packages sent from a client to the server.
+This was IO with pnfs.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- tools/nfsd/inject_fault.sh |   49 ++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 49 insertions(+), 0 deletions(-)
- create mode 100755 tools/nfsd/inject_fault.sh
-
-diff --git a/tools/nfsd/inject_fault.sh b/tools/nfsd/inject_fault.sh
-new file mode 100755
-index 0000000..06a399a
---- /dev/null
-+++ b/tools/nfsd/inject_fault.sh
-@@ -0,0 +1,49 @@
-+#!/bin/bash
-+#
-+# Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-+#
-+# Script for easier NFSD fault injection
-+
-+# Check that debugfs has been mounted
-+DEBUGFS=`cat /proc/mounts | grep debugfs`
-+if [ "$DEBUGFS" == "" ]; then
-+	echo "debugfs does not appear to be mounted!"
-+	echo "Please mount debugfs and try again"
-+	exit 1
-+fi
-+
-+# Check that the fault injection directory exists
-+DEBUGDIR=`echo $DEBUGFS | awk '{print $2}'`/nfsd
-+if [ ! -d "$DEBUGDIR" ]; then
-+	echo "$DEBUGDIR does not exist"
-+	echo "Check that your .config selects CONFIG_NFSD_FAULT_INJECTION"
-+	exit 1
-+fi
-+
-+function help()
-+{
-+	echo "Usage $0 injection_type [count]"
-+	echo ""
-+	echo "Injection types are:"
-+	ls $DEBUGDIR
-+	exit 1
-+}
-+
-+if [ $# == 0 ]; then
-+	help
-+elif [ ! -f $DEBUGDIR/$1 ]; then
-+	help
-+elif [ $# != 2 ]; then
-+	COUNT=0
-+else
-+	COUNT=$2
-+fi
-+
-+BEFORE=`mktemp`
-+AFTER=`mktemp`
-+dmesg > $BEFORE
-+echo $COUNT > $DEBUGDIR/$1
-+dmesg > $AFTER
-+# Capture lines that only exist in the $AFTER file
-+diff $BEFORE $AFTER | grep ">"
-+rm -f $BEFORE $AFTER
--- 
-1.7.7
-
+Regards,
+   Tigran.
