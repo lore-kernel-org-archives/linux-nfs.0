@@ -1,161 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:40709 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756437Ab1KOPvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Nov 2011 10:51:05 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RQLHo-0006CH-0B
-	for linux-nfs@vger.kernel.org; Tue, 15 Nov 2011 16:51:00 +0100
-Received: from nat12.iteam.ua ([194.146.132.141])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Nov 2011 16:50:59 +0100
-Received: from free.lan.c2.718r by nat12.iteam.ua with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Nov 2011 16:50:59 +0100
-To: linux-nfs@vger.kernel.org
-From: Pavel <free.lan.c2.718r@gmail.com>
-Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
-Date: Tue, 15 Nov 2011 15:50:47 +0000 (UTC)
-Message-ID: <loom.20111115T142111-739@post.gmane.org>
-References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:55324 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756620Ab1KROfE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 09:35:04 -0500
+Message-ID: <4EC66D12.2090505@Calva.COM>
+Date: Fri, 18 Nov 2011 15:34:58 +0100
+From: John Hughes <john@Calva.COM>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket expiry.
+ Try 2 with added man pages.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bryan Schumaker <bjschuma@...> writes:
+Description: Add "-e" (ticket expiry is error) option to rpc.gssd
+  In kernels starting around 2.6.34 the nfs4 server will block all I/O
+  when a user ticket expires.  In earlier kernels the I/O would fail
+  with an EACCESS error.  This patch adds a "-e" option to rpc.gssd
+  which allow the earlier behaviour (EKEYEXPIRED is converted to
+  EACCESS).  This behaviour is particularly useful when user home
+  directories are nfs4 mounted with krb5 security - if the user is
+  absent from their workstation for long enough for the ticket to
+  expire a new ticket will be obtained (via pam_krb5) by the screen
+  unlock process.
+Author: John Hughes<john@calva.com>
+Signed-off-by: John Hughes<john@calva.com>
+Bug-Debian: http://bugs.debian.org/648155
+Bug-Ubuntu: https://launchpad.net/bugs/648155
 
-> 
-> On Mon 14 Nov 2011 02:10:05 PM EST, Bryan Schumaker wrote:
-> > Hello Pavel,
-> >
-> > What kernel version is Debian using?  I haven't been able to reproduce the 
-problem using 3.0 (But I'm on
-> Archlinux, so there might be other differences).
+--- nfs-utils-1.2.5.orig/utils/gssd/gssd_proc.c
++++ nfs-utils-1.2.5/utils/gssd/gssd_proc.c
+@@ -1007,7 +1007,7 @@ process_krb5_upcall(struct clnt_info *cl
+  		/* Tell krb5 gss which credentials cache to use */
+  		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+  			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
+-			if (err == -EKEYEXPIRED)
++			if (err == -EKEYEXPIRED&&  !ticket_expiry_is_error)
+  				downcall_err = -EKEYEXPIRED;
+  			else if (!err)
+  				create_resp = create_auth_rpc_client(clp,&rpc_clnt,&auth, uid,
+--- nfs-utils-1.2.5.orig/utils/gssd/gssd.c
++++ nfs-utils-1.2.5/utils/gssd/gssd.c
+@@ -63,6 +63,7 @@ int  use_memcache = 0;
+  int  root_uses_machine_creds = 1;
+  unsigned int  context_timeout = 0;
+  char *preferred_realm = NULL;
++int ticket_expiry_is_error = 0;
 
-Thanks, Bryan, for your reply.
+  void
+  sig_die(int signal)
+@@ -85,7 +86,7 @@ sig_hup(int signal)
+  static void
+  usage(char *progname)
+  {
+-	fprintf(stderr, "usage: %s [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
++	fprintf(stderr, "usage: %s [-e] [-f] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
+  		progname);
+  	exit(1);
+  }
+@@ -102,8 +103,11 @@ main(int argc, char *argv[])
+  	char *progname;
 
-Debian is using Linux kernel version 2.6.32 - I haven't upgraded it.
+  	memset(ccachesearch, 0, sizeof(ccachesearch));
+-	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:t:R:")) != -1) {
++	while ((opt = getopt(argc, argv, "efvrmnMp:k:d:t:R:")) != -1) {
+  		switch (opt) {
++			case 'e':
++				ticket_expiry_is_error = 1;
++				break;
+  			case 'f':
+  				fg = 1;
+  				break;
+--- nfs-utils-1.2.5.orig/utils/gssd/gssd.h
++++ nfs-utils-1.2.5/utils/gssd/gssd.h
+@@ -66,6 +66,7 @@ extern int			use_memcache;
+  extern int			root_uses_machine_creds;
+  extern unsigned int 		context_timeout;
+  extern char			*preferred_realm;
++extern int			ticket_expiry_is_error;
 
-> It might also be useful if you could share the /etc/exports file on the 
-> server.
-> 
-> Thanks!
-> 
-> - Bryan
+  TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
 
-Thank you for the question - that was my rude mistake. For managing exports I'm 
-using OCF resource agent 'exportfs'. It uses Linux build-in command 'exportfs' 
-to export shares and /etc/exports file is empty. However Heartbeat starts much 
-later than NFS...Now it is clear why this wasn't working. Setting up share that 
-doesn't rely on Heartbeat resources, resolves the issue.
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index 073379d..e2b7b7a 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -6,7 +6,7 @@
+  .SH NAME
+  rpc.gssd \- rpcsec_gss daemon
+  .SH SYNOPSIS
+-.B "rpc.gssd [-f] [-n] [-k keytab] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
++.B "rpc.gssd [-e] [-f] [-n] [-k keytab] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
+  .SH DESCRIPTION
+  The rpcsec_gss protocol gives a means of using the gss-api generic security
+  api to provide security for protocols using rpc (in particular, nfs).  Before
+@@ -20,6 +20,25 @@ daemon uses files in the rpc_pipefs filesystem to communicate with the kernel.
 
-Still though, the first test was just to make sure NFS functions the way it is 
-supposed to, and not the goal - the second/main question remains open. When I 
-run sm-notify in this case, shares are already exported and all the other needed 
-resources are available as well. Why doesn't sm-notify work? It doesn't work 
-even in case of single server test. As of using files from /var/lib/nfs/sm/ when 
-notifying clients from the other node in cluster, it should be okay with -v 
-option of sm-notify, because it is a common practice to store the whole 
-/var/lib/nfs folder on shared storage in Active/Passive clusters and trigger sm-
-notify from the active node. It would be awesome if you could give me a clue.
-
-> >
-> > - Bryan
-> >
-> > On Mon 14 Nov 2011 12:11:56 PM EST, Pavel wrote:
-> >> Hi! I'm trying to set up an NFS server (particularly an A/A NFS cluster) 
-and 
-> >> having issues with locking and reboot notifications. These are the tests I 
-have 
-> >> done:
-> >>
-> >> 1. The simplest test includes single NFS server machine (Debian Squeeze), 
-> >> running nfs-kernel-server (nfs-utils 1.2.2-4) and a single client machine 
-(same 
-> >> OS), that mounts a share with “-o 'vers=3'” option. From the client I lock 
-some 
-> >> file on share using 'testlk -w <filename>' (testlk from 
-nfsutils/tools/locktest) 
-> >> so that a corresponding file appears in /var/lib/nfs/sm/ on server. Then I 
-> >> reboot the server and this is what I get in client logs:
-> >>
-> >> lockd: request from 127.0.0.1, port=1007
-> >> lockd: SM_NOTIFY     called
-> >> lockd: host nfs-server1 (192.168.0.101) rebooted, cnt 2
-> >> lockd: get host nfs-server1
-> >> lockd: get host nfs-server1
-> >> lockd: release host nfs-server1
-> >> lockd: reclaiming locks for host nfs-server1
-> >> lockd: rebind host nfs-server1
-> >> lockd: call procedure 2 on nfs-server1
-> >> lockd: nlm_bind_host nfs-server1 (192.168.0.101)
-> >> lockd: rpc_call returned error 13
-> >> lockd: failed to reclaim lock for pid 1555 (errno -13, status 0)
-> >> NLM: done reclaiming locks for host nfs-server1
-> >> lockd: release host nfs-server1
-> >>
-> >> 2. As I'm building a cluster I'll need to notify clients when NFS resource 
-> >> migrates (since it is an A/A cluster nfs-kernel-server is always running on 
-all 
-> >> nodes and shares migrate using exportfs resource agent), but manually 
-calling 
-> >> sm-notify ('sm-notify -f -v <virtual IP of share>') from either the initial 
-for 
-> >> that share or backup node results in the following (client logs):
-> >>
-> >> lockd: request from 127.0.0.1, port=637
-> >> lockd: SM_NOTIFY     called
-> >> lockd: host B (192.168.0.110) rebooted, cnt 2
-> >> lockd: get host B
-> >> lockd: get host B
-> >> lockd: release host B
-> >> lockd: reclaiming locks for host B
-> >> lockd: rebind host B
-> >> lockd: call procedure 2 on B
-> >> lockd: nlm_bind_host B (192.168.0.110)
-> >> lockd: server in grace period
-> >> lockd: spurious grace period reject?!
-> >> lockd: failed to reclaim lock for pid 2508 (errno -37, status 4)
-> >> NLM: done reclaiming locks for host B
-> >> lockd: release host B
-> >>
-> >> even though grace period is intended for lock reclamation. B/w after such 
-> >> invocation no files, corresponding to the notified clients, appear in 
-> >> /var/lib/nfs/sm/ on server for about 10 minutes, if I try locking from any 
-of 
-> >> these notified clients, even though locking itself is ok. Locking from 
-other 
-> >> clients generates files for them instantly.
-> >>
-> >> As of the rest: simple concurrent lock tests from couple of clients work 
-fine as 
-> >> well as server frees locks of rebooted clients.
-> >>
-> >> I'm new to NFS an may be missing obvious things, but I've already spent 
-several 
-> >> days googling around, but don't seem to find any solution.
-> >> Any help or guidance is highly appreciated. Thanks!
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@...
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@...
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@...
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-
-
-
+  .SH OPTIONS
+  .TP
++.TO
++.B -e
++Versions of
++.B rpc.gssd
++before 1.2.2 reported ticket expiry to the kernel as
++.B EACCESS
++(permission denied).  More recent versions return
++.B EKEYEXPIRED
++which causes recent kernels to block all I/O to a nfs mount until a new
++key is obtained.  The
++.B -e
++option restores the old behaviour.
++
++This is useful in the common case that the user home directories are
++nfs mounted.  Without the
++.B -e
++option the user may have difficulty getting a new ticket as she will
++only find out about the expiry of the old one when her processes hang.
++.TP
+  .B -f
+  Runs
+  .B rpc.gssd
 
