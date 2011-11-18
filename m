@@ -1,90 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39409 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753579Ab1KVW6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 17:58:22 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 2.5/4] NFS: Move the NFS v3 code into its own subdirectory
-Date: Tue, 22 Nov 2011 17:58:02 -0500
-Message-Id: <1322002684-20436-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
-References: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:57999 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753969Ab1KRTSP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 14:18:15 -0500
+Message-ID: <4EC6AFA9.9000705@calvaedi.com>
+Date: Fri, 18 Nov 2011 20:19:05 +0100
+From: John Hughes <john@calvaedi.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: John Hughes <john@calva.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
+ expiry. Try 2 with added man pages.
+References: <4EC66D12.2090505@Calva.COM> <1321641333.2653.15.camel@lade.trondhjem.org>
+In-Reply-To: <1321641333.2653.15.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 11/18/2011 07:35 PM, Trond Myklebust wrote:
+> On Fri, 2011-11-18 at 15:34 +0100, John Hughes wrote:
+>    
+>> Description: Add "-e" (ticket expiry is error) option to rpc.gssd
+>>    In kernels starting around 2.6.34 the nfs4 server will block all I/O
+>>    when a user ticket expires.  In earlier kernels the I/O would fail
+>>    with an EACCESS error.  This patch adds a "-e" option to rpc.gssd
+>>    which allow the earlier behaviour (EKEYEXPIRED is converted to
+>>    EACCESS).  This behaviour is particularly useful when user home
+>>    directories are nfs4 mounted with krb5 security - if the user is
+>>    absent from their workstation for long enough for the ticket to
+>>    expire a new ticket will be obtained (via pam_krb5) by the screen
+>>    unlock process.
+>>      
+> You need a big fat warning somewhere that enabling this option WILL
+> cause data corruption...
+>    
+Why?
 
-This finishes off the changes started in the last patch.  Note that
-after applying this patch NFS v3 is still directly compiled into the
-main NFS kernel module.  The changes to turn it into a module will come
-in a later patch.
+Because some process may get the EACCES error half way through it's 
+operation.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile        |    4 ++--
- fs/nfs/nfs3/nfs3acl.c  |    2 +-
- fs/nfs/nfs3/nfs3proc.c |    4 ++--
- fs/nfs/nfs3/nfs3xdr.c  |    2 +-
- 4 files changed, 6 insertions(+), 6 deletions(-)
+Ok, that needs documenting.
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index b58613d..ac0e5df 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,8 +9,8 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
--nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
-+nfs-$(CONFIG_NFS_V3)	+= nfs3/nfs3proc.o nfs3/nfs3xdr.o
-+nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3/nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
-diff --git a/fs/nfs/nfs3/nfs3acl.c b/fs/nfs/nfs3/nfs3acl.c
-index 7ef2397..ac589ff 100644
---- a/fs/nfs/nfs3/nfs3acl.c
-+++ b/fs/nfs/nfs3/nfs3acl.c
-@@ -6,7 +6,7 @@
- #include <linux/posix_acl_xattr.h>
- #include <linux/nfsacl.h>
- 
--#include "internal.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY	NFSDBG_PROC
- 
-diff --git a/fs/nfs/nfs3/nfs3proc.c b/fs/nfs/nfs3/nfs3proc.c
-index d4bc9ed9..f37ddb9 100644
---- a/fs/nfs/nfs3/nfs3proc.c
-+++ b/fs/nfs/nfs3/nfs3proc.c
-@@ -18,8 +18,8 @@
- #include <linux/lockd/bind.h>
- #include <linux/nfs_mount.h>
- 
--#include "iostat.h"
--#include "internal.h"
-+#include "../iostat.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
-diff --git a/fs/nfs/nfs3/nfs3xdr.c b/fs/nfs/nfs3/nfs3xdr.c
-index 183c6b1..be27fb8 100644
---- a/fs/nfs/nfs3/nfs3xdr.c
-+++ b/fs/nfs/nfs3/nfs3xdr.c
-@@ -20,7 +20,7 @@
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfsacl.h>
--#include "internal.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
- 
--- 
-1.7.7.4
+So far we seem to have established that the old way of doing things was 
+bad because it produced non-posix behaviour and could lead to data 
+corruption if a ticket expires while a process needs it.
+
+And the new way is bad because it leaves people puzzling over hung 
+workstations in the morning.
+
+The traditional Kerberos/AFS way was to behave the old way, and use 
+krenew to keep the ticket from expiring if a process needed to be run 
+overnight.
+
+What other way is there of fixing the problem if we are going to keep 
+the "hang 'till a ticket turns up" behaviour?  (rewrite gnome and kde 
+seems kind of a big job).
 
