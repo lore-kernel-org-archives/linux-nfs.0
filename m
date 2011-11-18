@@ -1,92 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:26875 "EHLO relay.sw.ru"
+Received: from aa.linuxbox.com ([134.215.213.37]:4278 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754281Ab1K2JMq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 04:12:46 -0500
-Subject: [PATCH 5/5] SUNRPC: kernel PipeFS mount point creation routines
-	removed
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 29 Nov 2011 13:10:46 +0300
-Message-ID: <20111129091046.20730.69514.stgit@localhost6.localdomain6>
-In-Reply-To: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+	id S1753597Ab1KRQ6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Nov 2011 11:58:54 -0500
+Date: Fri, 18 Nov 2011 11:58:35 -0500 (EST)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: John Hughes <john@Calva.COM>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, peter staubach <peter.staubach@emc.com>
+Message-ID: <775392619.77.1321635515842.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1020589474.75.1321635498473.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: [PATCH] Don't spam kernel log with EKEYEXPIRED and EACCESS
+ errors
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch removes static rpc_mnt variable and its creation and destruction
-routines, because they are not used anymore.
+Please forgive me for speaking this aloud, but, dbus?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Matt
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    2 --
- net/sunrpc/rpc_pipe.c              |   21 ---------------------
- 2 files changed, 0 insertions(+), 23 deletions(-)
+----- "John Hughes" <john@Calva.COM> wrote:
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 7eb0160..a28d2de 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -90,8 +90,6 @@ void rpc_destroy_pipe_data(struct rpc_pipe *pipe);
- extern struct dentry *rpc_mkpipe_dentry(struct dentry *, const char *, void *,
- 					struct rpc_pipe *);
- extern int rpc_unlink(struct dentry *);
--extern struct vfsmount *rpc_get_mount(void);
--extern void rpc_put_mount(void);
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
- 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index e194e32..4b1d042 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -18,7 +18,6 @@
- #include <linux/kernel.h>
- 
- #include <asm/ioctls.h>
--#include <linux/fs.h>
- #include <linux/poll.h>
- #include <linux/wait.h>
- #include <linux/seq_file.h>
-@@ -37,9 +36,6 @@
- 
- #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
- 
--static struct vfsmount *rpc_mnt __read_mostly;
--static int rpc_mount_count;
--
- static struct file_system_type rpc_pipe_fs_type;
- 
- 
-@@ -430,23 +426,6 @@ struct rpc_filelist {
- 	umode_t mode;
- };
- 
--struct vfsmount *rpc_get_mount(void)
--{
--	int err;
--
--	err = simple_pin_fs(&rpc_pipe_fs_type, &rpc_mnt, &rpc_mount_count);
--	if (err != 0)
--		return ERR_PTR(err);
--	return rpc_mnt;
--}
--EXPORT_SYMBOL_GPL(rpc_get_mount);
--
--void rpc_put_mount(void)
--{
--	simple_release_fs(&rpc_mnt, &rpc_mount_count);
--}
--EXPORT_SYMBOL_GPL(rpc_put_mount);
--
- static int rpc_delete_dentry(const struct dentry *dentry)
- {
- 	return 1;
+> On 18/11/11 17:27, peter.staubach@emc.com wrote:
+> > Given that the poor user will be sitting, with almost nothing
+> working because of the expired ticket, how does the user figure out
+> what is going on or how does the admin help him?
+> >
+> > Some guidance seems like a good thing.  Is there really a problem
+> with these messages being printed to the log?
+> If you're sat at your console with nothing responding how are you
+> going 
+> to see the log messages?
+> 
+> The "ticket expired" messages are rate limited.
+> 
+> The "Error: state manager failed on NFSv4 server" messages are not
+> rate 
+> limited, but if you use my "rpc.gssd -e" hack they'll be written to
+> the 
+> log every 5 seconds all night long.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+-- 
+
+Matt Benjamin
+
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
