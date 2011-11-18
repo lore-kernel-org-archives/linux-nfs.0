@@ -1,43 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:54117 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935349Ab1KJPwk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 10:52:40 -0500
-Received: by vcbf1 with SMTP id f1so2497228vcb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 07:52:40 -0800 (PST)
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:59291 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753070Ab1KRW4p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:56:45 -0500
+Message-ID: <4EC6E2DE.6050700@calvaedi.com>
+Date: Fri, 18 Nov 2011 23:57:34 +0100
+From: John Hughes <john@calvaedi.com>
 MIME-Version: 1.0
-In-Reply-To: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
-References: <1320938728-3715-1-git-send-email-bergwolf@gmail.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 10 Nov 2011 23:52:17 +0800
-Message-ID: <CA+a=Yy64JczxkfJfO9=p152b_mLVCopOZmpn0R4Pd2qitGvs3g@mail.gmail.com>
-Subject: Re: [PATCH-v2 0/7] pnfsblock cleanup and fixes
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: John Hughes <john@calva.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
+ expiry. Try 2 with added man pages.
+References: <4EC66D12.2090505@Calva.COM>		 <1321641333.2653.15.camel@lade.trondhjem.org>		 <4EC6AFA9.9000705@calvaedi.com>	 <1321648435.2653.53.camel@lade.trondhjem.org>	 <4EC6D767.6030109@calvaedi.com> <1321655886.10541.24.camel@lade.trondhjem.org>
+In-Reply-To: <1321655886.10541.24.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 10, 2011 at 11:25 PM, Peng Tao <bergwolf@gmail.com> wrote:
-> Hi, Trond and Benny,
->
-> These are updated v2 of the pnfsblock patches and all Benny's comments are addressed.
->
-> Thanks,
-> Tao
->
-> Peng Tao (8):
->  pnfsblock: cleanup bl_mark_sectors_init
->  pnfsblock: acquire im_lock in _preload_range
->  pnfsblock: move find lock page logic out of bl_write_pagelist
->  pnfsblock: set read/write tk_status to pnfs_error
->  pnfsblock: remove rpc_call_ops from struct parallel_io
->  pnfsblock: clean up _add_entry
->  pnfsblock: alloc short extent before submit bio
->  pnfsblock: release lock when freeing block_dev
-And sorry for mistyping... The patchset has only 7 patches. The last
-one is still under test and is not included here...
+On 11/18/2011 11:38 PM, Trond Myklebust wrote:
+> The fact of the matter is that most application writers remain blithely
+> oblivious of the need to fsync() as the ext4 people know all to well:
+> see the attempts to impose the fully posix-compatible 'data=writeback'
+> mode as the default and the catastrophe that occurred when
+> 'data=ordered' semantics changed for the rename() syscall. Adding new
+> failure modes needs to be done with care, or GNOME will crash and/or
+> your word processor _will_ lose your last hour or so of work.
+>    
+1. It's not a new failure mode.  it's how things worked before 2.6.34
+2. My ticket usualy expires in the middle of the night.  I get back in 
+the morning and have to reboot the workstation because it's hung.  
+Anything left in the wordprocessor is lost.
 
--- 
-Thanks,
-Tao
+Before this change I got back in the morning, the unlock screen popped 
+up, I entered my password and got a new ticket, everyone was happy.
