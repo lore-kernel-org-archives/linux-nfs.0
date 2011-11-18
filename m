@@ -1,66 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:41673 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751008Ab1KSQxx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Nov 2011 11:53:53 -0500
-Received: by iage36 with SMTP id e36so5070889iag.19
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Nov 2011 08:53:53 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
-        Peng Tao <peng_tao@emc.com>
-Subject: [PATCH RFC 1/4] nfsv41: export pnfs_find_alloc_layout
-Date: Sat, 19 Nov 2011 08:53:13 -0800
-Message-Id: <1321721596-3293-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
-References: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
+Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:59133 "EHLO
+	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756576Ab1KRWdG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:33:06 -0500
+Message-ID: <4EC6DD4D.1010008@calvaedi.com>
+Date: Fri, 18 Nov 2011 23:33:49 +0100
+From: John Hughes <john@calvaedi.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Jim Rees <rees@umich.edu>, John Hughes <john@Calva.COM>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
+ expiry. Try 2 with added man pages.
+References: <4EC66D12.2090505@Calva.COM>	 <1321641333.2653.15.camel@lade.trondhjem.org>	 <4EC6AFA9.9000705@calvaedi.com>	 <1321648435.2653.53.camel@lade.trondhjem.org>	 <20111118205749.GA1680@umich.edu> <1321650239.2653.68.camel@lade.trondhjem.org>
+In-Reply-To: <1321650239.2653.68.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So that layout driver can access layout header when there is none.
+On 11/18/2011 10:03 PM, Trond Myklebust wrote:
+> On Fri, 2011-11-18 at 15:57 -0500, Jim Rees wrote:
+>    
+>>
+>> The write() syscall doesn't indicate whether the data is safe or not.  That
+>> would be the close() syscall.
+>>      
+> fsync(). Which may succeed if the user renews their ticket first.
+> However you may still have data loss if dirty data has been lost because
+> of EKEYEXPIRED returns on the WRITE RPC call...
+>    
+Only if the write(2) returned EKEYEXPIRED, surely,
+> Also, for the fsync() to return EKEYEXPIRED _after_ the user has renewed
+> their ticket would seem counter-intuitive to most people.
+>    
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
----
- fs/nfs/pnfs.c |    3 ++-
- fs/nfs/pnfs.h |    4 ++++
- 2 files changed, 6 insertions(+), 1 deletions(-)
+I would want to know if data was lost.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index baf7353..3be29c7 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -848,7 +848,7 @@ alloc_init_layout_hdr(struct inode *ino,
- 	return lo;
- }
- 
--static struct pnfs_layout_hdr *
-+struct pnfs_layout_hdr *
- pnfs_find_alloc_layout(struct inode *ino,
- 		       struct nfs_open_context *ctx,
- 		       gfp_t gfp_flags)
-@@ -875,6 +875,7 @@ pnfs_find_alloc_layout(struct inode *ino,
- 		pnfs_free_layout_hdr(new);
- 	return nfsi->layout;
- }
-+EXPORT_SYMBOL_GPL(pnfs_find_alloc_layout);
- 
- /*
-  * iomode matching rules:
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1509530..9614ac9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -209,6 +209,10 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
- 					       u64 count,
- 					       enum pnfs_iomode iomode,
- 					       gfp_t gfp_flags);
-+struct pnfs_layout_hdr *
-+pnfs_find_alloc_layout(struct inode *ino,
-+		       struct nfs_open_context *ctx,
-+		       gfp_t gfp_flags);
- 
- void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
- 
--- 
-1.7.1.262.g5ef3d
+Intuition means nothing if I get an error.
+
+If it were possible I'd like:
+
+1. write works
+1a. WRITE RPC fails, data stays in cache
+2. ticket renewed
+3. fsync works, data written
+
+But:
+
+1. write...
+1a. WRITE RPC fails
+1b. ... fails
+
+seems ok.
+
+Even
+
+1. write works
+1a WRITE RPC fails
+2. ticket renewed
+3. fsync fails
+
+would be ok for me.  (light cone problems?)
 
