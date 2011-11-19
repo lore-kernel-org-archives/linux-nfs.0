@@ -1,47 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:50041 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750808Ab1KTGB3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Nov 2011 01:01:29 -0500
-Received: by wwe5 with SMTP id 5so8151871wwe.1
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Nov 2011 22:01:28 -0800 (PST)
-Message-ID: <4EC897B3.7000908@tonian.com>
-Date: Sun, 20 Nov 2011 08:01:23 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Marc Eshel <eshel@almaden.ibm.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Linux pNFS status meeting survey
-References: <OF1EC7151B.5AD77D9B-ON8825794B.00616B2D-8825794B.0061DF83@us.ibm.com> <44CA8597-7FA3-4147-875D-7B11FDDDAFB8@netapp.com>
-In-Reply-To: <44CA8597-7FA3-4147-875D-7B11FDDDAFB8@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41673 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751008Ab1KSQyF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Nov 2011 11:54:05 -0500
+Received: by mail-iy0-f174.google.com with SMTP id e36so5070889iag.19
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Nov 2011 08:54:05 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH RFC 3/4] nfsv41: get lseg before issue LD IO if pgio doesn't carry one
+Date: Sat, 19 Nov 2011 08:53:15 -0800
+Message-Id: <1321721596-3293-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
+References: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-17 20:10, Adamson, Andy wrote:
-> Sorry - I should have let you know - today NetApp had a conflicting meeting. Trond is also on vacation.
+This gives LD option not to ask for layout in pg_init.
 
-Ditto.  I had a conflict too.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 46 insertions(+), 0 deletions(-)
 
-> 
-> Next week is Thanksgiving, let's have a call Dec 1st.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 734e670..c8dc0b1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1254,6 +1254,7 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+ 	struct nfs_write_data *data;
+ 	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+ 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
++	const bool has_lseg = !!lseg;
+ 
+ 	desc->pg_lseg = NULL;
+ 	while (!list_empty(head)) {
+@@ -1262,7 +1263,29 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+ 		data = list_entry(head->next, struct nfs_write_data, list);
+ 		list_del_init(&data->list);
+ 
++		if (!has_lseg) {
++			struct nfs_page *req = nfs_list_entry(data->pages.next);
++			__u64 length = data->npages << PAGE_CACHE_SHIFT;
++
++			lseg = pnfs_update_layout(desc->pg_inode,
++						  req->wb_context,
++						  req_offset(req),
++						  length,
++						  IOMODE_RW,
++						  GFP_NOFS);
++			if (!lseg || length > (lseg->pls_range.length)) {
++				put_lseg(lseg);
++				lseg = NULL;
++				pnfs_write_through_mds(desc, data);
++				continue;
++			}
++		}
++
+ 		trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
++		if (!has_lseg) {
++			put_lseg(lseg);
++			lseg = NULL;
++		}
+ 		if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 			pnfs_write_through_mds(desc, data);
+ 	}
+@@ -1350,6 +1373,7 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+ 	struct nfs_read_data *data;
+ 	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+ 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
++	const bool has_lseg = !!lseg;
+ 
+ 	desc->pg_lseg = NULL;
+ 	while (!list_empty(head)) {
+@@ -1358,7 +1382,29 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+ 		data = list_entry(head->next, struct nfs_read_data, list);
+ 		list_del_init(&data->list);
+ 
++		if (!has_lseg) {
++			struct nfs_page *req = nfs_list_entry(data->pages.next);
++			__u64 length = data->npages << PAGE_CACHE_SHIFT;
++
++			lseg = pnfs_update_layout(desc->pg_inode,
++						  req->wb_context,
++						  req_offset(req),
++						  length,
++						  IOMODE_READ,
++						  GFP_KERNEL);
++			if (!lseg || length > lseg->pls_range.length) {
++				put_lseg(lseg);
++				lseg = NULL;
++				pnfs_read_through_mds(desc, data);
++				continue;
++			}
++		}
++
+ 		trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
++		if (!has_lseg) {
++			put_lseg(lseg);
++			lseg = NULL;
++		}
+ 		if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 			pnfs_read_through_mds(desc, data);
+ 	}
+-- 
+1.7.1.262.g5ef3d
 
-Yea.
-
-> 
-> -->Andy
-> 
-> On Nov 17, 2011, at 12:49 PM, Marc Eshel wrote:
-> 
->> It looks like interest is dropping for this weekly statues meeting. I need 
->> to know by show of hands if I should continue this meeting at all or maybe 
->> switch to a biweekly meetings.
-
-It looks like de-facto we are doing biweeklies anyhow.
-I'm concerned that if we change the schedule accordingly we might drop down
-to monthlies.
-
-Benny
-
->> Marc.
->>
