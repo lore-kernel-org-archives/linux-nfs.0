@@ -1,44 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20681 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753804Ab1KRNor (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Nov 2011 08:44:47 -0500
-Message-ID: <4EC66148.4020003@RedHat.com>
-Date: Fri, 18 Nov 2011 08:44:40 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: John Hughes <john@Calva.COM>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry
-References: <4EC6426A.3020306@Calva.COM>
-In-Reply-To: <4EC6426A.3020306@Calva.COM>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:41673 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751008Ab1KSQxx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Nov 2011 11:53:53 -0500
+Received: by iage36 with SMTP id e36so5070889iag.19
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Nov 2011 08:53:53 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com,
+        Peng Tao <peng_tao@emc.com>
+Subject: [PATCH RFC 1/4] nfsv41: export pnfs_find_alloc_layout
+Date: Sat, 19 Nov 2011 08:53:13 -0800
+Message-Id: <1321721596-3293-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
+References: <1321721596-3293-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+So that layout driver can access layout header when there is none.
 
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |    3 ++-
+ fs/nfs/pnfs.h |    4 ++++
+ 2 files changed, 6 insertions(+), 1 deletions(-)
 
-On 11/18/2011 06:32 AM, John Hughes wrote:
-> By adding a new option to rpc.gssd the administrator can choose whether she wants the old "EACCESS on ticket expiry" or the new "wait for new ticket" behaviour.
-> 
-> 
-I am not too keen this idea at all.... I've never been a fan of
-added command line arguments for this purpose... Plus there 
-is no man page update... Also please post patches in-line
-the email not as email attachments...
-
-If commit 2c64348 which causes the process to hang when 
-its kerberos ticket expires is a regression... then so
-be it... lets revert that commit and have the process error
-out with EPERM.... It sounds like the apps would rather
-have the error than the hanging... 
-
-I think the answer to all this is have the ticket
-renewed before it expires. There is a daemon call sssd
-that is part of the FreeIPA project that will supposedly
-do that for us... I'm looking into it... 
-
-steved.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index baf7353..3be29c7 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -848,7 +848,7 @@ alloc_init_layout_hdr(struct inode *ino,
+ 	return lo;
+ }
  
+-static struct pnfs_layout_hdr *
++struct pnfs_layout_hdr *
+ pnfs_find_alloc_layout(struct inode *ino,
+ 		       struct nfs_open_context *ctx,
+ 		       gfp_t gfp_flags)
+@@ -875,6 +875,7 @@ pnfs_find_alloc_layout(struct inode *ino,
+ 		pnfs_free_layout_hdr(new);
+ 	return nfsi->layout;
+ }
++EXPORT_SYMBOL_GPL(pnfs_find_alloc_layout);
+ 
+ /*
+  * iomode matching rules:
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1509530..9614ac9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -209,6 +209,10 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       u64 count,
+ 					       enum pnfs_iomode iomode,
+ 					       gfp_t gfp_flags);
++struct pnfs_layout_hdr *
++pnfs_find_alloc_layout(struct inode *ino,
++		       struct nfs_open_context *ctx,
++		       gfp_t gfp_flags);
+ 
+ void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
+ 
+-- 
+1.7.1.262.g5ef3d
+
