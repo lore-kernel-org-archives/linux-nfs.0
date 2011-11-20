@@ -1,103 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23701 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753679Ab1K2PSo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 10:18:44 -0500
-Message-ID: <1322579906.3619.1.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-Cc: tao.peng@emc.com, skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
-        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
-        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
-Date: Tue, 29 Nov 2011 10:18:26 -0500
-In-Reply-To: <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-	 <20111129091037.20730.59391.stgit@localhost6.localdomain6>
-	 <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
-	 <4ED4CDCE.9080804@parallels.com>
-	 <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
-	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
-	 <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:50041 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750808Ab1KTGB3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Nov 2011 01:01:29 -0500
+Received: by wwe5 with SMTP id 5so8151871wwe.1
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Nov 2011 22:01:28 -0800 (PST)
+Message-ID: <4EC897B3.7000908@tonian.com>
+Date: Sun, 20 Nov 2011 08:01:23 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Marc Eshel <eshel@almaden.ibm.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting survey
+References: <OF1EC7151B.5AD77D9B-ON8825794B.00616B2D-8825794B.0061DF83@us.ibm.com> <44CA8597-7FA3-4147-875D-7B11FDDDAFB8@netapp.com>
+In-Reply-To: <44CA8597-7FA3-4147-875D-7B11FDDDAFB8@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2011-11-29 at 23:10 +0800, Peng Tao wrote: 
-> On Tue, Nov 29, 2011 at 9:35 PM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
-> >> -----Original Message-----
-> >> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
-> >> Sent: Tuesday, November 29, 2011 7:40 AM
-> >> To: skinsbursky@parallels.com
-> >> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; xemul@parallels.com;
-> >> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
-> >> jbottomley@parallels.com; bfields@fieldses.org; davem@davemloft.net;
-> >> devel@openvz.org
-> >> Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
-> >> from blocklayout routines
-> >>
-> >> > -----Original Message-----
-> >> > From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
-> >> > Sent: Tuesday, November 29, 2011 8:19 PM
-> >> > To: Peng, Tao
-> >> > Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Pavel
-> >> > Emelianov; neilb@suse.de; netdev@vger.kernel.org;
-> >> > linux-kernel@vger.kernel.org; James Bottomley; bfields@fieldses.org;
-> >> > davem@davemloft.net; devel@openvz.org
-> >> > Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
-> >> > from blocklayout routines
-> >> >
-> >> > 29.11.2011 16:00, tao.peng@emc.com пишет:
-> >> > >> -----Original Message-----
-> >> > >> From: linux-nfs-owner@vger.kernel.org
-> >> > >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of
-> >> > Stanislav
-> >> > >> Kinsbursky
-> >> > >> Sent: Tuesday, November 29, 2011 6:11 PM
-> >> > >> To: Trond.Myklebust@netapp.com
-> >> > >> Cc: linux-nfs@vger.kernel.org; xemul@parallels.com; neilb@suse.de;
-> >> > >> netdev@vger.kernel.org; linux- kernel@vger.kernel.org;
-> >> > >> jbottomley@parallels.com; bfields@fieldses.org;
-> >> > >> davem@davemloft.net; devel@openvz.org
-> >> > >> Subject: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
-> >> > >> from blocklayout routines
-> >> > >>
-> >> > >> This is a cleanup patch. We don't need this reference anymore,
-> >> > >> because blocklayout pipes dentries now creates and destroys in
-> >> > >> per-net operations and on PipeFS mount/umount notification.
-> >> > >> Note that nfs4blocklayout_register_net() now returns 0 instead of
-> >> > >> -ENOENT in case of PipeFS superblock absence. This is ok, because
-> >> > >> blocklayout pipe dentry will be created on PipeFS mount event.
-> >> > > When is the "pipefs mount event" going to happen? When inserting
-> >> > > kernel modules or when user issues
-> >> > mount command?
-> >> > >
-> >> >
-> >> > When user issues mount command.
-> >> > Kernel mounts of PipeFS has been removed with all these patch sets
-> >> > I've sent already.
-> >> Then it is going to break blocklayout user space program blkmapd, which is
-> >> stared before mounting any file system and it tries to open the pipe file
-> >> when started.
-> >
-> > Why on earth is blkmapd doing this instead of listening for file creation notifications like the other rpc_pipefs daemons do?
-> Not sure how the original implementer chose this but I think it is
-> likely because we do not expect the pipe file to be created or deleted
-> dynamically.
+On 2011-11-17 20:10, Adamson, Andy wrote:
+> Sorry - I should have let you know - today NetApp had a conflicting meeting. Trond is also on vacation.
 
-Unless blkmapd can pin the sunrpc module (which it shouldn't be able to)
-then that assumption would be wrong. Please look into fixing blkmapd...
+Ditto.  I had a conflict too.
 
-   Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> 
+> Next week is Thanksgiving, let's have a call Dec 1st.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Yea.
 
+> 
+> -->Andy
+> 
+> On Nov 17, 2011, at 12:49 PM, Marc Eshel wrote:
+> 
+>> It looks like interest is dropping for this weekly statues meeting. I need 
+>> to know by show of hands if I should continue this meeting at all or maybe 
+>> switch to a biweekly meetings.
+
+It looks like de-facto we are doing biweeklies anyhow.
+I'm concerned that if we change the schedule accordingly we might drop down
+to monthlies.
+
+Benny
+
+>> Marc.
+>>
