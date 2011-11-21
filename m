@@ -1,177 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:41753 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755323Ab1KQU0G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 15:26:06 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RR8Uc-0003Ga-Lx
-	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 15:23:30 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
-Date: Thu, 17 Nov 2011 15:26:02 -0500
-Message-Id: <1321561563-5862-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1321561563-5862-1-git-send-email-steved@redhat.com>
-References: <1321561563-5862-1-git-send-email-steved@redhat.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:40644 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753573Ab1KURk2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 12:40:28 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: rjw@sisk.pl
+Cc: linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
+        tj@kernel.org, trond.myklebust@netapp.com
+Subject: [PATCH 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
+Date: Mon, 21 Nov 2011 12:40:19 -0500
+Message-Id: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce the '-c [keyring]' command line argument
-which will clear the giving keyring of the keys.
-If a keyring not supplied the default 'id_resolver'
-keyring will be used.
+This patchset is a second (third?) attempt at fixing the issues with
+suspending a machine that has an active NFS mount.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsidmap/nfsidmap.c   |   62 +++++++++++++++++++++++++++++++++++++++---
- utils/nfsidmap/nfsidmap.man |   14 ++++++++-
- 2 files changed, 69 insertions(+), 7 deletions(-)
+The bug reported against Fedora is here:
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 6a09f38..2625dc1 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -13,12 +13,14 @@
- #include "xlog.h"
- 
- int verbose = 0;
--char *usage="Usage: %s [-v] [-t timeout] key desc";
-+char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
- 
- #define MAX_ID_LEN   11
- #define IDMAP_NAMESZ 128
- #define USER  1
- #define GROUP 0
-+#define DEFAULT_KEYRING "id_resolver"
-+#define PROCKEYS "/proc/keys"
- 
- /*
-  * Find either a user or group id based on the name@domain string
-@@ -87,6 +89,47 @@ int name_lookup(char *id, key_serial_t key, int type)
- out:
- 	return rc;
- }
-+/*
-+ * Clear all the keys on the given keyring
-+ */
-+static int keyring_clear(char *keyring)
-+{
-+	FILE *fp;
-+	char buf[BUFSIZ];
-+	key_serial_t key;
-+
-+	xlog_syslog(0);
-+	if (keyring == NULL)
-+		keyring = DEFAULT_KEYRING;
-+
-+	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
-+		xlog_err("fopen(%s) failed: %m", PROCKEYS);
-+		return 1;
-+	}
-+
-+	while(fgets(buf, BUFSIZ, fp) != NULL) {
-+		if (strstr(buf, "keyring") == NULL)
-+			continue;
-+		if (strstr(buf, keyring) == NULL)
-+			continue;
-+		if (verbose) {
-+			*(strchr(buf, '\n')) = '\0';
-+			xlog_warn("clearing '%s'", buf);
-+		}
-+		/*
-+		 * The key is the first arugment in the string
-+		 */
-+		*(strchr(buf, ' ')) = '\0';
-+		sscanf(buf, "%x", &key);
-+		if (keyctl_clear(key) < 0) {
-+			xlog_err("keyctl_clear(0x%x) failed: %m", key);
-+			return 1;
-+		}
-+		return 0;
-+	}
-+	xlog_err("'%s' keyring was not found.", keyring);
-+	return 1;
-+}
- 
- int main(int argc, char **argv)
- {
-@@ -96,7 +139,8 @@ int main(int argc, char **argv)
- 	int rc = 1, opt;
- 	int timeout = 600;
- 	key_serial_t key;
--	char *progname;
-+	char *progname, *keyring = NULL;
-+	int clearring;
- 
- 	/* Set the basename */
- 	if ((progname = strrchr(argv[0], '/')) != NULL)
-@@ -105,11 +149,12 @@ int main(int argc, char **argv)
- 		progname = argv[0];
- 
- 	xlog_open(progname);
--	xlog_syslog(1);
--	xlog_stderr(0);
- 
--	while ((opt = getopt(argc, argv, "t:v")) != -1) {
-+	while ((opt = getopt(argc, argv, "ct:v")) != -1) {
- 		switch (opt) {
-+		case 'c':
-+			clearring++;
-+			break;
- 		case 'v':
- 			verbose++;
- 			break;
-@@ -122,6 +167,13 @@ int main(int argc, char **argv)
- 		}
- 	}
- 
-+	if (clearring) {
-+		keyring = ((argc - optind) ? argv[optind] : NULL);
-+		rc = keyring_clear(keyring);
-+		return rc;		
-+	}
-+
-+	xlog_stderr(0);
- 	if ((argc - optind) != 2) {
- 		xlog_err("Bad arg count. Check /etc/request-key.conf");
- 		xlog_warn(usage, progname);
-diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-index c67aab6..db65a1f 100644
---- a/utils/nfsidmap/nfsidmap.man
-+++ b/utils/nfsidmap/nfsidmap.man
-@@ -6,7 +6,7 @@
- .SH NAME
- nfsidmap \- The NFS idmapper upcall program
- .SH SYNOPSIS
--.B "nfsidmap [-v] [-t timeout] key desc"
-+.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
- .SH DESCRIPTION
- The file
- .I /usr/sbin/nfsidmap
-@@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
- translate user and group names into ids. Idmapper uses request-key to perform
- the upcall and cache the result.
- .I /usr/sbin/nfsidmap
--should only be called by request-key, and will perform the translation and
-+is called by /sbin/request-key, and will perform the translation and
- initialize a key with the resulting information.
-+.PP
-+.I nfsidmap
-+can also used to clear the keyring of all the keys.  
-+This is useful when all the mappings have failed to due to an DNS outage
-+or some other error resulting in all the cached uid/gid to be invalid.
- .SH OPTIONS
- .TP
-+.B -c [keyring]
-+Clear the keyring of all the keys. If a
-+keyring is not supplied the default 
-+keyring 'id_resolver' will be used.
-+.TP
- .B -t timeout
- Set the expiration timer, in seconds, on the key.
- The default is 600 seconds (10 mins).
+    https://bugzilla.redhat.com/show_bug.cgi?id=717735
+
+This patchset is a bit different from the original one. Instead of
+attempting to make TASK_KILLABLE sleeps wake up when the freezer runs,
+this one makes the freezer skip those processes when it runs.
+
+This is the method that Tejun, Rafael, and Oleg have recommended for
+now. Long term, it might make more sense to add a new TASK_WAKEFREEZE
+flag or something and awake tasks based on that, and have them then
+call try_to_freeze() when awoken. For now though this seems to work
+as expected.
+
+So far, results with this patchset have been good, but it seems like
+it's a bit late for 3.2. I'd like to see this go in early for 3.3,
+probably via Rafael's tree.
+
+Jeff Layton (2):
+  sunrpc: make rpc_wait_bit_killable handle freeze events
+  nfs: make TASK_KILLABLE sleeps attempt to freeze
+
+ fs/nfs/inode.c          |    3 ++-
+ fs/nfs/nfs3proc.c       |    3 ++-
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/proc.c           |    3 ++-
+ include/linux/freezer.h |   22 ++++++++++++++++++++++
+ net/sunrpc/sched.c      |    3 ++-
+ 6 files changed, 33 insertions(+), 6 deletions(-)
+
 -- 
-1.7.7
+1.7.6.4
 
