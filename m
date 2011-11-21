@@ -1,107 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:43454 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751521Ab1KHD50 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 22:57:26 -0500
-Subject: Re: [PATCH] mount.nfs: ensure AF priority when mounting
-Mime-Version: 1.0 (Apple Message framework v1084)
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:61708 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753435Ab1KUUmg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 15:42:36 -0500
+Date: Mon, 21 Nov 2011 12:42:30 -0800
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: rjw@sisk.pl, linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org,
+        john@calva.com, trond.myklebust@netapp.com
+Subject: Re: [PATCH 1/2] sunrpc: make rpc_wait_bit_killable handle freeze
+ events
+Message-ID: <20111121204230.GE25776@google.com>
+References: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
+ <1321897221-2278-2-git-send-email-jlayton@redhat.com>
+ <20111121175644.GF15314@google.com>
+ <20111121153615.7e876801@corrin.poochiereds.net>
+ <20111121204141.GD25776@google.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAO_0yfP8XRH0+Gdn43QSncUFFPPmwbsxx2ZFdPpFTjKAQeuyAw@mail.gmail.com>
-Date: Mon, 7 Nov 2011 22:57:14 -0500
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, steved@redhat.com, jlayton@redhat.com
-Message-Id: <4A9C7673-1CC1-4B8E-AF18-4DA39A14BCB7@oracle.com>
-References: <CAO_0yfP8XRH0+Gdn43QSncUFFPPmwbsxx2ZFdPpFTjKAQeuyAw@mail.gmail.com>
-To: Hamo <hamo.by@gmail.com>
+In-Reply-To: <20111121204141.GD25776@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 7, 2011, at 10:14 PM, Hamo wrote:
-
-> On different architectures, getaddrinfo() may return different
-> orders of address families. This may confuse the users.
-
-Isn't this controlled by /etc/gai.conf ?  I'm not sure we want mount.nfs to override that.
-
-> This patch fixes this problem by ensuring that we first try
-> through IPv6(if present), then through IPv4.
-> Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=750729
+On Mon, Nov 21, 2011 at 12:41:41PM -0800, Tejun Heo wrote:
+> Hello, Jeff.
 > 
-> Signed-off-by: Yang Bai <hamo.by@gmail.com>
-> ---
-> utils/mount/stropts.c |   41 +++++++++++++++++++++++++++++++++++++++++
-> 1 files changed, 41 insertions(+), 0 deletions(-)
+> On Mon, Nov 21, 2011 at 03:36:15PM -0500, Jeff Layton wrote:
+> > I suppose you're suggesting something like this?
+> > 
+> > 	freezer_do_not_count();
+> > 	if (!try_to_freeze())
+> > 		schedule();
+> > 	freezer_count();
 > 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 4032bf3..aa5ee86 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -654,7 +654,28 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
-> 	struct addrinfo *ai;
-> 	int ret = 0;
+> No,
 > 
-> +	/* first, try IPv6 */
-> 	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> +		if (ai->ai_family != AF_INET6)
-> +			continue;
-> +		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen);
-> +		if (ret != 0)
-> +			return ret;
-> +
-> +		switch (errno) {
-> +		case ECONNREFUSED:
-> +		case EOPNOTSUPP:
-> +		case EHOSTUNREACH:
-> +			continue;
-> +		default:
-> +			goto out;
-> +		}
-> +	}
-> +
-> +	/* then, try IPv4 */
-> +	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> +		if (ai->ai_family != AF_INET)
-> +			continue;
-> 		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen);
-> 		if (ret != 0)
-> 			return ret;
-> @@ -742,7 +763,27 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
-> 	struct addrinfo *ai;
-> 	int ret = 0;
+> 	freezer_do_not_count();
+> 	schedule();
+> 	freezer_count();
+> 	try_to_freeze();
 > 
-> +	/* first, try IPv6 */
-> 	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> +		if (ai->ai_family != AF_INET6)
-> +			continue;
-> +		ret = nfs_do_mount_v4(mi, ai->ai_addr, ai->ai_addrlen);
-> +		if (ret != 0)
-> +			return ret;
-> +
-> +		switch (errno) {
-> +		case ECONNREFUSED:
-> +		case EHOSTUNREACH:
-> +			continue;
-> +		default:
-> +			goto out;
-> +		}
-> +	}
-> +
-> +	/* then, try IPv4 */
-> +	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> +		if (ai->ai_family != AF_INET)
-> +			continue;
-> 		ret = nfs_do_mount_v4(mi, ai->ai_addr, ai->ai_addrlen);
-> 		if (ret != 0)
-> 			return ret;
-> -- 
-> 1.7.1
+> freezer_count() may make %current eligible for freezing again, so it
+> has to check whether freezing condition is pending afterwards.
+
+Ooh, freezer_count() already has that.  Heh, call me an idiot.  The
+proposed code seems correct then.
+
+Thanks.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+tejun
