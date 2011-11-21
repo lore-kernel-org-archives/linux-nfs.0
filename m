@@ -1,55 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:53690 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753457Ab1K2Rat (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 12:30:49 -0500
-MIME-Version: 1.0
-In-Reply-To: <1322587165.4174.20.camel@lade.trondhjem.org>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
- <20111129091037.20730.59391.stgit@localhost6.localdomain6>
- <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
- <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
- <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
- <1322579906.3619.1.camel@lade.trondhjem.org> <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
- <1322584830.4174.16.camel@lade.trondhjem.org> <20111129164252.GA19528@fieldses.org>
- <1322587165.4174.20.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 30 Nov 2011 01:30:27 +0800
-Message-ID: <CA+a=Yy4bEKaeUihjYLRzXVbjA3fc2EuZ3ToAkf0w-oL3PnZJKQ@mail.gmail.com>
-Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
- blocklayout routines
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, tao.peng@emc.com,
-        skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
-        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
-        davem@davemloft.net, devel@openvz.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:35515 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756184Ab1KURkc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 12:40:32 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: rjw@sisk.pl
+Cc: linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
+        tj@kernel.org, trond.myklebust@netapp.com
+Subject: [PATCH 2/2] nfs: make TASK_KILLABLE sleeps attempt to freeze
+Date: Mon, 21 Nov 2011 12:40:21 -0500
+Message-Id: <1321897221-2278-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
+References: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 1:19 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote:
->> On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
->> > I mean that I'm perfectly entitled to do
->> >
->> > 'modprobe -r blocklayoutdriver'
->> >
->> > and when I do that, then I expect blkmapd to close the rpc pipe and wait
->> > for a new one to be created just like rpc.idmapd and rpc.gssd do when I
->> > remove the nfs and sunrpc modules.
->>
->> The rpc pipefs mount doesn't hold a reference on the sunrpc module?
->
-> I stand corrected: the mount does hold a reference to the sunrpc
-> module.
-> However nothing holds a reference to the blocklayoutdriver module, so
-> the main point that the "blocklayout" pipe can disappear from underneath
-> the blkmapd stands.
-Thanks for the explanation and I agree it can cause problem if user
-reload blocklayout module. I will look into a fix to blkmapd.
+Wrap the TASK_KILLABLE sleeps in NFS layer in freezer_do_not_count and
+freezer_count calls. This allows the freezer to skip these processes
+when they are sleeping while looping on EJUKEBOX or NFS4ERR_DELAY sorts
+of errors.
 
-Best,
-Tao
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/inode.c          |    3 ++-
+ fs/nfs/nfs3proc.c       |    3 ++-
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/proc.c           |    3 ++-
+ include/linux/freezer.h |   12 +++++++++++-
+ 5 files changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c07a55a..f36543a 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -38,6 +38,7 @@
+ #include <linux/nfs_xdr.h>
+ #include <linux/slab.h>
+ #include <linux/compat.h>
++#include <linux/freezer.h>
+ 
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -77,7 +78,7 @@ int nfs_wait_bit_killable(void *word)
+ {
+ 	if (fatal_signal_pending(current))
+ 		return -ERESTARTSYS;
+-	schedule();
++	freezable_schedule();
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 85f1690..cc1d1e1 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -17,6 +17,7 @@
+ #include <linux/nfs_page.h>
+ #include <linux/lockd/bind.h>
+ #include <linux/nfs_mount.h>
++#include <linux/freezer.h>
+ 
+ #include "iostat.h"
+ #include "internal.h"
+@@ -32,7 +33,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
+ 		res = rpc_call_sync(clnt, msg, flags);
+ 		if (res != -EJUKEBOX && res != -EKEYEXPIRED)
+ 			break;
+-		schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
++		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
+ 		res = -ERESTARTSYS;
+ 	} while (!fatal_signal_pending(current));
+ 	return res;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b60fddf..988a0e1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -53,6 +53,7 @@
+ #include <linux/sunrpc/bc_xprt.h>
+ #include <linux/xattr.h>
+ #include <linux/utsname.h>
++#include <linux/freezer.h>
+ 
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+@@ -241,7 +242,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+ 		*timeout = NFS4_POLL_RETRY_MIN;
+ 	if (*timeout > NFS4_POLL_RETRY_MAX)
+ 		*timeout = NFS4_POLL_RETRY_MAX;
+-	schedule_timeout_killable(*timeout);
++	freezable_schedule_timeout_killable(*timeout);
+ 	if (fatal_signal_pending(current))
+ 		res = -ERESTARTSYS;
+ 	*timeout <<= 1;
+@@ -3951,7 +3952,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ static unsigned long
+ nfs4_set_lock_task_retry(unsigned long timeout)
+ {
+-	schedule_timeout_killable(timeout);
++	freezable_schedule_timeout_killable(timeout);
+ 	timeout <<= 1;
+ 	if (timeout > NFS4_LOCK_MAXTIMEOUT)
+ 		return NFS4_LOCK_MAXTIMEOUT;
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index ac40b85..4dda8b5 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -41,6 +41,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ #include <linux/lockd/bind.h>
++#include <linux/freezer.h>
+ #include "internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+@@ -59,7 +60,7 @@ nfs_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
+ 		res = rpc_call_sync(clnt, msg, flags);
+ 		if (res != -EKEYEXPIRED)
+ 			break;
+-		schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
++		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
+ 		res = -ERESTARTSYS;
+ 	} while (!fatal_signal_pending(current));
+ 	return res;
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index 8b60dd0..235cb05 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -135,7 +135,7 @@ static inline void set_freezable_with_signal(void)
+ }
+ 
+ /*
+- * Freezer-friendly macro around schedule() in the kernel.
++ * Freezer-friendly macros around some sleeping functions.
+  */
+ #define freezable_schedule()						\
+ ({									\
+@@ -144,6 +144,13 @@ static inline void set_freezable_with_signal(void)
+ 	freezer_count();						\
+ })
+ 
++#define freezable_schedule_timeout_killable(timeout)			\
++({									\
++	freezer_do_not_count();						\
++	schedule_timeout_killable(timeout);				\
++	freezer_count();						\
++})
++
+ /*
+  * Freezer-friendly wrappers around wait_event_interruptible(),
+  * wait_event_killable() and wait_event_interruptible_timeout(), originally
+@@ -206,6 +213,9 @@ static inline void set_freezable_with_signal(void) {}
+ 
+ #define freezable_schedule()  schedule()
+ 
++#define freezable_schedule_timeout_killable(timeout)			\
++	schedule_timeout_killable(timeout)
++
+ #define wait_event_freezable(wq, condition)				\
+ 		wait_event_interruptible(wq, condition)
+ 
+-- 
+1.7.6.4
+
