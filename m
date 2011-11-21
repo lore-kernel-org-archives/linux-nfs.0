@@ -1,81 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46096 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932297Ab1KHLNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 06:13:44 -0500
-Subject: [PATCH v2 4/7] SUNRPC: pipefs dentry lookup helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 15:12:45 +0300
-Message-ID: <20111108111245.6206.5308.stgit@localhost6.localdomain6>
-In-Reply-To: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
-References: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:35515 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753573Ab1KURka (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 12:40:30 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: rjw@sisk.pl
+Cc: linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
+        tj@kernel.org, trond.myklebust@netapp.com
+Subject: [PATCH 1/2] sunrpc: make rpc_wait_bit_killable handle freeze events
+Date: Mon, 21 Nov 2011 12:40:20 -0500
+Message-Id: <1321897221-2278-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
+References: <1321897221-2278-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all places, where pipefs dentries are created, only directory inode is
-actually required to create new dentry. And all this directories has root
-pipefs dentry as their parent. So we actually don't need this pipefs mount
-point at all if some pipefs lookup method will be provided.
-IOW, all we really need is just superblock and simple lookup method to find
-root's child dentry with appropriate name. And this patch introduces this
-method.
-Note, that no locking implemented in rpc_d_lookup_sb(). So it can be used only
-in case of assurance, that pipefs superblock still exist. IOW, we can use this
-method only in pipefs mount-umount notification subscribers callbacks.
+Allow the freezer to skip wait_on_bit_killable sleeps in the sunrpc
+layer. This should allow suspend and hibernate events to proceed, even
+when there are RPC's pending on the wire.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
- net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+ include/linux/freezer.h |   12 ++++++++++++
+ net/sunrpc/sched.c      |    3 ++-
+ 2 files changed, 14 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 733ef50..4585985 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -51,6 +51,9 @@ enum {
- 	RPC_PIPEFS_UMOUNT,
- };
+diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+index a5386e3..8b60dd0 100644
+--- a/include/linux/freezer.h
++++ b/include/linux/freezer.h
+@@ -135,6 +135,16 @@ static inline void set_freezable_with_signal(void)
+ }
  
-+extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+				      const unsigned char *dir_name);
-+
- extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
- 				       char __user *, size_t);
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 07fb7dd..1de840d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1008,6 +1008,22 @@ static const struct rpc_filelist files[] = {
- 	},
- };
- 
-+/*
-+ * This call can be used only in RPC pipefs mount notification hooks.
+ /*
++ * Freezer-friendly macro around schedule() in the kernel.
 + */
-+struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+			       const unsigned char *dir_name)
-+{
-+	struct qstr dir = {
-+		.name = dir_name,
-+		.len = strlen(dir_name),
-+		.hash = full_name_hash(dir_name, strlen(dir_name)),
-+	};
++#define freezable_schedule()						\
++({									\
++	freezer_do_not_count();						\
++	schedule();							\
++	freezer_count();						\
++})
 +
-+	return d_lookup(sb->s_root, &dir);
-+}
-+EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
++/*
+  * Freezer-friendly wrappers around wait_event_interruptible(),
+  * wait_event_killable() and wait_event_interruptible_timeout(), originally
+  * defined in <linux/wait.h>
+@@ -194,6 +204,8 @@ static inline int freezer_should_skip(struct task_struct *p) { return 0; }
+ static inline void set_freezable(void) {}
+ static inline void set_freezable_with_signal(void) {}
+ 
++#define freezable_schedule()  schedule()
 +
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
+ #define wait_event_freezable(wq, condition)				\
+ 		wait_event_interruptible(wq, condition)
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index d12ffa5..5317b93 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -18,6 +18,7 @@
+ #include <linux/smp.h>
+ #include <linux/spinlock.h>
+ #include <linux/mutex.h>
++#include <linux/freezer.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ 
+@@ -231,7 +232,7 @@ static int rpc_wait_bit_killable(void *word)
  {
+ 	if (fatal_signal_pending(current))
+ 		return -ERESTARTSYS;
+-	schedule();
++	freezable_schedule();
+ 	return 0;
+ }
+ 
+-- 
+1.7.6.4
 
