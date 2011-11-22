@@ -1,72 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:41453 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933718Ab1KJJMS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:12:18 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Date: Thu, 10 Nov 2011 04:11:19 -0500
-Subject: RE: [PATCH 6/8] pnfsblock: clean up _add_entry
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C3A@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
- <1320851766-1834-7-git-send-email-bergwolf@gmail.com>
- <4EBB8EDD.9090107@tonian.com>
-In-Reply-To: <4EBB8EDD.9090107@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:39409 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753579Ab1KVW6V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 17:58:21 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 0/4] NFS: Modularize NFS v3
+Date: Tue, 22 Nov 2011 17:57:59 -0500
+Message-Id: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Thursday, November 10, 2011 4:44 PM
-> To: Peng Tao
-> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
-> Subject: Re: [PATCH 6/8] pnfsblock: clean up _add_entry
-> 
-> On 2011-11-09 17:16, Peng Tao wrote:
-> > It is wrong to kmalloc in _add_entry() as it is inside
-> > spinlock. memory should be already allocated _add_entry() is called.
-> 
-> What about the call from _set_range, it is passing NULL?
-> 
-> > So BUG instead if we fail to find a match and no memory preallocated.
-> >
-> > Signed-off-by: Peng Tao <peng_tao@emc.com>
-> > ---
-> >  fs/nfs/blocklayout/extents.c |    9 ++-------
-> >  1 files changed, 2 insertions(+), 7 deletions(-)
-> >
-> > diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-> > index f383524..952ea8a 100644
-> > --- a/fs/nfs/blocklayout/extents.c
-> > +++ b/fs/nfs/blocklayout/extents.c
-> > @@ -110,13 +110,8 @@ static int _add_entry(struct my_tree *tree, u64 s, int32_t
-> tag,
-> >  		return 0;
-> >  	} else {
-> >  		struct pnfs_inval_tracking *new;
-> > -		if (storage)
-> > -			new = storage;
-> > -		else {
-> > -			new = kmalloc(sizeof(*new), GFP_NOFS);
-> > -			if (!new)
-> > -				return -ENOMEM;
-> > -		}
-> > +		BUG_ON(!storage);
-> 
-> The BUG isn't needed as you dereference the pointer right away.
-Yes. Will remove it.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Thanks a lot for reviewing!
-Tao
+This set of patches removes NFS v3 from the main NFS kernel module and creates
+a new module containing the proc, xdr, and acl code.  This will give us a
+single directory to put NFS v3 specific code so it doesn't need to be mixed in
+with the generic client stuff.
 
-> 
-> Benny
-> 
-> > +		new = storage;
-> >  		new->it_sector = s;
-> >  		new->it_tags = (1 << tag);
-> >  		list_add(&new->it_link, &pos->it_link);
+I'm sure this could still use a lot of work, but I figured I would wait to see
+what everybody thinks first.  I imagine that once we get an "nfs submodule"
+system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+modules.
+
+I split the second patch into two to make it easier to see what my changes were
+to get everything to compile.  Hopefully this will save some pain in having to
+look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+command.  I can combine everything in a future version of the patch.
+
+Thoughts?
+
+- Bryan
 
