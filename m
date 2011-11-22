@@ -1,62 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caiajhbdcbef.dreamhost.com ([208.97.132.145]:56807 "EHLO
-	homiemail-a88.g.dreamhost.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932185Ab1KDPgM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 11:36:12 -0400
-Received: from homiemail-a88.g.dreamhost.com (localhost [127.0.0.1])
-	by homiemail-a88.g.dreamhost.com (Postfix) with ESMTP id D1593264070
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 08:36:11 -0700 (PDT)
-Received: from mail-vx0-f174.google.com (mail-vx0-f174.google.com [209.85.220.174])
-	(using TLSv1 with cipher RC4-SHA (128/128 bits))
-	(No client certificate requested)
-	(Authenticated sender: nico@cryptonector.com)
-	by homiemail-a88.g.dreamhost.com (Postfix) with ESMTPSA id A4F7D264063
-	for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2011 08:36:11 -0700 (PDT)
-Received: by vcbf1 with SMTP id f1so449004vcb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2011 08:36:11 -0700 (PDT)
+Received: from mexforward.lss.emc.com ([128.222.32.20]:55941 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753497Ab1KVCHb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 21:07:31 -0500
+From: <tao.peng@emc.com>
+To: <tigran.mkrtchyan@desy.de>, <William.Adamson@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Mon, 21 Nov 2011 21:07:05 -0500
+Subject: RE: server reboot recovery is broken with 3.1 (3.2?) with nfsv41
+ clients
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4A802@MX09A.corp.emc.com>
+References: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
+	<081C1E0B-795E-4138-B66A-479F73BB3AC5@netapp.com>
+	<CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
+ <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
+In-Reply-To: <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
-References: <1320269170.7734.585.camel@willson.li.ssimo.org>
-	<CAK3OfOgaDjT9Smi8U1FCo=cGz5r5W2uub4xvYRqN4-9Pf-htXw@mail.gmail.com>
-	<1320332310.7734.643.camel@willson.li.ssimo.org>
-	<CAK3OfOhe_wZz2hKG-6HcSp_Y0=hLuRrKKb=7XOHg3sd_sz5pjw@mail.gmail.com>
-	<1320337903.7734.670.camel@willson.li.ssimo.org>
-	<CAK3OfOjj0GOPpeEBi4kA9jqP-vfgYqYMdv1P44H3ve0gU0hg5g@mail.gmail.com>
-	<1320352784.18396.109.camel@lade.trondhjem.org>
-	<CAK3OfOj5P36Z=mD4jo23kkWhzrqXEUU19Q1gDPZ0j=KiDvD1Sw@mail.gmail.com>
-	<1320355818.7734.685.camel@willson.li.ssimo.org>
-	<1320356806.18396.149.camel@lade.trondhjem.org>
-	<1320357606.7734.697.camel@willson.li.ssimo.org>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA90EE@SACMVEXC2-PRD.hq.netapp.com>
-	<CAK3OfOjqCjU4O--XwVBpSBE9pwwkyBEU6OiNLN8_dM6wYe5A1w@mail.gmail.com>
-Date: Fri, 4 Nov 2011 10:36:11 -0500
-Message-ID: <CAK3OfOihQhpzDriUwDQMdWahyOboHRX1vs0aYGTi8kG8ket1dg@mail.gmail.com>
-Subject: Re: GSSAPI Proxy initiative
-From: Nico Williams <nico@cryptonector.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Simo Sorce <simo@redhat.com>, dhowells <dhowells@redhat.com>,
-        linux-nfs@vger.kernel.org, krbdev <krbdev@mit.edu>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also, the recovery issue can come up with the server's cache of
-RPCSEC_GSS contexts is under pressure.
-
-I really think we want an RPCSEC_GSS-level solution for this.  I don't
-think we can address this problem entirely in the GSS stack.  Since
-RPCSEC_GSSv3 isn't done yet, maybe now is the time to work on a
-solution there.
-
-I'd build the solution by borrowing tech from Kerberos.  The server
-would mint a ticket for itself using some local secret key for the
-ticket's encrypted part and with authorization data storing all of the
-relevant server-side authorization context for the client principal,
-then the server sends a KRB-CRED with that ticket and session key with
-the KRB-CRED wrapped in a GSS wrap token OR with an encryption key for
-the KRB-CRED based on GSS_Pseudo_random() OR it sends the ticket and
-the client uses GSS_Pseudo_random() to compute the same session key
-that the server did.
-
-Nico
---
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIFRpZ3Jhbg0KPiBNa3J0Y2h5YW4NCj4gU2VudDogTW9uZGF5LCBOb3ZlbWJlciAy
+MSwgMjAxMSA1OjUyIFBNDQo+IFRvOiBBZGFtc29uLCBBbmR5DQo+IENjOiBsaW51eC1uZnMNCj4g
+U3ViamVjdDogUmU6IHNlcnZlciByZWJvb3QgcmVjb3ZlcnkgaXMgYnJva2VuIHdpdGggMy4xICgz
+LjI/KSB3aXRoIG5mc3Y0MSBjbGllbnRzDQo+IA0KPiBSSEVMNi4yIGhhcyB0aGUgc2FtZSBpc3N1
+ZS4gSSBqdXN0IHJlYm9vdGVkIHNlcnZlciAobWRzICsgZHMpIGR1cmluZyByZWFkLg0KPiANCj4g
+S2VybmVsIHRocmVhZCBkdW1wIGF0dGFjaGVkLg0KRm9yZ290IGF0dGFjaG1lbnQ/IDopDQoNCj4g
+DQo+IFRpZ3Jhbi4NCj4gDQo+IE9uIEZyaSwgTm92IDE4LCAyMDExIGF0IDU6MDkgUE0sIFRpZ3Jh
+biBNa3J0Y2h5YW4NCj4gPHRpZ3Jhbi5ta3J0Y2h5YW5AZGVzeS5kZT4gd3JvdGU6DQo+ID4gQm90
+aCENCj4gPg0KPiA+IE9uIEZyaSwgTm92IDE4LCAyMDExIGF0IDM6MDggUE0sIEFkYW1zb24sIEFu
+ZHkNCj4gPiA8V2lsbGlhbS5BZGFtc29uQG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+Pg0KPiA+PiBP
+biBOb3YgMTgsIDIwMTEsIGF0IDg6NTcgQU0sIFRpZ3JhbiBNa3J0Y2h5YW4gd3JvdGU6DQo+ID4+
+DQo+ID4+PiBEZWFyIMKgbmZzIGhhY2tlcnMsDQo+ID4+Pg0KPiA+Pj4gaXQgbG9va3MgbGlrZSB3
+aXRoIGtlcm5lbCAzLjEgY2xpZW50IGNhbnQgcmVjb3ZlciBmcm9tIHNlcnZlciByZWJvb3RzLg0K
+PiA+Pj4gVGhlIG5mcyBtb3VudCBoYW5ncyBhbmQgdGhlcmUgYXJlIG5vIHBhY2thZ2VzIHNlbnQg
+ZnJvbSBhIGNsaWVudCB0byB0aGUgc2VydmVyLg0KPiA+Pj4gVGhpcyB3YXMgSU8gd2l0aCBwbmZz
+Lg0KPiA+Pg0KPiA+Pg0KPiA+PiBIaSBUaWdyYW4NCj4gPj4NCj4gPj4gSXMgdGhpcyBhbiBNRFMg
+cmVib290PyBEUyByZWJvb3Q/DQo+ID4+DQo+ID4+IFRoYW5rcw0KPiA+Pg0KPiA+PiAtLT5BbmR5
+DQo+ID4+Pg0KPiA+Pj4gUmVnYXJkcywNCj4gPj4+IMKgIFRpZ3Jhbi4NCj4gPj4+IC0tDQo+ID4+
+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3Jp
+YmUgbGludXgtbmZzIiBpbg0KPiA+Pj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9t
+b0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgwqBodHRwOi8v
+dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPj4NCj4gPj4gLS0NCj4gPj4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LW5mcyIgaW4NCj4gPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
+Z2VyLmtlcm5lbC5vcmcNCj4gPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCDCoGh0dHA6Ly92Z2Vy
+Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+Pg0KPiA+DQo+IC0tDQo+IFRvIHVu
+c3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51
+eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
+ZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcv
+bWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
