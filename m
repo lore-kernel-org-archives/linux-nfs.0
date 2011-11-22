@@ -1,57 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:45032 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755750Ab1K3N0U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:26:20 -0500
-Received: by vcbfk14 with SMTP id fk14so327897vcb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:26:19 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <4ED62A05.9040309@tonian.com>
-References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
- <20111129184401.GA3098@umich.edu> <F19688880B763E40B28B2B462677FBF805E3A4B053@MX09A.corp.emc.com>
- <4ED62A05.9040309@tonian.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 30 Nov 2011 21:25:58 +0800
-Message-ID: <CA+a=Yy6YZkfP3WU-5Z8WwLZxOyQhL2JuiVQDHRMGdUoWpB_Zpg@mail.gmail.com>
-Subject: Re: [PATCH 0/9] pnfsblock patches
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: tao.peng@emc.com, rees@umich.edu, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:18035 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754000Ab1KVLif convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 06:38:35 -0500
+Message-ID: <1321961913.3323.67.camel@lade.trondhjem.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Date: Tue, 22 Nov 2011 13:38:33 +0200
+In-Reply-To: <4ECA94F9.4090503@citrix.com>
+References: <4EC6A681.30902@citrix.com>
+	  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com>
+	 <1321643673.2653.41.camel@lade.trondhjem.org> <4EC6B82B.3000701@citrix.com>
+	 <4ECA94F9.4090503@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 9:05 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> I merged patches 8 and 9 into my tree
->
-Thanks!
+On Mon, 2011-11-21 at 18:14 +0000, Andrew Cooper wrote: 
+> Following some debugging, I believe that the attached patch fixes the
+> problem.
+> 
+> Simply returning EAGAIN is not sufficient, as the task does not get
+> requeued, and times out 13 seconds later (as per our mount options). 
+> Setting the SOCK_ASYNC_NOSPACE bit causes the requeue to happen.
+> 
+> I realize that this is a gross hack and I should probably not be using
+> SOCK_ASYNC_NOSPACE in that way.  Is there a better way to achieve the
+> same solution?
+> 
 
-> Benny
->
-> On 2011-11-30 04:37, tao.peng@emc.com wrote:
->>> -----Original Message-----
->>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jim Rees
->>> Sent: Wednesday, November 30, 2011 2:44 AM
->>> To: Peng Tao
->>> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org
->>> Subject: Re: [PATCH 0/9] pnfsblock patches
->>>
->>> Peng Tao wrote:
->>>
->>>   Hi, Trond,
->>>
->>>   Following are some bugfix and improvements for blocklayout driver. All have been
->>>   sent to the list before and have been tested for several weeks.
->>>
->>> Patches 2/9 and 8/9 are missing again.  I wonder why these particular
->>> patches are getting filtered out?
->> I have received these patches in both my gmail box and emc mail box. So I guess vger dropped them, again... Somehow it thinks I'm a spammer?
->> I attached 2/9, 8/9, 9/9 here...
->>
->> Thanks,
->> Tao
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+What you are doing will cause the request to be put to sleep with no
+guarantee that it will ever be woken up. Why would we want to do that if
+there is no report of a tcp window/buffer space congestion?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
