@@ -1,64 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39682 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21429 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932550Ab1KDOem convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:34:42 -0400
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id pA4EYf2s026688
-	for <linux-nfs@vger.kernel.org>; Fri, 4 Nov 2011 07:34:41 -0700 (PDT)
+	id S1753549Ab1KVNzc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 08:55:32 -0500
+Message-ID: <4ECBA9D0.3040001@RedHat.com>
+Date: Tue, 22 Nov 2011 08:55:28 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
-Date: Fri, 4 Nov 2011 07:34:39 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA925E@SACMVEXC2-PRD.hq.netapp.com>
-References: <1318919979-14606-1-git-send-email-andros@netapp.com> 
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
+To: David Howells <dhowells@redhat.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, keyrings@linux-nfs.org,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: Re: [Keyrings] [PATCH] KEYS: Allow special keyrings to be cleared
+References: <20111111160753.5190.36069.stgit@warthog.procyon.org.uk>	 <4EC66D7B.7030908@RedHat.com> <1321641219.2653.13.camel@lade.trondhjem.org>
+In-Reply-To: <1321641219.2653.13.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Myklebust, Trond
-> Sent: Friday, November 04, 2011 10:32 AM
-> To: Adamson, Andy
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel
-bug
-> 
-> > -----Original Message-----
-> > From: Adamson, Andy
-> > Sent: Tuesday, October 18, 2011 2:40 AM
-> > To: Myklebust, Trond
-> > Cc: linux-nfs@vger.kernel.org; Adamson, Andy
-> > Subject: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
-> >
-> > From: Andy Adamson <andros@netapp.com>
-> >
-> > Slotid's start from 0 which means we check against
-> > NFS41_BC_MAX_CALLBACKS - 1.
-> >
-> > Signed-off-by: Andy Adamson <andros@netapp.com>
-> > ---
-> >  fs/nfs/callback_proc.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c index
-> > 98ff5fc..12bd9d0 100644
-> > --- a/fs/nfs/callback_proc.c
-> > +++ b/fs/nfs/callback_proc.c
-> > @@ -339,7 +339,7 @@ validate_seqid(struct nfs4_slot_table *tbl,
-struct
-> > cb_sequenceargs * args)
-> >  	dprintk("%s enter. slotid %d seqid %d\n",
-> >  		__func__, args->csa_slotid, args->csa_sequenceid);
-> >
-> > -	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
-> > +	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
-> >  		return htonl(NFS4ERR_BADSLOT);
-> 
-> Why not just replace '>' with '>='?
 
-BTW: Shouldn't this patch be 1/3 and be Cc: stable@vger.kernel.org? It
-looks as if it ought to be backported to the stable kernels...
+
+On 11/18/2011 01:33 PM, Trond Myklebust wrote:
+> On Fri, 2011-11-18 at 09:36 -0500, Steve Dickson wrote: 
+>> Hey Trond,
+>>
+>> Could you please add this patch to David's patch set?
+> 
+> David's patchset is not going upstream through my tree; I believe it is
+> supposed to be merged via the security tree.
+> 
+> That said, you might want to fix up the changelog entry. Something seems
+> to be amiss in the second sentence.
+Oops... Thanks for point that out... 
+
+David, would you mind adding this to your patch set assuming
+there is no objection from Trond?  
+
+Author: Steve Dickson <steved@redhat.com>
+Date:   Fri Nov 18 09:29:17 2011 -0500
+
+    KEYS: allow keys to be revoked from the keyring
+    
+    To aid in cleaning up invalid id mappings add
+    the write bit to the key permission. Allowing
+    only root to revoke the keys.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 47d1c6f..652238c 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -185,7 +185,7 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t nam
+        }
+ 
+        rcu_read_lock();
+-       rkey->perm |= KEY_USR_VIEW;
++       rkey->perm |= KEY_USR_VIEW|KEY_USR_WRITE;
+ 
+        ret = key_validate(rkey);
+        if (ret < 0)
