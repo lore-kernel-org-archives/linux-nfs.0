@@ -1,56 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:2436 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932111Ab1KHLNK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 06:13:10 -0500
-Subject: [PATCH v2 0/7] SUNRPC: initial part of making pipefs work in net ns
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 15:12:12 +0300
-Message-ID: <20111108111056.6206.11410.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:31706 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754635Ab1KVUOT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 15:14:19 -0500
+Subject: Re: [RFC] NFS: Cache state owners after files are closed
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20111122193638.GB21451@fieldses.org>
+Date: Tue, 22 Nov 2011 15:14:03 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <5CE4FEAE-3432-4F87-ABC8-DBFE4FAF91C7@oracle.com>
+References: <20111122174225.1866.25410.stgit@degas.1015granger.net> <20111122193638.GB21451@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch-set was created in context of clone of git branch:
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
 
-v2:
-1) Rebased of current repo state (i.e. all commits were pulled before apply)
+On Nov 22, 2011, at 2:36 PM, J. Bruce Fields wrote:
 
-This patch-set implements pipefs superblock creation per network namespace
-context instead of using single one for all possible contexts. Also, it
-provides pipefs dentries creation and destruction helpers for kernel routines.
+> On Tue, Nov 22, 2011 at 12:52:53PM -0500, Chuck Lever wrote:
+>> Servers have a finite amount of memory to store NFSv4 open and lock
+>> owners.  Moreover, servers may have a difficult time determining when
+>> they can reap their state owner table, thanks to gray areas in the
+>> NFSv4 protocol specification.
+> 
+> What's the gray area?
+> 
+> Reminding myself: OK, I guess it's the NFSv4.0 close-replay problem.
+> You have to keep around enough information about a closed stateid to
+> handle a replay.  If a client reuses the stateowner than you can purge
+> that as soon as you bump the sequence number, otherwise you have to keep
+> it around a while (how long is unclear).
 
-Additional description of the idea about how to make RPC pipefs work per
-network namespace context can be found in the letter titled "SUNRPC: "RPC
-pipefs per network namespace" preparations", which has been sent already to
-linux-nfs@vger.kernel.org.
+                    ^^^^^^^^^^^^^^^^^^^^
+That's the problem.
 
-The following series consists of:
+When the server can't store any more state owners, it has to use heuristics to reap unused state owners, or it can have the client perform state recovery to determine which state owners the client wants to keep around.  Or, it can return NFS4ERR_RESOURCE and hope for the best.
 
----
+> (Is that what you're referring to?)
+> 
+>> Thus clients should be careful to reuse
+>> state owners when possible.
+>> 
+>> Currently Linux is not too careful.  When a user has closed all her
+>> files on one mount point, the state owner's reference count goes to
+>> zero, and it is released.  The next OPEN allocates a new one.  A
+>> workload that serially opens and closes files can run through a large
+>> number of open owners this way.
+>> 
+>> When a state owner's reference count goes to zero, slap it onto a free
+>> list for that nfs_server, with an expiry time.  Garbage collect before
+>> looking for a state owner.  This makes state owners for active users
+>> available for re-use.
+> 
+> Makes sense to me.
 
-Stanislav Kinsbursky (7):
-      SUNRPC: create RPC pipefs superblock per network namespace context
-      SUNRPC: hold current network namespace while pipefs superblock is active
-      SUNRPC: send notification events on pipefs sb creation and destruction
-      SUNRPC: pipefs dentry lookup helper introduced
-      SUNRPC: put pipefs superblock link on network namespace
-      SUNRPC: pipefs per-net operations helper introduced
-      SUNRPC: added debug messages to RPC pipefs
+Trond's idea.  A simpler approach might keep them around until umount, but I expect we'd still need some way to trim down the client's collection of these things on big hosts with lots of users.
 
+>> @@ -1739,6 +1745,7 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
+>> 		goto error;
+>> 
+>> 	dprintk("<-- nfs4_create_server() = %p\n", server);
+>> +	server->destroy = nfs4_destroy_server;
+>> 	return server;
+>> 
+>> error:
+>> @@ -1792,6 +1799,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+>> 		goto error;
+>> 
+>> 	dprintk("<-- nfs_create_referral_server() = %p\n", server);
+>> +	server->destroy = nfs4_destroy_server;
+> 
+> Couldn't you avoid adding that line in two different places, if you put
+> it in nfs4_server_common_setup()?
 
- include/linux/sunrpc/rpc_pipe_fs.h |   14 ++++
- net/sunrpc/netns.h                 |    3 +
- net/sunrpc/rpc_pipe.c              |  113 +++++++++++++++++++++++++++++++++++-
- net/sunrpc/sunrpc_syms.c           |    1 
- 4 files changed, 129 insertions(+), 2 deletions(-)
+Probably.  I never seem to catch all the places where these things are created or destroyed.  I'll look into this if/when I redrive the patch.
+
+Thanks for the review!
 
 -- 
-Signature
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
