@@ -1,204 +1,346 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from forward7.mail.yandex.net ([77.88.61.37]:34427 "EHLO
-	forward7.mail.yandex.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756777Ab1KKM2C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 07:28:02 -0500
-Received: from smtp7.mail.yandex.net (smtp7.mail.yandex.net [77.88.61.55])
-	by forward7.mail.yandex.net (Yandex) with ESMTP id 427601C5819
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:28:00 +0400 (MSK)
-Content-Type: text/plain; charset=koi8-r; format=flowed; delsp=yes
-Cc: maxim@kramarenko.pro
-To: linux-nfs@vger.kernel.org
-Date: Fri, 11 Nov 2011 16:27:59 +0400
-Subject: error rpc.gssd: No supported encryption types (config file error?)
-MIME-Version: 1.0
-From: "Kramarenko A. Maksim " <maxim@kramarenko.pro>
-Message-ID: <op.v4r7kxgeyb2atr@odmen.sag.local>
+Received: from mx2.netapp.com ([216.240.18.37]:39409 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758899Ab1KVW6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 17:58:24 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 4/4] NFS: Turn NFS v3 into a module
+Date: Tue, 22 Nov 2011 17:58:04 -0500
+Message-Id: <1322002684-20436-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
+References: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello!
-Tired of fighting with a bunch of Kerberos and NFSv4. Very much I ask for help!
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-My configuration:
-OS:  Server NFS (also known as a client) - Debian 6.0.3, KDC - AD Win2k8 R2.
+This will allow users to unmap NFS v3 from the kernel memory if they
+don't want to use it.  This will also give us a place to put NFS v3
+specific code so it doesn't clutter the generic NFS client.
 
-Server/Client NFS:
-ARCHIV ~ # hostname -f
-archiv.SAG.local
-ARCHIV ~ # grep -v "^#" /etc/krb5.conf
-[libdefaults]
-         default_realm = SAG.LOCAL
-         default_tkt_enctypes = rc4-hmac
-         default_tgs_enctypes = rc4-hmac
-         permitted_enctypes = rc4-hmac
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Kconfig         |    8 ++++-
+ fs/nfs/Makefile        |    3 +-
+ fs/nfs/client.c        |    8 ++---
+ fs/nfs/dir.c           |   31 --------------------
+ fs/nfs/file.c          |   12 -------
+ fs/nfs/internal.h      |   10 ++++++
+ fs/nfs/nfs3/Makefile   |    7 ++++
+ fs/nfs/nfs3/module.c   |   75 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs3/nfs3.h     |    7 ++++
+ fs/nfs/nfs3/nfs3proc.c |    1 +
+ fs/nfs/nfs3/nfs3xdr.c  |    1 +
+ 11 files changed, 111 insertions(+), 52 deletions(-)
+ create mode 100644 fs/nfs/nfs3/Makefile
+ create mode 100644 fs/nfs/nfs3/module.c
+ create mode 100644 fs/nfs/nfs3/nfs3.h
 
-[realms]
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index dbcd821..47195e0 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -29,15 +29,19 @@ config NFS_FS
+ 
+ 	  If unsure, say N.
+ 
+-config NFS_V3
+-	bool "NFS client support for NFS version 3"
++config NFS_VERSION_3
++	tristate "NFS client support for NFS version 3"
+ 	depends on NFS_FS
++	select NFS_V3
+ 	help
+ 	  This option enables support for version 3 of the NFS protocol
+ 	  (RFC 1813) in the kernel's NFS client.
+ 
+ 	  If unsure, say Y.
+ 
++config NFS_V3
++	bool
++
+ config NFS_V3_ACL
+ 	bool "NFS client support for the NFSv3 ACL protocol extension"
+ 	depends on NFS_V3
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index ac0e5df..930913d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -9,8 +9,6 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+-nfs-$(CONFIG_NFS_V3)	+= nfs3/nfs3proc.o nfs3/nfs3xdr.o
+-nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3/nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+@@ -22,5 +20,6 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
++obj-$(CONFIG_NFS_VERSION_3) += nfs3/
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 9e77056..e4cb43b 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -97,7 +97,7 @@ static struct nfs_version_ops *nfs_version_ops[5] = {
+ 
+ static struct nfs_rpc_ops *nfs_ops[5] = {
+ 	[2]	= &nfs_v2_clientops,
+-	[3]	= &nfs_v3_clientops,
++	[3]	= NULL,
+ 	[4]	= &nfs_v4_clientops,
+ };
+ 
+@@ -106,9 +106,7 @@ static struct nfs_rpc_ops *nfs_ops[5] = {
+  */
+ static struct rpc_version *nfs_version[5] = {
+ 	[2]			= &nfs_version2,
+-#ifdef CONFIG_NFS_V3
+-	[3]			= &nfs_version3,
+-#endif
++	[3]			= NULL,
+ #ifdef CONFIG_NFS_V4
+ 	[4]			= &nfs_version4,
+ #endif
+@@ -131,7 +129,7 @@ struct rpc_stat nfs_rpcstat = {
+ #ifdef CONFIG_NFS_V3_ACL
+ static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
+ static struct rpc_version *	nfsacl_version[] = {
+-	[3]			= &nfsacl_version3,
++	[3]			= NULL,
+ };
+ 
+ struct rpc_program		nfsacl_program = {
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f7cb6b6..25dbc54 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -47,16 +47,6 @@
+ static int nfs_opendir(struct inode *, struct file *);
+ static int nfs_closedir(struct inode *, struct file *);
+ static int nfs_readdir(struct file *, void *, filldir_t);
+-struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
+-int nfs_create(struct inode *, struct dentry *, int, struct nameidata *);
+-int nfs_mkdir(struct inode *, struct dentry *, int);
+-int nfs_rmdir(struct inode *, struct dentry *);
+-int nfs_unlink(struct inode *, struct dentry *);
+-int nfs_symlink(struct inode *, struct dentry *, const char *);
+-int nfs_link(struct dentry *, struct inode *, struct dentry *);
+-int nfs_mknod(struct inode *, struct dentry *, int, dev_t);
+-int nfs_rename(struct inode *, struct dentry *,
+-		      struct inode *, struct dentry *);
+ static int nfs_fsync_dir(struct file *, loff_t, loff_t, int);
+ static loff_t nfs_llseek_dir(struct file *, loff_t, int);
+ static void nfs_readdir_clear_array(struct page*);
+@@ -89,27 +79,6 @@ const struct address_space_operations nfs_dir_aops = {
+ 	.freepage = nfs_readdir_clear_array,
+ };
+ 
+-#ifdef CONFIG_NFS_V3
+-const struct inode_operations nfs3_dir_inode_operations = {
+-	.create		= nfs_create,
+-	.lookup		= nfs_lookup,
+-	.link		= nfs_link,
+-	.unlink		= nfs_unlink,
+-	.symlink	= nfs_symlink,
+-	.mkdir		= nfs_mkdir,
+-	.rmdir		= nfs_rmdir,
+-	.mknod		= nfs_mknod,
+-	.rename		= nfs_rename,
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
+-};
+-#endif  /* CONFIG_NFS_V3 */
+-
+ #ifdef CONFIG_NFS_V4
+ 
+ static struct dentry *nfs_atomic_lookup(struct inode *, struct dentry *, struct nameidata *);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 90389ca..397e5e0 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -49,18 +49,6 @@ const struct inode_operations nfs_file_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ };
+ 
+-#ifdef CONFIG_NFS_V3
+-const struct inode_operations nfs3_file_inode_operations = {
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
+-};
+-#endif  /* CONFIG_NFS_v3 */
+-
+ /* Hack for future NFS swap support */
+ #ifndef IS_SWAPFILE
+ # define IS_SWAPFILE(inode)	(0)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 93a0ba2..e6256f9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -83,6 +83,16 @@ void nfs_unregister_version(unsigned int);
+ void nfs_version_ref(unsigned int);
+ void nfs_version_unref(unsigned int);
+ 
++struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
++int nfs_create(struct inode *, struct dentry *, int, struct nameidata *);
++int nfs_mkdir(struct inode *, struct dentry *, int);
++int nfs_rmdir(struct inode *, struct dentry *);
++int nfs_unlink(struct inode *, struct dentry *);
++int nfs_symlink(struct inode *, struct dentry *, const char *);
++int nfs_link(struct dentry *, struct inode *, struct dentry *);
++int nfs_mknod(struct inode *, struct dentry *, int, dev_t);
++int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
++
+ /*
+  * Note: RFC 1813 doesn't limit the number of auth flavors that
+  * a server can return, so make something up.
+diff --git a/fs/nfs/nfs3/Makefile b/fs/nfs/nfs3/Makefile
+new file mode 100644
+index 0000000..308123b
+--- /dev/null
++++ b/fs/nfs/nfs3/Makefile
+@@ -0,0 +1,7 @@
++#
++# Makefile for NFS v3
++#
++obj-$(CONFIG_NFS_VERSION_3) += nfs3.o
++
++nfs3-y := module.o nfs3proc.o nfs3xdr.o
++nfs3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
+diff --git a/fs/nfs/nfs3/module.c b/fs/nfs/nfs3/module.c
+new file mode 100644
+index 0000000..9c67cd0
+--- /dev/null
++++ b/fs/nfs/nfs3/module.c
+@@ -0,0 +1,75 @@
++/*
++ * Initialize the NFS v3 module
++ */
++
++#include <linux/module.h>
++#include <linux/nfs_fs.h>
++
++#include "../internal.h"
++#include "nfs3.h"
++
++static void nfs_v3_ref(void)
++{
++	try_module_get(THIS_MODULE);
++}
++
++static void nfs_v3_unref(void)
++{
++	module_put(THIS_MODULE);
++}
++
++const struct inode_operations nfs3_file_inode_operations = {
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++	.listxattr	= nfs3_listxattr,
++	.getxattr	= nfs3_getxattr,
++	.setxattr	= nfs3_setxattr,
++	.removexattr	= nfs3_removexattr,
++};
++
++const struct inode_operations nfs3_dir_inode_operations = {
++	.create		= nfs_create,
++	.lookup		= nfs_lookup,
++	.link		= nfs_link,
++	.unlink		= nfs_unlink,
++	.symlink	= nfs_symlink,
++	.mkdir		= nfs_mkdir,
++	.rmdir		= nfs_rmdir,
++	.mknod		= nfs_mknod,
++	.rename		= nfs_rename,
++	.permission	= nfs_permission,
++	.getattr	= nfs_getattr,
++	.setattr	= nfs_setattr,
++	.listxattr	= nfs3_listxattr,
++	.getxattr	= nfs3_getxattr,
++	.setxattr	= nfs3_setxattr,
++	.removexattr	= nfs3_removexattr,
++};
++
++struct nfs_version_ops nfs_v3_ops = {
++	.nfs_rpc	= &nfs_version3,
++	.nfs_ops	= &nfs_v3_clientops,
++#ifdef CONFIG_NFS_V3_ACL
++	.nfs_acl	= &nfsacl_version3,
++#endif
++	.version_ref	= nfs_v3_ref,
++	.version_unref	= nfs_v3_unref,
++};
++
++static int __init init_nfs_v3(void)
++{
++	nfs_register_version(3, &nfs_v3_ops);
++	return 0;
++}
++
++static void __exit exit_nfs_v3(void)
++{
++	nfs_unregister_version(3);
++}
++
++MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
++MODULE_LICENSE("GPL");
++
++module_init(init_nfs_v3);
++module_exit(exit_nfs_v3);
+diff --git a/fs/nfs/nfs3/nfs3.h b/fs/nfs/nfs3/nfs3.h
+new file mode 100644
+index 0000000..c1e7875
+--- /dev/null
++++ b/fs/nfs/nfs3/nfs3.h
+@@ -0,0 +1,7 @@
++#ifndef _FS_NFS_NFS3_H
++#define _FS_NFS_NFS3_H
++
++const extern struct inode_operations nfs3_file_inode_operations;
++const extern struct inode_operations nfs3_dir_inode_operations;
++
++#endif /* _FS_NFS_NFS3_H */
+diff --git a/fs/nfs/nfs3/nfs3proc.c b/fs/nfs/nfs3/nfs3proc.c
+index 593a44c..e574e82 100644
+--- a/fs/nfs/nfs3/nfs3proc.c
++++ b/fs/nfs/nfs3/nfs3proc.c
+@@ -20,6 +20,7 @@
+ 
+ #include "../iostat.h"
+ #include "../internal.h"
++#include "nfs3.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3/nfs3xdr.c b/fs/nfs/nfs3/nfs3xdr.c
+index be27fb8..d59d644 100644
+--- a/fs/nfs/nfs3/nfs3xdr.c
++++ b/fs/nfs/nfs3/nfs3xdr.c
+@@ -20,6 +20,7 @@
+ #include <linux/nfs3.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfsacl.h>
++#include <linux/nfs_xdr.h>
+ #include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+-- 
+1.7.7.4
 
-         SAG.LOCAL = {
-                 kdc = dc.sag.local
-                 admin_server = dc.sag.local
-                 default_domain = SAG.LOCAL
-         }
-
-[domain_realm]
-         .sag.local = SAG.LOCAL
-         sag.local = SAG.LOCAL
-
-[logging]
-         default = SYSLOG:NOTICE:DAEMON
-
-ARCHIV ~ # dpkg -l | grep krb
-ii  krb5-config                        2.2                          Configuration files for Kerberos Version 5
-ii  krb5-user                          1.8.3+dfsg-4squeeze2         Basic programs to authenticate using MIT Kerberos
-ii  libgssapi-krb5-2                   1.8.3+dfsg-4squeeze2         MIT Kerberos runtime libraries - krb5 GSS-API Mechanism
-ii  libkrb5-3                          1.8.3+dfsg-4squeeze2         MIT Kerberos runtime libraries
-ii  libkrb53                           1.8.3+dfsg-4squeeze2         transitional package for MIT Kerberos libraries
-ii  libkrb5support0                    1.8.3+dfsg-4squeeze2         MIT Kerberos runtime libraries - Support library
-ARCHIV ~ # ping -c 4 archiv
-PING archiv.SAG.local (10.0.0.6) 56(84) bytes of data.
-64 bytes from archiv.SAG.local (10.0.0.6): icmp_req=1 ttl=64 time=0.032 ms
-64 bytes from archiv.SAG.local (10.0.0.6): icmp_req=2 ttl=64 time=0.011 ms
-64 bytes from archiv.SAG.local (10.0.0.6): icmp_req=3 ttl=64 time=0.011 ms
-64 bytes from archiv.SAG.local (10.0.0.6): icmp_req=4 ttl=64 time=0.011 ms
-
---- archiv.SAG.local ping statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 2998ms
-rtt min/avg/max/mdev = 0.011/0.016/0.032/0.009 ms
-ARCHIV ~ # ps xuwa | grep  rpc.
-root       905  0.0  0.0      0     0 ?        S    13:06   0:00 [rpciod/0]
-root       906  0.0  0.0      0     0 ?        S    13:06   0:00 [rpciod/1]
-root      2064  0.0  0.0   3144  1312 ?        Ss   14:20   0:00 /usr/sbin/rpc.svcgssd -vvv
-root      2066  0.0  0.0   2108   352 ?        Ss   14:20   0:00 /usr/sbin/rpc.mountd --manage-gids
-root      2208  0.0  0.0   2272   520 ?        Ss   14:28   0:00 /usr/sbin/rpc.idmapd
-root      2213  0.0  0.0   3112   664 ?        Ss   14:28   0:00 /usr/sbin/rpc.gssd -vvv
-root      2222  0.0  0.0   3324   816 pts/0    R+   14:29   0:00 grep --colour=auto rpc.
-
-# Daemons rpc.gssd and rpc.svcgssd with the "-vvv" option running.
-
-ARCHIV ~ # klist -e -k /etc/krb5.keytab
-Keytab name: WRFILE:/etc/krb5.keytab
-KVNO Principal
----- --------------------------------------------------------------------------
-    3 nfs/archiv.sag.local@SAG.LOCAL (DES cbc mode with CRC-32)
-    3 nfs/archiv.sag.local@SAG.LOCAL (DES cbc mode with RSA-MD5)
-    3 nfs/archiv.sag.local@SAG.LOCAL (ArcFour with HMAC/md5)
-    3 nfs/archiv.sag.local@SAG.LOCAL (AES-256 CTS mode with 96-bit SHA-1 HMAC)
-    3 nfs/archiv.sag.local@SAG.LOCAL (AES-128 CTS mode with 96-bit SHA-1 HMAC)
-ARCHIV ~ # kinit -k nfs/archiv.sag.local@SAG.LOCAL
-ARCHIV ~ # klist
-Ticket cache: FILE:/tmp/krb5cc_0
-Default principal: nfs/archiv.sag.local@SAG.LOCAL
-
-Valid starting     Expires            Service principal
-11/11/11 16:12:56  11/12/11 02:12:56  krbtgt/SAG.LOCAL@SAG.LOCAL
-         renew until 11/12/11 16:12:56
-
-Using keytab, Kerberos tickets are obtained correctly
-The list of exported directories:
-ARCHIV ~ # cat /etc/exports
-/archiv-big     gss/krb5(rw,fsid=0,sync,no_subtree_check)
-ARCHIV ~ # showmount -e
-Export list for ARCHIV:
-/archiv-big gss/krb5
-
-Server KDC:
-On KDC to create the computer account - "archiv" and user account - nfs. And the created keytab:
-
-ktpass /princ nfs/archiv.sag.local@SAG.LOCAL /ptype KRB5_NT_PRINCIPAL /out C:\tmp\archivkeytab /pass mypass /crypto all /mapuser SAG\nfs
-
-And secur transfer to host archiv in file /etc/krb5.keytab .
-
-Problem:
-When I try to mount the directory on NFSV4 - I do not get:
-ARCHIV ~ # mount -v -t nfs4 -o'sec=krb5' archiv:/archiv-big /mnt
-mount.nfs4: timeout set for Fri Nov 11 16:23:57 2011
-mount.nfs4: trying text-based options 'sec=krb5,addr=10.0.0.6,clientaddr=10.0.0.6'
-mount.nfs4: mount(2): Permission denied
-mount.nfs4: access denied by server while mounting archiv:/archiv-big
-
-
-
-At this point, the daemon rpc.gssd sends to a log daemon.log messages here are:
-
-
-Nov 11 16:21:35 archiv mountd[2066]: Caught signal 15, un-registering and exiting.
-Nov 11 16:21:35 archiv rpc.svcgssd[2064]: exiting on signal 15
-Nov 11 16:21:36 archiv rpc.svcgssd[2386]: rpcsec_gss: debug level is 3
-Nov 11 16:21:36 archiv rpc.svcgssd[2387]: entering poll
-Nov 11 16:21:57 archiv rpc.gssd[2213]: handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt18)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: handle_gssd_upcall: 'mech=krb5 uid=0 '
-Nov 11 16:21:57 archiv rpc.gssd[2213]: handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt18)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: process_krb5_upcall: service is '<null>'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Full hostname for 'archiv.SAG.local' is 'archiv.sag.local'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Full hostname for 'archiv.sag.local' is 'archiv.sag.local'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Key table entry not found while getting keytab entry for 'root/archiv.sag.local@SAG.LOCAL'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Success getting keytab entry for 'nfs/archiv.sag.local@SAG.LOCAL'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SAG.LOCAL' are good until 1321043604
-Nov 11 16:21:57 archiv rpc.gssd[2213]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SAG.LOCAL' are good until 1321043604
-Nov 11 16:21:57 archiv rpc.gssd[2213]: using FILE:/tmp/krb5cc_machine_SAG.LOCAL as credentials cache for machine creds
-Nov 11 16:21:57 archiv rpc.gssd[2213]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_machine_SAG.LOCAL
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating context using fsuid 0 (save_uid 0)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating tcp client for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: DEBUG: port already set to 2049
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating context with server nfs@archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_create_default()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_create()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create: name is 0x81dfa70
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create: gd->name is 0x81e23d8
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_refresh()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: struct rpc_gss_sec:
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      mechanism_OID: { 1 2 134 72 134 247 18 1 2 2 }
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      qop: 0
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      service: 1
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      cred: 0x81dff88
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      req_flags: 00000002
-Nov 11 16:21:57 archiv rpc.gssd[2213]: rpcsec_gss: gss_init_sec_context: (major) Unspecified GSS failure.  Minor code may provide more information - (minor) No supported encryption types (config file error?)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_destroy()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_destroy_context()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_destroy: freeing name 0x81e23d8
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create_default: freeing name 0x81dfa70
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Failed to create krb5 context for user with uid 0 for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Failed to create machine krb5 context with credentials cache FILE:/tmp/krb5cc_machine_SAG.LOCAL for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Machine cache is prematurely expired or corrupted trying to recreate cache for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Full hostname for 'archiv.SAG.local' is 'archiv.sag.local'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Full hostname for 'archiv.sag.local' is 'archiv.sag.local'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Key table entry not found while getting keytab entry for 'root/archiv.sag.local@SAG.LOCAL'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: Success getting keytab entry for 'nfs/archiv.sag.local@SAG.LOCAL'
-Nov 11 16:21:57 archiv rpc.gssd[2213]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SAG.LOCAL' are good until 1321043604
-Nov 11 16:21:57 archiv rpc.gssd[2213]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SAG.LOCAL' are good until 1321043604
-Nov 11 16:21:57 archiv rpc.gssd[2213]: using FILE:/tmp/krb5cc_machine_SAG.LOCAL as credentials cache for machine creds
-Nov 11 16:21:57 archiv rpc.gssd[2213]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_machine_SAG.LOCAL
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating context using fsuid 0 (save_uid 0)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating tcp client for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: DEBUG: port already set to 2049
-Nov 11 16:21:57 archiv rpc.gssd[2213]: creating context with server nfs@archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_create_default()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_create()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create: name is 0x81dff58
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create: gd->name is 0x81e2340
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_refresh()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: struct rpc_gss_sec:
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      mechanism_OID: { 1 2 134 72 134 247 18 1 2 2 }
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      qop: 0
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      service: 1
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      cred: 0x81db058
-Nov 11 16:21:57 archiv rpc.gssd[2213]:      req_flags: 00000002
-Nov 11 16:21:57 archiv rpc.gssd[2213]: rpcsec_gss: gss_init_sec_context: (major) Unspecified GSS failure.  Minor code may provide more information - (minor) No supported encryption types (config file error?)
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_destroy()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: in authgss_destroy_context()
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_destroy: freeing name 0x81e2340
-Nov 11 16:21:57 archiv rpc.gssd[2213]: authgss_create_default: freeing name 0x81dff58
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Failed to create krb5 context for user with uid 0 for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Failed to create machine krb5 context with credentials cache FILE:/tmp/krb5cc_machine_SAG.LOCAL for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: WARNING: Failed to create machine krb5 context with any credentials cache for server archiv.SAG.local
-Nov 11 16:21:57 archiv rpc.gssd[2213]: doing error downcall
-Nov 11 16:21:57 archiv rpc.gssd[2213]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt18
-
-
-As I understand it, the main problem expressed in the message:
-Nov 11 16:21:57 archiv rpc.gssd[2213]: rpcsec_gss: gss_init_sec_context: (major) Unspecified GSS failure.  Minor code may provide more information - (minor) No supported encryption types (config file error?)
-But why this happens, if kinit work out correctly?
-
-Best regards,
-Maxim
