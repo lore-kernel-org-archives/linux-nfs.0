@@ -1,56 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47383 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39409 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753771Ab1KRCDB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Nov 2011 21:03:01 -0500
-Date: Thu, 17 Nov 2011 21:03:08 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: John Hughes <john@Calva.COM>, Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-Message-ID: <20111117210308.4c5156fd@corrin.poochiereds.net>
-In-Reply-To: <20111118015116.GA1959@umich.edu>
-References: <4EC3FD8B.6000705@calvaedi.com>
-	<20111116144718.78b2e288@corrin.poochiereds.net>
-	<20111116234434.GA12882@umich.edu>
-	<20111116203119.1d9c0dd6@corrin.poochiereds.net>
-	<20111116203810.4e1b9d28@corrin.poochiereds.net>
-	<4EC4EA91.5070607@Calva.COM>
-	<4EC50882.2080803@Calva.COM>
-	<20111117164630.394027e7@tlielax.poochiereds.net>
-	<20111118015116.GA1959@umich.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753579Ab1KVW6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 17:58:22 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 2.5/4] NFS: Move the NFS v3 code into its own subdirectory
+Date: Tue, 22 Nov 2011 17:58:02 -0500
+Message-Id: <1322002684-20436-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
+References: <1322002684-20436-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Nov 2011 20:51:16 -0500
-Jim Rees <rees@umich.edu> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> I would argue that if you don't want your applications to stop working when
-> your ticket expires, you shouldn't let the ticket expire.  If you don't want
-> to have to renew your ticket, you should use an infinite ticket lifetime.
-> 
+This finishes off the changes started in the last patch.  Note that
+after applying this patch NFS v3 is still directly compiled into the
+main NFS kernel module.  The changes to turn it into a module will come
+in a later patch.
 
-That's the ideal situation, but shit happens, and losing a long-running
-job can often be an expensive proposition.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile        |    4 ++--
+ fs/nfs/nfs3/nfs3acl.c  |    2 +-
+ fs/nfs/nfs3/nfs3proc.c |    4 ++--
+ fs/nfs/nfs3/nfs3xdr.c  |    2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
 
-> It sounds like you've made up your mind, but I would urge you to make this
-> a mount option, analogous to the hard/soft mount option.
-
-I've not made up my mind about anything, and in any case it's not my
-decision to make. I think you need to convince Trond here... :)
-
-I'm quite open to sane proposals as long as we can accomodate those who
-are dependent on the current behavior. As I said before, when I
-originally did the patches a couple of years ago, I sort of figured the
-current behavior was a first approximation.
-
-A mount option will be harder to implement than a rpc.gssd command-line
-option, but it sounds reasonable. Still, it would be better not to have
-to make this an either/or decision somehow.
-
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index b58613d..ac0e5df 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -9,8 +9,8 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+-nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+-nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
++nfs-$(CONFIG_NFS_V3)	+= nfs3/nfs3proc.o nfs3/nfs3xdr.o
++nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3/nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+diff --git a/fs/nfs/nfs3/nfs3acl.c b/fs/nfs/nfs3/nfs3acl.c
+index 7ef2397..ac589ff 100644
+--- a/fs/nfs/nfs3/nfs3acl.c
++++ b/fs/nfs/nfs3/nfs3acl.c
+@@ -6,7 +6,7 @@
+ #include <linux/posix_acl_xattr.h>
+ #include <linux/nfsacl.h>
+ 
+-#include "internal.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3/nfs3proc.c b/fs/nfs/nfs3/nfs3proc.c
+index d4bc9ed9..f37ddb9 100644
+--- a/fs/nfs/nfs3/nfs3proc.c
++++ b/fs/nfs/nfs3/nfs3proc.c
+@@ -18,8 +18,8 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/nfs_mount.h>
+ 
+-#include "iostat.h"
+-#include "internal.h"
++#include "../iostat.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3/nfs3xdr.c b/fs/nfs/nfs3/nfs3xdr.c
+index 183c6b1..be27fb8 100644
+--- a/fs/nfs/nfs3/nfs3xdr.c
++++ b/fs/nfs/nfs3/nfs3xdr.c
+@@ -20,7 +20,7 @@
+ #include <linux/nfs3.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfsacl.h>
+-#include "internal.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.4
+
