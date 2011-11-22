@@ -1,56 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46391 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932807Ab1KDQ5R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 12:57:17 -0400
-Message-ID: <4EB417C8.4000502@panasas.com>
-Date: Fri, 4 Nov 2011 09:50:16 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from smtp.citrix.com ([66.165.176.89]:61481 "EHLO SMTP.CITRIX.COM"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752271Ab1KVMQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 07:16:24 -0500
+Message-ID: <4ECB9294.20002@citrix.com>
+Date: Tue, 22 Nov 2011 12:16:20 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <stable@kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd (and lock) changes for 3.2
-References: <20111025121924.GA15662@fieldses.org> <4EA77B78.6080706@panasas.com> <20111027203412.GB31669@fieldses.org> <4EA9F5E8.6060900@panasas.com> <20111028144252.GB5798@fieldses.org> <20111104160439.GA32756@fieldses.org>
-In-Reply-To: <20111104160439.GA32756@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+References: <4EC6A681.30902@citrix.com>		  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com>		 <1321643673.2653.41.camel@lade.trondhjem.org>	 <4EC6B82B.3000701@citrix.com>	 <4ECA94F9.4090503@citrix.com>	 <1321961913.3323.67.camel@lade.trondhjem.org> <4ECB8F47.105@citrix.com> <1321963839.7645.5.camel@lade.trondhjem.org>
+In-Reply-To: <1321963839.7645.5.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/04/2011 09:04 AM, J. Bruce Fields wrote:
-> Boaz points out that I forgot to add stable cc's to two commits:
-> 
-> 	48483bf23a568f3ef4cc7ad2c8f1a082f10ad0e7 "nfsd4: simplify recovery dir setting"
-> 	6577aac01f00636c16cd583c30bd4dedf18475d5 "nfsd4: fix failure to
-> 	end nfsd4 grace period"
-> 
-> which fix a regression introduced by
-> ab1350b2b3c1dd2e465a6abdda608d8c44facfb8 "nfsd41: Deny new lock before
-> RECLAIM_COMPLETE done" (first included in v3.1-rc1).
-> 
-> Included below for reference, but I assume simplest for you will be to
-> cherry-pick the above two sha1's.
-> 
-> Thanks!
-> 
-> --b.
-> 
+On 22/11/11 12:10, Trond Myklebust wrote:
+> On Tue, 2011-11-22 at 12:02 +0000, Andrew Cooper wrote: 
+>> On 22/11/11 11:38, Trond Myklebust wrote:
+>>> On Mon, 2011-11-21 at 18:14 +0000, Andrew Cooper wrote: 
+>>>> Following some debugging, I believe that the attached patch fixes the
+>>>> problem.
+>>>>
+>>>> Simply returning EAGAIN is not sufficient, as the task does not get
+>>>> requeued, and times out 13 seconds later (as per our mount options). 
+>>>> Setting the SOCK_ASYNC_NOSPACE bit causes the requeue to happen.
+>>>>
+>>>> I realize that this is a gross hack and I should probably not be using
+>>>> SOCK_ASYNC_NOSPACE in that way.  Is there a better way to achieve the
+>>>> same solution?
+>>>>
+>>> What you are doing will cause the request to be put to sleep with no
+>>> guarantee that it will ever be woken up. Why would we want to do that if
+>>> there is no report of a tcp window/buffer space congestion?
+>> But the reason we get to this code is because there was a report of
+>> space collision.  What would you suggest instead?  Changing
+>> xs_{tcp,udp}_send_request() to retry in this case would defeat the point
+>> of having xs_nospace().
+> I suggest doing absolutely nothing: do what you originally proposed,
+> which is to report the EAGAIN so that the client state machine retries
+> the socket write.
+>
+> My point is that this is a context which is _not_ atomic with the
+> original report of tcp window/buffer space congestion. There are no
+> locks or anything else that will guarantee that the congestion still
+> exists, and the fact that the SOCK_ASYNC_NOSPACE flag is now clear
+> indicates that this is the case.
+> The whole purpose of xs_nospace() is to wait until a congestion
+> condition clears. If the congestion clears before we get here, then we
+> have no reason to do anything special other than retry.
+>
+> Trond
 
-Bruce hi, thanks
+I am slightly confused as to what you mean now.
 
-Yesterday I hit this bug again. I rebased on Benny's tree which did not have them
-for some reason. It's hunting me. ;-)
+When you take out the if(test_bit test and always set ret to EAGAIN and
+requeue the request, the next time it wakes up is when it is killed due
+to timeout.  This results in substantially worse effects for the
+userspace, as the NFS session is killed.
 
-Just for Future reference, these patches were suppose to be submitted very early around
-rc3 when we found them. This is what the -rcX are for, to test and fix what was broken
-in the merge window.
+Did you mean something else when you said "always report EAGAIN"?
 
-Please forgive me I should have followed it through, but was too busy and forgot.
+-- 
+Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+T: +44 (0)1223 225 900, http://www.citrix.com
 
-But in general you should always have an rc-fixes branch and bug fixes patches
-should go there and not into the linux-next branch. And yes both branches should
-be included in linux-next.
-
-This way there is nothing to forget
-
-Thanks
-Boaz
