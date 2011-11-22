@@ -1,88 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37333 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55023 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752028Ab1KNPty convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 10:49:54 -0500
-Message-ID: <1321285777.2632.1.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read
- code path
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Nov 2011 17:49:37 +0200
-In-Reply-To: <4EC0F7AF.3010904@tonian.com>
-References: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <4EC0F7AF.3010904@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752789Ab1KVVoo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 16:44:44 -0500
+Date: Tue, 22 Nov 2011 16:44:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jamie Lokier <jamie@shareable.org>
+Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
+        Casey Bodley <cbodley@citi.umich.edu>
+Subject: Re: [PATCH] locks: breaking read lease should not block read open
+Message-ID: <20111122214441.GB23243@fieldses.org>
+References: <20110609231606.GB22215@fieldses.org>
+ <E1QUwaT-00HRZw-74@intern.SerNet.DE>
+ <20110610134859.GA27837@fieldses.org>
+ <20110721000758.GD27871@fieldses.org>
+ <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
+ <20110821165029.GA9296@fieldses.org>
+ <20111121124650.GA12942@jl-vm1.vm.bytemark.co.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111121124650.GA12942@jl-vm1.vm.bytemark.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-11-14 at 13:12 +0200, Benny Halevy wrote: 
-> On 2011-11-10 21:38, Trond Myklebust wrote:
-> > pNFS-specific code belongs in the pnfs layer. It should not be
-> > hijacking generic NFS read or write code paths.
+On Mon, Nov 21, 2011 at 12:46:50PM +0000, Jamie Lokier wrote:
+> J. Bruce Fields wrote:
+> > On Fri, Aug 19, 2011 at 08:08:29PM +0100, Jamie Lokier wrote:
+> > > J. Bruce Fields wrote:
+> > > > I'm not sure how to approach the lease code.
+> > > > 
+> > > > On the one hand, I've never seen any evidence that anyone outside Samba
+> > > > and NFSv4 has ever used it, and both currently make extremely limited
+> > > > use of it.  So we could probably get away with "fixing" the lease code
+> > > > to do whatever both of us need.
+> > > 
+> > > I've never used it, but I've _nearly_ used it (project took a
+> > > different direction), in a web application framework.
+> > > 
+> > > Pretty much the way CIFS/NFS use it, to keep other things (remote
+> > > state, database state, derived files) transactionally coherent with
+> > > changes to file contents by programs that only know about the files
+> > > they access.
+> > > 
+> > > The SIGIO stuff is a horrible interface.
+> > > I could still see me trying to use it sometime in the future.
+> > > In which case I really don't mind if you make the semantics saner :-)
+> > > 
+> > > Now we have fanotify which does something very similar and could have
+> > > generalised leases, but unfortunately fanotify came from such a
+> > > different motivation that it's not well suited for ordinary user
+> > > applications.
 > > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  fs/nfs/internal.h |    2 ++
-> >  fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
-> >  fs/nfs/read.c     |   14 ++------------
-> >  3 files changed, 25 insertions(+), 17 deletions(-)
+> > I'm not sure what you mean by that--mainly just because I'm not as
+> > familiar with fanotify as I should be.
 > > 
-> > diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> > index c1a1bd8..3f4d957 100644
-> > --- a/fs/nfs/internal.h
-> > +++ b/fs/nfs/internal.h
-> > @@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
-> >  extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-> >  		struct list_head *head);
-> >  
-> > +extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-> > +		struct inode *inode);
-> >  extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
-> >  extern void nfs_readdata_release(struct nfs_read_data *rdata);
-> >  
-> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> > index baf7353..8e672a2 100644
-> > --- a/fs/nfs/pnfs.c
-> > +++ b/fs/nfs/pnfs.c
-> > @@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
-> >  }
-> >  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
-> >  
-> > +static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
-> > +{
-> > +	struct nfs_pageio_descriptor pgio;
-> > +
-> > +	put_lseg(data->lseg);
-> > +	data->lseg = NULL;
-> > +	dprintk("pnfs write error = %d\n", data->pnfs_error);
+> > For my case the important difference between leases and the various
+> > notification interfaces is that leases are synchronous--the lease-holder
+> > is notified and has a chance to clean up before releasing its lease and
+> > allowing the conflicting operation to continue--whereas the the various
+> > notification interfaces tell you "tough luck, something just happened".
 > 
-> should be "read error", might as well fix this while you're at it :)
-
-Sure...
-
-> > +
-> > +	nfs_pageio_init_read_mds(&pgio, data->inode);
-> > +
-> > +	while (!list_empty(&data->pages)) {
-> > +		struct nfs_page *req = nfs_list_entry(data->pages.next);
-> > +
-> > +		nfs_list_remove_request(req);
-> > +		nfs_pageio_add_request(&pgio, req);
-> > +	}
+> Hi Bruce,
 > 
-> What about pgio.pg_recoalesce?
+> My apologies for not responding earlier; I just spotted this mail
+> among an ocean of mails.
 
-It was incorrect to set it in the first place. This is an ordinary
-coalesce...
+I understand!
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> Fyi, fanotify is also synchronous:
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Oh, I didn't know that, apologies for the confusion.
 
+> It blocks the conflicting operation
+> until the fanotify-using application allows it to proceed - or
+> alternatively it can prevent the conflicting operating from proceeding
+> at all.
+
+Just grepping for "fsnotify" (which fanotify is built on?) I find a lot
+of hooks in the vfs that all appear to have void returns and to be
+called after the operation is done.  How does it fail an operation?  No
+doubt I'm missing something.
+
+> It's got a nicer interface than leases (like inotify compared with
+> dnotify), but because it can interfere with legitimate applications
+> it's not suitable as a lease replacement for non-root applications;
+> and because it doesn't provide enough information about directory
+> operations, it's not a drop-in synchronous upgrade of {i,d}notify.
+
+OK, thanks.  I don't think it's directly useful to me but I should still
+take a closer to look at it to see what I can learn.
+
+--b.
