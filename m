@@ -1,54 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9156 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754065Ab1K2JMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 04:12:20 -0500
-Subject: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 29 Nov 2011 13:10:03 +0300
-Message-ID: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+Received: from smtp02.citrix.com ([66.165.176.63]:53629 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750945Ab1KVMCU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 07:02:20 -0500
+Message-ID: <4ECB8F47.105@citrix.com>
+Date: Tue, 22 Nov 2011 12:02:15 +0000
+From: Andrew Cooper <andrew.cooper3@citrix.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+References: <4EC6A681.30902@citrix.com>	  <1321642368.2653.35.camel@lade.trondhjem.org> <4EC6AC47.60404@citrix.com>	 <1321643673.2653.41.camel@lade.trondhjem.org> <4EC6B82B.3000701@citrix.com>	 <4ECA94F9.4090503@citrix.com> <1321961913.3323.67.camel@lade.trondhjem.org>
+In-Reply-To: <1321961913.3323.67.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set was created in context of clone of git
-branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-tag: v3.1
+On 22/11/11 11:38, Trond Myklebust wrote:
+> On Mon, 2011-11-21 at 18:14 +0000, Andrew Cooper wrote: 
+>> Following some debugging, I believe that the attached patch fixes the
+>> problem.
+>>
+>> Simply returning EAGAIN is not sufficient, as the task does not get
+>> requeued, and times out 13 seconds later (as per our mount options). 
+>> Setting the SOCK_ASYNC_NOSPACE bit causes the requeue to happen.
+>>
+>> I realize that this is a gross hack and I should probably not be using
+>> SOCK_ASYNC_NOSPACE in that way.  Is there a better way to achieve the
+>> same solution?
+>>
+> What you are doing will cause the request to be put to sleep with no
+> guarantee that it will ever be woken up. Why would we want to do that if
+> there is no report of a tcp window/buffer space congestion?
 
-This patch set depends on previous patch sets titled:
-1) "SUNRPC: initial part of making pipefs work in net ns"
-2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
-3) "SUNRPC: make RPC clients use network-namespace-aware PipeFS routines"
-4) "NFS: create clients and IDMAP pipes per network namespace"
+But the reason we get to this code is because there was a report of
+space collision.  What would you suggest instead?  Changing
+xs_{tcp,udp}_send_request() to retry in this case would defeat the point
+of having xs_nospace().
 
-This patch set is the final part of making SUNRPC PipeFS and it's users work in
-network namespace context.
+What should happen is the request getting re-queued to run at the next
+available opportunity, rather than perhaps sleeping for a certain length
+of time.  At the moment, leaving SOCK_ASYNC_NOSPACE unset causes the
+request to never be woken, whereas setting that bit seems to always be
+re-queued at some near point in the future.
 
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (5):
-      NFS: handle blocklayout pipe PipeFS dentry by network namespace aware routines
-      NFS: blocklayout pipe creation per network namespace context introduced
-      NFS: blocklayout PipeFS notifier introduced
-      NFS: remove RPC PipeFS mount point reference from blocklayout routines
-      SUNRPC: kernel PipeFS mount point creation routines removed
-
-
- fs/nfs/blocklayout/blocklayout.c    |  154 ++++++++++++++++++++++++++++-------
- fs/nfs/blocklayout/blocklayout.h    |    3 -
- fs/nfs/blocklayout/blocklayoutdev.c |    5 +
- fs/nfs/blocklayout/blocklayoutdm.c  |    7 +-
- fs/nfs/inode.c                      |    1 
- fs/nfs/netns.h                      |    1 
- include/linux/sunrpc/rpc_pipe_fs.h  |    2 
- net/sunrpc/rpc_pipe.c               |   21 -----
- 8 files changed, 137 insertions(+), 57 deletions(-)
+-- 
+Andrew Cooper - Dom0 Kernel Engineer, Citrix XenServer
+T: +44 (0)1223 225 900, http://www.citrix.com
 
