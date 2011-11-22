@@ -1,332 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:58038 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753445Ab1KKXFz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2011 18:05:55 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 11 Nov 2011 16:05:54 -0700
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pABN5oAC116976
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:50 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pABN5num012795
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2011 16:05:49 -0700
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC 3/7] Add VFS objects from nfs4_proc calls into  nfs4_exception.
-Date: Fri, 11 Nov 2011 18:04:28 -0500
-Message-Id: <1321052673-22171-4-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51625 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752716Ab1KVMXA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2011 07:23:00 -0500
+Message-ID: <1321964578.7645.9.camel@lade.trondhjem.org>
+Subject: Re: NFS TCP race condition with SOCK_ASYNC_NOSPACE
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Date: Tue, 22 Nov 2011 14:22:58 +0200
+In-Reply-To: <4ECB9294.20002@citrix.com>
+References: <4EC6A681.30902@citrix.com>
+			  <1321642368.2653.35.camel@lade.trondhjem.org>
+	 <4EC6AC47.60404@citrix.com>		 <1321643673.2653.41.camel@lade.trondhjem.org>
+		 <4EC6B82B.3000701@citrix.com>	 <4ECA94F9.4090503@citrix.com>
+		 <1321961913.3323.67.camel@lade.trondhjem.org> <4ECB8F47.105@citrix.com>
+	 <1321963839.7645.5.camel@lade.trondhjem.org> <4ECB9294.20002@citrix.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To successfully recover an expired file handle we'll need either
-an inode or preferably a dentry to enable us to recursively walk
-back to the root of the export.
+On Tue, 2011-11-22 at 12:16 +0000, Andrew Cooper wrote: 
+> On 22/11/11 12:10, Trond Myklebust wrote:
+> > On Tue, 2011-11-22 at 12:02 +0000, Andrew Cooper wrote: 
+> >> On 22/11/11 11:38, Trond Myklebust wrote:
+> >>> On Mon, 2011-11-21 at 18:14 +0000, Andrew Cooper wrote: 
+> >>>> Following some debugging, I believe that the attached patch fixes the
+> >>>> problem.
+> >>>>
+> >>>> Simply returning EAGAIN is not sufficient, as the task does not get
+> >>>> requeued, and times out 13 seconds later (as per our mount options). 
+> >>>> Setting the SOCK_ASYNC_NOSPACE bit causes the requeue to happen.
+> >>>>
+> >>>> I realize that this is a gross hack and I should probably not be using
+> >>>> SOCK_ASYNC_NOSPACE in that way.  Is there a better way to achieve the
+> >>>> same solution?
+> >>>>
+> >>> What you are doing will cause the request to be put to sleep with no
+> >>> guarantee that it will ever be woken up. Why would we want to do that if
+> >>> there is no report of a tcp window/buffer space congestion?
+> >> But the reason we get to this code is because there was a report of
+> >> space collision.  What would you suggest instead?  Changing
+> >> xs_{tcp,udp}_send_request() to retry in this case would defeat the point
+> >> of having xs_nospace().
+> > I suggest doing absolutely nothing: do what you originally proposed,
+> > which is to report the EAGAIN so that the client state machine retries
+> > the socket write.
+> >
+> > My point is that this is a context which is _not_ atomic with the
+> > original report of tcp window/buffer space congestion. There are no
+> > locks or anything else that will guarantee that the congestion still
+> > exists, and the fact that the SOCK_ASYNC_NOSPACE flag is now clear
+> > indicates that this is the case.
+> > The whole purpose of xs_nospace() is to wait until a congestion
+> > condition clears. If the congestion clears before we get here, then we
+> > have no reason to do anything special other than retry.
+> >
+> > Trond
+> 
+> I am slightly confused as to what you mean now.
+> 
+> When you take out the if(test_bit test and always set ret to EAGAIN and
+> requeue the request, the next time it wakes up is when it is killed due
+> to timeout.  This results in substantially worse effects for the
+> userspace, as the NFS session is killed.
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/nfs4_fs.h  |    2 +
- fs/nfs/nfs4proc.c |  115 ++++++++++++++++++++++++++++++++++++++++++-----------
- 2 files changed, 94 insertions(+), 23 deletions(-)
+What is putting the request to sleep? It should be awake when it enters
+xs_nospace(), and nothing in or after that function should be putting it
+to sleep until we've retried with call_transmit().
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 3e93e9a..8fe81d8 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -215,6 +215,8 @@ struct nfs4_exception {
- 	long timeout;
- 	int retry;
- 	struct nfs4_state *state;
-+	struct dentry *dentry;
-+	struct inode *inode;
- };
- 
- struct nfs4_state_recovery_ops {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 86c273e..20b96cb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1239,7 +1239,10 @@ static int _nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
- static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = _nfs4_do_open_reclaim(ctx, state);
-@@ -1281,7 +1284,10 @@ static int _nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs
- 
- int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 	int err;
- 	do {
-@@ -1666,7 +1672,10 @@ static int _nfs4_open_expired(struct nfs_open_context *ctx, struct nfs4_state *s
- static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	do {
-@@ -1795,7 +1804,10 @@ out_err:
- 
- static struct nfs4_state *nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode, int flags, struct iattr *sattr, struct rpc_cred *cred)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	struct nfs4_state *res;
- 	int status;
- 
-@@ -1886,7 +1898,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			   struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
-@@ -2455,7 +2470,10 @@ void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
- static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
- 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		int status;
-@@ -2533,7 +2551,10 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 
- static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2589,7 +2610,10 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		unsigned int pgbase, unsigned int pglen)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2681,7 +2705,10 @@ out:
- 
- static int nfs4_proc_remove(struct inode *dir, struct qstr *name)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
-@@ -2835,7 +2862,10 @@ out:
- 
- static int nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *name)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -2927,7 +2957,10 @@ out:
- static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 		struct page *page, unsigned int len, struct iattr *sattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
-@@ -2958,7 +2991,10 @@ out:
- static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 
- 	sattr->ia_mode &= ~current_umask();
-@@ -3012,7 +3048,10 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 		u64 cookie, struct page **pages, unsigned int count, int plus)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
-@@ -3060,7 +3099,10 @@ out:
- static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr, dev_t rdev)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.dentry = dentry,
-+		.inode = NULL,
-+	};
- 	int err;
- 
- 	sattr->ia_mode &= ~current_umask();
-@@ -3590,7 +3632,10 @@ out_free:
- 
- static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	ssize_t ret;
- 	do {
- 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
-@@ -3665,7 +3710,10 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 
- static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(inode),
-@@ -3928,7 +3976,10 @@ out:
- int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = _nfs4_proc_delegreturn(inode, cred, stateid, issync);
-@@ -4002,7 +4053,10 @@ out:
- 
- static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	do {
-@@ -4406,7 +4460,10 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
- static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	do {
-@@ -4424,7 +4481,10 @@ static int nfs4_lock_reclaim(struct nfs4_state *state, struct file_lock *request
- static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	err = nfs4_set_lock_state(state, request);
-@@ -4502,7 +4562,10 @@ out:
- 
- static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	do {
-@@ -4562,7 +4625,10 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
- int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = state->inode,
-+		.dentry = NULL,
-+	};
- 	int err;
- 
- 	err = nfs4_set_lock_state(state, fl);
-@@ -4769,7 +4835,10 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
- 
- int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.inode = dir,
-+		.dentry = NULL,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
+> Did you mean something else when you said "always report EAGAIN"?
+
+Nope.
+
 -- 
-1.7.4.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
