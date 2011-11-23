@@ -1,54 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:36000 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756501Ab1K2VPh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 16:15:37 -0500
-Message-ID: <4ED54B0E.5030403@oracle.com>
-Date: Tue, 29 Nov 2011 13:13:50 -0800
-From: Maxim Uvarov <maxim.uvarov@oracle.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:17935 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754759Ab1KWKxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Nov 2011 05:53:14 -0500
+Subject: [PATCH 4/6] SUNRPC: remove RPC client pipefs dentries after unregister
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Date: Wed, 23 Nov 2011 14:51:48 +0300
+Message-ID: <20111123105148.11077.63906.stgit@localhost6.localdomain6>
+In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: linux-kernel@vger.kernel.org, rlove@rlove.org, eparis@parisplace.org,
-        john@johnmccutchan.com, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org
-Subject: nfs no inotify IN_DELETE  event
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Without this patch we have races:
 
-I'm looking on inotify02 test future in mainline kernel on nfs:
+rpc_fill_super				rpc_free_client
+rpc_pipefs_event(MOUNT)			rpc_remove_pipedir
+spin_lock(&rpc_client_lock);
+rpc_setup_pipedir_sb
+spin_unlock(&rpc_client_lock);
+					spin_lock(&rpc_client_lock);
+					(remove from list)
+					spin_unlock(&rpc_client_lock);
+					MEAMORY LEAKED
 
-inotify_init()                          = 3
-inotify_add_watch(3, ".", IN_ALL_EVENTS)
-creat("test_file1", 0755)               = 5
-rename("test_file1", "test_file2")      = 0
-getcwd("/mnt/nfs2/tmp", 256)            = 14
-rename("/mnt/nfs2/tmp", "/mnt/nfs2/tmp.rename1") = 0
-unlink("test_file2")                    = 0
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-After unlink() if file sytem is not nfs there is event:
-IN_DELETE               0x00000200      /* Subfile was deleted */
-for file test_file2. If file system is nfs there is no such event.
+---
+ net/sunrpc/clnt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-For the first time I thought that this is nfs sever bug related to nfs 
-"silly renamed files" feature. But logically - file test_file2 was not 
-deleted. It was removed with his directory from event watch directory to
-non event watch directory.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 61c76ae..23776a4 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -572,7 +572,6 @@ rpc_free_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_protname, clnt->cl_server);
+-	rpc_clnt_remove_pipedir(clnt);
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
+ 		goto out_free;
+@@ -581,6 +580,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 		kfree(clnt->cl_server);
+ out_free:
+ 	rpc_unregister_client(clnt);
++	rpc_clnt_remove_pipedir(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
 
-1. is it ok that unlink() in that test returns 0, not -1 ENOENT?
-
-2. should we get IN_DELETE for all files and sub folders for event watch 
-directory? Or there should be only one event that directory was removed?
-
-To reproduce:
-http://ltp.sourceforge.net/
-make
-cd testcases/kernel/syscalls/inotify
-export TMPDIR=/mnt/nfs/tmp/
-export TDIRECTORY=/mnt/nfs/tmp/
-./inotify02
-
-Best regards,
-Maxim Uvarov.
