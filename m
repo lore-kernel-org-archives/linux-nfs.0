@@ -1,97 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:34385 "EHLO e6.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:50757 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757072Ab1K3AUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 19:20:20 -0500
-Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Tue, 29 Nov 2011 19:20:19 -0500
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAU0KH9E302888
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 19:20:17 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAU0KE38007008
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 19:20:17 -0500
-In-Reply-To: <1322611689.11286.72.camel@lade.trondhjem.org>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>		   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
-	 <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
-	 <1322606842.11286.33.camel@lade.trondhjem.org>		 <4ED563AC.5040501@panasas.com>
-	 <1322609431.11286.56.camel@lade.trondhjem.org>	 <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com> <1322611689.11286.72.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com,
-        Boaz Harrosh <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>,
-        Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org,
-        Matt Benjamin <matt@linuxbox.com>
+	id S1754092Ab1KWUdj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Nov 2011 15:33:39 -0500
+Date: Wed, 23 Nov 2011 15:33:39 -0500
+To: Todd Freeman <freeman@andrews.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Updated files desync and become unlinked
+Message-ID: <20111123203339.GB1044@fieldses.org>
+References: <4EC53D15.3020801@andrews.edu>
 MIME-Version: 1.0
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-Message-ID: <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Tue, 29 Nov 2011 16:20:12 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EC53D15.3020801@andrews.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-You ignored my main point, I was talking about the server side, my point 
-was that there is nothing to build on on the serve side since the pNFS 
-Linux server is not happening.
-Marc.
+On Thu, Nov 17, 2011 at 11:57:57AM -0500, Todd Freeman wrote:
+> Good day all...
+> 
+> This may (very likely) be me just misunderstanding a "feature" of
+> NFS...  but I have a VERY odd behaviour pattern.
+> 
+> We update a set of perl modules on an NFS client (svn update to grab
+> new files) we then ssh to another client and restart our apache
+> server there and go along our merry way.
+> We noticed that the apache server would fairly consistently have an
+> old version of the file running and continue running with it until a
+> new child started and reread the file (minutes later).
 
+Restarting the apache server should mean apache re-opens the module,
+which should be enough for NFS's close-to-open semantics.
 
+If you're exporting ext3 on the server, it could be a time-resolution
+problem (ext3 has 1-second resolution timestamps), though I wouldn't
+expect that problem to reproduce so quickly.
 
-From:
-Trond Myklebust <Trond.Myklebust@netapp.com>
-To:
-Marc Eshel <eshel@almaden.ibm.com>
-Cc:
-Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com, Boaz Harrosh 
-<bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>, Fred Isaman 
-<iisaman@netapp.com>, linux-nfs@vger.kernel.org, Matt Benjamin 
-<matt@linuxbox.com>
-Date:
-11/29/2011 04:08 PM
-Subject:
-Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+If you're using NFSv4, it could be a delegation bug; run
 
+	echo 0 >/proc/sys/fs/leases-enable
+	
+and restart the nfs server to turn them off.
 
+--b.
 
-On Tue, 2011-11-29 at 15:49 -0800, Marc Eshel wrote: 
-> The only 1 cent that I can add to this argument is that I was led to 
-> believe by you and others that Linux kernel don't add functionality on 
-the 
-> client side that is not supported on the server side. Last time I made 
-> this point I was told that it is ok if they are of by a version or two. 
-> You made it clear that this is no longer true and that the Linux client 
-> and server are now independent of each other. I spent time working on 
-the 
-> server side believing that the client and server will progress more or 
-> less together, disappointed to find out that it is not the case any 
-more.
-> Marc. 
-
-I don't know how to manage layout segments in a way that meets the pNFS
-goals of scalability and performance, and neither you nor the pNFS spec
-have told me how to do this.
-
-If IBM wants a client that implements layout segments, then it is _your_
-responsibility to: 
-     A. Convince me that it is an implementable part of the spec. 
-     B. Provide me with an implementation that deals all with the
-        concerns that I have.
-
-IOW: nobody has ever promised IBM that the community would do all your
-client work for you. EMC, NetApp and Panasas have implemented (most of)
-the bits that they cared about; any bits that they haven't implemented
-and that you care about are up to you.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-
-
-
+> 
+> In debugging this we changed the module so that it checks its .pm
+> file with a stat call to see how things are going. The data that we
+> got from the stat reflected that the file was still old. We noticed
+> that 'ls -al /the/directory/with/the/module/ ' would "fix" the
+> desync... but that 'ls -al /the/directory/with/the/module/Module.pm'
+> would not. We also noticed that an ls of the file in question would
+> show the link count as 0 until it got "fixed", once fixed the link
+> count was 1 again.
+> 
+> Am I missing a mount option.. or is there some way around this
+> "feature" without doing and ls -alR of the whole thing to make sure
+> all the modules are up to date?
+> 
+> My system info:
+> Ubuntu 10.10 server
+> 2.6.35-30-server #60-Ubuntu SMP Mon Sep 19 21:00:00 UTC 2011 x86_64
+> GNU/Linux
+> 
+> nfs-common 1:1.2.2-1ubuntu1.1
+> 
+> Thanks for any help you have to offer.
+> 
+> --
+> Todd
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
