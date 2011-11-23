@@ -1,109 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49291 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753525Ab1KATFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 15:05:25 -0400
-Date: Tue, 1 Nov 2011 15:05:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Call nfsd4_init_slabs() from init_nfsd()
-Message-ID: <20111101190523.GA1891@fieldses.org>
-References: <1320171487-13966-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320171487-13966-1-git-send-email-bjschuma@netapp.com>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:47120 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756315Ab1KWPYF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Nov 2011 10:24:05 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RTEda-0003qX-By
+	for linux-nfs@vger.kernel.org; Wed, 23 Nov 2011 10:21:26 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] nfsidmap: Allow admins to clean up id mappings that have (ver 3)
+Date: Wed, 23 Nov 2011 10:24:00 -0500
+Message-Id: <1322061842-1806-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 01, 2011 at 02:18:07PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> init_nfsd() was calling free_slabs() during cleanup code, but the call
-> to init_slabs() was hidden in nfsd4_state_init().  This could be
-> confusing to people unfamiliar with the code.
+In working with the new idmapper, it became very apparent that
+keys created from bad id mapping were very persistent and were
+not easy disposed of. Unlike with rpc.idmapd, to git rid 
+of bad id mapping one just needed to restart the daemon. 
 
-Good idea.  But: while you're at it, since you just removed the only
-possible error return from nfs4_state_init(), how about going ahead and
-making that a void return.  Probably in the same patch.--b.
+So I've added some functionality to the nfsidmap command
+that will allow admins to:
 
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfsd/nfs4state.c |    5 +----
->  fs/nfsd/nfsctl.c    |    6 +++++-
->  fs/nfsd/nfsd.h      |    2 ++
->  3 files changed, 8 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 47e94e3..765b292 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2301,7 +2301,7 @@ nfsd4_free_slabs(void)
->  	nfsd4_free_slab(&deleg_slab);
->  }
->  
-> -static int
-> +int
->  nfsd4_init_slabs(void)
->  {
->  	openowner_slab = kmem_cache_create("nfsd4_openowners",
-> @@ -4401,9 +4401,6 @@ nfs4_state_init(void)
->  {
->  	int i, status;
->  
-> -	status = nfsd4_init_slabs();
-> -	if (status)
-> -		return status;
->  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
->  		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
->  		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index db34a58..883ea54 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1127,9 +1127,12 @@ static int __init init_nfsd(void)
->  	int retval;
->  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
->  
-> -	retval = nfs4_state_init(); /* nfs4 locking state */
-> +	retval = nfsd4_init_slabs();
->  	if (retval)
->  		return retval;
-> +	retval = nfs4_state_init(); /* nfs4 locking state */
-> +	if (retval)
-> +		goto out_free_slabs;
->  	nfsd_stat_init();	/* Statistics */
->  	retval = nfsd_reply_cache_init();
->  	if (retval)
-> @@ -1160,6 +1163,7 @@ out_free_cache:
->  	nfsd_reply_cache_shutdown();
->  out_free_stat:
->  	nfsd_stat_shutdown();
-> +out_free_slabs:
->  	nfsd4_free_slabs();
->  	return retval;
->  }
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 58134a2..46f97ba 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -105,6 +105,7 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
->  #ifdef CONFIG_NFSD_V4
->  extern unsigned int max_delegations;
->  int nfs4_state_init(void);
-> +int nfsd4_init_slabs(void);
->  void nfsd4_free_slabs(void);
->  int nfs4_state_start(void);
->  void nfs4_state_shutdown(void);
-> @@ -112,6 +113,7 @@ void nfs4_reset_lease(time_t leasetime);
->  int nfs4_reset_recoverydir(char *recdir);
->  #else
->  static inline int nfs4_state_init(void) { return 0; }
-> +static inline int nfsd4_init_slabs(void) { return 0; }
->  static inline void nfsd4_free_slabs(void) { }
->  static inline int nfs4_state_start(void) { return 0; }
->  static inline void nfs4_state_shutdown(void) { }
-> -- 
-> 1.7.7
-> 
+    - remove all the keys on the keyring.
+    - remove a particular key from the keying.
+
+The intention is to allow admins a way to clean up the id
+name space when name resolution mechanisms, like NIS or LDAP, 
+fail and leave a large number (or small number) of id mapping 
+pointing to nobody. 
+
+Note, for the second patch to work, there need to be a small 
+kernel patch that will change the per-key permissions to
+allow root to revoke them.
+
+Version 2:
+- Added the fclose() calls as requested by the code review
+Version 3:
+- Confined the -c flag to only remove keys from the id_resolver keyring.
+
+Steve Dickson (2):
+  nfsidmap: Allow keys to be cleared from the keyring
+  nfsidmap: Allow a particular key to be revoked.
+
+ utils/nfsidmap/nfsidmap.c   |  148 +++++++++++++++++++++++++++++++++++++++++--
+ utils/nfsidmap/nfsidmap.man |   25 +++++++-
+ 2 files changed, 167 insertions(+), 6 deletions(-)
+
+-- 
+1.7.7
+
