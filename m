@@ -1,136 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:58422 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753269Ab1K3AxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Nov 2011 19:53:05 -0500
-Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Tue, 29 Nov 2011 19:53:04 -0500
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAU0r1Qk267856
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 19:53:02 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAU0r18P023161
-	for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 19:53:01 -0500
-In-Reply-To: <1322613425.11286.86.camel@lade.trondhjem.org>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>			   <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
-	 <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
-	 <1322606842.11286.33.camel@lade.trondhjem.org>			 <4ED563AC.5040501@panasas.com>
-	 <1322609431.11286.56.camel@lade.trondhjem.org>		 <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com>
-	 <1322611689.11286.72.camel@lade.trondhjem.org>	 <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com> <1322613425.11286.86.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com,
-        Boaz Harrosh <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>,
-        Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org,
-        Matt Benjamin <matt@linuxbox.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:63093 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754694Ab1KWBOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Nov 2011 20:14:37 -0500
+Message-ID: <4ECC4A0A.9080601@cn.fujitsu.com>
+Date: Wed, 23 Nov 2011 09:19:06 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-Message-ID: <OFCC6E3358.498C4568-ON88257958.00043206-88257958.0004D550@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Tue, 29 Nov 2011 16:52:59 -0800
-Content-Type: text/plain; charset="US-ASCII"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>, Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH] 4.1 CLNT: Test Case for OPEN file with claim_type is
+ CLAIM_FH
+References: <4EC46E76.5040907@cn.fujitsu.com> <20111122222632.GA23818@fieldses.org>
+In-Reply-To: <20111122222632.GA23818@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote on 11/29/2011 04:37:05 
-PM:
-> 
-> Peng Tao, bhalevy, Boaz Harrosh, Garth Gibson, Fred Isaman, linux-
-> nfs, Matt Benjamin
-> 
-> On Tue, 2011-11-29 at 16:20 -0800, Marc Eshel wrote: 
-> > You ignored my main point, I was talking about the server side, my 
-point 
-> > was that there is nothing to build on on the serve side since the pNFS 
 
-> > Linux server is not happening.
-> > Marc.
-> 
-> Sorry. I misunderstood your concern. As far as I know, the main problem
-> there is also one of investment: nobody has stepped up to help Bruce
-> write a pNFS server.
-> 
-> I'm less worried about this now than I was earlier, because other open
-> source efforts are gaining traction (see Ganesha - which is being
-> sponsored by IBM, and projects such as Tigran's java based pNFS server).
-> The other point is that we've developed client test-rigs that don't
-> depend on the availability of a Linux server (newpynfs and the pynfs
-> based proxy).
 
-You got it backward, Ganesha is getting traction precisely because the 
-Linux kernel server is not happening :)
-Sorry, I did not mean to change the topic of this thread, go back to 
-addressing Boaz's concern.
-Marc. 
+J. Bruce Fields:
+> On Thu, Nov 17, 2011 at 10:16:22AM +0800, Mi Jinlong wrote:
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>>  nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
+>>  1 files changed, 37 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+>> index bd995a5..87b58b3 100644
+>> --- a/nfs4.1/server41tests/st_open.py
+>> +++ b/nfs4.1/server41tests/st_open.py
+>> @@ -1,6 +1,6 @@
+>>  from st_create_session import create_session
+>>  from nfs4_const import *
+>> -from environment import check, checklist, fail, create_file, open_file
+>> +from environment import check, checklist, fail, create_file, open_file, close_file
+>>  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+>>  from nfs4_type import creatverfattr, fattr4
+>>  import nfs4_ops as op
+>> @@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+>>      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
+>>                          verifier = "Justtest")
+>>      check(res, NFS4ERR_EXIST)
+>> +
+>> +def testOPENClaimFH(t, env):
+>> +    """OPEN file with claim_type is CLAIM_FH
+>> +
+>> +    FLAGS: open all
+>> +    CODE: OPEN7
+>> +    """
+>> +    sess1 = env.c1.new_client_session(env.testname(t))
+>> +    res = create_file(sess1, env.testname(t))
+>> +    check(res)
+>> +
+>> +    fh = res.resarray[-1].object
+>> +    stateid = res.resarray[-2].stateid
+>> +    res = close_file(sess1, fh, stateid=stateid)
+>> +    check(res)
+>> +
+>> +    claim = open_claim4(CLAIM_FH)
+>> +    how = openflag4(OPEN4_NOCREATE)
+>> +    oowner = open_owner4(0, "My Open Owner 2")
+>> +    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
+>> +                      oowner, how, claim)
+>> +    res = sess1.compound([op.putfh(fh), open_op])
+>> +    check(res)
+> 
+> You could just stop here.  But I suppose I don't see a problem with
+> doing some IO to the file too just to make sure the open is usable.
+
+  Yes, that's right.
 
 > 
-> Cheers
->   Trond 
+>> +
+>> +    stateid = res.resarray[-1].stateid
+>> +    stateid.seqid = 0
 > 
-> > From:
-> > Trond Myklebust <Trond.Myklebust@netapp.com>
-> > To:
-> > Marc Eshel <eshel@almaden.ibm.com>
-> > Cc:
-> > Peng Tao <bergwolf@gmail.com>, bhalevy@tonian.com, Boaz Harrosh 
-> > <bharrosh@panasas.com>, Garth Gibson <garth@panasas.com>, Fred Isaman 
-> > <iisaman@netapp.com>, linux-nfs@vger.kernel.org, Matt Benjamin 
-> > <matt@linuxbox.com>
-> > Date:
-> > 11/29/2011 04:08 PM
-> > Subject:
-> > Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-> > 
-> > 
-> > 
-> > On Tue, 2011-11-29 at 15:49 -0800, Marc Eshel wrote: 
-> > > The only 1 cent that I can add to this argument is that I was led to 
+> Why are you modifying the seqid?
+> 
+>> +    data = "write test data"
+>> +    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
+>> +    check(res)
+>> +    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
+>> +    check(res)
+>> +    if not res.resarray[-1].eof:
+>> +        fail("EOF not set on read")
+>> +    desired = "\0"*5 + data
+> 
+> Why the five nulls?  I don't understand this code....
 
-> > > believe by you and others that Linux kernel don't add functionality 
-on 
-> > the 
-> > > client side that is not supported on the server side. Last time I 
-made 
-> > > this point I was told that it is ok if they are of by a version or 
-two. 
-> > > You made it clear that this is no longer true and that the Linux 
-client 
-> > > and server are now independent of each other. I spent time working 
-on 
-> > the 
-> > > server side believing that the client and server will progress more 
-or 
-> > > less together, disappointed to find out that it is not the case any 
-> > more.
-> > > Marc. 
-> > 
-> > I don't know how to manage layout segments in a way that meets the 
-pNFS
-> > goals of scalability and performance, and neither you nor the pNFS 
-spec
-> > have told me how to do this.
-> > 
-> > If IBM wants a client that implements layout segments, then it is 
-_your_
-> > responsibility to: 
-> >      A. Convince me that it is an implementable part of the spec. 
-> >      B. Provide me with an implementation that deals all with the
-> >         concerns that I have.
-> > 
-> > IOW: nobody has ever promised IBM that the community would do all your
-> > client work for you. EMC, NetApp and Panasas have implemented (most 
-of)
-> > the bits that they cared about; any bits that they haven't implemented
-> > and that you care about are up to you.
-> > 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+  I just do a simple READ and WRITE as OPEN30.
+  I will have a check about that.
+
+  Thanks for your comments.
+
+  Ps: Adding Fred.
+
+thanks,
+Mi Jinlong
 
