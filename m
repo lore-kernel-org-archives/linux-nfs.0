@@ -1,58 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43293 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:12885 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753199Ab1KECcf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 22:32:35 -0400
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Lukas Razik <linux@razik.name>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Fri, 04 Nov 2011 22:30:44 -0400
-In-Reply-To: <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
-	  <1320353685.18396.119.camel@lade.trondhjem.org>
-	  <20111103211100.GA8393@umich.edu>
-	  <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
-	  <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
-	  <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
-	  <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
-	  <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
-	  <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
-	  <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
-	  <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com>
-	 <1320455965.2750.9.camel@lade.trondhjem.org>
-	 <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320460244.2750.19.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1753616Ab1KWKwr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Nov 2011 05:52:47 -0500
+Subject: [PATCH 1/6] SUNRPC: handle RPC client pipefs dentries by network
+	namespace aware routines
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Date: Wed, 23 Nov 2011 14:51:21 +0300
+Message-ID: <20111123105121.11077.53982.stgit@localhost6.localdomain6>
+In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2011-11-05 at 02:14 +0000, Lukas Razik wrote: 
-> ***IMPORTANT HINT***
-> 
-> In the test belowI've tried to ping the NFS client (cluster2) as soon as I've got the
-> 
-> ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> message.
-> 
-> 
-> And at first I've got no answers from the client. But 10-20sec later I've got pongs back.
-> So the NIC comes up some seconds later than the message "link becomes ready" is shown...
-> In the case of 'mountproto=tcp' it comes up after the kernel panic. So that's much too late.
-> 
+This patch makes RPC clients PipeFs dentries allocations in it's owner network
+namespace context.
+RPC client pipefs dentries creation logic has been changed:
+1) Pipefs dentries creation by sb was moved to separated function, which will
+be used for handling PipeFS mount notification.
+2) Initial value of RPC client PipeFS dir dentry is set no NULL now.
 
-So, once again...
+RPC client pipefs dentries cleanup logic has been changed:
+1) Cleanup is done now in separated rpc_remove_pipedir() function, which takes
+care about pipefs superblock locking.
 
-What kind of switch is this client connected to, and how is that switch
-configured?
+Also this patch removes slashes from cb_program.pipe_dir_name and from
+NFS_PIPE_DIRNAME to make rpc_d_lookup_sb() work. This doesn't affect
+vfs_path_lookup() results in nfs4blocklayout_init() since this slash is cutted
+off anyway in link_path_walk().
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+---
+ fs/nfsd/nfs4callback.c |    2 +
+ include/linux/nfs.h    |    2 +
+ net/sunrpc/clnt.c      |   93 +++++++++++++++++++++++++++++++-----------------
+ 3 files changed, 62 insertions(+), 35 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 02eb4ed..1ac6f55 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -618,7 +618,7 @@ static struct rpc_program cb_program = {
+ 	.nrvers			= ARRAY_SIZE(nfs_cb_version),
+ 	.version		= nfs_cb_version,
+ 	.stats			= &cb_stats,
+-	.pipe_dir_name		= "/nfsd4_cb",
++	.pipe_dir_name		= "nfsd4_cb",
+ };
+ 
+ static int max_cb_time(void)
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 8c6ee44..6d1fb63 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -29,7 +29,7 @@
+ #define NFS_MNT_VERSION		1
+ #define NFS_MNT3_VERSION	3
+ 
+-#define NFS_PIPE_DIRNAME "/nfs"
++#define NFS_PIPE_DIRNAME "nfs"
+ 
+ /*
+  * NFS stats. The good thing with these values is that NFSv3 errors are
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c5347d2..008c755 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -93,52 +93,85 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ 	spin_unlock(&rpc_client_lock);
+ }
+ 
+-static int
+-rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
++static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
++{
++	if (clnt->cl_path.dentry)
++		rpc_remove_client_dir(clnt->cl_path.dentry);
++	clnt->cl_path.dentry = NULL;
++}
++
++static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
++{
++	struct super_block *pipefs_sb;
++
++	pipefs_sb = rpc_get_sb_net(clnt->cl_xprt->xprt_net);
++	if (pipefs_sb) {
++		__rpc_clnt_remove_pipedir(clnt);
++		rpc_put_sb_net(clnt->cl_xprt->xprt_net);
++	}
++	rpc_put_mount();
++}
++
++static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
++				    struct rpc_clnt *clnt, char *dir_name)
+ {
+ 	static uint32_t clntid;
+-	struct path path, dir;
+ 	char name[15];
+ 	struct qstr q = {
+ 		.name = name,
+ 	};
++	struct dentry *dir, *dentry;
+ 	int error;
+ 
+-	clnt->cl_path.mnt = ERR_PTR(-ENOENT);
+-	clnt->cl_path.dentry = ERR_PTR(-ENOENT);
+-	if (dir_name == NULL)
+-		return 0;
+-
+-	path.mnt = rpc_get_mount();
+-	if (IS_ERR(path.mnt))
+-		return PTR_ERR(path.mnt);
+-	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &dir);
+-	if (error)
+-		goto err;
+-
++	dir = rpc_d_lookup_sb(sb, dir_name);
++	if (dir == NULL)
++		return dir;
+ 	for (;;) {
+ 		q.len = snprintf(name, sizeof(name), "clnt%x", (unsigned int)clntid++);
+ 		name[sizeof(name) - 1] = '\0';
+ 		q.hash = full_name_hash(q.name, q.len);
+-		path.dentry = rpc_create_client_dir(dir.dentry, &q, clnt);
+-		if (!IS_ERR(path.dentry))
++		dentry = rpc_create_client_dir(dir, &q, clnt);
++		if (!IS_ERR(dentry))
+ 			break;
+-		error = PTR_ERR(path.dentry);
++		error = PTR_ERR(dentry);
+ 		if (error != -EEXIST) {
+ 			printk(KERN_INFO "RPC: Couldn't create pipefs entry"
+ 					" %s/%s, error %d\n",
+ 					dir_name, name, error);
+-			goto err_path_put;
++			break;
+ 		}
+ 	}
+-	path_put(&dir);
++	dput(dir);
++	return dentry;
++}
++
++static int
++rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
++{
++	struct super_block *pipefs_sb;
++	struct path path;
++
++	clnt->cl_path.mnt = ERR_PTR(-ENOENT);
++	clnt->cl_path.dentry = NULL;
++	if (dir_name == NULL)
++		return 0;
++
++	path.mnt = rpc_get_mount();
++	if (IS_ERR(path.mnt))
++		return PTR_ERR(path.mnt);
++	pipefs_sb = rpc_get_sb_net(clnt->cl_xprt->xprt_net);
++	if (!pipefs_sb) {
++		rpc_put_mount();
++		return -ENOENT;
++	}
++	path.dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
++	rpc_put_sb_net(clnt->cl_xprt->xprt_net);
++	if (IS_ERR(path.dentry)) {
++		rpc_put_mount();
++		return PTR_ERR(path.dentry);
++	}
+ 	clnt->cl_path = path;
+ 	return 0;
+-err_path_put:
+-	path_put(&dir);
+-err:
+-	rpc_put_mount();
+-	return error;
+ }
+ 
+ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, struct rpc_xprt *xprt)
+@@ -246,10 +279,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	return clnt;
+ 
+ out_no_auth:
+-	if (!IS_ERR(clnt->cl_path.dentry)) {
+-		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
+-	}
++	rpc_clnt_remove_pipedir(clnt);
+ out_no_path:
+ 	kfree(clnt->cl_principal);
+ out_no_principal:
+@@ -474,10 +504,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_protname, clnt->cl_server);
+-	if (!IS_ERR(clnt->cl_path.dentry)) {
+-		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
+-	}
++	rpc_clnt_remove_pipedir(clnt);
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
+ 		goto out_free;
 
