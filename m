@@ -1,71 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:44649 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751937Ab1KMNpt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Nov 2011 08:45:49 -0500
-Received: by bke11 with SMTP id 11so4920959bke.19
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Nov 2011 05:45:48 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:38993 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754900Ab1KWKx3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Nov 2011 05:53:29 -0500
+Subject: [PATCH 6/6] SUNRPC: remove RPC PipeFS mount point reference from RPC
+	client
+To: bfields@fieldses.org, Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Date: Wed, 23 Nov 2011 14:52:04 +0300
+Message-ID: <20111123105204.11077.54113.stgit@localhost6.localdomain6>
+In-Reply-To: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
+References: <20111123104945.11077.10270.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <20111113145400.6c7a9be3@notabene.brown>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	<1321056809.8733.2.camel@lade.trondhjem.org>
-	<20111112144953.GA3740@infradead.org>
-	<20111113145400.6c7a9be3@notabene.brown>
-Date: Sun, 13 Nov 2011 14:45:48 +0100
-Message-ID: <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: NeilBrown <neilb@suse.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have a server which runs on top of hadoop. The problem with hadoop
-is that there is no way to have persistent file handles. I am
-currently working on a way to do that - either simulate them or add a
-support for unique file id to hadoop. If linux client will support
-volatile file handles then I can stop inventing some workarounds.
+This is a cleanup patch. We don't need this reference anymore.
 
-Tigran.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On Sun, Nov 13, 2011 at 4:54 AM, NeilBrown <neilb@suse.de> wrote:
-> On Sat, 12 Nov 2011 09:49:53 -0500 Christoph Hellwig <hch@infradead.org>
-> wrote:
->
->> On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
->> > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote:
->> > > This patch series implements client side support for volatile file handle
->> > > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
->> > > test the client you either need a server that supports volatile file handles or
->> > > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
->> > > NFSERR_STALE. (See the last patch in the series)
->> >
->> > WHY do we want to support this kind of "feature"? As you said, the RFC
->> > doesn't actually help in figuring out how this crap is supposed to work
->> > in practice, so why do we even consider starting to give a damn?
->>
->> *nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
->> outright rejecting it.
->
-> Hence the suggested mount option.
->
-> A server might not be able to provide stable file handles, but can ensure
-> that files don't get renamed - for these filesystems, the name is a
-> reliable stable handle for the file (it just doesn't fit in the NFSv4 file
-> handle structure).
->
-> So if you know the filesystem will only return FHEXPIRED for filehandles
-> belonging to files that cannot be renamed, then it is perfectly reasonable to
-> repeat the name lookup to re-access the file after the server forgets about
-> an old filehandle.  The mount option is how you communicate this knowledge,
-> because the RFC doesn't provide a way to communicate it.
->
-> NeilBrown
->
->
->
+---
+ fs/nfs/idmap.c                 |    4 ++--
+ include/linux/sunrpc/clnt.h    |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c |    8 ++++----
+ net/sunrpc/clnt.c              |   21 ++++++++++-----------
+ 4 files changed, 17 insertions(+), 18 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index b09a7f1..60698a1 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -370,8 +370,8 @@ nfs_idmap_new(struct nfs_client *clp)
+ 		return error;
+ 	}
+ 
+-	if (clp->cl_rpcclient->cl_path.dentry)
+-		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_path.dentry,
++	if (clp->cl_rpcclient->cl_dentry)
++		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_dentry,
+ 				"idmap", idmap, pipe);
+ 	if (IS_ERR(pipe->dentry)) {
+ 		error = PTR_ERR(pipe->dentry);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index db7bcaf..9fe39bc 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -56,7 +56,7 @@ struct rpc_clnt {
+ 
+ 	int			cl_nodelen;	/* nodename length */
+ 	char 			cl_nodename[UNX_MAXNODENAME];
+-	struct path		cl_path;
++	struct dentry *		cl_dentry;
+ 	struct rpc_clnt *	cl_parent;	/* Points to parent of clones */
+ 	struct rpc_rtt		cl_rtt_default;
+ 	struct rpc_timeout	cl_timeout_default;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 66293dc..8673220 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -799,12 +799,12 @@ static int gss_pipes_dentries_create(struct rpc_auth *auth)
+ 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
+ 	clnt = gss_auth->client;
+ 
+-	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_path.dentry,
++	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+ 						      "gssd",
+ 						      clnt, gss_auth->pipe[1]);
+ 	if (IS_ERR(gss_auth->pipe[1]->dentry))
+ 		return PTR_ERR(gss_auth->pipe[1]->dentry);
+-	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_path.dentry,
++	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
+ 						      gss_auth->mech->gm_name,
+ 						      clnt, gss_auth->pipe[0]);
+ 	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
+@@ -826,7 +826,7 @@ static void gss_pipes_dentries_destroy_net(struct rpc_clnt *clnt,
+ 
+ 	sb = rpc_get_sb_net(net);
+ 	if (sb) {
+-		if (clnt->cl_path.dentry)
++		if (clnt->cl_dentry)
+ 			gss_pipes_dentries_destroy(auth);
+ 		rpc_put_sb_net(net);
+ 	}
+@@ -841,7 +841,7 @@ static int gss_pipes_dentries_create_net(struct rpc_clnt *clnt,
+ 
+ 	sb = rpc_get_sb_net(net);
+ 	if (sb) {
+-		if (clnt->cl_path.dentry)
++		if (clnt->cl_dentry)
+ 			err = gss_pipes_dentries_create(auth);
+ 		rpc_put_sb_net(net);
+ 	}
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index eb2595f..3971aaa 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -95,12 +95,12 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ 
+ static void __rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_path.dentry) {
++	if (clnt->cl_dentry) {
+ 		if (clnt->cl_auth && clnt->cl_auth->au_ops->pipes_destroy)
+ 			clnt->cl_auth->au_ops->pipes_destroy(clnt->cl_auth);
+-		rpc_remove_client_dir(clnt->cl_path.dentry);
++		rpc_remove_client_dir(clnt->cl_dentry);
+ 	}
+-	clnt->cl_path.dentry = NULL;
++	clnt->cl_dentry = NULL;
+ }
+ 
+ static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
+@@ -151,20 +151,19 @@ static int
+ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ {
+ 	struct super_block *pipefs_sb;
+-	struct path path;
++	struct dentry *dentry;
+ 
+-	clnt->cl_path.mnt = ERR_PTR(-ENOENT);
+-	clnt->cl_path.dentry = NULL;
++	clnt->cl_dentry = NULL;
+ 	if (dir_name == NULL)
+ 		return 0;
+ 	pipefs_sb = rpc_get_sb_net(clnt->cl_xprt->xprt_net);
+ 	if (!pipefs_sb)
+ 		return 0;
+-	path.dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
++	dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt, dir_name);
+ 	rpc_put_sb_net(clnt->cl_xprt->xprt_net);
+-	if (IS_ERR(path.dentry))
+-		return PTR_ERR(path.dentry);
+-	clnt->cl_path = path;
++	if (IS_ERR(dentry))
++		return PTR_ERR(dentry);
++	clnt->cl_dentry = dentry;
+ 	return 0;
+ }
+ 
+@@ -183,7 +182,7 @@ static int __rpc_pipefs_event(struct rpc_clnt *clnt, unsigned long event,
+ 		BUG_ON(dentry == NULL);
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+-		clnt->cl_path.dentry = dentry;
++		clnt->cl_dentry = dentry;
+ 		if (clnt->cl_auth->au_ops->pipes_create) {
+ 			err = clnt->cl_auth->au_ops->pipes_create(clnt->cl_auth);
+ 			if (err)
+
