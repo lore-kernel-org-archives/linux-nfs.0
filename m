@@ -1,186 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:47233 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755177Ab1KJJh2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:37:28 -0500
-Received: by fagn18 with SMTP id n18so302436fag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Nov 2011 01:37:27 -0800 (PST)
-Message-ID: <4EBB9B53.6050203@tonian.com>
-Date: Thu, 10 Nov 2011 11:37:23 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:3895 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754109Ab1KYNOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Nov 2011 08:14:30 -0500
+Subject: [PATCH 0/6] NFS: create DNS resolver cache per network namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 25 Nov 2011 17:12:29 +0300
+Message-ID: <20111125130557.6271.95071.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: tao.peng@emc.com
-CC: bergwolf@gmail.com, linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com> <1320851766-1834-8-git-send-email-bergwolf@gmail.com> <4EBB9136.7010603@tonian.com> <F19688880B763E40B28B2B462677FBF805DD054C38@MX09A.corp.emc.com>
-In-Reply-To: <F19688880B763E40B28B2B462677FBF805DD054C38@MX09A.corp.emc.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-10 11:08, tao.peng@emc.com wrote:
-> 
->> -----Original Message-----
->> From: Benny Halevy [mailto:bhalevy@tonian.com]
->> Sent: Thursday, November 10, 2011 4:54 PM
->> To: Peng Tao
->> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
->> Subject: Re: [PATCH 7/8] pnfsblock: add im_extents to pnfs_inval_markings
->>
->> On 2011-11-09 17:16, Peng Tao wrote:
->>> It stores a list of short extents for INVAL->RW conversion.
->>> Also add two functions to manipulate them, in preparation to
->>> move malloc logic out of end_io.
->>>
->>> Signed-off-by: Peng Tao <peng_tao@emc.com>
->>> ---
->>>  fs/nfs/blocklayout/blocklayout.c |    6 ++++++
->>>  fs/nfs/blocklayout/blocklayout.h |    5 +++++
->>>  fs/nfs/blocklayout/extents.c     |   37
->> +++++++++++++++++++++++++++++++++++++
->>>  3 files changed, 48 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
->>> index 815c0c3..cb4ff0f 100644
->>> --- a/fs/nfs/blocklayout/blocklayout.c
->>> +++ b/fs/nfs/blocklayout/blocklayout.c
->>> @@ -706,11 +706,17 @@ static void
->>>  release_inval_marks(struct pnfs_inval_markings *marks)
->>>  {
->>>  	struct pnfs_inval_tracking *pos, *temp;
->>> +	struct pnfs_block_short_extent *se, *stemp;
->>>
->>>  	list_for_each_entry_safe(pos, temp, &marks->im_tree.mtt_stub, it_link) {
->>>  		list_del(&pos->it_link);
->>>  		kfree(pos);
->>>  	}
->>> +
->>> +	list_for_each_entry_safe(se, stemp, &marks->im_extents, bse_node) {
->>> +		list_del(&se->bse_node);
->>> +		kfree(se);
->>> +	}
->>>  	return;
->>>  }
->>>
->>> diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
->>> index 60728ac..df0e0fb 100644
->>> --- a/fs/nfs/blocklayout/blocklayout.h
->>> +++ b/fs/nfs/blocklayout/blocklayout.h
->>> @@ -70,6 +70,7 @@ struct pnfs_inval_markings {
->>>  	spinlock_t	im_lock;
->>>  	struct my_tree	im_tree;	/* Sectors that need LAYOUTCOMMIT */
->>>  	sector_t	im_block_size;	/* Server blocksize in sectors */
->>> +	struct list_head im_extents;	/* List of short extents for INVAL->RW conversion
->> */
->>>  };
->>>
->>>  struct pnfs_inval_tracking {
->>> @@ -105,6 +106,7 @@ BL_INIT_INVAL_MARKS(struct pnfs_inval_markings
->> *marks, sector_t blocksize)
->>>  {
->>>  	spin_lock_init(&marks->im_lock);
->>>  	INIT_LIST_HEAD(&marks->im_tree.mtt_stub);
->>> +	INIT_LIST_HEAD(&marks->im_extents);
->>>  	marks->im_block_size = blocksize;
->>>  	marks->im_tree.mtt_step_size = min((sector_t)PAGE_CACHE_SECTORS,
->>>  					   blocksize);
->>> @@ -200,5 +202,8 @@ int bl_add_merge_extent(struct pnfs_block_layout *bl,
->>>  			 struct pnfs_block_extent *new);
->>>  int bl_mark_for_commit(struct pnfs_block_extent *be,
->>>  			sector_t offset, sector_t length);
->>> +int bl_push_one_short_extent(struct pnfs_inval_markings *marks);
->>> +struct pnfs_block_short_extent*
->>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop);
->>>
->>>  #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
->>> diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
->>> index 952ea8a..72c7fa1 100644
->>> --- a/fs/nfs/blocklayout/extents.c
->>> +++ b/fs/nfs/blocklayout/extents.c
->>> @@ -863,3 +863,40 @@ clean_pnfs_block_layoutupdate(struct
->> pnfs_block_layout *bl,
->>>  		}
->>>  	}
->>>  }
->>> +
->>> +int
->>> +bl_push_one_short_extent(struct pnfs_inval_markings *marks) {
->>> +	struct pnfs_block_short_extent *new;
->>> +
->>> +	new = kmalloc(sizeof(*new), GFP_NOFS);
->>> +	if (unlikely(!new))
->>> +		return -ENOMEM;
->>> +
->>> +	spin_lock(&marks->im_lock);
->>> +	list_add(&new->bse_node, &marks->im_extents);
->>> +	spin_unlock(&marks->im_lock);
->>> +
->>> +	return 0;
->>> +}
->>> +
->>> +struct pnfs_block_short_extent*
->>> +bl_pop_short_extent(struct pnfs_inval_markings *marks, int num_to_pop) {
->>> +	struct pnfs_block_short_extent *rv = NULL;
->>> +
->>> +	if (unlikely(num_to_pop <= 0))
->>> +		return rv;
->>
->> How unlikely is it?
->> Is doing the extra compare really worth saving the spin_lock?
-> Never... I should really replace it with a BUG_ON.
-> 
->>
->>> +
->>> +	spin_lock(&marks->im_lock);
->>> +	while (!list_empty(&marks->im_extents) && num_to_pop-- > 0) {
->>> +		rv = list_entry((&marks->im_extents)->next,
->>> +				struct pnfs_block_short_extent, bse_node);
->>> +		list_del_init(&rv->bse_node);
->>> +		if (num_to_pop)
->>> +			kfree(rv);
->>
->> Please correct me if I'm wrong, you don't want to free the last element
->> you pop since you want to return it. This is worth a comment...
-> Yes, you are right. Will add some comments above the function.
-> 
->>
->> I'd consider moving the decrement expression down here or
->> changing the loop to be a for loop to improve its readability.
->> In the latter case this will say if (num_to_pop > 1) kfree(rv)
->> which is more straight forward IMHO.
-> How about following?
-> 
-> BUG_ON(num_to_pop <= 0);
-> 
-> list_for_each_entry_safe() {
-> list_del_init(&rv->bse_node);
-> if (num_to_pop-- > 1)
->    kfree(rv);
-> }
-> 
+This patch set was created in context of clone of git
+branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+tag: v3.1
 
-This looks better, but please read my next comment on this patch.
-I believe you better split this function into two:
-one that pops a single element and returns it (or NULL is the list is empty)
-and another that just destroys the list, freeing all listed elements.
+This patch set depends on previous patch sets titled:
+1) "SUNRPC: initial part of making pipefs work in net ns"
+2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
 
-Benny
+Actually, this patch set consists of two tightly connected parts:
+1) DNS resolver cache per network namespcae implementation itself
+2) DNS resolver cache dentries creation by PipeFS network namespace aware
+routines.
 
-> Thanks,
-> Tao
-> 
->>
->> Benny
->>
->>> +	}
->>> +	spin_unlock(&marks->im_lock);
->>> +
->>> +	BUG_ON(num_to_pop > 0);
->>> +
->>> +	return rv;
->>> +}
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thus this patch set is the second part of "PipeFS per network namespace"
+story.
+
+The following series consists of:
+
+---
+
+Stanislav Kinsbursky (6):
+      SUNRPC: split cache creation and PipeFS registration
+      NFS: split cache creation and PipeFS registration
+      NFS: handle NFS caches dentries by network namespace aware routines
+      NFS: DNS resolver cache per network namespace context introduced
+      NFS: DNS resolver PipeFS notifier introduced
+      NFS: remove RPC PipeFS mount point references from NFS cache routines
+
+
+ fs/nfs/cache_lib.c           |   61 ++++++++++++++------
+ fs/nfs/cache_lib.h           |   10 +++
+ fs/nfs/dns_resolve.c         |  125 ++++++++++++++++++++++++++++++++++--------
+ fs/nfs/dns_resolve.h         |   14 ++++-
+ fs/nfs/inode.c               |   33 ++++++++++-
+ fs/nfs/netns.h               |   13 ++++
+ fs/nfs/nfs4namespace.c       |    8 ++-
+ include/linux/sunrpc/cache.h |    2 +
+ net/sunrpc/cache.c           |   12 ++--
+ 9 files changed, 218 insertions(+), 60 deletions(-)
+ create mode 100644 fs/nfs/netns.h
+
+-- 
+Signature
