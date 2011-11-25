@@ -1,58 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17391 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:29065 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752978Ab1KECce convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 22:32:34 -0400
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Lukas Razik <linux@razik.name>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Fri, 04 Nov 2011 22:31:17 -0400
-In-Reply-To: <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com>
-	  <1320353685.18396.119.camel@lade.trondhjem.org>
-	  <20111103211100.GA8393@umich.edu>
-	  <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com>
-	  <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com>
-	  <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
-	  <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
-	  <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
-	  <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
-	  <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
-	  <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com>
-	 <1320455965.2750.9.camel@lade.trondhjem.org>
-	 <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1320460277.2750.20.camel@lade.trondhjem.org>
-Mime-Version: 1.0
+	id S1755414Ab1KYNO3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Nov 2011 08:14:29 -0500
+Subject: [PATCH 2/6] NFS: split cache creation and PipeFS registration
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 25 Nov 2011 17:12:48 +0300
+Message-ID: <20111125131248.6271.19003.stgit@localhost6.localdomain6>
+In-Reply-To: <20111125130557.6271.95071.stgit@localhost6.localdomain6>
+References: <20111125130557.6271.95071.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2011-11-05 at 02:14 +0000, Lukas Razik wrote: 
-> ***IMPORTANT HINT***
-> 
-> In the test belowI've tried to ping the NFS client (cluster2) as soon as I've got the
-> 
-> ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-> message.
-> 
-> 
-> And at first I've got no answers from the client. But 10-20sec later I've got pongs back.
-> So the NIC comes up some seconds later than the message "link becomes ready" is shown...
-> In the case of 'mountproto=tcp' it comes up after the kernel panic. So that's much too late.
-> 
+This precursor patch splits NFS cache creation and PipeFS registartion.
+It's required for latter split of NFS DNS resolver cache creation per network
+namespace context and PipeFS registration/unregistration on MOUNT/UMOUNT
+events.
 
-So, once again...
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-What kind of switch is this client connected to, and how is that switch
-configured?
+---
+ fs/nfs/cache_lib.c   |   11 +++++++++--
+ fs/nfs/cache_lib.h   |    2 ++
+ fs/nfs/dns_resolve.c |   11 ++++++++++-
+ 3 files changed, 21 insertions(+), 3 deletions(-)
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index d62a895..9d79a2e 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -120,7 +120,6 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	mnt = rpc_get_mount();
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+-	sunrpc_init_cache_detail(cd);
+ 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &path);
+ 	if (ret)
+ 		goto err;
+@@ -129,7 +128,6 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	if (!ret)
+ 		return ret;
+ err:
+-	sunrpc_destroy_cache_detail(cd);
+ 	rpc_put_mount();
+ 	return ret;
+ }
+@@ -141,3 +139,12 @@ void nfs_cache_unregister(struct cache_detail *cd)
+ 	rpc_put_mount();
+ }
+ 
++void nfs_cache_init(struct cache_detail *cd)
++{
++	sunrpc_init_cache_detail(cd);
++}
++
++void nfs_cache_destroy(struct cache_detail *cd)
++{
++	sunrpc_destroy_cache_detail(cd);
++}
+diff --git a/fs/nfs/cache_lib.h b/fs/nfs/cache_lib.h
+index 7cf6caf..815dd66 100644
+--- a/fs/nfs/cache_lib.h
++++ b/fs/nfs/cache_lib.h
+@@ -23,5 +23,7 @@ extern struct nfs_cache_defer_req *nfs_cache_defer_req_alloc(void);
+ extern void nfs_cache_defer_req_put(struct nfs_cache_defer_req *dreq);
+ extern int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq);
+ 
++extern void nfs_cache_init(struct cache_detail *cd);
++extern void nfs_cache_destroy(struct cache_detail *cd);
+ extern int nfs_cache_register(struct cache_detail *cd);
+ extern void nfs_cache_unregister(struct cache_detail *cd);
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index a6e711a..619dea6 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -361,12 +361,21 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+ 
+ int nfs_dns_resolver_init(void)
+ {
+-	return nfs_cache_register(&nfs_dns_resolve);
++	int err;
++
++	nfs_cache_init(&nfs_dns_resolve);
++	err = nfs_cache_register(&nfs_dns_resolve);
++	if (err) {
++		nfs_cache_destroy(&nfs_dns_resolve);
++		return err;
++	}
++	return 0;
+ }
+ 
+ void nfs_dns_resolver_destroy(void)
+ {
+ 	nfs_cache_unregister(&nfs_dns_resolve);
++	nfs_cache_destroy(&nfs_dns_resolve);
+ }
+ 
+ #endif
 
