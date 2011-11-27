@@ -1,114 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52480 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39105 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757002Ab1KRWiJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:38:09 -0500
-Message-ID: <1321655886.10541.24.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: John Hughes <john@calvaedi.com>
-Cc: John Hughes <john@calva.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Sat, 19 Nov 2011 00:38:06 +0200
-In-Reply-To: <4EC6D767.6030109@calvaedi.com>
-References: <4EC66D12.2090505@Calva.COM>
-		 <1321641333.2653.15.camel@lade.trondhjem.org>
-		 <4EC6AFA9.9000705@calvaedi.com>
-	 <1321648435.2653.53.camel@lade.trondhjem.org>
-	 <4EC6D767.6030109@calvaedi.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1754215Ab1K0FgQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 Nov 2011 00:36:16 -0500
+From: Cong Wang <amwang@redhat.com>
+To: linux-kernel@vger.kernel.org
+Cc: akpm@linux-foundation.org, Cong Wang <amwang@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 41/62] nfs: remove the second argument of k[un]map_atomic()
+Date: Sun, 27 Nov 2011 13:27:21 +0800
+Message-Id: <1322371662-26166-42-git-send-email-amwang@redhat.com>
+In-Reply-To: <1322371662-26166-1-git-send-email-amwang@redhat.com>
+References: <1322371662-26166-1-git-send-email-amwang@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2011-11-18 at 23:08 +0100, John Hughes wrote: 
-> On 11/18/2011 09:33 PM, Trond Myklebust wrote:
-> > On Fri, 2011-11-18 at 20:19 +0100, John Hughes wrote:
-> >    
-> >> On 11/18/2011 07:35 PM, Trond Myklebust wrote:
-> >>      
-> >>>
-> >>> You need a big fat warning somewhere that enabling this option WILL
-> >>> cause data corruption...
-> >>>
-> >>>        
-> >> Why?
-> >>
-> >> Because some process may get the EACCES error half way through it's
-> >> operation.
-> >>      
-> > No. Because the process can receive a reply to the write() syscall that
-> > indicates that the data is safe,
-> 
-> There is no reply from "write(2)" that says the data is safe.
 
-Read the rest of the thread... Jim and Nick already made this point, and
-I've replied.
+Signed-off-by: Cong Wang <amwang@redhat.com>
+---
+ fs/nfs/dir.c      |    8 ++++----
+ fs/nfs/nfs4proc.c |    4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-The fact of the matter is that most application writers remain blithely
-oblivious of the need to fsync() as the ext4 people know all to well:
-see the attempts to impose the fully posix-compatible 'data=writeback'
-mode as the default and the catastrophe that occurred when
-'data=ordered' semantics changed for the rename() syscall. Adding new
-failure modes needs to be done with care, or GNOME will crash and/or
-your word processor _will_ lose your last hour or so of work.
-
-> >   but the EKEYEXPIRED error will cause
-> > the data to be lost when the client tries to actually commit the data to
-> > disk.
-> >
-> >    
-> >> The traditional Kerberos/AFS way was to behave the old way, and use
-> >> krenew to keep the ticket from expiring if a process needed to be run
-> >> overnight.
-> >>      
-> > Which is just wrong: the general intention of kerberos security is to
-> > ensure that the _user_ has ACKed an operation. Renewing tickets without
-> > user input would circumvent that intention. If you need to have the job
-> > run overnight, then ask for a longer lifetime for your ticket.
-> >    
-> 
-> Ok, so no need for the hang on ticket expired then.
-> 
-> (Although I don't think renewable tickets and krenew are a figment of my 
-> imagination).
-
-They are a workaround to the problem of users failing to plan ahead
-and/or jobs not running as quickly as originally scheduled. You can run
-them if you feel safe doing so, but they should not be a mandatory
-feature to ensure data isn't lost during normal operation.
-
-BTW: instead of trying to change existing kernel and gssd semantics, why
-not concentrate on adding the equivalent of krenewd/kstart?
-
-> >> What other way is there of fixing the problem if we are going to keep
-> >> the "hang 'till a ticket turns up" behaviour?  (rewrite gnome and kde
-> >> seems kind of a big job).
-> >>      
-> > Notify the kernel that a ticket is about to expire so that the kernel
-> > can decide to block the process on the next NFS-related syscall.
-> >
-> >    
-> I don't understand.  How is it a win to block processes *before* the 
-> ticket has expired?
-
-So that the kernel can flush out any dirty data while the ticket is
-valid, and block further asynchronous read/write operations (either by
-making them synchronous, or by returning an appropriate error). We may
-also want to consider closing open file state and possibly freeing up
-locks so that other processes with valid credentials may still access
-the data.
-
-IOW: that allows for an _orderly_ failure mode instead of the current
-catastrophic mode. The application gets a chance to deal with any errors
-_before_ the data is lost.
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ac28990..ce07968 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -260,10 +260,10 @@ void nfs_readdir_clear_array(struct page *page)
+ 	struct nfs_cache_array *array;
+ 	int i;
+ 
+-	array = kmap_atomic(page, KM_USER0);
++	array = kmap_atomic(page);
+ 	for (i = 0; i < array->size; i++)
+ 		kfree(array->array[i].string.name);
+-	kunmap_atomic(array, KM_USER0);
++	kunmap_atomic(array);
+ }
+ 
+ /*
+@@ -1881,11 +1881,11 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
+ 	if (!page)
+ 		return -ENOMEM;
+ 
+-	kaddr = kmap_atomic(page, KM_USER0);
++	kaddr = kmap_atomic(page);
+ 	memcpy(kaddr, symname, pathlen);
+ 	if (pathlen < PAGE_SIZE)
+ 		memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
+-	kunmap_atomic(kaddr, KM_USER0);
++	kunmap_atomic(kaddr);
+ 
+ 	error = NFS_PROTO(dir)->symlink(dir, dentry, page, pathlen, &attr);
+ 	if (error != 0) {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index be2bbac..ebc122b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -189,7 +189,7 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 	 * when talking to the server, we always send cookie 0
+ 	 * instead of 1 or 2.
+ 	 */
+-	start = p = kmap_atomic(*readdir->pages, KM_USER0);
++	start = p = kmap_atomic(*readdir->pages);
+ 	
+ 	if (cookie == 0) {
+ 		*p++ = xdr_one;                                  /* next */
+@@ -217,7 +217,7 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 
+ 	readdir->pgbase = (char *)p - (char *)start;
+ 	readdir->count -= readdir->pgbase;
+-	kunmap_atomic(start, KM_USER0);
++	kunmap_atomic(start);
+ }
+ 
+ static int nfs4_wait_clnt_recover(struct nfs_client *clp)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.4
 
