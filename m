@@ -1,64 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:59133 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756576Ab1KRWdG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:33:06 -0500
-Message-ID: <4EC6DD4D.1010008@calvaedi.com>
-Date: Fri, 18 Nov 2011 23:33:49 +0100
-From: John Hughes <john@calvaedi.com>
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:48632 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753299Ab1K1UjH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 15:39:07 -0500
+Date: Mon, 28 Nov 2011 12:39:01 -0800
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: rjw@sisk.pl, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, john@calva.com, trond.myklebust@netapp.com,
+        marek.belisko@gmail.com, awilliam@redhat.com
+Subject: Re: [PATCH v3 1/2] sunrpc: make rpc_wait_bit_killable handle
+ freeze events
+Message-ID: <20111128203901.GG18864@google.com>
+References: <1322510488-21189-1-git-send-email-jlayton@redhat.com>
+ <1322510488-21189-2-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Jim Rees <rees@umich.edu>, John Hughes <john@Calva.COM>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-References: <4EC66D12.2090505@Calva.COM>	 <1321641333.2653.15.camel@lade.trondhjem.org>	 <4EC6AFA9.9000705@calvaedi.com>	 <1321648435.2653.53.camel@lade.trondhjem.org>	 <20111118205749.GA1680@umich.edu> <1321650239.2653.68.camel@lade.trondhjem.org>
-In-Reply-To: <1321650239.2653.68.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1322510488-21189-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/18/2011 10:03 PM, Trond Myklebust wrote:
-> On Fri, 2011-11-18 at 15:57 -0500, Jim Rees wrote:
->    
->>
->> The write() syscall doesn't indicate whether the data is safe or not.  That
->> would be the close() syscall.
->>      
-> fsync(). Which may succeed if the user renews their ticket first.
-> However you may still have data loss if dirty data has been lost because
-> of EKEYEXPIRED returns on the WRITE RPC call...
->    
-Only if the write(2) returned EKEYEXPIRED, surely,
-> Also, for the fsync() to return EKEYEXPIRED _after_ the user has renewed
-> their ticket would seem counter-intuitive to most people.
->    
+Hello,
 
-I would want to know if data was lost.
+On Mon, Nov 28, 2011 at 03:01:27PM -0500, Jeff Layton wrote:
+> +#define freezable_schedule()						\
+> +({									\
+> +	freezer_do_not_count();						\
+> +	if (!try_to_freeze())						\
+> +		schedule();						\
+> +	freezer_count();						\
+> +})
 
-Intuition means nothing if I get an error.
+I don't think you need try_to_freeze() there when you apply this on
+top of pm-freezer branch.  Per-task freezing flag is gone and freezing
+condition is completely transient from the POV of each task and the
+freezer also doesn't care at all whether a task enters freezer or
+becomes unfreezable.
 
-If it were possible I'd like:
+Thanks.
 
-1. write works
-1a. WRITE RPC fails, data stays in cache
-2. ticket renewed
-3. fsync works, data written
-
-But:
-
-1. write...
-1a. WRITE RPC fails
-1b. ... fails
-
-seems ok.
-
-Even
-
-1. write works
-1a WRITE RPC fails
-2. ticket renewed
-3. fsync fails
-
-would be ok for me.  (light cone problems?)
-
+-- 
+tejun
