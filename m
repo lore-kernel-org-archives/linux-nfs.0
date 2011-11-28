@@ -1,61 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm21-vm5.bullet.mail.ird.yahoo.com ([212.82.109.245]:41267 "HELO
-	nm21-vm5.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751201Ab1KLLiJ convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Nov 2011 06:38:09 -0500
-References: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com> <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com> <1320455965.2750.9.camel@lade.trondhjem.org> <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com> <1320460311.2750.21.camel@lade.trondhjem.org> <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com> <20111105130517.GA16090@umich.edu>
-Message-ID: <1321097734.7117.YahooMailNeo@web24701.mail.ird.yahoo.com>
-Date: Sat, 12 Nov 2011 11:35:34 +0000 (GMT)
-From: Lukas Razik <linux@razik.name>
-Reply-To: Lukas Razik <linux@razik.name>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20111105130517.GA16090@umich.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:28441 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753254Ab1K1NgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Nov 2011 08:36:10 -0500
+Subject: [PATCH 5/6] NFS: handle NFS idmap pipe PipeFS dentries by network
+	namespace aware routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 28 Nov 2011 17:34:02 +0300
+Message-ID: <20111128133402.4251.18289.stgit@localhost6.localdomain6>
+In-Reply-To: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
+References: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Jim Rees <rees@umich.edu> wrote:
+This patch makes NFS idmap pipes dentries allocated and destroyed in network
+namespace context by PipeFS network namespace aware routines.
+Network namespace context is obtained from nfs_client structure.
 
-> Lukas Razik wrote:
-> 
->   > So, once again...
->   > 
->   > What kind of switch is this client connected to, and how is that switch
->   > configured?
->   
->   I can't answer this question because I have no physical access to the
->   hardware.  Hence I think it's logical to stop here until the nodes are
->   connected directly (without any hardware between them).  I'll write here
->   as soon as I know if it works...
->   
->   For the rest I thank all contributors for the fast help!
-> 
-> I think the implication here is that you're plugged in to a port that's
-> running spanning tree (stp) and is not set to portfast.  Such a port can
-> take up to a minute to start forwarding packets.  If so, you should fix
-> that, but it would also be nice if nfsroot could be made to work in this
-> setup.
-> 
-> By the way, if you want to send me that machine with its 64 processors and
-> 32GB of memory, I'd be glad to investigate.
->
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Hello again!
+---
+ fs/nfs/idmap.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 53 insertions(+), 8 deletions(-)
 
-I've connected the systems directly (without a switch between them).
-It seems that the problem came from the switch because now the newer kernels also mount their NFSROOTs during start up without problems.
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 60698a1..0680f63 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -350,6 +350,56 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
+ 	.destroy_msg	= idmap_pipe_destroy_msg,
+ };
+ 
++static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
++{
++	if (pipe->dentry)
++		rpc_unlink(pipe->dentry);
++}
++
++static int __nfs_idmap_register(struct dentry *dir,
++				     struct idmap *idmap,
++				     struct rpc_pipe *pipe)
++{
++	struct dentry *dentry;
++
++	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
++	if (IS_ERR(dentry))
++		return PTR_ERR(dentry);
++	pipe->dentry = dentry;
++	return 0;
++}
++
++static void nfs_idmap_unregister(struct nfs_client *clp,
++				      struct rpc_pipe *pipe)
++{
++	struct net *net = clp->net;
++	struct super_block *pipefs_sb;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (pipefs_sb) {
++		__nfs_idmap_unregister(pipe);
++		rpc_put_sb_net(net);
++	}
++}
++
++static int nfs_idmap_register(struct nfs_client *clp,
++				   struct idmap *idmap,
++				   struct rpc_pipe *pipe)
++{
++	struct net *net = clp->net;
++	struct super_block *pipefs_sb;
++	int err = 0;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (pipefs_sb) {
++		if (clp->cl_rpcclient->cl_dentry)
++			err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
++						   idmap, pipe);
++		rpc_put_sb_net(net);
++	}
++	return err;
++}
++
+ int
+ nfs_idmap_new(struct nfs_client *clp)
+ {
+@@ -369,12 +419,8 @@ nfs_idmap_new(struct nfs_client *clp)
+ 		kfree(idmap);
+ 		return error;
+ 	}
+-
+-	if (clp->cl_rpcclient->cl_dentry)
+-		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_dentry,
+-				"idmap", idmap, pipe);
+-	if (IS_ERR(pipe->dentry)) {
+-		error = PTR_ERR(pipe->dentry);
++	error = nfs_idmap_register(clp, idmap, pipe);
++	if (error) {
+ 		rpc_destroy_pipe_data(pipe);
+ 		kfree(idmap);
+ 		return error;
+@@ -397,8 +443,7 @@ nfs_idmap_delete(struct nfs_client *clp)
+ 
+ 	if (!idmap)
+ 		return;
+-	if (idmap->idmap_pipe->dentry)
+-		rpc_unlink(idmap->idmap_pipe->dentry);
++	nfs_idmap_unregister(clp, idmap->idmap_pipe);
+ 	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	clp->cl_idmap = NULL;
+ 	kfree(idmap);
 
-Assuming that the ports of the switch really run in STP mode - two questions:
-1. Is it unusual that the ports of a switch where computers are connected to run in STP mode?
-2. If that's not unusual: Wouldn't it be useful if the new linux kernels could mount an NFSROOT even when the system is plugged into an STP port?
-
-The problem is that we'll have 16 such systems which can't be connected directly - they must communicate through the switch. And I've no access to the switch.
-
-Best regards,
-Lukas
