@@ -1,51 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:34454 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751228Ab1KENF0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Nov 2011 09:05:26 -0400
-Date: Sat, 5 Nov 2011 09:05:17 -0400
-From: Jim Rees <rees@umich.edu>
-To: Lukas Razik <linux@razik.name>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-Message-ID: <20111105130517.GA16090@umich.edu>
-References: <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com>
- <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com>
- <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com>
- <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
- <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
- <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com>
- <1320455965.2750.9.camel@lade.trondhjem.org>
- <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com>
- <1320460311.2750.21.camel@lade.trondhjem.org>
- <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:62393 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750900Ab1K1GZv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Nov 2011 01:25:51 -0500
+Message-ID: <4ED32AAB.8010800@cn.fujitsu.com>
+Date: Mon, 28 Nov 2011 14:31:07 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSV4 :All lock operations should be sent to the server
+ for resolution
+References: <4D2FF124.7020500@cn.fujitsu.com>	 <20110114181600.GA15352@fieldses.org> <1295029762.3576.9.camel@heimdal.trondhjem.org>
+In-Reply-To: <1295029762.3576.9.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lukas Razik wrote:
+Hi Trond,
 
-  > So, once again...
-  > 
-  > What kind of switch is this client connected to, and how is that switch
-  > configured?
-  
-  I can't answer this question because I have no physical access to the
-  hardware.  Hence I think it's logical to stop here until the nodes are
-  connected directly (without any hardware between them).  I'll write here
-  as soon as I know if it works...
-  
-  For the rest I thank all contributors for the fast help!
+Trond Myklebust:
+> On Fri, 2011-01-14 at 13:16 -0500, J. Bruce Fields wrote: 
+>> On Fri, Jan 14, 2011 at 02:45:56PM +0800, Fu Liankun wrote:
+>>> The RFC3530 describes that the client's all lock operations, including those
+>>> requesting non-exclusive locks, should be sent to the server for resolution,
+>>> even if it holds a read open delegation. But the kernel implements like that
+>>> lock operations can be performed locally when a client holds an open
+>>> delegation.
+>>>
+>>> The following are the RFC3530 provisions for Open Delegation and File Locks:
+>>>
+>>> 9.4.2.  Open Delegation and File Locks
+>>>
+>>>    When a client holds a write open delegation, lock operations may be
+>>>    performed locally.  This includes those required for mandatory file
+>>>    locking.  This can be done since the delegation implies that there
+>>>    can be no conflicting locks.  Similarly, all of the revalidations
+>>>    that would normally be associated with obtaining locks and the
+>>>    flushing of data associated with the releasing of locks need not be
+>>>    done.
+>>>
+>>>    When a client holds a read open delegation, lock operations are not
+>>>    performed locally.  All lock operations, including those requesting
+>>>    non-exclusive locks, are sent to the server for resolution.
+>> Weird.  Can the rfc really be right about that?
+>>
+>> I guess it does permit servers to allow write-locks on read-open files,
+>> but it seems bizarre not to require them to break delegations in that
+>> case.
+> 
+> The ability to cache locks is one of the main reasons for holding
+> delegations in the first place. Sure, the spec allows for non-posix
+> locking, but the Linux client doesn't.
 
-I think the implication here is that you're plugged in to a port that's
-running spanning tree (stp) and is not set to portfast.  Such a port can
-take up to a minute to start forwarding packets.  If so, you should fix
-that, but it would also be nice if nfsroot could be made to work in this
-setup.
+  Would you mind tell me some about why we not support non-posix locking at NFS ?
 
-By the way, if you want to send me that machine with its 64 processors and
-32GB of memory, I'd be glad to investigate.
+thanks,
+Mi Jinlong
+
+> 
+> IOW: This patch will not be applied.
+> 
+> Trond
+> 
+>> --b.
+>>
+>>> Signed-off-by: Fu Liankun <fuliankun@cn.fujitsu.com>
+>>> ---
+>>>  fs/nfs/nfs4proc.c |    7 -------
+>>>  1 files changed, 0 insertions(+), 7 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index 0f24cdf..3bba85b 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -4215,13 +4215,6 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>>>  	if (status < 0)
+>>>  		goto out;
+>>>  	down_read(&nfsi->rwsem);
+>>> -	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+>>> -		/* Yes: cache locks! */
+>>> -		/* ...but avoid races with delegation recall... */
+>>> -		request->fl_flags = fl_flags & ~FL_SLEEP;
+>>> -		status = do_vfs_lock(request->fl_file, request);
+>>> -		goto out_unlock;
+>>> -	}
+>>>  	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+>>>  	if (status != 0)
+>>>  		goto out_unlock;
+>>> -- 
+>>> 1.7.3.1
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
