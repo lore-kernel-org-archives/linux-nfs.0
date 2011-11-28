@@ -1,128 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61848 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752222Ab1KBBgV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 21:36:21 -0400
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
-Date: Tue, 1 Nov 2011 18:36:18 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7C3B@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111102012315.GA5532@fieldses.org>
-References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com> <20111101202715.GB1891@fieldses.org> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com> <20111101204325.522c35b3@corrin.poochiereds.net> <20111102012315.GA5532@fieldses.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Jeff Layton" <jlayton@redhat.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:46950 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754660Ab1K1UBi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 15:01:38 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: rjw@sisk.pl
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
+        trond.myklebust@netapp.com, marek.belisko@gmail.com,
+        awilliam@redhat.com
+Subject: [PATCH v3 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
+Date: Mon, 28 Nov 2011 15:01:26 -0500
+Message-Id: <1322510488-21189-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Tuesday, November 01, 2011 9:23 PM
-> To: Jeff Layton
-> Cc: Myklebust, Trond; J. Bruce Fields; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate
-own
-> cache
-> 
-> On Tue, Nov 01, 2011 at 08:43:25PM -0400, Jeff Layton wrote:
-> > On Tue, 1 Nov 2011 16:07:27 -0700
-> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> >
-> > > > -----Original Message-----
-> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > > Sent: Tuesday, November 01, 2011 4:27 PM
-> > > > To: Myklebust, Trond
-> > > > Cc: J. Bruce Fields; Myklebust, Trond; linux-nfs@vger.kernel.org
-> > > > Subject: Re: [PATCH] nfs: open-associated setattr shouldn't
-> > > > invalidate
-> > > own
-> > > > cache
-> > > >
-> > > > On Mon, Jul 18, 2011 at 08:09:15PM -0400, Myklebust, Trond
-wrote:
-> > > > > We should already optimize away the unnecessary setting of the
-size.
-> > > >
-> > > > Do you remember what commit fixed that?  (Was it an nfs change
-or
-> > > > a
-> > > vfs
-> > > > change?)
-> > >
-> > > It predates the git repository. See the comment about
-> > > "Optimization:" in nfs_setattr().
-> > >
-> > > > > The problem is that truncate() still requires you to set the
-> > > > > ctime,
-> > > whereas
-> > > > ftruncate() does not iirc.
-> > > >
-> > > > Staring at the code....  I think you mean the opposite?  I
-notice
-> > > > do_sys_ftruncate() calling
-> > > >
-> > > > 	do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME,
-file);
-> > > >
-> > > > and do_sys_truncate() calling
-> > > >
-> > > > 	do_truncate(path.dentry, length, 0, NULL);
-> > > >
-> > > > where the third argument is getting OR'd with ATTR_FILE to pass
-> > > > into notify_change().
-> > >
-> > > Sorry, yes. ftruncate() is the one that unconditionally sets the
-> > > mtime/ctime on success according to the POSIX spec.
-> > >
-> >
-> > Even when it's a noop? Blech.
-> >
-> > > > Also even when a setattr does get through, I don't understand
-why
-> > > > it
-> > > should
-> > > > be invalidating our data cache.  Is there some reason it needs
-to,
-> > > > or
-> > > is this just
-> > > > a case that hasn't seemed worth fixing?
-> > >
-> > > Is the problem perhaps that we should be clearing the
-> > > NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets
-set
-> > > to zero?
-> > >
-> >
-> > That was my thinking too. Whenever we truncate the i_size to 0, we
-can
-> > safely assume that the pagecache is now valid, and should be able to
-> > clear NFS_INO_INVALID_DATA no matter when it was set, right?
-> 
-> I don't understand why 0 is a special case: why should my setting the
-size
-> ever mean that I have to go reread data from the server?
+This patchset is a second (third?) attempt at fixing the issues with
+suspending a machine that has an active NFS mount.
 
-Your test case was:
+The bug reported against Fedora is here:
 
-open(O_RDWR|O_TRUNCATE)
-write()
-close()
-open(O_RDONLY)
-read()
-...
+    https://bugzilla.redhat.com/show_bug.cgi?id=717735
 
-That truncates _all_ data, so there is nothing left in the data cache
-when we get to the write().
+The main difference between v2 and this one is that this one has the new
+macros attempt to freeze before going to sleep. It's possible for the
+freezer_do_not_count() call to race with the freezer. The FREEZER_SKIP
+flag can be set after the freezer has already attempted to freeze the
+task. If so, it may just go to sleep without attempting to freeze.
 
-The question therefore is not "Why does setattr clear my cache?".
+This set attempts to remedy this by calling try_to_freeze() after
+calling freezer_do_not_count() and before sleeping. This should prevent
+the above race.
 
-The question is "Why isn't that write() cached?".
+I've also fleshed out the comments a bit to nail down the semantics for
+these new functions. I'm quite open to changing the names of the
+functions as well, if anyone can suggest better alternatives.
 
-That's why I'm exploring reasons why the cache might get cleared after
-that write(). The other obvious one would be if the server is failing to
-return post-op attributes in the WRITE reply.
+Comments and more tested would be appreciated. My goal is to get this
+in for 3.3, hopefully via Rafael's tree.
 
-Trond
+Jeff Layton (2):
+  sunrpc: make rpc_wait_bit_killable handle freeze events
+  nfs: make TASK_KILLABLE sleeps attempt to freeze
+
+ fs/nfs/inode.c          |    3 ++-
+ fs/nfs/nfs3proc.c       |    3 ++-
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/proc.c           |    3 ++-
+ include/linux/freezer.h |   40 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c      |    3 ++-
+ 6 files changed, 51 insertions(+), 6 deletions(-)
+
+-- 
+1.7.6.4
+
