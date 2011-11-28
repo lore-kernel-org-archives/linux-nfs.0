@@ -1,94 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59687 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:36921 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752144Ab1KQVrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Nov 2011 16:47:01 -0500
-Date: Thu, 17 Nov 2011 16:46:30 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: John Hughes <john@Calva.COM>
-Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-Message-ID: <20111117164630.394027e7@tlielax.poochiereds.net>
-In-Reply-To: <4EC50882.2080803@Calva.COM>
-References: <4EC3FD8B.6000705@calvaedi.com>
-	<20111116144718.78b2e288@corrin.poochiereds.net>
-	<20111116234434.GA12882@umich.edu>
-	<20111116203119.1d9c0dd6@corrin.poochiereds.net>
-	<20111116203810.4e1b9d28@corrin.poochiereds.net>
-	<4EC4EA91.5070607@Calva.COM>
-	<4EC50882.2080803@Calva.COM>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752416Ab1K1NfU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Nov 2011 08:35:20 -0500
+Subject: [PATCH 0/6] NFS: create clients and IDMAP pipes per network namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 28 Nov 2011 17:33:20 +0300
+Message-ID: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Nov 2011 14:13:38 +0100
-John Hughes <john@Calva.COM> wrote:
+This patch set was created in context of clone of git
+branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+tag: v3.1
 
-> On 17/11/11 12:05, John Hughes wrote:
-> > On 17/11/11 02:38, Jeff Layton wrote:
-> >> Note too that the gssd code distinguishes between an expired TGT and a
-> >> non-existent credcache. The latter will give you the error you desire
-> >> here. So one possibility is just to remove the credcache from /tmp in
-> >> this situation.
-> >
-> > Something to scan /tmp for expired credentials and zap em?  rpc.gssd 
-> > would communicate that to the kernel?
-> >
-> > Whadaya know, that works.
-> Here's a dumb perl script that could be run from, for example, .xsession 
-> to automatically destroy expired ticket caches.
-> 
-> Would need a bit of trickery to make it go away on end of session and 
-> something in /etc/pm/sleep.d to send it a SIGALRM when the system wakes 
-> from suspend or hibernate.
-> 
-> It has a potential race between destroying an expired ticket and a new 
-> ticket being granted.
-> 
-> I guess now I'll look at a hack to rpc.gssd for a neater way of doing this.
-> 
+This patch set depends on previous patch sets titled:
+1) "SUNRPC: initial part of making pipefs work in net ns"
+2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
+3) "SUNRPC: make RPC clients use network-namespace-aware PipeFS routines"
 
-Ok, I can remember a bit more about the genesis of this scheme...
+Actually, this patch set consists of two tightly connected parts:
+1) NFS clients creation per network namespace
+2) IDMAP pipe dentries creation in owner client network namesapce context
 
-At the time the argument went something like this:
+This patch set is the third part of making "PipeFS per network namespace".
 
-No one expects that when their krb5 ticket expires that their
-applications will fail. A case in point is something like a krb5 ssh
-session. If I had a valid ticket when I initiated the session, then it
-we would consider it a bug if it were to suddenly die when the ticket
-expired.
+The following series consists of:
 
-Contrast that however with applications running on a kerberized NFS
-mount. As soon as the ticket expires they start failing with
-non-transient errors. This is probably the case as well with screen
-locker you're using, but it's apparently able to recover enough to
-allow the TGT to be renewed. I expect though, that you may have other
-less visible programs that are dying in this situation or are getting
-unexpected errors.
+---
 
-The current behavior was really intended as a first approximation. I
-fully expected that it would need some refinement, but AFAIK, no one
-has complained loudly about the current behavior until now, so I
-haven't seen need to mess with it.
+Stanislav Kinsbursky (6):
+      SUNRPC: fix pipe->ops cleanup on pipe dentry unlink
+      NFS: make NFS client allocated per network namespace context
+      NFS: pass NFS client owner network namespace to RPC client creation routine
+      NFS: create callback transports in parent transport network namespace
+      NFS: handle NFS idmap pipe PipeFS dentries by network namespace aware routines
+      NFS: idmap PipeFS notifier introduced
 
-I'm not that familiar with kstart, but I assume that it gets a
-renewable TGT and just renews it as needed? I have to wonder if that
-sort of tool might be verboten in security conscious sites (the very
-sort that want kerberized nfs).
 
-If we decide that making this behavior switchable is the right thing to
-do, then what you'll probably want to do is add a new command-line
-option to rpc.gssd, and make it conditionally return -EKEYEXPIRED or
--EACCES in the downcall based on it. It should be a fairly simple
-patch. See process_krb5_upcall() in rpc.gssd...
-
-Long term, we probably need to consider this use-case in the GSSAPI
-proxy initiative that Simo has been scoping out. It would be nice to
-have a solution that would work for both home directory configurations
-and long-running jobs without needing these sorts of hacks.
+ fs/nfs/callback.c                  |   10 +--
+ fs/nfs/client.c                    |   22 ++++--
+ fs/nfs/idmap.c                     |  136 ++++++++++++++++++++++++++++++++++--
+ fs/nfs/internal.h                  |    6 ++
+ fs/nfs/mount_clnt.c                |    4 +
+ fs/nfs/super.c                     |    4 +
+ include/linux/nfs_fs_sb.h          |    1 
+ include/linux/nfs_idmap.h          |   13 +--
+ include/linux/sunrpc/rpc_pipe_fs.h |    7 ++
+ net/sunrpc/clnt.c                  |    1 
+ net/sunrpc/rpc_pipe.c              |   67 ++++++++++--------
+ 11 files changed, 208 insertions(+), 63 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Signature
