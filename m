@@ -1,56 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13152 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:24491 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932564Ab1KDObd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 10:31:33 -0400
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id pA4EVW8a023867
-	for <linux-nfs@vger.kernel.org>; Fri, 4 Nov 2011 07:31:33 -0700 (PDT)
+	id S1753259Ab1K1NgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Nov 2011 08:36:12 -0500
+Subject: [PATCH 3/6] NFS: pass NFS client owner network namespace to RPC
+	client creation routine
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 28 Nov 2011 17:33:46 +0300
+Message-ID: <20111128133346.4251.47028.stgit@localhost6.localdomain6>
+In-Reply-To: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
+References: <20111128132805.4251.15252.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
-Date: Fri, 4 Nov 2011 07:31:31 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA925D@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <1318919979-14606-1-git-send-email-andros@netapp.com>
-References: <1318919979-14606-1-git-send-email-andros@netapp.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Adamson, Andy
-> Sent: Tuesday, October 18, 2011 2:40 AM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; Adamson, Andy
-> Subject: [PATCH (resend) Version 2 3/3] NFSv4.1: fix backchennel bug
-> 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Slotid's start from 0 which means we check against
-> NFS41_BC_MAX_CALLBACKS - 1.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback_proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c index
-> 98ff5fc..12bd9d0 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -339,7 +339,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct
-> cb_sequenceargs * args)
->  	dprintk("%s enter. slotid %d seqid %d\n",
->  		__func__, args->csa_slotid, args->csa_sequenceid);
-> 
-> -	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS)
-> +	if (args->csa_slotid > NFS41_BC_MAX_CALLBACKS - 1)
->  		return htonl(NFS4ERR_BADSLOT);
+This patch replaces static "init_net" with nfs_client->net pointer in RPC
+client creation calls.
 
-Why not just replace '>' with '>='?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Cheers
-  Trond
+---
+ fs/nfs/client.c     |    2 +-
+ fs/nfs/internal.h   |    1 +
+ fs/nfs/mount_clnt.c |    4 ++--
+ fs/nfs/super.c      |    1 +
+ 4 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 47a8cd6..58eebb5 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -641,7 +641,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= clp->net,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 4565e76..451acb5 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -138,6 +138,7 @@ struct nfs_mount_request {
+ 	int			noresvport;
+ 	unsigned int		*auth_flav_len;
+ 	rpc_authflavor_t	*auth_flavs;
++	struct net		*net;
+ };
+ 
+ extern int nfs_mount(struct nfs_mount_request *info);
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index d4c2d6b..4fbe3a8 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -153,7 +153,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 		.rpc_resp	= &result,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= info->net,
+ 		.protocol	= info->protocol,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+@@ -225,7 +225,7 @@ void nfs_umount(const struct nfs_mount_request *info)
+ 		.to_retries = 2,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= info->net,
+ 		.protocol	= IPPROTO_UDP,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 782260d..b52819e 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1607,6 +1607,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
+ 		.auth_flav_len	= &server_authlist_len,
+ 		.auth_flavs	= server_authlist,
++		.net		= args->net,
+ 	};
+ 	int status;
+ 
+
