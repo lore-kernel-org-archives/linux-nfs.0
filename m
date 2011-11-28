@@ -1,101 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:52060 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753451Ab1LADyE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 22:54:04 -0500
-Message-ID: <4ED6FA2C.7010005@oracle.com>
-Date: Wed, 30 Nov 2011 21:53:16 -0600
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-MIME-Version: 1.0
-To: Chris Dunlop <chris@onthe.net.au>
-CC: David Howells <dhowells@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Jan Harkes <jaharkes@cs.cmu.edu>,
-        "\"maintainer@onthe.net.au\":CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-References: <20111130071319.GA16711@onthe.net.au> <1321861008-20611-1-git-send-email-chris@onthe.net.au> <20111129082501.GA569@onthe.net.au> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com> <24960.1322643283@redhat.com> <20111201004709.GA26085@onthe.net.au> <4ED6E4EF.7050101@oracle.com> <20111201033346.GA1049@onthe.net.au>
-In-Reply-To: <20111201033346.GA1049@onthe.net.au>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:34966 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752699Ab1K1QLV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Nov 2011 11:11:21 -0500
+Message-ID: <1322496677.8433.1.camel@lade.trondhjem.org>
+Subject: [GIT PULL] Please pull one NFS client bugfix
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 28 Nov 2011 11:11:17 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Linus,
+
+Please pull from the "bugfixes" branch of the repository at
+
+   git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git bugfixes
+
+This will update the following files through the appended changesets.
+
+  Cheers,
+    Trond
+
+----
+ net/sunrpc/xprtsock.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+commit 24ca9a847791fd53d9b217330b15f3c285827a18
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Nov 22 14:44:28 2011 +0200
+
+    SUNRPC: Ensure we return EAGAIN in xs_nospace if congestion is cleared
+    
+    By returning '0' instead of 'EAGAIN' when the tests in xs_nospace() fail
+    to find evidence of socket congestion, we are making the RPC engine believe
+    that the message was incorrectly sent and so it disconnects the socket
+    instead of just retrying.
+    
+    The bug appears to have been introduced by commit
+    5e3771ce2d6a69e10fcc870cdf226d121d868491 (SUNRPC: Ensure that xs_nospace
+    return values are propagated).
+    
+    Reported-by: Andrew Cooper <andrew.cooper3@citrix.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@vger.kernel.org [>= 2.6.30]
+    Tested-by: Andrew Cooper <andrew.cooper3@citrix.com>
 
 
-On 11/30/2011 09:33 PM, Chris Dunlop wrote:
-> On Wed, Nov 30, 2011 at 08:22:39PM -0600, Dave Kleikamp wrote:
->> On 11/30/2011 06:47 PM, Chris Dunlop wrote:
->>>> It's also worth printing a message - this *is* a kernel bug of some description
->>>> if it happens.
->>>
->>> Like the below?  This covers the d_revalidate for 9p, afs, coda,
->>> hfs, ncpfs, proc, sysfs.
->>>
->>> Note:  jfs isn't susceptible to this problem, but the resolution
->>> doesn't look like the other file systems, and from the comment
->>> I'm not sure if the problem was really understood and if it's
->>> doing the right thing:
->>
->> This code, as well as the comments, were copied from vfat. It seems
->> reasonable for case-insensitive but case-preserving behavior (not jfs's
->> default). The safe thing is to drop the negative dentry if we don't know
->> the operation.
-> 
-> In that case, it looks like the thing to do might be to add the
-> "protection" to the start of jfs_ci_revaliate(), per how the
-> original has been changed in vfat:
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-The LOOKUP_RCU check had previously been there, but Al Viro removed it:
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-commit 5c0f360b083fb33d05d1bff4b138b82d715eb419
-Author: Al Viro <viro@zeniv.linux.org.uk>
-Date:   Sat Jun 25 21:41:09 2011 -0400
-
-    jfs_ci_revalidate() is safe from RCU mode
-
-I'm not sure what it takes to be "safe", but this is a simple function
-that doesn't block, take locks, or do much of anything. You shouldn't
-need to do anything with jfs.
-
-Shaggy
-
-> 
-> fs/fat/namei_vfat.c:
-> static int vfat_revalidate_ci(struct dentry *dentry, struct nameidata *nd)
-> {
->         if (nd && nd->flags & LOOKUP_RCU)
->                 return -ECHILD;
->         ...
-> }
-> 
-> E.g.:
-> 
-> ----------------------------------------------------------------------
-> Don't oops when abused by broken layered file systems
-> 
-> Signed-off-by: Chris Dunlop <chris@onthe.net.au>
-> ---
->  fs/jfs/namei.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
-> index e17545e..5504f6e 100644
-> --- a/fs/jfs/namei.c
-> +++ b/fs/jfs/namei.c
-> @@ -1585,6 +1585,9 @@ out:
->  
->  static int jfs_ci_revalidate(struct dentry *dentry, struct nameidata *nd)
->  {
-> +	if (nd && nd->flags & LOOKUP_RCU)
-> +		return -ECHILD;
-> +
->  	/*
->  	 * This is not negative dentry. Always valid.
->  	 *
