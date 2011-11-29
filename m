@@ -1,79 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail2.shareable.org ([80.68.89.115]:49372 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753093Ab1KUNaL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Nov 2011 08:30:11 -0500
-Date: Mon, 21 Nov 2011 12:46:50 +0000
-From: Jamie Lokier <jamie@shareable.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Volker Lendecke <Volker.Lendecke@SerNet.DE>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, samba-technical@lists.samba.org,
-        Casey Bodley <cbodley@citi.umich.edu>
-Subject: Re: [PATCH] locks: breaking read lease should not block read open
-Message-ID: <20111121124650.GA12942@jl-vm1.vm.bytemark.co.uk>
-References: <20110609231606.GB22215@fieldses.org>
- <E1QUwaT-00HRZw-74@intern.SerNet.DE>
- <20110610134859.GA27837@fieldses.org>
- <20110721000758.GD27871@fieldses.org>
- <20110819190829.GD11512@jl-vm1.vm.bytemark.co.uk>
- <20110821165029.GA9296@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:50589 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755941Ab1K2XmY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 18:42:24 -0500
+Message-ID: <4ED56C59.208@panasas.com>
+Date: Tue, 29 Nov 2011 15:35:53 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110821165029.GA9296@fieldses.org>
+To: Randy Dunlap <rdunlap@xenotime.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Michal Marek <mmarek@suse.cz>, Stephen Rothwell <sfr@canb.auug.org.au>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
+        <linux-next@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH v3] ore: FIX breakage when MISC_FILESYSTEMS is not set
+References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au> <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com> <4ED4238F.4090407@panasas.com>
+In-Reply-To: <4ED4238F.4090407@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Fri, Aug 19, 2011 at 08:08:29PM +0100, Jamie Lokier wrote:
-> > J. Bruce Fields wrote:
-> > > I'm not sure how to approach the lease code.
-> > > 
-> > > On the one hand, I've never seen any evidence that anyone outside Samba
-> > > and NFSv4 has ever used it, and both currently make extremely limited
-> > > use of it.  So we could probably get away with "fixing" the lease code
-> > > to do whatever both of us need.
-> > 
-> > I've never used it, but I've _nearly_ used it (project took a
-> > different direction), in a web application framework.
-> > 
-> > Pretty much the way CIFS/NFS use it, to keep other things (remote
-> > state, database state, derived files) transactionally coherent with
-> > changes to file contents by programs that only know about the files
-> > they access.
-> > 
-> > The SIGIO stuff is a horrible interface.
-> > I could still see me trying to use it sometime in the future.
-> > In which case I really don't mind if you make the semantics saner :-)
-> > 
-> > Now we have fanotify which does something very similar and could have
-> > generalised leases, but unfortunately fanotify came from such a
-> > different motivation that it's not well suited for ordinary user
-> > applications.
-> 
-> I'm not sure what you mean by that--mainly just because I'm not as
-> familiar with fanotify as I should be.
-> 
-> For my case the important difference between leases and the various
-> notification interfaces is that leases are synchronous--the lease-holder
-> is notified and has a chance to clean up before releasing its lease and
-> allowing the conflicting operation to continue--whereas the the various
-> notification interfaces tell you "tough luck, something just happened".
 
-Hi Bruce,
+As Reported by Randy Dunlap
 
-My apologies for not responding earlier; I just spotted this mail
-among an ocean of mails.
+When MISC_FILESYSTEMS is not enabled:
 
-Fyi, fanotify is also synchronous: It blocks the conflicting operation
-until the fanotify-using application allows it to proceed - or
-alternatively it can prevent the conflicting operating from proceeding
-at all.
+fs/built-in.o: In function `objio_alloc_io_state':
+objio_osd.c:(.text+0xcb525): undefined reference to `ore_get_rw_state'
+fs/built-in.o: In function `_write_done':
+objio_osd.c:(.text+0xcb58d): undefined reference to `ore_check_io'
+fs/built-in.o: In function `_read_done':
+...
 
-It's got a nicer interface than leases (like inotify compared with
-dnotify), but because it can interfere with legitimate applications
-it's not suitable as a lease replacement for non-root applications;
-and because it doesn't provide enough information about directory
-operations, it's not a drop-in synchronous upgrade of {i,d}notify.
+When MISC_FILESYSTEMS, which is more of a GUI thing then anything else,
+is not selected. exofs/Kconfig is never examined during Kconfig,
+and it can not do it's magic stuff to automatically select everything
+needed.
 
-All the best,
--- Jamie
+We must split exofs/Kconfig in two. The ore one is always included.
+And the exofs one is left in it's old place in the menu.
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/Kconfig           |    2 ++
+ fs/exofs/Kconfig     |   11 -----------
+ fs/exofs/ore.Kconfig |   12 ++++++++++++
+ 3 files changed, 14 insertions(+), 11 deletions(-)
+ create mode 100644 fs/exofs/ore.Kconfig
+
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 5f4c45d..fd7bfef 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -218,6 +218,8 @@ source "fs/exofs/Kconfig"
+ 
+ endif # MISC_FILESYSTEMS
+ 
++source "fs/exofs/ore.Kconfig"
++
+ menuconfig NETWORK_FILESYSTEMS
+ 	bool "Network File Systems"
+ 	default y
+diff --git a/fs/exofs/Kconfig b/fs/exofs/Kconfig
+index da42f32..86194b2 100644
+--- a/fs/exofs/Kconfig
++++ b/fs/exofs/Kconfig
+@@ -1,14 +1,3 @@
+-# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
+-# for every ORE user we do it like this. Any user should add itself here
+-# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
+-# selected here, and we default to "ON". So in effect it is like been
+-# selected by any of the users.
+-config ORE
+-	tristate
+-	depends on EXOFS_FS || PNFS_OBJLAYOUT
+-	select ASYNC_XOR
+-	default SCSI_OSD_ULD
+-
+ config EXOFS_FS
+ 	tristate "exofs: OSD based file system support"
+ 	depends on SCSI_OSD_ULD
+diff --git a/fs/exofs/ore.Kconfig b/fs/exofs/ore.Kconfig
+new file mode 100644
+index 0000000..1ca7fb7
+--- /dev/null
++++ b/fs/exofs/ore.Kconfig
+@@ -0,0 +1,12 @@
++# ORE - Objects Raid Engine (libore.ko)
++#
++# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
++# for every ORE user we do it like this. Any user should add itself here
++# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
++# selected here, and we default to "ON". So in effect it is like been
++# selected by any of the users.
++config ORE
++	tristate
++	depends on EXOFS_FS || PNFS_OBJLAYOUT
++	select ASYNC_XOR
++	default SCSI_OSD_ULD
+-- 
+1.7.6.4
+
+
