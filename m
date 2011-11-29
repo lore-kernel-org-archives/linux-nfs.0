@@ -1,40 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ogre.sisk.pl ([217.79.144.158]:60772 "EHLO ogre.sisk.pl"
+Received: from mx2.netapp.com ([216.240.18.37]:57077 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753687Ab1K1VEP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Nov 2011 16:04:15 -0500
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH v3 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
-Date: Mon, 28 Nov 2011 22:07:06 +0100
-Cc: Jeff Layton <jlayton@redhat.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
-        trond.myklebust@netapp.com, marek.belisko@gmail.com,
-        awilliam@redhat.com
-References: <1322510488-21189-1-git-send-email-jlayton@redhat.com> <201111282122.53635.rjw@sisk.pl> <20111128204024.GH18864@google.com>
-In-Reply-To: <20111128204024.GH18864@google.com>
-MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201111282207.07098.rjw@sisk.pl>
+	id S1753308Ab1K2XBq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 18:01:46 -0500
+Message-ID: <1322607704.11286.38.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        bhalevy@tonian.com, Garth Gibson <garth@panasas.com>,
+        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>
+Date: Tue, 29 Nov 2011 18:01:44 -0500
+In-Reply-To: <4ED55F78.205@panasas.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+	  <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>
+	 <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday, November 28, 2011, Tejun Heo wrote:
-> On Mon, Nov 28, 2011 at 09:22:53PM +0100, Rafael J. Wysocki wrote:
-> > If no one objects, I'll take these patches to linux-pm/linux-next in the
-> > next couple of days (and then to the pm-freezer branch, if there are no
-> > visible problems with them).
-> 
-> Rafael, I think these need to be routed through pm-freezer branch.
-> Freezer went through a lot of changes and I don't think this will work
-> reliably without the freezer changes.
+On Tue, 2011-11-29 at 14:40 -0800, Boaz Harrosh wrote:
 
-The linux-next branch contains pm-freezer (or at least it's supposed to).
+> The reason Netapp don't see a point is not a factor. I have not seen a netapp
+> server doing a top 100 HPC cluster either.
 
-The point is to let the patches stay in linux-next for a couple of days
-before moving them to the pm-freezer branch to see if there's any fallout (I'm
-not going to rebase pm-freezer, so fixing it will require addtional commits).
+BTW: Stop adding this "NetApp" insinuation bullshit...
 
-Thanks,
-Rafael
+I _strongly_ resent the fact that you appear to think I'm incapable of
+thinking for myself...
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
