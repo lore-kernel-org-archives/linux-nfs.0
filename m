@@ -1,58 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52741 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56211 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753132Ab1KDWSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 18:18:04 -0400
-Date: Fri, 4 Nov 2011 18:18:03 -0400
+	id S1753457Ab1K2R1F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 12:27:05 -0500
+Date: Tue, 29 Nov 2011 12:27:02 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] 4.1 CLNT: Create session before using at OPEN6
-Message-ID: <20111104221803.GM721@fieldses.org>
-References: <4EAA7C9C.6050601@cn.fujitsu.com>
- <20111104215211.GK721@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, skinsbursky@parallels.com,
+        linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+Message-ID: <20111129172702.GB19528@fieldses.org>
+References: <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+ <4ED4CDCE.9080804@parallels.com>
+ <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+ <1322579906.3619.1.camel@lade.trondhjem.org>
+ <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+ <1322584830.4174.16.camel@lade.trondhjem.org>
+ <20111129164252.GA19528@fieldses.org>
+ <1322587165.4174.20.camel@lade.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111104215211.GK721@fieldses.org>
+In-Reply-To: <1322587165.4174.20.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 04, 2011 at 05:52:11PM -0400, J. Bruce Fields wrote:
-> On Fri, Oct 28, 2011 at 05:57:48PM +0800, Mi Jinlong wrote:
-> > 4.1 CLNT: Create session before using at OPEN6
+On Tue, Nov 29, 2011 at 12:19:25PM -0500, Trond Myklebust wrote:
+> On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote: 
+> > On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
+> > > I mean that I'm perfectly entitled to do
+> > > 
+> > > 'modprobe -r blocklayoutdriver'
+> > > 
+> > > and when I do that, then I expect blkmapd to close the rpc pipe and wait
+> > > for a new one to be created just like rpc.idmapd and rpc.gssd do when I
+> > > remove the nfs and sunrpc modules.
+> > 
+> > The rpc pipefs mount doesn't hold a reference on the sunrpc module?
 > 
-> Makes sense--but then how did this test ever work?
+> I stand corrected: the mount does hold a reference to the sunrpc
+> module. 
+> However nothing holds a reference to the blocklayoutdriver module, so
+> the main point that the "blocklayout" pipe can disappear from underneath
+> the blkmapd stands.
 
-Oh, I see, it didn't--I just added it to the skip-list for my tests
-without investigating.
-
-Thanks, applied!
+OK, that makes sense.
 
 --b.
-
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> > ---
-> >  nfs4.1/server41tests/st_open.py |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-> > index 2aa3ec4..bd995a5 100644
-> > --- a/nfs4.1/server41tests/st_open.py
-> > +++ b/nfs4.1/server41tests/st_open.py
-> > @@ -192,7 +192,7 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
-> >      FLAGS: open all
-> >      CODE: OPEN6
-> >      """
-> > -    sess1 = env.c1.new_client(env.testname(t))
-> > +    sess1 = env.c1.new_client_session(env.testname(t))
-> >  
-> >      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1)
-> >      check(res)
-> > -- 
-> > 1.7.5.1
-> > 
-> > 
