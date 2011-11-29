@@ -1,229 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:37172 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755370Ab1KHKm3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 05:42:29 -0500
-Subject: [PATCH v4 1/3] SUNRPC: move rpcbind internals to sunrpc part of
-	network namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 08 Nov 2011 14:41:18 +0300
-Message-ID: <20111108104114.1714.78913.stgit@localhost6.localdomain6>
-In-Reply-To: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
-References: <20111108104023.1714.87978.stgit@localhost6.localdomain6>
+	id S1755419Ab1K2NgP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 08:36:15 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from blocklayout routines
+Date: Tue, 29 Nov 2011 05:35:51 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6> <20111129091037.20730.59391.stgit@localhost6.localdomain6> <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com> <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: <tao.peng@emc.com>, <skinsbursky@parallels.com>
+Cc: <linux-nfs@vger.kernel.org>, <xemul@parallels.com>, <neilb@suse.de>,
+        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <jbottomley@parallels.com>, <bfields@fieldses.org>,
+        <davem@davemloft.net>, <devel@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes rpcbind logic works in network namespace context. IOW each
-network namespace will have it's own unique rpcbind internals (clients and
-friends) which is required for registering svc services per network namespace.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- net/sunrpc/netns.h     |    5 ++++
- net/sunrpc/rpcb_clnt.c |   64 ++++++++++++++++++++++++++----------------------
- 2 files changed, 40 insertions(+), 29 deletions(-)
-
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index d013bf2..83eede3 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -9,6 +9,11 @@ struct cache_detail;
- struct sunrpc_net {
- 	struct proc_dir_entry *proc_net_rpc;
- 	struct cache_detail *ip_map_cache;
-+
-+	struct rpc_clnt *rpcb_local_clnt;
-+	struct rpc_clnt *rpcb_local_clnt4;
-+	spinlock_t rpcb_clnt_lock;
-+	unsigned int rpcb_users;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 8761bf8..7d32f19 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -23,12 +23,15 @@
- #include <linux/errno.h>
- #include <linux/mutex.h>
- #include <linux/slab.h>
-+#include <linux/nsproxy.h>
- #include <net/ipv6.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xprtsock.h>
- 
-+#include "netns.h"
-+
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
- #endif
-@@ -111,12 +114,6 @@ static void			rpcb_getport_done(struct rpc_task *, void *);
- static void			rpcb_map_release(void *data);
- static struct rpc_program	rpcb_program;
- 
--static struct rpc_clnt *	rpcb_local_clnt;
--static struct rpc_clnt *	rpcb_local_clnt4;
--
--DEFINE_SPINLOCK(rpcb_clnt_lock);
--unsigned int			rpcb_users;
--
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -167,29 +164,31 @@ static void rpcb_map_release(void *data)
- static int rpcb_get_local(void)
- {
- 	int cnt;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (rpcb_users)
--		rpcb_users++;
--	cnt = rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (sn->rpcb_users)
-+		sn->rpcb_users++;
-+	cnt = sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	return cnt;
- }
- 
- void rpcb_put_local(void)
- {
--	struct rpc_clnt *clnt = rpcb_local_clnt;
--	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
- 	int shutdown;
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (--rpcb_users == 0) {
--		rpcb_local_clnt = NULL;
--		rpcb_local_clnt4 = NULL;
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (--sn->rpcb_users == 0) {
-+		sn->rpcb_local_clnt = NULL;
-+		sn->rpcb_local_clnt4 = NULL;
- 	}
--	shutdown = !rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	shutdown = !sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	if (shutdown) {
- 		/*
-@@ -204,14 +203,16 @@ void rpcb_put_local(void)
- 
- static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
- {
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+
- 	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	sn->rpcb_local_clnt = clnt;
-+	sn->rpcb_local_clnt4 = clnt4;
- 	smp_wmb(); 
--	rpcb_users = 1;
-+	sn->rpcb_users = 1;
- 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
--			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
--			rpcb_local_clnt4);
-+			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
-+			sn->rpcb_local_clnt4);
- }
- 
- /*
-@@ -431,6 +432,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -440,7 +442,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	if (port)
- 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
- 
--	return rpcb_register_call(rpcb_local_clnt, &msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt, &msg);
- }
- 
- /*
-@@ -453,6 +455,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin->sin_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -465,7 +468,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -480,6 +483,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin6->sin6_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -492,7 +496,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -500,6 +504,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
- {
- 	struct rpcbind_args *map = msg->rpc_argp;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
- 		"local rpcbind\n",
-@@ -508,7 +513,7 @@ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
- 	map->r_addr = "";
- 	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
- 
--	return rpcb_register_call(rpcb_local_clnt4, msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt4, msg);
- }
- 
- /**
-@@ -566,8 +571,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
--	if (rpcb_local_clnt4 == NULL)
-+	if (sn->rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
- 
- 	if (address == NULL)
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiB0YW8ucGVuZ0BlbWMuY29tIFtt
+YWlsdG86dGFvLnBlbmdAZW1jLmNvbV0NCj4gU2VudDogVHVlc2RheSwgTm92ZW1iZXIgMjksIDIw
+MTEgNzo0MCBBTQ0KPiBUbzogc2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbQ0KPiBDYzogTXlrbGVi
+dXN0LCBUcm9uZDsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgeGVtdWxAcGFyYWxsZWxzLmNv
+bTsNCj4gbmVpbGJAc3VzZS5kZTsgbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgbGludXgta2VybmVs
+QHZnZXIua2VybmVsLm9yZzsNCj4gamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZp
+ZWxkc2VzLm9yZzsgZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBT
+dWJqZWN0OiBSRTogW1BBVENIIDQvNV0gTkZTOiByZW1vdmUgUlBDIFBpcGVGUyBtb3VudCBwb2lu
+dCByZWZlcmVuY2UNCj4gZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiANCj4gPiAtLS0tLU9y
+aWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IFN0YW5pc2xhdiBLaW5zYnVyc2t5IFttYWls
+dG86c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbV0NCj4gPiBTZW50OiBUdWVzZGF5LCBOb3ZlbWJl
+ciAyOSwgMjAxMSA4OjE5IFBNDQo+ID4gVG86IFBlbmcsIFRhbw0KPiA+IENjOiBUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGF2ZWwNCj4gPiBF
+bWVsaWFub3Y7IG5laWxiQHN1c2UuZGU7IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7DQo+ID4gbGlu
+dXgta2VybmVsQHZnZXIua2VybmVsLm9yZzsgSmFtZXMgQm90dG9tbGV5OyBiZmllbGRzQGZpZWxk
+c2VzLm9yZzsNCj4gPiBkYXZlbUBkYXZlbWxvZnQubmV0OyBkZXZlbEBvcGVudnoub3JnDQo+ID4g
+U3ViamVjdDogUmU6IFtQQVRDSCA0LzVdIE5GUzogcmVtb3ZlIFJQQyBQaXBlRlMgbW91bnQgcG9p
+bnQgcmVmZXJlbmNlDQo+ID4gZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiA+DQo+ID4gMjku
+MTEuMjAxMSAxNjowMCwgdGFvLnBlbmdAZW1jLmNvbSDQv9C40YjQtdGCOg0KPiA+ID4+IC0tLS0t
+T3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4gPj4gRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIu
+a2VybmVsLm9yZw0KPiA+ID4+IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9y
+Z10gT24gQmVoYWxmIE9mDQo+ID4gU3RhbmlzbGF2DQo+ID4gPj4gS2luc2J1cnNreQ0KPiA+ID4+
+IFNlbnQ6IFR1ZXNkYXksIE5vdmVtYmVyIDI5LCAyMDExIDY6MTEgUE0NCj4gPiA+PiBUbzogVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gPiA+PiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
+Lm9yZzsgeGVtdWxAcGFyYWxsZWxzLmNvbTsgbmVpbGJAc3VzZS5kZTsNCj4gPiA+PiBuZXRkZXZA
+dmdlci5rZXJuZWwub3JnOyBsaW51eC0ga2VybmVsQHZnZXIua2VybmVsLm9yZzsNCj4gPiA+PiBq
+Ym90dG9tbGV5QHBhcmFsbGVscy5jb207IGJmaWVsZHNAZmllbGRzZXMub3JnOw0KPiA+ID4+IGRh
+dmVtQGRhdmVtbG9mdC5uZXQ7IGRldmVsQG9wZW52ei5vcmcNCj4gPiA+PiBTdWJqZWN0OiBbUEFU
+Q0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZQ0KPiA+
+ID4+IGZyb20gYmxvY2tsYXlvdXQgcm91dGluZXMNCj4gPiA+Pg0KPiA+ID4+IFRoaXMgaXMgYSBj
+bGVhbnVwIHBhdGNoLiBXZSBkb24ndCBuZWVkIHRoaXMgcmVmZXJlbmNlIGFueW1vcmUsDQo+ID4g
+Pj4gYmVjYXVzZSBibG9ja2xheW91dCBwaXBlcyBkZW50cmllcyBub3cgY3JlYXRlcyBhbmQgZGVz
+dHJveXMgaW4NCj4gPiA+PiBwZXItbmV0IG9wZXJhdGlvbnMgYW5kIG9uIFBpcGVGUyBtb3VudC91
+bW91bnQgbm90aWZpY2F0aW9uLg0KPiA+ID4+IE5vdGUgdGhhdCBuZnM0YmxvY2tsYXlvdXRfcmVn
+aXN0ZXJfbmV0KCkgbm93IHJldHVybnMgMCBpbnN0ZWFkIG9mDQo+ID4gPj4gLUVOT0VOVCBpbiBj
+YXNlIG9mIFBpcGVGUyBzdXBlcmJsb2NrIGFic2VuY2UuIFRoaXMgaXMgb2ssIGJlY2F1c2UNCj4g
+PiA+PiBibG9ja2xheW91dCBwaXBlIGRlbnRyeSB3aWxsIGJlIGNyZWF0ZWQgb24gUGlwZUZTIG1v
+dW50IGV2ZW50Lg0KPiA+ID4gV2hlbiBpcyB0aGUgInBpcGVmcyBtb3VudCBldmVudCIgZ29pbmcg
+dG8gaGFwcGVuPyBXaGVuIGluc2VydGluZw0KPiA+ID4ga2VybmVsIG1vZHVsZXMgb3Igd2hlbiB1
+c2VyIGlzc3Vlcw0KPiA+IG1vdW50IGNvbW1hbmQ/DQo+ID4gPg0KPiA+DQo+ID4gV2hlbiB1c2Vy
+IGlzc3VlcyBtb3VudCBjb21tYW5kLg0KPiA+IEtlcm5lbCBtb3VudHMgb2YgUGlwZUZTIGhhcyBi
+ZWVuIHJlbW92ZWQgd2l0aCBhbGwgdGhlc2UgcGF0Y2ggc2V0cw0KPiA+IEkndmUgc2VudCBhbHJl
+YWR5Lg0KPiBUaGVuIGl0IGlzIGdvaW5nIHRvIGJyZWFrIGJsb2NrbGF5b3V0IHVzZXIgc3BhY2Ug
+cHJvZ3JhbSBibGttYXBkLCB3aGljaCBpcw0KPiBzdGFyZWQgYmVmb3JlIG1vdW50aW5nIGFueSBm
+aWxlIHN5c3RlbSBhbmQgaXQgdHJpZXMgdG8gb3BlbiB0aGUgcGlwZSBmaWxlDQo+IHdoZW4gc3Rh
+cnRlZC4NCg0KV2h5IG9uIGVhcnRoIGlzIGJsa21hcGQgZG9pbmcgdGhpcyBpbnN0ZWFkIG9mIGxp
+c3RlbmluZyBmb3IgZmlsZSBjcmVhdGlvbiBub3RpZmljYXRpb25zIGxpa2UgdGhlIG90aGVyIHJw
+Y19waXBlZnMgZGFlbW9ucyBkbz8NCg0KVHJvbmQNCg0K
