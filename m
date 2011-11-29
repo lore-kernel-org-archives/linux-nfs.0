@@ -1,72 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34354 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35599 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751786Ab1KNAnH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Nov 2011 19:43:07 -0500
-Date: Sun, 13 Nov 2011 19:42:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20111114004254.GA30681@fieldses.org>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321056809.8733.2.camel@lade.trondhjem.org>
- <20111112144953.GA3740@infradead.org>
- <20111113145400.6c7a9be3@notabene.brown>
- <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
- <20111113163632.GA28574@fieldses.org>
- <20111114080745.57083bfe@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111114080745.57083bfe@notabene.brown>
+	id S1752377Ab1K2RT1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 12:19:27 -0500
+Message-ID: <1322587165.4174.20.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Peng Tao <bergwolf@gmail.com>, tao.peng@emc.com, skinsbursky@parallels.com,
+        linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Date: Tue, 29 Nov 2011 12:19:25 -0500
+In-Reply-To: <20111129164252.GA19528@fieldses.org>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+	 <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+	 <4ED4CDCE.9080804@parallels.com>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+	 <1322579906.3619.1.camel@lade.trondhjem.org>
+	 <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+	 <1322584830.4174.16.camel@lade.trondhjem.org>
+	 <20111129164252.GA19528@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 14, 2011 at 08:07:45AM +1100, NeilBrown wrote:
-> On Sun, 13 Nov 2011 11:36:32 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Sun, Nov 13, 2011 at 02:45:48PM +0100, Tigran Mkrtchyan wrote:
-> > > I have a server which runs on top of hadoop. The problem with hadoop
-> > > is that there is no way to have persistent file handles. I am
-> > > currently working on a way to do that - either simulate them or add a
-> > > support for unique file id to hadoop. If linux client will support
-> > > volatile file handles then I can stop inventing some workarounds.
+On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote: 
+> On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
+> > I mean that I'm perfectly entitled to do
 > > 
-> > I might call that "fixing" rather than inventing workarounds.
+> > 'modprobe -r blocklayoutdriver'
 > > 
-> > Our of curiosity: if we really wanted to support such filesystems, what
-> > would we need in the protocol?  Just saying "filehandles aren't stable,
-> > deal with it" seems insufficient. 
+> > and when I do that, then I expect blkmapd to close the rpc pipe and wait
+> > for a new one to be created just like rpc.idmapd and rpc.gssd do when I
+> > remove the nfs and sunrpc modules.
 > 
-> 1/ no guarantees if the file is not 'open'
-> 2/ two possible responses to FHEXPIRED:
->     a/ perform a GETATTR and request the 'filehandle' attribute.  Client then
->        uses that filehandle instead.
->     b/ perform LOOKUP on parent filehandle with same name as before, and use
->        the resulting filehandle.
->    Server specifies which somehow (different error code?  magic attribute
->    flag somewhere?  doesn't really matter)
-> 
-> If a server has objects that are never renamed, it can easily use volatile
-> file handles.
-> If a server has objects which can be renamed and wants to use volatile file
-> handles, then if such an object is open and is about to be renamed, it must
-> first log to stable storage some mapping to allow it to access the file from
-> the old volatile file handle.
+> The rpc pipefs mount doesn't hold a reference on the sunrpc module?
 
-I think then there's no limit to the lifetime of those log entries, or
-to the size of the log?
+I stand corrected: the mount does hold a reference to the sunrpc
+module. 
+However nothing holds a reference to the blocklayoutdriver module, so
+the main point that the "blocklayout" pipe can disappear from underneath
+the blkmapd stands.
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> And of course it cannot allow renames during
-> the grace period, but I think we already have that.
-> Also, if the VFH is such that it will be  lost on a reboot, the server must
-> log it to stable storage before allowing an open.
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
