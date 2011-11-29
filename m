@@ -1,43 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:55015 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756440Ab1KRNvc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 08:51:32 -0500
-Message-ID: <4EC662DC.70001@Calva.COM>
-Date: Fri, 18 Nov 2011 14:51:24 +0100
-From: John Hughes <john@Calva.COM>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:36000 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756501Ab1K2VPh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 16:15:37 -0500
+Message-ID: <4ED54B0E.5030403@oracle.com>
+Date: Tue, 29 Nov 2011 13:13:50 -0800
+From: Maxim Uvarov <maxim.uvarov@oracle.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry
-References: <4EC6426A.3020306@Calva.COM> <4EC66148.4020003@RedHat.com>
-In-Reply-To: <4EC66148.4020003@RedHat.com>
+To: linux-nfs@vger.kernel.org
+CC: linux-kernel@vger.kernel.org, rlove@rlove.org, eparis@parisplace.org,
+        john@johnmccutchan.com, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org
+Subject: nfs no inotify IN_DELETE  event
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18/11/11 14:44, Steve Dickson wrote:
->
-> I think the answer to all this is have the ticket
-> renewed before it expires. There is a daemon call sssd
-> that is part of the FreeIPA project that will supposedly
-> do that for us... I'm looking into it...
-You can only renoew the ticket before it expires if it hasn't yet expired.
+Hello,
 
-Imagine this case:
+I'm looking on inotify02 test future in mainline kernel on nfs:
 
-I go home for the evening.
+inotify_init()                          = 3
+inotify_add_watch(3, ".", IN_ALL_EVENTS)
+creat("test_file1", 0755)               = 5
+rename("test_file1", "test_file2")      = 0
+getcwd("/mnt/nfs2/tmp", 256)            = 14
+rename("/mnt/nfs2/tmp", "/mnt/nfs2/tmp.rename1") = 0
+unlink("test_file2")                    = 0
 
-The screensaver kicks in.
+After unlink() if file sytem is not nfs there is event:
+IN_DELETE               0x00000200      /* Subfile was deleted */
+for file test_file2. If file system is nfs there is no such event.
 
-The machine suspends to ram.
+For the first time I thought that this is nfs sever bug related to nfs 
+"silly renamed files" feature. But logically - file test_file2 was not 
+deleted. It was removed with his directory from event watch directory to
+non event watch directory.
 
-The ticket expires.  Yes, it was renewable but nobody could renew it 
-because they were asleep.
+1. is it ok that unlink() in that test returns 0, not -1 ENOENT?
 
-I come back the next morning, hit a key, the unlock screen pops up, I 
-enter my password, pam_krb5 gets a new ticket.
+2. should we get IN_DELETE for all files and sub folders for event watch 
+directory? Or there should be only one event that directory was removed?
 
+To reproduce:
+http://ltp.sourceforge.net/
+make
+cd testcases/kernel/syscalls/inotify
+export TMPDIR=/mnt/nfs/tmp/
+export TDIRECTORY=/mnt/nfs/tmp/
+./inotify02
 
+Best regards,
+Maxim Uvarov.
