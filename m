@@ -1,50 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10598 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753942Ab1KJUwX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 15:52:23 -0500
-Message-ID: <1320958342.11956.22.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/2] Enable the in-kernel id mapping to be on by default.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 10 Nov 2011 15:52:22 -0500
-In-Reply-To: <1320956763-17935-1-git-send-email-steved@redhat.com>
-References: <1320956763-17935-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mexforward.lss.emc.com ([128.222.32.20]:15902 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753107Ab1K2MlW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 07:41:22 -0500
+From: <tao.peng@emc.com>
+To: <skinsbursky@parallels.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <xemul@parallels.com>, <neilb@suse.de>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <jbottomley@parallels.com>,
+        <bfields@fieldses.org>, <davem@davemloft.net>, <devel@openvz.org>
+Date: Tue, 29 Nov 2011 07:40:19 -0500
+Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+ <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+ <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+ <4ED4CDCE.9080804@parallels.com>
+In-Reply-To: <4ED4CDCE.9080804@parallels.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-11-10 at 15:26 -0500, Steve Dickson wrote: 
-> This patch set enables the in-kernel id mapping upcall
-> mechanism, which will fix deadlocks that can occur 
-> between the rpc.idmapd daemon and the kernel. 
-
-Which deadlocks are you thinking of?
-
-> This set also correct the binary name in the kernel 
-> documentation
-
-Note that we should also at some point change the default value of the
-nfs4_disable_idmapping module parameter. Setting it to 'Y' so that the
-NFS client starts by trying to use numeric u/gids with 'sec=sys' should
-be safe, since we automatically fall back to using string-based
-owner/group names if the server rejects numeric values.
-
-Also note that older Linux servers return NFS4ERR_BADNAME in cases where
-they should be using NFS4ERR_BADOWNER: please can distribution
-maintainers make sure that they have applied commit
-f6af99ec1b261e21219d5eba99e3af48fc6c32d4 (nfsd4: name->id mapping should
-fail with BADOWNER not BADNAME).
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGFuaXNsYXYgS2luc2J1cnNr
+eSBbbWFpbHRvOnNraW5zYnVyc2t5QHBhcmFsbGVscy5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIE5v
+dmVtYmVyIDI5LCAyMDExIDg6MTkgUE0NCj4gVG86IFBlbmcsIFRhbw0KPiBDYzogVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb207IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IFBhdmVsIEVtZWxp
+YW5vdjsgbmVpbGJAc3VzZS5kZTsNCj4gbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgbGludXgta2Vy
+bmVsQHZnZXIua2VybmVsLm9yZzsgSmFtZXMgQm90dG9tbGV5OyBiZmllbGRzQGZpZWxkc2VzLm9y
+ZzsNCj4gZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsgZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBTdWJqZWN0OiBS
+ZTogW1BBVENIIDQvNV0gTkZTOiByZW1vdmUgUlBDIFBpcGVGUyBtb3VudCBwb2ludCByZWZlcmVu
+Y2UgZnJvbSBibG9ja2xheW91dCByb3V0aW5lcw0KPiANCj4gMjkuMTEuMjAxMSAxNjowMCwgdGFv
+LnBlbmdAZW1jLmNvbSDQv9C40YjQtdGCOg0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
+LQ0KPiA+PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGlu
+dXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mDQo+IFN0YW5pc2xhdg0K
+PiA+PiBLaW5zYnVyc2t5DQo+ID4+IFNlbnQ6IFR1ZXNkYXksIE5vdmVtYmVyIDI5LCAyMDExIDY6
+MTEgUE0NCj4gPj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4+IENjOiBsaW51
+eC1uZnNAdmdlci5rZXJuZWwub3JnOyB4ZW11bEBwYXJhbGxlbHMuY29tOyBuZWlsYkBzdXNlLmRl
+OyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4gPj4ga2VybmVsQHZnZXIua2VybmVs
+Lm9yZzsgamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZpZWxkc2VzLm9yZzsgZGF2
+ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gPj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiA+PiBTdWJqZWN0OiBb
+UEFUQ0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZSBm
+cm9tIGJsb2NrbGF5b3V0IHJvdXRpbmVzDQo+ID4+DQo+ID4+IFRoaXMgaXMgYSBjbGVhbnVwIHBh
+dGNoLiBXZSBkb24ndCBuZWVkIHRoaXMgcmVmZXJlbmNlIGFueW1vcmUsIGJlY2F1c2UNCj4gPj4g
+YmxvY2tsYXlvdXQgcGlwZXMgZGVudHJpZXMgbm93IGNyZWF0ZXMgYW5kIGRlc3Ryb3lzIGluIHBl
+ci1uZXQgb3BlcmF0aW9ucyBhbmQNCj4gPj4gb24gUGlwZUZTIG1vdW50L3Vtb3VudCBub3RpZmlj
+YXRpb24uDQo+ID4+IE5vdGUgdGhhdCBuZnM0YmxvY2tsYXlvdXRfcmVnaXN0ZXJfbmV0KCkgbm93
+IHJldHVybnMgMCBpbnN0ZWFkIG9mIC1FTk9FTlQgaW4NCj4gPj4gY2FzZSBvZiBQaXBlRlMgc3Vw
+ZXJibG9jayBhYnNlbmNlLiBUaGlzIGlzIG9rLCBiZWNhdXNlIGJsb2NrbGF5b3V0IHBpcGUgZGVu
+dHJ5DQo+ID4+IHdpbGwgYmUgY3JlYXRlZCBvbiBQaXBlRlMgbW91bnQgZXZlbnQuDQo+ID4gV2hl
+biBpcyB0aGUgInBpcGVmcyBtb3VudCBldmVudCIgZ29pbmcgdG8gaGFwcGVuPyBXaGVuIGluc2Vy
+dGluZyBrZXJuZWwgbW9kdWxlcyBvciB3aGVuIHVzZXIgaXNzdWVzDQo+IG1vdW50IGNvbW1hbmQ/
+DQo+ID4NCj4gDQo+IFdoZW4gdXNlciBpc3N1ZXMgbW91bnQgY29tbWFuZC4NCj4gS2VybmVsIG1v
+dW50cyBvZiBQaXBlRlMgaGFzIGJlZW4gcmVtb3ZlZCB3aXRoIGFsbCB0aGVzZSBwYXRjaCBzZXRz
+IEkndmUgc2VudA0KPiBhbHJlYWR5Lg0KVGhlbiBpdCBpcyBnb2luZyB0byBicmVhayBibG9ja2xh
+eW91dCB1c2VyIHNwYWNlIHByb2dyYW0gYmxrbWFwZCwgd2hpY2ggaXMgc3RhcmVkIGJlZm9yZSBt
+b3VudGluZyBhbnkgZmlsZSBzeXN0ZW0gYW5kIGl0IHRyaWVzIHRvIG9wZW4gdGhlIHBpcGUgZmls
+ZSB3aGVuIHN0YXJ0ZWQuDQpOb3Qgc3VyZSBpZiB5b3UgaW1wbGVtZW50IHRoZSBzYW1lIGxvZ2lj
+IG9uIG5mcyBwaXBlIGFzIHdlbGwuIEJ1dCBpZiB5b3UgZG8sIHRoZW4gbmZzIGNsaWVudCB1c2Vy
+IHNwYWNlIHByb2dyYW0gaWRtYXBkIHdpbGwgZmFpbCB0byBzdGFydCBmb3IgdGhlIHNhbWUgcmVh
+c29uLg0KDQpXaHkgbm90IGp1c3QgZmFpbCB0byBsb2FkIG1vZHVsZSBpZiB5b3UgZmFpbCB0byBp
+bml0aWFsaXplIHBpcGVmcz8gV2hlbiBpcyBycGNfZ2V0X3NiX25ldCgpIGdvaW5nIHRvIGZhaWw/
+DQoNCj4gDQo+IA0KPiA+IFRoYW5rcywNCj4gPiBUYW8NCj4gPg0KPiA+Pg0KPiA+PiBTaWduZWQt
+b2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0K
+PiA+Pg0KPiA+PiAtLS0NCj4gPj4gICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8
+ICAgIDkgKy0tLS0tLS0tDQo+ID4+ICAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyks
+IDggZGVsZXRpb25zKC0pDQo+ID4+DQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlv
+dXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jDQo+ID4+
+IGluZGV4IGFjZjdhYzkuLjgyMTFmZmQgMTAwNjQ0DQo+ID4+IC0tLSBhL2ZzL25mcy9ibG9ja2xh
+eW91dC9ibG9ja2xheW91dC5jDQo+ID4+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
+eW91dC5jDQo+ID4+IEBAIC0xMDMyLDcgKzEwMzIsNyBAQCBzdGF0aWMgc3RydWN0IGRlbnRyeSAq
+bmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVyX25ldChzdHJ1Y3QgbmV0ICpuZXQsDQo+ID4+DQo+ID4+
+ICAgCXBpcGVmc19zYiA9IHJwY19nZXRfc2JfbmV0KG5ldCk7DQo+ID4+ICAgCWlmICghcGlwZWZz
+X3NiKQ0KPiA+PiAtCQlyZXR1cm4gRVJSX1BUUigtRU5PRU5UKTsNCj4gPj4gKwkJcmV0dXJuIDA7
+DQo+ID4+ICAgCWRlbnRyeSA9IG5mczRibG9ja2xheW91dF9yZWdpc3Rlcl9zYihwaXBlZnNfc2Is
+IHBpcGUpOw0KPiA+PiAgIAlycGNfcHV0X3NiX25ldChuZXQpOw0KPiA+PiAgIAlyZXR1cm4gZGVu
+dHJ5Ow0KPiA+PiBAQCAtMTA4Myw3ICsxMDgzLDYgQEAgc3RhdGljIHN0cnVjdCBwZXJuZXRfb3Bl
+cmF0aW9ucyBuZnM0YmxvY2tsYXlvdXRfbmV0X29wcyA9IHsNCj4gPj4NCj4gPj4gICBzdGF0aWMg
+aW50IF9faW5pdCBuZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiA+PiAgIHsNCj4gPj4gLQlz
+dHJ1Y3QgdmZzbW91bnQgKm1udDsNCj4gPj4gICAJaW50IHJldDsNCj4gPj4NCj4gPj4gICAJZHBy
+aW50aygiJXM6IE5GU3Y0IEJsb2NrIExheW91dCBEcml2ZXIgUmVnaXN0ZXJpbmcuLi5cbiIsIF9f
+ZnVuY19fKTsNCj4gPj4gQEAgLTEwOTMsMTIgKzEwOTIsNiBAQCBzdGF0aWMgaW50IF9faW5pdCBu
+ZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiA+PiAgIAkJZ290byBvdXQ7DQo+ID4+DQo+ID4+
+ICAgCWluaXRfd2FpdHF1ZXVlX2hlYWQoJmJsX3dxKTsNCj4gPj4gLQ0KPiA+PiAtCW1udCA9IHJw
+Y19nZXRfbW91bnQoKTsNCj4gPj4gLQlpZiAoSVNfRVJSKG1udCkpIHsNCj4gPj4gLQkJcmV0ID0g
+UFRSX0VSUihtbnQpOw0KPiA+PiAtCQlnb3RvIG91dF9yZW1vdmU7DQo+ID4+IC0JfQ0KPiA+PiAg
+IAlyZXQgPSBycGNfcGlwZWZzX25vdGlmaWVyX3JlZ2lzdGVyKCZuZnM0YmxvY2tsYXlvdXRfYmxv
+Y2spOw0KPiA+PiAgIAlpZiAocmV0KQ0KPiA+PiAgIAkJZ290byBvdXRfcmVtb3ZlOw0KPiA+Pg0K
+PiA+PiAtLQ0KPiA+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
+ZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
+dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
+ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gPg0KPiANCj4g
+DQo+IC0tDQo+IEJlc3QgcmVnYXJkcywNCj4gU3RhbmlzbGF2IEtpbnNidXJza3kNCg0K
