@@ -1,77 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:11595 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755492Ab1KYNO4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Nov 2011 08:14:56 -0500
-Subject: [PATCH 6/6] NFS: remove RPC PipeFS mount point references from NFS
-	cache routines
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 25 Nov 2011 17:13:20 +0300
-Message-ID: <20111125131320.6271.49000.stgit@localhost6.localdomain6>
-In-Reply-To: <20111125130557.6271.95071.stgit@localhost6.localdomain6>
-References: <20111125130557.6271.95071.stgit@localhost6.localdomain6>
+Received: from natasha.panasas.com ([67.152.220.90]:49502 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756999Ab1K2WlK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 17:41:10 -0500
+Message-ID: <4ED55F78.205@panasas.com>
+Date: Tue, 29 Nov 2011 14:40:56 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>, Garth Gibson <garth@panasas.com>,
+        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>  <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com> <1322603848.11286.7.camel@lade.trondhjem.org>
+In-Reply-To: <1322603848.11286.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cleanup patch. We don't need this reference anymore, because DNS
-resolver cache now creates it's dentries in per-net operations and on PipeFS
-mount/umount notification.
-Note that nfs_cache_register_net() now returns 0 instead of -ENOENT in case of
-PiepFS superblock absence. This is ok, Dns resolver cache will be regestered on
-PipeFS mount event.
+On 11/29/2011 01:57 PM, Trond Myklebust wrote:
+>> Also Files when they will support segments and servers that request segments,
+>> like the CEPH server, will very much enjoy the above, .i.e: Tell me the amount
+>> you know you want to write.
+> 
+> Why would we want to add segment support to the pNFS files client???
+> Segments are a nuisance that multiply the amount of unnecessary chitchat
+> between the client and the MDS without providing any tangible
+> benefits...
+> 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Your kidding right?
 
----
- fs/nfs/cache_lib.c |   19 ++++---------------
- 1 files changed, 4 insertions(+), 15 deletions(-)
+One: it is mandated by the Standard, This is not an option. So a perfectly
+     Standard complaint server is not Supported by Linux because we don't see
+     the point.
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 5905a31..dded263 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -126,24 +126,14 @@ int nfs_cache_register_sb(struct super_block *sb, struct cache_detail *cd)
- 
- int nfs_cache_register_net(struct net *net, struct cache_detail *cd)
- {
--	struct vfsmount *mnt;
- 	struct super_block *pipefs_sb;
--	int ret;
-+	int ret = 0;
- 
--	mnt = rpc_get_mount();
--	if (IS_ERR(mnt))
--		return PTR_ERR(mnt);
- 	pipefs_sb = rpc_get_sb_net(net);
--	if (!pipefs_sb) {
--		ret = -ENOENT;
--		goto err;
-+	if (pipefs_sb) {
-+		ret = nfs_cache_register_sb(pipefs_sb, cd);
-+		rpc_put_sb_net(net);
- 	}
--	ret = nfs_cache_register_sb(pipefs_sb, cd);
--	rpc_put_sb_net(net);
--	if (!ret)
--		return ret;
--err:
--	rpc_put_mount();
- 	return ret;
- }
- 
-@@ -162,7 +152,6 @@ void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd)
- 		nfs_cache_unregister_sb(pipefs_sb, cd);
- 		rpc_put_sb_net(net);
- 	}
--	rpc_put_mount();
- }
- 
- void nfs_cache_init(struct cache_detail *cd)
+Two: There are already file-layout servers out there (multiple) which are
+     waiting for the Linux files-layout segment support, because the underline
+     FS requires Segments and now they do not work with the Linux client. These
+     are CEPH and GPFS and more.
 
+The reason Netapp don't see a point is not a factor. I have not seen a netapp
+server doing a top 100 HPC cluster either.
+
+If the server hates the "unnecessary chitchat between the client and the MDS"
+It can serve all-file layout and that is that. But some servers don't have
+that privilege. Real big storage clusters with 1000thnds of DSs the data layout
+might only be properly described by segments.
+
+Let the fight begin. All the segmented file-layout servers out there. Now is
+the time to take a stand.
+
+Heart
