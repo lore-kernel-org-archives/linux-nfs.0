@@ -1,76 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58254 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753966Ab1KAORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Nov 2011 10:17:47 -0400
-Date: Tue, 1 Nov 2011 10:17:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSD: Added fault injection
-Message-ID: <20111101141746.GD32248@fieldses.org>
-References: <1319455259-3136-1-git-send-email-bjschuma@netapp.com>
- <20111028212450.GA7441@fieldses.org>
- <4EAFFD65.4010407@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EAFFD65.4010407@netapp.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:60445 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752552Ab1K2MhE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 07:37:04 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: rjw@sisk.pl
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
+        trond.myklebust@netapp.com, marek.belisko@gmail.com,
+        awilliam@redhat.com
+Subject: [PATCH v4 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
+Date: Tue, 29 Nov 2011 07:36:53 -0500
+Message-Id: <1322570215-8570-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 01, 2011 at 10:08:37AM -0400, Bryan Schumaker wrote:
-> On Fri 28 Oct 2011 05:24:50 PM EDT, J. Bruce Fields wrote:
-> > On Mon, Oct 24, 2011 at 07:20:57AM -0400, bjschuma@netapp.com wrote:
-> > ...
-> >> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> >> index db34a58..e67f30c 100644
-> >> --- a/fs/nfsd/nfsctl.c
-> >> +++ b/fs/nfsd/nfsctl.c
-> > ...
-> >> @@ -1130,6 +1131,9 @@ static int __init init_nfsd(void)
-> >>  	retval = nfs4_state_init(); /* nfs4 locking state */
-> >>  	if (retval)
-> >>  		return retval;
-> >> +	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
-> >> +	if (retval)
-> >> +		goto out_cleanup_fault_injection;
-> >>  	nfsd_stat_init();	/* Statistics */
-> >>  	retval = nfsd_reply_cache_init();
-> >>  	if (retval)
-> >> @@ -1161,6 +1165,8 @@ out_free_cache:
-> >>  out_free_stat:
-> >>  	nfsd_stat_shutdown();
-> >>  	nfsd4_free_slabs();
-> >> +out_cleanup_fault_injection:
-> >> +	nfsd_fault_inject_cleanup();
-> >
-> > Check the cleanup here again....  The slabs are allocated in state_init,
-> > so you need to do that on nfsd_fault_inject_init, but you *don't* need
-> > the fault_inject_cleanup in that case, since fault_inject_init cleanup
-> > cleans up after itself--that's needed only on later failures.
-> 
-> Would it be better to change the fault_inject_init() function so it 
-> doesn't clean up after itself?  This would keep it consistent with the 
-> other nfsd init functions.
+This patchset is the fourth attempt at fixing the issues with suspending
+a machine that has an active NFS mount.
 
-I don't think so.  The pattern here is pretty common throughout the
-kernel; it's approximately:
+The bug reported against Fedora is here:
 
-	do_thing1();
-	err = do_thing2();
-	if (err)
-		goto undo_thing1;
-	err = do_thing3();
-	if (err)
-		goto undo_thing2;
-	...
+    https://bugzilla.redhat.com/show_bug.cgi?id=717735
 
-Functions are no-ops on failure, and the caller's just responsible for
-cleaning up previous stuff.
+The main difference from v3 is that I've fixed a stupid set of errors in
+freezable_schedule_timeout_killable. The if condition was reversed from
+what it should have been, and the code did not call freezer_count()
+again when it was going to return early.
 
-> I didn't realize that slabs were initialized in the state_init()
-> function, I'll fix that.
+Tejun has mentioned that the extra try_to_freeze() calls are unnecessary
+on top of the pm-freezer changes, but this set should work on as
+expected on top of 3.2-ish kernels. In the meantime, I'll look over the
+pm-freezer changes and see whether I need to make changes in this set
+for 3.3.
 
-I'll admit that's confusing.  Any suggestion to make it clearer welcome.
+Jeff Layton (2):
+  sunrpc: make rpc_wait_bit_killable handle freeze events
+  nfs: make TASK_KILLABLE sleeps attempt to freeze
 
---b.
+ fs/nfs/inode.c          |    3 ++-
+ fs/nfs/nfs3proc.c       |    3 ++-
+ fs/nfs/nfs4proc.c       |    5 +++--
+ fs/nfs/proc.c           |    3 ++-
+ include/linux/freezer.h |   42 ++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c      |    3 ++-
+ 6 files changed, 53 insertions(+), 6 deletions(-)
+
+-- 
+1.7.6.4
+
