@@ -1,226 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:57477 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752554Ab1KQVvk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 16:51:40 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RR9pS-0003K1-2s
-	for linux-nfs@vger.kernel.org; Thu, 17 Nov 2011 16:49:06 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] nfsidmap: Allow a particular key to be revoked.
-Date: Thu, 17 Nov 2011 16:51:36 -0500
-Message-Id: <1321566696-7298-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1321566696-7298-1-git-send-email-steved@redhat.com>
-References: <1321566696-7298-1-git-send-email-steved@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:48416 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751020Ab1K2Vum (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 16:50:42 -0500
+Message-ID: <4ED55399.4060707@panasas.com>
+Date: Tue, 29 Nov 2011 13:50:17 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com> <4ED54FE4.9050008@panasas.com>
+In-Reply-To: <4ED54FE4.9050008@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introducing three new command line arguments
-that allow particular keys to be revoke
+On 11/29/2011 01:34 PM, Boaz Harrosh wrote:
+> But just do the above and you'll see that it is perfect.
+> 
+> BTW don't limit the lo_segment size by the max_io_size. This is why you
+> have .bg_test to signal when IO is maxed out.
+> 
+> - The read segments should be as big as possible (i_size long)
+> - The Write segments should ideally be as big as the Application
+>   wants to write to. (Amount of dirty pages at time of nfs-write-out
+>   is a very good first approximation).
+> 
+> So I guess it is: I hate these patches, to much mess, too little goodness.
+> 
+> Thank
+> Boaz
+> 
 
-  -u will remove a uid key
-  -g will revoke a gid key
-  -r will revoke both the uid and gid keys
+Ho and one more thing.
 
-The user name has also needs to be supply
-with these new flags.
+Also Files when they will support segments and servers that request segments,
+like the CEPH server, will very much enjoy the above, .i.e: Tell me the amount
+you know you want to write.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/nfsidmap/nfsidmap.c   |   88 +++++++++++++++++++++++++++++++++++++++++--
- utils/nfsidmap/nfsidmap.man |   23 +++++++++--
- 2 files changed, 103 insertions(+), 8 deletions(-)
+And surly Objects will enjoy that tremendously. Is it a 17 bytes text file, or
+the beginning of a big video file.
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 84a57fe..33ba9e7 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -13,7 +13,7 @@
- #include "xlog.h"
- 
- int verbose = 0;
--char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
-+char *usage="Usage: %s [-v] [[-u|-g|-r key]] | [-c [keyring]] | [[-t timeout] key desc]";
- 
- #define MAX_ID_LEN   11
- #define IDMAP_NAMESZ 128
-@@ -22,6 +22,9 @@ char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
- #define DEFAULT_KEYRING "id_resolver"
- #define PROCKEYS "/proc/keys"
- 
-+#define UIDKEYS 0x1
-+#define GIDKEYS 0x2
-+
- /*
-  * Find either a user or group id based on the name@domain string
-  */
-@@ -133,6 +136,67 @@ static int keyring_clear(char *keyring)
- 	fclose(fp);
- 	return 1;
- }
-+/*
-+ * Revoke a key 
-+ */
-+static int key_revoke(char *keystr, int keymask)
-+{
-+	FILE *fp;
-+	char buf[BUFSIZ], *ptr;
-+	key_serial_t key;
-+	int mask;
-+
-+	xlog_syslog(0);
-+
-+	if ((fp = fopen(PROCKEYS, "r")) == NULL) {
-+		xlog_err("fopen(%s) failed: %m", PROCKEYS);
-+		return 1;
-+	}
-+
-+	while(fgets(buf, BUFSIZ, fp) != NULL) {
-+		if (strstr(buf, "keyring") != NULL)
-+			continue;
-+
-+		mask = 0;
-+		if ((ptr = strstr(buf, "uid:")) != NULL)
-+			mask = UIDKEYS;
-+		else if ((ptr = strstr(buf, "gid:")) != NULL)
-+			mask = GIDKEYS;
-+		else 
-+			continue;
-+
-+		if ((keymask & mask) == 0)
-+			continue;
-+
-+		if (strncmp(ptr+4, keystr, strlen(keystr)) != NULL)
-+			continue;
-+
-+		if (verbose) {
-+			*(strchr(buf, '\n')) = '\0';
-+			xlog_warn("revoking '%s'", buf);
-+		}
-+		/*
-+		 * The key is the first arugment in the string
-+		 */
-+		*(strchr(buf, ' ')) = '\0';
-+		sscanf(buf, "%x", &key);
-+
-+		if (keyctl_revoke(key) < 0) {
-+			xlog_err("keyctl_revoke(0x%x) failed: %m", key);
-+			fclose(fp);
-+			return 1;
-+		}
-+
-+		keymask &= ~mask;
-+		if (keymask == 0) {
-+			fclose(fp);
-+			return 0;
-+		}
-+	}
-+	xlog_err("'%s' key was not found.", keystr);
-+	fclose(fp);
-+	return 1;
-+}
- 
- int main(int argc, char **argv)
- {
-@@ -142,8 +206,8 @@ int main(int argc, char **argv)
- 	int rc = 1, opt;
- 	int timeout = 600;
- 	key_serial_t key;
--	char *progname, *keyring = NULL;
--	int clearring;
-+	char *progname, *keyring = NULL, *keystr = NULL;
-+	int clearring, keymask = 0;
- 
- 	/* Set the basename */
- 	if ((progname = strrchr(argv[0], '/')) != NULL)
-@@ -153,8 +217,20 @@ int main(int argc, char **argv)
- 
- 	xlog_open(progname);
- 
--	while ((opt = getopt(argc, argv, "ct:v")) != -1) {
-+	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
- 		switch (opt) {
-+		case 'u':
-+			keymask = UIDKEYS;
-+			keystr = strdup(optarg);
-+			break;
-+		case 'g':
-+			keymask = GIDKEYS;
-+			keystr = strdup(optarg);
-+			break;
-+		case 'r':
-+			keymask = GIDKEYS|UIDKEYS;
-+			keystr = strdup(optarg);
-+			break;
- 		case 'c':
- 			clearring++;
- 			break;
-@@ -170,6 +246,10 @@ int main(int argc, char **argv)
- 		}
- 	}
- 
-+	if (keystr) {
-+		rc = key_revoke(keystr, keymask);
-+		return rc;		
-+	}
- 	if (clearring) {
- 		keyring = ((argc - optind) ? argv[optind] : NULL);
- 		rc = keyring_clear(keyring);
-diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-index db65a1f..216afd1 100644
---- a/utils/nfsidmap/nfsidmap.man
-+++ b/utils/nfsidmap/nfsidmap.man
-@@ -6,7 +6,11 @@
- .SH NAME
- nfsidmap \- The NFS idmapper upcall program
- .SH SYNOPSIS
--.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
-+.B "nfsidmap [-v] [-t timeout] key desc"
-+.br
-+.B "nfsidmap [-v] [-c [keyring]]"
-+.br
-+.B "nfsidmap [-v] [-u|-g|-r user]"
- .SH DESCRIPTION
- The file
- .I /usr/sbin/nfsidmap
-@@ -18,9 +22,11 @@ is called by /sbin/request-key, and will perform the translation and
- initialize a key with the resulting information.
- .PP
- .I nfsidmap
--can also used to clear the keyring of all the keys.  
--This is useful when all the mappings have failed to due to an DNS outage
--or some other error resulting in all the cached uid/gid to be invalid.
-+can also used to clear the keyring of all the keys or 
-+revoke one particular key.  
-+This is useful when the id mappings have failed to due 
-+to a lookup error resulting in all the cached uids/gids to be set 
-+to the user id nobody.
- .SH OPTIONS
- .TP
- .B -c [keyring]
-@@ -28,10 +34,19 @@ Clear the keyring of all the keys. If a
- keyring is not supplied the default 
- keyring 'id_resolver' will be used.
- .TP
-+.B -g user
-+Revoke the gid key of the given user.
-+.TP
-+.B -r user
-+Revoke both the uid and gid key of the given user.
-+.TP
- .B -t timeout
- Set the expiration timer, in seconds, on the key.
- The default is 600 seconds (10 mins).
- .TP
-+.B -u user
-+Revoke the uid key of the given user.
-+.TP
- .B -v
- Increases the verbosity of the output to syslog 
- (can be specified multiple times).
--- 
-1.7.7
+But the problem with Files and Objects is that they need a layout first before
+they can do the right thing in .pg_test and say if this belongs to this IO or
+to the next. (Files is stipe_unit maxed+aliened, Objects raid-group boundary)
 
+So your solution is not good for files and Objects, my way solves them two.
+
+Thanks
+Boaz
