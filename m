@@ -1,207 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:51742 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755465Ab1KJJki convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 04:40:38 -0500
-From: <tao.peng@emc.com>
-To: <bhalevy@tonian.com>
-CC: <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@netapp.com>
-Date: Thu, 10 Nov 2011 04:40:03 -0500
-Subject: RE: [PATCH 3/8] pnfsblock: move find lock page logic out of
- bl_write_pagelist
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD054C48@MX09A.corp.emc.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
- <1320851766-1834-4-git-send-email-bergwolf@gmail.com>
- <4EBB8C14.2090209@tonian.com>
- <F19688880B763E40B28B2B462677FBF805DD054C30@MX09A.corp.emc.com>
- <4EBB99F7.5010106@tonian.com>
-In-Reply-To: <4EBB99F7.5010106@tonian.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:26386 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755955Ab1K2Qkg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:40:36 -0500
+Message-ID: <1322584830.4174.16.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: tao.peng@emc.com, skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
+        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 29 Nov 2011 11:40:30 -0500
+In-Reply-To: <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+	 <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+	 <4ED4CDCE.9080804@parallels.com>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+	 <1322579906.3619.1.camel@lade.trondhjem.org>
+	 <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@tonian.com]
-> Sent: Thursday, November 10, 2011 5:32 PM
-> To: Peng, Tao
-> Cc: bergwolf@gmail.com; linux-nfs@vger.kernel.org;
-> Trond.Myklebust@netapp.com
-> Subject: Re: [PATCH 3/8] pnfsblock: move find lock page logic out of
-> bl_write_pagelist
-> 
-> On 2011-11-10 10:49, tao.peng@emc.com wrote:
+On Tue, 2011-11-29 at 23:30 +0800, Peng Tao wrote: 
+> On Tue, Nov 29, 2011 at 11:18 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Tue, 2011-11-29 at 23:10 +0800, Peng Tao wrote:
+> >> On Tue, Nov 29, 2011 at 9:35 PM, Myklebust, Trond
+> >> <Trond.Myklebust@netapp.com> wrote:
+> >> >> -----Original Message-----
+> >> >> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
+> >> >> Sent: Tuesday, November 29, 2011 7:40 AM
+> >> >> To: skinsbursky@parallels.com
+> >> >> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; xemul@parallels.com;
+> >> >> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+> >> >> jbottomley@parallels.com; bfields@fieldses.org; davem@davemloft.net;
+> >> >> devel@openvz.org
+> >> >> Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> >> from blocklayout routines
+> >> >>
+> >> >> > -----Original Message-----
+> >> >> > From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
+> >> >> > Sent: Tuesday, November 29, 2011 8:19 PM
+> >> >> > To: Peng, Tao
+> >> >> > Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Pavel
+> >> >> > Emelianov; neilb@suse.de; netdev@vger.kernel.org;
+> >> >> > linux-kernel@vger.kernel.org; James Bottomley; bfields@fieldses.org;
+> >> >> > davem@davemloft.net; devel@openvz.org
+> >> >> > Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> >> > from blocklayout routines
+> >> >> >
+> >> >> > 29.11.2011 16:00, tao.peng@emc.com пишет:
+> >> >> > >> -----Original Message-----
+> >> >> > >> From: linux-nfs-owner@vger.kernel.org
+> >> >> > >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of
+> >> >> > Stanislav
+> >> >> > >> Kinsbursky
+> >> >> > >> Sent: Tuesday, November 29, 2011 6:11 PM
+> >> >> > >> To: Trond.Myklebust@netapp.com
+> >> >> > >> Cc: linux-nfs@vger.kernel.org; xemul@parallels.com; neilb@suse.de;
+> >> >> > >> netdev@vger.kernel.org; linux- kernel@vger.kernel.org;
+> >> >> > >> jbottomley@parallels.com; bfields@fieldses.org;
+> >> >> > >> davem@davemloft.net; devel@openvz.org
+> >> >> > >> Subject: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> >> > >> from blocklayout routines
+> >> >> > >>
+> >> >> > >> This is a cleanup patch. We don't need this reference anymore,
+> >> >> > >> because blocklayout pipes dentries now creates and destroys in
+> >> >> > >> per-net operations and on PipeFS mount/umount notification.
+> >> >> > >> Note that nfs4blocklayout_register_net() now returns 0 instead of
+> >> >> > >> -ENOENT in case of PipeFS superblock absence. This is ok, because
+> >> >> > >> blocklayout pipe dentry will be created on PipeFS mount event.
+> >> >> > > When is the "pipefs mount event" going to happen? When inserting
+> >> >> > > kernel modules or when user issues
+> >> >> > mount command?
+> >> >> > >
+> >> >> >
+> >> >> > When user issues mount command.
+> >> >> > Kernel mounts of PipeFS has been removed with all these patch sets
+> >> >> > I've sent already.
+> >> >> Then it is going to break blocklayout user space program blkmapd, which is
+> >> >> stared before mounting any file system and it tries to open the pipe file
+> >> >> when started.
+> >> >
+> >> > Why on earth is blkmapd doing this instead of listening for file creation notifications like the other rpc_pipefs daemons do?
+> >> Not sure how the original implementer chose this but I think it is
+> >> likely because we do not expect the pipe file to be created or deleted
+> >> dynamically.
 > >
-> >> -----Original Message-----
-> >> From: linux-nfs-owner@vger.kernel.org
-> [mailto:linux-nfs-owner@vger.kernel.org]
-> >> On Behalf Of Benny Halevy
-> >> Sent: Thursday, November 10, 2011 4:32 PM
-> >> To: Peng Tao
-> >> Cc: linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; Peng, Tao
-> >> Subject: Re: [PATCH 3/8] pnfsblock: move find lock page logic out of
-> >> bl_write_pagelist
-> >>
-> >> On 2011-11-09 17:16, Peng Tao wrote:
-> >>> Also avoid unnecessary lock_page if page is handled by others.
-> >>>
-> >>> Signed-off-by: Peng Tao <peng_tao@emc.com>
-> >>> ---
-> >>>  fs/nfs/blocklayout/blocklayout.c |   78
-> >> ++++++++++++++++++++++++++------------
-> >>>  1 files changed, 54 insertions(+), 24 deletions(-)
-> >>>
-> >>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> >>> index 4ced0b0..e8e13f3 100644
-> >>> --- a/fs/nfs/blocklayout/blocklayout.c
-> >>> +++ b/fs/nfs/blocklayout/blocklayout.c
-> >>> @@ -484,6 +484,56 @@ cleanup:
-> >>>  	return ret;
-> >>>  }
-> >>>
-> >>> +/* Find or create a zeroing page marked being writeback.
-> >>> + * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-> >>> + * to indicate write out.
-> >>> + */
-> >>> +static struct page*
-> >>
-> >> coding style nit: "page *" rather than "page*"
-> >>
-> >>> +bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
-> >>> +			struct pnfs_block_extent *cow_read)
-> >>> +{
-> >>> +	struct page* page;
-> >>
-> >> checkpatch nit:
-> >> ERROR: "foo* bar" should be "foo *bar"
-> > Thank you! Will change both.
-> >
-> >
-> >>
-> >>> +	int locked = 0;
-> >>> +	page = find_get_page(inode->i_mapping, index);
-> >>> +	if (page)
-> >>> +		goto check_page;
-> >>> +
-> >>> +	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
-> >>> +	if (unlikely(!page)) {
-> >>> +		dprintk("%s oom\n", __func__);
-> >>> +		return ERR_PTR(-ENOMEM);
-> >>> +	}
-> >>> +	locked = 1;
-> >>
-> >> Why not just call find_or_create_page in the first place?
-> >> dealing with both the locked and unlocked cases here just
-> >> seems to add unneeded complexity.
-> > It is to avoid lock page when possible. find_or_create_page() calls
-> find_and_lock_page() but there are cases that the page is already locked by
-> someone (e.g., in nfs_writepage_locked()) and current process has to wait. Pressure
-> tests show many such contention. So I want to optimize it out.
-> 
-> I see.  So isn't there a missing page_cache_release
-> in the late locking case (see below...)
-> 
-> >
-> > Thanks,
-> > Tao
-> >>
-> >> Benny
-> >>
-> >>> +
-> >>> +check_page:
-> >>> +	/* PageDirty: Other will write this out
-> >>> +	 * PageWriteback: Other is writing this out
-> >>> +	 * PageUptodate: It was read before
-> >>> +	 */
-> >>> +	if (PageDirty(page) || PageWriteback(page)) {
-> >>> +		print_page(page);
-> >>> +		if (locked)
-> >>> +			unlock_page(page);
-> >>> +		page_cache_release(page);
-> >>> +		return NULL;
-> >>> +	}
-> >>> +
-> >>> +	if (!locked) {
-> >>> +		lock_page(page);
-> >>> +		if (PageDirty(page) || PageWriteback(page))
-> >>> +			unlock_page(page);
-> 
-> I suspect page_cache_release is required here too.
-> Actually, doing the following instead makes sense to me:
-> 
-> 	if (!locked) {
-> 		lock_page(page);
-> 		locked = true;	// yeah, make it should be bool, not int
-> 		goto check_page;
-> 	}
-Thanks, will make the change.
+> > Unless blkmapd can pin the sunrpc module (which it shouldn't be able to)
+> > then that assumption would be wrong. Please look into fixing blkmapd...
+> Sorry, I don't quite get it. Do you mean sunrpc module may be removed
+> while nfs/blocklayout modules are still in use? Please explain it a
+> bit. Thanks.
 
-Best,
-Tao
-> 
-> Benny
-> 
-> >>> +		return NULL;
-> >>> +	}
-> >>> +	if (!PageUptodate(page)) {
-> >>> +		/* New page, readin or zero it */
-> >>> +		init_page_for_write(page, cow_read);
-> >>> +	}
-> >>> +	set_page_writeback(page);
-> >>> +	unlock_page(page);
-> >>> +
-> >>> +	return page;
-> >>> +}
-> >>> +
-> >>>  static enum pnfs_try_status
-> >>>  bl_write_pagelist(struct nfs_write_data *wdata, int sync)
-> >>>  {
-> >>> @@ -543,32 +593,12 @@ fill_invalid_ext:
-> >>>  			dprintk("%s zero %dth page: index %lu isect %llu\n",
-> >>>  				__func__, npg_zero, index,
-> >>>  				(unsigned long long)isect);
-> >>> -			page =
-> >>> -			    find_or_create_page(wdata->inode->i_mapping, index,
-> >>> -						GFP_NOFS);
-> >>> -			if (!page) {
-> >>> -				dprintk("%s oom\n", __func__);
-> >>> -				wdata->pnfs_error = -ENOMEM;
-> >>> +			page = bl_find_get_zeroing_page(wdata->inode, index,
-> cow_read);
-> >>> +			if (unlikely(IS_ERR(page))) {
-> >>> +				wdata->pnfs_error = PTR_ERR(page);
-> >>>  				goto out;
-> >>> -			}
-> >>> -
-> >>> -			/* PageDirty: Other will write this out
-> >>> -			 * PageWriteback: Other is writing this out
-> >>> -			 * PageUptodate: It was read before
-> >>> -			 * sector_initialized: already written out
-> >>> -			 */
-> >>> -			if (PageDirty(page) || PageWriteback(page)) {
-> >>> -				print_page(page);
-> >>> -				unlock_page(page);
-> >>> -				page_cache_release(page);
-> >>> +			} else if (page == NULL)
-> >>>  				goto next_page;
-> >>> -			}
-> >>> -			if (!PageUptodate(page)) {
-> >>> -				/* New page, readin or zero it */
-> >>> -				init_page_for_write(page, cow_read);
-> >>> -			}
-> >>> -			set_page_writeback(page);
-> >>> -			unlock_page(page);
-> >>>
-> >>>  			ret = bl_mark_sectors_init(be->be_inval, isect,
-> >>>  						       PAGE_CACHE_SECTORS);
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I mean that I'm perfectly entitled to do
+
+'modprobe -r blocklayoutdriver'
+
+and when I do that, then I expect blkmapd to close the rpc pipe and wait
+for a new one to be created just like rpc.idmapd and rpc.gssd do when I
+remove the nfs and sunrpc modules.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
