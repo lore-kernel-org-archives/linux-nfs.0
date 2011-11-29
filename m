@@ -1,48 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31224 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:17071 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753220Ab1KHLc3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Nov 2011 06:32:29 -0500
-Date: Tue, 8 Nov 2011 06:32:18 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Hamo <hamo.by@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        steved@redhat.com
-Subject: Re: [PATCH] mount.nfs: ensure AF priority when mounting
-Message-ID: <20111108063218.27cc43aa@tlielax.poochiereds.net>
-In-Reply-To: <CAO_0yfM4ozPUCw0qvxrA3Z18cJaq9WiEZgWNhrf8wLee8baT8g@mail.gmail.com>
-References: <CAO_0yfP8XRH0+Gdn43QSncUFFPPmwbsxx2ZFdPpFTjKAQeuyAw@mail.gmail.com>
-	<4A9C7673-1CC1-4B8E-AF18-4DA39A14BCB7@oracle.com>
-	<CAO_0yfM4ozPUCw0qvxrA3Z18cJaq9WiEZgWNhrf8wLee8baT8g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1753693Ab1K2JMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 04:12:17 -0500
+Subject: [PATCH 1/5] NFS: handle blocklayout pipe PipeFS dentry by network
+	namespace aware routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 29 Nov 2011 13:10:12 +0300
+Message-ID: <20111129091012.20730.83741.stgit@localhost6.localdomain6>
+In-Reply-To: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Nov 2011 12:51:21 +0800
-Hamo <hamo.by@gmail.com> wrote:
+This patch makes blocklayout pipe dentry allocated and destroyed in network
+namespace context by PipeFS network namespace aware routines.
+Network namespace context is obtained from nfs_client structure.
 
-> On Tue, Nov 8, 2011 at 11:57 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >
-> > On Nov 7, 2011, at 10:14 PM, Hamo wrote:
-> >
-> >> On different architectures, getaddrinfo() may return different
-> >> orders of address families. This may confuse the users.
-> >
-> > Isn't this controlled by /etc/gai.conf ?  I'm not sure we want mount.nfs to override that.
-> >
-> 
-> After digging into this file, I found the order can be controlled by
-> this file, but without it, the order is not predictable.
-> Should we first try IPv6 then IPv4? This sounds reasonable.
-> So now, I am also not sure should we override this. Waiting for the
-> opinions from others.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ fs/nfs/blocklayout/blocklayout.c |   60 +++++++++++++++++++++++++++++++-------
+ 1 files changed, 49 insertions(+), 11 deletions(-)
 
-I don't think we ought to try and do this in nfs-utils. I see no reason
-that the architecture should have any effect at all on the sort order of
-address families being returned. If there is, then that sounds like a
-(libc?) bug on those arches.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index c26633e..50d5183 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -965,10 +965,55 @@ static const struct rpc_pipe_ops bl_upcall_ops = {
+ 	.destroy_msg	= bl_pipe_destroy_msg,
+ };
+ 
++static struct dentry *nfs4blocklayout_register_sb(struct super_block *sb,
++					    struct rpc_pipe *pipe)
++{
++	struct dentry *dir, *dentry;
++
++	dir = rpc_d_lookup_sb(sb, NFS_PIPE_DIRNAME);
++	if (dir == NULL)
++		return ERR_PTR(-ENOENT);
++	dentry = rpc_mkpipe_dentry(dir, "blocklayout", NULL, pipe);
++	dput(dir);
++	return dentry;
++}
++
++static void nfs4blocklayout_unregister_sb(struct super_block *sb,
++					  struct rpc_pipe *pipe)
++{
++	if (pipe->dentry)
++		rpc_unlink(pipe->dentry);
++}
++
++static struct dentry *nfs4blocklayout_register_net(struct net *net,
++						   struct rpc_pipe *pipe)
++{
++	struct super_block *pipefs_sb;
++	struct dentry *dentry;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (!pipefs_sb)
++		return ERR_PTR(-ENOENT);
++	dentry = nfs4blocklayout_register_sb(pipefs_sb, pipe);
++	rpc_put_sb_net(net);
++	return dentry;
++}
++
++static void nfs4blocklayout_unregister_net(struct net *net,
++					   struct rpc_pipe *pipe)
++{
++	struct super_block *pipefs_sb;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (pipefs_sb) {
++		nfs4blocklayout_unregister_sb(pipefs_sb, pipe);
++		rpc_put_sb_net(net);
++	}
++}
++
+ static int __init nfs4blocklayout_init(void)
+ {
+ 	struct vfsmount *mnt;
+-	struct path path;
+ 	int ret;
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+@@ -984,20 +1029,13 @@ static int __init nfs4blocklayout_init(void)
+ 		ret = PTR_ERR(mnt);
+ 		goto out_remove;
+ 	}
+-
+-	ret = vfs_path_lookup(mnt->mnt_root,
+-			      mnt,
+-			      NFS_PIPE_DIRNAME, 0, &path);
+-	if (ret)
+-		goto out_remove;
+-
+ 	bl_device_pipe = rpc_mkpipe_data(&bl_upcall_ops, 0);
+ 	if (IS_ERR(bl_device_pipe)) {
+ 		ret = PTR_ERR(bl_device_pipe);
+ 		goto out_remove;
+ 	}
+-	bl_device_pipe->dentry = rpc_mkpipe_dentry(path.dentry, "blocklayout",
+-						   NULL, bl_device_pipe);
++	bl_device_pipe->dentry = nfs4blocklayout_register_net(&init_net,
++							      bl_device_pipe);
+ 	if (IS_ERR(bl_device_pipe->dentry)) {
+ 		ret = PTR_ERR(bl_device_pipe->dentry);
+ 		goto out_destroy_pipe;
+@@ -1018,7 +1056,7 @@ static void __exit nfs4blocklayout_exit(void)
+ 	       __func__);
+ 
+ 	pnfs_unregister_layoutdriver(&blocklayout_type);
+-	rpc_unlink(bl_device_pipe->dentry);
++	nfs4blocklayout_unregister_net(&init_net, bl_device_pipe);
+ 	rpc_destroy_pipe_data(bl_device_pipe);
+ }
+ 
 
--- 
-Jeff Layton <jlayton@redhat.com>
