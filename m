@@ -1,45 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:45370 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752649Ab1LACrh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 21:47:37 -0500
-Date: Thu, 1 Dec 2011 02:47:35 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Rename dir on server can cause client to get ESTALE - this time
- with PATCH
-Message-ID: <20111201024735.GZ2203@ZenIV.linux.org.uk>
-References: <20111114131929.7b341444@notabene.brown>
- <20111201124922.22e7d72f@notabene.brown>
- <20111201021251.GY2203@ZenIV.linux.org.uk>
- <1322706258.2646.6.camel@lade.trondhjem.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:50722 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751565Ab1K2MBh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 07:01:37 -0500
+From: <tao.peng@emc.com>
+To: <skinsbursky@parallels.com>, <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, <xemul@parallels.com>, <neilb@suse.de>,
+        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <jbottomley@parallels.com>, <bfields@fieldses.org>,
+        <davem@davemloft.net>, <devel@openvz.org>
+Date: Tue, 29 Nov 2011 07:00:56 -0500
+Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+	blocklayout routines
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+ <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+In-Reply-To: <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1322706258.2646.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 09:24:18PM -0500, Trond Myklebust wrote:
-
-> > As far as I can tell, the idea of open done in ->d_revalidate() is
-> > unsalvagable.  It's simply the wrong place for that.  Note that NFS
-> > is the only filesystem trying to do atomic open stuff in its ->d_revalidate()
-> > and it's not succeeding.
-> 
-> Not doing an open there is prohibitively expensive, though: you are
-> likely to see your cached inode flushed down the toilet if you just drop
-> the dentry...
-
-Wrong.  All you really need is to have that attempt to issue OPEN shifted
-into ->open() itself.  The only interesting part is that we might need
-to drop the original dentry and use a new one for ->f_path.dentry.
-
-Don't drop that dentry; after the case in ->d_revalidate() that would have
-attempted that OPEN you would either cross into covering vfsmount (in which
-case dentry should be left alone as you are doing now) or issue ->open().
-If it's really not valid (i.e. if OPEN yields a different inode), we can
-deal with that in ->open() just fine.  The *only* subtle part is how to
-deal with "it's a symlink, go away" from the server.  Which will require
-changes in do_last().  I have that stuff; it'll need debugging serious
-review once posted.  Which I'm going to do over weekend.
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIFN0YW5pc2xhdg0KPiBLaW5zYnVyc2t5DQo+IFNlbnQ6IFR1ZXNkYXksIE5vdmVt
+YmVyIDI5LCAyMDExIDY6MTEgUE0NCj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+
+IENjOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyB4ZW11bEBwYXJhbGxlbHMuY29tOyBuZWls
+YkBzdXNlLmRlOyBuZXRkZXZAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4ga2VybmVsQHZnZXIu
+a2VybmVsLm9yZzsgamJvdHRvbWxleUBwYXJhbGxlbHMuY29tOyBiZmllbGRzQGZpZWxkc2VzLm9y
+ZzsgZGF2ZW1AZGF2ZW1sb2Z0Lm5ldDsNCj4gZGV2ZWxAb3BlbnZ6Lm9yZw0KPiBTdWJqZWN0OiBb
+UEFUQ0ggNC81XSBORlM6IHJlbW92ZSBSUEMgUGlwZUZTIG1vdW50IHBvaW50IHJlZmVyZW5jZSBm
+cm9tIGJsb2NrbGF5b3V0IHJvdXRpbmVzDQo+IA0KPiBUaGlzIGlzIGEgY2xlYW51cCBwYXRjaC4g
+V2UgZG9uJ3QgbmVlZCB0aGlzIHJlZmVyZW5jZSBhbnltb3JlLCBiZWNhdXNlDQo+IGJsb2NrbGF5
+b3V0IHBpcGVzIGRlbnRyaWVzIG5vdyBjcmVhdGVzIGFuZCBkZXN0cm95cyBpbiBwZXItbmV0IG9w
+ZXJhdGlvbnMgYW5kDQo+IG9uIFBpcGVGUyBtb3VudC91bW91bnQgbm90aWZpY2F0aW9uLg0KPiBO
+b3RlIHRoYXQgbmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVyX25ldCgpIG5vdyByZXR1cm5zIDAgaW5z
+dGVhZCBvZiAtRU5PRU5UIGluDQo+IGNhc2Ugb2YgUGlwZUZTIHN1cGVyYmxvY2sgYWJzZW5jZS4g
+VGhpcyBpcyBvaywgYmVjYXVzZSBibG9ja2xheW91dCBwaXBlIGRlbnRyeQ0KPiB3aWxsIGJlIGNy
+ZWF0ZWQgb24gUGlwZUZTIG1vdW50IGV2ZW50Lg0KV2hlbiBpcyB0aGUgInBpcGVmcyBtb3VudCBl
+dmVudCIgZ29pbmcgdG8gaGFwcGVuPyBXaGVuIGluc2VydGluZyBrZXJuZWwgbW9kdWxlcyBvciB3
+aGVuIHVzZXIgaXNzdWVzIG1vdW50IGNvbW1hbmQ/DQoNClRoYW5rcywNClRhbw0KDQo+IA0KPiBT
+aWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxz
+LmNvbT4NCj4gDQo+IC0tLQ0KPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAg
+ICA5ICstLS0tLS0tLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyksIDggZGVs
+ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
+b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBpbmRleCBhY2Y3YWM5
+Li44MjExZmZkIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQu
+Yw0KPiArKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiBAQCAtMTAzMiw3
+ICsxMDMyLDcgQEAgc3RhdGljIHN0cnVjdCBkZW50cnkgKm5mczRibG9ja2xheW91dF9yZWdpc3Rl
+cl9uZXQoc3RydWN0IG5ldCAqbmV0LA0KPiANCj4gIAlwaXBlZnNfc2IgPSBycGNfZ2V0X3NiX25l
+dChuZXQpOw0KPiAgCWlmICghcGlwZWZzX3NiKQ0KPiAtCQlyZXR1cm4gRVJSX1BUUigtRU5PRU5U
+KTsNCj4gKwkJcmV0dXJuIDA7DQo+ICAJZGVudHJ5ID0gbmZzNGJsb2NrbGF5b3V0X3JlZ2lzdGVy
+X3NiKHBpcGVmc19zYiwgcGlwZSk7DQo+ICAJcnBjX3B1dF9zYl9uZXQobmV0KTsNCj4gIAlyZXR1
+cm4gZGVudHJ5Ow0KPiBAQCAtMTA4Myw3ICsxMDgzLDYgQEAgc3RhdGljIHN0cnVjdCBwZXJuZXRf
+b3BlcmF0aW9ucyBuZnM0YmxvY2tsYXlvdXRfbmV0X29wcyA9IHsNCj4gDQo+ICBzdGF0aWMgaW50
+IF9faW5pdCBuZnM0YmxvY2tsYXlvdXRfaW5pdCh2b2lkKQ0KPiAgew0KPiAtCXN0cnVjdCB2ZnNt
+b3VudCAqbW50Ow0KPiAgCWludCByZXQ7DQo+IA0KPiAgCWRwcmludGsoIiVzOiBORlN2NCBCbG9j
+ayBMYXlvdXQgRHJpdmVyIFJlZ2lzdGVyaW5nLi4uXG4iLCBfX2Z1bmNfXyk7DQo+IEBAIC0xMDkz
+LDEyICsxMDkyLDYgQEAgc3RhdGljIGludCBfX2luaXQgbmZzNGJsb2NrbGF5b3V0X2luaXQodm9p
+ZCkNCj4gIAkJZ290byBvdXQ7DQo+IA0KPiAgCWluaXRfd2FpdHF1ZXVlX2hlYWQoJmJsX3dxKTsN
+Cj4gLQ0KPiAtCW1udCA9IHJwY19nZXRfbW91bnQoKTsNCj4gLQlpZiAoSVNfRVJSKG1udCkpIHsN
+Cj4gLQkJcmV0ID0gUFRSX0VSUihtbnQpOw0KPiAtCQlnb3RvIG91dF9yZW1vdmU7DQo+IC0JfQ0K
+PiAgCXJldCA9IHJwY19waXBlZnNfbm90aWZpZXJfcmVnaXN0ZXIoJm5mczRibG9ja2xheW91dF9i
+bG9jayk7DQo+ICAJaWYgKHJldCkNCj4gIAkJZ290byBvdXRfcmVtb3ZlOw0KPiANCj4gLS0NCj4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
+Lmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
+Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
