@@ -1,85 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62148 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932383Ab1KBPyU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 11:54:20 -0400
-Date: Wed, 2 Nov 2011 11:54:53 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
- cache
-Message-ID: <20111102115453.7e81168f@corrin.poochiereds.net>
-In-Reply-To: <20111102144657.GD7721@fieldses.org>
-References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
-	<20111101202715.GB1891@fieldses.org>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
-	<20111101204325.522c35b3@corrin.poochiereds.net>
-	<20111102012315.GA5532@fieldses.org>
-	<20111102070742.5354d83c@tlielax.poochiereds.net>
-	<20111102144657.GD7721@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:53690 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753457Ab1K2Rat (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 12:30:49 -0500
+MIME-Version: 1.0
+In-Reply-To: <1322587165.4174.20.camel@lade.trondhjem.org>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+ <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+ <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+ <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+ <1322579906.3619.1.camel@lade.trondhjem.org> <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+ <1322584830.4174.16.camel@lade.trondhjem.org> <20111129164252.GA19528@fieldses.org>
+ <1322587165.4174.20.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 30 Nov 2011 01:30:27 +0800
+Message-ID: <CA+a=Yy4bEKaeUihjYLRzXVbjA3fc2EuZ3ToAkf0w-oL3PnZJKQ@mail.gmail.com>
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, tao.peng@emc.com,
+        skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
+        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
+        davem@davemloft.net, devel@openvz.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2 Nov 2011 10:46:57 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Wed, Nov 30, 2011 at 1:19 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2011-11-29 at 11:42 -0500, J. Bruce Fields wrote:
+>> On Tue, Nov 29, 2011 at 11:40:30AM -0500, Trond Myklebust wrote:
+>> > I mean that I'm perfectly entitled to do
+>> >
+>> > 'modprobe -r blocklayoutdriver'
+>> >
+>> > and when I do that, then I expect blkmapd to close the rpc pipe and wait
+>> > for a new one to be created just like rpc.idmapd and rpc.gssd do when I
+>> > remove the nfs and sunrpc modules.
+>>
+>> The rpc pipefs mount doesn't hold a reference on the sunrpc module?
+>
+> I stand corrected: the mount does hold a reference to the sunrpc
+> module.
+> However nothing holds a reference to the blocklayoutdriver module, so
+> the main point that the "blocklayout" pipe can disappear from underneath
+> the blkmapd stands.
+Thanks for the explanation and I agree it can cause problem if user
+reload blocklayout module. I will look into a fix to blkmapd.
 
-> On Wed, Nov 02, 2011 at 07:07:42AM -0400, Jeff Layton wrote:
-> > On Tue, 1 Nov 2011 21:23:15 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Nov 01, 2011 at 08:43:25PM -0400, Jeff Layton wrote:
-> > > > On Tue, 1 Nov 2011 16:07:27 -0700
-> > > > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> > > > > Is the problem perhaps that we should be clearing the
-> > > > > NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets set to
-> > > > > zero?
-> > > > > 
-> > > > 
-> > > > That was my thinking too. Whenever we truncate the i_size to 0, we
-> > > > can safely assume that the pagecache is now valid, and should be able
-> > > > to clear NFS_INO_INVALID_DATA no matter when it was set, right?
-> > > 
-> > > I don't understand why 0 is a special case: why should my setting the
-> > > size ever mean that I have to go reread data from the server?
-> > > 
-> > 
-> > If the server doesn't send pre-op attrs (and linux servers don't) then
-> > you have no way to know whether someone raced in and did writes to the
-> > remaining pages just prior to your truncate.
-> > 
-> > Size 0 is a special case because there are no remaining pages.
-> 
-> Those 3rd-party writes could also arrive between the truncate and the
-> read of the post-op attrs.  Is this setattr/write conflict really any
-> different than write/write conflicts?  In both cases you've got a file
-> open for write on two different clients.
-> 
-> And we live with the same sort of race in the write/write case.  (Hence
-> the nfs_post_op_update_inode_force_wcc in nfs4_write_done_cb.)
-> 
-
-
-Yes, I think it is different. When we truncate the file to 0 then we
-don't care if another write races in. We're invalidating all of the
-pages we have cached for the file at that point anyway. If we try to
-reread the file afterward we're going to have to fetch the data from
-the server regardless.
-
-I guess my main point is that we won't have any cached data after a
-truncate to 0, so there's no need to worry about ensuring that the
-cache is eventually invalidated after that. The VFS-level truncate on
-the client is going to take care of that for us anyway. That allows us
-to optimize for this special (but common) case.
-
-A truncate to a non-zero size is different however because we may still
-have lingering cached pages. We will need to invalidate those if the
-server sends pre-op attrs that indicate that something else happened
-prior to the truncate, or if the server doesn't send pre-op attrs at
-all.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Best,
+Tao
