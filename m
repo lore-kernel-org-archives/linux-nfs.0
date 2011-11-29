@@ -1,84 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34412 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:23701 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751381Ab1KCVUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 17:20:38 -0400
-Date: Thu, 3 Nov 2011 17:20:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate own
- cache
-Message-ID: <20111103212036.GB27393@fieldses.org>
-References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com>
- <20111101202715.GB1891@fieldses.org>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
- <20111101204325.522c35b3@corrin.poochiereds.net>
- <20111102012315.GA5532@fieldses.org>
- <20111102070742.5354d83c@tlielax.poochiereds.net>
- <20111102144657.GD7721@fieldses.org>
- <20111102115453.7e81168f@corrin.poochiereds.net>
- <20111103204449.GA27393@fieldses.org>
- <1320354185.18396.124.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1320354185.18396.124.camel@lade.trondhjem.org>
+	id S1753679Ab1K2PSo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 10:18:44 -0500
+Message-ID: <1322579906.3619.1.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: tao.peng@emc.com, skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
+        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Date: Tue, 29 Nov 2011 10:18:26 -0500
+In-Reply-To: <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+	 <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+	 <4ED4CDCE.9080804@parallels.com>
+	 <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+	 <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+	 <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 03, 2011 at 05:03:05PM -0400, Trond Myklebust wrote:
-> On Thu, 2011-11-03 at 16:44 -0400, J. Bruce Fields wrote: 
-> > I'm feeling dense.
-> > 
-> > On Wed, Nov 02, 2011 at 11:54:53AM -0400, Jeff Layton wrote:
-> > > Yes, I think it is different. When we truncate the file to 0 then we
-> > > don't care if another write races in.
-> > 
-> > 	Client 1		Client 2
-> > 	--------		--------
-> > 
-> > 	setattr size to 0
-> > 				write to file
-> > 	get change attribute
-> > 
-> > If we decide not to invalidate the cache here, then we miss Client 2's
-> > write.  The same is true if we set the size to something other than 0.
-> 
-> ?????????
-> How can we "decide not to invalidate the cache here"? the call to
-> nfs_vmtruncate() will _always_ call truncate_pagecache().
-> The only case where we don't call nfs_vmtruncate() is if the client has
-> already determined that the file size was zero, and optimised away the
-> setattr call altogether.
+On Tue, 2011-11-29 at 23:10 +0800, Peng Tao wrote: 
+> On Tue, Nov 29, 2011 at 9:35 PM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+> >> -----Original Message-----
+> >> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
+> >> Sent: Tuesday, November 29, 2011 7:40 AM
+> >> To: skinsbursky@parallels.com
+> >> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; xemul@parallels.com;
+> >> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+> >> jbottomley@parallels.com; bfields@fieldses.org; davem@davemloft.net;
+> >> devel@openvz.org
+> >> Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> from blocklayout routines
+> >>
+> >> > -----Original Message-----
+> >> > From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
+> >> > Sent: Tuesday, November 29, 2011 8:19 PM
+> >> > To: Peng, Tao
+> >> > Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Pavel
+> >> > Emelianov; neilb@suse.de; netdev@vger.kernel.org;
+> >> > linux-kernel@vger.kernel.org; James Bottomley; bfields@fieldses.org;
+> >> > davem@davemloft.net; devel@openvz.org
+> >> > Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> > from blocklayout routines
+> >> >
+> >> > 29.11.2011 16:00, tao.peng@emc.com пишет:
+> >> > >> -----Original Message-----
+> >> > >> From: linux-nfs-owner@vger.kernel.org
+> >> > >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of
+> >> > Stanislav
+> >> > >> Kinsbursky
+> >> > >> Sent: Tuesday, November 29, 2011 6:11 PM
+> >> > >> To: Trond.Myklebust@netapp.com
+> >> > >> Cc: linux-nfs@vger.kernel.org; xemul@parallels.com; neilb@suse.de;
+> >> > >> netdev@vger.kernel.org; linux- kernel@vger.kernel.org;
+> >> > >> jbottomley@parallels.com; bfields@fieldses.org;
+> >> > >> davem@davemloft.net; devel@openvz.org
+> >> > >> Subject: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+> >> > >> from blocklayout routines
+> >> > >>
+> >> > >> This is a cleanup patch. We don't need this reference anymore,
+> >> > >> because blocklayout pipes dentries now creates and destroys in
+> >> > >> per-net operations and on PipeFS mount/umount notification.
+> >> > >> Note that nfs4blocklayout_register_net() now returns 0 instead of
+> >> > >> -ENOENT in case of PipeFS superblock absence. This is ok, because
+> >> > >> blocklayout pipe dentry will be created on PipeFS mount event.
+> >> > > When is the "pipefs mount event" going to happen? When inserting
+> >> > > kernel modules or when user issues
+> >> > mount command?
+> >> > >
+> >> >
+> >> > When user issues mount command.
+> >> > Kernel mounts of PipeFS has been removed with all these patch sets
+> >> > I've sent already.
+> >> Then it is going to break blocklayout user space program blkmapd, which is
+> >> stared before mounting any file system and it tries to open the pipe file
+> >> when started.
+> >
+> > Why on earth is blkmapd doing this instead of listening for file creation notifications like the other rpc_pipefs daemons do?
+> Not sure how the original implementer chose this but I think it is
+> likely because we do not expect the pipe file to be created or deleted
+> dynamically.
 
-Sorry, I'm probably using the wrong language.
+Unless blkmapd can pin the sunrpc module (which it shouldn't be able to)
+then that assumption would be wrong. Please look into fixing blkmapd...
 
-I'm using the word "cache" to refer not to the page cache, but more
-generally to the client's idea of the file state.  Thus if the client,
-after the above operation, is left believing the file has size 0, I
-wouldn't say it has invalidated its cache, I'd say it's cached the fact
-that the file has size zero....
+   Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Does what I said make sense, given that?
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-> > There's a second possible race when Client 2's write comes before the
-> > setattr, and it's true that that race doesn't matter in the size-0 case
-> > and does in the other.
-> > 
-> > But if we were doing a write instead of a setattr, we'd ignore that
-> > second race.
-> > 
-> > And I don't understand why something like ftruncate should be treated
-> > differently from write.  In either case we're modifying a file while
-> > holding a write open, and I'd expect us to assume in both cases that
-> > nobody else is doing the same.
-> 
-> When did we move to the topic of multiple clients, and why do you think
-> it is relevant?
-
-We're seeing the client decide that it can no longer trust its idea of
-the file, presumably because it no longer believes it safe to assume
-that nobody else has modified it.
-
---b.
