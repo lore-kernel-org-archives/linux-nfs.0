@@ -1,74 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:30331 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751376Ab1K3Cz4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 21:55:56 -0500
-From: <tao.peng@emc.com>
-To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
-Date: Tue, 29 Nov 2011 21:55:28 -0500
-Subject: RE: [PATCH 4/4] pnfsblock: do ask for layout in pg_init
-Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B060@MX09A.corp.emc.com>
-References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
-	 <1322887965-2938-5-git-send-email-bergwolf@gmail.com>
-	 <1322584823.4174.15.camel@lade.trondhjem.org>
-	 <CA+a=Yy7wbcYsBQ+tuMR86+fiRn8xNcZxFvJTFOEsWqrJKRm7sQ@mail.gmail.com>
- <1322588583.4174.34.camel@lade.trondhjem.org>
-In-Reply-To: <1322588583.4174.34.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:60926 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751671Ab1K2Pao convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 10:30:44 -0500
 MIME-Version: 1.0
+In-Reply-To: <1322579906.3619.1.camel@lade.trondhjem.org>
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
+ <20111129091037.20730.59391.stgit@localhost6.localdomain6>
+ <F19688880B763E40B28B2B462677FBF805E3A4AFF2@MX09A.corp.emc.com>
+ <4ED4CDCE.9080804@parallels.com> <F19688880B763E40B28B2B462677FBF805E3A4AFFD@MX09A.corp.emc.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC23@SACMVEXC2-PRD.hq.netapp.com>
+ <CA+a=Yy5GKMu8rbh8y3fOtK6pmqygPNBr=a+p7LfcmTqtXFH3iA@mail.gmail.com> <1322579906.3619.1.camel@lade.trondhjem.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Tue, 29 Nov 2011 23:30:22 +0800
+Message-ID: <CA+a=Yy6kJe0NemSiRwM+t8gz5-UF5fOdwdS2so+q=nSYjBx--w@mail.gmail.com>
+Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: tao.peng@emc.com, skinsbursky@parallels.com, linux-nfs@vger.kernel.org,
+        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
+        bfields@fieldses.org, davem@davemloft.net, devel@openvz.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4LW5mcy1vd25lckB2
-Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBP
-biBCZWhhbGYgT2YgVHJvbmQNCj4gTXlrbGVidXN0DQo+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1i
-ZXIgMzAsIDIwMTEgMTo0MyBBTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6IGxpbnV4LW5mc0B2Z2Vy
-Lmtlcm5lbC5vcmc7IGJoYWxldnlAdG9uaWFuLmNvbTsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJl
-OiBbUEFUQ0ggNC80XSBwbmZzYmxvY2s6IGRvIGFzayBmb3IgbGF5b3V0IGluIHBnX2luaXQNCj4g
-DQo+IE9uIFdlZCwgMjAxMS0xMS0zMCBhdCAwMToyNSArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+
-ID4gT24gV2VkLCBOb3YgMzAsIDIwMTEgYXQgMTI6NDAgQU0sIFRyb25kIE15a2xlYnVzdA0KPiA+
-IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gPiBPbiBGcmksIDIwMTEt
-MTItMDIgYXQgMjA6NTIgLTA4MDAsIFBlbmcgVGFvIHdyb3RlOg0KPiA+ID4+IEFza2luZyBmb3Ig
-bGF5b3V0IGluIHBnX2luaXQgd2lsbCBhbHdheXMgbWFrZSBjbGllbnQgYXNrIGZvciBvbmx5IDRL
-Qg0KPiA+ID4+IGxheW91dCBpbiBldmVyeSBsYXlvdXRnZXQuIFRoaXMgd2F5LCBjbGllbnQgZHJv
-cHMgdGhlIElPIHNpemUgaW5mb3JtYXRpb24NCj4gPiA+PiB0aGF0IGlzIG1lYW5pbmdmdWwgZm9y
-IE1EUyBpbiBoYW5kaW5nIG91dCBsYXlvdXQuDQo+ID4gPj4NCj4gPiA+PiBJbiBzdGVhZCwgaWYg
-bGF5b3V0IGlzIG5vdCBmaW5kIGluIGNhY2hlLCBkbyBub3Qgc2VuZCBsYXlvdXRnZXQNCj4gPiA+
-PiBhdCBvbmNlLiBXYWl0IHVudGlsIGJlZm9yZSBpc3N1aW5nIElPIGluIHBuZnNfZG9fbXVsdGlw
-bGVfcmVhZHMvd3JpdGVzDQo+ID4gPj4gYmVjYXVzZSB0aGF0IGlzIHdoZXJlIHdlIGtub3cgdGhl
-IHJlYWwgc2l6ZSBvZiBjdXJyZW50IElPLiBCeSB0ZWxsaW5nIHRoZQ0KPiA+ID4+IHJlYWwgSU8g
-c2l6ZSB0byBNRFMsIE1EUyB3aWxsIGhhdmUgYSBiZXR0ZXIgY2hhbmNlIHRvIGdpdmUgcHJvcGVy
-IGxheW91dC4NCj4gPiA+DQo+ID4gPiBXaHkgY2FuJ3QgeW91IGp1c3Qgc3BsaXQgcG5mc191cGRh
-dGVfbGF5b3V0KCkgaW50byAyIHN1Yi1mdW5jdGlvbnMNCj4gPiA+IGluc3RlYWQgb2YgZHVwbGlj
-YXRpbmcgaXQgaW4gcHJpdmF0ZSBibG9jayBjb2RlPw0KPiA+IEJlY2F1c2UgSSB3YW50ZWQgdG8g
-ZGlmZmVyZW50aWF0ZSBiZXR3ZWVuIG5vIGxheW91dCBoZWFkZXIgYW5kIG5vDQo+ID4gY2FjaGVk
-IGxzZWcsIHdoZXJlIHRoZSBwbmZzX3VwZGF0ZV9sYXlvdXQoKSBpbnRlcmZhY2UgaXMgbm90IGVu
-b3VnaCB0bw0KPiA+IHRlbGwgdGhlIGRpZmZlcmVuY2UuIE9mIGNvdXJzZSBJIGNhbiBwdXQgdGhl
-c2UgYWxsIGludG8gZ2VuZXJpYyBsYXllci4NCj4gPiBJIHdpbGwgdXBkYXRlIHRoZSBwYXRjaHNl
-dCB0byBkbyBpdC4NCj4gPg0KPiA+ID4NCj4gPiA+IFRoZW4gY2FsbCBsYXlvdXRnZXQgaW4geW91
-ciBwZ19kb2lvKCkgY2FsbGJhY2sgaW5zdGVhZCBvZiBhZGRpbmcgYQ0KPiA+ID4gcmVkdW5kYW50
-IHBuZnNfdXBkYXRlX2xheW91dCB0bw0KPiA+ID4gcG5mc19kb19tdWx0aXBsZV9yZWFkcy9wbmZz
-X2RvX211bHRpcGxlX3dyaXRlcy4uLg0KPiA+IEkgaGF2ZSBjb25zaWRlcmVkIGl0IGJlZm9yZSBi
-dXQgdXNpbmcgcHJpdmF0ZSBwZ19kb2lvKCkgbWVhbnMgd2Ugd2lsbA0KPiA+IGhhdmUgYXMgbXVj
-aCBkdXBsaWNhdGlvbiBvZiBwbmZzX2dlbmVyaWNfcGdfcmVhZC93cml0ZXBhZ2VzLg0KPiANCj4g
-V2h5PyBBbGwgeW91IG5lZWQgdG8gZG8gaXMgc2VuZCB0aGUgbGF5b3V0Z2V0LCBhbmQgdGhlbiBj
-YWxsIHRoZQ0KPiBleGlzdGluZyBwbmZzX2dlbmVyaWNfcGdfcmVhZC93cml0ZXBhZ2VzPw0KPiAN
-Cj4gVGhlIGRpZmZlcmVuY2UgaGVyZSBpcyB0aGF0IHlvdSdyZSBhZGRpbmcgdGhhdCBzdGVwIGlu
-dG8NCj4gcG5mc19nZW5lcmljX3BnX3JlYWQvd3JpdGVwYWdlcyBpbiBwYXRjaCAzLzQuIEJhc2lj
-YWxseSB5b3UgYXJlIGFkZGluZw0KPiBibG9jay1zcGVjaWZpYyBjb2RlIGludG8gYW4gb3RoZXJ3
-aXNlIGdlbmVyaWMgZnVuY3Rpb24gaW5zdGVhZCBvZiBkb2luZw0KPiBpdCBjbGVhbmx5IGluIHRo
-ZSBibG9jay1zcGVjaWZpYyBjYWxsYmFja3MuDQpJIHNlZSB5b3VyIHBvaW50LiBJIHVzZWQgdG8g
-dGhpbmsgdGhhdCBwZ19kZXNjIHRha2VzIG11bHRpcGxlIG5mc19yZWFkL3dyaXRlX2RhdGEgd2hl
-biBjYWxsaW5nIHBuZnNfZG9fbXVsdGlwbGVfcmVhZHMvd3JpdGUuIFNvIEkgY2hvc2UgdG8gY2hh
-bmdlIGl0IHRoZXJlIHNvIHRoYXQgZWFjaCBuZnNfcmVhZC93cml0ZV9kYXRhIGlzIHRyZWF0ZWQg
-aW5kaXZpZHVhbGx5LiBCdXQgYXBwYXJlbnRseSBmb3IgYmxvY2tsYXlvdXQsIHdlIHdvbid0IGNh
-bGwgaW50byBuZnNfZmx1c2hfbXVsdGkgYWxpa2Ugc28gcGdfZGVzYyBjYW4gYmUgdHJlYXRlZCBh
-cyBhIHdob2xlLiBJIHdpbGwgbWFrZSB0aGUgY2hhbmdlIGFzIHlvdSBzdWdnZXN0ZWQuDQoNClRo
-YW5rcywNClRhbw0KDQo+IA0KPiAtLQ0KPiBUcm9uZCBNeWtsZWJ1c3QNCj4gTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQo+IA0KPiBOZXRBcHANCj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCj4gd3d3Lm5ldGFwcC5jb20NCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhp
-cyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBi
-b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFq
-b3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRt
-bA0KDQo=
+On Tue, Nov 29, 2011 at 11:18 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2011-11-29 at 23:10 +0800, Peng Tao wrote:
+>> On Tue, Nov 29, 2011 at 9:35 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>> >> -----Original Message-----
+>> >> From: tao.peng@emc.com [mailto:tao.peng@emc.com]
+>> >> Sent: Tuesday, November 29, 2011 7:40 AM
+>> >> To: skinsbursky@parallels.com
+>> >> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; xemul@parallels.com;
+>> >> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+>> >> jbottomley@parallels.com; bfields@fieldses.org; davem@davemloft.net;
+>> >> devel@openvz.org
+>> >> Subject: RE: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+>> >> from blocklayout routines
+>> >>
+>> >> > -----Original Message-----
+>> >> > From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
+>> >> > Sent: Tuesday, November 29, 2011 8:19 PM
+>> >> > To: Peng, Tao
+>> >> > Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org; Pavel
+>> >> > Emelianov; neilb@suse.de; netdev@vger.kernel.org;
+>> >> > linux-kernel@vger.kernel.org; James Bottomley; bfields@fieldses.org;
+>> >> > davem@davemloft.net; devel@openvz.org
+>> >> > Subject: Re: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+>> >> > from blocklayout routines
+>> >> >
+>> >> > 29.11.2011 16:00, tao.peng@emc.com пишет:
+>> >> > >> -----Original Message-----
+>> >> > >> From: linux-nfs-owner@vger.kernel.org
+>> >> > >> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of
+>> >> > Stanislav
+>> >> > >> Kinsbursky
+>> >> > >> Sent: Tuesday, November 29, 2011 6:11 PM
+>> >> > >> To: Trond.Myklebust@netapp.com
+>> >> > >> Cc: linux-nfs@vger.kernel.org; xemul@parallels.com; neilb@suse.de;
+>> >> > >> netdev@vger.kernel.org; linux- kernel@vger.kernel.org;
+>> >> > >> jbottomley@parallels.com; bfields@fieldses.org;
+>> >> > >> davem@davemloft.net; devel@openvz.org
+>> >> > >> Subject: [PATCH 4/5] NFS: remove RPC PipeFS mount point reference
+>> >> > >> from blocklayout routines
+>> >> > >>
+>> >> > >> This is a cleanup patch. We don't need this reference anymore,
+>> >> > >> because blocklayout pipes dentries now creates and destroys in
+>> >> > >> per-net operations and on PipeFS mount/umount notification.
+>> >> > >> Note that nfs4blocklayout_register_net() now returns 0 instead of
+>> >> > >> -ENOENT in case of PipeFS superblock absence. This is ok, because
+>> >> > >> blocklayout pipe dentry will be created on PipeFS mount event.
+>> >> > > When is the "pipefs mount event" going to happen? When inserting
+>> >> > > kernel modules or when user issues
+>> >> > mount command?
+>> >> > >
+>> >> >
+>> >> > When user issues mount command.
+>> >> > Kernel mounts of PipeFS has been removed with all these patch sets
+>> >> > I've sent already.
+>> >> Then it is going to break blocklayout user space program blkmapd, which is
+>> >> stared before mounting any file system and it tries to open the pipe file
+>> >> when started.
+>> >
+>> > Why on earth is blkmapd doing this instead of listening for file creation notifications like the other rpc_pipefs daemons do?
+>> Not sure how the original implementer chose this but I think it is
+>> likely because we do not expect the pipe file to be created or deleted
+>> dynamically.
+>
+> Unless blkmapd can pin the sunrpc module (which it shouldn't be able to)
+> then that assumption would be wrong. Please look into fixing blkmapd...
+Sorry, I don't quite get it. Do you mean sunrpc module may be removed
+while nfs/blocklayout modules are still in use? Please explain it a
+bit. Thanks.
+
+Best,
+Tao
+>
+>   Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+
+
+
+-- 
+Thanks,
+Tao
