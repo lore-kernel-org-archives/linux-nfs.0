@@ -1,63 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:54231 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751986Ab1KPO6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Nov 2011 09:58:22 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RQgwO-0003Co-TP
-	for linux-nfs@vger.kernel.org; Wed, 16 Nov 2011 15:58:20 +0100
-Received: from nat12.iteam.ua ([194.146.132.141])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2011 15:58:20 +0100
-Received: from free.lan.c2.718r by nat12.iteam.ua with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2011 15:58:20 +0100
-To: linux-nfs@vger.kernel.org
-From: Pavel <free.lan.c2.718r@gmail.com>
-Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
-Date: Wed, 16 Nov 2011 14:58:08 +0000 (UTC)
-Message-ID: <loom.20111116T155422-74@post.gmane.org>
-References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com> <loom.20111115T142111-739@post.gmane.org> <4EC2DE49.5070000@netapp.com> <20111115221623.GA12453@fieldses.org> <4EC3C7BD.6060407@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from natasha.panasas.com ([67.152.220.90]:48087 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756710Ab1K2Vej (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 16:34:39 -0500
+Message-ID: <4ED54FE4.9050008@panasas.com>
+Date: Tue, 29 Nov 2011 13:34:28 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Peng Tao <bergwolf@gmail.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bryan Schumaker <bjschuma@...> writes:
-
-> > On Tue, Nov 15, 2011 at 04:48:57PM -0500, Bryan Schumaker wrote:
-> >
-> > Sorry, I'm having trouble keeping up....  What exactly do you do, on
-> > which machine, and what do you then see happen?
+On 12/02/2011 08:52 PM, Peng Tao wrote:
+> Issuing layoutget at .pg_init will drop the IO size information and ask for 4KB
+> layout every time. However, the IO size information is very valuable for MDS to
+> determine how much layout it should return to client.
 > 
-> Here is what I'm doing (On debian with 2.6.32):
-> - (On Client) Mount the server: `sudo mount -o vers=3 
-> 192.168.122.202:/home/bjschuma /mnt`
-> - (On Client) Lock a file using nfs-utils/tools/locktest: `./testlk 
-> /mnt/test`
-> - (On Server) Call sm-notify with the server's IP address: `sudo 
-> sm-notify -f -v 192.168.122.202`
-> - dmesg on the client has this message:
->     lockd: spurious grace period reject?!
->     lockd: failed to reclaim lock for pid 2099 (errno -37, status 4)
-> - (In wireshark) The client sends a lock request with the "Reclaim" bit 
-> set to "yes" but the server replies with "NLM_DENIED_GRACE_PERIOD".
+> The patchset try to allow LD not to send layoutget at .pg_init but instead at
+> pnfs_do_multiple_writes. So that real IO size is preserved and sent to MDS.
 > 
-> Shouldn't the server be allowing the lock reclaim?  When I tried 
-> yesterday using 3.0 it only triggered DNS packets, I tried again a few 
-> minutes ago and got the same results that I did using .32.
+> Tests against a server that does not aggressively pre-allocate layout, shows
+> that the IO size informantion is really useful to block layout MDS.
 > 
-> - Bryan
+> The generic pnfs layer changes are trival to file layout and object as long as
+> they still send layoutget at .pg_init.
 > 
 
-Yes, everything is exactly as you wrote.
+I have a better solution for your problem. Which is a much smaller a change and
+I think gives you much better heuristics.
 
-After the steps above I also get the following in client logs:
-lockd: server in grace period
-lockd: spurious grace period reject?!
-lockd: failed to reclaim lock for pid 2508 (errno -37, status 4)
+Keep the layout_get exactly where it is, but instead of sending PAGE_SIZE send
+the amount of dirty pages you have.
 
-Thank you all for taking time!
+If it is a linear write you will be exact on the money with a single lo_get. If
+it is an heavy random write then you might need more lo_gets and you might be getting
+some unused segments. But heavy random write is rare and slow anyway. As a first
+approximation its fine. (We can later fix that as well)
+
+The .pg_init is done after .write_pages call from VFS and all the to-be-written
+pages are already staged to be written. So there should be a way to easily extract
+that information.
+
+> iozone cmd:
+> ./iozone -r 1m -s 4G -w -W -c -t 10 -i 0 -F /mnt/iozone.data.1 /mnt/iozone.data.2 /mnt/iozone.data.3 /mnt/iozone.data.4 /mnt/iozone.data.5 /mnt/iozone.data.6 /mnt/iozone.data.7 /mnt/iozone.data.8 /mnt/iozone.data.9 /mnt/iozone.data.10
+> 
+> Befor patch: around 12MB/s throughput
+> After patch: around 72MB/s throughput
+> 
+
+Yes Yes that stupid Brain dead Server is no indication for anything. The server
+should know best about optimal sizes and layouts. Please don't give me that stuff
+again.
+
+But just do the above and you'll see that it is perfect.
+
+BTW don't limit the lo_segment size by the max_io_size. This is why you
+have .bg_test to signal when IO is maxed out.
+
+- The read segments should be as big as possible (i_size long)
+- The Write segments should ideally be as big as the Application
+  wants to write to. (Amount of dirty pages at time of nfs-write-out
+  is a very good first approximation).
+
+So I guess it is: I hate these patches, to much mess, too little goodness.
+
+Thank
+Boaz
+
+> Peng Tao (4):
+>   nfsv41: export pnfs_find_alloc_layout
+>   nfsv41: add and export pnfs_find_get_layout_locked
+>   nfsv41: get lseg before issue LD IO if pgio doesn't carry lseg
+>   pnfsblock: do ask for layout in pg_init
+> 
+>  fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++-
+>  fs/nfs/pnfs.c                    |   74 +++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/pnfs.h                    |    9 +++++
+>  3 files changed, 134 insertions(+), 3 deletions(-)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
