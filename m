@@ -1,70 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34673 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:40446 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751868Ab1KPUIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Nov 2011 15:08:41 -0500
-Date: Wed, 16 Nov 2011 15:08:37 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Pavel A <free.lan.c2.718r@gmail.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: clients fail to reclaim locks after server reboot or manual
- sm-notify
-Message-ID: <20111116200837.GD2955@pad.fieldses.org>
-References: <loom.20111114T180637-632@post.gmane.org>
- <4EC1678D.902@netapp.com>
- <4EC18E5F.4080101@netapp.com>
- <loom.20111115T142111-739@post.gmane.org>
- <4EC2DE49.5070000@netapp.com>
- <20111115221623.GA12453@fieldses.org>
- <4EC3C7BD.6060407@netapp.com>
- <20111116153052.GA20545@fieldses.org>
- <4EC3F4E3.7050803@netapp.com>
- <CAA-yEOLYRSxxOWPEe+e_C4T=qkQcKenzw=PNjq4cACYYXA8ncA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAA-yEOLYRSxxOWPEe+e_C4T=qkQcKenzw=PNjq4cACYYXA8ncA@mail.gmail.com>
+	id S1756425Ab1K2XLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 18:11:19 -0500
+Message-ID: <1322606322.11286.30.camel@lade.trondhjem.org>
+Subject: Re: ore: FIX breakage when MISC_FILESYSTEMS is not set
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, Randy Dunlap <rdunlap@xenotime.net>,
+        Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>, Michal Marek <mmarek@suse.cz>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Date: Tue, 29 Nov 2011 17:38:42 -0500
+In-Reply-To: <1322606193.11286.28.camel@lade.trondhjem.org>
+References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au>
+	 <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com>
+	 <4ED4238F.4090407@panasas.com> <4ED4CE58.8090107@tonian.com>
+	 <1322588023.4174.28.camel@lade.trondhjem.org>
+	 <4ED55B3B.9050207@panasas.com>
+	 <1322606193.11286.28.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 16, 2011 at 09:09:07PM +0200, Pavel A wrote:
-> I've read about this issue here:
-> http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html
+On Tue, 2011-11-29 at 17:36 -0500, Trond Myklebust wrote: 
+> On Tue, 2011-11-29 at 14:22 -0800, Boaz Harrosh wrote: 
+> > On 11/29/2011 09:33 AM, Trond Myklebust wrote:
+> > > On Tue, 2011-11-29 at 14:21 +0200, Benny Halevy wrote: 
+> > >> On 2011-11-29 02:13, Boaz Harrosh wrote:
+> > 
+> > >>>
+> > >>> The solution is to force all users of ORE (exofs, nfs) to manually
+> > >>> select everything auto-magically selected before.
+> > >>
+> > >> How about using "depend ORE" rather than "select ORE"?
+> > > 
+> > > Right. Make PNFS_OBJLAYOUT and EXOFS_FS depend on ASYNC_XOR (or select
+> > > it) and then make ORE depend on EXOFS_FS || PNFS_OBJLAYOUT.
+> > > 
+> > > There should be no need to add the 'select ORE'...
+> > > 
+> > 
+> > No! guys!
+> > 
+> > One it will not solve my problem because any
+> > solution that needs to inspect exofs/Kconfig file will
+> > not work if MISC_FILESYSTEMS is not selected and your
+> > solutions involve that.
 > 
-> /*-----
-> In the event of server failure (e.g. server reboot or lock daemon
-> restart), all client locks are lost. However, the clients are not
-> informed of this, and because the other operations (read, write, and
-> so on) are not visibly interrupted, they have no reliable way to
-> prevent other clients from obtaining a lock on a file they think they
-> have locked.
-> -----*/
+> Then move ORE _out_ of MISC_FILESYSTEMS. There is no reason why it needs
+> to be there as long as the things it depends on are there.
 
-That's incorrect.  Perhaps the article is out of date, I don't know.
+Should read:
+There is no reason why ORE needs to depend on MISC_FILESYSTEMS. Only
+EXOFS_FS needs that...
 
-> Can't get this. If there is a grace period after reboot and clients
-> can successfully reclaim locks, then how other clients can obtain
-> locks?
 
-That's right, in the absence of bugs, if a client succesfully reclaims a
-lock, then it knows that no other client can have acquired that lock in
-the interim: since the reclaim succeeded, that means the server is still
-in the grace period, which means the only other locks that it has
-allowed are also reclaims.  If some reclaim conflicts with this lock,
-then the other client must have reclaimed a lock that it didn't actually
-hold before (hence must be buggy).
-
-> > You need to restart nfsd on the node that is taking over.  That means
-> > that clients usings both filesystems (A and B) will have to do lock
-> > recovery, when in theory only those using volume B should have to, and
-> > that is suboptimal.  But it is also correct.
-> >
+> > And two:
+> > All the user needs to do is Select NFS4.1 everything
+> > else should be done automatically. He should not need
+> > to go to misc-filesystems and select ORE so he can have
+> > pnfs-objects. That's a nightmare.
 > 
-> Seems to work. As of a more optimal solution: what do you think of the
-> contents of /proc/locks? May it be possible to use this info to then
-> perform locking locally on the other node (after failover)?
+> The solution I proposed didn't involve having the user select anything
+> other than NFSv4.1 and possibly ASYNC_XOR.
+> 
+> > And anyway the current Kernel rule is that a user of a library
+> > needs to select it and all it's dependencies, because select
+> > is not recursive. Now I devised a little skim that can avoid
+> 
+> ...and this is _my_ nightmare. I dont' _want_ these selects anywhere in
+> the NFS subsystem.
 
-No, I don't think so.  And I'd be careful about using /proc/locks for
-anything but debugging.
 
---b.
+
