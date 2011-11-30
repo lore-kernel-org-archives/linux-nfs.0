@@ -1,97 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:49911 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755171Ab1KDNya convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 09:54:30 -0400
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-Mime-Version: 1.0 (Apple Message framework v1084)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
-Date: Fri, 4 Nov 2011 09:54:06 -0400
-Cc: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com>
-References: <1320349396.90614.YahooMailNeo@web24707.mail.ird.yahoo.com> <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com>
-To: Lukas Razik <linux@razik.name>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:17621 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750814Ab1K3FFd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 00:05:33 -0500
+From: <tao.peng@emc.com>
+To: <bharrosh@panasas.com>
+CC: <bergwolf@gmail.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
+Date: Wed, 30 Nov 2011 00:05:11 -0500
+Subject: RE: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B0A1@MX09A.corp.emc.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+ <4ED54FE4.9050008@panasas.com>
+ <F19688880B763E40B28B2B462677FBF805E3A4B073@MX09A.corp.emc.com>
+ <4ED5A808.8050705@panasas.com>
+In-Reply-To: <4ED5A808.8050705@panasas.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 4, 2011, at 5:44 AM, Lukas Razik wrote:
-
->>> OK
-> 
->>> I've watched wireshark on cluster1 during start up of cluster2 (with 
->> linux-2.6.32) which first tries 10003 and then 10005.
->>> The result is that cluster1 doesn't get a datagram for port 10003:
->>> http://net.razik.de/linux/T5120/cluster2_NFSROOT_MOUNT.png
->>> 
->>> The first ARP request in the screenshot came _after_ the <tag> in 
->> this kernel log:
->>> [ 6492.807917] IP-Config: Complete:
->>> [ 6492.807978]      device=eth0, addr=137.226.167.242, 
->> mask=255.255.255.224, gw=137.226.167.225,
->>> [ 6492.808227]      host=cluster2, domain=, nis-domain=(none),
->>> [ 6492.808312]      bootserver=255.255.255.255, rootserver=137.226.167.241, 
->> rootpath=
->>> [ 6492.808570] Looking up port of RPC 100003/2 on 137.226.167.241
->>> [ 6493.886014] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow 
->> Control: Rx
->>> [ 6493.905840] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
->>> <tag>
->>> [ 6527.827055] rpcbind: server 137.226.167.241 not responding, timed out
->>> [ 6527.827237] Root-NFS: Unable to get nfsd port number from server, using 
->> default
->>> [ 6527.827353] Looking up port of RPC 100005/1 on 137.226.167.241
->>> [ 6527.842212] VFS: Mounted root (nfs filesystem) on device 0:15.
->>> 
->>> 
->>> So I don't think that it's a problem of the hardware between the 
->> machines.
->>> There's no reason why I wouldn't see an ARP requests from cluster2 
->> which would have been sent _before_ the <tag> if there would be one. I 
->> think: cluster2 never sends a request to port 10003.
->>> What do you think?
->> 
->> It agrees with our initial assessment that the first RPC request is failing.  
->> The RPC client never gets the request through cluster2's network stack 
->> because the NIC hasn't re-initialized when the request is sent.
->> 
->> It looks like your system does a PXE boot, which provides the IP configuration 
->> shown above.  But then the kernel resets the NIC.  During that reset, the kernel 
->> is attempting to contact the NFS server to mount the root file system.
->> 
->> We've set up NFSROOT to use UDP so that it will be relatively immune to 
->> these initialization order problems.  The RPC client should be retrying the lost 
->> request, but apparently it isn't.  What if you added "retrans=10" 
->> to cluster2's mount options?  (on the chance that mount option setting would 
->> be copied to the rpcbind client's RPC transport...)
->> 
->> IMO the correct way to fix this is to provide proper serialization in the 
->> networking layer so that RPC requests are not even attempted until the NIC is 
->> ready to carry traffic.  That may be a pipe dream though.
->> 
-> 
-> I thank you three very much for your help! Now I'm sure that I haven't misconfigured anything...
-> But I don't see a work around to get the NFSROOT mounted during start up of a kernel >=2.6.37 .
-> It would be very sad with these nice Oracle (SUN) machines if no one could use them because of this bug.
-
-If you boot via tftp, I bet this problem will go away because the network interface will be working by the time the NFSROOT mount is attempted.
-
-The NFSROOT code assumes that if kernel IP configuration worked, then the NIC is already up.  That is clearly not the case if you boot from your local disk.
-
-> Do you know a kernel developer who maybe would try to write a patch for this problem?
-> Or do you have another idea what I could do?
-
-As for a patch: no-one can write a patch unless we understand precisely why the first RPC fails.  I already explained how to add a line or two to fs/nfs/nfsroot.c to give us more information.  If you need a patch to do this, I can send one later today.
-
-I might be able to reproduce it here, now that I understand your set up, but it would require building a partial NFSROOT environment.  I can't get to that until next week.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCb2F6IEhhcnJvc2ggW21haWx0
+bzpiaGFycm9zaEBwYW5hc2FzLmNvbV0NCj4gU2VudDogV2VkbmVzZGF5LCBOb3ZlbWJlciAzMCwg
+MjAxMSAxMTo1MSBBTQ0KPiBUbzogUGVuZywgVGFvDQo+IENjOiBiZXJnd29sZkBnbWFpbC5jb207
+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBi
+aGFsZXZ5QHRvbmlhbi5jb20NCj4gU3ViamVjdDogUmU6IFtQQVRDSCAwLzRdIG5mczQxOiBhbGxv
+dyBsYXlvdXRnZXQgYXQgcG5mc19kb19tdWx0aXBsZV93cml0ZXMNCj4gDQo+IE9uIDExLzI5LzIw
+MTEgMDc6MTYgUE0sIHRhby5wZW5nQGVtYy5jb20gd3JvdGU6DQo+ID4+IC0tLS0tT3JpZ2luYWwg
+TWVzc2FnZS0tLS0tDQo+ID4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcg
+W21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgQm9h
+eg0KPiA+PiBIYXJyb3NoDQo+ID4+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1iZXIgMzAsIDIwMTEg
+NTozNCBBTQ0KPiA+PiBUbzogUGVuZyBUYW8NCj4gPj4gQ2M6IFRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBiaGFsZXZ5QHRvbmlhbi5jb20NCj4g
+Pj4gU3ViamVjdDogUmU6IFtQQVRDSCAwLzRdIG5mczQxOiBhbGxvdyBsYXlvdXRnZXQgYXQgcG5m
+c19kb19tdWx0aXBsZV93cml0ZXMNCj4gPj4NCj4gPj4gT24gMTIvMDIvMjAxMSAwODo1MiBQTSwg
+UGVuZyBUYW8gd3JvdGU6DQo+ID4+PiBJc3N1aW5nIGxheW91dGdldCBhdCAucGdfaW5pdCB3aWxs
+IGRyb3AgdGhlIElPIHNpemUgaW5mb3JtYXRpb24gYW5kIGFzayBmb3IgNEtCDQo+ID4+PiBsYXlv
+dXQgZXZlcnkgdGltZS4gSG93ZXZlciwgdGhlIElPIHNpemUgaW5mb3JtYXRpb24gaXMgdmVyeSB2
+YWx1YWJsZSBmb3IgTURTIHRvDQo+ID4+PiBkZXRlcm1pbmUgaG93IG11Y2ggbGF5b3V0IGl0IHNo
+b3VsZCByZXR1cm4gdG8gY2xpZW50Lg0KPiA+Pj4NCj4gPj4+IFRoZSBwYXRjaHNldCB0cnkgdG8g
+YWxsb3cgTEQgbm90IHRvIHNlbmQgbGF5b3V0Z2V0IGF0IC5wZ19pbml0IGJ1dCBpbnN0ZWFkIGF0
+DQo+ID4+PiBwbmZzX2RvX211bHRpcGxlX3dyaXRlcy4gU28gdGhhdCByZWFsIElPIHNpemUgaXMg
+cHJlc2VydmVkIGFuZCBzZW50IHRvIE1EUy4NCj4gPj4+DQo+ID4+PiBUZXN0cyBhZ2FpbnN0IGEg
+c2VydmVyIHRoYXQgZG9lcyBub3QgYWdncmVzc2l2ZWx5IHByZS1hbGxvY2F0ZSBsYXlvdXQsIHNo
+b3dzDQo+ID4+PiB0aGF0IHRoZSBJTyBzaXplIGluZm9ybWFudGlvbiBpcyByZWFsbHkgdXNlZnVs
+IHRvIGJsb2NrIGxheW91dCBNRFMuDQo+ID4+Pg0KPiA+Pj4gVGhlIGdlbmVyaWMgcG5mcyBsYXll
+ciBjaGFuZ2VzIGFyZSB0cml2YWwgdG8gZmlsZSBsYXlvdXQgYW5kIG9iamVjdCBhcyBsb25nIGFz
+DQo+ID4+PiB0aGV5IHN0aWxsIHNlbmQgbGF5b3V0Z2V0IGF0IC5wZ19pbml0Lg0KPiA+Pj4NCj4g
+Pj4NCj4gPj4gSSBoYXZlIGEgYmV0dGVyIHNvbHV0aW9uIGZvciB5b3VyIHByb2JsZW0uIFdoaWNo
+IGlzIGEgbXVjaCBzbWFsbGVyIGEgY2hhbmdlIGFuZA0KPiA+PiBJIHRoaW5rIGdpdmVzIHlvdSBt
+dWNoIGJldHRlciBoZXVyaXN0aWNzLg0KPiA+Pg0KPiA+PiBLZWVwIHRoZSBsYXlvdXRfZ2V0IGV4
+YWN0bHkgd2hlcmUgaXQgaXMsIGJ1dCBpbnN0ZWFkIG9mIHNlbmRpbmcgUEFHRV9TSVpFIHNlbmQN
+Cj4gPj4gdGhlIGFtb3VudCBvZiBkaXJ0eSBwYWdlcyB5b3UgaGF2ZS4NCj4gPj4NCj4gPj4gSWYg
+aXQgaXMgYSBsaW5lYXIgd3JpdGUgeW91IHdpbGwgYmUgZXhhY3Qgb24gdGhlIG1vbmV5IHdpdGgg
+YSBzaW5nbGUgbG9fZ2V0LiBJZg0KPiA+PiBpdCBpcyBhbiBoZWF2eSByYW5kb20gd3JpdGUgdGhl
+biB5b3UgbWlnaHQgbmVlZCBtb3JlIGxvX2dldHMgYW5kIHlvdSBtaWdodCBiZSBnZXR0aW5nDQo+
+ID4+IHNvbWUgdW51c2VkIHNlZ21lbnRzLiBCdXQgaGVhdnkgcmFuZG9tIHdyaXRlIGlzIHJhcmUg
+YW5kIHNsb3cgYW55d2F5LiBBcyBhIGZpcnN0DQo+ID4+IGFwcHJveGltYXRpb24gaXRzIGZpbmUu
+IChXZSBjYW4gbGF0ZXIgZml4IHRoYXQgYXMgd2VsbCkNCj4gPg0KPiA+IEkgd291bGQgc2F5IG5v
+IHRvIHRoZSBhYm92ZS4uLiBGb3Igb2JqZWN0cy9maWxlcyBNRFMsIGl0IG1heSBub3QgaHVydA0K
+PiA+IG11Y2ggdG8gYWxsb2NhdGUgd2FzdGluZyBsYXlvdXQuIEJ1dCBmb3IgYmxvY2tsYXlvdXQg
+c2VydmVyLCBlYWNoDQo+ID4gbGF5b3V0IGFsbG9jYXRpb24gY29uc3VtZXMgbXVjaCBtb3JlIHJl
+c291cmNlIHRoYW4ganVzdCBnaXZpbmcgb3V0DQo+ID4gc3RyaXBwaW5nIGluZm9ybWF0aW9uIGxp
+a2Ugb2JqZWN0cy9maWxlcy4NCj4gDQo+IFRoYXQncyBmaW5lLCBmb3IgdGhlIGxpbmVhciBJTyBs
+aWtlIGlvem9uZSBiZWxvdyBteSB3YXkgaXMganVzdCB0aGUgc2FtZQ0KPiBhcyB5b3Vycy4gRm9y
+IHRoZSByYW5kb20gSU8gSSdtIG5vdCBzdXJlIGhvdyBtdWNoIGJldHRlciB3aWxsIHlvdXIgc29s
+dXRpb24NCj4gYmUuIE5vdCBieSBtdWNoLg0KQXMgSSBzYWlkLCBmb3IgcmFuZG9tIElPLCB0aGVy
+ZSB3aWxsIGJlIG11Y2ggZGlzayBzcGFjZSB3YXN0aW5nIG9uIGJsb2NrbGF5b3V0IHNlcnZlciBp
+biB5b3VyIHNvbHV0aW9uLiBUaGF0J3Mgd2h5IEkgZG9uJ3QgYWdyZWUgd2l0aCBpdC4gQmVzaWRl
+cywgaW4gc29tZSBjYXNlcywgc2VydmVyIG1heSBiZSBwdXQgaW4gYSBoYXJkIHBvc2l0aW9uIHRv
+IGRldGVybWluZSBpZiB0aGUgSU8gaXMgcmVhbGx5IGxpbmVhciBvciBpbiBmYWN0IHJhbmRvbSBp
+biB5b3VyIHNvbHV0aW9uLg0KDQo+IA0KPiBJIHdhbnQgYSBzb2x1dGlvbiBmb3Igb2JqZWN0cyBh
+cyB3ZWxsLiBCdXQgSSBjYW5ub3QgdXNlIHlvdXJzIGJlY2F1c2UgSSBuZWVkDQo+IGEgbGF5b3V0
+IGJlZm9yZSB0aGUgZmluYWwgcmVxdWVzdCBjb25zb2xpZGF0aW9uLiBTb2x2ZSBteSBwcm9ibGVt
+IHRvby4NCj4gDQpJIHVzZWQgdG8gbG9vayBhdCBvYmplY3RzIGF0IHNvbWUgdGltZSwgYW5kIGFz
+IEkgcmVtZW1iZXIsIGl0IG5lZWQgbWF4IGlvIHNpemUgaW4gZWFjaCBsc2VnIHRvIGZpbmlzaCAu
+cGdfdGVzdC4gSXMgdGhpcyB0aGUgcmVhc29uIHlvdSBuZWVkIGEgbGF5b3V0IGJlZm9yZSB0aGUg
+ZmluYWwgcmVxdWVzdCBjb25zb2xpZGF0aW9uPyBEb2VzIHRoZSB2YWx1ZSB2YXJ5IGluIGRpZmZl
+cmVudCBsc2VnPw0KDQo+ID4gU28gaGVscGluZyBNRFMgdG8gZG8gdGhlDQo+ID4gY29ycmVjdCBk
+ZWNpc2lvbiBpcyB0aGUgcmlnaHQgdGhpbmcgZm9yIGNsaWVudCB0byBkby4NCj4gDQo+IEkgYWdy
+ZWUuIEFsbCBJJ20gc2F5aW5nIGlzIHRoYXQgdGhlcmUgaXMgYXZhaWxhYmxlIGluZm9ybWF0aW9u
+IGF0IHRoZSB0aW1lDQo+IG9mIC5wZ19pbml0IHRvIHNlbmQgdGhhdCBudW1iZXIganVzdCBmaW5l
+LiBIYXZlIHlvdSBsb29rZWQ/IGl0J3MgYWxsIHRoZXJlDQo+IE5GUyBjb3JlIGNhbiB0ZWxsIHlv
+dSBob3cgbWFueSBwYWdlcyBoYXZlIHBhc3NlZCAtPndyaXRlX3BhZ2VzLg0KPiANCkl0IG9ubHkg
+dGVsbHMgYSBmYWtlIElPIHNpemUgZm9yIHRoZSBudW1iZXIgb2YgZGlydHkgcGFnZXMuIE5vIG9u
+ZSBjYW4gcHJvbWlzZSB0aGVzZSBwYWdlcyBhcmUgYWxsIGNvbnRpbnVvdXMuIEluc3RlYWQsIGlm
+IHdlIGNhbiBnaXZlIGEgcmVhbCBJTyBzaXplLCB3aHkgcmVmdXNlIHRvIGRvIGl0Pw0KDQo+ID4N
+Cj4gPj4NCj4gPj4gVGhlIC5wZ19pbml0IGlzIGRvbmUgYWZ0ZXIgLndyaXRlX3BhZ2VzIGNhbGwg
+ZnJvbSBWRlMgYW5kIGFsbCB0aGUgdG8tYmUtd3JpdHRlbg0KPiA+PiBwYWdlcyBhcmUgYWxyZWFk
+eSBzdGFnZWQgdG8gYmUgd3JpdHRlbi4gU28gdGhlcmUgc2hvdWxkIGJlIGEgd2F5IHRvIGVhc2ls
+eSBleHRyYWN0DQo+ID4+IHRoYXQgaW5mb3JtYXRpb24uDQo+ID4+DQo+ID4+PiBpb3pvbmUgY21k
+Og0KPiA+Pj4gLi9pb3pvbmUgLXIgMW0gLXMgNEcgLXcgLVcgLWMgLXQgMTAgLWkgMCAtRiAvbW50
+L2lvem9uZS5kYXRhLjEgL21udC9pb3pvbmUuZGF0YS4yDQo+IC9tbnQvaW96b25lLmRhdGEuMw0K
+PiA+PiAvbW50L2lvem9uZS5kYXRhLjQgL21udC9pb3pvbmUuZGF0YS41IC9tbnQvaW96b25lLmRh
+dGEuNiAvbW50L2lvem9uZS5kYXRhLjcgL21udC9pb3pvbmUuZGF0YS44DQo+ID4+IC9tbnQvaW96
+b25lLmRhdGEuOSAvbW50L2lvem9uZS5kYXRhLjEwDQo+ID4+Pg0KPiA+Pj4gQmVmb3IgcGF0Y2g6
+IGFyb3VuZCAxMk1CL3MgdGhyb3VnaHB1dA0KPiA+Pj4gQWZ0ZXIgcGF0Y2g6IGFyb3VuZCA3Mk1C
+L3MgdGhyb3VnaHB1dA0KPiA+Pj4NCj4gPj4NCj4gPj4gWWVzIFllcyB0aGF0IHN0dXBpZCBCcmFp
+biBkZWFkIFNlcnZlciBpcyBubyBpbmRpY2F0aW9uIGZvciBhbnl0aGluZy4gVGhlIHNlcnZlcg0K
+PiA+PiBzaG91bGQga25vdyBiZXN0IGFib3V0IG9wdGltYWwgc2l6ZXMgYW5kIGxheW91dHMuIFBs
+ZWFzZSBkb24ndCBnaXZlIG1lIHRoYXQgc3R1ZmYNCj4gPj4gYWdhaW4uDQo+ID4+DQo+ID4gQWN0
+dWFsbHkgdGhlIHNlcnZlciBpcyBhbHJlYWR5IGRvaW5nIGxheW91dCBwcmUtYWxsb2NhdGlvbi4g
+SXQgaXMNCj4gPiBqdXN0IHRoYXQgaXQgZG9lc24ndCBrbm93IHdoYXQgY2xpZW50IHJlYWxseSB3
+YW50cyBzbyBjYW5ub3QgZG8gaXQNCj4gPiB0b28gYWdncmVzc2l2ZWx5LiBUaGF0J3Mgd2h5IEkg
+d2FudGVkIHRvIG1ha2UgY2xpZW50IHRvIHNlbmQgdGhlIFJFQUwNCj4gPiBJTyBzaXplIGluZm9y
+bWF0aW9uIHRvIHNlcnZlci4gRnJvbSBwZXJmb3JtYW5jZSBwZXJzcGVjdGl2ZSwgZHJvcHBpbmcN
+Cj4gPiBJTyBzaXplIGluZm9ybWF0aW9uIGlzIGFsd2F5cyBhIEJBRCBUSElORyhUTSkgdG8gZG8u
+DQo+IA0KPiBJIHRvdGFsbHkgYWdyZWUuIEkgd2FudCBpdCB0b28uIFRoZXJlIGlzIGEgd2F5IHRv
+IGRvIGl0IGluIHBnX2luaXQgdGltZQ0KPiBhbGwgdGhlIGluZm9ybWF0aW9uIGlzIHRoZXJlIGl0
+IG9ubHkgbmVlZHMgdG8gYmUgcGFzc2VkIHRvIGxheW91dF9nZXQuDQo+IA0KVGhpcyAiYWxsIHRo
+ZSBpbmZvcm1hdGlvbiBpcyB0aGVyZSIgaXMgbGlrZWx5IHRvIGJlIGZhbHNlLCB1bmxlc3MgeW91
+IG9ubHkgZGVhbCB3aXRoIHNlcXVlbnRpYWwgSU8uLi4NCg0KPiA+DQo+ID4+IEJUVyBkb24ndCBs
+aW1pdCB0aGUgbG9fc2VnbWVudCBzaXplIGJ5IHRoZSBtYXhfaW9fc2l6ZS4gVGhpcyBpcyB3aHkg
+eW91DQo+ID4+IGhhdmUgLmJnX3Rlc3QgdG8gc2lnbmFsIHdoZW4gSU8gaXMgbWF4ZWQgb3V0Lg0K
+PiA+Pg0KPiA+IEFjdHVhbGx5IGxvX3NlZ21lbnQgc2l6ZSBpcyBuZXZlciBsaW1pdGVkIGJ5IG1h
+eF9pb19zaXplLiBTZXJ2ZXIgaXMNCj4gPiBhbHdheXMgZW50aXRsZWQgdG8gc2VuZCBsYXJnZXIg
+bGF5b3V0IHRoYW4gY2xpZW50IGFza3MgZnJvbS4NCj4gDQo+IFlvdSBtaXNzIG15IHBvaW50LiBJ
+biB5b3VyIGxhc3QgcGF0Y2ggeW91IGhhdmUNCj4gDQo+ICsvKiBXaGlsZSBSRkMgZG9lc24ndCBs
+aW1pdCBtYXhpbXVtIHNpemUgb2YgbGF5b3V0LCB3ZSBiZXR0ZXIgbGltaXQgaXQgb3Vyc2VsZi4g
+Ki8NCj4gKyNkZWZpbmUgUE5GU0JMS19NQVhSU0laRSAoMHgxPDwyMikNCj4gKyNkZWZpbmUgUE5G
+U0JMS19NQVhXU0laRSAoMHgxPDwyMSkNCj4gDQo+IEkgZG9uJ3Qga25vdyB3aGF0IHRoZXNlIG51
+bWJlciBtZWFuIGJ1dCB0aGV5IGtpbmQgb2YgbG9vayBsaWtlIElPIGxpbWl0cw0KPiBhbmQgbm90
+IHNlZ21lbnQgbGltaXRzLiBJZiBJJ20gd3JvbmcgdGhlbiBzb3JyeS4gV2hhdCBhcmUgdGhlc2Ug
+bnVtYmVycz8NCj4gDQpZZXMsIHRoZXNlIGFyZSBpbyBzaXplIGxpbWl0LiBJIHNob3VsZCBqdXN0
+IHJlbW92ZSB0aGUgY29tbWVudHMgdGhhdCBhcmUgdG90YWxseSBtaXNsZWFkaW5nLg0KDQo+IElm
+IGEgY2xpZW50IGhhcyAxRyBvZiBkaXJ0eSBwYWdlcyB0byB3cml0ZSB3aHkgbm90IGdldCB0aGUg
+ZnVsbCBsYXlvdXQNCj4gYXQgb25jZS4gV2hlcmUgZG9lcyB0aGUgNE0gbGltaXQgY29tZXMgZnJv
+bT8NCj4gDQpQbGVhc2Ugbm90ZSB0aGF0IGJsb2NrIGxheW91dCBzZXJ2ZXIgY2Fubm90IGp1c3Qg
+Z2l2ZSBmdWxsIGZpbGUgc3RyaXBwaW5nIGluZm9ybWF0aW9uLiBXaGVuIHdlIGFzayBmb3IgMUdC
+IGxheW91dCwgbW9zdCB0aW1lcyB3ZSBnZXQgbXVjaCBsZXNzIGFueXdheS4gQW5kIHRoZSB2YWx1
+ZSBvZiAyTUIgY29tZXMgZnJvbSBvdXIgZXhwZXJpZW5jZSB3aXRoIE1QRlMsIHRvIGFsbG93IHRo
+ZSBiYWxhbmNlIGJldHdlZW4gc2VydmVyIHByZXNzdXJlIGFuZCBjbGllbnQgcGVyZm9ybWFuY2Uu
+DQoNCkFsc28sIGN1cnJlbnRseSB3ZSByZXRyeSBNRFMgb24gYSBwZXIgbmZzX3JlYWQvd3JpdGVf
+ZGF0YSBiYXNpcy4gSXQgaXMgbXVjaCBlYXNpZXIgdG8gaGFuZGxlIDJNQiByYXRoZXIgdGhhbiAx
+R0IgZGlydHkgcGFnZXMuIEkgbm90aWNlIHRoYXQgaXQgbWF5IG5vdCBiZSBhbiBpc3N1ZSBmb3Ig
+b2JqZWN0cyBhcyB5b3UgaGF2ZSBtYXggSU8gc2l6ZSBsaW1pdCBvbiBldmVyeSBsc2VnLg0KDQo+
+ID4NCj4gPj4gLSBUaGUgcmVhZCBzZWdtZW50cyBzaG91bGQgYmUgYXMgYmlnIGFzIHBvc3NpYmxl
+IChpX3NpemUgbG9uZykNCj4gPj4gLSBUaGUgV3JpdGUgc2VnbWVudHMgc2hvdWxkIGlkZWFsbHkg
+YmUgYXMgYmlnIGFzIHRoZSBBcHBsaWNhdGlvbg0KPiA+PiAgIHdhbnRzIHRvIHdyaXRlIHRvLiAo
+QW1vdW50IG9mIGRpcnR5IHBhZ2VzIGF0IHRpbWUgb2YgbmZzLXdyaXRlLW91dA0KPiA+PiAgIGlz
+IGEgdmVyeSBnb29kIGZpcnN0IGFwcHJveGltYXRpb24pLg0KPiA+Pg0KPiA+PiBTbyBJIGd1ZXNz
+IGl0IGlzOiBJIGhhdGUgdGhlc2UgcGF0Y2hlcywgdG8gbXVjaCBtZXNzLCB0b28gbGl0dGxlIGdv
+b2RuZXNzLg0KPiA+IEknbSBhZnJhaWQgSSBjYW4ndCBhZ3JlZSB3aXRoIHlvdS4uLg0KPiA+DQo+
+IA0KPiBTdXJlIHlvdSBkby4gWW91IGRpZCB0aGUgaGFyZCB3b3JrIGFuZCBub3cgSSdtIHRlbGxp
+bmcgeW91IHlvdSBuZWVkIHRvIGRvDQo+IG1vcmUgd29yay4gSSdtIHNvcnJ5IGZvciB0aGF0LiBC
+dXQgSSB3YW50IGEgc29sdXRpb24gZm9yIG1lIGFuZCBJIHRoaW5rDQo+IHRoZXJlIGlzIGEgc2lt
+cGxlIHNvbHV0aW9uIHRoYXQgd2lsbCBzYXRpc2Z5IGJvdGggb2Ygb3VyIG5lZWRzLg0KPiANClNv
+cnJ5IGJ1dCBJIGRvbid0IHRoaW5rIHlvdXIgc29sdXRpb24gaXMgZ29vZCBlbm91Z2ggdG8gYWRk
+cmVzcyBibG9ja2xheW91dCdzIGNvbmNlcm5zLiBJdCB3b3VsZCBiZSBncmVhdCBpZiB3ZSBjYW4g
+dXRpbGl6ZSB0aGUgc2FtZSBzb2x1dGlvbi4gQnV0IHdoZW4gd2UgZG8gbmVlZCwgSSB0aGluayBp
+dCBwZXJmZWN0bHkgcmVhc29uYWJsZSB0byBsZXQgYmxvY2tsYXlvdXQgYW5kIG9iamVjdCBsYXlv
+dXQgaGF2ZSBkaWZmZXJlbnQgc3RyYXRlZ3kgb24gbGF5b3V0Z2V0LCBiYXNlZCBvbiB0aGUgZmFj
+dCB0aGF0IG91ciBzZXJ2ZXJzIGhhdmUgZGlmZmVyZW50IGJlaGF2aW9yIG9uIGxheW91dCBhbGxv
+Y2F0aW9uLiBBbmQgYWxsb3dpbmcgdGhpcyBraW5kIG9mIGRpZmZlcmVuY2UgaXMgZXhhY3RseSB3
+aGF0IHN0cmN1dCBuZnNfcGFnZWlvX29wcyBzZXJ2ZXMgZm9yLg0KDQpXaGF0IGRvIHlvdSB0aGlu
+az8NCg0KVGhhbmtzLA0KVGFvDQo+IFNvcnJ5IGZvciB0aGF0LiBJZiBJIGhhZCB0aW1lIEkgd291
+bGQgZG8gaXQuIE9ubHkgSSBoYXZlIGhhcmRlciByZWFsIEJVR1MNCj4gdG8gZml4IG9uIG15IHBs
+YXRlLg0KPiANCj4gSWYgeW91IGNvdWxkIGxvb2sgaW50byBpdCBJdCB3aWxsIGJlIHZlcnkgbmlj
+ZS4gQW5kIHRoYW5rIHlvdSBmb3Igd29ya2luZw0KPiBvbiB0aGlzIHNvIGZhci4gT25seSB0aGF0
+IGN1cnJlbnQgc29sdXRpb24gaXMgbm90IG9wdGltYWwgYW5kIEkgd2lsbCBuZWVkDQo+IHRvIGNv
+bnRpbnVlIG9uIGl0IGxhdGVyLCBpZiBsZWZ0IGFzIGlzLg0KPiANCj4gPiBUaGFua3MsDQo+ID4g
+VGFvDQo+ID4NCj4gDQo+IFRoYW5rcw0KDQo=
