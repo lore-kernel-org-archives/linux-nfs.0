@@ -1,191 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15578 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:33457 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752585Ab1KQVgz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Nov 2011 16:36:55 -0500
-Message-ID: <4EC57E74.7010700@RedHat.com>
-Date: Thu, 17 Nov 2011 16:36:52 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752621Ab1K3XkN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Nov 2011 18:40:13 -0500
+Date: Wed, 30 Nov 2011 18:40:09 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>, Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/2] svcrpc: avoid memory-corruption on pool shutdown
+Message-ID: <20111130234009.GB354@fieldses.org>
+References: <20111130233925.GA354@fieldses.org>
 MIME-Version: 1.0
-To: tigran.mkrtchyan@desy.de
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfsidmap: Allow all keys to clear on the keyring
-References: <1321561563-5862-1-git-send-email-steved@redhat.com>	<1321561563-5862-2-git-send-email-steved@redhat.com> <CAGue13rrgKUiiWEF47ixjhWuZ9AK9Ax7UWmSMqkzPAe_rPqMFg@mail.gmail.com>
-In-Reply-To: <CAGue13rrgKUiiWEF47ixjhWuZ9AK9Ax7UWmSMqkzPAe_rPqMFg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111130233925.GA354@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+Socket callbacks use svc_xprt_enqueue() to add an xprt to a
+pool->sp_sockets list.  In normal operation a server thread will later
+come along and take the xprt off that list.  On shutdown, after all the
+threads have exited, we instead manually walk the sv_tempsocks and
+sv_permsocks lists to find all the xprt's and delete them.
 
-On 11/17/2011 03:36 PM, Tigran Mkrtchyan wrote:
-> On Thu, Nov 17, 2011 at 9:26 PM, Steve Dickson <steved@redhat.com> wrote:
->> Introduce the '-c [keyring]' command line argument
->> which will clear the giving keyring of the keys.
->> If a keyring not supplied the default 'id_resolver'
->> keyring will be used.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  utils/nfsidmap/nfsidmap.c   |   62 +++++++++++++++++++++++++++++++++++++++---
->>  utils/nfsidmap/nfsidmap.man |   14 ++++++++-
->>  2 files changed, 69 insertions(+), 7 deletions(-)
->>
->> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->> index 6a09f38..2625dc1 100644
->> --- a/utils/nfsidmap/nfsidmap.c
->> +++ b/utils/nfsidmap/nfsidmap.c
->> @@ -13,12 +13,14 @@
->>  #include "xlog.h"
->>
->>  int verbose = 0;
->> -char *usage="Usage: %s [-v] [-t timeout] key desc";
->> +char *usage="Usage: %s [-v] [-c [keyring]] [-t timeout] key desc";
->>
->>  #define MAX_ID_LEN   11
->>  #define IDMAP_NAMESZ 128
->>  #define USER  1
->>  #define GROUP 0
->> +#define DEFAULT_KEYRING "id_resolver"
->> +#define PROCKEYS "/proc/keys"
->>
->>  /*
->>  * Find either a user or group id based on the name@domain string
->> @@ -87,6 +89,47 @@ int name_lookup(char *id, key_serial_t key, int type)
->>  out:
->>        return rc;
->>  }
->> +/*
->> + * Clear all the keys on the given keyring
->> + */
->> +static int keyring_clear(char *keyring)
->> +{
->> +       FILE *fp;
->> +       char buf[BUFSIZ];
->> +       key_serial_t key;
->> +
->> +       xlog_syslog(0);
->> +       if (keyring == NULL)
->> +               keyring = DEFAULT_KEYRING;
->> +
->> +       if ((fp = fopen(PROCKEYS, "r")) == NULL) {
-> 
-> The same comment here: fp never closed.
-Got it..
+So the sp_sockets lists don't really matter any more.  As a result,
+we've mostly just ignored them and hoped they would go away.
 
-steved.
-> 
-> Tigran.
->> +               xlog_err("fopen(%s) failed: %m", PROCKEYS);
->> +               return 1;
->> +       }
->> +
->> +       while(fgets(buf, BUFSIZ, fp) != NULL) {
->> +               if (strstr(buf, "keyring") == NULL)
->> +                       continue;
->> +               if (strstr(buf, keyring) == NULL)
->> +                       continue;
->> +               if (verbose) {
->> +                       *(strchr(buf, '\n')) = '\0';
->> +                       xlog_warn("clearing '%s'", buf);
->> +               }
->> +               /*
->> +                * The key is the first arugment in the string
->> +                */
->> +               *(strchr(buf, ' ')) = '\0';
->> +               sscanf(buf, "%x", &key);
->> +               if (keyctl_clear(key) < 0) {
->> +                       xlog_err("keyctl_clear(0x%x) failed: %m", key);
->> +                       return 1;
->> +               }
->> +               return 0;
->> +       }
->> +       xlog_err("'%s' keyring was not found.", keyring);
->> +       return 1;
->> +}
->>
->>  int main(int argc, char **argv)
->>  {
->> @@ -96,7 +139,8 @@ int main(int argc, char **argv)
->>        int rc = 1, opt;
->>        int timeout = 600;
->>        key_serial_t key;
->> -       char *progname;
->> +       char *progname, *keyring = NULL;
->> +       int clearring;
->>
->>        /* Set the basename */
->>        if ((progname = strrchr(argv[0], '/')) != NULL)
->> @@ -105,11 +149,12 @@ int main(int argc, char **argv)
->>                progname = argv[0];
->>
->>        xlog_open(progname);
->> -       xlog_syslog(1);
->> -       xlog_stderr(0);
->>
->> -       while ((opt = getopt(argc, argv, "t:v")) != -1) {
->> +       while ((opt = getopt(argc, argv, "ct:v")) != -1) {
->>                switch (opt) {
->> +               case 'c':
->> +                       clearring++;
->> +                       break;
->>                case 'v':
->>                        verbose++;
->>                        break;
->> @@ -122,6 +167,13 @@ int main(int argc, char **argv)
->>                }
->>        }
->>
->> +       if (clearring) {
->> +               keyring = ((argc - optind) ? argv[optind] : NULL);
->> +               rc = keyring_clear(keyring);
->> +               return rc;
->> +       }
->> +
->> +       xlog_stderr(0);
->>        if ((argc - optind) != 2) {
->>                xlog_err("Bad arg count. Check /etc/request-key.conf");
->>                xlog_warn(usage, progname);
->> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
->> index c67aab6..db65a1f 100644
->> --- a/utils/nfsidmap/nfsidmap.man
->> +++ b/utils/nfsidmap/nfsidmap.man
->> @@ -6,7 +6,7 @@
->>  .SH NAME
->>  nfsidmap \- The NFS idmapper upcall program
->>  .SH SYNOPSIS
->> -.B "nfsidmap [-v] [-t timeout] key desc"
->> +.B "nfsidmap [-v] [-c [keyring]] [-t timeout] key desc"
->>  .SH DESCRIPTION
->>  The file
->>  .I /usr/sbin/nfsidmap
->> @@ -14,10 +14,20 @@ is used by the NFS idmapper to translate user and group ids into names, and to
->>  translate user and group names into ids. Idmapper uses request-key to perform
->>  the upcall and cache the result.
->>  .I /usr/sbin/nfsidmap
->> -should only be called by request-key, and will perform the translation and
->> +is called by /sbin/request-key, and will perform the translation and
->>  initialize a key with the resulting information.
->> +.PP
->> +.I nfsidmap
->> +can also used to clear the keyring of all the keys.
->> +This is useful when all the mappings have failed to due to an DNS outage
->> +or some other error resulting in all the cached uid/gid to be invalid.
->>  .SH OPTIONS
->>  .TP
->> +.B -c [keyring]
->> +Clear the keyring of all the keys. If a
->> +keyring is not supplied the default
->> +keyring 'id_resolver' will be used.
->> +.TP
->>  .B -t timeout
->>  Set the expiration timer, in seconds, on the key.
->>  The default is 600 seconds (10 mins).
->> --
->> 1.7.7
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Which has gotten us into trouble; witness for example ebc63e531cc6
+"svcrpc: fix list-corrupting race on nfsd shutdown", the result of Ben
+Greear noticing that a still-running svc_xprt_enqueue() could re-add an
+xprt to an sp_sockets list just before it was deleted.  The fix was to
+remove it from the list at the end of svc_delete_xprt().  But that only
+made corruption less likely--I can see nothing that prevents a
+svc_xprt_enqueue() from adding another xprt to the list at the same
+moment that we're removing this xprt from the list.  In fact, despite
+the earlier xpo_detach(), I don't even see what guarantees that
+svc_xprt_enqueue() couldn't still be running on this xprt.
+
+So, instead, note that svc_xprt_enqueue() essentially does:
+	lock sp_lock
+		if XPT_BUSY unset
+			add to sp_sockets
+	unlock sp_lock
+
+So, if we do:
+
+	set XPT_BUSY on every xprt.
+	Empty every sp_sockets list, under the sp_socks locks.
+
+Then we're left knowing that the sp_sockets lists are all empty and will
+stay that way, since any svc_xprt_enqueue() will check XPT_BUSY under
+the sp_lock and see it set.
+
+And *then* we can continue deleting the xprt's.
+
+(Thanks to Jeff Layton for being correctly suspicious of this code....)
+
+Cc: Ben Greear <greearb@candelatech.com>
+Cc: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c |   48 +++++++++++++++++++++++++++++-------------------
+ 1 files changed, 29 insertions(+), 19 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 099ddf9..0d80c06 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -894,14 +894,7 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
+ 	spin_lock_bh(&serv->sv_lock);
+ 	if (!test_and_set_bit(XPT_DETACHED, &xprt->xpt_flags))
+ 		list_del_init(&xprt->xpt_list);
+-	/*
+-	 * The only time we're called while xpt_ready is still on a list
+-	 * is while the list itself is about to be destroyed (in
+-	 * svc_destroy).  BUT svc_xprt_enqueue could still be attempting
+-	 * to add new entries to the sp_sockets list, so we can't leave
+-	 * a freed xprt on it.
+-	 */
+-	list_del_init(&xprt->xpt_ready);
++	BUG_ON(!list_empty(&xprt->xpt_ready));
+ 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+ 		serv->sv_tmpcnt--;
+ 	spin_unlock_bh(&serv->sv_lock);
+@@ -932,28 +925,45 @@ EXPORT_SYMBOL_GPL(svc_close_xprt);
+ static void svc_close_list(struct list_head *xprt_list)
+ {
+ 	struct svc_xprt *xprt;
+-	struct svc_xprt *tmp;
+ 
+-	/*
+-	 * The server is shutting down, and no more threads are running.
+-	 * svc_xprt_enqueue() might still be running, but at worst it
+-	 * will re-add the xprt to sp_sockets, which will soon get
+-	 * freed.  So we don't bother with any more locking, and don't
+-	 * leave the close to the (nonexistent) server threads:
+-	 */
+-	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
++	list_for_each_entry(xprt, xprt_list, xpt_list) {
+ 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-		svc_delete_xprt(xprt);
++		set_bit(XPT_BUSY, &xprt->xpt_flags);
+ 	}
+ }
+ 
+ void svc_close_all(struct svc_serv *serv)
+ {
++	struct svc_pool *pool;
++	struct svc_xprt *xprt;
++	struct svc_xprt *tmp;
++	int i;
++
+ 	svc_close_list(&serv->sv_tempsocks);
+ 	svc_close_list(&serv->sv_permsocks);
++
++	for (i = 0; i < serv->sv_nrpools; i++) {
++		pool = &serv->sv_pools[i];
++
++		spin_lock_bh(&pool->sp_lock);
++		while (!list_empty(&pool->sp_sockets)) {
++			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
++			list_del_init(&xprt->xpt_ready);
++		}
++		spin_unlock_bh(&pool->sp_lock);
++	}
++	/*
++	 * At this point the sp_sockets lists will stay empty, since
++	 * svc_enqueue will not add new entries without taking the
++	 * sp_lock and checking XPT_BUSY.
++	 */
++	list_for_each_entry_safe(xprt, tmp, &serv->sv_tempsocks, xpt_list)
++		svc_delete_xprt(xprt);
++	list_for_each_entry_safe(xprt, tmp, &serv->sv_permsocks, xpt_list)
++		svc_delete_xprt(xprt);
++
+ 	BUG_ON(!list_empty(&serv->sv_permsocks));
+ 	BUG_ON(!list_empty(&serv->sv_tempsocks));
+-
+ }
+ 
+ /*
+-- 
+1.7.5.4
+
