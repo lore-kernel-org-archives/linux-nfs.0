@@ -1,63 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8916 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751427Ab1K1Os1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Nov 2011 09:48:27 -0500
-Message-ID: <4ED39F2D.7050508@RedHat.com>
-Date: Mon, 28 Nov 2011 09:48:13 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:30331 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751376Ab1K3Cz4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 21:55:56 -0500
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <bhalevy@tonian.com>
+Date: Tue, 29 Nov 2011 21:55:28 -0500
+Subject: RE: [PATCH 4/4] pnfsblock: do ask for layout in pg_init
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B060@MX09A.corp.emc.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+	 <1322887965-2938-5-git-send-email-bergwolf@gmail.com>
+	 <1322584823.4174.15.camel@lade.trondhjem.org>
+	 <CA+a=Yy7wbcYsBQ+tuMR86+fiRn8xNcZxFvJTFOEsWqrJKRm7sQ@mail.gmail.com>
+ <1322588583.4174.34.camel@lade.trondhjem.org>
+In-Reply-To: <1322588583.4174.34.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-utils and libnfsidmap
-References: <CAGue13qasD7m+dj3PdA+p5jfJQU_Eq0r+Z9QqtvOSnadFmWJeg@mail.gmail.com> <20111123201345.GA1044@fieldses.org>
-In-Reply-To: <20111123201345.GA1044@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/23/2011 03:13 PM, J. Bruce Fields wrote:
-> On Wed, Nov 23, 2011 at 08:54:06PM +0100, Tigran Mkrtchyan wrote:
->> Hi All,
->>
->> today was tracing a bug in nfs-utils/libnfsidmap and after a log
->> debugging located it and
->> finally realized that it's already fixed by Steve Dickson (
->> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commit;h=d22ef3f525d71b565fcc688557273a6cabeeb71a
->> ). Nevertheless during
->> this procedure it turned out that there is quite some code duplicated
->> between nfs-utils and
->> libnfsidmap.
->>
->> Questions:
->>    a) why nfs-utils duplicates some part of libnfsidmap and still depends o it
->>    b) is there readon for code duplication? Licensing or so
->>    c) what ww need to do to get rid of duplication
->>
->> I expect the answer of 'c' will contain something like time and man power.
->> I am volunteering to to pend some time on it.
-> 
-> I doubt there's any real reason for duplication.
-Just curious as to what code we are talking about...
-
-> 
-> Probably libnfsidmap should be part of nfs-utils, actually.
-I guess we could roll the libnfsidmap git tree into the nfs-utils
-tree... if that make senses... It probably would simply things.. 
-
-> 
-> And maybe we don't need it at all--the original reason to split out
-> libnfsidmap was to share the code with libacl, so the posix getfacl
-> command could do v4->posix acl mapping, but those patches never made it
-> upstream.
-So you don't think this will every happen?
-
-steved.
-
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGxpbnV4LW5mcy1vd25lckB2
+Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBP
+biBCZWhhbGYgT2YgVHJvbmQNCj4gTXlrbGVidXN0DQo+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1i
+ZXIgMzAsIDIwMTEgMTo0MyBBTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6IGxpbnV4LW5mc0B2Z2Vy
+Lmtlcm5lbC5vcmc7IGJoYWxldnlAdG9uaWFuLmNvbTsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJl
+OiBbUEFUQ0ggNC80XSBwbmZzYmxvY2s6IGRvIGFzayBmb3IgbGF5b3V0IGluIHBnX2luaXQNCj4g
+DQo+IE9uIFdlZCwgMjAxMS0xMS0zMCBhdCAwMToyNSArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+
+ID4gT24gV2VkLCBOb3YgMzAsIDIwMTEgYXQgMTI6NDAgQU0sIFRyb25kIE15a2xlYnVzdA0KPiA+
+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gPiBPbiBGcmksIDIwMTEt
+MTItMDIgYXQgMjA6NTIgLTA4MDAsIFBlbmcgVGFvIHdyb3RlOg0KPiA+ID4+IEFza2luZyBmb3Ig
+bGF5b3V0IGluIHBnX2luaXQgd2lsbCBhbHdheXMgbWFrZSBjbGllbnQgYXNrIGZvciBvbmx5IDRL
+Qg0KPiA+ID4+IGxheW91dCBpbiBldmVyeSBsYXlvdXRnZXQuIFRoaXMgd2F5LCBjbGllbnQgZHJv
+cHMgdGhlIElPIHNpemUgaW5mb3JtYXRpb24NCj4gPiA+PiB0aGF0IGlzIG1lYW5pbmdmdWwgZm9y
+IE1EUyBpbiBoYW5kaW5nIG91dCBsYXlvdXQuDQo+ID4gPj4NCj4gPiA+PiBJbiBzdGVhZCwgaWYg
+bGF5b3V0IGlzIG5vdCBmaW5kIGluIGNhY2hlLCBkbyBub3Qgc2VuZCBsYXlvdXRnZXQNCj4gPiA+
+PiBhdCBvbmNlLiBXYWl0IHVudGlsIGJlZm9yZSBpc3N1aW5nIElPIGluIHBuZnNfZG9fbXVsdGlw
+bGVfcmVhZHMvd3JpdGVzDQo+ID4gPj4gYmVjYXVzZSB0aGF0IGlzIHdoZXJlIHdlIGtub3cgdGhl
+IHJlYWwgc2l6ZSBvZiBjdXJyZW50IElPLiBCeSB0ZWxsaW5nIHRoZQ0KPiA+ID4+IHJlYWwgSU8g
+c2l6ZSB0byBNRFMsIE1EUyB3aWxsIGhhdmUgYSBiZXR0ZXIgY2hhbmNlIHRvIGdpdmUgcHJvcGVy
+IGxheW91dC4NCj4gPiA+DQo+ID4gPiBXaHkgY2FuJ3QgeW91IGp1c3Qgc3BsaXQgcG5mc191cGRh
+dGVfbGF5b3V0KCkgaW50byAyIHN1Yi1mdW5jdGlvbnMNCj4gPiA+IGluc3RlYWQgb2YgZHVwbGlj
+YXRpbmcgaXQgaW4gcHJpdmF0ZSBibG9jayBjb2RlPw0KPiA+IEJlY2F1c2UgSSB3YW50ZWQgdG8g
+ZGlmZmVyZW50aWF0ZSBiZXR3ZWVuIG5vIGxheW91dCBoZWFkZXIgYW5kIG5vDQo+ID4gY2FjaGVk
+IGxzZWcsIHdoZXJlIHRoZSBwbmZzX3VwZGF0ZV9sYXlvdXQoKSBpbnRlcmZhY2UgaXMgbm90IGVu
+b3VnaCB0bw0KPiA+IHRlbGwgdGhlIGRpZmZlcmVuY2UuIE9mIGNvdXJzZSBJIGNhbiBwdXQgdGhl
+c2UgYWxsIGludG8gZ2VuZXJpYyBsYXllci4NCj4gPiBJIHdpbGwgdXBkYXRlIHRoZSBwYXRjaHNl
+dCB0byBkbyBpdC4NCj4gPg0KPiA+ID4NCj4gPiA+IFRoZW4gY2FsbCBsYXlvdXRnZXQgaW4geW91
+ciBwZ19kb2lvKCkgY2FsbGJhY2sgaW5zdGVhZCBvZiBhZGRpbmcgYQ0KPiA+ID4gcmVkdW5kYW50
+IHBuZnNfdXBkYXRlX2xheW91dCB0bw0KPiA+ID4gcG5mc19kb19tdWx0aXBsZV9yZWFkcy9wbmZz
+X2RvX211bHRpcGxlX3dyaXRlcy4uLg0KPiA+IEkgaGF2ZSBjb25zaWRlcmVkIGl0IGJlZm9yZSBi
+dXQgdXNpbmcgcHJpdmF0ZSBwZ19kb2lvKCkgbWVhbnMgd2Ugd2lsbA0KPiA+IGhhdmUgYXMgbXVj
+aCBkdXBsaWNhdGlvbiBvZiBwbmZzX2dlbmVyaWNfcGdfcmVhZC93cml0ZXBhZ2VzLg0KPiANCj4g
+V2h5PyBBbGwgeW91IG5lZWQgdG8gZG8gaXMgc2VuZCB0aGUgbGF5b3V0Z2V0LCBhbmQgdGhlbiBj
+YWxsIHRoZQ0KPiBleGlzdGluZyBwbmZzX2dlbmVyaWNfcGdfcmVhZC93cml0ZXBhZ2VzPw0KPiAN
+Cj4gVGhlIGRpZmZlcmVuY2UgaGVyZSBpcyB0aGF0IHlvdSdyZSBhZGRpbmcgdGhhdCBzdGVwIGlu
+dG8NCj4gcG5mc19nZW5lcmljX3BnX3JlYWQvd3JpdGVwYWdlcyBpbiBwYXRjaCAzLzQuIEJhc2lj
+YWxseSB5b3UgYXJlIGFkZGluZw0KPiBibG9jay1zcGVjaWZpYyBjb2RlIGludG8gYW4gb3RoZXJ3
+aXNlIGdlbmVyaWMgZnVuY3Rpb24gaW5zdGVhZCBvZiBkb2luZw0KPiBpdCBjbGVhbmx5IGluIHRo
+ZSBibG9jay1zcGVjaWZpYyBjYWxsYmFja3MuDQpJIHNlZSB5b3VyIHBvaW50LiBJIHVzZWQgdG8g
+dGhpbmsgdGhhdCBwZ19kZXNjIHRha2VzIG11bHRpcGxlIG5mc19yZWFkL3dyaXRlX2RhdGEgd2hl
+biBjYWxsaW5nIHBuZnNfZG9fbXVsdGlwbGVfcmVhZHMvd3JpdGUuIFNvIEkgY2hvc2UgdG8gY2hh
+bmdlIGl0IHRoZXJlIHNvIHRoYXQgZWFjaCBuZnNfcmVhZC93cml0ZV9kYXRhIGlzIHRyZWF0ZWQg
+aW5kaXZpZHVhbGx5LiBCdXQgYXBwYXJlbnRseSBmb3IgYmxvY2tsYXlvdXQsIHdlIHdvbid0IGNh
+bGwgaW50byBuZnNfZmx1c2hfbXVsdGkgYWxpa2Ugc28gcGdfZGVzYyBjYW4gYmUgdHJlYXRlZCBh
+cyBhIHdob2xlLiBJIHdpbGwgbWFrZSB0aGUgY2hhbmdlIGFzIHlvdSBzdWdnZXN0ZWQuDQoNClRo
+YW5rcywNClRhbw0KDQo+IA0KPiAtLQ0KPiBUcm9uZCBNeWtsZWJ1c3QNCj4gTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQo+IA0KPiBOZXRBcHANCj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCj4gd3d3Lm5ldGFwcC5jb20NCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhp
+cyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBi
+b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFq
+b3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRt
+bA0KDQo=
