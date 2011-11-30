@@ -1,59 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:43519 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755461Ab1KQJhN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2011 04:37:13 -0500
-Message-ID: <4EC4D5BE.2030906@Calva.COM>
-Date: Thu, 17 Nov 2011 10:37:02 +0100
-From: John Hughes <john@Calva.COM>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Trond Myklebust <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Don't hang user processes if Kerberos ticket for nfs4
- mount expires
-References: <4EC3FD8B.6000705@calvaedi.com> <20111116144718.78b2e288@corrin.poochiereds.net>
-In-Reply-To: <20111116144718.78b2e288@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:16573 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751473Ab1K3TZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Nov 2011 14:25:29 -0500
+Date: Wed, 30 Nov 2011 14:25:05 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Malahal Naineni <malahal@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: only do COMMIT for range written with direct I/O
+Message-ID: <20111130142505.65c738e1@tlielax.poochiereds.net>
+In-Reply-To: <20111130145657.GA7883@us.ibm.com>
+References: <1322662074-3843-1-git-send-email-jlayton@redhat.com>
+	<20111130145657.GA7883@us.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 16/11/11 20:47, Jeff Layton wrote:
-> On Wed, 16 Nov 2011 19:14:35 +0100
-> John Hughes<john@calvaedi.com>  wrote:
->
->> With recent kernels if the Kerberos ticket for a nfs4 mount expires any
->> user process trying to access the mount hangs until a new ticket is
->> obtained.  Simultaneously a (luckily rate-limited, but still seemingly
->> endless) stream of "Error: state manager encountered RPCSEC_GSS session
->> expired against NFSv4 server" messages is written to the kernel log.
-[...]
->> This patch restores the old behavior, which makes nfs4 mounted home
->> directories usable for me.
->>
-> Uhhh, no...EKEYEXPIRED was never passed to userland. The patchset that
-> added EKEYEXPIRED returns in this codepath also added the code to make
-> it hang.
+On Wed, 30 Nov 2011 08:56:57 -0600
+Malahal Naineni <malahal@us.ibm.com> wrote:
 
-You are, of course, right.  userland used to get EPERM.
+> Jeff Layton [jlayton@redhat.com] wrote:
+> > When given a range to write with unstable writes, the current code
+> > always does a COMMIT of the entire file afterward. This is potentially
+> > expensive on some servers and unnecessary. Instead, just do a COMMIT for
+> > the offset and count that was written.
+> > 
+> > Khoa, who reported this bug, stated that this made a big difference in
+> > performance in their environment, which I believe involves GPFS on the
+> > server. He didn't pass along any hard numbers so I can't quantify the
+> > gain, but it stands to reason that clustered filesystems might suffer
+> > more contention issues when issuing a commit over the whole file.
+> > 
+> > Reported-by: Khoa Huynh <khoa@us.ibm.com>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfs/direct.c |    6 ++++--
+> >  1 files changed, 4 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> > index 1940f1a..33f2be7 100644
+> > --- a/fs/nfs/direct.c
+> > +++ b/fs/nfs/direct.c
+> > @@ -77,6 +77,7 @@ struct nfs_direct_req {
+> >  	/* completion state */
+> >  	atomic_t		io_count;	/* i/os we're waiting for */
+> >  	spinlock_t		lock;		/* protect completion state */
+> > +	loff_t			pos;		/* offset into file */
+> 
+> Why not call it "offset"?
 
-> This not a bug, or at least it's intentional behavior. When a krb5
-> ticket expires, we *want* the process to hang. Otherwise, people with
-> long running jobs will often find that their jobs error out
-> inexplicably when their ticket expires.
-I thought that was what kstart/krenew were for.
-> The patches that introduced this behavior went into 2.6.34. See the
-> commits around 2c64348 (and some preceding ones in the rpc layer).
+Why should we call it "offset"? The rest of the code refers to this
+value as "pos". Essentially this patch replaces a field that was
+removed from this struct several years ago. At the time, that field was
+also called "pos".
 
-Ah, I'm a Debian user - 2.6.32 for the moment, soon to be 3.?
+> Should we set this to zero in
+> nfs_direct_req_alloc (just like count is set to zero there)?
+> 
 
-> If you want to fix this use case, you'll need to come up with a scheme
-> that doesn't regress this behavior. I think that you'll really need to
-> ensure that whatever process you expect to re-fetch your TGT is not
-> dependent on accessing kerberized nfs mounts. That really seems like an
-> untenable chicken and egg situation.
+Yes, that certainly wouldn't hurt. I'll plan to add that into the next
+respin which I'll plan to send out once I've collected some more
+feedback.
 
-Ow.  "Fixing" (at least) Gnome-3 and Gnome-2 screen-lock/screensavers.
-
-How about a mount option to chose between the two behaviours?
-
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
