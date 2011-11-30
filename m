@@ -1,276 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:14210 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756831Ab1KVOn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Nov 2011 09:43:28 -0500
-Subject: [PATCH 5/6] SUNRPC: cleanup GSS pipes usage
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 22 Nov 2011 18:42:07 +0300
-Message-ID: <20111122144207.479.89052.stgit@localhost6.localdomain6>
-In-Reply-To: <20111122134514.479.9848.stgit@localhost6.localdomain6>
-References: <20111122134514.479.9848.stgit@localhost6.localdomain6>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:57783 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751416Ab1K3NSG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:18:06 -0500
+Received: by vbbfc26 with SMTP id fc26so301052vbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:18:05 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4ED62857.7090804@tonian.com>
+References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com> <4ED62857.7090804@tonian.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 30 Nov 2011 21:17:41 +0800
+Message-ID: <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com>
+Subject: Re: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently gss auth holds RPC inode pointer which is now redundant since it
-requires only pipes operations which takes private pipe data as an argument.
-Thus this code can be cleaned and all references to RPC inode can be replaced
-with privtae pipe data references.
+On Wed, Nov 30, 2011 at 8:57 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> On 2011-12-03 06:56, Peng Tao wrote:
+>> Asking for layout in pg_init will always make client ask for only 4KB
+>> layout in every layoutget. This way, client drops the IO size information
+>> that is meaningful for MDS in handing out layout.
+>>
+>> In stead, if layout is not find in cache, do not send layoutget
+>> at once. Wait until before issuing IO in pnfs_do_multiple_reads/writes
+>> because that is where we know the real size of current IO. By telling the
+>> real IO size to MDS, MDS will have a better chance to give proper layout.
+>>
+>> Signed-off-by: Peng Tao <peng_tao@emc.com>
+>> ---
+>> Resend to fix patch title. Sorry for the noise...
+>>
+>>  fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++-
+>>  1 files changed, 52 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>> index 48cfac3..fd585fe 100644
+>> --- a/fs/nfs/blocklayout/blocklayout.c
+>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>> @@ -39,6 +39,7 @@
+>>  #include <linux/prefetch.h>
+>>
+>>  #include "blocklayout.h"
+>> +#include "../internal.h"
+>>
+>>  #define NFSDBG_FACILITY      NFSDBG_PNFS_LD
+>>
+>> @@ -990,14 +991,63 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>>       return 0;
+>>  }
+>>
+>> +/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
+>
+> Why is that?
+> What do these arbitrary numbers represent?
+> If these limits depend on some other system sizes they should reflect the dependency
+> as part of their calculation.
+What I wanted to add here is a limit to stop pg_test() (like object's
+max_io_size) and 2MB is just an experience value...
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Thanks,
+Tao
+>
+> Benny
+>
+>> +#define PNFSBLK_MAXRSIZE (0x1<<22)
+>> +#define PNFSBLK_MAXWSIZE (0x1<<21)
+>> +static void
+>> +bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>> +{
+>> +     struct inode *ino = pgio->pg_inode;
+>> +     struct pnfs_layout_hdr *lo;
+>> +
+>> +     BUG_ON(pgio->pg_lseg != NULL);
+>> +     spin_lock(&ino->i_lock);
+>> +     lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_KERNEL);
+>> +     if (!lo || test_bit(lo_fail_bit(IOMODE_READ), &lo->plh_flags)) {
+>> +             spin_unlock(&ino->i_lock);
+>> +             nfs_pageio_reset_read_mds(pgio);
+>> +             return;
+>> +     }
+>> +
+>> +     pgio->pg_bsize = PNFSBLK_MAXRSIZE;
+>> +     pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
+>> +                                             req_offset(req),
+>> +                                             req->wb_bytes,
+>> +                                             IOMODE_READ);
+>> +     spin_unlock(&ino->i_lock);
+>> +}
+>> +
+>> +static void
+>> +bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+>> +{
+>> +     struct inode *ino = pgio->pg_inode;
+>> +     struct pnfs_layout_hdr *lo;
+>> +
+>> +     BUG_ON(pgio->pg_lseg != NULL);
+>> +     spin_lock(&ino->i_lock);
+>> +     lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_NOFS);
+>> +     if (!lo || test_bit(lo_fail_bit(IOMODE_RW), &lo->plh_flags)) {
+>> +             spin_unlock(&ino->i_lock);
+>> +             nfs_pageio_reset_write_mds(pgio);
+>> +             return;
+>> +     }
+>> +
+>> +     pgio->pg_bsize = PNFSBLK_MAXWSIZE;
+>> +     pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
+>> +                                             req_offset(req),
+>> +                                             req->wb_bytes,
+>> +                                             IOMODE_RW);
+>> +     spin_unlock(&ino->i_lock);
+>> +}
+>> +
+>>  static const struct nfs_pageio_ops bl_pg_read_ops = {
+>> -     .pg_init = pnfs_generic_pg_init_read,
+>> +     .pg_init = bl_pg_init_read,
+>>       .pg_test = pnfs_generic_pg_test,
+>>       .pg_doio = pnfs_generic_pg_readpages,
+>>  };
+>>
+>>  static const struct nfs_pageio_ops bl_pg_write_ops = {
+>> -     .pg_init = pnfs_generic_pg_init_write,
+>> +     .pg_init = bl_pg_init_write,
+>>       .pg_test = pnfs_generic_pg_test,
+>>       .pg_doio = pnfs_generic_pg_writepages,
+>>  };
 
----
- net/sunrpc/auth_gss/auth_gss.c |   76 ++++++++++++++++++++--------------------
- 1 files changed, 38 insertions(+), 38 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 40227ef..15fd9fe 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -112,7 +112,7 @@ gss_put_ctx(struct gss_cl_ctx *ctx)
- /* gss_cred_set_ctx:
-  * called by gss_upcall_callback and gss_create_upcall in order
-  * to set the gss context. The actual exchange of an old context
-- * and a new one is protected by the rpci->pipe->lock.
-+ * and a new one is protected by the pipe->lock.
-  */
- static void
- gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
-@@ -251,7 +251,7 @@ struct gss_upcall_msg {
- 	struct rpc_pipe_msg msg;
- 	struct list_head list;
- 	struct gss_auth *auth;
--	struct rpc_inode *inode;
-+	struct rpc_pipe *pipe;
- 	struct rpc_wait_queue rpc_waitqueue;
- 	wait_queue_head_t waitqueue;
- 	struct gss_cl_ctx *ctx;
-@@ -294,10 +294,10 @@ gss_release_msg(struct gss_upcall_msg *gss_msg)
- }
- 
- static struct gss_upcall_msg *
--__gss_find_upcall(struct rpc_inode *rpci, uid_t uid)
-+__gss_find_upcall(struct rpc_pipe *pipe, uid_t uid)
- {
- 	struct gss_upcall_msg *pos;
--	list_for_each_entry(pos, &rpci->pipe->in_downcall, list) {
-+	list_for_each_entry(pos, &pipe->in_downcall, list) {
- 		if (pos->uid != uid)
- 			continue;
- 		atomic_inc(&pos->count);
-@@ -315,17 +315,17 @@ __gss_find_upcall(struct rpc_inode *rpci, uid_t uid)
- static inline struct gss_upcall_msg *
- gss_add_msg(struct gss_upcall_msg *gss_msg)
- {
--	struct rpc_inode *rpci = gss_msg->inode;
-+	struct rpc_pipe *pipe = gss_msg->pipe;
- 	struct gss_upcall_msg *old;
- 
--	spin_lock(&rpci->pipe->lock);
--	old = __gss_find_upcall(rpci, gss_msg->uid);
-+	spin_lock(&pipe->lock);
-+	old = __gss_find_upcall(pipe, gss_msg->uid);
- 	if (old == NULL) {
- 		atomic_inc(&gss_msg->count);
--		list_add(&gss_msg->list, &rpci->pipe->in_downcall);
-+		list_add(&gss_msg->list, &pipe->in_downcall);
- 	} else
- 		gss_msg = old;
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 	return gss_msg;
- }
- 
-@@ -341,14 +341,14 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
- static void
- gss_unhash_msg(struct gss_upcall_msg *gss_msg)
- {
--	struct rpc_inode *rpci = gss_msg->inode;
-+	struct rpc_pipe *pipe = gss_msg->pipe;
- 
- 	if (list_empty(&gss_msg->list))
- 		return;
--	spin_lock(&rpci->pipe->lock);
-+	spin_lock(&pipe->lock);
- 	if (!list_empty(&gss_msg->list))
- 		__gss_unhash_msg(gss_msg);
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- }
- 
- static void
-@@ -375,11 +375,11 @@ gss_upcall_callback(struct rpc_task *task)
- 	struct gss_cred *gss_cred = container_of(task->tk_rqstp->rq_cred,
- 			struct gss_cred, gc_base);
- 	struct gss_upcall_msg *gss_msg = gss_cred->gc_upcall;
--	struct rpc_inode *rpci = gss_msg->inode;
-+	struct rpc_pipe *pipe = gss_msg->pipe;
- 
--	spin_lock(&rpci->pipe->lock);
-+	spin_lock(&pipe->lock);
- 	gss_handle_downcall_result(gss_cred, gss_msg);
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 	task->tk_status = gss_msg->msg.errno;
- 	gss_release_msg(gss_msg);
- }
-@@ -451,7 +451,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
- 		kfree(gss_msg);
- 		return ERR_PTR(vers);
- 	}
--	gss_msg->inode = RPC_I(gss_auth->dentry[vers]->d_inode);
-+	gss_msg->pipe = RPC_I(gss_auth->dentry[vers]->d_inode)->pipe;
- 	INIT_LIST_HEAD(&gss_msg->list);
- 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 	init_waitqueue_head(&gss_msg->waitqueue);
-@@ -475,7 +475,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
- 		return gss_new;
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
--		int res = rpc_queue_upcall(gss_new->inode->pipe, &gss_new->msg);
-+		int res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
-@@ -506,7 +506,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 	struct gss_cred *gss_cred = container_of(cred,
- 			struct gss_cred, gc_base);
- 	struct gss_upcall_msg *gss_msg;
--	struct rpc_inode *rpci;
-+	struct rpc_pipe *pipe;
- 	int err = 0;
- 
- 	dprintk("RPC: %5u gss_refresh_upcall for uid %u\n", task->tk_pid,
-@@ -524,8 +524,8 @@ gss_refresh_upcall(struct rpc_task *task)
- 		err = PTR_ERR(gss_msg);
- 		goto out;
- 	}
--	rpci = gss_msg->inode;
--	spin_lock(&rpci->pipe->lock);
-+	pipe = gss_msg->pipe;
-+	spin_lock(&pipe->lock);
- 	if (gss_cred->gc_upcall != NULL)
- 		rpc_sleep_on(&gss_cred->gc_upcall->rpc_waitqueue, task, NULL);
- 	else if (gss_msg->ctx == NULL && gss_msg->msg.errno >= 0) {
-@@ -538,7 +538,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 		gss_handle_downcall_result(gss_cred, gss_msg);
- 		err = gss_msg->msg.errno;
- 	}
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 	gss_release_msg(gss_msg);
- out:
- 	dprintk("RPC: %5u gss_refresh_upcall for uid %u result %d\n",
-@@ -549,7 +549,7 @@ out:
- static inline int
- gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- {
--	struct rpc_inode *rpci;
-+	struct rpc_pipe *pipe;
- 	struct rpc_cred *cred = &gss_cred->gc_base;
- 	struct gss_upcall_msg *gss_msg;
- 	DEFINE_WAIT(wait);
-@@ -573,14 +573,14 @@ retry:
- 		err = PTR_ERR(gss_msg);
- 		goto out;
- 	}
--	rpci = gss_msg->inode;
-+	pipe = gss_msg->pipe;
- 	for (;;) {
- 		prepare_to_wait(&gss_msg->waitqueue, &wait, TASK_KILLABLE);
--		spin_lock(&rpci->pipe->lock);
-+		spin_lock(&pipe->lock);
- 		if (gss_msg->ctx != NULL || gss_msg->msg.errno < 0) {
- 			break;
- 		}
--		spin_unlock(&rpci->pipe->lock);
-+		spin_unlock(&pipe->lock);
- 		if (fatal_signal_pending(current)) {
- 			err = -ERESTARTSYS;
- 			goto out_intr;
-@@ -591,7 +591,7 @@ retry:
- 		gss_cred_set_ctx(cred, gss_msg->ctx);
- 	else
- 		err = gss_msg->msg.errno;
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- out_intr:
- 	finish_wait(&gss_msg->waitqueue, &wait);
- 	gss_release_msg(gss_msg);
-@@ -629,7 +629,7 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 	const void *p, *end;
- 	void *buf;
- 	struct gss_upcall_msg *gss_msg;
--	struct rpc_inode *rpci = RPC_I(filp->f_dentry->d_inode);
-+	struct rpc_pipe *pipe = RPC_I(filp->f_dentry->d_inode)->pipe;
- 	struct gss_cl_ctx *ctx;
- 	uid_t uid;
- 	ssize_t err = -EFBIG;
-@@ -659,14 +659,14 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 
- 	err = -ENOENT;
- 	/* Find a matching upcall */
--	spin_lock(&rpci->pipe->lock);
--	gss_msg = __gss_find_upcall(rpci, uid);
-+	spin_lock(&pipe->lock);
-+	gss_msg = __gss_find_upcall(pipe, uid);
- 	if (gss_msg == NULL) {
--		spin_unlock(&rpci->pipe->lock);
-+		spin_unlock(&pipe->lock);
- 		goto err_put_ctx;
- 	}
- 	list_del_init(&gss_msg->list);
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 
- 	p = gss_fill_context(p, end, ctx, gss_msg->auth->mech);
- 	if (IS_ERR(p)) {
-@@ -694,9 +694,9 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 	err = mlen;
- 
- err_release_msg:
--	spin_lock(&rpci->pipe->lock);
-+	spin_lock(&pipe->lock);
- 	__gss_unhash_msg(gss_msg);
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 	gss_release_msg(gss_msg);
- err_put_ctx:
- 	gss_put_ctx(ctx);
-@@ -742,23 +742,23 @@ static int gss_pipe_open_v1(struct inode *inode)
- static void
- gss_pipe_release(struct inode *inode)
- {
--	struct rpc_inode *rpci = RPC_I(inode);
-+	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
- 	struct gss_upcall_msg *gss_msg;
- 
- restart:
--	spin_lock(&rpci->pipe->lock);
--	list_for_each_entry(gss_msg, &rpci->pipe->in_downcall, list) {
-+	spin_lock(&pipe->lock);
-+	list_for_each_entry(gss_msg, &pipe->in_downcall, list) {
- 
- 		if (!list_empty(&gss_msg->msg.list))
- 			continue;
- 		gss_msg->msg.errno = -EPIPE;
- 		atomic_inc(&gss_msg->count);
- 		__gss_unhash_msg(gss_msg);
--		spin_unlock(&rpci->pipe->lock);
-+		spin_unlock(&pipe->lock);
- 		gss_release_msg(gss_msg);
- 		goto restart;
- 	}
--	spin_unlock(&rpci->pipe->lock);
-+	spin_unlock(&pipe->lock);
- 
- 	put_pipe_version();
- }
 
+-- 
+Thanks,
+Tao
