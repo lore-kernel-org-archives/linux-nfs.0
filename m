@@ -1,115 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30123 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756669Ab1KJV1W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Nov 2011 16:27:22 -0500
-Message-ID: <4EBC41A9.50803@RedHat.com>
-Date: Thu, 10 Nov 2011 16:27:05 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:52462 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754661Ab1K3BqS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 20:46:18 -0500
+Message-ID: <4ED58ADE.8010809@panasas.com>
+Date: Tue, 29 Nov 2011 17:46:06 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Bryan Schumaker <bjschuma@netapp.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsidmap: Added -v flag
-References: <1320956785-18004-1-git-send-email-steved@redhat.com> <1320956785-18004-3-git-send-email-steved@redhat.com> <4EBC3FE4.7050701@netapp.com>
-In-Reply-To: <4EBC3FE4.7050701@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Peng Tao <bergwolf@gmail.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>, Garth Gibson <garth@panasas.com>,
+        Matt Benjamin <matt@linuxbox.com>, Marc Eshel <eshel@almaden.ibm.com>,
+        Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>     <4ED54FE4.9050008@panasas.com> <4ED55399.4060707@panasas.com>    <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com>   <1322606842.11286.33.camel@lade.trondhjem.org>   <4ED563AC.5040501@panasas.com>  <1322609431.11286.56.camel@lade.trondhjem.org>  <4ED577AE.2060209@panasas.com> <1322614718.11286.104.camel@lade.trondhjem.org>
+In-Reply-To: <1322614718.11286.104.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 11/10/2011 04:19 PM, Bryan Schumaker wrote:
-> On 11/10/2011 03:26 PM, Steve Dickson wrote:
->> To aid in debugging, the -v flag can now be specified
->> on the command to enable verbose logging in both
->> the nfsidmap command and libnfsidmap library routines.
+On 11/29/2011 04:58 PM, Trond Myklebust wrote:
+> On Tue, 2011-11-29 at 16:24 -0800, Boaz Harrosh wrote: 
+>> On 11/29/2011 03:30 PM, Trond Myklebust wrote:
+>>> On Tue, 2011-11-29 at 14:58 -0800, Boaz Harrosh wrote: 
 >>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  utils/nfsidmap/nfsidmap.c   |   12 ++++++++++++
->>  utils/nfsidmap/nfsidmap.man |   15 ++++++++++++---
->>  2 files changed, 24 insertions(+), 3 deletions(-)
->>
->> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->> index 134d9bc..d74189a 100644
->> --- a/utils/nfsidmap/nfsidmap.c
->> +++ b/utils/nfsidmap/nfsidmap.c
->> @@ -12,6 +12,7 @@
->>  #include <syslog.h>
->>  #include "xlog.h"
+>> That I don't understand. What "spec worms that the pNFS layout segments open"
+>> Are you seeing. Because it works pretty simple for me. And I don't see the
+>> big difference for files. One thing I learned for the past is that when you
+>> have concerns I should understand them and start to address them. Because
+>> your insights are usually on the Money. If you are concerned then there is
+>> something I should fix.
 > 
-> Is the syslog.h still needed here?  I don't think I see anything that uses it.  
-Probably not...
+> I'm saying that if I need to manage layouts that deal with >1000 DSes,
+> then I presumably need a strategy for ensuring that I return/forget
+> segments that are no longer needed, and I need a strategy for ensuring
+> that I always hold the segments that I do need; otherwise, I could just
+> ask for a full-file layout and deal with the 1000 DSes (which is what we
+> do today)...
+> 
 
-> If I knew about xlog, I probably would have used that while writing nfsidmap.
-No biggie... :-) 
+Thanks for asking because now I can answer you and you will find that I'm
+one step a head in some of the issues.
 
-steved.
+1. The 1000 DSes problem is separate from the segments problem. The devices
+   solution is on the way. The device cache is all but ready to see some
+   periodic scan that throws 0 used devices. We never got to it because
+   currently every one is testing with up to 10 devices and I'm using upto
+   128 devices which is just fine. The load is marginal so far.
+   But I promise you it is right here on my to do list. After some more
+   pressed problem.
+   Lets say one thing this subsystem is the same regardless of if the
+   1000 devices are refed by 1 segment or by 10 segments. Actually if
+   by 10 then I might get rid of some and free devices.
 
+2. The many segments problem. There are not that many. It's more less
+   a segment for every 2GB so an lo_seg struct for so much IO is not
+   noticeable.
+   At the upper bound we do not have any problem because Once the system is
+   out of memory it will start to evict inodes. And on evict we just return
+   them. Also ROC Servers we forget them on close. So so far all our combined
+   testing did not show any real memory pressure caused by that. When shown we
+   can start discarding segs in an LRU fashion. There are all the mechanics
+   to do that, we only need to see the need.
+
+3. The current situation is fine and working and showing great performance
+   for objects and blocks. And it is all in the Generic part so it should just
+   be the same for files. I do not see any difference.
+
+   The only BUG I see is the COMMIT and I think we know how to fix that
+
+> My problem is that the spec certainly doesn't give me any guidance as to
+> such a strategy, and I haven't seen anybody else step up to the plate.
+> In fact, I strongly suspect that such a strategy is going to be very
+> application specific.
 > 
-> - Bryan
+
+You never asked. I'm thinking about these things all the time. Currently
+we are far behind the limits of a running system. I think I'm going to
+get to these limits before any one else.
+
+My strategy is stated above LRU for devices is almost all there ref-counting
+and all only the periodic timer needs to be added.
+LRU for segments is more work, but is doable. But the segments count are
+so low that we will not hit that problem for a long time. Before I ship
+a system that will break that barrier I'll send a fix I promise.
+
+> IOW: I don't accept that a layout-segment based solution is useful
+> without some form of strategy for telling me which segments to keep and
+> which to throw out when I start hitting client resource limits. 
+
+LRU. Again there are not more than a few segments per inode. It's not
+1000 like devices.
+
+> I also
+> haven't seen any strategy out there for setting loga_length (as opposed
+> to loga_minlength) in the LAYOUTGET requests: as far as I know that is
+> going to be heavily application-dependent in the 1000-DS world.
 > 
->>  
->> +int verbose = 0;
->>  /* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
->>  
->>  #define MAX_ID_LEN   11
->> @@ -108,6 +109,12 @@ int main(int argc, char **argv)
->>  	xlog_syslog(1);
->>  	xlog_stderr(0);
->>  
->> +	if (argc > 1 && strcmp(argv[1], "-v") == 0) {
->> +		verbose = 1;
->> +		nfs4_set_debug(1, NULL);
->> +		argc--, argv++;
->> +	}
->> +
->>  	if (argc < 3) {
->>  		xlog_err("Bad arg count. Check /etc/request-key.conf");
->>  		return 1;
->> @@ -126,6 +133,11 @@ int main(int argc, char **argv)
->>  
->>  	key = strtol(argv[1], NULL, 10);
->>  
->> +	if (verbose) {
->> +		xlog_warn("key: %ld type: %s value: %s timeout %ld",
->> +			key, type, value, timeout);
->> +	}
->> +
->>  	if (strcmp(type, "uid") == 0)
->>  		rc = id_lookup(value, key, USER);
->>  	else if (strcmp(type, "gid") == 0)
->> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
->> index 2381908..aa4d94b 100644
->> --- a/utils/nfsidmap/nfsidmap.man
->> +++ b/utils/nfsidmap/nfsidmap.man
->> @@ -5,6 +5,8 @@
->>  .TH nfsidmap 5 "1 October 2010"
->>  .SH NAME
->>  nfsidmap \- The NFS idmapper upcall program
->> +.SH SYNOPSIS
->> +.B "nfsidmap [-v] key user [timeout]"
->>  .SH DESCRIPTION
->>  The file
->>  .I /usr/sbin/nfsidmap
->> @@ -14,9 +16,16 @@ the upcall and cache the result.
->>  .I /usr/sbin/nfsidmap
->>  should only be called by request-key, and will perform the translation and
->>  initialize a key with the resulting information.
->> -.PP
->> -NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
->> -feature.
->> +.SH OPTIONS
->> +.TP
->> +.B -v
->> +Enables verbose logging in both the
->> +.B nfsidmap
->> +binary and in the library routines
->> +that are used.
->> +.B Note,
->> +the -v flag has to be the first argument on the
->> +command to enable the logging.
->>  .SH CONFIGURING
->>  The file
->>  .I /etc/request-key.conf
-> 
+
+Current situation is working for me. But we also are actively working to
+improve it. What we want is that files-LO can enjoy the same privileges that
+objects and blocks already have, in exactly the same, simple stupid but working,
+way.
+
+All your above concerns are true and interesting. I call them a rich man problems.
+But they are not specific to files-LO they are generic to all of us. Current situation
+satisfies us for blocks and objects. The file guys out there are jealous.
+
+Thanks
+Heart
+
