@@ -1,46 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25722 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47343 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753369Ab1KBQ17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 12:27:59 -0400
-Date: Wed, 2 Nov 2011 17:23:31 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Tejun Heo <tj@kernel.org>, "Rafael J. Wysocki" <rjw@sisk.pl>
-Cc: Jeff Layton <jlayton@redhat.com>, Steve French <sfrench@samba.org>,
-        linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
-        linux-cifs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>, trond.myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH] freezer: revert 27920651fe "PM / Freezer: Make
-	fake_signal_wake_up() wake TASK_KILLABLE tasks too"
-Message-ID: <20111102162331.GA31947@redhat.com>
-References: <20111101041337.39077229@tlielax.poochiereds.net> <20111101065958.50addab5@tlielax.poochiereds.net> <20111101163059.GR18855@google.com> <20111101175953.GB5358@redhat.com> <20111101180601.GV18855@google.com> <20111101181329.GA6739@redhat.com> <20111101182753.GW18855@google.com> <20111101193923.GA9444@redhat.com> <20111101194601.GB9444@redhat.com> <20111101215710.GA13803@google.com>
+	id S1753269Ab1K3A5C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 19:57:02 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Wed, 30 Nov 2011 11:52:51 +1100
+Subject: [PATCH 1/2] NFS - fix recent breakage to NFS error handling.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20111130005251.23632.79389.stgit@notabene.brown>
+In-Reply-To: <20111130005231.23632.87382.stgit@notabene.brown>
+References: <20111130005231.23632.87382.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111101215710.GA13803@google.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+commit 02c24a82187d5a628c68edfe71ae60dc135cd178 made a small and
+presumably unintended change to write error handling in NFS.
 
-On 11/01, Tejun Heo wrote:
->
-> For now, let's go with the count/dont_count.  Can you please write up
-> a patch for that?  Jeff, does this seem okay to you?
+Previously an error from filemap_write_and_wait_range would only be of
+interest if nfs_file_fsync did not return an error.  After this commit,
+an error from filemap_write_and_wait_range would mean that nfs_file_fsync
+would not even be called.
 
-OK, will do in a minute. On top of
-"[PATCH pm] freezer: fix wait_event_freezable/__thaw_task races"
-you sent. (btw, thanks, I forgout about it ;)
+This means that:
+ 1/ you are more likely to see EIO than e.g. EDQUOT or ENOSPC.
+ 2/ NFS_CONTEXT_ERROR_WRITE remains set for longer so more writes are
+    synchronous.
 
-Rafael, could you remind why freezer_do_not_count/freezer_count check
-->mm != NULL ?
+This patch restores previous behaviour.
 
-The comment says "However, we don't want kernel threads to be frozen",
-but it is not clear anyway. A kernel thread simply shouldn't use this
-interface if it doesn't want to freeze.
+Cc: stable@kernel.org
+Cc: Josef Bacik <josef@redhat.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
 
-And in any case, PF_KTHREAD looks better if we really need to filter
-out the kernel threads.
+ fs/nfs/file.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-Oleg.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eca56d4..1d8e7bf 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -272,13 +272,13 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 			datasync);
+ 
+ 	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+-	if (ret)
+-		return ret;
+ 	mutex_lock(&inode->i_mutex);
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+ 	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ 	status = nfs_commit_inode(inode, FLUSH_SYNC);
++	if (status >= 0 && ret < 0)
++		status = ret;
+ 	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ 	if (have_error)
+ 		ret = xchg(&ctx->error, 0);
+
 
