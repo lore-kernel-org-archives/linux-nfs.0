@@ -1,55 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx0.aculab.com ([213.249.233.131]:54067 "HELO mx0.aculab.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1751326Ab1KNNd0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 08:33:26 -0500
-Received: from mx0.aculab.com ([127.0.0.1])
- by localhost (mx0.aculab.com [127.0.0.1]) (amavisd-new, port 10024) with SMTP
- id 23698-01 for <linux-nfs@vger.kernel.org>;
- Mon, 14 Nov 2011 13:26:42 +0000 (GMT)
+Received: from mexforward.lss.emc.com ([128.222.32.20]:24892 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754032Ab1K3Chq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 21:37:46 -0500
+From: <tao.peng@emc.com>
+To: <rees@umich.edu>, <bergwolf@gmail.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Date: Tue, 29 Nov 2011 21:37:16 -0500
+Subject: RE: [PATCH 0/9] pnfsblock patches
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B053@MX09A.corp.emc.com>
+References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+ <20111129184401.GA3098@umich.edu>
+In-Reply-To: <20111129184401.GA3098@umich.edu>
+Content-Type: multipart/mixed;
+	boundary="_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_"
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH 4/4] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
-Date: Mon, 14 Nov 2011 13:25:01 -0000
-Message-ID: <AE90C24D6B3A694183C094C60CF0A2F6D8AEC1@saturn3.aculab.com>
-In-Reply-To: <1321276055.3664.67.camel@zakaz.uk.xensource.com>
-From: "David Laight" <David.Laight@ACULAB.COM>
-To: "Ian Campbell" <Ian.Campbell@citrix.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>
-Cc: <netdev@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>,
-        "Neil Brown" <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
-> This prevents an issue where an ACK is delayed, a retransmit is queued
-(either
-> at the RPC or TCP level) and the ACK arrives before the retransmission
-hits the
-> wire. If this happens to an NFS WRITE RPC then the write() system call
-> completes and the userspace process can continue, potentially
-modifying data
-> referenced by the retransmission before the retransmission occurs.
+--_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
 
-The only problem I see is that the source address might get
-invalidated (assuming it is a user address mapped into kernel).
-Not sure what effect the fault would have...
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIEppbSBSZWVzDQo+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1iZXIgMzAsIDIwMTEg
+Mjo0NCBBTQ0KPiBUbzogUGVuZyBUYW8NCj4gQ2M6IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+OyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMC85XSBw
+bmZzYmxvY2sgcGF0Y2hlcw0KPiANCj4gUGVuZyBUYW8gd3JvdGU6DQo+IA0KPiAgIEhpLCBUcm9u
+ZCwNCj4gDQo+ICAgRm9sbG93aW5nIGFyZSBzb21lIGJ1Z2ZpeCBhbmQgaW1wcm92ZW1lbnRzIGZv
+ciBibG9ja2xheW91dCBkcml2ZXIuIEFsbCBoYXZlIGJlZW4NCj4gICBzZW50IHRvIHRoZSBsaXN0
+IGJlZm9yZSBhbmQgaGF2ZSBiZWVuIHRlc3RlZCBmb3Igc2V2ZXJhbCB3ZWVrcy4NCj4gDQo+IFBh
+dGNoZXMgMi85IGFuZCA4LzkgYXJlIG1pc3NpbmcgYWdhaW4uICBJIHdvbmRlciB3aHkgdGhlc2Ug
+cGFydGljdWxhcg0KPiBwYXRjaGVzIGFyZSBnZXR0aW5nIGZpbHRlcmVkIG91dD8NCkkgaGF2ZSBy
+ZWNlaXZlZCB0aGVzZSBwYXRjaGVzIGluIGJvdGggbXkgZ21haWwgYm94IGFuZCBlbWMgbWFpbCBi
+b3guIFNvIEkgZ3Vlc3MgdmdlciBkcm9wcGVkIHRoZW0sIGFnYWluLi4uIFNvbWVob3cgaXQgdGhp
+bmtzIEknbSBhIHNwYW1tZXI/DQpJIGF0dGFjaGVkIDIvOSwgOC85LCA5LzkgaGVyZS4uLg0KDQpU
+aGFua3MsDQpUYW8NCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQg
+dGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNz
+YWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBh
+dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
 
-If it is an RPC retransmittion the NFS write won't be
-terminated by the RPC ACK (because it is a stale ACK)
-and the destination will see two copies of the NFS write.
-(This is quite common with NFS/UDP.)
+--_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_
+Content-Type: application/octet-stream;
+	name="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
+Content-Description: 0002-pnfsblock-acquire-im_lock-in-_preload_range.patch
+Content-Disposition: attachment;
+	filename="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"; size=2008;
+	creation-date="Wed, 30 Nov 2011 02:36:00 GMT";
+	modification-date="Wed, 30 Nov 2011 02:36:01 GMT"
+Content-Transfer-Encoding: base64
 
-If it is a TCP retransmittion, then the receiving TCP stack
-will see it as duplicate data and discard the contents
-without passing them to RPC.
+RnJvbSBkMjg5YWIyZjYxNzQzMTYzNzQ2NDFhODdmYTVkNGMwYzljMzAyMDNiIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBX
+ZWQsIDIgTm92IDIwMTEgMDE6MTE6MTQgLTA0MDAKU3ViamVjdDogW1BBVENIIDIvOV0gcG5mc2Js
+b2NrOiBhY3F1aXJlIGltX2xvY2sgaW4gX3ByZWxvYWRfcmFuZ2UKCldoZW4gY2FsbGluZyBfYWRk
+X2VudHJ5LCB3ZSBzaG91bGQgdGFrZSB0aGUgaW1fbG9jayB0byBwcm90ZWN0CmFnYWlucyBvdGhl
+ciBtb2RpZmllcnMuCgpDYzogc3RhYmxlQGtlcm5lbC5vcmcgWzMuMV0KU2lnbmVkLW9mZi1ieTog
+UGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+Ci0tLQogZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVu
+dHMuYyB8ICAgMTEgKysrKysrLS0tLS0KIDEgZmlsZXMgY2hhbmdlZCwgNiBpbnNlcnRpb25zKCsp
+LCA1IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRz
+LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jCmluZGV4IDBmYzEzMjEuLmYzODM1MjQg
+MTAwNjQ0Ci0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMKKysrIGIvZnMvbmZzL2Js
+b2NrbGF5b3V0L2V4dGVudHMuYwpAQCAtMTM5LDExICsxMzksMTMgQEAgc3RhdGljIGludCBfc2V0
+X3JhbmdlKHN0cnVjdCBteV90cmVlICp0cmVlLCBpbnQzMl90IHRhZywgdTY0IHMsIHU2NCBsZW5n
+dGgpCiB9CiAKIC8qIEVuc3VyZSB0aGF0IGZ1dHVyZSBvcGVyYXRpb25zIG9uIGdpdmVuIHJhbmdl
+IG9mIHRyZWUgd2lsbCBub3QgbWFsbG9jICovCi1zdGF0aWMgaW50IF9wcmVsb2FkX3JhbmdlKHN0
+cnVjdCBteV90cmVlICp0cmVlLCB1NjQgb2Zmc2V0LCB1NjQgbGVuZ3RoKQorc3RhdGljIGludCBf
+cHJlbG9hZF9yYW5nZShzdHJ1Y3QgcG5mc19pbnZhbF9tYXJraW5ncyAqbWFya3MsCisJCXU2NCBv
+ZmZzZXQsIHU2NCBsZW5ndGgpCiB7CiAJdTY0IHN0YXJ0LCBlbmQsIHM7CiAJaW50IGNvdW50LCBp
+LCB1c2VkID0gMCwgc3RhdHVzID0gLUVOT01FTTsKIAlzdHJ1Y3QgcG5mc19pbnZhbF90cmFja2lu
+ZyAqKnN0b3JhZ2U7CisJc3RydWN0IG15X3RyZWUgICp0cmVlID0gJm1hcmtzLT5pbV90cmVlOwog
+CiAJZHByaW50aygiJXMoJWxsdSwgJWxsdSkgZW50ZXJcbiIsIF9fZnVuY19fLCBvZmZzZXQsIGxl
+bmd0aCk7CiAJc3RhcnQgPSBub3JtYWxpemUob2Zmc2V0LCB0cmVlLT5tdHRfc3RlcF9zaXplKTsK
+QEAgLTE2MSwxMiArMTYzLDExIEBAIHN0YXRpYyBpbnQgX3ByZWxvYWRfcmFuZ2Uoc3RydWN0IG15
+X3RyZWUgKnRyZWUsIHU2NCBvZmZzZXQsIHU2NCBsZW5ndGgpCiAJCQlnb3RvIG91dF9jbGVhbnVw
+OwogCX0KIAotCS8qIE5vdyBuZWVkIGxvY2sgLSBIT1c/Pz8gKi8KLQorCXNwaW5fbG9jaygmbWFy
+a3MtPmltX2xvY2spOwogCWZvciAocyA9IHN0YXJ0OyBzIDwgZW5kOyBzICs9IHRyZWUtPm10dF9z
+dGVwX3NpemUpCiAJCXVzZWQgKz0gX2FkZF9lbnRyeSh0cmVlLCBzLCBJTlRFUk5BTF9FWElTVFMs
+IHN0b3JhZ2VbdXNlZF0pOworCXNwaW5fdW5sb2NrKCZtYXJrcy0+aW1fbG9jayk7CiAKLQkvKiBV
+bmxvY2sgLSBIT1c/Pz8gKi8KIAlzdGF0dXMgPSAwOwogCiAgb3V0X2NsZWFudXA6CkBAIC0yNDYs
+NyArMjQ3LDcgQEAgaW50IGJsX21hcmtfc2VjdG9yc19pbml0KHN0cnVjdCBwbmZzX2ludmFsX21h
+cmtpbmdzICptYXJrcywKIAogCXN0YXJ0ID0gbm9ybWFsaXplKG9mZnNldCwgbWFya3MtPmltX2Js
+b2NrX3NpemUpOwogCWVuZCA9IG5vcm1hbGl6ZV91cChvZmZzZXQgKyBsZW5ndGgsIG1hcmtzLT5p
+bV9ibG9ja19zaXplKTsKLQlpZiAoX3ByZWxvYWRfcmFuZ2UoJm1hcmtzLT5pbV90cmVlLCBzdGFy
+dCwgZW5kIC0gc3RhcnQpKQorCWlmIChfcHJlbG9hZF9yYW5nZShtYXJrcywgc3RhcnQsIGVuZCAt
+IHN0YXJ0KSkKIAkJZ290byBvdXRlcnI7CiAKIAlzcGluX2xvY2soJm1hcmtzLT5pbV9sb2NrKTsK
+LS0gCjEuNy40LjIKCg==
 
-Interrupting an NFS write with a signal is problematic
-anyway - I'm sure I've seen systems (SYSV?) when NFS
-writes were uninterruptable. NFI how Linux handles this.
+--_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_
+Content-Type: application/octet-stream;
+	name="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
+Content-Description: 0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch
+Content-Disposition: attachment;
+	filename="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch";
+	size=1409; creation-date="Wed, 30 Nov 2011 02:36:05 GMT";
+	modification-date="Wed, 30 Nov 2011 02:36:06 GMT"
+Content-Transfer-Encoding: base64
 
-	David
+RnJvbSBhZTM4YjNhYjA4MWI3NmYxMDc2N2QwOGUzNGU5MmEwYzg5ZmFiODQyIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBU
+aHUsIDEwIE5vdiAyMDExIDAyOjQ1OjQ0IC0wNTAwClN1YmplY3Q6IFtQQVRDSCA4LzldIHBuZnNi
+bG9jazogZG9uJ3Qgc3BpbmxvY2sgd2hlbiBmcmVlaW5nIGJsb2NrX2RldgoKYmxfZnJlZV9ibG9j
+a19kZXYoKSBtYXkgc2xlZXAuIFdlIGNhbiBub3QgY2FsbCBpdCB3aXRoIHNwaW5sb2NrIGhlbGQu
+CkJlc2lkZXMsIHRoZXJlIGlzIG5vIG5lZWQgdG8gdGFrZSBibV9sb2NrIGFzIHdlIGFyZSBsYXN0
+IHVzZXIgZnJlZWluZyBibV9kZXZsaXN0LgoKQ2M6IHN0YWJsZUBrZXJuZWwub3JnIFszLjFdClNp
+Z25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgotLS0KIGZzL25mcy9ibG9j
+a2xheW91dC9ibG9ja2xheW91dC5jIHwgICAxMSArKysrLS0tLS0tLQogMSBmaWxlcyBjaGFuZ2Vk
+LCA0IGluc2VydGlvbnMoKyksIDcgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Js
+b2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQu
+YwppbmRleCAxZGQyOTgzLi5jOWM3NGJmIDEwMDY0NAotLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQv
+YmxvY2tsYXlvdXQuYworKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYwpAQCAt
+ODM3LDE2ICs4MzcsMTMgQEAgYmxfY2xlYW51cF9sYXlvdXRjb21taXQoc3RydWN0IG5mczRfbGF5
+b3V0Y29tbWl0X2RhdGEgKmxjZGF0YSkKIHN0YXRpYyB2b2lkIGZyZWVfYmxrX21vdW50aWQoc3Ry
+dWN0IGJsb2NrX21vdW50X2lkICptaWQpCiB7CiAJaWYgKG1pZCkgewotCQlzdHJ1Y3QgcG5mc19i
+bG9ja19kZXYgKmRldjsKLQkJc3Bpbl9sb2NrKCZtaWQtPmJtX2xvY2spOwotCQl3aGlsZSAoIWxp
+c3RfZW1wdHkoJm1pZC0+Ym1fZGV2bGlzdCkpIHsKLQkJCWRldiA9IGxpc3RfZmlyc3RfZW50cnko
+Jm1pZC0+Ym1fZGV2bGlzdCwKLQkJCQkJICAgICAgIHN0cnVjdCBwbmZzX2Jsb2NrX2RldiwKLQkJ
+CQkJICAgICAgIGJtX25vZGUpOworCQlzdHJ1Y3QgcG5mc19ibG9ja19kZXYgKmRldiwgKnRtcDsK
+KworCQkvKiBObyBuZWVkIHRvIHRha2UgYm1fbG9jayBhcyB3ZSBhcmUgbGFzdCB1c2VyIGZyZWVp
+bmcgYm1fZGV2bGlzdCAqLworCQlsaXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUoZGV2LCB0bXAsICZt
+aWQtPmJtX2Rldmxpc3QsIGJtX25vZGUpIHsKIAkJCWxpc3RfZGVsKCZkZXYtPmJtX25vZGUpOwog
+CQkJYmxfZnJlZV9ibG9ja19kZXYoZGV2KTsKIAkJfQotCQlzcGluX3VubG9jaygmbWlkLT5ibV9s
+b2NrKTsKIAkJa2ZyZWUobWlkKTsKIAl9CiB9Ci0tIAoxLjcuNC4yCgo=
 
+--_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_
+Content-Type: application/octet-stream;
+	name="0009-pnfsblock-limit-bio-page-count.patch"
+Content-Description: 0009-pnfsblock-limit-bio-page-count.patch
+Content-Disposition: attachment;
+	filename="0009-pnfsblock-limit-bio-page-count.patch"; size=1392;
+	creation-date="Wed, 30 Nov 2011 02:36:05 GMT";
+	modification-date="Wed, 30 Nov 2011 02:36:06 GMT"
+Content-Transfer-Encoding: base64
 
+RnJvbSBmYWE0Y2UzMjQ2ODdiODdjMzdmOTkzYzIxOWQxNTA2MTA3MmFkNmE2IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBT
+YXQsIDE5IE5vdiAyMDExIDA0OjE2OjUyIC0wNTAwClN1YmplY3Q6IFtQQVRDSCA5LzldIHBuZnNi
+bG9jazogbGltaXQgYmlvIHBhZ2UgY291bnQKCk9uZSBiaW8gY2FuIGhhdmUgYXQgbW9zdCBCSU9f
+TUFYX1BBR0VTIHBhZ2VzLiBXZSBzaG91bGQgbGltaXQgaXQgYmVjIG90aGVyd2lzZQpiaW9fYWxs
+b2Mgd2lsbCBmYWlsIHdoZW4gdGhlcmUgYXJlIG1hbnkgcGFnZXMgaW4gb25lIHJlYWQvd3JpdGVf
+cGFnZWxpc3QuCgpDQzogc3RhYmxlQGtlcm5lbC5vcmcgWzMuMV0KU2lnbmVkLW9mZi1ieTogUGVu
+ZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+Ci0tLQogZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
+b3V0LmMgfCAgIDE3ICsrKysrKysrKysrLS0tLS0tCiAxIGZpbGVzIGNoYW5nZWQsIDExIGluc2Vy
+dGlvbnMoKyksIDYgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0
+L2Jsb2NrbGF5b3V0LmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYwppbmRleCBj
+OWM3NGJmLi40OGNmYWMzIDEwMDY0NAotLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlv
+dXQuYworKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYwpAQCAtMTQ3LDE0ICsx
+NDcsMTkgQEAgc3RhdGljIHN0cnVjdCBiaW8gKmJsX2FsbG9jX2luaXRfYmlvKGludCBucGcsIHNl
+Y3Rvcl90IGlzZWN0LAogewogCXN0cnVjdCBiaW8gKmJpbzsKIAorCW5wZyA9IG1pbihucGcsIEJJ
+T19NQVhfUEFHRVMpOwogCWJpbyA9IGJpb19hbGxvYyhHRlBfTk9JTywgbnBnKTsKLQlpZiAoIWJp
+bykKLQkJcmV0dXJuIE5VTEw7CisJaWYgKCFiaW8gJiYgKGN1cnJlbnQtPmZsYWdzICYgUEZfTUVN
+QUxMT0MpKSB7CisJCXdoaWxlICghYmlvICYmIChucGcgLz0gMikpCisJCQliaW8gPSBiaW9fYWxs
+b2MoR0ZQX05PSU8sIG5wZyk7CisJfQogCi0JYmlvLT5iaV9zZWN0b3IgPSBpc2VjdCAtIGJlLT5i
+ZV9mX29mZnNldCArIGJlLT5iZV92X29mZnNldDsKLQliaW8tPmJpX2JkZXYgPSBiZS0+YmVfbWRl
+djsKLQliaW8tPmJpX2VuZF9pbyA9IGVuZF9pbzsKLQliaW8tPmJpX3ByaXZhdGUgPSBwYXI7CisJ
+aWYgKGJpbykgeworCQliaW8tPmJpX3NlY3RvciA9IGlzZWN0IC0gYmUtPmJlX2Zfb2Zmc2V0ICsg
+YmUtPmJlX3Zfb2Zmc2V0OworCQliaW8tPmJpX2JkZXYgPSBiZS0+YmVfbWRldjsKKwkJYmlvLT5i
+aV9lbmRfaW8gPSBlbmRfaW87CisJCWJpby0+YmlfcHJpdmF0ZSA9IHBhcjsKKwl9CiAJcmV0dXJu
+IGJpbzsKIH0KIAotLSAKMS43LjQuMgoK
+
+--_004_F19688880B763E40B28B2B462677FBF805E3A4B053MX09Acorpemcc_--
