@@ -1,73 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oceanic.CalvaEDI.COM ([89.202.194.168]:58989 "EHLO
-	oceanic.CalvaEDI.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752105Ab1KRWHx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Nov 2011 17:07:53 -0500
-Message-ID: <4EC6D767.6030109@calvaedi.com>
-Date: Fri, 18 Nov 2011 23:08:39 +0100
-From: John Hughes <john@calvaedi.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:36786 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751531Ab1K3DQ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 22:16:29 -0500
+From: <tao.peng@emc.com>
+To: <bharrosh@panasas.com>, <bergwolf@gmail.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>
+Date: Tue, 29 Nov 2011 22:16:06 -0500
+Subject: RE: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B073@MX09A.corp.emc.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+ <4ED54FE4.9050008@panasas.com>
+In-Reply-To: <4ED54FE4.9050008@panasas.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: John Hughes <john@calva.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] Add "-e" option to rpc.gssd to allow error on ticket
- expiry. Try 2 with added man pages.
-References: <4EC66D12.2090505@Calva.COM>	 <1321641333.2653.15.camel@lade.trondhjem.org>	 <4EC6AFA9.9000705@calvaedi.com> <1321648435.2653.53.camel@lade.trondhjem.org>
-In-Reply-To: <1321648435.2653.53.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/18/2011 09:33 PM, Trond Myklebust wrote:
-> On Fri, 2011-11-18 at 20:19 +0100, John Hughes wrote:
->    
->> On 11/18/2011 07:35 PM, Trond Myklebust wrote:
->>      
->>>
->>> You need a big fat warning somewhere that enabling this option WILL
->>> cause data corruption...
->>>
->>>        
->> Why?
->>
->> Because some process may get the EACCES error half way through it's
->> operation.
->>      
-> No. Because the process can receive a reply to the write() syscall that
-> indicates that the data is safe,
-
-There is no reply from "write(2)" that says the data is safe.
-
->   but the EKEYEXPIRED error will cause
-> the data to be lost when the client tries to actually commit the data to
-> disk.
->
->    
->> The traditional Kerberos/AFS way was to behave the old way, and use
->> krenew to keep the ticket from expiring if a process needed to be run
->> overnight.
->>      
-> Which is just wrong: the general intention of kerberos security is to
-> ensure that the _user_ has ACKed an operation. Renewing tickets without
-> user input would circumvent that intention. If you need to have the job
-> run overnight, then ask for a longer lifetime for your ticket.
->    
-
-Ok, so no need for the hang on ticket expired then.
-
-(Although I don't think renewable tickets and krenew are a figment of my 
-imagination).
-
->    
->> What other way is there of fixing the problem if we are going to keep
->> the "hang 'till a ticket turns up" behaviour?  (rewrite gnome and kde
->> seems kind of a big job).
->>      
-> Notify the kernel that a ticket is about to expire so that the kernel
-> can decide to block the process on the next NFS-related syscall.
->
->    
-I don't understand.  How is it a win to block processes *before* the 
-ticket has expired?
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDMw
+LCAyMDExIDU6MzQgQU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgYmhhbGV2eUB0b25pYW4uY29tDQo+
+IFN1YmplY3Q6IFJlOiBbUEFUQ0ggMC80XSBuZnM0MTogYWxsb3cgbGF5b3V0Z2V0IGF0IHBuZnNf
+ZG9fbXVsdGlwbGVfd3JpdGVzDQo+IA0KPiBPbiAxMi8wMi8yMDExIDA4OjUyIFBNLCBQZW5nIFRh
+byB3cm90ZToNCj4gPiBJc3N1aW5nIGxheW91dGdldCBhdCAucGdfaW5pdCB3aWxsIGRyb3AgdGhl
+IElPIHNpemUgaW5mb3JtYXRpb24gYW5kIGFzayBmb3IgNEtCDQo+ID4gbGF5b3V0IGV2ZXJ5IHRp
+bWUuIEhvd2V2ZXIsIHRoZSBJTyBzaXplIGluZm9ybWF0aW9uIGlzIHZlcnkgdmFsdWFibGUgZm9y
+IE1EUyB0bw0KPiA+IGRldGVybWluZSBob3cgbXVjaCBsYXlvdXQgaXQgc2hvdWxkIHJldHVybiB0
+byBjbGllbnQuDQo+ID4NCj4gPiBUaGUgcGF0Y2hzZXQgdHJ5IHRvIGFsbG93IExEIG5vdCB0byBz
+ZW5kIGxheW91dGdldCBhdCAucGdfaW5pdCBidXQgaW5zdGVhZCBhdA0KPiA+IHBuZnNfZG9fbXVs
+dGlwbGVfd3JpdGVzLiBTbyB0aGF0IHJlYWwgSU8gc2l6ZSBpcyBwcmVzZXJ2ZWQgYW5kIHNlbnQg
+dG8gTURTLg0KPiA+DQo+ID4gVGVzdHMgYWdhaW5zdCBhIHNlcnZlciB0aGF0IGRvZXMgbm90IGFn
+Z3Jlc3NpdmVseSBwcmUtYWxsb2NhdGUgbGF5b3V0LCBzaG93cw0KPiA+IHRoYXQgdGhlIElPIHNp
+emUgaW5mb3JtYW50aW9uIGlzIHJlYWxseSB1c2VmdWwgdG8gYmxvY2sgbGF5b3V0IE1EUy4NCj4g
+Pg0KPiA+IFRoZSBnZW5lcmljIHBuZnMgbGF5ZXIgY2hhbmdlcyBhcmUgdHJpdmFsIHRvIGZpbGUg
+bGF5b3V0IGFuZCBvYmplY3QgYXMgbG9uZyBhcw0KPiA+IHRoZXkgc3RpbGwgc2VuZCBsYXlvdXRn
+ZXQgYXQgLnBnX2luaXQuDQo+ID4NCj4gDQo+IEkgaGF2ZSBhIGJldHRlciBzb2x1dGlvbiBmb3Ig
+eW91ciBwcm9ibGVtLiBXaGljaCBpcyBhIG11Y2ggc21hbGxlciBhIGNoYW5nZSBhbmQNCj4gSSB0
+aGluayBnaXZlcyB5b3UgbXVjaCBiZXR0ZXIgaGV1cmlzdGljcy4NCj4gDQo+IEtlZXAgdGhlIGxh
+eW91dF9nZXQgZXhhY3RseSB3aGVyZSBpdCBpcywgYnV0IGluc3RlYWQgb2Ygc2VuZGluZyBQQUdF
+X1NJWkUgc2VuZA0KPiB0aGUgYW1vdW50IG9mIGRpcnR5IHBhZ2VzIHlvdSBoYXZlLg0KPiANCj4g
+SWYgaXQgaXMgYSBsaW5lYXIgd3JpdGUgeW91IHdpbGwgYmUgZXhhY3Qgb24gdGhlIG1vbmV5IHdp
+dGggYSBzaW5nbGUgbG9fZ2V0LiBJZg0KPiBpdCBpcyBhbiBoZWF2eSByYW5kb20gd3JpdGUgdGhl
+biB5b3UgbWlnaHQgbmVlZCBtb3JlIGxvX2dldHMgYW5kIHlvdSBtaWdodCBiZSBnZXR0aW5nDQo+
+IHNvbWUgdW51c2VkIHNlZ21lbnRzLiBCdXQgaGVhdnkgcmFuZG9tIHdyaXRlIGlzIHJhcmUgYW5k
+IHNsb3cgYW55d2F5LiBBcyBhIGZpcnN0DQo+IGFwcHJveGltYXRpb24gaXRzIGZpbmUuIChXZSBj
+YW4gbGF0ZXIgZml4IHRoYXQgYXMgd2VsbCkNCkkgd291bGQgc2F5IG5vIHRvIHRoZSBhYm92ZS4u
+LiBGb3Igb2JqZWN0cy9maWxlcyBNRFMsIGl0IG1heSBub3QgaHVydCBtdWNoIHRvIGFsbG9jYXRl
+IHdhc3RpbmcgbGF5b3V0LiBCdXQgZm9yIGJsb2NrbGF5b3V0IHNlcnZlciwgZWFjaCBsYXlvdXQg
+YWxsb2NhdGlvbiBjb25zdW1lcyBtdWNoIG1vcmUgcmVzb3VyY2UgdGhhbiBqdXN0IGdpdmluZyBv
+dXQgc3RyaXBwaW5nIGluZm9ybWF0aW9uIGxpa2Ugb2JqZWN0cy9maWxlcy4gU28gaGVscGluZyBN
+RFMgdG8gZG8gdGhlIGNvcnJlY3QgZGVjaXNpb24gaXMgdGhlIHJpZ2h0IHRoaW5nIGZvciBjbGll
+bnQgdG8gZG8uDQoNCj4gDQo+IFRoZSAucGdfaW5pdCBpcyBkb25lIGFmdGVyIC53cml0ZV9wYWdl
+cyBjYWxsIGZyb20gVkZTIGFuZCBhbGwgdGhlIHRvLWJlLXdyaXR0ZW4NCj4gcGFnZXMgYXJlIGFs
+cmVhZHkgc3RhZ2VkIHRvIGJlIHdyaXR0ZW4uIFNvIHRoZXJlIHNob3VsZCBiZSBhIHdheSB0byBl
+YXNpbHkgZXh0cmFjdA0KPiB0aGF0IGluZm9ybWF0aW9uLg0KPiANCj4gPiBpb3pvbmUgY21kOg0K
+PiA+IC4vaW96b25lIC1yIDFtIC1zIDRHIC13IC1XIC1jIC10IDEwIC1pIDAgLUYgL21udC9pb3pv
+bmUuZGF0YS4xIC9tbnQvaW96b25lLmRhdGEuMiAvbW50L2lvem9uZS5kYXRhLjMNCj4gL21udC9p
+b3pvbmUuZGF0YS40IC9tbnQvaW96b25lLmRhdGEuNSAvbW50L2lvem9uZS5kYXRhLjYgL21udC9p
+b3pvbmUuZGF0YS43IC9tbnQvaW96b25lLmRhdGEuOA0KPiAvbW50L2lvem9uZS5kYXRhLjkgL21u
+dC9pb3pvbmUuZGF0YS4xMA0KPiA+DQo+ID4gQmVmb3IgcGF0Y2g6IGFyb3VuZCAxMk1CL3MgdGhy
+b3VnaHB1dA0KPiA+IEFmdGVyIHBhdGNoOiBhcm91bmQgNzJNQi9zIHRocm91Z2hwdXQNCj4gPg0K
+PiANCj4gWWVzIFllcyB0aGF0IHN0dXBpZCBCcmFpbiBkZWFkIFNlcnZlciBpcyBubyBpbmRpY2F0
+aW9uIGZvciBhbnl0aGluZy4gVGhlIHNlcnZlcg0KPiBzaG91bGQga25vdyBiZXN0IGFib3V0IG9w
+dGltYWwgc2l6ZXMgYW5kIGxheW91dHMuIFBsZWFzZSBkb24ndCBnaXZlIG1lIHRoYXQgc3R1ZmYN
+Cj4gYWdhaW4uDQo+IA0KQWN0dWFsbHkgdGhlIHNlcnZlciBpcyBhbHJlYWR5IGRvaW5nIGxheW91
+dCBwcmUtYWxsb2NhdGlvbi4gSXQgaXMganVzdCB0aGF0IGl0IGRvZXNuJ3Qga25vdyB3aGF0IGNs
+aWVudCByZWFsbHkgd2FudHMgc28gY2Fubm90IGRvIGl0IHRvbyBhZ2dyZXNzaXZlbHkuIFRoYXQn
+cyB3aHkgSSB3YW50ZWQgdG8gbWFrZSBjbGllbnQgdG8gc2VuZCB0aGUgUkVBTCBJTyBzaXplIGlu
+Zm9ybWF0aW9uIHRvIHNlcnZlci4gRnJvbSBwZXJmb3JtYW5jZSBwZXJzcGVjdGl2ZSwgZHJvcHBp
+bmcgSU8gc2l6ZSBpbmZvcm1hdGlvbiBpcyBhbHdheXMgYSBCQUQgVEhJTkcoVE0pIHRvIGRvLiAN
+Cg0KPiBCdXQganVzdCBkbyB0aGUgYWJvdmUgYW5kIHlvdSdsbCBzZWUgdGhhdCBpdCBpcyBwZXJm
+ZWN0Lg0KPiANCj4gQlRXIGRvbid0IGxpbWl0IHRoZSBsb19zZWdtZW50IHNpemUgYnkgdGhlIG1h
+eF9pb19zaXplLiBUaGlzIGlzIHdoeSB5b3UNCj4gaGF2ZSAuYmdfdGVzdCB0byBzaWduYWwgd2hl
+biBJTyBpcyBtYXhlZCBvdXQuDQo+IA0KQWN0dWFsbHkgbG9fc2VnbWVudCBzaXplIGlzIG5ldmVy
+IGxpbWl0ZWQgYnkgbWF4X2lvX3NpemUuIFNlcnZlciBpcyBhbHdheXMgZW50aXRsZWQgdG8gc2Vu
+ZCBsYXJnZXIgbGF5b3V0IHRoYW4gY2xpZW50IGFza3MgZnJvbS4NCg0KPiAtIFRoZSByZWFkIHNl
+Z21lbnRzIHNob3VsZCBiZSBhcyBiaWcgYXMgcG9zc2libGUgKGlfc2l6ZSBsb25nKQ0KPiAtIFRo
+ZSBXcml0ZSBzZWdtZW50cyBzaG91bGQgaWRlYWxseSBiZSBhcyBiaWcgYXMgdGhlIEFwcGxpY2F0
+aW9uDQo+ICAgd2FudHMgdG8gd3JpdGUgdG8uIChBbW91bnQgb2YgZGlydHkgcGFnZXMgYXQgdGlt
+ZSBvZiBuZnMtd3JpdGUtb3V0DQo+ICAgaXMgYSB2ZXJ5IGdvb2QgZmlyc3QgYXBwcm94aW1hdGlv
+bikuDQo+IA0KPiBTbyBJIGd1ZXNzIGl0IGlzOiBJIGhhdGUgdGhlc2UgcGF0Y2hlcywgdG8gbXVj
+aCBtZXNzLCB0b28gbGl0dGxlIGdvb2RuZXNzLg0KSSdtIGFmcmFpZCBJIGNhbid0IGFncmVlIHdp
+dGggeW91Li4uDQoNClRoYW5rcywNClRhbw0KDQo+IA0KPiBUaGFuaw0KPiBCb2F6DQo+IA0KPiA+
+IFBlbmcgVGFvICg0KToNCj4gPiAgIG5mc3Y0MTogZXhwb3J0IHBuZnNfZmluZF9hbGxvY19sYXlv
+dXQNCj4gPiAgIG5mc3Y0MTogYWRkIGFuZCBleHBvcnQgcG5mc19maW5kX2dldF9sYXlvdXRfbG9j
+a2VkDQo+ID4gICBuZnN2NDE6IGdldCBsc2VnIGJlZm9yZSBpc3N1ZSBMRCBJTyBpZiBwZ2lvIGRv
+ZXNuJ3QgY2FycnkgbHNlZw0KPiA+ICAgcG5mc2Jsb2NrOiBkbyBhc2sgZm9yIGxheW91dCBpbiBw
+Z19pbml0DQo+ID4NCj4gPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDU0
+ICsrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+ICBmcy9uZnMvcG5mcy5jICAgICAgICAg
+ICAgICAgICAgICB8ICAgNzQgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0N
+Cj4gPiAgZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgfCAgICA5ICsrKysrDQo+ID4g
+IDMgZmlsZXMgY2hhbmdlZCwgMTM0IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4N
+Cj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
+ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
+IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBo
+dHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IC0tDQo+IFRv
+IHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBs
+aW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5r
+ZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5v
+cmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
