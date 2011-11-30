@@ -1,125 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52020 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756460Ab1KHW7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Nov 2011 17:59:09 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/3] nfsd4: add a separate (lockowner, inode) lookup
-Date: Tue,  8 Nov 2011 17:59:05 -0500
-Message-Id: <1320793145-29070-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <20111108225751.GD27413@fieldses.org>
-References: <20111108225751.GD27413@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:51932 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757054Ab1K3BHV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 20:07:21 -0500
+Message-ID: <4ED5803D.8030906@panasas.com>
+Date: Tue, 29 Nov 2011 17:00:45 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Randy Dunlap <rdunlap@xenotime.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Michal Marek <mmarek@suse.cz>, Stephen Rothwell <sfr@canb.auug.org.au>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
+        <linux-next@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [osd-dev] [PATCH v3] ore: FIX breakage when MISC_FILESYSTEMS
+ is not set
+References: <20111124174358.d88f11c0ff700e5e6b3bf73b@canb.auug.org.au> <4ECE91F3.9010007@xenotime.net> <4ED422CC.60706@panasas.com> <4ED4238F.4090407@panasas.com> <4ED56C59.208@panasas.com>
+In-Reply-To: <4ED56C59.208@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 11/29/2011 03:35 PM, Boaz Harrosh wrote:
+> 
+> As Reported by Randy Dunlap
+> 
 
-Address the possible performance regression mentioned in "nfsd4: hash
-lockowners to simplify RELEASE_LOCKOWNER" by providing a separate
-(lockowner, inode) hash.
+Randy Hi
 
-Really, I doubt this matters much, but I think it's likely we'll change
-these data structures here and I'd rather that the need for (owner,
-inode) lookups be well-documented.
+I think I prefer this simple solution for now, instead of
+the complete move of the ore to lib/
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   29 +++++++++++++++++++++++------
- fs/nfsd/state.h     |    1 +
- 2 files changed, 24 insertions(+), 6 deletions(-)
+It solves the warning problem you reported and let us
+keep the convenience of selecting everything in one place. As
+was said there are more dependencies on the way.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dcbe7f3..d4bd698 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -514,6 +514,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- 
- 	list_del(&lo->lo_owner.so_strhash);
- 	list_del(&lo->lo_perstateid);
-+	list_del(&lo->lo_owner_ino_hash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-@@ -3722,6 +3723,10 @@ out:
- 
- #define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
- 
-+#define LOCKOWNER_INO_HASH_BITS 8
-+#define LOCKOWNER_INO_HASH_SIZE (1 << LOCKOWNER_INO_HASH_BITS)
-+#define LOCKOWNER_INO_HASH_MASK (LOCKOWNER_INO_HASH_SIZE - 1)
-+
- static inline u64
- end_offset(u64 start, u64 len)
- {
-@@ -3742,6 +3747,15 @@ last_byte_offset(u64 start, u64 len)
- 	return end > start ? end - 1: NFS4_MAX_UINT64;
- }
- 
-+static unsigned int lockowner_ino_hashval(struct inode *inode, u32 cl_id, struct xdr_netobj *ownername)
-+{
-+	return (file_hashval(inode) + cl_id
-+			+ opaque_hashval(ownername->data, ownername->len))
-+		& LOCKOWNER_INO_HASH_MASK;
-+}
-+
-+static struct list_head lockowner_ino_hashtbl[LOCKOWNER_INO_HASH_SIZE];
-+
- /*
-  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
-  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
-@@ -3809,14 +3823,10 @@ static struct nfs4_lockowner *
- find_lockowner_str(struct inode *inode, clientid_t *clid,
- 		struct xdr_netobj *owner)
- {
--	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
-+	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
- 	struct nfs4_lockowner *lo;
--	struct nfs4_stateowner *op;
- 
--	list_for_each_entry(op, &ownerstr_hashtbl[hashval], so_strhash) {
--		if (op->so_is_open_owner)
--			continue;
--		lo = lockowner(op);
-+	list_for_each_entry(lo, &lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
- 		if (same_lockowner_ino(lo, inode, clid, owner))
- 			return lo;
- 	}
-@@ -3825,7 +3835,12 @@ find_lockowner_str(struct inode *inode, clientid_t *clid,
- 
- static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp)
- {
-+	struct inode *inode = open_stp->st_file->fi_inode;
-+	unsigned int inohash = lockowner_ino_hashval(inode,
-+			clp->cl_clientid.cl_id, &lo->lo_owner.so_owner);
-+
- 	list_add(&lo->lo_owner.so_strhash, &ownerstr_hashtbl[strhashval]);
-+	list_add(&lo->lo_owner_ino_hash, &lockowner_ino_hashtbl[inohash]);
- 	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
- }
- 
-@@ -4548,6 +4563,8 @@ nfs4_state_init(void)
- 	for (i = 0; i < OWNER_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&ownerstr_hashtbl[i]);
- 	}
-+	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
-+		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
- 	memset(&onestateid, ~0, sizeof(stateid_t));
- 	INIT_LIST_HEAD(&close_lru);
- 	INIT_LIST_HEAD(&client_lru);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index a3cf384..89c2cd8 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -366,6 +366,7 @@ struct nfs4_openowner {
- 
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
-+	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
- 	struct list_head        lo_perstateid; /* for lockowners only */
- 	struct list_head	lo_list; /* for temporary uses */
- };
--- 
-1.7.5.4
+I will look into the additional ASYNC_CORE and XOR_BLOCKS selects
+you mentioned. For some reason it works but I'll try to find a
+way to break it or prove It is sound.
+
+Please advise?
+
+Thanks
+Heart
+
+> When MISC_FILESYSTEMS is not enabled:
+> 
+> fs/built-in.o: In function `objio_alloc_io_state':
+> objio_osd.c:(.text+0xcb525): undefined reference to `ore_get_rw_state'
+> fs/built-in.o: In function `_write_done':
+> objio_osd.c:(.text+0xcb58d): undefined reference to `ore_check_io'
+> fs/built-in.o: In function `_read_done':
+> ...
+> 
+> When MISC_FILESYSTEMS, which is more of a GUI thing then anything else,
+> is not selected. exofs/Kconfig is never examined during Kconfig,
+> and it can not do it's magic stuff to automatically select everything
+> needed.
+> 
+> We must split exofs/Kconfig in two. The ore one is always included.
+> And the exofs one is left in it's old place in the menu.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/Kconfig           |    2 ++
+>  fs/exofs/Kconfig     |   11 -----------
+>  fs/exofs/ore.Kconfig |   12 ++++++++++++
+>  3 files changed, 14 insertions(+), 11 deletions(-)
+>  create mode 100644 fs/exofs/ore.Kconfig
+> 
+> diff --git a/fs/Kconfig b/fs/Kconfig
+> index 5f4c45d..fd7bfef 100644
+> --- a/fs/Kconfig
+> +++ b/fs/Kconfig
+> @@ -218,6 +218,8 @@ source "fs/exofs/Kconfig"
+>  
+>  endif # MISC_FILESYSTEMS
+>  
+> +source "fs/exofs/ore.Kconfig"
+> +
+>  menuconfig NETWORK_FILESYSTEMS
+>  	bool "Network File Systems"
+>  	default y
+> diff --git a/fs/exofs/Kconfig b/fs/exofs/Kconfig
+> index da42f32..86194b2 100644
+> --- a/fs/exofs/Kconfig
+> +++ b/fs/exofs/Kconfig
+> @@ -1,14 +1,3 @@
+> -# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
+> -# for every ORE user we do it like this. Any user should add itself here
+> -# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
+> -# selected here, and we default to "ON". So in effect it is like been
+> -# selected by any of the users.
+> -config ORE
+> -	tristate
+> -	depends on EXOFS_FS || PNFS_OBJLAYOUT
+> -	select ASYNC_XOR
+> -	default SCSI_OSD_ULD
+> -
+>  config EXOFS_FS
+>  	tristate "exofs: OSD based file system support"
+>  	depends on SCSI_OSD_ULD
+> diff --git a/fs/exofs/ore.Kconfig b/fs/exofs/ore.Kconfig
+> new file mode 100644
+> index 0000000..1ca7fb7
+> --- /dev/null
+> +++ b/fs/exofs/ore.Kconfig
+> @@ -0,0 +1,12 @@
+> +# ORE - Objects Raid Engine (libore.ko)
+> +#
+> +# Note ORE needs to "select ASYNC_XOR". So Not to force multiple selects
+> +# for every ORE user we do it like this. Any user should add itself here
+> +# at the "depends on EXOFS_FS || ..." with an ||. The dependencies are
+> +# selected here, and we default to "ON". So in effect it is like been
+> +# selected by any of the users.
+> +config ORE
+> +	tristate
+> +	depends on EXOFS_FS || PNFS_OBJLAYOUT
+> +	select ASYNC_XOR
+> +	default SCSI_OSD_ULD
 
