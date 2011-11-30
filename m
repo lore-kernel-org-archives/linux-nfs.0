@@ -1,43 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm8-vm0.bullet.mail.ird.yahoo.com ([77.238.189.203]:36514 "HELO
-	nm8-vm0.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751179Ab1KDPCf convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Nov 2011 11:02:35 -0400
-References: <1320353685.18396.119.camel@lade.trondhjem.org> <20111103211100.GA8393@umich.edu> <FB7123DC-86FB-4A19-A1B6-67B23D4B47B9@oracle.com> <1320356241.80563.YahooMailNeo@web24706.mail.ird.yahoo.com> <92DF2E31-FABF-40A5-8F78-89B64363568B@oracle.com> <1320361764.48851.YahooMailNeo@web24708.mail.ird.yahoo.com> <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <20111104132050.GB13788@umich.edu> <01668DEE-43F7-464B-9BCF-6E52DF0B5956@oracle.com> <20111104144617.GB911@umich.edu>
-Message-ID: <1320418951.17239.YahooMailNeo@web24716.mail.ird.yahoo.com>
-Date: Fri, 4 Nov 2011 15:02:31 +0000 (GMT)
-From: Lukas Razik <lukas@razik.de>
-Reply-To: Lukas Razik <lukas@razik.de>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Jim Rees <rees@umich.edu>, Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20111104144617.GB911@umich.edu>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:62708 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142Ab1K3NBJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:01:09 -0500
+Received: by bkas6 with SMTP id s6so839408bka.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:01:07 -0800 (PST)
+Message-ID: <4ED6290F.4020407@tonian.com>
+Date: Wed, 30 Nov 2011 15:01:03 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+To: Peng Tao <bergwolf@gmail.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH 3/4] nfsv41: get lseg before issue LD IO if pgio doesn't
+ carry lseg
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com> <1322887965-2938-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322887965-2938-4-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Chuck Lever wrote:
-
+On 2011-12-03 06:52, Peng Tao wrote:
+> This gives LD option not to ask for layout in pg_init.
 > 
->   On Nov 4, 2011, at 9:20 AM, Jim Rees wrote:
->   
->   > As for a fix...  we're trying to move away from udp transport 
-> anyway.  Maybe
->   > someone should figure out a way to get it to work with tcp?  I have zero
->   > experience with nfs over udp, at least on linux.  Just for fun, have you
->   > tried tcp transport (proto=tcp)?
->   
->   TCP is a real problem in this environment, because it deals poorly with
->   NIC initialization timing issues.  UDP is still the best approach (as long
->   as it is retransmitting appropriately).  To support TCP, ultimately what
->   we need to do is to introduce serialization to make the kernel wait for
->   the NIC to become ready before attempting network activity.
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+>  fs/nfs/pnfs.c |   46 ++++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 46 insertions(+), 0 deletions(-)
 > 
-> Agreed, but we're grasping at straws here, and this guy just wants it to
-> work.  It's something to try.
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 734e670..c8dc0b1 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1254,6 +1254,7 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+>  	struct nfs_write_data *data;
+>  	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+>  	struct pnfs_layout_segment *lseg = desc->pg_lseg;
+> +	const bool has_lseg = !!lseg;
 
-Yes, this could be a fast workaround. I'll test it in some minutes.
-Thanks for that and till later then...
+nit: "has_lseg = (lseg != NULL)" would be more straight forward IMO
+
+>  
+>  	desc->pg_lseg = NULL;
+>  	while (!list_empty(head)) {
+> @@ -1262,7 +1263,29 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+>  		data = list_entry(head->next, struct nfs_write_data, list);
+>  		list_del_init(&data->list);
+>  
+> +		if (!has_lseg) {
+> +			struct nfs_page *req = nfs_list_entry(data->pages.next);
+> +			__u64 length = data->npages << PAGE_CACHE_SHIFT;
+> +
+> +			lseg = pnfs_update_layout(desc->pg_inode,
+> +						  req->wb_context,
+> +						  req_offset(req),
+> +						  length,
+> +						  IOMODE_RW,
+> +						  GFP_NOFS);
+> +			if (!lseg || length > (lseg->pls_range.length)) {
+
+I'm concerned about the 'length' part of this condition.
+pnfs_try_to_write_data should handle short writes/reads and
+we should be able to iterate through the I/O using different
+layout segments.
+
+> +				put_lseg(lseg);
+> +				lseg = NULL;
+> +				pnfs_write_through_mds(desc,data);
+> +				continue;
+> +			}
+> +		}
+> +
+>  		trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
+> +		if (!has_lseg) {
+> +			put_lseg(lseg);
+> +			lseg = NULL;
+> +		}
+
+We had an implementation in the past that saved the most recent lseg in 'desc'
+so it could be used for the remaining requests.  Once exhausted, you can
+look for a new one.
+
+>  		if (trypnfs == PNFS_NOT_ATTEMPTED)
+>  			pnfs_write_through_mds(desc, data);
+>  	}
+> @@ -1350,6 +1373,7 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+>  	struct nfs_read_data *data;
+>  	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+>  	struct pnfs_layout_segment *lseg = desc->pg_lseg;
+> +	const bool has_lseg = !!lseg;
+
+ditto
+
+>  
+>  	desc->pg_lseg = NULL;
+>  	while (!list_empty(head)) {
+> @@ -1358,7 +1382,29 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+>  		data = list_entry(head->next, struct nfs_read_data, list);
+>  		list_del_init(&data->list);
+>  
+> +		if (!has_lseg) {
+> +			struct nfs_page *req = nfs_list_entry(data->pages.next);
+> +			__u64 length = data->npages << PAGE_CACHE_SHIFT;
+> +
+> +			lseg = pnfs_update_layout(desc->pg_inode,
+> +						  req->wb_context,
+> +						  req_offset(req),
+> +						  length,
+> +						  IOMODE_READ,
+> +						  GFP_KERNEL);
+> +			if (!lseg || length > lseg->pls_range.length) {
+> +				put_lseg(lseg);
+> +				lseg = NULL;
+> +				pnfs_read_through_mds(desc, data);
+> +				continue;
+> +			}
+> +		}
+> +
+>  		trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
+> +		if (!has_lseg) {
+> +			put_lseg(lseg);
+> +			lseg = NULL;
+> +		}
+
+ditto
+
+Benny
+
+>  		if (trypnfs == PNFS_NOT_ATTEMPTED)
+>  			pnfs_read_through_mds(desc, data);
+>  	}
