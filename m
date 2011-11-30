@@ -1,45 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:30785 "EHLO
+Received: from mexforward.lss.emc.com ([128.222.32.20]:30022 "EHLO
 	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756075Ab1KPCQU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Nov 2011 21:16:20 -0500
+	with ESMTP id S1751582Ab1K3Fn6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 00:43:58 -0500
 From: <tao.peng@emc.com>
-To: <neilb@suse.de>, <josef@redhat.com>
-CC: <linux-nfs@vger.kernel.org>, <jack@suse.cz>, <viro@zeniv.linux.org.uk>,
-        <linux-fsdevel@vger.kernel.org>, <Trond.Myklebust@netapp.com>
-Date: Tue, 15 Nov 2011 21:14:18 -0500
-Subject: RE: [PATCH] NFS - fix recent breakage to NFS error handling.
-Message-ID: <F19688880B763E40B28B2B462677FBF805DD0550DB@MX09A.corp.emc.com>
-References: <20111116114631.3bf69abf@notabene.brown>
-In-Reply-To: <20111116114631.3bf69abf@notabene.brown>
-Content-Type: text/plain; charset="us-ascii"
+To: <rees@umich.edu>, <bergwolf@gmail.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
+        <bhalevy@tonian.com>
+Date: Wed, 30 Nov 2011 00:43:21 -0500
+Subject: RE: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
+Message-ID: <F19688880B763E40B28B2B462677FBF805E3A4B0BD@MX09A.corp.emc.com>
+References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
+ <20111129174830.GA3001@umich.edu>
+In-Reply-To: <20111129174830.GA3001@umich.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org]
-> On Behalf Of NeilBrown
-> Sent: Wednesday, November 16, 2011 8:47 AM
-> To: Trond Myklebust
-> Cc: NFS; Josef Bacik; Jan Kara; Al Viro
-> Subject: [PATCH] NFS - fix recent breakage to NFS error handling.
-> 
-> From c6d615d2b97fe305cbf123a8751ced859dca1d5e Mon Sep 17 00:00:00 2001
-> From: NeilBrown <neilb@suse.de>
-> Date: Wed, 16 Nov 2011 09:39:05 +1100
-> Subject: [PATCH] NFS - fix recent breakage to NFS error handling.
-> 
-> commit 02c24a82187d5a628c68edfe71ae60dc135cd178 made a small and
-> presumably unintended change to write error handling in NFS.
-> 
-> Previously an error from filemap_write_and_wait_range would only be of interest if
-> nfs_file_fsync did not return an error.  After this commit, an error from
-> filemap_write_and_wait_range would mean that (the rest of) nfs_file_fsync would
-> not even be called.
-Do we need more consideration on commit 02c24a82187d5a628c68edfe71ae60dc135cd178?
-Before it, vfs_fsync_range() calls f_op->fsync() regardless of filemap_write_and_wait_range() errors. After commit 02c24a82187d5a628c68edfe71ae60dc135cd178, it only calls f_op->fsync() when filemap_write_end_and_wait_range() succeeds. So the change is not really trivial to all file systems.
-
-Thanks,
-Tao
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBKaW0gUmVlcyBbbWFpbHRvOnJl
+ZXNAdW1pY2guZWR1XQ0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDMwLCAyMDExIDE6NDkg
+QU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbTsgbGlu
+dXgtbmZzQHZnZXIua2VybmVsLm9yZzsgYmhhbGV2eUB0b25pYW4uY29tOyBQZW5nLCBUYW8NCj4g
+U3ViamVjdDogUmU6IFtQQVRDSC1SRVNFTkQgNC80XSBwbmZzYmxvY2s6IGRvIG5vdCBhc2sgZm9y
+IGxheW91dCBpbiBwZ19pbml0DQo+IA0KPiBQZW5nIFRhbyB3cm90ZToNCj4gDQo+ICAgQXNraW5n
+IGZvciBsYXlvdXQgaW4gcGdfaW5pdCB3aWxsIGFsd2F5cyBtYWtlIGNsaWVudCBhc2sgZm9yIG9u
+bHkgNEtCDQo+ICAgbGF5b3V0IGluIGV2ZXJ5IGxheW91dGdldC4gVGhpcyB3YXksIGNsaWVudCBk
+cm9wcyB0aGUgSU8gc2l6ZSBpbmZvcm1hdGlvbg0KPiAgIHRoYXQgaXMgbWVhbmluZ2Z1bCBmb3Ig
+TURTIGluIGhhbmRpbmcgb3V0IGxheW91dC4NCj4gDQo+ICAgSW4gc3RlYWQsIGlmIGxheW91dCBp
+cyBub3QgZmluZCBpbiBjYWNoZSwgZG8gbm90IHNlbmQgbGF5b3V0Z2V0DQo+ICAgYXQgb25jZS4g
+V2FpdCB1bnRpbCBiZWZvcmUgaXNzdWluZyBJTyBpbiBwbmZzX2RvX211bHRpcGxlX3JlYWRzL3dy
+aXRlcw0KPiAgIGJlY2F1c2UgdGhhdCBpcyB3aGVyZSB3ZSBrbm93IHRoZSByZWFsIHNpemUgb2Yg
+Y3VycmVudCBJTy4gQnkgdGVsbGluZyB0aGUNCj4gICByZWFsIElPIHNpemUgdG8gTURTLCBNRFMg
+d2lsbCBoYXZlIGEgYmV0dGVyIGNoYW5jZSB0byBnaXZlIHByb3BlciBsYXlvdXQuDQo+IA0KPiAg
+IFNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPg0KPiAgIC0tLQ0KPiAg
+IFJlc2VuZCB0byBmaXggcGF0Y2ggdGl0bGUuIFNvcnJ5IGZvciB0aGUgbm9pc2UuLi4NCj4gDQo+
+IFlvdSBtYXkgd2FudCB0byBmaXggdGhlIHBhdGNoIGRhdGUgdG9vLCBvbiB0aGlzIHNlcmllcyBh
+bmQgdGhlIG90aGVyIHNlcmllcw0KPiB5b3Ugc2VudCBlYXJsaWVyIChsYXRlcj8pLiAgSSBrbm93
+IENoaW5hIGlzIGluIGEgbGF0ZXIgdGltZXpvbmUgYnV0IEkgZG9uJ3QNCj4gdGhpbmsgaXQncyB0
+aGF0IG11Y2ggbGF0ZXIuDQpTb3JyeS4uLiBsb29rIGxpa2UgdGhlIGRhdGUgb2YgdGhlIG1hY2hp
+bmUgSSB1c2VkIHRvIHNlbmQgcGF0Y2hlcyBpcyBzb21laG93IG1lc3NlZCB1cC4gSSB3aWxsIHBh
+eSBhdHRlbnRpb24gdG8gaXQgbmV4dCB0aW1lLg0KDQpUaGFua3MsDQpUYW8NCg==
