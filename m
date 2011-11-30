@@ -1,53 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55170 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751907Ab1KBWcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Nov 2011 18:32:16 -0400
-Date: Wed, 2 Nov 2011 18:32:13 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: nfsd typo fix for 3.2
-Message-ID: <20111102223213.GC12883@fieldses.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:40113 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752010Ab1K3NFO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:05:14 -0500
+Received: by bkas6 with SMTP id s6so843869bka.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:05:13 -0800 (PST)
+Message-ID: <4ED62A05.9040309@tonian.com>
+Date: Wed, 30 Nov 2011 15:05:09 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: tao.peng@emc.com
+CC: rees@umich.edu, bergwolf@gmail.com, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/9] pnfsblock patches
+References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com> <20111129184401.GA3098@umich.edu> <F19688880B763E40B28B2B462677FBF805E3A4B053@MX09A.corp.emc.com>
+In-Reply-To: <F19688880B763E40B28B2B462677FBF805E3A4B053@MX09A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've got one typo fix in for-3.2 branch at:
+I merged patches 8 and 9 into my tree
 
-  git://linux-nfs.org/~bfields/linux.git for-3.2
+Benny
 
-Please pull--and thanks to Benny for catching it!
-
---b.
-
-Benny Halevy (1):
-      nfsd4: typo logical vs bitwise negate in nfsd4_decode_share_access
-
- fs/nfsd/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-commit fc0d14fe2d6403eb21202fd0c1cf67cd2c85ca67
-Author: Benny Halevy <bhalevy@tonian.com>
-Date:   Thu Oct 27 20:43:01 2011 +0200
-
-    nfsd4: typo logical vs bitwise negate in nfsd4_decode_share_access
-    
-    Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 66d095d..b6fa792 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -655,7 +655,7 @@ static __be32 nfsd4_decode_share_access(struct nfsd4_compoundargs *argp, u32 *x)
- 	default:
- 		return nfserr_bad_xdr;
- 	}
--	w &= !NFS4_SHARE_ACCESS_MASK;
-+	w &= ~NFS4_SHARE_ACCESS_MASK;
- 	if (!w)
- 		return nfs_ok;
- 	if (!argp->minorversion)
+On 2011-11-30 04:37, tao.peng@emc.com wrote:
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jim Rees
+>> Sent: Wednesday, November 30, 2011 2:44 AM
+>> To: Peng Tao
+>> Cc: Trond.Myklebust@netapp.com; linux-nfs@vger.kernel.org
+>> Subject: Re: [PATCH 0/9] pnfsblock patches
+>>
+>> Peng Tao wrote:
+>>
+>>   Hi, Trond,
+>>
+>>   Following are some bugfix and improvements for blocklayout driver. All have been
+>>   sent to the list before and have been tested for several weeks.
+>>
+>> Patches 2/9 and 8/9 are missing again.  I wonder why these particular
+>> patches are getting filtered out?
+> I have received these patches in both my gmail box and emc mail box. So I guess vger dropped them, again... Somehow it thinks I'm a spammer?
+> I attached 2/9, 8/9, 9/9 here...
+> 
+> Thanks,
+> Tao
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
