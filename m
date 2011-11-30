@@ -1,75 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27755 "EHLO mx2.netapp.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:36448 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932878Ab1KDREy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2011 13:04:54 -0400
+	id S1757050Ab1K3O5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Nov 2011 09:57:16 -0500
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 30 Nov 2011 09:57:15 -0500
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pAUEvAqe301858
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 09:57:11 -0500
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pAUEv23G015734
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 07:57:02 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pAUEuwlZ015349
+	for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 07:56:58 -0700
+Date: Wed, 30 Nov 2011 08:56:57 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: only do COMMIT for range written with direct I/O
+Message-ID: <20111130145657.GA7883@us.ibm.com>
+References: <1322662074-3843-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH 2/2] nfs: when attempting to open a directory, fall back on normal lookup (try #4)
-Date: Fri, 4 Nov 2011 10:04:52 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BFA9337@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <1320413608-17032-2-git-send-email-jlayton@redhat.com>
-References: <1320413608-17032-1-git-send-email-jlayton@redhat.com> <1320413608-17032-2-git-send-email-jlayton@redhat.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1322662074-3843-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Jeff Layton [mailto:jlayton@redhat.com]
-> Sent: Friday, November 04, 2011 9:33 AM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: [PATCH 2/2] nfs: when attempting to open a directory, fall
-back on
-> normal lookup (try #4)
+Jeff Layton [jlayton@redhat.com] wrote:
+> When given a range to write with unstable writes, the current code
+> always does a COMMIT of the entire file afterward. This is potentially
+> expensive on some servers and unnecessary. Instead, just do a COMMIT for
+> the offset and count that was written.
 > 
-> commit d953126 changed how nfs_atomic_lookup handles an -EISDIR return
-> from an OPEN call. Prior to that patch, that caused the client to fall
-back to
-> doing a normal lookup. When that patch went in, the code began
-returning
-> that error to userspace. The d_revalidate codepath however never had
-the
-> corresponding change, so it was still possible to end up with a NULL
-ctx-
-> >state pointer after that.
+> Khoa, who reported this bug, stated that this made a big difference in
+> performance in their environment, which I believe involves GPFS on the
+> server. He didn't pass along any hard numbers so I can't quantify the
+> gain, but it stands to reason that clustered filesystems might suffer
+> more contention issues when issuing a commit over the whole file.
 > 
-> That patch caused a regression. When we attempt to open a directory
-that
-> does not have a cached dentry, that open now errors out with EISDIR.
-If you
-> attempt the same open with a cached dentry, it will succeed.
+> Reported-by: Khoa Huynh <khoa@us.ibm.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/direct.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
 > 
-> Fix this by reverting the change in nfs_atomic_lookup and allowing
-attempts
-> to open directories to fall back to a normal lookup
-> 
-> Also, add a NFSv4-specific f_ops->open routine that just returns
--ENOTDIR.
-> This should never be called if things are working properly, but if it
-ever is,
-> then the dprintk may help in debugging.
-> 
-> To facilitate this, a new file_operations field is also added to the
-nfs_rpc_ops
-> struct.
-> 
-> Cc: stable@kernel.org
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 1940f1a..33f2be7 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -77,6 +77,7 @@ struct nfs_direct_req {
+>  	/* completion state */
+>  	atomic_t		io_count;	/* i/os we're waiting for */
+>  	spinlock_t		lock;		/* protect completion state */
+> +	loff_t			pos;		/* offset into file */
 
-Just one last request: can you reverse the order of the patches so that
-this one becomes 1/2? That would lose the dependency on the first patch,
-making the 'Cc: stable' bit more palatable.
+Why not call it "offset"? Should we set this to zero in
+nfs_direct_req_alloc (just like count is set to zero there)?
 
-BTW: it is now 'stable@vger.kernel.org'...
-
-Also note that I'm quite ready to send these 2 patches as a post-rc1
-bugfix. Doing so shouldn't be a problem for Linus, since this is a
-regression w.r.t. older NFSv4 behaviour.
-
-Cheers
-  Trond
-
+Thanks, Malahal.
 
