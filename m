@@ -1,67 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:57855 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751305Ab1KGU3d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2011 15:29:33 -0500
-Received: by faan17 with SMTP id n17so399259faa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Nov 2011 12:29:32 -0800 (PST)
+Received: from aa.linuxbox.com ([134.215.213.37]:1822 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757301Ab1K3Ah5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Nov 2011 19:37:57 -0500
+Date: Tue, 29 Nov 2011 19:37:45 -0500 (EST)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Peng Tao <bergwolf@gmail.com>, linux-nfs@vger.kernel.org,
+        bhalevy@tonian.com, Garth Gibson <garth@panasas.com>,
+        Marc Eshel <eshel@almaden.ibm.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+Message-ID: <1318101352.392.1322613465836.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1322606842.11286.33.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-Date: Mon, 7 Nov 2011 21:29:31 +0100
-Message-ID: <CAGue13qcDxW9wFfuVuRnbZBcxuTWaXzW8CK1VFWj9483ardp0g@mail.gmail.com>
-Subject: regression in referrals resolution
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+That would be pretty disappointing.  However, based on previous interactions, my belief would be, the
+Linux client will do what can be shown empirically to work better, or more correctly.
 
+Matt
 
-today we was running test with referrals and notice that 'current'
-3.1+ has a regression.
-The referrals are resolved, but client returns IO error :
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
+> On Tue, 2011-11-29 at 14:40 -0800, Boaz Harrosh wrote: 
+> > On 11/29/2011 01:57 PM, Trond Myklebust wrote:
+> > >> Also Files when they will support segments and servers that
+> request segments,
+> > >> like the CEPH server, will very much enjoy the above, .i.e: Tell
+> me the amount
+> > >> you know you want to write.
+> > > 
+> > > Why would we want to add segment support to the pNFS files
+> client???
+> > > Segments are a nuisance that multiply the amount of unnecessary
+> chitchat
+> > > between the client and the MDS without providing any tangible
+> > > benefits...
+> > > 
+> > 
+> > Your kidding right?
+> > 
+> > One: it is mandated by the Standard, This is not an option. So a
+> perfectly
+> >      Standard complaint server is not Supported by Linux because we
+> don't see
+> >      the point.
+> 
+> Bollocks.. Nothing is "mandated by the Standard". If the server
+> doesn't
+> give us a full layout, then we fall back to write through MDS. Why
+> dick
+> around with crap that SLOWS YOU DOWN.
+> 
+> > Two: There are already file-layout servers out there (multiple)
+> which are
+> >      waiting for the Linux files-layout segment support, because the
+> underline
+> >      FS requires Segments and now they do not work with the Linux
+> client. These
+> >      are CEPH and GPFS and more.
+> 
+> Then they will have a _long_ wait....
+> 
+> Trond
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
-  [957401.805315] encode_sequence:
-sessionid=638433358:33554432:0:16777216 seqid=17 slotid=0 max_slotid=0
-cache_this=0
-[957401.807810] decode_attr_type: type=00
-[957401.807812] decode_attr_change: change attribute=0
-[957401.807814] decode_attr_size: file size=0
-[957401.807816] decode_attr_fsid: fsid=(0x100/0x11)
-[957401.807818] decode_attr_fileid: fileid=0
-[957401.807820] decode_attr_fs_locations: fsroot path /pnfs/p3
-[957401.807824] decode_attr_fs_locations: servers 131.169.80.47 path
-/pnfs/desy.de/petra3
-[957401.807828] decode_attr_fs_locations: fs_locations done, error = 524288
-[957401.807830] decode_attr_mode: file mode=00
-[957401.807832] decode_attr_nlink: nlink=1
-[957401.807834] decode_attr_owner: uid=-2
-[957401.807835] decode_attr_group: gid=-2
-[957401.807837] decode_attr_rdev: rdev=(0x0:0x0)
-[957401.807839] decode_attr_space_used: space used=0
-[957401.807841] decode_attr_time_access: atime=0
-[957401.807842] decode_attr_time_metadata: ctime=0
-[957401.807844] decode_attr_time_modify: mtime=0
-[957401.807846] decode_attr_mounted_on_fileid: fileid=0
-[957401.807848] decode_getfattr_attrs: xdr returned -2097152
-[957401.807850] decode_getfattr_generic: xdr returned 0
-[957401.807852] nfs41_sequence_done: Error 0 free the slot
-[957401.807854] nfs4_free_slot: free_slotid 0 highest_used_slotid -1
-[957401.807859] nfs4_proc_fs_locations: returned status = 0
-[957401.807862] nfs4_map_errors could not handle NFSv4 error 10019
+-- 
 
+Matt Benjamin
 
-this is with
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
 
-7670c7010c7b367ca40c3aba02afb36149764a6e
+http://linuxbox.com
 
-from git://linux-nfs.org/~trondmy/nfs-2.6.git  bugfixes
-
-The same server and same configuration with kernel from fedora16 works
-out-of-box.
-
-Regards,
-   Tigran.
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
