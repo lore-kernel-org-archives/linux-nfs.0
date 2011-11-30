@@ -1,101 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:56222 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753194Ab1KLPxj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Nov 2011 10:53:39 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RPFrG-0003ID-Un
-	for linux-nfs@vger.kernel.org; Sat, 12 Nov 2011 10:51:07 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] idmapper.txt: Fix the upcall binary name.
-Date: Sat, 12 Nov 2011 10:53:37 -0500
-Message-Id: <1321113217-10018-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1321113217-10018-1-git-send-email-steved@redhat.com>
-References: <1321113217-10018-1-git-send-email-steved@redhat.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:52126 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752107Ab1K3Xb5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 18:31:57 -0500
+Received: by ywa9 with SMTP id 9so1193763ywa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 15:31:57 -0800 (PST)
+Message-ID: <4ED6BCEA.9050000@gmail.com>
+Date: Wed, 30 Nov 2011 17:31:54 -0600
+From: Bruce Dubbs <bruce.dubbs@gmail.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: nfs server issues
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The binary that handles the upcalls from is kernel is called
-nfsidmap not nfs.idmap.
+I am trying to document the installation of nfs for Linux From Scratch. 
+  The client works, but the server does not and I'm looking for some 
+help.   If this is the wrong place to ask for help, please redirect me.
 
-The '-k' flag is now used to specify the timeout
+For now, I am only trying to get nfs version 3 to work.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- Documentation/filesystems/nfs/idmapper.txt |   26 +++++++++++++-------------
- 1 files changed, 13 insertions(+), 13 deletions(-)
+# mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
+    [ mounts OK ]
+# mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
+# mount.nfs: requested NFS version or transport protocol is not supported
 
-diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-index 120fd3c..18276ef 100644
---- a/Documentation/filesystems/nfs/idmapper.txt
-+++ b/Documentation/filesystems/nfs/idmapper.txt
-@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
- translate user and group names into ids.  Part of this translation involves
- performing an upcall to userspace to request the information.  Id mapper will
- user request-key to perform this upcall and cache the result.  The program
--/usr/sbin/nfs.idmap should be called by request-key, and will perform the
-+/usr/sbin/nfsidmap should be called by request-key, and will perform the
- translation and initialize a key with the resulting information.
- 
-  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
-+create	id_resolver	*	*		/usr/sbin/nfsidmap -t 600 %k %d
- 
--This will direct all id_resolver requests to the program /usr/sbin/nfs.idmap.
--The last parameter, 600, defines how many seconds into the future the key will
--expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
--is not specified, nfs.idmap will default to 600 seconds.
-+This will direct all id_resolver requests to the program /usr/sbin/nfsidmap.
-+The '-k 600' arguemnt defines how many seconds into the future the key will
-+expire.  This parameter is optional for /usr/sbin/nfsidmap.  When the timeout
-+is not specified, nfsidmap will default to 600 seconds.
- 
- id mapper uses for key descriptions:
- 	  uid:  Find the UID for the given user
-@@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	uid:*	*		/some/other/program %k %d 600
--create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
-+create	id_resolver	uid:*	*		/some/other/program %k %d
-+create	id_resolver	*	*		/usr/sbin/nfsidmap -t 600 %k %d
- 
- Notice that the new line was added above the line for the generic program.
- request-key will find the first matching line and corresponding program.  In
- this case, /some/other/program will handle all uid lookups and
--/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
-+/usr/sbin/nfsidmap will handle gid, user, and group lookups.
- 
- See <file:Documentation/security/keys-request-key.txt> for more information
- about the request-key function.
- 
- 
- =========
--nfs.idmap
-+nfsidmap
- =========
--nfs.idmap is designed to be called by request-key, and should not be run "by
-+nfsidmap is designed to be called by request-key, and should not be run "by
- hand".  This program takes two arguments, a serialized key and a key
- description.  The serialized key is first converted into a key_serial_t, and
- then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
- 
--The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
-+The actual lookups are performed by functions found in nfsidmap.h.  nfsidmap
- determines the correct function to call by looking at the first part of the
- description string.  For example, a uid lookup description will appear as
- "uid:user@domain".
- 
--nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
-+nfsidmap will return 0 if the key was instantiated, and non-zero otherwise.
--- 
-1.7.7
+Any pointers are appreciated.  Details of the procedures I've used are 
+below.
 
+   -- Bruce Dubbs
+      linuxfromscratch.org
+
+
+The packages I'm using:
+
+linux-3.0.4
+libtirpc-0.2.2
+rpcbind-0.2.0
+nfs-utils-1.2.5
+glibc-2.14.1
+util-linux-2.20
+
+The build procedures were as follows:
+
+1. Restore nfs/nis headers omitted by glibc-2.14.1
+2. Build libtirpc
+    Remove auth_des.c authdes_prot.c des_crypt.c from Makefile
+    Comment out authdes_create() in rpc_soc.c
+    ./configure --prefix=/usr --libdir=/lib
+3. Build rpcbind
+    ./configure --prefix=/usr --bindir=/sbin
+    Update /etc/services for rpcbind on port 111
+4. Build nfs-utils
+    LIBS=-lpthread ./configure --prefix=/usr     \
+         --sysconfdir=/etc --disable-nfsv4 --disable-nfsv41  \
+         --disable-gss
+
+Start rpcbind
+Start rpc.mountd
+Run   rpc.nfsd -p 2049 8
+Start rpc.statd
+Run   exportfs -ra
+
+/etc/exports has:
+/usr/src 192.168.0.0/24(rw,async,no_root_squash,subtree_check)
+
+rpcinfo -p gives:
+     100000    4   tcp    111  portmapper
+     100000    3   tcp    111  portmapper
+     100000    2   tcp    111  portmapper
+     100000    4   udp    111  portmapper
+     100000    3   udp    111  portmapper
+     100000    2   udp    111  portmapper
+     100005    1   udp  52645  mountd
+     100005    1   tcp  47533  mountd
+     100005    2   udp  60954  mountd
+     100005    2   tcp  56425  mountd
+     100005    3   udp  33939  mountd
+     100005    3   tcp  56892  mountd
+     100024    1   udp  34641  status
+     100024    1   tcp  50491  status
+
+# ps -ef|grep 'nfs\|rpc\|lock'
+root       291     2  0 Nov26 ?        00:00:00 [kblockd]
+root       498     2  0 Nov26 ?        00:00:00 [rpciod]
+root       613     2  0 Nov26 ?        00:00:00 [nfsiod]
+root      1136     2  0 Nov28 ?        00:00:00 [lockd]
+root      1137     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1138     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1139     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1140     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1141     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1142     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1143     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1144     2  0 Nov28 ?        00:00:00 [nfsd]
+root      1889     1  0 Nov28 ?        00:00:00 /usr/sbin/rpc.statd
+root     12615     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     12618     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     12685     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     12711     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     12923     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     14127     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     14494     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     14861     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     15248     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+root     15819     1  0 Nov29 ?        00:00:00 /sbin/rpcbind
+root     16423     1  0 12:34 ?        00:00:00 /usr/sbin/rpc.mountd
+root     16432     1  0 12:36 ?        00:00:00 /usr/sbin/rpc.statd
+
+Kernel configuration:
+
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=y
+# CONFIG_NFS_V4_1 is not set
+CONFIG_ROOT_NFS=y
+# CONFIG_NFS_USE_LEGACY_DNS is not set
+CONFIG_NFS_USE_KERNEL_DNS=y
+# CONFIG_NFS_USE_NEW_IDMAPPER is not set
+CONFIG_NFSD=y
+# CONFIG_NFSD_DEPRECATED is not set
+CONFIG_NFSD_V3=y
+# CONFIG_NFSD_V3_ACL is not set
+# CONFIG_NFSD_V4 is not set
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
+CONFIG_SUNRPC_GSS=y
