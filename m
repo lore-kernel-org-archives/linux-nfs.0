@@ -1,106 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm12.bullet.mail.ird.yahoo.com ([77.238.189.65]:44705 "HELO
-	nm12.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753120Ab1KMBDx convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Nov 2011 20:03:53 -0500
-References: <39983D1A-70A8-49A1-A4E2-926637780F75@oracle.com> <1320399858.11675.YahooMailNeo@web24703.mail.ird.yahoo.com> <06799B7D-54CD-41D8-934A-F9C78B23677C@oracle.com> <1320450001.87605.YahooMailNeo@web24706.mail.ird.yahoo.com> <1320455965.2750.9.camel@lade.trondhjem.org> <1320459252.59518.YahooMailNeo@web24716.mail.ird.yahoo.com> <1320460311.2750.21.camel@lade.trondhjem.org> <1320465106.61111.YahooMailNeo@web24710.mail.ird.yahoo.com> <20111105130517.GA16090@umich.edu> <1321097734.7117.YahooMailNeo@web24701.mail.ird.yahoo.com> <20111112184804.GA25581@umich.edu> <1E7FF4C1-B7BA-4429-92ED-DC90D6B269C4@oracle.com>
-Message-ID: <1321146230.5436.YahooMailNeo@web24710.mail.ird.yahoo.com>
-Date: Sun, 13 Nov 2011 01:03:50 +0000 (GMT)
-From: Lukas Razik <linux@razik.name>
-Reply-To: Lukas Razik <linux@razik.name>
-Subject: Re: [BUG?] Maybe NFS bug since 2.6.37 on SPARC64
-To: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <1E7FF4C1-B7BA-4429-92ED-DC90D6B269C4@oracle.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:53481 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751142Ab1K3M6H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 07:58:07 -0500
+Received: by bkas6 with SMTP id s6so836091bka.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 04:58:05 -0800 (PST)
+Message-ID: <4ED62857.7090804@tonian.com>
+Date: Wed, 30 Nov 2011 14:57:59 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+To: Peng Tao <bergwolf@gmail.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Subject: Re: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
+References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> On Nov 12, 2011, at 1:49 PM, Jim Rees wrote:
+On 2011-12-03 06:56, Peng Tao wrote:
+> Asking for layout in pg_init will always make client ask for only 4KB
+> layout in every layoutget. This way, client drops the IO size information
+> that is meaningful for MDS in handing out layout.
 > 
->>  The question for us is how long should an nfsroot client wait for the 
-> server
->>  to reply.  It sounds like the client used to wait longer than it does now.
+> In stead, if layout is not find in cache, do not send layoutget
+> at once. Wait until before issuing IO in pnfs_do_multiple_reads/writes
+> because that is where we know the real size of current IO. By telling the
+> real IO size to MDS, MDS will have a better chance to give proper layout.
 > 
-> Before, the client performed the GETPORT(NFS) step synchronously, first.  This 
-> took 30 seconds or so to timeout.  When it did, the client decided to proceed 
-> with port 2049.  Then it went on to do the other mount tasks, and at the point 
-> had waited long enough that these tasks did not time out while waiting for the 
-> switch port.
+> Signed-off-by: Peng Tao <peng_tao@emc.com>
+> ---
+> Resend to fix patch title. Sorry for the noise...
 > 
->>  It seems to me the client should wait at least 90 seconds so that the
->>  situation you're in (servers on non-portfast ports) will work.  I would
->>  think they should wait indefinitely, since there's not much else they 
-> can
->>  do.
+>  fs/nfs/blocklayout/blocklayout.c |   54 ++++++++++++++++++++++++++++++++++++-
+>  1 files changed, 52 insertions(+), 2 deletions(-)
 > 
-> It should be simple to wrap the (MNT(mnt), NFS(getroot)) steps in a while(true) 
-> loop.  Would mount_root_nfs() be the right place for this?
-> 
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 48cfac3..fd585fe 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -39,6 +39,7 @@
+>  #include <linux/prefetch.h>
+>  
+>  #include "blocklayout.h"
+> +#include "../internal.h"
+>  
+>  #define NFSDBG_FACILITY	NFSDBG_PNFS_LD
+>  
+> @@ -990,14 +991,63 @@ bl_clear_layoutdriver(struct nfs_server *server)
+>  	return 0;
+>  }
+>  
+> +/* While RFC doesn't limit maximum size of layout, we better limit it ourself. */
 
-I thought it would be harder and I had no time to look inside the kernel but now I wrote a patch:
-The kernel tries to create the MNT RPC client not once as before but three times - then it gives up.
-Third time lucky... ;-)
-In my case the 2. MNT request is successful:
----
-[   71.594744] ADDRCONF(NETDEV_UP): eth0: link is not ready
-[   72.617007] IP-Config: Complete:
-[   72.617077]      device=eth0, addr=137.226.167.242, mask=255.255.255.224, gw=137.226.167.225,
-[   72.617278]      host=137.226.167.242, domain=, nis-domain=(none),
-[   72.617393]      bootserver=255.255.255.255, rootserver=137.226.167.241, rootpath=
-[   72.617741] Root-NFS: nfsroot=/srv/nfs/cluster2
-[   72.618010] NFS: nfs mount opts='udp,nolock,addr=137.226.167.241'
-[   72.618147] NFS:   parsing nfs mount option 'udp'
-[   72.618187] NFS:   parsing nfs mount option 'nolock'
-[   72.618233] NFS:   parsing nfs mount option 'addr=137.226.167.241'
-[   72.618301] NFS: MNTPATH: '/srv/nfs/cluster2'
-[   72.618335] NFS: sending MNT request for 137.226.167.241:/srv/nfs/cluster2
-[   72.618383] NFS: 1. MNT request
-[   73.691872] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: Rx
-[   73.711988] ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-[  107.697332] NFS: 2. MNT request
-[  107.704591] NFS: received 1 auth flavors
-[  107.704653] NFS:   auth flavor[0]: 1
-[  107.704834] NFS: MNT request succeeded
-[  107.704897] NFS: using auth flavor 1
-[  107.711857] VFS: Mounted root (nfs filesystem) on device 0:13.
-INIT: version 2.88 booting
----
+Why is that?
+What do these arbitrary numbers represent?
+If these limits depend on some other system sizes they should reflect the dependency
+as part of their calculation.
 
-So many thanks again for your help and your very helpful hints!
+Benny
 
-Regards,
-Lukas
-
-
-PS: That's what I've done:
---- linux-2.6.39.4/fs/nfs/mount_clnt.c  2011-08-03 21:43:28.000000000 +0200
-+++ linux-2.6.39.4-fix/fs/nfs/mount_clnt.c      2011-11-13 01:58:13.000000000 +0100
-@@ -164,6 +164,7 @@
-        };
-        struct rpc_clnt         *mnt_clnt;
-        int                     status;
-+       int                     attempt = 0;
- 
-        dprintk("NFS: sending MNT request for %s:%s\n",
-                (info->hostname ? info->hostname : "server"),
-@@ -172,7 +173,13 @@
-        if (info->noresvport)
-                args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
- 
--       mnt_clnt = rpc_create(&args);
-+       do {
-+               attempt++;
-+               dprintk("NFS: %d. MNT request\n", attempt);
-+               mnt_clnt = rpc_create(&args);
-+       } while (IS_ERR(mnt_clnt) && attempt < 3);
-+
-+
-        if (IS_ERR(mnt_clnt))
-                goto out_clnt_err;
---
+> +#define PNFSBLK_MAXRSIZE (0x1<<22)
+> +#define PNFSBLK_MAXWSIZE (0x1<<21)
+> +static void
+> +bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +{
+> +	struct inode *ino = pgio->pg_inode;
+> +	struct pnfs_layout_hdr *lo;
+> +
+> +	BUG_ON(pgio->pg_lseg != NULL);
+> +	spin_lock(&ino->i_lock);
+> +	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_KERNEL);
+> +	if (!lo || test_bit(lo_fail_bit(IOMODE_READ), &lo->plh_flags)) {
+> +		spin_unlock(&ino->i_lock);
+> +		nfs_pageio_reset_read_mds(pgio);
+> +		return;
+> +	}
+> +
+> +	pgio->pg_bsize = PNFSBLK_MAXRSIZE;
+> +	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
+> +						req_offset(req),
+> +						req->wb_bytes,
+> +						IOMODE_READ);
+> +	spin_unlock(&ino->i_lock);
+> +}
+> +
+> +static void
+> +bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> +{
+> +	struct inode *ino = pgio->pg_inode;
+> +	struct pnfs_layout_hdr *lo;
+> +
+> +	BUG_ON(pgio->pg_lseg != NULL);
+> +	spin_lock(&ino->i_lock);
+> +	lo = pnfs_find_alloc_layout(ino, req->wb_context, GFP_NOFS);
+> +	if (!lo || test_bit(lo_fail_bit(IOMODE_RW), &lo->plh_flags)) {
+> +		spin_unlock(&ino->i_lock);
+> +		nfs_pageio_reset_write_mds(pgio);
+> +		return;
+> +	}
+> +
+> +	pgio->pg_bsize = PNFSBLK_MAXWSIZE;
+> +	pgio->pg_lseg = pnfs_find_get_layout_locked(ino,
+> +						req_offset(req),
+> +						req->wb_bytes,
+> +						IOMODE_RW);
+> +	spin_unlock(&ino->i_lock);
+> +}
+> +
+>  static const struct nfs_pageio_ops bl_pg_read_ops = {
+> -	.pg_init = pnfs_generic_pg_init_read,
+> +	.pg_init = bl_pg_init_read,
+>  	.pg_test = pnfs_generic_pg_test,
+>  	.pg_doio = pnfs_generic_pg_readpages,
+>  };
+>  
+>  static const struct nfs_pageio_ops bl_pg_write_ops = {
+> -	.pg_init = pnfs_generic_pg_init_write,
+> +	.pg_init = bl_pg_init_write,
+>  	.pg_test = pnfs_generic_pg_test,
+>  	.pg_doio = pnfs_generic_pg_writepages,
+>  };
