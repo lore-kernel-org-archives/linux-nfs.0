@@ -1,80 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37496 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755748Ab1KCKm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Nov 2011 06:42:28 -0400
-Date: Thu, 3 Nov 2011 06:42:15 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Oleg Nesterov <oleg@redhat.com>
-Cc: Tejun Heo <tj@kernel.org>, "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Steve French <sfrench@samba.org>, linux-kernel@vger.kernel.org,
-        linux-pm@vger.kernel.org, linux-cifs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] wait_event_freezekillable: use
- freezer_do_not_count/freezer_count
-Message-ID: <20111103064215.48939e1a@tlielax.poochiereds.net>
-In-Reply-To: <20111102175327.GA4446@redhat.com>
-References: <20111101041337.39077229@tlielax.poochiereds.net>
-	<20111101065958.50addab5@tlielax.poochiereds.net>
-	<20111101163059.GR18855@google.com>
-	<20111101175953.GB5358@redhat.com>
-	<20111101180601.GV18855@google.com>
-	<20111101181329.GA6739@redhat.com>
-	<20111101182753.GW18855@google.com>
-	<20111101193923.GA9444@redhat.com>
-	<20111101194601.GB9444@redhat.com>
-	<20111101215710.GA13803@google.com>
-	<20111102175327.GA4446@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:38955 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753648Ab1K3NUi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 08:20:38 -0500
+Received: by vbbfc26 with SMTP id fc26so302582vbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 05:20:37 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <4ED6290F.4020407@tonian.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+ <1322887965-2938-4-git-send-email-bergwolf@gmail.com> <4ED6290F.4020407@tonian.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 30 Nov 2011 21:20:16 +0800
+Message-ID: <CA+a=Yy4xvWyWF+BHZMHY_EtZysaB83vA-bcjXX9vdf+vCCnoxg@mail.gmail.com>
+Subject: Re: [PATCH 3/4] nfsv41: get lseg before issue LD IO if pgio doesn't
+ carry lseg
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Peng Tao <peng_tao@emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2 Nov 2011 18:53:27 +0100
-Oleg Nesterov <oleg@redhat.com> wrote:
-
-> fake_signal_wake_up() should not wake up the TASK_KILLABLE tasks,
-> we are going to fix this. This means that wait_event_freezekillable()
-> can't rely on wakeup from freezer. Reimplement it using
-> freezer_do_not_count/freezer_count. This is not really nice, just
-> a simple fix for now.
-> 
-> Signed-off-by: Oleg Nesterov <oleg@redhat.com>
-> ---
-> 
->  include/linux/freezer.h |   10 +++-------
->  1 file changed, 3 insertions(+), 7 deletions(-)
-> 
-> --- a/include/linux/freezer.h
-> +++ b/include/linux/freezer.h
-> @@ -143,13 +143,9 @@ static inline void set_freezable_with_si
->  #define wait_event_freezekillable(wq, condition)			\
->  ({									\
->  	int __retval;							\
-> -	for (;;) {							\
-> -		__retval = wait_event_killable(wq,			\
-> -				(condition) || freezing(current));	\
-> -		if (__retval || (condition))				\
-> -			break;						\
-> -		try_to_freeze();					\
-> -	}								\
-> +	freezer_do_not_count();						\
-> +	__retval = wait_event_killable(wq, (condition));		\
-> +	freezer_count();						\
->  	__retval;							\
->  })
->  
-> 
-
-I'm not sure we really need this macro anymore since this is much
-simpler. I could just move cifs back to using wait_event_killable and
-simply wrap it in freezer_do_not_count/freezer_count (with some
-comments to explain why we're doing that).
-
-In any event, I plan to test this scheme out today and will let you
-know whether it works...
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gV2VkLCBOb3YgMzAsIDIwMTEgYXQgOTowMSBQTSwgQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHRv
+bmlhbi5jb20+IHdyb3RlOgo+IE9uIDIwMTEtMTItMDMgMDY6NTIsIFBlbmcgVGFvIHdyb3RlOgo+
+PiBUaGlzIGdpdmVzIExEIG9wdGlvbiBub3QgdG8gYXNrIGZvciBsYXlvdXQgaW4gcGdfaW5pdC4K
+Pj4KPj4gU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+Cj4+IC0tLQo+
+PiDCoGZzL25mcy9wbmZzLmMgfCDCoCA0NiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrCj4+IMKgMSBmaWxlcyBjaGFuZ2VkLCA0NiBpbnNlcnRpb25zKCspLCAw
+IGRlbGV0aW9ucygtKQo+Pgo+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBiL2ZzL25mcy9w
+bmZzLmMKPj4gaW5kZXggNzM0ZTY3MC4uYzhkYzBiMSAxMDA2NDQKPj4gLS0tIGEvZnMvbmZzL3Bu
+ZnMuYwo+PiArKysgYi9mcy9uZnMvcG5mcy5jCj4+IEBAIC0xMjU0LDYgKzEyNTQsNyBAQCBwbmZz
+X2RvX211bHRpcGxlX3dyaXRlcyhzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpkZXNjLCBz
+dHJ1Y3QgbGlzdF9oZWFkICpoZQo+PiDCoCDCoCDCoCBzdHJ1Y3QgbmZzX3dyaXRlX2RhdGEgKmRh
+dGE7Cj4+IMKgIMKgIMKgIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgKmNhbGxfb3BzID0gZGVz
+Yy0+cGdfcnBjX2NhbGxvcHM7Cj4+IMKgIMKgIMKgIHN0cnVjdCBwbmZzX2xheW91dF9zZWdtZW50
+ICpsc2VnID0gZGVzYy0+cGdfbHNlZzsKPj4gKyDCoCDCoCBjb25zdCBib29sIGhhc19sc2VnID0g
+ISFsc2VnOwo+Cj4gbml0OiAiaGFzX2xzZWcgPSAobHNlZyAhPSBOVUxMKSIgd291bGQgYmUgbW9y
+ZSBzdHJhaWdodCBmb3J3YXJkIElNTwo+Cj4+Cj4+IMKgIMKgIMKgIGRlc2MtPnBnX2xzZWcgPSBO
+VUxMOwo+PiDCoCDCoCDCoCB3aGlsZSAoIWxpc3RfZW1wdHkoaGVhZCkpIHsKPj4gQEAgLTEyNjIs
+NyArMTI2MywyOSBAQCBwbmZzX2RvX211bHRpcGxlX3dyaXRlcyhzdHJ1Y3QgbmZzX3BhZ2Vpb19k
+ZXNjcmlwdG9yICpkZXNjLCBzdHJ1Y3QgbGlzdF9oZWFkICpoZQo+PiDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCBkYXRhID0gbGlzdF9lbnRyeShoZWFkLT5uZXh0LCBzdHJ1Y3QgbmZzX3dyaXRlX2RhdGEs
+IGxpc3QpOwo+PiDCoCDCoCDCoCDCoCDCoCDCoCDCoCBsaXN0X2RlbF9pbml0KCZkYXRhLT5saXN0
+KTsKPj4KPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCBpZiAoIWhhc19sc2VnKSB7Cj4+ICsgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgc3RydWN0IG5mc19wYWdlICpyZXEgPSBuZnNfbGlzdF9l
+bnRyeShkYXRhLT5wYWdlcy5uZXh0KTsKPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCBfX3U2NCBsZW5ndGggPSBkYXRhLT5ucGFnZXMgPDwgUEFHRV9DQUNIRV9TSElGVDsKPj4gKwo+
+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGxzZWcgPSBwbmZzX3VwZGF0ZV9sYXlv
+dXQoZGVzYy0+cGdfaW5vZGUsCj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgcmVxLT53Yl9jb250ZXh0LAo+PiAr
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIHJlcV9vZmZzZXQocmVxKSwKPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBsZW5ndGgsCj4+
+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgSU9NT0RFX1JXLAo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIEdGUF9OT0ZTKTsKPj4g
+KyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAoIWxzZWcgfHwgbGVuZ3RoID4gKGxz
+ZWctPnBsc19yYW5nZS5sZW5ndGgpKSB7Cj4KPiBJJ20gY29uY2VybmVkIGFib3V0IHRoZSAnbGVu
+Z3RoJyBwYXJ0IG9mIHRoaXMgY29uZGl0aW9uLgo+IHBuZnNfdHJ5X3RvX3dyaXRlX2RhdGEgc2hv
+dWxkIGhhbmRsZSBzaG9ydCB3cml0ZXMvcmVhZHMgYW5kCj4gd2Ugc2hvdWxkIGJlIGFibGUgdG8g
+aXRlcmF0ZSB0aHJvdWdoIHRoZSBJL08gdXNpbmcgZGlmZmVyZW50Cj4gbGF5b3V0IHNlZ21lbnRz
+LgpUcm9uZCBoYXMgc3VnZ2VzdGVkIG1vdmluZyBhbGwgdGhlc2UgYmFjayBpbnNpZGUgYmxvY2sg
+bGF5b3V0LiBBbmQgSQp0aGluayBJIGNhbiBoYW5kbGUgc2hvcnQgcmVhZHMvd3JpdGVzIHNpdHVh
+dGlvbiB0aGVyZS4KCj4KPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCBwdXRfbHNlZyhsc2VnKTsKPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCBsc2VnID0gTlVMTDsKPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCDCoCDCoCBwbmZzX3dyaXRlX3Rocm91Z2hfbWRzKGRlc2MsZGF0YSk7Cj4+ICsgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgY29udGludWU7Cj4+ICsgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgfQo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIH0KPj4g
+Kwo+PiDCoCDCoCDCoCDCoCDCoCDCoCDCoCB0cnlwbmZzID0gcG5mc190cnlfdG9fd3JpdGVfZGF0
+YShkYXRhLCBjYWxsX29wcywgbHNlZywgaG93KTsKPj4gKyDCoCDCoCDCoCDCoCDCoCDCoCBpZiAo
+IWhhc19sc2VnKSB7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgcHV0X2xzZWco
+bHNlZyk7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgbHNlZyA9IE5VTEw7Cj4+
+ICsgwqAgwqAgwqAgwqAgwqAgwqAgfQo+Cj4gV2UgaGFkIGFuIGltcGxlbWVudGF0aW9uIGluIHRo
+ZSBwYXN0IHRoYXQgc2F2ZWQgdGhlIG1vc3QgcmVjZW50IGxzZWcgaW4gJ2Rlc2MnCj4gc28gaXQg
+Y291bGQgYmUgdXNlZCBmb3IgdGhlIHJlbWFpbmluZyByZXF1ZXN0cy4gwqBPbmNlIGV4aGF1c3Rl
+ZCwgeW91IGNhbgo+IGxvb2sgZm9yIGEgbmV3IG9uZS4KWWVzLCB0aGUgZGVzYy0+bHNlZyBpcyB3
+aGF0IEknbSBnb2luZyB0byB1c2UgaW4gYmxvY2tsYXlvdXQgcHJpdmF0ZSBwZ19kb2lvLgoKPgo+
+PiDCoCDCoCDCoCDCoCDCoCDCoCDCoCBpZiAodHJ5cG5mcyA9PSBQTkZTX05PVF9BVFRFTVBURUQp
+Cj4+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIHBuZnNfd3JpdGVfdGhyb3VnaF9t
+ZHMoZGVzYywgZGF0YSk7Cj4+IMKgIMKgIMKgIH0KPj4gQEAgLTEzNTAsNiArMTM3Myw3IEBAIHBu
+ZnNfZG9fbXVsdGlwbGVfcmVhZHMoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGVzYywg
+c3RydWN0IGxpc3RfaGVhZCAqaGVhCj4+IMKgIMKgIMKgIHN0cnVjdCBuZnNfcmVhZF9kYXRhICpk
+YXRhOwo+PiDCoCDCoCDCoCBjb25zdCBzdHJ1Y3QgcnBjX2NhbGxfb3BzICpjYWxsX29wcyA9IGRl
+c2MtPnBnX3JwY19jYWxsb3BzOwo+PiDCoCDCoCDCoCBzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVu
+dCAqbHNlZyA9IGRlc2MtPnBnX2xzZWc7Cj4+ICsgwqAgwqAgY29uc3QgYm9vbCBoYXNfbHNlZyA9
+ICEhbHNlZzsKPgo+IGRpdHRvCj4KPj4KPj4gwqAgwqAgwqAgZGVzYy0+cGdfbHNlZyA9IE5VTEw7
+Cj4+IMKgIMKgIMKgIHdoaWxlICghbGlzdF9lbXB0eShoZWFkKSkgewo+PiBAQCAtMTM1OCw3ICsx
+MzgyLDI5IEBAIHBuZnNfZG9fbXVsdGlwbGVfcmVhZHMoc3RydWN0IG5mc19wYWdlaW9fZGVzY3Jp
+cHRvciAqZGVzYywgc3RydWN0IGxpc3RfaGVhZCAqaGVhCj4+IMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IGRhdGEgPSBsaXN0X2VudHJ5KGhlYWQtPm5leHQsIHN0cnVjdCBuZnNfcmVhZF9kYXRhLCBsaXN0
+KTsKPj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgbGlzdF9kZWxfaW5pdCgmZGF0YS0+bGlzdCk7Cj4+
+Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgaWYgKCFoYXNfbHNlZykgewo+PiArIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIHN0cnVjdCBuZnNfcGFnZSAqcmVxID0gbmZzX2xpc3RfZW50cnko
+ZGF0YS0+cGFnZXMubmV4dCk7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgX191
+NjQgbGVuZ3RoID0gZGF0YS0+bnBhZ2VzIDw8IFBBR0VfQ0FDSEVfU0hJRlQ7Cj4+ICsKPj4gKyDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCBsc2VnID0gcG5mc191cGRhdGVfbGF5b3V0KGRl
+c2MtPnBnX2lub2RlLAo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIHJlcS0+d2JfY29udGV4dCwKPj4gKyDCoCDC
+oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
+oCDCoCDCoCByZXFfb2Zmc2V0KHJlcSksCj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgbGVuZ3RoLAo+PiArIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIElPTU9ERV9SRUFELAo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIEdGUF9LRVJORUwpOwo+PiAr
+IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmICghbHNlZyB8fCBsZW5ndGggPiBsc2Vn
+LT5wbHNfcmFuZ2UubGVuZ3RoKSB7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgcHV0X2xzZWcobHNlZyk7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgbHNlZyA9IE5VTEw7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgcG5mc19yZWFkX3Rocm91Z2hfbWRzKGRlc2MsIGRhdGEpOwo+
+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGNvbnRpbnVlOwo+
+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIH0KPj4gKyDCoCDCoCDCoCDCoCDCoCDC
+oCB9Cj4+ICsKPj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgdHJ5cG5mcyA9IHBuZnNfdHJ5X3RvX3Jl
+YWRfZGF0YShkYXRhLCBjYWxsX29wcywgbHNlZyk7Cj4+ICsgwqAgwqAgwqAgwqAgwqAgwqAgaWYg
+KCFoYXNfbHNlZykgewo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIHB1dF9sc2Vn
+KGxzZWcpOwo+PiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGxzZWcgPSBOVUxMOwo+
+PiArIMKgIMKgIMKgIMKgIMKgIMKgIH0KPgo+IGRpdHRvCj4KPiBCZW5ueQo+Cj4+IMKgIMKgIMKg
+IMKgIMKgIMKgIMKgIGlmICh0cnlwbmZzID09IFBORlNfTk9UX0FUVEVNUFRFRCkKPj4gwqAgwqAg
+wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgcG5mc19yZWFkX3Rocm91Z2hfbWRzKGRlc2MsIGRh
+dGEpOwo+PiDCoCDCoCDCoCB9CgoKCi0tIApUaGFua3MsClRhbwo=
