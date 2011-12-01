@@ -1,98 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55071 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753613Ab1LYSTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 25 Dec 2011 13:19:51 -0500
-Date: Sun, 25 Dec 2011 13:19:48 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: file locking fix for 3.2
-Message-ID: <20111225181948.GA26288@fieldses.org>
-References: <20111224215012.GA23495@fieldses.org>
- <20111224225525.GR23916@ZenIV.linux.org.uk>
- <20111224235035.GA23711@fieldses.org>
- <20111225000542.GS23916@ZenIV.linux.org.uk>
+Received: from smtp1.onthe.net.au ([203.22.196.249]:48709 "EHLO
+	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750726Ab1LAFc7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 00:32:59 -0500
+Date: Thu, 1 Dec 2011 16:32:55 +1100
+From: Chris Dunlop <chris@onthe.net.au>
+To: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: David Howells <dhowells@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Jan Harkes <jaharkes@cs.cmu.edu>,
+        "maintainer@onthe.net.au:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        Greg Kroah-Hartman <gregkh@suse.de>,
+        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        codalist@TELEMANN.coda.cs.cmu.edu,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
+Message-ID: <20111201053255.GA6831@onthe.net.au>
+References: <20111130071319.GA16711@onthe.net.au>
+ <1321861008-20611-1-git-send-email-chris@onthe.net.au>
+ <20111129082501.GA569@onthe.net.au>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
+ <24960.1322643283@redhat.com>
+ <20111201004709.GA26085@onthe.net.au>
+ <4ED6E4EF.7050101@oracle.com>
+ <20111201033346.GA1049@onthe.net.au>
+ <4ED6FA2C.7010005@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111225000542.GS23916@ZenIV.linux.org.uk>
+In-Reply-To: <4ED6FA2C.7010005@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 25, 2011 at 12:05:42AM +0000, Al Viro wrote:
-> On Sat, Dec 24, 2011 at 06:50:35PM -0500, J. Bruce Fields wrote:
+On Wed, Nov 30, 2011 at 09:53:16PM -0600, Dave Kleikamp wrote:
+> On 11/30/2011 09:33 PM, Chris Dunlop wrote:
+>> On Wed, Nov 30, 2011 at 08:22:39PM -0600, Dave Kleikamp wrote:
+>>> On 11/30/2011 06:47 PM, Chris Dunlop wrote:
+>>>>> It's also worth printing a message - this *is* a kernel bug of some description
+>>>>> if it happens.
+>>>>
+>>>> Like the below?  This covers the d_revalidate for 9p, afs, coda,
+>>>> hfs, ncpfs, proc, sysfs.
+>>>>
+>>>> Note:  jfs isn't susceptible to this problem, but the resolution
+>>>> doesn't look like the other file systems, and from the comment
+>>>> I'm not sure if the problem was really understood and if it's
+>>>> doing the right thing:
+>>>
+>>> This code, as well as the comments, were copied from vfat. It seems
+>>> reasonable for case-insensitive but case-preserving behavior (not jfs's
+>>> default). The safe thing is to drop the negative dentry if we don't know
+>>> the operation.
+>> 
+>> In that case, it looks like the thing to do might be to add the
+>> "protection" to the start of jfs_ci_revaliate(), per how the
+>> original has been changed in vfat:
 > 
-> > Then you're returning -ENOMEM in a case when we really didn't need to do
-> > an allocation, but is that really a problem?  It's a rare case, and
-> > opens can already fail with -ENOMEM for other reasons, and I'd rather
-> > not have the extra hair.
+> The LOOKUP_RCU check had previously been there, but Al Viro removed it:
 > 
-> I'm certainly OK with that variant; if the folks maintaining fs/locks.c
+> commit 5c0f360b083fb33d05d1bff4b138b82d715eb419
+> Author: Al Viro <viro@zeniv.linux.org.uk>
+> Date:   Sat Jun 25 21:41:09 2011 -0400
+> 
+>     jfs_ci_revalidate() is safe from RCU mode
+> 
+> I'm not sure what it takes to be "safe", but this is a simple function
+> that doesn't block, take locks, or do much of anything. You shouldn't
+> need to do anything with jfs.
+> 
+> Shaggy
 
-I've been more-or-less assuming that's me, not that I've been doing much
-real maintenance to speak of.
+OK, thanks.
 
-> are happy with it, I'd suggest going for it.  Note that you don't need
-> to touch locks_conflict() call at all if you bail out early on allocation
-> failure and it's definitely simpler and cleaner that way.
-
-Yep.
-
-With no more -rc, and no chance to test anything myself till I'm back
-from the holidays, my preference would be for Linus to merge the
-already-posted one-liner.  Then I can queue up the below for 3.3.
-
---b.
-
-commit 72acf27f6c20573d555d6b4450a7a9d41c4c9d5a
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Sun Dec 25 10:51:37 2011 -0700
-
-    locks: simplify allocation in break_lease
-    
-    The code bends over backwards to avoid returning -ENOMEM in cases where
-    the allocation wasn't really necessary.
-    
-    But there's nothing really *wrong* with returning -ENOMEM in those
-    cases: break_lease callers can already return -ENOMEM for other reasons.
-    So let's not take so much trouble over a rare case, and keep the code
-    simpler.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/locks.c b/fs/locks.c
-index 96a487a..0bd1745 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1205,6 +1205,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
- 
- 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
-+	if (IS_ERR(new_fl))
-+		return PTR_ERR(new_fl);
- 
- 	lock_flocks();
- 
-@@ -1214,19 +1216,13 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	if ((flock == NULL) || !IS_LEASE(flock))
- 		goto out;
- 
--	if (flock->fl_type == F_RDLCK && !want_write)
--		goto out; /* no conflict */
-+	if (!locks_conflict(flock, new_fl))
-+		goto out;
- 
- 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
- 		if (fl->fl_owner == current->files)
- 			i_have_this_lease = 1;
- 
--	if (IS_ERR(new_fl) && !i_have_this_lease
--			&& ((mode & O_NONBLOCK) == 0)) {
--		error = PTR_ERR(new_fl);
--		goto out;
--	}
--
- 	break_time = 0;
- 	if (lease_break_time > 0) {
- 		break_time = jiffies + lease_break_time * HZ;
+Chris
