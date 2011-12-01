@@ -1,146 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54535 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755096Ab1KAXHb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2011 19:07:31 -0400
+Received: from acsinet15.oracle.com ([141.146.126.227]:52060 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753451Ab1LADyE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 22:54:04 -0500
+Message-ID: <4ED6FA2C.7010005@oracle.com>
+Date: Wed, 30 Nov 2011 21:53:16 -0600
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] nfs: open-associated setattr shouldn't invalidate own cache
-Date: Tue, 1 Nov 2011 16:07:27 -0700
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430BDE7BC5@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111101202715.GB1891@fieldses.org>
-References: <02f301cc45a8$1ad15db6$78be630a@hq.netapp.com> <20111101202715.GB1891@fieldses.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>
+To: Chris Dunlop <chris@onthe.net.au>
+CC: David Howells <dhowells@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Jan Harkes <jaharkes@cs.cmu.edu>,
+        "\"maintainer@onthe.net.au\":CODA FILE SYSTEM" <coda@cs.cmu.edu>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        Greg Kroah-Hartman <gregkh@suse.de>,
+        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        codalist@TELEMANN.coda.cs.cmu.edu,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
+References: <20111130071319.GA16711@onthe.net.au> <1321861008-20611-1-git-send-email-chris@onthe.net.au> <20111129082501.GA569@onthe.net.au> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com> <24960.1322643283@redhat.com> <20111201004709.GA26085@onthe.net.au> <4ED6E4EF.7050101@oracle.com> <20111201033346.GA1049@onthe.net.au>
+In-Reply-To: <20111201033346.GA1049@onthe.net.au>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Tuesday, November 01, 2011 4:27 PM
-> To: Myklebust, Trond
-> Cc: J. Bruce Fields; Myklebust, Trond; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH] nfs: open-associated setattr shouldn't invalidate
-own
-> cache
+
+
+On 11/30/2011 09:33 PM, Chris Dunlop wrote:
+> On Wed, Nov 30, 2011 at 08:22:39PM -0600, Dave Kleikamp wrote:
+>> On 11/30/2011 06:47 PM, Chris Dunlop wrote:
+>>>> It's also worth printing a message - this *is* a kernel bug of some description
+>>>> if it happens.
+>>>
+>>> Like the below?  This covers the d_revalidate for 9p, afs, coda,
+>>> hfs, ncpfs, proc, sysfs.
+>>>
+>>> Note:  jfs isn't susceptible to this problem, but the resolution
+>>> doesn't look like the other file systems, and from the comment
+>>> I'm not sure if the problem was really understood and if it's
+>>> doing the right thing:
+>>
+>> This code, as well as the comments, were copied from vfat. It seems
+>> reasonable for case-insensitive but case-preserving behavior (not jfs's
+>> default). The safe thing is to drop the negative dentry if we don't know
+>> the operation.
 > 
-> On Mon, Jul 18, 2011 at 08:09:15PM -0400, Myklebust, Trond wrote:
-> > We should already optimize away the unnecessary setting of the size.
+> In that case, it looks like the thing to do might be to add the
+> "protection" to the start of jfs_ci_revaliate(), per how the
+> original has been changed in vfat:
+
+The LOOKUP_RCU check had previously been there, but Al Viro removed it:
+
+commit 5c0f360b083fb33d05d1bff4b138b82d715eb419
+Author: Al Viro <viro@zeniv.linux.org.uk>
+Date:   Sat Jun 25 21:41:09 2011 -0400
+
+    jfs_ci_revalidate() is safe from RCU mode
+
+I'm not sure what it takes to be "safe", but this is a simple function
+that doesn't block, take locks, or do much of anything. You shouldn't
+need to do anything with jfs.
+
+Shaggy
+
 > 
-> Do you remember what commit fixed that?  (Was it an nfs change or a
-vfs
-> change?)
-
-It predates the git repository. See the comment about "Optimization:" in
-nfs_setattr().
-
-> > The problem is that truncate() still requires you to set the ctime,
-whereas
-> ftruncate() does not iirc.
+> fs/fat/namei_vfat.c:
+> static int vfat_revalidate_ci(struct dentry *dentry, struct nameidata *nd)
+> {
+>         if (nd && nd->flags & LOOKUP_RCU)
+>                 return -ECHILD;
+>         ...
+> }
 > 
-> Staring at the code....  I think you mean the opposite?  I notice
-> do_sys_ftruncate() calling
+> E.g.:
 > 
-> 	do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME, file);
+> ----------------------------------------------------------------------
+> Don't oops when abused by broken layered file systems
 > 
-> and do_sys_truncate() calling
+> Signed-off-by: Chris Dunlop <chris@onthe.net.au>
+> ---
+>  fs/jfs/namei.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
 > 
-> 	do_truncate(path.dentry, length, 0, NULL);
-> 
-> where the third argument is getting OR'd with ATTR_FILE to pass into
-> notify_change().
-
-Sorry, yes. ftruncate() is the one that unconditionally sets the
-mtime/ctime on success according to the POSIX spec.
-
-> Also even when a setattr does get through, I don't understand why it
-should
-> be invalidating our data cache.  Is there some reason it needs to, or
-is this just
-> a case that hasn't seemed worth fixing?
-
-Is the problem perhaps that we should be clearing the
-NFS_INO_INVALID_DATA flag in nfs_vmtruncate() when the size gets set to
-zero?
-
-The other micro-optimisation that we might want to consider is to not
-set NFS_INO_INVALID_DATA in nfs_update_inode() if inode->i_data.nrpages
-== 0.
-
-Cheers
-  Trond 
-
-> > "J. Bruce Fields" <bfields@redhat.com> wrote:
-> >
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> >
-> > We recently noticed that NFSv4 iozone read tests that should have
-been
-> > performing at local-cache speeds were running at wire speeds, and
-> > found that currently,
-> >
-> > 	open(O_RDWR|O_TRUNC)
-> > 	write()
-> > 	close()
-> > 	open(O_RDONLY)
-> > 	read()
-> >
-> > results in an over-the-wire read (due to a setattr triggered by
-> > O_TRUNC).  Even non-O_TRUNC opens send setattrs (of timestamps) in
-> > some cases, causing the same problem.
-> >
-> > In discussion with Trond, he blames a VFS bug for breaking what
-should
-> > be a single open into an open followed by a setattr.
-> >
-> > However, it may make sense even in a case like
-> >
-> > 	open(O_RDWR)
-> > 	write()
-> > 	setattr()
-> > 	close()
-> > 	open(O_RDONLY)
-> > 	read()
-> >
-> > to treat the setattr similarly to the write, and not invalidate the
-> > client's own cache as long as the setattr is performed under a write
-> > open.
-> >
-> > (That said, I don't know if this is the correct place in the code to
-> > implement that behavior.)
-> >
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/nfs/inode.c |    7 ++++++-
-> >  1 files changed, 6 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c index 6f4850d..d4eed06
-> > 100644
-> > --- a/fs/nfs/inode.c
-> > +++ b/fs/nfs/inode.c
-> > @@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr
-> *attr)
-> >  	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
-> >  		nfs_inode_return_delegation(inode);
-> >  	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
-> > -	if (error == 0)
-> > +	if (error)
-> > +		goto out_free;
-> > +	if (attr->ia_valid & ATTR_FILE)
-> > +		nfs_post_op_update_inode_force_wcc(inode, fattr);
-> > +	else
-> >  		nfs_refresh_inode(inode, fattr);
-> > +out_free:
-> >  	nfs_free_fattr(fattr);
-> >  out:
-> >  	return error;
-> > --
-> > 1.7.6
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in the body of a message to majordomo@vger.kernel.org More
-> majordomo
-> > info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
+> index e17545e..5504f6e 100644
+> --- a/fs/jfs/namei.c
+> +++ b/fs/jfs/namei.c
+> @@ -1585,6 +1585,9 @@ out:
+>  
+>  static int jfs_ci_revalidate(struct dentry *dentry, struct nameidata *nd)
+>  {
+> +	if (nd && nd->flags & LOOKUP_RCU)
+> +		return -ECHILD;
+> +
+>  	/*
+>  	 * This is not negative dentry. Always valid.
+>  	 *
