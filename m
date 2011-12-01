@@ -1,117 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:49718 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933031Ab1LFNbQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 08:31:16 -0500
-Received: by bkbzv3 with SMTP id zv3so3483584bkb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 05:31:15 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:48457 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755024Ab1LAWqn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 17:46:43 -0500
+Date: Thu, 1 Dec 2011 17:46:40 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Ben Greear <greearb@candelatech.com>
+Subject: Re: [PATCH 2/2] svcrpc: avoid memory-corruption on pool shutdown
+Message-ID: <20111201224640.GB8091@fieldses.org>
+References: <20111130233925.GA354@fieldses.org>
+ <20111130234009.GB354@fieldses.org>
+ <20111201072024.5b3d0324@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <4EDDFBCD.3010608@tonian.com>
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
-	<4EDB6AA3.1030702@tonian.com>
-	<20111206020851.GA4486@fieldses.org>
-	<4EDDFBCD.3010608@tonian.com>
-Date: Tue, 6 Dec 2011 14:31:14 +0100
-Message-ID: <CAGue13r9EZJLco0OsfoPH4eyn7Txa0OJqBPavw5cFoiBPN3=2g@mail.gmail.com>
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111201072024.5b3d0324@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 6, 2011 at 12:26 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2011-12-06 04:08, J. Bruce Fields wrote:
->> On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
->>> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
->>>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>>>
->>>>
->>>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>>> ---
->>>>  fs/nfsd/nfs4proc.c  |    6 ++++++
->>>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
->>>>  2 files changed, 26 insertions(+), 6 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>> index fa38336..535aed2 100644
->>>> --- a/fs/nfsd/nfs4proc.c
->>>> +++ b/fs/nfsd/nfs4proc.c
->>>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>      */
->>>>     status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
->>>>     WARN_ON(status && open->op_created);
->>>> +
->>>> +   if(status)
->>>> +           goto out;
->>>> +
->>>> +   /* set current state id */
->>>> +   memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
->>
->> That comment is a bit redundant.
->>
->>> Since this should be done for all stateid-returning operations
->>> I think that a cleaner approach could be to mark those as such in
->>> nfsd4_ops by providing a per-op function to return the operation's
->>> stateid.  You can then call this method from nfsd4_proc_compound()
->>> after the call to nfsd4_encode_operation() and when status == 0.
->>
->> So the choice is between
->>
->> +       memcpy(&cstate->current_stateid, &open->op_stateid,
->> sizeof(stateid_t));
->>
->> and
->>
->> +       static void get_open_stateid(stateid_t *s)
->> +       {
->> +               memcpy(s, open->op_stateid);
->> +       }
->> +
->> +       [OP_OPEN] = {
->> +               ...
->> +               .op_get_stateid = get_open_stateid,
->> +               ...
->> +       }
->>
->> ?
->>
->> I'm not so sure.
->
-> The point is to copy the result stateid into the current_stateid
-> in a centralized place: nfsd4_proc_compound() and do that for all
-> stateid-modifying operations.
+On Thu, Dec 01, 2011 at 07:20:24AM -0500, Jeff Layton wrote:
+> On Wed, 30 Nov 2011 18:40:09 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >  void svc_close_all(struct svc_serv *serv)
+> >  {
+> > +	struct svc_pool *pool;
+> > +	struct svc_xprt *xprt;
+> > +	struct svc_xprt *tmp;
+> > +	int i;
+> > +
+> >  	svc_close_list(&serv->sv_tempsocks);
+> >  	svc_close_list(&serv->sv_permsocks);
+> > +
+> > +	for (i = 0; i < serv->sv_nrpools; i++) {
+> > +		pool = &serv->sv_pools[i];
+> > +
+> > +		spin_lock_bh(&pool->sp_lock);
+> > +		while (!list_empty(&pool->sp_sockets)) {
+> > +			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
+> > +			list_del_init(&xprt->xpt_ready);
+> > +		}
+> > +		spin_unlock_bh(&pool->sp_lock);
+> > +	}
+> > +	/*
+> > +	 * At this point the sp_sockets lists will stay empty, since
+> > +	 * svc_enqueue will not add new entries without taking the
+> > +	 * sp_lock and checking XPT_BUSY.
+> > +	 */
+> > +	list_for_each_entry_safe(xprt, tmp, &serv->sv_tempsocks, xpt_list)
+> > +		svc_delete_xprt(xprt);
+> > +	list_for_each_entry_safe(xprt, tmp, &serv->sv_permsocks, xpt_list)
+> > +		svc_delete_xprt(xprt);
+> > +
+> 
+> I'm always a little suspicious when I see walking and manipulating a
+> list outside of any locking.
 
-Sounds good, nevertheless all operations call differently resulting
-stateid which make it's not possible to use a unified schema.
+With good reason.
 
-Regards,
-   Tigran.
+> Can you convince me as to why it's safe to do the above?
 
->
->>
->> Anyway, thanks Tigran for looking at this.
->>
->> Do we want to guarantee that the client can't expire as long as a
->> compound references the stateid?  I think that's the case.
->
-> The client can't time out while the 4.1 compound is in progress, see commit d768298.
-> Are you thinking of explicit expiration of the client?
-> We may unhash the client and keep using it while it's referenced
-> so that's not a problem.  As far as the stateid goes, we're copying the
-> value of the stateid, not pointing to any stateid structure.  If the
-> actual state was destroyed, we will detect that when the current_stateid
-> is used by any successive operation and we cannot find the state using
-> the stateid.
->
-> Benny
->
->>
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+After entirely too much grepping....
+
+The server keeps its listeners on sv_permsocks, and individual client
+connections on sv_tempsocks.
+
+The tempsocks list:
+	- has a new xprt added when we accept a new connection.  This is
+	  done by a server thread in svc_recv().  (Also
+	  svc_check_conn_limits() may decide to remove an old connection
+	  at the same time.)
+	- has xprts removed by svc_age_temp_xprts, called from
+	  sv_temptimer.
+
+But svc_close_all() is called only after all server threads are gone
+and after sv_temptimer has been stopped by a del_timer_sync().  So we're
+safe from either of the above.
+
+Great!  But:
+
+The more irritating code is the code that's run on server startup and
+configuration: svc_sock_update_bufs, nfsd_init_socks, svc_find_xprt,
+svc_xprt_names, svc_create_xprt, svc_sock_names, and svc_addsock all
+modify or traverse these two lists.  I believe the callers should all be
+holding a mutex (normally nfsd_mutex, or nlmsvc_mutex or
+nfs_callback_mutex as appropriate).  But not all of them are (e.g.
+addfd, addxprt are fishy).
+
+So, anyway: my inclination for now is to update this patch with a few
+comments but leave it otherwise the same.
+
+The remaining races look easier to avoid, as they'd only happen if
+userspace was doing something odd like trying to give nfsd another
+socket to listen on from one process while simultaneously shutting it
+down from another.
+
+But server startup and shutdown has always been fuzzy and kinda fragile.
+And it will probably need a harder look anyway for containerization.  So
+I'll take a harder look at that next....
+
+--b.
+
+> 
+> list_for_each_entry_safe just makes it safe to remove "xprt" from the
+> list essentially by preloading "tmp". What prevents another task from
+> removing "tmp" while you're busy dealing with "xprt"? Or from putting a
+> new socket onto the list at that point?
+> 
+> >  	BUG_ON(!list_empty(&serv->sv_permsocks));
+> >  	BUG_ON(!list_empty(&serv->sv_tempsocks));
+> > -
+> >  }
+> >  
+> >  /*
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
