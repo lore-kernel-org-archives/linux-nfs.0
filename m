@@ -1,38 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:50805 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426Ab1LIT7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 14:59:33 -0500
-Received: by qcqz2 with SMTP id z2so2474165qcq.19
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Dec 2011 11:59:32 -0800 (PST)
-Message-ID: <4EE26823.5060904@gmail.com>
-Date: Fri, 09 Dec 2011 14:57:23 -0500
-From: Ric Wheeler <ricwheeler@gmail.com>
-MIME-Version: 1.0
-To: tigran.mkrtchyan@desy.de
-CC: Sorin Faibish <sfaibish@emc.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        "honey@citi.umich.edu" <honey@citi.umich.edu>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Subject: Re: Slides from the pNFS BoF we delivered at LISA 11
-References: <op.v565hhwurwwil4@sfaibish1.corp.emc.com> <CAGue13qDMjgTFm7esMKTxwMMqGYpchuoT8OgKWAeidN-9-y+0g@mail.gmail.com>
-In-Reply-To: <CAGue13qDMjgTFm7esMKTxwMMqGYpchuoT8OgKWAeidN-9-y+0g@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:64494 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755422Ab1LAQsY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 11:48:24 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 0/4] NFS: Modularize NFS v3
+Date: Thu,  1 Dec 2011 11:48:18 -0500
+Message-Id: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/09/2011 01:55 AM, Tigran Mkrtchyan wrote:
-> Hi Sorin,
->
-> slides are missing.
->
-> Tigran.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Steve posted them at:
+This set of patches removes NFS v3 from the main NFS kernel module and creates
+a new module containing the proc, xdr, and acl code.  This will give us a
+single directory to put NFS v3 specific code so it doesn't need to be mixed in
+with the generic client stuff.
 
-http://people.redhat.com/steved/Lisa-11/LISA-11-pNFS-BoF-final.pdf
+I'm sure this could still use a lot of work, but I figured I would wait to see
+what everybody thinks first.  I imagine that once we get an "nfs submodule"
+system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+modules.
 
-Ric
+I split the second patch into two to make it easier to see what my changes were
+to get everything to compile.  Hopefully this will save some pain in having to
+look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+command.  I can combine everything in a future version of the patch.
 
+v2:
+  - I set the "diff.renames copy" git config option to create a smaller second
+    patch.  Maybe this time it won't get me kicked off the mailing list...
+    Thanks to Boaz and Jim for the tip!
+
+Thoughts?
+
+- Bryan
 
