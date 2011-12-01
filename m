@@ -1,70 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-1.desy.de ([131.169.56.84]:33959 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753638Ab1LLUbq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:31:46 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id D27341830
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id C80F913F1E
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta14099056383a9615f1458@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Mon, 12 Dec 2011 21:31:44 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:33942 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756171Ab1LATUh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 14:20:37 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 2/3] client: test LOCK+WRITE+LOCKU in a single compound
-Date: Mon, 12 Dec 2011 21:26:27 +0100
-Message-Id: <1323721588-8259-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: [PATCH 1/2] SUNRPC: Fix the execution time statistics in the face of RPC restarts
+Date: Thu,  1 Dec 2011 14:20:16 -0500
+Message-Id: <1322767217-11539-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If the rpc_task gets restarted, then we want to ensure that we don't
+double-count the execution time statistics, timeout data, etc.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- nfs4.1/server41tests/st_open.py |   27 ++++++++++++++++++++++++++-
- 1 files changed, 26 insertions(+), 1 deletions(-)
+ net/sunrpc/sched.c |   30 +++++++++++++++++++++++-------
+ 1 files changed, 23 insertions(+), 7 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-index c809c95..6c991c8 100644
---- a/nfs4.1/server41tests/st_open.py
-+++ b/nfs4.1/server41tests/st_open.py
-@@ -290,4 +290,29 @@ def testOpenWriteClose(t, env):
-     open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-     res = sess1.compound(open_op + [op.write(current_stateid, 5, FILE_SYNC4, data),
-         op.close(0, current_stateid)])
--    check(res, NFS4_OK)
-\ No newline at end of file
-+    check(res, NFS4_OK)
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index d12ffa5..00a1a2a 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -590,6 +590,27 @@ void rpc_prepare_task(struct rpc_task *task)
+ 	task->tk_ops->rpc_call_prepare(task, task->tk_calldata);
+ }
+ 
++static void
++rpc_init_task_statistics(struct rpc_task *task)
++{
++	/* Initialize retry counters */
++	task->tk_garb_retry = 2;
++	task->tk_cred_retry = 2;
++	task->tk_rebind_retry = 2;
 +
-+def testLockWriteLocku(t, env):
-+    """test current state id processing by having LOCK, WRITE and LOCKU
-+       in a single compound
++	/* starting timestamp */
++	task->tk_start = ktime_get();
++}
 +
-+    FLAGS: open all
-+    CODE: OPEN34
-+    """
-+    current_stateid = stateid4(1, '\0' * 12)
-+    sess1 = env.c1.new_client_session(env.testname(t))
++static void
++rpc_reset_task_statistics(struct rpc_task *task)
++{
++	task->tk_timeouts = 0;
++	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_KILLED|RPC_TASK_SENT);
 +
-+    res = create_file(sess1, env.testname(t))
-+    check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
++	rpc_init_task_statistics(task);
++}
 +
-+    data = "write test data"
-+    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
-+    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
-+    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
-+        op.write(current_stateid, 5, FILE_SYNC4, data),
-+        op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX),
-+        op.close(0, stateid)]
-+    res = sess1.compound([op.putfh(fh)] + lock_ops)
-+    check(res, NFS4_OK)
+ /*
+  * Helper that calls task->tk_ops->rpc_call_done if it exists
+  */
+@@ -602,6 +623,7 @@ void rpc_exit_task(struct rpc_task *task)
+ 			WARN_ON(RPC_ASSASSINATED(task));
+ 			/* Always release the RPC slot and buffer memory */
+ 			xprt_release(task);
++			rpc_reset_task_statistics(task);
+ 		}
+ 	}
+ }
+@@ -804,11 +826,6 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
+ 	task->tk_calldata = task_setup_data->callback_data;
+ 	INIT_LIST_HEAD(&task->tk_task);
+ 
+-	/* Initialize retry counters */
+-	task->tk_garb_retry = 2;
+-	task->tk_cred_retry = 2;
+-	task->tk_rebind_retry = 2;
+-
+ 	task->tk_priority = task_setup_data->priority - RPC_PRIORITY_LOW;
+ 	task->tk_owner = current->tgid;
+ 
+@@ -818,8 +835,7 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
+ 	if (task->tk_ops->rpc_call_prepare != NULL)
+ 		task->tk_action = rpc_prepare_task;
+ 
+-	/* starting timestamp */
+-	task->tk_start = ktime_get();
++	rpc_init_task_statistics(task);
+ 
+ 	dprintk("RPC:       new task initialized, procpid %u\n",
+ 				task_pid_nr(current));
 -- 
-1.7.7
+1.7.7.3
 
