@@ -1,64 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:23540 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757359Ab1LWOyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Dec 2011 09:54:09 -0500
-Subject: [PATCH 2/3] Lockd: don't mark freshly created sockets with XPT_CHNGBUF
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 23 Dec 2011 18:53:41 +0300
-Message-ID: <20111223145341.847.84279.stgit@localhost6.localdomain6>
-In-Reply-To: <20111223145145.847.46221.stgit@localhost6.localdomain6>
-References: <20111223145145.847.46221.stgit@localhost6.localdomain6>
+Received: from mail-vw0-f46.google.com ([209.85.212.46]:64779 "EHLO
+	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755712Ab1LAStl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 13:49:41 -0500
+Date: Thu, 1 Dec 2011 10:49:32 -0800
+From: Tejun Heo <tj@kernel.org>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, john@calva.com,
+        trond.myklebust@netapp.com, marek.belisko@gmail.com,
+        awilliam@redhat.com
+Subject: Re: [PATCH v4 0/2] nfs/sunrpc: allow freezing of tasks with NFS
+ calls in flight
+Message-ID: <20111201184932.GB13173@google.com>
+References: <1322570215-8570-1-git-send-email-jlayton@redhat.com>
+ <201111302043.13844.rjw@sisk.pl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201111302043.13844.rjw@sisk.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cleanup patch. XPT_CHNGBUF bit is set on UDP socket creation. Calling
-svc_sock_update_bufs from lockd after is redundant.
-Below is Lockd UDP sockets creating call trace:
+On Wed, Nov 30, 2011 at 08:43:13PM +0100, Rafael J. Wysocki wrote:
+> On Tuesday, November 29, 2011, Jeff Layton wrote:
+> > This patchset is the fourth attempt at fixing the issues with suspending
+> > a machine that has an active NFS mount.
+> > 
+> > The bug reported against Fedora is here:
+> > 
+> >     https://bugzilla.redhat.com/show_bug.cgi?id=717735
+> > 
+> > The main difference from v3 is that I've fixed a stupid set of errors in
+> > freezable_schedule_timeout_killable. The if condition was reversed from
+> > what it should have been, and the code did not call freezer_count()
+> > again when it was going to return early.
+> > 
+> > Tejun has mentioned that the extra try_to_freeze() calls are unnecessary
+> > on top of the pm-freezer changes, but this set should work on as
+> > expected on top of 3.2-ish kernels. In the meantime, I'll look over the
+> > pm-freezer changes and see whether I need to make changes in this set
+> > for 3.3.
+> > 
+> > Jeff Layton (2):
+> >   sunrpc: make rpc_wait_bit_killable handle freeze events
+> >   nfs: make TASK_KILLABLE sleeps attempt to freeze
+> 
+> Both patches applied to linux-pm/linux-next.  I'll move them to
+> linux-pm/pm-freezer in a couple of days if there are no problems with
+> them.
 
-lockd_up {
+Rafael, I think the extra try_to_freeze() is actually incorrect on top
+of pm-freezer.  Jeff, can you please remove that?
 
-make_socks
-create_lockd_family
-create_lockd_listener
-svc_create_xprt
-__svc_xpo_create
-svc_udp_create
-svc_create_socket
-svc_setup_socket
-svc_udp_init (raise XPT_CHNGBUF)
+Thanks.
 
-....
-
-svc_sock_update_bufs (raise XPT_CHNGBUF again)
-
-....
-
-}
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/lockd/svc.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index ff379ff..55fea92 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -292,7 +292,6 @@ int lockd_up(void)
- 		goto destroy_and_out;
- 	}
- 
--	svc_sock_update_bufs(serv);
- 	serv->sv_maxconn = nlm_max_connections;
- 
- 	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
-
+-- 
+tejun
