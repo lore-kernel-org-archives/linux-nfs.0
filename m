@@ -1,54 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37029 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45190 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751507Ab1KJUnG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Nov 2011 15:43:06 -0500
-Message-ID: <1320957784.11956.16.camel@lade.trondhjem.org>
-Subject: Re: unexpected NFS timeouts, related to sync/async soft mounts over
- TCP
+	id S1753377Ab1LACYU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 21:24:20 -0500
+Message-ID: <1322706258.2646.6.camel@lade.trondhjem.org>
+Subject: Re: Rename dir on server can cause client to get ESTALE - this time
+ with PATCH
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andrew Cooper <andrew.cooper3@citrix.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Date: Thu, 10 Nov 2011 15:43:04 -0500
-In-Reply-To: <4EBBF35B.5000606@citrix.com>
-References: <4EBAC88D.40902@citrix.com>
-	 <BEF32B02-0D19-4D97-8E93-C1797DF02CFE@oracle.com>
-	 <4EBBB247.40805@citrix.com>
-	 <2E3D3F87-479E-4096-B086-C8F83A0147B5@oracle.com>
-	 <4EBBF35B.5000606@citrix.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
+Date: Wed, 30 Nov 2011 21:24:18 -0500
+In-Reply-To: <20111201021251.GY2203@ZenIV.linux.org.uk>
+References: <20111114131929.7b341444@notabene.brown>
+	 <20111201124922.22e7d72f@notabene.brown>
+	 <20111201021251.GY2203@ZenIV.linux.org.uk>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-11-10 at 15:52 +0000, Andrew Cooper wrote: 
+On Thu, 2011-12-01 at 02:12 +0000, Al Viro wrote: 
+> On Thu, Dec 01, 2011 at 12:49:22PM +1100, NeilBrown wrote:
 > 
-> On 10/11/11 15:29, Chuck Lever wrote:
-> > On Nov 10, 2011, at 6:15 AM, Andrew Cooper wrote:
-> >
-> >> On 09/11/11 22:36, Chuck Lever wrote:
-> >>> On Nov 9, 2011, at 1:38 PM, Andrew Cooper wrote:
-> Sorry.  I am not sure I was clear.  An EIO does not present itself with
-> a hard mount, but a TCP FIN is still injected into the stream by the
-> client, causing 15 seconds of deadlock, eventually fixed by sending a
-> RST and restarting with a new TCP stream.  At this point, softmounts
-> throw an EIO while hardmounts restart and continue successfully.
+> > If the path was "/some/long/path/.", then the final component ("path" in
+> > this case) has already been revalidated and there is no particular
+> > need to do it again.
+> > 
+> > If we change nd->last_type to refer to "the last component looked at"
+> > rather than just "the last component", then these cases can be
+> > detected by "nd->last_type != LAST_NORM".
 > 
-> My problem is not the EIO on softmount or lack of EIO for hardmout, but
-> the fact that the client sees fit to try and close the TCP stream while
-> an apparently otherwise healthy NFS session is ongoing.
+> This is just plain wrong.  Let's *not* bring more dependencies on
+> nameidata into ->d_revalidate().  The goal is to get rid of it there...
+> 
+> FWIW, if you want a really nasty bug in that area, consider this:
+> 
+> mkdir /tmp/a
+> mkdir /tmp/b
+> echo "local file" >/tmp/x
+> mount -t nfs4 $SOMETHING /tmp/a
+> mount -t nfs4 $SOMETHING /tmp/b
+> echo "NFS file" >/tmp/a/x
+> mount --bind /tmp/x /tmp/a/x
+> 
+> now try opening /tmp/b/x.  And watch the NFS traffic; there won't be OPEN
+> request for x on server.  Why?  Because NFS sees that x is a mountpoint in
+> *some* instance of that filesystem.  And decides that opening it would be
+> wrong.  And so it would, if we were asked to open /tmp/a/x.  Alas, in this
+> case, while dentry is the same, it does *not* have anything mounted on it.
+> What we get is ->d_revalidate() returning without issuing OPEN and ->open()
+> being called - again, without issuing OPEN, since it assumes that ->lookup()
+> or ->d_revalidate() had done it for us.
+> 
+> Plain IO on resulting descriptor will work and work correcly (you'll get
+> "NFS file\n" read from it), but try to do F_SETLK on it and it'll fail
+> since that requires the server to have seen an OPEN.
 
-The client will attempt to close the TCP connection on any RPC level
-error. That can happen, e.g., if the server sends a faulty RPC/TCP
-record fragment header or some other garbage data.
+We can possibly fix this for the NFSv4.1 case since that adds support
+for open-by-filehandle. However, I agree that NFSv4.0 is unfixable: all
+OPENs are required to do the equivalent of a lookup, which isn't
+possible in the bind mount case.
 
-I'm assuming that you've checked that the TCP parameters are set to sane
-values for a 10GigE connection (i.e. tcp_timestamps is on) so that there
-is no corruption happening at that level?
+> As far as I can tell, the idea of open done in ->d_revalidate() is
+> unsalvagable.  It's simply the wrong place for that.  Note that NFS
+> is the only filesystem trying to do atomic open stuff in its ->d_revalidate()
+> and it's not succeeding.
 
-Cheers
-  Trond
+Not doing an open there is prohibitively expensive, though: you are
+likely to see your cached inode flushed down the toilet if you just drop
+the dentry...
+
 -- 
 Trond Myklebust
 Linux NFS client maintainer
