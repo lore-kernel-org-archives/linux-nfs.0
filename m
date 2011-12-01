@@ -1,126 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31338 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:21352 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755213Ab1LZLoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Dec 2011 06:44:22 -0500
-Subject: [PATCH v2 4/6] SUNPRC: cleanup RPC PipeFS pipes upcall interface
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 26 Dec 2011 15:43:49 +0300
-Message-ID: <20111226114349.13743.27944.stgit@localhost6.localdomain6>
-In-Reply-To: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
-References: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+	id S1753527Ab1LAVFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 16:05:05 -0500
+Message-ID: <4ED7EBFF.6030706@RedHat.com>
+Date: Thu, 01 Dec 2011 16:05:03 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: bjschuma@netapp.com
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
+References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RPC pipe upcall doesn't requires only private pipe data. Thus RPC inode
-references in this code can be removed.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
----
- fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
- fs/nfs/blocklayout/blocklayoutdm.c  |    2 +-
- fs/nfs/idmap.c                      |    4 ++--
- include/linux/sunrpc/rpc_pipe_fs.h  |    2 +-
- net/sunrpc/auth_gss/auth_gss.c      |    3 +--
- net/sunrpc/rpc_pipe.c               |    3 +--
- 6 files changed, 7 insertions(+), 9 deletions(-)
+On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> This set of patches removes NFS v3 from the main NFS kernel module and creates
+> a new module containing the proc, xdr, and acl code.  This will give us a
+> single directory to put NFS v3 specific code so it doesn't need to be mixed in
+> with the generic client stuff.
+> 
+> I'm sure this could still use a lot of work, but I figured I would wait to see
+> what everybody thinks first.  I imagine that once we get an "nfs submodule"
+> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+> modules.
+> 
+> I split the second patch into two to make it easier to see what my changes were
+> to get everything to compile.  Hopefully this will save some pain in having to
+> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+> command.  I can combine everything in a future version of the patch.
+> 
+> v2:
+>   - I set the "diff.renames copy" git config option to create a smaller second
+>     patch.  Maybe this time it won't get me kicked off the mailing list...
+>     Thanks to Boaz and Jim for the tip!
+> 
+> Thoughts?
+Now what is the motivating reason behind this re-architecture
+other than making the upstream kernel literally impossible to 
+back port to older kernels?? 
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index d08ba91..8101919 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -146,7 +146,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
- 	add_wait_queue(&bl_wq, &wq);
--	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
-+	rc = rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg);
- 	if (rc < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
- 		rv = ERR_PTR(rc);
-diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-index d055c75..3c38244 100644
---- a/fs/nfs/blocklayout/blocklayoutdm.c
-+++ b/fs/nfs/blocklayout/blocklayoutdm.c
-@@ -66,7 +66,7 @@ static void dev_remove(dev_t dev)
- 	msg.len = sizeof(bl_msg) + bl_msg.totallen;
- 
- 	add_wait_queue(&bl_wq, &wq);
--	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&bl_wq, &wq);
- 		goto out;
- 	}
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 47d1c6f..4194129 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -506,7 +506,7 @@ nfs_idmap_id(struct idmap *idmap, struct idmap_hashtable *h,
- 	msg.len = sizeof(*im);
- 
- 	add_wait_queue(&idmap->idmap_wq, &wq);
--	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&idmap->idmap_wq, &wq);
- 		goto out;
- 	}
-@@ -567,7 +567,7 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
- 
- 	add_wait_queue(&idmap->idmap_wq, &wq);
- 
--	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
-+	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
- 		remove_wait_queue(&idmap->idmap_wq, &wq);
- 		goto out;
- 	}
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index c2fa330..ad78bea 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -64,7 +64,7 @@ extern void rpc_put_sb_net(const struct net *net);
- 
- extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
- 				       char __user *, size_t);
--extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
-+extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
- extern struct dentry *rpc_create_client_dir(struct dentry *, struct qstr *, struct rpc_clnt *);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 89fc914..5ba678d 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -475,8 +475,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
- 		return gss_new;
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
--		struct inode *inode = &gss_new->inode->vfs_inode;
--		int res = rpc_queue_upcall(inode, &gss_new->msg);
-+		int res = rpc_queue_upcall(gss_new->inode->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index cecdc1f..dc24af3 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -130,9 +130,8 @@ EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcall);
-  * initialize the fields of @msg (other than @msg->list) appropriately.
-  */
- int
--rpc_queue_upcall(struct inode *inode, struct rpc_pipe_msg *msg)
-+rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- {
--	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
- 	int res = -EPIPE;
- 
- 	spin_lock(&pipe->lock);
-
+steved.
