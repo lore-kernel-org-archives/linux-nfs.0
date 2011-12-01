@@ -1,66 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50377 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932481Ab1LEXd6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 18:33:58 -0500
-Message-ID: <1323128020.7237.3.camel@lade.trondhjem.org>
-Subject: Re: Help wanted: ENOCLK returned during lock test#2 in
- connectathon's test
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: DENIEL Philippe <philippe.deniel@cea.fr>
-Cc: Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        NFS list <linux-nfs@vger.kernel.org>
-Date: Mon, 05 Dec 2011 18:33:40 -0500
-In-Reply-To: <4EDCCC89.6080205@cea.fr>
-References: <4EDCCC89.6080205@cea.fr>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:47327 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755356Ab1LAQ7z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 11:59:55 -0500
+Received: by yenl6 with SMTP id l6so1875424yen.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2011 08:59:54 -0800 (PST)
+Message-ID: <4ED7B287.4010802@gmail.com>
+Date: Thu, 01 Dec 2011 10:59:51 -0600
+From: Bruce Dubbs <bruce.dubbs@gmail.com>
+MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs server issues
+References: <4ED6BCEA.9050000@gmail.com> <4ED77E8E.2040304@RedHat.com>
+In-Reply-To: <4ED77E8E.2040304@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-12-05 at 14:52 +0100, DENIEL Philippe wrote: 
-> Hi,
+Steve Dickson wrote:
 > 
-> as you may know (we may have met at Bake-A-Thon), I am working on 
-> NFS-Ganesha, a NFS server running in userspace. I currently face an 
-> issue when running cthon04 test suite, during the "lock step".
-> Client is linux 3.1.0-rc4, server is nfs-ganesha compiled with FSAL_VFS 
-> support. Server is mounted via command "mount 
-> -overs=4.minorversion=1,lock <server>:<path> /mnt"
-> 
-> During the test#2 in "lock" tests, I got the following error:
-> 
->     Creating parent/child synchronization pipes.
-> 
->     Test #2 - Try to lock the whole file.
->             Parent: 2.0  - F_TLOCK [               0,          ENDING]
->     FAILED!
->             Parent: **** Expected success, returned errno=37...
->             Parent: **** Probably implementation error.
-> 
->     ** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
-> 
->     **  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
-> 
-> 
-> I made a wireshark capture of the packet (see attachement). Apparently, 
-> the client does 2 compounds, one for OP4_OPEN and a second to call 
-> OP4_OPEN_CONFIRM.
+> On 11/30/2011 06:31 PM, Bruce Dubbs wrote:
 
-Hi Philippe,
+>> I am trying to document the installation of nfs for Linux From
+ >> Scratch. The client works, but the server does not and I'm looking
+ >> for some help. If this is the wrong place to ask for help, please
+ >> redirect me.
 
-As far as I can see from the pcap file, your server isn't setting the
-OPEN4_RESULT_LOCKTYPE_POSIX flag in the OPEN reply, and so the client
-can't support posix locking semantics. In that case, it will return
-ENOLCK to all fcntl locking requests.
+>> For now, I am only trying to get nfs version 3 to work.
+>>
+>> # mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
+>>    [ mounts OK ]
+>> # mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
+>> # mount.nfs: requested NFS version or transport protocol is not supported
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> The reason you getting the mounting error to localhost is because there are 
+> no NFS services registered with rpcbind. Note the lack of nfs entires in
+> your rpcinfo -p output. For the above mount to work you would need at least 
+> the following entry:
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+>   100003    3   tcp   2049  nfs
 
+> Figure out why that is not happening and you find the problem...
+
+Yes, I thought that might be the problem.  The hard part is figuring out 
+why.  I am running 'rpc.nfsd -p 2049 8' and I would think that would do 
+it, but it's not registering with rpcbind.  The actual nfsd daemon is 
+running in the kernel.
+
+I looked at the nfsd.c source and nfsdfs is mounted in /proc correctly.
+The threads seem to be started properly in nfssvc_threads() and there 
+are no error messages either on the terminal or in syslog.
+
+I'm just not familiar enough with the code to see where nfs is supposed 
+to register with rpcbind.  That's where I'm trying to get help.  I 
+suspect I've done something wrong with the build or configuration, but I 
+don't see where.  Is the kernel nfsd process supposed to register when 
+it starts?
+
+One other thing.  When I try to mount the share from a remote (older) 
+system, the error message is sightly different: "RPC Error: Program not 
+registered", but I think that means the same thing as above.
+
+   -- Bruce
