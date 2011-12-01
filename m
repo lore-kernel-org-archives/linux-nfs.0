@@ -1,66 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46163 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:2992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754552Ab1LLWmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 17:42:20 -0500
-Date: Mon, 12 Dec 2011 17:42:19 -0500
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] client: test OPEN+WRITE+CLOSE in a single compound
-Message-ID: <20111212224219.GC22927@fieldses.org>
-References: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754449Ab1LAVme (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 16:42:34 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4.1: Ensure that we handle _all_ SEQUENCE status bits.
+Date: Thu,  1 Dec 2011 16:42:23 -0500
+Message-Id: <1322775743-14870-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1322775743-14870-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1322775743-14870-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I already applied some previous version of these--could you check
+Currently, the code assumes that the SEQUENCE status bits are mutually
+exclusive. They are not...
 
-	git://linux-nfs.org/~bfields/pynfs.git
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org [>= 2.6.34]
+---
+ fs/nfs/nfs4state.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-and let me know if I got anything wrong?  (If so, incremental patches on
-top of that would be appreciated.
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1da95e3..da8d73e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1530,16 +1530,16 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
+ {
+ 	if (!flags)
+ 		return;
+-	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
++	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
+ 		nfs41_handle_server_reboot(clp);
+-	else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
++	if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
+ 			    SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED |
+ 			    SEQ4_STATUS_ADMIN_STATE_REVOKED |
+ 			    SEQ4_STATUS_LEASE_MOVED))
+ 		nfs41_handle_state_revoked(clp);
+-	else if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
++	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
+ 		nfs41_handle_recallable_state_revoked(clp);
+-	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
++	if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
+ 			    SEQ4_STATUS_BACKCHANNEL_FAULT |
+ 			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
+ 		nfs41_handle_cb_path_down(clp);
+-- 
+1.7.7.3
 
-Thanks--b.
-
-On Mon, Dec 12, 2011 at 09:26:26PM +0100, Tigran Mkrtchyan wrote:
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.1/server41tests/st_open.py |   16 ++++++++++++++++
->  1 files changed, 16 insertions(+), 0 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-> index 1c965b2..c809c95 100644
-> --- a/nfs4.1/server41tests/st_open.py
-> +++ b/nfs4.1/server41tests/st_open.py
-> @@ -275,3 +275,19 @@ def testLockLockU(t, env):
->  	op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX) ]
->      res = sess1.compound([op.putfh(fh)] + lock_ops)
->      check(res, NFS4_OK)
-> +
-> +def testOpenWriteClose(t, env):
-> +    """test current state id processing by having OPEN, WRITE and CLOSE
-> +       in a single compound
-> +
-> +    FLAGS: open all
-> +    CODE: OPEN33
-> +    """
-> +    current_stateid = stateid4(1, '\0' * 12)
-> +    sess1 = env.c1.new_client_session(env.testname(t))
-> +
-> +    data = "write test data"
-> +    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-> +    res = sess1.compound(open_op + [op.write(current_stateid, 5, FILE_SYNC4, data),
-> +        op.close(0, current_stateid)])
-> +    check(res, NFS4_OK)
-> \ No newline at end of file
-> -- 
-> 1.7.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
