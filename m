@@ -1,95 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:56229 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752328Ab1LYPZl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 10:25:41 -0500
-Message-ID: <4EF74056.2040306@panasas.com>
-Date: Sun, 25 Dec 2011 17:25:10 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:34906 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754069Ab1LAVzH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 16:55:07 -0500
+Message-ID: <4ED7F7B9.2090205@netapp.com>
+Date: Thu, 01 Dec 2011 16:55:05 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: Jim Rees <rees@umich.edu>, fanchaoting <fanchaoting@cn.fujitsu.com>,
-        Benny Halevy <benny@tonian.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
-References: <1323266927-3686-1-git-send-email-bhalevy@tonian.com> <4EF422A8.5070907@cn.fujitsu.com> <20111223132546.GA10015@umich.edu> <4EF6B516.5070609@tonian.com>
-In-Reply-To: <4EF6B516.5070609@tonian.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Steve Dickson <steved@redhat.com>
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
+References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com> <4ED7EBFF.6030706@RedHat.com>
+In-Reply-To: <4ED7EBFF.6030706@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/25/2011 07:31 AM, Benny Halevy wrote:
-> On 2011-12-23 15:25, Jim Rees wrote:
->> fanchaoting wrote:
+On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
+>
+>
+> On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
 >>
->>   Benny Halevy 写道:
->>   > I am trying to build a pnfs client on a 32 bit system  and the
->>   > pnfs-latest  kernel fails to compile. I get the following error
->>   > 
->>   >  >  Building modules, stage 2.
->>   >  >  TEST    posttest
->>   >  > MODPOST 2046 modules
->>   >  >ERROR: "__udivdi3" [crypto/xor.ko] undefined!
->>   >  >make[1]: *** [__modpost] Error 1
->>   >  >make: *** [modules] Error 2
->>   >  >make: *** Waiting for unfinished jobs....
->>   >  >Succeed: decoded and checked 1244492 instructions
->>   > 
->>   > Reported-by: Rita Sequeira <rita.prajval@gmail.com>
->>   > Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>   > ---
->>   > 
->>   > untested patch yet...
->>   > 
->>   >  crypto/xor.c |    3 ++-
->>   >  1 files changed, 2 insertions(+), 1 deletions(-)
->>   > 
->>   > diff --git a/crypto/xor.c b/crypto/xor.c
->>   > index 65433f5..2151ded 100644
->>   > --- a/crypto/xor.c
->>   > +++ b/crypto/xor.c
->>   > @@ -95,7 +95,8 @@
->>   >  
->>   >  	ns_end -= ns_begin;
->>   >  	if (ns_end > 0)
->>   > -		speed = BENCH_SIZE / 1024 * count * NSEC_PER_SEC / ns_end;
->>   > +		speed = BENCH_SIZE / 1024 * count *
->>   > +				(unsigned)(NSEC_PER_SEC / ns_end);
->>   >  	else
->>   >  		speed = 17;
->>   >  	tmpl->speed = speed;
->>   
->>   Hi,I also meet this problem ,but when  i use you patch ,i can't solve this
->>   problem.
+>> This set of patches removes NFS v3 from the main NFS kernel module and creates
+>> a new module containing the proc, xdr, and acl code.  This will give us a
+>> single directory to put NFS v3 specific code so it doesn't need to be mixed in
+>> with the generic client stuff.
 >>
->> Maybe something like this?
+>> I'm sure this could still use a lot of work, but I figured I would wait to see
+>> what everybody thinks first.  I imagine that once we get an "nfs submodule"
+>> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+>> modules.
 >>
->> speed = do_div(BENCH_SIZE, 1024) * count * do_div(NSEC_PER_SEC, ns_end);
+>> I split the second patch into two to make it easier to see what my changes were
+>> to get everything to compile.  Hopefully this will save some pain in having to
+>> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+>> command.  I can combine everything in a future version of the patch.
 >>
->> This might not be exactly right because it changes the operator precedence,
->> but it should eliminate the calls to __udivdi3.
-> 
-> Hmm, you mean execution order? (which you do not)
-> C (and fortunately gcc too :) treats multiplication and division with the
-> same priority and executes them from left to right...
-> 
-> Boaz, please ack...
-> 
+>> v2:
+>>   - I set the "diff.renames copy" git config option to create a smaller second
+>>     patch.  Maybe this time it won't get me kicked off the mailing list...
+>>     Thanks to Boaz and Jim for the tip!
+>>
+>> Thoughts?
+> Now what is the motivating reason behind this re-architecture
+> other than making the upstream kernel literally impossible to 
+> back port to older kernels?? 
+>
+I wasn't thinking about backporting when I did this... is there a 
+better way to do this that wouldn't make it a pain to backport?
 
-Hi
+My thought was that it would help clean things up a bit by adding a bit 
+of separation between the nfs client and each nfs protocol.  It would 
+also allow user to decide what they need at run time rather than at 
+compile time.
 
-Please trash this patch for now. I will carry it out of tree for my use.
-(Looks I'm the only one who's using UML and the XOR engine)
+> steved.
 
-By next Connectathon I'll have a better patch sent to the right
-people.
-
-Thanks for your efforts, and sorry for the grief it caused.
-Boaz
-
-> Benny
-> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
