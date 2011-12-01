@@ -1,100 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:33657 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752363Ab1LIPYF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 10:24:05 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 9 Dec 2011 08:24:05 -0700
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNhed146602
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:44 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNgJi008828
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:43 -0700
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC v2 1/7] New mount option for volatile filehandle recovery
-Date: Fri,  9 Dec 2011 10:23:26 -0500
-Message-Id: <1323444212-9855-2-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40462 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751172Ab1LAJrL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 04:47:11 -0500
+Received: by eaak14 with SMTP id k14so1885202eaa.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2011 01:47:10 -0800 (PST)
+Message-ID: <4ED74D19.7060302@tonian.com>
+Date: Thu, 01 Dec 2011 11:47:05 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Marc Eshel <eshel@almaden.ibm.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Garth Gibson <garth@panasas.com>, Fred Isaman <iisaman@netapp.com>,
+        linux-nfs@vger.kernel.org, Matt Benjamin <matt@linuxbox.com>
+Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
+References: <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com> <1322606842.11286.33.camel@lade.trondhjem.org> <4ED563AC.5040501@panasas.com> <1322609431.11286.56.camel@lade.trondhjem.org> <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com> <1322611689.11286.72.camel@lade.trondhjem.org> <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com> <1322613425.11286.86.camel@lade.trondhjem.org> <OFCC6E3358.498C4568-ON88257958.00043206-88257958.0004D550@us.ibm.com> <20111130194410.GB32028@fieldses.org>
+In-Reply-To: <20111130194410.GB32028@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The new 'vfhretry' mount option will be used to enable the volatile filehandle
-recovery routines in the client. On an expired filehandle recover the client
-will attempt to recover by performing a lookup on the name of the file.
+On 2011-11-30 21:44, J. Bruce Fields wrote:
+> On Tue, Nov 29, 2011 at 04:52:59PM -0800, Marc Eshel wrote:
+>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote on 11/29/2011 04:37:05 
+>> PM:
+>>>
+>>> Peng Tao, bhalevy, Boaz Harrosh, Garth Gibson, Fred Isaman, linux-
+>>> nfs, Matt Benjamin
+>>>
+>>> On Tue, 2011-11-29 at 16:20 -0800, Marc Eshel wrote: 
+>>>> You ignored my main point, I was talking about the server side, my 
+>> point 
+>>>> was that there is nothing to build on on the serve side since the pNFS 
+>>
+>>>> Linux server is not happening.
+>>>> Marc.
+>>>
+>>> Sorry. I misunderstood your concern. As far as I know, the main problem
+>>> there is also one of investment: nobody has stepped up to help Bruce
+>>> write a pNFS server.
+>>>
+>>> I'm less worried about this now than I was earlier, because other open
+>>> source efforts are gaining traction (see Ganesha - which is being
+>>> sponsored by IBM, and projects such as Tigran's java based pNFS server).
+>>> The other point is that we've developed client test-rigs that don't
+>>> depend on the availability of a Linux server (newpynfs and the pynfs
+>>> based proxy).
+>>
+>> You got it backward, Ganesha is getting traction precisely because the 
+>> Linux kernel server is not happening :)
+> 
+> My understanding is the same as Trond's--the reason it's not happening
+> is because nobody is making an effort to merge it.  What am I missing?
+> 
 
-This option enables volatile filehandle recovery by re-lookup on FHEXPIRED
-errors. Only use this mount option if the filenames/paths on the server are not
-going to change from the initial expiration until all the recovery operations
-complete. Otherwise the validity of the files recovered from the server can not
-be guaranteed. It can only truly be considered safe to use this recovery
-mechanism on a Linux server, if the filesystem is read-only.
+Tonian is working on this and we've allocated resources also to help
+out on your nfs4.1 todo list.
 
-This mechanism of recovery isn't necessarily safe for a posix filesystem so
-using the mount option will allow the user to enable this at their own risk.
-If the mount option is not turned on, the FHEXPIRED error will be converted to
-ESTALE.
+Benny
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/super.c            |    6 ++++++
- include/linux/nfs_mount.h |    1 +
- 2 files changed, 7 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 1347774..f63229f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -87,6 +87,7 @@ enum {
- 	Opt_sharecache, Opt_nosharecache,
- 	Opt_resvport, Opt_noresvport,
- 	Opt_fscache, Opt_nofscache,
-+	Opt_vfhretry,
- 
- 	/* Mount options that take integer arguments */
- 	Opt_port,
-@@ -149,6 +150,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_noresvport, "noresvport" },
- 	{ Opt_fscache, "fsc" },
- 	{ Opt_nofscache, "nofsc" },
-+	{ Opt_vfhretry, "vfhretry" },
- 
- 	{ Opt_port, "port=%s" },
- 	{ Opt_rsize, "rsize=%s" },
-@@ -650,6 +652,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
- 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
- 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
-+		{ NFS_MOUNT_VFHRETRY, ",vfhretry", ""},
- 		{ 0, NULL, NULL }
- 	};
- 	const struct proc_nfs_info *nfs_infop;
-@@ -1203,6 +1206,9 @@ static int nfs_parse_mount_options(char *raw,
- 			kfree(mnt->fscache_uniq);
- 			mnt->fscache_uniq = NULL;
- 			break;
-+		case Opt_vfhretry:
-+			mnt->flags |= NFS_MOUNT_VFHRETRY;
-+			break;
- 
- 		/*
- 		 * options that take numeric values
-diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-index 576bddd..dba0e23 100644
---- a/include/linux/nfs_mount.h
-+++ b/include/linux/nfs_mount.h
-@@ -73,5 +73,6 @@ struct nfs_mount_data {
- 
- #define NFS_MOUNT_LOCAL_FLOCK	0x100000
- #define NFS_MOUNT_LOCAL_FCNTL	0x200000
-+#define NFS_MOUNT_VFHRETRY	0x400000
- 
- #endif
--- 
-1.7.4.4
-
+> --b.
