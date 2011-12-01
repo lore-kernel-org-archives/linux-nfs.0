@@ -1,97 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47981 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12203 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750838Ab1LNOtb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 09:49:31 -0500
-Date: Wed, 14 Dec 2011 09:49:20 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] nfsd: overhaul the client name tracking code (RFC)
-Message-ID: <20111214094920.6d3fafa8@tlielax.poochiereds.net>
-In-Reply-To: <18F62B11-1541-4B87-95A7-8106459903DF@oracle.com>
-References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
-	<18F62B11-1541-4B87-95A7-8106459903DF@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754010Ab1LANSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 08:18:08 -0500
+Message-ID: <4ED77E8E.2040304@RedHat.com>
+Date: Thu, 01 Dec 2011 08:18:06 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Bruce Dubbs <bruce.dubbs@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs server issues
+References: <4ED6BCEA.9050000@gmail.com>
+In-Reply-To: <4ED6BCEA.9050000@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Dec 2011 09:35:57 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+
+
+On 11/30/2011 06:31 PM, Bruce Dubbs wrote:
+> I am trying to document the installation of nfs for Linux From Scratch.  The client works, but the server does not and I'm looking for some help.   If this is the wrong place to ask for help, please redirect me.
+> 
+> For now, I am only trying to get nfs version 3 to work.
+> 
+> # mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
+>    [ mounts OK ]
+> # mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
+> # mount.nfs: requested NFS version or transport protocol is not supported
+The reason you getting the mounting error to localhost is because there are 
+no NFS services registered with rpcbind. Note the lack of nfs entires in
+your rpcinfo -p output. For the above mount to work you would need at least 
+the following entry:
+  100003    3   tcp   2049  nfs
+
+Figure out why that is not happening and you find the problem...
+
+steved.
 
 > 
-> On Dec 14, 2011, at 8:54 AM, Jeff Layton wrote:
+> Any pointers are appreciated.  Details of the procedures I've used are below.
 > 
-> > First, a little background: I've recently been tasked with a project
-> > to make active/active serving of NFSv4 from clustered filesystems work.
-> > This is a large-scale, long-term project, but there are pieces of the
-> > existing code that are clearly unsuitable in such a configuration...
-> > 
-> > One of the things that Bruce has long had on his wishlist is to replace
-> > the client name tracking code that the kernel uses:
-> > 
-> >    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
-> > 
-> > The existing code manipulates the filesystem directly to track this
-> > info. Not only is that something that makes the VFS maintainers look
-> > askance at knfsd, but it also is unsuitable in a clustered
-> > configuration.
-> > 
-> > Typically we think of the grace period as a property of the server, but
-> > with a clustered filesystem, we need to consider it as a property of the
-> > cluster as a whole. On a cold startup of the cluster, once any node
-> > grants a non-reclaim lock, then no more reclaim can be allowed on any
-> > node. Grace periods must be coordinated amongst all cluster nodes.
+>   -- Bruce Dubbs
+>      linuxfromscratch.org
 > 
-> Agreed, but as you go forward with this effort, you should consider that NFSv4 migration allows individual file systems to be in grace.
 > 
-
-Yes. The eventual goal is eliminate the grace period on failovers once
-the cluster fs is up and running, and out of its initial grace period.
-
-In order to do that, we'll need to push grace period handling into the
-VFS layer to some degree, probably by providing a standard set of grace
-period handling ops and allowing the filesystems to override them in
-some fashion (maybe a new set of export ops?).
-
-In any case, design of that is a later phase of this project once I get
-this part settled...
-
-> > In order to achieve that goal, we need to first allow the client name
-> > reclaim to be cluster aware as well. This patchset is a move toward that
-> > goal and covers the initial kernel part of such a change. A patchset to
-> > add a daemon to handle the upcalls will follow.
-> > 
-> > Note that this patchset is still a little rough, so consider this an
-> > RFC for the overall design. We'll also need to consider a plan to
-> > deprecate the old client tracking code.
-> > 
-> > The goal with this patchset is to replace the existing functionality,
-> > without disturbing the existing code too much. There's some room for
-> > more cleanup and reorganization once the old tracker is gone.
-> > 
-> > Jeff Layton (5):
-> >  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-> >  sunrpc: create nfsd dir in rpc_pipefs
-> >  nfsd: add a header describing upcall for clname tracking daemon
-> >  nfsd: add a cl_daddr field and a generic flags field to nfs4_client
-> >  nfsd: add the infrastructure to handle the clstate upcall
-> > 
-> > fs/nfsd/nfs4recover.c        |  442 +++++++++++++++++++++++++++++++++++++++++-
-> > fs/nfsd/nfs4state.c          |   49 ++---
-> > fs/nfsd/state.h              |   16 +-
-> > include/linux/nfsd/clstate.h |   59 ++++++
-> > net/sunrpc/rpc_pipe.c        |    5 +
-> > 5 files changed, 526 insertions(+), 45 deletions(-)
-> > create mode 100644 include/linux/nfsd/clstate.h
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> The packages I'm using:
 > 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> linux-3.0.4
+> libtirpc-0.2.2
+> rpcbind-0.2.0
+> nfs-utils-1.2.5
+> glibc-2.14.1
+> util-linux-2.20
+> 
+> The build procedures were as follows:
+> 
+> 1. Restore nfs/nis headers omitted by glibc-2.14.1
+> 2. Build libtirpc
+>    Remove auth_des.c authdes_prot.c des_crypt.c from Makefile
+>    Comment out authdes_create() in rpc_soc.c
+>    ./configure --prefix=/usr --libdir=/lib
+> 3. Build rpcbind
+>    ./configure --prefix=/usr --bindir=/sbin
+>    Update /etc/services for rpcbind on port 111
+> 4. Build nfs-utils
+>    LIBS=-lpthread ./configure --prefix=/usr     \
+>         --sysconfdir=/etc --disable-nfsv4 --disable-nfsv41  \
+>         --disable-gss
+> 
+> Start rpcbind
+> Start rpc.mountd
+> Run   rpc.nfsd -p 2049 8
+> Start rpc.statd
+> Run   exportfs -ra
+> 
+> /etc/exports has:
+> /usr/src 192.168.0.0/24(rw,async,no_root_squash,subtree_check)
+> 
+> rpcinfo -p gives:
+>     100000    4   tcp    111  portmapper
+>     100000    3   tcp    111  portmapper
+>     100000    2   tcp    111  portmapper
+>     100000    4   udp    111  portmapper
+>     100000    3   udp    111  portmapper
+>     100000    2   udp    111  portmapper
+>     100005    1   udp  52645  mountd
+>     100005    1   tcp  47533  mountd
+>     100005    2   udp  60954  mountd
+>     100005    2   tcp  56425  mountd
+>     100005    3   udp  33939  mountd
+>     100005    3   tcp  56892  mountd
+>     100024    1   udp  34641  status
+>     100024    1   tcp  50491  status
+> 
+> # ps -ef|grep 'nfs\|rpc\|lock'
+> root       291     2  0 Nov26 ?        00:00:00 [kblockd]
+> root       498     2  0 Nov26 ?        00:00:00 [rpciod]
+> root       613     2  0 Nov26 ?        00:00:00 [nfsiod]
+> root      1136     2  0 Nov28 ?        00:00:00 [lockd]
+> root      1137     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1138     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1139     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1140     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1141     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1142     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1143     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1144     2  0 Nov28 ?        00:00:00 [nfsd]
+> root      1889     1  0 Nov28 ?        00:00:00 /usr/sbin/rpc.statd
+> root     12615     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     12618     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     12685     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     12711     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     12923     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     14127     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     14494     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     14861     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     15248     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
+> root     15819     1  0 Nov29 ?        00:00:00 /sbin/rpcbind
+> root     16423     1  0 12:34 ?        00:00:00 /usr/sbin/rpc.mountd
+> root     16432     1  0 12:36 ?        00:00:00 /usr/sbin/rpc.statd
+> 
+> Kernel configuration:
+> 
+> CONFIG_NETWORK_FILESYSTEMS=y
+> CONFIG_NFS_FS=y
+> CONFIG_NFS_V3=y
+> CONFIG_NFS_V3_ACL=y
+> CONFIG_NFS_V4=y
+> # CONFIG_NFS_V4_1 is not set
+> CONFIG_ROOT_NFS=y
+> # CONFIG_NFS_USE_LEGACY_DNS is not set
+> CONFIG_NFS_USE_KERNEL_DNS=y
+> # CONFIG_NFS_USE_NEW_IDMAPPER is not set
+> CONFIG_NFSD=y
+> # CONFIG_NFSD_DEPRECATED is not set
+> CONFIG_NFSD_V3=y
+> # CONFIG_NFSD_V3_ACL is not set
+> # CONFIG_NFSD_V4 is not set
+> CONFIG_LOCKD=y
+> CONFIG_LOCKD_V4=y
+> CONFIG_NFS_ACL_SUPPORT=y
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=y
+> CONFIG_SUNRPC_GSS=y
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
