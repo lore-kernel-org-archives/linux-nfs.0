@@ -1,47 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43326 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:62375 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759036Ab1LOQAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:00:17 -0500
-Subject: [PATCH 0/7] SUNRPC: register services with per-net rpcbind 
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 15 Dec 2011 19:59:42 +0300
-Message-ID: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+	id S1752788Ab1LAUlk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 15:41:40 -0500
+Message-ID: <4ED7E678.2050104@RedHat.com>
+Date: Thu, 01 Dec 2011 15:41:28 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Dick Streefland <dick@streefland.net>
+CC: rnews@altium.nl, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] retry for NFS v3 mounts
+References: <37c5.4ed7ba54.3cfb1@altium.nl>
+In-Reply-To: <37c5.4ed7ba54.3cfb1@altium.nl>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set makes service registered with per-net rpcbind and required for
-making Lockd and NFSd services able to handle requests from and to different
-network namespaces.
+Hello,
 
-The following series consists of:
+On 12/01/2011 12:33 PM, rnews@altium.nl wrote:
+> Mounting an NFS v3 volume from a server that is currently down,
+> immediately fails with a timeout error, instead of retrying:
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 4032bf3..7ca0b3e 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -663,6 +663,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>  		case ECONNREFUSED:
+>  		case EOPNOTSUPP:
+>  		case EHOSTUNREACH:
+> +		case ESPIPE:
+>  			continue;
+>  		default:
+>  			goto out;
+> @@ -848,6 +849,7 @@ static int nfs_is_permanent_error(int error)
+>  	case ETIMEDOUT:
+>  	case ECONNREFUSED:
+>  	case EHOSTUNREACH:
+> +	case ESPIPE:
+>  		return 0;	/* temporary */
+>  	default:
+>  		return 1;	/* permanent */
+> 
+I think the problem is more of nfs_rewrite_pmap_mount_options()
+is not interrupting RPC correctly.... How about something like this:
 
----
+Author: Steve Dickson <steved@redhat.com>
+Date:   Thu Dec 1 15:35:18 2011 -0500
 
-Stanislav Kinsbursky (7):
-      SUNRPC: create rpcbind client in passed network namespace context
-      SUNRPC: register rpcbind programs in passed network namespase context
-      SUNRPC: use proper network namespace in rpcbind RPCBPROC_GETADDR procedure
-      SUNRPC: parametrize local rpcbind clients creation with net ns
-      SUNRPC: pass network namespace to service registering routines
-      SUNRPC: register service on creation in current network namespace
-      SUNRPC: unregister service on creation in current network namespace
+    mount.nfs: Background mounts failing on time out errors.
+    
+    Mounting with the "-o v3,bg,proto=udp" options will
+    fail, instead of trying, when the server is down.
+    The reason being nfs_rewrite_pmap_mount_options()
+    is not interrupting RPC timeouts correctly.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-
- fs/nfsd/nfssvc.c            |    4 +--
- include/linux/sunrpc/clnt.h |    9 ++++--
- include/linux/sunrpc/svc.h  |   11 ++++----
- net/sunrpc/rpcb_clnt.c      |   29 +++++++++++---------
- net/sunrpc/svc.c            |   61 +++++++++++++++++++++++--------------------
- net/sunrpc/svcsock.c        |    3 +-
- 6 files changed, 63 insertions(+), 54 deletions(-)
-
--- 
-Signature
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 4032bf3..d52e21a 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -540,6 +540,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options
+                        errno = EOPNOTSUPP;
+                else if (rpc_createerr.cf_stat == RPC_AUTHERROR)
+                        errno = EACCES;
++               else if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
++                       errno = ETIMEDOUT;
+                else if (rpc_createerr.cf_error.re_errno != 0)
+                        errno = rpc_createerr.cf_error.re_errno;
+                return 0;
