@@ -1,135 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:46031 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755112Ab1KNLMw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Nov 2011 06:12:52 -0500
-Received: by fagn18 with SMTP id n18so2877536fag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Nov 2011 03:12:51 -0800 (PST)
-Message-ID: <4EC0F7AF.3010904@tonian.com>
-Date: Mon, 14 Nov 2011 13:12:47 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:33729 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752649Ab1LACne (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 21:43:34 -0500
+Date: Wed, 30 Nov 2011 21:43:19 -0500
+From: Jim Rees <rees@umich.edu>
+To: Bruce Dubbs <bruce.dubbs@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfs server issues
+Message-ID: <20111201024319.GA10246@umich.edu>
+References: <4ED6BCEA.9050000@gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Revert pnfs ugliness from the generic NFS read code
- path
-References: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1320953896-20898-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4ED6BCEA.9050000@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-10 21:38, Trond Myklebust wrote:
-> pNFS-specific code belongs in the pnfs layer. It should not be
-> hijacking generic NFS read or write code paths.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/internal.h |    2 ++
->  fs/nfs/pnfs.c     |   26 +++++++++++++++++++++-----
->  fs/nfs/read.c     |   14 ++------------
->  3 files changed, 25 insertions(+), 17 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index c1a1bd8..3f4d957 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -299,6 +299,8 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
->  extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
->  		struct list_head *head);
->  
-> +extern void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-> +		struct inode *inode);
->  extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
->  extern void nfs_readdata_release(struct nfs_read_data *rdata);
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index baf7353..8e672a2 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1260,6 +1260,25 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
->  
-> +static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
-> +{
-> +	struct nfs_pageio_descriptor pgio;
-> +
-> +	put_lseg(data->lseg);
-> +	data->lseg = NULL;
-> +	dprintk("pnfs write error = %d\n", data->pnfs_error);
+Bruce Dubbs wrote:
 
-should be "read error", might as well fix this while you're at it :)
+  I am trying to document the installation of nfs for Linux From
+  Scratch.  The client works, but the server does not and I'm looking
+  for some help.   If this is the wrong place to ask for help, please
+  redirect me.
+  
+  For now, I am only trying to get nfs version 3 to work.
+  
+  # mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
+     [ mounts OK ]
+  # mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
+  # mount.nfs: requested NFS version or transport protocol is not supported
 
-> +
-> +	nfs_pageio_init_read_mds(&pgio, data->inode);
-> +
-> +	while (!list_empty(&data->pages)) {
-> +		struct nfs_page *req = nfs_list_entry(data->pages.next);
-> +
-> +		nfs_list_remove_request(req);
-> +		nfs_pageio_add_request(&pgio, req);
-> +	}
+It doesn't explain the error message you're getting, but your exports file
+doesn't have an entry for localhost.  When I try this I get "mount.nfs:
+access denied by server while mounting localhost:/usr/src".
 
-What about pgio.pg_recoalesce?
+  2. Build libtirpc
+     Remove auth_des.c authdes_prot.c des_crypt.c from Makefile
+     Comment out authdes_create() in rpc_soc.c
+     ./configure --prefix=/usr --libdir=/lib
 
-Benny
-
-> +	nfs_pageio_complete(&pgio);
-> +}
-> +
->  /*
->   * Called by non rpc-based layout drivers
->   */
-> @@ -1268,11 +1287,8 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
->  	if (likely(!data->pnfs_error)) {
->  		__nfs4_read_done_cb(data);
->  		data->mds_ops->rpc_call_done(&data->task, data);
-> -	} else {
-> -		put_lseg(data->lseg);
-> -		data->lseg = NULL;
-> -		dprintk("pnfs write error = %d\n", data->pnfs_error);
-> -	}
-> +	} else
-> +		pnfs_ld_handle_read_error(data);
->  	data->mds_ops->rpc_release(data);
->  }
->  EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 8b48ec6..cfa175c 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -109,7 +109,7 @@ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
->  	}
->  }
->  
-> -static void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
-> +void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
->  		struct inode *inode)
->  {
->  	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
-> @@ -534,23 +534,13 @@ static void nfs_readpage_result_full(struct rpc_task *task, void *calldata)
->  static void nfs_readpage_release_full(void *calldata)
->  {
->  	struct nfs_read_data *data = calldata;
-> -	struct nfs_pageio_descriptor pgio;
->  
-> -	if (data->pnfs_error) {
-> -		nfs_pageio_init_read_mds(&pgio, data->inode);
-> -		pgio.pg_recoalesce = 1;
-> -	}
->  	while (!list_empty(&data->pages)) {
->  		struct nfs_page *req = nfs_list_entry(data->pages.next);
->  
->  		nfs_list_remove_request(req);
-> -		if (!data->pnfs_error)
-> -			nfs_readpage_release(req);
-> -		else
-> -			nfs_pageio_add_request(&pgio, req);
-> +		nfs_readpage_release(req);
->  	}
-> -	if (data->pnfs_error)
-> -		nfs_pageio_complete(&pgio);
->  	nfs_readdata_release(calldata);
->  }
->  
+This shouldn't be necessary.  Instead of working around the problem, it
+would be nice if you could figure out why you needed to do this, and if
+there is a bug in the configure magic, let us know.
