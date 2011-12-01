@@ -1,97 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8260 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16525 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751657Ab1LOSn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 13:43:28 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIhSC2007972
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:28 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pBFIhQq8021450
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:27 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] nfsd: add a header describing upcall to nfsdcld
-Date: Thu, 15 Dec 2011 13:43:25 -0500
-Message-Id: <1323974606-16477-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
-References: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
+	id S1754638Ab1LAV5L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 16:57:11 -0500
+Message-ID: <1322776630.4711.37.camel@lade.trondhjem.org>
+Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Date: Thu, 01 Dec 2011 16:57:10 -0500
+In-Reply-To: <4ED7F7B9.2090205@netapp.com>
+References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
+	 <4ED7EBFF.6030706@RedHat.com> <4ED7F7B9.2090205@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
+On Thu, 2011-12-01 at 16:55 -0500, Bryan Schumaker wrote: 
+> On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
+> >
+> >
+> > On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
+> >> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>
+> >> This set of patches removes NFS v3 from the main NFS kernel module and creates
+> >> a new module containing the proc, xdr, and acl code.  This will give us a
+> >> single directory to put NFS v3 specific code so it doesn't need to be mixed in
+> >> with the generic client stuff.
+> >>
+> >> I'm sure this could still use a lot of work, but I figured I would wait to see
+> >> what everybody thinks first.  I imagine that once we get an "nfs submodule"
+> >> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+> >> modules.
+> >>
+> >> I split the second patch into two to make it easier to see what my changes were
+> >> to get everything to compile.  Hopefully this will save some pain in having to
+> >> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+> >> command.  I can combine everything in a future version of the patch.
+> >>
+> >> v2:
+> >>   - I set the "diff.renames copy" git config option to create a smaller second
+> >>     patch.  Maybe this time it won't get me kicked off the mailing list...
+> >>     Thanks to Boaz and Jim for the tip!
+> >>
+> >> Thoughts?
+> > Now what is the motivating reason behind this re-architecture
+> > other than making the upstream kernel literally impossible to 
+> > back port to older kernels?? 
+> >
+> I wasn't thinking about backporting when I did this... is there a 
+> better way to do this that wouldn't make it a pain to backport?
+> 
+> My thought was that it would help clean things up a bit by adding a bit 
+> of separation between the nfs client and each nfs protocol.  It would 
+> also allow user to decide what they need at run time rather than at 
+> compile time.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/nfsd/cld.h |   57 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 57 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+It would also be nice to do the same for NFSv2 next. Then maybe we can
+tackle NFSv4...
 
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..d64a7e7
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,57 @@
-+/*
-+ * fs/nfsd/cld.h - upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2011 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
-+
-+/* latest upcall version available */
-+#define CLD_MAX_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Expire,		/* remove record for this cm_id */
-+	Cld_Allow,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+	Cld_NrToReclaim,	/* how many client records need reclaim? */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	uint32_t	cm_xid;			/* transaction id */
-+	int16_t		cm_status;		/* return code */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
+Cheers
+  Trond
 -- 
-1.7.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
