@@ -1,89 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38195 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753216Ab1KMDyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Nov 2011 22:54:12 -0500
-Date: Sun, 13 Nov 2011 14:54:00 +1100
-From: NeilBrown <neilb@suse.de>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:42416 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753286Ab1LACMy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 21:12:54 -0500
+Date: Thu, 1 Dec 2011 02:12:51 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.de>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20111113145400.6c7a9be3@notabene.brown>
-In-Reply-To: <20111112144953.GA3740@infradead.org>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
-	<1321056809.8733.2.camel@lade.trondhjem.org>
-	<20111112144953.GA3740@infradead.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/A_VzDHN9BdS8JaXsy0pgKp+"; protocol="application/pgp-signature"
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Rename dir on server can cause client to get ESTALE - this time
+ with PATCH
+Message-ID: <20111201021251.GY2203@ZenIV.linux.org.uk>
+References: <20111114131929.7b341444@notabene.brown>
+ <20111201124922.22e7d72f@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111201124922.22e7d72f@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/A_VzDHN9BdS8JaXsy0pgKp+
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Dec 01, 2011 at 12:49:22PM +1100, NeilBrown wrote:
 
-On Sat, 12 Nov 2011 09:49:53 -0500 Christoph Hellwig <hch@infradead.org>
-wrote:
+> If the path was "/some/long/path/.", then the final component ("path" in
+> this case) has already been revalidated and there is no particular
+> need to do it again.
+> 
+> If we change nd->last_type to refer to "the last component looked at"
+> rather than just "the last component", then these cases can be
+> detected by "nd->last_type != LAST_NORM".
 
-> On Fri, Nov 11, 2011 at 07:13:29PM -0500, Trond Myklebust wrote:
-> > On Fri, 2011-11-11 at 18:04 -0500, Matthew Treinish wrote:=20
-> > > This patch series implements client side support for volatile file ha=
-ndle
-> > > recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcac=
-he. To
-> > > test the client you either need a server that supports volatile file =
-handles or=20
-> > > you can hard code the server to output NFS4ERR_FHEXPIRED instead of
-> > > NFSERR_STALE. (See the last patch in the series)
-> >=20
-> > WHY do we want to support this kind of "feature"? As you said, the RFC
-> > doesn't actually help in figuring out how this crap is supposed to work
-> > in practice, so why do we even consider starting to give a damn?
->=20
-> *nod*. Pretending we handle it seems fairly dangerous.  I'd much prefer
-> outright rejecting it.
+This is just plain wrong.  Let's *not* bring more dependencies on
+nameidata into ->d_revalidate().  The goal is to get rid of it there...
 
-Hence the suggested mount option.
+FWIW, if you want a really nasty bug in that area, consider this:
 
-A server might not be able to provide stable file handles, but can ensure
-that files don't get renamed - for these filesystems, the name is a
-reliable stable handle for the file (it just doesn't fit in the NFSv4 file
-handle structure).
+mkdir /tmp/a
+mkdir /tmp/b
+echo "local file" >/tmp/x
+mount -t nfs4 $SOMETHING /tmp/a
+mount -t nfs4 $SOMETHING /tmp/b
+echo "NFS file" >/tmp/a/x
+mount --bind /tmp/x /tmp/a/x
 
-So if you know the filesystem will only return FHEXPIRED for filehandles
-belonging to files that cannot be renamed, then it is perfectly reasonable =
-to
-repeat the name lookup to re-access the file after the server forgets about
-an old filehandle.  The mount option is how you communicate this knowledge,
-because the RFC doesn't provide a way to communicate it.
+now try opening /tmp/b/x.  And watch the NFS traffic; there won't be OPEN
+request for x on server.  Why?  Because NFS sees that x is a mountpoint in
+*some* instance of that filesystem.  And decides that opening it would be
+wrong.  And so it would, if we were asked to open /tmp/a/x.  Alas, in this
+case, while dentry is the same, it does *not* have anything mounted on it.
+What we get is ->d_revalidate() returning without issuing OPEN and ->open()
+being called - again, without issuing OPEN, since it assumes that ->lookup()
+or ->d_revalidate() had done it for us.
 
-NeilBrown
+Plain IO on resulting descriptor will work and work correcly (you'll get
+"NFS file\n" read from it), but try to do F_SETLK on it and it'll fail
+since that requires the server to have seen an OPEN.
 
-
-
---Sig_/A_VzDHN9BdS8JaXsy0pgKp+
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBTr8/WDnsnt1WYoG5AQJThhAAp/2svBIlNw1ctzuZ5yCqvP5E2V6F/HiV
-rOuYLW8KQRuMEgXYdXF87WVKpPzTvASlJCL1PmUiqf0sJ0AgVi2ZO0TzPVqspr/2
-h6McaqxERRxJMPw6r1C7B9QBXchTu6Yiw0FZuLcTnEva9/ZCwQCNrjWLwSOVcYqp
-ysQje+tyusXSMbpFx66EvjcasiCKGj2T+9vXwYTMlx/M3jssHmLDWlwtauxxjlck
-g+Tqh/u4mmwQUC9RIVFGeXN6/hU6DTAEPuRpILqxMn+pOzcqoMpBTSeL6gHsrY6X
-OTA30axTELAq7zoW8m9Cp6HftKdppWIbjGBbzu4Bkd2ThZJQ3M1ys0rYEPqjRXBE
-EKueGY56uPIqtSp5NpIPjmmkqs+Db1lqw4Z7hU6z7tBkG4Wd38hAwWy28HAgXaU1
-2x9oPuTgd6pcMGmg/8SnptYZpFDcUwZCitUxKhcrn7hUaHxfCzOhuiuXZhnr0NVZ
-45PoD6vPTjTCqXrB68bZviikYc+0fJ1d4dFN7lcwIPs/wziE4tMahbyTJaB1HwVm
-t2p4DxltJqY346SOyZB4d6/5sneGYnDwpBzCBrTp2aBpewbARovnwCaJ2JN4tQ0A
-VZxi6C4sClaz2tiIPaTkraIBCE0ZW/ud1LEFdZW51rdIOf6fjRk+5oRrxBf1eBTg
-sKup+lvjEgI=
-=gpz/
------END PGP SIGNATURE-----
-
---Sig_/A_VzDHN9BdS8JaXsy0pgKp+--
+As far as I can tell, the idea of open done in ->d_revalidate() is
+unsalvagable.  It's simply the wrong place for that.  Note that NFS
+is the only filesystem trying to do atomic open stuff in its ->d_revalidate()
+and it's not succeeding.
