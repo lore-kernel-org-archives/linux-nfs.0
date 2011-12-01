@@ -1,73 +1,256 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34824 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751689Ab1KKUAi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Nov 2011 15:00:38 -0500
-Date: Fri, 11 Nov 2011 15:00:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Ian Campbell <Ian.Campbell@citrix.com>
-Cc: "Michael S. Tsirkin" <mst@redhat.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
-Message-ID: <20111111200032.GA20853@fieldses.org>
-References: <1320850895.955.172.camel@zakaz.uk.xensource.com>
- <1320850927-30240-4-git-send-email-ian.campbell@citrix.com>
- <20111111123824.GA23902@redhat.com>
- <1321017627.955.254.camel@zakaz.uk.xensource.com>
+Received: from smtp1.onthe.net.au ([203.22.196.249]:43342 "EHLO
+	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753275Ab1LAArP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2011 19:47:15 -0500
+Date: Thu, 1 Dec 2011 11:47:09 +1100
+From: Chris Dunlop <chris@onthe.net.au>
+To: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Jan Harkes <jaharkes@cs.cmu.edu>,
+        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        Greg Kroah-Hartman <gregkh@suse.de>,
+        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        codalist@TELEMANN.coda.cs.cmu.edu,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
+Message-ID: <20111201004709.GA26085@onthe.net.au>
+References: <20111130071319.GA16711@onthe.net.au>
+ <1321861008-20611-1-git-send-email-chris@onthe.net.au>
+ <20111129082501.GA569@onthe.net.au>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
+ <24960.1322643283@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1321017627.955.254.camel@zakaz.uk.xensource.com>
+In-Reply-To: <24960.1322643283@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 11, 2011 at 01:20:27PM +0000, Ian Campbell wrote:
-> On Fri, 2011-11-11 at 12:38 +0000, Michael S. Tsirkin wrote:
-> > On Wed, Nov 09, 2011 at 03:02:07PM +0000, Ian Campbell wrote:
-> > > This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> > > at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> > > wire. If this happens to an NFS WRITE RPC then the write() system call
-> > > completes and the userspace process can continue, potentially modifying data
-> > > referenced by the retransmission before the retransmission occurs.
-> > > 
-> > > Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> > > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > Cc: "David S. Miller" <davem@davemloft.net>
-> > > Cc: Neil Brown <neilb@suse.de>
-> > > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Cc: netdev@vger.kernel.org
-> > 
-> > So this blocks the system call until all page references
-> > are gone, right?
+On Wed, Nov 30, 2011 at 08:54:43AM +0000, David Howells wrote:
+> Chris Dunlop <chris@onthe.net.au> wrote:
 > 
-> Right. The alternative is to return to userspace while the network stack
-> still has a reference to the buffer which was passed in -- that's the
-> exact class of problem this patch is supposed to fix.
+>> To avoid other people further wasting their and your time on
+>> exactly the same thing future, how something like the following
+>> patch, based on your comment in:
+>> 
+>> http://article.gmane.org/gmane.linux.nfs/40370
+>> 
+>> ...and, if that's acceptable, is it worthwhile doing for the
+>> other file systems which are likewise currently vulnerable when
+>> abused by broken layered file systems?
 > 
-> > But, there's no upper limit on how long the
-> > page is referenced, correct?
+> Also, this may get fixed by Al's atomic open patches - but obviously it hasn't
+> been yet...
 > 
-> Correct.
+>> Don't oops when abused by broken layered file systems
+>> 
+>> Signed-off-by: Chris Dunlop <chris@onthe.net.au>
 > 
-> >  consider a bridged setup
-> > with an skb queued at a tap device - this cause one process
-> > to block another one by virtue of not consuming a cloned skb?
+> Acked-by: David Howells <dhowells@redhat.com>
 > 
-> Hmm, yes.
-> 
-> One approach might be to introduce the concept of an skb timeout to the
-> stack as a whole and cancel (or deep copy) after that timeout occurs.
-> That's going to be tricky though I suspect...
-> 
-> A simpler option would be to have an end points such as a tap device
-> which can swallow skbs for arbitrary times implement a policy in this
-> regard, either to deep copy or drop after a timeout?
+> It's also worth printing a message - this *is* a kernel bug of some description
+> if it happens.
 
-Stupid question: Is it a requirement that you be safe against DOS by a
-rogue process with a tap device?  (And if so, does current code satisfy
-that requirement?)
+Like the below?  This covers the d_revalidate for 9p, afs, coda,
+hfs, ncpfs, proc, sysfs.
 
---b.
+Note:  jfs isn't susceptible to this problem, but the resolution
+doesn't look like the other file systems, and from the comment
+I'm not sure if the problem was really understood and if it's
+doing the right thing:
+
+static int jfs_ci_revalidate(struct dentry *dentry, struct nameidata *nd)
+{
+        ...
+        /*
+         * This may be nfsd (or something), anyway, we can't see the
+         * intent of this. So, since this can be for creation, drop it.
+         */
+        if (!nd)
+                return 0;
+
+        /*
+         * Drop the negative dentry, in order to make sure to use the
+         * case sensitive name which is specified by user if this is
+         * for creation.
+         */
+        if (nd->flags & (LOOKUP_CREATE | LOOKUP_RENAME_TARGET))
+                return 0;
+        ...
+}
+
+Chris.
+
+----------------------------------------------------------------------
+Don't oops when abused by broken layered file systems
+
+Signed-off-by: Chris Dunlop <chris@onthe.net.au>
+---
+ fs/9p/vfs_dentry.c    |    6 ++++++
+ fs/afs/dir.c          |    6 ++++++
+ fs/coda/dir.c         |    6 ++++++
+ fs/hfs/sysdep.c       |    6 ++++++
+ fs/ncpfs/dir.c        |    6 ++++++
+ fs/nfs/dir.c          |   12 ++++++++++++
+ fs/proc/proc_sysctl.c |    5 +++++
+ fs/sysfs/dir.c        |    6 ++++++
+ 8 files changed, 53 insertions(+), 0 deletions(-)
+
+diff --git a/fs/9p/vfs_dentry.c b/fs/9p/vfs_dentry.c
+index e022890..3b082dc 100644
+--- a/fs/9p/vfs_dentry.c
++++ b/fs/9p/vfs_dentry.c
+@@ -106,6 +106,12 @@ static int v9fs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct inode *inode;
+ 	struct v9fs_inode *v9inode;
+ 
++	if (!nd) {
++		printk(KERN_ERR "v9fs_lookup_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index 1b0b195..4003d76 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -607,6 +607,12 @@ static int afs_d_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	void *dir_version;
+ 	int ret;
+ 
++	if (!nd) {
++		printk(KERN_ERR "afs_d_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/coda/dir.c b/fs/coda/dir.c
+index 0239433..ede8e77 100644
+--- a/fs/coda/dir.c
++++ b/fs/coda/dir.c
+@@ -544,6 +544,12 @@ static int coda_dentry_revalidate(struct dentry *de, struct nameidata *nd)
+ 	struct inode *inode;
+ 	struct coda_inode_info *cii;
+ 
++	if (!nd) {
++		printk(KERN_ERR "coda_dentry_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/hfs/sysdep.c b/fs/hfs/sysdep.c
+index 19cf291..b130d91 100644
+--- a/fs/hfs/sysdep.c
++++ b/fs/hfs/sysdep.c
+@@ -18,6 +18,12 @@ static int hfs_revalidate_dentry(struct dentry *dentry, struct nameidata *nd)
+ 	struct inode *inode;
+ 	int diff;
+ 
++	if (!nd) {
++		printk(KERN_ERR "hfs_revalidate_dentry:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/ncpfs/dir.c b/fs/ncpfs/dir.c
+index 9c51f62..6580d1d 100644
+--- a/fs/ncpfs/dir.c
++++ b/fs/ncpfs/dir.c
+@@ -302,6 +302,12 @@ ncp_lookup_validate(struct dentry *dentry, struct nameidata *nd)
+ 	if (dentry == dentry->d_sb->s_root)
+ 		return 1;
+ 
++	if (!nd) {
++		printk(KERN_ERR "ncp_lookup_validate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b238d95..51b3d54 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1103,6 +1103,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct nfs_fattr *fattr = NULL;
+ 	int error;
+ 
++	if (!nd) {
++		printk(KERN_ERR "nfs_lookup_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+@@ -1508,6 +1514,12 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct nfs_open_context *ctx;
+ 	int openflags, ret = 0;
+ 
++	if (!nd) {
++		printk(KERN_ERR "nfs_open_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index 1a77dbe..20ef3ab 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -389,6 +389,11 @@ static const struct inode_operations proc_sys_dir_operations = {
+ 
+ static int proc_sys_revalidate(struct dentry *dentry, struct nameidata *nd)
+ {
++	if (!nd) {
++		printk(KERN_ERR "proc_sys_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 	return !PROC_I(dentry->d_inode)->sysctl->unregistering;
+diff --git a/fs/sysfs/dir.c b/fs/sysfs/dir.c
+index ea9120a..6373450 100644
+--- a/fs/sysfs/dir.c
++++ b/fs/sysfs/dir.c
+@@ -242,6 +242,12 @@ static int sysfs_dentry_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct sysfs_dirent *sd;
+ 	int is_dir;
+ 
++	if (!nd) {
++		printk(KERN_ERR "sysfs_dentry_revalidate:"
++		       " called from layered filesystem without intents\n");
++		return -EIO;
++	}
++
+ 	if (nd->flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+-- 
+1.7.0.4
+
+----------------------------------------------------------------------
