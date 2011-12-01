@@ -1,184 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:57298 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753570Ab1LWTrP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 14:47:15 -0500
-Received: by mail-qw0-f46.google.com with SMTP id c12so5224840qad.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 11:47:15 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] autoconf: only link binaries that need it to libtirpc
-Date: Fri, 23 Dec 2011 14:47:05 -0500
-Message-Id: <1324669625-2948-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
-References: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:39645 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751204Ab1LAGuc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 01:50:32 -0500
+Date: Thu, 1 Dec 2011 00:50:25 -0600
+From: Tyler Hicks <tyhicks@canonical.com>
+To: Chris Dunlop <chris@onthe.net.au>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        David Howells <dhowells@redhat.com>, Jan Harkes <jaharkes@cs.cmu.edu>,
+        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
+        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        codalist@TELEMANN.coda.cs.cmu.edu,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        ecryptfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
+Message-ID: <20111201065024.GB495@boyd>
+References: <1321861008-20611-1-git-send-email-chris@onthe.net.au>
+ <20111129082501.GA569@onthe.net.au>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="wzJLGUyc3ArbnUjN"
+In-Reply-To: <20111129082501.GA569@onthe.net.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we first added tirpc support, we took a "big hammer" approach, and
-had it add libtirpc to $LIBS. That had the effect of making it so that
-that library was linked into every binary. That's unnecessary, and
-wasteful with memory.
 
-Don't let AC_CHECK_LIB add -ltirpc to $LIBS. Instead, have the autoconf
-tests set $(LIBTIRPC) in the makefiles, and have the programs that
-need it explicitly include that library. In the event that we're not
-using libtirpc, then set $LIBTIRPC to a blank string.
+--wzJLGUyc3ArbnUjN
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-This patch also fixes a subtle bug. If the library was usable, but the
-includes were not, the test would set $enable_tirpc to "no", but
-HAVE_LIBTIRPC would still be true. That configuration would likely
-fail to build.
+On 2011-11-29 19:25:01, Chris Dunlop wrote:
+> Hi,
+>=20
+> I haven't seen any response to this patch which fixes an Oops in
+> d_revalidate. I hit this using NFS, but various other file
+> systems look to be likewise vulnerable, hence the broadness of
+> the patch. The sequence leading to the Oops is:
+>=20
+> lookup_one_len() [fs/namei.c]
+>    calls __lookup_hash() [fs/namei.c] with nd =3D=3D NULL,
+>       which can then call the file system specific d_revalidate(), passin=
+g in nd =3D=3D NULL
+>          which will then Oops if nd is used without checking
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- aclocal/libtirpc.m4         |   15 +++++++++++++--
- tools/rpcgen/Makefile.am    |    1 +
- utils/gssd/Makefile.am      |    4 ++--
- utils/mount/Makefile.am     |    3 ++-
- utils/mountd/Makefile.am    |    2 +-
- utils/nfsd/Makefile.am      |    2 +-
- utils/showmount/Makefile.am |    3 ++-
- utils/statd/Makefile.am     |    4 ++--
- 8 files changed, 24 insertions(+), 10 deletions(-)
+Hey Chris - Can you share what you were trying to do when you hit this?
+Were you stacking eCryptfs on top of NFS? Another stacked filesystem on
+top of NFS?
 
-diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
-index 9f0fde0..19b8361 100644
---- a/aclocal/libtirpc.m4
-+++ b/aclocal/libtirpc.m4
-@@ -13,8 +13,8 @@ AC_DEFUN([AC_LIBTIRPC], [
- 
-   if test "$enable_tirpc" != "no"; then
- 
--    dnl look for the library; add to LIBS if found
--    AC_CHECK_LIB([tirpc], [clnt_tli_create], ,
-+    dnl look for the library
-+    AC_CHECK_LIB([tirpc], [clnt_tli_create], [:],
-                  [if test "$enable_tirpc" = "yes"; then
- 			AC_MSG_ERROR([libtirpc not found.])
- 		  else
-@@ -37,4 +37,15 @@ AC_DEFUN([AC_LIBTIRPC], [
- 
-   fi
- 
-+  dnl now set $LIBTIRPC accordingly
-+  if test "$enable_tirpc" != "no"; then
-+    AC_DEFINE([HAVE_LIBTIRPC], 1,
-+              [Define to 1 if you have and wish to use libtirpc.])
-+    LIBTIRPC="-ltirpc"
-+  else
-+    LIBTIRPC=""
-+  fi
-+
-+  AC_SUBST(LIBTIRPC)
-+
- ])dnl
-diff --git a/tools/rpcgen/Makefile.am b/tools/rpcgen/Makefile.am
-index 51a2bfa..8a9ec89 100644
---- a/tools/rpcgen/Makefile.am
-+++ b/tools/rpcgen/Makefile.am
-@@ -12,6 +12,7 @@ rpcgen_SOURCES = rpc_clntout.c rpc_cout.c rpc_hout.c rpc_main.c \
- rpcgen_CFLAGS=$(CFLAGS_FOR_BUILD)
- rpcgen_CPPLAGS=$(CPPFLAGS_FOR_BUILD)
- rpcgen_LDFLAGS=$(LDFLAGS_FOR_BUILD)
-+rpcgen_LDADD=$(LIBTIRPC)
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index 9136189..d29e132 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -40,7 +40,7 @@ gssd_SOURCES = \
- 
- gssd_LDADD =	../../support/nfs/libnfs.a \
- 		$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(KRBLIBS)
--gssd_LDFLAGS = $(KRBLDFLAGS)
-+gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
- 
- gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
- 	      $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
-@@ -59,7 +59,7 @@ svcgssd_SOURCES = \
- svcgssd_LDADD = \
- 	../../support/nfs/libnfs.a \
- 	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
--	$(KRBLIBS)
-+	$(KRBLIBS) $(LIBTIRPC)
- 
- svcgssd_LDFLAGS = $(KRBLDFLAGS)
- 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 7bc3e2b..7627854 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -24,7 +24,8 @@ EXTRA_DIST += nfsmount.conf
- endif
- 
- mount_nfs_LDADD = ../../support/nfs/libnfs.a \
--		  ../../support/export/libexport.a
-+		  ../../support/export/libexport.a \
-+		  $(LIBTIRPC)
- 
- mount_nfs_SOURCES = $(mount_common)
- 
-diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
-index eba81fc..375908e 100644
---- a/utils/mountd/Makefile.am
-+++ b/utils/mountd/Makefile.am
-@@ -12,7 +12,7 @@ mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
- mountd_LDADD = ../../support/export/libexport.a \
- 	       ../../support/nfs/libnfs.a \
- 	       ../../support/misc/libmisc.a \
--	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID)
-+	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
- mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
- 		  -I$(top_builddir)/support/include \
- 		  -I$(top_srcdir)/support/export
-diff --git a/utils/nfsd/Makefile.am b/utils/nfsd/Makefile.am
-index c4c6fb0..1536065 100644
---- a/utils/nfsd/Makefile.am
-+++ b/utils/nfsd/Makefile.am
-@@ -8,7 +8,7 @@ KPREFIX		= @kprefix@
- sbin_PROGRAMS	= nfsd
- 
- nfsd_SOURCES = nfsd.c nfssvc.c
--nfsd_LDADD = ../../support/nfs/libnfs.a
-+nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC)
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/showmount/Makefile.am b/utils/showmount/Makefile.am
-index 077b2c7..4ba5ead 100644
---- a/utils/showmount/Makefile.am
-+++ b/utils/showmount/Makefile.am
-@@ -7,7 +7,8 @@ sbin_PROGRAMS	= showmount
- showmount_SOURCES = showmount.c
- showmount_LDADD = ../../support/export/libexport.a \
- 		  ../../support/nfs/libnfs.a \
--	  	  ../../support/misc/libmisc.a
-+		  ../../support/misc/libmisc.a \
-+		  $(LIBTIRPC)
- showmount_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
- 		   -I$(top_builddir)/support/export
- 
-diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
-index 1744791..dc2bfc4 100644
---- a/utils/statd/Makefile.am
-+++ b/utils/statd/Makefile.am
-@@ -15,10 +15,10 @@ BUILT_SOURCES = $(GENFILES)
- statd_LDADD = ../../support/nsm/libnsm.a \
- 	      ../../support/nfs/libnfs.a \
- 	      ../../support/misc/libmisc.a \
--	      $(LIBWRAP) $(LIBNSL) $(LIBCAP)
-+	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
- sm_notify_LDADD = ../../support/nsm/libnsm.a \
- 		  ../../support/nfs/libnfs.a \
--		  $(LIBNSL) $(LIBCAP)
-+		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
- 
- EXTRA_DIST = sim_sm_inter.x $(man8_MANS) COPYRIGHT simulate.c
- 
--- 
-1.7.7.4
+Do you *need* a stacked filesystem to work on top of NFS? If so, we'll
+need to discuss a way forward. Al has previously shown a dislike of
+eCryptfs passing around nameidata (for good reason), but that is what
+NFS currently requires. I looked at doing this a few months back, but
+never got to the implementation stage.
 
+As David mentioned, Al's atomic open patches might solve all of this in
+the future, but I don't know much about that patchset. Is there any
+relevant info you could provide about those patches, Al?
+
+Tyler
+
+--wzJLGUyc3ArbnUjN
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQIcBAEBCgAGBQJO1yOwAAoJENaSAD2qAscKpgsP/jbJrsnjhcXnxKLTMRRMZ+Pn
+N2AQYEa74BEKGzSIA71kqhg4GlHH49M35BFl9APWaYPaAefUIEmkF9hVPUAekY72
+d3GaZAIsNAnydTD2eR4kPrzU+QiKizMGkFLe60E5TIkxESQ1cNu/YkvrA0TrJyEZ
+RFOY1/IIp605C/OXSeOjXAOPIylpVwEiJNy28xoH6Wa8eNLGuaoOJ2d6sZ30B01G
+3mhjQO+Iib+SA2NZTSNqtqBMmGu72+fbmHQVlF7qUrVMv3b9g34NKEbzNiz3meXH
+0cRdkb7C+tJUC5apdR0xr5Tp84UnOXERUlNW1CX/m6vVZ+cOgy86rGZ4EswA4Rfn
+mKaNhd/tMRajTud86TGzrywayKfXmdy7QxApdYQOIdVuczqQHfwaaPOrVqQyruU0
+zWt7T/LZVdKImvJH9B8KSeaS+lUE7VyBy/LslT4BAkplfavlivD4hyT9KQo7++uZ
+AdZ7gqWvrog8dCrysot//dVhK8v8Kg8PaX2RZwIi6bMtxUGlIbBwOljGglD4XNEZ
+Kw7AIZgZYztp4TmzEQl1sphidHC8DhTtOaLF4ia6qhQlHCNJH8mwJI/n3jY4ESw2
+meDExAgRfcbRS/ontjAicKv/Q0WIamtfd7tMUQikPWATfjFtfb8zKHR8FcE5lfA5
+e/AvHS+GLFmy73bkFvKv
+=G/79
+-----END PGP SIGNATURE-----
+
+--wzJLGUyc3ArbnUjN--
