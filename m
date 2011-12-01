@@ -1,83 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from che.mayfirst.org ([209.234.253.108]:48190 "EHLO
-	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752153Ab1LISbQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 13:31:16 -0500
-Message-ID: <4EE253EC.2040609@fifthhorseman.net>
-Date: Fri, 09 Dec 2011 13:31:08 -0500
-From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:55006 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750726Ab1LAFHg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 00:07:36 -0500
+Received: by yenl6 with SMTP id l6so1322296yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2011 21:07:35 -0800 (PST)
+Message-ID: <4ED70B93.8070705@gmail.com>
+Date: Wed, 30 Nov 2011 23:07:31 -0600
+From: Bruce Dubbs <bruce.dubbs@gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out Please
- check user daemon is running
-References: <8762hrozdl.fsf@fifthhorseman.net> <20111208174501.GA30088@fieldses.org>
-In-Reply-To: <20111208174501.GA30088@fieldses.org>
-Content-Type: multipart/signed; micalg=pgp-sha512;
- protocol="application/pgp-signature";
- boundary="------------enig19833F3FE96C87BA601B7529"
+To: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: nfs server issues
+References: <4ED6BCEA.9050000@gmail.com> <20111201024319.GA10246@umich.edu> <4ED704E5.2030500@gmail.com>
+In-Reply-To: <4ED704E5.2030500@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig19833F3FE96C87BA601B7529
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+The parent should have gone to the list.
 
-On 12/08/2011 12:45 PM, J. Bruce Fields wrote:
-> Yes, if you're using NFSv4 then the client and server should each run
-> both daemons.
+Bruce Dubbs wrote:
+> Jim Rees wrote:
+>> Bruce Dubbs wrote:
+>>
+>>   I am trying to document the installation of nfs for Linux From
+>>   Scratch.  The client works, but the server does not and I'm looking
+>>   for some help.   If this is the wrong place to ask for help, please
+>>   redirect me.
+>>     For now, I am only trying to get nfs version 3 to work.
+>>     # mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
+>>      [ mounts OK ]
+>>   # mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
+>>   # mount.nfs: requested NFS version or transport protocol is not 
+>> supported
+>>
+>> It doesn't explain the error message you're getting, but your exports 
+>> file
+>> doesn't have an entry for localhost.  When I try this I get "mount.nfs:
+>> access denied by server while mounting localhost:/usr/src".
+> 
+> I added
+> /usr/src 127.0.0.0/8(rw,async,no_root_squash,subtree_check)
+> 
+> but still got 'requested NFS version or transport protocol is not 
+> supported'.  I suspect it has something to do with rpcbind not having 
+> nfsd registered on port 2049.  At least rpcinfo doesn't know about it.
+> 
+>>   2. Build libtirpc
+>>      Remove auth_des.c authdes_prot.c des_crypt.c from Makefile
+>>      Comment out authdes_create() in rpc_soc.c
+>>      ./configure --prefix=/usr --libdir=/lib
+>>
+>> This shouldn't be necessary.  Instead of working around the problem, it
+>> would be nice if you could figure out why you needed to do this, and if
+>> there is a bug in the configure magic, let us know.
+> 
+> Which shouldn't be necessary?   The change to the Makefile/rpc_soc.c 
+> files or the -prefix and --libdir options?
+> 
+> I just went back and rebuilt without the file changes and it built fine. 
+> I'm not sure what happened to change it, but it was definitely needed 
+> before.  Sometimes when you are building a whole system from scratch, 
+> some assumed prereqs are not installed.  I'll have to figure that out to 
+> get it right.  I suspect it was because I originally didn't get the 
+> replacement of the rpc/nis headers that glibc now omits installed 
+> correctly.
 
-ah, thanks.
+Now I remember.  Without the patch, other programs don't link.  For 
+example, rpcbind gives:
 
->> If so, what functionality am i losing out on by not running it?
->=20
-> You lose NFSv4.0 delegations, which depend on the ability for the serve=
-r
-> to contact the client to send delegation recalls.  Delegations are
-> optional, so you won't lose correctness, but you may lose some
-> performance.
+  gcc -g -O2 -o rpcbind check_bound.o rpcbind.o rpcb_svc_4.o 
+rpcb_svc_com.o util.o pmap_svc.o rpcb_stat.o rpcb_svc.o security.o 
+warmstart.o  /lib/libtirpc.so -lnsl -lpthread   -Wl,--rpath -Wl,/lib 
+-Wl,--rpath -Wl,/lib
+/lib/libtirpc.so: undefined reference to `key_encryptsession_pk'
+/lib/libtirpc.so: undefined reference to `getnetname'
+/lib/libtirpc.so: undefined reference to `_des_crypt_call'
+/lib/libtirpc.so: undefined reference to `getpublickey'
+/lib/libtirpc.so: undefined reference to `key_gendes'
 
-Thanks, that's useful.  Do the clients need to run cachefilesd as well
-to take advantage of delegation?  Is there a document where i could find
-this sort of information without adding noise to the list?
+This is a glibc-2.14 and later issue.
 
-> If you're using only v2, v3, or v4.1, that doesn't matter.  (v2 and v3
-> lack delegations, and v4.1 sends callbacks over existing
-> client-established connections).
+> As for the --prefix and --libdir options, we may not need the --prefix. 
+> Most packages install in /usr/local without it.  The --libdir is to 
+> install in /lib instead of /usr/lib so the library is available if /usr 
+> is not mounted.  Without the setting, we would have to move the files 
+> and also modify the libdir line in both libtirpc.la and libtirpc.pc.
+> 
+>   -- Bruce
+> 
 
-OK, gotcha.  Is it possible to use 4.1 with linux kernel 3.1 and
-nfs-utils 1.2.5, or would i need to pull a more recent version?
-
-Thanks, and sorry for the basic questions,
-
-	--dkg
-
-
---------------enig19833F3FE96C87BA601B7529
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iQJ8BAEBCgBmBQJO4lPsXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25zLm9w
-ZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQwRUU1QkU5NzkyODJEODBCOUY3NTQwRjFD
-Q0QyRUQ5NEQyMTczOUU5AAoJEMzS7ZTSFznp5Z4P/RXfL5XYDSneFQGJhgPDlcsu
-p77atan1OrMowYEB6yefQMtkZUbgMiljV7b4QvXX4d1yBemuhKahkO6xrlfApZ73
-bKMWVW7NJDRgavWkxl0Ayvslhmshmru3nQNRMJKl/kkUrKwtMJMKvhT201oIf52j
-bA6L11DGHhR7C+tIoWvBCwHSlULU62s015ZL0HcVVYxtievxVB5ARlxCn4mwJ7G0
-tAt4zEtvvRYxI/oELbgHtiM4cUDgNNtSA0XM4/mzdu3WUWMVQutgGA1FkONEg9tY
-bZFZQYqlTnDhFcEmRBpOERhevN9hRWmx9XR8zcQVd8OVyjzS1LcD2YONQ62PYBN0
-INu7Ce+P3WCaImoMBrvnFdqzrgG3AJbuZ0oV56bXjJrqHfPlth1xFZ3bVUXbq3JI
-Tj0Ddh4p5c+tcXuoRu6X/pjDe1RPp3jB3Mlp8T+ZmBy8X7YgIXXi+RxBpssIgvaU
-9V0XFd64zkl1WFo+8+dKTuWxoalhnZnegz7tVNVb66S8+aM9JzrBeBChITsSzVTW
-7U9QJciGBkKL6RWjlzRaC5vHbv68OsW/A66IscGU/Xj7d/jFIm/nC7AbaDI6ExKn
-LpadJFhpw8+vTqY1qLHYS/7ODx8TWk789LimXo0O5dgX6Lds9Hm/o1tDAsrFSeXS
-MAHpLVVgkCAycDdlGiHL
-=ujh9
------END PGP SIGNATURE-----
-
---------------enig19833F3FE96C87BA601B7529--
