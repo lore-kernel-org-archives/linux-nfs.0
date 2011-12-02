@@ -1,134 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o148.mxlogic.net ([208.65.144.81]:55398 "EHLO
-	p02c11o148.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752335Ab1LUWoe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 17:44:34 -0500
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 21 Dec 2011 17:31:38 -0500
-Subject: RE: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C21@IT-1874.Isys.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
- <1324499696-10318-5-git-send-email-jlayton@redhat.com>
- <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
- <20111221163312.3405c1f3@tlielax.poochiereds.net>
- <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
- <20111221164810.78d600a9@tlielax.poochiereds.net>
- <20111221165922.589101aa@tlielax.poochiereds.net>
- <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
- <FB145782-E1E4-4BEE-9CD4-EF5653A77A91@oracle.com>
-In-Reply-To: <FB145782-E1E4-4BEE-9CD4-EF5653A77A91@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:34831 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756742Ab1LBOlW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2011 09:41:22 -0500
+Received: by faaq16 with SMTP id q16so2081824faa.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Dec 2011 06:41:21 -0800 (PST)
 MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4ED39F2D.7050508@RedHat.com>
+References: <CAGue13qasD7m+dj3PdA+p5jfJQU_Eq0r+Z9QqtvOSnadFmWJeg@mail.gmail.com>
+	<20111123201345.GA1044@fieldses.org>
+	<4ED39F2D.7050508@RedHat.com>
+Date: Fri, 2 Dec 2011 15:41:21 +0100
+Message-ID: <CAGue13qyZPwTF1erSPwj5iaiwOOq8NGdpedS0BeMZ3JCFSveYw@mail.gmail.com>
+Subject: Re: nfs-utils and libnfsidmap
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+On Mon, Nov 28, 2011 at 3:48 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> On 11/23/2011 03:13 PM, J. Bruce Fields wrote:
+>> On Wed, Nov 23, 2011 at 08:54:06PM +0100, Tigran Mkrtchyan wrote:
+>>> Hi All,
+>>>
+>>> today was tracing a bug in nfs-utils/libnfsidmap and after a log
+>>> debugging located it and
+>>> finally realized that it's already fixed by Steve Dickson (
+>>> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commit;h=d22ef3f525d71b565fcc688557273a6cabeeb71a
+>>> ). Nevertheless during
+>>> this procedure it turned out that there is quite some code duplicated
+>>> between nfs-utils and
+>>> libnfsidmap.
+>>>
+>>> Questions:
+>>>    a) why nfs-utils duplicates some part of libnfsidmap and still depends o it
+>>>    b) is there readon for code duplication? Licensing or so
+>>>    c) what ww need to do to get rid of duplication
+>>>
+>>> I expect the answer of 'c' will contain something like time and man power.
+>>> I am volunteering to to pend some time on it.
+>>
+>> I doubt there's any real reason for duplication.
+> Just curious as to what code we are talking about...
 
-I can't really specify things either, but XDR parsing of something which is fixed in size and format is much less overhead than parsing of strings.  Even adding for the possibility of versioning, XDR is going to come out vastly easier to implement.
+for example
+  nfs-utils/support/nfs/conffile.c  => libnfsidmap/cfg.c
+  nfs-utils/utils/idmapd/queue.h =>  libnfsidmap/queue.h
 
-Text string parsing is very nice when variable strings are passed, in varying orders, with some appearing and others not.  In this case, all fields must be present.  There isn't any benefit to passing them in random orders, so it appears that the primary benefit of the text string parsing is minimized.
+probably some other files as well.
 
-	Thanx...
+Tigran.
 
-		ps
-
-
------Original Message-----
-From: Chuck Lever [mailto:chuck.lever@oracle.com] 
-Sent: Wednesday, December 21, 2011 5:22 PM
-To: Peter Staubach
-Cc: Jeff Layton; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-
-
-On Dec 21, 2011, at 5:04 PM, Peter Staubach wrote:
-
-> By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
-
-No, I mean something akin to what is done for the other NFSD upcall and downcall arguments and results.  A single set of decimal digits for simple arguments, and "keyword=value keyword=value,value" and so on for complex arguments.  I recommend text because that is similar to what is used for every other modern user space API that NFSD has.
-
-> I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
-
-To be clear, there is just one binary data item here, and that's nfs_client_id4.  The other data items are integers, which have well-defined text representations.
-
-A new and separate API without any legacy baggage might be XDR, but text seems more appropriate here given the existence of other text APIs.  I'm not religious about this, just highlighting a few design choices.
-
-> 	Thanx...
-> 
-> 		ps
-> 
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
-> Sent: Wednesday, December 21, 2011 4:59 PM
-> To: Jeff Layton
-> Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; 
-> linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to 
-> nfsdcld
-> 
-> On Wed, 21 Dec 2011 16:48:10 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
->> On Wed, 21 Dec 2011 16:37:30 -0500
->> Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
->>> 
->>>> On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
->>>> <chuck.lever@oracle.com> wrote:
->>>> 
->>>>> 
->>>>> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
->>>>> 
->>>>>> The daemon takes a versioned binary struct. Hopefully this should 
->>>>>> allow us to revise the struct later if it becomes necessary.
->>>>> 
->>>>> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
->>>>> 
->>>> 
->>>> That's the main reason. We could, of course encode that string in 
->>>> hex or something, and decode it on the other end. No one has 
->>>> presented a strong argument for doing it that way as of yet though.
->>>> 
->>>> If anyone feels strongly about that, then it would be helpful to 
->>>> have them pipe up now and state why they do...
->>> 
->>> <pipe>Because binary data structures are difficult to work with over 
->>> time, which is why other NFSD user space interfaces are 
->>> text-based.</pipe>
->>> 
->>> ;-)
->>> 
->> 
->> *sigh* that was the sort of comments I was hoping to get out of the 
->> RFC postings. But ok...
->> 
->> I'll see about respinning the whole thing with either a text-based or 
->> XDR-based upcall/downcall format. That'll take a while, but I'll see 
->> if I can get it in shape in time for 3.3.
->> 
-> 
-> ...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
-> 
-> --
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+>
+>>
+>> Probably libnfsidmap should be part of nfs-utils, actually.
+> I guess we could roll the libnfsidmap git tree into the nfs-utils
+> tree... if that make senses... It probably would simply things..
+>
+>>
+>> And maybe we don't need it at all--the original reason to split out
+>> libnfsidmap was to share the code with libacl, so the posix getfacl
+>> command could do v4->posix acl mapping, but those patches never made it
+>> upstream.
+> So you don't think this will every happen?
+>
+> steved.
+>
+>>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
