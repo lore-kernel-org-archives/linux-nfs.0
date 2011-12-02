@@ -1,93 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:40918 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752133Ab1LKQkA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 11:40:00 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c4so1219348eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Dec 2011 08:40:00 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v3 5/5] nfsd41: use pinter to current stateid to avoid extra copy
-Date: Sun, 11 Dec 2011 17:41:48 +0100
-Message-Id: <1323621708-25138-6-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from fieldses.org ([174.143.236.118]:52969 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755468Ab1LBPPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Dec 2011 10:15:15 -0500
+Date: Fri, 2 Dec 2011 10:15:12 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: nfs-utils and libnfsidmap
+Message-ID: <20111202151512.GA14393@fieldses.org>
+References: <CAGue13qasD7m+dj3PdA+p5jfJQU_Eq0r+Z9QqtvOSnadFmWJeg@mail.gmail.com>
+ <20111123201345.GA1044@fieldses.org>
+ <4ED39F2D.7050508@RedHat.com>
+ <CAGue13qyZPwTF1erSPwj5iaiwOOq8NGdpedS0BeMZ3JCFSveYw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAGue13qyZPwTF1erSPwj5iaiwOOq8NGdpedS0BeMZ3JCFSveYw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Fri, Dec 02, 2011 at 03:41:21PM +0100, Tigran Mkrtchyan wrote:
+> On Mon, Nov 28, 2011 at 3:48 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> > On 11/23/2011 03:13 PM, J. Bruce Fields wrote:
+> >> On Wed, Nov 23, 2011 at 08:54:06PM +0100, Tigran Mkrtchyan wrote:
+> >>> Hi All,
+> >>>
+> >>> today was tracing a bug in nfs-utils/libnfsidmap and after a log
+> >>> debugging located it and
+> >>> finally realized that it's already fixed by Steve Dickson (
+> >>> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commit;h=d22ef3f525d71b565fcc688557273a6cabeeb71a
+> >>> ). Nevertheless during
+> >>> this procedure it turned out that there is quite some code duplicated
+> >>> between nfs-utils and
+> >>> libnfsidmap.
+> >>>
+> >>> Questions:
+> >>>    a) why nfs-utils duplicates some part of libnfsidmap and still depends o it
+> >>>    b) is there readon for code duplication? Licensing or so
+> >>>    c) what ww need to do to get rid of duplication
+> >>>
+> >>> I expect the answer of 'c' will contain something like time and man power.
+> >>> I am volunteering to to pend some time on it.
+> >>
+> >> I doubt there's any real reason for duplication.
+> > Just curious as to what code we are talking about...
+> 
+> for example
+>   nfs-utils/support/nfs/conffile.c  => libnfsidmap/cfg.c
+>   nfs-utils/utils/idmapd/queue.h =>  libnfsidmap/queue.h
+> 
+> probably some other files as well.
 
+OK.  I'm sure reasonable patches would be welcomed.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c  |    6 +-----
- fs/nfsd/nfs4state.c |    7 +++----
- fs/nfsd/xdr4.h      |    3 +--
- 3 files changed, 5 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f2f7dfa..b7d1a7b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1126,10 +1126,7 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
- static void
- nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
- {
--	if (cstate->has_stateid) {
--		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
--		cstate->has_stateid = false;
--	}
-+	cstate->current_stateid = NULL;
- }
- /*
-  * COMPOUND call.
-@@ -1244,7 +1241,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		if (!op->status) {
- 			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
- 				opdesc->op_set_currentstateid(cstate, &op->u);
--				cstate->has_stateid = true;
- 			}
- 
- 			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d7b8f25..be77cd3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4553,16 +4553,15 @@ nfs4_state_shutdown(void)
- static void
- get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
--	if (cstate->has_stateid && CURRENT_STATEID(stateid))
--		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
-+	if (cstate->current_stateid && CURRENT_STATEID(stateid))
-+		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
- }
- 
- static void
- put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
- 	if (cstate->minorversion) {
--		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
--		cstate->has_stateid = true;
-+		cstate->current_stateid = stateid;
- 	}
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b8435d20..0ad0846 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -54,8 +54,7 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
--	stateid_t               current_stateid;
--	bool	has_stateid;
-+	stateid_t	*current_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
--- 
-1.7.7.4
-
+--b.
