@@ -1,91 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12708 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3447 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750846Ab1LFS5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 13:57:05 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pB6Iv4nf015299
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Dec 2011 13:57:04 -0500
-Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pB6Iv3FY031775
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Dec 2011 13:57:03 -0500
-Message-ID: <4EDE657F.6050004@RedHat.com>
-Date: Tue, 06 Dec 2011 13:57:03 -0500
+	id S1754605Ab1LBCBt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Dec 2011 21:01:49 -0500
+Message-ID: <4ED8318B.5040400@RedHat.com>
+Date: Thu, 01 Dec 2011 21:01:47 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: libnfsidmap-0.25 is available
-Content-Type: text/plain; charset=ISO-8859-1
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
+References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com> <4ED7EBFF.6030706@RedHat.com> <4ED7F7B9.2090205@netapp.com>
+In-Reply-To: <4ED7F7B9.2090205@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A new version of libnfsidmap is now available from
-http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/libnfsidmap-0.24.tar.gz
 
-Changes since libnfsidmap-0.24
 
-commit 0c1766af5bf125a56fbf589111aa2f3876a5d709
-Author: Steve Dickson <steved@redhat.com>
-Date:   Sat Nov 12 10:19:52 2011 -0500
+On 12/01/2011 04:55 PM, Bryan Schumaker wrote:
+> On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
+>>
+>>
+>> On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
+>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>
+>>> This set of patches removes NFS v3 from the main NFS kernel module and creates
+>>> a new module containing the proc, xdr, and acl code.  This will give us a
+>>> single directory to put NFS v3 specific code so it doesn't need to be mixed in
+>>> with the generic client stuff.
+>>>
+>>> I'm sure this could still use a lot of work, but I figured I would wait to see
+>>> what everybody thinks first.  I imagine that once we get an "nfs submodule"
+>>> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
+>>> modules.
+>>>
+>>> I split the second patch into two to make it easier to see what my changes were
+>>> to get everything to compile.  Hopefully this will save some pain in having to
+>>> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
+>>> command.  I can combine everything in a future version of the patch.
+>>>
+>>> v2:
+>>>   - I set the "diff.renames copy" git config option to create a smaller second
+>>>     patch.  Maybe this time it won't get me kicked off the mailing list...
+>>>     Thanks to Boaz and Jim for the tip!
+>>>
+>>> Thoughts?
+>> Now what is the motivating reason behind this re-architecture
+>> other than making the upstream kernel literally impossible to 
+>> back port to older kernels?? 
+>>
+> I wasn't thinking about backporting when I did this... is there a 
+> better way to do this that wouldn't make it a pain to backport?
+Yeah... Don't do it! 8-) Major architectural changes always destroy
+any all chances of clean back ports... That's why they are generally 
+done on major releases... the when 3.X was released... 
 
-    nss_getpwnam: ignore case when comparing domain names
-    
-    nss_getpwnam() fails to find the password entry when the
-    DNS domain name has both upper and lower characters,
-    which is wrong. Case need to be ignored when comparing
-    domain names.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-commit d9f2fcd93e033b8a5d4a56ddd6c7d316fdd8516d
-Author: Steve Dickson <steved@redhat.com>
-Date:   Mon Mar 7 10:57:44 2011 -0500
-
-    rpc.idmapd fails to load plugings
-    
-    Due to commit 9acc85db,  PATH_PLUGINS becomes redefined when the
-    --with-pluginpath configuration flag is used due to a
-    Makefile.ac rule.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-commit 8752edac80a250095dc920a5a5c3bedc4cbeeb4b
-Author: Steve Dickson <steved@redhat.com>
-Date:   Fri Jan 14 10:43:53 2011 -0500
-
-    Cleaned up some warnings
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-commit 634debd8f180004108b874d271f6c6246b62d411
-Author: Steve Dickson <steved@redhat.com>
-Date:   Fri Jan 14 10:25:26 2011 -0500
-
-    Ignoring more files.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-commit 9ed53a42a93095deb84c22155a6e346851a11c8f
-Author: Steve Dickson <steved@redhat.com>
-Date:   Fri Jan 14 10:18:33 2011 -0500
-
-    Improve debugging during lib initialization.
-    
-    Removed unnecessary new lines and dded debug code that
-    displays what Realms will be used.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-commit 9acc85db7d15a12cb50db98f614b2340e856373c
-Author: Steve Dickson <steved@redhat.com>
-Date:   Wed Dec 22 13:58:17 2010 -0500
-
-    Added new --with-pluginpath configuration flag
-    
-    Added new configuration flage so the plugin path
-    can be redefined when the library is built.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> My thought was that it would help clean things up a bit by adding a bit 
+> of separation between the nfs client and each nfs protocol.  It would 
+> also allow user to decide what they need at run time rather than at 
+> compile time.
+At the end of the day, I don't think many people care what modules are
+or are not loaded as long as performance and stability are not
+effected... How many system admins know or even use the lsmod 
+command... not many I would guess... 
 
 steved.
+ 
+
