@@ -1,81 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:43953 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753634Ab1LLTo2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 14:44:28 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c4so1785048eek.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 11:44:27 -0800 (PST)
-Message-ID: <4EE65996.6070901@tonian.com>
-Date: Mon, 12 Dec 2011 21:44:22 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:40107 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756852Ab1LBQEO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Dec 2011 11:04:14 -0500
+Date: Fri, 2 Dec 2011 11:04:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Ben Greear <greearb@candelatech.com>
+Subject: Re: [PATCH 2/2] svcrpc: avoid memory-corruption on pool shutdown
+Message-ID: <20111202160411.GB14393@fieldses.org>
+References: <20111130233925.GA354@fieldses.org>
+ <20111130234009.GB354@fieldses.org>
+ <20111201072024.5b3d0324@tlielax.poochiereds.net>
+ <20111201224640.GB8091@fieldses.org>
 MIME-Version: 1.0
-To: Tigran Mkrtchyan <kofemann@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATH v3 0/5] nfsd41: current state id processing
-References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111201224640.GB8091@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
-> From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Thu, Dec 01, 2011 at 05:46:40PM -0500, J. Bruce Fields wrote:
+> On Thu, Dec 01, 2011 at 07:20:24AM -0500, Jeff Layton wrote:
+> > On Wed, 30 Nov 2011 18:40:09 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > >  void svc_close_all(struct svc_serv *serv)
+> > >  {
+> > > +	struct svc_pool *pool;
+> > > +	struct svc_xprt *xprt;
+> > > +	struct svc_xprt *tmp;
+> > > +	int i;
+> > > +
+> > >  	svc_close_list(&serv->sv_tempsocks);
+> > >  	svc_close_list(&serv->sv_permsocks);
+> > > +
+> > > +	for (i = 0; i < serv->sv_nrpools; i++) {
+> > > +		pool = &serv->sv_pools[i];
+> > > +
+> > > +		spin_lock_bh(&pool->sp_lock);
+> > > +		while (!list_empty(&pool->sp_sockets)) {
+> > > +			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
+> > > +			list_del_init(&xprt->xpt_ready);
+> > > +		}
+> > > +		spin_unlock_bh(&pool->sp_lock);
+> > > +	}
+> > > +	/*
+> > > +	 * At this point the sp_sockets lists will stay empty, since
+> > > +	 * svc_enqueue will not add new entries without taking the
+> > > +	 * sp_lock and checking XPT_BUSY.
+> > > +	 */
+> > > +	list_for_each_entry_safe(xprt, tmp, &serv->sv_tempsocks, xpt_list)
+> > > +		svc_delete_xprt(xprt);
+> > > +	list_for_each_entry_safe(xprt, tmp, &serv->sv_permsocks, xpt_list)
+> > > +		svc_delete_xprt(xprt);
+> > > +
+> > 
+> > I'm always a little suspicious when I see walking and manipulating a
+> > list outside of any locking.
 > 
-> This is yet another update of current stateid handling
+> With good reason.
 
-Thanks!  It looks must better every iteration!
+(Though on the other hand you might also want to be suspicious of code
+that took locks around these list traversals, as you'd have to wonder
+what would gaurantee the lists would stay empty once the lock was
+dropped.)
 
-> 
-> currently tested to work in a single compound:
-> 
->   OPEN+CLOSE
->   LOCK+WRITE+LOCKU+CLOSE
-> 
-> On the way ( not tested yet ):
->  OPEN+LAYOUTGET
-> 
-> TODO:
->   dispose current stateid on operations which provide CFH, but do not provide stateid.
-> 
-> Internals:
->   1. struct nfsd4_compound_state contains pointer to current stateid
->   2. operations marked to PROVIDE, CONSUME or CLEAR current stateid. 
+> So, anyway: my inclination for now is to update this patch with a few
+> comments but leave it otherwise the same.
 
-Does the flag add anything beyond simply implementing
-the respective method?
+ 	del_timer_sync(&serv->sv_temptimer);
+-
++	/*
++	 * The set of xprts (contained in the sv_tempsocks and
++	 * sv_permsocks lists) is now constant, since it is modified
++	 * only by accepting new sockets (done by service threads in
++	 * svc_recv) or aging old ones (done by sv_temptimer), or
++	 * configuration changes (excluded by whatever locking the
++	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
++	 * safe to traverse those lists and shut everything down:
++	 */
+ 	svc_close_all(serv);
 
-Is CLEAR just a specific form of PROVIDE?
-
-[more comments in reply to the actual patches...]
-
-Thanks,
-
-Benny
-
->   3. during compound processing before operation execution current stateid copied into
->    operations stateid if it's equal to corresponding value ( 0, 1).
->   4. after operation execution current stateid changed to:
->      a) point to stateid of last operation
->      or
->      b) point to NULL, if operation is marked to do so.
-> 
-> 
-> Probably all patches have to be squashed into a single one before merged
-> as none of the changes makes sense without others.
-> 
-> Tigran.
-> 
-> Tigran Mkrtchyan (5):
->   nfsd41: handle current stateid in open and close
->   nfsd41: handle current stateid on lock and locku
->   nfsd41: update operations's stateid iff current stateid is set
->   nfsd41: consume current stateid on read and write
->   nfsd41: use pinter to current stateid to avoid extra copy
-> 
->  fs/nfsd/current_stateid.h |   22 +++++++++++++++
->  fs/nfsd/nfs4proc.c        |   55 +++++++++++++++++++++++++++++-------
->  fs/nfsd/nfs4state.c       |   67 +++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/xdr4.h            |    1 +
->  4 files changed, 134 insertions(+), 11 deletions(-)
->  create mode 100644 fs/nfsd/current_stateid.h
-> 
+--b.
