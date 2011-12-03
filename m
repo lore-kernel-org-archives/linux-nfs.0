@@ -1,72 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:56935 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754688Ab1KIPRu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2011 10:17:50 -0500
-Received: by ggnb2 with SMTP id b2so1813275ggn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Nov 2011 07:17:49 -0800 (PST)
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:65230 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754758Ab1K2QEG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:04:06 -0500
+Received: by qadc14 with SMTP id c14so2131121qad.19
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:04:05 -0800 (PST)
 From: Peng Tao <bergwolf@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, bhalevy@tonian.com
-Subject: [PATCH 5/8] pnfsblock: remove rpc_call_ops from struct parallel_io
-Date: Wed,  9 Nov 2011 07:16:03 -0800
-Message-Id: <1320851766-1834-6-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
-References: <1320851766-1834-1-git-send-email-bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 1/9] pnfsblock: cleanup bl_mark_sectors_init
+Date: Fri,  2 Dec 2011 20:46:15 -0800
+Message-Id: <1322887583-2719-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-block layout can just make use of generic read/write_done.
+It does not need to manipulate on partial initialized blocks.
+Writeback code takes care of it.
 
-Signed-off-by: Peng Tao <bergwolf@gmail.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   13 -------------
- 1 files changed, 0 insertions(+), 13 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    6 +--
+ fs/nfs/blocklayout/blocklayout.h |    3 +-
+ fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
+ 3 files changed, 8 insertions(+), 77 deletions(-)
 
 diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index cc13cb0..815c0c3 100644
+index 281ae95..4ced0b0 100644
 --- a/fs/nfs/blocklayout/blocklayout.c
 +++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -90,7 +90,6 @@ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-  */
- struct parallel_io {
- 	struct kref refcnt;
--	struct rpc_call_ops call_ops;
- 	void (*pnfs_callback) (void *data);
- 	void *data;
- };
-@@ -221,14 +220,6 @@ bl_end_par_io_read(void *data)
- 	schedule_work(&rdata->task.u.tk_work);
+@@ -571,8 +571,7 @@ fill_invalid_ext:
+ 			unlock_page(page);
+ 
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+@@ -621,8 +620,7 @@ next_page:
+ 		}
+ 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 42acf7e..60728ac 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -186,8 +186,7 @@ struct pnfs_block_extent *
+ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent **cow_read);
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages);
++			     sector_t offset, sector_t length);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *bl_alloc_extent(void);
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 19fa7b0..0fc1321 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
+ 	return status;
  }
  
--/* We don't want normal .rpc_call_done callback used, so we replace it
-- * with this stub.
-- */
--static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
+-static void set_needs_init(sector_t *array, sector_t offset)
 -{
--	return;
+-	sector_t *p = array;
+-
+-	dprintk("%s enter\n", __func__);
+-	if (!p)
+-		return;
+-	while (*p < offset)
+-		p++;
+-	if (*p == offset)
+-		return;
+-	else if (*p == ~0) {
+-		*p++ = offset;
+-		*p = ~0;
+-		return;
+-	} else {
+-		sector_t *save = p;
+-		dprintk("%s Adding %llu\n", __func__, (u64)offset);
+-		while (*p != ~0)
+-			p++;
+-		p++;
+-		memmove(save + 1, save, (char *)p - (char *)save);
+-		*save = offset;
+-		return;
+-	}
 -}
 -
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
+ /* We are relying on page lock to serialize this */
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
  {
-@@ -248,8 +239,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
--	par->call_ops = *rdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_read;
- 	/* At this point, we can no longer jump to use_mds */
+@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
  
-@@ -560,8 +549,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	par = alloc_parallel(wdata);
- 	if (!par)
- 		return PNFS_NOT_ATTEMPTED;
--	par->call_ops = *wdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_write;
- 	/* At this point, have to be more careful with error handling */
+ /* Marks sectors in [offest, offset_length) as having been initialized.
+  * All lengths are step-aligned, where step is min(pagesize, blocksize).
+- * Notes where partial block is initialized, and helps prepare it for
+- * complete initialization later.
++ * Currently assumes offset is page-aligned
+  */
+-/* Currently assumes offset is page-aligned */
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages)
++			     sector_t offset, sector_t length)
+ {
+-	sector_t s, start, end;
+-	sector_t *array = NULL; /* Pages to mark */
++	sector_t start, end;
+ 
+ 	dprintk("%s(offset=%llu,len=%llu) enter\n",
+ 		__func__, (u64)offset, (u64)length);
+-	s = max((sector_t) 3,
+-		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
+-	dprintk("%s set max=%llu\n", __func__, (u64)s);
+-	if (pages) {
+-		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
+-		if (!array)
+-			goto outerr;
+-		array[0] = ~0;
+-	}
+ 
+ 	start = normalize(offset, marks->im_block_size);
+ 	end = normalize_up(offset + length, marks->im_block_size);
+@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+ 		goto outerr;
+ 
+ 	spin_lock(&marks->im_lock);
+-
+-	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
+-	     s < offset; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s pre-area pages\n", __func__);
+-		/* Portion of used block is not initialized */
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+ 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
+ 		goto out_unlock;
+-	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
+-	     s < end; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s post-area pages\n", __func__);
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+-
+ 	spin_unlock(&marks->im_lock);
+ 
+-	if (pages) {
+-		if (array[0] == ~0) {
+-			kfree(array);
+-			*pages = NULL;
+-		} else
+-			*pages = array;
+-	}
+ 	return 0;
+ 
+- out_unlock:
++out_unlock:
+ 	spin_unlock(&marks->im_lock);
+- outerr:
+-	if (pages) {
+-		kfree(array);
+-		*pages = NULL;
+-	}
++outerr:
+ 	return -ENOMEM;
+ }
  
 -- 
 1.7.1.262.g5ef3d
