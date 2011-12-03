@@ -1,77 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11864 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757500Ab1KPRh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Nov 2011 12:37:57 -0500
-Message-ID: <4EC3F4E3.7050803@netapp.com>
-Date: Wed, 16 Nov 2011 12:37:39 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Pavel <free.lan.c2.718r@gmail.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: clients fail to reclaim locks after server reboot or manual sm-notify
-References: <loom.20111114T180637-632@post.gmane.org> <4EC1678D.902@netapp.com> <4EC18E5F.4080101@netapp.com> <loom.20111115T142111-739@post.gmane.org> <4EC2DE49.5070000@netapp.com> <20111115221623.GA12453@fieldses.org> <4EC3C7BD.6060407@netapp.com> <20111116153052.GA20545@fieldses.org>
-In-Reply-To: <20111116153052.GA20545@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:59068 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755971Ab1K2QE0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:04:26 -0500
+Received: by mail-vx0-f174.google.com with SMTP id fk14so4754106vcb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:04:26 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/9] pnfsblock: remove rpc_call_ops from struct parallel_io
+Date: Fri,  2 Dec 2011 20:46:19 -0800
+Message-Id: <1322887583-2719-6-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
+References: <1322887583-2719-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/16/2011 10:30 AM, J. Bruce Fields wrote:
-> On Wed, Nov 16, 2011 at 09:25:01AM -0500, Bryan Schumaker wrote:
->> Here is what I'm doing (On debian with 2.6.32):
->> - (On Client) Mount the server: `sudo mount -o vers=3 
->> 192.168.122.202:/home/bjschuma /mnt`
->> - (On Client) Lock a file using nfs-utils/tools/locktest: `./testlk 
->> /mnt/test`
->> - (On Server) Call sm-notify with the server's IP address: `sudo 
->> sm-notify -f -v 192.168.122.202`
->> - dmesg on the client has this message:
->>     lockd: spurious grace period reject?!
->>     lockd: failed to reclaim lock for pid 2099 (errno -37, status 4)
->> - (In wireshark) The client sends a lock request with the "Reclaim" bit 
->> set to "yes" but the server replies with "NLM_DENIED_GRACE_PERIOD".
-> 
-> That sounds like correct server behavior to me.
-> 
-> Once the server ends the grace period and starts accepting regular
-> non-reclaim locks, there's the chance of a situation like:
-> 
-> 	client A		client B
-> 	--------		--------
-> 
-> 	acquires lock
-> 
-> 		---server reboot---
-> 		---grace period ends---
-> 
-> 				acquires conflicting lock
-> 				drops conflicting lock
-> 
-> And if the server permits a reclaim of the original lock from client A,
-> then it gives client A the impression that it has held its lock
-> continuously over this whole time, when in fact someone else has held a
-> conflicting lock.
-> 
-> So: no non-reclaim locks are allowed outside the grace period.
+block layout can just make use of generic read/write_done.
 
-I see where I was confused.  I thought that running sm-notify also restarted the grace period.
+Signed-off-by: Peng Tao <bergwolf@gmail.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   13 -------------
+ 1 files changed, 0 insertions(+), 13 deletions(-)
 
-- Bryan
-
-> 
-> If you restart the server, and *then* immediately run sm-notify while
-> the new nfsd is still in its grace period, I'd expect the reclaim to
-> succeed.
-> 
-> And that may be where the HA setup isn't right--if you're doing
-> active/passive failover, then you need to make sure you don't start nfsd
-> on the backup machine until just before you send the sm-notify.
-> 
-> --b.
-> 
->>
->> Shouldn't the server be allowing the lock reclaim?  When I tried 
->> yesterday using 3.0 it only triggered DNS packets, I tried again a few 
->> minutes ago and got the same results that I did using .32.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 883bb27..7fc69c9 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -90,7 +90,6 @@ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
+  */
+ struct parallel_io {
+ 	struct kref refcnt;
+-	struct rpc_call_ops call_ops;
+ 	void (*pnfs_callback) (void *data);
+ 	void *data;
+ };
+@@ -221,14 +220,6 @@ bl_end_par_io_read(void *data)
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+ 
+-/* We don't want normal .rpc_call_done callback used, so we replace it
+- * with this stub.
+- */
+-static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
+-{
+-	return;
+-}
+-
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -248,8 +239,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	par = alloc_parallel(rdata);
+ 	if (!par)
+ 		goto use_mds;
+-	par->call_ops = *rdata->mds_ops;
+-	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
+ 	par->pnfs_callback = bl_end_par_io_read;
+ 	/* At this point, we can no longer jump to use_mds */
+ 
+@@ -559,8 +548,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	par = alloc_parallel(wdata);
+ 	if (!par)
+ 		return PNFS_NOT_ATTEMPTED;
+-	par->call_ops = *wdata->mds_ops;
+-	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
+ 	par->pnfs_callback = bl_end_par_io_write;
+ 	/* At this point, have to be more careful with error handling */
+ 
+-- 
+1.7.1.262.g5ef3d
 
