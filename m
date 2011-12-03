@@ -1,63 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ogre.sisk.pl ([217.79.144.158]:36085 "EHLO ogre.sisk.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751780Ab1K3TkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Nov 2011 14:40:21 -0500
-From: "Rafael J. Wysocki" <rjw@sisk.pl>
-To: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH v4 0/2] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
-Date: Wed, 30 Nov 2011 20:43:13 +0100
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
-        trond.myklebust@netapp.com, marek.belisko@gmail.com,
-        awilliam@redhat.com
-References: <1322570215-8570-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1322570215-8570-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-2"
-Message-Id: <201111302043.13844.rjw@sisk.pl>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:35515 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755950Ab1K2QJw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Nov 2011 11:09:52 -0500
+Received: by vcbfk14 with SMTP id fk14so4761243vcb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Nov 2011 08:09:51 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, bhalevy@tonian.com, Peng Tao <peng_tao@emc.com>
+Subject: [PATCH 1/4] nfsv41: export pnfs_find_alloc_layout
+Date: Fri,  2 Dec 2011 20:52:42 -0800
+Message-Id: <1322887965-2938-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
+References: <1322887965-2938-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday, November 29, 2011, Jeff Layton wrote:
-> This patchset is the fourth attempt at fixing the issues with suspending
-> a machine that has an active NFS mount.
-> 
-> The bug reported against Fedora is here:
-> 
->     https://bugzilla.redhat.com/show_bug.cgi?id=717735
-> 
-> The main difference from v3 is that I've fixed a stupid set of errors in
-> freezable_schedule_timeout_killable. The if condition was reversed from
-> what it should have been, and the code did not call freezer_count()
-> again when it was going to return early.
-> 
-> Tejun has mentioned that the extra try_to_freeze() calls are unnecessary
-> on top of the pm-freezer changes, but this set should work on as
-> expected on top of 3.2-ish kernels. In the meantime, I'll look over the
-> pm-freezer changes and see whether I need to make changes in this set
-> for 3.3.
-> 
-> Jeff Layton (2):
->   sunrpc: make rpc_wait_bit_killable handle freeze events
->   nfs: make TASK_KILLABLE sleeps attempt to freeze
+So that layout driver can access layout header when there is none.
 
-Both patches applied to linux-pm/linux-next.  I'll move them to
-linux-pm/pm-freezer in a couple of days if there are no problems with
-them.
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+---
+ fs/nfs/pnfs.c |    3 ++-
+ fs/nfs/pnfs.h |    4 ++++
+ 2 files changed, 6 insertions(+), 1 deletions(-)
 
-Thanks,
-Rafael
-
-
->  fs/nfs/inode.c          |    3 ++-
->  fs/nfs/nfs3proc.c       |    3 ++-
->  fs/nfs/nfs4proc.c       |    5 +++--
->  fs/nfs/proc.c           |    3 ++-
->  include/linux/freezer.h |   42 ++++++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/sched.c      |    3 ++-
->  6 files changed, 53 insertions(+), 6 deletions(-)
-> 
-> 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index baf7353..3be29c7 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -848,7 +848,7 @@ alloc_init_layout_hdr(struct inode *ino,
+ 	return lo;
+ }
+ 
+-static struct pnfs_layout_hdr *
++struct pnfs_layout_hdr *
+ pnfs_find_alloc_layout(struct inode *ino,
+ 		       struct nfs_open_context *ctx,
+ 		       gfp_t gfp_flags)
+@@ -875,6 +875,7 @@ pnfs_find_alloc_layout(struct inode *ino,
+ 		pnfs_free_layout_hdr(new);
+ 	return nfsi->layout;
+ }
++EXPORT_SYMBOL_GPL(pnfs_find_alloc_layout);
+ 
+ /*
+  * iomode matching rules:
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1509530..9614ac9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -209,6 +209,10 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       u64 count,
+ 					       enum pnfs_iomode iomode,
+ 					       gfp_t gfp_flags);
++struct pnfs_layout_hdr *
++pnfs_find_alloc_layout(struct inode *ino,
++		       struct nfs_open_context *ctx,
++		       gfp_t gfp_flags);
+ 
+ void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
+ 
+-- 
+1.7.1.262.g5ef3d
 
