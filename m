@@ -1,108 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:50562 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932121Ab1LEUkd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 15:40:33 -0500
-Received: by ywa9 with SMTP id 9so4688297ywa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 12:40:32 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Retry mounting NFSROOT
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 05 Dec 2011 15:40:30 -0500
-Message-ID: <20111205203502.1501.24764.stgit@degas.1015granger.net>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:55608 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753143Ab1LDMrV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:47:21 -0500
+Received: by eaak14 with SMTP id k14so3580040eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:47:20 -0800 (PST)
+Message-ID: <4EDB6BD4.1080007@tonian.com>
+Date: Sun, 04 Dec 2011 14:47:16 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] demo test for current stateid
+References: <1323000111-21355-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323000111-21355-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lukas Razik <linux@razik.name> reports that on his SPARC system,
-booting with an NFS root file system stopped working after commit
-56463e50 "NFS: Use super.c for NFSROOT mount option parsing."
+On 2011-12-04 14:01, Tigran Mkrtchyan wrote:
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  nfs4.1/server41tests/environment.py |   26 ++++++++++++++++++++++++++
+>  nfs4.1/server41tests/st_open.py     |   13 +++++++++++++
+>  2 files changed, 39 insertions(+), 0 deletions(-)
+> 
+> diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+> index 6e68e83..74fe42f 100644
+> --- a/nfs4.1/server41tests/environment.py
+> +++ b/nfs4.1/server41tests/environment.py
+> @@ -502,6 +502,32 @@ def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
+>                              verifier, claim_type, want_deleg, deleg_type,
+>                              open_create, seqid, clientid)
+>  
+> +def create_and_close_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
+> +                access=OPEN4_SHARE_ACCESS_BOTH,
+> +                deny=OPEN4_SHARE_DENY_NONE,
+> +                mode=GUARDED4, verifier=None, want_deleg=False,
+> +                # Setting the following should induce server errors
+> +                seqid=0, clientid=0):
+> +
+> +    current_stateid = stateid4(1 , "\0" * 12)
+> +    # Set defaults
+> +    if path is None:
+> +        dir = sess.c.homedir
+> +        name = owner
+> +    else:
+> +        dir = path[:-1]
+> +        name = path[-1]
+> +    if ((mode==EXCLUSIVE4) or (mode==EXCLUSIVE4_1)) and (verifier==None):
+> +        verifier = sess.c.verifier
+> +    if not want_deleg and access & OPEN4_SHARE_ACCESS_WANT_DELEG_MASK == 0:
 
-We found that the network switch to which Lukas' client was attached
-was delaying access to the LAN after the client's NIC driver reported
-that its link was up.  The delay was longer than the timeouts used in
-the NFS client during mounting.
+nit: for clarity, how about using parenthesis around the arithmetic
+and boolean expressions?
 
-NFSROOT worked for Lukas before commit 56463e50 because in those
-kernels, the client's first operation was an rpcbind request to
-determine which port the NFS server was listening on.  When that
-request failed after a long timeout, the client simply selected the
-default NFS port (2049).  By that time the switch was allowing access
-to the LAN, and the mount succeeded.
+> +        access |= OPEN4_SHARE_ACCESS_WANT_NO_DELEG
+> +    # Create the file
+> +    open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
+> +                      openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier,
+> +                                               creatverfattr(verifier, attrs))),
+> +                      open_claim4(CLAIM_NULL, name))
+> +    return sess.compound(use_obj(dir) + [open_op, op.getfh(), op.close(seqid, current_stateid)])
+> +
+>  def open_file(sess, owner, path=None,
+>                access=OPEN4_SHARE_ACCESS_READ,
+>                deny=OPEN4_SHARE_DENY_NONE,
+> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+> index bd995a5..92034a3 100644
+> --- a/nfs4.1/server41tests/st_open.py
+> +++ b/nfs4.1/server41tests/st_open.py
+> @@ -1,6 +1,7 @@
+>  from st_create_session import create_session
+>  from nfs4_const import *
+>  from environment import check, checklist, fail, create_file, open_file
+> +from environment import create_and_close_file
+>  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+>  from nfs4_type import creatverfattr, fattr4
+>  import nfs4_ops as op
+> @@ -200,3 +201,15 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+>      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
+>                          verifier = "Justtest")
+>      check(res, NFS4ERR_EXIST)
+> +
+> +
+> +def testCurretStateid(t, env):
 
-Neither of these client behaviors is desirable, so reverting 56463e50
-is really not a choice.  Instead, introduce a mechanism that retries
-the NFSROOT mount request several times.  This is the same tactic that
-normal user space NFS mounts employ to overcome server and network
-delays.
+nit: s/Curret/Current/
 
-Signed-off-by: Lukas Razik <linux@razik.name>
-[ cel: match kernel coding style, add proper patch description ]
-[ cel: add exponential back-off ]
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Lukas Razik <linux@razik.name>
-Cc: stable@kernel.org # > 2.6.38
----
+Benny
 
-Lukas verified that his set-up works with this patch.  I have not
-confirmed that the exponential back-off logic is working as designed.
-Unless someone here can try this out with a non-communicative NFS
-server, maybe we should drop this into linux-next for a bit.
-
- init/do_mounts.c |   35 +++++++++++++++++++++++++++++++----
- 1 files changed, 31 insertions(+), 4 deletions(-)
-
-diff --git a/init/do_mounts.c b/init/do_mounts.c
-index c0851a8..ef6478f 100644
---- a/init/do_mounts.c
-+++ b/init/do_mounts.c
-@@ -360,15 +360,42 @@ out:
- }
-  
- #ifdef CONFIG_ROOT_NFS
-+
-+#define NFSROOT_TIMEOUT_MIN	5
-+#define NFSROOT_TIMEOUT_MAX	30
-+#define NFSROOT_RETRY_MAX	5
-+
- static int __init mount_nfs_root(void)
- {
- 	char *root_dev, *root_data;
-+	unsigned int timeout;
-+	int try, err;
- 
--	if (nfs_root_data(&root_dev, &root_data) != 0)
--		return 0;
--	if (do_mount_root(root_dev, "nfs", root_mountflags, root_data) != 0)
-+	err = nfs_root_data(&root_dev, &root_data);
-+	if (err != 0)
- 		return 0;
--	return 1;
-+
-+	/*
-+	 * The server or network may not be ready, so try several
-+	 * times.  Stop after a few tries in case the client wants
-+	 * to fall back to other boot methods.
-+	 */
-+	timeout = NFSROOT_TIMEOUT_MIN;
-+	for (try = 1; ; try++) {
-+		err = do_mount_root(root_dev, "nfs",
-+					root_mountflags, root_data);
-+		if (err == 0)
-+			return 1;
-+		if (try > NFSROOT_RETRY_MAX)
-+			break;
-+
-+		/* Wait, in case the server refused us immediately */
-+		ssleep(timeout);
-+		timeout <<= 1;
-+		if (timeout > NFSROOT_TIMEOUT_MAX)
-+			timeout = NFSROOT_TIMEOUT_MAX;
-+	}
-+	return 0;
- }
- #endif
- 
-
+> +    """Test OPEN and CLOSE within same compound
+> +
+> +    FLAGS: open all
+> +    CODE: OPEN7
+> +    """
+> +    sess1 = env.c1.new_client_session(env.testname(t))
+> +
+> +    res = create_and_close_file(sess1, env.testname(t), mode=EXCLUSIVE4_1)
+> +    check(res, NFS4_OK)
