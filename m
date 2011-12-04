@@ -1,62 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35590 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750958Ab1LVOsz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Dec 2011 09:48:55 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBMEmt75001212
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Dec 2011 09:48:55 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBMEmsgO005698
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Dec 2011 09:48:54 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] nfs4_setfacl failed with unexpected messages
-Date: Thu, 22 Dec 2011 09:49:10 -0500
-Message-Id: <1324565350-9764-1-git-send-email-steved@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:55276 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753454Ab1LDNqV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:46:21 -0500
+Received: by eaak14 with SMTP id k14so3592444eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:46:20 -0800 (PST)
+Message-ID: <4EDB79A9.2080109@tonian.com>
+Date: Sun, 04 Dec 2011 15:46:17 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/13] misc pnfsd patches
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: faizan <faizan.husain@in.ibm.com>
+[PATCH 01/13] SQUASHME: pnfsd: add missing nfs4_unlock_state in
+[PATCH 02/13] DEBUG: pnfsd: printouts
 
-When the format of the input file is incorrect nfs4_setfacl
-fails with a *** glibc detected *** error.
+[PATCH 03/13] pnfsd-block: reverse boolean_t values so they make
+[PATCH 04/13] pnfsd-block: mv include/linux/nfsd4_block.h
+[PATCH 05/13] pnfsd-block: do not override s_pnfs_op
+[PATCH 06/13] pnfsd-block: change blr_lock to mutex
+[PATCH 07/13] pnfsd-block: dprint fiemap rval
+[PATCH 08/13] pnfsd-block: allow positive fiemap rval
+[PATCH 09/13] pnfsd-block: use SECT_SIZE helper macros
+[PATCH 10/13] pnfsd-block: undo dependence on spnfs
+[PATCH 11/13] pnfsd-block: set the sbid part of the deviceid
 
-See: https://bugzilla.redhat.com/show_bug.cgi?id=693422
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- libnfs4acl/nfs4_ace_from_string.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
-index 510ffee..d26c829 100644
---- a/libnfs4acl/nfs4_ace_from_string.c
-+++ b/libnfs4acl/nfs4_ace_from_string.c
-@@ -86,9 +86,10 @@ free_fields(char *fields[NUMFIELDS])
- {
- 	int i;
- 
--	for (i = 0; i < NUMFIELDS; i++)
--		if (fields[i] != NULL)
--			free(fields[i]);
-+	for (i = 0; i < NUMFIELDS; i++) {
-+		free(fields[i]);
-+		fields[i] = NULL;
-+	}
- }
- 
- int
-@@ -107,7 +108,7 @@ parse_alloc_fields(char *buf, char *fields[NUMFIELDS])
- 			count++;
- 	}
- 	if (count != 3)
--		goto out_free;
-+		return -EINVAL;
- 
- 	for (i = 0; i < NUMFIELDS; i++) {
- 		field = strsep(&buf, ":");
--- 
-1.7.7.3
-
+[PATCH 12/13] DEBUG: pnfs: printouts
+[PATCH 13/13] DEBUG: pnfsblock: add devid debug printouts
