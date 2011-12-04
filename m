@@ -1,132 +1,236 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:40171 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755169Ab1LZLkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Dec 2011 06:40:11 -0500
-Subject: [PATCH v3 6/7] SUNRPC: pipefs per-net operations helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 26 Dec 2011 15:39:39 +0300
-Message-ID: <20111226113938.13216.27995.stgit@localhost6.localdomain6>
-In-Reply-To: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
-References: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:49837 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753679Ab1LDNuM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:50:12 -0500
+Received: by mail-ee0-f46.google.com with SMTP id q14so1496904eea.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:50:12 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 11/13] pnfsd-block: set the sbid part of the deviceid
+Date: Sun,  4 Dec 2011 15:50:06 +0200
+Message-Id: <1323006606-13883-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDB79A9.2080109@tonian.com>
+References: <4EDB79A9.2080109@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During per-net pipes creation and destruction we have to make sure, that pipefs
-sb exists for the whole creation/destruction cycle. This is done by using
-special mutex which controls pipefs sb reference on network namespace context.
-Helper consists of two parts: first of them (rpc_get_dentry_net) searches for
-dentry with specified name and returns with mutex taken on success. When pipe
-creation or destructions is completed, caller should release this mutex by
-rpc_put_dentry_net call.
+From: Benny Halevy <bhalevy@tonian.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
- net/sunrpc/netns.h                 |    1 +
- net/sunrpc/rpc_pipe.c              |   36 ++++++++++++++++++++++++++++++++++++
- net/sunrpc/sunrpc_syms.c           |    1 +
- 4 files changed, 41 insertions(+), 0 deletions(-)
+ fs/nfsd/bl_ops.c    |   34 ++++++++++++++++++----------------
+ fs/nfsd/nfs4pnfsd.c |   28 +++++++++++++++++++++++++---
+ fs/nfsd/pnfsd.h     |    1 +
+ 3 files changed, 44 insertions(+), 19 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 4585985..f32490c 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -53,6 +53,9 @@ enum {
+diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+index f5980a3..04788a1 100644
+--- a/fs/nfsd/bl_ops.c
++++ b/fs/nfsd/bl_ops.c
+@@ -95,7 +95,7 @@
+     dev_t devid, int my_loc, int idx);
+ static int layout_cache_fill_from(bl_layout_rec_t *r, struct list_head *h,
+     struct nfsd4_layout_seg *seg);
+-struct list_head *layout_cache_iter(bl_layout_rec_t *r,
++struct list_head *layout_cache_iter(struct super_block *, bl_layout_rec_t *r,
+     struct list_head *bl_possible, struct nfsd4_layout_seg *seg);
+ static void layout_cache_merge(bl_layout_rec_t *r, struct list_head *h);
+ static int layout_cache_update(bl_layout_rec_t *r, struct list_head *h);
+@@ -117,8 +117,8 @@ static void extents_count(struct fiemap_extent_info *fei, struct inode *i,
+ static boolean_t extents_get(struct fiemap_extent_info *fei, struct inode *i,
+     u64 foff, u64 len);
+ static boolean_t extents_process(struct fiemap_extent_info *fei,
+-    struct list_head *bl_candidates, struct nfsd4_layout_seg *, dev_t dev,
+-    pnfs_blocklayout_layout_t *b);
++    struct list_head *bl_candidates, struct nfsd4_layout_seg *,
++    u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b);
+ static void extents_cleanup(struct fiemap_extent_info *fei);
  
- extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 				      const unsigned char *dir_name);
-+extern void rpc_pipefs_init_net(struct net *net);
-+extern struct super_block *rpc_get_sb_net(const struct net *net);
-+extern void rpc_put_sb_net(const struct net *net);
+ void
+@@ -420,7 +420,7 @@ enum nfsstat4
+ 	res->lg_return_on_close	= 1;
+ 	res->lg_seg.length	= 0;
+ 	
+-	bl_candidates = layout_cache_iter(r, &bl_possible, &res->lg_seg);
++	bl_candidates = layout_cache_iter(i->i_sb, r, &bl_possible, &res->lg_seg);
+ 	if (!bl_candidates) {
+ 		nfserr = NFS4ERR_LAYOUTTRYLATER;
+ 		goto layoutget_cleanup;
+@@ -775,8 +775,8 @@ enum nfsstat4
+ }
  
- extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
- 				       char __user *, size_t);
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index b384252..11d2f48 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -11,6 +11,7 @@ struct sunrpc_net {
- 	struct cache_detail *ip_map_cache;
+ struct list_head *
+-layout_cache_iter(bl_layout_rec_t *r, struct list_head *bl_possible,
+-    struct nfsd4_layout_seg *seg)
++layout_cache_iter(struct super_block *sb, bl_layout_rec_t *r,
++		  struct list_head *bl_possible, struct nfsd4_layout_seg *seg)
+ {
+ 	pnfs_blocklayout_layout_t	*b,
+ 					*n		= NULL;
+@@ -784,6 +784,7 @@ struct list_head *
+ 	struct fiemap_extent_info	fei;
+ 	struct inode			*i;
+ 	dev_t				dev;
++	u64				sbid = find_sbid(sb);
+ 	
+ 	dev	= r->blr_rdev;
+ 	i	= r->blr_inode;
+@@ -810,7 +811,7 @@ struct list_head *
+ 				    b->bll_len) == False)
+ 					goto cleanup;
+ 				if (extents_process(&fei, bl_candidates,
+-				    seg, dev, b) == False)
++						    seg, sbid, dev, b) == False)
+ 					goto cleanup;
+ 				extents_cleanup(&fei);
+ 				
+@@ -825,7 +826,7 @@ struct list_head *
+ 				n = bll_alloc(b->bll_foff, b->bll_len,
+ 				    BLOCK_LAYOUT_NEW, bl_candidates);
+ 				n->bll_es = PNFS_BLOCK_NONE_DATA;
+-				n->bll_vol_id.sbid = 0;
++				n->bll_vol_id.sbid = sbid;
+ 				n->bll_vol_id.devid = dev;
+ 				seg->length += b->bll_len;
+ 			} else {
+@@ -1177,7 +1178,8 @@ struct list_head *
+ 	pnfs_blocklayout_layout_t	*b,
+ 					*n;
+ 	enum pnfs_block_extent_state4	s;
+-	
++	u64				sbid = find_sbid(r->blr_inode->i_sb);
++
+ 	list_for_each_entry(b, &r->blr_layouts, bll_list) {
+ 		if (seg->offset < b->bll_foff) {
+ 			n = bll_alloc(seg->offset,
+@@ -1218,7 +1220,7 @@ struct list_head *
+ 				return False;
+ 			
+ 			n->bll_soff = b->bll_soff + seg->offset - b->bll_foff;
+-			n->bll_vol_id.sbid = 0;
++			n->bll_vol_id.sbid = sbid;
+ 			n->bll_vol_id.devid = b->bll_vol_id.devid;
+ 			n->bll_es = s;
+ 			seg->offset += n->bll_len;
+@@ -1232,7 +1234,7 @@ struct list_head *
  
- 	struct super_block *pipefs_sb;
-+	struct mutex pipefs_sb_lock;
+ static u64
+ bll_alloc_holey(struct list_head *bl_candidates, u64 offset, u64 length,
+-    dev_t dev)
++		u64 sbid, dev_t dev)
+ {
+ 	pnfs_blocklayout_layout_t	*n;
+ 	
+@@ -1240,7 +1242,7 @@ struct list_head *
+ 	if (!n)
+ 		return 0;
+ 	n->bll_es = PNFS_BLOCK_NONE_DATA;
+-	n->bll_vol_id.sbid = 0;
++	n->bll_vol_id.sbid = sbid;
+ 	n->bll_vol_id.devid = dev;
+ 	
+ 	return n->bll_len;
+@@ -1323,7 +1325,7 @@ struct list_head *
+  */
+ static boolean_t
+ extents_process(struct fiemap_extent_info *fei, struct list_head *bl_candidates,
+-    struct nfsd4_layout_seg *seg, dev_t dev, pnfs_blocklayout_layout_t *b)
++    struct nfsd4_layout_seg *seg, u64 sbid, dev_t dev, pnfs_blocklayout_layout_t *b)
+ {
+ 	struct fiemap_extent		*fep,
+ 					*fep_last	= NULL;
+@@ -1353,7 +1355,7 @@ struct list_head *
+ 			    _2SECTS(fep_last->fe_length));
+ 			last_end = fep_last->fe_logical + fep_last->fe_length;
+ 			rval = bll_alloc_holey(bl_candidates, last_end,
+-			    fep->fe_logical - last_end, dev);
++			    fep->fe_logical - last_end, sbid, dev);
+ 			if (!rval)
+ 				return False;
+ 			seg->length += rval;
+@@ -1369,7 +1371,7 @@ struct list_head *
+ 		n->bll_soff = fep->fe_physical;
+ 		n->bll_es = seg->iomode == IOMODE_READ ?
+ 		    PNFS_BLOCK_READ_DATA : PNFS_BLOCK_READWRITE_DATA;
+-		n->bll_vol_id.sbid = 0;
++		n->bll_vol_id.sbid = sbid;
+ 		n->bll_vol_id.devid = dev;
+ 		seg->length += fep->fe_length;
+ 		print_bll(n, "New extent");
+@@ -1638,7 +1640,7 @@ struct list_head *
+ 	if (n) {
+ 		n->bll_es			= b->bll_es;
+ 		n->bll_soff			= b->bll_soff;
+-		n->bll_vol_id.devid		= b->bll_vol_id.devid;
++		n->bll_vol_id			= b->bll_vol_id;
+ 	}
+ 	return n;
+ }
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 42e2bb0..6b2e327 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -416,15 +416,14 @@ struct super_block *
+ 	return sb;
+ }
+ 
+-u64
+-find_create_sbid(struct super_block *sb)
++static u64
++__find_sbid(struct super_block *sb)
+ {
+ 	struct sbid_tracker *sbid;
+ 	unsigned long hash_idx = sbid_hashval(sb);
+ 	int pos = 0;
+ 	u64 id = 0;
+ 
+-	spin_lock(&layout_lock);
+ 	list_for_each_entry (sbid, &sbid_hashtbl[hash_idx], hash) {
+ 		pos++;
+ 		if (sbid->sb != sb)
+@@ -434,6 +433,29 @@ struct super_block *
+ 		id = sbid->id;
+ 		break;
+ 	}
++
++	return id;
++}
++
++u64
++find_sbid(struct super_block *sb)
++{
++	u64 id;
++
++	spin_lock(&layout_lock);
++	id = __find_sbid(sb);
++	spin_unlock(&layout_lock);
++
++	return id;
++}
++
++u64
++find_create_sbid(struct super_block *sb)
++{
++	u64 id;
++
++	spin_lock(&layout_lock);
++	id = __find_sbid(sb);
+ 	spin_unlock(&layout_lock);
+ 
+ 	if (!id)
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index f0862fb..abcb308 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -111,6 +111,7 @@ struct nfs4_notify_device {
+ 	struct nfsd4_callback		nd_recall;
  };
  
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 831e81d..e40ec55 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1024,6 +1024,40 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
- 
-+void rpc_pipefs_init_net(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	mutex_init(&sn->pipefs_sb_lock);
-+}
-+
-+/*
-+ * This call will be used for per network namespace operations calls.
-+ * Note: Function will be returned with pipefs_sb_lock taken if superblock was
-+ * found. This lock have to be released by rpc_put_sb_net() when all operations
-+ * will be completed.
-+ */
-+struct super_block *rpc_get_sb_net(const struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	mutex_lock(&sn->pipefs_sb_lock);
-+	if (sn->pipefs_sb)
-+		return sn->pipefs_sb;
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+	return NULL;
-+}
-+EXPORT_SYMBOL_GPL(rpc_get_sb_net);
-+
-+void rpc_put_sb_net(const struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	BUG_ON(sn->pipefs_sb == NULL);
-+	mutex_unlock(&sn->pipefs_sb_lock);
-+}
-+EXPORT_SYMBOL_GPL(rpc_put_sb_net);
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
-@@ -1078,7 +1112,9 @@ void rpc_kill_sb(struct super_block *sb)
- 	struct net *net = sb->s_fs_info;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
-+	mutex_lock(&sn->pipefs_sb_lock);
- 	sn->pipefs_sb = NULL;
-+	mutex_unlock(&sn->pipefs_sb_lock);
- 	put_net(net);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 8ec9778..7086d11 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -38,6 +38,7 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_ipmap;
- 
-+	rpc_pipefs_init_net(net);
- 	return 0;
- 
- err_ipmap:
++u64 find_sbid(struct super_block *);
+ u64 find_create_sbid(struct super_block *);
+ struct super_block *find_sbid_id(u64);
+ __be32 nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *, struct exp_xdr_stream *);
+-- 
+1.7.6
 
