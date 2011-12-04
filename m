@@ -1,42 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:49052 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754196Ab1LZKrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Dec 2011 05:47:01 -0500
-Message-ID: <4EF85064.6040907@parallels.com>
-Date: Mon, 26 Dec 2011 14:45:56 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 6/6] SUNRPC: split SUNPRC PipeFS dentry and private pipe
- data creation
-References: <20111122134514.479.9848.stgit@localhost6.localdomain6>	 <20111122144215.479.20931.stgit@localhost6.localdomain6> <1324819019.5195.4.camel@lade.trondhjem.org>
-In-Reply-To: <1324819019.5195.4.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:41971 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752993Ab1LDNsK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:48:10 -0500
+Received: by mail-ey0-f174.google.com with SMTP id k14so3592866eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:48:10 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/13] DEBUG: pnfsd: printouts
+Date: Sun,  4 Dec 2011 15:48:04 +0200
+Message-Id: <1323006484-13504-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDB79A9.2080109@tonian.com>
+References: <4EDB79A9.2080109@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-25.12.2011 17:16, Trond Myklebust пишет:
->> @@ -387,7 +397,9 @@ nfs_idmap_delete(struct nfs_client *clp)
->> >
->> >         if (!idmap)
->> >                 return;
->> >  -     rpc_unlink(idmap->idmap_dentry);
->> >  +     if (idmap->idmap_pipe->dentry)
-> Shouldn't this be a test for IS_ERR(idmap->idmap_pipe->dentry)?
->
+From: Benny Halevy <bhalevy@tonian.com>
 
-Nope. This dentry is either NULL or valid pointer.
-Will resend rebased version soon.
+---
+ fs/nfsd/bl_ops.c  |    1 +
+ fs/nfsd/nfs4xdr.c |    3 +++
+ 2 files changed, 4 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+index 22875fb..89249c4 100644
+--- a/fs/nfsd/bl_ops.c
++++ b/fs/nfsd/bl_ops.c
+@@ -184,6 +184,7 @@ static boolean_t extents_process(struct fiemap_extent_info *fei,
+ int
+ bl_layout_type(struct super_block *sb)
+ {
++	dprintk("%s --> %d\n", __func__, LAYOUT_BLOCK_VOLUME);
+ 	return LAYOUT_BLOCK_VOLUME;
+ }
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2263830..bd8e693 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2592,6 +2592,8 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+ 
+ 		if (sb && sb->s_pnfs_op && sb->s_pnfs_op->layout_type)
+ 			type = sb->s_pnfs_op->layout_type(sb);
++		dprintk("%s: sb=%p s_pnfs_op=%p layout_type()=%p layout_type=%u\n",
++			__func__, sb, sb->s_pnfs_op, sb->s_pnfs_op ? sb->s_pnfs_op->layout_type : NULL, type);
+ 		if (type) {
+ 			if ((buflen -= 4) < 0)	/* type */
+ 				goto out_resource;
+@@ -2604,6 +2606,7 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+ 	if (bmval2 & FATTR4_WORD2_LAYOUT_BLKSIZE) {
+ 		if ((buflen -= 4) < 0)
+ 			goto out_resource;
++		dprintk("%s: layout_blksize=%lu\n", __func__, stat.blksize);
+ 		WRITE32(stat.blksize);
+ 	}
+ #endif /* CONFIG_PNFSD */
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.6
+
