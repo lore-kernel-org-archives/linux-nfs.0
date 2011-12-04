@@ -1,85 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44044 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758993Ab1LOQCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:02:31 -0500
-Date: Thu, 15 Dec 2011 11:03:30 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chris Mason <chris.mason@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: copy offload support in Linux - new system call needed?
-Message-ID: <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
-In-Reply-To: <20111215155213.GF18252@shiny>
-References: <4EE8F75F.6070800@gmail.com>
-	<20111214192739.GN2203@ZenIV.linux.org.uk>
-	<4EE8FC2E.3010207@gmail.com>
-	<20111214222723.GD7623@fieldses.org>
-	<1323961140.14317.2.camel@lade.trondhjem.org>
-	<20111215155213.GF18252@shiny>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:63671 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752892Ab1LDMZJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:25:09 -0500
+Received: by eeaq14 with SMTP id q14so1482893eea.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:25:08 -0800 (PST)
+Message-ID: <4EDB66A1.6010301@tonian.com>
+Date: Sun, 04 Dec 2011 14:25:05 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsv41: add current stateid into compound_state
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-2-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323000237-13565-2-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 15 Dec 2011 10:52:13 -0500
-Chris Mason <chris.mason@oracle.com> wrote:
-
-> On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
-> > On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
-> > > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
-> > > > On 12/14/2011 02:27 PM, Al Viro wrote:
-> > > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
-> > > > >
-> > > > >>We had an active thread a couple of years back that came out of the
-> > > > >>reflink work and, at the time, there seemed to be moderately
-> > > > >>positive support for adding a new system call that would fit this
-> > > > >>use case (Joel Becker's copyfile()).
-> > > > >>
-> > > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
-> > > > >>or should we look at other hooks?
-> > > > >copyfile(2) is probably a good way to go, provided that we do _not_
-> > > > >go baroque as it had happened the last time syscall had been discussed.
-> > > > >
-> > > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
-> > > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
-> > > > >If it works - fine, if not - caller has to be ready to deal with handling
-> > > > >cross-device case anyway.
-> > > > 
-> > > > I think that this approach makes a lot of sense. Most of the
-> > > > devices/targets that support the copy offload, will do it in very
-> > > > reasonable amounts of time.
-> > > 
-> > > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
-> > > one operation:
-> > > 
-> > > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
-> > >  
-> > > Perhaps we should ask for separate operations for the two cases.  (Or at
-> > > least a "please don't bother if this is going to take 8 hours" flag....)
-> > 
-> > How would the server know? I suggest we deal with this by adding an
-> > ioctl() to allow the application to poll for progress: I'm assuming now
-> > that we don't expect more than 1 copyfile() system call at a time per
-> > file descriptor...
+On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 > 
-> If we're using this to copy VM image files, I could easily imagine
-> wanting to clone multiple copies of the VM in parallel.
 > 
-> -chris
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  fs/nfsd/xdr4.h |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
 > 
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 2364747..7f26edd 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+>  	size_t			iovlen;
+>  	u32			minorversion;
+>  	u32			status;
+> +	stateid_t		current_stateid;
+>  };
+>  
+>  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 
-Not really a problem is it? Just dup() the fd before you issue the
-copyfile()? Or even simpler, just do periodic stat() on the destination
-file if you want a progress report.
+nit: since the new member gets to be used only in the next patch
+they might as well be squashed together...
 
-Regardless, I like the simple approach that Al is suggesting here.
--- 
-Jeff Layton <jlayton@redhat.com>
+Thanks,
+
+Benny
