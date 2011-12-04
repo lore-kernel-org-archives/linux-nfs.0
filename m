@@ -1,113 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:4087 "EHLO
-	esa-annu.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754032Ab1LNDUd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2011 22:20:33 -0500
-Date: Tue, 13 Dec 2011 22:20:31 -0500 (EST)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org, honey@citi.umich.edu,
-        Brent Welch <welch@panasas.com>, nfsv4@ietf.org,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1132749605.180867.1323832831990.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <4EE1EC49.6010000@panasas.com>
-Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
- attachment this time
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:45461 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753679Ab1LDNuh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:50:37 -0500
+Received: by mail-ey0-f174.google.com with SMTP id k14so3593300eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:50:36 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/13] DEBUG: pnfsblock: add devid debug printouts
+Date: Sun,  4 Dec 2011 15:50:31 +0200
+Message-Id: <1323006631-13963-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDB79A9.2080109@tonian.com>
+References: <4EDB79A9.2080109@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Boaz Harrosh wrote:
-[good stuff snipped for brevity]
-> 
-> I have on my todo list a full osd (pnfs-objects) stack port to FreeBSD
-> But that's in the far future.
-> Meanwhile I'd suggest the pnfs-client-core to layout-driver API be
-> closely
-> crafted to match that of the Linux LD API so it could be kept the same
-> code base.
+From: Benny Halevy <bhalevy@tonian.com>
 
-Am I correct to assume that fs/nfs/nfsfilelayout* implements this API
-for the file layout case? If so, I'll try and build glue that can use
-that code unchanged (or at least minimally changed).
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c    |    4 +++-
+ fs/nfs/blocklayout/blocklayoutdev.c |   14 ++++++++++----
+ 2 files changed, 13 insertions(+), 5 deletions(-)
 
-And Peter (I see you're on the cc list), is it possible to get a copy
-of these files without any GPL? It looks like they have the U of Michigan
-copyright, which I think should be fine for the FreeBSD folks, but then
-there is
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 3fdfb29..b6068f8 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -900,7 +900,9 @@ static void free_blk_mountid(struct block_mount_id *mid)
+ 	dev->pglen = PAGE_SIZE * max_pages;
+ 	dev->mincount = 0;
+ 
+-	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
++	dprintk("%s: dev_id: (%x:%x:%x:%x)\n", __func__,
++		((unsigned *)dev->dev_id.data)[0], ((unsigned *)dev->dev_id.data)[1],
++		((unsigned *)dev->dev_id.data)[2], ((unsigned *)dev->dev_id.data)[3]);
+ 	rc = nfs4_proc_getdeviceinfo(server, dev);
+ 	dprintk("%s getdevice info returns %d\n", __func__, rc);
+ 	if (rc) {
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index d08ba91..34f97c9 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -122,7 +122,9 @@ struct pnfs_block_dev *
+ 	int offset, len, i, rc;
+ 
+ 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
+-	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
++	dprintk("%s: dev_id: (%x:%x:%x:%x), mincount: %d\n", __func__,
++		((unsigned *)dev->dev_id.data)[0], ((unsigned *)dev->dev_id.data)[1],
++		((unsigned *)dev->dev_id.data)[2], ((unsigned *)dev->dev_id.data)[3],
+ 		dev->mincount);
+ 
+ 	memset(&msg, 0, sizeof(msg));
+@@ -181,10 +183,12 @@ struct pnfs_block_dev *
+ 
+ 	rv->bm_mdev = bd;
+ 	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
+-	dprintk("%s Created device %s with bd_block_size %u\n",
++	dprintk("%s Created device %s with bd_block_size %u dev_id (%x:%x:%x:%x)\n",
+ 		__func__,
+ 		bd->bd_disk->disk_name,
+-		bd->bd_block_size);
++		bd->bd_block_size,
++		((unsigned *)rv->bm_mdevid.data)[0], ((unsigned *)rv->bm_mdevid.data)[1],
++		((unsigned *)rv->bm_mdevid.data)[2], ((unsigned *)rv->bm_mdevid.data)[3]);
+ 
+ out:
+ 	kfree(msg.data);
+@@ -199,7 +203,9 @@ struct pnfs_block_dev *
+ 	struct block_mount_id *mid;
+ 	struct pnfs_block_dev *dev;
+ 
+-	dprintk("%s enter, lo=%p, id=%p\n", __func__, lo, id);
++	dprintk("%s enter, lo=%p, id=%p dev_id=(%x:%x:%x:%x)\n", __func__, lo, id,
++		((unsigned *)id->data)[0], ((unsigned *)id->data)[1],
++		((unsigned *)id->data)[2], ((unsigned *)id->data)[3]);
+ 	mid = BLK_ID(lo);
+ 	spin_lock(&mid->bm_lock);
+ 	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
+-- 
+1.7.6
 
-   MODULE_LICENSE("GPL");
-
-in it, which I assume means it's GPL'd. (Basically, exactly the same file,
-but released without this line, would make the FreeBSD folks happy, I think.)
-(No rush on this, I can use GPL'd code, I just can't put it in the FreeBSD
-source tree easily.) The same would apply to any other layout driver that
-others, like Panasas or EMC might be willing to open source for FreeBSD.
-
-And Boaz, thanks for the useful information. I'll probably start with
-Fedora plus a patched kernel for a server to test against. (It sounds
-like Steve is willing to help me out, since I haven't used "rpm" in
-years and have never typed "git" in my life.:-)
-
-Thanks everyone for your help with this, rick
-
-
-> For example the pnfs-objects LD is mostly pure C code
-> relying
-> on the ORE (Objects Raid Engine). The ORE is multy licensed library
-> that
-> has ports to Many platforms including Linux-Kernel
-> Linux/FreeBSD/windows User-Mode and more of which only the Linux
-> variants
-> actually run because of the need of the iscsi stack to support BiDi
-> and
-> large CDB commands, Only supported by Linux.
-> 
-> Cheers
-> Boaz
-> 
-> > rick
-> >
-> > ----- Original Message -----
-> >> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish
-> >> <sfaibish@emc.com>
-> >> wrote:
-> >>
-> >>> Attached please find the slides that we presented yesterday at
-> >>> USENIX
-> >>> LISA 11
-> >>> conference in Boston. We would like to get more detailed input on
-> >>> other
-> >>> OS
-> >>> that will support pNFS server/client (this is for Rick as well)
-> >>> that
-> >>> were
-> >>> not mentioned in this slide set.
-> >>>
-> >>> /Sorin
-> >>>
-> >>
-> >>
-> >>
-> >> --
-> >> Best Regards
-> >> Sorin Faibish
-> >> Corporate Distinguished Engineer
-> >> Unified Storage Division
-> >>
-> >> EMC²
-> >> where information lives
-> >>
-> >> Phone: 508-435-1000 x 48545
-> >> Cellphone: 617-510-0422
-> >> Email : sfaibish@emc.com
-> > _______________________________________________
-> > nfsv4 mailing list
-> > nfsv4@ietf.org
-> > https://www.ietf.org/mailman/listinfo/nfsv4
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
