@@ -1,71 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:63708 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755050Ab1LGMpo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 07:45:44 -0500
-Received: by wgbdr13 with SMTP id dr13so1271649wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 04:45:43 -0800 (PST)
-Message-ID: <4EDF5FF0.90904@tonian.com>
-Date: Wed, 07 Dec 2011 14:45:36 +0200
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:41752 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753859Ab1LDMsr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:48:47 -0500
+Received: by eaak14 with SMTP id k14so3580312eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:48:46 -0800 (PST)
+Message-ID: <4EDB6C2B.9000803@tonian.com>
+Date: Sun, 04 Dec 2011 14:48:43 +0200
 From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/13] pnfsd-block: reverse boolean_t values so they make
- sense
-References: <4EDB79A9.2080109@tonian.com> <1323006496-13542-1-git-send-email-benny@tonian.com> <20111206021059.GB4486@fieldses.org> <4EDDFC39.4090800@tonian.com> <20111206115606.GA8474@fieldses.org>
-In-Reply-To: <20111206115606.GA8474@fieldses.org>
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfsv41: add current_stateid processing
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-06 13:56, J. Bruce Fields wrote:
-> On Tue, Dec 06, 2011 at 01:27:53PM +0200, Benny Halevy wrote:
->> On 2011-12-06 04:10, J. Bruce Fields wrote:
->>> On Sun, Dec 04, 2011 at 03:48:16PM +0200, Benny Halevy wrote:
->>>> From: Benny Halevy <bhalevy@tonian.com>
->>>>
->>>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>>> ---
->>>>  fs/nfsd/bl_ops.c |    2 +-
->>>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
->>>> index 89249c4..4d2939e 100644
->>>> --- a/fs/nfsd/bl_ops.c
->>>> +++ b/fs/nfsd/bl_ops.c
->>>> @@ -57,7 +57,7 @@
->>>>  #endif
->>>>  
->>>>  
->>>> -typedef enum {True, False} boolean_t;
->>>> +typedef enum {False = 0, True = !False} boolean_t;
->>>
->>> Shouldn't we just use "bool"?
->>
->> Yes, in some cases. In others, the boolean status doesn't make sense
->> and I'd like to replace it with an integer.
+On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+> current_stateid processing will allow clients to construct compounds
+> like OPEN + READ + CLOSE or OPEN +LAYOUTGET.
 > 
-> I believe casts from bools to integers are defined to convert false and
-> true to 0 and 1 respectively, so you should be fine.
+> As dCache server marks all layouts return-on-close, any open to a file followed
+> by LAYOUTGET. A combined compound will allow to do the same in one go.
+> 
+> Currently linux client doesn't support it. But before we can get such functionality
+> linux server have to support it as well. Here is an attempt to add it.
+> 
+> I made a dirty test with pynfs with to test OPEN+CLOSE in a single compound.
+> If I read nfsd code correctly, READ and WRITE have to work as well. I will refactor
+> pynfs a bit to easily construct such tests.
 
-True, but in several cases like layout_cache_fill_from* or extents_get
-a single status bit hides errors I'd rather percolate up the stack.
-
-I'm not diving into this right now because this code needs a overhaul
-to allow memory allocation outside the lock.
-I'm thinking of a dual pass implementation, doing a pass under the lock
-to calculate how many items to allocate.  Doing the allocation after
-releasing the (now mutex but better be spin) lock, and then running
-through the list again under lock using the allocated memory.
-The hard parts in this scheme are if the state of the layout changes and
-we need more memory in the second pass.  In this case we'll need yet another
-iteration for the remainder, rinse, wash, repeat.
+Cool!  Another interesting and meaningful tests could be OPEN + LOCK
+and LOCKU + CLOSE
 
 Benny
 
 > 
-> --b.
+> This is patches for preview to be sure that other server developers are happy with
+> my approach before I change much more. 
+> 
+> Tigran.
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
