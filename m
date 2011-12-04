@@ -1,74 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45134 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751636Ab1LHUrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Dec 2011 15:47:53 -0500
-Date: Thu, 8 Dec 2011 15:47:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH 1/4] SUNRPC: use passed network namespace context in
- rpc_parse_scope_id()
-Message-ID: <20111208204749.GC32505@fieldses.org>
-References: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
- <20111207112016.17273.44510.stgit@localhost6.localdomain6>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:41983 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754378Ab1LDRYv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 12:24:51 -0500
+Received: by eaak14 with SMTP id k14so3643971eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 09:24:50 -0800 (PST)
+Message-ID: <4EDBACDD.3010609@tonian.com>
+Date: Sun, 04 Dec 2011 19:24:45 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111207112016.17273.44510.stgit@localhost6.localdomain6>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-3.2-rc4-2011-12-04
+References: <4EC13EEA.3030404@tonian.com>
+In-Reply-To: <4EC13EEA.3030404@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 07, 2011 at 03:20:16PM +0300, Stanislav Kinsbursky wrote:
-> Use incomming network context in rpc_parse_scope_id() instead of hard-coded
+I rebased the pnfs tree onto v3.2-rc4.
 
-Changelogs are a little confusing; I might have said "allow
-rpc_parse_cope_id() caller to pass in network context instead of using
-hard-code "init_net"."
+The spnfs was dropped as it became obsolete and effectively unmaintained
+over time.
 
---b.
+Correspondingly, the spnfs-block branch is now renamed to pnfsd-block.
 
-> "init_net".
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  net/sunrpc/addr.c |    9 +++++----
->  1 files changed, 5 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-> index 67a655e..35eb188 100644
-> --- a/net/sunrpc/addr.c
-> +++ b/net/sunrpc/addr.c
-> @@ -156,8 +156,9 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
->  }
->  
->  #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> -static int rpc_parse_scope_id(const char *buf, const size_t buflen,
-> -			      const char *delim, struct sockaddr_in6 *sin6)
-> +static int rpc_parse_scope_id(struct net *net, const char *buf,
-> +			      const size_t buflen, const char *delim,
-> +			      struct sockaddr_in6 *sin6)
->  {
->  	char *p;
->  	size_t len;
-> @@ -177,7 +178,7 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
->  		unsigned long scope_id = 0;
->  		struct net_device *dev;
->  
-> -		dev = dev_get_by_name(&init_net, p);
-> +		dev = dev_get_by_name(net, p);
->  		if (dev != NULL) {
->  			scope_id = dev->ifindex;
->  			dev_put(dev);
-> @@ -213,7 +214,7 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
->  	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
->  		return 0;
->  
-> -	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
-> +	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
->  		return 0;
->  
->  	sin6->sin6_family = AF_INET6;
-> 
+The following patches were merged since last update pnfs-all-3.2-rc1-2011-11-14:
+
+pnfs-block:
+  Peng Tao         a8c4a0a pnfsblock: don't spinlock when freeing block_dev
+  Peng Tao         507cca8 pnfsblock: limit bio page count
+  Benny Halevy     f902b81 DEBUG: pnfs: printouts
+  Benny Halevy     9fcea77 pnfsblock: add devid debug printouts
+
+pnfsd:
+  Benny Halevy     b46ad6f SQUASHME: pnfsd: add missing nfs4_unlock_state in nfs4_pnfs_return_layout
+  Benny Halevy     7600a80 DEBUG: pnfsd: printouts
+
+pnfsd-block:
+  Benny Halevy     788afe2 DEBUG: pnfsd: printouts
+  Benny Halevy     e99329f pnfsd-block: reverse boolean_t values so they make sense
+  Benny Halevy     ace859c pnfsd-block: change blr_lock to mutex
+  Benny Halevy     79f0540 pnfsd-block: dprint fiemap rval
+  Benny Halevy     6893935 pnfsd-block: allow positive fiemap rval
+  Benny Halevy     0fa92ba pnfsd-block: use SECT_SIZE helper macros
+  Benny Halevy     58590f7 pnfsd-block: undo dependence on spnfs
+  Benny Halevy     6937255 pnfsd-block: set the sbid part of the deviceid
+
+Benny
