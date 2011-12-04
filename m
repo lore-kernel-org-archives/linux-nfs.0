@@ -1,90 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51487 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752601Ab1LUUe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 15:34:58 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org, steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Date: Wed, 21 Dec 2011 15:34:55 -0500
-Message-Id: <1324499696-10318-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:54436 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753143Ab1LDMm5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:42:57 -0500
+Received: by eeaq14 with SMTP id q14so1485728eea.19
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:42:56 -0800 (PST)
+Message-ID: <4EDB6AA3.1030702@tonian.com>
+Date: Sun, 04 Dec 2011 14:42:11 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
+On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> 
+> 
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+>  fs/nfsd/nfs4proc.c  |    6 ++++++
+>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
+>  2 files changed, 26 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index fa38336..535aed2 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	 */
+>  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+>  	WARN_ON(status && open->op_created);
+> +
+> +	if(status)
+> +		goto out;
+> +
+> +	/* set current state id */
+> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 56 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+Since this should be done for all stateid-returning operations
+I think that a cleaner approach could be to mark those as such in
+nfsd4_ops by providing a per-op function to return the operation's
+stateid.  You can then call this method from nfsd4_proc_compound()
+after the call to nfsd4_encode_operation() and when status == 0.
 
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..d97d678
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,56 @@
-+/*
-+ * fs/nfsd/cld.h - upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2011 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
-+
-+/* latest upcall version available */
-+#define CLD_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Expire,		/* expire record for this cm_id */
-+	Cld_Allow,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
--- 
-1.7.1
+>  out:
+>  	nfsd4_cleanup_open_state(open, status);
+>  	if (open->op_openowner)
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 47e94e3..a34d82e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -51,10 +51,14 @@ time_t nfsd4_grace = 90;
+>  static time_t boot_time;
+>  static stateid_t zerostateid;             /* bits all 0 */
+>  static stateid_t onestateid;              /* bits all 1 */
+> +static stateid_t currentstateid;          /* other all 0, seqid 1 */
+>  static u64 current_sessionid = 1;
+>  
+>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
+> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+> +
+> +#define STATEID_OF(s, c)  ( CURRENT_STATEID((s)) ? &(c)->current_stateid : (s) ) 
+>  
+>  /* forward declarations */
+>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+> @@ -3314,13 +3318,15 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask, s
+>  */
+>  __be32
+>  nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+> -			   stateid_t *stateid, int flags, struct file **filpp)
+> +			   stateid_t *stateid_in, int flags, struct file **filpp)
+>  {
+>  	struct nfs4_stid *s;
+>  	struct nfs4_ol_stateid *stp = NULL;
+>  	struct nfs4_delegation *dp = NULL;
+>  	struct svc_fh *current_fh = &cstate->current_fh;
+>  	struct inode *ino = current_fh->fh_dentry->d_inode;
+> +	stateid_t *stateid;
+> +
+>  	__be32 status;
+>  
+>  	if (filpp)
+> @@ -3329,9 +3335,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>  	if (grace_disallows_io(ino))
+>  		return nfserr_grace;
+>  
+> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> -		return check_special_stateids(current_fh, stateid, flags);
+> +	if (ZERO_STATEID(stateid_in) || ONE_STATEID(stateid_in))
+> +		return check_special_stateids(current_fh, stateid_in, flags);
+>  
+> +	stateid = STATEID_OF(stateid_in, cstate);
+> +	
+>  	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID, &s);
+>  	if (status)
+>  		return status;
+> @@ -3655,14 +3663,17 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	__be32 status;
+>  	struct nfs4_openowner *oo;
+>  	struct nfs4_ol_stateid *stp;
+> +	stateid_t *stateid;
+>  
+>  	dprintk("NFSD: nfsd4_close on file %.*s\n", 
+>  			(int)cstate->current_fh.fh_dentry->d_name.len,
+>  			cstate->current_fh.fh_dentry->d_name.name);
+>  
+>  	nfs4_lock_state();
+> +	stateid = STATEID_OF( &close->cl_stateid, cstate);
 
+nit: extra space after open-parentheses
+
+> +
+>  	status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
+> -					&close->cl_stateid,
+> +					stateid,
+>  					NFS4_OPEN_STID|NFS4_CLOSED_STID,
+>  					&stp);
+>  	if (status)
+> @@ -3670,7 +3681,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	oo = openowner(stp->st_stateowner);
+>  	status = nfs_ok;
+>  	update_stateid(&stp->st_stid.sc_stateid);
+> -	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+> +	memcpy(stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+
+Currently, nfsd4_encode_close uses close->cl_stateid so we need to keep its value
+up-to-date. With the scheme I outlined above, copying into cstate->current_stateid can
+be done in a centralized place.
+
+Benny
+
+>  
+>  	nfsd4_close_open_stateid(stp);
+>  	oo->oo_last_closed_stid = stp;
+> @@ -4400,7 +4411,7 @@ int
+>  nfs4_state_init(void)
+>  {
+>  	int i, status;
+> -
+> +	uint32_t one = 1;
+>  	status = nfsd4_init_slabs();
+>  	if (status)
+>  		return status;
+> @@ -4423,6 +4434,9 @@ nfs4_state_init(void)
+>  		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
+>  	}
+>  	memset(&onestateid, ~0, sizeof(stateid_t));
+> +	/* seqid 1, other all 0 */
+> +	memcpy(&currentstateid , &one, sizeof(one));
+> +	
+
+you mean currentstateid.si_generation = cpu_to_be32(1) ?
+
+>  	INIT_LIST_HEAD(&close_lru);
+>  	INIT_LIST_HEAD(&client_lru);
+>  	INIT_LIST_HEAD(&del_recall_lru);
