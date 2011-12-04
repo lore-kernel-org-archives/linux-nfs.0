@@ -1,144 +1,176 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:14979 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752530Ab1LSMYU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 07:24:20 -0500
-Message-ID: <4EEF2C9A.8000403@parallels.com>
-Date: Mon, 19 Dec 2011 16:22:50 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:64617 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753679Ab1LDNxP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:53:15 -0500
+Received: by wgbds13 with SMTP id ds13so4803254wgb.1
+        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:53:14 -0800 (PST)
 MIME-Version: 1.0
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>	<20111214104449.3991.61989.stgit@localhost6.localdomain6>	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com> <m18vm8g951.fsf@fess.ebiederm.org>
-In-Reply-To: <m18vm8g951.fsf@fess.ebiederm.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4EDB6AA3.1030702@tonian.com>
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
+	<4EDB6AA3.1030702@tonian.com>
+Date: Sun, 4 Dec 2011 14:53:13 +0100
+Message-ID: <CAGue13qTUj0dHrwXUkvvsbsttwv9nsiYnjyDPtM5UB+FuFdwQA@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-19.12.2011 14:15, Eric W. Biederman пишет:
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->
->> 18.12.2011 02:25, Eric W. Biederman пишет:
->>> Stanislav Kinsbursky<skinsbursky@parallels.com>   writes:
->>>
->>>> These routines are required for making SUNRPC sysctl's per network namespace
->>>> context.
->>>
->>> Why does sunrpc require it's own sysctl root?  You should be able to use
->>> the generic per network namespace root and call it good.
->>>
->>> What makes register_net_sysctl_table and register_net_sysctl_ro_table
->>> unsuitable for sunrpc.  I skimmed through your patches and I haven't
->>> seen anything obvious.
->>>
->>> Eric
->>>
+On Sun, Dec 4, 2011 at 1:42 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 >>
->> Hello, Eric. Sorry for the lack of information.
->> I was considering two ways how to make these sysctl per net ns:
 >>
->> 1) Use register_net_sysctl_table and register_net_sysctl_ro_table as you
->> mentioned. This was easy and cheap, but also means, than all user-space
->> programs, tuning SUNRPC will be broken (since all sysctl currently located
->> in"/proc/sys/sunprc/").
->
-> Nope.  That is a misunderstanding.  register_net_sysctl_table works for
-> anything under /proc/sys.
->
->> 2) Export sysctl root creation routines and make per-net SUNRPC sysctl
->> root. This approach allows to make any part of sysctl tree per namespace context
->> and thus leave user-space stuff unchanged.
+>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>> ---
+>>  fs/nfsd/nfs4proc.c  |    6 ++++++
+>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
+>>  2 files changed, 26 insertions(+), 6 deletions(-)
 >>
->> BTW, NFS and LockD also have it's sysctls ("/proc/sys/fs/nfs/").
->> And also because of them I've decided, that it would be better to export SYSCTL
->> root creation routines instead of breaking compatibility for all NFS layers by
->> moving all sysctl under /proc/sys/net/ directory.
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index fa38336..535aed2 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>        */
+>>       status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+>>       WARN_ON(status && open->op_created);
+>> +
+>> +     if(status)
+>> +             goto out;
+>> +
+>> +     /* set current state id */
+>> +     memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
+>
+> Since this should be done for all stateid-returning operations
+> I think that a cleaner approach could be to mark those as such in
+> nfsd4_ops by providing a per-op function to return the operation's
+> stateid.  You can then call this method from nfsd4_proc_compound()
+> after the call to nfsd4_encode_operation() and when status == 0.
+
+
+Ok , I will try to do that.
+>
+>>  out:
+>>       nfsd4_cleanup_open_state(open, status);
+>>       if (open->op_openowner)
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 47e94e3..a34d82e 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -51,10 +51,14 @@ time_t nfsd4_grace = 90;
+>>  static time_t boot_time;
+>>  static stateid_t zerostateid;             /* bits all 0 */
+>>  static stateid_t onestateid;              /* bits all 1 */
+>> +static stateid_t currentstateid;          /* other all 0, seqid 1 */
+>>  static u64 current_sessionid = 1;
 >>
->> Do you feel that it was a bad decision?
+>>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+>>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
+>> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+>> +
+>> +#define STATEID_OF(s, c)  ( CURRENT_STATEID((s)) ? &(c)->current_stateid : (s) )
+>>
+>>  /* forward declarations */
+>>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+>> @@ -3314,13 +3318,15 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask, s
+>>  */
+>>  __be32
+>>  nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>> -                        stateid_t *stateid, int flags, struct file **filpp)
+>> +                        stateid_t *stateid_in, int flags, struct file **filpp)
+>>  {
+>>       struct nfs4_stid *s;
+>>       struct nfs4_ol_stateid *stp = NULL;
+>>       struct nfs4_delegation *dp = NULL;
+>>       struct svc_fh *current_fh = &cstate->current_fh;
+>>       struct inode *ino = current_fh->fh_dentry->d_inode;
+>> +     stateid_t *stateid;
+>> +
+>>       __be32 status;
+>>
+>>       if (filpp)
+>> @@ -3329,9 +3335,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>>       if (grace_disallows_io(ino))
+>>               return nfserr_grace;
+>>
+>> -     if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+>> -             return check_special_stateids(current_fh, stateid, flags);
+>> +     if (ZERO_STATEID(stateid_in) || ONE_STATEID(stateid_in))
+>> +             return check_special_stateids(current_fh, stateid_in, flags);
+>>
+>> +     stateid = STATEID_OF(stateid_in, cstate);
+>> +
+>>       status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID, &s);
+>>       if (status)
+>>               return status;
+>> @@ -3655,14 +3663,17 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>       __be32 status;
+>>       struct nfs4_openowner *oo;
+>>       struct nfs4_ol_stateid *stp;
+>> +     stateid_t *stateid;
+>>
+>>       dprintk("NFSD: nfsd4_close on file %.*s\n",
+>>                       (int)cstate->current_fh.fh_dentry->d_name.len,
+>>                       cstate->current_fh.fh_dentry->d_name.name);
+>>
+>>       nfs4_lock_state();
+>> +     stateid = STATEID_OF( &close->cl_stateid, cstate);
 >
-> I think it was a misinformed decision.
+> nit: extra space after open-parentheses
 >
-> I fully support not breaking userspace by moving where the sysctls files
-> are.  If something sounds like I am suggesting moving sysctl files there
-> is a miscommunication somewhere.
+>> +
+>>       status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
+>> -                                     &close->cl_stateid,
+>> +                                     stateid,
+>>                                       NFS4_OPEN_STID|NFS4_CLOSED_STID,
+>>                                       &stp);
+>>       if (status)
+>> @@ -3670,7 +3681,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>       oo = openowner(stp->st_stateowner);
+>>       status = nfs_ok;
+>>       update_stateid(&stp->st_stid.sc_stateid);
+>> -     memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+>> +     memcpy(stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
 >
-> The concept of a sysctl root as I had envisioned it and essentially as it
-> is implemented was a per namespace sysctl tree.  Those sysctl trees are
-> then unioned together when presented to user space.  There should only
-> be one root per namespace.
+> Currently, nfsd4_encode_close uses close->cl_stateid so we need to keep its value
+> up-to-date. With the scheme I outlined above, copying into cstate->current_stateid can
+> be done in a centralized place.
 >
-> In practice what this means is that register_net_sysctl_table should
-> work for any sysctl file anywhere under /proc/sys.  I think
-> register_net_sysctl_table is the right solution for your problem.  The
-> only possible caveat I can think of is you might hit Al's performance
-> optimizations and need to create a common empty directory first with
-> register_sysctl_paths.
+> Benny
 >
+>>
+>>       nfsd4_close_open_stateid(stp);
+>>       oo->oo_last_closed_stid = stp;
+>> @@ -4400,7 +4411,7 @@ int
+>>  nfs4_state_init(void)
+>>  {
+>>       int i, status;
+>> -
+>> +     uint32_t one = 1;
+>>       status = nfsd4_init_slabs();
+>>       if (status)
+>>               return status;
+>> @@ -4423,6 +4434,9 @@ nfs4_state_init(void)
+>>               INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
+>>       }
+>>       memset(&onestateid, ~0, sizeof(stateid_t));
+>> +     /* seqid 1, other all 0 */
+>> +     memcpy(&currentstateid , &one, sizeof(one));
+>> +
 >
+> you mean currentstateid.si_generation = cpu_to_be32(1) ?
 
+why it should be big endian here? I think xdr encoding will take care about it.
 
-Sorry, but I forgot to mention one more important goal I would like to achieve:
-I want to manage sysctl's variables in context of mount owner, but not viewer one.
-IOW imagine, that we have one two network namespaces: "A" and "B". Both of them 
-have it's own net sysctl's root. And we have per-net sysctl "/proc/sys/var".
-And for ns "A" variable was set to 0, and for "B" - to 1.
-And B's "/proc/sys/var" is accessible from "A" namespace
-("/chroot_path/proc/sys/var" for example).
-With this configuration I want to read "1" from both namespaces:
-owner "B" (/proc/sys/var) and "A" ("/chroot_path/proc/sys/var").
-Looks like simple using of register_net_sysctl_table doesn't allow me this, 
-because current net ns is used. And to achieve this goal I need my own sysctl 
-set for SUNRPC like it was done for network namespaces.
+Tigran.
 
-
-> ....
-> That said since I am in the process of rewriting things some of this
-> may change a little bit, but hopefully not in ways that immediately
-> effect the users of register_sysctl_table.
 >
-> Don't use register_net_sysctl_ro_table.   I think what the implementors
-> actually wanted was register_net_sysctl_table(&init_net, ...) and didn't
-> know it.
->
-> Don't put subdirectories in your sysctl tables.  Use a ctl_path to
-> specify the entire directory where the files should show up.  Generally
-> the code is easier to read in that form, and the code is simpler to deal
-> with if we don't have to worry about directories.
->
-> Don't play with the sysctl roots.  It is my intention to completely kill
-> them off and replace them by moving the per net sysctl tree under
-> /proc/<pid>/sys/.   Leaving behind symlinks in /proc/sys/net and I guess
-> ultimately in /proc/sys/sunrpc/ and /proc/sys/fs/nfs...  Which actually
-> seems to better describe your mental model.
->
-
-
-I'm afraid, that this approach this not allow me to achieve the goal, mentioned 
-above, because current->nsproxy->net_ns will be used during lookup.
-Or maybe I misunderstanding here?
-
-
-> Thank you for mentioning /proc/sys/fs/nfs.  That is a case I hadn't
-> thought about.  In thinking about it I see some deficiencies in my
-> rewrite that I need to correct before I push that code.
->
-
-
-Was glad to be usefull.
-
-
-> Eric
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+>>       INIT_LIST_HEAD(&close_lru);
+>>       INIT_LIST_HEAD(&client_lru);
+>>       INIT_LIST_HEAD(&del_recall_lru);
