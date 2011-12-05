@@ -1,45 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e31.co.us.ibm.com ([32.97.110.149]:44975 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751855Ab1LOVeO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 16:34:14 -0500
-Received: from /spool/local
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
-	Thu, 15 Dec 2011 14:34:13 -0700
-Subject: Re: [PATCH] [RFC] KEYS: Add invalidation support
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: David Howells <dhowells@redhat.com>
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org
-Date: Thu, 15 Dec 2011 16:30:17 -0500
-In-Reply-To: <5110.1323954863@redhat.com>
-References: <1323953422.15982.13.camel@falcor>
-	 <20111215121723.18382.99996.stgit@warthog.procyon.org.uk>
-	 <5110.1323954863@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1323984617.16982.21.camel@falcor>
-Mime-Version: 1.0
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752356Ab1LEINA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:00 -0500
+Received: by bkbzv3 with SMTP id zv3so1472947bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:12:58 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/10] use gcc
+Date: Mon,  5 Dec 2011 10:12:53 +0200
+Message-Id: <1323072773-17955-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDC7C4E.1040901@tonian.com>
+References: <4EDC7C4E.1040901@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-12-15 at 13:14 +0000, David Howells wrote:
-> Mimi Zohar <zohar@linux.vnet.ibm.com> wrote:
-> 
-> > Not all keys can be 'refetched'.  A trusted key, sealed to a PCR, can
-> > extend the PCR to prevent it from being re-loaded. Removing the trusted
-> > key could prevent the instantiation/update of encrypted keys.
-> 
-> I meant discard and set up a new struct key not actually invalidate any real
-> key store.  Is this actually a problem?  If it is, I can certainly add a flag
-> to prevent struct keys from being invalidated; but that doesn't stop them from
-> being unlinked or revoked.
-> 
-> David
+From: Benny Halevy <bhalevy@tonian.com>
 
-We discussed it here and don't think it should be a problem.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ Makefile |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-thanks,
-
-Mimi
+diff --git a/Makefile b/Makefile
+index 14bb2ff..2b40126 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,8 +1,9 @@
++CC= gcc
+ OBJS=	ctl.o efi.o
+ CFLAGS= -I../../linux-pnfs.working/include
+ 
+ ctl: $(OBJS)
+-	cc -o ctl $(OBJS) -levent -lpthread -lparted
++	$(CC) -o ctl $(OBJS) -levent -lpthread -lparted
+ 
+ clean:
+ 	rm -f $(OBJS) ctl
+-- 
+1.7.6
 
