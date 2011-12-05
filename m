@@ -1,74 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-3.desy.de ([131.169.56.86]:37807 "EHLO
-	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753739Ab1LLUbq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:31:46 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id E8F411507
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id E023B14FF
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta1409905d883a96160b60@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Mon, 12 Dec 2011 21:31:45 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 3/3] client: group test with currentstateid tougheter
-Date: Mon, 12 Dec 2011 21:26:28 +0100
-Message-Id: <1323721588-8259-3-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:52769 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752299Ab1LEIJz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:09:55 -0500
+Received: by bkbzv3 with SMTP id zv3so1468888bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:09:54 -0800 (PST)
+Message-ID: <4EDC7C4E.1040901@tonian.com>
+Date: Mon, 05 Dec 2011 10:09:50 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/10] pnfs-block ctl
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Folks,
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.1/server41tests/st_open.py |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+The following are fixes to Rick McNeal's user-space ctl daemon
+for the pnfs block server.
 
-diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-index 6c991c8..1c51f71 100644
---- a/nfs4.1/server41tests/st_open.py
-+++ b/nfs4.1/server41tests/st_open.py
-@@ -244,7 +244,7 @@ def testOpenAndClose(t, env):
-     """test current state id processing by having OPEN and CLOSE
-        in a single compound
- 
--    FLAGS: open all
-+    FLAGS: currentstateid open all
-     CODE: OPEN31
-     """
-     current_stateid = stateid4(1, '\0' * 12)
-@@ -258,7 +258,7 @@ def testLockLockU(t, env):
-     """test current state id processing by having LOCK and LOCKU
-        in a single compound
- 
--    FLAGS: open all
-+    FLAGS: currentstateid open all
-     CODE: OPEN32
-     """
-     current_stateid = stateid4(1, '\0' * 12)
-@@ -280,7 +280,7 @@ def testOpenWriteClose(t, env):
-     """test current state id processing by having OPEN, WRITE and CLOSE
-        in a single compound
- 
--    FLAGS: open all
-+    FLAGS: currentstateid open all
-     CODE: OPEN33
-     """
-     current_stateid = stateid4(1, '\0' * 12)
-@@ -296,7 +296,7 @@ def testLockWriteLocku(t, env):
-     """test current state id processing by having LOCK, WRITE and LOCKU
-        in a single compound
- 
--    FLAGS: open all
-+    FLAGS: currentstateid open all
-     CODE: OPEN34
-     """
-     current_stateid = stateid4(1, '\0' * 12)
--- 
-1.7.7
+They are available on:
+git://linux-nfs.org/~bhalevy/pnfsd-block-ctl.git
 
+The daemon is required on the server side to get the pnfs
+block device EFI signature and volume signature.
+
+
+[PATCH 01/10] use gcc
+[PATCH 02/10] efi: fix user-land debug printouts
+[PATCH 03/10] ctl: improve debug printouts
+[PATCH 04/10] increase compiler warning level
+[PATCH 05/10] ctl: always return a value from find_dm_name
+[PATCH 06/10] add missing includes
+[PATCH 07/10] ctl: fix compiler warnings
+[PATCH 08/10] fix compiler warnings around get_output use of argv
+[PATCH 09/10] ctl: main should return 0 on success
+[PATCH 10/10] efi: fix compiler warnings
