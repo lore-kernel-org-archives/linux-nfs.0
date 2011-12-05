@@ -1,111 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54691 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753394Ab1LFVOw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 16:14:52 -0500
-Date: Tue, 6 Dec 2011 16:14:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] NFSd: use network-namespace-aware cache registering
- routines
-Message-ID: <20111206211450.GD12640@fieldses.org>
-References: <20111206130330.25851.55807.stgit@localhost6.localdomain6>
- <20111206210234.GC12640@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111206210234.GC12640@fieldses.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753500Ab1LEINd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:33 -0500
+Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:13:32 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/10] increase compiler warning level
+Date: Mon,  5 Dec 2011 10:13:27 +0200
+Message-Id: <1323072807-18175-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDC7C4E.1040901@tonian.com>
+References: <4EDC7C4E.1040901@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 06, 2011 at 04:02:34PM -0500, J. Bruce Fields wrote:
-> On Tue, Dec 06, 2011 at 05:04:31PM +0300, Stanislav Kinsbursky wrote:
-> > This is a cleanup patch. Some day (hope, soon enough) generic cache_register()
-> > and cache_unregister() will be removed.
-> 
-> OK, applying for 3.3.--b.
+From: Benny Halevy <bhalevy@tonian.com>
 
-Whoops, no I'm not, these make modular builds fail.  Looks like we need
-a couple EXPORT_SYMBOL_GPL()'s.  Could you resend?
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
---b.
+diff --git a/Makefile b/Makefile
+index 2b40126..df074dd 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ CC= gcc
+ OBJS=	ctl.o efi.o
+-CFLAGS= -I../../linux-pnfs.working/include
++CFLAGS= -I../../linux-pnfs.working/include -Wall
+ 
+ ctl: $(OBJS)
+ 	$(CC) -o ctl $(OBJS) -levent -lpthread -lparted
+-- 
+1.7.6
 
-> 
-> > 
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> > 
-> > ---
-> >  fs/nfsd/export.c    |   10 +++++-----
-> >  fs/nfsd/nfs4idmap.c |   11 ++++++-----
-> >  2 files changed, 11 insertions(+), 10 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> > index 62f3b90..d1feeef 100644
-> > --- a/fs/nfsd/export.c
-> > +++ b/fs/nfsd/export.c
-> > @@ -1226,12 +1226,12 @@ nfsd_export_init(void)
-> >  	int rv;
-> >  	dprintk("nfsd: initializing export module.\n");
-> >  
-> > -	rv = cache_register(&svc_export_cache);
-> > +	rv = cache_register_net(&svc_export_cache, &init_net);
-> >  	if (rv)
-> >  		return rv;
-> > -	rv = cache_register(&svc_expkey_cache);
-> > +	rv = cache_register_net(&svc_expkey_cache, &init_net);
-> >  	if (rv)
-> > -		cache_unregister(&svc_export_cache);
-> > +		cache_unregister_net(&svc_export_cache, &init_net);
-> >  	return rv;
-> >  
-> >  }
-> > @@ -1255,8 +1255,8 @@ nfsd_export_shutdown(void)
-> >  
-> >  	dprintk("nfsd: shutting down export module.\n");
-> >  
-> > -	cache_unregister(&svc_expkey_cache);
-> > -	cache_unregister(&svc_export_cache);
-> > +	cache_unregister_net(&svc_expkey_cache, &init_net);
-> > +	cache_unregister_net(&svc_export_cache, &init_net);
-> >  	svcauth_unix_purge();
-> >  
-> >  	dprintk("nfsd: export shutdown complete.\n");
-> > diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> > index 55780a2..9409627 100644
-> > --- a/fs/nfsd/nfs4idmap.c
-> > +++ b/fs/nfsd/nfs4idmap.c
-> > @@ -36,6 +36,7 @@
-> >  #include <linux/seq_file.h>
-> >  #include <linux/sched.h>
-> >  #include <linux/slab.h>
-> > +#include <net/net_namespace.h>
-> >  #include "idmap.h"
-> >  #include "nfsd.h"
-> >  
-> > @@ -466,20 +467,20 @@ nfsd_idmap_init(void)
-> >  {
-> >  	int rv;
-> >  
-> > -	rv = cache_register(&idtoname_cache);
-> > +	rv = cache_register_net(&idtoname_cache, &init_net);
-> >  	if (rv)
-> >  		return rv;
-> > -	rv = cache_register(&nametoid_cache);
-> > +	rv = cache_register_net(&nametoid_cache, &init_net);
-> >  	if (rv)
-> > -		cache_unregister(&idtoname_cache);
-> > +		cache_unregister_net(&idtoname_cache, &init_net);
-> >  	return rv;
-> >  }
-> >  
-> >  void
-> >  nfsd_idmap_shutdown(void)
-> >  {
-> > -	cache_unregister(&idtoname_cache);
-> > -	cache_unregister(&nametoid_cache);
-> > +	cache_unregister_net(&idtoname_cache, &init_net);
-> > +	cache_unregister_net(&nametoid_cache, &init_net);
-> >  }
-> >  
-> >  static int
-> > 
