@@ -1,76 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:53737 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751958Ab1LAICh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 03:02:37 -0500
-Date: Thu, 1 Dec 2011 02:02:27 -0600
-From: Tyler Hicks <tyhicks@canonical.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        David Howells <dhowells@redhat.com>, Jan Harkes <jaharkes@cs.cmu.edu>,
-        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>, Chris Dunlop <chris@onthe.net.au>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-        ecryptfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-Message-ID: <20111201080227.GC495@boyd>
-References: <1321861008-20611-1-git-send-email-chris@onthe.net.au>
- <20111129082501.GA569@onthe.net.au>
- <20111201065024.GB495@boyd>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="Izn7cH1Com+I3R9J"
-In-Reply-To: <20111201065024.GB495@boyd>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752356Ab1LEINL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:11 -0500
+Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:13:10 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/10] efi: fix user-land debug printouts
+Date: Mon,  5 Dec 2011 10:13:05 +0200
+Message-Id: <1323072785-18038-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDC7C4E.1040901@tonian.com>
+References: <4EDC7C4E.1040901@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Benny Halevy <bhalevy@tonian.com>
 
---Izn7cH1Com+I3R9J
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ efi.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-On 2011-12-01 00:50:25, Tyler Hicks wrote:
-> As David mentioned, Al's atomic open patches might solve all of this in
-> the future, but I don't know much about that patchset. Is there any
-> relevant info you could provide about those patches, Al?
+diff --git a/efi.c b/efi.c
+index 20efb2b..b653092 100644
+--- a/efi.c
++++ b/efi.c
+@@ -98,9 +98,12 @@
+ 
+ #include "efi.h"
+ 
++#ifndef EFI_DEBUG
++#define EFI_DEBUG
++#endif
+ #undef EFI_DEBUG
+ #ifdef EFI_DEBUG
+-#define Dprintk(x...) printk(KERN_DEBUG x)
++#define Dprintk(x...) fprintf(stderr, x)
+ #else
+ #define Dprintk(x...)
+ #endif
+-- 
+1.7.6
 
-Sorry, Al. I see that you've already provided those details here:
-
-https://lkml.org/lkml/2011/5/12/337
-
-I was unaware of that thread until now.
-
-Tyler
-
-
-
---Izn7cH1Com+I3R9J
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAEBCgAGBQJO1zSTAAoJENaSAD2qAscKAe8P/086rTItWBFlIGAa/AjG+urt
-8bUVX+Sy/nVtqUzzoO+yNShUwunB1FoS3LqpkrRziXcmlAzghmBDR6r67kg/GIbX
-WmWPjCF+0aLvTCxLTpjtjxzd8Fqcp8CoaFVR4Pt42qmRhvrG2aqXW3y4REH/ERME
-3VJT5LCqgdzxHq8G1nc9ushgcnJBUp8FVAIfUx1CFY/BzBV/wIKyoXP9kpOQJCPQ
-pm9tj7nUGIj5BiNThHyDVM5QomCDNKiQQNLxnQHFU0qIfPbOpQQY1O+ZGXLqan5l
-wQjtFmuqSlyew2XVahJg5q6c6gXcP+MkBlgSJ7UQ7yYhlR9e5eGxTrWAWRg429Px
-RKzV646mO4yHLy5EO/zC7yHP/7QLKgUg27cgI1RgnZHhClbJAbPfPVbK1tbs+WVE
-zUEgsSAgcn/YOOslnH13bd8TT/MEYIxNoFxIIYCJ48QxU+bcPoYUSmz+eVOZ6Bn7
-ZfX/Lw0NtDud4D4G7FxcTMcOApk4cOhtS7xqKRI7fFNmoxUQcXY12Gy/evCAX0uN
-MNUQONf4n5chc+kIWT8++maOU2DwlBpSgHDgigrvvGhXF4vo7MIHv7PJPkHsMA/K
-atbRpNm79AVRKCAah0nSmFTz19WtAi1rk46+8VOqeN4Rk/GixQpi3OUI5xYVTr5r
-eH4FmWAbr4wo1ciSE2E2
-=7Kyp
------END PGP SIGNATURE-----
-
---Izn7cH1Com+I3R9J--
