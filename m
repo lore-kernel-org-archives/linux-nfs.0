@@ -1,87 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52479 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:12807 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751695Ab1LSVxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 16:53:00 -0500
-Date: Mon, 19 Dec 2011 16:52:59 -0500
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        fedfs-utils-devel@oss.oracle.com, jlayton@redhat.com
-Subject: Re: [PATCH] NFSD: Change name of extended attribute containing
- junction
-Message-ID: <20111219215259.GA15613@fieldses.org>
-References: <20111219193843.30843.56764.stgit@degas.1015granger.net>
+	id S932268Ab1LEOuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Dec 2011 09:50:54 -0500
+Message-ID: <4EDCDA47.4010702@RedHat.com>
+Date: Mon, 05 Dec 2011 09:50:47 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111219193843.30843.56764.stgit@degas.1015granger.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Dick Streefland <dick@streefland.net>, rnews@altium.nl,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] retry for NFS v3 mounts
+References: <37c5.4ed7ba54.3cfb1@altium.nl> <4ED7E678.2050104@RedHat.com>
+In-Reply-To: <4ED7E678.2050104@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 19, 2011 at 02:38:43PM -0500, Chuck Lever wrote:
-> As of fedfs-utils-0.8.0, user space stores all NFS junction
-> information in a single extended attribute: "trusted.junction.nfs".
 
-I suspect the break of backwards-compatibility is fine, but we should
-add a note explaining it; would something like this be right?:
 
-	This breaks compatibility with fedfs-utils versions before
-	0.8.0.  As fedfs-utils has not been widely distributed, we don't
-	believe this will affect anyone.
+On 12/01/2011 03:41 PM, Steve Dickson wrote:
+> Hello,
+> 
+> On 12/01/2011 12:33 PM, rnews@altium.nl wrote:
+>> > Mounting an NFS v3 volume from a server that is currently down,
+>> > immediately fails with a timeout error, instead of retrying:
+>> > 
+>> > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>> > index 4032bf3..7ca0b3e 100644
+>> > --- a/utils/mount/stropts.c
+>> > +++ b/utils/mount/stropts.c
+>> > @@ -663,6 +663,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>> >  		case ECONNREFUSED:
+>> >  		case EOPNOTSUPP:
+>> >  		case EHOSTUNREACH:
+>> > +		case ESPIPE:
+>> >  			continue;
+>> >  		default:
+>> >  			goto out;
+>> > @@ -848,6 +849,7 @@ static int nfs_is_permanent_error(int error)
+>> >  	case ETIMEDOUT:
+>> >  	case ECONNREFUSED:
+>> >  	case EHOSTUNREACH:
+>> > +	case ESPIPE:
+>> >  		return 0;	/* temporary */
+>> >  	default:
+>> >  		return 1;	/* permanent */
+>> > 
+> I think the problem is more of nfs_rewrite_pmap_mount_options()
+> is not interrupting RPC correctly.... How about something like this:
+> 
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Thu Dec 1 15:35:18 2011 -0500
+> 
+>     mount.nfs: Background mounts failing on time out errors.
+>     
+>     Mounting with the "-o v3,bg,proto=udp" options will
+>     fail, instead of trying, when the server is down.
+>     The reason being nfs_rewrite_pmap_mount_options()
+>     is not interrupting RPC timeouts correctly.
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 4032bf3..d52e21a 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -540,6 +540,8 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options
+>                         errno = EOPNOTSUPP;
+>                 else if (rpc_createerr.cf_stat == RPC_AUTHERROR)
+>                         errno = EACCES;
+> +               else if (rpc_createerr.cf_stat == RPC_TIMEDOUT)
+> +                       errno = ETIMEDOUT;
+>                 else if (rpc_createerr.cf_error.re_errno != 0)
+>                         errno = rpc_createerr.cf_error.re_errno;
+>                 return 0;
+Committed...
 
-(Cc'ing jlayton: does this cause a problem for whatever just went into
-Fedora?)
-
---b.
-
-> 
-> Both FedFS and NFS basic junctions are stored in this one attribute,
-> and the intention is that all future forms of NFS junction metadata
-> will be stored in this attribute.  Other protocols may use a different
-> extended attribute.
-> 
-> Thus NFSD needs to look only for that one extended attribute.  The
-> "trusted.junction.type" xattr is deprecated.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfsd/vfs.c |   17 ++++++++++++++---
->  1 files changed, 14 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index d1d4d5e..b494f86 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -594,8 +594,19 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
->  	return error;
->  }
->  
-> -#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
-> -#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
-> +/*
-> + * NFS junction information is stored in an extended attribute.
-> + */
-> +#define NFSD_JUNCTION_XATTR_NAME	XATTR_TRUSTED_PREFIX "junction.nfs"
-> +
-> +/**
-> + * nfsd4_is_junction - Test if an object could be an NFS junction
-> + *
-> + * @dentry: object to test
-> + *
-> + * Returns 1 if "dentry" appears to contain NFS junction information.
-> + * Otherwise 0 is returned.
-> + */
->  int nfsd4_is_junction(struct dentry *dentry)
->  {
->  	struct inode *inode = dentry->d_inode;
-> @@ -606,7 +617,7 @@ int nfsd4_is_junction(struct dentry *dentry)
->  		return 0;
->  	if (!(inode->i_mode & S_ISVTX))
->  		return 0;
-> -	if (vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0) <= 0)
-> +	if (vfs_getxattr(dentry, NFSD_JUNCTION_XATTR_NAME, NULL, 0) <= 0)
->  		return 0;
->  	return 1;
->  }
-> 
+steved.
