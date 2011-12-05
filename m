@@ -1,68 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52517 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759069Ab1LOQxj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:53:39 -0500
-Message-ID: <1323968015.14317.28.camel@lade.trondhjem.org>
-Subject: RE: copy offload support in Linux - new system call needed?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Loke, Chetan" <Chetan.Loke@netscout.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-scsi@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Date: Thu, 15 Dec 2011 11:53:35 -0500
-In-Reply-To: <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com>
-References: <4EE8F75F.6070800@gmail.com>
-	 <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
-	 <20111214222723.GD7623@fieldses.org>
-	 <1323961140.14317.2.camel@lade.trondhjem.org>
-	 <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com>
-	 <1323965498.14317.13.camel@lade.trondhjem.org>
-	 <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752376Ab1LEIOl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:14:41 -0500
+Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:14:41 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/10] efi: fix compiler warnings
+Date: Mon,  5 Dec 2011 10:14:35 +0200
+Message-Id: <1323072875-18579-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDC7C4E.1040901@tonian.com>
+References: <4EDC7C4E.1040901@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-12-15 at 11:40 -0500, Loke, Chetan wrote: 
-> > >
-> > > Why not support something like the async-iocb?
-> > 
-> > You could, but that would tie copyfile() to the aio interface which was
-> > one of the things that I believe Al was opposed to when we discussed
-> > this at LSF/MM-2010.
-> > 
-> 
-> virtualization vendors who support this offload do it at a layer above the guest-OS(Intra-LUN(tm) locking or whatever fancy locking). So I think 'copyfile' is going to be appealing to application-developers more than the hypervisor-vendors.
+From: Benny Halevy <bhalevy@tonian.com>
 
-The application is thin provisioning, not the 'cp' command. When
-virtualisation vendors do support this, it will mainly be as part of
-their image management toolkits, not the hypervisor.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ efi.c |   10 +---------
+ 1 files changed, 1 insertions(+), 9 deletions(-)
 
-> So let's think about it from end-users perspective:
-> Won't everyone replicate code to check - 'Am I done'? It will just make application folks write more (ugly)code. Because you would then have to maintain another queue/etc to check for this operation.
-
-'Am I done' is easy: copyfile() returns with the number of bytes that
-have been copied.
-
-'Is my copyfile() syscall making progress' is the question that needs
-answering.
-
-> We can just support full-copy. Partial copies can be returned as failure.
-
-Then you have to check the entire range on error instead of just
-resuming the copy from where it stopped.
-
+diff --git a/efi.c b/efi.c
+index 67b6211..a8c70d2 100644
+--- a/efi.c
++++ b/efi.c
+@@ -123,8 +123,6 @@
+ static size_t
+ read_lba(int fd, u64 lba, u8 * buffer, size_t count)
+ {
+-	size_t totalreadcount = 0;
+-
+ 	lseek(fd, lba * 512LL, 0);
+ 	return read(fd, buffer, count);
+ }
+@@ -205,9 +203,6 @@ static int
+ is_gpt_valid(int fd, u64 lba,
+ 	     gpt_header **gpt, gpt_entry **ptes)
+ {
+-	u32 crc, origcrc;
+-	u64 lastlba;
+-
+ 	if (!(*gpt = alloc_read_gpt_header(fd, lba)))
+ 		return 0;
+ 
+@@ -236,9 +231,6 @@ is_gpt_valid(int fd, u64 lba,
+ 	/* We're done, all's well */
+ 	return 1;
+ 
+- fail_ptes:
+-	free(*ptes);
+-	*ptes = NULL;
+  fail:
+ 	free(*gpt);
+ 	*gpt = NULL;
+@@ -284,7 +276,7 @@ efi_signature(int fd, struct partition_sig *sig)
+         gpt_entry       *ptes   = NULL;
+         int             rval    = 0;
+ 
+-        sig->ps_sector_off = (u32)&((gpt_header *)0)->disk_guid.b[0];
++        sig->ps_sector_off = __builtin_offsetof(gpt_header, disk_guid.b);
+         sig->ps_sector = GPT_PRIMARY_PARTITION_TABLE_LBA;
+         sig->ps_len = sizeof (efi_guid_t);
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.6
 
