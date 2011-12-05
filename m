@@ -1,48 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38861 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754045Ab1L1SWQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Dec 2011 13:22:16 -0500
-Date: Wed, 28 Dec 2011 13:22:13 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
- named one
-Message-ID: <20111228182213.GA10220@fieldses.org>
-References: <4EFB330A.7070908@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EFB330A.7070908@parallels.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752931Ab1LEIOH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:14:07 -0500
+Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:14:06 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 07/10] ctl: fix compiler warnings
+Date: Mon,  5 Dec 2011 10:14:01 +0200
+Message-Id: <1323072841-18376-1-git-send-email-benny@tonian.com>
+In-Reply-To: <4EDC7C4E.1040901@tonian.com>
+References: <4EDC7C4E.1040901@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 28, 2011 at 07:17:30PM +0400, Stanislav Kinsbursky wrote:
-> I've experienced a problem with registering Lockd service with
-> rpcbind in container. My container operates in it's own network
-> namespace context and has it's own root. But on service register,
-> kernel tries to connect to named unix socket by using
-> rpciod_workqueue. Thus any connect is done with the same fs->root,
+From: Benny Halevy <bhalevy@tonian.com>
 
-There's no way to pass the correct context down to the rpc task and from
-there to the registration code?
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ ctl.c |   20 +++++++++-----------
+ 1 files changed, 9 insertions(+), 11 deletions(-)
 
---b.
+diff --git a/ctl.c b/ctl.c
+index d989ab8..e5d16e3 100644
+--- a/ctl.c
++++ b/ctl.c
+@@ -75,11 +75,10 @@ struct event	ge;
+ int
+ main(int argc, char **argv)
+ {
+-	int		upcall_fd,
+-			operation	= -1,
+-			len;
+-	char		c,
+-			*prog;
++	int		upcall_fd;
++	int		operation = -1;
++	char		c;
++	char		*prog;
+ 	pthread_t	t;
+ 	void		*thr_val;
+ 
+@@ -162,7 +161,7 @@ process_msg(int fd, short ev_type, void *arg)
+ 		return;
+ 	len = sizeof (bl_comm_res_t);
+ 	if ((cc = read(fd, &msg, sizeof (msg))) != sizeof (msg)) {
+-		printf("Failed to get all of message. Got %d, expected %d\n",
++		printf("Failed to get all of message. Got %d, expected %Zd\n",
+ 		    cc, sizeof (msg));
+ 		resp->res_status = PNFS_BLOCK_FAILURE;
+ 		write(fd, resp, len);
+@@ -352,9 +351,7 @@ get_dm(bl_comm_msg_t *msg, bl_comm_res_t *res, int *lenp)
+ bl_comm_res_t *
+ check_dm(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
+ {
+-	int	fd,
+-		major,
+-		minor;
++	int	major, minor;
+ 	char	*name;
+ 	
+ 	res->res_status = PNFS_BLOCK_SUCCESS;
+@@ -391,7 +388,7 @@ get_slice(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
+ 	partition = minor & 0xf;
+ 	res->res_status = PNFS_BLOCK_FAILURE;	// Default condition
+ 	
+-	printf("%s: %u:%u: ", __func__, major, minor); fflush(stdout);
++	printf("%s: %u:%u: ", __func__, (unsigned)major, (unsigned)minor); fflush(stdout);
+ 
+ 	if (mknod(path, S_IFBLK | 0600, dev)) {
+ 		perror("mknod");
+@@ -421,7 +418,8 @@ get_slice(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
+ 	res->res_status = PNFS_BLOCK_SUCCESS;
+ 	res->u.slice.start = ppart->geom.start;
+ 	res->u.slice.length = ppart->geom.length;
+-	printf("Dev: %d:%d, Start: %llu, Length: %llu\n", major, minor,
++	printf("Dev: %u:%u, Start: %llu, Length: %llu\n",
++	       (unsigned)major, (unsigned)minor,
+ 	       res->u.slice.start, res->u.slice.length);
+ out:
+ 	(void) unlink(path);
+-- 
+1.7.6
 
-> and this leads to that kernel socket, used for registering service
-> with local portmapper, will always connect to the same user-space
-> socket regardless to fs->root of process, requested register
-> operation.
-> Possible solution for this problem, which I would like to discuss,
-> is to add one more listening socket to rpcbind process. But this one
-> should be anonymous. Anonymous unix sockets accept connections only
-> within it's network namespace context, so kernel socket connect will
-> be done always to the user-space socket in the same network
-> namespace.
-> Does anyone have any objections to this? Or, probably, better
-> solution for the problem?
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
