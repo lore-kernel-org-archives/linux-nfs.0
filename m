@@ -1,52 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.parallels.com ([64.131.90.16]:35716 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:62788 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752070Ab1LTK0e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Dec 2011 05:26:34 -0500
-Message-ID: <4EF062B1.3030401@parallels.com>
-Date: Tue, 20 Dec 2011 14:25:53 +0400
-From: Glauber Costa <glommer@parallels.com>
+	id S932204Ab1LEUVs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 15:21:48 -0500
 MIME-Version: 1.0
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        <xemul@parallels.com>, <neilb@suse.de>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <bfields@fieldses.org>,
-        <davem@davemloft.net>, <devel@openvz.org>
-Subject: Re: [Devel] [PATCH] SUNRPC: search for service transports in network
- namespace context
-References: <20111220101419.5673.21926.stgit@localhost6.localdomain6>
-In-Reply-To: <20111220101419.5673.21926.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: Empty core dumps on NFSv4 mounts
+Date: Mon, 5 Dec 2011 12:21:46 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C544D7C@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <A288911B-E32B-4C09-9662-C30C5E2EEB33@oracle.com>
+References: <AD82E120-D2B9-4C11-A622-970C951BD4F4@oracle.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C544D70@SACMVEXC2-PRD.hq.netapp.com> <A288911B-E32B-4C09-9662-C30C5E2EEB33@oracle.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Chuck Lever" <chuck.lever@oracle.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/20/2011 03:14 PM, Stanislav Kinsbursky wrote:
-> Service transports are parametrized by network namespace. And thus lookup of
-> transport instance have to take network namespace into account.
->
-> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> ---
->   fs/lockd/svc.c                  |    2 +-
->   fs/nfsd/nfsctl.c                |    4 ++--
->   include/linux/sunrpc/svc_xprt.h |    3 ++-
->   net/sunrpc/svc_xprt.c           |    6 +++++-
->   4 files changed, 10 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index c061b9a..ff379ff 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -193,7 +193,7 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
->   {
->   	struct svc_xprt *xprt;
->
-> -	xprt = svc_find_xprt(serv, name, family, 0);
-> +	xprt = svc_find_xprt(serv, name,&init_net, family, 0);
->   	if (xprt == NULL)
->   		return svc_create_xprt(serv, name,&init_net, family, port,
->   						SVC_SOCK_DEFAULTS);
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Monday, December 05, 2011 3:19 PM
+> To: Myklebust, Trond
+> Cc: Linux NFS Mailing List
+> Subject: Re: Empty core dumps on NFSv4 mounts
+> 
+> 
+> On Dec 5, 2011, at 3:14 PM, Myklebust, Trond wrote:
+> 
+> > No. There have been no kernel idmapper changes since then.
+> >
+> > The correct thing to do here is to cache the string name in struct
+> > nfs_fattr, and then do the upcall from the caller of OPEN. I believe
+> > that Arnaud wrote a patch to do this, however the whole pNFS merge
+got
+> > in my way of reviewing this. Feel free to take a look at what he
+did,
+> > and post comments...
+> 
+> We're looking at his patch, from July 2010, now.  It calls kmalloc()
+in the XDR
+> decoder.  Is there a newer version?
 
-I might be missing something, but isn't it (at least part of it) already 
-merged in commit fc5d00b04a3a58cac8620403dfe9f43f72578ec1 ?
+Not as far as I know, and I agree that calling kmalloc in the XDR is a
+problem... If, however, we can accept that it will occasionally fail,
+then perhaps kmalloc(GFP_NOWAIT) might be acceptable?
+
+Cheers
+  Trond
 
