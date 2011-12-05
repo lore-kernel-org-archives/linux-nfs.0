@@ -1,48 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:63671 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752892Ab1LDMZJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:25:09 -0500
-Received: by eeaq14 with SMTP id q14so1482893eea.19
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:25:08 -0800 (PST)
-Message-ID: <4EDB66A1.6010301@tonian.com>
-Date: Sun, 04 Dec 2011 14:25:05 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: tigran.mkrtchyan@desy.de
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsv41: add current stateid into compound_state
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323000237-13565-2-git-send-email-tigran.mkrtchyan@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from lo.gmane.org ([80.91.229.12]:44730 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932696Ab1LEXv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Dec 2011 18:51:28 -0500
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RXiJf-0006Kr-Sf
+	for linux-nfs@vger.kernel.org; Tue, 06 Dec 2011 00:51:26 +0100
+Received: from NORTHWEST-R.car1.Denver1.Level3.net ([4.28.99.98])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 00:51:23 +0100
+Received: from orion by NORTHWEST-R.car1.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 00:51:23 +0100
+To: linux-nfs@vger.kernel.org
+From: Orion Poplawski <orion@cora.nwra.com>
+Subject: Any update on gss/krb5 =?utf-8?b?bm9fcm9vdF9zcXVhc2g=?= issue
+Date: Mon, 5 Dec 2011 23:51:13 +0000 (UTC)
+Message-ID: <loom.20111206T004837-282@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
-> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> 
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  fs/nfsd/xdr4.h |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 2364747..7f26edd 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
->  	size_t			iovlen;
->  	u32			minorversion;
->  	u32			status;
-> +	stateid_t		current_stateid;
->  };
->  
->  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+The HOWTO mentions:
 
-nit: since the new member gets to be used only in the next patch
-they might as well be squashed together...
+4.5 A known issue using NFS with kerberos
+_________________________________________
 
-Thanks,
+Even if "no_root_squash" option is used, while exporting a filesystem at the 
+server, root on the client gets a "Permission denied"  error when creating 
+files on the mount point.
 
-Benny
+This is because there is no proper mapping between root and the GSSAuthName.
+
+
+And indeed, I continue to see this on Fedora 16.  Are there any better
+workarounds for this now?  Any hope of this getting fixed?  I need to have root
+access to certain directories, mainly for backups.
+
+Thanks!
+
+ - Orion Poplawski
+
