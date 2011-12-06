@@ -1,69 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-1.desy.de ([131.169.56.84]:55529 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751951Ab1LINDa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 08:03:30 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 874B419C9
-	for <linux-nfs@vger.kernel.org>; Fri,  9 Dec 2011 14:03:29 +0100 (MET)
-Received: from ZITSWEEP3.win.desy.de (zitsweep3.win.desy.de [131.169.97.97])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 7C97F13E87
-	for <linux-nfs@vger.kernel.org>; Fri,  9 Dec 2011 14:03:29 +0100 (MET)
-Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP3.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta12f8b8e8883a96161fa0@ZITSWEEP3.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Fri, 9 Dec 2011 14:03:29 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH v2 2/2] client: add open+close test with current stateid
-Date: Fri,  9 Dec 2011 13:58:53 +0100
-Message-Id: <1323435533-32571-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323435533-32571-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323435533-32571-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from fieldses.org ([174.143.236.118]:47181 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932811Ab1LFCMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Dec 2011 21:12:33 -0500
+Date: Mon, 5 Dec 2011 21:12:32 -0500
+To: Benny Halevy <benny@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/13] pnfsd-block: mv include/linux/nfsd4_block.h
+ include/linux/nfsd/
+Message-ID: <20111206021232.GC4486@fieldses.org>
+References: <4EDB79A9.2080109@tonian.com>
+ <1323006508-13581-1-git-send-email-benny@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323006508-13581-1-git-send-email-benny@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, Dec 04, 2011 at 03:48:28PM +0200, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@tonian.com>
+> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/bl_com.c                       |    2 +-
+>  fs/nfsd/bl_ops.c                       |    2 +-
+>  fs/nfsd/export.c                       |    2 +-
+>  fs/nfsd/nfs4proc.c                     |    2 +-
+>  fs/nfsd/nfs4xdr.c                      |    2 +-
+>  fs/nfsd/vfs.c                          |    2 +-
+>  include/linux/{ => nfsd}/nfsd4_block.h |    0
+>  7 files changed, 6 insertions(+), 6 deletions(-)
+>  rename include/linux/{ => nfsd}/nfsd4_block.h (100%)
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.1/server41tests/st_open.py |   19 ++++++++++++++++++-
- 1 files changed, 18 insertions(+), 1 deletions(-)
+As long as this is only used in fs/nfsd, let's put this header file
+in fs/nfsd.
 
-diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-index 87b58b3..89f3e2d 100644
---- a/nfs4.1/server41tests/st_open.py
-+++ b/nfs4.1/server41tests/st_open.py
-@@ -1,8 +1,10 @@
- from st_create_session import create_session
- from nfs4_const import *
-+
- from environment import check, checklist, fail, create_file, open_file, close_file
-+from environment import open_create_file_op
- from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
--from nfs4_type import creatverfattr, fattr4
-+from nfs4_type import creatverfattr, fattr4, stateid4
- import nfs4_ops as op
- import threading
- 
-@@ -236,3 +238,18 @@ def testOPENClaimFH(t, env):
-     desired = "\0"*5 + data
-     if res.resarray[-1].data != desired:
-         fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
-+
-+def testOpenAndClose(t, env):
-+    """test current state id processing by having OPEN and CLOSE
-+       in a single compound
-+
-+    FLAGS: open all
-+    CODE: OPEN31
-+    """
-+    current_stateid = stateid4(1, '\0' * 12)
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+
-+    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-+    res = sess1.compound(open_op + [op.close(0, current_stateid)])
-+    check(res, NFS4_OK)
-+
--- 
-1.7.7
+--b.
 
+> 
+> diff --git a/fs/nfsd/bl_com.c b/fs/nfsd/bl_com.c
+> index cf37814..388d71a 100644
+> --- a/fs/nfsd/bl_com.c
+> +++ b/fs/nfsd/bl_com.c
+> @@ -19,7 +19,7 @@
+>  #include <linux/nfs_fs.h>
+>  
+>  #include <linux/nfsd/debug.h>
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  
+>  #define NFSDDBG_FACILITY NFSDDBG_PNFS
+>  
+> diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+> index 4d2939e..15d2604 100644
+> --- a/fs/nfsd/bl_ops.c
+> +++ b/fs/nfsd/bl_ops.c
+> @@ -28,7 +28,7 @@
+>  #include <linux/dm-ioctl.h>
+>  #include <asm/uaccess.h>
+>  #include <linux/falloc.h>
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  
+>  #include "pnfsd.h"
+>  
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 10a05de..9585795 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -19,7 +19,7 @@
+>  #if defined(CONFIG_SPNFS)
+>  #include <linux/nfsd4_spnfs.h>
+>  #if defined(CONFIG_SPNFS_BLOCK)
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  #endif
+>  #endif
+>  #include <net/ipv6.h>
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index e4745ca..501781d 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -36,7 +36,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/nfsd/nfs4layoutxdr.h>
+>  #include <linux/nfsd4_spnfs.h>
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  
+>  #include "idmap.h"
+>  #include "cache.h"
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index bd8e693..cebd5a2 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -49,7 +49,7 @@
+>  #include <linux/exportfs.h>
+>  #include <linux/nfsd/nfs4layoutxdr.h>
+>  #include <linux/nfsd4_spnfs.h>
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  
+>  #include "idmap.h"
+>  #include "acl.h"
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 43efbdc..ce07f67 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -40,7 +40,7 @@
+>  #include <linux/nfsd4_spnfs.h>
+>  #endif /* CONFIG_NFSD_V4 */
+>  #if defined(CONFIG_SPNFS_BLOCK)
+> -#include <linux/nfsd4_block.h>
+> +#include <linux/nfsd/nfsd4_block.h>
+>  #endif
+>  
+>  #include "nfsd.h"
+> diff --git a/include/linux/nfsd4_block.h b/include/linux/nfsd/nfsd4_block.h
+> similarity index 100%
+> rename from include/linux/nfsd4_block.h
+> rename to include/linux/nfsd/nfsd4_block.h
+> -- 
+> 1.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
