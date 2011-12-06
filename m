@@ -1,78 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp1.onthe.net.au ([203.22.196.249]:48709 "EHLO
-	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750726Ab1LAFc7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 00:32:59 -0500
-Date: Thu, 1 Dec 2011 16:32:55 +1100
-From: Chris Dunlop <chris@onthe.net.au>
-To: Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc: David Howells <dhowells@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Jan Harkes <jaharkes@cs.cmu.edu>,
-        "maintainer@onthe.net.au:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-Message-ID: <20111201053255.GA6831@onthe.net.au>
-References: <20111130071319.GA16711@onthe.net.au>
- <1321861008-20611-1-git-send-email-chris@onthe.net.au>
- <20111129082501.GA569@onthe.net.au>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
- <24960.1322643283@redhat.com>
- <20111201004709.GA26085@onthe.net.au>
- <4ED6E4EF.7050101@oracle.com>
- <20111201033346.GA1049@onthe.net.au>
- <4ED6FA2C.7010005@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:50499 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752850Ab1LFUs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 15:48:56 -0500
+Date: Tue, 6 Dec 2011 15:48:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH] SUNRPC: create svc_xprt in proper network namespace
+Message-ID: <20111206204851.GB12640@fieldses.org>
+References: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4ED6FA2C.7010005@oracle.com>
+In-Reply-To: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 09:53:16PM -0600, Dave Kleikamp wrote:
-> On 11/30/2011 09:33 PM, Chris Dunlop wrote:
->> On Wed, Nov 30, 2011 at 08:22:39PM -0600, Dave Kleikamp wrote:
->>> On 11/30/2011 06:47 PM, Chris Dunlop wrote:
->>>>> It's also worth printing a message - this *is* a kernel bug of some description
->>>>> if it happens.
->>>>
->>>> Like the below?  This covers the d_revalidate for 9p, afs, coda,
->>>> hfs, ncpfs, proc, sysfs.
->>>>
->>>> Note:  jfs isn't susceptible to this problem, but the resolution
->>>> doesn't look like the other file systems, and from the comment
->>>> I'm not sure if the problem was really understood and if it's
->>>> doing the right thing:
->>>
->>> This code, as well as the comments, were copied from vfat. It seems
->>> reasonable for case-insensitive but case-preserving behavior (not jfs's
->>> default). The safe thing is to drop the negative dentry if we don't know
->>> the operation.
->> 
->> In that case, it looks like the thing to do might be to add the
->> "protection" to the start of jfs_ci_revaliate(), per how the
->> original has been changed in vfat:
-> 
-> The LOOKUP_RCU check had previously been there, but Al Viro removed it:
-> 
-> commit 5c0f360b083fb33d05d1bff4b138b82d715eb419
-> Author: Al Viro <viro@zeniv.linux.org.uk>
-> Date:   Sat Jun 25 21:41:09 2011 -0400
-> 
->     jfs_ci_revalidate() is safe from RCU mode
-> 
-> I'm not sure what it takes to be "safe", but this is a simple function
-> that doesn't block, take locks, or do much of anything. You shouldn't
-> need to do anything with jfs.
-> 
-> Shaggy
+On Tue, Dec 06, 2011 at 02:19:10PM +0300, Stanislav Kinsbursky wrote:
+> This patch makes svc_xprt inherit network namespace link from it's socket.
 
-OK, thanks.
+And poor rdma gets left out.  OK.  Applying for 3.3 (with changelog typo
+fixed).
 
-Chris
+--b.
+
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  include/linux/sunrpc/svc_xprt.h          |    2 +-
+>  net/sunrpc/svc_xprt.c                    |    6 +++---
+>  net/sunrpc/svcsock.c                     |    8 +++++---
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+>  4 files changed, 10 insertions(+), 8 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index 8620f79..18df516 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -109,7 +109,7 @@ static inline int register_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u
+>  
+>  int	svc_reg_xprt_class(struct svc_xprt_class *);
+>  void	svc_unreg_xprt_class(struct svc_xprt_class *);
+> -void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
+> +void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
+>  		      struct svc_serv *);
+>  int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
+>  			const int, const unsigned short, int);
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 447cd0e..f8f0627 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -147,8 +147,8 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
+>   * Called by transport drivers to initialize the transport independent
+>   * portion of the transport instance.
+>   */
+> -void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+> -		   struct svc_serv *serv)
+> +void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
+> +		   struct svc_xprt *xprt, struct svc_serv *serv)
+>  {
+>  	memset(xprt, 0, sizeof(*xprt));
+>  	xprt->xpt_class = xcl;
+> @@ -163,7 +163,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+>  	spin_lock_init(&xprt->xpt_lock);
+>  	set_bit(XPT_BUSY, &xprt->xpt_flags);
+>  	rpc_init_wait_queue(&xprt->xpt_bc_pending, "xpt_bc_pending");
+> -	xprt->xpt_net = get_net(&init_net);
+> +	xprt->xpt_net = get_net(net);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_init);
+>  
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 71bed1c..277909e 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -739,7 +739,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+>  {
+>  	int err, level, optname, one = 1;
+>  
+> -	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
+> +	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
+> +		      &svsk->sk_xprt, serv);
+>  	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+>  	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+>  	svsk->sk_sk->sk_write_space = svc_write_space;
+> @@ -1343,7 +1344,8 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+>  {
+>  	struct sock	*sk = svsk->sk_sk;
+>  
+> -	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
+> +	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
+> +		      &svsk->sk_xprt, serv);
+>  	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+>  	if (sk->sk_state == TCP_LISTEN) {
+>  		dprintk("setting up TCP socket for listening\n");
+> @@ -1659,7 +1661,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+>  		return ERR_PTR(-ENOMEM);
+>  
+>  	xprt = &svsk->sk_xprt;
+> -	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+> +	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
+>  
+>  	serv->sv_bc_xprt = xprt;
+>  
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index ba1296d..894cb42 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -453,7 +453,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+>  
+>  	if (!cma_xprt)
+>  		return NULL;
+> -	svc_xprt_init(&svc_rdma_class, &cma_xprt->sc_xprt, serv);
+> +	svc_xprt_init(&init_net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
+>  	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
+>  	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+>  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+> 
