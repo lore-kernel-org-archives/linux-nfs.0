@@ -1,88 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:22920 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751810Ab1LLQEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 11:04:34 -0500
-Message-ID: <4EE625E1.7000502@parallels.com>
-Date: Mon, 12 Dec 2011 20:03:45 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from frankvm.xs4all.nl ([83.163.148.79]:60769 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932987Ab1LFILR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 03:11:17 -0500
+Date: Tue, 6 Dec 2011 09:11:15 +0100
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: 3.1.4: NFSv3 RPC scheduling issue?
+Message-ID: <20111206081115.GA3570@janus>
+References: <20111205165021.GA24165@janus>
+ <1323128376.7237.7.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 1/4] SUNRPC: use passed network namespace context in rpc_parse_scope_id()
-References: <20111207111716.17273.63010.stgit@localhost6.localdomain6> <20111207112016.17273.44510.stgit@localhost6.localdomain6> <20111208204749.GC32505@fieldses.org>
-In-Reply-To: <20111208204749.GC32505@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323128376.7237.7.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-09.12.2011 00:47, J. Bruce Fields пишет:
-> On Wed, Dec 07, 2011 at 03:20:16PM +0300, Stanislav Kinsbursky wrote:
->> Use incomming network context in rpc_parse_scope_id() instead of hard-coded
->
-> Changelogs are a little confusing; I might have said "allow
-> rpc_parse_cope_id() caller to pass in network context instead of using
-> hard-code "init_net"."
->
+On Mon, Dec 05, 2011 at 06:39:36PM -0500, Trond Myklebust wrote:
+> On Mon, 2011-12-05 at 17:50 +0100, Frank van Maarseveen wrote: 
+> > After upgrading 50+ NFSv3 (over UDP) client machines from 3.0.x to
+> > 3.1.4 I occasionally noticed a machine with lots of processes hanging
+> > in __rpc_execute() for a specific mount point with no progress at all.
+> > Stack:
+> > 
+> > 	[<c17fe7e0>] schedule+0x30/0x50
+> > 	[<c177e259>] rpc_wait_bit_killable+0x19/0x30
+> > 	[<c17feeb5>] __wait_on_bit+0x45/0x70
+> > 	[<c177e240>] ? rpc_release_task+0x110/0x110
+> > 	[<c17fef3d>] out_of_line_wait_on_bit+0x5d/0x70
+> > 	[<c177e240>] ? rpc_release_task+0x110/0x110
+> > 	[<c108aed0>] ? autoremove_wake_function+0x40/0x40
+> > 	[<c177e89b>] __rpc_execute+0xdb/0x1a0
+> > 	...
+> > 
+> > Every reference to the specific mount point on the client machine hangs
+> > and the server does not receive any related network traffic. The server
+> > works fine for other identical client machines with the same export mounted.
+> > Other mounts on the (now) broken client still work. Killing the hanging
+> > client processes repairs the situation.
+> > 
+> > This has happened a couple of times on client machines with heavy (NFS)
+> > load. The mount-point has originally been mounted by the automounter.
+> 
+> An command of 'echo 0 > /proc/sys/sunrpc/rpc_debug', should display a
 
-Hi, Bruce.
-Probably, you variant is better. My English is not good enough to write 
-descriptive and, in the same time, clear and short comments to patches.
-
-> --b.
->
->> "init_net".
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   net/sunrpc/addr.c |    9 +++++----
->>   1 files changed, 5 insertions(+), 4 deletions(-)
->>
->> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
->> index 67a655e..35eb188 100644
->> --- a/net/sunrpc/addr.c
->> +++ b/net/sunrpc/addr.c
->> @@ -156,8 +156,9 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
->>   }
->>
->>   #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
->> -static int rpc_parse_scope_id(const char *buf, const size_t buflen,
->> -			      const char *delim, struct sockaddr_in6 *sin6)
->> +static int rpc_parse_scope_id(struct net *net, const char *buf,
->> +			      const size_t buflen, const char *delim,
->> +			      struct sockaddr_in6 *sin6)
->>   {
->>   	char *p;
->>   	size_t len;
->> @@ -177,7 +178,7 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
->>   		unsigned long scope_id = 0;
->>   		struct net_device *dev;
->>
->> -		dev = dev_get_by_name(&init_net, p);
->> +		dev = dev_get_by_name(net, p);
->>   		if (dev != NULL) {
->>   			scope_id = dev->ifindex;
->>   			dev_put(dev);
->> @@ -213,7 +214,7 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
->>   	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER,&delim) == 0)
->>   		return 0;
->>
->> -	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
->> +	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
->>   		return 0;
->>
->>   	sin6->sin6_family = AF_INET6;
->>
-
+36477 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:none
+36479 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36484 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36485 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36486 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36487 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36488 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36489 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36490 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36491 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36492 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36493 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36494 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36495 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36496 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+36497 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36498 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36499 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36500 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36501 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36502 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36503 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
+36504 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36505 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36506 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36507 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36508 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36509 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36510 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36511 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36512 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36513 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36514 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36515 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36516 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36517 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36518 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36519 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36523 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36560 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36561 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36562 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36563 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36564 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36565 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36566 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36576 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+36577 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36578 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36579 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36580 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36581 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36582 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36583 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+36592 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+36618 0001    -11 ffff88008dc9db60   (null)        0 ffffffff8193ba60 nfsv3 WRITE a:call_reserveresult q:xprt_sending
+21609 0080    -11 ffff88008dc9db60   (null)        0 ffffffff81a68860 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Frank
