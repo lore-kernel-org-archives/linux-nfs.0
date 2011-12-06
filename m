@@ -1,69 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4182 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754552Ab1LNVLf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 16:11:35 -0500
-Message-ID: <4EE91104.9030009@netapp.com>
-Date: Wed, 14 Dec 2011 16:11:32 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:39773 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933231Ab1LFLnU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 06:43:20 -0500
 MIME-Version: 1.0
-To: Casey Bodley <cbodley@citi.umich.edu>
-CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: forget_delegations should use list_for_each_entry_safe
-References: <1323891596-30914-1-git-send-email-bjschuma@netapp.com> <CAMeBU_0bcXWNBWsJ8Sv2n-53fr8jCSQSs_guOnw8WYHgBFQz4A@mail.gmail.com>
-In-Reply-To: <CAMeBU_0bcXWNBWsJ8Sv2n-53fr8jCSQSs_guOnw8WYHgBFQz4A@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20111201072947.GA10329@onthe.net.au>
+References: <20111130071319.GA16711@onthe.net.au>
+	<1321861008-20611-1-git-send-email-chris@onthe.net.au>
+	<20111129082501.GA569@onthe.net.au>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
+	<24960.1322643283@redhat.com>
+	<20111201004709.GA26085@onthe.net.au>
+	<20111201063157.GA495@boyd>
+	<20111201072947.GA10329@onthe.net.au>
+Date: Tue, 6 Dec 2011 12:43:19 +0100
+Message-ID: <CADDYkjQ5G0NnABCJa+TjkTxG8UHSeDJfN9jzm6f5Q5Q-Szuc8g@mail.gmail.com>
+Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
+From: Jacek Luczak <difrost.kernel@gmail.com>
+To: Chris Dunlop <chris@onthe.net.au>
+Cc: Tyler Hicks <tyhicks@canonical.com>, David Howells <dhowells@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        Jan Harkes <jaharkes@cs.cmu.edu>,
+        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        Greg Kroah-Hartman <gregkh@suse.de>,
+        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
+        codalist@telemann.coda.cs.cmu.edu,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed Dec 14 15:50:53 2011, Casey Bodley wrote:
-> On Wed, Dec 14, 2011 at 2:39 PM,  <bjschuma@netapp.com> wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> Otherwise the for loop could try to use a file recently removed from the
->> file_hashtbl list and oops.
->>
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->>  fs/nfsd/nfs4state.c |    9 +++++----
->>  1 files changed, 5 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 19ca9b5..7355fe4 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4505,18 +4505,19 @@ void nfsd_forget_openowners(u64 num)
->>  int nfsd_process_n_delegations(u64 num, void (*deleg_func)(struct nfs4_delegation *))
->>  {
->>        int i, count = 0;
->> -       struct nfs4_file *fp;
->> -       struct nfs4_delegation *dp, *next;
->> +       struct nfs4_file *fp, *fnext;
->> +       struct nfs4_delegation *dp, *dnext;
->>
->>        for (i = 0; i < FILE_HASH_SIZE; i++) {
->> -               list_for_each_entry(fp, &file_hashtbl[i], fi_hash) {
->> -                       list_for_each_entry_safe(dp, next, &fp->fi_delegations, dl_perfile) {
->> +               list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
->> +                       list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
->>                                deleg_func(dp);
->>                                if (++count == num)
->>                                        return count;
->>                        }
->>                }
->>        }
->> +
->>        return count;
->>  }
->>
->> --
->> 1.7.8
->>
+2011/12/1 Chris Dunlop <chris@onthe.net.au>:
+[!snip]
+>> I'm also not sure about the printk in the NFS case. Instead of littering
+>> the logs, we should probably just disallow the stacked filesystem (are
+>> we talking about eCryptfs here?) from mounting on top of NFS in the
+>> first place.
 >
-> Confirmed to fix the oops I was getting with fault injection. (tested
-> without the previous patch, NFSD: Only reinitilize the recall_lru list
-> under the recall lock)
+> See other reply: it wasn't a stacked file system.
 
-Thanks for testing!
+I've actually hit the same think with NFS on vanilla 2.6.39.4. There
+was no stacked fs on top as this host is only running Jenkins master
+instance where few jar are on NFS homedir mounted by autofs.
 
-- Bryan
+As there's no way I could actually wait for Al patches what is then
+the best way to limit this issue (BTW: I was not able to reproduce
+this anywhere yet)? The gentle msg info and -EIO sound like good idea
+until we will be suck up by black hole.
+
+-Jacek
