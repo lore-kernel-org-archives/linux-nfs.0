@@ -1,109 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55526 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751764Ab1LUW2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 17:28:18 -0500
-Date: Wed, 21 Dec 2011 17:27:50 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <20111221172750.638ed046@tlielax.poochiereds.net>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
-	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-	<20111221163312.3405c1f3@tlielax.poochiereds.net>
-	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
-	<20111221164810.78d600a9@tlielax.poochiereds.net>
-	<20111221165922.589101aa@tlielax.poochiereds.net>
-	<FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S933101Ab1LFMk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 07:40:58 -0500
+Date: Tue, 6 Dec 2011 07:40:56 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: tigran.mkrtchyan@desy.de, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
+Message-ID: <20111206124056.GA8657@fieldses.org>
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
+ <4EDB6AA3.1030702@tonian.com>
+ <20111206020851.GA4486@fieldses.org>
+ <4EDDFBCD.3010608@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EDDFBCD.3010608@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Dec 2011 17:04:02 -0500
-Peter Staubach <pstaubach@exagrid.com> wrote:
-
-> By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
-> 
-> I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
-> 
-
-No, I was thinking along the lines of encoding the struct fields as
-key/value pairs in a string:
-
-    "ver=1,cmd=create,clname=0x1a012bd..."
-
-...binary stuff like the nfs_client_id4 would be hex encoded. Integers
-would be converted to text representations, etc.
-
-I think if we're going to go to the trouble of encoding this stuff at
-all, it makes sense to do it in as flexible a manner as possible.
-
-Now that I think about it, using XDR has little benefit over the current
-packed binary struct. If we ever need to rev the format, it'll be just
-as much of a pain. With key/value pairs, we should be able to ensure
-that a mismatch between kernel and userspace versions is more easily
-dealt with.
-
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
-> Sent: Wednesday, December 21, 2011 4:59 PM
-> To: Jeff Layton
-> Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-> 
-> On Wed, 21 Dec 2011 16:48:10 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Wed, 21 Dec 2011 16:37:30 -0500
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
+On Tue, Dec 06, 2011 at 01:26:05PM +0200, Benny Halevy wrote:
+> On 2011-12-06 04:08, J. Bruce Fields wrote:
+> > On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
+> >> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+> >>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> >>>
+> >>>
+> >>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> >>> ---
+> >>>  fs/nfsd/nfs4proc.c  |    6 ++++++
+> >>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
+> >>>  2 files changed, 26 insertions(+), 6 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >>> index fa38336..535aed2 100644
+> >>> --- a/fs/nfsd/nfs4proc.c
+> >>> +++ b/fs/nfsd/nfs4proc.c
+> >>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>  	 */
+> >>>  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+> >>>  	WARN_ON(status && open->op_created);
+> >>> +
+> >>> +	if(status)
+> >>> +		goto out;
+> >>> +
+> >>> +	/* set current state id */
+> >>> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
 > > 
-> > > 
-> > > On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
-> > > 
-> > > > On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
-> > > > <chuck.lever@oracle.com> wrote:
-> > > > 
-> > > >> 
-> > > >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
-> > > >> 
-> > > >>> The daemon takes a versioned binary struct. Hopefully this 
-> > > >>> should allow us to revise the struct later if it becomes necessary.
-> > > >> 
-> > > >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
-> > > >> 
-> > > > 
-> > > > That's the main reason. We could, of course encode that string in 
-> > > > hex or something, and decode it on the other end. No one has 
-> > > > presented a strong argument for doing it that way as of yet though.
-> > > > 
-> > > > If anyone feels strongly about that, then it would be helpful to 
-> > > > have them pipe up now and state why they do...
-> > > 
-> > > <pipe>Because binary data structures are difficult to work with over 
-> > > time, which is why other NFSD user space interfaces are 
-> > > text-based.</pipe>
-> > > 
-> > > ;-)
-> > > 
+> > That comment is a bit redundant.
 > > 
-> > *sigh* that was the sort of comments I was hoping to get out of the 
-> > RFC postings. But ok...
+> >> Since this should be done for all stateid-returning operations
+> >> I think that a cleaner approach could be to mark those as such in
+> >> nfsd4_ops by providing a per-op function to return the operation's
+> >> stateid.  You can then call this method from nfsd4_proc_compound()
+> >> after the call to nfsd4_encode_operation() and when status == 0.
 > > 
-> > I'll see about respinning the whole thing with either a text-based or 
-> > XDR-based upcall/downcall format. That'll take a while, but I'll see 
-> > if I can get it in shape in time for 3.3.
+> > So the choice is between
 > > 
+> > +       memcpy(&cstate->current_stateid, &open->op_stateid,
+> > sizeof(stateid_t));
+> > 
+> > and
+> > 
+> > +       static void get_open_stateid(stateid_t *s)
+> > +       {
+> > +               memcpy(s, open->op_stateid);
+> > +       }
+> > +
+> > +       [OP_OPEN] = {
+> > +               ...
+> > +               .op_get_stateid = get_open_stateid,
+> > +               ...
+> > +       }
+> > 
+> > ?
+> > 
+> > I'm not so sure.
 > 
-> ...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
+> The point is to copy the result stateid into the current_stateid
+> in a centralized place: nfsd4_proc_compound() and do that for all
+> stateid-modifying operations.
 > 
+> > 
+> > Anyway, thanks Tigran for looking at this.
+> > 
+> > Do we want to guarantee that the client can't expire as long as a
+> > compound references the stateid?  I think that's the case.
+> 
+> The client can't time out while the 4.1 compound is in progress, see commit d768298.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+OK, you're right, and presumably it would be a bug for a compound to use
+a session from one client and a stateid from another, so this is taken 
+care of.  (Except--I think we need to check for that case.  On a quick
+skim I don't see the current code doing that.)
+
+Thanks!
+
+> Are you thinking of explicit expiration of the client?
+> We may unhash the client and keep using it while it's referenced
+> so that's not a problem.  As far as the stateid goes, we're copying the
+> value of the stateid, not pointing to any stateid structure.  If the
+> actual state was destroyed, we will detect that when the current_stateid
+> is used by any successive operation and we cannot find the state using
+> the stateid.
+
+I *think* the concensus of the working group was that explicit
+destruction of a client should wait on in-progress compounds referencing
+any of the client's sessions:
+
+	http://www.ietf.org/mail-archive/web/nfsv4/current/msg08584.html
+
+So we should probably fix this.  But we can fix it at the session level.
+
+So, OK, I can't see any practical objection to doing as Tigran as and
+just passing the value of stateid instead of a reference to some object.
+
+Well, except for performance--it seems unfortunate to have to redo the
+lookup on each use.  As long as there's no impact on the existing cases
+(so we're only doing the lookup when a client actually uses the current
+stateid), I can live with that until somebody actually demonstrates some
+harm.
+
+--b.
