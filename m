@@ -1,59 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27792 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:29524 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756408Ab1LEXjh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 18:39:37 -0500
-Message-ID: <1323128376.7237.7.camel@lade.trondhjem.org>
-Subject: Re: 3.1.4: NFSv3 RPC scheduling issue?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Mon, 05 Dec 2011 18:39:36 -0500
-In-Reply-To: <20111205165021.GA24165@janus>
-References: <20111205165021.GA24165@janus>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S933094Ab1LFMpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 07:45:30 -0500
+Subject: [PATCH 2/2] SUNRPC: register service stats /proc entries in passed
+	network namespace context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 06 Dec 2011 16:42:49 +0300
+Message-ID: <20111206124249.15702.211.stgit@localhost6.localdomain6>
+In-Reply-To: <20111206123748.15702.93290.stgit@localhost6.localdomain6>
+References: <20111206123748.15702.93290.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2011-12-05 at 17:50 +0100, Frank van Maarseveen wrote: 
-> After upgrading 50+ NFSv3 (over UDP) client machines from 3.0.x to
-> 3.1.4 I occasionally noticed a machine with lots of processes hanging
-> in __rpc_execute() for a specific mount point with no progress at all.
-> Stack:
-> 
-> 	[<c17fe7e0>] schedule+0x30/0x50
-> 	[<c177e259>] rpc_wait_bit_killable+0x19/0x30
-> 	[<c17feeb5>] __wait_on_bit+0x45/0x70
-> 	[<c177e240>] ? rpc_release_task+0x110/0x110
-> 	[<c17fef3d>] out_of_line_wait_on_bit+0x5d/0x70
-> 	[<c177e240>] ? rpc_release_task+0x110/0x110
-> 	[<c108aed0>] ? autoremove_wake_function+0x40/0x40
-> 	[<c177e89b>] __rpc_execute+0xdb/0x1a0
-> 	...
-> 
-> Every reference to the specific mount point on the client machine hangs
-> and the server does not receive any related network traffic. The server
-> works fine for other identical client machines with the same export mounted.
-> Other mounts on the (now) broken client still work. Killing the hanging
-> client processes repairs the situation.
-> 
-> This has happened a couple of times on client machines with heavy (NFS)
-> load. The mount-point has originally been mounted by the automounter.
+This patch makes it possible to create NFSd program entry ("/proc/net/rpc/nfsd")
+in passed network namespace context instead of hard-coded "init_net".
 
-An command of 'echo 0 > /proc/sys/sunrpc/rpc_debug', should display a
-list of pending rpc_tasks as well as information on where they are
-sleeping.
-Can you please try this on one of the hanging clients and post the
-resulting dump?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+---
+ fs/nfsd/stats.c              |    5 +++--
+ include/linux/sunrpc/stats.h |    8 ++++----
+ net/sunrpc/stats.c           |    8 ++++----
+ 3 files changed, 11 insertions(+), 10 deletions(-)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
+index a2e2402..6d4521f 100644
+--- a/fs/nfsd/stats.c
++++ b/fs/nfsd/stats.c
+@@ -25,6 +25,7 @@
+ #include <linux/module.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/nfsd/stats.h>
++#include <net/net_namespace.h>
+ 
+ #include "nfsd.h"
+ 
+@@ -94,11 +95,11 @@ static const struct file_operations nfsd_proc_fops = {
+ void
+ nfsd_stat_init(void)
+ {
+-	svc_proc_register(&nfsd_svcstats, &nfsd_proc_fops);
++	svc_proc_register(&init_net, &nfsd_svcstats, &nfsd_proc_fops);
+ }
+ 
+ void
+ nfsd_stat_shutdown(void)
+ {
+-	svc_proc_unregister("nfsd");
++	svc_proc_unregister(&init_net, "nfsd");
+ }
+diff --git a/include/linux/sunrpc/stats.h b/include/linux/sunrpc/stats.h
+index f625b57..4720b12 100644
+--- a/include/linux/sunrpc/stats.h
++++ b/include/linux/sunrpc/stats.h
+@@ -61,9 +61,9 @@ void			rpc_modcount(struct inode *, int);
+ struct proc_dir_entry *	rpc_proc_register(struct net *,struct rpc_stat *);
+ void			rpc_proc_unregister(struct net *,const char *);
+ void			rpc_proc_zero(struct rpc_program *);
+-struct proc_dir_entry *	svc_proc_register(struct svc_stat *,
++struct proc_dir_entry *	svc_proc_register(struct net *, struct svc_stat *,
+ 					  const struct file_operations *);
+-void			svc_proc_unregister(const char *);
++void			svc_proc_unregister(struct net *, const char *);
+ 
+ void			svc_seq_show(struct seq_file *,
+ 				     const struct svc_stat *);
+@@ -73,9 +73,9 @@ static inline struct proc_dir_entry *rpc_proc_register(struct net *, struct rpc_
+ static inline void rpc_proc_unregisterstruct net *, (const char *p) {}
+ static inline void rpc_proc_zero(struct rpc_program *p) {}
+ 
+-static inline struct proc_dir_entry *svc_proc_register(struct svc_stat *s,
++static inline struct proc_dir_entry *svc_proc_register(struct net *net, struct svc_stat *s,
+ 						       const struct file_operations *f) { return NULL; }
+-static inline void svc_proc_unregister(const char *p) {}
++static inline void svc_proc_unregister(struct net *net, const char *p) {}
+ 
+ static inline void svc_seq_show(struct seq_file *seq,
+ 				const struct svc_stat *st) {}
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index f0f6e7c..3c4f688 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -241,18 +241,18 @@ rpc_proc_unregister(struct net *net, const char *name)
+ EXPORT_SYMBOL_GPL(rpc_proc_unregister);
+ 
+ struct proc_dir_entry *
+-svc_proc_register(struct svc_stat *statp, const struct file_operations *fops)
++svc_proc_register(struct net *net, struct svc_stat *statp, const struct file_operations *fops)
+ {
+-	return do_register(&init_net, statp->program->pg_name, statp, fops);
++	return do_register(net, statp->program->pg_name, statp, fops);
+ }
+ EXPORT_SYMBOL_GPL(svc_proc_register);
+ 
+ void
+-svc_proc_unregister(const char *name)
++svc_proc_unregister(struct net *net, const char *name)
+ {
+ 	struct sunrpc_net *sn;
+ 
+-	sn = net_generic(&init_net, sunrpc_net_id);
++	sn = net_generic(net, sunrpc_net_id);
+ 	remove_proc_entry(name, sn->proc_net_rpc);
+ }
+ EXPORT_SYMBOL_GPL(svc_proc_unregister);
 
