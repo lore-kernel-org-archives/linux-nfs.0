@@ -1,253 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:37104 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752112Ab1LKQj4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 11:39:56 -0500
-Received: by eaaj10 with SMTP id j10so210507eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Dec 2011 08:39:55 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v3 1/5] nfsd41: handle current stateid in open and close
-Date: Sun, 11 Dec 2011 17:41:44 +0100
-Message-Id: <1323621708-25138-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx1.redhat.com ([209.132.183.28]:39004 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753651Ab1LFT4v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 14:56:51 -0500
+Message-ID: <4EDE737A.7090308@RedHat.com>
+Date: Tue, 06 Dec 2011 14:56:42 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Orion Poplawski <orion@cora.nwra.com>, linux-nfs@vger.kernel.org
+Subject: Re: rpc.gssd locks up with -vv or higher
+References: <loom.20111206T175726-323@post.gmane.org> <20111206194159.GB11788@fieldses.org>
+In-Reply-To: <20111206194159.GB11788@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |   11 ++++++++++
- fs/nfsd/nfs4proc.c        |   47 ++++++++++++++++++++++++++++++++++++++------
- fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++
- fs/nfsd/xdr4.h            |    2 +
- 4 files changed, 89 insertions(+), 7 deletions(-)
- create mode 100644 fs/nfsd/current_stateid.h
+On 12/06/2011 02:41 PM, J. Bruce Fields wrote:
+> On Tue, Dec 06, 2011 at 05:01:13PM +0000, Orion Poplawski wrote:
+>> See https://bugzilla.redhat.com/show_bug.cgi?id=667770
+>>
+>> Running rpc.gssd with -vvv, it will eventually hang.  Back trace of hung process:
+>>
+>> #0  0x00ae8416 in __kernel_vsyscall ()
+>> #1  0x004be5d1 in __lll_lock_wait_private () from /lib/libc.so.6
+>> #2  0x0044985c in _L_lock_12621 () from /lib/libc.so.6
+>> #3  0x00447797 in malloc () from /lib/libc.so.6
+>> #4  0x0043a398 in open_memstream () from /lib/libc.so.6
+>> #5  0x004a9ae5 in __vsyslog_chk () from /lib/libc.so.6
+>> #6  0x0017d15f in vsyslog (kind=512, 
+>>     fmt=0x1806cc "dir_notify_handler: sig %d si %p data %p\n", args=0xbfc03938
+>> "%")
+>>     at /usr/include/bits/syslog.h:48
+>> #7  xlog_backend (kind=512, fmt=0x1806cc "dir_notify_handler: sig %d si %p data
+>> %p\n", 
+>>     args=0xbfc03938 "%") at xlog.c:150
+>> #8  0x001777d4 in printerr (priority=2, 
+>>     format=0x1806cc "dir_notify_handler: sig %d si %p data %p\n") at
+>> err_util.c:64
+>> #9  0x00177c9e in dir_notify_handler (sig=37, si=0xbfc0396c, data=0xbfc039ec)
+>>     at gssd_main_loop.c:66
+>> #10 <signal handler called>
+>> #11 0x00444984 in _int_malloc () from /lib/libc.so.6
+>> #12 0x004477a0 in malloc () from /lib/libc.so.6
+>> #13 0x0046db77 in __alloc_dir () from /lib/libc.so.6
+>> #14 0x0046dc5a in opendir () from /lib/libc.so.6
+>> #15 0x0046e7ef in scandir64@@GLIBC_2.2 () from /lib/libc.so.6
+>> #16 0x00179285 in process_pipedir () at gssd_proc.c:565
+>> #17 update_client_list () at gssd_proc.c:594
+>> #18 0x00177f40 in gssd_run () at gssd_main_loop.c:216
+>> #19 0x00177bf9 in main (argc=2, argv=0xbfc04134) at gssd.c:187
+>>
+>> Looks like malloc is getting called from a signal handler called while in a
+>> malloc call, which is verboten.  Not sure what the best way around this, but it
+>> looks like dir_notify_handler cannot call printerr.  I suppose this only occurs
+>> when -vv or greater is given.  Path looks a little different in 1.2.5, but looks
+>> like xlog_backend still calls vsyslog which can do the same thing.
+> 
+> Ha, that's interesting.
+> 
+> Maybe we should just delete that printerr.
+I agree... That printerr was probably useful during the 
+initial debugging but now it is probably just noise...
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-new file mode 100644
-index 0000000..a83dd50
---- /dev/null
-+++ b/fs/nfsd/current_stateid.h
-@@ -0,0 +1,11 @@
-+#ifndef _NFSD4_CURRENT_STATE_H
-+#define _NFSD4_CURRENT_STATE_H
-+
-+#include "state.h"
-+#include "xdr4.h"
-+
-+extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+
-+#endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index fa38336..4b8d81a 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -39,6 +39,7 @@
- #include "cache.h"
- #include "xdr4.h"
- #include "vfs.h"
-+#include "current_stateid.h"
+steved.
  
- #define NFSDDBG_FACILITY		NFSDDBG_PROC
- 
-@@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				     create->cr_name, create->cr_namelen,
- 				     &create->cr_iattr, S_IFSOCK, 0, &resfh);
- 		break;
--
- 	case NF4FIFO:
- 		status = nfsd_create(rqstp, &cstate->current_fh,
- 				     create->cr_name, create->cr_namelen,
-@@ -1001,6 +1001,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
- 			      void *);
- typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-+typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-+typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
- 
- enum nfsd4_op_flags {
- 	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-@@ -1026,6 +1028,9 @@ enum nfsd4_op_flags {
- 	 * the v4.0 case).
- 	 */
- 	OP_CACHEME = 1 << 6,
-+	CONSUMES_CURRENT_STATEID = 1 << 7,
-+	PROVIDES_CURRENT_STATEID = 1 << 8,
-+	CLEARS_CURRENT_STATEID = 1 << 9,
- };
- 
- struct nfsd4_operation {
-@@ -1034,6 +1039,8 @@ struct nfsd4_operation {
- 	char *op_name;
- 	/* Try to get response size before operation */
- 	nfsd4op_rsize op_rsize_bop;
-+	stateid_setter op_get_currentstateid;
-+	stateid_getter op_set_currentstateid;
- };
- 
- static struct nfsd4_operation nfsd4_ops[];
-@@ -1116,6 +1123,14 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
- 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
- }
- 
-+static void
-+nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
-+{
-+	if (cstate->has_stateid) {
-+		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
-+		cstate->has_stateid = false;
-+	}
-+}
- /*
-  * COMPOUND call.
-  */
-@@ -1196,6 +1211,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 
- 		opdesc = OPDESC(op);
- 
-+		BUG_ON(opdesc->op_flags & PROVIDES_CURRENT_STATEID && 
-+			opdesc->op_flags & CLEARS_CURRENT_STATEID);
-+
- 		if (!cstate->current_fh.fh_dentry) {
- 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
- 				op->status = nfserr_nofilehandle;
-@@ -1216,13 +1234,25 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		if (op->status)
- 			goto encode_op;
- 
--		if (opdesc->op_func)
-+		if (opdesc->op_func) {
-+			if (opdesc->op_flags & CONSUMES_CURRENT_STATEID)
-+				opdesc->op_get_currentstateid(cstate, &op->u);
- 			op->status = opdesc->op_func(rqstp, cstate, &op->u);
--		else
-+		} else
- 			BUG_ON(op->status == nfs_ok);
- 
--		if (!op->status && need_wrongsec_check(rqstp))
--			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-+		if (!op->status) {
-+			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
-+				opdesc->op_set_currentstateid(cstate, &op->u);
-+				cstate->has_stateid = true;
-+			}
-+
-+			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
-+				nfsd4_clear_currentstateid(cstate);
-+
-+			if (need_wrongsec_check(rqstp))
-+				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-+		}
- 
- encode_op:
- 		/* Only from SEQUENCE */
-@@ -1411,9 +1441,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_CLOSE] = {
- 		.op_func = (nfsd4op_func)nfsd4_close,
--		.op_flags = OP_MODIFIES_SOMETHING,
-+		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
- 		.op_name = "OP_CLOSE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
- 	},
- 	[OP_COMMIT] = {
- 		.op_func = (nfsd4op_func)nfsd4_commit,
-@@ -1481,9 +1513,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_OPEN] = {
- 		.op_func = (nfsd4op_func)nfsd4_open,
--		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING | PROVIDES_CURRENT_STATEID,
- 		.op_name = "OP_OPEN",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
- 	},
- 	[OP_OPEN_CONFIRM] = {
- 		.op_func = (nfsd4op_func)nfsd4_open_confirm,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 47e94e3..278e0af 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
- static time_t boot_time;
- static stateid_t zerostateid;             /* bits all 0 */
- static stateid_t onestateid;              /* bits all 1 */
-+static stateid_t currentstateid;         /* other all 0, seqid 1 */
- static u64 current_sessionid = 1;
- 
- #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
- #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-+#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
- 
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-@@ -4423,6 +4425,8 @@ nfs4_state_init(void)
- 		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
- 	}
- 	memset(&onestateid, ~0, sizeof(stateid_t));
-+	/* seqid 1, other all 0 */
-+	currentstateid.si_generation = 1;
- 	INIT_LIST_HEAD(&close_lru);
- 	INIT_LIST_HEAD(&client_lru);
- 	INIT_LIST_HEAD(&del_recall_lru);
-@@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
- 	nfs4_unlock_state();
- 	nfsd4_destroy_callback_queue();
- }
-+
-+static void
-+get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-+{
-+	if (cstate->minorversion && CURRENT_STATEID(stateid))
-+		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
-+}
-+
-+static void
-+put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-+{
-+	if (cstate->minorversion)
-+		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
-+}
-+
-+void
-+nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-+{
-+	put_stateid(cstate, &open->op_stateid);
-+}
-+
-+void
-+nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	get_stateid(cstate, &close->cl_stateid);
-+}
-+
-+void
-+nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	get_stateid(cstate, &close->cl_stateid);
-+}
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..b8435d20 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -54,6 +54,8 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
-+	stateid_t               current_stateid;
-+	bool	has_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
--- 
-1.7.7.4
-
+> 
+> (If someone wanted to know when the notification came then it should be
+> enough to add a printerr in update_client_list(), I think.)
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
