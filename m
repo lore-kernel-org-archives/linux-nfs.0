@@ -1,154 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33050 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755813Ab1LASAv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 13:00:51 -0500
-Message-ID: <4ED7C0C8.8010504@panasas.com>
-Date: Thu, 1 Dec 2011 10:00:40 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:42018 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751866Ab1LFVCf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 16:02:35 -0500
+Date: Tue, 6 Dec 2011 16:02:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFSd: use network-namespace-aware cache registering
+ routines
+Message-ID: <20111206210234.GC12640@fieldses.org>
+References: <20111206130330.25851.55807.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: <tao.peng@emc.com>
-CC: <bergwolf@gmail.com>, <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com> <4ED62857.7090804@tonian.com> <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com> <4ED6D5D8.9010801@panasas.com> <F19688880B763E40B28B2B462677FBF805E5043E4B@MX09A.corp.emc.com> <4ED7BA55.8010200@panasas.com>
-In-Reply-To: <4ED7BA55.8010200@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111206130330.25851.55807.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/01/2011 09:33 AM, Boaz Harrosh wrote:
-> On 11/30/2011 09:05 PM, tao.peng@emc.com wrote:
->>> -----Original Message-----
->> Why return or forget the 1 lo_seg? What you really need to avoid seg
->> list exploding is to have LRU based caching and merge them when
->> necessary, instead of asking and dropping lseg again and again...
->>
-> 
-> Ya Ya, I'm talking in abstract now giving the all picture. If in our
-> above case the application has closed the file and will not ever open it
-> again then I'm right, right? of course once you got it you can keep it
-> around in a cache. Though I think that with heavy segmenting keeping segs
-> passed ROC is extremely harder to manage. Be careful with that in current
-> implementation.
-> 
->> Removing the IO_MAX limitation can be a second optimization. I was
->> hoping to remove it if current IO_MAX thing turns out hurting
->> performance. And one reason for IO_MAX is to avoid the likelihood
->> that server returns short layout, because current implementation is
->> limited to retry nfs_read/write_data as a whole instead of splitting
->> it up. I think that if we do it this way, the IO_MAX can be removed
->> later when necessary, by introducing a splitting mechanism either on
->> nfs_read/write_data or on desc. Now that you ask for it, I think
->> following approach is possible:
->>
->> 1. remove the limit on IO_MAX at .pg_test.
->> 2. ask for layout at .pg_doio for the size of current IO desc
->> 3. if server returns short layout, split nfs_read/write_data or desc and issue the pagelist covered by lseg.
->> 4. do 2 and 3 in a loop until all pages in current desc is handled.
->>
-> 
-> So in effect you are doing what I suggest two passes 
-> one: what's the next hole,
-> second: Collect pages slicing by returned lo_seg
-> 
-> Don't you think it is more simple to do a 3 line preliminary
-> loop in "one:"?
-> 
-> and keep the current code that is now exactly built to do
-> "second:"
-> 
-> You are suggesting to effectively repeat current code using
-> the first .pg_init...pg_doio for one: and hacking for blocks
-> "second:"
-> 
-> I want 3 lines of code for one: and keep second: exactly as is.
-> 
-> <snip>
-> 
->> Looks like you are suggesting going through the dirty page list twice
->> before issuing IO, one just for getting the IO size information and
->> another one for page collapsing. The whole point of moving layoutget
->> to .pg_doio is to collect real IO size there because we don't know it
->> at .pg_init. And it is done without any changes to generic NFS IO
->> path. I'm not sure if it is appropriate to change generic IO routine
->> to collect the information before .pg_init (I'd be happy too if we
->> can do it there).
-> 
-> That's what you are suggesting as well look in your step 4.:
-> 	do 2 and 3 in a loop until all pages in current desc is handled
-> sounds like another loop on all pages no?
-> 
-> BTW: we are already doing two passes in the system we already looked
-> through all the pages when building the io desc at .write/read_pages
-> 
-> At first we can do above 3 lines loop in .pg_init. Second we can
-> just collect that information in generic nfs at the first loop
-> we are already doing
-> 
->>>
->>>     a. We want it at .pg_init so we have a layout at .pg_test to inspect.
->>>
->>>        Done properly will let you, in blocks, slice by extents at .pg_test
->>>        and .write_pages can send the complete paglist to md (bio chaining)
->>>
->> Unlike objects and files, blocks don't slice by extents, not at .pg_test, nor at .read/write_pagelist.
->>  
-> 
-> What? What do you do? Send a scsi scatter list command?
-> I don't think so. Somewhere you have to see an extent boundary of the data
-> and send the continue of the next extent on disk as a new block request
-> in a new bio with a new disk offset. No?
-> 
-> I'm not saying to do this right away, but you could simplify the code a lot
-> by slicing by extent inside .pg_test
-> 
-> <>
->>>
->>>     At first version:
->>>       A good approximation which gives you an exact middle point
->>>       between blocks B.2 and objects/files B.2, is dirty count.
->>>     At later patch:
->>>       Have generic NFS collect the above O1, N1, and Nn for you and base
->>>       your decision on that.
->>>
->>
->> Well, unless you put both the two parts in... The first version is
->> ignoring the fact that blocks MDS cannot give out file stripping
->> information as easily as objects and files do. And I will stand
->> against it alone because all it does is to benefit objects while
->> hurting blocks (files don't care because they use whole file layout,
->> at least for now).
-> 
-> Lets make a computerize lets find O1..N1 and put in the Generic
+On Tue, Dec 06, 2011 at 05:04:31PM +0300, Stanislav Kinsbursky wrote:
+> This is a cleanup patch. Some day (hope, soon enough) generic cache_register()
+> and cache_unregister() will be removed.
 
-computerize => compromise
+OK, applying for 3.3.--b.
 
-> code for everyone objects files-segmented and blocks. Because I
-> need it two. And I'd like O1..Nn but for first step I'd love
-> O1..N1 a lot.
 > 
-> Please see my point. You created a system that only blocks can
-> benefit from unless objects repeats the same exact but duplicated
-> hacks as blocks.
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 > 
-> Please do the *very* simple thing I suggest which we can all enjoy.
+> ---
+>  fs/nfsd/export.c    |   10 +++++-----
+>  fs/nfsd/nfs4idmap.c |   11 ++++++-----
+>  2 files changed, 11 insertions(+), 10 deletions(-)
 > 
->>
->> Otherwise, I would suggest having private hack for blocks because we have a real problem to solve.
->>
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 62f3b90..d1feeef 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -1226,12 +1226,12 @@ nfsd_export_init(void)
+>  	int rv;
+>  	dprintk("nfsd: initializing export module.\n");
+>  
+> -	rv = cache_register(&svc_export_cache);
+> +	rv = cache_register_net(&svc_export_cache, &init_net);
+>  	if (rv)
+>  		return rv;
+> -	rv = cache_register(&svc_expkey_cache);
+> +	rv = cache_register_net(&svc_expkey_cache, &init_net);
+>  	if (rv)
+> -		cache_unregister(&svc_export_cache);
+> +		cache_unregister_net(&svc_export_cache, &init_net);
+>  	return rv;
+>  
+>  }
+> @@ -1255,8 +1255,8 @@ nfsd_export_shutdown(void)
+>  
+>  	dprintk("nfsd: shutting down export module.\n");
+>  
+> -	cache_unregister(&svc_expkey_cache);
+> -	cache_unregister(&svc_export_cache);
+> +	cache_unregister_net(&svc_expkey_cache, &init_net);
+> +	cache_unregister_net(&svc_export_cache, &init_net);
+>  	svcauth_unix_purge();
+>  
+>  	dprintk("nfsd: export shutdown complete.\n");
+> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+> index 55780a2..9409627 100644
+> --- a/fs/nfsd/nfs4idmap.c
+> +++ b/fs/nfsd/nfs4idmap.c
+> @@ -36,6 +36,7 @@
+>  #include <linux/seq_file.h>
+>  #include <linux/sched.h>
+>  #include <linux/slab.h>
+> +#include <net/net_namespace.h>
+>  #include "idmap.h"
+>  #include "nfsd.h"
+>  
+> @@ -466,20 +467,20 @@ nfsd_idmap_init(void)
+>  {
+>  	int rv;
+>  
+> -	rv = cache_register(&idtoname_cache);
+> +	rv = cache_register_net(&idtoname_cache, &init_net);
+>  	if (rv)
+>  		return rv;
+> -	rv = cache_register(&nametoid_cache);
+> +	rv = cache_register_net(&nametoid_cache, &init_net);
+>  	if (rv)
+> -		cache_unregister(&idtoname_cache);
+> +		cache_unregister_net(&idtoname_cache, &init_net);
+>  	return rv;
+>  }
+>  
+>  void
+>  nfsd_idmap_shutdown(void)
+>  {
+> -	cache_unregister(&idtoname_cache);
+> -	cache_unregister(&nametoid_cache);
+> +	cache_unregister_net(&idtoname_cache, &init_net);
+> +	cache_unregister_net(&nametoid_cache, &init_net);
+>  }
+>  
+>  static int
 > 
-> It's just as real for objects, and files when they will do segments.
-> 
-> My suggestion is to have two helpers at pnfs.c one for blocks and
-> objects, one for files. Which can be called in .pg_init.
-> The blocks/objects does a simple loop counting the first contiguous
-> chunk and asks for a layout, like today. files one just sends
-> all-file request.
-> 
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
