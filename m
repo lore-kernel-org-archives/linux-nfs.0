@@ -1,80 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3490 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37201 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755425Ab1LERKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Dec 2011 12:10:02 -0500
-Date: Mon, 5 Dec 2011 12:11:06 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, khoa@us.ibm.com
-Subject: Re: [PATCH] nfs: only do COMMIT for range written with direct I/O
-Message-ID: <20111205121106.25204c4c@corrin.poochiereds.net>
-In-Reply-To: <1322662074-3843-1-git-send-email-jlayton@redhat.com>
-References: <1322662074-3843-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753394Ab1LFTl7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 14:41:59 -0500
+Date: Tue, 6 Dec 2011 14:41:59 -0500
+To: Orion Poplawski <orion@cora.nwra.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: rpc.gssd locks up with -vv or higher
+Message-ID: <20111206194159.GB11788@fieldses.org>
+References: <loom.20111206T175726-323@post.gmane.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <loom.20111206T175726-323@post.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 30 Nov 2011 09:07:54 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> When given a range to write with unstable writes, the current code
-> always does a COMMIT of the entire file afterward. This is potentially
-> expensive on some servers and unnecessary. Instead, just do a COMMIT for
-> the offset and count that was written.
+On Tue, Dec 06, 2011 at 05:01:13PM +0000, Orion Poplawski wrote:
+> See https://bugzilla.redhat.com/show_bug.cgi?id=667770
 > 
-> Khoa, who reported this bug, stated that this made a big difference in
-> performance in their environment, which I believe involves GPFS on the
-> server. He didn't pass along any hard numbers so I can't quantify the
-> gain, but it stands to reason that clustered filesystems might suffer
-> more contention issues when issuing a commit over the whole file.
+> Running rpc.gssd with -vvv, it will eventually hang.  Back trace of hung process:
 > 
-> Reported-by: Khoa Huynh <khoa@us.ibm.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/direct.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
+> #0  0x00ae8416 in __kernel_vsyscall ()
+> #1  0x004be5d1 in __lll_lock_wait_private () from /lib/libc.so.6
+> #2  0x0044985c in _L_lock_12621 () from /lib/libc.so.6
+> #3  0x00447797 in malloc () from /lib/libc.so.6
+> #4  0x0043a398 in open_memstream () from /lib/libc.so.6
+> #5  0x004a9ae5 in __vsyslog_chk () from /lib/libc.so.6
+> #6  0x0017d15f in vsyslog (kind=512, 
+>     fmt=0x1806cc "dir_notify_handler: sig %d si %p data %p\n", args=0xbfc03938
+> "%")
+>     at /usr/include/bits/syslog.h:48
+> #7  xlog_backend (kind=512, fmt=0x1806cc "dir_notify_handler: sig %d si %p data
+> %p\n", 
+>     args=0xbfc03938 "%") at xlog.c:150
+> #8  0x001777d4 in printerr (priority=2, 
+>     format=0x1806cc "dir_notify_handler: sig %d si %p data %p\n") at
+> err_util.c:64
+> #9  0x00177c9e in dir_notify_handler (sig=37, si=0xbfc0396c, data=0xbfc039ec)
+>     at gssd_main_loop.c:66
+> #10 <signal handler called>
+> #11 0x00444984 in _int_malloc () from /lib/libc.so.6
+> #12 0x004477a0 in malloc () from /lib/libc.so.6
+> #13 0x0046db77 in __alloc_dir () from /lib/libc.so.6
+> #14 0x0046dc5a in opendir () from /lib/libc.so.6
+> #15 0x0046e7ef in scandir64@@GLIBC_2.2 () from /lib/libc.so.6
+> #16 0x00179285 in process_pipedir () at gssd_proc.c:565
+> #17 update_client_list () at gssd_proc.c:594
+> #18 0x00177f40 in gssd_run () at gssd_main_loop.c:216
+> #19 0x00177bf9 in main (argc=2, argv=0xbfc04134) at gssd.c:187
 > 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 1940f1a..33f2be7 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -77,6 +77,7 @@ struct nfs_direct_req {
->  	/* completion state */
->  	atomic_t		io_count;	/* i/os we're waiting for */
->  	spinlock_t		lock;		/* protect completion state */
-> +	loff_t			pos;		/* offset into file */
->  	ssize_t			count,		/* bytes actually processed */
->  				error;		/* any reported error */
->  	struct completion	completion;	/* wait for i/o completion */
-> @@ -584,8 +585,8 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
->  	data->cred = msg.rpc_cred;
->  
->  	data->args.fh = NFS_FH(data->inode);
-> -	data->args.offset = 0;
-> -	data->args.count = 0;
-> +	data->args.offset = dreq->pos;
-> +	data->args.count = dreq->count;
->  	data->args.context = dreq->ctx;
->  	data->args.lock_context = dreq->l_ctx;
->  	data->res.count = 0;
-> @@ -877,6 +878,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  		sync = NFS_FILE_SYNC;
->  
->  	dreq->inode = inode;
-> +	dreq->pos = pos;
->  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
->  	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
->  	if (dreq->l_ctx == NULL)
+> Looks like malloc is getting called from a signal handler called while in a
+> malloc call, which is verboten.  Not sure what the best way around this, but it
+> looks like dir_notify_handler cannot call printerr.  I suppose this only occurs
+> when -vv or greater is given.  Path looks a little different in 1.2.5, but looks
+> like xlog_backend still calls vsyslog which can do the same thing.
 
-Khoa found that he made a mistake when testing this originally, and any
-benefit that the patch provides seems to be negligible. I still think
-it's safe and reasonable to only issue a commit for the range that was
-written, but there doesn't seem to be any compelling need for this
-patch right now.
+Ha, that's interesting.
 
-Trond, do you have an opinion here? Should we go ahead and commit this
-patch or something like it, or leave well-enough alone?
--- 
-Jeff Layton <jlayton@redhat.com>
+Maybe we should just delete that printerr.
+
+(If someone wanted to know when the notification came then it should be
+enough to add a printerr in update_client_list(), I think.)
+
+--b.
