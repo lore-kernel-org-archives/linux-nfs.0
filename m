@@ -1,87 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:58610 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796Ab1LIPXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Dec 2011 10:23:49 -0500
-Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 9 Dec 2011 10:23:47 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNgMw292544
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 10:23:42 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNgCl021181
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 13:23:42 -0200
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com, Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH/RFC v2 4/7] Save root file handle in nfs_server.
-Date: Fri,  9 Dec 2011 10:23:29 -0500
-Message-Id: <1323444212-9855-5-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:52657 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850Ab1LFU5W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 15:57:22 -0500
+Received: by qcqz2 with SMTP id z2so2624517qcq.19
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 12:57:21 -0800 (PST)
+MIME-Version: 1.0
+Date: Tue, 6 Dec 2011 15:57:21 -0500
+Message-ID: <CAN-5tyErML04W7N3YVYyK0qq8OR_Ae+d4MzNXYyAVTMad39bFw@mail.gmail.com>
+Subject: pnfs nfsd compile problems
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Save each FSID's root directory file handle in the
-export's local nfs_server structure on the client.
-This FH can then be used as the end case for the recursive
-walkback during VFH recovery.
+Latest pnfs-all-latest (commit
+58deb32bd36e92f5f44ac6d5e5ab3c36732c4ebd) doesn't compile if
+CONFIG_PNFSD_BLOCK is not enabled.
 
-This was originally written by Chuck Lever so that
-the FH can be used for migration recovery logic.
+1st compile error is in (and probably gcc version dependent):
+  CC [M]  fs/nfsd/nfsctl.o
+In file included from fs/nfsd/nfsctl.c:18:0:
+include/linux/nfsd/nfsd4_block.h: In function ‘pnfs_block_enabled’:
+include/linux/nfsd/nfsd4_block.h:104:46: error: parameter name omitted
+include/linux/nfsd/nfsd4_block.h:104:46: error: parameter name omitted
+make[2]: *** [fs/nfsd/nfsctl.o] Error 1
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
----
- fs/nfs/client.c           |    1 +
- fs/nfs/getroot.c          |    7 +++++++
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 9 insertions(+), 0 deletions(-)
+Something like this fixed that problem:
+diff --git a/include/linux/nfsd/nfsd4_block.h b/include/linux/nfsd/nfsd4_block.h
+index 9c2941f..7d620a0 100644
+--- a/include/linux/nfsd/nfsd4_block.h
++++ b/include/linux/nfsd/nfsd4_block.h
+@@ -101,7 +101,7 @@ extern bl_comm_t    *bl_comm_global;        // Ugly...
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 44dedfe..641f69f 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1108,6 +1108,7 @@ void nfs_free_server(struct nfs_server *server)
- 	nfs_put_client(server->nfs_client);
- 
- 	nfs_free_iostats(server->io_stats);
-+	nfs_free_fhandle(server->rootfh);
- 	bdi_destroy(&server->backing_dev_info);
- 	kfree(server);
- 	nfs_release_automount_timer();
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index dcb6154..51ca63b 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -232,6 +232,13 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
- 		ret = ERR_CAST(inode);
- 		goto out;
- 	}
-+	server->rootfh = nfs_alloc_fhandle();
-+	if (server->rootfh == NULL) {
-+		dprintk("nfs_get_root: alloc rootfh failed\n");
-+		ret = ERR_PTR(-ENOMEM);
-+		goto out;
-+	}
-+	nfs_copy_fh(server->rootfh, mntfh);
- 
- 	error = nfs_superblock_set_dummy_root(sb, inode);
- 	if (error != 0) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 706c92b..5261fa1 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -157,6 +157,7 @@ struct nfs_server {
- 	struct list_head	layouts;
- 	struct list_head	delegations;
- 	void (*destroy)(struct nfs_server *);
-+	struct nfs_fh		*rootfh;
- 
- 	atomic_t active; /* Keep trace of any activity to this server */
- 
--- 
-1.7.4.4
+ #else
 
+-static inline bool pnfs_block_enabled(struct inode *, int) { return false; }
++static inline bool pnfs_block_enabled(struct inode *a, int b) { return false; }
+ static inline void nfsd_bl_init(void) {}
+
+ #endif /* CONFIG_PNFSD_BLOCK */
+
+However, next is
+
+  CC [M]  fs/nfsd/vfs.o
+fs/nfsd/vfs.c: In function ‘_nfsd_setattr’:
+fs/nfsd/vfs.c:389:5: error: implicit declaration of function
+‘bl_layoutrecall’ [-Werror=implicit-function-declaration]
+cc1: some warnings being treated as errors
+
+make[2]: *** [fs/nfsd/vfs.o] Error 1
+
+Perhaps, bl_layoutrecall() should be defined regardless if
+CONFIG_PNFSD_BLOCK is defined?
+
+So a combined patch for both is:
+diff --git a/include/linux/nfsd/nfsd4_block.h b/include/linux/nfsd/nfsd4_block.h
+index 9c2941f..06a33ca 100644
+--- a/include/linux/nfsd/nfsd4_block.h
++++ b/include/linux/nfsd/nfsd4_block.h
+@@ -101,7 +101,8 @@ extern bl_comm_t    *bl_comm_global;        // Ugly...
+
+ #else
+
+-static inline bool pnfs_block_enabled(struct inode *, int) { return false; }
++int bl_layoutrecall(struct inode *inode, int type, u64 offset, u64
+len, bool with_nfs4_state_lock);
++static inline bool pnfs_block_enabled(struct inode *a, int b) { return false; }
+ static inline void nfsd_bl_init(void) {}
+
+ #endif /* CONFIG_PNFSD_BLOCK */
+
+Then, the next problem is
+  CC [M]  fs/nfsd/export.o
+fs/nfsd/export.c: In function ‘pnfsd_check_export’:
+fs/nfsd/export.c:387:30: error: ‘bl_export_ops’ undeclared (first use
+in this function)
+fs/nfsd/export.c:387:30: note: each undeclared identifier is reported
+only once for each function it appears in
+make[2]: *** [fs/nfsd/export.o] Error 1
+
+This structure is only defined if CONFIG_PNFSD_BLOCK defined...
+
+Something like this to fix?
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 82c8194..62550dc 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -384,7 +384,9 @@ static int pnfsd_check_export(struct inode *inode, int *flag
+        if (pnfs_block_enabled(inode, *flags)) {
+                if (!inode->i_sb->s_pnfs_op) {
+                        dprintk("set pnfs block export structure\n");
++#if defined(CONFIG_PNFSD_BLOCK)
+                        inode->i_sb->s_pnfs_op = &bl_export_ops;
++#endif
+                } else
+                        dprintk("pnfs block enabled, fs provided s_pnfs_op\n");
+                dprintk("pnfs block enabled, sb=%p s_pnfs_op=%p\n",
