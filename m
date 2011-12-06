@@ -1,64 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24170 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:47179 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754623Ab1LZLnu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Dec 2011 06:43:50 -0500
-Subject: [PATCH v2 0/6] SUNPRC: cleanup PipeFS for network-namespace-aware
- users
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 26 Dec 2011 15:43:15 +0300
-Message-ID: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+	id S932811Ab1LFCK7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Dec 2011 21:10:59 -0500
+Date: Mon, 5 Dec 2011 21:10:59 -0500
+To: Benny Halevy <benny@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/13] pnfsd-block: reverse boolean_t values so they
+ make sense
+Message-ID: <20111206021059.GB4486@fieldses.org>
+References: <4EDB79A9.2080109@tonian.com>
+ <1323006496-13542-1-git-send-email-benny@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323006496-13542-1-git-send-email-benny@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch-set was created in context of clone of git
-branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-tag: v3.2-rc7
+On Sun, Dec 04, 2011 at 03:48:16PM +0200, Benny Halevy wrote:
+> From: Benny Halevy <bhalevy@tonian.com>
+> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> ---
+>  fs/nfsd/bl_ops.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/bl_ops.c b/fs/nfsd/bl_ops.c
+> index 89249c4..4d2939e 100644
+> --- a/fs/nfsd/bl_ops.c
+> +++ b/fs/nfsd/bl_ops.c
+> @@ -57,7 +57,7 @@
+>  #endif
+>  
+>  
+> -typedef enum {True, False} boolean_t;
+> +typedef enum {False = 0, True = !False} boolean_t;
 
-v2:
-1) rebased on tag "v3.2-rc7"
-2) some cleanup and minor changes
+Shouldn't we just use "bool"?
 
-This is cleanup precursor patch set. It's required for easier further
-implementation of network-namespace-aware SUNRPC PipeFS pipes creators.
-Generally, this patch set split SUNRPC PipeFS logic into two parts: working
-with pipes (new rpc_pipe structure with link to PipeFS dentry) and
-creating/destroying PipeFS dentries (old rpc_inode structure with link to
-rpc_pipe).
-With this patch-set kernel PipeFS pipes users initially creates
-rpc_pipe data and then creates Pipefs dentries. Later these dentries will be
-created in notifier callbacks on PipeFS mount event from user-space and in
-network namespace operations for such modules like nfs and blocklayout.
+--b.
 
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (6):
-      SUNRPC: replace inode lock with pipe lock for RPC PipeFS operations
-      SUNRPC: split SUNPRC PipeFS pipe data and inode creation
-      SUNRPC: cleanup PipeFS redundant RPC inode usage
-      SUNPRC: cleanup RPC PipeFS pipes upcall interface
-      SUNRPC: cleanup GSS pipes usage
-      SUNRPC: split SUNPRC PipeFS dentry and private pipe data creation
-
-
- fs/nfs/blocklayout/blocklayout.c    |   16 ++
- fs/nfs/blocklayout/blocklayout.h    |    2 
- fs/nfs/blocklayout/blocklayoutdev.c |    2 
- fs/nfs/blocklayout/blocklayoutdm.c  |    2 
- fs/nfs/idmap.c                      |   28 +++-
- include/linux/sunrpc/rpc_pipe_fs.h  |   20 ++-
- net/sunrpc/auth_gss/auth_gss.c      |  130 ++++++++++--------
- net/sunrpc/rpc_pipe.c               |  258 +++++++++++++++++++----------------
- 8 files changed, 262 insertions(+), 196 deletions(-)
-
--- 
-Signature
+>  /* ---- block layoutget and commit structure ---- */
+>  typedef struct bl_layout_rec {
+>  	struct list_head	blr_hash,
+> -- 
+> 1.7.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
