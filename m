@@ -1,113 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31345 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:51650 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752047Ab1LTKOw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Dec 2011 05:14:52 -0500
-Subject: [PATCH] SUNRPC: search for service transports in network namespace
- context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 20 Dec 2011 14:14:19 +0300
-Message-ID: <20111220101419.5673.21926.stgit@localhost6.localdomain6>
+	id S1754487Ab1LFVd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 16:33:26 -0500
+Date: Tue, 6 Dec 2011 16:33:22 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH 1/2] SUNRPC: register RPC stats /proc entries in passed
+ network namespace context
+Message-ID: <20111206213322.GE12640@fieldses.org>
+References: <20111206123748.15702.93290.stgit@localhost6.localdomain6>
+ <20111206124240.15702.61866.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111206124240.15702.61866.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Service transports are parametrized by network namespace. And thus lookup of
-transport instance have to take network namespace into account.
+On Tue, Dec 06, 2011 at 04:42:40PM +0300, Stanislav Kinsbursky wrote:
+> This patch makes it possible to create NFS program entry ("/proc/net/rpc/nfs")
+> in passed network namespace context instead of hard-coded "init_net".
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Looks straightforward to me.
 
----
- fs/lockd/svc.c                  |    2 +-
- fs/nfsd/nfsctl.c                |    4 ++--
- include/linux/sunrpc/svc_xprt.h |    3 ++-
- net/sunrpc/svc_xprt.c           |    6 +++++-
- 4 files changed, 10 insertions(+), 5 deletions(-)
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index c061b9a..ff379ff 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -193,7 +193,7 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
- {
- 	struct svc_xprt *xprt;
- 
--	xprt = svc_find_xprt(serv, name, family, 0);
-+	xprt = svc_find_xprt(serv, name, &init_net, family, 0);
- 	if (xprt == NULL)
- 		return svc_create_xprt(serv, name, &init_net, family, port,
- 						SVC_SOCK_DEFAULTS);
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f9d0599..1f12f27 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -721,7 +721,7 @@ static ssize_t __write_ports_addxprt(char *buf)
- 	nfsd_serv->sv_nrthreads--;
- 	return 0;
- out_close:
--	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
-+	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, PF_INET, port);
- 	if (xprt != NULL) {
- 		svc_close_xprt(xprt);
- 		svc_xprt_put(xprt);
-@@ -747,7 +747,7 @@ static ssize_t __write_ports_delxprt(char *buf)
- 	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
- 		return -EINVAL;
- 
--	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
-+	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, port);
- 	if (xprt == NULL)
- 		return -ENOTCONN;
- 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 18df516..21e3418 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -122,7 +122,8 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- int	svc_print_xprts(char *buf, int maxlen);
- struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
--			const sa_family_t af, const unsigned short port);
-+			struct net *net, const sa_family_t af,
-+			const unsigned short port);
- int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
- 
- static inline void svc_xprt_get(struct svc_xprt *xprt)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f8f0627..5fd123f 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1069,6 +1069,7 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
-  * svc_find_xprt - find an RPC transport instance
-  * @serv: pointer to svc_serv to search
-  * @xcl_name: C string containing transport's class name
-+ * @net: owner net pointer
-  * @af: Address family of transport's local address
-  * @port: transport's IP port number
-  *
-@@ -1081,7 +1082,8 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
-  * service's list that has a matching class name.
-  */
- struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
--			       const sa_family_t af, const unsigned short port)
-+			       struct net *net, const sa_family_t af,
-+			       const unsigned short port)
- {
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *found = NULL;
-@@ -1092,6 +1094,8 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
- 
- 	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-+		if (xprt->xpt_net != net)
-+			continue;
- 		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
- 			continue;
- 		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
+--b.
 
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  fs/nfs/inode.c               |    6 +++---
+>  include/linux/sunrpc/stats.h |    8 ++++----
+>  net/sunrpc/stats.c           |   15 ++++++++-------
+>  3 files changed, 15 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 98b2508..5cad6c5 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1623,14 +1623,14 @@ static int __init init_nfs_fs(void)
+>  		goto out0;
+>  
+>  #ifdef CONFIG_PROC_FS
+> -	rpc_proc_register(&nfs_rpcstat);
+> +	rpc_proc_register(&init_net, &nfs_rpcstat);
+>  #endif
+>  	if ((err = register_nfs_fs()) != 0)
+>  		goto out;
+>  	return 0;
+>  out:
+>  #ifdef CONFIG_PROC_FS
+> -	rpc_proc_unregister("nfs");
+> +	rpc_proc_unregister(&init_net, "nfs");
+>  #endif
+>  	nfs_destroy_directcache();
+>  out0:
+> @@ -1669,7 +1669,7 @@ static void __exit exit_nfs_fs(void)
+>  	nfs_dns_resolver_destroy();
+>  	nfs_idmap_quit();
+>  #ifdef CONFIG_PROC_FS
+> -	rpc_proc_unregister("nfs");
+> +	rpc_proc_unregister(&init_net, "nfs");
+>  #endif
+>  	nfs_cleanup_cb_ident_idr();
+>  	unregister_nfs_fs();
+> diff --git a/include/linux/sunrpc/stats.h b/include/linux/sunrpc/stats.h
+> index 680471d..f625b57 100644
+> --- a/include/linux/sunrpc/stats.h
+> +++ b/include/linux/sunrpc/stats.h
+> @@ -58,8 +58,8 @@ void			rpc_modcount(struct inode *, int);
+>  #endif
+>  
+>  #ifdef CONFIG_PROC_FS
+> -struct proc_dir_entry *	rpc_proc_register(struct rpc_stat *);
+> -void			rpc_proc_unregister(const char *);
+> +struct proc_dir_entry *	rpc_proc_register(struct net *,struct rpc_stat *);
+> +void			rpc_proc_unregister(struct net *,const char *);
+>  void			rpc_proc_zero(struct rpc_program *);
+>  struct proc_dir_entry *	svc_proc_register(struct svc_stat *,
+>  					  const struct file_operations *);
+> @@ -69,8 +69,8 @@ void			svc_seq_show(struct seq_file *,
+>  				     const struct svc_stat *);
+>  #else
+>  
+> -static inline struct proc_dir_entry *rpc_proc_register(struct rpc_stat *s) { return NULL; }
+> -static inline void rpc_proc_unregister(const char *p) {}
+> +static inline struct proc_dir_entry *rpc_proc_register(struct net *, struct rpc_stat *s) { return NULL; }
+> +static inline void rpc_proc_unregisterstruct net *, (const char *p) {}
+>  static inline void rpc_proc_zero(struct rpc_program *p) {}
+>  
+>  static inline struct proc_dir_entry *svc_proc_register(struct svc_stat *s,
+> diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+> index 80df89d..f0f6e7c 100644
+> --- a/net/sunrpc/stats.c
+> +++ b/net/sunrpc/stats.c
+> @@ -213,28 +213,29 @@ EXPORT_SYMBOL_GPL(rpc_print_iostats);
+>   * Register/unregister RPC proc files
+>   */
+>  static inline struct proc_dir_entry *
+> -do_register(const char *name, void *data, const struct file_operations *fops)
+> +do_register(struct net *net, const char *name, void *data,
+> +	    const struct file_operations *fops)
+>  {
+>  	struct sunrpc_net *sn;
+>  
+>  	dprintk("RPC:       registering /proc/net/rpc/%s\n", name);
+> -	sn = net_generic(&init_net, sunrpc_net_id);
+> +	sn = net_generic(net, sunrpc_net_id);
+>  	return proc_create_data(name, 0, sn->proc_net_rpc, fops, data);
+>  }
+>  
+>  struct proc_dir_entry *
+> -rpc_proc_register(struct rpc_stat *statp)
+> +rpc_proc_register(struct net *net, struct rpc_stat *statp)
+>  {
+> -	return do_register(statp->program->name, statp, &rpc_proc_fops);
+> +	return do_register(net, statp->program->name, statp, &rpc_proc_fops);
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_proc_register);
+>  
+>  void
+> -rpc_proc_unregister(const char *name)
+> +rpc_proc_unregister(struct net *net, const char *name)
+>  {
+>  	struct sunrpc_net *sn;
+>  
+> -	sn = net_generic(&init_net, sunrpc_net_id);
+> +	sn = net_generic(net, sunrpc_net_id);
+>  	remove_proc_entry(name, sn->proc_net_rpc);
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_proc_unregister);
+> @@ -242,7 +243,7 @@ EXPORT_SYMBOL_GPL(rpc_proc_unregister);
+>  struct proc_dir_entry *
+>  svc_proc_register(struct svc_stat *statp, const struct file_operations *fops)
+>  {
+> -	return do_register(statp->program->pg_name, statp, fops);
+> +	return do_register(&init_net, statp->program->pg_name, statp, fops);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_proc_register);
+>  
+> 
