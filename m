@@ -1,90 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32159 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:17790 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756526Ab1LGVRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 16:17:47 -0500
-Message-ID: <4EDFD7EF.4060909@RedHat.com>
-Date: Wed, 07 Dec 2011 16:17:35 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S933145Ab1LFMrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 07:47:09 -0500
+Message-ID: <4EDE0E29.9030804@parallels.com>
+Date: Tue, 06 Dec 2011 16:44:25 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Harald Dunkel <harri@afaics.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 fsid=0 export still necessary?
-References: <4EDA0650.9080702@afaics.de> <4EDA5387.5070103@RedHat.com> <20111206011007.GD3678@fieldses.org> <4EDF94AE.10302@RedHat.com> <20111207163252.GB20079@fieldses.org>
-In-Reply-To: <20111207163252.GB20079@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jim Rees <rees@umich.edu>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: create svc_xprt in proper network namespace
+References: <20111206101910.1878.21798.stgit@localhost6.localdomain6> <20111206124427.GA12890@umich.edu>
+In-Reply-To: <20111206124427.GA12890@umich.edu>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+06.12.2011 16:44, Jim Rees пишет:
+> Stanislav Kinsbursky wrote:
+>
+>    This patch makes svc_xprt inherit network namespace link from it's socket.
+>
+> Should be "its socket."
 
+Yep, sure. Silly mistake.
+Thanks.
 
-On 12/07/2011 11:32 AM, J. Bruce Fields wrote:
-> On Wed, Dec 07, 2011 at 11:30:38AM -0500, Steve Dickson wrote:
->>
->>
->> On 12/05/2011 08:10 PM, J. Bruce Fields wrote:
->>> On Sat, Dec 03, 2011 at 11:51:19AM -0500, Steve Dickson wrote:
->>>> No, the fsid=0 export option is no longer necessary to make v4
->>>> exports compatible with v2/v3 exports. When the fsid option
->>>> is not set, the default root is define as "/" which allows
->>>> the v4 clients to mount the same exports as does the v2/v3 clients.
->>>>
->>>> Now if you do not what "/" as your default root, you can
->>>> set fsid to something like fsid=/export. This will
->>>> change to default root to the /export directory which
->>>> means your v4 clients will only be able to access exports
->>>> under the /export directory. 
->>>
->>> I actually have some old patches that allow you to use an alternate root
->>> for all NFS versions; you'd do something like:
->>>
->>> 	/exports	*(ro, root)
->>> 	/exports/foo	*(rw)
->>> 	/exports/bar	*(rw)
->>>
->>> and then a v2, v3, or v4 client would mount server:/foo or server:/bar.
->>>
->>> But that was just a fun project, it wasn't clear to me whether anyone
->>> wanted it particularly.
->>>
->>> Also, that didn't seem like a great user interface.  I'd rather have
->>> something like
->>>
->>> 	rootpath=/exports
->>> 	foo	*(rw)
->>> 	bar	*(rw)
->>>
->>> Actually, as long as we were doing that I'd rather replace /etc/exports
->>> entirely; maybe do something like
->>>
->>> 	[nfsd]
->>> 		rootpath=/exports
->>> 	[export "foo"]
->>> 		clients=*
->>> 		options=rw
->>> 	[exports "bar"]
->>> 		clients=*
->>> 		options=rw
->>>
->>> And also use the same file for other nfsd parameters:
->>>
->>> 	[nfsd]
->>> 		versions=2,3,4,4.1
->>> 		threads=8
->>> 		rootpath=/exports
->>> 	[export "foo"]
->>> 		...
->> I kinda like this idea... In the systemd world, its less
->> error prone to have daemons read their own configuration 
->> files... 
->>
->> Where would this new file live and what would be called?
-> 
-> I'm not sure.... Where did you end up putting the file for nfs mount
-> configuration?
-
-In /etc... /etc/nfsmount.conf... but /etc/default seems to be popular
-these days...  
-
-steved.
-
+-- 
+Best regards,
+Stanislav Kinsbursky
