@@ -1,71 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3447 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754605Ab1LBCBt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 21:01:49 -0500
-Message-ID: <4ED8318B.5040400@RedHat.com>
-Date: Thu, 01 Dec 2011 21:01:47 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:33191 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751945Ab1LFTgw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 14:36:52 -0500
+Received: by eeaq14 with SMTP id q14so3277693eea.19
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 11:36:51 -0800 (PST)
 MIME-Version: 1.0
-To: Bryan Schumaker <bjschuma@netapp.com>
-CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
-References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com> <4ED7EBFF.6030706@RedHat.com> <4ED7F7B9.2090205@netapp.com>
-In-Reply-To: <4ED7F7B9.2090205@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Date: Tue, 6 Dec 2011 11:36:51 -0800
+Message-ID: <CANtneHKfm=GRev1Pfwi90VMJ3cn=huRgr6-G+9MH-w_LDW0t0Q@mail.gmail.com>
+Subject: nfs client hangs after lazy unmount
+From: Pete Holland <pholland27@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello, I'm trying to debug a problem we are seeing in our systems and
+was hoping to get some insight if possible.
+We operate a fairly large (~500) cluster of linux VMs running a
+modified version of OpenWRT 10.03 (linux kernel version 2.6.32.27)
+These machines run Samba (version 3.5.11) that share files from an NFS
+(over TCP) filesystem.  The SMB daemons (and backing mounts) are
+brought up and down continuously throughout the day, and in order to
+make sure the take-down is timely, we kill -TERM the parent SMB
+process and lazily unmount (umount -l) the NFS share.  Most of the
+time, this works just fine.  On occasion (usually about once or twice
+per day) we end up with an SMB process that is stuck in (as best as I
+can tell) nfs_getattr.  At this point the CPU is 100% in io_wait.  Our
+only recourse appears to be rebooting the system when this happens.
 
+Other relavent facts:
+1.  I backported the -local_lock=flock patches into this kernel.
+2.  The mount options of the NFS mount are
+rw,noatime,noexec,fg,hard,intr,tcp,rsize=32768,wsize=32768,local_lock=flock
+3.  This behavior seems like it may be new (or at least it is
+definitely more exacerbated) since we upgraded from the 8.09 OpenWRT
+release which was using the 2.6.25.20 kernel.
+4.  nfsstat doesn't indicate any network issues with retransmits or the like
 
-On 12/01/2011 04:55 PM, Bryan Schumaker wrote:
-> On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
->>
->>
->> On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
->>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>
->>> This set of patches removes NFS v3 from the main NFS kernel module and creates
->>> a new module containing the proc, xdr, and acl code.  This will give us a
->>> single directory to put NFS v3 specific code so it doesn't need to be mixed in
->>> with the generic client stuff.
->>>
->>> I'm sure this could still use a lot of work, but I figured I would wait to see
->>> what everybody thinks first.  I imagine that once we get an "nfs submodule"
->>> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
->>> modules.
->>>
->>> I split the second patch into two to make it easier to see what my changes were
->>> to get everything to compile.  Hopefully this will save some pain in having to
->>> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
->>> command.  I can combine everything in a future version of the patch.
->>>
->>> v2:
->>>   - I set the "diff.renames copy" git config option to create a smaller second
->>>     patch.  Maybe this time it won't get me kicked off the mailing list...
->>>     Thanks to Boaz and Jim for the tip!
->>>
->>> Thoughts?
->> Now what is the motivating reason behind this re-architecture
->> other than making the upstream kernel literally impossible to 
->> back port to older kernels?? 
->>
-> I wasn't thinking about backporting when I did this... is there a 
-> better way to do this that wouldn't make it a pain to backport?
-Yeah... Don't do it! 8-) Major architectural changes always destroy
-any all chances of clean back ports... That's why they are generally 
-done on major releases... the when 3.X was released... 
+I can provide SysRq-T trace of the SMB process as well as a System.map
+file of my kernel build if that helps.  I have a few of the systems
+currently in this state so I may be able to perform some live
+debugging.  Let me know if there is anything else I can provide.
 
-> 
-> My thought was that it would help clean things up a bit by adding a bit 
-> of separation between the nfs client and each nfs protocol.  It would 
-> also allow user to decide what they need at run time rather than at 
-> compile time.
-At the end of the day, I don't think many people care what modules are
-or are not loaded as long as performance and stability are not
-effected... How many system admins know or even use the lsmod 
-command... not many I would guess... 
+Thank you for any help.
 
-steved.
- 
-
+- Pete
