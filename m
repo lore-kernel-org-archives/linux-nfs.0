@@ -1,117 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58658 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750850Ab1LILJO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 06:09:14 -0500
-Message-ID: <4EE1EC49.6010000@panasas.com>
-Date: Fri, 9 Dec 2011 13:08:57 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:33121 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933094Ab1LFMov (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 07:44:51 -0500
+Date: Tue, 6 Dec 2011 07:44:27 -0500
+From: Jim Rees <rees@umich.edu>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Subject: Re: [PATCH] SUNRPC: create svc_xprt in proper network namespace
+Message-ID: <20111206124427.GA12890@umich.edu>
+References: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Rick Macklem <rmacklem@uoguelph.ca>
-CC: Sorin Faibish <sfaibish@emc.com>, <linux-nfs@vger.kernel.org>,
-        <honey@citi.umich.edu>, <nfsv4@ietf.org>,
-        Steve Dickson <steved@redhat.com>, "Welch, Brent" <welch@panasas.com>
-Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
- attachment this time
-References: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/09/2011 04:53 AM, Rick Macklem wrote:
-> Thanks for the slides, Sorin.
-> 
-> Just fyi, it was correct to not mention a FreeBSD client, since the
-> 4.1 client code hasn't made it into any release yet. It is available
-> as a patch against the FreeBSD9.0 kernel, in case anyone is interested:
->    http://people.freebsd.org/~rmacklem/nfsv4.1-client/nfsv41.patch
-> 
-> I am just starting to work on the logistics of getting this into the
-> FreeBSD source tree, so it may be in a FreeBSD9.n release, where n > 0.
-> 
-> Also, the above does not include any pNFS support. I am about ready to
-> start coding pNFS client stuff, which brings me to...
-> - It will be difficult for me to make much progress without any
->   pNFS servers to test against. (The only NFSv4.1 server I have to
->   test against is Fedora15 and I don't think it knows how to do pNFS?
->   If there is a way to make Fedora15/16 (or any other freebie Linux
->   distro) do pNFS, please let me know.
-> 
-> If others have suggestions on how I might gain access to pNFS servers
-> for testing, I would appreciate hearing. (However, I am not funded to
-> do any of this, so the suggestions can't include my spending $$$. I can
-> make it to a Bakeathon when it happens to be close to where I am, so I
-> can show up "on the cheap", like I did last June in Ann Arbor.)
-> 
+Stanislav Kinsbursky wrote:
 
-One way to go is the Linux pnfs project at linux-nfs.org start here:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+  This patch makes svc_xprt inherit network namespace link from it's socket.
 
-It is an NFSD linux Kernel server with pNFS extensions destined to
-be part of Linux at some future release.
-
-You will need to compile your own Kernel, or alternatively this Kernel
-is available in rpm form  from Steve Dickson for some Fedoras:
-http://steved.fedorapeople.org/repos/pnfs/
-
-The easiest is to first use the what is called pnfs-exp which is an MDS
-plus a single DS exporting any local file system.
-
-Then you can also export a GFS2 read-only and an EXOFS which is a full
-fixture pnfs-objects based cluster filesystem.
-
-The Luster patch suggested to you is also based on above Benny's tree.
-
-I have on my todo list a full osd (pnfs-objects) stack port to FreeBSD
-But that's in the far future. 
-Meanwhile I'd suggest the pnfs-client-core to layout-driver API be closely
-crafted to match that of the Linux LD API so it could be kept the same
-code base. For example the pnfs-objects LD is mostly pure C code relying
-on the ORE (Objects Raid Engine). The ORE is multy licensed library that
-has ports to Many platforms including Linux-Kernel 
-Linux/FreeBSD/windows User-Mode and more of which only the Linux variants
-actually run because of the need of the iscsi stack to support BiDi and
-large CDB commands, Only supported by Linux.
-
-Cheers
-Boaz
-
-> rick
-> 
-> ----- Original Message -----
->> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish <sfaibish@emc.com>
->> wrote:
->>
->>> Attached please find the slides that we presented yesterday at
->>> USENIX
->>> LISA 11
->>> conference in Boston. We would like to get more detailed input on
->>> other
->>> OS
->>> that will support pNFS server/client (this is for Rick as well) that
->>> were
->>> not mentioned in this slide set.
->>>
->>> /Sorin
->>>
->>
->>
->>
->> --
->> Best Regards
->> Sorin Faibish
->> Corporate Distinguished Engineer
->> Unified Storage Division
->>
->> EMC²
->> where information lives
->>
->> Phone: 508-435-1000 x 48545
->> Cellphone: 617-510-0422
->> Email : sfaibish@emc.com
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
-
+Should be "its socket."
