@@ -1,109 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35019 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:17965 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752402Ab1LLXHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 18:07:10 -0500
-Date: Mon, 12 Dec 2011 18:07:10 -0500
-To: Tigran Mkrtchyan <kofemann@googlemail.com>
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATH v4 0/3] nfsd41: current state id processing
-Message-ID: <20111212230710.GF22927@fieldses.org>
-References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
+	id S933052Ab1LFKWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 05:22:11 -0500
+Subject: [PATCH] SUNRPC: create svc_xprt in proper network namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 06 Dec 2011 14:19:10 +0300
+Message-ID: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 10:00:24PM +0100, Tigran Mkrtchyan wrote:
-> From: Tigran Mkrtchyan <kofemann@gmail.com>
-> 
-> 
-> Yet another update (v4) of current stateid handling
-> 
-> difference with v3:
-> 
-> Patches re-organized to only add functionality, e.g. there
-> are no patches fixing other patches. Operation flags are
-> not used any more. Existence of a corresponding function
-> pointer is enough.
-> 
-> 
-> Let me know if you want to see updates less often.
-> 
-> Tigran.
-> 
-> currently tested to work in a single compound:
-> 
->  OPEN+CLOSE
->  LOCK+WRITE+LOCKU+CLOSE
-> 
-> On the way (not tested yet):
->  OPEN+LAYOUTGET
-> 
-> TODO:
->  dispose current stateid on operations which provide CFH, but do not provide stateid.
+This patch makes svc_xprt inherit network namespace link from it's socket.
 
-We also need to go through the list of operations that might set or use
-current stateid and make sure we've got them all.  On a quick glance, in
-addition to the above, maybe these?:
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-	COMMIT
-	DELETRETURN
-	LOCKT
-	OPEN_DOWNGRADE
-	READ
-	SAFEFH/RESTOREFH
-	SETATTR
-	FREE_STATEID
-	TEST_STATEID
-	WANT_DELEGATION (?? does it set current_stateid in the case
-				where it returns one?)
+---
+ include/linux/sunrpc/svc_xprt.h          |    2 +-
+ net/sunrpc/svc_xprt.c                    |    6 +++---
+ net/sunrpc/svcsock.c                     |    8 +++++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ 4 files changed, 10 insertions(+), 8 deletions(-)
 
-> 
-> Internals:
->  1. struct nfsd4_compound_state contains pointer to current stateid
->  2. during compound processing before operation execution current stateid copied into
->   operations stateid if it's equal to corresponding value ( 0, 1).
->  3. after operation execution current stateid changed to:
->     a) point to stateid of last operation
->     or
->     b) point to NULL, if operation is marked to do so.
-> 
-> Probably all patches have to be squashed into a single one before merged
-> as none of the changes makes sense without others.
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 8620f79..18df516 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -109,7 +109,7 @@ static inline int register_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u
+ 
+ int	svc_reg_xprt_class(struct svc_xprt_class *);
+ void	svc_unreg_xprt_class(struct svc_xprt_class *);
+-void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
++void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
+ 		      struct svc_serv *);
+ int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
+ 			const int, const unsigned short, int);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 447cd0e..f8f0627 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -147,8 +147,8 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
+  * Called by transport drivers to initialize the transport independent
+  * portion of the transport instance.
+  */
+-void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+-		   struct svc_serv *serv)
++void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
++		   struct svc_xprt *xprt, struct svc_serv *serv)
+ {
+ 	memset(xprt, 0, sizeof(*xprt));
+ 	xprt->xpt_class = xcl;
+@@ -163,7 +163,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
+ 	spin_lock_init(&xprt->xpt_lock);
+ 	set_bit(XPT_BUSY, &xprt->xpt_flags);
+ 	rpc_init_wait_queue(&xprt->xpt_bc_pending, "xpt_bc_pending");
+-	xprt->xpt_net = get_net(&init_net);
++	xprt->xpt_net = get_net(net);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 71bed1c..277909e 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -739,7 +739,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ {
+ 	int err, level, optname, one = 1;
+ 
+-	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
++	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
++		      &svsk->sk_xprt, serv);
+ 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
+@@ -1343,7 +1344,8 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ {
+ 	struct sock	*sk = svsk->sk_sk;
+ 
+-	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
++	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
++		      &svsk->sk_xprt, serv);
+ 	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+ 	if (sk->sk_state == TCP_LISTEN) {
+ 		dprintk("setting up TCP socket for listening\n");
+@@ -1659,7 +1661,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	xprt = &svsk->sk_xprt;
+-	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
++	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
+ 
+ 	serv->sv_bc_xprt = xprt;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index ba1296d..894cb42 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -453,7 +453,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 
+ 	if (!cma_xprt)
+ 		return NULL;
+-	svc_xprt_init(&svc_rdma_class, &cma_xprt->sc_xprt, serv);
++	svc_xprt_init(&init_net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
 
-I think it's probably OK to do operations (or groups of operations) at a
-time, as you have been.  Any operations that remain unfixed will
-continue returning EXPIRED, as they have before, so we won't be making
-things any worse.
-
-In any case, just make sure the layout stuff is kept separate, as we
-want to sort out the current stateid before merging pnfs.
-
---b.
-
-> 
-> Tigran.
-> 
-> 
-> Tigran Mkrtchyan (3):
->   nfsd41: handle current stateid in open and close
->   nfsd41: handle current stateid on lock and locku
->   nfsd41: consume current stateid on read and write
-> 
->  fs/nfsd/current_stateid.h |   22 +++++++++++++++
->  fs/nfsd/nfs4proc.c        |   39 +++++++++++++++++++++++---
->  fs/nfsd/nfs4state.c       |   66 +++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/xdr4.h            |    1 +
->  4 files changed, 123 insertions(+), 5 deletions(-)
->  create mode 100644 fs/nfsd/current_stateid.h
-> 
-> -- 
-> 1.7.7.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
