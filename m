@@ -1,61 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:32871 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754681Ab1LMRjL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Dec 2011 12:39:11 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RaWJp-00006A-S9
-	for linux-nfs@vger.kernel.org; Tue, 13 Dec 2011 18:39:10 +0100
-Received: from user-387o921.cable.mindspring.com ([208.124.36.65])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 18:39:09 +0100
-Received: from chris.j.arges by user-387o921.cable.mindspring.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 18:39:09 +0100
-To: linux-nfs@vger.kernel.org
-From: Chris J Arges <chris.j.arges@canonical.com>
-Subject: Re: [PATCH] nfsd4: permit read opens of executable-only files
-Date: Tue, 13 Dec 2011 17:38:54 +0000 (UTC)
-Message-ID: <loom.20111213T183631-8@post.gmane.org>
-References: <20110825161957.GC1114@fieldses.org> <loom.20111207T233110-295@post.gmane.org> <20111208212151.GF32505@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:49718 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933031Ab1LFNbQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 08:31:16 -0500
+Received: by bkbzv3 with SMTP id zv3so3483584bkb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 05:31:15 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4EDDFBCD.3010608@tonian.com>
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
+	<4EDB6AA3.1030702@tonian.com>
+	<20111206020851.GA4486@fieldses.org>
+	<4EDDFBCD.3010608@tonian.com>
+Date: Tue, 6 Dec 2011 14:31:14 +0100
+Message-ID: <CAGue13r9EZJLco0OsfoPH4eyn7Txa0OJqBPavw5cFoiBPN3=2g@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-<snip>
-> > 
-> > 
-> > Bruce,
-> > 
-> > I've tested this patch against linux-3.0 and it doesn't allow me to execute 
-> > binaries with permissions of 111.
-> 
-> Hm, I see the same permissions error.  However, looking at the
-> client-server traffic with wireshark, I see no permissions failures from
-> the server: the read-open of cat succeeds.  (Could you check if the same
-> is true in your case?)
-> 
-> So my first inclination is to blame the client.... Does this work with
-> an older client?
-> 
-> --b.
+On Tue, Dec 6, 2011 at 12:26 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> On 2011-12-06 04:08, J. Bruce Fields wrote:
+>> On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
+>>> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+>>>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>>>>
+>>>>
+>>>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>>>> ---
+>>>>  fs/nfsd/nfs4proc.c  |    6 ++++++
+>>>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
+>>>>  2 files changed, 26 insertions(+), 6 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>>>> index fa38336..535aed2 100644
+>>>> --- a/fs/nfsd/nfs4proc.c
+>>>> +++ b/fs/nfsd/nfs4proc.c
+>>>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>>>      */
+>>>>     status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+>>>>     WARN_ON(status && open->op_created);
+>>>> +
+>>>> +   if(status)
+>>>> +           goto out;
+>>>> +
+>>>> +   /* set current state id */
+>>>> +   memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
+>>
+>> That comment is a bit redundant.
+>>
+>>> Since this should be done for all stateid-returning operations
+>>> I think that a cleaner approach could be to mark those as such in
+>>> nfsd4_ops by providing a per-op function to return the operation's
+>>> stateid.  You can then call this method from nfsd4_proc_compound()
+>>> after the call to nfsd4_encode_operation() and when status == 0.
+>>
+>> So the choice is between
+>>
+>> +       memcpy(&cstate->current_stateid, &open->op_stateid,
+>> sizeof(stateid_t));
+>>
+>> and
+>>
+>> +       static void get_open_stateid(stateid_t *s)
+>> +       {
+>> +               memcpy(s, open->op_stateid);
+>> +       }
+>> +
+>> +       [OP_OPEN] = {
+>> +               ...
+>> +               .op_get_stateid = get_open_stateid,
+>> +               ...
+>> +       }
+>>
+>> ?
+>>
+>> I'm not so sure.
+>
+> The point is to copy the result stateid into the current_stateid
+> in a centralized place: nfsd4_proc_compound() and do that for all
+> stateid-modifying operations.
 
-Bruce,
+Sounds good, nevertheless all operations call differently resulting
+stateid which make it's not possible to use a unified schema.
 
-Using the above test setup, and trying various clients I see a mismatch:
+Regards,
+   Tigran.
 
-Using a newer nfs clients (nfs-common 1:1.2.2-4/1:1.2.4-1), I can read a file 
-with 111 permissions, but cannot execute it.
-With an older nfs client (nfs-common 1:1.2.0-4 / ubuntu lucid), I can read and 
-execute a file with 111 permissions.
-
---chris j arges
-
-<snip>
-
-
-
-
+>
+>>
+>> Anyway, thanks Tigran for looking at this.
+>>
+>> Do we want to guarantee that the client can't expire as long as a
+>> compound references the stateid?  I think that's the case.
+>
+> The client can't time out while the 4.1 compound is in progress, see commit d768298.
+> Are you thinking of explicit expiration of the client?
+> We may unhash the client and keep using it while it's referenced
+> so that's not a problem.  As far as the stateid goes, we're copying the
+> value of the stateid, not pointing to any stateid structure.  If the
+> actual state was destroyed, we will detect that when the current_stateid
+> is used by any successive operation and we cannot find the state using
+> the stateid.
+>
+> Benny
+>
+>>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
