@@ -1,106 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51086 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:31400 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758127Ab1LNVKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 16:10:39 -0500
-Date: Wed, 14 Dec 2011 16:10:39 -0500
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
- ENOENT
-Message-ID: <20111214211039.GB7623@fieldses.org>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
- <1323871032-3191-3-git-send-email-jlayton@redhat.com>
- <4EE8BC10.3010005@RedHat.com>
- <20111214101927.551e3883@tlielax.poochiereds.net>
- <4EE8C0ED.6090302@RedHat.com>
- <20111214103718.267b32fc@tlielax.poochiereds.net>
- <4EE8C73E.2050207@RedHat.com>
- <20111214110056.4832f52d@tlielax.poochiereds.net>
- <4EE8CEA6.7000001@RedHat.com>
+	id S1755580Ab1LGLUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Dec 2011 06:20:49 -0500
+Subject: [PATCH 3/4] SUNRPC: use passed network namespace context in rpc_pton()
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 07 Dec 2011 15:20:32 +0300
+Message-ID: <20111207112032.17273.90871.stgit@localhost6.localdomain6>
+In-Reply-To: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
+References: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EE8CEA6.7000001@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 14, 2011 at 11:28:22AM -0500, Steve Dickson wrote:
-> 
-> 
-> On 12/14/2011 11:00 AM, Jeff Layton wrote:
-> > On Wed, 14 Dec 2011 10:56:46 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 12/14/2011 10:37 AM, Jeff Layton wrote:
-> >>> On Wed, 14 Dec 2011 10:29:49 -0500
-> >>> Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>>>
-> >>>>
-> >>>> On 12/14/2011 10:19 AM, Jeff Layton wrote:
-> >>>>> On Wed, 14 Dec 2011 10:09:04 -0500
-> >>>>> Steve Dickson <SteveD@redhat.com> wrote:
-> >>>>>
-> >>>>>>
-> >>>>>>
-> >>>>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> >>>>>>> Generally, we want this daemon started before nfsd starts. Deal with the
-> >>>>>>> situation where the pipe hasn't shown up yet.
-> >>>>>> This can be done with your systemd start up script. Plus I'm not sure its 
-> >>>>>> a good idea to steal cpu cycles waiting for an event that may never happen...
-> >>>>>>
-> >>>>>
-> >>>>> Presumably you just wouldn't start the daemon if you have no intent to
-> >>>>> use it.
-> >>>>>
-> >>>>> It does sleep 1s between each check, so the time is fairly minimal,
-> >>>>> but I'm definitely open to doing this differently. What may be
-> >>>>> reasonable is adding code to the daemon to check and see if the
-> >>>>> v4recoverydir is present. If it is, then just exit. Otherwise, wait for
-> >>>>> the pipe to show up.
-> >>>> Why just let the systemd scrips worry about the order of when to start
-> >>>> things up... To be honest, that is one thing systemd does do fairly well.
-> >>>>
-> >>>
-> >>> Because not everyone uses systemd, and we have to deal with the
-> >>> "legacy" case too for the transition phase.
-> >>>
-> >>> It's generally preferable not to start up nfsd until everything it
-> >>> needs is up. If we do what you suggest, then we're basically mandating
-> >>> that this daemon can't start until nfsd is up and running.
-> >> Order has ways been a part of how and when things are started which
-> >> have always been handled by initscripts. That's their job, to start
-> >> things in the correct order. 
-> >>
-> >> I understand you want to make the daemon bullet proof... but starting
-> >> things up in the wrong order is an error... IMHO... 
-> >>
-> >>>
-> >>> Could you give some details on how you think this ought to work?
-> >>>
-> >> I would think a error message stating unable to open whatever and then 
-> >> say something like please make sure the nfs server is up and running,
-> >> would work... It seems to me this is a pretty common way of handling 
-> >> this type of situation.... although I can not come up with a 
-> >> explicit example, atm. 
-> >>
-> > 
-> > That's doable simply by dropping this patch. I think it'll make this
-> > more fragile, but if that's the consensus, I'll go along with it.
-> > 
-> If that is the only fragile part then I you are in very good shape! ;-) 
-> 
-> Thanks again! 
+Use incomming network context in rpc_pton() instead of hard-coded "init_net".
 
-Please patch section 3.1 of nfs-utils/README while you're at it.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-The start-up order *is* rather complicated, though, and easy to get
-wrong.  And we'd rather not make nfsd wait unnecessarily for this dameon
-to start up....
+---
+ fs/nfs/dns_resolve.c        |    4 ++--
+ fs/nfs/nfs4filelayoutdev.c  |    2 +-
+ fs/nfs/nfs4namespace.c      |    2 +-
+ fs/nfs/super.c              |    4 ++--
+ fs/nfsd/nfsctl.c            |    2 +-
+ include/linux/sunrpc/clnt.h |    2 +-
+ net/sunrpc/addr.c           |    7 ++++---
+ net/sunrpc/svcauth_unix.c   |    2 +-
+ 8 files changed, 13 insertions(+), 12 deletions(-)
 
-Why not use directory notifications like idmapd and gssd always have?
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index a6e711a..e698242 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -20,7 +20,7 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+ 
+ 	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
+ 	if (ip_len > 0)
+-		ret = rpc_pton(ip_addr, ip_len, sa, salen);
++		ret = rpc_pton(&init_net, ip_addr, ip_len, sa, salen);
+ 	else
+ 		ret = -ESRCH;
+ 	kfree(ip_addr);
+@@ -224,7 +224,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	len = qword_get(&buf, buf1, sizeof(buf1));
+ 	if (len <= 0)
+ 		goto out;
+-	key.addrlen = rpc_pton(buf1, len,
++	key.addrlen = rpc_pton(&init_net, buf1, len,
+ 			(struct sockaddr *)&key.addr,
+ 			sizeof(key.addr));
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index ed388aa..d6b5409 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -457,7 +457,7 @@ decode_ds_addr(struct xdr_stream *streamp, gfp_t gfp_flags)
+ 
+ 	INIT_LIST_HEAD(&da->da_node);
+ 
+-	if (!rpc_pton(buf, portstr-buf, (struct sockaddr *)&da->da_addr,
++	if (!rpc_pton(&init_net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
+ 		      sizeof(da->da_addr))) {
+ 		dprintk("%s: error parsing address %s\n", __func__, buf);
+ 		goto out_free_da;
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index bb80c49..85aa3da 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -98,7 +98,7 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ {
+ 	ssize_t ret;
+ 
+-	ret = rpc_pton(string, len, sa, salen);
++	ret = rpc_pton(&init_net, string, len, sa, salen);
+ 	if (ret == 0) {
+ 		ret = nfs_dns_resolve_name(string, len, sa, salen);
+ 		if (ret < 0)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 1347774..b31bdf4 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1392,7 +1392,7 @@ static int nfs_parse_mount_options(char *raw,
+ 			if (string == NULL)
+ 				goto out_nomem;
+ 			mnt->nfs_server.addrlen =
+-				rpc_pton(string, strlen(string),
++				rpc_pton(&init_net, string, strlen(string),
+ 					(struct sockaddr *)
+ 					&mnt->nfs_server.address,
+ 					sizeof(mnt->nfs_server.address));
+@@ -1414,7 +1414,7 @@ static int nfs_parse_mount_options(char *raw,
+ 			if (string == NULL)
+ 				goto out_nomem;
+ 			mnt->mount_server.addrlen =
+-				rpc_pton(string, strlen(string),
++				rpc_pton(&init_net, string, strlen(string),
+ 					(struct sockaddr *)
+ 					&mnt->mount_server.address,
+ 					sizeof(mnt->mount_server.address));
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index c45a2ea..f9d0599 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -222,7 +222,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
+ 	if (qword_get(&buf, fo_path, size) < 0)
+ 		return -EINVAL;
+ 
+-	if (rpc_pton(fo_path, size, sap, salen) == 0)
++	if (rpc_pton(&init_net, fo_path, size, sap, salen) == 0)
+ 		return -EINVAL;
+ 
+ 	return nlmsvc_unlock_all_by_ip(sap);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 3d8f9c4..877a466 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -162,7 +162,7 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ 
+ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+-size_t		rpc_pton(const char *, const size_t,
++size_t		rpc_pton(struct net *, const char *, const size_t,
+ 			 struct sockaddr *, const size_t);
+ char *		rpc_sockaddr2uaddr(const struct sockaddr *, gfp_t);
+ size_t		rpc_uaddr2sockaddr(const char *, const size_t,
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index c13a521..982fac7 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -230,6 +230,7 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
+ 
+ /**
+  * rpc_pton - Construct a sockaddr in @sap
++ * @net: applicable network namespace
+  * @buf: C string containing presentation format IP address
+  * @buflen: length of presentation address in bytes
+  * @sap: buffer into which to plant socket address
+@@ -242,14 +243,14 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
+  * socket address, if successful.  Returns zero if an error
+  * occurred.
+  */
+-size_t rpc_pton(const char *buf, const size_t buflen,
++size_t rpc_pton(struct net *net, const char *buf, const size_t buflen,
+ 		struct sockaddr *sap, const size_t salen)
+ {
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < buflen; i++)
+ 		if (buf[i] == ':')
+-			return rpc_pton6(&init_net, buf, buflen, sap, salen);
++			return rpc_pton6(net, buf, buflen, sap, salen);
+ 	return rpc_pton4(buf, buflen, sap, salen);
+ }
+ EXPORT_SYMBOL_GPL(rpc_pton);
+@@ -340,7 +341,7 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
+ 	port = (unsigned short)((porthi << 8) | portlo);
+ 
+ 	*c = '\0';
+-	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
++	if (rpc_pton(&init_net, buf, strlen(buf), sap, salen) == 0)
+ 		return 0;
+ 
+ 	switch (sap->sa_family) {
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index ce13632..a7d0141 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -211,7 +211,7 @@ static int ip_map_parse(struct cache_detail *cd,
+ 	len = qword_get(&mesg, buf, mlen);
+ 	if (len <= 0) return -EINVAL;
+ 
+-	if (rpc_pton(buf, len, &address.sa, sizeof(address)) == 0)
++	if (rpc_pton(&init_net, buf, len, &address.sa, sizeof(address)) == 0)
+ 		return -EINVAL;
+ 	switch (address.sa.sa_family) {
+ 	case AF_INET:
 
---b.
