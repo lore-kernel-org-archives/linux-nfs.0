@@ -1,67 +1,693 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:55144 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751642Ab1LFRBY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 12:01:24 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RXyOR-000580-63
-	for linux-nfs@vger.kernel.org; Tue, 06 Dec 2011 18:01:23 +0100
-Received: from NORTHWEST-R.car1.Denver1.Level3.net ([4.28.99.98])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 18:01:23 +0100
-Received: from orion by NORTHWEST-R.car1.Denver1.Level3.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 18:01:23 +0100
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:62066 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756339Ab1LGPSa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 10:18:30 -0500
+Received: by eaak14 with SMTP id k14so573811eaa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 07:18:28 -0800 (PST)
+From: Tom Gundersen <teg@jklm.no>
 To: linux-nfs@vger.kernel.org
-From: Orion Poplawski <orion@cora.nwra.com>
-Subject: rpc.gssd locks up with -vv or higher
-Date: Tue, 6 Dec 2011 17:01:13 +0000 (UTC)
-Message-ID: <loom.20111206T175726-323@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Cc: Tom Gundersen <teg@jklm.no>, Steve Dickson <steved@redhat.com>,
+        systemd-devel@lists.freedesktop.org
+Subject: [PATCH v2] rpcbind: add support for systemd socket activation
+Date: Wed,  7 Dec 2011 16:18:20 +0100
+Message-Id: <1323271100-3565-1-git-send-email-teg@jklm.no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See https://bugzilla.redhat.com/show_bug.cgi?id=667770
+Making rpcbind sockect activated will greatly simplify
+its integration in systemd systems. In essence, other services
+may now assume that rpcbind is always available, even during very
+early boot. This means that we no longer need to worry about any
+ordering dependencies.
 
-Running rpc.gssd with -vvv, it will eventually hang.  Back trace of hung process:
+This is based on a patch originally posted by Lennart Poettering:
+<http://permalink.gmane.org/gmane.linux.nfs/33774>.
 
-#0  0x00ae8416 in __kernel_vsyscall ()
-#1  0x004be5d1 in __lll_lock_wait_private () from /lib/libc.so.6
-#2  0x0044985c in _L_lock_12621 () from /lib/libc.so.6
-#3  0x00447797 in malloc () from /lib/libc.so.6
-#4  0x0043a398 in open_memstream () from /lib/libc.so.6
-#5  0x004a9ae5 in __vsyslog_chk () from /lib/libc.so.6
-#6  0x0017d15f in vsyslog (kind=512, 
-    fmt=0x1806cc "dir_notify_handler: sig %d si %p data %p\n", args=0xbfc03938
-"%")
-    at /usr/include/bits/syslog.h:48
-#7  xlog_backend (kind=512, fmt=0x1806cc "dir_notify_handler: sig %d si %p data
-%p\n", 
-    args=0xbfc03938 "%") at xlog.c:150
-#8  0x001777d4 in printerr (priority=2, 
-    format=0x1806cc "dir_notify_handler: sig %d si %p data %p\n") at
-err_util.c:64
-#9  0x00177c9e in dir_notify_handler (sig=37, si=0xbfc0396c, data=0xbfc039ec)
-    at gssd_main_loop.c:66
-#10 <signal handler called>
-#11 0x00444984 in _int_malloc () from /lib/libc.so.6
-#12 0x004477a0 in malloc () from /lib/libc.so.6
-#13 0x0046db77 in __alloc_dir () from /lib/libc.so.6
-#14 0x0046dc5a in opendir () from /lib/libc.so.6
-#15 0x0046e7ef in scandir64@@GLIBC_2.2 () from /lib/libc.so.6
-#16 0x00179285 in process_pipedir () at gssd_proc.c:565
-#17 update_client_list () at gssd_proc.c:594
-#18 0x00177f40 in gssd_run () at gssd_main_loop.c:216
-#19 0x00177bf9 in main (argc=2, argv=0xbfc04134) at gssd.c:187
+That patch was not merged due to the lack of a shared library and
+as systemd was seen to be too Fedora specific.
 
-Looks like malloc is getting called from a signal handler called while in a
-malloc call, which is verboten.  Not sure what the best way around this, but it
-looks like dir_notify_handler cannot call printerr.  I suppose this only occurs
-when -vv or greater is given.  Path looks a little different in 1.2.5, but looks
-like xlog_backend still calls vsyslog which can do the same thing.
+Systemd now provides a shared library, and it is shipped by defalt in
+OpenSUSE in addition to Fedora, and it is available in Debain, Gentoo,
+Arch, and others.
 
+This version of the patch has three changes from the original:
 
+ * It uses the shared library.
+ * It comes with unit files.
+ * It is rebased on top of master.
+
+Please review the patch with "git show -b" or otherwise ignoring the
+whitespace changes, or it will be extremely difficult to read.
+
+Comments welcome.
+
+Original-patch-by: Lennart Poettering <lennart@poettering.net>
+Cc: Steve Dickson <steved@redhat.com>
+Cc: systemd-devel@lists.freedesktop.org
+Signed-off-by: Tom Gundersen <teg@jklm.no>
+---
+ Makefile.am                |   15 ++
+ configure.in               |   11 +
+ src/rpcbind.c              |  465 +++++++++++++++++++++++++-------------------
+ systemd/.gitignore         |    1 +
+ systemd/rpcbind.service.in |    9 +
+ systemd/rpcbind.socket     |   10 +
+ 6 files changed, 313 insertions(+), 198 deletions(-)
+ create mode 100644 systemd/.gitignore
+ create mode 100644 systemd/rpcbind.service.in
+ create mode 100644 systemd/rpcbind.socket
+
+diff --git a/Makefile.am b/Makefile.am
+index 9fa608e..6211ac1 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -38,6 +38,21 @@ rpcbind_SOURCES = \
+ 	src/warmstart.c
+ rpcbind_LDADD = $(TIRPC_LIBS)
+ 
++if SYSTEMD
++AM_CPPFLAGS +=  $(SYSTEMD_CFLAGS)
++
++rpcbind_LDADD += $(SYSTEMD_LIBS)
++
++systemd/rpcbind.service: systemd/rpcbind.service.in Makefile
++	sed -e 's,@bindir\@,$(bindir),g' \
++		< $< > $@ || rm $@
++
++systemdsystemunit_DATA = \
++	systemd/rpcbind.service \
++	systemd/rpcbind.socket
++
++endif
++
+ rpcinfo_SOURCES =       src/rpcinfo.c
+ rpcinfo_LDADD   =       $(TIRPC_LIBS)
+ 
+diff --git a/configure.in b/configure.in
+index 2b67720..397d52d 100644
+--- a/configure.in
++++ b/configure.in
+@@ -29,6 +29,17 @@ AC_SUBST([rpcuser], [$with_rpcuser])
+  
+ PKG_CHECK_MODULES([TIRPC], [libtirpc])
+ 
++PKG_PROG_PKG_CONFIG
++AC_ARG_WITH([systemdsystemunitdir],
++  AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
++  [], [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
++  if test "x$with_systemdsystemunitdir" != xno; then
++    AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
++    PKG_CHECK_MODULES([SYSTEMD], [libsystemd-daemon])
++  fi
++AM_CONDITIONAL(SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
++
++
+ AS_IF([test x$enable_libwrap = xyes], [
+ 	AC_CHECK_LIB([wrap], [hosts_access], ,
+ 		AC_MSG_ERROR([libwrap support requested but unable to find libwrap]))
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index 24e069b..3d0bb8f 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -56,6 +56,9 @@
+ #include <netinet/in.h>
+ #endif
+ #include <arpa/inet.h>
++#ifdef SYSTEMD
++#include <systemd/sd-daemon.h>
++#endif
+ #include <fcntl.h>
+ #include <netdb.h>
+ #include <stdio.h>
+@@ -281,6 +284,7 @@ init_transport(struct netconfig *nconf)
+ 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
+ 	struct sockaddr_un sun;
+ 	mode_t oldmask;
++	int n = 0;
+         res = NULL;
+ 
+ 	if ((nconf->nc_semantics != NC_TPI_CLTS) &&
+@@ -300,141 +304,285 @@ init_transport(struct netconfig *nconf)
+ 	}
+ #endif
+ 
+-	/*
+-	 * XXX - using RPC library internal functions. For NC_TPI_CLTS
+-	 * we call this later, for each socket we like to bind.
+-	 */
+-	if (nconf->nc_semantics != NC_TPI_CLTS) {
+-		if ((fd = __rpc_nconf2fd(nconf)) < 0) {
+-			syslog(LOG_ERR, "cannot create socket for %s",
+-			    nconf->nc_netid);
+-			return (1);
+-		}
+-	}
+-
+ 	if (!__rpc_nconf2sockinfo(nconf, &si)) {
+ 		syslog(LOG_ERR, "cannot get information for %s",
+ 		    nconf->nc_netid);
+ 		return (1);
+ 	}
+ 
+-	if ((strcmp(nconf->nc_netid, "local") == 0) ||
+-	    (strcmp(nconf->nc_netid, "unix") == 0)) {
+-		memset(&sun, 0, sizeof sun);
+-		sun.sun_family = AF_LOCAL;
+-		unlink(_PATH_RPCBINDSOCK);
+-		strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
+-		addrlen = SUN_LEN(&sun);
+-		sa = (struct sockaddr *)&sun;
+-	} else {
+-		/* Get rpcbind's address on this transport */
+-
+-		memset(&hints, 0, sizeof hints);
+-		hints.ai_flags = AI_PASSIVE;
+-		hints.ai_family = si.si_af;
+-		hints.ai_socktype = si.si_socktype;
+-		hints.ai_protocol = si.si_proto;
++#ifdef SYSTEMD
++	n = sd_listen_fds(0);
++	if (n < 0) {
++		syslog(LOG_ERR, "failed to acquire systemd scokets: %s", strerror(-n));
++		return 1;
+ 	}
+-	if (nconf->nc_semantics == NC_TPI_CLTS) {
+-		/*
+-		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+-		 * make sure 127.0.0.1 is added to the list.
+-		 */
+-		nhostsbak = nhosts;
+-		nhostsbak++;
+-		hosts = realloc(hosts, nhostsbak * sizeof(char *));
+-		if (nhostsbak == 1)
+-			hosts[0] = "*";
+-		else {
+-			if (hints.ai_family == AF_INET) {
+-				hosts[nhostsbak - 1] = "127.0.0.1";
+-			} else if (hints.ai_family == AF_INET6) {
+-				hosts[nhostsbak - 1] = "::1";
+-			} else
++#endif
++
++	if (n > 0) {
++#ifdef SYSTEMD
++		int fd;
++
++		/* We have systemd sockets, now find those that match
++		 * our netconfig structure. */
++
++		for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
++			struct __rpc_sockinfo si_other;
++			union {
++				struct sockaddr sa;
++				struct sockaddr_un un;
++				struct sockaddr_in in4;
++				struct sockaddr_in6 in6;
++				struct sockaddr_storage storage;
++			} sa;
++			socklen_t addrlen = sizeof(sa);
++
++			if (!__rpc_fd2sockinfo(fd, &si_other)) {
++				syslog(LOG_ERR, "cannot get information for fd %i", fd);
+ 				return 1;
++			}
++
++			if (si.si_af != si_other.si_af ||
++                            si.si_socktype != si_other.si_socktype ||
++                            si.si_proto != si_other.si_proto)
++				continue;
++
++			if (getsockname(fd, &sa.sa, &addrlen) < 0) {
++				syslog(LOG_ERR, "failed to query socket name: %s",
++                                       strerror(errno));
++				goto error;
++			}
++
++			/* Copy the address */
++			taddr.addr.maxlen = taddr.addr.len = addrlen;
++			taddr.addr.buf = malloc(addrlen);
++			if (taddr.addr.buf == NULL) {
++				syslog(LOG_ERR,
++                                       "cannot allocate memory for %s address",
++                                       nconf->nc_netid);
++				goto error;
++			}
++			memcpy(taddr.addr.buf, &sa, addrlen);
++
++			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
++                                  RPC_MAXDATASIZE, RPC_MAXDATASIZE);
++			if (my_xprt == (SVCXPRT *)NULL) {
++				syslog(LOG_ERR, "%s: could not create service",
++                                       nconf->nc_netid);
++				goto error;
++			}
+ 		}
++#endif
++	} else {
+ 
+-	       /*
+-		* Bind to specific IPs if asked to
+-		*/
+-		checkbind = 0;
+-		while (nhostsbak > 0) {
+-			--nhostsbak;
+-			/*
+-			 * XXX - using RPC library internal functions.
+-			 */
++		/*
++		 * XXX - using RPC library internal functions. For NC_TPI_CLTS
++		 * we call this later, for each socket we like to bind.
++		 */
++		if (nconf->nc_semantics != NC_TPI_CLTS) {
+ 			if ((fd = __rpc_nconf2fd(nconf)) < 0) {
+ 				syslog(LOG_ERR, "cannot create socket for %s",
+ 				    nconf->nc_netid);
+ 				return (1);
+ 			}
+-			switch (hints.ai_family) {
+-			case AF_INET:
+-				if (inet_pton(AF_INET, hosts[nhostsbak],
+-				    host_addr) == 1) {
+-					hints.ai_flags &= AI_NUMERICHOST;
+-				} else {
+-					/*
+-					 * Skip if we have an AF_INET6 adress.
+-					 */
+-					if (inet_pton(AF_INET6,
+-					    hosts[nhostsbak], host_addr) == 1)
+-						continue;
++		}
++
++		if ((strcmp(nconf->nc_netid, "local") == 0) ||
++		    (strcmp(nconf->nc_netid, "unix") == 0)) {
++			memset(&sun, 0, sizeof sun);
++			sun.sun_family = AF_LOCAL;
++			unlink(_PATH_RPCBINDSOCK);
++			strcpy(sun.sun_path, _PATH_RPCBINDSOCK);
++			addrlen = SUN_LEN(&sun);
++			sa = (struct sockaddr *)&sun;
++		} else {
++			/* Get rpcbind's address on this transport */
++
++			memset(&hints, 0, sizeof hints);
++			hints.ai_flags = AI_PASSIVE;
++			hints.ai_family = si.si_af;
++			hints.ai_socktype = si.si_socktype;
++			hints.ai_protocol = si.si_proto;
++		}
++		if (nconf->nc_semantics == NC_TPI_CLTS) {
++			/*
++			 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
++			 * make sure 127.0.0.1 is added to the list.
++			 */
++			nhostsbak = nhosts;
++			nhostsbak++;
++			hosts = realloc(hosts, nhostsbak * sizeof(char *));
++			if (nhostsbak == 1)
++				hosts[0] = "*";
++			else {
++				if (hints.ai_family == AF_INET) {
++					hosts[nhostsbak - 1] = "127.0.0.1";
++				} else if (hints.ai_family == AF_INET6) {
++					hosts[nhostsbak - 1] = "::1";
++				} else
++					return 1;
++			}
++
++		       /*
++			* Bind to specific IPs if asked to
++			*/
++			checkbind = 0;
++			while (nhostsbak > 0) {
++				--nhostsbak;
++				/*
++				 * XXX - using RPC library internal functions.
++				 */
++				if ((fd = __rpc_nconf2fd(nconf)) < 0) {
++					syslog(LOG_ERR, "cannot create socket for %s",
++					    nconf->nc_netid);
++					return (1);
++				}
++				switch (hints.ai_family) {
++				case AF_INET:
++					if (inet_pton(AF_INET, hosts[nhostsbak],
++					    host_addr) == 1) {
++						hints.ai_flags &= AI_NUMERICHOST;
++					} else {
++						/*
++						 * Skip if we have an AF_INET6 adress.
++						 */
++						if (inet_pton(AF_INET6,
++						    hosts[nhostsbak], host_addr) == 1)
++							continue;
++					}
++					break;
++				case AF_INET6:
++					if (inet_pton(AF_INET6, hosts[nhostsbak],
++					    host_addr) == 1) {
++						hints.ai_flags &= AI_NUMERICHOST;
++					} else {
++						/*
++						 * Skip if we have an AF_INET adress.
++						 */
++						if (inet_pton(AF_INET, hosts[nhostsbak],
++						    host_addr) == 1)
++							continue;
++					}
++					break;
++				default:
++					break;
++				}
++
++				/*
++				 * If no hosts were specified, just bind to INADDR_ANY
++				 */
++				if (strcmp("*", hosts[nhostsbak]) == 0)
++					hosts[nhostsbak] = NULL;
++
++				if ((aicode = getaddrinfo(hosts[nhostsbak],
++				    servname, &hints, &res)) != 0) {
++				  if ((aicode = getaddrinfo(hosts[nhostsbak],
++							    "portmapper", &hints, &res)) != 0) {
++					syslog(LOG_ERR,
++					    "cannot get local address for %s: %s",
++					    nconf->nc_netid, gai_strerror(aicode));
++					continue;
++				  }
+ 				}
+-				break;
+-			case AF_INET6:
+-				if (inet_pton(AF_INET6, hosts[nhostsbak],
+-				    host_addr) == 1) {
+-					hints.ai_flags &= AI_NUMERICHOST;
+-				} else {
++				addrlen = res->ai_addrlen;
++				sa = (struct sockaddr *)res->ai_addr;
++				oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
++				if (bind(fd, sa, addrlen) != 0) {
++					syslog(LOG_ERR, "cannot bind %s on %s: %m",
++						(hosts[nhostsbak] == NULL) ? "*" :
++						hosts[nhostsbak], nconf->nc_netid);
++					if (res != NULL)
++						freeaddrinfo(res);
++					continue;
++				} else
++					checkbind++;
++				(void) umask(oldmask);
++
++				/* Copy the address */
++				taddr.addr.maxlen = taddr.addr.len = addrlen;
++				taddr.addr.buf = malloc(addrlen);
++				if (taddr.addr.buf == NULL) {
++					syslog(LOG_ERR,
++					    "cannot allocate memory for %s address",
++					    nconf->nc_netid);
++					if (res != NULL)
++						freeaddrinfo(res);
++					return 1;
++				}
++				memcpy(taddr.addr.buf, sa, addrlen);
++#ifdef RPCBIND_DEBUG
++				if (debugging) {
+ 					/*
+-					 * Skip if we have an AF_INET adress.
++					 * for debugging print out our universal
++					 * address
+ 					 */
+-					if (inet_pton(AF_INET, hosts[nhostsbak],
+-					    host_addr) == 1)
+-						continue;
++					char *uaddr;
++					struct netbuf nb;
++					int sa_size = 0;
++
++					nb.buf = sa;
++					switch( sa->sa_family){
++					case AF_INET:
++					  sa_size = sizeof (struct sockaddr_in);
++					  break;
++					case AF_INET6:
++					  sa_size = sizeof (struct sockaddr_in6);
++					  break;
++					}
++					nb.len = nb.maxlen = sa_size;
++					uaddr = taddr2uaddr(nconf, &nb);
++					(void) fprintf(stderr,
++					    "rpcbind : my address is %s\n", uaddr);
++					(void) free(uaddr);
++				}
++#endif
++				my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
++                                          RPC_MAXDATASIZE, RPC_MAXDATASIZE);
++				if (my_xprt == (SVCXPRT *)NULL) {
++					syslog(LOG_ERR, "%s: could not create service",
++                                               nconf->nc_netid);
++					goto error;
+ 				}
+-	        		break;
+-			default:
+-				break;
+ 			}
+-
+-			/*
+-			 * If no hosts were specified, just bind to INADDR_ANY
+-			 */
+-			if (strcmp("*", hosts[nhostsbak]) == 0)
+-				hosts[nhostsbak] = NULL;
+-
+-			if ((aicode = getaddrinfo(hosts[nhostsbak],
+-			    servname, &hints, &res)) != 0) {
+-			  if ((aicode = getaddrinfo(hosts[nhostsbak],
+-						    "portmapper", &hints, &res)) != 0) {
+-				syslog(LOG_ERR,
+-				    "cannot get local address for %s: %s",
+-				    nconf->nc_netid, gai_strerror(aicode));
+-				continue;
+-			  }
++			if (!checkbind)
++				return 1;
++		} else {	/* NC_TPI_COTS */
++			if ((strcmp(nconf->nc_netid, "local") != 0) &&
++			    (strcmp(nconf->nc_netid, "unix") != 0)) {
++				if ((aicode = getaddrinfo(NULL, servname, &hints, &res))!= 0) {
++				  if ((aicode = getaddrinfo(NULL, "portmapper", &hints, &res))!= 0) {
++				  printf("cannot get local address for %s: %s",  nconf->nc_netid, gai_strerror(aicode));
++				  syslog(LOG_ERR,
++					    "cannot get local address for %s: %s",
++					    nconf->nc_netid, gai_strerror(aicode));
++					return 1;
++				  }
++				}
++				addrlen = res->ai_addrlen;
++				sa = (struct sockaddr *)res->ai_addr;
+ 			}
+-			addrlen = res->ai_addrlen;
+-			sa = (struct sockaddr *)res->ai_addr;
+ 			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+-                        if (bind(fd, sa, addrlen) != 0) {
+-				syslog(LOG_ERR, "cannot bind %s on %s: %m",
+-					(hosts[nhostsbak] == NULL) ? "*" :
+-					hosts[nhostsbak], nconf->nc_netid);
++			__rpc_fd2sockinfo(fd, &si);
++			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
++					sizeof(on)) != 0) {
++				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
++					nconf->nc_netid);
+ 				if (res != NULL)
+ 					freeaddrinfo(res);
+-				continue;
+-			} else
+-				checkbind++;
++				return 1;
++			}
++			if (bind(fd, sa, addrlen) < 0) {
++				syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
++				if (res != NULL)
++					freeaddrinfo(res);
++				return 1;
++			}
+ 			(void) umask(oldmask);
+ 
+ 			/* Copy the address */
+-			taddr.addr.maxlen = taddr.addr.len = addrlen;
++			taddr.addr.len = taddr.addr.maxlen = addrlen;
+ 			taddr.addr.buf = malloc(addrlen);
+ 			if (taddr.addr.buf == NULL) {
+-				syslog(LOG_ERR,
+-				    "cannot allocate memory for %s address",
++				syslog(LOG_ERR, "cannot allocate memory for %s address",
+ 				    nconf->nc_netid);
+ 				if (res != NULL)
+ 					freeaddrinfo(res);
+@@ -443,116 +591,37 @@ init_transport(struct netconfig *nconf)
+ 			memcpy(taddr.addr.buf, sa, addrlen);
+ #ifdef RPCBIND_DEBUG
+ 			if (debugging) {
+-				/*
+-				 * for debugging print out our universal
+-				 * address
+-				 */
++				/* for debugging print out our universal address */
+ 				char *uaddr;
+ 				struct netbuf nb;
+-				int sa_size = 0;
++			        int sa_size2 = 0;
+ 
+ 				nb.buf = sa;
+ 				switch( sa->sa_family){
+ 				case AF_INET:
+-				  sa_size = sizeof (struct sockaddr_in);
++				  sa_size2 = sizeof (struct sockaddr_in);
+ 				  break;
+ 				case AF_INET6:
+-				  sa_size = sizeof (struct sockaddr_in6);				 
++				  sa_size2 = sizeof (struct sockaddr_in6);
+ 				  break;
+ 				}
+-				nb.len = nb.maxlen = sa_size;
++				nb.len = nb.maxlen = sa_size2;
+ 				uaddr = taddr2uaddr(nconf, &nb);
+-				(void) fprintf(stderr,
+-				    "rpcbind : my address is %s\n", uaddr);
++				(void) fprintf(stderr, "rpcbind : my address is %s\n",
++				    uaddr);
+ 				(void) free(uaddr);
+ 			}
+ #endif
+-			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, 
+-                                RPC_MAXDATASIZE, RPC_MAXDATASIZE);
++
++			listen(fd, SOMAXCONN);
++
++			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+ 			if (my_xprt == (SVCXPRT *)NULL) {
+-				syslog(LOG_ERR, "%s: could not create service", 
+-                                        nconf->nc_netid);
++				syslog(LOG_ERR, "%s: could not create service",
++						nconf->nc_netid);
+ 				goto error;
+ 			}
+ 		}
+-		if (!checkbind)
+-			return 1;
+-	} else {	/* NC_TPI_COTS */
+-		if ((strcmp(nconf->nc_netid, "local") != 0) &&
+-		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+-			if ((aicode = getaddrinfo(NULL, servname, &hints, &res))!= 0) {
+-			  if ((aicode = getaddrinfo(NULL, "portmapper", &hints, &res))!= 0) {
+-			  printf("cannot get local address for %s: %s",  nconf->nc_netid, gai_strerror(aicode));
+-			  syslog(LOG_ERR,
+-				    "cannot get local address for %s: %s",
+-				    nconf->nc_netid, gai_strerror(aicode));
+-				return 1;
+-			  }
+-			}
+-			addrlen = res->ai_addrlen;
+-			sa = (struct sockaddr *)res->ai_addr;
+-		}
+-		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+-		__rpc_fd2sockinfo(fd, &si);
+-		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
+-				sizeof(on)) != 0) {
+-			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+-				nconf->nc_netid);
+-			if (res != NULL)
+-				freeaddrinfo(res);
+-			return 1;
+-		}
+-		if (bind(fd, sa, addrlen) < 0) {
+-			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
+-			if (res != NULL)
+-				freeaddrinfo(res);
+-			return 1;
+-		}
+-		(void) umask(oldmask);
+-
+-		/* Copy the address */
+-		taddr.addr.len = taddr.addr.maxlen = addrlen;
+-		taddr.addr.buf = malloc(addrlen);
+-		if (taddr.addr.buf == NULL) {
+-			syslog(LOG_ERR, "cannot allocate memory for %s address",
+-			    nconf->nc_netid);
+-			if (res != NULL)
+-				freeaddrinfo(res);
+-			return 1;
+-		}
+-		memcpy(taddr.addr.buf, sa, addrlen);
+-#ifdef RPCBIND_DEBUG
+-		if (debugging) {
+-			/* for debugging print out our universal address */
+-			char *uaddr;
+-			struct netbuf nb;
+-		        int sa_size2 = 0;
+-
+-			nb.buf = sa;
+-			switch( sa->sa_family){
+-			case AF_INET:
+-			  sa_size2 = sizeof (struct sockaddr_in);
+-			  break;
+-			case AF_INET6:
+-			  sa_size2 = sizeof (struct sockaddr_in6);				 
+-			  break;
+-			}
+-			nb.len = nb.maxlen = sa_size2;
+-			uaddr = taddr2uaddr(nconf, &nb);
+-			(void) fprintf(stderr, "rpcbind : my address is %s\n",
+-			    uaddr);
+-			(void) free(uaddr);
+-		}
+-#endif
+-
+-		listen(fd, SOMAXCONN);
+-
+-		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+-		if (my_xprt == (SVCXPRT *)NULL) {
+-			syslog(LOG_ERR, "%s: could not create service",
+-					nconf->nc_netid);
+-			goto error;
+-		}
+ 	}
+ 
+ #ifdef PORTMAP
+diff --git a/systemd/.gitignore b/systemd/.gitignore
+new file mode 100644
+index 0000000..b7b4561
+--- /dev/null
++++ b/systemd/.gitignore
+@@ -0,0 +1 @@
++rpcbind.service
+diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+new file mode 100644
+index 0000000..21805ff
+--- /dev/null
++++ b/systemd/rpcbind.service.in
+@@ -0,0 +1,9 @@
++[Unit]
++Description=RPC Bind
++
++[Service]
++ExecStart=@bindir@/rpcbind -w
++
++[Install]
++WantedBy=multi-user.target
++Also=rpcbind.socket
+diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
+new file mode 100644
+index 0000000..35c94ea
+--- /dev/null
++++ b/systemd/rpcbind.socket
+@@ -0,0 +1,10 @@
++[Unit]
++Description=RPCbind Server Activation Socket
++Wants=rpcbind.target
++Before=rpcbind.target
++
++[Socket]
++ListenStream=/var/run/rpcbind.sock
++
++[Install]
++WantedBy=sockets.target
+-- 
+1.7.8
 
