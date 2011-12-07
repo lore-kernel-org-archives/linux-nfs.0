@@ -1,120 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24544 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752705Ab1LGI6D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 03:58:03 -0500
-Subject: [PATCH v2] NFSd: use network-namespace-aware cache registering
- routines
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 07 Dec 2011 12:57:56 +0300
-Message-ID: <20111207085741.7867.57700.stgit@localhost6.localdomain6>
+Received: from cn.fujitsu.com ([222.73.24.84]:58452 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753959Ab1LGAm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 19:42:28 -0500
+Message-ID: <4EDEB7AF.9040108@cn.fujitsu.com>
+Date: Wed, 07 Dec 2011 08:47:43 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] 4.1 CLNT: Test Case for OPEN file with claim_type is
+ CLAIM_FH
+References: <4EC46E76.5040907@cn.fujitsu.com> <20111122222632.GA23818@fieldses.org> <4ECC4A0A.9080601@cn.fujitsu.com> <4ED2F306.8070707@cn.fujitsu.com> <20111206222801.GG12640@fieldses.org>
+In-Reply-To: <20111206222801.GG12640@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: cache_register_net() and cache_unregister_net() GPL exports added
 
-This is a cleanup patch. Hope, some day generic cache_register() and
-cache_unregister() will be removed.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+J. Bruce Fields:
+> On Mon, Nov 28, 2011 at 10:33:42AM +0800, Mi Jinlong wrote:
+>> Hi Bruce,
+>>
+>>  Sorry for so late replying you.
+>>
+>> Mi Jinlong :
+>>> J. Bruce Fields:
+>>>> On Thu, Nov 17, 2011 at 10:16:22AM +0800, Mi Jinlong wrote:
+>>>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>>>>> ---
+>>>>>  nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
+>>>>>  1 files changed, 37 insertions(+), 1 deletions(-)
+>>>>>
+>>>>> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+>>>>> index bd995a5..87b58b3 100644
+>>>>> --- a/nfs4.1/server41tests/st_open.py
+>>>>> +++ b/nfs4.1/server41tests/st_open.py
+>>>>> @@ -1,6 +1,6 @@
+>>>>>  from st_create_session import create_session
+>>>>>  from nfs4_const import *
+>>>>> -from environment import check, checklist, fail, create_file, open_file
+>>>>> +from environment import check, checklist, fail, create_file, open_file, close_file
+>>>>>  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+>>>>>  from nfs4_type import creatverfattr, fattr4
+>>>>>  import nfs4_ops as op
+>>>>> @@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+>>>>>      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
+>>>>>                          verifier = "Justtest")
+>>>>>      check(res, NFS4ERR_EXIST)
+>>>>> +
+>>>>> +def testOPENClaimFH(t, env):
+>>>>> +    """OPEN file with claim_type is CLAIM_FH
+>>>>> +
+>>>>> +    FLAGS: open all
+>>>>> +    CODE: OPEN7
+>>>>> +    """
+>>>>> +    sess1 = env.c1.new_client_session(env.testname(t))
+>>>>> +    res = create_file(sess1, env.testname(t))
+>>>>> +    check(res)
+>>>>> +
+>>>>> +    fh = res.resarray[-1].object
+>>>>> +    stateid = res.resarray[-2].stateid
+>>>>> +    res = close_file(sess1, fh, stateid=stateid)
+>>>>> +    check(res)
+>>>>> +
+>>>>> +    claim = open_claim4(CLAIM_FH)
+>>>>> +    how = openflag4(OPEN4_NOCREATE)
+>>>>> +    oowner = open_owner4(0, "My Open Owner 2")
+>>>>> +    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
+>>>>> +                      oowner, how, claim)
+>>>>> +    res = sess1.compound([op.putfh(fh), open_op])
+>>>>> +    check(res)
+>>>> You could just stop here.  But I suppose I don't see a problem with
+>>>> doing some IO to the file too just to make sure the open is usable.
+>>>   Yes, that's right.
+> 
+> OK.
+> 
+>>>>> +
+>>>>> +    stateid = res.resarray[-1].stateid
+>>>>> +    stateid.seqid = 0
+>>>> Why are you modifying the seqid?
+>>   At any date writing or reading, seqid should be zero.
+>>   And, NFS client do as it. So, we set seqid = 0 here.
+> 
+> Ugh, I guess.  Seems a little ugly that every test-writer has to
+> manually set seqid to 0 before doing IO, but OK.
+> 
+>>>>> +    data = "write test data"
+>>>>> +    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
+>>>>> +    check(res)
+>>>>> +    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
+>>>>> +    check(res)
+>>>>> +    if not res.resarray[-1].eof:
+>>>>> +        fail("EOF not set on read")
+>>>>> +    desired = "\0"*5 + data
+>>>> Why the five nulls?  I don't understand this code....
+>>   Because we write data at offset 5 above, so there are five nulls exist.
+>>
+>> +    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
+> 
+> Oops, I must be blind, thanks for setting me straight!
+> 
+> Could you resend this?
 
----
- fs/nfsd/export.c    |   10 +++++-----
- fs/nfsd/nfs4idmap.c |   11 ++++++-----
- net/sunrpc/cache.c  |    2 ++
- 3 files changed, 13 insertions(+), 10 deletions(-)
+  OK, will resend.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 62f3b90..d1feeef 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1226,12 +1226,12 @@ nfsd_export_init(void)
- 	int rv;
- 	dprintk("nfsd: initializing export module.\n");
- 
--	rv = cache_register(&svc_export_cache);
-+	rv = cache_register_net(&svc_export_cache, &init_net);
- 	if (rv)
- 		return rv;
--	rv = cache_register(&svc_expkey_cache);
-+	rv = cache_register_net(&svc_expkey_cache, &init_net);
- 	if (rv)
--		cache_unregister(&svc_export_cache);
-+		cache_unregister_net(&svc_export_cache, &init_net);
- 	return rv;
- 
- }
-@@ -1255,8 +1255,8 @@ nfsd_export_shutdown(void)
- 
- 	dprintk("nfsd: shutting down export module.\n");
- 
--	cache_unregister(&svc_expkey_cache);
--	cache_unregister(&svc_export_cache);
-+	cache_unregister_net(&svc_expkey_cache, &init_net);
-+	cache_unregister_net(&svc_export_cache, &init_net);
- 	svcauth_unix_purge();
- 
- 	dprintk("nfsd: export shutdown complete.\n");
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 55780a2..9409627 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -36,6 +36,7 @@
- #include <linux/seq_file.h>
- #include <linux/sched.h>
- #include <linux/slab.h>
-+#include <net/net_namespace.h>
- #include "idmap.h"
- #include "nfsd.h"
- 
-@@ -466,20 +467,20 @@ nfsd_idmap_init(void)
- {
- 	int rv;
- 
--	rv = cache_register(&idtoname_cache);
-+	rv = cache_register_net(&idtoname_cache, &init_net);
- 	if (rv)
- 		return rv;
--	rv = cache_register(&nametoid_cache);
-+	rv = cache_register_net(&nametoid_cache, &init_net);
- 	if (rv)
--		cache_unregister(&idtoname_cache);
-+		cache_unregister_net(&idtoname_cache, &init_net);
- 	return rv;
- }
- 
- void
- nfsd_idmap_shutdown(void)
- {
--	cache_unregister(&idtoname_cache);
--	cache_unregister(&nametoid_cache);
-+	cache_unregister_net(&idtoname_cache, &init_net);
-+	cache_unregister_net(&nametoid_cache, &init_net);
- }
- 
- static int
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 72ad836..b8daa57 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1641,6 +1641,7 @@ int cache_register_net(struct cache_detail *cd, struct net *net)
- 		sunrpc_destroy_cache_detail(cd);
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(cache_register_net);
- 
- int cache_register(struct cache_detail *cd)
- {
-@@ -1653,6 +1654,7 @@ void cache_unregister_net(struct cache_detail *cd, struct net *net)
- 	remove_cache_proc_entries(cd, net);
- 	sunrpc_destroy_cache_detail(cd);
- }
-+EXPORT_SYMBOL_GPL(cache_unregister_net);
- 
- void cache_unregister(struct cache_detail *cd)
- {
+> 
+> (Also, is there anything else you're waiting for me to do?)
+
+  Thanks, no.
+
+thanks,
+Mi Jinlong
 
