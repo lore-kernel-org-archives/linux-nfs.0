@@ -1,100 +1,322 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16206 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25945 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751866Ab1LSMpN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 07:45:13 -0500
-Date: Tue, 20 Dec 2011 07:45:00 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <20111220074500.5d4cf286@tlielax.poochiereds.net>
-In-Reply-To: <4EEF2933.8090405@tonian.com>
-References: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
-	<1323974606-16477-5-git-send-email-jlayton@redhat.com>
-	<4EEF2933.8090405@tonian.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751469Ab1LGQ4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Dec 2011 11:56:12 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: sprabhu@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>, stable@kernel.org
+Subject: [PATCH Version 2 1/1] NFSv4: include bitmap in nfsv4 get acl data
+Date: Wed,  7 Dec 2011 11:55:27 -0500
+Message-Id: <1323276927-5459-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 19 Dec 2011 14:08:19 +0200
-Benny Halevy <bhalevy@tonian.com> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On 2011-12-15 20:43, Jeff Layton wrote:
-> > The daemon takes a versioned binary struct. Hopefully this should allow
-> > us to revise the struct later if it becomes necessary.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  include/linux/nfsd/cld.h |   57 ++++++++++++++++++++++++++++++++++++++++++++++
-> >  1 files changed, 57 insertions(+), 0 deletions(-)
-> >  create mode 100644 include/linux/nfsd/cld.h
-> > 
-> > diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-> > new file mode 100644
-> > index 0000000..d64a7e7
-> > --- /dev/null
-> > +++ b/include/linux/nfsd/cld.h
-> > @@ -0,0 +1,57 @@
-> > +/*
-> > + * fs/nfsd/cld.h - upcall description for nfsdcld communication
-> > + *
-> > + * Copyright (c) 2011 Red Hat, Inc.
-> > + * Author(s): Jeff Layton <jlayton@redhat.com>
-> > + *
-> > + *  This program is free software; you can redistribute it and/or modify
-> > + *  it under the terms of the GNU General Public License as published by
-> > + *  the Free Software Foundation; either version 2 of the License, or
-> > + *  (at your option) any later version.
-> > + *
-> > + *  This program is distributed in the hope that it will be useful,
-> > + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> > + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> > + *  GNU General Public License for more details.
-> > + *
-> > + *  You should have received a copy of the GNU General Public License
-> > + *  along with this program; if not, write to the Free Software
-> > + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-> > + */
-> > +
-> > +#ifndef _NFSD_CLD_H
-> > +#define _NFSD_CLD_H
-> > +
-> > +/* latest upcall version available */
-> > +#define CLD_MAX_UPCALL_VERSION 1
-> > +
-> > +/* defined by RFC3530 */
-> > +#define NFS4_OPAQUE_LIMIT 1024
-> > +
-> > +enum cld_command {
-> > +	Cld_Create,		/* create a record for this cm_id */
-> > +	Cld_Expire,		/* remove record for this cm_id */
-> > +	Cld_Allow,		/* is this cm_id allowed? */
-> > +	Cld_GraceDone,		/* grace period is complete */
-> > +	Cld_NrToReclaim,	/* how many client records need reclaim? */
-> > +};
-> > +
-> > +/* representation of long-form NFSv4 client ID */
-> > +struct cld_name {
-> > +	uint16_t	cn_len;				/* length of cm_id */
-> > +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-> > +} __attribute__((packed));
-> > +
-> > +/* message struct for communication with userspace */
-> > +struct cld_msg {
-> > +	uint8_t		cm_vers;		/* upcall version */
-> > +	uint8_t		cm_cmd;			/* upcall command */
-> > +	uint32_t	cm_xid;			/* transaction id */
-> > +	int16_t		cm_status;		/* return code */
-> 
-> How about swapping the xid and status members so they'd align better?
-> 
-> Benny
-> 
+The NFSv4 bitmap size is unbounded: a server can return an arbitrary
+sized bitmap in an FATTR4_WORD0_ACL request.  Replace using the
+nfs4_fattr_bitmap_maxsz as a guess to the maximum bitmask returned by a server
+with the inclusion of the bitmap (xdr length plus bitmasks) and the acl data
+xdr length to the (cached) acl page data.
 
-Good catch. I'll fix that in the next iteration.
+This is a general solution to commit e5012d1f "NFSv4.1: update
+nfs4_fattr_bitmap_maxsz" and fixes hitting a BUG_ON in xdr_shrink_bufhead
+when getting ACLs.
 
-Thanks,
+Fix a bug in decode_getacl that returned -EINVAL on ACLs > page when getxattr
+was called with a NULL buffer, preventing ACL > PAGE_SIZE from being retrieved.
+
+Cc: stable@kernel.org
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c          |   96 ++++++++++++++++++++++++++------------------
+ fs/nfs/nfs4xdr.c           |   31 ++++++++++----
+ include/linux/nfs_xdr.h    |    5 ++
+ include/linux/sunrpc/xdr.h |    2 +
+ net/sunrpc/xdr.c           |    3 +-
+ 5 files changed, 89 insertions(+), 48 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index be2bbac..2ecd7f0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3422,19 +3422,6 @@ static inline int nfs4_server_supports_acls(struct nfs_server *server)
+  */
+ #define NFS4ACL_MAXPAGES (XATTR_SIZE_MAX >> PAGE_CACHE_SHIFT)
+ 
+-static void buf_to_pages(const void *buf, size_t buflen,
+-		struct page **pages, unsigned int *pgbase)
+-{
+-	const void *p = buf;
+-
+-	*pgbase = offset_in_page(buf);
+-	p -= *pgbase;
+-	while (p < buf + buflen) {
+-		*(pages++) = virt_to_page(p);
+-		p += PAGE_CACHE_SIZE;
+-	}
+-}
+-
+ static int buf_to_pages_noslab(const void *buf, size_t buflen,
+ 		struct page **pages, unsigned int *pgbase)
+ {
+@@ -3531,9 +3518,19 @@ out:
+ 	nfs4_set_cached_acl(inode, acl);
+ }
+ 
++/*
++ * The getxattr API returns the required buffer length when called with a
++ * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
++ * the required buf.  On a NULL buf, we send a page of data to the server
++ * guessing that the ACL request can be serviced by a page. If so, we cache
++ * up to the page of ACL data, and the 2nd call to getxattr is serviced by
++ * the cache. If not so, we throw away the page, and cache the required
++ * length. The next getxattr call will then produce another round trip to
++ * the server, this time with the input buf of the required size.
++ */
+ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+ {
+-	struct page *pages[NFS4ACL_MAXPAGES];
++	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
+ 	struct nfs_getaclargs args = {
+ 		.fh = NFS_FH(inode),
+ 		.acl_pages = pages,
+@@ -3548,41 +3545,60 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
+-	struct page *localpage = NULL;
+-	int ret;
++	int ret = -ENOMEM, npages, i, acl_len = 0;
+ 
+-	if (buflen < PAGE_SIZE) {
+-		/* As long as we're doing a round trip to the server anyway,
+-		 * let's be prepared for a page of acl data. */
+-		localpage = alloc_page(GFP_KERNEL);
+-		resp_buf = page_address(localpage);
+-		if (localpage == NULL)
+-			return -ENOMEM;
+-		args.acl_pages[0] = localpage;
+-		args.acl_pgbase = 0;
+-		args.acl_len = PAGE_SIZE;
+-	} else {
+-		resp_buf = buf;
+-		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
++	npages = (buflen + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	/* As long as we're doing a round trip to the server anyway,
++	 * let's be prepared for a page of acl data. */
++	if (npages == 0)
++		npages = 1;
++
++	for (i = 0; i < npages; i++) {
++		pages[i] = alloc_page(GFP_KERNEL);
++		if (!pages[i])
++			goto out_free;
++	}
++	if (npages > 1) {
++		/* for decoding across pages */
++		args.acl_scratch = alloc_page(GFP_KERNEL);
++		if (!args.acl_scratch)
++			goto out_free;
+ 	}
+-	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
++	args.acl_len = npages * PAGE_SIZE;
++	args.acl_pgbase = 0;
++	/* Let decode_getfacl know not to fail if the ACL data is larger than
++	 * the page we send as a guess */
++	if (buf == NULL)
++		res.acl_flags |= NFS4_ACL_LEN_REQUEST;
++	resp_buf = page_address(pages[0]);
++
++	dprintk("%s  buf %p buflen %ld npages %d args.acl_len %ld\n",
++		__func__, buf, buflen, npages, args.acl_len);
++	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
++			     &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (ret)
+ 		goto out_free;
+-	if (res.acl_len > args.acl_len)
+-		nfs4_write_cached_acl(inode, NULL, res.acl_len);
++
++	acl_len = res.acl_len - res.acl_data_offset;
++	if (acl_len > args.acl_len)
++		nfs4_write_cached_acl(inode, NULL, acl_len);
+ 	else
+-		nfs4_write_cached_acl(inode, resp_buf, res.acl_len);
++		nfs4_write_cached_acl(inode, resp_buf + res.acl_data_offset,
++				      acl_len);
+ 	if (buf) {
+ 		ret = -ERANGE;
+-		if (res.acl_len > buflen)
++		if (acl_len > buflen)
+ 			goto out_free;
+-		if (localpage)
+-			memcpy(buf, resp_buf, res.acl_len);
++		_copy_from_pages(buf, pages, res.acl_data_offset,
++				res.acl_len);
+ 	}
+-	ret = res.acl_len;
++	ret = acl_len;
+ out_free:
+-	if (localpage)
+-		__free_page(localpage);
++	for (i = 0; i < npages; i++)
++		if (pages[i])
++			__free_page(pages[i]);
++	if (args.acl_scratch)
++		__free_page(args.acl_scratch);
+ 	return ret;
+ }
+ 
+@@ -3613,6 +3629,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+ 		nfs_zap_acl_cache(inode);
+ 	ret = nfs4_read_cached_acl(inode, buf, buflen);
+ 	if (ret != -ENOENT)
++		/* -ENOENT is returned if there is no ACL or if there is an ACL
++		 * but no cached acl data, just the acl length */
+ 		return ret;
+ 	return nfs4_get_acl_uncached(inode, buf, buflen);
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e6161b2..dcaf693 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2517,11 +2517,13 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+-	replen = hdr.replen + op_decode_hdr_maxsz + nfs4_fattr_bitmap_maxsz + 1;
++	replen = hdr.replen + op_decode_hdr_maxsz + 1;
+ 	encode_getattr_two(xdr, FATTR4_WORD0_ACL, 0, &hdr);
+ 
+ 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+ 		args->acl_pages, args->acl_pgbase, args->acl_len);
++	xdr_set_scratch_buffer(xdr, page_address(args->acl_scratch), PAGE_SIZE);
++
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -4957,17 +4959,18 @@ decode_restorefh(struct xdr_stream *xdr)
+ }
+ 
+ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+-		size_t *acl_len)
++			 struct nfs_getaclres *res)
+ {
+-	__be32 *savep;
++	__be32 *savep, *bm_p;
+ 	uint32_t attrlen,
+ 		 bitmap[3] = {0};
+ 	struct kvec *iov = req->rq_rcv_buf.head;
+ 	int status;
+ 
+-	*acl_len = 0;
++	res->acl_len = 0;
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+ 		goto out;
++	bm_p = xdr->p;
+ 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
+ 		goto out;
+ 	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
+@@ -4979,18 +4982,30 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 		size_t hdrlen;
+ 		u32 recvd;
+ 
++		/* The bitmap (xdr len + bitmaps) and the attr xdr len words
++		 * are stored with the acl data to handle the problem of
++		 * variable length bitmaps.*/
++		xdr->p = bm_p;
++		res->acl_data_offset = be32_to_cpup(bm_p) + 2;
++		res->acl_data_offset <<= 2;
++
+ 		/* We ignore &savep and don't do consistency checks on
+ 		 * the attr length.  Let userspace figure it out.... */
+ 		hdrlen = (u8 *)xdr->p - (u8 *)iov->iov_base;
++		attrlen += res->acl_data_offset;
+ 		recvd = req->rq_rcv_buf.len - hdrlen;
+ 		if (attrlen > recvd) {
+-			dprintk("NFS: server cheating in getattr"
+-					" acl reply: attrlen %u > recvd %u\n",
++			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
++				/* getxattr interface called with a NULL buf */
++				res->acl_len = attrlen;
++				goto out;
++			}
++			dprintk("NFS: acl reply: attrlen %u > recvd %u\n",
+ 					attrlen, recvd);
+ 			return -EINVAL;
+ 		}
+ 		xdr_read_pages(xdr, attrlen);
+-		*acl_len = attrlen;
++		res->acl_len = attrlen;
+ 	} else
+ 		status = -EOPNOTSUPP;
+ 
+@@ -6028,7 +6043,7 @@ nfs4_xdr_dec_getacl(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_getacl(xdr, rqstp, &res->acl_len);
++	status = decode_getacl(xdr, rqstp, res);
+ 
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2a7c533..6c898af 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -602,11 +602,16 @@ struct nfs_getaclargs {
+ 	size_t				acl_len;
+ 	unsigned int			acl_pgbase;
+ 	struct page **			acl_pages;
++	struct page *			acl_scratch;
+ 	struct nfs4_sequence_args 	seq_args;
+ };
+ 
++/* getxattr ACL interface flags */
++#define NFS4_ACL_LEN_REQUEST	0x0001	/* zero length getxattr buffer */
+ struct nfs_getaclres {
+ 	size_t				acl_len;
++	size_t				acl_data_offset;
++	int				acl_flags;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index a20970e..af70af3 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -191,6 +191,8 @@ extern int xdr_decode_array2(struct xdr_buf *buf, unsigned int base,
+ 			     struct xdr_array2_desc *desc);
+ extern int xdr_encode_array2(struct xdr_buf *buf, unsigned int base,
+ 			     struct xdr_array2_desc *desc);
++extern void _copy_from_pages(char *p, struct page **pages, size_t pgbase,
++			     size_t len);
+ 
+ /*
+  * Provide some simple tools for XDR buffer overflow-checking etc.
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 277ebd4..593f4c6 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -296,7 +296,7 @@ _copy_to_pages(struct page **pages, size_t pgbase, const char *p, size_t len)
+  * Copies data into an arbitrary memory location from an array of pages
+  * The copy is assumed to be non-overlapping.
+  */
+-static void
++void
+ _copy_from_pages(char *p, struct page **pages, size_t pgbase, size_t len)
+ {
+ 	struct page **pgfrom;
+@@ -324,6 +324,7 @@ _copy_from_pages(char *p, struct page **pages, size_t pgbase, size_t len)
+ 
+ 	} while ((len -= copy) != 0);
+ }
++EXPORT_SYMBOL_GPL(_copy_from_pages);
+ 
+ /*
+  * xdr_shrink_bufhead
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.6.4
+
