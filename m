@@ -1,48 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f53.google.com ([209.85.216.53]:51857 "EHLO
-	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753570Ab1LWTrM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 14:47:12 -0500
-Received: by qadb15 with SMTP id b15so6236728qad.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 11:47:11 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] autoconf: clean up linking in nfs-utils
-Date: Fri, 23 Dec 2011 14:47:02 -0500
-Message-Id: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+Received: from mg.narl.org.tw ([140.110.32.154]:42907 "HELO mg.narl.org.tw"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1755050Ab1LGMuP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Dec 2011 07:50:15 -0500
+Message-ID: <4EDF5F94.80208@nchc.org.tw>
+Date: Wed, 07 Dec 2011 20:44:04 +0800
+From: Steven Shiau <steven@nchc.org.tw>
+MIME-Version: 1.0
+To: Anibal Monsalve Salazar <anibal@debian.org>
+CC: Steve Dickson <SteveD@redhat.com>, Kevin Coffman <kwc@umich.edu>,
+        linux-nfs@vger.kernel.org, Michael Rasmussen <mir@datanom.net>,
+        651032@bugs.debian.org, Rares Aioanei <schaiba@gmail.com>,
+        649491@bugs.debian.org, Bjoern Buerger <bbu@pengutronix.de>,
+        650904@bugs.debian.org, 650948@bugs.debian.org
+Subject: Re: Bug#651032: /usr/sbin/rpc.idmapd: rpc.idmapd referring to none
+ existing library
+References: <20111205071808.5626.67399.reportbug@sleipner.datanom.net> <20111205082520.GA5890@debian.org> <4EDCE8B2.1050702@RedHat.com> <20111205184206.GA5207@debian.org> <4EDD27AB.9010803@RedHat.com>
+In-Reply-To: <4EDD27AB.9010803@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is a cleanup of the linking in nfs-utils. This should
-reduce the number of unnecessary libraries that each of the binaries are
-linked against.
+Anibal,
+I confirm this issue is gone in 0.24-4. Cool! Thanks!
+========================================
+$ sudo apt-get install nfs-common
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following extra packages will be installed:
+  libnfsidmap2
+The following NEW packages will be installed:
+  libnfsidmap2 nfs-common
+0 upgraded, 2 newly installed, 0 to remove and 1 not upgraded.
+Need to get 304 kB of archives.
+After this operation, 752 kB of additional disk space will be used.
+Do you want to continue [Y/n]?
+Get:1 http://free.nchc.org.tw/debian/ sid/main libnfsidmap2 i386 0.24-4
+[28.5 kB]
+Get:2 http://free.nchc.org.tw/debian/ sid/main nfs-common i386
+1:1.2.5-2+b1 [276 kB]
+Fetched 304 kB in 0s (1,284 kB/s)
+Selecting previously unselected package libnfsidmap2.
+(Reading database ... 139229 files and directories currently installed.)
+Unpacking libnfsidmap2 (from .../libnfsidmap2_0.24-4_i386.deb) ...
+Selecting previously unselected package nfs-common.
+Unpacking nfs-common (from .../nfs-common_1%3a1.2.5-2+b1_i386.deb) ...
+Processing triggers for man-db ...
+Setting up libnfsidmap2 (0.24-4) ...
+Setting up nfs-common (1:1.2.5-2+b1) ...
 
-I've tested this on relatively recent machines with --enable-tirpc and
---disable-tirpc and it seems to do the right thing. But, as there are a
-lot of possible combinations, it's difficult to know if this will break
-more obscure setups. For that reason, this should probably go in fairly
-soon to ensure that it gets plenty of testing.
+Creating config file /etc/idmapd.conf with new version
 
-Jeff Layton (3):
-  autoconf: fix up libevent autoconf test
-  autoconf: don't let libnfsidmap test add -lnfsidmap to $LIBS
-  autoconf: only link binaries that need it to libtirpc
+Creating config file /etc/default/nfs-common with new version
+Starting NFS common utilities: statd idmapd.
+========================================
 
- aclocal/libevent.m4         |    3 ++-
- aclocal/libnfsidmap.m4      |    9 ++++++---
- aclocal/libtirpc.m4         |   15 +++++++++++++--
- tools/rpcgen/Makefile.am    |    1 +
- utils/gssd/Makefile.am      |    6 +++---
- utils/idmapd/Makefile.am    |    2 +-
- utils/mount/Makefile.am     |    3 ++-
- utils/mountd/Makefile.am    |    2 +-
- utils/nfsd/Makefile.am      |    2 +-
- utils/nfsidmap/Makefile.am  |    2 +-
- utils/showmount/Makefile.am |    3 ++-
- utils/statd/Makefile.am     |    4 ++--
- 12 files changed, 35 insertions(+), 17 deletions(-)
+Steven.
 
 -- 
-1.7.7.4
-
+Steven Shiau <steven _at_ nchc org tw> <steven _at_ stevenshiau org>
+National Center for High-performance Computing, Taiwan.
+http://www.nchc.org.tw
+Public Key Server PGP Key ID: 1024D/9762755A
+Fingerprint: A2A1 08B7 C22C 3D06 34DB  F4BC 08B3 E3D7 9762 755A
