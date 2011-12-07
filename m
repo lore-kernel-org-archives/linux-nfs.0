@@ -1,82 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:44130 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753114Ab1LVSbD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 13:31:03 -0500
-Received: by vcbfk14 with SMTP id fk14so6781575vcb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Dec 2011 10:31:02 -0800 (PST)
-MIME-Version: 1.0
-Date: Thu, 22 Dec 2011 13:31:02 -0500
-Message-ID: <CAOO4vO7nfROsXh6r6NTPF9MtXXNH0LawT=TfxXUea=wae3tYxw@mail.gmail.com>
-Subject: NFSv4 empty RPC thrashing?
-From: Paul Anderson <pha@umich.edu>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:37225 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755709Ab1LGOI5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 09:08:57 -0500
+Received: by faar15 with SMTP id r15so101455faa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 06:08:55 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
 To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
+Date: Wed,  7 Dec 2011 16:08:47 +0200
+Message-Id: <1323266927-3686-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Issue: extremely high rate packets like so (tcpdump):
+I am trying to build a pnfs client on a 32 bit system  and the
+pnfs-latest  kernel fails to compile. I get the following error
 
-16:31:09.308678 IP (tos 0x0, ttl 64, id 41517, offset 0, flags [DF],
-proto TCP (6), length 144)
-    r20.xxx.edu.1362383749 > nfsb.xxx.edu.nfs: 88 null
-16:31:09.308895 IP (tos 0x0, ttl 64, id 22578, offset 0, flags [DF],
-proto TCP (6), length 100)
-    nfsb.xxx.edu.nfs > r20.xxx.edu.1362383749: reply ok 44 null
-16:31:09.308926 IP (tos 0x0, ttl 64, id 41518, offset 0, flags [DF],
-proto TCP (6), length 192)
-    r20.xxx.edu.1379160965 > nfsb.xxx.edu.nfs: 136 null
+ >  Building modules, stage 2.
+ >  TEST    posttest
+ > MODPOST 2046 modules
+ >ERROR: "__udivdi3" [crypto/xor.ko] undefined!
+ >make[1]: *** [__modpost] Error 1
+ >make: *** [modules] Error 2
+ >make: *** Waiting for unfinished jobs....
+ >Succeed: decoded and checked 1244492 instructions
 
-All linux kernels are from kernel.org, version 2.6.38.5 with the
-addition of Mosix.  All userland is Ubuntu 10.04LTS.
+Reported-by: Rita Sequeira <rita.prajval@gmail.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
 
-Scenario: the compute cluster is composed of 50-60 compute nodes, and
-10 or so head nodes that act as compute/login and high rate NFS
-serving, for the purpose of largely sequential processing of high
-volume genetic sequencing data (one recent job was 50-70TiBytes in, 50
-TiBytes out).  We see this problem regularly (two servers are
-currently being hit this way right now), and is apparently cleared
-only on reboot of the server.
+untested patch yet...
 
-Something in our use of the cluster appears to be triggering what
-looks like a race condition in the NFSv4 client/server communications.
- This issue prevents us from using NFS reliably in our cluster.
-Although we do very high I/O at times, this alone does not appear to
-be the trigger.  It is possibly a related to a problem of having SLURM
-starting 200-300 jobs at once, where each job hits a common NFS
-fileserver for the program binaries, for example.  In our cluster
-testing, this appears to reliably cause about half the jobs to fail
-while loading the program itself - they hang in D state indefinitely,
-but are killable.
+ crypto/xor.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Looking at dozens of clients, we can do tcpdump, and see messages
-similar to the above being sent at a high rate from the gigabit
-connected compute nodes - the main indication being a context switch
-rate of 20-30K per second.  The 10 gigabit connected server is
-functioning, but seeing context switch rates of 200-300K per second -
-an exceptional rate that appears to slow down NFS services for all
-other users.  I have not done any extensive packet capture to
-determine actual traffic rates, but am pretty sure it is limited by
-wire speed and CPU.
+diff --git a/crypto/xor.c b/crypto/xor.c
+index 65433f5..2151ded 100644
+--- a/crypto/xor.c
++++ b/crypto/xor.c
+@@ -95,7 +95,8 @@
+ 
+ 	ns_end -= ns_begin;
+ 	if (ns_end > 0)
+-		speed = BENCH_SIZE / 1024 * count * NSEC_PER_SEC / ns_end;
++		speed = BENCH_SIZE / 1024 * count *
++				(unsigned)(NSEC_PER_SEC / ns_end);
+ 	else
+ 		speed = 17;
+ 	tmpl->speed = speed;
+-- 
+1.7.6
 
-The client nodes in this scenario are not actively being used - some
-show zero processes in D state, others show dozens of jobs stuck in D
-state (these jobs are unkillable) - the NFSv4 server shows nfsd jobs
-running flat out.
-
-Mount commands look like this:
-for h in $servers do ;
-    mount -t nfs4 -o rw,soft,intr,nodev,nosuid,async ${h}:/ /net/$h
-done
-
-The NFSv4 servers all start using stock Ubuntu 10.04 setup - no tuning
-has been done.
-
-We can trivially get packet captures with more packets, but they are
-all similar - 15-20 client nodes all pounding one NFS server node.
-
-Any guesses as to what we can try?
-
-Thanks,
-
-Paul Anderson
