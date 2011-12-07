@@ -1,83 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:37344 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753965Ab1LLU61 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:58:27 -0500
-Received: by eaaj10 with SMTP id j10so849664eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 12:58:26 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v4 3/3] nfsd41: consume current stateid on read and write
-Date: Mon, 12 Dec 2011 22:00:27 +0100
-Message-Id: <1323723627-413-4-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from cn.fujitsu.com ([222.73.24.84]:64602 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755184Ab1LGAuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Dec 2011 19:50:37 -0500
+Message-ID: <4EDEB9A7.8060406@cn.fujitsu.com>
+Date: Wed, 07 Dec 2011 08:56:07 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] 4.1 CLNT: Test Case for OPEN file with claim_type is CLAIM_FH
+References: <4EC46E76.5040907@cn.fujitsu.com>
+In-Reply-To: <4EC46E76.5040907@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+Open NFS file with filehandle, write some data to the opened file,
+read and check it.
 
-
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 ---
- fs/nfsd/current_stateid.h |    2 ++
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   12 ++++++++++++
- 3 files changed, 16 insertions(+), 0 deletions(-)
+ nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 37 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index 21550b6..6e54d19 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
-  */
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
-+extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
-+extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
- 
- #endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 90c532b..1d2c8d5 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1550,6 +1550,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_READ",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
- 	},
- 	[OP_READDIR] = {
- 		.op_func = (nfsd4op_func)nfsd4_readdir,
-@@ -1628,6 +1629,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_name = "OP_WRITE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
- 	},
- 	[OP_RELEASE_LOCKOWNER] = {
- 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 58410b2..50d7ad0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4599,3 +4599,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
- {
- 	get_stateid(cstate, &locku->lu_stateid);
- }
+diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+index bd995a5..87b58b3 100644
+--- a/nfs4.1/server41tests/st_open.py
++++ b/nfs4.1/server41tests/st_open.py
+@@ -1,6 +1,6 @@
+ from st_create_session import create_session
+ from nfs4_const import *
+-from environment import check, checklist, fail, create_file, open_file
++from environment import check, checklist, fail, create_file, open_file, close_file
+ from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+ from nfs4_type import creatverfattr, fattr4
+ import nfs4_ops as op
+@@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+     res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
+                         verifier = "Justtest")
+     check(res, NFS4ERR_EXIST)
 +
-+void
-+nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
-+{
-+	get_stateid(cstate, &read->rd_stateid);
-+}
++def testOPENClaimFH(t, env):
++    """OPEN file with claim_type is CLAIM_FH
 +
-+void
-+nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
-+{
-+	get_stateid(cstate, &write->wr_stateid);
-+}
++    FLAGS: open all
++    CODE: OPEN7
++    """
++    sess1 = env.c1.new_client_session(env.testname(t))
++    res = create_file(sess1, env.testname(t))
++    check(res)
++
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++    res = close_file(sess1, fh, stateid=stateid)
++    check(res)
++
++    claim = open_claim4(CLAIM_FH)
++    how = openflag4(OPEN4_NOCREATE)
++    oowner = open_owner4(0, "My Open Owner 2")
++    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
++                      oowner, how, claim)
++    res = sess1.compound([op.putfh(fh), open_op])
++    check(res)
++
++    stateid = res.resarray[-1].stateid
++    stateid.seqid = 0
++    data = "write test data"
++    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
++    check(res)
++    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
++    check(res)
++    if not res.resarray[-1].eof:
++        fail("EOF not set on read")
++    desired = "\0"*5 + data
++    if res.resarray[-1].data != desired:
++        fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
 -- 
-1.7.7.4
+1.7.7
+
 
