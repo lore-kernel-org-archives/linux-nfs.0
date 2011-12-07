@@ -1,38 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:53196 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751756Ab1LDMFC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:05:02 -0500
-Received: by wgbds13 with SMTP id ds13so4656918wgb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:05:01 -0800 (PST)
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:35962 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756099Ab1LGOfd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 09:35:33 -0500
+Received: by eekd41 with SMTP id d41so527027eek.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 06:35:32 -0800 (PST)
+Message-ID: <4EDF79AF.6050002@gmail.com>
+Date: Wed, 07 Dec 2011 16:35:27 +0200
+From: Rares Aioanei <schaiba@gmail.com>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-Date: Sun, 4 Dec 2011 13:05:01 +0100
-Message-ID: <CAGue13ruqa5mA+AELVSeR5Uxdb62mUsSxycOzZajzEZC6GP5Tw@mail.gmail.com>
-Subject: [PATCH 0/2] nfsv41: add current_stateid processing
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Steven Shiau <steven@nchc.org.tw>
+CC: Anibal Monsalve Salazar <anibal@debian.org>,
+        Steve Dickson <SteveD@redhat.com>, Kevin Coffman <kwc@umich.edu>,
+        linux-nfs@vger.kernel.org, Michael Rasmussen <mir@datanom.net>,
+        651032@bugs.debian.org, 649491@bugs.debian.org,
+        Bjoern Buerger <bbu@pengutronix.de>, 650904@bugs.debian.org,
+        650948@bugs.debian.org
+Subject: Re: Bug#651032: /usr/sbin/rpc.idmapd: rpc.idmapd referring to none
+ existing library
+References: <20111205071808.5626.67399.reportbug@sleipner.datanom.net> <20111205082520.GA5890@debian.org> <4EDCE8B2.1050702@RedHat.com> <20111205184206.GA5207@debian.org> <4EDD27AB.9010803@RedHat.com> <4EDF5F94.80208@nchc.org.tw>
+In-Reply-To: <4EDF5F94.80208@nchc.org.tw>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-current_stateid processing will allow clients to construct compounds
-like OPEN + READ + CLOSE or OPEN +LAYOUTGET.
+I can confirm the problem as solved with 0.25-1. Thank you.
 
-As dCache server marks all layouts return-on-close, any open to a file followed
-by LAYOUTGET. A combined compound will allow to do the same in one go.
 
-Currently linux client doesn't support it. But before we can get such
-functionality
-linux server have to support it as well. Here is an attempt to add it.
 
-I made a dirty test with pynfs with to test OPEN+CLOSE in a single compound.
-If I read nfsd code correctly, READ and WRITE have to work as well. I
-will refactor
-pynfs a bit to easily construct such tests.
+-- 
+Rares Aioanei
 
-This is patches for preview to be sure that other server developers
-are happy with
-my approach before I change much more.
-
-Tigran.
