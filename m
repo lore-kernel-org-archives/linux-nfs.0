@@ -1,106 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:58878 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751495Ab1LUJYR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 04:24:17 -0500
-Received: by wibhm6 with SMTP id hm6so1827799wib.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Dec 2011 01:24:15 -0800 (PST)
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:45132 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755798Ab1LGORz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 09:17:55 -0500
+Received: by faar15 with SMTP id r15so105347faa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 06:17:54 -0800 (PST)
+Message-ID: <4EDF758D.6040406@tonian.com>
+Date: Wed, 07 Dec 2011 16:17:49 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-Date: Wed, 21 Dec 2011 10:24:15 +0100
-Message-ID: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
-Subject: Session timeout on RHEL6.2
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: multipart/mixed; boundary=f46d043be05e5feaa704b496bfcc
+To: tigran.mkrtchyan@desy.de
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
+References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de> <4EDB6AA3.1030702@tonian.com> <20111206020851.GA4486@fieldses.org> <4EDDFBCD.3010608@tonian.com> <CAGue13r9EZJLco0OsfoPH4eyn7Txa0OJqBPavw5cFoiBPN3=2g@mail.gmail.com> <20111206134014.GB8657@fieldses.org> <4EDE278B.6020406@tonian.com> <CAGue13qBy-dcv9KQ9xmpSQqX95m5V5GUTUAdgzwO_Ld=77R+ew@mail.gmail.com>
+In-Reply-To: <CAGue13qBy-dcv9KQ9xmpSQqX95m5V5GUTUAdgzwO_Ld=77R+ew@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---f46d043be05e5feaa704b496bfcc
-Content-Type: text/plain; charset=UTF-8
+On 2011-12-06 20:24, Tigran Mkrtchyan wrote:
+> Ok, I think  I know what to do. I will update patches later today or tomorrw.
 
-Dear friends,
+Great!  Thanks much for picking this up!
 
-We are observing strange behavior with RHEL 6.2:
+Benny
 
-Our the server lease time is 90 seconds. I can see that client
-sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
-At some point client sends SEQUENCE after 127 seconds and
-gets, as expected, EXPIRED.
-
-I this point I have to blame myself.
-Client comes with EXCHANGE_ID using the same clientid.
-We did not garbage collected clientid internally as this happens after
-2*LEASE_TIME
-and return EXPIRE. This ping-pong never ends.
-
-This is probably mostly a bug on my side. Nevertheless we never observed late
-SEQUENCE with kernel > 2.6.39. A short packet dump attached.
-
-I can open bug at RHEL if required.
-
-Regards,
-   Tigran.
-
---f46d043be05e5feaa704b496bfcc
-Content-Type: application/octet-stream; name="sequence.dump"
-Content-Disposition: attachment; filename="sequence.dump"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gwg3pfq90
-
-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
---f46d043be05e5feaa704b496bfcc--
+> 
+> Tigran.
+> 
+> On Tue, Dec 6, 2011 at 3:32 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>> On 2011-12-06 15:40, J. Bruce Fields wrote:
+>>> On Tue, Dec 06, 2011 at 02:31:14PM +0100, Tigran Mkrtchyan wrote:
+>>>> On Tue, Dec 6, 2011 at 12:26 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+>>>>> On 2011-12-06 04:08, J. Bruce Fields wrote:
+>>>>>> On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
+>>>>>>> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
+>>>>>>>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>>>>>>>> ---
+>>>>>>>>  fs/nfsd/nfs4proc.c  |    6 ++++++
+>>>>>>>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
+>>>>>>>>  2 files changed, 26 insertions(+), 6 deletions(-)
+>>>>>>>>
+>>>>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>>>>>>>> index fa38336..535aed2 100644
+>>>>>>>> --- a/fs/nfsd/nfs4proc.c
+>>>>>>>> +++ b/fs/nfsd/nfs4proc.c
+>>>>>>>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>>>>>>>      */
+>>>>>>>>     status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
+>>>>>>>>     WARN_ON(status && open->op_created);
+>>>>>>>> +
+>>>>>>>> +   if(status)
+>>>>>>>> +           goto out;
+>>>>>>>> +
+>>>>>>>> +   /* set current state id */
+>>>>>>>> +   memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
+>>>>>>
+>>>>>> That comment is a bit redundant.
+>>>>>>
+>>>>>>> Since this should be done for all stateid-returning operations
+>>>>>>> I think that a cleaner approach could be to mark those as such in
+>>>>>>> nfsd4_ops by providing a per-op function to return the operation's
+>>>>>>> stateid.  You can then call this method from nfsd4_proc_compound()
+>>>>>>> after the call to nfsd4_encode_operation() and when status == 0.
+>>>>>>
+>>>>>> So the choice is between
+>>>>>>
+>>>>>> +       memcpy(&cstate->current_stateid, &open->op_stateid,
+>>>>>> sizeof(stateid_t));
+>>>>>>
+>>>>>> and
+>>>>>>
+>>>>>> +       static void get_open_stateid(stateid_t *s)
+>>>>>> +       {
+>>>>>> +               memcpy(s, open->op_stateid);
+>>>>>> +       }
+>>>>>> +
+>>>>>> +       [OP_OPEN] = {
+>>>>>> +               ...
+>>>>>> +               .op_get_stateid = get_open_stateid,
+>>>>>> +               ...
+>>>>>> +       }
+>>>>>>
+>>>>>> ?
+>>>>>>
+>>>>>> I'm not so sure.
+>>>>>
+>>>>> The point is to copy the result stateid into the current_stateid
+>>>>> in a centralized place: nfsd4_proc_compound() and do that for all
+>>>>> stateid-modifying operations.
+>>>>
+>>>> Sounds good, nevertheless all operations call differently resulting
+>>>> stateid which make it's not possible to use a unified schema.
+>>
+>> That was the point of introducing a per-op method to get the value.
+>>
+>>>
+>>> Could we just remove all (or most) of those different fields and replace
+>>> them by cstate->current_stateid?
+>>
+>> Hmm, that will require changing the corresponding xdr result encoding
+>> routines to use the new field and all other use sites, but I don't think
+>> of a good reason why this won't work.
+>>
+>> Benny
+>>
+>>>
+>>> --b.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
