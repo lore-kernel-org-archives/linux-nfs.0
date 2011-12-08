@@ -1,59 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3638 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757211Ab1LNN5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 08:57:13 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvDQ8026816
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:13 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3b005913
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:13 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/7] clstated: reattempt the pipe open if it fails on ENOENT
-Date: Wed, 14 Dec 2011 08:57:07 -0500
-Message-Id: <1323871032-3191-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:13908 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757092Ab1LHDcl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 22:32:41 -0500
+From: <tao.peng@emc.com>
+To: <bharrosh@panasas.com>
+CC: <bergwolf@gmail.com>, <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+Date: Wed, 7 Dec 2011 22:32:05 -0500
+Subject: RE: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
+Message-ID: <F19688880B763E40B28B2B462677FBF805E5044437@MX09A.corp.emc.com>
+References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
+ <4ED62857.7090804@tonian.com>
+ <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com>
+ <4ED6D5D8.9010801@panasas.com>
+ <F19688880B763E40B28B2B462677FBF805E5043E4B@MX09A.corp.emc.com>
+ <4ED7BA55.8010200@panasas.com>
+ <F19688880B763E40B28B2B462677FBF805E5043F8B@MX09A.corp.emc.com>
+ <4EDF737A.2080400@panasas.com>
+In-Reply-To: <4EDF737A.2080400@panasas.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Generally, we want this daemon started before nfsd starts. Deal with the
-situation where the pipe hasn't shown up yet.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/clstated/clstated.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
-
-diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
-index 93a2710..aab09a7 100644
---- a/utils/clstated/clstated.c
-+++ b/utils/clstated/clstated.c
-@@ -75,10 +75,17 @@ usage(char *progname)
- static int
- clstate_pipe_open(struct clstate_client *clnt)
- {
--	clnt->cl_fd = open(pipepath, O_RDWR, 0);
--	if (clnt->cl_fd < 0) {
--		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
--		return clnt->cl_fd;
-+	/* loop until the pipe is present or open fails for another reason */
-+	for (;;) {
-+		clnt->cl_fd = open(pipepath, O_RDWR, 0);
-+		if (clnt->cl_fd >= 0) {
-+			break;
-+		} else if (errno != ENOENT) {
-+			xlog(D_GENERAL, "%s: unable to open %s: %m", __func__,
-+					pipepath);
-+			return clnt->cl_fd;
-+		}
-+		sleep(1);
- 	}
- 
- 	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, clstatecb, clnt);
--- 
-1.7.1
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBXZWRuZXNkYXksIERlY2VtYmVyIDA3
+LCAyMDExIDEwOjA5IFBNDQo+IFRvOiBQZW5nLCBUYW8NCj4gQ2M6IGJlcmd3b2xmQGdtYWlsLmNv
+bTsgYmhhbGV2eUB0b25pYW4uY29tOyBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbTsgbGludXgt
+bmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogW1BBVENILVJFU0VORCA0LzRdIHBu
+ZnNibG9jazogZG8gbm90IGFzayBmb3IgbGF5b3V0IGluIHBnX2luaXQNCj4gDQo+IE9uIDEyLzAy
+LzIwMTEgMDY6NTkgQU0sIHRhby5wZW5nQGVtYy5jb20gd3JvdGU6DQo+ID4+DQo+ID4gSSdtIHNv
+cnJ5IGJ1dCBJIGRvbid0IGdldCBpdC4uLiBIb3cgZG8geW91IGNvdW50IHRoZSBmaXJzdCBjb250
+aWd1b3VzDQo+ID4gY2h1bmsgaW4gLnBnX2luaXQ/IEFsbCB5b3Uga25vdyBhdCAucGdfaW5pdCBp
+cyBhbiBlbXB0eSBpbyBkZXNjIGFuZA0KPiA+IGFuIG5mcyBwYWdlLiBBcmUgeW91IGdvaW5nIHRv
+IHNjYW4gdGhlIHJhZGl4IHRyZWUgYW5kIGZpbmQgdGhlIG5leHQNCj4gPiBwYWdlIHRoYXQgd3Jp
+dGVfY2FjaGVfcGFnZXMgaXMgZ29pbmcgdG8gZmx1c2ggb3V0PyBJIGRvbid0IHJlYWxseQ0KPiA+
+IHRoaW5rIGFueW9uZSB3aWxsIGFncmVlIG9uIGl0Li4uIFBsZWFzZSBsb29rIGludG8gdGhlIHNl
+Y29uZCBwYXJ0IG9mDQo+ID4geW91ciBzb2x1dGlvbiBhbmQgdGhlbiB5b3UnbGwgc2VlIHdoeSBJ
+IGFtIHdvcnJpZWQgdGhhdCBpdCBtYXkgbmV2ZXINCj4gPiBnZXQgZG9uZS4+DQo+ID4gQmVzdCBS
+ZWdhcmRzLA0KPiA+IFRhbw0KPiA+DQo+IA0KPiBScnJyLCBvbmUgdGhpbmcgSSBjYW5ub3QgZG8g
+aXMgbWFrZSBzb21lIG9uZSB1bmRlcnN0YW5kLg0KPiANCj4gSSBndWVzcyBJJ2xsIGhhdmUgdG8g
+ZG8gaXQgbXkgc2VsZi4gSXQncyBzbyBzaW1wbGUgSSdtIGdvJ25lIGNyeS4NCj4gDQo+IEkgaGF2
+ZSBtb3JlIHByZXNzZWQgdGhpbmdzIG9uIG15IHBsYXRlIHRoZW4gZml4IGJyb2tlbiBibG9ja3Mg
+c2VydmVycw0KPiBidXQgeW91IGFyZSBmb3JjaW5nIG15IGhhbmRzLiBUaGUgbGFzdCBjb2RlIHlv
+dSBzZW50IGlzIG5vdCBhY2NlcHRhYmxlDQo+IGJlY2F1c2UgaXQgaXMgdG90YWxseSBub3QgdXNh
+YmxlIGJ5IG9iamVjdHMgYW5kIGZpbGVzIChzZWdtZW50cykuDQo+IA0KPiBHaXZlIG1lIGEgd2Vl
+ay4gTm90IHRoYXQgaXQgc2hvdWxkIHRha2UgbG9uZ2VyIHRoZW4gYW4gaG91ciBidXQNCj4gYmVj
+YXVzZSBJIGhhdmUgYnVybmluZyBtYXR0ZXJzIHRvIGF0dGVuZCB0byBmaXJzdC4NCj4gDQpPSy4g
+TGV0J3Mgd2FpdCBhbmQgc2VlIHlvdXIgcGF0Y2hlcy4gSSdkIGJlIHJlYWxseSBpbnRlcmVzdGVk
+IGluIGhvdyB5b3UgY291bnQgcGFnZXMgaW4gcGdfaW5pdCB3aGVyZSB0aGUgcGFnZSBsaXN0IGRv
+ZXNuJ3QgZXZlbiBleGlzdC4gQW5kIHBsZWFzZSBkb24ndCBkaXNhcHBvaW50IG1lIHdpdGggc29t
+ZSB3aWxkIGd1ZXNzIHZpYSBucGFnZXMuDQoNClRhbw0KDQo+IEJvYXoNCj4gDQo+ID4+IEJvYXoN
+Cj4gPj4gLS0NCj4gPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxp
+bmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdl
+IHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBh
+dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4NCj4gDQo+
+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
+YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
+bW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2Vy
+Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
