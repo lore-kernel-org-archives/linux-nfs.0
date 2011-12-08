@@ -1,41 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from frankvm.xs4all.nl ([83.163.148.79]:60756 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932491Ab1LEQuX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 11:50:23 -0500
-Date: Mon, 5 Dec 2011 17:50:21 +0100
-From: Frank van Maarseveen <frankvm@frankvm.com>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: 3.1.4: NFSv3 RPC scheduling issue?
-Message-ID: <20111205165021.GA24165@janus>
+Received: from fieldses.org ([174.143.236.118]:44138 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751481Ab1LHVJb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Dec 2011 16:09:31 -0500
+Date: Thu, 8 Dec 2011 16:09:30 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] 4.1 CLNT: Test Case for OPEN file with claim_type
+ is CLAIM_FH
+Message-ID: <20111208210930.GD32505@fieldses.org>
+References: <4EC46E76.5040907@cn.fujitsu.com>
+ <4EDEB9A7.8060406@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EDEB9A7.8060406@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After upgrading 50+ NFSv3 (over UDP) client machines from 3.0.x to
-3.1.4 I occasionally noticed a machine with lots of processes hanging
-in __rpc_execute() for a specific mount point with no progress at all.
-Stack:
+On Wed, Dec 07, 2011 at 08:56:07AM +0800, Mi Jinlong wrote:
+> Open NFS file with filehandle, write some data to the opened file,
+> read and check it.
 
-	[<c17fe7e0>] schedule+0x30/0x50
-	[<c177e259>] rpc_wait_bit_killable+0x19/0x30
-	[<c17feeb5>] __wait_on_bit+0x45/0x70
-	[<c177e240>] ? rpc_release_task+0x110/0x110
-	[<c17fef3d>] out_of_line_wait_on_bit+0x5d/0x70
-	[<c177e240>] ? rpc_release_task+0x110/0x110
-	[<c108aed0>] ? autoremove_wake_function+0x40/0x40
-	[<c177e89b>] __rpc_execute+0xdb/0x1a0
-	...
+OK, thanks, applied.--b.
 
-Every reference to the specific mount point on the client machine hangs
-and the server does not receive any related network traffic. The server
-works fine for other identical client machines with the same export mounted.
-Other mounts on the (now) broken client still work. Killing the hanging
-client processes repairs the situation.
-
-This has happened a couple of times on client machines with heavy (NFS)
-load. The mount-point has originally been mounted by the automounter.
-
--- 
-Frank
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
+>  1 files changed, 37 insertions(+), 1 deletions(-)
+> 
+> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+> index bd995a5..87b58b3 100644
+> --- a/nfs4.1/server41tests/st_open.py
+> +++ b/nfs4.1/server41tests/st_open.py
+> @@ -1,6 +1,6 @@
+>  from st_create_session import create_session
+>  from nfs4_const import *
+> -from environment import check, checklist, fail, create_file, open_file
+> +from environment import check, checklist, fail, create_file, open_file, close_file
+>  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+>  from nfs4_type import creatverfattr, fattr4
+>  import nfs4_ops as op
+> @@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
+>      res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
+>                          verifier = "Justtest")
+>      check(res, NFS4ERR_EXIST)
+> +
+> +def testOPENClaimFH(t, env):
+> +    """OPEN file with claim_type is CLAIM_FH
+> +
+> +    FLAGS: open all
+> +    CODE: OPEN7
+> +    """
+> +    sess1 = env.c1.new_client_session(env.testname(t))
+> +    res = create_file(sess1, env.testname(t))
+> +    check(res)
+> +
+> +    fh = res.resarray[-1].object
+> +    stateid = res.resarray[-2].stateid
+> +    res = close_file(sess1, fh, stateid=stateid)
+> +    check(res)
+> +
+> +    claim = open_claim4(CLAIM_FH)
+> +    how = openflag4(OPEN4_NOCREATE)
+> +    oowner = open_owner4(0, "My Open Owner 2")
+> +    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
+> +                      oowner, how, claim)
+> +    res = sess1.compound([op.putfh(fh), open_op])
+> +    check(res)
+> +
+> +    stateid = res.resarray[-1].stateid
+> +    stateid.seqid = 0
+> +    data = "write test data"
+> +    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
+> +    check(res)
+> +    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
+> +    check(res)
+> +    if not res.resarray[-1].eof:
+> +        fail("EOF not set on read")
+> +    desired = "\0"*5 + data
+> +    if res.resarray[-1].data != desired:
+> +        fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
+> -- 
+> 1.7.7
+> 
+> 
