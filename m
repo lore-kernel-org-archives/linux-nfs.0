@@ -1,63 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-3.desy.de ([131.169.56.86]:43962 "EHLO
-	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752243Ab1LHQ4a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2011 11:56:30 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id DF5CA129B
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Dec 2011 17:56:28 +0100 (MET)
-Received: from ZITSWEEP3.win.desy.de (zitsweep3.win.desy.de [131.169.97.97])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id D09511295
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Dec 2011 17:56:26 +0100 (MET)
-Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP3.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta12b3a785283a96161fa0@ZITSWEEP3.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Thu, 8 Dec 2011 17:56:26 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 1/2] create open requests without executing
-Date: Thu,  8 Dec 2011 17:51:51 +0100
-Message-Id: <1323363112-13256-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from fieldses.org ([174.143.236.118]:45129 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751615Ab1LHUqv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Dec 2011 15:46:51 -0500
+Date: Thu, 8 Dec 2011 15:46:48 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH 0/4] SUNRPC: pass network namespace context to sockaddr
+ construction routines
+Message-ID: <20111208204648.GB32505@fieldses.org>
+References: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Dec 07, 2011 at 03:20:07PM +0300, Stanislav Kinsbursky wrote:
+> This is another precursor patch set aimed to remove hard-coded "init_net"
+> reference from SUNRPC sockaddr convertion and construction routines.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.1/server41tests/environment.py |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+ACK--all look straightforward.  (Only complaint would be that this isn't
+terribly interesting till we see how these are used.)
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index 6e68e83..6f3bd0a 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -453,6 +453,17 @@ def open_create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
- 		     deleg_type=None,
- 		     open_create=OPEN4_NOCREATE,
- 		     seqid=0, clientid=0):
-+    return sess.compound(open_create_file_op())
-+
-+def open_create_file_op(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-+                     access=OPEN4_SHARE_ACCESS_BOTH,
-+                     deny=OPEN4_SHARE_DENY_NONE,
-+		     mode=GUARDED4, verifier=None,
-+		     claim_type=CLAIM_NULL,
-+		     want_deleg=False,
-+		     deleg_type=None,
-+		     open_create=OPEN4_NOCREATE,
-+		     seqid=0, clientid=0):
-     # Set defaults
-     if path is None:
-         dir = sess.c.homedir
-@@ -485,7 +496,7 @@ def open_create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-     open_op = op.open(seqid, access, deny, open_owner4(clientid, owner),
-                       openflag, openclaim)
- 
--    return sess.compound(fh_op + [open_op, op.getfh()])
-+    return fh_op + [open_op, op.getfh()]
- 
- def create_file(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-                 access=OPEN4_SHARE_ACCESS_BOTH,
--- 
-1.7.7
+--b.
 
+
+> 
+> The following series consists of:
+> 
+> ---
+> 
+> Stanislav Kinsbursky (4):
+>       SUNRPC: use passed network namespace context in rpc_parse_scope_id()
+>       SUNRPC: use passed network namespace context in rpc_pton6()
+>       SUNRPC: use passed network namespace context in rpc_pton()
+>       SUNRPC: use passed network namespace context in rpc_uaddr2sockaddr()
+> 
+> 
+>  fs/nfs/dns_resolve.c        |    4 ++--
+>  fs/nfs/nfs4filelayoutdev.c  |    2 +-
+>  fs/nfs/nfs4namespace.c      |    2 +-
+>  fs/nfs/super.c              |    4 ++--
+>  fs/nfsd/nfs4state.c         |    2 +-
+>  fs/nfsd/nfsctl.c            |    2 +-
+>  include/linux/sunrpc/clnt.h |    4 ++--
+>  net/sunrpc/addr.c           |   24 +++++++++++++-----------
+>  net/sunrpc/rpcb_clnt.c      |    2 +-
+>  net/sunrpc/svcauth_unix.c   |    2 +-
+>  10 files changed, 25 insertions(+), 23 deletions(-)
+> 
+> -- 
+> Signature
