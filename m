@@ -1,45 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20344 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753437Ab1L2LtV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Dec 2011 06:49:21 -0500
-Message-ID: <4EFC539E.4050008@parallels.com>
-Date: Thu, 29 Dec 2011 15:48:46 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
- named one
-References: <4EFB330A.7070908@parallels.com> <20111228182213.GA10220@fieldses.org>
-In-Reply-To: <20111228182213.GA10220@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from acsinet15.oracle.com ([141.146.126.227]:26078 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752420Ab1LHVkd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2011 16:40:33 -0500
+Subject: Re: [RFC][PATCH] libtirpc,rpcbind: move socket from /var/run to /run
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1323371940-9140-1-git-send-email-teg@jklm.no>
+Date: Thu, 8 Dec 2011 16:40:21 -0500
+Cc: linux-nfs@vger.kernel.org, Kay Sievers <kay.sievers@vrfy.org>
+Message-Id: <76A6354E-54A6-4088-9425-B6BB2CE3C92B@oracle.com>
+References: <1323371940-9140-1-git-send-email-teg@jklm.no>
+To: Tom Gundersen <teg@jklm.no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-28.12.2011 22:22, bfields@fieldses.org пишет:
-> On Wed, Dec 28, 2011 at 07:17:30PM +0400, Stanislav Kinsbursky wrote:
->> I've experienced a problem with registering Lockd service with
->> rpcbind in container. My container operates in it's own network
->> namespace context and has it's own root. But on service register,
->> kernel tries to connect to named unix socket by using
->> rpciod_workqueue. Thus any connect is done with the same fs->root,
->
-> There's no way to pass the correct context down to the rpc task and from
-> there to the registration code?
->
 
-This context is current->fs->root. It's used to lookup unix socket inode by name 
-on connect.
-Obviously, current is always "rpciod_workqueue" kernel thread. And thus has the 
-same root.
-The only solution how to pass and use the context, which I can see, is to expand 
-sock_xprt with a pointer to corrent root and then set this root before 
-kernel_connect() and set the old one after.
-But this looks ugly and too complicated for the issue, from my pow.
-Or maybe you have some more elegant solution to this problem?
+On Dec 8, 2011, at 2:19 PM, Tom Gundersen wrote:
+
+> /run is guaranteed to be available and writeable at any time, whereas
+> /var might be on a separate partition and hence not available during
+> early boot. By moving the socket from /var to /run we are able to use
+> rpcbind earlier, which would in particular make a difference in case
+> /var is on an nfs mount, something I am currently seeing bug reports
+> about.
+
+I don't understand this part.  /var should be mounted with "nolock" so there should not be a need to have rpcbind running.  Can you explain what this is about?
+
+> This change should not make a difference to software that currently
+> works as intended, as /var/run should be a symlink or bindmounted
+> to /run, so anyone relying on the socket being in /var/run will
+> still find it there.
+
+Even the kernel?
+
+> The /run directory is supported by all the major distributions
+> (at least Debian, Fedora, Suse, Ubuntu and Arch from what I can gather).
+> See http://wiki.debian.org/ReleaseGoals/RunDirectory and
+> http://thread.gmane.org/gmane.linux.redhat.fedora.devel/146976 for some
+> more details.
+> 
+> Cc: Kay Sievers <kay.sievers@vrfy.org>
+> Signed-off-by: Tom Gundersen <teg@jklm.no>
+> ---
+> tirpc/rpc/rpcb_prot.h |    2 +-
+> tirpc/rpc/rpcb_prot.x |    2 +-
+> 2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tirpc/rpc/rpcb_prot.h b/tirpc/rpc/rpcb_prot.h
+> index 7ae48b8..63b4a2c 100644
+> --- a/tirpc/rpc/rpcb_prot.h
+> +++ b/tirpc/rpc/rpcb_prot.h
+> @@ -476,7 +476,7 @@ extern bool_t xdr_netbuf(XDR *, struct netbuf *);
+> #define RPCBVERS_3 RPCBVERS
+> #define RPCBVERS_4 RPCBVERS4
+> 
+> -#define _PATH_RPCBINDSOCK "/var/run/rpcbind.sock"
+> +#define _PATH_RPCBINDSOCK "/run/rpcbind.sock"
+> 
+> #else /* ndef _KERNEL */
+> #ifdef __cplusplus
+> diff --git a/tirpc/rpc/rpcb_prot.x b/tirpc/rpc/rpcb_prot.x
+> index b21ac3d..ebe1e60 100644
+> --- a/tirpc/rpc/rpcb_prot.x
+> +++ b/tirpc/rpc/rpcb_prot.x
+> @@ -410,7 +410,7 @@ program RPCBPROG {
+> %#define	RPCBVERS_3		RPCBVERS
+> %#define	RPCBVERS_4		RPCBVERS4
+> %
+> -%#define	_PATH_RPCBINDSOCK	"/var/run/rpcbind.sock"
+> +%#define	_PATH_RPCBINDSOCK	"/run/rpcbind.sock"
+> %
+> %#else		/* ndef _KERNEL */
+> %#ifdef __cplusplus
+> -- 
+> 1.7.8
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
