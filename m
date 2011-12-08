@@ -1,69 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from frankvm.xs4all.nl ([83.163.148.79]:60897 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752720Ab1LLUa3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:30:29 -0500
-Date: Mon, 12 Dec 2011 21:30:27 +0100
-From: Frank van Maarseveen <frankvm@frankvm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: NFS - lock failover
-Message-ID: <20111212203027.GA5068@janus>
-References: <CAA-yEOJ+5NssoCOAXzeCNOCkbbACn0qHrj-BtmMRYwxZFDZgxg@mail.gmail.com>
- <20111201172415.GA27626@janus>
- <20111209103646.GA1061@janus>
- <20111212195613.GC20826@fieldses.org>
+Received: from che.mayfirst.org ([209.234.253.108]:44965 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750739Ab1LHPiA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2011 10:38:00 -0500
+Received: from pip.fifthhorseman.net (lair.fifthhorseman.net [108.58.6.98])
+	by che.mayfirst.org (Postfix) with ESMTPSA id 047A3F970
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Dec 2011 10:29:30 -0500 (EST)
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+To: linux-nfs@vger.kernel.org
+Subject: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out Please check user daemon is running
+Date: Thu, 08 Dec 2011 10:29:42 -0500
+Message-ID: <8762hrozdl.fsf@fifthhorseman.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111212195613.GC20826@fieldses.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 02:56:13PM -0500, J. Bruce Fields wrote:
-> On Fri, Dec 09, 2011 at 11:36:46AM +0100, Frank van Maarseveen wrote:
-> > On Thu, Dec 01, 2011 at 06:24:16PM +0100, Frank van Maarseveen wrote:
-> > > On Thu, Dec 01, 2011 at 07:07:22PM +0200, Pavel A wrote:
-> > > > Hi everyone!
-> > > > 
-> > > > I was trying not to create new topics, but it seems that posting to an
-> > > > old one doesn't bring it up. Here is the original topic I'm referring
-> > > > to: http://comments.gmane.org/gmane.linux.nfs/13108
-> > > > 
-> > > > I'm building an A/A cluster using NFS v3 and local file systems, and
-> > > > looking for
-> > > > efficient ways for failover (for now I have to restart nfs-kernel-server on
-> > > > Takeover node to be able to initiate grace period), so the discussed solutions
-> > > > are very interesting to me.
-> > > > 
-> > > > Now (4 years after) in current nfs-utils packages (v. 1.2.2-4 and later) I can
-> > > > see that the ability to release locks was really implemented and is
-> > > > working well
-> > > > (I mean interfaces /proc/fs/nfsd/unlock_ip and
-> > > > /proc/fs/nfsd/unlock_filesystem),
-> > > > but how about reacquiring locks on the node, share migrates to? - I've been
-> > > > going through various mailing lists and found a lot of discussions on the topic
-> > > > (also dated mainly 2007), but don't seem to find any rpc-based mechanism or
-> > > > interface like /proc/fs/nfsd/nlm_set_grace to do that, was it ever made?
-> > > 
-> > > I've posted a patch some time ago implementing
-> > > /proc/fs/nfsd/relock_filesystem:
-> > > 
-> > > 	http://permalink.gmane.org/gmane.linux.nfs/42360
-> > > 	http://permalink.gmane.org/gmane.linux.nfs/42361
-> > > 	http://permalink.gmane.org/gmane.linux.nfs/42362
-> > 
-> > Can this patch be scheduled for inclusion in mainline (3.3)?
-> 
-> Could you resend and I'll take another look?
+--=-=-=
+Content-Type: text/plain
 
-I'll check it again but except for one fuzz it should still apply on
-3.2-rc. Patch offsets and an incidental fuzz is sometimes informative
-about possible conflict areas. It has been verified on 3.0 and 3.1
+Hello Linux-NFS folks--
 
-> 
-> But this should really be fixed to handle v4 locks as well.
+I've got an nfs4 server running linux kernel 3.1.1 with nfs-utils 1.2.4.
 
-Why do you think it doesn't?
+When an NFSv4 client connects to the server using sec=krb5p, the kernel
+emits:
 
--- 
-Frank
+[ 3505.754807] RPC: AUTH_GSS upcall timed out.
+[ 3505.754810] Please check user daemon is running.
+
+It's true, i don't have rpc.gssd running on the server (though i do have
+rpc.svcgssd running).
+
+But the client can go ahead and mount the filesystem anyway, and users
+with the appropriate krb5 credentials on the clients can access files on
+the server based on their credentials.
+
+So it's not clear to me what this warning is about.   Should i be
+running rpc.gssd on the nfs server?  If so, what functionality am i
+losing out on by not running it?  If i don't need to run it, why is the
+kernel emitting this message?
+
+       --dkg
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQJ8BAEBCgBmBQJO4NfmXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25zLm9w
+ZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQwRUU1QkU5NzkyODJEODBCOUY3NTQwRjFD
+Q0QyRUQ5NEQyMTczOUU5AAoJEMzS7ZTSFznp73gQAJhX95dCnLl71SbTt0SFgtSp
+Zt5VIV54Ee62aA1NswtD771QTs3oiVjsop/us2A4Ux+jUjR8HycbJ9mFcgsW4oxE
++DuMPtGD5JmGSlXX06PoJBtbPSrqdBbRqyjAwjEfIONkkhmMtqPDhkyCrRDdeGDY
+2rhKybhAFbza7yl851UOtbY3PlLXc+G3dXs8jHi6Mbtts76Nr9okDZ+vuIrMXfN+
+tzAEwOxsao+loLkD2H1EWJDCoolKe72tf/VAeupQIzn7hOy7dMtIxYk8fKkp2oV+
+viy/kFZYV0l+1En4VHPeImRS6i9yUkZzZDznvRE7By2byghSKSgd96ftXttzSbIr
+Q1lx1rpYv+Q8ocguar3lCbS+9BR7AkxQ7T8pVW1XtDv/IsOW7v8pB8p8V/OL5HY1
+sxJtIAQBENwBzvqP0a0R/4ms9nRmtjrk6ey3fiCLGMUUCKCYdxOFRIjHG/NF3fXd
+NVo42+/dltpcepwLJERGGjcR2B+PLCDgCiND7uue5HLOkcAl2okyAToG0vjTDmjg
+qDdioADlPrQ+S8ctOUbBXX2Gs9MxRXfV397JsY4bN9BQsixXgXMr4P04E89z0NRA
+H62RfRR+++m2qhsHg7WC0RXD+t2Kz9Dob+nrlLs7/dzmz4aEhy0eqi5pi6b1NP/8
+BOdklJLDNYawZGIS2sIG
+=5Z46
+-----END PGP SIGNATURE-----
+--=-=-=--
