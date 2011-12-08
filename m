@@ -1,73 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49070 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751346Ab1LLTwK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 14:52:10 -0500
-Date: Mon, 12 Dec 2011 14:52:07 -0500
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 2/2] client: add open+close test with current stateid
-Message-ID: <20111212195207.GB20826@fieldses.org>
-References: <1323435533-32571-1-git-send-email-tigran.mkrtchyan@desy.de>
- <1323435533-32571-2-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:56000 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753751Ab1LHAIJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 19:08:09 -0500
+Received: by ggnr5 with SMTP id r5so1259021ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 16:08:08 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323435533-32571-2-git-send-email-tigran.mkrtchyan@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <CAN-5tyFKKZJoGh9tBfApwadpfn1zuUW1w3ZEd3OXvS3C5SczFQ@mail.gmail.com>
+References: <CAN-5tyErML04W7N3YVYyK0qq8OR_Ae+d4MzNXYyAVTMad39bFw@mail.gmail.com>
+	<4EDF72B1.2060509@tonian.com>
+	<CAN-5tyFKKZJoGh9tBfApwadpfn1zuUW1w3ZEd3OXvS3C5SczFQ@mail.gmail.com>
+Date: Wed, 7 Dec 2011 19:08:08 -0500
+Message-ID: <CAN-5tyGZkKsX=-eBQt73oLwoss=+oVxK4_wOGH1x7w2p3vY8sw@mail.gmail.com>
+Subject: Re: pnfs nfsd compile problems
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 09, 2011 at 01:58:53PM +0100, Tigran Mkrtchyan wrote:
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+On Wed, Dec 7, 2011 at 6:46 PM, Olga Kornievskaia <aglo@citi.umich.edu> wrote:
+> On Wed, Dec 7, 2011 at 9:05 AM, Benny Halevy <bhalevy@tonian.com> wrote:
+>> On 2011-12-06 22:57, Olga Kornievskaia wrote:
+>>> Latest pnfs-all-latest (commit
+>>> 58deb32bd36e92f5f44ac6d5e5ab3c36732c4ebd) doesn't compile if
+>>> CONFIG_PNFSD_BLOCK is not enabled.
+>>>
+>>> 1st compile error is in (and probably gcc version dependent):
+>>>   CC [M]  fs/nfsd/nfsctl.o
+>>> In file included from fs/nfsd/nfsctl.c:18:0:
+>>> include/linux/nfsd/nfsd4_block.h: In function ‘pnfs_block_enabled’:
+>>> include/linux/nfsd/nfsd4_block.h:104:46: error: parameter name omitted
+>>> include/linux/nfsd/nfsd4_block.h:104:46: error: parameter name omitted
+>>
+>> Sorry. The patch in reply to this message should fix that.
+>>
+>> Benny
+>>
+>> diff --git a/fs/nfsd/nfsd4_block.h b/fs/nfsd/nfsd4_block.h
+>> index 9c2941f..4ce5755 100644
+>> --- a/fs/nfsd/nfsd4_block.h
+>> +++ b/fs/nfsd/nfsd4_block.h
+>> @@ -100,7 +100,7 @@ int bl_layoutreturn(struct inode *,
+>>
+>>  #else
+>>
+>> -static inline bool pnfs_block_enabled(struct inode *, int) { return false; }
+>> +static inline bool pnfs_block_enabled(struct inode *i, int ex_flags) { return false; }
+>>  static inline void nfsd_bl_init(void) {}
+>>
+>>  #endif /* CONFIG_PNFSD_BLOCK */
+>>
+>
+> Sure that fixes problem #1. 2 more to go.
 
-Both applied, thanks.
-
---b.
-
-> ---
->  nfs4.1/server41tests/st_open.py |   19 ++++++++++++++++++-
->  1 files changed, 18 insertions(+), 1 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-> index 87b58b3..89f3e2d 100644
-> --- a/nfs4.1/server41tests/st_open.py
-> +++ b/nfs4.1/server41tests/st_open.py
-> @@ -1,8 +1,10 @@
->  from st_create_session import create_session
->  from nfs4_const import *
-> +
->  from environment import check, checklist, fail, create_file, open_file, close_file
-> +from environment import open_create_file_op
->  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
-> -from nfs4_type import creatverfattr, fattr4
-> +from nfs4_type import creatverfattr, fattr4, stateid4
->  import nfs4_ops as op
->  import threading
->  
-> @@ -236,3 +238,18 @@ def testOPENClaimFH(t, env):
->      desired = "\0"*5 + data
->      if res.resarray[-1].data != desired:
->          fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
-> +
-> +def testOpenAndClose(t, env):
-> +    """test current state id processing by having OPEN and CLOSE
-> +       in a single compound
-> +
-> +    FLAGS: open all
-> +    CODE: OPEN31
-> +    """
-> +    current_stateid = stateid4(1, '\0' * 12)
-> +    sess1 = env.c1.new_client_session(env.testname(t))
-> +
-> +    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-> +    res = sess1.compound(open_op + [op.close(0, current_stateid)])
-> +    check(res, NFS4_OK)
-> +
-> -- 
-> 1.7.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Sorry, bad git pull. I see that you moved things around. I can confirm
+that all compiles correctly.
