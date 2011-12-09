@@ -1,166 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47818 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754029Ab1LUUfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 15:35:31 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org, steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 06/10] nfsdcld: add check/update functionality
-Date: Wed, 21 Dec 2011 15:35:18 -0500
-Message-Id: <1324499722-10363-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
-References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:50143 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752363Ab1LIPX6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 10:23:58 -0500
+Received: from /spool/local
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 9 Dec 2011 08:23:57 -0700
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNi6s112924
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:45 -0700
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNhDW021890
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:43 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC v2 5/7] Added VFH FHEXPIRED recovery functions.
+Date: Fri,  9 Dec 2011 10:23:30 -0500
+Message-Id: <1323444212-9855-6-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add functions to check whether a client is allowed to reclaim, and
-update its timestamp in the DB if so. If either the query or update
-fails, then the host is not allowed to reclaim state.
+The VFH recovery functions perform a recursive walk back on FHEXPIRED
+errors. If an FHEXPIRED error is received during a recovery lookup
+This means that the directory's filehandle is also expired and
+needs to be recovered.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+The end case for the recursion is if the filehandle is the rootfh.
+This means that we recursed back to the root of the export, and we
+can just perform a rootfh lookup.
+
+Also added a modified lookup for volatile file handle recovery. This
+function will not use the exception handling on FHEXPIRED errors
+and just return FHEXPIRED instead.
+
+v2:
+- Added credentials to the lookup request if a credential is passed into recovery.
+
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
 ---
- utils/nfsdcld/nfsdcld.c |   29 +++++++++++++++++++
- utils/nfsdcld/sqlite.c  |   70 +++++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h  |    1 +
- 3 files changed, 100 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c |  133 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 133 insertions(+), 0 deletions(-)
 
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 885d79e..29c514c 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -186,6 +186,32 @@ cld_remove(struct cld_client *clnt)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5bcc08c..4804b39 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -74,6 +74,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
++static int nfs4_fhexpired_recovery(struct nfs_server *server, struct nfs4_exception *exception);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+ 			    struct nfs4_state *state);
+@@ -2494,6 +2495,138 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 	return err;
  }
  
- static void
-+cld_check(struct cld_client *clnt)
++static int _nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
++		const struct qstr *name, struct nfs_fh *fhandle,
++		struct nfs_fattr *fattr, struct rpc_cred *cred)
 +{
-+	int ret;
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct nfs_server *server = NFS_SERVER(dir);
++	int		       status;
++	struct nfs4_lookup_arg args = {
++		.bitmask = server->attr_bitmask,
++		.dir_fh = NFS_FH(dir),
++		.name = name,
++	};
++	struct nfs4_lookup_res res = {
++		.server = server,
++		.fattr = fattr,
++		.fh = fhandle,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LOOKUP],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++		.rpc_cred = cred,
++	};
 +
-+	xlog(D_GENERAL, "%s: check client record", __func__);
++	nfs_fattr_init(fattr);
 +
-+	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
-+				  cmsg->cm_u.cm_name.cn_len);
-+
-+	/* set up reply */
-+	cmsg->cm_status = ret ? -EACCES : ret;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+		cld_pipe_reopen(clnt);
-+	}
++	dprintk("NFS call  lookup %s\n", name->name);
++	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
++	dprintk("NFS reply lookup: %d\n", status);
++	return status;
 +}
 +
-+static void
- cldcb(int UNUSED(fd), short which, void *data)
++static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
++	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr,
++	struct rpc_cred *cred)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		int status;
++		if (cred)
++			status = _nfs4_proc_vfh_lookup(clnt, dir, name,
++					fhandle, fattr, cred);
++		else
++			status = _nfs4_proc_lookup(clnt, dir, name, fhandle,
++					fattr);
++		switch (status) {
++		case -NFS4ERR_BADNAME:
++			return -ENOENT;
++		case -NFS4ERR_MOVED:
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
++			break;
++		case -NFS4ERR_FHEXPIRED:
++			return -NFS4ERR_FHEXPIRED;
++		case -NFS4ERR_WRONGSEC:
++			nfs_fixup_secinfo_attributes(fattr, fhandle);
++		}
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++					status, &exception);
++	} while (exception.retry);
++	return err;
++}
++
++static int _nfs4_fhexpired_recovery(struct nfs_server *server, struct dentry *d_parent, struct qstr *name, struct inode *inode, struct rpc_cred *cred)
++{
++	int err;
++	struct nfs_fh *fhandle = NFS_FH(inode);
++	struct nfs_fattr *fattr = nfs_alloc_fattr();
++	if (fattr == NULL)
++		return -ENOMEM;
++	fattr->fileid = 0;
++	if (!nfs_compare_fh(fhandle, server->rootfh)) {
++		struct nfs_fsinfo info = {
++			.fattr = fattr,
++		};
++		err = nfs4_proc_get_root(server, fhandle, &info);
++		if (!err) {
++			if (NFS_FILEID(inode) != info.fattr->fileid)
++				set_nfs_fileid(inode, info.fattr->fileid);
++			nfs_copy_fh(server->rootfh, fhandle);
++			/* Only needed if fsid changes on server */
++			memcpy(&server->fsid, &info.fattr->fsid,
++				sizeof(server->fsid));
++		}
++		nfs_free_fattr(fattr);
++		return err;
++	}
++	err = nfs4_proc_vfh_lookup(server->client, d_parent->d_inode, name,
++			fhandle, fattr, cred);
++	if (!fattr->fileid && !err && fattr->fileid != NFS_FILEID(inode))
++		set_nfs_fileid(inode, fattr->fileid);
++	if (err == -NFS4ERR_FHEXPIRED) {
++		err = _nfs4_fhexpired_recovery(server, d_parent->d_parent,
++				&d_parent->d_name, d_parent->d_inode, cred);
++		if (!err) {
++			err = nfs4_proc_vfh_lookup(server->client,
++					d_parent->d_inode, name,
++					fhandle, fattr, cred);
++			if (!fattr->fileid && !err &&
++					fattr->fileid != NFS_FILEID(inode))
++				set_nfs_fileid(inode, fattr->fileid);
++		}
++	}
++	nfs_free_fattr(fattr);
++	return err;
++}
++
++static int nfs4_fhexpired_recovery(struct nfs_server *server, struct nfs4_exception *exception)
++{
++	int err;
++	struct dentry *dentry;
++	struct rpc_cred *cred = NULL;
++	if (exception->cred)
++		cred = exception->cred;
++	if (exception->dentry) {
++		dentry = exception->dentry;
++		err = _nfs4_fhexpired_recovery(server, dentry->d_parent,
++				&dentry->d_name, dentry->d_inode, cred);
++	} else if (exception->inode) {
++		dentry = d_obtain_alias(exception->inode);
++		err = _nfs4_fhexpired_recovery(server, dentry->d_parent,
++				&dentry->d_name, exception->inode, cred);
++		dput(dentry);
++	}
++	BUG_ON(!exception->inode && !exception->dentry); /*Recovery without
++							  VFS objects, missed
++							  a proc function*/
++	if (!err)
++		return -EAGAIN; /* Return EAGAIN so that the operation will
++				   be performed again on successful recovery */
++	return err;
++}
++
+ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
  {
- 	ssize_t len;
-@@ -215,6 +241,9 @@ cldcb(int UNUSED(fd), short which, void *data)
- 	case Cld_Expire:
- 		cld_remove(clnt);
- 		break;
-+	case Cld_Allow:
-+		cld_check(clnt);
-+		break;
- 	default:
- 		xlog_warn("%s: command %u is not yet implemented", __func__,
- 			  cmsg->cm_cmd);
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index a90e112..6d3c022 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -285,3 +285,73 @@ out_err:
- 	sqlite3_finalize(stmt);
- 	return ret;
- }
-+
-+/*
-+ * Is the given clname in the clients table? If so, then update its timestamp
-+ * and return success. If the record isn't present, or the update fails, then
-+ * return an error.
-+ */
-+int
-+sqlite_check_client(const unsigned char *clname, const size_t namelen)
-+{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-+				      "id==?", -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Unable to prepare update statement: %s",
-+				sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Bind blob failed: %s", sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(D_GENERAL, "Unexpected return code from select: %d", ret);
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_column_int(stmt, 0);
-+	xlog(D_GENERAL, "Select returned %d rows", ret);
-+	if (ret != 1) {
-+		ret = -EACCES;
-+		goto out_err;
-+	}
-+
-+	sqlite3_finalize(stmt);
-+	stmt = NULL;
-+	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
-+				      "time=strftime('%s', 'now') WHERE id==?",
-+				 -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Unable to prepare update statement: %s",
-+				sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Bind blob failed: %s", sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(D_GENERAL, "Unexpected return code from update: %s",
-+				sqlite3_errmsg(dbh));
-+
-+out_err:
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
-+	sqlite3_finalize(stmt);
-+	return ret;
-+}
-diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-index 425f5ba..59ebd72 100644
---- a/utils/nfsdcld/sqlite.h
-+++ b/utils/nfsdcld/sqlite.h
-@@ -23,5 +23,6 @@
- int sqlite_maindb_init(char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
-+int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- 
- #endif /* _SQLITE_H */
+ 	struct nfs_server *server = NFS_SERVER(inode);
 -- 
-1.7.1
+1.7.4.4
 
