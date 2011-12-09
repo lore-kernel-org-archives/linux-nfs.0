@@ -1,104 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:45783 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933219Ab1LFL0M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 06:26:12 -0500
-Received: by bkbzv3 with SMTP id zv3so3348730bkb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 03:26:11 -0800 (PST)
-Message-ID: <4EDDFBCD.3010608@tonian.com>
-Date: Tue, 06 Dec 2011 13:26:05 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: tigran.mkrtchyan@desy.de, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de> <4EDB6AA3.1030702@tonian.com> <20111206020851.GA4486@fieldses.org>
-In-Reply-To: <20111206020851.GA4486@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:34099 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752363Ab1LIPY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Dec 2011 10:24:27 -0500
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 9 Dec 2011 10:24:27 -0500
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNgqs2375784
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 10:23:42 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNguN017221
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 10:23:42 -0500
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC v2 0/7] Volatile Filehandle Client-side Support
+Date: Fri,  9 Dec 2011 10:23:25 -0500
+Message-Id: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-06 04:08, J. Bruce Fields wrote:
-> On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
->> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
->>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>>
->>>
->>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>> ---
->>>  fs/nfsd/nfs4proc.c  |    6 ++++++
->>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
->>>  2 files changed, 26 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>> index fa38336..535aed2 100644
->>> --- a/fs/nfsd/nfs4proc.c
->>> +++ b/fs/nfsd/nfs4proc.c
->>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>  	 */
->>>  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
->>>  	WARN_ON(status && open->op_created);
->>> +
->>> +	if(status)
->>> +		goto out;
->>> +
->>> +	/* set current state id */
->>> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
-> 
-> That comment is a bit redundant.
-> 
->> Since this should be done for all stateid-returning operations
->> I think that a cleaner approach could be to mark those as such in
->> nfsd4_ops by providing a per-op function to return the operation's
->> stateid.  You can then call this method from nfsd4_proc_compound()
->> after the call to nfsd4_encode_operation() and when status == 0.
-> 
-> So the choice is between
-> 
-> +       memcpy(&cstate->current_stateid, &open->op_stateid,
-> sizeof(stateid_t));
-> 
-> and
-> 
-> +       static void get_open_stateid(stateid_t *s)
-> +       {
-> +               memcpy(s, open->op_stateid);
-> +       }
-> +
-> +       [OP_OPEN] = {
-> +               ...
-> +               .op_get_stateid = get_open_stateid,
-> +               ...
-> +       }
-> 
-> ?
-> 
-> I'm not so sure.
+This patch series implements client side support for volatile file handle
+recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
+test the client you either need a server that supports volatile file handles or
+you can hard code the Linux server to output NFS4ERR_FHEXPIRED instead of
+NFSERR_STALE.
 
-The point is to copy the result stateid into the current_stateid
-in a centralized place: nfsd4_proc_compound() and do that for all
-stateid-modifying operations.
+The approach used here for recovery is to perform lookups for each file handle
+that receives a FHEXPIRED error. If the lookup also fails with FHEXPIRED using
+the dcache, it will recursively walk back to the root of the mount, and recover
+that using get_root.
 
-> 
-> Anyway, thanks Tigran for looking at this.
-> 
-> Do we want to guarantee that the client can't expire as long as a
-> compound references the stateid?  I think that's the case.
+Simple testing has shown that this approach works and will correctly recover
+from a FHEXPIRED error code. However, the current implementation uses
+d_obtain_alias if a nfs4_proc function is only given an inode. When hardlinks
+are involved, this results in getting a path, but not necessarily a path which
+the user has access, which might lead to permission issues.
 
-The client can't time out while the 4.1 compound is in progress, see commit d768298.
-Are you thinking of explicit expiration of the client?
-We may unhash the client and keep using it while it's referenced
-so that's not a problem.  As far as the stateid goes, we're copying the
-value of the stateid, not pointing to any stateid structure.  If the
-actual state was destroyed, we will detect that when the current_stateid
-is used by any successive operation and we cannot find the state using
-the stateid.
+As Trond pointed out on the first posting originally it was unable to recover
+from FHEXPIRED in state_recovery or rpciod since lookup operations started in
+either thread context would not have access to perform the lookup. So this
+version attempts to fix this by passing an rpc_cred to vfh_lookup. Then the
+credential is added to the lookup's rpc message so that the recovery lookup
+will have access. The only thing I am unsure of now is where I pass credential
+from for rpciod and state recovery contexts.
 
-Benny
+v2:
+- Added rpc_cred passing to the vfh lookup and added handling of access errors
+  on the lookup
 
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Matthew Treinish (7):
+  New mount option for volatile filehandle recovery
+  Added support for FH_EXPIRE_TYPE attribute.
+  Add VFS objects from nfs4_proc calls into nfs4_exception.
+  Save root file handle in nfs_server.
+  Added VFH FHEXPIRED recovery functions.
+  Perform recovery on both inodes for rename.
+  Added error handling for NFS4ERR_FHEXPIRED
+
+ fs/nfs/client.c           |    3 +
+ fs/nfs/getroot.c          |    7 +
+ fs/nfs/nfs4_fs.h          |    3 +
+ fs/nfs/nfs4proc.c         |  287 ++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfs/nfs4xdr.c          |   27 +++++
+ fs/nfs/super.c            |    6 +
+ include/linux/nfs_fs_sb.h |    2 +
+ include/linux/nfs_mount.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 9 files changed, 308 insertions(+), 29 deletions(-)
+
+-- 
+1.7.4.4
+
