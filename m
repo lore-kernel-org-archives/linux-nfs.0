@@ -1,66 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36752 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755088Ab1LMS0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Dec 2011 13:26:45 -0500
-Date: Tue, 13 Dec 2011 13:26:44 -0500
-To: Chris J Arges <chris.j.arges@canonical.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-Subject: Re: [PATCH] nfsd4: permit read opens of executable-only files
-Message-ID: <20111213182644.GA29809@fieldses.org>
-References: <20110825161957.GC1114@fieldses.org>
- <loom.20111207T233110-295@post.gmane.org>
- <20111208212151.GF32505@fieldses.org>
- <loom.20111213T183631-8@post.gmane.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <loom.20111213T183631-8@post.gmane.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from e39.co.us.ibm.com ([32.97.110.160]:33657 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752363Ab1LIPYF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 10:24:05 -0500
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 9 Dec 2011 08:24:05 -0700
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNhed146602
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:44 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNgJi008828
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 08:23:43 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC v2 1/7] New mount option for volatile filehandle recovery
+Date: Fri,  9 Dec 2011 10:23:26 -0500
+Message-Id: <1323444212-9855-2-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Could you leave me on the cc: ?
+The new 'vfhretry' mount option will be used to enable the volatile filehandle
+recovery routines in the client. On an expired filehandle recover the client
+will attempt to recover by performing a lookup on the name of the file.
 
-Also, Trond: what did we end up deciding to do about permissions
-checking on execute?  Was there a bugfix on the client side?
+This option enables volatile filehandle recovery by re-lookup on FHEXPIRED
+errors. Only use this mount option if the filenames/paths on the server are not
+going to change from the initial expiration until all the recovery operations
+complete. Otherwise the validity of the files recovered from the server can not
+be guaranteed. It can only truly be considered safe to use this recovery
+mechanism on a Linux server, if the filesystem is read-only.
 
-On Tue, Dec 13, 2011 at 05:38:54PM +0000, Chris J Arges wrote:
-> <snip>
-> > > 
-> > > 
-> > > Bruce,
-> > > 
-> > > I've tested this patch against linux-3.0 and it doesn't allow me to execute 
-> > > binaries with permissions of 111.
-> > 
-> > Hm, I see the same permissions error.  However, looking at the
-> > client-server traffic with wireshark, I see no permissions failures from
-> > the server: the read-open of cat succeeds.  (Could you check if the same
-> > is true in your case?)
-> > 
-> > So my first inclination is to blame the client.... Does this work with
-> > an older client?
-> > 
-> > --b.
-> 
-> Bruce,
-> 
-> Using the above test setup, and trying various clients I see a mismatch:
-> 
-> Using a newer nfs clients (nfs-common 1:1.2.2-4/1:1.2.4-1), I can read a file 
-> with 111 permissions, but cannot execute it.
-> With an older nfs client (nfs-common 1:1.2.0-4 / ubuntu lucid), I can read and 
-> execute a file with 111 permissions.
+This mechanism of recovery isn't necessarily safe for a posix filesystem so
+using the mount option will allow the user to enable this at their own risk.
+If the mount option is not turned on, the FHEXPIRED error will be converted to
+ESTALE.
 
-It certainly sounds like a client-side error....  (Though if you could
-take a look at the traffic in wireshark as suggested above, that would
-help--it doesn't require much special expertise, just look for an OPEN
-call that mentions the file in question, and see if the server replies
-with an error or not.)
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/super.c            |    6 ++++++
+ include/linux/nfs_mount.h |    1 +
+ 2 files changed, 7 insertions(+), 0 deletions(-)
 
-Note it's the kernel on the client that matters, not the nfs-utils
-version.  And most useful for people on this list may be testing with
-the latest upstream kernel.  (We aren't necessarily familiar with Ubuntu
-kernel versions.)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 1347774..f63229f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -87,6 +87,7 @@ enum {
+ 	Opt_sharecache, Opt_nosharecache,
+ 	Opt_resvport, Opt_noresvport,
+ 	Opt_fscache, Opt_nofscache,
++	Opt_vfhretry,
+ 
+ 	/* Mount options that take integer arguments */
+ 	Opt_port,
+@@ -149,6 +150,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_noresvport, "noresvport" },
+ 	{ Opt_fscache, "fsc" },
+ 	{ Opt_nofscache, "nofsc" },
++	{ Opt_vfhretry, "vfhretry" },
+ 
+ 	{ Opt_port, "port=%s" },
+ 	{ Opt_rsize, "rsize=%s" },
+@@ -650,6 +652,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+ 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
+ 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
++		{ NFS_MOUNT_VFHRETRY, ",vfhretry", ""},
+ 		{ 0, NULL, NULL }
+ 	};
+ 	const struct proc_nfs_info *nfs_infop;
+@@ -1203,6 +1206,9 @@ static int nfs_parse_mount_options(char *raw,
+ 			kfree(mnt->fscache_uniq);
+ 			mnt->fscache_uniq = NULL;
+ 			break;
++		case Opt_vfhretry:
++			mnt->flags |= NFS_MOUNT_VFHRETRY;
++			break;
+ 
+ 		/*
+ 		 * options that take numeric values
+diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+index 576bddd..dba0e23 100644
+--- a/include/linux/nfs_mount.h
++++ b/include/linux/nfs_mount.h
+@@ -73,5 +73,6 @@ struct nfs_mount_data {
+ 
+ #define NFS_MOUNT_LOCAL_FLOCK	0x100000
+ #define NFS_MOUNT_LOCAL_FCNTL	0x200000
++#define NFS_MOUNT_VFHRETRY	0x400000
+ 
+ #endif
+-- 
+1.7.4.4
 
---b.
