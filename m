@@ -1,52 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37417 "EHLO mx2.netapp.com"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:58610 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab1LORZk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 12:25:40 -0500
-Message-ID: <1323969923.14317.31.camel@lade.trondhjem.org>
-Subject: Re: copy offload support in Linux - new system call needed?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ric Wheeler <ricwheeler@gmail.com>
-Cc: "Loke, Chetan" <Chetan.Loke@netscout.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-scsi@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Date: Thu, 15 Dec 2011 12:25:23 -0500
-In-Reply-To: <4EEA2BF7.5030107@gmail.com>
-References: <4EE8F75F.6070800@gmail.com>
-	  <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
-	  <20111214222723.GD7623@fieldses.org>
-	  <1323961140.14317.2.camel@lade.trondhjem.org>
-	  <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com>
-	  <1323965498.14317.13.camel@lade.trondhjem.org>
-	  <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com>
-	 <1323968015.14317.28.camel@lade.trondhjem.org> <4EEA2BF7.5030107@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1751796Ab1LIPXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Dec 2011 10:23:49 -0500
+Received: from /spool/local
+	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Fri, 9 Dec 2011 10:23:47 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNgMw292544
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 10:23:42 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNgCl021181
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 13:23:42 -0200
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com, Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH/RFC v2 4/7] Save root file handle in nfs_server.
+Date: Fri,  9 Dec 2011 10:23:29 -0500
+Message-Id: <1323444212-9855-5-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-12-15 at 12:18 -0500, Ric Wheeler wrote: 
-> What I would like to see is a way to make sure that we can interrupt any long 
-> running command & also make sure that our timeouts (for SCSI specifically) are 
-> not too aggressive.
+Save each FSID's root directory file handle in the
+export's local nfs_server structure on the client.
+This FH can then be used as the end case for the recursive
+walkback during VFH recovery.
 
-The draft NFSv4.2 protocol contains features to make interruption
-possible, so as far as the NFS client is concerned, that should be
-doable. I can't answer for CIFS or SCSI...
+This was originally written by Chuck Lever so that
+the FH can be used for migration recovery logic.
 
-Cheers
-  Trond 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/client.c           |    1 +
+ fs/nfs/getroot.c          |    7 +++++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 9 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 44dedfe..641f69f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1108,6 +1108,7 @@ void nfs_free_server(struct nfs_server *server)
+ 	nfs_put_client(server->nfs_client);
+ 
+ 	nfs_free_iostats(server->io_stats);
++	nfs_free_fhandle(server->rootfh);
+ 	bdi_destroy(&server->backing_dev_info);
+ 	kfree(server);
+ 	nfs_release_automount_timer();
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index dcb6154..51ca63b 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -232,6 +232,13 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 		ret = ERR_CAST(inode);
+ 		goto out;
+ 	}
++	server->rootfh = nfs_alloc_fhandle();
++	if (server->rootfh == NULL) {
++		dprintk("nfs_get_root: alloc rootfh failed\n");
++		ret = ERR_PTR(-ENOMEM);
++		goto out;
++	}
++	nfs_copy_fh(server->rootfh, mntfh);
+ 
+ 	error = nfs_superblock_set_dummy_root(sb, inode);
+ 	if (error != 0) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 706c92b..5261fa1 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -157,6 +157,7 @@ struct nfs_server {
+ 	struct list_head	layouts;
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
++	struct nfs_fh		*rootfh;
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4.4
 
