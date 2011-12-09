@@ -1,125 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55526 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933101Ab1LFMk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 07:40:58 -0500
-Date: Tue, 6 Dec 2011 07:40:56 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: tigran.mkrtchyan@desy.de, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-Message-ID: <20111206124056.GA8657@fieldses.org>
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
- <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
- <4EDB6AA3.1030702@tonian.com>
- <20111206020851.GA4486@fieldses.org>
- <4EDDFBCD.3010608@tonian.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:28491 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751855Ab1LIDJE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2011 22:09:04 -0500
+Date: Thu, 08 Dec 2011 22:11:42 -0500
+To: "Rick Macklem" <rmacklem@uoguelph.ca>
+Subject: Re: Slides from the pNFS BoF we delivered at LISA 11 - with
+ attachment this time
+From: "Sorin Faibish" <sfaibish@emc.com>
+Cc: honey@citi.umich.edu, linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Content-Type: text/plain; format=flowed; delsp=yes; charset=iso-8859-15
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EDDFBCD.3010608@tonian.com>
+References: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
+Message-ID: <op.v57chsbmrwwil4@sfaibish1.corp.emc.com>
+In-Reply-To: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 06, 2011 at 01:26:05PM +0200, Benny Halevy wrote:
-> On 2011-12-06 04:08, J. Bruce Fields wrote:
-> > On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
-> >> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
-> >>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> >>>
-> >>>
-> >>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> >>> ---
-> >>>  fs/nfsd/nfs4proc.c  |    6 ++++++
-> >>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
-> >>>  2 files changed, 26 insertions(+), 6 deletions(-)
-> >>>
-> >>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >>> index fa38336..535aed2 100644
-> >>> --- a/fs/nfsd/nfs4proc.c
-> >>> +++ b/fs/nfsd/nfs4proc.c
-> >>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >>>  	 */
-> >>>  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
-> >>>  	WARN_ON(status && open->op_created);
-> >>> +
-> >>> +	if(status)
-> >>> +		goto out;
-> >>> +
-> >>> +	/* set current state id */
-> >>> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
-> > 
-> > That comment is a bit redundant.
-> > 
-> >> Since this should be done for all stateid-returning operations
-> >> I think that a cleaner approach could be to mark those as such in
-> >> nfsd4_ops by providing a per-op function to return the operation's
-> >> stateid.  You can then call this method from nfsd4_proc_compound()
-> >> after the call to nfsd4_encode_operation() and when status == 0.
-> > 
-> > So the choice is between
-> > 
-> > +       memcpy(&cstate->current_stateid, &open->op_stateid,
-> > sizeof(stateid_t));
-> > 
-> > and
-> > 
-> > +       static void get_open_stateid(stateid_t *s)
-> > +       {
-> > +               memcpy(s, open->op_stateid);
-> > +       }
-> > +
-> > +       [OP_OPEN] = {
-> > +               ...
-> > +               .op_get_stateid = get_open_stateid,
-> > +               ...
-> > +       }
-> > 
-> > ?
-> > 
-> > I'm not so sure.
-> 
-> The point is to copy the result stateid into the current_stateid
-> in a centralized place: nfsd4_proc_compound() and do that for all
-> stateid-modifying operations.
-> 
-> > 
-> > Anyway, thanks Tigran for looking at this.
-> > 
-> > Do we want to guarantee that the client can't expire as long as a
-> > compound references the stateid?  I think that's the case.
-> 
-> The client can't time out while the 4.1 compound is in progress, see commit d768298.
+On Thu, 08 Dec 2011 21:53:20 -0500, Rick Macklem <rmacklem@uoguelph.ca>  
+wrote:
 
-OK, you're right, and presumably it would be a bug for a compound to use
-a session from one client and a stateid from another, so this is taken 
-care of.  (Except--I think we need to check for that case.  On a quick
-skim I don't see the current code doing that.)
+> Thanks for the slides, Sorin.
+>
+> Just fyi, it was correct to not mention a FreeBSD client, since the
+> 4.1 client code hasn't made it into any release yet. It is available
+> as a patch against the FreeBSD9.0 kernel, in case anyone is interested:
+>    http://people.freebsd.org/~rmacklem/nfsv4.1-client/nfsv41.patch
+>
+> I am just starting to work on the logistics of getting this into the
+> FreeBSD source tree, so it may be in a FreeBSD9.n release, where n > 0.
+>
+> Also, the above does not include any pNFS support. I am about ready to
+> start coding pNFS client stuff, which brings me to...
+> - It will be difficult for me to make much progress without any
+>   pNFS servers to test against. (The only NFSv4.1 server I have to
+>   test against is Fedora15 and I don't think it knows how to do pNFS?
+>   If there is a way to make Fedora15/16 (or any other freebie Linux
+>   distro) do pNFS, please let me know.
+One suggestion is to try to use the pNFS for Lustre. I can send you the
+patches or you can get them from Lustre tree. Let me know if this will be
+good for you. We are already using it to test Linux file client as well as
+Windows. Whamcloud demo it during SC11 and demo wire speed.
 
-Thanks!
+What I would also suggest is for you maybe to come to the Connectathon in
+February and test the client against the other servers that you cannot have
+as they are not products but prototypes.
 
-> Are you thinking of explicit expiration of the client?
-> We may unhash the client and keep using it while it's referenced
-> so that's not a problem.  As far as the stateid goes, we're copying the
-> value of the stateid, not pointing to any stateid structure.  If the
-> actual state was destroyed, we will detect that when the current_stateid
-> is used by any successive operation and we cannot find the state using
-> the stateid.
+>
+> If others have suggestions on how I might gain access to pNFS servers
+> for testing, I would appreciate hearing. (However, I am not funded to
+> do any of this, so the suggestions can't include my spending $$$. I can
+> make it to a Bakeathon when it happens to be close to where I am, so I
+> can show up "on the cheap", like I did last June in Ann Arbor.)
+Sure. The next BAT is at CITI so maybe you bring a client prototype
+there.
 
-I *think* the concensus of the working group was that explicit
-destruction of a client should wait on in-progress compounds referencing
-any of the client's sessions:
+/Sorin
 
-	http://www.ietf.org/mail-archive/web/nfsv4/current/msg08584.html
+>
+> rick
+>
+> ----- Original Message -----
+>> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish <sfaibish@emc.com>
+>> wrote:
+>>
+>> > Attached please find the slides that we presented yesterday at
+>> > USENIX
+>> > LISA 11
+>> > conference in Boston. We would like to get more detailed input on
+>> > other
+>> > OS
+>> > that will support pNFS server/client (this is for Rick as well) that
+>> > were
+>> > not mentioned in this slide set.
+>> >
+>> > /Sorin
+>> >
+>>
+>>
+>>
+>> --
+>> Best Regards
+>> Sorin Faibish
+>> Corporate Distinguished Engineer
+>> Unified Storage Division
+>>
+>> EMC²
+>> where information lives
+>>
+>> Phone: 508-435-1000 x 48545
+>> Cellphone: 617-510-0422
+>> Email : sfaibish@emc.com
+>
+>
 
-So we should probably fix this.  But we can fix it at the session level.
 
-So, OK, I can't see any practical objection to doing as Tigran as and
-just passing the value of stateid instead of a reference to some object.
 
-Well, except for performance--it seems unfortunate to have to redo the
-lookup on each use.  As long as there's no impact on the existing cases
-(so we're only doing the lookup when a client actually uses the current
-stateid), I can live with that until somebody actually demonstrates some
-harm.
+-- 
+Best Regards
+Sorin Faibish
+Corporate Distinguished Engineer
+Unified Storage Division
 
---b.
+        EMC²
+where information lives
+
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
