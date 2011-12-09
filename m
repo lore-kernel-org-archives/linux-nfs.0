@@ -1,107 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54835 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757457Ab1LNQFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 11:05:48 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEG5lTj011467
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:05:47 -0500
-Date: Wed, 14 Dec 2011 11:05:38 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-Message-ID: <20111214110538.2adaf048@tlielax.poochiereds.net>
-In-Reply-To: <4EE8C45B.30207@RedHat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-	<4EE8BF63.6080906@RedHat.com>
-	<20111214103247.3a67515f@tlielax.poochiereds.net>
-	<4EE8C45B.30207@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from frankvm.xs4all.nl ([83.163.148.79]:60795 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753106Ab1LIKgs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 05:36:48 -0500
+Date: Fri, 9 Dec 2011 11:36:46 +0100
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS - lock failover
+Message-ID: <20111209103646.GA1061@janus>
+References: <CAA-yEOJ+5NssoCOAXzeCNOCkbbACn0qHrj-BtmMRYwxZFDZgxg@mail.gmail.com>
+ <20111201172415.GA27626@janus>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111201172415.GA27626@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Dec 2011 10:44:27 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
-
+On Thu, Dec 01, 2011 at 06:24:16PM +0100, Frank van Maarseveen wrote:
+> On Thu, Dec 01, 2011 at 07:07:22PM +0200, Pavel A wrote:
+> > Hi everyone!
+> > 
+> > I was trying not to create new topics, but it seems that posting to an
+> > old one doesn't bring it up. Here is the original topic I'm referring
+> > to: http://comments.gmane.org/gmane.linux.nfs/13108
+> > 
+> > I'm building an A/A cluster using NFS v3 and local file systems, and
+> > looking for
+> > efficient ways for failover (for now I have to restart nfs-kernel-server on
+> > Takeover node to be able to initiate grace period), so the discussed solutions
+> > are very interesting to me.
+> > 
+> > Now (4 years after) in current nfs-utils packages (v. 1.2.2-4 and later) I can
+> > see that the ability to release locks was really implemented and is
+> > working well
+> > (I mean interfaces /proc/fs/nfsd/unlock_ip and
+> > /proc/fs/nfsd/unlock_filesystem),
+> > but how about reacquiring locks on the node, share migrates to? - I've been
+> > going through various mailing lists and found a lot of discussions on the topic
+> > (also dated mainly 2007), but don't seem to find any rpc-based mechanism or
+> > interface like /proc/fs/nfsd/nlm_set_grace to do that, was it ever made?
 > 
+> I've posted a patch some time ago implementing
+> /proc/fs/nfsd/relock_filesystem:
 > 
-> On 12/14/2011 10:32 AM, Jeff Layton wrote:
-> > On Wed, 14 Dec 2011 10:23:15 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> >>> This patchset is the userspace portion of the knfsd client name tracking
-> >>> overhaul. See this patch series for an explanation:
-> >>>
-> >>>     nfsd: overhaul the client name tracking code (RFC)
-> >>>
-> >>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
-> >>> and handles the requests.
-> >>>
-> >>> The data is stored using a sqlite database. The main reason for this is
-> >>> that it takes care of most of the fussy details and atomicity concerns
-> >>> of tracking the information on stable storage.
-> >> This will make nfs-utils dependent on the sqlite database... Any idea
-> >> what kinda of extra baggage this brings? 
-> >>
-> > 
-> > Depends on what you mean by "baggage". What is your concern?
-> In Fedora doing a 'yum install sqlite' which would require
-> a ton of other package needing to be install... The Required
-> for nfs-utils is getting pretty long at this point... 
->  
+> 	http://permalink.gmane.org/gmane.linux.nfs/42360
+> 	http://permalink.gmane.org/gmane.linux.nfs/42361
+> 	http://permalink.gmane.org/gmane.linux.nfs/42362
 
-I don't think it pulls in that much. This is pretty minimal for dependencies:
-
-$ ldd /usr/lib/libsqlite3.so.0.8.6 
-	linux-gate.so.1 =>  (0x00e05000)
-	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
-	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
-	libc.so.6 => /lib/libc.so.6 (0x00e27000)
-	/lib/ld-linux.so.2 (0x4e572000)
-
-I think the command-line tools have some dependency on ncurses and
-readline and such, but I don't think it's that much really...
-
-In any case, perhaps it's time to split the nfs-utils packaging for
-fedora into client and server pieces? Clients really only need
-a few of the tools, but they can't install that on fedora without
-getting all of the server pieces too.
-
-That's a separate discussion though...
-
-> > 
-> > For something like fedora, it'll mean a build-time dependency on
-> > sqlite-devel, and a runtime dependency on sqlite. We could consider
-> > embedding their single-file amalgamation code, but I'd prefer not to do
-> > that unless we really have to.
-> > 
-> >>>
-> >>> For now, the daemon is only suitable for single-host configurations.
-> >>> The plan is to later extend this to be suitable for clustered
-> >>> configurations as well.
-> >>>
-> >>> The code is still a little rough, so be gentle. It also lacks things
-> >>> like a manpage. I plan to add all that before doing a "formal" patch
-> >>> submission, but I wanted to get some early review of the overall design
-> >>> before to spend a lot of time knocking off the rough edges.
-> >> Finally the name of the daemon...  clstated does not make it clear that 
-> >> this is a nfs server daemon... maybe something like nfsdcld? 
-> >>
-> > 
-> > Sure, we could change the name if that's desirable. Maybe
-> > nfsd.clnamed ? At this point it's really just a client name tracking
-> > daemon.
-> How about nfsdcld ;-) short, to the point and easy to type... 8-) 
-> 
-
-Ok, I'm not religious on this issue. I'll plan to rename it to that.
+Can this patch be scheduled for inclusion in mainline (3.3)?
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Frank
