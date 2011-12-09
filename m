@@ -1,239 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50713 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751203Ab1LMQoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Dec 2011 11:44:07 -0500
-Date: Tue, 13 Dec 2011 11:44:06 -0500
-To: Tigran Mkrtchyan <kofemann@googlemail.com>
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATH v4 1/3] nfsd41: handle current stateid in open and close
-Message-ID: <20111213164406.GA29019@fieldses.org>
-References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
- <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from natasha.panasas.com ([67.152.220.90]:58658 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750850Ab1LILJO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 06:09:14 -0500
+Message-ID: <4EE1EC49.6010000@panasas.com>
+Date: Fri, 9 Dec 2011 13:08:57 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+CC: Sorin Faibish <sfaibish@emc.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>, <nfsv4@ietf.org>,
+        Steve Dickson <steved@redhat.com>, "Welch, Brent" <welch@panasas.com>
+Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
+ attachment this time
+References: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 10:00:25PM +0100, Tigran Mkrtchyan wrote:
-> From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 12/09/2011 04:53 AM, Rick Macklem wrote:
+> Thanks for the slides, Sorin.
 > 
+> Just fyi, it was correct to not mention a FreeBSD client, since the
+> 4.1 client code hasn't made it into any release yet. It is available
+> as a patch against the FreeBSD9.0 kernel, in case anyone is interested:
+>    http://people.freebsd.org/~rmacklem/nfsv4.1-client/nfsv41.patch
 > 
-> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
-> ---
->  fs/nfsd/current_stateid.h |   11 +++++++++++
->  fs/nfsd/nfs4proc.c        |   35 ++++++++++++++++++++++++++++++-----
->  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++++
->  fs/nfsd/xdr4.h            |    1 +
->  4 files changed, 78 insertions(+), 5 deletions(-)
->  create mode 100644 fs/nfsd/current_stateid.h
+> I am just starting to work on the logistics of getting this into the
+> FreeBSD source tree, so it may be in a FreeBSD9.n release, where n > 0.
 > 
-> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-> new file mode 100644
-> index 0000000..a83dd50
-> --- /dev/null
-> +++ b/fs/nfsd/current_stateid.h
-> @@ -0,0 +1,11 @@
-> +#ifndef _NFSD4_CURRENT_STATE_H
-> +#define _NFSD4_CURRENT_STATE_H
-> +
-> +#include "state.h"
-> +#include "xdr4.h"
-> +
-> +extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
-> +extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-> +extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-> +
-> +#endif   /* _NFSD4_CURRENT_STATE_H */
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index fa38336..3dfb235 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -39,6 +39,7 @@
->  #include "cache.h"
->  #include "xdr4.h"
->  #include "vfs.h"
-> +#include "current_stateid.h"
->  
->  #define NFSDDBG_FACILITY		NFSDDBG_PROC
->  
-> @@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  				     create->cr_name, create->cr_namelen,
->  				     &create->cr_iattr, S_IFSOCK, 0, &resfh);
->  		break;
-> -
->  	case NF4FIFO:
->  		status = nfsd_create(rqstp, &cstate->current_fh,
->  				     create->cr_name, create->cr_namelen,
-> @@ -1001,6 +1001,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
->  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
->  			      void *);
->  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-> +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-> +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
-> +typedef void(*stateid_cleaner)(struct nfsd4_compound_state *);
->  
->  enum nfsd4_op_flags {
->  	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-> @@ -1034,6 +1037,9 @@ struct nfsd4_operation {
->  	char *op_name;
->  	/* Try to get response size before operation */
->  	nfsd4op_rsize op_rsize_bop;
-> +	stateid_setter op_get_currentstateid;
-> +	stateid_getter op_set_currentstateid;
-> +	stateid_cleaner op_clear_currentstateid;
-
-Is op_clear_currentstateid ever going to have more than one
-implementation?
-
-If not, let's just make that one a flag and do
-
-	if (clear_currentstateid flag set on this op)
-		cstate->current_stateid = NULL;
-
---b.
-
->  };
->  
->  static struct nfsd4_operation nfsd4_ops[];
-> @@ -1116,6 +1122,11 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
->  	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
->  }
->  
-> +static void
-> +nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
-> +{
-> +	cstate->current_stateid = NULL;
-> +}
->  /*
->   * COMPOUND call.
->   */
-> @@ -1216,13 +1227,24 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  		if (op->status)
->  			goto encode_op;
->  
-> -		if (opdesc->op_func)
-> +		if (opdesc->op_func) {
-> +			if (opdesc->op_get_currentstateid)
-> +				opdesc->op_get_currentstateid(cstate, &op->u);
->  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
-> -		else
-> +		} else
->  			BUG_ON(op->status == nfs_ok);
->  
-> -		if (!op->status && need_wrongsec_check(rqstp))
-> -			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-> +		if (!op->status) {
-> +			if (opdesc->op_set_currentstateid) {
-> +				opdesc->op_set_currentstateid(cstate, &op->u);
-> +			}
-> +
-> +			if (opdesc->op_clear_currentstateid)
-> +				opdesc->op_clear_currentstateid(cstate);
-> +
-> +			if (need_wrongsec_check(rqstp))
-> +				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-> +		}
->  
->  encode_op:
->  		/* Only from SEQUENCE */
-> @@ -1414,6 +1436,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  		.op_flags = OP_MODIFIES_SOMETHING,
->  		.op_name = "OP_CLOSE",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-> +		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
->  	},
->  	[OP_COMMIT] = {
->  		.op_func = (nfsd4op_func)nfsd4_commit,
-> @@ -1484,6 +1508,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
->  		.op_name = "OP_OPEN",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
-> +		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
->  	},
->  	[OP_OPEN_CONFIRM] = {
->  		.op_func = (nfsd4op_func)nfsd4_open_confirm,
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 47e94e3..594b44e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
->  static time_t boot_time;
->  static stateid_t zerostateid;             /* bits all 0 */
->  static stateid_t onestateid;              /* bits all 1 */
-> +static stateid_t currentstateid;         /* other all 0, seqid 1 */
->  static u64 current_sessionid = 1;
->  
->  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
->  
->  /* forward declarations */
->  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-> @@ -4423,6 +4425,8 @@ nfs4_state_init(void)
->  		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->  	}
->  	memset(&onestateid, ~0, sizeof(stateid_t));
-> +	/* seqid 1, other all 0 */
-> +	currentstateid.si_generation = 1;
->  	INIT_LIST_HEAD(&close_lru);
->  	INIT_LIST_HEAD(&client_lru);
->  	INIT_LIST_HEAD(&del_recall_lru);
-> @@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
->  	nfs4_unlock_state();
->  	nfsd4_destroy_callback_queue();
->  }
-> +
-> +static void
-> +get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-> +{
-> +	if (cstate->current_stateid && CURRENT_STATEID(stateid))
-> +		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
-> +}
-> +
-> +static void
-> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-> +{
-> +	if (cstate->minorversion)
-> +		cstate->current_stateid = stateid;
-> +}
-> +
-> +void
-> +nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-> +{
-> +	put_stateid(cstate, &open->op_stateid);
-> +}
-> +
-> +void
-> +nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-> +{
-> +	get_stateid(cstate, &close->cl_stateid);
-> +}
-> +
-> +void
-> +nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-> +{
-> +	get_stateid(cstate, &close->cl_stateid);
-> +}
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 2364747..c1fe8ba 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
->  	size_t			iovlen;
->  	u32			minorversion;
->  	u32			status;
-> +	const stateid_t	*current_stateid;
->  };
->  
->  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
-> -- 
-> 1.7.7.4
+> Also, the above does not include any pNFS support. I am about ready to
+> start coding pNFS client stuff, which brings me to...
+> - It will be difficult for me to make much progress without any
+>   pNFS servers to test against. (The only NFSv4.1 server I have to
+>   test against is Fedora15 and I don't think it knows how to do pNFS?
+>   If there is a way to make Fedora15/16 (or any other freebie Linux
+>   distro) do pNFS, please let me know.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> If others have suggestions on how I might gain access to pNFS servers
+> for testing, I would appreciate hearing. (However, I am not funded to
+> do any of this, so the suggestions can't include my spending $$$. I can
+> make it to a Bakeathon when it happens to be close to where I am, so I
+> can show up "on the cheap", like I did last June in Ann Arbor.)
+> 
+
+One way to go is the Linux pnfs project at linux-nfs.org start here:
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+
+It is an NFSD linux Kernel server with pNFS extensions destined to
+be part of Linux at some future release.
+
+You will need to compile your own Kernel, or alternatively this Kernel
+is available in rpm form  from Steve Dickson for some Fedoras:
+http://steved.fedorapeople.org/repos/pnfs/
+
+The easiest is to first use the what is called pnfs-exp which is an MDS
+plus a single DS exporting any local file system.
+
+Then you can also export a GFS2 read-only and an EXOFS which is a full
+fixture pnfs-objects based cluster filesystem.
+
+The Luster patch suggested to you is also based on above Benny's tree.
+
+I have on my todo list a full osd (pnfs-objects) stack port to FreeBSD
+But that's in the far future. 
+Meanwhile I'd suggest the pnfs-client-core to layout-driver API be closely
+crafted to match that of the Linux LD API so it could be kept the same
+code base. For example the pnfs-objects LD is mostly pure C code relying
+on the ORE (Objects Raid Engine). The ORE is multy licensed library that
+has ports to Many platforms including Linux-Kernel 
+Linux/FreeBSD/windows User-Mode and more of which only the Linux variants
+actually run because of the need of the iscsi stack to support BiDi and
+large CDB commands, Only supported by Linux.
+
+Cheers
+Boaz
+
+> rick
+> 
+> ----- Original Message -----
+>> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish <sfaibish@emc.com>
+>> wrote:
+>>
+>>> Attached please find the slides that we presented yesterday at
+>>> USENIX
+>>> LISA 11
+>>> conference in Boston. We would like to get more detailed input on
+>>> other
+>>> OS
+>>> that will support pNFS server/client (this is for Rick as well) that
+>>> were
+>>> not mentioned in this slide set.
+>>>
+>>> /Sorin
+>>>
+>>
+>>
+>>
+>> --
+>> Best Regards
+>> Sorin Faibish
+>> Corporate Distinguished Engineer
+>> Unified Storage Division
+>>
+>> EMC²
+>> where information lives
+>>
+>> Phone: 508-435-1000 x 48545
+>> Cellphone: 617-510-0422
+>> Email : sfaibish@emc.com
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
+
