@@ -1,63 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:13908 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757092Ab1LHDcl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 22:32:41 -0500
-From: <tao.peng@emc.com>
-To: <bharrosh@panasas.com>
-CC: <bergwolf@gmail.com>, <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Date: Wed, 7 Dec 2011 22:32:05 -0500
-Subject: RE: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-Message-ID: <F19688880B763E40B28B2B462677FBF805E5044437@MX09A.corp.emc.com>
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
- <4ED62857.7090804@tonian.com>
- <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com>
- <4ED6D5D8.9010801@panasas.com>
- <F19688880B763E40B28B2B462677FBF805E5043E4B@MX09A.corp.emc.com>
- <4ED7BA55.8010200@panasas.com>
- <F19688880B763E40B28B2B462677FBF805E5043F8B@MX09A.corp.emc.com>
- <4EDF737A.2080400@panasas.com>
-In-Reply-To: <4EDF737A.2080400@panasas.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from smtp-out-1.desy.de ([131.169.56.84]:33494 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721Ab1LIPox (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 10:44:53 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 9C88A1978
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Dec 2011 16:44:51 +0100 (MET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 71DE913E86
+	for <linux-nfs@vger.kernel.org>; Fri,  9 Dec 2011 16:44:50 +0100 (MET)
+Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta1301f46eb83a96160b60@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Fri, 9 Dec 2011 16:44:50 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] client: test LOCK and LOCKU in a single compound
+Date: Fri,  9 Dec 2011 16:40:15 +0100
+Message-Id: <1323445215-3654-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBXZWRuZXNkYXksIERlY2VtYmVyIDA3
-LCAyMDExIDEwOjA5IFBNDQo+IFRvOiBQZW5nLCBUYW8NCj4gQ2M6IGJlcmd3b2xmQGdtYWlsLmNv
-bTsgYmhhbGV2eUB0b25pYW4uY29tOyBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbTsgbGludXgt
-bmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogW1BBVENILVJFU0VORCA0LzRdIHBu
-ZnNibG9jazogZG8gbm90IGFzayBmb3IgbGF5b3V0IGluIHBnX2luaXQNCj4gDQo+IE9uIDEyLzAy
-LzIwMTEgMDY6NTkgQU0sIHRhby5wZW5nQGVtYy5jb20gd3JvdGU6DQo+ID4+DQo+ID4gSSdtIHNv
-cnJ5IGJ1dCBJIGRvbid0IGdldCBpdC4uLiBIb3cgZG8geW91IGNvdW50IHRoZSBmaXJzdCBjb250
-aWd1b3VzDQo+ID4gY2h1bmsgaW4gLnBnX2luaXQ/IEFsbCB5b3Uga25vdyBhdCAucGdfaW5pdCBp
-cyBhbiBlbXB0eSBpbyBkZXNjIGFuZA0KPiA+IGFuIG5mcyBwYWdlLiBBcmUgeW91IGdvaW5nIHRv
-IHNjYW4gdGhlIHJhZGl4IHRyZWUgYW5kIGZpbmQgdGhlIG5leHQNCj4gPiBwYWdlIHRoYXQgd3Jp
-dGVfY2FjaGVfcGFnZXMgaXMgZ29pbmcgdG8gZmx1c2ggb3V0PyBJIGRvbid0IHJlYWxseQ0KPiA+
-IHRoaW5rIGFueW9uZSB3aWxsIGFncmVlIG9uIGl0Li4uIFBsZWFzZSBsb29rIGludG8gdGhlIHNl
-Y29uZCBwYXJ0IG9mDQo+ID4geW91ciBzb2x1dGlvbiBhbmQgdGhlbiB5b3UnbGwgc2VlIHdoeSBJ
-IGFtIHdvcnJpZWQgdGhhdCBpdCBtYXkgbmV2ZXINCj4gPiBnZXQgZG9uZS4+DQo+ID4gQmVzdCBS
-ZWdhcmRzLA0KPiA+IFRhbw0KPiA+DQo+IA0KPiBScnJyLCBvbmUgdGhpbmcgSSBjYW5ub3QgZG8g
-aXMgbWFrZSBzb21lIG9uZSB1bmRlcnN0YW5kLg0KPiANCj4gSSBndWVzcyBJJ2xsIGhhdmUgdG8g
-ZG8gaXQgbXkgc2VsZi4gSXQncyBzbyBzaW1wbGUgSSdtIGdvJ25lIGNyeS4NCj4gDQo+IEkgaGF2
-ZSBtb3JlIHByZXNzZWQgdGhpbmdzIG9uIG15IHBsYXRlIHRoZW4gZml4IGJyb2tlbiBibG9ja3Mg
-c2VydmVycw0KPiBidXQgeW91IGFyZSBmb3JjaW5nIG15IGhhbmRzLiBUaGUgbGFzdCBjb2RlIHlv
-dSBzZW50IGlzIG5vdCBhY2NlcHRhYmxlDQo+IGJlY2F1c2UgaXQgaXMgdG90YWxseSBub3QgdXNh
-YmxlIGJ5IG9iamVjdHMgYW5kIGZpbGVzIChzZWdtZW50cykuDQo+IA0KPiBHaXZlIG1lIGEgd2Vl
-ay4gTm90IHRoYXQgaXQgc2hvdWxkIHRha2UgbG9uZ2VyIHRoZW4gYW4gaG91ciBidXQNCj4gYmVj
-YXVzZSBJIGhhdmUgYnVybmluZyBtYXR0ZXJzIHRvIGF0dGVuZCB0byBmaXJzdC4NCj4gDQpPSy4g
-TGV0J3Mgd2FpdCBhbmQgc2VlIHlvdXIgcGF0Y2hlcy4gSSdkIGJlIHJlYWxseSBpbnRlcmVzdGVk
-IGluIGhvdyB5b3UgY291bnQgcGFnZXMgaW4gcGdfaW5pdCB3aGVyZSB0aGUgcGFnZSBsaXN0IGRv
-ZXNuJ3QgZXZlbiBleGlzdC4gQW5kIHBsZWFzZSBkb24ndCBkaXNhcHBvaW50IG1lIHdpdGggc29t
-ZSB3aWxkIGd1ZXNzIHZpYSBucGFnZXMuDQoNClRhbw0KDQo+IEJvYXoNCj4gDQo+ID4+IEJvYXoN
-Cj4gPj4gLS0NCj4gPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxp
-bmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdl
-IHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBh
-dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4NCj4gDQo+
-IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
-YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
-bW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2Vy
-Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ nfs4.1/server41tests/st_open.py |   24 +++++++++++++++++++++++-
+ 1 files changed, 23 insertions(+), 1 deletions(-)
+
+diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+index 89f3e2d..1c965b2 100644
+--- a/nfs4.1/server41tests/st_open.py
++++ b/nfs4.1/server41tests/st_open.py
+@@ -4,7 +4,8 @@ from nfs4_const import *
+ from environment import check, checklist, fail, create_file, open_file, close_file
+ from environment import open_create_file_op
+ from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
+-from nfs4_type import creatverfattr, fattr4, stateid4
++from nfs4_type import creatverfattr, fattr4, stateid4, locker4, lock_owner4
++from nfs4_type import open_to_lock_owner4
+ import nfs4_ops as op
+ import threading
+ 
+@@ -253,3 +254,24 @@ def testOpenAndClose(t, env):
+     res = sess1.compound(open_op + [op.close(0, current_stateid)])
+     check(res, NFS4_OK)
+ 
++def testLockLockU(t, env):
++    """test current state id processing by having LOCK and LOCKU
++       in a single compound
++
++    FLAGS: open all
++    CODE: OPEN32
++    """
++    current_stateid = stateid4(1, '\0' * 12)
++    sess1 = env.c1.new_client_session(env.testname(t))
++
++    res = create_file(sess1, env.testname(t))
++    check(res)
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++
++    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
++    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
++    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
++	op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX) ]
++    res = sess1.compound([op.putfh(fh)] + lock_ops)
++    check(res, NFS4_OK)
+-- 
+1.7.7
+
