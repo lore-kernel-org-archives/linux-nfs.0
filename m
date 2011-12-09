@@ -1,312 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:52147 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755540Ab1LGNRz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 08:17:55 -0500
-Received: by bkbzv3 with SMTP id zv3so421909bkb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 05:17:53 -0800 (PST)
-Message-ID: <4EDF677C.7030209@tonian.com>
-Date: Wed, 07 Dec 2011 15:17:48 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:62376 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750950Ab1LIHsw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 02:48:52 -0500
+Received: by wgbds13 with SMTP id ds13so2833979wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Dec 2011 23:48:51 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Tigran Mkrtchyan <kofemann@googlemail.com>
-CC: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATCH] nfsd41: handle current stateid in open and close
-References: <1323207847-19118-1-git-send-email-tigran.mkrtchyan@desy.de> <20111206230823.GH12640@fieldses.org>
-In-Reply-To: <20111206230823.GH12640@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
+References: <op.v565vhhjrwwil4@sfaibish1.corp.emc.com>
+	<813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
+Date: Fri, 9 Dec 2011 08:48:51 +0100
+Message-ID: <CAGue13q3_eN-u--ajbS5FJzbn5GN6VwhVhd4p5fRPYenQegGog@mail.gmail.com>
+Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
+ attachment this time
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+Cc: Sorin Faibish <sfaibish@emc.com>, linux-nfs@vger.kernel.org,
+        honey@citi.umich.edu, nfsv4@ietf.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-07 01:08, J. Bruce Fields wrote:
-> It's a little verbose, but yes it does nicely collect the current
-> stateid getting/setting into one place.  Benny, is the more or less what
-> you were thinking of?
+On Fri, Dec 9, 2011 at 3:53 AM, Rick Macklem <rmacklem@uoguelph.ca> wrote:
+> Thanks for the slides, Sorin.
+>
+> Just fyi, it was correct to not mention a FreeBSD client, since the
+> 4.1 client code hasn't made it into any release yet. It is available
+> as a patch against the FreeBSD9.0 kernel, in case anyone is interested:
+>   http://people.freebsd.org/~rmacklem/nfsv4.1-client/nfsv41.patch
+>
+> I am just starting to work on the logistics of getting this into the
+> FreeBSD source tree, so it may be in a FreeBSD9.n release, where n > 0.
+>
+> Also, the above does not include any pNFS support. I am about ready to
+> start coding pNFS client stuff, which brings me to...
+> - It will be difficult for me to make much progress without any
+>  pNFS servers to test against. (The only NFSv4.1 server I have to
+>  test against is Fedora15 and I don't think it knows how to do pNFS?
+>  If there is a way to make Fedora15/16 (or any other freebie Linux
+>  distro) do pNFS, please let me know.
+>
+> If others have suggestions on how I might gain access to pNFS servers
+> for testing, I would appreciate hearing.
 
-Yes it is, though I also liked your direction of just using the current
-stateid for xdr decoding and encoding.
+Hi Rick,
 
-> 
-> Nits inline below.
-> 
-> On Tue, Dec 06, 2011 at 10:44:07PM +0100, Tigran Mkrtchyan wrote:
->> From: Tigran Mkrtchyan <kofemann@gmail.com>
+we have user space pNFS server written in java. It's part of dCache
+project but can be used stand alone for testing. Requires JVM and disk
+space to store data blocks:
+
+1. checkout and build
+
+$ hg clone http://www.dcache.org/~tigran/cgi-bin/hgwebdir.cgi/jpnfs dcache-nfs
+$ cd dcache-nfs
+$ mvn clean package
+
+2. tweak nfs.properties:
+put you host ip instead of 192.168.2.108
+
+current setup will start mds and ds on the same host on ports 2049 and 2052.
+File system is re-initialized on restart.
+
+3. start it:
+$ java -jar target/jpNFS-0.0.4-SNAPSHOT-jar-with-dependencies.jar oncrpcsvc.xml
+
+4. test your client
+
+Regards,
+   Tigran.
+
+ (However, I am not funded to
+> do any of this, so the suggestions can't include my spending $$$. I can
+> make it to a Bakeathon when it happens to be close to where I am, so I
+> can show up "on the cheap", like I did last June in Ann Arbor.)
+>
+> rick
+>
+> ----- Original Message -----
+>> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish <sfaibish@emc.com>
+>> wrote:
+>>
+>> > Attached please find the slides that we presented yesterday at
+>> > USENIX
+>> > LISA 11
+>> > conference in Boston. We would like to get more detailed input on
+>> > other
+>> > OS
+>> > that will support pNFS server/client (this is for Rick as well) that
+>> > were
+>> > not mentioned in this slide set.
+>> >
+>> > /Sorin
+>> >
 >>
 >>
->> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
->> ---
->>  fs/nfsd/current_stateid.h |   44 ++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4proc.c        |   22 ++++++++++++++++++----
->>  fs/nfsd/nfs4state.c       |   17 +++++++++++++++++
->>  fs/nfsd/xdr4.h            |    1 +
->>  4 files changed, 80 insertions(+), 4 deletions(-)
->>  create mode 100644 fs/nfsd/current_stateid.h
->>
->> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
->> new file mode 100644
->> index 0000000..f1ad6e9
->> --- /dev/null
->> +++ b/fs/nfsd/current_stateid.h
->> @@ -0,0 +1,44 @@
->> +/*
->> + *  Copyright (c) 2001 The Regents of the University of Michigan.
->> + *  All rights reserved.
->> + *
->> + *  Kendrick Smith <kmsmith@umich.edu>
->> + *  Andy Adamson <andros@umich.edu>
-> 
-> Kendrick and Andy have been busy!  And they're both working at the
-> University again?
-> 
-> Anyway: on a header file containing only two function prototypes, I'd be
-> inclined to leave off any copyright notice unless someone's lawyers
-> absolutely insist on it....
-> 
->> + *  
->> + *  Redistribution and use in source and binary forms, with or without
->> + *  modification, are permitted provided that the following conditions
->> + *  are met:
->> + *  
->> + *  1. Redistributions of source code must retain the above copyright
->> + *     notice, this list of conditions and the following disclaimer.
->> + *  2. Redistributions in binary form must reproduce the above copyright
->> + *     notice, this list of conditions and the following disclaimer in the
->> + *     documentation and/or other materials provided with the distribution.
->> + *  3. Neither the name of the University nor the names of its
->> + *     contributors may be used to endorse or promote products derived
->> + *     from this software without specific prior written permission.
->> + *
->> + *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
->> + *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
->> + *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
->> + *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
->> + *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
->> + *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
->> + *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
->> + *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
->> + *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
->> + *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
->> + *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->> + *
->> + */
->> +
->> +#ifndef _NFSD4_CURRENT_STATE_H
->> +#define _NFSD4_CURRENT_STATE_H
->> +
->> +#include "state.h"
->> +#include "xdr4.h"
->> +
->> +extern void nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open);
->> +extern void nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close);
->> +
->> +#endif   /* _NFSD4_CURRENT_STATE_H */
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index fa38336..bfed3cb 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -39,6 +39,7 @@
->>  #include "cache.h"
->>  #include "xdr4.h"
->>  #include "vfs.h"
->> +#include "current_stateid.h"
->>  
->>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
->>  
->> @@ -1001,6 +1002,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
->>  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
->>  			      void *);
->>  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
->> +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
->> +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
->>  
->>  enum nfsd4_op_flags {
->>  	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
->> @@ -1026,6 +1029,8 @@ enum nfsd4_op_flags {
->>  	 * the v4.0 case).
->>  	 */
->>  	OP_CACHEME = 1 << 6,
->> +	CONSUMES_CURRENT_STATEID = 1 << 7,
->> +	PROVIDES_CURRENT_STATEID = 1 << 8,
-> 
-> Or should we just use the fact that op_{get,put}_currentstateid will be
-> NULL whenever the respective flag would be set?
-> 
-
-~=
-
-or we could use a no-op implementation of the method
-for the respective ops.
-
->>  };
->>  
->>  struct nfsd4_operation {
->> @@ -1034,6 +1039,8 @@ struct nfsd4_operation {
->>  	char *op_name;
->>  	/* Try to get response size before operation */
->>  	nfsd4op_rsize op_rsize_bop;
->> +	stateid_setter op_get_currentstateid;
->> +	stateid_getter op_set_currentstateid;
->>  };
->>  
->>  static struct nfsd4_operation nfsd4_ops[];
->> @@ -1216,11 +1223,16 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->>  		if (op->status)
->>  			goto encode_op;
->>  
->> -		if (opdesc->op_func)
->> +		if (opdesc->op_func) {
->> +			if (opdesc->op_flags & CONSUMES_CURRENT_STATEID)
->> +				opdesc->op_get_currentstateid(cstate, &op->u);
->>  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
->> -		else
->> +		} else
->>  			BUG_ON(op->status == nfs_ok);
->>  
->> +		if (!op->status && opdesc->op_flags & PROVIDES_CURRENT_STATEID)
->> +			opdesc->op_set_currentstateid(cstate, &op->u);
->> +
->>  		if (!op->status && need_wrongsec_check(rqstp))
->>  			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
->>  
->> @@ -1411,9 +1423,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>  	},
->>  	[OP_CLOSE] = {
->>  		.op_func = (nfsd4op_func)nfsd4_close,
->> -		.op_flags = OP_MODIFIES_SOMETHING,
->> +		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
->>  		.op_name = "OP_CLOSE",
->>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
->> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-
-   Even though CLOSE returns a stateid, this stateid is not useful to
-   the client and should be treated as deprecated.  CLOSE "shuts down"
-   the state associated with all OPENs for the file by a single open-
-   owner.  As noted above, CLOSE will either release all file-locking
-   state or return an error.  Therefore, the stateid returned by CLOSE
-   is not useful for operations that follow.  To help find any uses of
-   this stateid by clients, the server SHOULD return the invalid special
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   stateid (the "other" value is zero and the "seqid" field is
-   NFS4_UINT32_MAX, see Section 8.2.3).
-
-Copying the returned stateid is crucial is the client is silly enough
-to construct a COMPOUND that attempts to use the current_stateid after CLOSE.
-
->>  	},
->>  	[OP_COMMIT] = {
->>  		.op_func = (nfsd4op_func)nfsd4_commit,
->> @@ -1481,9 +1494,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>  	},
->>  	[OP_OPEN] = {
->>  		.op_func = (nfsd4op_func)nfsd4_open,
->> -		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
->> +		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING | PROVIDES_CURRENT_STATEID,
->>  		.op_name = "OP_OPEN",
->>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
->> +		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
->>  	},
->>  	[OP_OPEN_CONFIRM] = {
->>  		.op_func = (nfsd4op_func)nfsd4_open_confirm,
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 47e94e3..9dc1de8 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
->>  static time_t boot_time;
->>  static stateid_t zerostateid;             /* bits all 0 */
->>  static stateid_t onestateid;              /* bits all 1 */
->> +static stateid_t currentstateid;         /* other all 0, seqid 1 */
->>  static u64 current_sessionid = 1;
->>  
->>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
->> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
->>  
->>  /* forward declarations */
->>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
->> @@ -4423,6 +4425,8 @@ nfs4_state_init(void)
->>  		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->>  	}
->>  	memset(&onestateid, ~0, sizeof(stateid_t));
-> 
-> A project for another day, but the initialization of these constants has
-> always annoyed me--isn't there any compact way to define these at
-> compile-time?
-
-{ ~0, { { ~0, ~0 }, ~0 } } is ugly but compact :)
-
-And the following may be an overkill...
-{
-	.si_generation = ~0,
-	.si_opaque = {
-		.so_clid = {
-			.cl_boot = ~0,
-			.cl_id = ~0,
-		},
-		.so_id = ~0
-	}
-};
-
-> 
-> --b.
-> 
->> +	/* seqid 1, other all 0 */
->> +	currentstateid.si_generation = 1;
-
-should be cpu_to_be32(1), no?
-
->>  	INIT_LIST_HEAD(&close_lru);
->>  	INIT_LIST_HEAD(&client_lru);
->>  	INIT_LIST_HEAD(&del_recall_lru);
->> @@ -4545,3 +4549,16 @@ nfs4_state_shutdown(void)
->>  	nfs4_unlock_state();
->>  	nfsd4_destroy_callback_queue();
->>  }
->> +
->> +void
->> +nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
->> +{
->> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
->> +}
->> +
->> +void
->> +nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
->> +{
->> +	if (CURRENT_STATEID(&close->cl_stateid))
->> +		 memcpy(&close->cl_stateid, &cstate->current_stateid, sizeof(stateid_t));
-
-So, if CLOSE if the first operation to use the current stateid
-and no other operation has already set it, what do we get?
-the zero stateid?
-I believe we need to initialize the current_stateid for the compound
-with the invalid stateid:
-(the "other" value is zero and the "seqid" field is
-   NFS4_UINT32_MAX, see Section 8.2.3)
-
-Benny
-
->> +}
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index 2364747..96f9966 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
->>  	size_t			iovlen;
->>  	u32			minorversion;
->>  	u32			status;
->> +	stateid_t               current_stateid;
->>  };
->>  
->>  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
->> -- 
->> 1.7.7.3
 >>
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Best Regards
+>> Sorin Faibish
+>> Corporate Distinguished Engineer
+>> Unified Storage Division
+>>
+>> EMC²
+>> where information lives
+>>
+>> Phone: 508-435-1000 x 48545
+>> Cellphone: 617-510-0422
+>> Email : sfaibish@emc.com
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
