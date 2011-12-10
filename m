@@ -1,80 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15035 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29133 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756128Ab1LBCip (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 21:38:45 -0500
-Message-ID: <4ED83A33.7030607@RedHat.com>
-Date: Thu, 01 Dec 2011 21:38:43 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
-References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>	 <4ED7EBFF.6030706@RedHat.com> <4ED7F7B9.2090205@netapp.com> <1322776630.4711.37.camel@lade.trondhjem.org>
-In-Reply-To: <1322776630.4711.37.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1754994Ab1LJAKI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Dec 2011 19:10:08 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Do not accept delegated opens when a delegation recall is in effect
+Date: Fri,  9 Dec 2011 19:09:58 -0500
+Message-Id: <1323475798-28642-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+...and report the servers that try to return a delegation when the client
+is using the CLAIM_DELEG_CUR open mode. That behaviour is explicitly
+forbidden in RFC3530.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   24 ++++++++++++++++--------
+ 1 files changed, 16 insertions(+), 8 deletions(-)
 
-On 12/01/2011 04:57 PM, Trond Myklebust wrote:
-> On Thu, 2011-12-01 at 16:55 -0500, Bryan Schumaker wrote: 
->> On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
->>>
->>>
->>> On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> This set of patches removes NFS v3 from the main NFS kernel module and creates
->>>> a new module containing the proc, xdr, and acl code.  This will give us a
->>>> single directory to put NFS v3 specific code so it doesn't need to be mixed in
->>>> with the generic client stuff.
->>>>
->>>> I'm sure this could still use a lot of work, but I figured I would wait to see
->>>> what everybody thinks first.  I imagine that once we get an "nfs submodule"
->>>> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
->>>> modules.
->>>>
->>>> I split the second patch into two to make it easier to see what my changes were
->>>> to get everything to compile.  Hopefully this will save some pain in having to
->>>> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
->>>> command.  I can combine everything in a future version of the patch.
->>>>
->>>> v2:
->>>>   - I set the "diff.renames copy" git config option to create a smaller second
->>>>     patch.  Maybe this time it won't get me kicked off the mailing list...
->>>>     Thanks to Boaz and Jim for the tip!
->>>>
->>>> Thoughts?
->>> Now what is the motivating reason behind this re-architecture
->>> other than making the upstream kernel literally impossible to 
->>> back port to older kernels?? 
->>>
->> I wasn't thinking about backporting when I did this... is there a 
->> better way to do this that wouldn't make it a pain to backport?
->>
->> My thought was that it would help clean things up a bit by adding a bit 
->> of separation between the nfs client and each nfs protocol.  It would 
->> also allow user to decide what they need at run time rather than at 
->> compile time.
-> 
-> It would also be nice to do the same for NFSv2 next. Then maybe we can
-> tackle NFSv4...
-Why? Just for legacy reasons... why not just leave the v2/v3 support
-in the nfs module and break out the v4 code in its own module. 
-Have a module called nfsv4. Possibly have different modules for 
-different v4 versions... even layer the modules... 
-
-Start with a nfsv4 module. Then have a nfsv41 which is depend on 
-the nfsv4 module. Then a nfsv42 module which depend on a nfsv41 
-module, etc...  
-
-I'm guessing this push to modularize the code is to make it easier
-to eventually stop supporting older protocol version like v2 and
-v3... which is understandable... but v2/v3 code is the legacy code..
-Why not just remove the old from the new, which, at the end of the
-day, would make it easier to maintain the legacy code... IMHO...
-
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index be2bbac..d9f4d78 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -39,6 +39,8 @@
+ #include <linux/delay.h>
+ #include <linux/errno.h>
+ #include <linux/string.h>
++#include <linux/ratelimit.h>
++#include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/gss_api.h>
+@@ -894,6 +896,8 @@ out:
+ 
+ static int can_open_delegated(struct nfs_delegation *delegation, fmode_t fmode)
+ {
++	if (delegation == NULL)
++		return 0;
+ 	if ((delegation->type & fmode) != fmode)
+ 		return 0;
+ 	if (test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags))
+@@ -1036,8 +1040,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 		}
+ 		rcu_read_lock();
+ 		delegation = rcu_dereference(nfsi->delegation);
+-		if (delegation == NULL ||
+-		    !can_open_delegated(delegation, fmode)) {
++		if (!can_open_delegated(delegation, fmode)) {
+ 			rcu_read_unlock();
+ 			break;
+ 		}
+@@ -1091,7 +1094,12 @@ static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data
+ 		if (delegation)
+ 			delegation_flags = delegation->flags;
+ 		rcu_read_unlock();
+-		if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
++		if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
++			pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
++					"returning a delegation for "
++					"OPEN(CLAIM_DELEGATE_CUR)\n",
++					NFS_CLIENT(inode)->cl_server);
++		} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
+ 			nfs_inode_set_delegation(state->inode,
+ 					data->owner->so_cred,
+ 					&data->o_res);
+@@ -1423,11 +1431,9 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 			goto out_no_action;
+ 		rcu_read_lock();
+ 		delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
+-		if (delegation != NULL &&
+-		    test_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags) == 0) {
+-			rcu_read_unlock();
+-			goto out_no_action;
+-		}
++		if (data->o_arg.claim != NFS4_OPEN_CLAIM_DELEGATE_CUR &&
++		    can_open_delegated(delegation, data->o_arg.fmode))
++			goto unlock_no_action;
+ 		rcu_read_unlock();
+ 	}
+ 	/* Update sequence id. */
+@@ -1444,6 +1450,8 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		return;
+ 	rpc_call_start(task);
+ 	return;
++unlock_no_action:
++	rcu_read_unlock();
+ out_no_action:
+ 	task->tk_action = NULL;
+ 
+-- 
+1.7.7.3
 
