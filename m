@@ -1,132 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:1158 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750880Ab1LSI5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 03:57:54 -0500
-Message-ID: <4EEEFC54.10700@parallels.com>
-Date: Mon, 19 Dec 2011 12:56:52 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>	<20111214104449.3991.61989.stgit@localhost6.localdomain6> <m1bor6rg39.fsf@fess.ebiederm.org>
-In-Reply-To: <m1bor6rg39.fsf@fess.ebiederm.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:40918 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752133Ab1LKQkA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 11:40:00 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c4so1219348eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 11 Dec 2011 08:40:00 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v3 5/5] nfsd41: use pinter to current stateid to avoid extra copy
+Date: Sun, 11 Dec 2011 17:41:48 +0100
+Message-Id: <1323621708-25138-6-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-18.12.2011 02:25, Eric W. Biederman пишет:
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->
->> These routines are required for making SUNRPC sysctl's per network namespace
->> context.
->
-> Why does sunrpc require it's own sysctl root?  You should be able to use
-> the generic per network namespace root and call it good.
->
-> What makes register_net_sysctl_table and register_net_sysctl_ro_table
-> unsuitable for sunrpc.  I skimmed through your patches and I haven't
-> seen anything obvious.
->
-> Eric
->
-
-Hello, Eric. Sorry for the lack of information.
-I was considering two ways how to make these sysctl per net ns:
-
-1) Use register_net_sysctl_table and register_net_sysctl_ro_table as you 
-mentioned. This was easy and cheap, but also means, than all user-space 
-programs, tuning SUNRPC will be broken (since all sysctl currently located 
-in"/proc/sys/sunprc/").
-
-2) Export sysctl root creation routines and make per-net SUNRPC sysctl root. 
-This approach allows to make any part of sysctl tree per namespace context and 
-thus leave user-space stuff unchanged.
-
-BTW, NFS and LockD also have it's sysctls ("/proc/sys/fs/nfs/").
-And also because of them I've decided, that it would be better to export SYSCTL 
-root creation routines instead of breaking compatibility for all NFS layers by 
-moving all sysctl under /proc/sys/net/ directory.
-
-Do you feel that it was a bad decision?
-
->
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->> ---
->>   include/linux/sysctl.h |    1 +
->>   kernel/sysctl.c        |   11 +++++++++++
->>   2 files changed, 12 insertions(+), 0 deletions(-)
->>
->> diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
->> index 703cfa3..be586a9 100644
->> --- a/include/linux/sysctl.h
->> +++ b/include/linux/sysctl.h
->> @@ -1084,6 +1084,7 @@ struct ctl_path {
->>   };
->>
->>   void register_sysctl_root(struct ctl_table_root *root);
->> +void unregister_sysctl_root(struct ctl_table_root *root);
->>   struct ctl_table_header *__register_sysctl_paths(
->>   	struct ctl_table_root *root, struct nsproxy *namespaces,
->>   	const struct ctl_path *path, struct ctl_table *table);
->> diff --git a/kernel/sysctl.c b/kernel/sysctl.c
->> index ae27196..fb016a9 100644
->> --- a/kernel/sysctl.c
->> +++ b/kernel/sysctl.c
->> @@ -1700,6 +1700,15 @@ void register_sysctl_root(struct ctl_table_root *root)
->>   	list_add_tail(&root->root_list,&sysctl_table_root.root_list);
->>   	spin_unlock(&sysctl_lock);
->>   }
->> +EXPORT_SYMBOL_GPL(register_sysctl_root);
->> +
->> +void unregister_sysctl_root(struct ctl_table_root *root)
->> +{
->> +	spin_lock(&sysctl_lock);
->> +	list_del(&root->root_list);
->> +	spin_unlock(&sysctl_lock);
->> +}
->> +EXPORT_SYMBOL_GPL(unregister_sysctl_root);
->>
->>   /*
->>    * sysctl_perm does NOT grant the superuser all rights automatically, because
->> @@ -1925,6 +1934,7 @@ struct ctl_table_header *__register_sysctl_paths(
->>
->>   	return header;
->>   }
->> +EXPORT_SYMBOL_GPL(__register_sysctl_paths);
->>
->>   /**
->>    * register_sysctl_table_path - register a sysctl table hierarchy
->> @@ -2007,6 +2017,7 @@ void setup_sysctl_set(struct ctl_table_set *p,
->>   	p->parent = parent ? parent :&sysctl_table_root.default_set;
->>   	p->is_seen = is_seen;
->>   }
->> +EXPORT_SYMBOL_GPL(setup_sysctl_set);
->>
->>   #else /* !CONFIG_SYSCTL */
->>   struct ctl_table_header *register_sysctl_table(struct ctl_table * table)
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> Please read the FAQ at  http://www.tux.org/lkml/
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/nfs4proc.c  |    6 +-----
+ fs/nfsd/nfs4state.c |    7 +++----
+ fs/nfsd/xdr4.h      |    3 +--
+ 3 files changed, 5 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f2f7dfa..b7d1a7b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1126,10 +1126,7 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ static void
+ nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
+ {
+-	if (cstate->has_stateid) {
+-		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
+-		cstate->has_stateid = false;
+-	}
++	cstate->current_stateid = NULL;
+ }
+ /*
+  * COMPOUND call.
+@@ -1244,7 +1241,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 		if (!op->status) {
+ 			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
+ 				opdesc->op_set_currentstateid(cstate, &op->u);
+-				cstate->has_stateid = true;
+ 			}
+ 
+ 			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d7b8f25..be77cd3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4553,16 +4553,15 @@ nfs4_state_shutdown(void)
+ static void
+ get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ {
+-	if (cstate->has_stateid && CURRENT_STATEID(stateid))
+-		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
++	if (cstate->current_stateid && CURRENT_STATEID(stateid))
++		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
+ }
+ 
+ static void
+ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ {
+ 	if (cstate->minorversion) {
+-		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
+-		cstate->has_stateid = true;
++		cstate->current_stateid = stateid;
+ 	}
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index b8435d20..0ad0846 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -54,8 +54,7 @@ struct nfsd4_compound_state {
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
+-	stateid_t               current_stateid;
+-	bool	has_stateid;
++	stateid_t	*current_stateid;
+ };
+ 
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.4
+
