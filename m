@@ -1,55 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:45171 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751819Ab1LVPVG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 10:21:06 -0500
-Date: Thu, 22 Dec 2011 10:20:51 -0500
-From: Jim Rees <rees@umich.edu>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, bfields@fieldses.org,
-        steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <20111222152051.GA2500@umich.edu>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
- <1324499696-10318-5-git-send-email-jlayton@redhat.com>
- <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
- <20111221163312.3405c1f3@tlielax.poochiereds.net>
- <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
- <20111222080706.7a064430@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111222080706.7a064430@tlielax.poochiereds.net>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:40918 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752131Ab1LKQj7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 11:39:59 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c4so1219348eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 11 Dec 2011 08:39:58 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v3 4/5] nfsd41: consume current stateid on read and write
+Date: Sun, 11 Dec 2011 17:41:47 +0100
+Message-Id: <1323621708-25138-5-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton wrote:
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-  Now that I've started looking at actually implementing this, I'm
-  leaning toward keeping this as a packed binary struct. The upcalls to
-  which you refer mostly use the cache_* interfaces in the kernel, and
-  the actual upcall "pipes" are in /proc. That code is already set up to
-  use primarily text based interfaces so it makes sense there.
-  
-  I looked at using that here and determined that the cache_* interface
-  was not well suited to this task. Those are geared toward interfaces
-  (like exportfs or mountd) where the information is primarily stored and
-  manipulated in userspace and the kernel upcalls to fetch that info and
-  populate its cache.
-  
-  In this case, the info is mostly coming from kernel space originally
-  and I believe that rpc_pipefs was better suited for this task. The
-  upcalls that use rpc_pipefs almost universally use a binary struct to
-  pass data between userspace and the kernel.
 
-Having recently added a new rpc_pipe upcall for idmapd, my only suggestion
-is that you think about compatibility issues if the message format changes.
-Ideally you want any combination of new/old * kernel/user to work.  But I
-suspect you've already thought about this.
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    6 ++++--
+ fs/nfsd/nfs4state.c       |   12 ++++++++++++
+ 3 files changed, 18 insertions(+), 2 deletions(-)
 
-I see no harm in using binary for an interface that's only intended for a
-particular user daemon (assuming you solve the compatibility problem).  Text
-is useful for things in /proc that someone might want to manipulate using
-their own tool.  For something like idmapd I don't think a text interface is
-necessary.  No one is going to write their own idmapd, and if they do, the
-binary upcall interface will be the least of their worries.  The same may be
-true of nfsdcld.
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 21550b6..6e54d19 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+  */
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
++extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
+ 
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 70534a0..f2f7dfa 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1555,9 +1555,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_READ] = {
+ 		.op_func = (nfsd4op_func)nfsd4_read,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
+ 		.op_name = "OP_READ",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
+ 	},
+ 	[OP_READDIR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_readdir,
+@@ -1633,9 +1634,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_WRITE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_write,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME | CONSUMES_CURRENT_STATEID,
+ 		.op_name = "OP_WRITE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+ 	},
+ 	[OP_RELEASE_LOCKOWNER] = {
+ 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 25ac9e8..d7b8f25 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4601,3 +4601,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
+ {
+ 	get_stateid(cstate, &locku->lu_stateid);
+ }
++
++void
++nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
++{
++	get_stateid(cstate, &read->rd_stateid);
++}
++
++void
++nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
++{
++	get_stateid(cstate, &write->wr_stateid);
++}
+-- 
+1.7.7.4
+
