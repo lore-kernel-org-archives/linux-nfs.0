@@ -1,119 +1,253 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm17-vm0.access.bullet.mail.mud.yahoo.com ([66.94.236.21]:48608
-	"HELO nm17-vm0.access.bullet.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752870Ab1LLSQh convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 13:16:37 -0500
-Message-ID: <1323713796.6172.YahooMailClassic@web181402.mail.ne1.yahoo.com>
-Date: Mon, 12 Dec 2011 10:16:36 -0800 (PST)
-From: John Simon <tzzhc4@yahoo.com>
-Subject: Re: Intermittent performance issues with Solaris 10 NFS V3 client to RHEL 5.5 NFS server
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20111212161348.GG18185@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:37104 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752112Ab1LKQj4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 11:39:56 -0500
+Received: by eaaj10 with SMTP id j10so210507eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 11 Dec 2011 08:39:55 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v3 1/5] nfsd41: handle current stateid in open and close
+Date: Sun, 11 Dec 2011 17:41:44 +0100
+Message-Id: <1323621708-25138-2-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I had opened a case with SUN/Oracle and send trace and snoop output. Their comment was the issue was response from the Linux side.
-
->     - Anything interesting in the logs on
-> client or server?
-
-No error messages or anything intersting in the logs on either server. 
-
->     - If you look at a small part of the
-> network traffic in
->       wireshark, in the bad case, is
-> there any obvious problem?
->       (Lots of retransmissions, errors
-> returned from the server, ?)
-
-Looked at numerous tcpdump and snoop and don't see any appreciable errors or retransmissions. Also do not see any congestion control coming into play (tcp window is still very open 40k-65k and no pause frames at the ethernet layer).
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
->     - Can you get any rpc statistics out of
-> the client?  (Average
->       time to respond to an rpc, mix of
-> rpc's sent, etc.?)
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |   11 ++++++++++
+ fs/nfsd/nfs4proc.c        |   47 ++++++++++++++++++++++++++++++++++++++------
+ fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h            |    2 +
+ 4 files changed, 89 insertions(+), 7 deletions(-)
+ create mode 100644 fs/nfsd/current_stateid.h
 
-I need to look at rpc stats on the client.
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+new file mode 100644
+index 0000000..a83dd50
+--- /dev/null
++++ b/fs/nfsd/current_stateid.h
+@@ -0,0 +1,11 @@
++#ifndef _NFSD4_CURRENT_STATE_H
++#define _NFSD4_CURRENT_STATE_H
++
++#include "state.h"
++#include "xdr4.h"
++
++extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
++extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++
++#endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index fa38336..4b8d81a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -39,6 +39,7 @@
+ #include "cache.h"
+ #include "xdr4.h"
+ #include "vfs.h"
++#include "current_stateid.h"
+ 
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+@@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				     create->cr_name, create->cr_namelen,
+ 				     &create->cr_iattr, S_IFSOCK, 0, &resfh);
+ 		break;
+-
+ 	case NF4FIFO:
+ 		status = nfsd_create(rqstp, &cstate->current_fh,
+ 				     create->cr_name, create->cr_namelen,
+@@ -1001,6 +1001,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+ 			      void *);
+ typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
++typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
++typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
+ 
+ enum nfsd4_op_flags {
+ 	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
+@@ -1026,6 +1028,9 @@ enum nfsd4_op_flags {
+ 	 * the v4.0 case).
+ 	 */
+ 	OP_CACHEME = 1 << 6,
++	CONSUMES_CURRENT_STATEID = 1 << 7,
++	PROVIDES_CURRENT_STATEID = 1 << 8,
++	CLEARS_CURRENT_STATEID = 1 << 9,
+ };
+ 
+ struct nfsd4_operation {
+@@ -1034,6 +1039,8 @@ struct nfsd4_operation {
+ 	char *op_name;
+ 	/* Try to get response size before operation */
+ 	nfsd4op_rsize op_rsize_bop;
++	stateid_setter op_get_currentstateid;
++	stateid_getter op_set_currentstateid;
+ };
+ 
+ static struct nfsd4_operation nfsd4_ops[];
+@@ -1116,6 +1123,14 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+ }
+ 
++static void
++nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
++{
++	if (cstate->has_stateid) {
++		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
++		cstate->has_stateid = false;
++	}
++}
+ /*
+  * COMPOUND call.
+  */
+@@ -1196,6 +1211,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 
+ 		opdesc = OPDESC(op);
+ 
++		BUG_ON(opdesc->op_flags & PROVIDES_CURRENT_STATEID && 
++			opdesc->op_flags & CLEARS_CURRENT_STATEID);
++
+ 		if (!cstate->current_fh.fh_dentry) {
+ 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
+ 				op->status = nfserr_nofilehandle;
+@@ -1216,13 +1234,25 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 		if (op->status)
+ 			goto encode_op;
+ 
+-		if (opdesc->op_func)
++		if (opdesc->op_func) {
++			if (opdesc->op_flags & CONSUMES_CURRENT_STATEID)
++				opdesc->op_get_currentstateid(cstate, &op->u);
+ 			op->status = opdesc->op_func(rqstp, cstate, &op->u);
+-		else
++		} else
+ 			BUG_ON(op->status == nfs_ok);
+ 
+-		if (!op->status && need_wrongsec_check(rqstp))
+-			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
++		if (!op->status) {
++			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
++				opdesc->op_set_currentstateid(cstate, &op->u);
++				cstate->has_stateid = true;
++			}
++
++			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
++				nfsd4_clear_currentstateid(cstate);
++
++			if (need_wrongsec_check(rqstp))
++				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
++		}
+ 
+ encode_op:
+ 		/* Only from SEQUENCE */
+@@ -1411,9 +1441,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_CLOSE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_close,
+-		.op_flags = OP_MODIFIES_SOMETHING,
++		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
+ 		.op_name = "OP_CLOSE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
+ 	},
+ 	[OP_COMMIT] = {
+ 		.op_func = (nfsd4op_func)nfsd4_commit,
+@@ -1481,9 +1513,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_OPEN] = {
+ 		.op_func = (nfsd4op_func)nfsd4_open,
+-		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
++		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING | PROVIDES_CURRENT_STATEID,
+ 		.op_name = "OP_OPEN",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
+ 	},
+ 	[OP_OPEN_CONFIRM] = {
+ 		.op_func = (nfsd4op_func)nfsd4_open_confirm,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 47e94e3..278e0af 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
+ static time_t boot_time;
+ static stateid_t zerostateid;             /* bits all 0 */
+ static stateid_t onestateid;              /* bits all 1 */
++static stateid_t currentstateid;         /* other all 0, seqid 1 */
+ static u64 current_sessionid = 1;
+ 
+ #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+ #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
++#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+ 
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+@@ -4423,6 +4425,8 @@ nfs4_state_init(void)
+ 		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
+ 	}
+ 	memset(&onestateid, ~0, sizeof(stateid_t));
++	/* seqid 1, other all 0 */
++	currentstateid.si_generation = 1;
+ 	INIT_LIST_HEAD(&close_lru);
+ 	INIT_LIST_HEAD(&client_lru);
+ 	INIT_LIST_HEAD(&del_recall_lru);
+@@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
+ 	nfs4_unlock_state();
+ 	nfsd4_destroy_callback_queue();
+ }
++
++static void
++get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
++{
++	if (cstate->minorversion && CURRENT_STATEID(stateid))
++		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
++}
++
++static void
++put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
++{
++	if (cstate->minorversion)
++		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
++}
++
++void
++nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
++{
++	put_stateid(cstate, &open->op_stateid);
++}
++
++void
++nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++{
++	get_stateid(cstate, &close->cl_stateid);
++}
++
++void
++nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++{
++	get_stateid(cstate, &close->cl_stateid);
++}
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2364747..b8435d20 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -54,6 +54,8 @@ struct nfsd4_compound_state {
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
++	stateid_t               current_stateid;
++	bool	has_stateid;
+ };
+ 
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+-- 
+1.7.7.4
 
-I received a couple off list replies from other users who mentioned they encountered similar issues and upgrading their kernel helped (one user was on 5.5 and went to 5.6 and another was running Debian). If anyone knows of any issues with 2.6.18-194.el5 nfs-utils-1.0.9-44.el5 that could cause intermittent performance for NFS I would appreciate it.
-
-
-
---- On Mon, 12/12/11, J. Bruce Fields <bfields@fieldses.org> wrote:
-
-> From: J. Bruce Fields <bfields@fieldses.org>
-> Subject: Re: Intermittent performance issues with Solaris 10 NFS V3 client to RHEL 5.5 NFS server
-> To: "John Simon" <tzzhc4@yahoo.com>
-> Cc: linux-nfs@vger.kernel.org
-> Date: Monday, December 12, 2011, 10:13 AM
-> On Sun, Dec 11, 2011 at 12:00:45PM
-> -0800, John Simon wrote:
-> > I recently attached a Solaris 10 8/07 client (6900
-> with ce gigbit
-> > interface) to our NFS server which runs RHEL 5.5
-> (kernel
-> > 2.6.18-194.el5).
-> 
-> Could you file a bug against Red Hat and/or Solaris?
-> 
-> > Performance typically is good running around
-> > 25-50MB/s but sometimes seemingly without reason the
-> performance drops
-> > to abysmal levels and will stay like that until NFS is
-> unmounted and
-> > remounted. I have tested this after hours when there
-> is no load on
-> > either server, no traffic on the network and using a
-> 1GB test file.
-> > Our other 300 Linux clients have no performance
-> issues, I have ruled
-> > out network issues by isolating the server to a switch
-> dedicated to it
-> > and an additional port on the NFS server and the tests
-> I performed
-> > were with the file cache in memory.
-> > 
-> > $ time cp /var/tmp/1g.TEST.new /mnt/ real   
-> 25m1.456s user
-> > 0m0.276s sys     0m6.699s
-> > 
-> > After an unmount, wait 5 minutes and remount:
-> > 
-> > $ time cp /var/tmp/1g.TEST.new /mnt/ real   
-> 0m26.767s user
-> > 0m0.277s sys     0m6.589s
-> > 
-> > Mount options I am using on Solaris:
-> > 
-> >   Flags:
-> >   vers=3,proto=tcp,sec=none,hard,intr,link,symlink,acl,rsize=32768,wsize=32768,retrans=5,timeo=600
-> >   Attr cache:   
-> acregmin=120,acregmax=120,acdirmin=120,acdirmax=120
-> 
-> Some ideas:
-> 
->     - Anything interesting in the logs on
-> client or server?
->     - If you look at a small part of the
-> network traffic in
->       wireshark, in the bad case, is
-> there any obvious problem?
->       (Lots of retransmissions, errors
-> returned from the server, ?)
->     - Can you get any rpc statistics out of
-> the client?  (Average
->       time to respond to an rpc, mix of
-> rpc's sent, etc.?)
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
