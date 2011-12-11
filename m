@@ -1,164 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:54436 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753143Ab1LDMm5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:42:57 -0500
-Received: by eeaq14 with SMTP id q14so1485728eea.19
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 04:42:56 -0800 (PST)
-Message-ID: <4EDB6AA3.1030702@tonian.com>
-Date: Sun, 04 Dec 2011 14:42:11 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from frankvm.xs4all.nl ([83.163.148.79]:60892 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751492Ab1LKSKp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 13:10:45 -0500
+Date: Sun, 11 Dec 2011 19:10:42 +0100
+From: Frank van Maarseveen <frankvm@frankvm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: 3.1.4: NFSv3 RPC scheduling issue?
+Message-ID: <20111211181042.GA13425@janus>
+References: <20111205165021.GA24165@janus>
+ <1323128376.7237.7.camel@lade.trondhjem.org>
+ <20111206081115.GA3570@janus>
+ <1323201463.3199.18.camel@lade.trondhjem.org>
+ <20111207134359.GA29828@janus>
+ <1323486601.32695.2.camel@lade.trondhjem.org>
+ <20111211124008.GA10460@janus>
 MIME-Version: 1.0
-To: tigran.mkrtchyan@desy.de
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111211124008.GA10460@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
-> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+On Sun, Dec 11, 2011 at 01:40:08PM +0100, Frank van Maarseveen wrote:
+> On Fri, Dec 09, 2011 at 10:10:01PM -0500, Trond Myklebust wrote:
+> > [...]
+> > I'm still mystified as to what is going on here...
+> > 
+> > Would it be possible to upgrade some of your clients to 3.1.5 (which
+> > contains a fix for a sunrpc socket buffer problem) and then to add the
+> > following patch?
 > 
+> Did so, the mount locked up and still is, ready for some more
+> experimentation. I don't see any difference however. Did a
+> echo 0 >/proc/sys/sunrpc/rpc_debug afterwards (see below).
 > 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  fs/nfsd/nfs4proc.c  |    6 ++++++
->  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
->  2 files changed, 26 insertions(+), 6 deletions(-)
+> A recipe which seems to trigger the issue (at least occasionally) is
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index fa38336..535aed2 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	 */
->  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
->  	WARN_ON(status && open->op_created);
-> +
-> +	if(status)
-> +		goto out;
-> +
-> +	/* set current state id */
-> +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
+> 	cd /mount-point
+> 	ssh server echo 3 \>/proc/sys/vm/drop_caches
+> 	echo 3 >/proc/sys/vm/drop_caches
+> 	for i in `seq 100`
+> 	do
+> 		du >/dev/null 2>&1 &
+> 	done
+> 
+> I'll try it on a pristine kernel to rule out some kernel patches (unlikely to
+> be the cause or trigger but just to be sure).
 
-Since this should be done for all stateid-returning operations
-I think that a cleaner approach could be to mark those as such in
-nfsd4_ops by providing a per-op function to return the operation's
-stateid.  You can then call this method from nfsd4_proc_compound()
-after the call to nfsd4_encode_operation() and when status == 0.
+Tried, same result: my own NFS client patches seem not to make any
+difference, as I expected. The ICMP port unreachable (see my other mail)
+go away when I stop ypbind and they are triggered by "ypwhich" commands
+too so I consider them no longer relevant.
 
->  out:
->  	nfsd4_cleanup_open_state(open, status);
->  	if (open->op_openowner)
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 47e94e3..a34d82e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -51,10 +51,14 @@ time_t nfsd4_grace = 90;
->  static time_t boot_time;
->  static stateid_t zerostateid;             /* bits all 0 */
->  static stateid_t onestateid;              /* bits all 1 */
-> +static stateid_t currentstateid;          /* other all 0, seqid 1 */
->  static u64 current_sessionid = 1;
->  
->  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
-> +
-> +#define STATEID_OF(s, c)  ( CURRENT_STATEID((s)) ? &(c)->current_stateid : (s) ) 
->  
->  /* forward declarations */
->  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-> @@ -3314,13 +3318,15 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask, s
->  */
->  __be32
->  nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
-> -			   stateid_t *stateid, int flags, struct file **filpp)
-> +			   stateid_t *stateid_in, int flags, struct file **filpp)
->  {
->  	struct nfs4_stid *s;
->  	struct nfs4_ol_stateid *stp = NULL;
->  	struct nfs4_delegation *dp = NULL;
->  	struct svc_fh *current_fh = &cstate->current_fh;
->  	struct inode *ino = current_fh->fh_dentry->d_inode;
-> +	stateid_t *stateid;
-> +
->  	__be32 status;
->  
->  	if (filpp)
-> @@ -3329,9 +3335,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
->  	if (grace_disallows_io(ino))
->  		return nfserr_grace;
->  
-> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-> -		return check_special_stateids(current_fh, stateid, flags);
-> +	if (ZERO_STATEID(stateid_in) || ONE_STATEID(stateid_in))
-> +		return check_special_stateids(current_fh, stateid_in, flags);
->  
-> +	stateid = STATEID_OF(stateid_in, cstate);
-> +	
->  	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID, &s);
->  	if (status)
->  		return status;
-> @@ -3655,14 +3663,17 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	__be32 status;
->  	struct nfs4_openowner *oo;
->  	struct nfs4_ol_stateid *stp;
-> +	stateid_t *stateid;
->  
->  	dprintk("NFSD: nfsd4_close on file %.*s\n", 
->  			(int)cstate->current_fh.fh_dentry->d_name.len,
->  			cstate->current_fh.fh_dentry->d_name.name);
->  
->  	nfs4_lock_state();
-> +	stateid = STATEID_OF( &close->cl_stateid, cstate);
+Not much output this time after "echo 0 >/proc/sys/sunrpc/rpc_debug". I
+tried twice:
 
-nit: extra space after open-parentheses
+-pid- flgs status -client- --rqstp- -timeout ---ops--
+16020 0080    -11 f4778230 f325d0a0        0 c191b4ac nfsv3 GETATTR a:call_status q:xprt_sending
+16038 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:none
+16041 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16045 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16048 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 READDIRPLUS a:call_reserveresult q:xprt_sending
+16060 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+16062 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16069 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+-pid- flgs status -client- --rqstp- -timeout ---ops--
+16020 0080    -11 f4778230 f325d0a0        0 c191b4ac nfsv3 GETATTR a:call_status q:xprt_sending
+16038 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:none
+16041 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16045 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16048 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 READDIRPLUS a:call_reserveresult q:xprt_sending
+16060 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+16062 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
+16069 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
 
-> +
->  	status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
-> -					&close->cl_stateid,
-> +					stateid,
->  					NFS4_OPEN_STID|NFS4_CLOSED_STID,
->  					&stp);
->  	if (status)
-> @@ -3670,7 +3681,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	oo = openowner(stp->st_stateowner);
->  	status = nfs_ok;
->  	update_stateid(&stp->st_stid.sc_stateid);
-> -	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-> +	memcpy(stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
 
-Currently, nfsd4_encode_close uses close->cl_stateid so we need to keep its value
-up-to-date. With the scheme I outlined above, copying into cstate->current_stateid can
-be done in a centralized place.
+The NFS client mounts from a machine holding many virtual NFS servers
+using an separate IP address for every export. When access on the client
+hangs then the same export is still mountable on this NFS client using
+a different server IP address (one NIC at both sides btw.). The dead
+virtual server IP address seems only dead for NFS RPC and only from the
+client in question: there is no traffic going out. Ping, rpcinfo et al
+just work. Mount on the client in trouble using the dead IP address but
+specifying a different virtual server export produces some traffic and
+then gets stuck too, I guess at the point when kernel needs to do NFS RPC.
 
-Benny
+So, kernel NFS RPC from client drops dead for a specific server IP address.
 
->  
->  	nfsd4_close_open_stateid(stp);
->  	oo->oo_last_closed_stid = stp;
-> @@ -4400,7 +4411,7 @@ int
->  nfs4_state_init(void)
->  {
->  	int i, status;
-> -
-> +	uint32_t one = 1;
->  	status = nfsd4_init_slabs();
->  	if (status)
->  		return status;
-> @@ -4423,6 +4434,9 @@ nfs4_state_init(void)
->  		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->  	}
->  	memset(&onestateid, ~0, sizeof(stateid_t));
-> +	/* seqid 1, other all 0 */
-> +	memcpy(&currentstateid , &one, sizeof(one));
-> +	
-
-you mean currentstateid.si_generation = cpu_to_be32(1) ?
-
->  	INIT_LIST_HEAD(&close_lru);
->  	INIT_LIST_HEAD(&client_lru);
->  	INIT_LIST_HEAD(&del_recall_lru);
+-- 
+Frank
