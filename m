@@ -1,72 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17553 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:46476 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754535Ab1L2RFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Dec 2011 12:05:10 -0500
-Message-ID: <4EFC9D86.8020008@parallels.com>
-Date: Thu, 29 Dec 2011 21:04:06 +0400
+	id S1751334Ab1LLQ2A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Dec 2011 11:28:00 -0500
+Message-ID: <4EE62B78.9030000@parallels.com>
+Date: Mon, 12 Dec 2011 20:27:36 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
- named one
-References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com> <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
-In-Reply-To: <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/4] SUNRPC: pass network namespace context to sockaddr
+ construction routines
+References: <20111207111716.17273.63010.stgit@localhost6.localdomain6> <20111208204648.GB32505@fieldses.org> <4EE62824.9090807@parallels.com> <20111212161542.GH18185@fieldses.org>
+In-Reply-To: <20111212161542.GH18185@fieldses.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-29.12.2011 20:23, Chuck Lever пишет:
->
-> On Dec 29, 2011, at 11:12 AM, Stanislav Kinsbursky wrote:
->
->> 29.12.2011 20:03, Chuck Lever пишет:
->>>> Because unix named (!) sockets are not network namespace aware.
+12.12.2011 20:15, J. Bruce Fields пишет:
+> On Mon, Dec 12, 2011 at 08:13:24PM +0400, Stanislav Kinsbursky wrote:
+>> 09.12.2011 00:46, J. Bruce Fields пишет:
+>>> On Wed, Dec 07, 2011 at 03:20:07PM +0300, Stanislav Kinsbursky wrote:
+>>>> This is another precursor patch set aimed to remove hard-coded "init_net"
+>>>> reference from SUNRPC sockaddr convertion and construction routines.
 >>>
->>> OK, this is the part I was unaware of.  Bruce and I had talked about this a few months ago, and my take-away was that these sockets were network namespace-aware, such that this was supposed to work as we want, already.
->>>
->>>> They are "current->fs->root" aware.
->>>
->>> In other words, these are relative to the local file namespace, not the local network namespace.  I was afraid of that.
->>>
->>>> I.e. if this connect operation would be performed on "sync mode" (i.e. from the context of mount of NFS server start operation), then all will works fine (in case of each container works in it's own root, of course).
->>>> But currently all connect operations are done by rpciod_workqueue. I.e. regardless to root of process, started service registration, unix socket will be always looked up by path "/var/run/rpcbind.sock" starting from rpciod_workqueue root. I can set desired root before kernel connect during handling RPC task by rpciod_workqueue and revert back to the old one after connection and this will solve the problem to.
->>>> But this approach looks like ugly hack to me. And also requires additional pointer in sock_xprt structure to bypass desired context to rpciod_workqueue handler.
->>>
->>> Can several network namespaces share the same file namespace?  That might cause them to share the same rpcbind, which is undesirable.  Might this also be a problem for user space?
+>>> ACK--all look straightforward.  (Only complaint would be that this isn't
+>>> terribly interesting till we see how these are used.)
 >>>
 >>
->> Yes, they can. But only in general. And it will be a problem for user space programs, using unix named sockets for network related stuff (like rpcbind, for instance).
->> But, actually, I don't see any sense in having several network namespaces with the same root. Probably someone can suggest a specific "real life" solution, which can use such scheme.
+>> Actually, all is simple. These init_net pointers will be replaced
+>> later by "transports, clients and others" network namespace
+>> contexts.
+>> I have some more patches for NFS layer. But I don't see any sense to
+>> sent them now since no "virtualization" patches were commited yet.
+>> So, currently, I'm trying to finalize "SUNRPC per network namespace"
+>> task, and soon I'll send a patch set making SUNRPC sysctl's
+>> network-namespace-aware. It is a little bit tricky and ugly from my
+>> pow, so any ideas are welcome.
 >
-> I can't think of one either.
+> No ideas.... What's the ugly part?
 >
->> But it's not a container and thus no guarantees should be provided in this case from my pow.
->
-> That's probably reasonable, and should be documented publicly if we take the approach of keeping a unique /var/run/rpcbind.sock for each network namespace.
->
+> --b.
 
-Ok, thanks for notice.
+I have some "idée fixe", that all this file system parts of SUNRPC (and NFS) 
+layers have to made per network namespace context in the same manner as sysfs 
+done. I.e. it's content should depends on mount point creator network namespace 
+context instead of "current" one.
+But proc (and sysctl's as well) doesn't allow to make it so simple like sysfs does.
+So, currently sysctl's code is about 30 lines. With my patches in will be 
+approximately 3-4 times longer.
+But this "dependence on mount point creator network namespace" goal is achieved.
+Anyway, I'll cleanup this code and send path set soon.
 
->> Or we need to throw away this unix sockets approach and use only network namespace aware routines. But again, does this really required?
->
-> /var/run/rpcbind.sock is a formal libtirpc/rpcbind API that is common to libtirpc on other OSes.  Now, it's not likely that any application except the kernel uses it directly.  Still, I'm leery of removing it entirely.
->
-
-BTW, I'm not proposing to remove it.
-
-> My sense is that handing an fs->root value to the rpciod workqueue gives us behavior that is closest to what we have now in a single network namespace configuration.  In other words, it's a change that introduces the least amount of "surprise" to the current RPC architecture.
->
-
-I dug a little bit into rpcbind sources and probably you are right.
-
-> Do you have a patch so we can see just how ugly this might get?
->
-
-Not yet. But will send soon.
 
 -- 
 Best regards,
