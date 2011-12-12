@@ -1,74 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1570 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53345 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751294Ab1LOSn1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 13:43:27 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIhQQK007958
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:26 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pBFIhQq4021450
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:26 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] nfsd: overhaul the client name tracking code (RFC)
-Date: Thu, 15 Dec 2011 13:43:21 -0500
-Message-Id: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
+	id S1753738Ab1LLUsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Dec 2011 15:48:39 -0500
+Date: Mon, 12 Dec 2011 15:48:38 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: NFS - lock failover
+Message-ID: <20111212204838.GD20826@fieldses.org>
+References: <CAA-yEOJ+5NssoCOAXzeCNOCkbbACn0qHrj-BtmMRYwxZFDZgxg@mail.gmail.com>
+ <20111201172415.GA27626@janus>
+ <20111209103646.GA1061@janus>
+ <20111212195613.GC20826@fieldses.org>
+ <20111212203027.GA5068@janus>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111212203027.GA5068@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the second version of this patchset. The main changes are:
+On Mon, Dec 12, 2011 at 09:30:27PM +0100, Frank van Maarseveen wrote:
+> On Mon, Dec 12, 2011 at 02:56:13PM -0500, J. Bruce Fields wrote:
+> > On Fri, Dec 09, 2011 at 11:36:46AM +0100, Frank van Maarseveen wrote:
+> > > On Thu, Dec 01, 2011 at 06:24:16PM +0100, Frank van Maarseveen wrote:
+> > > > On Thu, Dec 01, 2011 at 07:07:22PM +0200, Pavel A wrote:
+> > > > > Hi everyone!
+> > > > > 
+> > > > > I was trying not to create new topics, but it seems that posting to an
+> > > > > old one doesn't bring it up. Here is the original topic I'm referring
+> > > > > to: http://comments.gmane.org/gmane.linux.nfs/13108
+> > > > > 
+> > > > > I'm building an A/A cluster using NFS v3 and local file systems, and
+> > > > > looking for
+> > > > > efficient ways for failover (for now I have to restart nfs-kernel-server on
+> > > > > Takeover node to be able to initiate grace period), so the discussed solutions
+> > > > > are very interesting to me.
+> > > > > 
+> > > > > Now (4 years after) in current nfs-utils packages (v. 1.2.2-4 and later) I can
+> > > > > see that the ability to release locks was really implemented and is
+> > > > > working well
+> > > > > (I mean interfaces /proc/fs/nfsd/unlock_ip and
+> > > > > /proc/fs/nfsd/unlock_filesystem),
+> > > > > but how about reacquiring locks on the node, share migrates to? - I've been
+> > > > > going through various mailing lists and found a lot of discussions on the topic
+> > > > > (also dated mainly 2007), but don't seem to find any rpc-based mechanism or
+> > > > > interface like /proc/fs/nfsd/nlm_set_grace to do that, was it ever made?
+> > > > 
+> > > > I've posted a patch some time ago implementing
+> > > > /proc/fs/nfsd/relock_filesystem:
+> > > > 
+> > > > 	http://permalink.gmane.org/gmane.linux.nfs/42360
+> > > > 	http://permalink.gmane.org/gmane.linux.nfs/42361
+> > > > 	http://permalink.gmane.org/gmane.linux.nfs/42362
+> > > 
+> > > Can this patch be scheduled for inclusion in mainline (3.3)?
+> > 
+> > Could you resend and I'll take another look?
+> 
+> I'll check it again but except for one fuzz it should still apply on
+> 3.2-rc. Patch offsets and an incidental fuzz is sometimes informative
+> about possible conflict areas. It has been verified on 3.0 and 3.1
 
-- a few minor bugfixes
+Thanks.  It would be helpful to have them resent in any case.
 
-- some changes to the upcall struct format
+> > But this should really be fixed to handle v4 locks as well.
+> 
+> Why do you think it doesn't?
 
-- renaming some of the objects to be prefixed with "cld" instead of
-  "clstated"
+The fact that unlock_* doesn't.  Looking at it.... I suppose that
+doesn't matter as much on the grace-period starting side.  How much use
+does that have on its own?
 
-One of the things that Bruce has long had on his wishlist is to replace
-the client name tracking code that the kernel uses:
-
-    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
-
-The existing code manipulates the filesystem directly to track this
-info. Not only is that something that makes the VFS maintainers look
-askance at knfsd, but it also is unsuitable in a clustered
-configuration.
-
-Typically we think of the grace period as a property of the server, but
-with a clustered filesystem, we need to consider it as a property of the
-cluster as a whole (or of the clustered filesystem). On a cold startup
-of the cluster, once any node grants a non-reclaim lock, then no more
-reclaim can be allowed on any node. Grace periods must be coordinated
-amongst all cluster nodes.
-
-In order to achieve that goal, we need to first allow the client name
-reclaim to be cluster aware as well. This patchset is a move toward that
-goal and covers the initial kernel part of such a change. A patchset to
-add a daemon to handle the upcalls will follow.
-
-Note that this patchset is still a little rough, so consider this an
-RFC for the overall design. We'll also need to consider a plan to
-deprecate the old client tracking code.
-
-The goal with this patchset is to replace the existing functionality,
-without disturbing the existing code too much. There's some room for
-more cleanup and reorganization once the old tracker is gone.
-
-Jeff Layton (5):
-  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-  sunrpc: create nfsd dir in rpc_pipefs
-  nfsd: add a generic flags field to nfs4_client
-  nfsd: add a header describing upcall to nfsdcld
-  nfsd: add the infrastructure to handle the cld upcall
-
- fs/nfsd/nfs4recover.c    |  439 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4state.c      |   46 ++---
- fs/nfsd/state.h          |   15 +-
- include/linux/nfsd/cld.h |   57 ++++++
- net/sunrpc/rpc_pipe.c    |    5 +
- 5 files changed, 518 insertions(+), 44 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
-
+--b.
