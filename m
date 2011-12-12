@@ -1,128 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:55822 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756395Ab1LOX3n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 18:29:43 -0500
-Message-ID: <4EEA826D.2070200@oracle.com>
-Date: Thu, 15 Dec 2011 15:27:41 -0800
-From: Maxim Uvarov <maxim.uvarov@oracle.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, john@johnmccutchan.com, rlove@rlove.org,
-        eparis@parisplace.org
-Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
-References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com> <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com> <20111214232254.GP2203@ZenIV.linux.org.uk> <4EEA469E.6070307@oracle.com> <20111215213256.GS2203@ZenIV.linux.org.uk> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863704@SACMVEXC2-PRD.hq.netapp.com> <4EEA75DD.9080601@oracle.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863744@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863744@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from smtp-out-1.desy.de ([131.169.56.84]:33959 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753638Ab1LLUbq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:31:46 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id D27341830
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id C80F913F1E
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 21:31:44 +0100 (MET)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
+ (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta14099056383a9615f1458@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Mon, 12 Dec 2011 21:31:44 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH 2/3] client: test LOCK+WRITE+LOCKU in a single compound
+Date: Mon, 12 Dec 2011 21:26:27 +0100
+Message-Id: <1323721588-8259-2-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1323721588-8259-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/15/2011 02:58 PM, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: Maxim Uvarov [mailto:maxim.uvarov@oracle.com]
->> Sent: Thursday, December 15, 2011 5:34 PM
->> To: Myklebust, Trond
->> Cc: Al Viro; linux-nfs@vger.kernel.org; bfields@fieldses.org;
->> john@johnmccutchan.com; rlove@rlove.org; eparis@parisplace.org
->> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on
-> nfs
->>
->> On 12/15/2011 01:52 PM, Myklebust, Trond wrote:
->>>> -----Original Message-----
->>>> From: Al Viro [mailto:viro@ZenIV.linux.org.uk]
->>>> Sent: Thursday, December 15, 2011 4:33 PM
->>>> To: Maxim Uvarov
->>>> Cc: linux-nfs@vger.kernel.org; bfields@fieldses.org; Myklebust,
->>>> Trond; john@johnmccutchan.com; rlove@rlove.org;
->> eparis@parisplace.org
->>>> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files
-> on
->>> nfs
->>>>
->>>> On Thu, Dec 15, 2011 at 11:12:30AM -0800, Maxim Uvarov wrote:
->>>>
->>>>> 1. Original VFS code already has "if NFS", in vfs_unlink().
-> Because
->>> of
->>>>> code does not call d_delete() it has to call notification from
->>>>> d_delete().
->>>>>
->>>>> 2. inotify is done on VFS layer. So logically it has to work on
-> all
->>>>> file systems.
->>>>
->>>> You are using a very odd meaning of the word "logically", then.
-> Note
->>> that
->>>> inotify does *not* work on NFS, no matter what vfs_unlink() would
-> do.
->>>> Simply because files are removed on server, not in VFS.  And server
->>> does not
->>>> notify clients of such removals.  Ergo, any software that relies on
->>> inotify
->>>> delivering notifications of files being removed is broken on NFS.
->>>> That has nothing whatsoever to the layer in kernel where it's
->>>> handled;
->>> the
->>>> information asked for is simply not available to client.  Period.
->>>>
->>>> Incidentally, inotify does not work on a bunch of local
-> filesystems,
->>> starting
->>>> with procfs.  And won't work, unless you are seriously proposing to
->>> generate
->>>> events on things like open()/dup2()/etc.  In this case we might
-> very
->>> well have
->>>> objects appearing and disappearing without ever having had a
-> dentry.
->>>
->>> The other thing to note is that even if there were value in having
->>> only client support for the locally performed operations, the way
-> NFS
->>> deletes work is fundamentally different to the way that POSIX unlink
->>> works: if the file is still open, it isn't deleted, it is just
->>> renamed. In consequence, it not only still appears in readdir()
->>> requests (albeit under a different name), but it acts in all ways
->>> shapes and forms as the same regular file but with the curious
->>> property that when the last user closes it gets deleted.
->>>
->>> IOW: the assumption that we would need to generate an
->>> fsnotify_nameremove event here is in any case flawed. It would
-> rather
->>> be fsnotify_move, which I suspect would still trip up these LTP
-> tests...
->>>
->>> Cheers
->>>      Trond
->>>
->>
->> Thanks. My original idea was to generate absolutely the same event
-> under
->> unlink(). Yes, original file in that case is not deleted, it is moved.
->> But from user side it's deletion. Users don't take care about
-> /tmp/.nfs..  files,
->> right? When you call unlink the only thing you do is to check return
-> code, you
->> are not walking along all folders to check where it could be moved.
->
-> It is not deletion because it is not an atomic operation.
->
-> Until the last close occurs. ls -a will still list the .nfsxxxx entry.
-> Most operations that the user may expect to fail on a deleted file such
-> as link(), open(), access(), stat(), etc. will still succeed provided
-> that you use the .nfsxxxx name. On the other hand, an operation such as
-> rmdir() on the parent directory will not succeed because it still
-> contains at least one file entry...
->
->> I also agree that if server or other mounts does something with file,
-> server
->> will not send any notification. But for single mount it has to be ok.
->
-> What's the killer application?
->
-No application, I only have information that one of LTP tests is failed.
 
-Maxim.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ nfs4.1/server41tests/st_open.py |   27 ++++++++++++++++++++++++++-
+ 1 files changed, 26 insertions(+), 1 deletions(-)
+
+diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+index c809c95..6c991c8 100644
+--- a/nfs4.1/server41tests/st_open.py
++++ b/nfs4.1/server41tests/st_open.py
+@@ -290,4 +290,29 @@ def testOpenWriteClose(t, env):
+     open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
+     res = sess1.compound(open_op + [op.write(current_stateid, 5, FILE_SYNC4, data),
+         op.close(0, current_stateid)])
+-    check(res, NFS4_OK)
+\ No newline at end of file
++    check(res, NFS4_OK)
++
++def testLockWriteLocku(t, env):
++    """test current state id processing by having LOCK, WRITE and LOCKU
++       in a single compound
++
++    FLAGS: open all
++    CODE: OPEN34
++    """
++    current_stateid = stateid4(1, '\0' * 12)
++    sess1 = env.c1.new_client_session(env.testname(t))
++
++    res = create_file(sess1, env.testname(t))
++    check(res)
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++
++    data = "write test data"
++    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
++    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
++    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
++        op.write(current_stateid, 5, FILE_SYNC4, data),
++        op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX),
++        op.close(0, stateid)]
++    res = sess1.compound([op.putfh(fh)] + lock_ops)
++    check(res, NFS4_OK)
+-- 
+1.7.7
 
