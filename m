@@ -1,46 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46887 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:35825 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932525Ab1LOQA3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:00:29 -0500
-Subject: [PATCH 3/7] SUNRPC: use proper network namespace in rpcbind
- RPCBPROC_GETADDR procedure
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 15 Dec 2011 20:00:07 +0300
-Message-ID: <20111215160007.2434.30287.stgit@localhost6.localdomain6>
-In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
-References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+	id S1751810Ab1LLQEk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Dec 2011 11:04:40 -0500
+Date: Mon, 12 Dec 2011 11:04:39 -0500
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATH v3 1/5] nfsd41: handle current stateid in open and close
+Message-ID: <20111212160439.GE18185@fieldses.org>
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <1323621708-25138-2-git-send-email-tigran.mkrtchyan@desy.de>
+ <4EE61BE4.9060808@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EE61BE4.9060808@tonian.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass request socket network namespace to rpc_uaddr2sockaddr() instead of
-hardcoded init_net,  when decoding address in RPCBPROC_GETADDR procedure.
+On Mon, Dec 12, 2011 at 05:21:08PM +0200, Benny Halevy wrote:
+> On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
+> > @@ -1411,9 +1441,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+> >  	},
+> >  	[OP_CLOSE] = {
+> >  		.op_func = (nfsd4op_func)nfsd4_close,
+> > -		.op_flags = OP_MODIFIES_SOMETHING,
+> > +		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
+> 
+> Looks like this also requires PROVIDES_CURRENT_STATEID
+> (or just ditch the flag so there can't be disagreement between the two :)
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Please, yes, let's just eliminate the redundant flags.
 
----
- net/sunrpc/rpcb_clnt.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index ea87b0c..d94f188 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -935,7 +935,8 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	dprintk("RPC: %5u RPCB_%s reply: %s\n", task->tk_pid,
- 			task->tk_msg.rpc_proc->p_name, (char *)p);
- 
--	if (rpc_uaddr2sockaddr(&init_net, (char *)p, len, sap, sizeof(address)) == 0)
-+	if (rpc_uaddr2sockaddr(req->rq_xprt->xprt_net, (char *)p, len,
-+				sap, sizeof(address)) == 0)
- 		goto out_fail;
- 	rpcb->r_port = rpc_get_port(sap);
- 
-
+--b.
