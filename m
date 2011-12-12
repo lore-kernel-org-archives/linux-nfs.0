@@ -1,52 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2992 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44014 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754449Ab1LAVme (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 16:42:34 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4.1: Ensure that we handle _all_ SEQUENCE status bits.
-Date: Thu,  1 Dec 2011 16:42:23 -0500
-Message-Id: <1322775743-14870-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1322775743-14870-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1322775743-14870-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754423Ab1LLWHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Dec 2011 17:07:16 -0500
+Date: Mon, 12 Dec 2011 17:07:16 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: John Simon <tzzhc4@yahoo.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Intermittent performance issues with Solaris 10 NFS V3 client
+ to RHEL 5.5 NFS server
+Message-ID: <20111212220715.GG20826@fieldses.org>
+References: <20111212161348.GG18185@fieldses.org>
+ <1323713796.6172.YahooMailClassic@web181402.mail.ne1.yahoo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323713796.6172.YahooMailClassic@web181402.mail.ne1.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the code assumes that the SEQUENCE status bits are mutually
-exclusive. They are not...
+On Mon, Dec 12, 2011 at 10:16:36AM -0800, John Simon wrote:
+> I had opened a case with SUN/Oracle and send trace and snoop output. Their comment was the issue was response from the Linux side.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org [>= 2.6.34]
----
- fs/nfs/nfs4state.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+Did they give any reason for that?
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1da95e3..da8d73e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1530,16 +1530,16 @@ void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags)
- {
- 	if (!flags)
- 		return;
--	else if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
-+	if (flags & SEQ4_STATUS_RESTART_RECLAIM_NEEDED)
- 		nfs41_handle_server_reboot(clp);
--	else if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
-+	if (flags & (SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED |
- 			    SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED |
- 			    SEQ4_STATUS_ADMIN_STATE_REVOKED |
- 			    SEQ4_STATUS_LEASE_MOVED))
- 		nfs41_handle_state_revoked(clp);
--	else if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
-+	if (flags & SEQ4_STATUS_RECALLABLE_STATE_REVOKED)
- 		nfs41_handle_recallable_state_revoked(clp);
--	else if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
-+	if (flags & (SEQ4_STATUS_CB_PATH_DOWN |
- 			    SEQ4_STATUS_BACKCHANNEL_FAULT |
- 			    SEQ4_STATUS_CB_PATH_DOWN_SESSION))
- 		nfs41_handle_cb_path_down(clp);
--- 
-1.7.7.3
+> >     - Can you get any rpc statistics out of the client?  (Average
+> >     time to respond to an rpc, mix of rpc's sent, etc.?)
+> 
+> I need to look at rpc stats on the client.
+> 
+> I received a couple off list replies from other users who mentioned
+> they encountered similar issues and upgrading their kernel helped (one
+> user was on 5.5 and went to 5.6 and another was running Debian). If
+> anyone knows of any issues with 2.6.18-194.el5 nfs-utils-1.0.9-44.el5
+> that could cause intermittent performance for NFS I would appreciate
+> it.
 
+Especially if it's specific to a particular Red Hat kernel, getting Red
+Hat support involved would make sense.
+
+--b.
