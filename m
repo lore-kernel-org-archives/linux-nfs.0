@@ -1,59 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:47275 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755618Ab1LAReh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 12:34:37 -0500
-Received: by ywa9 with SMTP id 9so2028025ywa.19
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2011 09:34:37 -0800 (PST)
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:37240 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752668Ab1LLXGk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 18:06:40 -0500
+Message-ID: <4EE688FC.8090606@gmail.com>
+Date: Tue, 13 Dec 2011 00:06:36 +0100
+From: roel <roel.kluin@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20111201172415.GA27626@janus>
-References: <CAA-yEOJ+5NssoCOAXzeCNOCkbbACn0qHrj-BtmMRYwxZFDZgxg@mail.gmail.com>
-	<20111201172415.GA27626@janus>
-Date: Thu, 1 Dec 2011 19:34:37 +0200
-Message-ID: <CAA-yEOLkeCAqfWSeJ1jhA5rVB3B7ha5RVwZX7XM1K5PMs9smUA@mail.gmail.com>
-Subject: Re: NFS - lock failover
-From: Pavel A <free.lan.c2.718r@gmail.com>
-To: Frank van Maarseveen <frankvm@frankvm.com>
-Cc: linux-nfs@vger.kernel.org, wcheng@redhat.com, neilb@suse.de,
-        jlayton@redhat.com
-Content-Type: text/plain; charset=UTF-8
+To: Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>, sage@newdream.net,
+        Steve French <sfrench@samba.org>, linux-cifs@vger.kernel.org,
+        Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.sourceforge.net,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: ceph, cifs, nfs, fuse: boolean and / or confusion
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you very much! This is something I was looking for.
-I only wonder, why isn't it included in packages? - I will be of great
-help to many other people as well.
+The test not SEEK_CUR or not SEEK_SET always evaluates to true
 
-2011/12/1 Frank van Maarseveen <frankvm@frankvm.com>:
-> On Thu, Dec 01, 2011 at 07:07:22PM +0200, Pavel A wrote:
->> Hi everyone!
->>
->> I was trying not to create new topics, but it seems that posting to an
->> old one doesn't bring it up. Here is the original topic I'm referring
->> to: http://comments.gmane.org/gmane.linux.nfs/13108
->>
->> I'm building an A/A cluster using NFS v3 and local file systems, and
->> looking for
->> efficient ways for failover (for now I have to restart nfs-kernel-server on
->> Takeover node to be able to initiate grace period), so the discussed solutions
->> are very interesting to me.
->>
->> Now (4 years after) in current nfs-utils packages (v. 1.2.2-4 and later) I can
->> see that the ability to release locks was really implemented and is
->> working well
->> (I mean interfaces /proc/fs/nfsd/unlock_ip and
->> /proc/fs/nfsd/unlock_filesystem),
->> but how about reacquiring locks on the node, share migrates to? - I've been
->> going through various mailing lists and found a lot of discussions on the topic
->> (also dated mainly 2007), but don't seem to find any rpc-based mechanism or
->> interface like /proc/fs/nfsd/nlm_set_grace to do that, was it ever made?
->
-> I've posted a patch some time ago implementing
-> /proc/fs/nfsd/relock_filesystem:
->
->        http://permalink.gmane.org/gmane.linux.nfs/42360
->        http://permalink.gmane.org/gmane.linux.nfs/42361
->        http://permalink.gmane.org/gmane.linux.nfs/42362
->
-> --
-> Frank
+Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+---
+ fs/ceph/file.c   |    2 +-
+ fs/cifs/cifsfs.c |    2 +-
+ fs/fuse/file.c   |    2 +-
+ fs/nfs/file.c    |    2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index ce549d3..4d61a66 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -797,7 +797,7 @@ static loff_t ceph_llseek(struct file *file, loff_t offset, int origin)
+ 
+ 	mutex_lock(&inode->i_mutex);
+ 	__ceph_do_pending_vmtruncate(inode);
+-	if (origin != SEEK_CUR || origin != SEEK_SET) {
++	if (origin != SEEK_CUR && origin != SEEK_SET) {
+ 		ret = ceph_do_getattr(inode, CEPH_STAT_CAP_SIZE);
+ 		if (ret < 0) {
+ 			offset = ret;
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 8f1fe32..f8351c2 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -703,7 +703,7 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int origin)
+ 	 * origin == SEEK_END || SEEK_DATA || SEEK_HOLE => we must revalidate
+ 	 * the cached file length
+ 	 */
+-	if (origin != SEEK_SET || origin != SEEK_CUR) {
++	if (origin != SEEK_SET && origin != SEEK_CUR) {
+ 		int rc;
+ 		struct inode *inode = file->f_path.dentry->d_inode;
+ 
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 594f07a..19029e9 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -1556,7 +1556,7 @@ static loff_t fuse_file_llseek(struct file *file, loff_t offset, int origin)
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	if (origin != SEEK_CUR || origin != SEEK_SET) {
++	if (origin != SEEK_CUR && origin != SEEK_SET) {
+ 		retval = fuse_update_attributes(inode, NULL, file, NULL);
+ 		if (retval)
+ 			goto exit;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eca56d4..606ef0f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -147,7 +147,7 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
+ 	 * origin == SEEK_END || SEEK_DATA || SEEK_HOLE => we must revalidate
+ 	 * the cached file length
+ 	 */
+-	if (origin != SEEK_SET || origin != SEEK_CUR) {
++	if (origin != SEEK_SET && origin != SEEK_CUR) {
+ 		struct inode *inode = filp->f_mapping->host;
+ 
+ 		int retval = nfs_revalidate_file_size(inode, filp);
