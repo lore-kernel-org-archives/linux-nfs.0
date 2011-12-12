@@ -1,106 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp1.onthe.net.au ([203.22.196.249]:34412 "EHLO
-	smtp1.onthe.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751958Ab1LAH3u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 02:29:50 -0500
-Date: Thu, 1 Dec 2011 18:29:47 +1100
-From: Chris Dunlop <chris@onthe.net.au>
-To: Tyler Hicks <tyhicks@canonical.com>
-Cc: David Howells <dhowells@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        Jan Harkes <jaharkes@cs.cmu.edu>,
-        "maintainer:CODA FILE SYSTEM" <coda@cs.cmu.edu>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Petr Vandrovec <petr@vandrovec.name>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        v9fs-developer@lists.sourceforge.net, linux-afs@lists.infradead.org,
-        codalist@TELEMANN.coda.cs.cmu.edu,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS exports
-Message-ID: <20111201072947.GA10329@onthe.net.au>
-References: <20111130071319.GA16711@onthe.net.au>
- <1321861008-20611-1-git-send-email-chris@onthe.net.au>
- <20111129082501.GA569@onthe.net.au>
- <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
- <24960.1322643283@redhat.com>
- <20111201004709.GA26085@onthe.net.au>
- <20111201063157.GA495@boyd>
+Received: from fieldses.org ([174.143.236.118]:46162 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752147Ab1LLWk0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Dec 2011 17:40:26 -0500
+Date: Mon, 12 Dec 2011 17:40:25 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATCH] nfsd41: handle current stateid in open and close
+Message-ID: <20111212224025.GB22927@fieldses.org>
+References: <1323207847-19118-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <20111206230823.GH12640@fieldses.org>
+ <4EDF677C.7030209@tonian.com>
+ <20111207171133.GD20079@fieldses.org>
+ <4EE0E123.20401@tonian.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111201063157.GA495@boyd>
+In-Reply-To: <4EE0E123.20401@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 01, 2011 at 12:31:58AM -0600, Tyler Hicks wrote:
-> On 2011-12-01 11:47:09, Chris Dunlop wrote:
->> On Wed, Nov 30, 2011 at 08:54:43AM +0000, David Howells wrote:
->>> Chris Dunlop <chris@onthe.net.au> wrote:
->>> 
->>>> To avoid other people further wasting their and your time on
->>>> exactly the same thing future, how something like the following
->>>> patch, based on your comment in:
->>>> 
->>>> http://article.gmane.org/gmane.linux.nfs/40370
->>>> 
->>>> ...and, if that's acceptable, is it worthwhile doing for the
->>>> other file systems which are likewise currently vulnerable when
->>>> abused by broken layered file systems?
->>> 
->>> Also, this may get fixed by Al's atomic open patches - but obviously it hasn't
->>> been yet...
->>> 
->>>> Don't oops when abused by broken layered file systems
->>>> 
->>>> Signed-off-by: Chris Dunlop <chris@onthe.net.au>
->>> 
->>> Acked-by: David Howells <dhowells@redhat.com>
->>> 
->>> It's also worth printing a message - this *is* a kernel bug of some description
->>> if it happens.
->> 
->> Like the below?  This covers the d_revalidate for 9p, afs, coda,
->> hfs, ncpfs, proc, sysfs.
+On Thu, Dec 08, 2011 at 06:09:07PM +0200, Benny Halevy wrote:
+> On 2011-12-07 19:11, J. Bruce Fields wrote:
+> > On Wed, Dec 07, 2011 at 03:17:48PM +0200, Benny Halevy wrote:
+> >> On 2011-12-07 01:08, J. Bruce Fields wrote:
+> >>> It's a little verbose, but yes it does nicely collect the current
+> >>> stateid getting/setting into one place.  Benny, is the more or less what
+> >>> you were thinking of?
+> >>
+> >> Yes it is, though I also liked your direction of just using the current
+> >> stateid for xdr decoding and encoding.
+> > 
+> > I'd still have a slight preference for doing it that way, just because
+> > it would take fewer lines of code--but I can live with this too, so I'll
+> > leave the choice to Tigran's excellent taste....
+> > 
+> >> { ~0, { { ~0, ~0 }, ~0 } } is ugly but compact :)
+> >>
+> >> And the following may be an overkill...
+> >> {
+> >> 	.si_generation = ~0,
+> >> 	.si_opaque = {
+> >> 		.so_clid = {
+> >> 			.cl_boot = ~0,
+> >> 			.cl_id = ~0,
+> >> 		},
+> >> 		.so_id = ~0
+> >> 	}
+> >> };
+> > 
+> > Reminding myself of http://tools.ietf.org/html/rfc5661#section-8.2.3...
+> > "Stateid values whose "other" field is either all zeros or all ones are
+> > reserved."
+> > 
+> > Maybe:
+> > 
+> > #define all_ones   {{~0,~0 },~0}
+> > #define all_zeroes {{ 0, 0 }, 0}
+> > const stateid_t one_stateid = {
+> > 	.si_generation = ~0,
+> > 	.si_opaque = all_ones
+> > };
 > 
-> I don't like the looks of this patch. It makes sense for NFS to error
-> out of d_revalidate() when passed a NULL nameidata pointer because NFS
-> actually uses the nameidata to do something useful. That can't be said
-> about the other filesystems in this patch.
-
-I can see nd is used in nfs_open_revalidate(), but is it
-necessarily used in nfs_lookup_revalidate()?  I'm way out of my
-depth here, but everywhere it's used in nfs_lookup_revalidate()
-(nfs_neg_need_reval(), nfs_is_exclusive_create(),
-nfs_lookup_verify_inode()) there are also checks for nd != NULL.
-
-> Why not handle the other filesystems like the previous fixes you
-> referenced in your original email by checking for a non-NULL nd like
-> this:
+> That looks like a good compromise to me.
 > 
-> 	if (nd && nd->flags & LOOKUP_RCU)
-> 		return -ECHILD;
+> > const stateid_t current_stateid = {
+> > 	.si_generation = 1,
+> > 	.si_opaque = all_zeroes
+> > };
+> > ...
+> > 
+> > Or you could ditch the all_zeroes; it's just there for some kind of
+> > symmetry.
+> 
+> Yeah, static initialization to zero is guaranteed.
 
-'Cos Trond scared me into it!  ;-)
+OK, applying the following assuming no objections.--b.
 
-But mostly because I don't really know what I'm doing. The
-original patch came about because I was tracking down the Oops
-in the NFS code and it seemed such an obvious fix that
-lookup_one_len() passes down a hard-coded NULL and that NULL
-isn't checked in all the d_revalidate routines. I thought I'd do
-the right thing and make sure it was checked everywhere. Little
-did I know there's "history" behind it! I'm afraid I don't know
-anywhere near enough to argue about the right way to deal with it.
+commit f32f3c2d3f09a586349ca9180885dc8741290fd9
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Dec 12 15:00:35 2011 -0500
 
-> I'm also not sure about the printk in the NFS case. Instead of littering
-> the logs, we should probably just disallow the stacked filesystem (are
-> we talking about eCryptfs here?) from mounting on top of NFS in the
-> first place.
+    nfsd4: initialize special stateid's at compile time
+    
+    Stateid's with "other" ("opaque") field all zeros or all ones are
+    reserved.  We define all_ones separately on the off chance there will be
+    more such some day, though currently all the other special stateid's
+    have zero other field.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-See other reply: it wasn't a stacked file system.
-
-But it seems useful to have the d_revalidate routines indicate
-via the log that they're being abused.
-
-Chris
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6ab6779..213da7b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -49,12 +49,20 @@
+ time_t nfsd4_lease = 90;     /* default lease time */
+ time_t nfsd4_grace = 90;
+ static time_t boot_time;
+-static stateid_t zerostateid;             /* bits all 0 */
+-static stateid_t onestateid;              /* bits all 1 */
++
++#define all_ones {{~0,~0},~0}
++static const stateid_t one_stateid = {
++	.si_generation = ~0,
++	.si_opaque = all_ones,
++};
++static const stateid_t zero_stateid = {
++	/* all fields zero */
++};
++
+ static u64 current_sessionid = 1;
+ 
+-#define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+-#define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
++#define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
++#define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
+ 
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+@@ -4564,7 +4572,6 @@ nfs4_state_init(void)
+ 	}
+ 	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
+-	memset(&onestateid, ~0, sizeof(stateid_t));
+ 	INIT_LIST_HEAD(&close_lru);
+ 	INIT_LIST_HEAD(&client_lru);
+ 	INIT_LIST_HEAD(&del_recall_lru);
