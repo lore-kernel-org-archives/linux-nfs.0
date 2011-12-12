@@ -1,111 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7460 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756823Ab1LNPo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 10:44:28 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEFiSQP003283
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 10:44:28 -0500
-Message-ID: <4EE8C45B.30207@RedHat.com>
-Date: Wed, 14 Dec 2011 10:44:27 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>	<4EE8BF63.6080906@RedHat.com> <20111214103247.3a67515f@tlielax.poochiereds.net>
-In-Reply-To: <20111214103247.3a67515f@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:62622 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753904Ab1LLU6Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:58:24 -0500
+Received: by eekc4 with SMTP id c4so1814320eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 12:58:22 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v4 0/3] nfsd41: current state id processing
+Date: Mon, 12 Dec 2011 22:00:24 +0100
+Message-Id: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-On 12/14/2011 10:32 AM, Jeff Layton wrote:
-> On Wed, 14 Dec 2011 10:23:15 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 12/14/2011 08:57 AM, Jeff Layton wrote:
->>> This patchset is the userspace portion of the knfsd client name tracking
->>> overhaul. See this patch series for an explanation:
->>>
->>>     nfsd: overhaul the client name tracking code (RFC)
->>>
->>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
->>> and handles the requests.
->>>
->>> The data is stored using a sqlite database. The main reason for this is
->>> that it takes care of most of the fussy details and atomicity concerns
->>> of tracking the information on stable storage.
->> This will make nfs-utils dependent on the sqlite database... Any idea
->> what kinda of extra baggage this brings? 
->>
-> 
-> Depends on what you mean by "baggage". What is your concern?
-In Fedora doing a 'yum install sqlite' which would require
-a ton of other package needing to be install... The Required
-for nfs-utils is getting pretty long at this point... 
- 
-> 
-> For something like fedora, it'll mean a build-time dependency on
-> sqlite-devel, and a runtime dependency on sqlite. We could consider
-> embedding their single-file amalgamation code, but I'd prefer not to do
-> that unless we really have to.
-> 
->>>
->>> For now, the daemon is only suitable for single-host configurations.
->>> The plan is to later extend this to be suitable for clustered
->>> configurations as well.
->>>
->>> The code is still a little rough, so be gentle. It also lacks things
->>> like a manpage. I plan to add all that before doing a "formal" patch
->>> submission, but I wanted to get some early review of the overall design
->>> before to spend a lot of time knocking off the rough edges.
->> Finally the name of the daemon...  clstated does not make it clear that 
->> this is a nfs server daemon... maybe something like nfsdcld? 
->>
-> 
-> Sure, we could change the name if that's desirable. Maybe
-> nfsd.clnamed ? At this point it's really just a client name tracking
-> daemon.
-How about nfsdcld ;-) short, to the point and easy to type... 8-) 
+Yet another update (v4) of current stateid handling
 
-steved.
+difference with v3:
 
-> 
->> steved.
->>
->>>
->>> Jeff Layton (7):
->>>   clstated: add clname tracking daemon stub
->>>   clstated: reattempt the pipe open if it fails on ENOENT
->>>   clstated: add autoconf goop for sqlite
->>>   clstated: add routines for a sqlite backend database
->>>   clstated: add remove functionality
->>>   clstated: add check/update functionality
->>>   clstated: add function to remove unreclaimed client records
->>>
->>>  aclocal/libsqlite3.m4      |   33 +++
->>>  configure.ac               |   23 ++
->>>  utils/Makefile.am          |    4 +
->>>  utils/clstated/Makefile.am |   14 +
->>>  utils/clstated/clstated.c  |  355 +++++++++++++++++++++++++++
->>>  utils/clstated/sqlite.c    |  572 ++++++++++++++++++++++++++++++++++++++++++++
->>>  utils/clstated/sqlite.h    |   30 +++
->>>  7 files changed, 1031 insertions(+), 0 deletions(-)
->>>  create mode 100644 aclocal/libsqlite3.m4
->>>  create mode 100644 utils/clstated/Makefile.am
->>>  create mode 100644 utils/clstated/clstated.c
->>>  create mode 100644 utils/clstated/sqlite.c
->>>  create mode 100644 utils/clstated/sqlite.h
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+Patches re-organized to only add functionality, e.g. there
+are no patches fixing other patches. Operation flags are
+not used any more. Existence of a corresponding function
+pointer is enough.
+
+
+Let me know if you want to see updates less often.
+
+Tigran.
+
+currently tested to work in a single compound:
+
+ OPEN+CLOSE
+ LOCK+WRITE+LOCKU+CLOSE
+
+On the way (not tested yet):
+ OPEN+LAYOUTGET
+
+TODO:
+ dispose current stateid on operations which provide CFH, but do not provide stateid.
+
+Internals:
+ 1. struct nfsd4_compound_state contains pointer to current stateid
+ 2. during compound processing before operation execution current stateid copied into
+  operations stateid if it's equal to corresponding value ( 0, 1).
+ 3. after operation execution current stateid changed to:
+    a) point to stateid of last operation
+    or
+    b) point to NULL, if operation is marked to do so.
+
+Probably all patches have to be squashed into a single one before merged
+as none of the changes makes sense without others.
+
+Tigran.
+
+
+Tigran Mkrtchyan (3):
+  nfsd41: handle current stateid in open and close
+  nfsd41: handle current stateid on lock and locku
+  nfsd41: consume current stateid on read and write
+
+ fs/nfsd/current_stateid.h |   22 +++++++++++++++
+ fs/nfsd/nfs4proc.c        |   39 +++++++++++++++++++++++---
+ fs/nfsd/nfs4state.c       |   66 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h            |    1 +
+ 4 files changed, 123 insertions(+), 5 deletions(-)
+ create mode 100644 fs/nfsd/current_stateid.h
+
+-- 
+1.7.7.4
+
