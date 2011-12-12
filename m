@@ -1,138 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25545 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932523Ab1LOQAZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:00:25 -0500
-Subject: [PATCH 2/7] SUNRPC: register rpcbind programs in passed network
- namespase context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 15 Dec 2011 19:59:59 +0300
-Message-ID: <20111215155959.2434.32339.stgit@localhost6.localdomain6>
-In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
-References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:43953 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753634Ab1LLTo2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 14:44:28 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c4so1785048eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 11:44:27 -0800 (PST)
+Message-ID: <4EE65996.6070901@tonian.com>
+Date: Mon, 12 Dec 2011 21:44:22 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Tigran Mkrtchyan <kofemann@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATH v3 0/5] nfsd41: current state id processing
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Registering rpcbind program requires rpcbind clients, which are per network
-namespace context.
+On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
+> From: Tigran Mkrtchyan <kofemann@gmail.com>
+> 
+> This is yet another update of current stateid handling
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Thanks!  It looks must better every iteration!
 
----
- include/linux/sunrpc/clnt.h |    5 +++--
- net/sunrpc/rpcb_clnt.c      |    8 ++++----
- net/sunrpc/svc.c            |   10 +++++-----
- 3 files changed, 12 insertions(+), 11 deletions(-)
+> 
+> currently tested to work in a single compound:
+> 
+>   OPEN+CLOSE
+>   LOCK+WRITE+LOCKU+CLOSE
+> 
+> On the way ( not tested yet ):
+>  OPEN+LAYOUTGET
+> 
+> TODO:
+>   dispose current stateid on operations which provide CFH, but do not provide stateid.
+> 
+> Internals:
+>   1. struct nfsd4_compound_state contains pointer to current stateid
+>   2. operations marked to PROVIDE, CONSUME or CLEAR current stateid. 
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 53afa56..1e56469 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -138,8 +138,9 @@ void		rpc_task_release_client(struct rpc_task *);
- 
- int		rpcb_create_local(void);
- void		rpcb_put_local(void);
--int		rpcb_register(u32, u32, int, unsigned short);
--int		rpcb_v4_register(const u32 program, const u32 version,
-+int		rpcb_register(struct net *, u32, u32, int, unsigned short);
-+int		rpcb_v4_register(struct net *net, const u32 program,
-+				 const u32 version,
- 				 const struct sockaddr *address,
- 				 const char *netid);
- void		rpcb_getport_async(struct rpc_task *);
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 43eff03..ea87b0c 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -425,7 +425,7 @@ static int rpcb_register_call(struct rpc_clnt *clnt, struct rpc_message *msg)
-  * IN6ADDR_ANY (ie available for all AF_INET and AF_INET6
-  * addresses).
-  */
--int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
-+int rpcb_register(struct net *net, u32 prog, u32 vers, int prot, unsigned short port)
- {
- 	struct rpcbind_args map = {
- 		.r_prog		= prog,
-@@ -436,7 +436,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -563,7 +563,7 @@ static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
-  * service on any IPv4 address, but not on IPv6.  The latter
-  * advertises the service on all IPv4 and IPv6 addresses.
-  */
--int rpcb_v4_register(const u32 program, const u32 version,
-+int rpcb_v4_register(struct net *net, const u32 program, const u32 version,
- 		     const struct sockaddr *address, const char *netid)
- {
- 	struct rpcbind_args map = {
-@@ -575,7 +575,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	if (sn->rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6e03888..e9c42ad 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -813,7 +813,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 		return -ENOPROTOOPT;
- 	}
- 
--	error = rpcb_v4_register(program, version,
-+	error = rpcb_v4_register(&init_net, program, version,
- 					(const struct sockaddr *)&sin, netid);
- 
- 	/*
-@@ -821,7 +821,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 	 * registration request with the legacy rpcbind v2 protocol.
- 	 */
- 	if (error == -EPROTONOSUPPORT)
--		error = rpcb_register(program, version, protocol, port);
-+		error = rpcb_register(&init_net, program, version, protocol, port);
- 
- 	return error;
- }
-@@ -860,7 +860,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
- 		return -ENOPROTOOPT;
- 	}
- 
--	error = rpcb_v4_register(program, version,
-+	error = rpcb_v4_register(&init_net, program, version,
- 					(const struct sockaddr *)&sin6, netid);
- 
- 	/*
-@@ -963,14 +963,14 @@ static void __svc_unregister(const u32 program, const u32 version,
- {
- 	int error;
- 
--	error = rpcb_v4_register(program, version, NULL, "");
-+	error = rpcb_v4_register(&init_net, program, version, NULL, "");
- 
- 	/*
- 	 * User space didn't support rpcbind v4, so retry this
- 	 * request with the legacy rpcbind v2 protocol.
- 	 */
- 	if (error == -EPROTONOSUPPORT)
--		error = rpcb_register(program, version, 0, 0);
-+		error = rpcb_register(&init_net, program, version, 0, 0);
- 
- 	dprintk("svc: %s(%sv%u), error %d\n",
- 			__func__, progname, version, error);
+Does the flag add anything beyond simply implementing
+the respective method?
 
+Is CLEAR just a specific form of PROVIDE?
+
+[more comments in reply to the actual patches...]
+
+Thanks,
+
+Benny
+
+>   3. during compound processing before operation execution current stateid copied into
+>    operations stateid if it's equal to corresponding value ( 0, 1).
+>   4. after operation execution current stateid changed to:
+>      a) point to stateid of last operation
+>      or
+>      b) point to NULL, if operation is marked to do so.
+> 
+> 
+> Probably all patches have to be squashed into a single one before merged
+> as none of the changes makes sense without others.
+> 
+> Tigran.
+> 
+> Tigran Mkrtchyan (5):
+>   nfsd41: handle current stateid in open and close
+>   nfsd41: handle current stateid on lock and locku
+>   nfsd41: update operations's stateid iff current stateid is set
+>   nfsd41: consume current stateid on read and write
+>   nfsd41: use pinter to current stateid to avoid extra copy
+> 
+>  fs/nfsd/current_stateid.h |   22 +++++++++++++++
+>  fs/nfsd/nfs4proc.c        |   55 +++++++++++++++++++++++++++++-------
+>  fs/nfsd/nfs4state.c       |   67 +++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/xdr4.h            |    1 +
+>  4 files changed, 134 insertions(+), 11 deletions(-)
+>  create mode 100644 fs/nfsd/current_stateid.h
+> 
