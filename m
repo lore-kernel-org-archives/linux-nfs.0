@@ -1,249 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:47967 "EHLO
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:43953 "EHLO
 	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751184Ab1LMIEG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2011 03:04:06 -0500
-Received: by eekc4 with SMTP id c4so1985100eek.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 00:04:04 -0800 (PST)
-Message-ID: <4EE706EF.10903@tonian.com>
-Date: Tue, 13 Dec 2011 10:03:59 +0200
+	with ESMTP id S1753227Ab1LLToN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 14:44:13 -0500
+Received: by eekc4 with SMTP id c4so1785048eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 11:44:12 -0800 (PST)
+Message-ID: <4EE62402.6050008@tonian.com>
+Date: Mon, 12 Dec 2011 17:55:46 +0200
 From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
 To: Tigran Mkrtchyan <kofemann@googlemail.com>
 CC: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATH v4 1/3] nfsd41: handle current stateid in open and close
-References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de> <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: Re: [PATH v3 5/5] nfsd41: use pinter to current stateid to avoid
+ extra copy
+References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de> <1323621708-25138-6-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323621708-25138-6-git-send-email-tigran.mkrtchyan@desy.de>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-12 23:00, Tigran Mkrtchyan wrote:
+On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
 > From: Tigran Mkrtchyan <kofemann@gmail.com>
 > 
 > 
 > Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 > ---
->  fs/nfsd/current_stateid.h |   11 +++++++++++
->  fs/nfsd/nfs4proc.c        |   35 ++++++++++++++++++++++++++++++-----
->  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++++
->  fs/nfsd/xdr4.h            |    1 +
->  4 files changed, 78 insertions(+), 5 deletions(-)
->  create mode 100644 fs/nfsd/current_stateid.h
+>  fs/nfsd/nfs4proc.c  |    6 +-----
+>  fs/nfsd/nfs4state.c |    7 +++----
+>  fs/nfsd/xdr4.h      |    3 +--
+>  3 files changed, 5 insertions(+), 11 deletions(-)
 > 
-> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-> new file mode 100644
-> index 0000000..a83dd50
-> --- /dev/null
-> +++ b/fs/nfsd/current_stateid.h
-> @@ -0,0 +1,11 @@
-> +#ifndef _NFSD4_CURRENT_STATE_H
-> +#define _NFSD4_CURRENT_STATE_H
-> +
-> +#include "state.h"
-> +#include "xdr4.h"
-> +
-> +extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
-> +extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-> +extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-> +
-> +#endif   /* _NFSD4_CURRENT_STATE_H */
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index fa38336..3dfb235 100644
+> index f2f7dfa..b7d1a7b 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -39,6 +39,7 @@
->  #include "cache.h"
->  #include "xdr4.h"
->  #include "vfs.h"
-> +#include "current_stateid.h"
->  
->  #define NFSDDBG_FACILITY		NFSDDBG_PROC
->  
-> @@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  				     create->cr_name, create->cr_namelen,
->  				     &create->cr_iattr, S_IFSOCK, 0, &resfh);
->  		break;
-> -
->  	case NF4FIFO:
->  		status = nfsd_create(rqstp, &cstate->current_fh,
->  				     create->cr_name, create->cr_namelen,
-> @@ -1001,6 +1001,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
->  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
->  			      void *);
->  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-> +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-> +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
-> +typedef void(*stateid_cleaner)(struct nfsd4_compound_state *);
-
-stateid_cleaner isn't used in this patch.
-Mind moving it to the patch that uses it?
-
->  
->  enum nfsd4_op_flags {
->  	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-> @@ -1034,6 +1037,9 @@ struct nfsd4_operation {
->  	char *op_name;
->  	/* Try to get response size before operation */
->  	nfsd4op_rsize op_rsize_bop;
-> +	stateid_setter op_get_currentstateid;
-> +	stateid_getter op_set_currentstateid;
-> +	stateid_cleaner op_clear_currentstateid;
-
-ditto
-
->  };
->  
->  static struct nfsd4_operation nfsd4_ops[];
-> @@ -1116,6 +1122,11 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
->  	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
->  }
->  
-> +static void
-> +nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
-> +{
+> @@ -1126,10 +1126,7 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+>  static void
+>  nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
+>  {
+> -	if (cstate->has_stateid) {
+> -		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
+> -		cstate->has_stateid = false;
+> -	}
 > +	cstate->current_stateid = NULL;
-> +}
-
-ditto
-
+>  }
 >  /*
 >   * COMPOUND call.
->   */
-> @@ -1216,13 +1227,24 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  		if (op->status)
->  			goto encode_op;
+> @@ -1244,7 +1241,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  		if (!op->status) {
+>  			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
+>  				opdesc->op_set_currentstateid(cstate, &op->u);
+> -				cstate->has_stateid = true;
+>  			}
 >  
-> -		if (opdesc->op_func)
-> +		if (opdesc->op_func) {
-> +			if (opdesc->op_get_currentstateid)
-> +				opdesc->op_get_currentstateid(cstate, &op->u);
->  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
-> -		else
-> +		} else
->  			BUG_ON(op->status == nfs_ok);
->  
-> -		if (!op->status && need_wrongsec_check(rqstp))
-> -			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-> +		if (!op->status) {
-> +			if (opdesc->op_set_currentstateid) {
-> +				opdesc->op_set_currentstateid(cstate, &op->u);
-> +			}
-
-not: no need for parenthesis here
-
-> +
-> +			if (opdesc->op_clear_currentstateid)
-> +				opdesc->op_clear_currentstateid(cstate);
-> +
-> +			if (need_wrongsec_check(rqstp))
-> +				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-> +		}
->  
->  encode_op:
->  		/* Only from SEQUENCE */
-> @@ -1414,6 +1436,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  		.op_flags = OP_MODIFIES_SOMETHING,
->  		.op_name = "OP_CLOSE",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-> +		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
->  	},
->  	[OP_COMMIT] = {
->  		.op_func = (nfsd4op_func)nfsd4_commit,
-> @@ -1484,6 +1508,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
->  		.op_name = "OP_OPEN",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
-> +		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
->  	},
->  	[OP_OPEN_CONFIRM] = {
->  		.op_func = (nfsd4op_func)nfsd4_open_confirm,
+>  			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 47e94e3..594b44e 100644
+> index d7b8f25..be77cd3 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
-> @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
->  static time_t boot_time;
->  static stateid_t zerostateid;             /* bits all 0 */
->  static stateid_t onestateid;              /* bits all 1 */
-> +static stateid_t currentstateid;         /* other all 0, seqid 1 */
-
-This can be statically initialized as per Bruce's patch:
-http://marc.info/?l=linux-nfs&m=132372972624376&w=2
-
->  static u64 current_sessionid = 1;
->  
->  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
->  
->  /* forward declarations */
->  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-> @@ -4423,6 +4425,8 @@ nfs4_state_init(void)
->  		INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->  	}
->  	memset(&onestateid, ~0, sizeof(stateid_t));
-> +	/* seqid 1, other all 0 */
-> +	currentstateid.si_generation = 1;
->  	INIT_LIST_HEAD(&close_lru);
->  	INIT_LIST_HEAD(&client_lru);
->  	INIT_LIST_HEAD(&del_recall_lru);
-> @@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
->  	nfs4_unlock_state();
->  	nfsd4_destroy_callback_queue();
->  }
-> +
-> +static void
-> +get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-> +{
+> @@ -4553,16 +4553,15 @@ nfs4_state_shutdown(void)
+>  static void
+>  get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+>  {
+> -	if (cstate->has_stateid && CURRENT_STATEID(stateid))
+> -		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
 > +	if (cstate->current_stateid && CURRENT_STATEID(stateid))
 > +		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
-
-It'd be great if you could add a test case to use a the current_stateid
-before it's established.  E.g. send a compound with only CLOSE using
-the current stateid.  In this case the stateid will contain the current_stateid
-value and the caller MUST get a NFS4ERR_BAD_STATEID error.
-
-Thanks!
-
-Benny
-
-> +}
-> +
-> +static void
-> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-> +{
-> +	if (cstate->minorversion)
+>  }
+>  
+>  static void
+>  put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+>  {
+>  	if (cstate->minorversion) {
+> -		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
+> -		cstate->has_stateid = true;
 > +		cstate->current_stateid = stateid;
-> +}
-> +
-> +void
-> +nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-> +{
-> +	put_stateid(cstate, &open->op_stateid);
-> +}
-> +
-> +void
-> +nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-> +{
-> +	get_stateid(cstate, &close->cl_stateid);
-> +}
-> +
-> +void
-> +nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-> +{
-> +	get_stateid(cstate, &close->cl_stateid);
-> +}
+>  	}
+>  }
+>  
 > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 2364747..c1fe8ba 100644
+> index b8435d20..0ad0846 100644
 > --- a/fs/nfsd/xdr4.h
 > +++ b/fs/nfsd/xdr4.h
-> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+> @@ -54,8 +54,7 @@ struct nfsd4_compound_state {
 >  	size_t			iovlen;
 >  	u32			minorversion;
 >  	u32			status;
-> +	const stateid_t	*current_stateid;
+> -	stateid_t               current_stateid;
+> -	bool	has_stateid;
+> +	stateid_t	*current_stateid;
+
+Certainly looks neat.  I'm all for squashing this part of the patchset,
+or just all of it...
+
+Better be defined as const stateid_t * so its contents would be read only
+for its consumers.
+
+Benny
+
 >  };
 >  
 >  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
