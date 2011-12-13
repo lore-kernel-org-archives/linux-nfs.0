@@ -1,34 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:33784 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752023Ab1LLPVP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 10:21:15 -0500
-Received: by bkcjm19 with SMTP id jm19so1549142bkc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 07:21:13 -0800 (PST)
-Message-ID: <4EE61BE4.9060808@tonian.com>
-Date: Mon, 12 Dec 2011 17:21:08 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:50713 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751203Ab1LMQoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Dec 2011 11:44:07 -0500
+Date: Tue, 13 Dec 2011 11:44:06 -0500
 To: Tigran Mkrtchyan <kofemann@googlemail.com>
-CC: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATH v3 1/5] nfsd41: handle current stateid in open and close
-References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de> <1323621708-25138-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323621708-25138-2-git-send-email-tigran.mkrtchyan@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATH v4 1/3] nfsd41: handle current stateid in open and close
+Message-ID: <20111213164406.GA29019@fieldses.org>
+References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
+On Mon, Dec 12, 2011 at 10:00:25PM +0100, Tigran Mkrtchyan wrote:
 > From: Tigran Mkrtchyan <kofemann@gmail.com>
 > 
 > 
 > Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 > ---
->  fs/nfsd/current_stateid.h |   11 ++++++++++
->  fs/nfsd/nfs4proc.c        |   47 ++++++++++++++++++++++++++++++++++++++------
->  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++
->  fs/nfsd/xdr4.h            |    2 +
->  4 files changed, 89 insertions(+), 7 deletions(-)
+>  fs/nfsd/current_stateid.h |   11 +++++++++++
+>  fs/nfsd/nfs4proc.c        |   35 ++++++++++++++++++++++++++++++-----
+>  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/xdr4.h            |    1 +
+>  4 files changed, 78 insertions(+), 5 deletions(-)
 >  create mode 100644 fs/nfsd/current_stateid.h
 > 
 > diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
@@ -49,7 +48,7 @@ On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
 > +
 > +#endif   /* _NFSD4_CURRENT_STATE_H */
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index fa38336..4b8d81a 100644
+> index fa38336..3dfb235 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
 > @@ -39,6 +39,7 @@
@@ -65,85 +64,59 @@ On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
 >  				     &create->cr_iattr, S_IFSOCK, 0, &resfh);
 >  		break;
 > -
-
-nit: I assume this cosmetic hunk can be dropped :)
-
 >  	case NF4FIFO:
 >  		status = nfsd_create(rqstp, &cstate->current_fh,
 >  				     create->cr_name, create->cr_namelen,
-> @@ -1001,6 +1001,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+> @@ -1001,6 +1001,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
 >  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
 >  			      void *);
 >  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
 > +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
 > +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
+> +typedef void(*stateid_cleaner)(struct nfsd4_compound_state *);
 >  
 >  enum nfsd4_op_flags {
 >  	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-> @@ -1026,6 +1028,9 @@ enum nfsd4_op_flags {
->  	 * the v4.0 case).
->  	 */
->  	OP_CACHEME = 1 << 6,
-> +	CONSUMES_CURRENT_STATEID = 1 << 7,
-> +	PROVIDES_CURRENT_STATEID = 1 << 8,
-> +	CLEARS_CURRENT_STATEID = 1 << 9,
->  };
->  
->  struct nfsd4_operation {
-> @@ -1034,6 +1039,8 @@ struct nfsd4_operation {
+> @@ -1034,6 +1037,9 @@ struct nfsd4_operation {
 >  	char *op_name;
 >  	/* Try to get response size before operation */
 >  	nfsd4op_rsize op_rsize_bop;
 > +	stateid_setter op_get_currentstateid;
 > +	stateid_getter op_set_currentstateid;
+> +	stateid_cleaner op_clear_currentstateid;
+
+Is op_clear_currentstateid ever going to have more than one
+implementation?
+
+If not, let's just make that one a flag and do
+
+	if (clear_currentstateid flag set on this op)
+		cstate->current_stateid = NULL;
+
+--b.
+
 >  };
 >  
 >  static struct nfsd4_operation nfsd4_ops[];
-> @@ -1116,6 +1123,14 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+> @@ -1116,6 +1122,11 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
 >  	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
 >  }
 >  
 > +static void
 > +nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
 > +{
-> +	if (cstate->has_stateid) {
-> +		memset(&cstate->current_stateid, 0, sizeof(stateid_t));
-> +		cstate->has_stateid = false;
-> +	}
-
-I'm a bit confused. In PATCH 0/5 you wrote:
-"struct nfsd4_compound_state contains pointer to current stateid"
-maybe it changes later in another patch. I'll be patient and keep reading ;-)
-
-Also, you use both a belt and suspenders.
-Instead of has_stateid I think you can just use the value of the
-invalid stateid and all zeroes is a valid, special stateid.
-
+> +	cstate->current_stateid = NULL;
 > +}
 >  /*
 >   * COMPOUND call.
 >   */
-> @@ -1196,6 +1211,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  
->  		opdesc = OPDESC(op);
->  
-> +		BUG_ON(opdesc->op_flags & PROVIDES_CURRENT_STATEID && 
-> +			opdesc->op_flags & CLEARS_CURRENT_STATEID);
-> +
-
-If so, couldn't the op just use nfsd4_clear_currentstateid()
-as its op_set_currentstateid?
-
->  		if (!cstate->current_fh.fh_dentry) {
->  			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
->  				op->status = nfserr_nofilehandle;
-> @@ -1216,13 +1234,25 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+> @@ -1216,13 +1227,24 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
 >  		if (op->status)
 >  			goto encode_op;
 >  
 > -		if (opdesc->op_func)
 > +		if (opdesc->op_func) {
-> +			if (opdesc->op_flags & CONSUMES_CURRENT_STATEID)
+> +			if (opdesc->op_get_currentstateid)
 > +				opdesc->op_get_currentstateid(cstate, &op->u);
 >  			op->status = opdesc->op_func(rqstp, cstate, &op->u);
 > -		else
@@ -153,34 +126,21 @@ as its op_set_currentstateid?
 > -		if (!op->status && need_wrongsec_check(rqstp))
 > -			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
 > +		if (!op->status) {
-> +			if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
+> +			if (opdesc->op_set_currentstateid) {
 > +				opdesc->op_set_currentstateid(cstate, &op->u);
-> +				cstate->has_stateid = true;
 > +			}
 > +
-> +			if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
-> +				nfsd4_clear_currentstateid(cstate);
+> +			if (opdesc->op_clear_currentstateid)
+> +				opdesc->op_clear_currentstateid(cstate);
 > +
 > +			if (need_wrongsec_check(rqstp))
 > +				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-
-Hmmm, if check_nfsd_access returns with a failure there's no point
-in setting the current_stateid, is it?
-
 > +		}
 >  
 >  encode_op:
 >  		/* Only from SEQUENCE */
-> @@ -1411,9 +1441,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  	},
->  	[OP_CLOSE] = {
->  		.op_func = (nfsd4op_func)nfsd4_close,
-> -		.op_flags = OP_MODIFIES_SOMETHING,
-> +		.op_flags = OP_MODIFIES_SOMETHING | CONSUMES_CURRENT_STATEID,
-
-Looks like this also requires PROVIDES_CURRENT_STATEID
-(or just ditch the flag so there can't be disagreement between the two :)
-
+> @@ -1414,6 +1436,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_flags = OP_MODIFIES_SOMETHING,
 >  		.op_name = "OP_CLOSE",
 >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
 > +		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
@@ -188,12 +148,8 @@ Looks like this also requires PROVIDES_CURRENT_STATEID
 >  	},
 >  	[OP_COMMIT] = {
 >  		.op_func = (nfsd4op_func)nfsd4_commit,
-> @@ -1481,9 +1513,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  	},
->  	[OP_OPEN] = {
->  		.op_func = (nfsd4op_func)nfsd4_open,
-> -		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
-> +		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING | PROVIDES_CURRENT_STATEID,
+> @@ -1484,6 +1508,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
 >  		.op_name = "OP_OPEN",
 >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
 > +		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
@@ -201,7 +157,7 @@ Looks like this also requires PROVIDES_CURRENT_STATEID
 >  	[OP_OPEN_CONFIRM] = {
 >  		.op_func = (nfsd4op_func)nfsd4_open_confirm,
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 47e94e3..278e0af 100644
+> index 47e94e3..594b44e 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
 > @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
@@ -223,8 +179,6 @@ Looks like this also requires PROVIDES_CURRENT_STATEID
 >  	memset(&onestateid, ~0, sizeof(stateid_t));
 > +	/* seqid 1, other all 0 */
 > +	currentstateid.si_generation = 1;
-
-
 >  	INIT_LIST_HEAD(&close_lru);
 >  	INIT_LIST_HEAD(&client_lru);
 >  	INIT_LIST_HEAD(&del_recall_lru);
@@ -236,19 +190,15 @@ Looks like this also requires PROVIDES_CURRENT_STATEID
 > +static void
 > +get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
 > +{
-> +	if (cstate->minorversion && CURRENT_STATEID(stateid))
-> +		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
+> +	if (cstate->current_stateid && CURRENT_STATEID(stateid))
+> +		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
 > +}
 > +
 > +static void
 > +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
 > +{
 > +	if (cstate->minorversion)
-> +		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
-
-you can also set has_stateid to true here...
-(If you keep it. I'm not convinced yet it's really needed)
-
+> +		cstate->current_stateid = stateid;
 > +}
 > +
 > +void
@@ -269,15 +219,21 @@ you can also set has_stateid to true here...
 > +	get_stateid(cstate, &close->cl_stateid);
 > +}
 > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 2364747..b8435d20 100644
+> index 2364747..c1fe8ba 100644
 > --- a/fs/nfsd/xdr4.h
 > +++ b/fs/nfsd/xdr4.h
-> @@ -54,6 +54,8 @@ struct nfsd4_compound_state {
+> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
 >  	size_t			iovlen;
 >  	u32			minorversion;
 >  	u32			status;
-> +	stateid_t               current_stateid;
-> +	bool	has_stateid;
+> +	const stateid_t	*current_stateid;
 >  };
 >  
 >  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+> -- 
+> 1.7.7.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
