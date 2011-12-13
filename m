@@ -1,61 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41546 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:65198 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752153Ab1LITK6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Dec 2011 14:10:58 -0500
-Date: Fri, 9 Dec 2011 14:10:57 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out
- Please check user daemon is running
-Message-ID: <20111209191057.GA10089@fieldses.org>
-References: <8762hrozdl.fsf@fifthhorseman.net>
- <20111208174501.GA30088@fieldses.org>
- <4EE253EC.2040609@fifthhorseman.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EE253EC.2040609@fifthhorseman.net>
+	id S1753883Ab1LMOfQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Dec 2011 09:35:16 -0500
+Date: Tue, 13 Dec 2011 09:34:46 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, roel <roel.kluin@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>, sage@newdream.net,
+        Steve French <sfrench@samba.org>, linux-cifs@vger.kernel.org,
+        Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org, josef@redhat.com
+Subject: Re: ceph, cifs, nfs, fuse: boolean and / or confusion
+Message-ID: <20111213093446.02de1df1@tlielax.poochiereds.net>
+In-Reply-To: <1323733153.13849.17.camel@lade.trondhjem.org>
+References: <4EE688FC.8090606@gmail.com>
+	<20111212152856.871a8301.akpm@linux-foundation.org>
+	<1323733153.13849.17.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 09, 2011 at 01:31:08PM -0500, Daniel Kahn Gillmor wrote:
-> On 12/08/2011 12:45 PM, J. Bruce Fields wrote:
-> > Yes, if you're using NFSv4 then the client and server should each run
-> > both daemons.
-> 
-> ah, thanks.
-> 
-> >> If so, what functionality am i losing out on by not running it?
+On Mon, 12 Dec 2011 18:39:13 -0500
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> On Mon, 2011-12-12 at 15:28 -0800, Andrew Morton wrote: 
+> > On Tue, 13 Dec 2011 00:06:36 +0100
+> > roel <roel.kluin@gmail.com> wrote:
 > > 
-> > You lose NFSv4.0 delegations, which depend on the ability for the server
-> > to contact the client to send delegation recalls.  Delegations are
-> > optional, so you won't lose correctness, but you may lose some
-> > performance.
+> > > The test not SEEK_CUR or not SEEK_SET always evaluates to true
+> > > 
+> > > Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> > > ---
+> > >  fs/ceph/file.c   |    2 +-
+> > >  fs/cifs/cifsfs.c |    2 +-
+> > >  fs/fuse/file.c   |    2 +-
+> > >  fs/nfs/file.c    |    2 +-
+> > >  4 files changed, 4 insertions(+), 4 deletions(-)
+> > > 
+> <snip> 
+> > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > > index eca56d4..606ef0f 100644
+> > > --- a/fs/nfs/file.c
+> > > +++ b/fs/nfs/file.c
+> > > @@ -147,7 +147,7 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
+> > >  	 * origin == SEEK_END || SEEK_DATA || SEEK_HOLE => we must revalidate
+> > >  	 * the cached file length
+> > >  	 */
+> > > -	if (origin != SEEK_SET || origin != SEEK_CUR) {
+> > > +	if (origin != SEEK_SET && origin != SEEK_CUR) {
+> > >  		struct inode *inode = filp->f_mapping->host;
+> > >  
+> > >  		int retval = nfs_revalidate_file_size(inode, filp);
+> > 
+> > This fix will cause changed runtime behaviour, such as NFS no longer
+> > running nfs_revalidate_file_size() for all seek modes.
 > 
-> Thanks, that's useful.  Do the clients need to run cachefilesd as well
-> to take advantage of delegation?
-
-No.
-
-> Is there a document where i could find
-> this sort of information without adding noise to the list?
-
-Hm, it should probably be in the FAQ.  I think we want to make
-
-	http://wiki.linux-nfs.org/
-
-the place to go for Linux NFS information, so if you can't find this
-under there somewhere, let's think about where to put it.  Suggestions
-welcomed.
-
-> > If you're using only v2, v3, or v4.1, that doesn't matter.  (v2 and v3
-> > lack delegations, and v4.1 sends callbacks over existing
-> > client-established connections).
+> As far as NFS is concerned, it reverts a regression. NFS only used to
+> run revalidate_file_size() for SEEK_END prior to commit
+> 06222e491e663dac939f04b125c9dc52126a75c4. I accept that we now also need
+> to run it for SEEK_HOLE and SEEK_DATA, but we've never had to do so for
+> SEEK_SET and SEEK_CUR.
 > 
-> OK, gotcha.  Is it possible to use 4.1 with linux kernel 3.1 and
-> nfs-utils 1.2.5, or would i need to pull a more recent version?
+> I suspect the same is true of ceph, cifs etc...
+> 
 
-It should be possible.  4.1 is somewhat new, though.
+(cc'ing Josef Bacik on this too, since he made this change originally)
 
---b.
+Agreed. The patch looks correct to me for NFS and CIFS at at least.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
