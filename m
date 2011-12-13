@@ -1,61 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:65100 "EHLO mx1.redhat.com"
+Received: from lo.gmane.org ([80.91.229.12]:32871 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750958Ab1LVOPF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Dec 2011 09:15:05 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBMEF5k7012374
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Dec 2011 09:15:05 -0500
-From: Karel Zak <kzak@redhat.com>
+	id S1754681Ab1LMRjL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Dec 2011 12:39:11 -0500
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1RaWJp-00006A-S9
+	for linux-nfs@vger.kernel.org; Tue, 13 Dec 2011 18:39:10 +0100
+Received: from user-387o921.cable.mindspring.com ([208.124.36.65])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 18:39:09 +0100
+Received: from chris.j.arges by user-387o921.cable.mindspring.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 18:39:09 +0100
 To: linux-nfs@vger.kernel.org
-Cc: Steve Dickson <steved@redhat.com>, Karel Zak <kzak@redhat.com>
-Subject: [PATCH] mount.nfs: don't overwrite mount options from /etc/nfsmount.conf
-Date: Thu, 22 Dec 2011 15:14:52 +0100
-Message-Id: <1324563292-22058-1-git-send-email-kzak@redhat.com>
+From: Chris J Arges <chris.j.arges@canonical.com>
+Subject: Re: [PATCH] nfsd4: permit read opens of executable-only files
+Date: Tue, 13 Dec 2011 17:38:54 +0000 (UTC)
+Message-ID: <loom.20111213T183631-8@post.gmane.org>
+References: <20110825161957.GC1114@fieldses.org> <loom.20111207T233110-295@post.gmane.org> <20111208212151.GF32505@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The libmount (as well as mount(8)) ignores mount options from command
-line if running in restricted mode (suid, non-root-user) and all
-options are read from fstab only.
+<snip>
+> > 
+> > 
+> > Bruce,
+> > 
+> > I've tested this patch against linux-3.0 and it doesn't allow me to execute 
+> > binaries with permissions of 111.
+> 
+> Hm, I see the same permissions error.  However, looking at the
+> client-server traffic with wireshark, I see no permissions failures from
+> the server: the read-open of cat succeeds.  (Could you check if the same
+> is true in your case?)
+> 
+> So my first inclination is to blame the client.... Does this work with
+> an older client?
+> 
+> --b.
 
-It means that all options are replaced with stuff from fstab,
-including mount options from nfsmount.conf. This is bug.
+Bruce,
 
-We have to apply fstab and then nfsmount.conf.
+Using the above test setup, and trying various clients I see a mismatch:
 
-Signed-off-by: Karel Zak <kzak@redhat.com>
----
- utils/mount/mount_libmount.c |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+Using a newer nfs clients (nfs-common 1:1.2.2-4/1:1.2.4-1), I can read a file 
+with 111 permissions, but cannot execute it.
+With an older nfs client (nfs-common 1:1.2.0-4 / ubuntu lucid), I can read and 
+execute a file with 111 permissions.
 
-diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-index e450d79..e8f17a9 100644
---- a/utils/mount/mount_libmount.c
-+++ b/utils/mount/mount_libmount.c
-@@ -346,6 +346,21 @@ static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
- 
- 	if (chk_mountpoint(mount_point))
- 		goto err;
-+
-+	/*
-+	 * The libmount strictly uses only options from fstab if running in
-+	 * restricted mode (suid, non-root user). This is done in
-+	 * mnt_context_prepare_mount() by default.
-+	 *
-+	 * We have to read fstab before nfsmount.conf, otherwise the options
-+	 * from nfsmount.conf will be ignored (overwrited).
-+	 */
-+	rc = mnt_context_apply_fstab(cxt);
-+	if (rc) {
-+		nfs_error(_("%s: failed to apply fstab options\n"), progname);
-+		goto err;
-+	}
-+
- 	/*
- 	 * Concatenate mount options from the configuration file
- 	 */
--- 
-1.7.7.4
+--chris j arges
+
+<snip>
+
+
+
 
