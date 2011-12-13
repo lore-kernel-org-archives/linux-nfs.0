@@ -1,308 +1,104 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-In-Reply-To: <1132749605.180867.1323832831990.JavaMail.root@erie.cs.uoguelph.ca>
-References: <4EE1EC49.6010000@panasas.com>
-	<1132749605.180867.1323832831990.JavaMail.root@erie.cs.uoguelph.ca>
-From: Benny Halevy <bhalevy@tonian.com>
-Date: Thu, 15 Dec 2011 17:42:53 +0200
-Message-ID: <CAEMWVhtQ5kZ_5zzEqd_zjqVgq3qjYy_GhE=4QYsVfgTNvb7cXA@mail.gmail.com>
-To: Rick Macklem <rmacklem@uoguelph.ca>
-Cc: linux-nfs@vger.kernel.org, Brent Welch <welch@panasas.com>,
-        honey@citi.umich.edu, Steve Dickson <steved@redhat.com>,
-        nfsv4@ietf.org
-Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
- attachment this time
-List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: multipart/mixed; boundary="===============3833829838765310934=="
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+From: "J. Zakia" <downsyl4-YDxpq3io04c@public.gmane.org>
+Subject: Confirmation from Libyan embassy
+Date: Tue, 13 Dec 2011 07:47:13 -0800
+Message-ID: <201112131549.pBDFn25F007115__460.867156698619$1323791418$gmane$org@imr-da03.mx.aol.com>
+Reply-To: <jimmyzakky30@yahoo.com.hk>
+Mime-Version: 1.0
+Content-Type: multipart/mixed;
+	boundary="----=_NextPart_000_0117_01C2A75B.27CB505A"
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from imr-da03.mx.aol.com ([205.188.105.145]:57332 "EHLO
+	imr-da03.mx.aol.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753150Ab1LMPuG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2011 10:50:06 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---===============3833829838765310934==
-Content-Type: multipart/alternative; boundary=14dae9399dd7b48c5704b423572c
+This is a multi-part message in MIME format.
 
---14dae9399dd7b48c5704b423572c
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-On Wed, Dec 14, 2011 at 5:20 AM, Rick Macklem <rmacklem@uoguelph.ca> wrote:
-
-> Boaz Harrosh wrote:
-> [good stuff snipped for brevity]
-> >
-> > I have on my todo list a full osd (pnfs-objects) stack port to FreeBSD
-> > But that's in the far future.
-> > Meanwhile I'd suggest the pnfs-client-core to layout-driver API be
-> > closely
-> > crafted to match that of the Linux LD API so it could be kept the same
-> > code base.
->
-> Am I correct to assume that fs/nfs/nfsfilelayout* implements this API
-> for the file layout case?
-
-
-
-True.
-
-
-> If so, I'll try and build glue that can use
-> that code unchanged (or at least minimally changed).
->
-> And Peter (I see you're on the cc list), is it possible to get a copy
-> of these files without any GPL? It looks like they have the U of Michigan
-> copyright, which I think should be fine for the FreeBSD folks, but then
-> there is
->
->   MODULE_LICENSE("GPL");
->
-> in it, which I assume means it's GPL'd. (Basically, exactly the same file=
-,
-> but released without this line, would make the FreeBSD folks happy, I
-> think.)
-> (No rush on this, I can use GPL'd code, I just can't put it in the FreeBS=
-D
-> source tree easily.) The same would apply to any other layout driver that
-> others, like Panasas or EMC might be willing to open source for FreeBSD.
->
-
-Not up to me, but it's more likely you'd be able to get the Windows code
-over the university license more easily...
-
-Benny
-
-
->
-> And Boaz, thanks for the useful information. I'll probably start with
-> Fedora plus a patched kernel for a server to test against. (It sounds
-> like Steve is willing to help me out, since I haven't used "rpm" in
-> years and have never typed "git" in my life.:-)
->
-> Thanks everyone for your help with this, rick
->
->
-> > For example the pnfs-objects LD is mostly pure C code
-> > relying
-> > on the ORE (Objects Raid Engine). The ORE is multy licensed library
-> > that
-> > has ports to Many platforms including Linux-Kernel
-> > Linux/FreeBSD/windows User-Mode and more of which only the Linux
-> > variants
-> > actually run because of the need of the iscsi stack to support BiDi
-> > and
-> > large CDB commands, Only supported by Linux.
-> >
-> > Cheers
-> > Boaz
-> >
-> > > rick
-> > >
-> > > ----- Original Message -----
-> > >> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish
-> > >> <sfaibish@emc.com>
-> > >> wrote:
-> > >>
-> > >>> Attached please find the slides that we presented yesterday at
-> > >>> USENIX
-> > >>> LISA 11
-> > >>> conference in Boston. We would like to get more detailed input on
-> > >>> other
-> > >>> OS
-> > >>> that will support pNFS server/client (this is for Rick as well)
-> > >>> that
-> > >>> were
-> > >>> not mentioned in this slide set.
-> > >>>
-> > >>> /Sorin
-> > >>>
-> > >>
-> > >>
-> > >>
-> > >> --
-> > >> Best Regards
-> > >> Sorin Faibish
-> > >> Corporate Distinguished Engineer
-> > >> Unified Storage Division
-> > >>
-> > >> EMC=B2
-> > >> where information lives
-> > >>
-> > >> Phone: 508-435-1000 x 48545
-> > >> Cellphone: 617-510-0422
-> > >> Email : sfaibish@emc.com
-> > > _______________________________________________
-> > > nfsv4 mailing list
-> > > nfsv4@ietf.org
-> > > https://www.ietf.org/mailman/listinfo/nfsv4
-> >
-> > _______________________________________________
-> > nfsv4 mailing list
-> > nfsv4@ietf.org
-> > https://www.ietf.org/mailman/listinfo/nfsv4
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
->
-
---14dae9399dd7b48c5704b423572c
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
-
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
-1"><div dir=3D"ltr"><br><br><div class=3D"gmail_quote">On Wed, Dec 14, 2011=
- at 5:20 AM, Rick Macklem <span dir=3D"ltr">&lt;<a href=3D"mailto:rmacklem@=
-uoguelph.ca">rmacklem@uoguelph.ca</a>&gt;</span> wrote:<br><blockquote clas=
-s=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;pad=
-ding-left:1ex">
-
-Boaz Harrosh wrote:<br>
-[good stuff snipped for brevity]<br>
-<div class=3D"im">&gt;<br>
-&gt; I have on my todo list a full osd (pnfs-objects) stack port to FreeBSD=
-<br>
-&gt; But that's in the far future.<br>
-&gt; Meanwhile I'd suggest the pnfs-client-core to layout-driver API be<br>
-&gt; closely<br>
-&gt; crafted to match that of the Linux LD API so it could be kept the same=
-<br>
-&gt; code base.<br>
-<br>
-</div>Am I correct to assume that fs/nfs/nfsfilelayout* implements this API=
-<br>
-for the file layout case?</blockquote><div><br></div><div><br></div><div>Tr=
-ue.</div><div>&nbsp;</div><blockquote class=3D"gmail_quote" style=3D"margin=
-:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">If so, I'll try an=
-d build glue that can use<br>
-
-
-that code unchanged (or at least minimally changed).<br>
-<br>
-And Peter (I see you're on the cc list), is it possible to get a copy<br>
-of these files without any GPL? It looks like they have the U of Michigan<b=
-r>
-copyright, which I think should be fine for the FreeBSD folks, but then<br>
-there is<br>
-<br>
- &nbsp; MODULE_LICENSE(&quot;GPL&quot;);<br>
-<br>
-in it, which I assume means it's GPL'd. (Basically, exactly the same file,<=
-br>
-but released without this line, would make the FreeBSD folks happy, I think=
-.)<br>
-(No rush on this, I can use GPL'd code, I just can't put it in the FreeBSD<=
-br>
-source tree easily.) The same would apply to any other layout driver that<b=
-r>
-others, like Panasas or EMC might be willing to open source for FreeBSD.<br=
-></blockquote><div><br></div><div>Not up to me, but it's more likely you'd =
-be able to get the Windows code</div><div>over the university license more =
-easily...</div>
-
-<div><br></div><div>Benny</div><div>&nbsp;</div><blockquote class=3D"gmail_=
-quote" style=3D"margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1=
-ex">
-<br>
-And Boaz, thanks for the useful information. I'll probably start with<br>
-Fedora plus a patched kernel for a server to test against. (It sounds<br>
-like Steve is willing to help me out, since I haven't used &quot;rpm&quot; =
-in<br>
-years and have never typed &quot;git&quot; in my life.:-)<br>
-<br>
-Thanks everyone for your help with this, rick<br>
-<div><div></div><div class=3D"h5"><br>
-<br>
-&gt; For example the pnfs-objects LD is mostly pure C code<br>
-&gt; relying<br>
-&gt; on the ORE (Objects Raid Engine). The ORE is multy licensed library<br=
->
-&gt; that<br>
-&gt; has ports to Many platforms including Linux-Kernel<br>
-&gt; Linux/FreeBSD/windows User-Mode and more of which only the Linux<br>
-&gt; variants<br>
-&gt; actually run because of the need of the iscsi stack to support BiDi<br=
->
-&gt; and<br>
-&gt; large CDB commands, Only supported by Linux.<br>
-&gt;<br>
-&gt; Cheers<br>
-&gt; Boaz<br>
-&gt;<br>
-&gt; &gt; rick<br>
-&gt; &gt;<br>
-&gt; &gt; ----- Original Message -----<br>
-&gt; &gt;&gt; On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish<br>
-&gt; &gt;&gt; &lt;<a href=3D"mailto:sfaibish@emc.com">sfaibish@emc.com</a>&=
-gt;<br>
-&gt; &gt;&gt; wrote:<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt;&gt; Attached please find the slides that we presented yesterd=
-ay at<br>
-&gt; &gt;&gt;&gt; USENIX<br>
-&gt; &gt;&gt;&gt; LISA 11<br>
-&gt; &gt;&gt;&gt; conference in Boston. We would like to get more detailed =
-input on<br>
-&gt; &gt;&gt;&gt; other<br>
-&gt; &gt;&gt;&gt; OS<br>
-&gt; &gt;&gt;&gt; that will support pNFS server/client (this is for Rick as=
- well)<br>
-&gt; &gt;&gt;&gt; that<br>
-&gt; &gt;&gt;&gt; were<br>
-&gt; &gt;&gt;&gt; not mentioned in this slide set.<br>
-&gt; &gt;&gt;&gt;<br>
-&gt; &gt;&gt;&gt; /Sorin<br>
-&gt; &gt;&gt;&gt;<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt; --<br>
-&gt; &gt;&gt; Best Regards<br>
-&gt; &gt;&gt; Sorin Faibish<br>
-&gt; &gt;&gt; Corporate Distinguished Engineer<br>
-&gt; &gt;&gt; Unified Storage Division<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt; EMC=B2<br>
-&gt; &gt;&gt; where information lives<br>
-&gt; &gt;&gt;<br>
-&gt; &gt;&gt; Phone: <a href=3D"tel:508-435-1000%20x%2048545" value=3D"&#43=
-;15084351000">508-435-1000 x 48545</a><br>
-&gt; &gt;&gt; Cellphone: <a href=3D"tel:617-510-0422" value=3D"&#43;1617510=
-0422">617-510-0422</a><br>
-&gt; &gt;&gt; Email : <a href=3D"mailto:sfaibish@emc.com">sfaibish@emc.com<=
-/a><br>
-&gt; &gt; _______________________________________________<br>
-&gt; &gt; nfsv4 mailing list<br>
-&gt; &gt; <a href=3D"mailto:nfsv4@ietf.org">nfsv4@ietf.org</a><br>
-&gt; &gt; <a href=3D"https://www.ietf.org/mailman/listinfo/nfsv4" target=3D=
-"_blank">https://www.ietf.org/mailman/listinfo/nfsv4</a><br>
-&gt;<br>
-&gt; _______________________________________________<br>
-&gt; nfsv4 mailing list<br>
-&gt; <a href=3D"mailto:nfsv4@ietf.org">nfsv4@ietf.org</a><br>
-&gt; <a href=3D"https://www.ietf.org/mailman/listinfo/nfsv4" target=3D"_bla=
-nk">https://www.ietf.org/mailman/listinfo/nfsv4</a><br>
-_______________________________________________<br>
-nfsv4 mailing list<br>
-<a href=3D"mailto:nfsv4@ietf.org">nfsv4@ietf.org</a><br>
-<a href=3D"https://www.ietf.org/mailman/listinfo/nfsv4" target=3D"_blank">h=
-ttps://www.ietf.org/mailman/listinfo/nfsv4</a><br>
-</div></div></blockquote></div><br></div>
-
---14dae9399dd7b48c5704b423572c--
-
---===============3833829838765310934==
-Content-Type: text/plain; charset="us-ascii"
+------=_NextPart_000_0117_01C2A75B.27CB505A
+Content-Type: text/plain;
+	charset="Windows-1251"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
 
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+In a brief introduction, I am an embassy attaché with the Libyan Government in the Hague, Netherlands.
+Please kindly see the attachment for more details and respond immediately
 
---===============3833829838765310934==--
+------=_NextPart_000_0117_01C2A75B.27CB505A
+Content-Type: application/octet-stream;
+	name="attachment.rtf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="attachment.rtf"
+
+e1xydGYxXGFuc2lcYW5zaWNwZzEyNTJcZGVmZjBcZGVmbGFuZzEwMzN7XGZv
+bnR0Ymx7XGYwXGZzd2lzc1xmY2hhcnNldDAgQXJpYWw7fX0NCntcKlxnZW5l
+cmF0b3IgTXNmdGVkaXQgNS40MS4yMS4yNTAwO31cdmlld2tpbmQ0XHVjMVxw
+YXJkXGYwXGZzMjAgSmltbXkgWmFraWEgU2FobGlccGFyDQpFbWJhc3N5IG9m
+IExpYnlhXHBhcg0KUGFya3dlZyAxNSwgMjU4NUpIXHBhcg0KVGhlIEhhZ3Vl
+LCBUaGUgTmV0aGVybGFuZHMgIFxwYXINClxwYXINCjEzdGggRGVjLiAyMDEx
+XHBhcg0KIFxwYXINCkVtYmFzc3kgb2YgTGlieWEsIFRoZSBIYWd1ZSwgTmV0
+aGVybGFuZHM7IEZ1bmQgVHJhbnNmZXIgQXNzaXN0YW5jZVxwYXINCiBccGFy
+DQpEZWFyIFNpcixccGFyDQogXHBhcg0KSSBoYXZlIGRlY2lkZWQgdG8gY29u
+dGFjdCB5b3UgdG8gYXNzaXN0IHVzIHRyYW5zZmVyIGFuZCBkZXBvc2l0IHRo
+aXMgc3VtIG9mIG1vbmV5IG1lbnRpb25lZCBiZWxvdyBpbnRvIHlvdXIgcGVy
+c29uYWwgYWNjb3VudCBvciBhbnkgb3RoZXIgYWNjb3VudCB5b3UgZGVjaWRl
+IHNhZmUuXHBhcg0KIFxwYXINCkluIGEgYnJpZWYgaW50cm9kdWN0aW9uLCBJ
+IGFtIGFuIGVtYmFzc3kgYXR0YWNoXCdlOSB3aXRoIHRoZSBMaWJ5YW4gR292
+ZXJubWVudCBpbiBUaGUgSGFndWUsIE5ldGhlcmxhbmRzLiBXZSBhcmUgY3Vy
+cmVudGx5IGF1ZGl0aW5nIGFuZCByZWN0aWZ5aW5nIHRoZSBhY2NvdW50IG9m
+IG91ciBGb3JlaWduIE1pc3Npb25zIGFuZCBFbWJhc3NpZXMgYWJyb2FkIGFu
+ZCBpbiBwYXJ0aWN1bGFyIGluIEV1cm9wZS4gVGhpcyBleGNpc2UgaXMgbmVj
+ZXNzaXRhdGVkIGJ5IHRoZSBvbi1nb2luZyBwb2xpdGljYWwgY2hhbmdlIGlu
+IG15IGNvdW50cnkgdW5kZXIgdGhlIE5hdGlvbmFsIFRyYW5zaXRpb25hbCBD
+b3VuY2lsIChOVEMpLiBJdCBpcyBleHBlY3RlZCB0aGF0IHRoZXJlIHdpbGwg
+YmUgbmV3IEFtYmFzc2Fkb3JpYWwgcG9zdGluZyBpbiB0aGUgY29taW5nIG1v
+bnRocyB3aGljaCB3aWxsIGRlZmluaXRlbHkgYWZmZWN0IHRoZSBwcmVzZW50
+IEFtYmFzc2Fkb3IgYW5kIGFsbCBzdGFmZiBvZiBMaWJ5YSBFbWJhc3N5IGlu
+IFRoZSBOZXRoZXJsYW5kcy5ccGFyDQogXHBhcg0KSG93ZXZlciwgaW4gdGhl
+IGNvdXJzZSBvZiBvdXIgYXVkaXRpbmcsIHdlIGhhdmUgaHVnZSBzdW0gb2Yg
+ZXhjZXNzIG1vbmV5IGluIHRoZSB0dW5lIG9mIFVTJDgsNTAwLDAwMC4wMCAo
+RWlnaHQgTWlsbGlvbiwgRml2ZSBIdW5kcmVkIFRob3VzYW5kIFUuUyBEb2xs
+YXJzKSB3aGljaCBpcyBseWluZyBsb29zZSBhbmQgdW5jbGFpbWVkIGluIG9u
+ZSBvZiB0aGUgbG9jYWwgYmFua3MgaGVyZSBpbiBUaGUgTmV0aGVybGFuZHMu
+IFdlIGhhdmUgcXVpY2tseSBhbmQgc21hcnRseSBpbiBjb2xsYWJvcmF0aW9u
+IHdpdGggdGhlIEFtYmFzc2Fkb3IgYW5kIHNvbWUgYXV0aG9yaXRpZXMgaW4g
+dGhlIE5hdGlvbmFsIFRyYW5zaXRpb25hbCBDb3VuY2lsIChOVEMpIGRlY2lk
+ZWQgdG8ga2VlcCB0aGlzIG1vbmV5IHRvIG91cnNlbHZlcy4gV2UgYXJlIHRh
+a2luZyBhZHZhbnRhZ2Ugb2Ygb3VyIHBvc2l0aW9uIGFuZCB0aGF0IG9mIHRo
+ZSBwb2xpdGljYWwgaW5zdGFiaWxpdHkgaW4gbXkgY291bnRyeSB0byBkbyB0
+aGlzIGtub3dpbmcgdGhhdCBub2JvZHkgd2lsbCBmaW5kIG91dC4gSG93ZXZl
+ciwgd2Ugd291bGQgbGlrZSB0byBtb3ZlIHRoaXMgbW9uZXkgZnVydGhlciB0
+byBhbm90aGVyIGZvcmVpZ24gYWNjb3VudCwgcHJlZmVyYWJseSBvdXRzaWRl
+IFRoZSBOZXRoZXJsYW5kcy5ccGFyDQogXHBhcg0KVG8gdGhpcyBlZmZlY3Qs
+IGFuZCBmb3IgcmVhc29uIG9mIGFub255bWl0eSwgd2UgaGF2ZSBjaG9zZW4g
+eW91IHRocm91Z2ggdGhlIGludGVybmF0aW9uYWwgc2VhcmNoIGRpcmVjdG9y
+eSB0byBhc3Npc3QgdXMgaW4gdHJhbnNmZXJyaW5nIGFuZCBkZXBvc2l0aW5n
+IHRoaXMgbW9uZXkgaW4geW91ciBwZXJzb25hbCBiYW5rIGFjY291bnQgb3Ig
+YW55IG90aGVyIGFjY291bnQgeW91IGRlZW1lZCBzYWZlci4gVGhpcyByZWNv
+bW1lbmRhdGlvbiBpcyBiYXNlZCBvbiB0aGUgZmFjdCB0aGF0IHlvdSB3aWxs
+IG5vdCBiZXRyYXkgdGhlIHRydXN0IGFuZCBjb25maWRlbmNlIHdlIGFyZSBy
+ZXBvc2luZyBvbiB5b3UuIFdlIGhhdmUgZGVjaWRlZCB0aGVyZWFmdGVyLCB0
+byBnaXZlIHlvdSAzMCUgb2YgdGhlIFVTJDgsNTAwLDAwMC4wMCBmb3IgeW91
+ciBhc3Npc3RhbmNlIGFuZCBjb3Jyb2JvcmF0aW9uIHdoaWxlIHRoZSByZXN0
+IDcwJSB3aWxsIGJlIHNhZmVseSBrZXB0IGZvciB1cy5ccGFyDQogXHBhcg0K
+UGxlYXNlIGtpbmRseSBpbmRpY2F0ZSB5b3VyIGludGVyZXN0IHRvIGFzc2lz
+dCB1cyBrZWVwIHRoaXMgbW9uZXkgaW4geW91ciBhY2NvdW50IGFzIHNvb24g
+YXMgcG9zc2libGUuIEl0IGlzIGFsc28gbXkgcGxlYXN1cmUgdG8gaW5mb3Jt
+IHlvdSB0aGF0IGV2ZXJ5IGFycmFuZ2VtZW50IHRvIHJlbGVhc2UgdGhlIG1v
+bmV5IGZyb20gdGhlIGJhbmsgaGVyZSBoYXMgYmVlbiBjb25jbHVkZWQuIFRo
+aXMgYnVzaW5lc3MgaXMgdG90YWxseSByaXNrIGZyZWUuXHBhcg0KIFxwYXIN
+CkZpbmFsbHksIHdlIGV4cGVjdCB5b3UgaW4gY29uZmlkZW5jZSBhbmQgdHJ1
+c3QgdG8ga2VlcCBldmVyeSBhc3BlY3Qgb2YgdGhpcyB0cmFuc2FjdGlvbiBz
+ZWNyZXQgYW5kIGNvbmZpZGVudGlhbCBhcyBhbnkgbWlzdGFrZSB3aWxsIHB1
+dCBteSBmdXR1cmUgY2FyZWVyIGluIGplb3BhcmR5LiBJIG1heSBpbnZpdGUg
+eW91IG9yIHZpc2l0IHlvdSBmb3Igb25lIG9uIG9uZSBkaXNjdXNzaW9uIGFu
+ZCBwZXJmZWN0aW9uIG9mIHRoZSBkZWFsIGFzIHNvb24gSSBjb25maXJtIHRo
+YXQgeW91IGNhbiBoYW5kbGUgdGhlIHRyYW5zYWN0aW9uLlxwYXINCiBccGFy
+DQpUaGFua3MgZm9yIHlvdXIgYW50aWNpcGF0ZWQgY28tb3BlcmF0aW9uLCB3
+aGlsZSB3YWl0aW5nIGZvciB5b3VyIGFjY2VwdGFuY2UgdG8gYXNzaXN0IHVz
+LiBccGFyDQogXHBhcg0KWW91cnMgc2luY2VyZWx5LFxwYXINCiAgXHBhcg0K
+SmltbXkgWmFraWEgU2FobGlccGFyDQp9DQoA
+
+------=_NextPart_000_0117_01C2A75B.27CB505A--
