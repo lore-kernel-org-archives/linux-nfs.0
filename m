@@ -1,101 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53379 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758941Ab1LOQGT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:06:19 -0500
-Message-ID: <1323965176.14317.11.camel@lade.trondhjem.org>
-Subject: Re: copy offload support in Linux - new system call needed?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chris Mason <chris.mason@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Date: Thu, 15 Dec 2011 11:06:16 -0500
-In-Reply-To: <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
-References: <4EE8F75F.6070800@gmail.com>
-	 <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
-	 <20111214222723.GD7623@fieldses.org>
-	 <1323961140.14317.2.camel@lade.trondhjem.org>
-	 <20111215155213.GF18252@shiny>
-	 <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:57353 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751810Ab1LMILR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2011 03:11:17 -0500
+Received: by eekc4 with SMTP id c4so1987561eek.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Dec 2011 00:11:15 -0800 (PST)
+Message-ID: <4EE708A0.60408@tonian.com>
+Date: Tue, 13 Dec 2011 10:11:12 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Tigran Mkrtchyan <kofemann@googlemail.com>
+CC: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATH v4 3/3] nfsd41: consume current stateid on read and write
+References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de> <1323723627-413-4-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1323723627-413-4-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-12-15 at 11:03 -0500, Jeff Layton wrote: 
-> On Thu, 15 Dec 2011 10:52:13 -0500
-> Chris Mason <chris.mason@oracle.com> wrote:
+I think that this patch can be squashed with lock/locku and
+all the other operations that use a similar, trivial
+get/set mechanism as the change is pretty mechanical.
+
+Benny
+
+On 2011-12-12 23:00, Tigran Mkrtchyan wrote:
+> From: Tigran Mkrtchyan <kofemann@gmail.com>
 > 
-> > On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
-> > > On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
-> > > > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
-> > > > > On 12/14/2011 02:27 PM, Al Viro wrote:
-> > > > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
-> > > > > >
-> > > > > >>We had an active thread a couple of years back that came out of the
-> > > > > >>reflink work and, at the time, there seemed to be moderately
-> > > > > >>positive support for adding a new system call that would fit this
-> > > > > >>use case (Joel Becker's copyfile()).
-> > > > > >>
-> > > > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
-> > > > > >>or should we look at other hooks?
-> > > > > >copyfile(2) is probably a good way to go, provided that we do _not_
-> > > > > >go baroque as it had happened the last time syscall had been discussed.
-> > > > > >
-> > > > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
-> > > > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
-> > > > > >If it works - fine, if not - caller has to be ready to deal with handling
-> > > > > >cross-device case anyway.
-> > > > > 
-> > > > > I think that this approach makes a lot of sense. Most of the
-> > > > > devices/targets that support the copy offload, will do it in very
-> > > > > reasonable amounts of time.
-> > > > 
-> > > > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
-> > > > one operation:
-> > > > 
-> > > > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
-> > > >  
-> > > > Perhaps we should ask for separate operations for the two cases.  (Or at
-> > > > least a "please don't bother if this is going to take 8 hours" flag....)
-> > > 
-> > > How would the server know? I suggest we deal with this by adding an
-> > > ioctl() to allow the application to poll for progress: I'm assuming now
-> > > that we don't expect more than 1 copyfile() system call at a time per
-> > > file descriptor...
-> > 
-> > If we're using this to copy VM image files, I could easily imagine
-> > wanting to clone multiple copies of the VM in parallel.
-> > 
-> > -chris
-> > 
 > 
-> Not really a problem is it? Just dup() the fd before you issue the
-> copyfile()? Or even simpler, just do periodic stat() on the destination
-> file if you want a progress report.
+> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+> ---
+>  fs/nfsd/current_stateid.h |    2 ++
+>  fs/nfsd/nfs4proc.c        |    2 ++
+>  fs/nfsd/nfs4state.c       |   12 ++++++++++++
+>  3 files changed, 16 insertions(+), 0 deletions(-)
 > 
-> Regardless, I like the simple approach that Al is suggesting here.
-
-Periodic stat() isn't good enough if you are copying subranges of a
-file. Part of the application here (as I understood it) is to initialise
-specific disk volumes on existing VM images when doing thin
-provisioning. In that case, the reported image size won't ever change...
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+> index 21550b6..6e54d19 100644
+> --- a/fs/nfsd/current_stateid.h
+> +++ b/fs/nfsd/current_stateid.h
+> @@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+>   */
+>  extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+>  extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
+> +extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
+> +extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
+>  
+>  #endif   /* _NFSD4_CURRENT_STATE_H */
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 90c532b..1d2c8d5 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1550,6 +1550,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_flags = OP_MODIFIES_SOMETHING,
+>  		.op_name = "OP_READ",
+>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
+> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
+>  	},
+>  	[OP_READDIR] = {
+>  		.op_func = (nfsd4op_func)nfsd4_readdir,
+> @@ -1628,6 +1629,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+>  		.op_name = "OP_WRITE",
+>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+>  	},
+>  	[OP_RELEASE_LOCKOWNER] = {
+>  		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 58410b2..50d7ad0 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4599,3 +4599,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
+>  {
+>  	get_stateid(cstate, &locku->lu_stateid);
+>  }
+> +
+> +void
+> +nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
+> +{
+> +	get_stateid(cstate, &read->rd_stateid);
+> +}
+> +
+> +void
+> +nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
+> +{
+> +	get_stateid(cstate, &write->wr_stateid);
+> +}
