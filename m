@@ -1,93 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31827 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:5702 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752045Ab1LNQBF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 11:01:05 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEG15kE022411
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:01:05 -0500
-Date: Wed, 14 Dec 2011 11:00:56 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
- ENOENT
-Message-ID: <20111214110056.4832f52d@tlielax.poochiereds.net>
-In-Reply-To: <4EE8C73E.2050207@RedHat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-	<1323871032-3191-3-git-send-email-jlayton@redhat.com>
-	<4EE8BC10.3010005@RedHat.com>
-	<20111214101927.551e3883@tlielax.poochiereds.net>
-	<4EE8C0ED.6090302@RedHat.com>
-	<20111214103718.267b32fc@tlielax.poochiereds.net>
-	<4EE8C73E.2050207@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756855Ab1LNKph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:45:37 -0500
+Subject: [PATCH 05/11] SUNRPC: register debug sysctl table per network
+ namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:45:21 +0300
+Message-ID: <20111214104521.3991.38848.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Dec 2011 10:56:46 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+This patch introduces per-net sysctl header for debug table and moves debug
+table registration to per-net opreations.
+Also, this patch moves SUNRPC sysctl root registration prior to per-net
+operations, since now they depends on it.
 
-> 
-> 
-> On 12/14/2011 10:37 AM, Jeff Layton wrote:
-> > On Wed, 14 Dec 2011 10:29:49 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 12/14/2011 10:19 AM, Jeff Layton wrote:
-> >>> On Wed, 14 Dec 2011 10:09:04 -0500
-> >>> Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>>>
-> >>>>
-> >>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> >>>>> Generally, we want this daemon started before nfsd starts. Deal with the
-> >>>>> situation where the pipe hasn't shown up yet.
-> >>>> This can be done with your systemd start up script. Plus I'm not sure its 
-> >>>> a good idea to steal cpu cycles waiting for an event that may never happen...
-> >>>>
-> >>>
-> >>> Presumably you just wouldn't start the daemon if you have no intent to
-> >>> use it.
-> >>>
-> >>> It does sleep 1s between each check, so the time is fairly minimal,
-> >>> but I'm definitely open to doing this differently. What may be
-> >>> reasonable is adding code to the daemon to check and see if the
-> >>> v4recoverydir is present. If it is, then just exit. Otherwise, wait for
-> >>> the pipe to show up.
-> >> Why just let the systemd scrips worry about the order of when to start
-> >> things up... To be honest, that is one thing systemd does do fairly well.
-> >>
-> > 
-> > Because not everyone uses systemd, and we have to deal with the
-> > "legacy" case too for the transition phase.
-> > 
-> > It's generally preferable not to start up nfsd until everything it
-> > needs is up. If we do what you suggest, then we're basically mandating
-> > that this daemon can't start until nfsd is up and running.
-> Order has ways been a part of how and when things are started which
-> have always been handled by initscripts. That's their job, to start
-> things in the correct order. 
-> 
-> I understand you want to make the daemon bullet proof... but starting
-> things up in the wrong order is an error... IMHO... 
-> 
-> > 
-> > Could you give some details on how you think this ought to work?
-> > 
-> I would think a error message stating unable to open whatever and then 
-> say something like please make sure the nfs server is up and running,
-> would work... It seems to me this is a pretty common way of handling 
-> this type of situation.... although I can not come up with a 
-> explicit example, atm. 
-> 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-That's doable simply by dropping this patch. I think it'll make this
-more fragile, but if that's the consensus, I'll go along with it.
+---
+ net/sunrpc/netns.h       |    1 +
+ net/sunrpc/sunrpc_syms.c |    9 ++++++---
+ net/sunrpc/sysctl.c      |   17 +++++++----------
+ 3 files changed, 14 insertions(+), 13 deletions(-)
 
--- 
-Jeff Layton <jlayton@redhat.com>
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index a949ddb..05ce3b8 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -14,6 +14,7 @@ struct sunrpc_net {
+ 	spinlock_t rpc_client_lock;
+ #ifdef RPC_DEBUG
+ 	struct ctl_table_set sysctls;
++	struct ctl_table_header *debug_ctl_header;
+ #endif
+ };
+ 
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 44759e9..0fd156a 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -90,18 +90,21 @@ init_sunrpc(void)
+ 
+ 	cache_initialize();
+ 
+-	err = register_pernet_subsys(&sunrpc_net_ops);
+-	if (err)
+-		goto out4;
+ #ifdef RPC_DEBUG
+ 	rpc_register_sysctl();
+ #endif
++	err = register_pernet_subsys(&sunrpc_net_ops);
++	if (err)
++		goto out4;
+ 	cache_register(&unix_gid_cache);
+ 	svc_init_xprt_sock();	/* svc sock transport */
+ 	init_socket_xprt();	/* clnt sock transport */
+ 	return 0;
+ 
+ out4:
++#ifdef RPC_DEBUG
++	rpc_unregister_sysctl();
++#endif
+ 	rpcauth_remove_module();
+ out3:
+ 	rpc_destroy_mempool();
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index adebf0a..eda80cf 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -42,7 +42,6 @@ EXPORT_SYMBOL_GPL(nlm_debug);
+ #include <linux/nsproxy.h>
+ #include "netns.h"
+ 
+-static struct ctl_table_header *sunrpc_table_header;
+ static ctl_table		debug_table[];
+ 
+ struct ctl_path sunrpc_path[] = {
+@@ -79,6 +78,9 @@ int debug_sysctl_init(struct net *net)
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	setup_sysctl_set(&sn->sysctls, NULL, NULL);
++	sn->debug_ctl_header = register_sunrpc_sysctl(net, debug_table);
++	if (sn->debug_ctl_header == NULL)
++		return -ENOMEM;
+ 	return 0;
+ }
+ 
+@@ -86,26 +88,21 @@ void debug_sysctl_exit(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	unregister_sysctl_table(sn->debug_ctl_header);
++	sn->debug_ctl_header = NULL;
+ 	WARN_ON(!list_empty(&sn->sysctls.list));
+ }
+ 
+ void
+ rpc_register_sysctl(void)
+ {
+-	if (!sunrpc_table_header) {
+-		register_sysctl_root(&sunrpc_debug_root);
+-		sunrpc_table_header = register_sunrpc_sysctl(&init_net, debug_table);
+-	}
++	register_sysctl_root(&sunrpc_debug_root);
+ }
+ 
+ void
+ rpc_unregister_sysctl(void)
+ {
+-	if (sunrpc_table_header) {
+-		unregister_sysctl_table(sunrpc_table_header);
+-		unregister_sysctl_root(&sunrpc_debug_root);
+-		sunrpc_table_header = NULL;
+-	}
++	unregister_sysctl_root(&sunrpc_debug_root);
+ }
+ 
+ static int proc_do_xprt(ctl_table *table, int write,
+
