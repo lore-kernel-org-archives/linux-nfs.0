@@ -1,52 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tango.0pointer.de ([85.214.72.216]:43632 "EHLO
-	tango.0pointer.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751651Ab1LOPB5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 10:01:57 -0500
-Date: Thu, 15 Dec 2011 15:54:32 +0100
-From: Lennart Poettering <lennart@poettering.net>
-To: Tom Gundersen <teg@jklm.no>
-Cc: linux-nfs@vger.kernel.org, systemd-devel@lists.freedesktop.org
-Subject: Re: [systemd-devel] [PATCH v2] rpcbind: add support for systemd
- socket activation
-Message-ID: <20111215145432.GB16014@tango.0pointer.de>
-References: <1323271100-3565-1-git-send-email-teg@jklm.no>
+Received: from mx2.netapp.com ([216.240.18.37]:16026 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755771Ab1LNQ5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 11:57:00 -0500
+Message-ID: <4EE8D558.1080301@netapp.com>
+Date: Wed, 14 Dec 2011 11:56:56 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323271100-3565-1-git-send-email-teg@jklm.no>
+To: Casey Bodley <cbodley@citi.umich.edu>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Only reinitilize the recall_lru list under the
+ recall lock
+References: <1323812158-5183-1-git-send-email-bjschuma@netapp.com> <20111213221209.GA30904@fieldses.org> <4EE8A7BA.6050406@netapp.com> <20111214140744.GA4322@fieldses.org> <4EE8B3C9.8070800@netapp.com> <CAMeBU_2LCtuzaFtxMZ1VASoU5UcJo805_sJ2ovbtPZTWDUL-Bg@mail.gmail.com>
+In-Reply-To: <CAMeBU_2LCtuzaFtxMZ1VASoU5UcJo805_sJ2ovbtPZTWDUL-Bg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 07.12.11 16:18, Tom Gundersen (teg@jklm.no) wrote:
+On Wed Dec 14 11:35:32 2011, Casey Bodley wrote:
+> On Wed, Dec 14, 2011 at 9:33 AM, Bryan Schumaker <bjschuma@netapp.com> wrote:
+>> On Wed Dec 14 09:07:44 2011, J. Bruce Fields wrote:
+>>> On Wed, Dec 14, 2011 at 08:42:18AM -0500, Bryan Schumaker wrote:
+>>>> On Tue Dec 13 17:12:09 2011, J. Bruce Fields wrote:
+>>>>> On Tue, Dec 13, 2011 at 04:35:58PM -0500, bjschuma@netapp.com wrote:
+>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>
+>>>>>> unhash_delegation() will grab the recall lock before calling
+>>>>>> list_del_init() in each of these places.  This patch removes the
+>>>>>> redundant calls.
+>>>>>
+>>>>> Looks right, thanks.  (How did you happen across this?)
+>>>>
+>>>> I was looking over the fault injection stuff to see if I can figure out
+>>>> where an occasional oops was coming from.  It seems to happen when I
+>>>> forget delegations, so I was looking at how other functions release
+>>>> delegations to see if there was something I missed.  The oops doesn't
+>>>> happen often enough for me to know if this patch fixes it yet, though.
+>>>
+>>> Hm, OK.  Could you post the oops?
+>>
+>> I don't see it in the logs on the server, but I'll keep looking.  I'll
+>> post it the next time I come across it.
+>
+> I'm not sure if this is the same oops, but I'm able to reproduce it
+> consistently against Bruce's 3.2.0-rc1 tree with fault injection
+> enabled.  I use the windows client to read a file, then 'echo 0 >
+> /sys/kernel/debug/nfsd/forget_delegations'.  I just tested with the
+> patch above, and was able to reproduce the same oops:
+>
+> [ 1200.251735] NFSD Fault Injection: forget_delegations (all)
+> [ 1200.251830] general protection fault: 0000 [#1] SMP
+> [ 1200.252450] CPU 1
+> [ 1200.252597] Modules linked in:
+> [ 1200.253062]
+> [ 1200.253256] Pid: 2004, comm: bash Not tainted 3.2.0-rc1+ #9 VMware,
+> Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+> [ 1200.254102] RIP: 0010:[<ffffffff811ae7f5>]  [<ffffffff811ae7f5>]
+> nfsd_process_n_delegations+0x3e/0xbe
+> [ 1200.254746] RSP: 0018:ffff88003b579e08  EFLAGS: 00010287
+> [ 1200.255067] RAX: dead000000100100 RBX: 0000000000000000 RCX: 00000001802c002b
+> [ 1200.255458] RDX: ffff88003d2d3328 RSI: ffffffff811aa49e RDI: ffff88003d2d3308
+> [ 1200.255842] RBP: ffff88003b579e58 R08: ffff88003b558000 R09: ffff88003d2d3480
+> [ 1200.256226] R10: ffff88003b68b750 R11: 0000000000000040 R12: dead0000001000f8
+> [ 1200.256610] R13: 0000000000000001 R14: 000000000000002b R15: 00000000000000d5
+> [ 1200.257029] FS:  00007fbad1d44700(0000) GS:ffff88003fa20000(0000)
+> knlGS:0000000000000000
+> [ 1200.257512] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [ 1200.257850] CR2: 00007fbad1d49000 CR3: 000000003b593000 CR4: 00000000000006e0
+> [ 1200.258272] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [ 1200.258693] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [ 1200.259083] Process bash (pid: 2004, threadinfo ffff88003b578000,
+> task ffff88003cc3dfe0)
+> [ 1200.259561] Stack:
+> [ 1200.259768]  ffffffff811aa49e ffff88003d2d3308 ffffffff81be1560
+> ffff88003d2d3328
+> [ 1200.260553]  ffff88003b579e88 ffffffff81a2b6a0 0000000000000000
+> 0000000000000002
+> [ 1200.261337]  ffff88003d8c1550 ffff88003d8c1528 ffff88003b579e88
+> ffffffff811ae897
+> [ 1200.262121] Call Trace:
+> [ 1200.262346]  [<ffffffff811aa49e>] ? nfs4_put_delegation+0x55/0x55
+> [ 1200.262701]  [<ffffffff811ae897>] nfsd_forget_delegations+0x22/0x40
+> [ 1200.263119]  [<ffffffff8119d3e7>] nfsd_inject_set+0x3f/0x46
+> [ 1200.263470]  [<ffffffff810fb878>] simple_attr_write+0x8a/0xb2
+> [ 1200.263818]  [<ffffffff810e0949>] vfs_write+0xa7/0xfa
+> [ 1200.264136]  [<ffffffff810e0b41>] sys_write+0x45/0x69
+> [ 1200.264483]  [<ffffffff81450f3b>] system_call_fastpath+0x16/0x1b
+> [ 1200.264832] Code: 45 31 ed 41 54 53 48 89 fb 48 83 ec 28 49 63 c6
+> 48 c1 e0 04 4c 8b a0 b0 12 be 81 48 05 b0 12 be 81 48 89 45 c0 49 83
+> ec 08 eb 57
+> [ 1200.270209]  8b 7c 24 28 49 8d 54 24 28 48 89 55 c8 48 83 ef 20 48 8b 47
+> [ 1200.272534] RIP  [<ffffffff811ae7f5>] nfsd_process_n_delegations+0x3e/0xbe
+> [ 1200.273007]  RSP <ffff88003b579e08>
+> [ 1200.273331] ---[ end trace 0071bb3837d120e2 ]---
 
-> Making rpcbind sockect activated will greatly simplify
-> its integration in systemd systems. In essence, other services
-> may now assume that rpcbind is always available, even during very
-> early boot. This means that we no longer need to worry about any
-> ordering dependencies.
-> 
-> This is based on a patch originally posted by Lennart Poettering:
-> <http://permalink.gmane.org/gmane.linux.nfs/33774>.
-> 
-> That patch was not merged due to the lack of a shared library and
-> as systemd was seen to be too Fedora specific.
-> 
-> Systemd now provides a shared library, and it is shipped by defalt in
-> OpenSUSE in addition to Fedora, and it is available in Debain, Gentoo,
-> Arch, and others.
-> 
-> This version of the patch has three changes from the original:
-> 
->  * It uses the shared library.
->  * It comes with unit files.
->  * It is rebased on top of master.
-> 
-> Please review the patch with "git show -b" or otherwise ignoring the
-> whitespace changes, or it will be extremely difficult to read.
+That's similar to the one I just got.  Thanks for the test case!  I had 
+been opening two files in order to get a read delegation, I didn't 
+think of trying with just one.  Here is what I got:
 
-Looks good to me! Thanks for looking into this again!
+Dec 14 11:21:01 localhost -- MARK --
+Dec 14 11:45:00 localhost kernel: [ 7716.735003] NFSD Fault Injection: 
+forget_delegations (all)
+Dec 14 11:45:00 localhost kernel: [ 7716.735814] CPU 0 
+Dec 14 11:45:00 localhost kernel: [ 7716.735902] Modules linked in: 
+dm_mod md5 nfsd exportfs nfs lockd fscache auth_rpcgss nfs_acl sunrpc 
+ipv6 ext2 mbcache loop snd_hda_intel snd_hda_codec snd_hwdep snd_pcm 
+snd_timer psmouse snd serio_raw soundcore pcspkr snd_page_alloc 
+virtio_balloon i2c_piix4 evdev i2c_core floppy processor button btrfs 
+zlib_deflate crc32c libcrc32c sr_mod cdrom pata_acpi uhci_hcd ata_piix 
+usbcore usb_common libata scsi_mod virtio_net virtio_pci virtio_blk 
+virtio_ring virtio
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] 
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] Pid: 17423, comm: bash 
+Not tainted 3.2.0-rc1-BRYAN+ #1 Bochs Bochs
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] RIP: 
+0010:[<ffffffffa0415533>]  [<ffffffffa0415533>] 
+nfsd_process_n_delegations+0x53/0xe0 [nfsd]
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] RSP: 
+0018:ffff880034121e18  EFLAGS: 00010202
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] RAX: dead000000100100 
+RBX: 0000000000000000 RCX: 0000000000000200
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] RDX: dead0000001000f8 
+RSI: 000060ffc0001270 RDI: ffffea0000d93400
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] RBP: ffff880034121e68 
+R08: ffffffffa040fc26 R09: 0000000000000000
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] R10: ffff88002b206a90 
+R11: 0000000000000000 R12: ffff88002eed4188
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] R13: 0000000000000001 
+R14: ffff88002eed41a8 R15: ffffffffa040fcb0
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] FS:  
+00007f09bfb8c700(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] CS:  0010 DS: 0000 ES: 
+0000 CR0: 0000000080050033
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] CR2: 00007f09bfb92000 
+CR3: 000000003a90f000 CR4: 00000000000006f0
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] DR0: 0000000000000000 
+DR1: 0000000000000000 DR2: 0000000000000000
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] DR3: 0000000000000000 
+DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Dec 14 11:45:00 localhost kernel: [ 7716.737782] Process bash (pid: 
+17423, threadinfo ffff880034120000, task ffff88003c0064a0)
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  ffffffffa041ffb0 
+00000000000000f7 ffffffffa04283b0 dead0000001000f8
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  ffff880034121e58 
+0000000000000000 ffffffffa041ffb0 ffff88002eed48d0
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  0000000000000002 
+ffff88002eed48a8 ffff880034121e88 ffffffffa04155e5
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffffa04155e5>] 
+nfsd_forget_delegations+0x25/0x50 [nfsd]
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffffa03fd75c>] 
+nfsd_inject_set+0x3c/0x70 [nfsd]
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff81186f22>] 
+simple_attr_write+0xc2/0xe0
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff811630ef>] 
+vfs_write+0xaf/0x180
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff8116341a>] 
+sys_write+0x4a/0x90
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff81417e42>] 
+system_call_fastpath+0x16/0x1b
+Dec 14 11:45:00 localhost kernel: [ 7716.737782]  RSP <ffff880034121e18>
+Dec 14 11:45:00 localhost kernel: [ 7716.754976] ---[ end trace 
+f7471c4cb1a3a2f4 ]---
 
-Lennart
+- Bryan
+>
+>>
+>> - Bryan
+>>>
+>>> --b.
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
--- 
-Lennart Poettering - Red Hat, Inc.
+
