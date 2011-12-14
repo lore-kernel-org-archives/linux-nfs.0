@@ -1,38 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:32925 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755510Ab1LNXW7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 18:22:59 -0500
-Date: Wed, 14 Dec 2011 23:22:54 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Maxim Uvarov <maxim.uvarov@oracle.com>
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        Trond.Myklebust@netapp.com, john@johnmccutchan.com, rlove@rlove.org,
-        eparis@parisplace.org
-Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
-Message-ID: <20111214232254.GP2203@ZenIV.linux.org.uk>
-References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com>
- <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49047 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752569Ab1LNPh1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 10:37:27 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEFbR8u019696
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 10:37:27 -0500
+Date: Wed, 14 Dec 2011 10:37:18 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
+ ENOENT
+Message-ID: <20111214103718.267b32fc@tlielax.poochiereds.net>
+In-Reply-To: <4EE8C0ED.6090302@RedHat.com>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+	<1323871032-3191-3-git-send-email-jlayton@redhat.com>
+	<4EE8BC10.3010005@RedHat.com>
+	<20111214101927.551e3883@tlielax.poochiereds.net>
+	<4EE8C0ED.6090302@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 14, 2011 at 02:58:15PM -0800, Maxim Uvarov wrote:
-> This issue was introduced with LTP inotify02 test.
-> If file system is not NFS user inotify application
-> gets IN_DELETE event. But on NFS code avoids d_delete()
-> which sends this event. This patch makes notification
-> on NFS the same as non-NFS. I.e. vfs_unlink still avoids
-> deletion but it sends event for NFS sillyrenamed files.
-> More details here:
-> https://lkml.org/lkml/2011/11/29/421
+On Wed, 14 Dec 2011 10:29:49 -0500
+Steve Dickson <SteveD@redhat.com> wrote:
 
-NAK.  Too damn ugly.  And completely misses the point of inotify -
-seeing events generated only by this client is going to be worthless.
-Face it, inotify is broken by design for network filesystems.  Any
-software using it on NFS is broken; trying to paper over that is
-not a good idea.
+> 
+> 
+> On 12/14/2011 10:19 AM, Jeff Layton wrote:
+> > On Wed, 14 Dec 2011 10:09:04 -0500
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 12/14/2011 08:57 AM, Jeff Layton wrote:
+> >>> Generally, we want this daemon started before nfsd starts. Deal with the
+> >>> situation where the pipe hasn't shown up yet.
+> >> This can be done with your systemd start up script. Plus I'm not sure its 
+> >> a good idea to steal cpu cycles waiting for an event that may never happen...
+> >>
+> > 
+> > Presumably you just wouldn't start the daemon if you have no intent to
+> > use it.
+> > 
+> > It does sleep 1s between each check, so the time is fairly minimal,
+> > but I'm definitely open to doing this differently. What may be
+> > reasonable is adding code to the daemon to check and see if the
+> > v4recoverydir is present. If it is, then just exit. Otherwise, wait for
+> > the pipe to show up.
+> Why just let the systemd scrips worry about the order of when to start
+> things up... To be honest, that is one thing systemd does do fairly well.
+> 
 
-Just.  Don't.  Use.  That.  Shit.
+Because not everyone uses systemd, and we have to deal with the
+"legacy" case too for the transition phase.
+
+It's generally preferable not to start up nfsd until everything it
+needs is up. If we do what you suggest, then we're basically mandating
+that this daemon can't start until nfsd is up and running.
+
+Could you give some details on how you think this ought to work?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
