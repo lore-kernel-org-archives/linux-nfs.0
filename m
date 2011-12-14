@@ -1,66 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50475 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:31227 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756886Ab1LGQkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 11:40:03 -0500
-Date: Wed, 7 Dec 2011 11:40:01 -0500
-To: Trond Myklebust <trond@netapp.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: treat open-associated setattr like write otc purposes
-Message-ID: <20111207164001.GC20079@fieldses.org>
+	id S1756964Ab1LNKqK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:46:10 -0500
+Subject: [PATCH 09/11] SUNRPC: remove xs_tcp_fin_timeout variable
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:45:54 +0300
+Message-ID: <20111214104554.3991.56903.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This is a cleanup patch. Static xs_tcp_fin_timeout is not needed anymore.
 
-For the purposes of open-to-close cache consistency, I don't see why a
-setattr (if it's something like "ftruncate", that's associated with an
-open) should be treated any differently than a write.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-In the v4 case (in the absence of pre-op attributes) that means we
-should fake up pre-op attributes as we do for write.
-
-This allows us to handle reads from cache in more cases.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/inode.c |    7 ++++++-
- 1 files changed, 6 insertions(+), 1 deletions(-)
+ net/sunrpc/xprtsock.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-We discussed this a few weeks ago and you seemed amenable to the basic
-idea, but I have doubts about my implementation:
-
-	- Is this really the right place to do this?
-	- I'm changing v2/v3 behavior here too, where in the write case
-	  I think it's only v4 that does the
-	  nfs_post_op_update_inode_force_wcc().
-
-Also cc'ing Bryan since I think you suggested he might be interested.
-
---b.
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index fe12037..b84748e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -438,8 +438,13 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
- 		nfs_inode_return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
--	if (error == 0)
-+	if (error)
-+		goto out_free;
-+	if (attr->ia_valid & ATTR_FILE)
-+		nfs_post_op_update_inode_force_wcc(inode, fattr);
-+	else
- 		nfs_refresh_inode(inode, fattr);
-+out_free:
- 	nfs_free_fattr(fattr);
- out:
- 	return error;
--- 
-1.7.5.4
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 49219d2..610a74a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -61,7 +61,6 @@ unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
+ unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
+ 
+ #define XS_TCP_LINGER_TO	(15U * HZ)
+-static unsigned int xs_tcp_fin_timeout __read_mostly = XS_TCP_LINGER_TO;
+ 
+ /*
+  * We can register our own files under /proc/sys/sunrpc by
+@@ -129,7 +128,7 @@ static ctl_table xs_tunables_table[] = {
+ 	},
+ 	{
+ 		.procname	= "tcp_fin_timeout",
+-		.maxlen		= sizeof(xs_tcp_fin_timeout),
++		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_jiffies,
+ 	},
+@@ -2930,7 +2929,7 @@ int socket_sysctl_init(struct net *net)
+ 	sn->xprt_max_tcp_slot_table_entries = xprt_max_tcp_slot_table_entries;
+ 	sn->xprt_min_resvport = xprt_min_resvport;
+ 	sn->xprt_max_resvport = xprt_max_resvport;
+-	sn->xs_tcp_fin_timeout = xs_tcp_fin_timeout;
++	sn->xs_tcp_fin_timeout = XS_TCP_LINGER_TO;
+ #ifdef RPC_DEBUG
+ 	return create_xs_tunables_table(net);
+ #else
 
