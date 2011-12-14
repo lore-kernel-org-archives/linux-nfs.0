@@ -1,70 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38369 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757001Ab1LGRLf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 12:11:35 -0500
-Date: Wed, 7 Dec 2011 12:11:33 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATCH] nfsd41: handle current stateid in open and close
-Message-ID: <20111207171133.GD20079@fieldses.org>
-References: <1323207847-19118-1-git-send-email-tigran.mkrtchyan@desy.de>
- <20111206230823.GH12640@fieldses.org>
- <4EDF677C.7030209@tonian.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EDF677C.7030209@tonian.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:53455 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758359Ab1LNXA2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 18:00:28 -0500
+From: Maxim Uvarov <maxim.uvarov@oracle.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org, Trond.Myklebust@netapp.com, john@johnmccutchan.com,
+        rlove@rlove.org, eparis@parisplace.org,
+        Maxim Uvarov <maxim.uvarov@oracle.com>
+Subject: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
+Date: Wed, 14 Dec 2011 14:58:15 -0800
+Message-Id: <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
+In-Reply-To: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com>
+References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 07, 2011 at 03:17:48PM +0200, Benny Halevy wrote:
-> On 2011-12-07 01:08, J. Bruce Fields wrote:
-> > It's a little verbose, but yes it does nicely collect the current
-> > stateid getting/setting into one place.  Benny, is the more or less what
-> > you were thinking of?
-> 
-> Yes it is, though I also liked your direction of just using the current
-> stateid for xdr decoding and encoding.
+This issue was introduced with LTP inotify02 test.
+If file system is not NFS user inotify application
+gets IN_DELETE event. But on NFS code avoids d_delete()
+which sends this event. This patch makes notification
+on NFS the same as non-NFS. I.e. vfs_unlink still avoids
+deletion but it sends event for NFS sillyrenamed files.
+More details here:
+https://lkml.org/lkml/2011/11/29/421
 
-I'd still have a slight preference for doing it that way, just because
-it would take fewer lines of code--but I can live with this too, so I'll
-leave the choice to Tigran's excellent taste....
+Signed-off-by: Maxim Uvarov <maxim.uvarov@oracle.com>
+---
+ fs/namei.c |   19 ++++++++++++++++---
+ 1 files changed, 16 insertions(+), 3 deletions(-)
 
-> { ~0, { { ~0, ~0 }, ~0 } } is ugly but compact :)
-> 
-> And the following may be an overkill...
-> {
-> 	.si_generation = ~0,
-> 	.si_opaque = {
-> 		.so_clid = {
-> 			.cl_boot = ~0,
-> 			.cl_id = ~0,
-> 		},
-> 		.so_id = ~0
-> 	}
-> };
+diff --git a/fs/namei.c b/fs/namei.c
+index a9a7166..44a997e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2737,10 +2737,23 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	}
+ 	mutex_unlock(&dentry->d_inode->i_mutex);
+ 
+-	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+-	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
++
++	if (!error) {
+ 		fsnotify_link_count(dentry->d_inode);
+-		d_delete(dentry);
++		if (!(dentry->d_flags & DCACHE_NFSFS_RENAMED))
++			d_delete(dentry);
++		else {
++			/* We don't d_delete() NFS sillyrenamed files - they
++			 * still exist. But from user side this file was
++			 * deleted. So that we need to generate notify event
++			 * about it.
++			 */
++			struct inode *inode;
++			int isdir;
++			inode = dentry->d_inode;
++			isdir = S_ISDIR(inode->i_mode);
++			fsnotify_nameremove(dentry, isdir);
++		}
+ 	}
+ 
+ 	return error;
+-- 
+1.7.4.1
 
-Reminding myself of http://tools.ietf.org/html/rfc5661#section-8.2.3...
-"Stateid values whose "other" field is either all zeros or all ones are
-reserved."
-
-Maybe:
-
-#define all_ones   {{~0,~0 },~0}
-#define all_zeroes {{ 0, 0 }, 0}
-const stateid_t one_stateid = {
-	.si_generation = ~0,
-	.si_opaque = all_ones
-};
-const stateid_t current_stateid = {
-	.si_generation = 1,
-	.si_opaque = all_zeroes
-};
-...
-
-Or you could ditch the all_zeroes; it's just there for some kind of
-symmetry.
-
---b.
