@@ -1,72 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31694 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7367 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753101Ab1LUUfC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 15:35:02 -0500
+	id S1752569Ab1LNNyx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:54:53 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDsrts025784
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDspPl026219
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org, steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/5] nfsd: overhaul the client name tracking code
-Date: Wed, 21 Dec 2011 15:34:51 -0500
-Message-Id: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] nfsd: add a cl_daddr field and a generic flags field to nfs4_client
+Date: Wed, 14 Dec 2011 08:54:50 -0500
+Message-Id: <1323870891-3124-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
+References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the third iteration of this patchset. The main changes since
-the last set are fairly minor:
+The new clstate daemon tracks client name strings on a per-server
+address basis. In order to support this model, we need to pass the
+address where a call came in to the upcall.
 
-- the new cl_flags field has been merged with the cl_cb_flags field.
-  There are only 2 bits being used in cl_cb_flags currently, so it
-  made sense not to bloat out the struct with a new field.
+We'll also need a way to flag the nfs4_client as already being recorded
+on stable storage so that we don't continually upcall.
 
-- some minor changes to the upcall struct for better alignment (as
-  suggested by Benny)
+Once we're able to deprecate the old state tracking code, we can get rid
+of cl_recdir to recoup some of the space we're using here.
 
-One of the things that Bruce has long had on his wishlist is to replace
-the client name tracking code that the kernel uses:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    3 ++-
+ fs/nfsd/state.h     |    3 +++
+ 2 files changed, 5 insertions(+), 1 deletions(-)
 
-    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
-
-The existing code manipulates the filesystem directly to track this
-info. Not only is that something that makes the VFS maintainers look
-askance at knfsd, but it also is unsuitable in a clustered
-configuration.
-
-Typically we think of the grace period as a property of the server, but
-with a clustered filesystem, we need to consider it as a property of the
-cluster as a whole (or of the clustered filesystem). On a cold startup
-of the cluster, once any node grants a non-reclaim lock, then no more
-reclaim can be allowed on any node. Grace periods must be coordinated
-amongst all cluster nodes.
-
-In order to achieve that goal, we need to first allow the client name
-"reclaim" to be cluster aware as well. This patchset is a move toward
-that goal and covers the initial kernel part of such a change. A
-patchset to add a daemon to handle the upcalls will follow.
-
-The goal with this patchset is to replace the existing functionality,
-without disturbing the existing code too much. For now, the plan is
-to leave the old tracking code in place until it becomes a burden to
-maintain. At that point, we'll need to come up with a plan to
-transition everyone off of the legacy state tracker.
-
-I think this set is now ready for merge and I'd like to see it go
-in for 3.3 if possible. The userspace piece will follow this in
-a separate patchset.
-
-Jeff Layton (5):
-  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-  sunrpc: create nfsd dir in rpc_pipefs
-  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
-  nfsd: add a header describing upcall to nfsdcld
-  nfsd: add the infrastructure to handle the cld upcall
-
- fs/nfsd/nfs4callback.c   |   12 +-
- fs/nfsd/nfs4recover.c    |  439 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4state.c      |   46 ++---
- fs/nfsd/state.h          |   21 ++-
- include/linux/nfsd/cld.h |   56 ++++++
- net/sunrpc/rpc_pipe.c    |    5 +
- 6 files changed, 526 insertions(+), 53 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e32ef02..7f0a124 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1194,7 +1194,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
+ 	copy_verf(clp, verf);
+-	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
++	rpc_copy_addr((struct sockaddr *)&clp->cl_addr, sa);
++	rpc_copy_addr((struct sockaddr *)&clp->cl_daddr, svc_daddr(rqstp));
+ 	clp->cl_flavor = rqstp->rq_flavor;
+ 	copy_cred(&clp->cl_cred, &rqstp->rq_cred);
+ 	gen_confirm(clp);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index b07f5ea..7879db5 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -240,6 +240,9 @@ struct nfs4_client {
+ 	nfs4_verifier		cl_verifier; 	/* generated by client */
+ 	time_t                  cl_time;        /* time of last lease renewal */
+ 	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
++	struct sockaddr_storage	cl_daddr; 	/* server ipaddress */
++#define NFSD4_CLIENT_STABLE	(0)		/* client on stable storage */
++	unsigned long		cl_flags;
+ 	u32			cl_flavor;	/* setclientid pseudoflavor */
+ 	char			*cl_principal;	/* setclientid principal name */
+ 	struct svc_cred		cl_cred; 	/* setclientid principal */
+-- 
+1.7.1
 
