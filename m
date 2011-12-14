@@ -1,57 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752732Ab1LEINW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:22 -0500
-Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:13:21 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:31232 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756427Ab1LNNyx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:54:53 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDsrC9015368
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDspPk026219
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/10] ctl: improve debug printouts
-Date: Mon,  5 Dec 2011 10:13:16 +0200
-Message-Id: <1323072796-18106-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDC7C4E.1040901@tonian.com>
-References: <4EDC7C4E.1040901@tonian.com>
+Subject: [PATCH 3/5] nfsd: add a header describing upcall for clname tracking daemon
+Date: Wed, 14 Dec 2011 08:54:49 -0500
+Message-Id: <1323870891-3124-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
+References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+Add a new header that describes the clname tracking daemon upcall. The
+daemon takes a versioned binary struct. Hopefully this should allow us
+to revise the struct later if it becomes necessary.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- ctl.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ include/linux/nfsd/clstate.h |   59 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 59 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/clstate.h
 
-diff --git a/ctl.c b/ctl.c
-index 2071b0e..959ef6a 100644
---- a/ctl.c
-+++ b/ctl.c
-@@ -176,6 +176,7 @@ process_msg(int fd, short ev_type, void *arg)
- 		resp->res_status = PNFS_BLOCK_FAILURE;
- 	} else {
- 		printf("Processing: %s: ", table[msg.msg_type].msg_name);
-+		fflush(stdout);
- 		resp = table[msg.msg_type].msg_func(&msg, resp, &len);
- 	}
- 
-@@ -215,6 +216,8 @@ get_sig(bl_comm_msg_t *msg, bl_comm_res_t *res, int *lenp)
- 	minor = msg->u.msg_dev & 0xfffff;
- 	dev = (major << 8) | (minor & ~0xf);
- 
-+	printf("%s: %d:%d: ", __func__, major, minor);
-+	fflush(stdout);
- 	res->res_status = PNFS_BLOCK_FAILURE;	// Default condition
- 	
- 	if (mknod(path, S_IFBLK | 0600, dev)) {
-@@ -386,6 +389,8 @@ get_slice(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
- 	partition = minor & 0xf;
- 	res->res_status = PNFS_BLOCK_FAILURE;	// Default condition
- 	
-+	printf("%s: %u:%u: ", __func__, major, minor); fflush(stdout);
+diff --git a/include/linux/nfsd/clstate.h b/include/linux/nfsd/clstate.h
+new file mode 100644
+index 0000000..d571aa5
+--- /dev/null
++++ b/include/linux/nfsd/clstate.h
+@@ -0,0 +1,59 @@
++/*
++ * fs/nfsd/clstate.h - data type and function declarations for clstate mgmt
++ *
++ * Copyright (c) 2011 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
 +
- 	if (mknod(path, S_IFBLK | 0600, dev)) {
- 		perror("mknod");
- 		goto out;
++#ifndef _NFSD_CLSTATE_H
++#define _NFSD_CLSTATE_H
++
++/* latest upcall version available */
++#define CLSTATE_MAX_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++/*
++ * Maximum length of an address string. We could use INET6_ADDRSTRLEN, but
++ * the kernel and userspace definitions are different.
++ */
++#define CLSTATE_MAX_ADDRESS_LEN 48
++
++enum clstate_command {
++	Cl_Create,		/* create a record for this cm_id */
++	Cl_Expire,		/* remove record for this cm_id */
++	Cl_NrToReclaim,		/* how many client records need reclaim? */
++	Cl_Allow,		/* is this cm_id allowed? */
++	Cl_GraceDone		/* grace period is complete */
++};
++
++/* message struct for communication with userspace */
++struct clstate_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	uint32_t	cm_xid;			/* transaction id */
++	int16_t		cm_status;		/* return code */
++	uint16_t	cm_len;			/* length of cm_id */
++	unsigned char	cm_addr[CLSTATE_MAX_ADDRESS_LEN]; /* server addr */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		unsigned char	cm_id[NFS4_OPAQUE_LIMIT]; /* client-provided */
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLSTATE_H */
 -- 
-1.7.6
+1.7.1
 
