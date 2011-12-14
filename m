@@ -1,103 +1,254 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:54247 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752748Ab1LSV5B convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 16:57:01 -0500
-Subject: Re: [PATCH] NFSD: Change name of extended attribute containing junction
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111219215259.GA15613@fieldses.org>
-Date: Mon, 19 Dec 2011 16:56:19 -0500
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        fedfs-utils-devel@oss.oracle.com, jlayton@redhat.com
-Message-Id: <EC478B37-AA6C-4C7D-9FF5-0F564A4CE2F8@oracle.com>
-References: <20111219193843.30843.56764.stgit@degas.1015granger.net> <20111219215259.GA15613@fieldses.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:39418 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751047Ab1LNRBS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 12:01:18 -0500
+Received: by wgbdr13 with SMTP id dr13so2128768wgb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 09:01:16 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20111213164406.GA29019@fieldses.org>
+References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
+	<20111213164406.GA29019@fieldses.org>
+Date: Wed, 14 Dec 2011 18:01:16 +0100
+Message-ID: <CAGue13o1SDoNtjjjbTcW=+79jWSowpac4cL6xNXUVs+vzru8kw@mail.gmail.com>
+Subject: Re: [PATH v4 1/3] nfsd41: handle current stateid in open and close
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <kofemann@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 19, 2011, at 4:52 PM, J. Bruce Fields wrote:
-
-> On Mon, Dec 19, 2011 at 02:38:43PM -0500, Chuck Lever wrote:
->> As of fedfs-utils-0.8.0, user space stores all NFS junction
->> information in a single extended attribute: "trusted.junction.nfs".
-> 
-> I suspect the break of backwards-compatibility is fine, but we should
-> add a note explaining it; would something like this be right?:
-> 
-> 	This breaks compatibility with fedfs-utils versions before
-> 	0.8.0.  As fedfs-utils has not been widely distributed, we don't
-> 	believe this will affect anyone.
-
-More strongly: fedfs-utils is an alpha quality code release.  We don't guarantee any backwards compatibility.
-
-> (Cc'ing jlayton: does this cause a problem for whatever just went into
-> Fedora?)
-> 
-> --b.
-> 
->> 
->> Both FedFS and NFS basic junctions are stored in this one attribute,
->> and the intention is that all future forms of NFS junction metadata
->> will be stored in this attribute.  Other protocols may use a different
->> extended attribute.
->> 
->> Thus NFSD needs to look only for that one extended attribute.  The
->> "trusted.junction.type" xattr is deprecated.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On Tue, Dec 13, 2011 at 5:44 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Dec 12, 2011 at 10:00:25PM +0100, Tigran Mkrtchyan wrote:
+>> From: Tigran Mkrtchyan <kofemann@gmail.com>
+>>
+>>
+>> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 >> ---
->> 
->> fs/nfsd/vfs.c |   17 ++++++++++++++---
->> 1 files changed, 14 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index d1d4d5e..b494f86 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -594,8 +594,19 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
->> 	return error;
->> }
->> 
->> -#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
->> -#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
->> +/*
->> + * NFS junction information is stored in an extended attribute.
->> + */
->> +#define NFSD_JUNCTION_XATTR_NAME	XATTR_TRUSTED_PREFIX "junction.nfs"
+>>  fs/nfsd/current_stateid.h |   11 +++++++++++
+>>  fs/nfsd/nfs4proc.c        |   35 ++++++++++++++++++++++++++++++-----
+>>  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/xdr4.h            |    1 +
+>>  4 files changed, 78 insertions(+), 5 deletions(-)
+>>  create mode 100644 fs/nfsd/current_stateid.h
+>>
+>> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+>> new file mode 100644
+>> index 0000000..a83dd50
+>> --- /dev/null
+>> +++ b/fs/nfsd/current_stateid.h
+>> @@ -0,0 +1,11 @@
+>> +#ifndef _NFSD4_CURRENT_STATE_H
+>> +#define _NFSD4_CURRENT_STATE_H
 >> +
->> +/**
->> + * nfsd4_is_junction - Test if an object could be an NFS junction
->> + *
->> + * @dentry: object to test
->> + *
->> + * Returns 1 if "dentry" appears to contain NFS junction information.
->> + * Otherwise 0 is returned.
->> + */
->> int nfsd4_is_junction(struct dentry *dentry)
->> {
->> 	struct inode *inode = dentry->d_inode;
->> @@ -606,7 +617,7 @@ int nfsd4_is_junction(struct dentry *dentry)
->> 		return 0;
->> 	if (!(inode->i_mode & S_ISVTX))
->> 		return 0;
->> -	if (vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0) <= 0)
->> +	if (vfs_getxattr(dentry, NFSD_JUNCTION_XATTR_NAME, NULL, 0) <= 0)
->> 		return 0;
->> 	return 1;
->> }
->> 
+>> +#include "state.h"
+>> +#include "xdr4.h"
+>> +
+>> +extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
+>> +extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+>> +extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+>> +
+>> +#endif   /* _NFSD4_CURRENT_STATE_H */
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index fa38336..3dfb235 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -39,6 +39,7 @@
+>>  #include "cache.h"
+>>  #include "xdr4.h"
+>>  #include "vfs.h"
+>> +#include "current_stateid.h"
+>>
+>>  #define NFSDDBG_FACILITY             NFSDDBG_PROC
+>>
+>> @@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>                                    create->cr_name, create->cr_namelen,
+>>                                    &create->cr_iattr, S_IFSOCK, 0, &resfh);
+>>               break;
+>> -
+>>       case NF4FIFO:
+>>               status = nfsd_create(rqstp, &cstate->current_fh,
+>>                                    create->cr_name, create->cr_namelen,
+>> @@ -1001,6 +1001,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+>>  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+>>                             void *);
+>>  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
+>> +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
+>> +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
+>> +typedef void(*stateid_cleaner)(struct nfsd4_compound_state *);
+>>
+>>  enum nfsd4_op_flags {
+>>       ALLOWED_WITHOUT_FH = 1 << 0,    /* No current filehandle required */
+>> @@ -1034,6 +1037,9 @@ struct nfsd4_operation {
+>>       char *op_name;
+>>       /* Try to get response size before operation */
+>>       nfsd4op_rsize op_rsize_bop;
+>> +     stateid_setter op_get_currentstateid;
+>> +     stateid_getter op_set_currentstateid;
+>> +     stateid_cleaner op_clear_currentstateid;
+>
+> Is op_clear_currentstateid ever going to have more than one
+> implementation?
+>
+> If not, let's just make that one a flag and do
+>
+>        if (clear_currentstateid flag set on this op)
+>                cstate->current_stateid = NULL;
+>
+
+ack
+
+Tigran.
+
+> --b.
+>
+>>  };
+>>
+>>  static struct nfsd4_operation nfsd4_ops[];
+>> @@ -1116,6 +1122,11 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+>>       return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+>>  }
+>>
+>> +static void
+>> +nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
+>> +{
+>> +     cstate->current_stateid = NULL;
+>> +}
+>>  /*
+>>   * COMPOUND call.
+>>   */
+>> @@ -1216,13 +1227,24 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>>               if (op->status)
+>>                       goto encode_op;
+>>
+>> -             if (opdesc->op_func)
+>> +             if (opdesc->op_func) {
+>> +                     if (opdesc->op_get_currentstateid)
+>> +                             opdesc->op_get_currentstateid(cstate, &op->u);
+>>                       op->status = opdesc->op_func(rqstp, cstate, &op->u);
+>> -             else
+>> +             } else
+>>                       BUG_ON(op->status == nfs_ok);
+>>
+>> -             if (!op->status && need_wrongsec_check(rqstp))
+>> -                     op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
+>> +             if (!op->status) {
+>> +                     if (opdesc->op_set_currentstateid) {
+>> +                             opdesc->op_set_currentstateid(cstate, &op->u);
+>> +                     }
+>> +
+>> +                     if (opdesc->op_clear_currentstateid)
+>> +                             opdesc->op_clear_currentstateid(cstate);
+>> +
+>> +                     if (need_wrongsec_check(rqstp))
+>> +                             op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
+>> +             }
+>>
+>>  encode_op:
+>>               /* Only from SEQUENCE */
+>> @@ -1414,6 +1436,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>>               .op_flags = OP_MODIFIES_SOMETHING,
+>>               .op_name = "OP_CLOSE",
+>>               .op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
+>> +             .op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
+>> +             .op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
+>>       },
+>>       [OP_COMMIT] = {
+>>               .op_func = (nfsd4op_func)nfsd4_commit,
+>> @@ -1484,6 +1508,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>>               .op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
+>>               .op_name = "OP_OPEN",
+>>               .op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
+>> +             .op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
+>>       },
+>>       [OP_OPEN_CONFIRM] = {
+>>               .op_func = (nfsd4op_func)nfsd4_open_confirm,
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 47e94e3..594b44e 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
+>>  static time_t boot_time;
+>>  static stateid_t zerostateid;             /* bits all 0 */
+>>  static stateid_t onestateid;              /* bits all 1 */
+>> +static stateid_t currentstateid;         /* other all 0, seqid 1 */
+>>  static u64 current_sessionid = 1;
+>>
+>>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
+>>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
+>> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+>>
+>>  /* forward declarations */
+>>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+>> @@ -4423,6 +4425,8 @@ nfs4_state_init(void)
+>>               INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
+>>       }
+>>       memset(&onestateid, ~0, sizeof(stateid_t));
+>> +     /* seqid 1, other all 0 */
+>> +     currentstateid.si_generation = 1;
+>>       INIT_LIST_HEAD(&close_lru);
+>>       INIT_LIST_HEAD(&client_lru);
+>>       INIT_LIST_HEAD(&del_recall_lru);
+>> @@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
+>>       nfs4_unlock_state();
+>>       nfsd4_destroy_callback_queue();
+>>  }
+>> +
+>> +static void
+>> +get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+>> +{
+>> +     if (cstate->current_stateid && CURRENT_STATEID(stateid))
+>> +             memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
+>> +}
+>> +
+>> +static void
+>> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+>> +{
+>> +     if (cstate->minorversion)
+>> +             cstate->current_stateid = stateid;
+>> +}
+>> +
+>> +void
+>> +nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+>> +{
+>> +     put_stateid(cstate, &open->op_stateid);
+>> +}
+>> +
+>> +void
+>> +nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
+>> +{
+>> +     get_stateid(cstate, &close->cl_stateid);
+>> +}
+>> +
+>> +void
+>> +nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
+>> +{
+>> +     get_stateid(cstate, &close->cl_stateid);
+>> +}
+>> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+>> index 2364747..c1fe8ba 100644
+>> --- a/fs/nfsd/xdr4.h
+>> +++ b/fs/nfsd/xdr4.h
+>> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+>>       size_t                  iovlen;
+>>       u32                     minorversion;
+>>       u32                     status;
+>> +     const stateid_t *current_stateid;
+>>  };
+>>
+>>  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+>> --
+>> 1.7.7.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
