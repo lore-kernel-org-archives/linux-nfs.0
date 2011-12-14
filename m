@@ -1,124 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61000 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752620Ab1LOW63 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 17:58:29 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:32925 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755510Ab1LNXW7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 18:22:59 -0500
+Date: Wed, 14 Dec 2011 23:22:54 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Maxim Uvarov <maxim.uvarov@oracle.com>
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org,
+        Trond.Myklebust@netapp.com, john@johnmccutchan.com, rlove@rlove.org,
+        eparis@parisplace.org
+Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
+Message-ID: <20111214232254.GP2203@ZenIV.linux.org.uk>
+References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com>
+ <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
-Date: Thu, 15 Dec 2011 14:58:26 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863744@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4EEA75DD.9080601@oracle.com>
-References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com> <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com> <20111214232254.GP2203@ZenIV.linux.org.uk> <4EEA469E.6070307@oracle.com> <20111215213256.GS2203@ZenIV.linux.org.uk> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863704@SACMVEXC2-PRD.hq.netapp.com> <4EEA75DD.9080601@oracle.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Maxim Uvarov" <maxim.uvarov@oracle.com>
-Cc: "Al Viro" <viro@ZenIV.linux.org.uk>, <linux-nfs@vger.kernel.org>,
-        <bfields@fieldses.org>, <john@johnmccutchan.com>, <rlove@rlove.org>,
-        <eparis@parisplace.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Maxim Uvarov [mailto:maxim.uvarov@oracle.com]
-> Sent: Thursday, December 15, 2011 5:34 PM
-> To: Myklebust, Trond
-> Cc: Al Viro; linux-nfs@vger.kernel.org; bfields@fieldses.org;
-> john@johnmccutchan.com; rlove@rlove.org; eparis@parisplace.org
-> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on
-nfs
-> 
-> On 12/15/2011 01:52 PM, Myklebust, Trond wrote:
-> >> -----Original Message-----
-> >> From: Al Viro [mailto:viro@ZenIV.linux.org.uk]
-> >> Sent: Thursday, December 15, 2011 4:33 PM
-> >> To: Maxim Uvarov
-> >> Cc: linux-nfs@vger.kernel.org; bfields@fieldses.org; Myklebust,
-> >> Trond; john@johnmccutchan.com; rlove@rlove.org;
-> eparis@parisplace.org
-> >> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files
-on
-> > nfs
-> >>
-> >> On Thu, Dec 15, 2011 at 11:12:30AM -0800, Maxim Uvarov wrote:
-> >>
-> >>> 1. Original VFS code already has "if NFS", in vfs_unlink().
-Because
-> > of
-> >>> code does not call d_delete() it has to call notification from
-> >>> d_delete().
-> >>>
-> >>> 2. inotify is done on VFS layer. So logically it has to work on
-all
-> >>> file systems.
-> >>
-> >> You are using a very odd meaning of the word "logically", then.
-Note
-> > that
-> >> inotify does *not* work on NFS, no matter what vfs_unlink() would
-do.
-> >> Simply because files are removed on server, not in VFS.  And server
-> > does not
-> >> notify clients of such removals.  Ergo, any software that relies on
-> > inotify
-> >> delivering notifications of files being removed is broken on NFS.
-> >> That has nothing whatsoever to the layer in kernel where it's
-> >> handled;
-> > the
-> >> information asked for is simply not available to client.  Period.
-> >>
-> >> Incidentally, inotify does not work on a bunch of local
-filesystems,
-> > starting
-> >> with procfs.  And won't work, unless you are seriously proposing to
-> > generate
-> >> events on things like open()/dup2()/etc.  In this case we might
-very
-> > well have
-> >> objects appearing and disappearing without ever having had a
-dentry.
-> >
-> > The other thing to note is that even if there were value in having
-> > only client support for the locally performed operations, the way
-NFS
-> > deletes work is fundamentally different to the way that POSIX unlink
-> > works: if the file is still open, it isn't deleted, it is just
-> > renamed. In consequence, it not only still appears in readdir()
-> > requests (albeit under a different name), but it acts in all ways
-> > shapes and forms as the same regular file but with the curious
-> > property that when the last user closes it gets deleted.
-> >
-> > IOW: the assumption that we would need to generate an
-> > fsnotify_nameremove event here is in any case flawed. It would
-rather
-> > be fsnotify_move, which I suspect would still trip up these LTP
-tests...
-> >
-> > Cheers
-> >     Trond
-> >
-> 
-> Thanks. My original idea was to generate absolutely the same event
-under
-> unlink(). Yes, original file in that case is not deleted, it is moved.
-> But from user side it's deletion. Users don't take care about
-/tmp/.nfs..  files,
-> right? When you call unlink the only thing you do is to check return
-code, you
-> are not walking along all folders to check where it could be moved.
+On Wed, Dec 14, 2011 at 02:58:15PM -0800, Maxim Uvarov wrote:
+> This issue was introduced with LTP inotify02 test.
+> If file system is not NFS user inotify application
+> gets IN_DELETE event. But on NFS code avoids d_delete()
+> which sends this event. This patch makes notification
+> on NFS the same as non-NFS. I.e. vfs_unlink still avoids
+> deletion but it sends event for NFS sillyrenamed files.
+> More details here:
+> https://lkml.org/lkml/2011/11/29/421
 
-It is not deletion because it is not an atomic operation.
+NAK.  Too damn ugly.  And completely misses the point of inotify -
+seeing events generated only by this client is going to be worthless.
+Face it, inotify is broken by design for network filesystems.  Any
+software using it on NFS is broken; trying to paper over that is
+not a good idea.
 
-Until the last close occurs. ls -a will still list the .nfsxxxx entry.
-Most operations that the user may expect to fail on a deleted file such
-as link(), open(), access(), stat(), etc. will still succeed provided
-that you use the .nfsxxxx name. On the other hand, an operation such as
-rmdir() on the parent directory will not succeed because it still
-contains at least one file entry...
-
-> I also agree that if server or other mounts does something with file,
-server
-> will not send any notification. But for single mount it has to be ok.
-
-What's the killer application?
-
+Just.  Don't.  Use.  That.  Shit.
