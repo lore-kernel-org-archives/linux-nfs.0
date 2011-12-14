@@ -1,770 +1,624 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26258 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50538 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753888Ab1LLTVm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 14:21:42 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 4 4/7] NFSv4.1: dynamic session slots
-Date: Mon, 12 Dec 2011 19:21:33 +0000
-Message-ID: <50E7A335-A78B-45C5-BA76-8699DD70D76E@netapp.com>
-References: <1320865106-1791-1-git-send-email-andros@netapp.com>
- <1320865106-1791-4-git-send-email-andros@netapp.com>
- <4EE4AC9F.8000906@tonian.com>
-In-Reply-To: <4EE4AC9F.8000906@tonian.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1752045Ab1LNQQA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 11:16:00 -0500
+Date: Wed, 14 Dec 2011 11:15:45 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] clstated: add routines for a sqlite backend
+ database
+Message-ID: <20111214111545.43a78e1f@tlielax.poochiereds.net>
+In-Reply-To: <E69EC34A-36AE-4B85-B991-029EA9A7B750@oracle.com>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+	<1323871032-3191-5-git-send-email-jlayton@redhat.com>
+	<648A4373-871E-4C1C-A920-F55E5D9D390E@oracle.com>
+	<20111214101417.4bf4dffd@tlielax.poochiereds.net>
+	<E69EC34A-36AE-4B85-B991-029EA9A7B750@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 11, 2011, at 8:14 AM, Benny Halevy wrote:
-
-> Hi Andy,
-> 
-> I have some minor-ish comments inline below, but the whole
-> hlist concept looks to me like it might incur pretty high overhead
-> in cpu and memory caching.
-
-You mean the hash lookup?
+On Wed, 14 Dec 2011 10:47:56 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
 > 
-> Have you considered simply reallocating the slot table on grow
-> and maybe on shrink below a certain threshold?
+> On Dec 14, 2011, at 10:14 AM, Jeff Layton wrote:
 > 
-> On 2011-11-09 20:58, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> The session fore/backchannel slot tables implementation is changed from a
->> static array to an hlist hashed on slotid. Slotid's are values 0..N where N
->> is initially negotiated between the client and server via the CREATE_SESSION
->> call, and can be dynamically changed by the server during an active session.
->> 
->> When there are no allocated slots (mount), an initial number of session slots
->> is allocated equal to the inital number of dynamic rpc_slots
->> created upon transport creation (xprt->min_reqs).  Slots are then dynamically
->> allocated as needed upto the CREATE_SESSION negotiated max_reqs value.
->> 
->> For session reset the session is drained (inactive). The (old) session has
->> allocated slot tables which we will reuse. nfs4_reduce_slots_locked is called
->> and only reduces the allocated_slots if the new max_reqs negotiated by the
->> reset CREATE_SESSION is less than the number of allocated_slots. The resultant
->> slot table is then re-initialized.
->> 
->> CB_SLOT_RECALL is changed only in that it now shares code with session
->> reset - it also calls nfs4_reduce_slots_locked.
->> 
->> The backchannel uses the new dynamic slot allocator, even though we only
->> currently support a single back channel slot.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/callback_proc.c    |   25 +++-
->> fs/nfs/internal.h         |    2 +
->> fs/nfs/nfs4_fs.h          |    1 +
->> fs/nfs/nfs4proc.c         |  297 ++++++++++++++++++++++++++++++++++-----------
->> fs/nfs/nfs4state.c        |   12 +--
->> fs/nfs/nfs4xdr.c          |   20 ++--
->> include/linux/nfs_fs_sb.h |   12 +-
->> include/linux/nfs_xdr.h   |    4 +-
->> 8 files changed, 266 insertions(+), 107 deletions(-)
->> 
->> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->> index 54cea8a..77cc96c 100644
->> --- a/fs/nfs/callback_proc.c
->> +++ b/fs/nfs/callback_proc.c
->> @@ -342,7 +342,7 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
->> 	if (args->csa_slotid >= NFS41_BC_MAX_CALLBACKS)
->> 		return htonl(NFS4ERR_BADSLOT);
->> 
->> -	slot = tbl->slots + args->csa_slotid;
->> +	slot = nfs4_lookup_slot_locked(tbl, args->csa_slotid);
->> 	dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
->> 
->> 	/* Normal */
->> @@ -377,6 +377,22 @@ out_ok:
->> 	return htonl(NFS4_OK);
->> }
->> 
->> +static bool test_slot_referring(struct nfs4_slot_table *tbl,
->> +				struct referring_call *ref)
->> +{
->> +	struct nfs4_slot *slot;
->> +	bool status = false;
->> +
->> +	spin_lock(&tbl->slot_tbl_lock);
->> +	if (test_bit(ref->rc_slotid, tbl->used_slots)) {
->> +		slot = nfs4_lookup_slot_locked(tbl, ref->rc_slotid);
->> +		if (slot->seq_nr == ref->rc_sequenceid)
->> +			status = true;
->> +	}
->> +	spin_unlock(&tbl->slot_tbl_lock);
->> +	return status;
->> +}
->> +
->> /*
->>  * For each referring call triple, check the session's slot table for
->>  * a match.  If the slot is in use and the sequence numbers match, the
->> @@ -417,12 +433,7 @@ static bool referring_call_exists(struct nfs_client *clp,
->> 				((u32 *)&rclist->rcl_sessionid.data)[2],
->> 				((u32 *)&rclist->rcl_sessionid.data)[3],
->> 				ref->rc_sequenceid, ref->rc_slotid);
->> -
->> -			spin_lock(&tbl->slot_tbl_lock);
->> -			status = (test_bit(ref->rc_slotid, tbl->used_slots) &&
->> -				  tbl->slots[ref->rc_slotid].seq_nr ==
->> -					ref->rc_sequenceid);
->> -			spin_unlock(&tbl->slot_tbl_lock);
->> +			status = test_slot_referring(tbl, ref);
->> 			if (status)
->> 				goto out;
->> 		}
->> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->> index c1a1bd8..4451abf 100644
->> --- a/fs/nfs/internal.h
->> +++ b/fs/nfs/internal.h
->> @@ -354,6 +354,8 @@ extern int _nfs4_call_sync_session(struct rpc_clnt *clnt,
->> 				   struct nfs4_sequence_args *args,
->> 				   struct nfs4_sequence_res *res,
->> 				   int cache_reply);
->> +struct nfs4_slot *nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl,
->> +					  u8 slotid);
->> 
->> /*
->>  * Determine the device name as a string
->> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->> index 693ae22..ff87169 100644
->> --- a/fs/nfs/nfs4_fs.h
->> +++ b/fs/nfs/nfs4_fs.h
->> @@ -242,6 +242,7 @@ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
->> extern int nfs4_proc_create_session(struct nfs_client *);
->> extern int nfs4_proc_destroy_session(struct nfs4_session *);
->> extern int nfs4_init_session(struct nfs_server *server);
->> +extern void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl);
->> extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
->> 		struct nfs_fsinfo *fsinfo);
->> extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 2638291..e3a7663 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -346,6 +346,162 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
->> #if defined(CONFIG_NFS_V4_1)
->> 
->> /*
->> + * Session dynamic slot table helper functions
->> + */
->> +
->> +static inline u32 slot_tbl_hash(const u8 slotid)
+> > On Wed, 14 Dec 2011 09:56:32 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On Dec 14, 2011, at 8:57 AM, Jeff Layton wrote:
+> >> 
+> >>> Rather than roll our own "storage engine", use sqlite instead. It fits
+> >>> the bill nicely as it does:
+> >>> 
+> >>> - durable on-disk storage
+> >>> - the ability to constrain record uniqueness
+> >>> - a facility for collating and searching the host records
+> >> 
+> >> It should also allow multiple processes (possibly on multiple cluster nodes) to access the on-disk data safely and atomically.  No need to invent a file locking scheme from scratch.
+> >> 
+> > 
+> > Indeed. That's one of the main reasons I chose sqlite here.
+> > 
+> >>> ...it does add a build dependency to nfs-utils, but almost all modern
+> >>> distros provide those packages.
+> >>> 
+> >>> The current incarnation of this code dynamically links against a
+> >>> provided sqlite library, but we could also consider including their
+> >>> single-file "amalgamation" to reduce dependencies (though with all
+> >>> the caveats that that entails).
+> >>> 
+> >>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> >>> ---
+> >>> utils/clstated/Makefile.am |    4 +-
+> >>> utils/clstated/clstated.c  |   16 ++-
+> >>> utils/clstated/sqlite.c    |  351 ++++++++++++++++++++++++++++++++++++++++++++
+> >>> utils/clstated/sqlite.h    |   27 ++++
+> >>> 4 files changed, 393 insertions(+), 5 deletions(-)
+> >>> create mode 100644 utils/clstated/sqlite.c
+> >>> create mode 100644 utils/clstated/sqlite.h
+> >>> 
+> >>> diff --git a/utils/clstated/Makefile.am b/utils/clstated/Makefile.am
+> >>> index 9937353..d1cef3c 100644
+> >>> --- a/utils/clstated/Makefile.am
+> >>> +++ b/utils/clstated/Makefile.am
+> >>> @@ -6,9 +6,9 @@
+> >>> AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+> >>> sbin_PROGRAMS	= clstated
+> >>> 
+> >>> -clstated_SOURCES = clstated.c
+> >>> +clstated_SOURCES = clstated.c sqlite.c
+> >>> 
+> >>> -clstated_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
+> >>> +clstated_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE)
+> >>> 
+> >>> MAINTAINERCLEANFILES = Makefile.in
+> >>> 
+> >>> diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
+> >>> index aab09a7..95ac696 100644
+> >>> --- a/utils/clstated/clstated.c
+> >>> +++ b/utils/clstated/clstated.c
+> >>> @@ -36,6 +36,7 @@
+> >>> 
+> >>> #include "xlog.h"
+> >>> #include "nfslib.h"
+> >>> +#include "sqlite.h"
+> >>> 
+> >>> #ifndef PIPEFS_DIR
+> >>> #define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
+> >>> @@ -118,21 +119,25 @@ clstate_pipe_reopen(struct clstate_client *clnt)
+> >>> static void
+> >>> clstate_create(struct clstate_client *clnt)
+> >>> {
+> >>> +	int ret;
+> >>> 	ssize_t bsize, wsize;
+> >>> 	struct clstate_msg *cmsg = &clnt->cl_msg;
+> >>> 
+> >>> -	xlog(D_GENERAL, "%s: create client record", __func__);
+> >>> +	xlog(D_GENERAL, "%s: create client record. cm_addr=%s", __func__,
+> >>> +			cmsg->cm_addr);
+> >>> 
+> >>> -	/* FIXME: create client record on storage here */
+> >>> +	ret = clstate_insert_client(cmsg->cm_addr, cmsg->cm_u.cm_id,
+> >>> +					cmsg->cm_len);
+> >>> 
+> >>> 	/* set up reply */
+> >>> -	cmsg->cm_status = 0;
+> >>> +	cmsg->cm_status = ret ? -EREMOTEIO : ret;
+> >>> 	cmsg->cm_len = 0;
+> >>> 	memset(cmsg->cm_addr, 0, sizeof(cmsg->cm_addr) +
+> >>> 		sizeof(cmsg->cm_u.cm_id));
+> >>> 
+> >>> 	bsize = sizeof(*cmsg);
+> >>> 
+> >>> +	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
+> >>> 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+> >>> 	if (wsize != bsize) {
+> >>> 		xlog(L_ERROR, "%s: problem writing to clstate pipe (%ld): %m",
+> >>> @@ -231,6 +236,11 @@ main(int argc, char **argv)
+> >>> 	}
+> >>> 
+> >>> 	/* set up storage db */
+> >>> +	rc = clstate_maindb_init();
+> >>> +	if (rc) {
+> >>> +		xlog(L_ERROR, "Failed to open main database: %d", rc);
+> >>> +		goto out;
+> >>> +	}
+> >>> 
+> >>> 	/* set up event handler */
+> >>> 	fd = clstate_pipe_open(&clnt);
+> >>> diff --git a/utils/clstated/sqlite.c b/utils/clstated/sqlite.c
+> >>> new file mode 100644
+> >>> index 0000000..ae83634
+> >>> --- /dev/null
+> >>> +++ b/utils/clstated/sqlite.c
+> >>> @@ -0,0 +1,351 @@
+> >>> +/*
+> >>> + * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
+> >>> + *
+> >>> + * This program is free software; you can redistribute it and/or
+> >>> + * modify it under the terms of the GNU General Public License
+> >>> + * as published by the Free Software Foundation; either version 2
+> >>> + * of the License, or (at your option) any later version.
+> >>> + *
+> >>> + * This program is distributed in the hope that it will be useful,
+> >>> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> >>> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> >>> + * GNU General Public License for more details.
+> >>> + *
+> >>> + * You should have received a copy of the GNU General Public License
+> >>> + * along with this program; if not, write to the Free Software
+> >>> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
+> >>> + * Boston, MA 02110-1301, USA.
+> >>> + */
+> >>> +
+> >>> +/*
+> >>> + * Explanation:
+> >>> + *
+> >>> + * This file contains the code to manage the sqlite backend database for the
+> >>> + * clstated upcall daemon.
+> >>> + *
+> >>> + * The main database is called main.sqlite and contains the following tables:
+> >>> + *
+> >>> + * parameters: simple key/value pairs for storing database info
+> >>> + *
+> >>> + * addresses: list of server-side addresses recorded in the db, along with
+> >>> + * 	      the filenames of their respective db files.
+> >>> + *
+> >>> + * The daemon attaches to each server-address database as needed. Each
+> >>> + * server-address database has the following tables:
+> >> 
+> >> Why do you keep separate database files?  There are ways to store all of this data in a single database using multiple tables.  I'm happy to help you with table design if you like.
+> >> 
+> > 
+> > As you pointed out above, sqlite allows us to share the db directory
+> > across a cluster of nodes. Using different files here will allow us to
+> > reduce lock contention in the cluster. If we put each server address DB
+> > in a separate file, then only the node that currently owns that address
+> > should need to touch it under normal circumstances.
 > 
-> nit: "const" not really needed here…
-
-OK
-
+> This seems like premature optimization.  A single file is much simpler and I'm guessing would be a more standard arrangement of tables.  If cluster contention avoidance is a key design point, it's worth calling out in the documenting comment, because this multi-file arrangement is not a typical use of sqlite3.
 > 
->> +{
->> +	return (u32)slotid % SLOT_TABLE_SIZE;
->> +}
->> +
->> +static void nfs4_init_slot(struct nfs4_slot *new, u8 slotid, int ivalue)
->> +{
->> +	INIT_HLIST_NODE(&new->slot_node);
->> +	new->slotid = slotid;
->> +	new->seq_nr = ivalue;
->> +}
->> +
->> +static void nfs4_insert_slot_locked(struct nfs4_slot_table *tbl,
->> +				    struct nfs4_slot *new)
->> +{
->> +	u32 hash = slot_tbl_hash(new->slotid);
->> +
->> +	hlist_add_head(&new->slot_node, &tbl->slots[hash]);
->> +	tbl->allocated_slots++;
->> +}
->> +
->> +/*
->> + * Allocate a slot for the next slotid (tbl->allocated_slotid)
->> + */
->> +static int nfs4_alloc_add_slot(struct nfs4_slot_table *tbl,
->> +			       int ivalue, int slotid,
->> +			       gfp_t gfp_flags)
->> +{
->> +	struct nfs4_slot *new;
->> +	struct rpc_task *task;
->> +
->> +	dprintk("--> %s slotid=%u tbl->allocated_slots=%d\n", __func__,
->> +		slotid, tbl->allocated_slots);
->> +	new = kzalloc(sizeof(struct nfs4_slot), gfp_flags);
->> +	if (!new)
->> +		return -ENOMEM;
->> +	/* tbl->allocated_slots holds the next unallocated slotid */
->> +	nfs4_init_slot(new, slotid, ivalue);
->> +	spin_lock(&tbl->slot_tbl_lock);
->> +	if (tbl->allocated_slots != slotid) {
+> Why do you predict that the database will be under contention?  Isn't it the case that sqlite3 can allow multiple accessors to a single database file?
 > 
-> This condition doesn't seem to be reliable.
-> What if the slot table shrunk?
 
-tbl->allocated_slots is inc'ed/dec'ed under the slot_tbl_lock. If the slot table shrunk it's because nfs4_remove_slots_locked() was called which adjusts the allocated_slots accordingly
+Since the grace periods will need to be coordinated, then it's likely
+on a server reboot that clients will be reestablishing state with
+multiple nodes in the cluster at a time. That means at least some
+contention for the DB. Whether it's problematic or not is an open
+question at this point, but why not avoid that if we can?
 
-So I think it is absolutely reliable.
-
+> > 
+> >>> + *
+> >>> + * clients: one column containing a BLOB with the clstate as sent by the client
+> >>> + * 	    and a timestamp (in epoch seconds) of when the record was
+> >>> + * 	    established
+> >> 
+> >> I'm not yet clear on what's in cm_addr, but it seems to me that if you store each client's data as structured fields instead of a single BLOB, it will be much easier to use a generic tool like the sqlite3 command to debug the database.  That gives the observability and transparency of using a flat file with all the advantages of a database.
+> >> 
+> >> Plus, you get automatic data conversion; a one-to-one mapping between data on-disk and data in any endian-ness or word length.
+> >> 
+> > 
+> > cm_addr is the *server's* address.
 > 
->> +		spin_unlock(&tbl->slot_tbl_lock);
->> +		kfree(new);
->> +		dprintk("%s slotid %u already allocated\n", __func__,
->> +			slotid);
->> +		return 0;
->> +	}
->> +	nfs4_insert_slot_locked(tbl, new);
->> +
->> +	/* This only applies to dynamic allocation */
->> +	task = rpc_wake_up_next(&tbl->slot_tbl_waitq);
->> +	if (task)
->> +		dprintk("%s woke up task %5u\n", __func__, task->tk_pid);
->> +	spin_unlock(&tbl->slot_tbl_lock);
->> +	return 0;
->> +}
->> +
->> +/*
->> + * Allocate the minimal number of slots required by the transport.
->> + * Called at session creation.
->> + */
->> +static int nfs4_prealloc_slots(struct nfs4_slot_table *tbl, int num, int ivalue)
->> +{
->> +	int i;
->> +
->> +	for (i = 0; i < num; i++) {
->> +		if (nfs4_alloc_add_slot(tbl, ivalue, tbl->allocated_slots,
->> +					GFP_NOFS) != 0)
->> +			return -ENOMEM;
+> What if a server has more than one address?  For example, an IPv4 and an IPv6 address?  Does it get two separate database files? 
+
+Yes.
+
+> If so, how do you ensure that a client's nfs_client_id4 is recorded in both places atomically? I'm not sure tying the server's identity to an IP address is wise.
+
+It doesn't get recorded in both places atomically. A SETCLIENTID is
+done against an address, not against the whole server. If the server
+has two different addresses and the client wants to talk to both, it
+needs to do a SETCLIENTID against both addresses. The server should
+treat those individually.
+
+Granted, the existing code in the kernel doesn't make that distinction
+but eventually it'll need to do so.
+ 
 > 
-> Returning nfs4_alloc_add_slot's status would be more appropriate.
+> Even if this is not a complex data item, I think opaque BLOBs should be avoided.  Store the presentation address in a text field.  Data conversion and observability are still strong reasons to do this.
 
-OK
-
-> How about also freeing 0 to i-1 in the error case?
-
-The transport minimum rpc_slots is the minimum number of (dynamic) rpc_slots needed to make progress. It's set to 2 for TCP.  We don't want to try and operate when we don't have the minimum number slots.
-> 
->> +	}
->> +	return 0;
->> +}
->> +
->> +/*
->> + * Allocate the next slotid. If allocation fails, next request will retry.
->> + */
->> +static void nfs4_dynamic_alloc_slot(struct nfs4_slot_table *tbl, u8 slotid)
->> +{
->> +	if (slotid != tbl->allocated_slots) {
->> +		dprintk("%s slotid %u already allocated\n", __func__, slotid);
->> +		return;
->> +	}
-> 
-> This is checked again under the lock in nfs4_alloc_add_slot, no?
-> so if it is not supposed to be a common case (which I don't believe
-> it is) I'd just forget about this optimization and call the latter
-> directly.
-
-Yeah, I agree.
-> 
->> +	nfs4_alloc_add_slot(tbl, 1, slotid, GFP_NOWAIT);
->> +}
->> +
->> +/*
->> + * Return the slot associated with the slotid returned by nfs4_find_slot.
->> + * If the slot is not found, it has not been allocated.
->> + */
->> +struct nfs4_slot *
->> +nfs4_lookup_slot_locked(struct nfs4_slot_table *tbl, u8 slotid)
->> +{
->> +	struct nfs4_slot *sp;
->> +	struct hlist_node *n;
->> +	u32 hash = slot_tbl_hash(slotid);
->> +
->> +	hlist_for_each_entry(sp, n, &tbl->slots[hash], slot_node) {
->> +		if (sp->slotid == slotid)
->> +			return sp;
->> +	}
->> +	return NULL;
->> +}
->> +
->> +static void nfs4_remove_slot_locked(struct nfs4_slot_table *tbl,
->> +				    struct nfs4_slot *slot)
->> +{
->> +	dprintk("--> %s slotid %d\n", __func__, slot->slotid);
->> +	hlist_del_init(&slot->slot_node);
->> +	tbl->allocated_slots--;
->> +	kfree(slot);
->> +}
->> +
->> +static void nfs4_free_all_slots(struct nfs4_slot_table *tbl)
->> +{
->> +	struct nfs4_slot *slotp;
->> +	int i;
->> +
->> +	spin_lock(&tbl->slot_tbl_lock);
->> +	for (i = 0; i < SLOT_TABLE_SIZE; i++) {
->> +		while (!hlist_empty(&tbl->slots[i])) {
->> +			slotp = hlist_entry(tbl->slots[i].first,
->> +					    struct nfs4_slot, slot_node);
->> +			nfs4_remove_slot_locked(tbl, slotp);
->> +		}
->> +		/* re-initialize hlist_head */
->> +		tbl->slots[i].first = NULL;
->> +	}
->> +	spin_unlock(&tbl->slot_tbl_lock);
->> +}
->> +
->> +/*
->> + * Remove num_dec number of contiguous slotids starting from highest
->> + * allocated slotid
->> + *
->> + * Note: set the new tbl->max_slots prior to calling.
->> + */
->> +void nfs4_reduce_slots_locked(struct nfs4_slot_table *tbl)
->> +{
->> +	struct nfs4_slot *removeme;
->> +	int i, rm_slotid = tbl->allocated_slots - 1;
->> +	int num_dec = tbl->allocated_slots - tbl->max_slots;
->> +
->> +	/* Reset of the slot table can make num_dec <= 0 */
->> +	if (num_dec <= 0)
->> +		return;
->> +	for (i = 0; i < num_dec; i++) {
->> +		removeme = nfs4_lookup_slot_locked(tbl, rm_slotid);
->> +		BUG_ON(removeme == NULL);
->> +		nfs4_remove_slot_locked(tbl, removeme);
->> +		rm_slotid--;
->> +	}
->> +}
->> +
->> +/*
->>  * nfs4_free_slot - free a slot and efficiently update slot table.
->>  *
->>  * freeing a slot is trivially done by clearing its respective bit
->> @@ -390,8 +546,11 @@ static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
->> 
->> 	if (!test_bit(NFS4_SESSION_DRAINING, &ses->session_state)) {
->> 		task = rpc_wake_up_next(&ses->fc_slot_table.slot_tbl_waitq);
->> -		if (task)
->> +		if (task) {
->> 			rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
->> +			dprintk("%s woke up task pid %5u\n", __func__,
->> +				task->tk_pid);
->> +		}
->> 		return;
->> 	}
->> 
->> @@ -427,7 +586,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
->> 	}
->> 
->> 	spin_lock(&tbl->slot_tbl_lock);
->> -	nfs4_free_slot(tbl, res->sr_slot - tbl->slots);
->> +	nfs4_free_slot(tbl, res->sr_slot->slotid);
->> 	nfs4_check_drain_fc_complete(res->sr_session);
->> 	spin_unlock(&tbl->slot_tbl_lock);
->> 	res->sr_slot = NULL;
->> @@ -468,10 +627,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
->> 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
->> 		 * of RFC5661.
->> 		 */
->> -		dprintk("%s: slot=%td seq=%d: Operation in progress\n",
->> -			__func__,
->> -			res->sr_slot - res->sr_session->fc_slot_table.slots,
->> -			res->sr_slot->seq_nr);
->> +		dprintk("%s: slotid=%u seq=%d: Operation in progress\n",
->> +			__func__, res->sr_slot->slotid, res->sr_slot->seq_nr);
->> 		goto out_retry;
->> 	default:
->> 		/* Just update the slot sequence no. */
->> @@ -479,7 +636,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
->> 	}
->> out:
->> 	/* The session may be reset by one of the error handlers. */
->> -	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
->> +	dprintk("%s: Error %d free the slot for task pid %5u\n", __func__,
->> +		res->sr_status, task->tk_pid);
->> 	nfs41_sequence_free_slot(res);
->> 	return 1;
->> out_retry:
->> @@ -540,7 +698,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
->> 	struct nfs4_slot_table *tbl;
->> 	u8 slotid;
->> 
->> -	dprintk("--> %s\n", __func__);
->> +	dprintk("--> %s task pid %5u\n", __func__, task->tk_pid);
->> 	/* slot already allocated? */
->> 	if (res->sr_slot != NULL)
->> 		return 0;
->> @@ -575,12 +733,24 @@ int nfs41_setup_sequence(struct nfs4_session *session,
->> 		dprintk("<-- %s: no free slots\n", __func__);
->> 		return -EAGAIN;
->> 	}
->> +	slot = nfs4_lookup_slot_locked(tbl, slotid);
->> +	if (slot == NULL) {
->> +		/* keep FIFO order */
->> +		rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
->> +		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
->> +		nfs4_free_slot(tbl, slotid);
-> 
-> why free the slot here?
-
-We just grabbed the bit in nfs4_find_slot  - which is the "next available lowest slotid".  Since we don't actually have a slot because we need to allocate one, we free it here which allows for another request to grab the slot in between the time we give up the lock, allocate a slot, and call wake up to proceed.
-
--->Andy
+I'm not storing the address in the db. The address just determines the
+name of the DB file in the current design. The client name string
+however is stored as an opaque blob, since that's what it is. The Linux
+client sends an ASCII string here, but we can't rely on all clients to
+do so.
 
 > 
-> Benny
+> > One key point here is that (at least
+> > in v4.0), clients do not SETCLIENTID against a server, but rather
+> > against the server's address. If the client needs to talk to another
+> > address it must call SETCLIENTID again. So, it's reasonable to track
+> > the client names on a per-server address basis to reduce DB contention
+> > in a clustered configuration.
+> > 
+> >>> + *
+> >>> + * FIXME: should we also record the fsid being accessed?
+> >> 
+> >> I'm not exactly sure what additional data might be needed to support NFSv4 migration, for example.  However, using a database means it's relatively painless to add new columns in the future without having to provision them now.
+> >> 
+> > 
+> > Right. It's just a matter of adding the correct column and somehow
+> > populating them for existing entries. Making this extensible is a
+> > design goal here. It's a complex enough problem, that I'm fairly
+> > certain I'll get something wrong on the first pass...
 > 
->> +		spin_unlock(&tbl->slot_tbl_lock);
->> +		dprintk("%s task pid %5u sleeping for dynamic slot %d\n",
->> +			__func__, task->tk_pid, slotid);
->> +		/* rpc_wakeup_next called upon success by slot allocator */
->> +		nfs4_dynamic_alloc_slot(tbl, slotid);
->> +		return -EAGAIN;
->> +	}
->> 	spin_unlock(&tbl->slot_tbl_lock);
->> 
->> 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
->> -	slot = tbl->slots + slotid;
->> 	args->sa_session = session;
->> -	args->sa_slotid = slotid;
->> +	args->sa_slot = slot;
->> 	args->sa_cache_this = cache_reply;
->> 
->> 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
->> @@ -613,9 +783,9 @@ int nfs4_setup_sequence(const struct nfs_server *server,
->> 		goto out;
->> 	}
->> 
->> -	dprintk("--> %s clp %p session %p sr_slot %td\n",
->> +	dprintk("--> %s clp %p session %p sr_slotid %d\n",
->> 		__func__, session->clp, session, res->sr_slot ?
->> -			res->sr_slot - session->fc_slot_table.slots : -1);
->> +			res->sr_slot->slotid : -1);
->> 
->> 	ret = nfs41_setup_sequence(session, args, res, cache_reply,
->> 				   task);
->> @@ -4976,84 +5146,64 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
->> }
->> 
->> /*
->> - * Reset a slot table
->> + * Reset a slot table. Session has been drained and reset with new slot table
->> + * parameters from create_session.
->> + * Keep all allocated slots that fit into new slot table max_reqs parameter.
->>  */
->> -static int nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 max_reqs,
->> +static void nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 new_max_reqs,
->> 				 int ivalue)
->> {
->> -	struct nfs4_slot *new = NULL;
->> +	struct nfs4_slot *sp;
->> +	struct hlist_node *n;
->> 	int i;
->> -	int ret = 0;
->> -
->> -	dprintk("--> %s: max_reqs=%u, tbl->max_slots %d\n", __func__,
->> -		max_reqs, tbl->max_slots);
->> 
->> -	/* Does the newly negotiated max_reqs match the existing slot table? */
->> -	if (max_reqs != tbl->max_slots) {
->> -		ret = -ENOMEM;
->> -		new = kmalloc(max_reqs * sizeof(struct nfs4_slot),
->> -			      GFP_NOFS);
->> -		if (!new)
->> -			goto out;
->> -		ret = 0;
->> -		kfree(tbl->slots);
->> -	}
->> 	spin_lock(&tbl->slot_tbl_lock);
->> -	if (new) {
->> -		tbl->slots = new;
->> -		tbl->max_slots = max_reqs;
->> +	tbl->max_slots = new_max_reqs;
->> +	nfs4_reduce_slots_locked(tbl);
->> +	tbl->highest_used_slotid = -1;
->> +
->> +	for (i = 0; i < SLOT_TABLE_SIZE; i++) {
->> +		hlist_for_each_entry(sp, n, &tbl->slots[i], slot_node)
->> +			sp->seq_nr = ivalue;
->> 	}
->> -	for (i = 0; i < tbl->max_slots; ++i)
->> -		tbl->slots[i].seq_nr = ivalue;
->> 	spin_unlock(&tbl->slot_tbl_lock);
->> -	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
->> -		tbl, tbl->slots, tbl->max_slots);
->> -out:
->> -	dprintk("<-- %s: return %d\n", __func__, ret);
->> -	return ret;
->> +	dprintk("%s: tbl->max_slots=%d tbl->allocated_slots=%d\n",
->> +		__func__, tbl->max_slots, tbl->allocated_slots);
->> +	return;
->> }
->> 
->> /* Destroy the slot table */
->> static void nfs4_destroy_slot_tables(struct nfs4_session *session)
->> {
->> -	if (session->fc_slot_table.slots != NULL) {
->> -		kfree(session->fc_slot_table.slots);
->> -		session->fc_slot_table.slots = NULL;
->> -	}
->> -	if (session->bc_slot_table.slots != NULL) {
->> -		kfree(session->bc_slot_table.slots);
->> -		session->bc_slot_table.slots = NULL;
->> -	}
->> -	return;
->> +	dprintk("--> %s\n", __func__);
->> +
->> +	nfs4_free_all_slots(&session->fc_slot_table);
->> +	nfs4_free_all_slots(&session->bc_slot_table);
->> }
->> 
->> /*
->>  * Initialize slot table
->>  */
->> static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
->> -		int max_slots, int ivalue)
->> +		int max_slots, int num_prealloc, int ivalue)
->> {
->> -	struct nfs4_slot *slot;
->> -	int ret = -ENOMEM;
->> +	int ret;
->> 
->> 	BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
->> -
->> -	dprintk("--> %s: max_reqs=%u\n", __func__, max_slots);
->> -
->> -	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_NOFS);
->> -	if (!slot)
->> +	ret = nfs4_prealloc_slots(tbl, num_prealloc, ivalue);
->> +	if (ret) {
->> +		nfs4_free_all_slots(tbl);
->> 		goto out;
->> +	}
->> 	ret = 0;
->> 
->> 	spin_lock(&tbl->slot_tbl_lock);
->> 	tbl->max_slots = max_slots;
->> -	tbl->slots = slot;
->> 	tbl->highest_used_slotid = -1;  /* no slot is currently used */
->> 	spin_unlock(&tbl->slot_tbl_lock);
->> -	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
->> -		tbl, tbl->slots, tbl->max_slots);
->> +	dprintk("%s: tbl=%p max_slots=%d, tbl->allocated_slots=%d\n", __func__,
->> +		tbl, tbl->max_slots, tbl->allocated_slots);
->> out:
->> -	dprintk("<-- %s: return %d\n", __func__, ret);
->> 	return ret;
->> }
->> 
->> @@ -5063,30 +5213,34 @@ out:
->> static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
->> {
->> 	struct nfs4_slot_table *tbl;
->> -	int status;
->> +	int status = 0;
->> 
->> 	dprintk("--> %s\n", __func__);
->> 	/* Fore channel */
->> 	tbl = &ses->fc_slot_table;
->> -	if (tbl->slots == NULL) {
->> -		status = nfs4_init_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->> +	if (tbl->allocated_slots == 0) {
->> +		status = nfs4_init_slot_table(tbl, ses->fc_attrs.max_reqs,
->> +				ses->clp->cl_rpcclient->cl_xprt->min_reqs, 1);
->> 		if (status) /* -ENOMEM */
->> 			return status;
->> 	} else {
->> -		status = nfs4_reset_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->> -		if (status)
->> -			return status;
->> +		nfs4_reset_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->> 	}
->> +
->> 	/* Back channel */
->> 	tbl = &ses->bc_slot_table;
->> -	if (tbl->slots == NULL) {
->> -		status = nfs4_init_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->> +	if (tbl->allocated_slots == 0) {
->> +		status = nfs4_init_slot_table(tbl, ses->bc_attrs.max_reqs,
->> +				/* Backchannel max_reqs == 1 */
->> +				ses->bc_attrs.max_reqs, 0);
->> 		if (status)
->> 			/* Fore and back channel share a connection so get
->> 			 * both slot tables or neither */
->> 			nfs4_destroy_slot_tables(ses);
->> -	} else
->> -		status = nfs4_reset_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->> +	} else {
->> +		nfs4_reset_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->> +	}
->> +
->> 	return status;
->> }
->> 
->> @@ -5276,7 +5430,6 @@ int nfs4_proc_create_session(struct nfs_client *clp)
->> 
->> 	/* Init or reset the session slot tables */
->> 	status = nfs4_setup_session_slot_tables(session);
->> -	dprintk("slot table setup returned %d\n", status);
->> 	if (status)
->> 		goto out;
->> 
->> @@ -5284,7 +5437,7 @@ int nfs4_proc_create_session(struct nfs_client *clp)
->> 	dprintk("%s client>seqid %d sessionid %u:%u:%u:%u\n", __func__,
->> 		clp->cl_seqid, ptr[0], ptr[1], ptr[2], ptr[3]);
->> out:
->> -	dprintk("<-- %s\n", __func__);
->> +	dprintk("<-- %s status %d\n", __func__, status);
->> 	return status;
->> }
->> 
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 39914be..8260865 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1573,26 +1573,16 @@ static int nfs4_recall_slot(struct nfs_client *clp)
->> {
->> 	struct nfs4_slot_table *fc_tbl = &clp->cl_session->fc_slot_table;
->> 	struct nfs4_channel_attrs *fc_attrs = &clp->cl_session->fc_attrs;
->> -	struct nfs4_slot *new, *old;
->> -	int i;
->> 
->> 	nfs4_begin_drain_session(clp);
->> -	new = kmalloc(fc_tbl->target_max_slots * sizeof(struct nfs4_slot),
->> -		      GFP_NOFS);
->> -        if (!new)
->> -		return -ENOMEM;
->> 
->> 	spin_lock(&fc_tbl->slot_tbl_lock);
->> -	for (i = 0; i < fc_tbl->target_max_slots; i++)
->> -		new[i].seq_nr = fc_tbl->slots[i].seq_nr;
->> -	old = fc_tbl->slots;
->> -	fc_tbl->slots = new;
->> 	fc_tbl->max_slots = fc_tbl->target_max_slots;
->> +	nfs4_reduce_slots_locked(fc_tbl);
->> 	fc_tbl->target_max_slots = 0;
->> 	fc_attrs->max_reqs = fc_tbl->max_slots;
->> 	spin_unlock(&fc_tbl->slot_tbl_lock);
->> 
->> -	kfree(old);
->> 	nfs4_end_drain_session(clp);
->> 	return 0;
->> }
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index e6161b2..c42ec29 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -1872,7 +1872,6 @@ static void encode_sequence(struct xdr_stream *xdr,
->> #if defined(CONFIG_NFS_V4_1)
->> 	struct nfs4_session *session = args->sa_session;
->> 	struct nfs4_slot_table *tp;
->> -	struct nfs4_slot *slot;
->> 	__be32 *p;
->> 
->> 	if (!session)
->> @@ -1880,8 +1879,7 @@ static void encode_sequence(struct xdr_stream *xdr,
->> 
->> 	tp = &session->fc_slot_table;
->> 
->> -	WARN_ON(args->sa_slotid == NFS4_MAX_SLOT_TABLE);
->> -	slot = tp->slots + args->sa_slotid;
->> +	WARN_ON(args->sa_slot->slotid == NFS4_MAX_SLOT_TABLE);
->> 
->> 	p = reserve_space(xdr, 4 + NFS4_MAX_SESSIONID_LEN + 16);
->> 	*p++ = cpu_to_be32(OP_SEQUENCE);
->> @@ -1896,11 +1894,11 @@ static void encode_sequence(struct xdr_stream *xdr,
->> 		((u32 *)session->sess_id.data)[1],
->> 		((u32 *)session->sess_id.data)[2],
->> 		((u32 *)session->sess_id.data)[3],
->> -		slot->seq_nr, args->sa_slotid,
->> +		args->sa_slot->seq_nr, args->sa_slot->slotid,
->> 		tp->highest_used_slotid, args->sa_cache_this);
->> 	p = xdr_encode_opaque_fixed(p, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
->> -	*p++ = cpu_to_be32(slot->seq_nr);
->> -	*p++ = cpu_to_be32(args->sa_slotid);
->> +	*p++ = cpu_to_be32(args->sa_slot->seq_nr);
->> +	*p++ = cpu_to_be32(args->sa_slot->slotid);
->> 	*p++ = cpu_to_be32(tp->highest_used_slotid);
->> 	*p = cpu_to_be32(args->sa_cache_this);
->> 	hdr->nops++;
->> @@ -5361,13 +5359,17 @@ static int decode_sequence(struct xdr_stream *xdr,
->> 	/* seqid */
->> 	dummy = be32_to_cpup(p++);
->> 	if (dummy != res->sr_slot->seq_nr) {
->> -		dprintk("%s Invalid sequence number\n", __func__);
->> +		dprintk("%s Invalid seq num %d for [slotid:seq_nr] [%d:%d]\n",
->> +			__func__, dummy, res->sr_slot->slotid,
->> +			res->sr_slot->seq_nr);
->> 		goto out_err;
->> 	}
->> 	/* slot id */
->> 	dummy = be32_to_cpup(p++);
->> -	if (dummy != res->sr_slot - res->sr_session->fc_slot_table.slots) {
->> -		dprintk("%s Invalid slot id\n", __func__);
->> +	if (dummy != res->sr_slot->slotid) {
->> +		dprintk("%s Invalid slot id %d for [slotid:seq_nr] [%d:%d]\n",
->> +			__func__, dummy, res->sr_slot->slotid,
->> +			res->sr_slot->seq_nr);
->> 		goto out_err;
->> 	}
->> 	/* highest slot id - currently not processed */
->> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->> index b5479df..90c6e2b 100644
->> --- a/include/linux/nfs_fs_sb.h
->> +++ b/include/linux/nfs_fs_sb.h
->> @@ -193,12 +193,15 @@ struct nfs_server {
->> 
->> /* Sessions */
->> #define SLOT_TABLE_SZ (NFS4_MAX_SLOT_TABLE/(8*sizeof(long)))
->> +#define SLOT_TABLE_BITS                5
->> +#define SLOT_TABLE_SIZE                (1 << SLOT_TABLE_BITS)
->> struct nfs4_slot_table {
->> -	struct nfs4_slot *slots;		/* seqid per slot */
->> +	struct hlist_head slots[SLOT_TABLE_SIZE];
->> 	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
->> 	spinlock_t	slot_tbl_lock;
->> 	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
->> -	int		max_slots;		/* # slots in table */
->> +	int		allocated_slots;	/* # slots in table */
->> +	int		max_slots;		/* max # slots in table */
->> 	int		highest_used_slotid;	/* sent to server on each SEQ.
->> 						 * op for dynamic resizing */
->> 	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
->> @@ -206,11 +209,6 @@ struct nfs4_slot_table {
->> 	struct completion complete;
->> };
->> 
->> -static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
->> -{
->> -	return sp - tbl->slots;
->> -}
->> -
->> /*
->>  * Session related parameters
->>  */
->> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->> index c74595b..76b27a4 100644
->> --- a/include/linux/nfs_xdr.h
->> +++ b/include/linux/nfs_xdr.h
->> @@ -168,12 +168,14 @@ struct nfs4_channel_attrs {
->> 
->> /* nfs41 sessions slot seqid */
->> struct nfs4_slot {
->> +	struct hlist_node	slot_node;
->> 	u32		 	seq_nr;
->> +	u8			slotid;
->> };
->> 
->> struct nfs4_sequence_args {
->> 	struct nfs4_session	*sa_session;
->> -	u8			sa_slotid;
->> +	struct nfs4_slot        *sa_slot;
->> 	u8			sa_cache_this;
->> };
->> 
+> You don't necessarily need to populate new columns for existing rows by the way.  Simply add the column to the table.  Existing rows will return a special result meaning "no value."  Your code can choose a default value in that case.
+> 
+> Anyway, that's a detail.
+> 
 
+Ok, good to know...
+
+> > 
+> >>> + */
+> >>> +
+> >>> +#ifdef HAVE_CONFIG_H
+> >>> +#include "config.h"
+> >>> +#endif /* HAVE_CONFIG_H */
+> >>> +
+> >>> +#include <errno.h>
+> >>> +#include <event.h>
+> >>> +#include <stdbool.h>
+> >>> +#include <string.h>
+> >>> +#include <sys/stat.h>
+> >>> +#include <sys/types.h>
+> >>> +#include <fcntl.h>
+> >>> +#include <unistd.h>
+> >>> +#include <sqlite3.h>
+> >>> +#include <linux/limits.h>
+> >>> +#include <linux/nfsd/clstate.h>
+> >>> +
+> >>> +#include "xlog.h"
+> >>> +
+> >>> +#define CLSTATE_SQLITE_SCHEMA_VERSION 1
+> >>> +
+> >>> +#ifndef CLSTATE_DIR
+> >>> +#define CLSTATE_DIR NFS_STATEDIR "/clstate"
+> >>> +#endif
+> >>> +
+> >>> +/* in milliseconds */
+> >>> +#define CLSTATE_SQLITE_BUSY_TIMEOUT 10000
+> >>> +
+> >>> +/* private data structures */
+> >>> +
+> >>> +/* global variables */
+> >>> +
+> >>> +/* top level DB directory */
+> >>> +static char *clstate_topdir = CLSTATE_DIR;
+> >>> +
+> >>> +/* reusable pathname and sql command buffer */
+> >>> +static char buf[PATH_MAX];
+> >>> +
+> >>> +/* global database handle */
+> >>> +static sqlite3 *dbh;
+> >>> +
+> >>> +/* forward declarations */
+> >>> +
+> >>> +/* '.' is not allowed in dbnames -- convert them to '-' */
+> >>> +static void
+> >>> +addr_to_dbname(const char *src, char *dst)
+> >>> +{
+> >>> +	while(*src) {
+> >>> +		if (*src == '.')
+> >>> +			*dst = '-';
+> >>> +		else
+> >>> +			*dst = *src;
+> >>> +		++src;
+> >>> +		++dst;
+> >>> +	}
+> >>> +	*dst = '\0';
+> >>> +}
+> >>> +
+> >>> +void
+> >>> +clstate_set_topdir(char *topdir)
+> >>> +{
+> >>> +	clstate_topdir = topdir;
+> >>> +}
+> >>> +
+> >>> +/* make a directory, ignoring EEXIST errors unless it's not a directory */
+> >>> +static int
+> >>> +mkdir_if_not_exist(char *dirname)
+> >>> +{
+> >>> +	int ret;
+> >>> +	struct stat statbuf;
+> >>> +
+> >>> +	ret = mkdir(dirname, S_IRWXU);
+> >>> +	if (ret && errno != EEXIST)
+> >>> +		return -errno;
+> >>> +
+> >>> +	ret = stat(dirname, &statbuf);
+> >>> +	if (ret)
+> >>> +		return -errno;
+> >>> +
+> >>> +	if (!S_ISDIR(statbuf.st_mode))
+> >>> +		ret = -ENOTDIR;
+> >>> +
+> >>> +	return ret;
+> >>> +}
+> >>> +
+> >>> +/*
+> >>> + * Open the "main" database, and attempt to initialize it by creating the
+> >>> + * parameters table and inserting the schema version into it. Ignore any errors
+> >>> + * from that, and then attempt to select the version out of it again. If the
+> >>> + * version appears wrong, then assume that the DB is corrupt or has been
+> >>> + * upgraded, and return an error.
+> >>> + */
+> >>> +int
+> >>> +clstate_maindb_init(void)
+> >>> +{
+> >>> +	int ret;
+> >>> +	char *err = NULL;
+> >>> +	sqlite3_stmt *stmt = NULL;
+> >>> +
+> >>> +	ret = mkdir_if_not_exist(clstate_topdir);
+> >>> +	if (ret)
+> >>> +		return ret;
+> >>> +
+> >>> +	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", clstate_topdir);
+> >>> +	if (ret < 0)
+> >>> +		return ret;
+> >>> +
+> >>> +	buf[PATH_MAX - 1] = '\0';
+> >>> +
+> >>> +	ret = sqlite3_open(buf, &dbh);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Unable to open main database: %d", ret);
+> >>> +		return ret;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_busy_timeout(dbh, CLSTATE_SQLITE_BUSY_TIMEOUT);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Unable to set sqlite busy timeout: %d", ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	/* Try to create table */
+> >>> +	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
+> >>> +				"(key TEXT PRIMARY KEY, value TEXT);",
+> >>> +				NULL, NULL, &err);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Unable to create parameter table: %d", ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	/* insert version into table -- ignore error if it fails */
+> >>> +	ret = snprintf(buf, sizeof(buf),
+> >>> +		       "INSERT OR IGNORE INTO parameters values (\"version\", "
+> >>> +		       "\"%d\");", CLSTATE_SQLITE_SCHEMA_VERSION);
+> >>> +	if (ret < 0) {
+> >>> +		goto out_err;
+> >>> +	} else if ((size_t)ret >= sizeof(buf)) {
+> >>> +		ret = -EINVAL;
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Unable to insert into parameter table: %d",
+> >>> +				ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_prepare_v2(dbh,
+> >>> +		"SELECT value FROM parameters WHERE key == \"version\";",
+> >>> +		 -1, &stmt, NULL);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Unable to prepare select statement: %d", ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	/* check schema version */
+> >>> +	ret = sqlite3_step(stmt);
+> >>> +	if (ret != SQLITE_ROW) {
+> >>> +		xlog(D_GENERAL, "Select statement execution failed: %s",
+> >>> +				sqlite3_errmsg(dbh));
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	/* process SELECT result */
+> >>> +	ret = sqlite3_column_int(stmt, 0);
+> >>> +	if (ret != CLSTATE_SQLITE_SCHEMA_VERSION) {
+> >>> +		xlog(L_ERROR, "Unsupported database schema version! "
+> >>> +			"Expected %d, got %d.",
+> >>> +			CLSTATE_SQLITE_SCHEMA_VERSION, ret);
+> >>> +		ret = -EINVAL;
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	sqlite3_free(err);
+> >>> +	sqlite3_finalize(stmt);
+> >>> +	return 0;
+> >>> +
+> >>> +out_err:
+> >>> +	if (err) {
+> >>> +		xlog(L_ERROR, "sqlite error: %s", err);
+> >>> +		sqlite3_free(err);
+> >>> +	}
+> >>> +	sqlite3_finalize(stmt);
+> >>> +	sqlite3_close(dbh);
+> >>> +	return ret;
+> >>> +}
+> >>> +
+> >>> +static int
+> >>> +clstate_db_attach(char *dbname)
+> >>> +{
+> >>> +	int ret;
+> >>> +	char *err;
+> >>> +
+> >>> +	/* convert address string into valid filename */
+> >>> +	ret = snprintf(buf, sizeof(buf),
+> >>> +			"ATTACH DATABASE \"%s/%s.sqlite\" as \"%s\";",
+> >>> +			clstate_topdir, dbname, dbname);
+> >>> +	if (ret < 0) {
+> >>> +		return ret;
+> >>> +	} else if ((size_t)ret >= sizeof(buf)) {
+> >>> +		ret = -EINVAL;
+> >>> +		return ret;
+> >>> +	}
+> >>> +
+> >>> +	/* attach to new DB in filename */
+> >>> +	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
+> >>> +	if (ret != SQLITE_OK)
+> >>> +		xlog(L_ERROR, "Unable to attach database %s: %s", dbname, err);
+> >>> +
+> >>> +	xlog(D_GENERAL, "Attached database %s", dbname);
+> >>> +	return ret;
+> >>> +}
+> >>> +
+> >>> +static int
+> >>> +clstate_db_detach(char *dbname)
+> >>> +{
+> >>> +	int ret;
+> >>> +	char *err;
+> >>> +
+> >>> +	/* convert address string into valid filename */
+> >>> +	ret = snprintf(buf, PATH_MAX - 1, "DETACH DATABASE \"%s\";", dbname);
+> >>> +	if (ret < 0) {
+> >>> +		return ret;
+> >>> +	} else if ((size_t)ret >= sizeof(buf)) {
+> >>> +		ret = -EINVAL;
+> >>> +		return ret;
+> >>> +	}
+> >>> +
+> >>> +	/* attach to new DB in filename */
+> >>> +	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
+> >>> +	if (ret != SQLITE_OK)
+> >>> +		xlog(L_ERROR, "Unable to detach database %s: %s", dbname, err);
+> >>> +
+> >>> +	xlog(D_GENERAL, "Detached database %s", dbname);
+> >>> +	return ret;
+> >>> +}
+> >>> +
+> >>> +/*
+> >>> + * Create a client record
+> >>> + */
+> >>> +int
+> >>> +clstate_insert_client(const unsigned char *addr, const unsigned char *clname,
+> >>> +			const size_t namelen)
+> >>> +{
+> >>> +	int ret;
+> >>> +	char *err = NULL;
+> >>> +	char dbname[CLSTATE_MAX_ADDRESS_LEN];
+> >>> +	sqlite3_stmt *stmt = NULL;
+> >>> +
+> >>> +	addr_to_dbname((const char *)addr, dbname);
+> >>> +
+> >>> +	ret = clstate_db_attach(dbname);
+> >>> +	if (ret != SQLITE_OK)
+> >>> +		return ret;
+> >>> +
+> >>> +	snprintf(buf, sizeof(buf), "CREATE TABLE IF NOT EXISTS '%s'.clients "
+> >>> +				   "(id BLOB PRIMARY KEY, time INTEGER);",
+> >>> +				   dbname);
+> >>> +	if (ret < 0) {
+> >>> +		goto out_detach;
+> >>> +	} else if ((size_t)ret >= sizeof(buf)) {
+> >>> +		ret = -EINVAL;
+> >>> +		goto out_detach;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(L_ERROR, "Unable to create table: %s", err);
+> >>> +		goto out_detach;
+> >>> +	}
+> >>> +
+> >>> +	ret = snprintf(buf, sizeof(buf),
+> >>> +			"INSERT OR REPLACE INTO '%s'.clients VALUES (?, "
+> >>> +			"strftime('%%s', 'now'));", dbname);
+> >>> +	if (ret < 0) {
+> >>> +		goto out_detach;
+> >>> +	} else if ((size_t)ret >= sizeof(buf)) {
+> >>> +		ret = -EINVAL;
+> >>> +		goto out_detach;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_prepare_v2(dbh, buf, ret + 1, &stmt, NULL);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Statement prepare failed: %d", ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+> >>> +				SQLITE_STATIC);
+> >>> +	if (ret != SQLITE_OK) {
+> >>> +		xlog(D_GENERAL, "Bind blob failed: %d", ret);
+> >>> +		goto out_err;
+> >>> +	}
+> >>> +
+> >>> +	ret = sqlite3_step(stmt);
+> >>> +	if (ret == SQLITE_DONE)
+> >>> +		ret = SQLITE_OK;
+> >>> +	else
+> >>> +		xlog(D_GENERAL, "Unexpected return code from insert: %s",
+> >>> +				sqlite3_errmsg(dbh));
+> >>> +
+> >>> +out_err:
+> >>> +	xlog(D_GENERAL, "%s returning %d", __func__, ret);
+> >>> +	sqlite3_finalize(stmt);
+> >>> +	sqlite3_free(err);
+> >>> +out_detach:
+> >>> +	clstate_db_detach(dbname);
+> >>> +	return ret;
+> >>> +}
+> >>> diff --git a/utils/clstated/sqlite.h b/utils/clstated/sqlite.h
+> >>> new file mode 100644
+> >>> index 0000000..4f81745
+> >>> --- /dev/null
+> >>> +++ b/utils/clstated/sqlite.h
+> >>> @@ -0,0 +1,27 @@
+> >>> +/*
+> >>> + * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
+> >>> + *
+> >>> + * This program is free software; you can redistribute it and/or
+> >>> + * modify it under the terms of the GNU General Public License
+> >>> + * as published by the Free Software Foundation; either version 2
+> >>> + * of the License, or (at your option) any later version.
+> >>> + *
+> >>> + * This program is distributed in the hope that it will be useful,
+> >>> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> >>> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> >>> + * GNU General Public License for more details.
+> >>> + *
+> >>> + * You should have received a copy of the GNU General Public License
+> >>> + * along with this program; if not, write to the Free Software
+> >>> + * Foundation, Inc., 51 Franklin Street, Fifth Floor,
+> >>> + * Boston, MA 02110-1301, USA.
+> >>> + */
+> >>> +
+> >>> +#ifndef _SQLITE_H_
+> >>> +#define _SQLITE_H_
+> >>> +
+> >>> +void clstate_set_topdir(char *topdir);
+> >>> +int clstate_maindb_init(void);
+> >>> +int clstate_insert_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
+> >>> +
+> >>> +#endif /* _SQLITE_H */
+> >>> -- 
+> >>> 1.7.1
+> >>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> > 
+> > 
+> > -- 
+> > Jeff Layton <jlayton@redhat.com>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
