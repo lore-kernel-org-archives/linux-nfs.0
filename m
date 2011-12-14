@@ -1,33 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:35962 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756099Ab1LGOfd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 09:35:33 -0500
-Received: by eekd41 with SMTP id d41so527027eek.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 06:35:32 -0800 (PST)
-Message-ID: <4EDF79AF.6050002@gmail.com>
-Date: Wed, 07 Dec 2011 16:35:27 +0200
-From: Rares Aioanei <schaiba@gmail.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:38640 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757135Ab1LNTmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 14:42:43 -0500
+Message-ID: <4EE8FC2E.3010207@gmail.com>
+Date: Wed, 14 Dec 2011 14:42:38 -0500
+From: Ric Wheeler <ricwheeler@gmail.com>
 MIME-Version: 1.0
-To: Steven Shiau <steven@nchc.org.tw>
-CC: Anibal Monsalve Salazar <anibal@debian.org>,
-        Steve Dickson <SteveD@redhat.com>, Kevin Coffman <kwc@umich.edu>,
-        linux-nfs@vger.kernel.org, Michael Rasmussen <mir@datanom.net>,
-        651032@bugs.debian.org, 649491@bugs.debian.org,
-        Bjoern Buerger <bbu@pengutronix.de>, 650904@bugs.debian.org,
-        650948@bugs.debian.org
-Subject: Re: Bug#651032: /usr/sbin/rpc.idmapd: rpc.idmapd referring to none
- existing library
-References: <20111205071808.5626.67399.reportbug@sleipner.datanom.net> <20111205082520.GA5890@debian.org> <4EDCE8B2.1050702@RedHat.com> <20111205184206.GA5207@debian.org> <4EDD27AB.9010803@RedHat.com> <4EDF5F94.80208@nchc.org.tw>
-In-Reply-To: <4EDF5F94.80208@nchc.org.tw>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Al Viro <viro@ZenIV.linux.org.uk>
+CC: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        Joel Becker <jlbec@evilplan.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: copy offload support in Linux - new system call needed?
+References: <4EE8F75F.6070800@gmail.com> <20111214192739.GN2203@ZenIV.linux.org.uk>
+In-Reply-To: <20111214192739.GN2203@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I can confirm the problem as solved with 0.25-1. Thank you.
+On 12/14/2011 02:27 PM, Al Viro wrote:
+> On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
+>
+>> We had an active thread a couple of years back that came out of the
+>> reflink work and, at the time, there seemed to be moderately
+>> positive support for adding a new system call that would fit this
+>> use case (Joel Becker's copyfile()).
+>>
+>> Can we resurrect this effort? Is copyfile() still a good way to go,
+>> or should we look at other hooks?
+> copyfile(2) is probably a good way to go, provided that we do _not_
+> go baroque as it had happened the last time syscall had been discussed.
+>
+> IOW, to hell with progress reports, etc. - just a fastpath kind of
+> thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
+> If it works - fine, if not - caller has to be ready to deal with handling
+> cross-device case anyway.
 
+I think that this approach makes a lot of sense. Most of the devices/targets 
+that support the copy offload, will do it in very reasonable amounts of time.
 
+Let me see if I can dig up some of the presentations from the NetApp guys who 
+presented overviews or the specifications from the IETF and T10....
 
--- 
-Rares Aioanei
+Ric
 
