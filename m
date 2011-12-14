@@ -1,78 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39004 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21429 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753651Ab1LFT4v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 14:56:51 -0500
-Message-ID: <4EDE737A.7090308@RedHat.com>
-Date: Tue, 06 Dec 2011 14:56:42 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Orion Poplawski <orion@cora.nwra.com>, linux-nfs@vger.kernel.org
-Subject: Re: rpc.gssd locks up with -vv or higher
-References: <loom.20111206T175726-323@post.gmane.org> <20111206194159.GB11788@fieldses.org>
-In-Reply-To: <20111206194159.GB11788@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756823Ab1LNQel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 11:34:41 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEGYf1E002261
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:34:41 -0500
+Date: Wed, 14 Dec 2011 11:34:32 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
+ on stable storage (RFC)
+Message-ID: <20111214113432.786ffbf7@tlielax.poochiereds.net>
+In-Reply-To: <4EE8CE18.2040306@RedHat.com>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+	<4EE8BF63.6080906@RedHat.com>
+	<20111214103247.3a67515f@tlielax.poochiereds.net>
+	<4EE8C45B.30207@RedHat.com>
+	<20111214110538.2adaf048@tlielax.poochiereds.net>
+	<4EE8CE18.2040306@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 14 Dec 2011 11:26:00 -0500
+Steve Dickson <SteveD@redhat.com> wrote:
+
+> 
+> 
+> On 12/14/2011 11:05 AM, Jeff Layton wrote:
+> > On Wed, 14 Dec 2011 10:44:27 -0500
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 12/14/2011 10:32 AM, Jeff Layton wrote:
+> >>> On Wed, 14 Dec 2011 10:23:15 -0500
+> >>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>
+> >>>>
+> >>>>
+> >>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
+> >>>>> This patchset is the userspace portion of the knfsd client name tracking
+> >>>>> overhaul. See this patch series for an explanation:
+> >>>>>
+> >>>>>     nfsd: overhaul the client name tracking code (RFC)
+> >>>>>
+> >>>>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
+> >>>>> and handles the requests.
+> >>>>>
+> >>>>> The data is stored using a sqlite database. The main reason for this is
+> >>>>> that it takes care of most of the fussy details and atomicity concerns
+> >>>>> of tracking the information on stable storage.
+> >>>> This will make nfs-utils dependent on the sqlite database... Any idea
+> >>>> what kinda of extra baggage this brings? 
+> >>>>
+> >>>
+> >>> Depends on what you mean by "baggage". What is your concern?
+> >> In Fedora doing a 'yum install sqlite' which would require
+> >> a ton of other package needing to be install... The Required
+> >> for nfs-utils is getting pretty long at this point... 
+> >>  
+> > 
+> > I don't think it pulls in that much. This is pretty minimal for dependencies:
+> > 
+> > $ ldd /usr/lib/libsqlite3.so.0.8.6 
+> > 	linux-gate.so.1 =>  (0x00e05000)
+> > 	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
+> > 	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
+> > 	libc.so.6 => /lib/libc.so.6 (0x00e27000)
+> > 	/lib/ld-linux.so.2 (0x4e572000)
+> > 
+> > I think the command-line tools have some dependency on ncurses and
+> > readline and such, but I don't think it's that much really...
+> > 
+> > In any case, perhaps it's time to split the nfs-utils packaging for
+> > fedora into client and server pieces? Clients really only need
+> > a few of the tools, but they can't install that on fedora without
+> > getting all of the server pieces too.
+> Yeah I thinking this is quickly becoming slippery slope... In the end I'm
+> all for looking into using dbs instead of flat files but I'm just
+> worrying about the size of nfs-utils footprint... Maybe unnecessarily 
+> 
+> Question, how would admin look at the list of client? Will that
+> even be needed? 
+> 
+
+Generally shouldn't be needed unless you're debugging. Today, we just
+have a bunch of directories in the v4recoverydir with md5 hash names,
+so I think moving to a DB is a step forward in this sense.
+
+There's a sqlite3 tool that you can use to attach to the DB file(s).
+Then you can run sql commands against the tables in it. The DB layout
+at this point is very simple, so this shouldn't be too hard.
+
+Note that I'm not dead-set on using sqlite for this if there's
+something more suitable. What I really don't want to do though is to
+reinvent the wheel. Storing info safely on stable storage is a solved
+problem, IMO...
+
+> >>>>> For now, the daemon is only suitable for single-host configurations.
+> >>>>> The plan is to later extend this to be suitable for clustered
+> >>>>> configurations as well.
+> >>>>>
+> >>>>> The code is still a little rough, so be gentle. It also lacks things
+> >>>>> like a manpage. I plan to add all that before doing a "formal" patch
+> >>>>> submission, but I wanted to get some early review of the overall design
+> >>>>> before to spend a lot of time knocking off the rough edges.
+> >>>> Finally the name of the daemon...  clstated does not make it clear that 
+> >>>> this is a nfs server daemon... maybe something like nfsdcld? 
+> >>>>
+> >>>
+> >>> Sure, we could change the name if that's desirable. Maybe
+> >>> nfsd.clnamed ? At this point it's really just a client name tracking
+> >>> daemon.
+> >> How about nfsdcld ;-) short, to the point and easy to type... 8-) 
+> >>
+> > 
+> > Ok, I'm not religious on this issue. I'll plan to rename it to that.
+> > 
+> Thanks!
+> 
+> steved.
 
 
-On 12/06/2011 02:41 PM, J. Bruce Fields wrote:
-> On Tue, Dec 06, 2011 at 05:01:13PM +0000, Orion Poplawski wrote:
->> See https://bugzilla.redhat.com/show_bug.cgi?id=667770
->>
->> Running rpc.gssd with -vvv, it will eventually hang.  Back trace of hung process:
->>
->> #0  0x00ae8416 in __kernel_vsyscall ()
->> #1  0x004be5d1 in __lll_lock_wait_private () from /lib/libc.so.6
->> #2  0x0044985c in _L_lock_12621 () from /lib/libc.so.6
->> #3  0x00447797 in malloc () from /lib/libc.so.6
->> #4  0x0043a398 in open_memstream () from /lib/libc.so.6
->> #5  0x004a9ae5 in __vsyslog_chk () from /lib/libc.so.6
->> #6  0x0017d15f in vsyslog (kind=512, 
->>     fmt=0x1806cc "dir_notify_handler: sig %d si %p data %p\n", args=0xbfc03938
->> "%")
->>     at /usr/include/bits/syslog.h:48
->> #7  xlog_backend (kind=512, fmt=0x1806cc "dir_notify_handler: sig %d si %p data
->> %p\n", 
->>     args=0xbfc03938 "%") at xlog.c:150
->> #8  0x001777d4 in printerr (priority=2, 
->>     format=0x1806cc "dir_notify_handler: sig %d si %p data %p\n") at
->> err_util.c:64
->> #9  0x00177c9e in dir_notify_handler (sig=37, si=0xbfc0396c, data=0xbfc039ec)
->>     at gssd_main_loop.c:66
->> #10 <signal handler called>
->> #11 0x00444984 in _int_malloc () from /lib/libc.so.6
->> #12 0x004477a0 in malloc () from /lib/libc.so.6
->> #13 0x0046db77 in __alloc_dir () from /lib/libc.so.6
->> #14 0x0046dc5a in opendir () from /lib/libc.so.6
->> #15 0x0046e7ef in scandir64@@GLIBC_2.2 () from /lib/libc.so.6
->> #16 0x00179285 in process_pipedir () at gssd_proc.c:565
->> #17 update_client_list () at gssd_proc.c:594
->> #18 0x00177f40 in gssd_run () at gssd_main_loop.c:216
->> #19 0x00177bf9 in main (argc=2, argv=0xbfc04134) at gssd.c:187
->>
->> Looks like malloc is getting called from a signal handler called while in a
->> malloc call, which is verboten.  Not sure what the best way around this, but it
->> looks like dir_notify_handler cannot call printerr.  I suppose this only occurs
->> when -vv or greater is given.  Path looks a little different in 1.2.5, but looks
->> like xlog_backend still calls vsyslog which can do the same thing.
-> 
-> Ha, that's interesting.
-> 
-> Maybe we should just delete that printerr.
-I agree... That printerr was probably useful during the 
-initial debugging but now it is probably just noise...
-
-steved.
- 
-> 
-> (If someone wanted to know when the notification came then it should be
-> enough to add a printerr in update_client_list(), I think.)
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jeff Layton <jlayton@redhat.com>
