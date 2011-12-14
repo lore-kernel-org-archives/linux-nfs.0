@@ -1,63 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:27475 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754227Ab1L2QXw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Dec 2011 11:23:52 -0500
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to named one
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4EFC9189.5040605@parallels.com>
-Date: Thu, 29 Dec 2011 11:23:40 -0500
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
-References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28461 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757877Ab1LNW14 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 17:27:56 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEMRteV003394
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 17:27:55 -0500
+Message-ID: <4EE922EA.1010408@RedHat.com>
+Date: Wed, 14 Dec 2011 17:27:54 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
+ on stable storage (RFC)
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>	<4EE8BF63.6080906@RedHat.com>	<20111214103247.3a67515f@tlielax.poochiereds.net>	<4EE8C45B.30207@RedHat.com>	<20111214110538.2adaf048@tlielax.poochiereds.net>	<4EE8CE18.2040306@RedHat.com>	<20111214113432.786ffbf7@tlielax.poochiereds.net>	<4EE9079D.2000607@RedHat.com> <20111214160654.7c36fdc0@tlielax.poochiereds.net>
+In-Reply-To: <20111214160654.7c36fdc0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Dec 29, 2011, at 11:12 AM, Stanislav Kinsbursky wrote:
 
-> 29.12.2011 20:03, Chuck Lever пишет:
->>> Because unix named (!) sockets are not network namespace aware.
->> 
->> OK, this is the part I was unaware of.  Bruce and I had talked about this a few months ago, and my take-away was that these sockets were network namespace-aware, such that this was supposed to work as we want, already.
->> 
->>> They are "current->fs->root" aware.
->> 
->> In other words, these are relative to the local file namespace, not the local network namespace.  I was afraid of that.
->> 
->>> I.e. if this connect operation would be performed on "sync mode" (i.e. from the context of mount of NFS server start operation), then all will works fine (in case of each container works in it's own root, of course).
->>> But currently all connect operations are done by rpciod_workqueue. I.e. regardless to root of process, started service registration, unix socket will be always looked up by path "/var/run/rpcbind.sock" starting from rpciod_workqueue root. I can set desired root before kernel connect during handling RPC task by rpciod_workqueue and revert back to the old one after connection and this will solve the problem to.
->>> But this approach looks like ugly hack to me. And also requires additional pointer in sock_xprt structure to bypass desired context to rpciod_workqueue handler.
->> 
->> Can several network namespaces share the same file namespace?  That might cause them to share the same rpcbind, which is undesirable.  Might this also be a problem for user space?
->> 
+On 12/14/2011 04:06 PM, Jeff Layton wrote:
+> On Wed, 14 Dec 2011 15:31:25 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> Yes, they can. But only in general. And it will be a problem for user space programs, using unix named sockets for network related stuff (like rpcbind, for instance).
-> But, actually, I don't see any sense in having several network namespaces with the same root. Probably someone can suggest a specific "real life" solution, which can use such scheme.
+>>
+>>
+>> On 12/14/2011 11:34 AM, Jeff Layton wrote:
+>>> On Wed, 14 Dec 2011 11:26:00 -0500
+>>>>>>>>> The data is stored using a sqlite database. The main reason for this is
+>>>>>>>>> that it takes care of most of the fussy details and atomicity concerns
+>>>>>>>>> of tracking the information on stable storage.
+>>>>>>>> This will make nfs-utils dependent on the sqlite database... Any idea
+>>>>>>>> what kinda of extra baggage this brings? 
+>>>>>>>>
+>>>>>>>
+>>>>>>> Depends on what you mean by "baggage". What is your concern?
+>>>>>> In Fedora doing a 'yum install sqlite' which would require
+>>>>>> a ton of other package needing to be install... The Required
+>>>>>> for nfs-utils is getting pretty long at this point... 
+>>>>>>  
+>>>>>
+>>>>> I don't think it pulls in that much. This is pretty minimal for dependencies:
+>>>>>
+>>>>> $ ldd /usr/lib/libsqlite3.so.0.8.6 
+>>>>> 	linux-gate.so.1 =>  (0x00e05000)
+>>>>> 	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
+>>>>> 	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
+>>>>> 	libc.so.6 => /lib/libc.so.6 (0x00e27000)
+>>>>> 	/lib/ld-linux.so.2 (0x4e572000)
+>>>>>
+>>>>> I think the command-line tools have some dependency on ncurses and
+>>>>> readline and such, but I don't think it's that much really...
+>>>>>
+>>>>> In any case, perhaps it's time to split the nfs-utils packaging for
+>>>>> fedora into client and server pieces? Clients really only need
+>>>>> a few of the tools, but they can't install that on fedora without
+>>>>> getting all of the server pieces too.
+>>>> Yeah I thinking this is quickly becoming slippery slope... In the end I'm
+>>>> all for looking into using dbs instead of flat files but I'm just
+>>>> worrying about the size of nfs-utils footprint... Maybe unnecessarily 
+>>>>
+>>>> Question, how would admin look at the list of client? Will that
+>>>> even be needed? 
+>>>>
+>>>
+>>> Generally shouldn't be needed unless you're debugging. Today, we just
+>>> have a bunch of directories in the v4recoverydir with md5 hash names,
+>>> so I think moving to a DB is a step forward in this sense.
+>> Or possible an overkill?? How large do you expect these lists
+>> to grow? 
+>>
+> 
+> At least one record per client. So probably on the order of a few
+> thousand per cluster node. Multiply that times the number of cluster
+> nodes.
+> 
+>> Also, from what the Nfsd4_server_recovery wiki says all that is
+>> really need is "stable storage". What makes sqlite more stable
+>> than a simple write() followed by an fsync()?
+> 
+> Eventually we need to share this DB in a cluster too. With that, we'll
+> have to coordinate these writes and fsyncs across cluster nodes to
+> ensure that they don't clobber each other. Now we have a simple
+> write/fsync plus fcntl locking. Things get less simple...
+True... but file locking is a well established tried and true way of 
+keeping files in sync... Do we have that type of confidence with 
+the file locking in sqlite? 
+ 
+> 
+> There are also atomicity concerns too. What happens if we try to write
+> out a record and only part of it gets written out before the node dies?
+> 
+> sqlite3 databases are journalled so that's not a problem there. The
+> transaction just didn't happen.
+hmm... this seems like a lot of overhead... but interesting.... 
+Those journaled writes... any idea what type of latency they introduces?
+Probably not... It just seems there is a lot of technology there just to
+keep list of clients... 
+> 
+> With flat files, you have to be able to deal with those cases on your
+> own. Witness the growth in code that we had to maintain when Chuck
+> moved from sqlite for new-statd to using the legacy statd flat file
+> format.
+But you dance with the one you brung! ;-) Meaning we know those cases,
+sqlite is a black box.. 
 
-I can't think of one either.
+> 
+>>>
+>>> There's a sqlite3 tool that you can use to attach to the DB file(s).
+>>> Then you can run sql commands against the tables in it. The DB layout
+>>> at this point is very simple, so this shouldn't be too hard.
+>>>
+>>> Note that I'm not dead-set on using sqlite for this if there's
+>>> something more suitable. What I really don't want to do though is to
+>>> reinvent the wheel. Storing info safely on stable storage is a solved
+>>> problem, IMO...
+>>>
+>> I took a look there does not appear to be any dependencies at all...
+>> So that worry was unfounded... Whats another dependency?? ;-) Lets just
+>> make sure using db is not overkill... then I'm good to go...
+>>
+> 
+> Again, I'm not set on sqlite. Maybe something else would be better?
+> There's bdb for instance, and samba has the tdb stuff. I haven't
+> looked at them in great detail but they might also work here too.
+> 
+> I really don't have any desire to write yet another flat file storage
+> engine for this however.
+> 
+I agree... lets have this conversation and see where it leads... 
 
-> But it's not a container and thus no guarantees should be provided in this case from my pow.
+Just thinking out loud... Would it make sense to build an plug
+and play API where it would not matter what the back-end db is
+that every daemon in nfs-utils could migrate to?
 
-That's probably reasonable, and should be documented publicly if we take the approach of keeping a unique /var/run/rpcbind.sock for each network namespace.
-
-> Or we need to throw away this unix sockets approach and use only network namespace aware routines. But again, does this really required?
-
-/var/run/rpcbind.sock is a formal libtirpc/rpcbind API that is common to libtirpc on other OSes.  Now, it's not likely that any application except the kernel uses it directly.  Still, I'm leery of removing it entirely. 
-
-My sense is that handing an fs->root value to the rpciod workqueue gives us behavior that is closest to what we have now in a single network namespace configuration.  In other words, it's a change that introduces the least amount of "surprise" to the current RPC architecture.
-
-Do you have a patch so we can see just how ugly this might get?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+steved.
