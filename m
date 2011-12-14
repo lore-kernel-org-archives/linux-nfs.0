@@ -1,103 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oxalide-out.extra.cea.fr ([132.168.224.8]:54180 "EHLO
-	oxalide-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933238Ab1LFMLI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 07:11:08 -0500
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by oxalide.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id pB6CB6L1018192
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Dec 2011 13:11:06 +0100
-Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id pB6CB6ra019285
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Dec 2011 13:11:06 +0100
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id pB6CB55R003712
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Dec 2011 13:11:05 +0100
-Message-ID: <4EDE0659.3060508@cea.fr>
-Date: Tue, 06 Dec 2011 13:11:05 +0100
-From: DENIEL Philippe <philippe.deniel@cea.fr>
+Received: from mailhub.sw.ru ([195.214.232.25]:14532 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754578Ab1LNITl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 03:19:41 -0500
+Subject: [PATCH] SUNRPC: make SUNPRC clients list per network namespace context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 12:19:18 +0300
+Message-ID: <20111214081918.2804.59143.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: Help wanted: ENOCLK returned during lock test#2 in connectathon's
- test
-References: <4EDCCC89.6080205@cea.fr> <1323128020.7237.3.camel@lade.trondhjem.org>
-In-Reply-To: <1323128020.7237.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+This patch moves static SUNRPC clients list and it's lock to sunrpc_net
+structure.
+Currently this list is used only for debug purposes. But later it will be used
+also for selecting clients by networks namespace on PipeFS mount/umount events.
+Per-network namespace lists will make this faster and simplier.
 
-many thanks for your reply.
-In fact, the "rflag" in OP4_OPEN's reply is set to 6 = 4|2 = 
-OPEN4_RESULT_LOCKTYPE_POSIX|OPEN4_RESULT_CONFIRM
-For some reason I do not understand, wireshark see 
-OPEN4_RESULT_LOCKTYPE_POSIX as an 'unknown' flag and do not print it.  
-Bug actually it seems like OPEN4_RESULT_LOCKTYPE_POSIX is set.
+Note: client list is taken from "init_net" network namespace context in
+rpc_show_tasks(). This will be changed with making SUNRPC sysctl's per network
+namespace context.
 
-Your mail made me have a closer look to my implementation of OP4_OPEN 
-and OP4_OPEN_CONFIRM in NFSv4.0 . Since the beginning (since I met this 
-bug), I suspect something related to seqids : it does not occur in 
-NFSv4.1 where seqids 's management is made in OP4_SEQUENCE, at the 
-beginning of the request. So I ran lock test#2 on a kernel nfsd, capture 
-the result and compared to what ganesha produces. I saw a difference:
-- when OP4_OPEN is invoked, the nfsd replies with a stateid containing 
-seqid=0. This seqid is passed to OP4_OPEN_CONFIRM which confirms it and 
-(if OK) replies with an updated stateid (seqid is now 1)
-- when ganesha does the same OP4_OPEN return a (unconfirmed) stateid 
-whose seqid is equal to 1, then OP4_OPEN_CONFIRM set this seqid to 2 
-when confirming the stateid.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
- From your point of view, could this mess in seqid's management produce 
-the bug that I see when running lock test#2 ?
+---
+ include/linux/sunrpc/sched.h |    3 ++-
+ net/sunrpc/clnt.c            |   26 +++++++++++++++-----------
+ net/sunrpc/netns.h           |    3 +++
+ net/sunrpc/sunrpc_syms.c     |    3 +++
+ net/sunrpc/sysctl.c          |    4 +++-
+ 5 files changed, 26 insertions(+), 13 deletions(-)
 
-    Regards
-
-       Philippe
-
-Trond Myklebust a écrit :
-> On Mon, 2011-12-05 at 14:52 +0100, DENIEL Philippe wrote: 
->   
->> Hi,
->>
->> as you may know (we may have met at Bake-A-Thon), I am working on 
->> NFS-Ganesha, a NFS server running in userspace. I currently face an 
->> issue when running cthon04 test suite, during the "lock step".
->> Client is linux 3.1.0-rc4, server is nfs-ganesha compiled with FSAL_VFS 
->> support. Server is mounted via command "mount 
->> -overs=4.minorversion=1,lock <server>:<path> /mnt"
->>
->> During the test#2 in "lock" tests, I got the following error:
->>
->>     Creating parent/child synchronization pipes.
->>
->>     Test #2 - Try to lock the whole file.
->>             Parent: 2.0  - F_TLOCK [               0,          ENDING]
->>     FAILED!
->>             Parent: **** Expected success, returned errno=37...
->>             Parent: **** Probably implementation error.
->>
->>     ** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
->>
->>     **  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
->>
->>
->> I made a wireshark capture of the packet (see attachement). Apparently, 
->> the client does 2 compounds, one for OP4_OPEN and a second to call 
->> OP4_OPEN_CONFIRM.
->>     
->
-> Hi Philippe,
->
-> As far as I can see from the pcap file, your server isn't setting the
-> OPEN4_RESULT_LOCKTYPE_POSIX flag in the OPEN reply, and so the client
-> can't support posix locking semantics. In that case, it will return
-> ENOLCK to all fcntl locking requests.
->
-> Cheers
->   Trond
->   
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index e775689..b16243a 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -244,7 +244,8 @@ int		rpciod_up(void);
+ void		rpciod_down(void);
+ int		__rpc_wait_for_completion_task(struct rpc_task *task, int (*)(void *));
+ #ifdef RPC_DEBUG
+-void		rpc_show_tasks(void);
++struct net;
++void		rpc_show_tasks(struct net *);
+ #endif
+ int		rpc_init_mempool(void);
+ void		rpc_destroy_mempool(void);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f0268ea..c5f04aa 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -38,6 +38,7 @@
+ #include <linux/sunrpc/bc_xprt.h>
+ 
+ #include "sunrpc.h"
++#include "netns.h"
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_CALL
+@@ -50,8 +51,6 @@
+ /*
+  * All RPC clients are linked into this list
+  */
+-static LIST_HEAD(all_clients);
+-static DEFINE_SPINLOCK(rpc_client_lock);
+ 
+ static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
+ 
+@@ -81,16 +80,20 @@ static int	rpc_ping(struct rpc_clnt *clnt);
+ 
+ static void rpc_register_client(struct rpc_clnt *clnt)
+ {
+-	spin_lock(&rpc_client_lock);
+-	list_add(&clnt->cl_clients, &all_clients);
+-	spin_unlock(&rpc_client_lock);
++	struct sunrpc_net *sn = net_generic(clnt->cl_xprt->xprt_net, sunrpc_net_id);
++
++	spin_lock(&sn->rpc_client_lock);
++	list_add(&clnt->cl_clients, &sn->all_clients);
++	spin_unlock(&sn->rpc_client_lock);
+ }
+ 
+ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ {
+-	spin_lock(&rpc_client_lock);
++	struct sunrpc_net *sn = net_generic(clnt->cl_xprt->xprt_net, sunrpc_net_id);
++
++	spin_lock(&sn->rpc_client_lock);
+ 	list_del(&clnt->cl_clients);
+-	spin_unlock(&rpc_client_lock);
++	spin_unlock(&sn->rpc_client_lock);
+ }
+ 
+ static int
+@@ -1852,14 +1855,15 @@ static void rpc_show_task(const struct rpc_clnt *clnt,
+ 		task->tk_action, rpc_waitq);
+ }
+ 
+-void rpc_show_tasks(void)
++void rpc_show_tasks(struct net *net)
+ {
+ 	struct rpc_clnt *clnt;
+ 	struct rpc_task *task;
+ 	int header = 0;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+-	spin_lock(&rpc_client_lock);
+-	list_for_each_entry(clnt, &all_clients, cl_clients) {
++	spin_lock(&sn->rpc_client_lock);
++	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
+ 		spin_lock(&clnt->cl_lock);
+ 		list_for_each_entry(task, &clnt->cl_tasks, tk_task) {
+ 			if (!header) {
+@@ -1870,6 +1874,6 @@ void rpc_show_tasks(void)
+ 		}
+ 		spin_unlock(&clnt->cl_lock);
+ 	}
+-	spin_unlock(&rpc_client_lock);
++	spin_unlock(&sn->rpc_client_lock);
+ }
+ #endif
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index d013bf2..6010c46 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -9,6 +9,9 @@ struct cache_detail;
+ struct sunrpc_net {
+ 	struct proc_dir_entry *proc_net_rpc;
+ 	struct cache_detail *ip_map_cache;
++
++	struct list_head all_clients;
++	spinlock_t rpc_client_lock;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 8ec9778..e57aa10 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -29,6 +29,7 @@ int sunrpc_net_id;
+ static __net_init int sunrpc_init_net(struct net *net)
+ {
+ 	int err;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	err = rpc_proc_init(net);
+ 	if (err)
+@@ -38,6 +39,8 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_ipmap;
+ 
++	INIT_LIST_HEAD(&sn->all_clients);
++	spin_lock_init(&sn->rpc_client_lock);
+ 	return 0;
+ 
+ err_ipmap:
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index e65dcc6..af7d339 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -20,6 +20,8 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ 
++#include "netns.h"
++
+ /*
+  * Declare the debug flags here
+  */
+@@ -110,7 +112,7 @@ proc_dodebug(ctl_table *table, int write,
+ 		*(unsigned int *) table->data = value;
+ 		/* Display the RPC tasks on writing to rpc_debug */
+ 		if (strcmp(table->procname, "rpc_debug") == 0)
+-			rpc_show_tasks();
++			rpc_show_tasks(&init_net);
+ 	} else {
+ 		if (!access_ok(VERIFY_WRITE, buffer, left))
+ 			return -EFAULT;
 
