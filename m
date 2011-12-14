@@ -1,92 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from frankvm.xs4all.nl ([83.163.148.79]:60892 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751492Ab1LKSKp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Dec 2011 13:10:45 -0500
-Date: Sun, 11 Dec 2011 19:10:42 +0100
-From: Frank van Maarseveen <frankvm@frankvm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: 3.1.4: NFSv3 RPC scheduling issue?
-Message-ID: <20111211181042.GA13425@janus>
-References: <20111205165021.GA24165@janus>
- <1323128376.7237.7.camel@lade.trondhjem.org>
- <20111206081115.GA3570@janus>
- <1323201463.3199.18.camel@lade.trondhjem.org>
- <20111207134359.GA29828@janus>
- <1323486601.32695.2.camel@lade.trondhjem.org>
- <20111211124008.GA10460@janus>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111211124008.GA10460@janus>
+Received: from mx1.redhat.com ([209.132.183.28]:9955 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757122Ab1LNN5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:57:15 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvFnx010895
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:15 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3f005913
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:14 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/7] clstated: add check/update functionality
+Date: Wed, 14 Dec 2011 08:57:11 -0500
+Message-Id: <1323871032-3191-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 11, 2011 at 01:40:08PM +0100, Frank van Maarseveen wrote:
-> On Fri, Dec 09, 2011 at 10:10:01PM -0500, Trond Myklebust wrote:
-> > [...]
-> > I'm still mystified as to what is going on here...
-> > 
-> > Would it be possible to upgrade some of your clients to 3.1.5 (which
-> > contains a fix for a sunrpc socket buffer problem) and then to add the
-> > following patch?
-> 
-> Did so, the mount locked up and still is, ready for some more
-> experimentation. I don't see any difference however. Did a
-> echo 0 >/proc/sys/sunrpc/rpc_debug afterwards (see below).
-> 
-> A recipe which seems to trigger the issue (at least occasionally) is
-> 
-> 	cd /mount-point
-> 	ssh server echo 3 \>/proc/sys/vm/drop_caches
-> 	echo 3 >/proc/sys/vm/drop_caches
-> 	for i in `seq 100`
-> 	do
-> 		du >/dev/null 2>&1 &
-> 	done
-> 
-> I'll try it on a pristine kernel to rule out some kernel patches (unlikely to
-> be the cause or trigger but just to be sure).
+Add functions to check whether a client is allowed to reclaim, and
+update its timestamp in the DB if so. We do this with an UPDATE OR
+FAIL SQL statement. If the update fails for any reason (like, say
+the record doesn't exist), then the kernel can disallow the reclaim.
 
-Tried, same result: my own NFS client patches seem not to make any
-difference, as I expected. The ICMP port unreachable (see my other mail)
-go away when I stop ypbind and they are triggered by "ypwhich" commands
-too so I consider them no longer relevant.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/clstated/clstated.c |   32 ++++++++++++++++++++++++
+ utils/clstated/sqlite.c   |   58 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/clstated/sqlite.h   |    1 +
+ 3 files changed, 91 insertions(+), 0 deletions(-)
 
-Not much output this time after "echo 0 >/proc/sys/sunrpc/rpc_debug". I
-tried twice:
-
--pid- flgs status -client- --rqstp- -timeout ---ops--
-16020 0080    -11 f4778230 f325d0a0        0 c191b4ac nfsv3 GETATTR a:call_status q:xprt_sending
-16038 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:none
-16041 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16045 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16048 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 READDIRPLUS a:call_reserveresult q:xprt_sending
-16060 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-16062 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16069 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
--pid- flgs status -client- --rqstp- -timeout ---ops--
-16020 0080    -11 f4778230 f325d0a0        0 c191b4ac nfsv3 GETATTR a:call_status q:xprt_sending
-16038 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:none
-16041 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16045 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16048 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 READDIRPLUS a:call_reserveresult q:xprt_sending
-16060 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-16062 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-16069 0080    -11 f4778230   (null)        0 c191b4ac nfsv3 GETATTR a:call_reserveresult q:xprt_sending
-
-
-The NFS client mounts from a machine holding many virtual NFS servers
-using an separate IP address for every export. When access on the client
-hangs then the same export is still mountable on this NFS client using
-a different server IP address (one NIC at both sides btw.). The dead
-virtual server IP address seems only dead for NFS RPC and only from the
-client in question: there is no traffic going out. Ping, rpcinfo et al
-just work. Mount on the client in trouble using the dead IP address but
-specifying a different virtual server export produces some traffic and
-then gets stuck too, I guess at the point when kernel needs to do NFS RPC.
-
-So, kernel NFS RPC from client drops dead for a specific server IP address.
-
+diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
+index 54214cb..885e302 100644
+--- a/utils/clstated/clstated.c
++++ b/utils/clstated/clstated.c
+@@ -177,6 +177,36 @@ clstate_remove(struct clstate_client *clnt)
+ }
+ 
+ static void
++clstate_check(struct clstate_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct clstate_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: check client record. cm_addr=%s", __func__,
++			cmsg->cm_addr);
++
++	ret = clstate_check_client(cmsg->cm_addr, cmsg->cm_u.cm_id,
++					cmsg->cm_len);
++
++	/* set up reply */
++	cmsg->cm_status = ret ? -EACCES : ret;
++	cmsg->cm_len = 0;
++	memset(cmsg->cm_addr, 0, sizeof(cmsg->cm_addr) +
++			sizeof(cmsg->cm_u.cm_id));
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to clstate pipe (%ld): %m",
++			 __func__, wsize);
++		clstate_pipe_reopen(clnt);
++	}
++}
++
++static void
+ clstatecb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -201,6 +231,8 @@ clstatecb(int UNUSED(fd), short which, void *data)
+ 		clstate_remove(clnt);
+ 		break;
+ 	case Cl_Allow:
++		clstate_check(clnt);
++		break;
+ 	case Cl_NrToReclaim:
+ 	case Cl_GraceDone:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+diff --git a/utils/clstated/sqlite.c b/utils/clstated/sqlite.c
+index 78ce6b4..d6f6a90 100644
+--- a/utils/clstated/sqlite.c
++++ b/utils/clstated/sqlite.c
+@@ -403,3 +403,61 @@ out_detach:
+ 	clstate_db_detach(dbname);
+ 	return ret;
+ }
++
++/*
++ * Update a client's timestamp. Return an error if the update fails. On error,
++ * the kernel can infer that reclaim should be denied.
++ */
++int
++clstate_check_client(const unsigned char *addr, const unsigned char *clname,
++			const size_t namelen)
++{
++	int ret;
++	char *err = NULL;
++	char dbname[CLSTATE_MAX_ADDRESS_LEN];
++	sqlite3_stmt *stmt = NULL;
++
++	addr_to_dbname((const char *)addr, dbname);
++
++	ret = clstate_db_attach(dbname);
++	if (ret != SQLITE_OK)
++		return ret;
++
++	ret = snprintf(buf, sizeof(buf),
++			"UPDATE OR FAIL '%s'.clients SET time=strftime('%%s', "
++			"'now') WHERE id==?", dbname);
++	if (ret < 0) {
++		goto out_detach;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		goto out_detach;
++	}
++
++	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to prepare update statement: %d", ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %d", ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(D_GENERAL, "Unexpected return code from update: %s",
++				sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	sqlite3_free(err);
++out_detach:
++	clstate_db_detach(dbname);
++	return ret;
++}
+diff --git a/utils/clstated/sqlite.h b/utils/clstated/sqlite.h
+index 6f5637f..46d2f24 100644
+--- a/utils/clstated/sqlite.h
++++ b/utils/clstated/sqlite.h
+@@ -24,5 +24,6 @@ void clstate_set_topdir(char *topdir);
+ int clstate_maindb_init(void);
+ int clstate_insert_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
+ int clstate_remove_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
++int clstate_check_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
+ 
+ #endif /* _SQLITE_H */
 -- 
-Frank
+1.7.1
+
