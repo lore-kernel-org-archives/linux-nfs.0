@@ -1,68 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:1257 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:37567 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753601Ab1LESGw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 13:06:52 -0500
+	id S1756987Ab1LNKqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:46:18 -0500
+Subject: [PATCH 10/11] SUNRPC: allow debug flags modifications only from
+ init_net
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:46:02 +0300
+Message-ID: <20111214104602.3991.91169.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH] nfs: only do COMMIT for range written with direct I/O
-Date: Mon, 5 Dec 2011 10:06:49 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C544CA3@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20111205121106.25204c4c@corrin.poochiereds.net>
-References: <1322662074-3843-1-git-send-email-jlayton@redhat.com> <20111205121106.25204c4c@corrin.poochiereds.net>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: <linux-nfs@vger.kernel.org>, <khoa@us.ibm.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Jeff Layton [mailto:jlayton@redhat.com]
-> Sent: Monday, December 05, 2011 12:11 PM
-> To: Jeff Layton
-> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; khoa@us.ibm.com
-> Subject: Re: [PATCH] nfs: only do COMMIT for range written with direct
-I/O
-> 
-> On Wed, 30 Nov 2011 09:07:54 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > When given a range to write with unstable writes, the current code
-> > always does a COMMIT of the entire file afterward. This is
-potentially
-> > expensive on some servers and unnecessary. Instead, just do a COMMIT
-> > for the offset and count that was written.
-> >
-> > Khoa, who reported this bug, stated that this made a big difference
-in
-> > performance in their environment, which I believe involves GPFS on
-the
-> > server. He didn't pass along any hard numbers so I can't quantify
-the
-> > gain, but it stands to reason that clustered filesystems might
-suffer
-> > more contention issues when issuing a commit over the whole file.
-> >
-> > Reported-by: Khoa Huynh <khoa@us.ibm.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> Khoa found that he made a mistake when testing this originally, and
-any
-> benefit that the patch provides seems to be negligible. I still think
-it's safe
-> and reasonable to only issue a commit for the range that was written,
-but
-> there doesn't seem to be any compelling need for this patch right now.
-> 
-> Trond, do you have an opinion here? Should we go ahead and commit this
-> patch or something like it, or leave well-enough alone?
+Debug flags are global (i.e. fo all namespaces). So probably, it is better to
+restrict write access and allow it only to processes with "init_net" network
+namespace.
 
-I'd prefer to wait until I see a tangible benefit. I know that recent
-kernels do have support for a COMMIT range on the Linux kernel server
-side, so maybe it is just a question of shooting up an ext4 or XFS based
-server and running a few tests with a large O_DIRECT writer on one
-client, and a smaller O_DIRECT writer on another...
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Cheers
-  Trond
+---
+ net/sunrpc/sysctl.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index eda80cf..224b075 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -156,7 +156,8 @@ proc_dodebug(ctl_table *table, int write,
+ 			return -EINVAL;
+ 		while (left && isspace(*s))
+ 			left--, s++;
+-		*(unsigned int *) table->data = value;
++		if (net_eq(current->nsproxy->net_ns, &init_net))
++			*(unsigned int *) table->data = value;
+ 		/* Display the RPC tasks on writing to rpc_debug */
+ 		if (strcmp(table->procname, "rpc_debug") == 0)
+ 			rpc_show_tasks(&init_net);
+
