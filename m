@@ -1,100 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49805 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:1275 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753913Ab1LXXui (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 24 Dec 2011 18:50:38 -0500
-Date: Sat, 24 Dec 2011 18:50:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: file locking fix for 3.2
-Message-ID: <20111224235035.GA23711@fieldses.org>
-References: <20111224215012.GA23495@fieldses.org>
- <20111224225525.GR23916@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111224225525.GR23916@ZenIV.linux.org.uk>
+	id S1756915Ab1LNN5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:57:13 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvDnv007525
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:13 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3Z005913
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:12 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names on stable storage (RFC)
+Date: Wed, 14 Dec 2011 08:57:05 -0500
+Message-Id: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 24, 2011 at 10:55:25PM +0000, Al Viro wrote:
-> On Sat, Dec 24, 2011 at 04:50:12PM -0500, J. Bruce Fields wrote:
-> 
-> >     locks: fix null dereference on lease-break failure path
-> >     
-> >     Commit 778fc546f749c588aa2f6cd50215d2715c374252 "locks: fix tracking of
-> >     inprogress lease breaks" introduced a null dereference on failure to
-> >     allocate memory.
-> >     
-> >     This means an open (without O_NONBLOCK set) on a file with a lease
-> >     applied (generally only done when Samba or nfsd (with v4) is running)
-> >     could crash if a kmalloc() fails.
-> 
-> NULL?  AFAICS, lease_alloc() returns ERR_PTR() on failure...
+This patchset is the userspace portion of the knfsd client name tracking
+overhaul. See this patch series for an explanation:
 
-Erp, you're right.
+    nfsd: overhaul the client name tracking code (RFC)
 
-(The fix is still right, it's the changelog that's wrong; happy to
-fix and resend if it's wanted....)
+The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
+and handles the requests.
 
-> I really
-> don't like the look of that code, TBH - at the very least it needs to
-> be commented a lot.  E.g. the rules for calling or not calling ->lm_break()
-> are really not obvious - AFAICS, we do that if
-> 	i_have_this_lease || (mode & O_NONBLOCK)
-> is true *or* if allocation has succeeded.  The former condition is what'll
-> end up with -EWOULDBLOCK; I can understand not wanting to return that in
-> preference to -ENOMEM, but...  Do we want to skip ->lm_break() stuff only
-> in case of allocation failures that won't be overridden by -EWOULDBLOCK?
+The data is stored using a sqlite database. The main reason for this is
+that it takes care of most of the fussy details and atomicity concerns
+of tracking the information on stable storage.
 
-We do want to break leases at least in the O_NONBLOCK case so that a
-caller can make forward progress by retrying open(.,O_NONBLOCK).
+For now, the daemon is only suitable for single-host configurations.
+The plan is to later extend this to be suitable for clustered
+configurations as well.
 
-In the other cases I don't think there's any logic to the current
-behavior.  Something like:
+The code is still a little rough, so be gentle. It also lacks things
+like a manpage. I plan to add all that before doing a "formal" patch
+submission, but I wanted to get some early review of the overall design
+before to spend a lot of time knocking off the rough edges.
 
--	if (IS_ERR(new_fl) && !i_have_this_lease
--			&& ((mode & O_NONBLOCK) == 0)) {
--		error = PTR_ERR(new_fl);
--		goto out;
--	}
--
-...
- 		error = -EWOULDBLOCK;
- 		goto out;
- 	}
--
-+	if (IS_ERR(new_fl)) {
-+		error = PTR_ERR(new_fl);
-+		goto out;
-+	}
- restart:
- 	break_time = flock->fl_break_time;
- 	if (break_time != 0) {
+Jeff Layton (7):
+  clstated: add clname tracking daemon stub
+  clstated: reattempt the pipe open if it fails on ENOENT
+  clstated: add autoconf goop for sqlite
+  clstated: add routines for a sqlite backend database
+  clstated: add remove functionality
+  clstated: add check/update functionality
+  clstated: add function to remove unreclaimed client records
 
-would be a little less convoluted.
+ aclocal/libsqlite3.m4      |   33 +++
+ configure.ac               |   23 ++
+ utils/Makefile.am          |    4 +
+ utils/clstated/Makefile.am |   14 +
+ utils/clstated/clstated.c  |  355 +++++++++++++++++++++++++++
+ utils/clstated/sqlite.c    |  572 ++++++++++++++++++++++++++++++++++++++++++++
+ utils/clstated/sqlite.h    |   30 +++
+ 7 files changed, 1031 insertions(+), 0 deletions(-)
+ create mode 100644 aclocal/libsqlite3.m4
+ create mode 100644 utils/clstated/Makefile.am
+ create mode 100644 utils/clstated/clstated.c
+ create mode 100644 utils/clstated/sqlite.c
+ create mode 100644 utils/clstated/sqlite.h
 
-Or we could just do it the really obvious way:
-
- 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
-+	if (IS_ERR(new_fl))
-+		return PTR_ERR(new_fl);
- 
- 	lock_flocks();
-... 
--	if (IS_ERR(new_fl) && !i_have_this_lease
--			&& ((mode & O_NONBLOCK) == 0)) {
--		error = PTR_ERR(new_fl);
--		goto out;
--	}
--
-
-Then you're returning -ENOMEM in a case when we really didn't need to do
-an allocation, but is that really a problem?  It's a rare case, and
-opens can already fail with -ENOMEM for other reasons, and I'd rather
-not have the extra hair.
-
-?
-
---b.
