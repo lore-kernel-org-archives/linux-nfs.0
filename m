@@ -1,68 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from exprod6og114.obsmtp.com ([64.18.1.33]:55797 "HELO
-	exprod6og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1759162Ab1LOR15 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 12:27:57 -0500
+Received: from mx2.netapp.com ([216.240.18.37]:44084 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751047Ab1LNOeC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 09:34:02 -0500
+Message-ID: <4EE8B3C9.8070800@netapp.com>
+Date: Wed, 14 Dec 2011 09:33:45 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
-Subject: RE: copy offload support in Linux - new system call needed?
-Date: Thu, 15 Dec 2011 12:27:55 -0500
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B91516E47E@nsmail.netscout.com>
-In-Reply-To: <1323968015.14317.28.camel@lade.trondhjem.org>
-References: <4EE8F75F.6070800@gmail.com> <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com> <20111214222723.GD7623@fieldses.org> <1323961140.14317.2.camel@lade.trondhjem.org> <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com> <1323965498.14317.13.camel@lade.trondhjem.org> <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com> <1323968015.14317.28.camel@lade.trondhjem.org>
-From: "Loke, Chetan" <Chetan.Loke@netscout.com>
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Ric Wheeler" <ricwheeler@gmail.com>,
-        "Al Viro" <viro@ZenIV.linux.org.uk>, <linux-scsi@vger.kernel.org>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-        "Hannes Reinecke" <hare@suse.de>,
-        "Andrew Morton" <akpm@linux-foundation.org>,
-        <linux-nfs@vger.kernel.org>, "Joel Becker" <jlbec@evilplan.org>,
-        "James Bottomley" <James.Bottomley@HansenPartnership.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Only reinitilize the recall_lru list under the
+ recall lock
+References: <1323812158-5183-1-git-send-email-bjschuma@netapp.com> <20111213221209.GA30904@fieldses.org> <4EE8A7BA.6050406@netapp.com> <20111214140744.GA4322@fieldses.org>
+In-Reply-To: <20111214140744.GA4322@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiA+IHZpcnR1YWxpemF0aW9uIHZlbmRvcnMgd2hvIHN1cHBvcnQgdGhpcyBvZmZsb2FkIGRvIGl0
-IGF0IGEgbGF5ZXINCj4gYWJvdmUgdGhlIGd1ZXN0LU9TKEludHJhLUxVTih0bSkgbG9ja2luZyBv
-ciB3aGF0ZXZlciBmYW5jeSBsb2NraW5nKS4gU28NCj4gSSB0aGluayAnY29weWZpbGUnIGlzIGdv
-aW5nIHRvIGJlIGFwcGVhbGluZyB0byBhcHBsaWNhdGlvbi1kZXZlbG9wZXJzDQo+IG1vcmUgdGhh
-biB0aGUgaHlwZXJ2aXNvci12ZW5kb3JzLg0KPiANCj4gVGhlIGFwcGxpY2F0aW9uIGlzIHRoaW4g
-cHJvdmlzaW9uaW5nLCBub3QgdGhlICdjcCcgY29tbWFuZC4gV2hlbg0KDQoNCnRoaW4tcHJvdmlz
-aW9uaW5nIGlzIG9uZSB1c2UtY2FzZS4gVGhlcmUgYXJlIHF1aXRlIGEgZmV3IHVzZS1jYXNlcyBv
-ZiAnY29weWZpbGUnIGRlcGVuZGluZyBvbiB5b3VyIGJ1c2luZXNzLWxvZ2ljIGFuZCB0aGUgdHlw
-ZSBvZiBhcHBsaWFuY2UgeW91IHNlbGwuDQoNCg0KPiB2aXJ0dWFsaXNhdGlvbiB2ZW5kb3JzIGRv
-IHN1cHBvcnQgdGhpcywgaXQgd2lsbCBtYWlubHkgYmUgYXMgcGFydCBvZg0KPiB0aGVpciBpbWFn
-ZSBtYW5hZ2VtZW50IHRvb2xraXRzLCBub3QgdGhlIGh5cGVydmlzb3IuDQo+IA0KDQpUb29sa2l0
-cz8gTWF5IG5vdCBiZSB0cnVlLiBUaGUgdG9vbGtpdCBtaWdodCBuZWVkIHRvIHRhbGsgdG8gc29t
-ZSBoeXBlcnZpc29yLWNvbXBvbmVudCB0byBlbnN1cmUgTFVOLWxvY2tpbmcgZXRjIG9uIHRoZSB0
-YXJnZXQuIFNvIHRoaXMgaXMgbm90IGVudGlyZWx5IGlzb2xhdGVkIGFzIHlvdSBtaWdodCB0aGlu
-ay4gVGhlcmUgaXMgc29tZSBpbnRlZ3JhdGlvbi4gQXMgYW4gZXhhbXBsZShqdXN0IHRvIHByb3Zl
-IHRoZSBwb2ludCkgLSBIYXZlIHlvdSBldmVyIHNlZW4gYW55b25lIG5vdCB1c2UgdnNwaGVyZS1j
-bGllbnQgb24gVk13YXJlIGZvciBjb3B5aW5nIFZNIHRlbXBsYXRlcz8NCg0KDQo+ID4gU28gbGV0
-J3MgdGhpbmsgYWJvdXQgaXQgZnJvbSBlbmQtdXNlcnMgcGVyc3BlY3RpdmU6DQo+ID4gV29uJ3Qg
-ZXZlcnlvbmUgcmVwbGljYXRlIGNvZGUgdG8gY2hlY2sgLSAnQW0gSSBkb25lJz8gSXQgd2lsbCBq
-dXN0DQo+IG1ha2UgYXBwbGljYXRpb24gZm9sa3Mgd3JpdGUgbW9yZSAodWdseSljb2RlLiBCZWNh
-dXNlIHlvdSB3b3VsZCB0aGVuDQo+IGhhdmUgdG8gbWFpbnRhaW4gYW5vdGhlciBxdWV1ZS9ldGMg
-dG8gY2hlY2sgZm9yIHRoaXMgb3BlcmF0aW9uLg0KPiANCj4gJ0FtIEkgZG9uZScgaXMgZWFzeTog
-Y29weWZpbGUoKSByZXR1cm5zIHdpdGggdGhlIG51bWJlciBvZiBieXRlcyB0aGF0DQo+IGhhdmUg
-YmVlbiBjb3BpZWQuDQo+IA0KPiAnSXMgbXkgY29weWZpbGUoKSBzeXNjYWxsIG1ha2luZyBwcm9n
-cmVzcycgaXMgdGhlIHF1ZXN0aW9uIHRoYXQgbmVlZHMNCj4gYW5zd2VyaW5nLg0KPiANCg0KVW5k
-ZXJzdG9vZC4gQnV0IGFzIGEgdXNlciwgd2UgZG9uJ3Qga25vdyB3aGF0ICdhbSBJIGRvbmUnIGlz
-IGdvaW5nIHRvIHJlcG9ydC4NCg0KJ2FtIEkgZG9uZScgY2FuIHJldHVybjoNCjEpQUNLW2NvcHkg
-ZG9uZV0gLSBzaW1wbGlzdGljIGNhc2UuDQoyKUlOLXByb2dyZXNzLg0KMylOQUNLW2NvcHkgZmFp
-bGVkKHdpdGggc3RhdHVzIHZhbHVlcykgb3IgY29weSBwYXJ0aWFsbHkgY29tcGxldGVkXQ0KDQpB
-bmQgaWYgeW91IGFyZSB1c2luZyB0aGUgY29weS1WTSB1c2UtY2FzZSB0aGVuIHZlcnkgZmV3IFZN
-cyBhcmUgdW5kZXIgNEdCcy4gU28gd2Ugd2lsbCBoaXQgMikgYWJvdmUgbW9yZSBmcmVxdWVudGx5
-IHRoYW4gMSkgYW5kIDMpLg0KDQoNCj4gPiBXZSBjYW4ganVzdCBzdXBwb3J0IGZ1bGwtY29weS4g
-UGFydGlhbCBjb3BpZXMgY2FuIGJlIHJldHVybmVkIGFzDQo+IGZhaWx1cmUuDQo+IA0KPiBUaGVu
-IHlvdSBoYXZlIHRvIGNoZWNrIHRoZSBlbnRpcmUgcmFuZ2Ugb24gZXJyb3IgaW5zdGVhZCBvZiBq
-dXN0DQo+IHJlc3VtaW5nIHRoZSBjb3B5IGZyb20gd2hlcmUgaXQgc3RvcHBlZC4NCj4gDQoNCldo
-eSBub3QgcmVzdGFydD8gV2hhdCBpZiB0aGUgTFVOIHdhcyBpbXBsZW1lbnRpbmcgdGhpbi1wcm92
-aXNpb25pbmcgYW5kIG5vdyBpdCByYW4gb3V0LW9mLXNwYWNlIGFmdGVyIHBhcnRpYWxseSBjb3B5
-aW5nIHlvdXIgZGF0YS4NClNvIHdoeSBub3QgcmVzdGFydCB0aGUgY29weT8gSWYgdGhlIHRhcmdl
-dCBkb2Vzbid0IHN1cHBvcnQgYXV0by1leHRlbmQsIHNvbWVvbmUoc3RvcmFnZS1hZG1pbiBldGMp
-IHdvdWxkIGhhdmUgdG8gc3RlcC1pbiBhbmQgbWFuYWdlIHRoYXQgTFVOLg0KWW91IG1pZ2h0IGFz
-LXdlbGwgcmVzdGFydCB0aGUgY29weSBpbiB0aGlzIGNhc2UuDQoNCg0KDQpDaGV0YW4gTG9rZQ0K
-DQoNCg==
+On Wed Dec 14 09:07:44 2011, J. Bruce Fields wrote:
+> On Wed, Dec 14, 2011 at 08:42:18AM -0500, Bryan Schumaker wrote:
+>> On Tue Dec 13 17:12:09 2011, J. Bruce Fields wrote:
+>>> On Tue, Dec 13, 2011 at 04:35:58PM -0500, bjschuma@netapp.com wrote:
+>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>
+>>>> unhash_delegation() will grab the recall lock before calling
+>>>> list_del_init() in each of these places.  This patch removes the
+>>>> redundant calls.
+>>>
+>>> Looks right, thanks.  (How did you happen across this?)
+>>
+>> I was looking over the fault injection stuff to see if I can figure out 
+>> where an occasional oops was coming from.  It seems to happen when I 
+>> forget delegations, so I was looking at how other functions release 
+>> delegations to see if there was something I missed.  The oops doesn't 
+>> happen often enough for me to know if this patch fixes it yet, though.
+>
+> Hm, OK.  Could you post the oops?
+
+I don't see it in the logs on the server, but I'll keep looking.  I'll 
+post it the next time I come across it.
+
+- Bryan
+>
+> --b.
+
+
