@@ -1,78 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46158 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:19903 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753468Ab1LLWjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 17:39:15 -0500
-Date: Mon, 12 Dec 2011 17:39:14 -0500
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] client: test LOCK and LOCKU in a single compound
-Message-ID: <20111212223914.GA22927@fieldses.org>
-References: <1323445215-3654-1-git-send-email-tigran.mkrtchyan@desy.de>
+	id S1755996Ab1LNKpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:45:08 -0500
+Subject: [PATCH 01/11] SYSCTL: export root and set handling routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:44:49 +0300
+Message-ID: <20111214104449.3991.61989.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323445215-3654-1-git-send-email-tigran.mkrtchyan@desy.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 09, 2011 at 04:40:15PM +0100, Tigran Mkrtchyan wrote:
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+These routines are required for making SUNRPC sysctl's per network namespace
+context.
 
-This should probably be in an st_lock.py.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-But, OK, for now; applied.
+---
+ include/linux/sysctl.h |    1 +
+ kernel/sysctl.c        |   11 +++++++++++
+ 2 files changed, 12 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+index 703cfa3..be586a9 100644
+--- a/include/linux/sysctl.h
++++ b/include/linux/sysctl.h
+@@ -1084,6 +1084,7 @@ struct ctl_path {
+ };
+ 
+ void register_sysctl_root(struct ctl_table_root *root);
++void unregister_sysctl_root(struct ctl_table_root *root);
+ struct ctl_table_header *__register_sysctl_paths(
+ 	struct ctl_table_root *root, struct nsproxy *namespaces,
+ 	const struct ctl_path *path, struct ctl_table *table);
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index ae27196..fb016a9 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -1700,6 +1700,15 @@ void register_sysctl_root(struct ctl_table_root *root)
+ 	list_add_tail(&root->root_list, &sysctl_table_root.root_list);
+ 	spin_unlock(&sysctl_lock);
+ }
++EXPORT_SYMBOL_GPL(register_sysctl_root);
++
++void unregister_sysctl_root(struct ctl_table_root *root)
++{
++	spin_lock(&sysctl_lock);
++	list_del(&root->root_list);
++	spin_unlock(&sysctl_lock);
++}
++EXPORT_SYMBOL_GPL(unregister_sysctl_root);
+ 
+ /*
+  * sysctl_perm does NOT grant the superuser all rights automatically, because
+@@ -1925,6 +1934,7 @@ struct ctl_table_header *__register_sysctl_paths(
+ 
+ 	return header;
+ }
++EXPORT_SYMBOL_GPL(__register_sysctl_paths);
+ 
+ /**
+  * register_sysctl_table_path - register a sysctl table hierarchy
+@@ -2007,6 +2017,7 @@ void setup_sysctl_set(struct ctl_table_set *p,
+ 	p->parent = parent ? parent : &sysctl_table_root.default_set;
+ 	p->is_seen = is_seen;
+ }
++EXPORT_SYMBOL_GPL(setup_sysctl_set);
+ 
+ #else /* !CONFIG_SYSCTL */
+ struct ctl_table_header *register_sysctl_table(struct ctl_table * table)
 
-> ---
->  nfs4.1/server41tests/st_open.py |   24 +++++++++++++++++++++++-
->  1 files changed, 23 insertions(+), 1 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-> index 89f3e2d..1c965b2 100644
-> --- a/nfs4.1/server41tests/st_open.py
-> +++ b/nfs4.1/server41tests/st_open.py
-> @@ -4,7 +4,8 @@ from nfs4_const import *
->  from environment import check, checklist, fail, create_file, open_file, close_file
->  from environment import open_create_file_op
->  from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
-> -from nfs4_type import creatverfattr, fattr4, stateid4
-> +from nfs4_type import creatverfattr, fattr4, stateid4, locker4, lock_owner4
-> +from nfs4_type import open_to_lock_owner4
->  import nfs4_ops as op
->  import threading
->  
-> @@ -253,3 +254,24 @@ def testOpenAndClose(t, env):
->      res = sess1.compound(open_op + [op.close(0, current_stateid)])
->      check(res, NFS4_OK)
->  
-> +def testLockLockU(t, env):
-> +    """test current state id processing by having LOCK and LOCKU
-> +       in a single compound
-> +
-> +    FLAGS: open all
-> +    CODE: OPEN32
-> +    """
-> +    current_stateid = stateid4(1, '\0' * 12)
-> +    sess1 = env.c1.new_client_session(env.testname(t))
-> +
-> +    res = create_file(sess1, env.testname(t))
-> +    check(res)
-> +    fh = res.resarray[-1].object
-> +    stateid = res.resarray[-2].stateid
-> +
-> +    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
-> +    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
-> +    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
-> +	op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX) ]
-> +    res = sess1.compound([op.putfh(fh)] + lock_ops)
-> +    check(res, NFS4_OK)
-> -- 
-> 1.7.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
