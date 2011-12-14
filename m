@@ -1,60 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:56261 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751295Ab1LHXFe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Dec 2011 18:05:34 -0500
-Received: by bkbzv3 with SMTP id zv3so2220256bkb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Dec 2011 15:05:33 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:47560 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756916Ab1LNKqG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:46:06 -0500
+Subject: [PATCH 08/11] SUNRPC: use per-net xs tunables instead of static ones
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:45:46 +0300
+Message-ID: <20111214104546.3991.92233.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-In-Reply-To: <76A6354E-54A6-4088-9425-B6BB2CE3C92B@oracle.com>
-References: <1323371940-9140-1-git-send-email-teg@jklm.no> <76A6354E-54A6-4088-9425-B6BB2CE3C92B@oracle.com>
-From: Tom Gundersen <teg@jklm.no>
-Date: Fri, 9 Dec 2011 00:05:12 +0100
-Message-ID: <CAG-2HqWSnNfUscJ82m8fY9xYm-zAZu2F4b0pj1YPQ2gMGzM+yQ@mail.gmail.com>
-Subject: Re: [RFC][PATCH] libtirpc,rpcbind: move socket from /var/run to /run
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Kay Sievers <kay.sievers@vrfy.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+This patch replaces references to static tunables with per-net ones.
 
-On Thu, Dec 8, 2011 at 10:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> On Dec 8, 2011, at 2:19 PM, Tom Gundersen wrote:
->
->> /run is guaranteed to be available and writeable at any time, whereas
->> /var might be on a separate partition and hence not available during
->> early boot. By moving the socket from /var to /run we are able to use
->> rpcbind earlier, which would in particular make a difference in case
->> /var is on an nfs mount, something I am currently seeing bug reports
->> about.
->
-> I don't understand this part.  /var should be mounted with "nolock" so there should not be a need to have rpcbind running.  Can you explain what this is about?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-You are right, this particular problem can be written off as a
-configuration error. However, if I understand correctly moving
-/var/run and /var/lock off of /var would eliminate the need to mount
-/var with nolock, and things would "just work", regardless of the
-mount options.
+---
+ net/sunrpc/xprtsock.c |   42 ++++++++++++++++++++++++++----------------
+ 1 files changed, 26 insertions(+), 16 deletions(-)
 
-Another reason to want the sockets in /run would be the desire to
-start using rpcbind before /var is mounted (even if /var does not
-itself rely on rpcbind). E.g. to start mounting a remote /home while
-the local /var is still being fsck'ed.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fe4b04b..49219d2 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1458,6 +1458,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xprt)
+ static void xs_tcp_state_change(struct sock *sk)
+ {
+ 	struct rpc_xprt *xprt;
++	struct sunrpc_net *sn = net_generic(sk->sk_net, sunrpc_net_id);
+ 
+ 	read_lock_bh(&sk->sk_callback_lock);
+ 	if (!(xprt = xprt_from_sock(sk)))
+@@ -1496,7 +1497,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ 		clear_bit(XPRT_CONNECTED, &xprt->state);
+ 		clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 		smp_mb__after_clear_bit();
+-		xs_tcp_schedule_linger_timeout(xprt, xs_tcp_fin_timeout);
++		xs_tcp_schedule_linger_timeout(xprt, sn->xs_tcp_fin_timeout);
+ 		break;
+ 	case TCP_CLOSE_WAIT:
+ 		/* The server initiated a shutdown of the socket */
+@@ -1512,7 +1513,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ 		break;
+ 	case TCP_LAST_ACK:
+ 		set_bit(XPRT_CLOSING, &xprt->state);
+-		xs_tcp_schedule_linger_timeout(xprt, xs_tcp_fin_timeout);
++		xs_tcp_schedule_linger_timeout(xprt, sn->xs_tcp_fin_timeout);
+ 		smp_mb__before_clear_bit();
+ 		clear_bit(XPRT_CONNECTED, &xprt->state);
+ 		smp_mb__after_clear_bit();
+@@ -1652,11 +1653,13 @@ static void xs_udp_timer(struct rpc_task *task)
+ 	xprt_adjust_cwnd(task, -ETIMEDOUT);
+ }
+ 
+-static unsigned short xs_get_random_port(void)
++static unsigned short xs_get_random_port(struct net *net)
+ {
+-	unsigned short range = xprt_max_resvport - xprt_min_resvport;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	unsigned short range = sn->xprt_max_resvport - sn->xprt_min_resvport;
+ 	unsigned short rand = (unsigned short) net_random() % range;
+-	return rand + xprt_min_resvport;
++	return rand + sn->xprt_min_resvport;
+ }
+ 
+ /**
+@@ -1678,18 +1681,21 @@ static unsigned short xs_get_srcport(struct sock_xprt *transport)
+ 	unsigned short port = transport->srcport;
+ 
+ 	if (port == 0 && transport->xprt.resvport)
+-		port = xs_get_random_port();
++		port = xs_get_random_port(transport->xprt.xprt_net);
+ 	return port;
+ }
+ 
+ static unsigned short xs_next_srcport(struct sock_xprt *transport, unsigned short port)
+ {
++	struct sunrpc_net *sn = net_generic(transport->xprt.xprt_net,
++					    sunrpc_net_id);
++
+ 	if (transport->srcport != 0)
+ 		transport->srcport = 0;
+ 	if (!transport->xprt.resvport)
+ 		return 0;
+-	if (port <= xprt_min_resvport || port > xprt_max_resvport)
+-		return xprt_max_resvport;
++	if (port <= sn->xprt_min_resvport || port > sn->xprt_max_resvport)
++		return sn->xprt_max_resvport;
+ 	return --port;
+ }
+ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+@@ -2541,9 +2547,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 	struct sock_xprt *transport;
+ 	struct rpc_xprt *xprt;
+ 	struct rpc_xprt *ret;
++	struct sunrpc_net *sn = net_generic(args->net, sunrpc_net_id);
+ 
+-	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
+-			xprt_max_tcp_slot_table_entries);
++	xprt = xs_setup_xprt(args, sn->xprt_tcp_slot_table_entries,
++			sn->xprt_max_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -2606,9 +2613,10 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 	struct rpc_xprt *xprt;
+ 	struct sock_xprt *transport;
+ 	struct rpc_xprt *ret;
++	struct sunrpc_net *sn = net_generic(args->net, sunrpc_net_id);
+ 
+-	xprt = xs_setup_xprt(args, xprt_udp_slot_table_entries,
+-			xprt_udp_slot_table_entries);
++	xprt = xs_setup_xprt(args, sn->xprt_udp_slot_table_entries,
++			sn->xprt_udp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -2683,9 +2691,10 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 	struct rpc_xprt *xprt;
+ 	struct sock_xprt *transport;
+ 	struct rpc_xprt *ret;
++	struct sunrpc_net *sn = net_generic(args->net, sunrpc_net_id);
+ 
+-	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
+-			xprt_max_tcp_slot_table_entries);
++	xprt = xs_setup_xprt(args, sn->xprt_tcp_slot_table_entries,
++			sn->xprt_max_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -2754,6 +2763,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	struct sock_xprt *transport;
+ 	struct svc_sock *bc_sock;
+ 	struct rpc_xprt *ret;
++	struct sunrpc_net *sn = net_generic(args->net, sunrpc_net_id);
+ 
+ 	if (args->bc_xprt->xpt_bc_xprt) {
+ 		/*
+@@ -2764,8 +2774,8 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 		 */
+ 		 return args->bc_xprt->xpt_bc_xprt;
+ 	}
+-	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
+-			xprt_tcp_slot_table_entries);
++	xprt = xs_setup_xprt(args, sn->xprt_tcp_slot_table_entries,
++			sn->xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
 
->> This change should not make a difference to software that currently
->> works as intended, as /var/run should be a symlink or bindmounted
->> to /run, so anyone relying on the socket being in /var/run will
->> still find it there.
->
-> Even the kernel?
-
-Good question, it had not occurred to me that the kernel might resolve
-the paths differently than userspace programs. I'll have to look into
-that.
-
-Thanks for the feedback!
-
-Tom
