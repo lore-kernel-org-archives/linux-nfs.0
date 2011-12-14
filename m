@@ -1,45 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:36094 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751855Ab1LOVdA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 16:33:00 -0500
-Date: Thu, 15 Dec 2011 21:32:56 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Maxim Uvarov <maxim.uvarov@oracle.com>
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        Trond.Myklebust@netapp.com, john@johnmccutchan.com, rlove@rlove.org,
-        eparis@parisplace.org
-Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
-Message-ID: <20111215213256.GS2203@ZenIV.linux.org.uk>
-References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com>
- <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com>
- <20111214232254.GP2203@ZenIV.linux.org.uk>
- <4EEA469E.6070307@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:59277 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757264Ab1LNPJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 10:09:06 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEF96vM008023
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 10:09:06 -0500
+Message-ID: <4EE8BC10.3010005@RedHat.com>
+Date: Wed, 14 Dec 2011 10:09:04 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EEA469E.6070307@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
+ ENOENT
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com> <1323871032-3191-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323871032-3191-3-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 15, 2011 at 11:12:30AM -0800, Maxim Uvarov wrote:
 
-> 1. Original VFS code already has "if NFS", in vfs_unlink(). Because
-> of code does not call d_delete() it has to call notification from
-> d_delete().
+
+On 12/14/2011 08:57 AM, Jeff Layton wrote:
+> Generally, we want this daemon started before nfsd starts. Deal with the
+> situation where the pipe hasn't shown up yet.
+This can be done with your systemd start up script. Plus I'm not sure its 
+a good idea to steal cpu cycles waiting for an event that may never happen...
+
+steved.
+
 > 
-> 2. inotify is done on VFS layer. So logically it has to work on all
-> file systems.
-
-You are using a very odd meaning of the word "logically", then.  Note
-that inotify does *not* work on NFS, no matter what vfs_unlink() would do.
-Simply because files are removed on server, not in VFS.  And server does
-not notify clients of such removals.  Ergo, any software that relies on
-inotify delivering notifications of files being removed is broken on NFS.
-That has nothing whatsoever to the layer in kernel where it's handled;
-the information asked for is simply not available to client.  Period.
-
-Incidentally, inotify does not work on a bunch of local filesystems,
-starting with procfs.  And won't work, unless you are seriously proposing
-to generate events on things like open()/dup2()/etc.  In this case we
-might very well have objects appearing and disappearing without ever
-having had a dentry.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/clstated/clstated.c |   15 +++++++++++----
+>  1 files changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
+> index 93a2710..aab09a7 100644
+> --- a/utils/clstated/clstated.c
+> +++ b/utils/clstated/clstated.c
+> @@ -75,10 +75,17 @@ usage(char *progname)
+>  static int
+>  clstate_pipe_open(struct clstate_client *clnt)
+>  {
+> -	clnt->cl_fd = open(pipepath, O_RDWR, 0);
+> -	if (clnt->cl_fd < 0) {
+> -		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
+> -		return clnt->cl_fd;
+> +	/* loop until the pipe is present or open fails for another reason */
+> +	for (;;) {
+> +		clnt->cl_fd = open(pipepath, O_RDWR, 0);
+> +		if (clnt->cl_fd >= 0) {
+> +			break;
+> +		} else if (errno != ENOENT) {
+> +			xlog(D_GENERAL, "%s: unable to open %s: %m", __func__,
+> +					pipepath);
+> +			return clnt->cl_fd;
+> +		}
+> +		sleep(1);
+>  	}
+>  
+>  	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, clstatecb, clnt);
