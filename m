@@ -1,167 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:16238 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750947Ab1LBFAi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Dec 2011 00:00:38 -0500
-From: <tao.peng@emc.com>
-To: <bharrosh@panasas.com>
-CC: <bergwolf@gmail.com>, <bhalevy@tonian.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Date: Thu, 1 Dec 2011 23:59:51 -0500
-Subject: RE: [PATCH-RESEND 4/4] pnfsblock: do not ask for layout in pg_init
-Message-ID: <F19688880B763E40B28B2B462677FBF805E5043F8B@MX09A.corp.emc.com>
-References: <1322888194-3039-1-git-send-email-bergwolf@gmail.com>
- <4ED62857.7090804@tonian.com>
- <CA+a=Yy5BYoxVWM+4C6ORex5aOZcLAbUmhY6XE=wBsreGVG7GAA@mail.gmail.com>
- <4ED6D5D8.9010801@panasas.com>
- <F19688880B763E40B28B2B462677FBF805E5043E4B@MX09A.corp.emc.com>
- <4ED7BA55.8010200@panasas.com>
-In-Reply-To: <4ED7BA55.8010200@panasas.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:43534 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756915Ab1LNN5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:57:15 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvEXn010890
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:14 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3e005913
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:14 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/7] clstated: add remove functionality
+Date: Wed, 14 Dec 2011 08:57:10 -0500
+Message-Id: <1323871032-3191-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIEJvYXoNCj4gSGFycm9zaA0KPiBTZW50OiBGcmlkYXksIERlY2VtYmVyIDAyLCAy
-MDExIDE6MzMgQU0NCj4gVG86IFBlbmcsIFRhbw0KPiBDYzogYmVyZ3dvbGZAZ21haWwuY29tOyBi
-aGFsZXZ5QHRvbmlhbi5jb207IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tOyBsaW51eC1uZnNA
-dmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbUEFUQ0gtUkVTRU5EIDQvNF0gcG5mc2Js
-b2NrOiBkbyBub3QgYXNrIGZvciBsYXlvdXQgaW4gcGdfaW5pdA0KPiANCj4gT24gMTEvMzAvMjAx
-MSAwOTowNSBQTSwgdGFvLnBlbmdAZW1jLmNvbSB3cm90ZToNCj4gPj4gLS0tLS1PcmlnaW5hbCBN
-ZXNzYWdlLS0tLS0NCj4gPiBXaHkgcmV0dXJuIG9yIGZvcmdldCB0aGUgMSBsb19zZWc/IFdoYXQg
-eW91IHJlYWxseSBuZWVkIHRvIGF2b2lkIHNlZw0KPiA+IGxpc3QgZXhwbG9kaW5nIGlzIHRvIGhh
-dmUgTFJVIGJhc2VkIGNhY2hpbmcgYW5kIG1lcmdlIHRoZW0gd2hlbg0KPiA+IG5lY2Vzc2FyeSwg
-aW5zdGVhZCBvZiBhc2tpbmcgYW5kIGRyb3BwaW5nIGxzZWcgYWdhaW4gYW5kIGFnYWluLi4uDQo+
-ID4NCj4gDQo+IFlhIFlhLCBJJ20gdGFsa2luZyBpbiBhYnN0cmFjdCBub3cgZ2l2aW5nIHRoZSBh
-bGwgcGljdHVyZS4gSWYgaW4gb3VyDQo+IGFib3ZlIGNhc2UgdGhlIGFwcGxpY2F0aW9uIGhhcyBj
-bG9zZWQgdGhlIGZpbGUgYW5kIHdpbGwgbm90IGV2ZXIgb3BlbiBpdA0KPiBhZ2FpbiB0aGVuIEkn
-bSByaWdodCwgcmlnaHQ/IG9mIGNvdXJzZSBvbmNlIHlvdSBnb3QgaXQgeW91IGNhbiBrZWVwIGl0
-DQo+IGFyb3VuZCBpbiBhIGNhY2hlLiBUaG91Z2ggSSB0aGluayB0aGF0IHdpdGggaGVhdnkgc2Vn
-bWVudGluZyBrZWVwaW5nIHNlZ3MNCj4gcGFzc2VkIFJPQyBpcyBleHRyZW1lbHkgaGFyZGVyIHRv
-IG1hbmFnZS4gQmUgY2FyZWZ1bCB3aXRoIHRoYXQgaW4gY3VycmVudA0KPiBpbXBsZW1lbnRhdGlv
-bi4NCj4gDQpJbiBhYm92ZSwgeW91ciBkZXNjcmlwdGlvbiBpcyBub3Qgb25seSBhYm91dCBrZWVw
-aW5nIHNlZ21lbnRzIHBhc3NpbmcgUk9DLCBpZiB0aGUgZmlsZSBpcyBzdGlsbCBvcGVuLCB5b3Ug
-d2lsbCBiZSBhc2tpbmcgZm9yIHRoZSBzYW1lIHNlZ21lbnQgYWdhaW4gYW5kIGFnYWluLi4uIG5v
-Pw0KDQo+ID4gUmVtb3ZpbmcgdGhlIElPX01BWCBsaW1pdGF0aW9uIGNhbiBiZSBhIHNlY29uZCBv
-cHRpbWl6YXRpb24uIEkgd2FzDQo+ID4gaG9waW5nIHRvIHJlbW92ZSBpdCBpZiBjdXJyZW50IElP
-X01BWCB0aGluZyB0dXJucyBvdXQgaHVydGluZw0KPiA+IHBlcmZvcm1hbmNlLiBBbmQgb25lIHJl
-YXNvbiBmb3IgSU9fTUFYIGlzIHRvIGF2b2lkIHRoZSBsaWtlbGlob29kDQo+ID4gdGhhdCBzZXJ2
-ZXIgcmV0dXJucyBzaG9ydCBsYXlvdXQsIGJlY2F1c2UgY3VycmVudCBpbXBsZW1lbnRhdGlvbiBp
-cw0KPiA+IGxpbWl0ZWQgdG8gcmV0cnkgbmZzX3JlYWQvd3JpdGVfZGF0YSBhcyBhIHdob2xlIGlu
-c3RlYWQgb2Ygc3BsaXR0aW5nDQo+ID4gaXQgdXAuIEkgdGhpbmsgdGhhdCBpZiB3ZSBkbyBpdCB0
-aGlzIHdheSwgdGhlIElPX01BWCBjYW4gYmUgcmVtb3ZlZA0KPiA+IGxhdGVyIHdoZW4gbmVjZXNz
-YXJ5LCBieSBpbnRyb2R1Y2luZyBhIHNwbGl0dGluZyBtZWNoYW5pc20gZWl0aGVyIG9uDQo+ID4g
-bmZzX3JlYWQvd3JpdGVfZGF0YSBvciBvbiBkZXNjLiBOb3cgdGhhdCB5b3UgYXNrIGZvciBpdCwg
-SSB0aGluaw0KPiA+IGZvbGxvd2luZyBhcHByb2FjaCBpcyBwb3NzaWJsZToNCj4gPg0KPiA+IDEu
-IHJlbW92ZSB0aGUgbGltaXQgb24gSU9fTUFYIGF0IC5wZ190ZXN0Lg0KPiA+IDIuIGFzayBmb3Ig
-bGF5b3V0IGF0IC5wZ19kb2lvIGZvciB0aGUgc2l6ZSBvZiBjdXJyZW50IElPIGRlc2MNCj4gPiAz
-LiBpZiBzZXJ2ZXIgcmV0dXJucyBzaG9ydCBsYXlvdXQsIHNwbGl0IG5mc19yZWFkL3dyaXRlX2Rh
-dGEgb3IgZGVzYyBhbmQgaXNzdWUgdGhlIHBhZ2VsaXN0IGNvdmVyZWQNCj4gYnkgbHNlZy4NCj4g
-PiA0LiBkbyAyIGFuZCAzIGluIGEgbG9vcCB1bnRpbCBhbGwgcGFnZXMgaW4gY3VycmVudCBkZXNj
-IGlzIGhhbmRsZWQuDQo+ID4NCj4gDQo+IFNvIGluIGVmZmVjdCB5b3UgYXJlIGRvaW5nIHdoYXQg
-SSBzdWdnZXN0IHR3byBwYXNzZXMNCj4gb25lOiB3aGF0J3MgdGhlIG5leHQgaG9sZSwNCj4gc2Vj
-b25kOiBDb2xsZWN0IHBhZ2VzIHNsaWNpbmcgYnkgcmV0dXJuZWQgbG9fc2VnDQo+IA0KPiBEb24n
-dCB5b3UgdGhpbmsgaXQgaXMgbW9yZSBzaW1wbGUgdG8gZG8gYSAzIGxpbmUgcHJlbGltaW5hcnkN
-Cj4gbG9vcCBpbiAib25lOiI/DQo+IA0KPiBhbmQga2VlcCB0aGUgY3VycmVudCBjb2RlIHRoYXQg
-aXMgbm93IGV4YWN0bHkgYnVpbHQgdG8gZG8NCj4gInNlY29uZDoiDQo+IA0KPiBZb3UgYXJlIHN1
-Z2dlc3RpbmcgdG8gZWZmZWN0aXZlbHkgcmVwZWF0IGN1cnJlbnQgY29kZSB1c2luZw0KPiB0aGUg
-Zmlyc3QgLnBnX2luaXQuLi5wZ19kb2lvIGZvciBvbmU6IGFuZCBoYWNraW5nIGZvciBibG9ja3MN
-Cj4gInNlY29uZDoiDQo+IA0KPiBJIHdhbnQgMyBsaW5lcyBvZiBjb2RlIGZvciBvbmU6IGFuZCBr
-ZWVwIHNlY29uZDogZXhhY3RseSBhcyBpcy4NCj4gDQo+IDxzbmlwPg0KPiANCj4gPiBMb29rcyBs
-aWtlIHlvdSBhcmUgc3VnZ2VzdGluZyBnb2luZyB0aHJvdWdoIHRoZSBkaXJ0eSBwYWdlIGxpc3Qg
-dHdpY2UNCj4gPiBiZWZvcmUgaXNzdWluZyBJTywgb25lIGp1c3QgZm9yIGdldHRpbmcgdGhlIElP
-IHNpemUgaW5mb3JtYXRpb24gYW5kDQo+ID4gYW5vdGhlciBvbmUgZm9yIHBhZ2UgY29sbGFwc2lu
-Zy4gVGhlIHdob2xlIHBvaW50IG9mIG1vdmluZyBsYXlvdXRnZXQNCj4gPiB0byAucGdfZG9pbyBp
-cyB0byBjb2xsZWN0IHJlYWwgSU8gc2l6ZSB0aGVyZSBiZWNhdXNlIHdlIGRvbid0IGtub3cgaXQN
-Cj4gPiBhdCAucGdfaW5pdC4gQW5kIGl0IGlzIGRvbmUgd2l0aG91dCBhbnkgY2hhbmdlcyB0byBn
-ZW5lcmljIE5GUyBJTw0KPiA+IHBhdGguIEknbSBub3Qgc3VyZSBpZiBpdCBpcyBhcHByb3ByaWF0
-ZSB0byBjaGFuZ2UgZ2VuZXJpYyBJTyByb3V0aW5lDQo+ID4gdG8gY29sbGVjdCB0aGUgaW5mb3Jt
-YXRpb24gYmVmb3JlIC5wZ19pbml0IChJJ2QgYmUgaGFwcHkgdG9vIGlmIHdlDQo+ID4gY2FuIGRv
-IGl0IHRoZXJlKS4NCj4gDQo+IFRoYXQncyB3aGF0IHlvdSBhcmUgc3VnZ2VzdGluZyBhcyB3ZWxs
-IGxvb2sgaW4geW91ciBzdGVwIDQuOg0KPiAJZG8gMiBhbmQgMyBpbiBhIGxvb3AgdW50aWwgYWxs
-IHBhZ2VzIGluIGN1cnJlbnQgZGVzYyBpcyBoYW5kbGVkDQo+IHNvdW5kcyBsaWtlIGFub3RoZXIg
-bG9vcCBvbiBhbGwgcGFnZXMgbm8/DQo+IA0KTm8uIFRoZSBsb29wIG9ubHkgaGFwcGVucyB3aGVu
-IHNlcnZlciByZXR1cm5zIGxlc3MgbGF5b3V0IHRoYW4gY2xpZW50IGFza3MgZm9yLiBXaGlsZSBp
-biB5b3VyIHNvbHV0aW9uLCB5b3UgbmVlZCB0byBsb29wIHR3aWNlIGluIGFsbCBjYXNlcy4NCg0K
-PiBCVFc6IHdlIGFyZSBhbHJlYWR5IGRvaW5nIHR3byBwYXNzZXMgaW4gdGhlIHN5c3RlbSB3ZSBh
-bHJlYWR5IGxvb2tlZA0KPiB0aHJvdWdoIGFsbCB0aGUgcGFnZXMgd2hlbiBidWlsZGluZyB0aGUg
-aW8gZGVzYyBhdCAud3JpdGUvcmVhZF9wYWdlcw0KPiANCj4gQXQgZmlyc3Qgd2UgY2FuIGRvIGFi
-b3ZlIDMgbGluZXMgbG9vcCBpbiAucGdfaW5pdC4gU2Vjb25kIHdlIGNhbg0KPiBqdXN0IGNvbGxl
-Y3QgdGhhdCBpbmZvcm1hdGlvbiBpbiBnZW5lcmljIG5mcyBhdCB0aGUgZmlyc3QgbG9vcA0KPiB3
-ZSBhcmUgYWxyZWFkeSBkb2luZw0KPiANClBsZWFzZSB1bmRlcnN0YW5kIHRoYXQgSSB0b3RhbGx5
-IGFncmVlIHdpdGggeW91IGFzIGxvbmcgYXMgdGhlIHR3byBwYXJ0cyBjYW4gZ2V0IGluIHRvZ2V0
-aGVyLiBJdCdzIGp1c3QgdGhhdCB5b3VyIHNlY29uZCBoYWxmIG9mIHdvcmsgd29ycmllcyBtZS4g
-SWYgd2UgcmVhbGx5IGRvIGl0IGluIHR3byBwaGFzZXMsIEkgYW0gYWZyYWlkIHRoYXQgdGhlIHNl
-Y29uZCBoYWxmIG5ldmVyIGdldHMgZG9uZSBiZWNhdXNlIGl0IGdvZXMgdG9vIGRlZXAgaW50byBn
-ZW5lcmljIGNvZGUuIEFuZCBpZiB3ZSBvbmx5IGhhdmUgdGhlIGZpcnN0IHZlcnNpb24gb2YgeW91
-ciBzb2x1dGlvbiwgaXQgaXMgZ29pbmcgdG8gaHVydCBibG9ja3MuDQoNCj4gPj4NCj4gPj4gICAg
-IGEuIFdlIHdhbnQgaXQgYXQgLnBnX2luaXQgc28gd2UgaGF2ZSBhIGxheW91dCBhdCAucGdfdGVz
-dCB0byBpbnNwZWN0Lg0KPiA+Pg0KPiA+PiAgICAgICAgRG9uZSBwcm9wZXJseSB3aWxsIGxldCB5
-b3UsIGluIGJsb2Nrcywgc2xpY2UgYnkgZXh0ZW50cyBhdCAucGdfdGVzdA0KPiA+PiAgICAgICAg
-YW5kIC53cml0ZV9wYWdlcyBjYW4gc2VuZCB0aGUgY29tcGxldGUgcGFnbGlzdCB0byBtZCAoYmlv
-IGNoYWluaW5nKQ0KPiA+Pg0KPiA+IFVubGlrZSBvYmplY3RzIGFuZCBmaWxlcywgYmxvY2tzIGRv
-bid0IHNsaWNlIGJ5IGV4dGVudHMsIG5vdCBhdCAucGdfdGVzdCwgbm9yDQo+IGF0IC5yZWFkL3dy
-aXRlX3BhZ2VsaXN0Lg0KPiA+DQo+IA0KPiBXaGF0PyBXaGF0IGRvIHlvdSBkbz8gU2VuZCBhIHNj
-c2kgc2NhdHRlciBsaXN0IGNvbW1hbmQ/DQo+IEkgZG9uJ3QgdGhpbmsgc28uIFNvbWV3aGVyZSB5
-b3UgaGF2ZSB0byBzZWUgYW4gZXh0ZW50IGJvdW5kYXJ5IG9mIHRoZSBkYXRhDQo+IGFuZCBzZW5k
-IHRoZSBjb250aW51ZSBvZiB0aGUgbmV4dCBleHRlbnQgb24gZGlzayBhcyBhIG5ldyBibG9jayBy
-ZXF1ZXN0DQo+IGluIGEgbmV3IGJpbyB3aXRoIGEgbmV3IGRpc2sgb2Zmc2V0LiBObz8NCj4gDQo+
-IEknbSBub3Qgc2F5aW5nIHRvIGRvIHRoaXMgcmlnaHQgYXdheSwgYnV0IHlvdSBjb3VsZCBzaW1w
-bGlmeSB0aGUgY29kZSBhIGxvdA0KPiBieSBzbGljaW5nIGJ5IGV4dGVudCBpbnNpZGUgLnBnX3Rl
-c3QNCj4gDQpPSywgSSBzZWUgd2hhdCB5b3UgbWVhbiBieSAic2xpY2UgYnkgZXh0ZW50cyIuIEFu
-ZCBJIGFkbWl0IHRoYXQgYmxvY2tzIGNhbiBiZSBjaGFuZ2VkIGFzIHlvdSBzdWdnZXN0ZWQuIEJ1
-dCBJIGRvIG5vdCBzZWUgeW91ciBtb3RpdmF0aW9uIGZvciBhc2tpbmcgZm9yIHRoZSBjaGFuZ2Uu
-IEV2ZW4gd2UgZG8gbGF5b3V0Z2V0IGF0IC5wZ19pbml0ICh3aGljaCBpcyB3aGF0IHdlIGhhdmUg
-dG9kYXkpLCBjdXJyZW50IGJsb2NrcyB3b3JrcyB3ZWxsIHVuZGVyIGl0LiBBbmQgSSBkbyBub3Qg
-c2VlIGFueSByZXN0cmljdGlvbiBhdCBnZW5lcmljIGxheWVyIHNheWluZyB0aGVyZSBpcyBzb21l
-dGhpbmcgd3Jvbmcgd2l0aCBjdXJyZW50IGltcGxlbWVudGF0aW9uLiBTbyB3aGF0IGlzIHRoZSBi
-ZW5lZml0IGZvciBibG9ja3MgdG8gY2hhbmdlIGFzIHlvdSBzdWdnZXN0ZWQ/IElNSE8gY3VycmVu
-dCBpbXBsZW1lbnRhdGlvbiBpcyBiZXR0ZXIgYmVjYXVzZSBibG9ja3Mgb25seSBuZWVkIHRvIHZp
-c2l0IGV4dGVudCBjYWNoZSBpbiByZWFkL3dyaXRlX3BhZ2VsaXN0IG9uY2UgYW5kIGZvciBhbGwu
-IEJ1dCBpbiB5b3VyIHN1Z2dlc3Rpb24sIHdlIGhhdmUgdG8gZG8gaXQgZm9yIGV2ZXJ5IC5wZ190
-ZXN0LCBhbmQgeWV0IGFnYWluIGluIHJlYWQvd3JpdGVfcGFnZWxpc3QuDQoNCj4gPD4NCj4gPj4N
-Cj4gPj4gICAgIEF0IGZpcnN0IHZlcnNpb246DQo+ID4+ICAgICAgIEEgZ29vZCBhcHByb3hpbWF0
-aW9uIHdoaWNoIGdpdmVzIHlvdSBhbiBleGFjdCBtaWRkbGUgcG9pbnQNCj4gPj4gICAgICAgYmV0
-d2VlbiBibG9ja3MgQi4yIGFuZCBvYmplY3RzL2ZpbGVzIEIuMiwgaXMgZGlydHkgY291bnQuDQo+
-ID4+ICAgICBBdCBsYXRlciBwYXRjaDoNCj4gPj4gICAgICAgSGF2ZSBnZW5lcmljIE5GUyBjb2xs
-ZWN0IHRoZSBhYm92ZSBPMSwgTjEsIGFuZCBObiBmb3IgeW91IGFuZCBiYXNlDQo+ID4+ICAgICAg
-IHlvdXIgZGVjaXNpb24gb24gdGhhdC4NCj4gPj4NCj4gPg0KPiA+IFdlbGwsIHVubGVzcyB5b3Ug
-cHV0IGJvdGggdGhlIHR3byBwYXJ0cyBpbi4uLiBUaGUgZmlyc3QgdmVyc2lvbiBpcw0KPiA+IGln
-bm9yaW5nIHRoZSBmYWN0IHRoYXQgYmxvY2tzIE1EUyBjYW5ub3QgZ2l2ZSBvdXQgZmlsZSBzdHJp
-cHBpbmcNCj4gPiBpbmZvcm1hdGlvbiBhcyBlYXNpbHkgYXMgb2JqZWN0cyBhbmQgZmlsZXMgZG8u
-IEFuZCBJIHdpbGwgc3RhbmQNCj4gPiBhZ2FpbnN0IGl0IGFsb25lIGJlY2F1c2UgYWxsIGl0IGRv
-ZXMgaXMgdG8gYmVuZWZpdCBvYmplY3RzIHdoaWxlDQo+ID4gaHVydGluZyBibG9ja3MgKGZpbGVz
-IGRvbid0IGNhcmUgYmVjYXVzZSB0aGV5IHVzZSB3aG9sZSBmaWxlIGxheW91dCwNCj4gPiBhdCBs
-ZWFzdCBmb3Igbm93KS4NCj4gDQo+IExldHMgbWFrZSBhIGNvbXB1dGVyaXplIGxldHMgZmluZCBP
-MS4uTjEgYW5kIHB1dCBpbiB0aGUgR2VuZXJpYw0KPiBjb2RlIGZvciBldmVyeW9uZSBvYmplY3Rz
-IGZpbGVzLXNlZ21lbnRlZCBhbmQgYmxvY2tzLiBCZWNhdXNlIEkNCj4gbmVlZCBpdCB0d28uIEFu
-ZCBJJ2QgbGlrZSBPMS4uTm4gYnV0IGZvciBmaXJzdCBzdGVwIEknZCBsb3ZlDQo+IE8xLi5OMSBh
-IGxvdC4NCj4gDQo+IFBsZWFzZSBzZWUgbXkgcG9pbnQuIFlvdSBjcmVhdGVkIGEgc3lzdGVtIHRo
-YXQgb25seSBibG9ja3MgY2FuDQo+IGJlbmVmaXQgZnJvbSB1bmxlc3Mgb2JqZWN0cyByZXBlYXRz
-IHRoZSBzYW1lIGV4YWN0IGJ1dCBkdXBsaWNhdGVkDQo+IGhhY2tzIGFzIGJsb2Nrcy4NCj4gDQo+
-IFBsZWFzZSBkbyB0aGUgKnZlcnkqIHNpbXBsZSB0aGluZyBJIHN1Z2dlc3Qgd2hpY2ggd2UgY2Fu
-IGFsbCBlbmpveS4NCj4gDQpJIGRvIHdhbnQgdG8gbWFrZSBpdCBnZW5lcmljIHNvIGFsbCBsYXlv
-dXRzIGNhbiBiZW5lZml0LiBCdXQgd2hlbiBJIGNhbid0LCBJIGhhdmUgdG8gZG8gcHJpdmF0ZSBo
-YWNrcy4uLg0KDQo+ID4NCj4gPiBPdGhlcndpc2UsIEkgd291bGQgc3VnZ2VzdCBoYXZpbmcgcHJp
-dmF0ZSBoYWNrIGZvciBibG9ja3MgYmVjYXVzZSB3ZSBoYXZlIGEgcmVhbCBwcm9ibGVtIHRvIHNv
-bHZlLg0KPiA+DQo+IA0KPiBJdCdzIGp1c3QgYXMgcmVhbCBmb3Igb2JqZWN0cywgYW5kIGZpbGVz
-IHdoZW4gdGhleSB3aWxsIGRvIHNlZ21lbnRzLg0KPiANCj4gTXkgc3VnZ2VzdGlvbiBpcyB0byBo
-YXZlIHR3byBoZWxwZXJzIGF0IHBuZnMuYyBvbmUgZm9yIGJsb2NrcyBhbmQNCj4gb2JqZWN0cywg
-b25lIGZvciBmaWxlcy4gV2hpY2ggY2FuIGJlIGNhbGxlZCBpbiAucGdfaW5pdC4NCj4gVGhlIGJs
-b2Nrcy9vYmplY3RzIGRvZXMgYSBzaW1wbGUgbG9vcCBjb3VudGluZyB0aGUgZmlyc3QgY29udGln
-dW91cw0KPiBjaHVuayBhbmQgYXNrcyBmb3IgYSBsYXlvdXQsIGxpa2UgdG9kYXkuIGZpbGVzIG9u
-ZSBqdXN0IHNlbmRzDQo+IGFsbC1maWxlIHJlcXVlc3QuDQo+IA0KSSdtIHNvcnJ5IGJ1dCBJIGRv
-bid0IGdldCBpdC4uLiBIb3cgZG8geW91IGNvdW50IHRoZSBmaXJzdCBjb250aWd1b3VzIGNodW5r
-IGluIC5wZ19pbml0PyBBbGwgeW91IGtub3cgYXQgLnBnX2luaXQgaXMgYW4gZW1wdHkgaW8gZGVz
-YyBhbmQgYW4gbmZzIHBhZ2UuIEFyZSB5b3UgZ29pbmcgdG8gc2NhbiB0aGUgcmFkaXggdHJlZSBh
-bmQgZmluZCB0aGUgbmV4dCBwYWdlIHRoYXQgd3JpdGVfY2FjaGVfcGFnZXMgaXMgZ29pbmcgdG8g
-Zmx1c2ggb3V0PyBJIGRvbid0IHJlYWxseSB0aGluayBhbnlvbmUgd2lsbCBhZ3JlZSBvbiBpdC4u
-LiBQbGVhc2UgbG9vayBpbnRvIHRoZSBzZWNvbmQgcGFydCBvZiB5b3VyIHNvbHV0aW9uIGFuZCB0
-aGVuIHlvdSdsbCBzZWUgd2h5IEkgYW0gd29ycmllZCB0aGF0IGl0IG1heSBuZXZlciBnZXQgZG9u
-ZS4NCg0KQmVzdCBSZWdhcmRzLA0KVGFvDQoNCj4gQm9heg0KPiAtLQ0KPiBUbyB1bnN1YnNjcmli
-ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
-bg0KPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
-PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
-by1pbmZvLmh0bWwNCg0K
+Allow the kernel to ask for removal of a client record.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/clstated/clstated.c |   34 +++++++++++++++++++++++++++-
+ utils/clstated/sqlite.c   |   54 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/clstated/sqlite.h   |    1 +
+ 3 files changed, 88 insertions(+), 1 deletions(-)
+
+diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
+index 95ac696..54214cb 100644
+--- a/utils/clstated/clstated.c
++++ b/utils/clstated/clstated.c
+@@ -147,6 +147,36 @@ clstate_create(struct clstate_client *clnt)
+ }
+ 
+ static void
++clstate_remove(struct clstate_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct clstate_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: expire client record. cm_addr=%s", __func__,
++			cmsg->cm_addr);
++
++	ret = clstate_remove_client(cmsg->cm_addr, cmsg->cm_u.cm_id,
++					cmsg->cm_len);
++
++	/* set up reply */
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
++	cmsg->cm_len = 0;
++	memset(cmsg->cm_addr, 0, sizeof(cmsg->cm_addr) +
++			sizeof(cmsg->cm_u.cm_id));
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to clstate pipe (%ld): %m",
++			 __func__, wsize);
++		clstate_pipe_reopen(clnt);
++	}
++}
++
++static void
+ clstatecb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -168,8 +198,10 @@ clstatecb(int UNUSED(fd), short which, void *data)
+ 		clstate_create(clnt);
+ 		break;
+ 	case Cl_Expire:
+-	case Cl_NrToReclaim:
++		clstate_remove(clnt);
++		break;
+ 	case Cl_Allow:
++	case Cl_NrToReclaim:
+ 	case Cl_GraceDone:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+ 			  cmsg->cm_cmd);
+diff --git a/utils/clstated/sqlite.c b/utils/clstated/sqlite.c
+index ae83634..78ce6b4 100644
+--- a/utils/clstated/sqlite.c
++++ b/utils/clstated/sqlite.c
+@@ -349,3 +349,57 @@ out_detach:
+ 	clstate_db_detach(dbname);
+ 	return ret;
+ }
++
++/* Remove a client record */
++int
++clstate_remove_client(const unsigned char *addr, const unsigned char *clname,
++			const size_t namelen)
++{
++	int ret;
++	char *err = NULL;
++	char dbname[CLSTATE_MAX_ADDRESS_LEN];
++	sqlite3_stmt *stmt = NULL;
++
++	addr_to_dbname((const char *)addr, dbname);
++
++	ret = clstate_db_attach(dbname);
++	if (ret != SQLITE_OK)
++		return ret;
++
++	ret = snprintf(buf, sizeof(buf),
++			"DELETE FROM '%s'.clients WHERE id==?", dbname);
++	if (ret < 0) {
++		goto out_detach;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		goto out_detach;
++	}
++
++	ret = sqlite3_prepare_v2(dbh, buf, ret + 1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Statement prepare failed: %d", ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %d", ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(D_GENERAL, "Unexpected return code from insert: %s",
++				sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	sqlite3_free(err);
++out_detach:
++	clstate_db_detach(dbname);
++	return ret;
++}
+diff --git a/utils/clstated/sqlite.h b/utils/clstated/sqlite.h
+index 4f81745..6f5637f 100644
+--- a/utils/clstated/sqlite.h
++++ b/utils/clstated/sqlite.h
+@@ -23,5 +23,6 @@
+ void clstate_set_topdir(char *topdir);
+ int clstate_maindb_init(void);
+ int clstate_insert_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
++int clstate_remove_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.1
+
