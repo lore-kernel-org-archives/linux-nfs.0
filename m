@@ -1,49 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:41983 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754378Ab1LDRYv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 12:24:51 -0500
-Received: by eaak14 with SMTP id k14so3643971eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 09:24:50 -0800 (PST)
-Message-ID: <4EDBACDD.3010609@tonian.com>
-Date: Sun, 04 Dec 2011 19:24:45 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:26481 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753734Ab1LNQ0B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 11:26:01 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEGQ09r003757
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:26:01 -0500
+Message-ID: <4EE8CE18.2040306@RedHat.com>
+Date: Wed, 14 Dec 2011 11:26:00 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-3.2-rc4-2011-12-04
-References: <4EC13EEA.3030404@tonian.com>
-In-Reply-To: <4EC13EEA.3030404@tonian.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
+ on stable storage (RFC)
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>	<4EE8BF63.6080906@RedHat.com>	<20111214103247.3a67515f@tlielax.poochiereds.net>	<4EE8C45B.30207@RedHat.com> <20111214110538.2adaf048@tlielax.poochiereds.net>
+In-Reply-To: <20111214110538.2adaf048@tlielax.poochiereds.net>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I rebased the pnfs tree onto v3.2-rc4.
 
-The spnfs was dropped as it became obsolete and effectively unmaintained
-over time.
 
-Correspondingly, the spnfs-block branch is now renamed to pnfsd-block.
+On 12/14/2011 11:05 AM, Jeff Layton wrote:
+> On Wed, 14 Dec 2011 10:44:27 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 12/14/2011 10:32 AM, Jeff Layton wrote:
+>>> On Wed, 14 Dec 2011 10:23:15 -0500
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
+>>>>> This patchset is the userspace portion of the knfsd client name tracking
+>>>>> overhaul. See this patch series for an explanation:
+>>>>>
+>>>>>     nfsd: overhaul the client name tracking code (RFC)
+>>>>>
+>>>>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
+>>>>> and handles the requests.
+>>>>>
+>>>>> The data is stored using a sqlite database. The main reason for this is
+>>>>> that it takes care of most of the fussy details and atomicity concerns
+>>>>> of tracking the information on stable storage.
+>>>> This will make nfs-utils dependent on the sqlite database... Any idea
+>>>> what kinda of extra baggage this brings? 
+>>>>
+>>>
+>>> Depends on what you mean by "baggage". What is your concern?
+>> In Fedora doing a 'yum install sqlite' which would require
+>> a ton of other package needing to be install... The Required
+>> for nfs-utils is getting pretty long at this point... 
+>>  
+> 
+> I don't think it pulls in that much. This is pretty minimal for dependencies:
+> 
+> $ ldd /usr/lib/libsqlite3.so.0.8.6 
+> 	linux-gate.so.1 =>  (0x00e05000)
+> 	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
+> 	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
+> 	libc.so.6 => /lib/libc.so.6 (0x00e27000)
+> 	/lib/ld-linux.so.2 (0x4e572000)
+> 
+> I think the command-line tools have some dependency on ncurses and
+> readline and such, but I don't think it's that much really...
+> 
+> In any case, perhaps it's time to split the nfs-utils packaging for
+> fedora into client and server pieces? Clients really only need
+> a few of the tools, but they can't install that on fedora without
+> getting all of the server pieces too.
+Yeah I thinking this is quickly becoming slippery slope... In the end I'm
+all for looking into using dbs instead of flat files but I'm just
+worrying about the size of nfs-utils footprint... Maybe unnecessarily 
 
-The following patches were merged since last update pnfs-all-3.2-rc1-2011-11-14:
+Question, how would admin look at the list of client? Will that
+even be needed? 
 
-pnfs-block:
-  Peng Tao         a8c4a0a pnfsblock: don't spinlock when freeing block_dev
-  Peng Tao         507cca8 pnfsblock: limit bio page count
-  Benny Halevy     f902b81 DEBUG: pnfs: printouts
-  Benny Halevy     9fcea77 pnfsblock: add devid debug printouts
+>>>>> For now, the daemon is only suitable for single-host configurations.
+>>>>> The plan is to later extend this to be suitable for clustered
+>>>>> configurations as well.
+>>>>>
+>>>>> The code is still a little rough, so be gentle. It also lacks things
+>>>>> like a manpage. I plan to add all that before doing a "formal" patch
+>>>>> submission, but I wanted to get some early review of the overall design
+>>>>> before to spend a lot of time knocking off the rough edges.
+>>>> Finally the name of the daemon...  clstated does not make it clear that 
+>>>> this is a nfs server daemon... maybe something like nfsdcld? 
+>>>>
+>>>
+>>> Sure, we could change the name if that's desirable. Maybe
+>>> nfsd.clnamed ? At this point it's really just a client name tracking
+>>> daemon.
+>> How about nfsdcld ;-) short, to the point and easy to type... 8-) 
+>>
+> 
+> Ok, I'm not religious on this issue. I'll plan to rename it to that.
+> 
+Thanks!
 
-pnfsd:
-  Benny Halevy     b46ad6f SQUASHME: pnfsd: add missing nfs4_unlock_state in nfs4_pnfs_return_layout
-  Benny Halevy     7600a80 DEBUG: pnfsd: printouts
-
-pnfsd-block:
-  Benny Halevy     788afe2 DEBUG: pnfsd: printouts
-  Benny Halevy     e99329f pnfsd-block: reverse boolean_t values so they make sense
-  Benny Halevy     ace859c pnfsd-block: change blr_lock to mutex
-  Benny Halevy     79f0540 pnfsd-block: dprint fiemap rval
-  Benny Halevy     6893935 pnfsd-block: allow positive fiemap rval
-  Benny Halevy     0fa92ba pnfsd-block: use SECT_SIZE helper macros
-  Benny Halevy     58590f7 pnfsd-block: undo dependence on spnfs
-  Benny Halevy     6937255 pnfsd-block: set the sbid part of the deviceid
-
-Benny
+steved.
