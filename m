@@ -1,30 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from exprod6og117.obsmtp.com ([64.18.1.39]:49726 "HELO
-	exprod6og117.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751295Ab1LOQPd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:15:33 -0500
+Received: from fieldses.org ([174.143.236.118]:51086 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758127Ab1LNVKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 16:10:39 -0500
+Date: Wed, 14 Dec 2011 16:10:39 -0500
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
+ ENOENT
+Message-ID: <20111214211039.GB7623@fieldses.org>
+References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+ <1323871032-3191-3-git-send-email-jlayton@redhat.com>
+ <4EE8BC10.3010005@RedHat.com>
+ <20111214101927.551e3883@tlielax.poochiereds.net>
+ <4EE8C0ED.6090302@RedHat.com>
+ <20111214103718.267b32fc@tlielax.poochiereds.net>
+ <4EE8C73E.2050207@RedHat.com>
+ <20111214110056.4832f52d@tlielax.poochiereds.net>
+ <4EE8CEA6.7000001@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
-Subject: RE: copy offload support in Linux - new system call needed?
-Date: Thu, 15 Dec 2011 11:08:25 -0500
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com>
-In-Reply-To: <1323961140.14317.2.camel@lade.trondhjem.org>
-References: <4EE8F75F.6070800@gmail.com> <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com> <20111214222723.GD7623@fieldses.org> <1323961140.14317.2.camel@lade.trondhjem.org>
-From: "Loke, Chetan" <Chetan.Loke@netscout.com>
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Ric Wheeler" <ricwheeler@gmail.com>, "Al Viro" <viro@ZenIV.linux.org.uk>,
-        <linux-scsi@vger.kernel.org>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-        "Hannes Reinecke" <hare@suse.de>,
-        "Andrew Morton" <akpm@linux-foundation.org>,
-        <linux-nfs@vger.kernel.org>, "Joel Becker" <jlbec@evilplan.org>,
-        "James Bottomley" <James.Bottomley@HansenPartnership.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EE8CEA6.7000001@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiBIb3cgd291bGQgdGhlIHNlcnZlciBrbm93PyBJIHN1Z2dlc3Qgd2UgZGVhbCB3aXRoIHRoaXMg
-YnkgYWRkaW5nIGFuDQo+IGlvY3RsKCkgdG8gYWxsb3cgdGhlIGFwcGxpY2F0aW9uIHRvIHBvbGwg
-Zm9yIHByb2dyZXNzOiBJJ20gYXNzdW1pbmcgbm93DQoNCldoeSBub3Qgc3VwcG9ydCBzb21ldGhp
-bmcgbGlrZSB0aGUgYXN5bmMtaW9jYj8NCg0KDQo=
+On Wed, Dec 14, 2011 at 11:28:22AM -0500, Steve Dickson wrote:
+> 
+> 
+> On 12/14/2011 11:00 AM, Jeff Layton wrote:
+> > On Wed, 14 Dec 2011 10:56:46 -0500
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 12/14/2011 10:37 AM, Jeff Layton wrote:
+> >>> On Wed, 14 Dec 2011 10:29:49 -0500
+> >>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>
+> >>>>
+> >>>>
+> >>>> On 12/14/2011 10:19 AM, Jeff Layton wrote:
+> >>>>> On Wed, 14 Dec 2011 10:09:04 -0500
+> >>>>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>>>
+> >>>>>>
+> >>>>>>
+> >>>>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
+> >>>>>>> Generally, we want this daemon started before nfsd starts. Deal with the
+> >>>>>>> situation where the pipe hasn't shown up yet.
+> >>>>>> This can be done with your systemd start up script. Plus I'm not sure its 
+> >>>>>> a good idea to steal cpu cycles waiting for an event that may never happen...
+> >>>>>>
+> >>>>>
+> >>>>> Presumably you just wouldn't start the daemon if you have no intent to
+> >>>>> use it.
+> >>>>>
+> >>>>> It does sleep 1s between each check, so the time is fairly minimal,
+> >>>>> but I'm definitely open to doing this differently. What may be
+> >>>>> reasonable is adding code to the daemon to check and see if the
+> >>>>> v4recoverydir is present. If it is, then just exit. Otherwise, wait for
+> >>>>> the pipe to show up.
+> >>>> Why just let the systemd scrips worry about the order of when to start
+> >>>> things up... To be honest, that is one thing systemd does do fairly well.
+> >>>>
+> >>>
+> >>> Because not everyone uses systemd, and we have to deal with the
+> >>> "legacy" case too for the transition phase.
+> >>>
+> >>> It's generally preferable not to start up nfsd until everything it
+> >>> needs is up. If we do what you suggest, then we're basically mandating
+> >>> that this daemon can't start until nfsd is up and running.
+> >> Order has ways been a part of how and when things are started which
+> >> have always been handled by initscripts. That's their job, to start
+> >> things in the correct order. 
+> >>
+> >> I understand you want to make the daemon bullet proof... but starting
+> >> things up in the wrong order is an error... IMHO... 
+> >>
+> >>>
+> >>> Could you give some details on how you think this ought to work?
+> >>>
+> >> I would think a error message stating unable to open whatever and then 
+> >> say something like please make sure the nfs server is up and running,
+> >> would work... It seems to me this is a pretty common way of handling 
+> >> this type of situation.... although I can not come up with a 
+> >> explicit example, atm. 
+> >>
+> > 
+> > That's doable simply by dropping this patch. I think it'll make this
+> > more fragile, but if that's the consensus, I'll go along with it.
+> > 
+> If that is the only fragile part then I you are in very good shape! ;-) 
+> 
+> Thanks again! 
+
+Please patch section 3.1 of nfs-utils/README while you're at it.
+
+The start-up order *is* rather complicated, though, and easy to get
+wrong.  And we'd rather not make nfsd wait unnecessarily for this dameon
+to start up....
+
+Why not use directory notifications like idmapd and gssd always have?
+
+--b.
