@@ -1,64 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39073 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49033 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932266Ab1LEOpl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Dec 2011 09:45:41 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pB5EjemC030844
+	id S1752569Ab1LNNyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 08:54:52 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDsqDs009982
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Dec 2011 09:45:41 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-58.rdu.redhat.com [10.11.9.58])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pB5Ejeoh005662
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Dec 2011 09:45:40 -0500
-Message-ID: <4EDCD913.40300@RedHat.com>
-Date: Mon, 05 Dec 2011 09:45:39 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] nfsidmap: Allow admins to clean up id mappings that
- have (ver 3)
-References: <1322061842-1806-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1322061842-1806-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:52 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDspPh026219
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:52 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] nfsd: overhaul the client name tracking code (RFC)
+Date: Wed, 14 Dec 2011 08:54:46 -0500
+Message-Id: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+First, a little background: I've recently been tasked with a project
+to make active/active serving of NFSv4 from clustered filesystems work.
+This is a large-scale, long-term project, but there are pieces of the
+existing code that are clearly unsuitable in such a configuration...
 
+One of the things that Bruce has long had on his wishlist is to replace
+the client name tracking code that the kernel uses:
 
-On 11/23/2011 10:24 AM, Steve Dickson wrote:
-> In working with the new idmapper, it became very apparent that
-> keys created from bad id mapping were very persistent and were
-> not easy disposed of. Unlike with rpc.idmapd, to git rid 
-> of bad id mapping one just needed to restart the daemon. 
-> 
-> So I've added some functionality to the nfsidmap command
-> that will allow admins to:
-> 
->     - remove all the keys on the keyring.
->     - remove a particular key from the keying.
-> 
-> The intention is to allow admins a way to clean up the id
-> name space when name resolution mechanisms, like NIS or LDAP, 
-> fail and leave a large number (or small number) of id mapping 
-> pointing to nobody. 
-> 
-> Note, for the second patch to work, there need to be a small 
-> kernel patch that will change the per-key permissions to
-> allow root to revoke them.
-> 
-> Version 2:
-> - Added the fclose() calls as requested by the code review
-> Version 3:
-> - Confined the -c flag to only remove keys from the id_resolver keyring.
-Committed...
+    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
 
-steved.
-> 
-> Steve Dickson (2):
->   nfsidmap: Allow keys to be cleared from the keyring
->   nfsidmap: Allow a particular key to be revoked.
-> 
->  utils/nfsidmap/nfsidmap.c   |  148 +++++++++++++++++++++++++++++++++++++++++--
->  utils/nfsidmap/nfsidmap.man |   25 +++++++-
->  2 files changed, 167 insertions(+), 6 deletions(-)
-> 
+The existing code manipulates the filesystem directly to track this
+info. Not only is that something that makes the VFS maintainers look
+askance at knfsd, but it also is unsuitable in a clustered
+configuration.
+
+Typically we think of the grace period as a property of the server, but
+with a clustered filesystem, we need to consider it as a property of the
+cluster as a whole. On a cold startup of the cluster, once any node
+grants a non-reclaim lock, then no more reclaim can be allowed on any
+node. Grace periods must be coordinated amongst all cluster nodes.
+
+In order to achieve that goal, we need to first allow the client name
+reclaim to be cluster aware as well. This patchset is a move toward that
+goal and covers the initial kernel part of such a change. A patchset to
+add a daemon to handle the upcalls will follow.
+
+Note that this patchset is still a little rough, so consider this an
+RFC for the overall design. We'll also need to consider a plan to
+deprecate the old client tracking code.
+
+The goal with this patchset is to replace the existing functionality,
+without disturbing the existing code too much. There's some room for
+more cleanup and reorganization once the old tracker is gone.
+
+Jeff Layton (5):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: add a header describing upcall for clname tracking daemon
+  nfsd: add a cl_daddr field and a generic flags field to nfs4_client
+  nfsd: add the infrastructure to handle the clstate upcall
+
+ fs/nfsd/nfs4recover.c        |  442 +++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4state.c          |   49 ++---
+ fs/nfsd/state.h              |   16 +-
+ include/linux/nfsd/clstate.h |   59 ++++++
+ net/sunrpc/rpc_pipe.c        |    5 +
+ 5 files changed, 526 insertions(+), 45 deletions(-)
+ create mode 100644 include/linux/nfsd/clstate.h
+
