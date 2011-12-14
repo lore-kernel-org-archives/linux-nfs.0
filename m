@@ -1,83 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:58099 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750730Ab1LYFbH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 00:31:07 -0500
-Received: by eekc4 with SMTP id c4so10412001eek.19
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Dec 2011 21:31:06 -0800 (PST)
-Message-ID: <4EF6B516.5070609@tonian.com>
-Date: Sun, 25 Dec 2011 07:31:02 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:39040 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757003Ab1LNKq1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 05:46:27 -0500
+Subject: [PATCH 11/11] SUNRPC: sysctl table for rpc_debug introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 14 Dec 2011 14:46:10 +0300
+Message-ID: <20111214104610.3991.15646.stgit@localhost6.localdomain6>
+In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Jim Rees <rees@umich.edu>, fanchaoting <fanchaoting@cn.fujitsu.com>,
-        Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
-References: <1323266927-3686-1-git-send-email-bhalevy@tonian.com> <4EF422A8.5070907@cn.fujitsu.com> <20111223132546.GA10015@umich.edu>
-In-Reply-To: <20111223132546.GA10015@umich.edu>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-23 15:25, Jim Rees wrote:
-> fanchaoting wrote:
-> 
->   Benny Halevy 写道:
->   > I am trying to build a pnfs client on a 32 bit system  and the
->   > pnfs-latest  kernel fails to compile. I get the following error
->   > 
->   >  >  Building modules, stage 2.
->   >  >  TEST    posttest
->   >  > MODPOST 2046 modules
->   >  >ERROR: "__udivdi3" [crypto/xor.ko] undefined!
->   >  >make[1]: *** [__modpost] Error 1
->   >  >make: *** [modules] Error 2
->   >  >make: *** Waiting for unfinished jobs....
->   >  >Succeed: decoded and checked 1244492 instructions
->   > 
->   > Reported-by: Rita Sequeira <rita.prajval@gmail.com>
->   > Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->   > ---
->   > 
->   > untested patch yet...
->   > 
->   >  crypto/xor.c |    3 ++-
->   >  1 files changed, 2 insertions(+), 1 deletions(-)
->   > 
->   > diff --git a/crypto/xor.c b/crypto/xor.c
->   > index 65433f5..2151ded 100644
->   > --- a/crypto/xor.c
->   > +++ b/crypto/xor.c
->   > @@ -95,7 +95,8 @@
->   >  
->   >  	ns_end -= ns_begin;
->   >  	if (ns_end > 0)
->   > -		speed = BENCH_SIZE / 1024 * count * NSEC_PER_SEC / ns_end;
->   > +		speed = BENCH_SIZE / 1024 * count *
->   > +				(unsigned)(NSEC_PER_SEC / ns_end);
->   >  	else
->   >  		speed = 17;
->   >  	tmpl->speed = speed;
->   
->   Hi,I also meet this problem ,but when  i use you patch ,i can't solve this
->   problem.
-> 
-> Maybe something like this?
-> 
-> speed = do_div(BENCH_SIZE, 1024) * count * do_div(NSEC_PER_SEC, ns_end);
-> 
-> This might not be exactly right because it changes the operator precedence,
-> but it should eliminate the calls to __udivdi3.
+This patch provides showing of pending RPC tasks for right namespace in case of
+write oparation to "rpc_debug" sysctl.
 
-Hmm, you mean execution order? (which you do not)
-C (and fortunately gcc too :) treats multiplication and division with the
-same priority and executes them from left to right...
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Boaz, please ack...
+---
+ include/linux/sunrpc/sched.h |    1 
+ net/sunrpc/netns.h           |    1 
+ net/sunrpc/sysctl.c          |   87 +++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 77 insertions(+), 12 deletions(-)
 
-Benny
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index b16243a..02f5fce 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -244,7 +244,6 @@ int		rpciod_up(void);
+ void		rpciod_down(void);
+ int		__rpc_wait_for_completion_task(struct rpc_task *task, int (*)(void *));
+ #ifdef RPC_DEBUG
+-struct net;
+ void		rpc_show_tasks(struct net *);
+ #endif
+ int		rpc_init_mempool(void);
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 23d110d..0926705 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -16,6 +16,7 @@ struct sunrpc_net {
+ 	struct ctl_table_set sysctls;
+ 	struct ctl_table_header *debug_ctl_header;
+ 	struct ctl_table_header *xs_tunables_header;
++	struct ctl_table_header *rpc_debug_ctl_header;
+ #endif
+ 	unsigned int xprt_udp_slot_table_entries;
+ 	unsigned int xprt_tcp_slot_table_entries;
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index 224b075..52f6fb5 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -44,6 +44,15 @@ EXPORT_SYMBOL_GPL(nlm_debug);
+ 
+ static ctl_table		debug_table[];
+ 
++static ctl_table rpc_debug_table[] = {
++	{
++		.procname	= "rpc_debug",
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++	},
++	{ }
++};
++
+ struct ctl_path sunrpc_path[] = {
+ 	{ .procname = "sunrpc", },
+ 	{ },
+@@ -73,6 +82,48 @@ struct ctl_table_header *register_sunrpc_sysctl(struct net *net,
+ }
+ EXPORT_SYMBOL_GPL(register_sunrpc_sysctl);
+ 
++static int proc_rpcdebug(ctl_table *table, int write,
++			 void __user *buffer, size_t *lenp, loff_t *ppos);
++
++static int register_rpc_debug_table(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct ctl_table *table;
++
++	table = rpc_debug_table;
++	if (!net_eq(net, &init_net)) {
++		table = kmemdup(rpc_debug_table, sizeof(rpc_debug_table),
++				GFP_KERNEL);
++		if (table == NULL)
++			goto err_alloc;
++	}
++	table[0].data = net;
++	table[0].proc_handler = proc_rpcdebug;
++
++	sn->rpc_debug_ctl_header = register_sunrpc_sysctl(net, table);
++	if (sn->rpc_debug_ctl_header == NULL)
++		goto err_reg;
++	return 0;
++
++err_reg:
++	if (!net_eq(net, &init_net))
++		kfree(table);
++err_alloc:
++	return -ENOMEM;
++}
++
++static void unregister_rpc_debug_table(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct ctl_table *table;
++
++	table = sn->rpc_debug_ctl_header->ctl_table_arg;
++	unregister_sysctl_table(sn->rpc_debug_ctl_header);
++	sn->rpc_debug_ctl_header = NULL;
++	if (!net_eq(net, &init_net))
++		kfree(table);
++}
++
+ int debug_sysctl_init(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+@@ -80,14 +131,23 @@ int debug_sysctl_init(struct net *net)
+ 	setup_sysctl_set(&sn->sysctls, NULL, NULL);
+ 	sn->debug_ctl_header = register_sunrpc_sysctl(net, debug_table);
+ 	if (sn->debug_ctl_header == NULL)
+-		return -ENOMEM;
++		goto err_debug;
++	if (register_rpc_debug_table(net) < 0)
++		goto err_rpc_debug;
+ 	return 0;
++
++err_rpc_debug:
++	unregister_sysctl_table(sn->debug_ctl_header);
++	sn->debug_ctl_header = NULL;
++err_debug:
++	return -ENOMEM;
+ }
+ 
+ void debug_sysctl_exit(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	unregister_rpc_debug_table(net);
+ 	unregister_sysctl_table(sn->debug_ctl_header);
+ 	sn->debug_ctl_header = NULL;
+ 	WARN_ON(!list_empty(&sn->sysctls.list));
+@@ -158,9 +218,6 @@ proc_dodebug(ctl_table *table, int write,
+ 			left--, s++;
+ 		if (net_eq(current->nsproxy->net_ns, &init_net))
+ 			*(unsigned int *) table->data = value;
+-		/* Display the RPC tasks on writing to rpc_debug */
+-		if (strcmp(table->procname, "rpc_debug") == 0)
+-			rpc_show_tasks(&init_net);
+ 	} else {
+ 		if (!access_ok(VERIFY_WRITE, buffer, left))
+ 			return -EFAULT;
+@@ -183,15 +240,23 @@ done:
+ }
+ 
+ 
++static int
++proc_rpcdebug(ctl_table *table, int write,
++				void __user *buffer, size_t *lenp, loff_t *ppos)
++{
++	int err;
++	struct ctl_table tmp = *table;
++
++	tmp.data = &rpc_debug;
++	err = proc_dodebug(&tmp, write, buffer, lenp, ppos);
++	if (!err && write)
++		/* Display the RPC tasks on writing to rpc_debug */
++		rpc_show_tasks(table->data);
++	return err;
++}
++
+ static ctl_table debug_table[] = {
+ 	{
+-		.procname	= "rpc_debug",
+-		.data		= &rpc_debug,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dodebug
+-	},
+-	{
+ 		.procname	= "nfs_debug",
+ 		.data		= &nfs_debug,
+ 		.maxlen		= sizeof(int),
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
