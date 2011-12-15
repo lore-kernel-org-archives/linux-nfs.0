@@ -1,114 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out02.mta.xmission.com ([166.70.13.232]:58427 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751095Ab1LSKNr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 05:13:47 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "neilb\@suse.de" <neilb@suse.de>,
-        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "davem\@davemloft.net" <davem@davemloft.net>,
-        "devel\@openvz.org" <devel@openvz.org>
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
-	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
-Date: Mon, 19 Dec 2011 02:15:22 -0800
-In-Reply-To: <4EEEFC54.10700@parallels.com> (Stanislav Kinsbursky's message of
-	"Mon, 19 Dec 2011 12:56:52 +0400")
-Message-ID: <m18vm8g951.fsf@fess.ebiederm.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
+Received: from mx1.redhat.com ([209.132.183.28]:2826 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751552Ab1LOSn1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:43:27 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIhRYP005733
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:27 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pBFIhQq6021450
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:27 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/5] sunrpc: create nfsd dir in rpc_pipefs
+Date: Thu, 15 Dec 2011 13:43:23 -0500
+Message-Id: <1323974606-16477-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
+References: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
+Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
+upcall.
 
-> 18.12.2011 02:25, Eric W. Biederman пишет:
->> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->>
->>> These routines are required for making SUNRPC sysctl's per network namespace
->>> context.
->>
->> Why does sunrpc require it's own sysctl root?  You should be able to use
->> the generic per network namespace root and call it good.
->>
->> What makes register_net_sysctl_table and register_net_sysctl_ro_table
->> unsuitable for sunrpc.  I skimmed through your patches and I haven't
->> seen anything obvious.
->>
->> Eric
->>
->
-> Hello, Eric. Sorry for the lack of information.
-> I was considering two ways how to make these sysctl per net ns:
->
-> 1) Use register_net_sysctl_table and register_net_sysctl_ro_table as you
-> mentioned. This was easy and cheap, but also means, than all user-space
-> programs, tuning SUNRPC will be broken (since all sysctl currently located
-> in"/proc/sys/sunprc/").
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-Nope.  That is a misunderstanding.  register_net_sysctl_table works for
-anything under /proc/sys.
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index bfddd68..7cb8ab7 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -987,6 +987,7 @@ enum {
+ 	RPCAUTH_statd,
+ 	RPCAUTH_nfsd4_cb,
+ 	RPCAUTH_cache,
++	RPCAUTH_nfsd,
+ 	RPCAUTH_RootEOF
+ };
+ 
+@@ -1019,6 +1020,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "cache",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_nfsd] = {
++		.name = "nfsd",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ };
+ 
+ static int
+-- 
+1.7.1
 
-> 2) Export sysctl root creation routines and make per-net SUNRPC sysctl
-> root. This approach allows to make any part of sysctl tree per namespace context
-> and thus leave user-space stuff unchanged.
->
-> BTW, NFS and LockD also have it's sysctls ("/proc/sys/fs/nfs/").
-> And also because of them I've decided, that it would be better to export SYSCTL
-> root creation routines instead of breaking compatibility for all NFS layers by
-> moving all sysctl under /proc/sys/net/ directory.
->
-> Do you feel that it was a bad decision?
-
-I think it was a misinformed decision.
-
-I fully support not breaking userspace by moving where the sysctls files
-are.  If something sounds like I am suggesting moving sysctl files there
-is a miscommunication somewhere.
-
-The concept of a sysctl root as I had envisioned it and essentially as it
-is implemented was a per namespace sysctl tree.  Those sysctl trees are
-then unioned together when presented to user space.  There should only
-be one root per namespace.
-
-In practice what this means is that register_net_sysctl_table should
-work for any sysctl file anywhere under /proc/sys.  I think
-register_net_sysctl_table is the right solution for your problem.  The
-only possible caveat I can think of is you might hit Al's performance
-optimizations and need to create a common empty directory first with
-register_sysctl_paths.
-
-
-....
-That said since I am in the process of rewriting things some of this
-may change a little bit, but hopefully not in ways that immediately
-effect the users of register_sysctl_table.
-
-Don't use register_net_sysctl_ro_table.   I think what the implementors
-actually wanted was register_net_sysctl_table(&init_net, ...) and didn't
-know it.
-
-Don't put subdirectories in your sysctl tables.  Use a ctl_path to
-specify the entire directory where the files should show up.  Generally
-the code is easier to read in that form, and the code is simpler to deal
-with if we don't have to worry about directories.
-
-Don't play with the sysctl roots.  It is my intention to completely kill
-them off and replace them by moving the per net sysctl tree under
-/proc/<pid>/sys/.   Leaving behind symlinks in /proc/sys/net and I guess
-ultimately in /proc/sys/sunrpc/ and /proc/sys/fs/nfs...  Which actually
-seems to better describe your mental model.
-
-Thank you for mentioning /proc/sys/fs/nfs.  That is a case I hadn't
-thought about.  In thinking about it I see some deficiencies in my
-rewrite that I need to correct before I push that code.
-
-Eric
