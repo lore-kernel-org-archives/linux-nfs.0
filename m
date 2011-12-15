@@ -1,34 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44142 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:53379 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751405Ab1LHVKl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Dec 2011 16:10:41 -0500
-Date: Thu, 8 Dec 2011 16:10:36 -0500
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: "Ted Ts'o" <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-        Bernd Schubert <bernd.schubert@fastmail.fm>, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        yong.fan@whamcloud.com, adilger@whamcloud.com,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 0/4] 32/64 bit llseek hashes (v4)
-Message-ID: <20111208211036.GE32505@fieldses.org>
-References: <20110817095717.1879649.41075.stgit@fsdevel3>
- <4E5D6058.8040805@fastmail.fm>
- <4EBA9551.4000404@redhat.com>
- <4EE0FF93.9060907@itwm.fraunhofer.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EE0FF93.9060907@itwm.fraunhofer.de>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1758941Ab1LOQGT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:06:19 -0500
+Message-ID: <1323965176.14317.11.camel@lade.trondhjem.org>
+Subject: Re: copy offload support in Linux - new system call needed?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Chris Mason <chris.mason@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        Joel Becker <jlbec@evilplan.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Date: Thu, 15 Dec 2011 11:06:16 -0500
+In-Reply-To: <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
+References: <4EE8F75F.6070800@gmail.com>
+	 <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
+	 <20111214222723.GD7623@fieldses.org>
+	 <1323961140.14317.2.camel@lade.trondhjem.org>
+	 <20111215155213.GF18252@shiny>
+	 <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 08, 2011 at 07:18:59PM +0100, Bernd Schubert wrote:
-> Ted,
+On Thu, 2011-12-15 at 11:03 -0500, Jeff Layton wrote: 
+> On Thu, 15 Dec 2011 10:52:13 -0500
+> Chris Mason <chris.mason@oracle.com> wrote:
 > 
-> is there anything I can do to get those patched into 3.3?
-> The patches still apply in current linux-git.
+> > On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
+> > > On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
+> > > > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
+> > > > > On 12/14/2011 02:27 PM, Al Viro wrote:
+> > > > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
+> > > > > >
+> > > > > >>We had an active thread a couple of years back that came out of the
+> > > > > >>reflink work and, at the time, there seemed to be moderately
+> > > > > >>positive support for adding a new system call that would fit this
+> > > > > >>use case (Joel Becker's copyfile()).
+> > > > > >>
+> > > > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
+> > > > > >>or should we look at other hooks?
+> > > > > >copyfile(2) is probably a good way to go, provided that we do _not_
+> > > > > >go baroque as it had happened the last time syscall had been discussed.
+> > > > > >
+> > > > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
+> > > > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
+> > > > > >If it works - fine, if not - caller has to be ready to deal with handling
+> > > > > >cross-device case anyway.
+> > > > > 
+> > > > > I think that this approach makes a lot of sense. Most of the
+> > > > > devices/targets that support the copy offload, will do it in very
+> > > > > reasonable amounts of time.
+> > > > 
+> > > > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
+> > > > one operation:
+> > > > 
+> > > > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
+> > > >  
+> > > > Perhaps we should ask for separate operations for the two cases.  (Or at
+> > > > least a "please don't bother if this is going to take 8 hours" flag....)
+> > > 
+> > > How would the server know? I suggest we deal with this by adding an
+> > > ioctl() to allow the application to poll for progress: I'm assuming now
+> > > that we don't expect more than 1 copyfile() system call at a time per
+> > > file descriptor...
+> > 
+> > If we're using this to copy VM image files, I could easily imagine
+> > wanting to clone multiple copies of the VM in parallel.
+> > 
+> > -chris
+> > 
+> 
+> Not really a problem is it? Just dup() the fd before you issue the
+> copyfile()? Or even simpler, just do periodic stat() on the destination
+> file if you want a progress report.
+> 
+> Regardless, I like the simple approach that Al is suggesting here.
 
-They appear to solve a real problem for nfsd.  What's holding them up?
+Periodic stat() isn't good enough if you are copying subranges of a
+file. Part of the application here (as I understood it) is to initialise
+specific disk volumes on existing VM images when doing thin
+provisioning. In that case, the reported image size won't ever change...
 
---b.
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
