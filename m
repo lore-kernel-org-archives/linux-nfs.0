@@ -1,131 +1,385 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21429 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4676 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756823Ab1LNQel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 11:34:41 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEGYf1E002261
+	id S1751788Ab1LOSn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:43:28 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIhS6C005737
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:34:41 -0500
-Date: Wed, 14 Dec 2011 11:34:32 -0500
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:28 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pBFIhQq9021450
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:28 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-Message-ID: <20111214113432.786ffbf7@tlielax.poochiereds.net>
-In-Reply-To: <4EE8CE18.2040306@RedHat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-	<4EE8BF63.6080906@RedHat.com>
-	<20111214103247.3a67515f@tlielax.poochiereds.net>
-	<4EE8C45B.30207@RedHat.com>
-	<20111214110538.2adaf048@tlielax.poochiereds.net>
-	<4EE8CE18.2040306@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 5/5] nfsd: add the infrastructure to handle the cld upcall
+Date: Thu, 15 Dec 2011 13:43:26 -0500
+Message-Id: <1323974606-16477-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
+References: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Dec 2011 11:26:00 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+...and add a mechanism for switching between the "legacy" tracker and
+the new one. The decision is made by looking to see whether the
+v4recoverydir exists. If it does, then the legacy client tracker is
+used.
 
-> 
-> 
-> On 12/14/2011 11:05 AM, Jeff Layton wrote:
-> > On Wed, 14 Dec 2011 10:44:27 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 12/14/2011 10:32 AM, Jeff Layton wrote:
-> >>> On Wed, 14 Dec 2011 10:23:15 -0500
-> >>> Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>>>
-> >>>>
-> >>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> >>>>> This patchset is the userspace portion of the knfsd client name tracking
-> >>>>> overhaul. See this patch series for an explanation:
-> >>>>>
-> >>>>>     nfsd: overhaul the client name tracking code (RFC)
-> >>>>>
-> >>>>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
-> >>>>> and handles the requests.
-> >>>>>
-> >>>>> The data is stored using a sqlite database. The main reason for this is
-> >>>>> that it takes care of most of the fussy details and atomicity concerns
-> >>>>> of tracking the information on stable storage.
-> >>>> This will make nfs-utils dependent on the sqlite database... Any idea
-> >>>> what kinda of extra baggage this brings? 
-> >>>>
-> >>>
-> >>> Depends on what you mean by "baggage". What is your concern?
-> >> In Fedora doing a 'yum install sqlite' which would require
-> >> a ton of other package needing to be install... The Required
-> >> for nfs-utils is getting pretty long at this point... 
-> >>  
-> > 
-> > I don't think it pulls in that much. This is pretty minimal for dependencies:
-> > 
-> > $ ldd /usr/lib/libsqlite3.so.0.8.6 
-> > 	linux-gate.so.1 =>  (0x00e05000)
-> > 	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
-> > 	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
-> > 	libc.so.6 => /lib/libc.so.6 (0x00e27000)
-> > 	/lib/ld-linux.so.2 (0x4e572000)
-> > 
-> > I think the command-line tools have some dependency on ncurses and
-> > readline and such, but I don't think it's that much really...
-> > 
-> > In any case, perhaps it's time to split the nfs-utils packaging for
-> > fedora into client and server pieces? Clients really only need
-> > a few of the tools, but they can't install that on fedora without
-> > getting all of the server pieces too.
-> Yeah I thinking this is quickly becoming slippery slope... In the end I'm
-> all for looking into using dbs instead of flat files but I'm just
-> worrying about the size of nfs-utils footprint... Maybe unnecessarily 
-> 
-> Question, how would admin look at the list of client? Will that
-> even be needed? 
-> 
+If it's not, then the kernel will create a "cld" pipe in rpc_pipefs.
+That pipe is used to talk to a daemon for handling the upcall.
 
-Generally shouldn't be needed unless you're debugging. Today, we just
-have a bunch of directories in the v4recoverydir with md5 hash names,
-so I think moving to a DB is a step forward in this sense.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c |  318 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 317 insertions(+), 1 deletions(-)
 
-There's a sqlite3 tool that you can use to attach to the DB file(s).
-Then you can run sql commands against the tables in it. The DB layout
-at this point is very simple, so this shouldn't be too hard.
-
-Note that I'm not dead-set on using sqlite for this if there's
-something more suitable. What I really don't want to do though is to
-reinvent the wheel. Storing info safely on stable storage is a solved
-problem, IMO...
-
-> >>>>> For now, the daemon is only suitable for single-host configurations.
-> >>>>> The plan is to later extend this to be suitable for clustered
-> >>>>> configurations as well.
-> >>>>>
-> >>>>> The code is still a little rough, so be gentle. It also lacks things
-> >>>>> like a manpage. I plan to add all that before doing a "formal" patch
-> >>>>> submission, but I wanted to get some early review of the overall design
-> >>>>> before to spend a lot of time knocking off the rough edges.
-> >>>> Finally the name of the daemon...  clstated does not make it clear that 
-> >>>> this is a nfs server daemon... maybe something like nfsdcld? 
-> >>>>
-> >>>
-> >>> Sure, we could change the name if that's desirable. Maybe
-> >>> nfsd.clnamed ? At this point it's really just a client name tracking
-> >>> daemon.
-> >> How about nfsdcld ;-) short, to the point and easy to type... 8-) 
-> >>
-> > 
-> > Ok, I'm not religious on this issue. I'll plan to rename it to that.
-> > 
-> Thanks!
-> 
-> steved.
-
-
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 62fd534..ae3d936 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1,5 +1,6 @@
+ /*
+ *  Copyright (c) 2004 The Regents of the University of Michigan.
++*  Copyright (c) 2011 Jeff Layton <jlayton@redhat.com>
+ *  All rights reserved.
+ *
+ *  Andy Adamson <andros@citi.umich.edu>
+@@ -36,6 +37,10 @@
+ #include <linux/namei.h>
+ #include <linux/crypto.h>
+ #include <linux/sched.h>
++#include <linux/fs.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/nfsd/cld.h>
+ 
+ #include "nfsd.h"
+ #include "state.h"
+@@ -467,12 +472,323 @@ static const struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+ 	.grace_done	= nfsd4_recdir_purge_old,
+ };
+ 
++/* Globals */
++#define NFSD_PIPE_DIR		"/nfsd"
++
++static struct dentry *cld_pipe;
++
++/* list of cld_msg's that are currently in use */
++static DEFINE_SPINLOCK(cld_lock);
++static LIST_HEAD(cld_list);
++static unsigned int cld_xid;
++
++struct cld_upcall {
++	struct list_head	cu_list;
++	struct task_struct *	cu_task;
++	struct cld_msg	cu_msg;
++};
++
++static int
++nfsd4_cld_upcall(struct cld_msg *cmsg)
++{
++	int ret;
++	struct rpc_pipe_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	msg.data = cmsg;
++	msg.len = sizeof(*cmsg);
++
++	ret = rpc_queue_upcall(cld_pipe->d_inode, &msg);
++	if (ret < 0)
++		goto out;
++
++	set_current_state(TASK_UNINTERRUPTIBLE);
++	schedule();
++	__set_current_state(TASK_RUNNING);
++
++out:
++	return ret;
++}
++
++ssize_t cld_pipe_downcall(struct file *filp, const char __user *src,
++			     size_t mlen)
++{
++	struct cld_upcall *tmp, *cup;
++	struct cld_msg *cmsg = (struct cld_msg *)src;
++	uint32_t xid;
++
++	if (mlen != sizeof(*cmsg)) {
++		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
++			sizeof(*cmsg));
++		return -EINVAL;
++	}
++
++	/* copy just the xid so we can try to find that */
++	if (copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) != 0) {
++		dprintk("%s: error when copying xid from userspace", __func__);
++		return -EFAULT;
++	}
++
++	/* walk the list and find corresponding xid */
++	cup = NULL;
++	spin_lock(&cld_lock);
++	list_for_each_entry(tmp, &cld_list, cu_list) {
++		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
++			cup = tmp;
++			list_del_init(&cup->cu_list);
++			break;
++		}
++	}
++	spin_unlock(&cld_lock);
++
++	/* couldn't find upcall? */
++	if (!cup) {
++		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__,
++			cup->cu_msg.cm_xid);
++		return -EINVAL;
++	}
++
++	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
++		return -EFAULT;
++
++	wake_up_process(cup->cu_task);
++	return mlen;
++}
++
++void
++cld_pipe_destroy_msg(struct rpc_pipe_msg *msg)
++{
++	struct cld_msg *cmsg = msg->data;
++	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall,
++						 cu_msg);
++
++	if (msg->errno >= 0)
++		return;
++	wake_up_process(cup->cu_task);
++}
++
++static const struct rpc_pipe_ops cld_upcall_ops = {
++	.upcall		= rpc_pipe_generic_upcall,
++	.downcall	= cld_pipe_downcall,
++	.destroy_msg	= cld_pipe_destroy_msg,
++};
++
++int
++nfsd4_init_cld_pipe(void)
++{
++	int ret;
++	struct path path;
++	struct vfsmount *mnt;
++
++	if (cld_pipe)
++		return 0;
++
++	mnt = rpc_get_mount();
++	if (IS_ERR(mnt))
++		return PTR_ERR(mnt);
++
++	ret = vfs_path_lookup(mnt->mnt_root, mnt, NFSD_PIPE_DIR, 0, &path);
++	if (ret)
++		goto err;
++
++	cld_pipe = rpc_mkpipe(path.dentry, "cld", NULL,
++				 &cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
++	path_put(&path);
++	if (!IS_ERR(cld_pipe))
++		return 0;
++
++	ret = PTR_ERR(cld_pipe);
++err:
++	rpc_put_mount();
++	return ret;
++}
++
++void
++nfsd4_remove_cld_pipe(void)
++{
++	int ret;
++
++	ret = rpc_unlink(cld_pipe);
++	if (ret)
++		printk(KERN_ERR "NFSD: error removing cld pipe: %d\n", ret);
++	cld_pipe = NULL;
++	rpc_put_mount();
++}
++
++static struct cld_upcall *
++alloc_cld_upcall(void)
++{
++	struct cld_upcall *new, *tmp;
++
++	new = kzalloc(sizeof(*new), GFP_KERNEL);
++	if (!new)
++		return new;
++
++	/* FIXME: hard cap on number in flight? */
++restart_search:
++	spin_lock(&cld_lock);
++	list_for_each_entry(tmp, &cld_list, cu_list) {
++		if (tmp->cu_msg.cm_xid == cld_xid) {
++			cld_xid++;
++			spin_unlock(&cld_lock);
++			goto restart_search;
++		}
++	}
++	new->cu_task = current;
++	new->cu_msg.cm_vers = CLD_MAX_UPCALL_VERSION;
++	put_unaligned(cld_xid++, &new->cu_msg.cm_xid);
++	list_add(&new->cu_list, &cld_list);
++	spin_unlock(&cld_lock);
++
++	dprintk("%s: allocated xid %u\n", __func__, new->cu_msg.cm_xid);
++
++	return new;
++}
++
++static void
++free_cld_upcall(struct cld_upcall *victim)
++{
++	spin_lock(&cld_lock);
++	list_del(&victim->cu_list);
++	spin_unlock(&cld_lock);
++	kfree(victim);
++}
++
++/* Ask daemon to create a new record */
++static int
++nfsd4_cld_create(struct nfs4_client *clp)
++{
++	int ret;
++	struct cld_upcall *cup;
++
++	/* Don't upcall if it's already stored */
++	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
++		return -EEXIST;
++
++	cup = alloc_cld_upcall();
++	if (!cup)
++		return -ENOMEM;
++
++	cup->cu_msg.cm_cmd = Cld_Create;
++	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
++	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
++			clp->cl_name.len);
++
++	ret = nfsd4_cld_upcall(&cup->cu_msg);
++	if (!ret) {
++		ret = cup->cu_msg.cm_status;
++		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
++	}
++
++	free_cld_upcall(cup);
++	return ret;
++}
++
++/* Ask daemon to remove a record */
++static int
++nfsd4_cld_remove(struct nfs4_client *clp)
++{
++	int ret;
++	struct cld_upcall *cup;
++
++	/* Don't upcall if it's already stored */
++	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
++		return -ENOENT;
++
++	cup = alloc_cld_upcall();
++	if (!cup)
++		return -ENOMEM;
++
++	cup->cu_msg.cm_cmd = Cld_Expire;
++	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
++	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
++			clp->cl_name.len);
++
++	ret = nfsd4_cld_upcall(&cup->cu_msg);
++	if (!ret) {
++		ret = cup->cu_msg.cm_status;
++		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
++	}
++
++	free_cld_upcall(cup);
++	return ret;
++}
++
++/* Check for presence of a record, and update its timestamp */
++static int
++nfsd4_cld_check(struct nfs4_client *clp)
++{
++	int ret;
++	struct cld_upcall *cup;
++
++	/* Don't upcall if one was already stored during this grace pd */
++	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
++		return 0;
++
++	cup = alloc_cld_upcall();
++	if (!cup)
++		return -ENOMEM;
++
++	cup->cu_msg.cm_cmd = Cld_Allow;
++	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
++	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
++			clp->cl_name.len);
++
++	ret = nfsd4_cld_upcall(&cup->cu_msg);
++	if (!ret) {
++		ret = cup->cu_msg.cm_status;
++		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
++	}
++
++	free_cld_upcall(cup);
++	return ret;
++}
++
++static int
++nfsd4_cld_grace_done(time_t boot_time)
++{
++	int ret;
++	struct cld_upcall *cup;
++
++	cup = alloc_cld_upcall();
++	if (!cup)
++		return -ENOMEM;
++
++	cup->cu_msg.cm_cmd = Cld_GraceDone;
++	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
++	ret = nfsd4_cld_upcall(&cup->cu_msg);
++	if (!ret)
++		ret = cup->cu_msg.cm_status;
++
++	free_cld_upcall(cup);
++	return ret;
++}
++
++static const struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
++	.init		= nfsd4_init_cld_pipe,
++	.exit		= nfsd4_remove_cld_pipe,
++	.create		= nfsd4_cld_create,
++	.remove		= nfsd4_cld_remove,
++	.check		= nfsd4_cld_check,
++	.grace_done	= nfsd4_cld_grace_done,
++};
++
+ int
+ nfsd4_client_tracking_init(void)
+ {
+ 	int status;
++	struct path path;
+ 
+-	client_tracking_ops = &nfsd4_legacy_tracking_ops;
++	if (!client_tracking_ops) {
++		client_tracking_ops = &nfsd4_cld_tracking_ops;
++		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
++		if (!status) {
++			if (S_ISDIR(path.dentry->d_inode->i_mode))
++				client_tracking_ops =
++						&nfsd4_legacy_tracking_ops;
++			path_put(&path);
++		}
++	}
+ 	status = client_tracking_ops->init();
+ 	if (status) {
+ 		printk(KERN_WARNING "NFSD: Unable to initialize client "
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.1
+
