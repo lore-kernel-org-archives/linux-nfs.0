@@ -1,49 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21352 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753527Ab1LAVFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 16:05:05 -0500
-Message-ID: <4ED7EBFF.6030706@RedHat.com>
-Date: Thu, 01 Dec 2011 16:05:03 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:62739 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751300Ab1LOTO3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 14:14:29 -0500
+Message-ID: <4EEA469E.6070307@oracle.com>
+Date: Thu, 15 Dec 2011 11:12:30 -0800
+From: Maxim Uvarov <maxim.uvarov@oracle.com>
 MIME-Version: 1.0
-To: bjschuma@netapp.com
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
-References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Al Viro <viro@ZenIV.linux.org.uk>
+CC: linux-nfs@vger.kernel.org, bfields@fieldses.org,
+        Trond.Myklebust@netapp.com, john@johnmccutchan.com, rlove@rlove.org,
+        eparis@parisplace.org
+Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
+References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com> <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com> <20111214232254.GP2203@ZenIV.linux.org.uk>
+In-Reply-To: <20111214232254.GP2203@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 12/14/2011 03:22 PM, Al Viro wrote:
+> On Wed, Dec 14, 2011 at 02:58:15PM -0800, Maxim Uvarov wrote:
+>> This issue was introduced with LTP inotify02 test.
+>> If file system is not NFS user inotify application
+>> gets IN_DELETE event. But on NFS code avoids d_delete()
+>> which sends this event. This patch makes notification
+>> on NFS the same as non-NFS. I.e. vfs_unlink still avoids
+>> deletion but it sends event for NFS sillyrenamed files.
+>> More details here:
+>> https://lkml.org/lkml/2011/11/29/421
+>
+> NAK.  Too damn ugly.  And completely misses the point of inotify -
+> seeing events generated only by this client is going to be worthless.
+> Face it, inotify is broken by design for network filesystems.  Any
+> software using it on NFS is broken; trying to paper over that is
+> not a good idea.
+>
+> Just.  Don't.  Use.  That.  Shit.
+
+Thank you for so technical answer. It's really difficult to object 
+against such considered and well-grounded, forcible arguments.
+
+Now to be serious:
+
+1. Original VFS code already has "if NFS", in vfs_unlink(). Because of 
+code does not call d_delete() it has to call notification from d_delete().
+
+2. inotify is done on VFS layer. So logically it has to work on all file 
+systems.
+
+3. We think that software works if it's execution matches specification. 
+Because we don't have any specification for inotify we can relay on 
+tests. I.e. if all test for all notification events passed the same way 
+for all file systems; events, number of events and sequence for events 
+matches and do not depend on file system type - we can say that this 
+feature works. As the base for inotify we can take LTP tests, which have 
+good coverage for all events.
 
 
-On 12/01/2011 11:48 AM, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> This set of patches removes NFS v3 from the main NFS kernel module and creates
-> a new module containing the proc, xdr, and acl code.  This will give us a
-> single directory to put NFS v3 specific code so it doesn't need to be mixed in
-> with the generic client stuff.
-> 
-> I'm sure this could still use a lot of work, but I figured I would wait to see
-> what everybody thinks first.  I imagine that once we get an "nfs submodule"
-> system working it'll be easier to convert v2 and v4 (and possibly v4.1?) to
-> modules.
-> 
-> I split the second patch into two to make it easier to see what my changes were
-> to get everything to compile.  Hopefully this will save some pain in having to
-> look through 7000+ line patch that resulted from my `mv nfs3*.c nfs3/`
-> command.  I can combine everything in a future version of the patch.
-> 
-> v2:
->   - I set the "diff.renames copy" git config option to create a smaller second
->     patch.  Maybe this time it won't get me kicked off the mailing list...
->     Thanks to Boaz and Jim for the tip!
-> 
-> Thoughts?
-Now what is the motivating reason behind this re-architecture
-other than making the upstream kernel literally impossible to 
-back port to older kernels?? 
-
-steved.
+Best regards,
+Maxim Uvarov.
