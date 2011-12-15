@@ -1,39 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17790 "EHLO relay.sw.ru"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:57784 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933145Ab1LFMrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 07:47:09 -0500
-Message-ID: <4EDE0E29.9030804@parallels.com>
-Date: Tue, 06 Dec 2011 16:44:25 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1755403Ab1LOA2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Dec 2011 19:28:14 -0500
+Received: from /spool/local
+	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Wed, 14 Dec 2011 19:28:13 -0500
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBF0SBFw3285140
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBF0SBsA017402
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pBF0SBHB017399
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
+In-Reply-To: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
+References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: create svc_xprt in proper network namespace
-References: <20111206101910.1878.21798.stgit@localhost6.localdomain6> <20111206124427.GA12890@umich.edu>
-In-Reply-To: <20111206124427.GA12890@umich.edu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Linux pNFS status meeting 12/15/11
+Message-ID: <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 14 Dec 2011 16:28:07 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.12.2011 16:44, Jim Rees пишет:
-> Stanislav Kinsbursky wrote:
->
->    This patch makes svc_xprt inherit network namespace link from it's socket.
->
-> Should be "its socket."
+Meeting on Thursday 12/15/11 at 9:30 AM PST (12:30 PM EST)
 
-Yep, sure. Silly mistake.
-Thanks.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
+
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
+
