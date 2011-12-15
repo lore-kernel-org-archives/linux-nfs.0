@@ -1,40 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:57784 "EHLO e1.ny.us.ibm.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:31812 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755403Ab1LOA2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 19:28:14 -0500
-Received: from /spool/local
-	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Wed, 14 Dec 2011 19:28:13 -0500
-Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pBF0SBFw3285140
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
-Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
-	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pBF0SBsA017402
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id pBF0SBHB017399
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 19:28:11 -0500
-In-Reply-To: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
-References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
-To: linux-nfs@vger.kernel.org
+	id S932525Ab1LOQAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 11:00:34 -0500
+Subject: [PATCH 4/7] SUNRPC: parametrize local rpcbind clients creation with
+ net ns
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 15 Dec 2011 20:00:15 +0300
+Message-ID: <20111215160015.2434.2579.stgit@localhost6.localdomain6>
+In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Subject: Linux pNFS status meeting 12/15/11
-Message-ID: <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Wed, 14 Dec 2011 16:28:07 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 12/15/11 at 9:30 AM PST (12:30 PM EST)
+These client are per network namespace and thus can be created for different
+network namespaces.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+---
+ include/linux/sunrpc/clnt.h |    4 ++--
+ net/sunrpc/rpcb_clnt.c      |    7 +++----
+ net/sunrpc/svc.c            |    4 ++--
+ 3 files changed, 7 insertions(+), 8 deletions(-)
 
-Israel Toll-Free: 1-809-417-783
-
-Participant Code: 8792872
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 1e56469..5748807 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -136,8 +136,8 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
+ 
+-int		rpcb_create_local(void);
+-void		rpcb_put_local(void);
++int		rpcb_create_local(struct net *);
++void		rpcb_put_local(struct net *);
+ int		rpcb_register(struct net *, u32, u32, int, unsigned short);
+ int		rpcb_v4_register(struct net *net, const u32 program,
+ 				 const u32 version,
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index d94f188..4ce3a8e 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -175,9 +175,9 @@ static int rpcb_get_local(struct net *net)
+ 	return cnt;
+ }
+ 
+-void rpcb_put_local(void)
++void rpcb_put_local(struct net *net)
+ {
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
+ 	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
+ 	int shutdown;
+@@ -323,11 +323,10 @@ out:
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-int rpcb_create_local(void)
++int rpcb_create_local(struct net *net)
+ {
+ 	static DEFINE_MUTEX(rpcb_create_local_mutex);
+ 	int result = 0;
+-	struct net *net = &init_net;
+ 
+ 	if (rpcb_get_local(net))
+ 		return result;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index e9c42ad..03e9f04 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -370,7 +370,7 @@ static int svc_rpcb_setup(struct svc_serv *serv)
+ {
+ 	int err;
+ 
+-	err = rpcb_create_local();
++	err = rpcb_create_local(&init_net);
+ 	if (err)
+ 		return err;
+ 
+@@ -382,7 +382,7 @@ static int svc_rpcb_setup(struct svc_serv *serv)
+ void svc_rpcb_cleanup(struct svc_serv *serv)
+ {
+ 	svc_unregister(serv);
+-	rpcb_put_local();
++	rpcb_put_local(&init_net);
+ }
+ EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
+ 
 
