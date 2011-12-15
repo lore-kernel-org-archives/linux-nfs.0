@@ -1,66 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37201 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:1027 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753394Ab1LFTl7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 14:41:59 -0500
-Date: Tue, 6 Dec 2011 14:41:59 -0500
-To: Orion Poplawski <orion@cora.nwra.com>
+	id S1751282Ab1LOPNF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 10:13:05 -0500
+Date: Thu, 15 Dec 2011 10:14:38 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: rpc.gssd locks up with -vv or higher
-Message-ID: <20111206194159.GB11788@fieldses.org>
-References: <loom.20111206T175726-323@post.gmane.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <loom.20111206T175726-323@post.gmane.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3/5] nfsd: add a header describing upcall for clname
+ tracking daemon
+Message-ID: <20111215101438.3b0db96f@barsoom.rdu.redhat.com>
+In-Reply-To: <20111214215322.GC7623@fieldses.org>
+References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
+	<1323870891-3124-4-git-send-email-jlayton@redhat.com>
+	<20111214215322.GC7623@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 06, 2011 at 05:01:13PM +0000, Orion Poplawski wrote:
-> See https://bugzilla.redhat.com/show_bug.cgi?id=667770
+On Wed, 14 Dec 2011 16:53:22 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Dec 14, 2011 at 08:54:49AM -0500, Jeff Layton wrote:
+> > Add a new header that describes the clname tracking daemon upcall. The
+> > daemon takes a versioned binary struct. Hopefully this should allow us
+> > to revise the struct later if it becomes necessary.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/nfsd/clstate.h |   59 ++++++++++++++++++++++++++++++++++++++++++
+> >  1 files changed, 59 insertions(+), 0 deletions(-)
+> >  create mode 100644 include/linux/nfsd/clstate.h
+> > 
+> > diff --git a/include/linux/nfsd/clstate.h b/include/linux/nfsd/clstate.h
+> > new file mode 100644
+> > index 0000000..d571aa5
+> > --- /dev/null
+> > +++ b/include/linux/nfsd/clstate.h
+> > @@ -0,0 +1,59 @@
+> > +/*
+> > + * fs/nfsd/clstate.h - data type and function declarations for clstate mgmt
+> > + *
+> > + * Copyright (c) 2011 Red Hat, Inc.
+> > + * Author(s): Jeff Layton <jlayton@redhat.com>
+> > + *
+> > + *  This program is free software; you can redistribute it and/or modify
+> > + *  it under the terms of the GNU General Public License as published by
+> > + *  the Free Software Foundation; either version 2 of the License, or
+> > + *  (at your option) any later version.
+> > + *
+> > + *  This program is distributed in the hope that it will be useful,
+> > + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > + *  GNU General Public License for more details.
+> > + *
+> > + *  You should have received a copy of the GNU General Public License
+> > + *  along with this program; if not, write to the Free Software
+> > + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+> > + */
+> > +
+> > +#ifndef _NFSD_CLSTATE_H
+> > +#define _NFSD_CLSTATE_H
+> > +
+> > +/* latest upcall version available */
+> > +#define CLSTATE_MAX_UPCALL_VERSION 1
+> > +
+> > +/* defined by RFC3530 */
+> > +#define NFS4_OPAQUE_LIMIT 1024
+> > +
+> > +/*
+> > + * Maximum length of an address string. We could use INET6_ADDRSTRLEN, but
+> > + * the kernel and userspace definitions are different.
+> > + */
+> > +#define CLSTATE_MAX_ADDRESS_LEN 48
+> > +
+> > +enum clstate_command {
+> > +	Cl_Create,		/* create a record for this cm_id */
+> > +	Cl_Expire,		/* remove record for this cm_id */
+> > +	Cl_NrToReclaim,		/* how many client records need reclaim? */
 > 
-> Running rpc.gssd with -vvv, it will eventually hang.  Back trace of hung process:
+> There will probably also be other information we want from userspace on
+> startup, and this might be a good place to get it.  (For example, a boot
+> iteration and/or node id for use in clientid's.)
 > 
-> #0  0x00ae8416 in __kernel_vsyscall ()
-> #1  0x004be5d1 in __lll_lock_wait_private () from /lib/libc.so.6
-> #2  0x0044985c in _L_lock_12621 () from /lib/libc.so.6
-> #3  0x00447797 in malloc () from /lib/libc.so.6
-> #4  0x0043a398 in open_memstream () from /lib/libc.so.6
-> #5  0x004a9ae5 in __vsyslog_chk () from /lib/libc.so.6
-> #6  0x0017d15f in vsyslog (kind=512, 
->     fmt=0x1806cc "dir_notify_handler: sig %d si %p data %p\n", args=0xbfc03938
-> "%")
->     at /usr/include/bits/syslog.h:48
-> #7  xlog_backend (kind=512, fmt=0x1806cc "dir_notify_handler: sig %d si %p data
-> %p\n", 
->     args=0xbfc03938 "%") at xlog.c:150
-> #8  0x001777d4 in printerr (priority=2, 
->     format=0x1806cc "dir_notify_handler: sig %d si %p data %p\n") at
-> err_util.c:64
-> #9  0x00177c9e in dir_notify_handler (sig=37, si=0xbfc0396c, data=0xbfc039ec)
->     at gssd_main_loop.c:66
-> #10 <signal handler called>
-> #11 0x00444984 in _int_malloc () from /lib/libc.so.6
-> #12 0x004477a0 in malloc () from /lib/libc.so.6
-> #13 0x0046db77 in __alloc_dir () from /lib/libc.so.6
-> #14 0x0046dc5a in opendir () from /lib/libc.so.6
-> #15 0x0046e7ef in scandir64@@GLIBC_2.2 () from /lib/libc.so.6
-> #16 0x00179285 in process_pipedir () at gssd_proc.c:565
-> #17 update_client_list () at gssd_proc.c:594
-> #18 0x00177f40 in gssd_run () at gssd_main_loop.c:216
-> #19 0x00177bf9 in main (argc=2, argv=0xbfc04134) at gssd.c:187
-> 
-> Looks like malloc is getting called from a signal handler called while in a
-> malloc call, which is verboten.  Not sure what the best way around this, but it
-> looks like dir_notify_handler cannot call printerr.  I suppose this only occurs
-> when -vv or greater is given.  Path looks a little different in 1.2.5, but looks
-> like xlog_backend still calls vsyslog which can do the same thing.
 
-Ha, that's interesting.
+Yes, that was my original thinking in calling this a generic name like
+"clstated". For now though, I'm just focusing on replacing the existing
+functionality. We should be able to extend this later to do more things
+without too much trouble though.
 
-Maybe we should just delete that printerr.
-
-(If someone wanted to know when the notification came then it should be
-enough to add a printerr in update_client_list(), I think.)
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
