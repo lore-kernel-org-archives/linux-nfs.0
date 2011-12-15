@@ -1,160 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43534 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61000 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756915Ab1LNN5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 08:57:15 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvEXn010890
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:14 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3e005913
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:14 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/7] clstated: add remove functionality
-Date: Wed, 14 Dec 2011 08:57:10 -0500
-Message-Id: <1323871032-3191-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+	id S1752620Ab1LOW63 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 17:58:29 -0500
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
+Date: Thu, 15 Dec 2011 14:58:26 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863744@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4EEA75DD.9080601@oracle.com>
+References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com> <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com> <20111214232254.GP2203@ZenIV.linux.org.uk> <4EEA469E.6070307@oracle.com> <20111215213256.GS2203@ZenIV.linux.org.uk> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863704@SACMVEXC2-PRD.hq.netapp.com> <4EEA75DD.9080601@oracle.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Maxim Uvarov" <maxim.uvarov@oracle.com>
+Cc: "Al Viro" <viro@ZenIV.linux.org.uk>, <linux-nfs@vger.kernel.org>,
+        <bfields@fieldses.org>, <john@johnmccutchan.com>, <rlove@rlove.org>,
+        <eparis@parisplace.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the kernel to ask for removal of a client record.
+> -----Original Message-----
+> From: Maxim Uvarov [mailto:maxim.uvarov@oracle.com]
+> Sent: Thursday, December 15, 2011 5:34 PM
+> To: Myklebust, Trond
+> Cc: Al Viro; linux-nfs@vger.kernel.org; bfields@fieldses.org;
+> john@johnmccutchan.com; rlove@rlove.org; eparis@parisplace.org
+> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on
+nfs
+> 
+> On 12/15/2011 01:52 PM, Myklebust, Trond wrote:
+> >> -----Original Message-----
+> >> From: Al Viro [mailto:viro@ZenIV.linux.org.uk]
+> >> Sent: Thursday, December 15, 2011 4:33 PM
+> >> To: Maxim Uvarov
+> >> Cc: linux-nfs@vger.kernel.org; bfields@fieldses.org; Myklebust,
+> >> Trond; john@johnmccutchan.com; rlove@rlove.org;
+> eparis@parisplace.org
+> >> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files
+on
+> > nfs
+> >>
+> >> On Thu, Dec 15, 2011 at 11:12:30AM -0800, Maxim Uvarov wrote:
+> >>
+> >>> 1. Original VFS code already has "if NFS", in vfs_unlink().
+Because
+> > of
+> >>> code does not call d_delete() it has to call notification from
+> >>> d_delete().
+> >>>
+> >>> 2. inotify is done on VFS layer. So logically it has to work on
+all
+> >>> file systems.
+> >>
+> >> You are using a very odd meaning of the word "logically", then.
+Note
+> > that
+> >> inotify does *not* work on NFS, no matter what vfs_unlink() would
+do.
+> >> Simply because files are removed on server, not in VFS.  And server
+> > does not
+> >> notify clients of such removals.  Ergo, any software that relies on
+> > inotify
+> >> delivering notifications of files being removed is broken on NFS.
+> >> That has nothing whatsoever to the layer in kernel where it's
+> >> handled;
+> > the
+> >> information asked for is simply not available to client.  Period.
+> >>
+> >> Incidentally, inotify does not work on a bunch of local
+filesystems,
+> > starting
+> >> with procfs.  And won't work, unless you are seriously proposing to
+> > generate
+> >> events on things like open()/dup2()/etc.  In this case we might
+very
+> > well have
+> >> objects appearing and disappearing without ever having had a
+dentry.
+> >
+> > The other thing to note is that even if there were value in having
+> > only client support for the locally performed operations, the way
+NFS
+> > deletes work is fundamentally different to the way that POSIX unlink
+> > works: if the file is still open, it isn't deleted, it is just
+> > renamed. In consequence, it not only still appears in readdir()
+> > requests (albeit under a different name), but it acts in all ways
+> > shapes and forms as the same regular file but with the curious
+> > property that when the last user closes it gets deleted.
+> >
+> > IOW: the assumption that we would need to generate an
+> > fsnotify_nameremove event here is in any case flawed. It would
+rather
+> > be fsnotify_move, which I suspect would still trip up these LTP
+tests...
+> >
+> > Cheers
+> >     Trond
+> >
+> 
+> Thanks. My original idea was to generate absolutely the same event
+under
+> unlink(). Yes, original file in that case is not deleted, it is moved.
+> But from user side it's deletion. Users don't take care about
+/tmp/.nfs..  files,
+> right? When you call unlink the only thing you do is to check return
+code, you
+> are not walking along all folders to check where it could be moved.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/clstated/clstated.c |   34 +++++++++++++++++++++++++++-
- utils/clstated/sqlite.c   |   54 +++++++++++++++++++++++++++++++++++++++++++++
- utils/clstated/sqlite.h   |    1 +
- 3 files changed, 88 insertions(+), 1 deletions(-)
+It is not deletion because it is not an atomic operation.
 
-diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
-index 95ac696..54214cb 100644
---- a/utils/clstated/clstated.c
-+++ b/utils/clstated/clstated.c
-@@ -147,6 +147,36 @@ clstate_create(struct clstate_client *clnt)
- }
- 
- static void
-+clstate_remove(struct clstate_client *clnt)
-+{
-+	int ret;
-+	ssize_t bsize, wsize;
-+	struct clstate_msg *cmsg = &clnt->cl_msg;
-+
-+	xlog(D_GENERAL, "%s: expire client record. cm_addr=%s", __func__,
-+			cmsg->cm_addr);
-+
-+	ret = clstate_remove_client(cmsg->cm_addr, cmsg->cm_u.cm_id,
-+					cmsg->cm_len);
-+
-+	/* set up reply */
-+	cmsg->cm_status = ret ? -EREMOTEIO : ret;
-+	cmsg->cm_len = 0;
-+	memset(cmsg->cm_addr, 0, sizeof(cmsg->cm_addr) +
-+			sizeof(cmsg->cm_u.cm_id));
-+
-+	bsize = sizeof(*cmsg);
-+
-+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to clstate pipe (%ld): %m",
-+			 __func__, wsize);
-+		clstate_pipe_reopen(clnt);
-+	}
-+}
-+
-+static void
- clstatecb(int UNUSED(fd), short which, void *data)
- {
- 	ssize_t len;
-@@ -168,8 +198,10 @@ clstatecb(int UNUSED(fd), short which, void *data)
- 		clstate_create(clnt);
- 		break;
- 	case Cl_Expire:
--	case Cl_NrToReclaim:
-+		clstate_remove(clnt);
-+		break;
- 	case Cl_Allow:
-+	case Cl_NrToReclaim:
- 	case Cl_GraceDone:
- 		xlog_warn("%s: command %u is not yet implemented", __func__,
- 			  cmsg->cm_cmd);
-diff --git a/utils/clstated/sqlite.c b/utils/clstated/sqlite.c
-index ae83634..78ce6b4 100644
---- a/utils/clstated/sqlite.c
-+++ b/utils/clstated/sqlite.c
-@@ -349,3 +349,57 @@ out_detach:
- 	clstate_db_detach(dbname);
- 	return ret;
- }
-+
-+/* Remove a client record */
-+int
-+clstate_remove_client(const unsigned char *addr, const unsigned char *clname,
-+			const size_t namelen)
-+{
-+	int ret;
-+	char *err = NULL;
-+	char dbname[CLSTATE_MAX_ADDRESS_LEN];
-+	sqlite3_stmt *stmt = NULL;
-+
-+	addr_to_dbname((const char *)addr, dbname);
-+
-+	ret = clstate_db_attach(dbname);
-+	if (ret != SQLITE_OK)
-+		return ret;
-+
-+	ret = snprintf(buf, sizeof(buf),
-+			"DELETE FROM '%s'.clients WHERE id==?", dbname);
-+	if (ret < 0) {
-+		goto out_detach;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		ret = -EINVAL;
-+		goto out_detach;
-+	}
-+
-+	ret = sqlite3_prepare_v2(dbh, buf, ret + 1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Statement prepare failed: %d", ret);
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(D_GENERAL, "Bind blob failed: %d", ret);
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(D_GENERAL, "Unexpected return code from insert: %s",
-+				sqlite3_errmsg(dbh));
-+
-+out_err:
-+	xlog(D_GENERAL, "%s returning %d", __func__, ret);
-+	sqlite3_finalize(stmt);
-+	sqlite3_free(err);
-+out_detach:
-+	clstate_db_detach(dbname);
-+	return ret;
-+}
-diff --git a/utils/clstated/sqlite.h b/utils/clstated/sqlite.h
-index 4f81745..6f5637f 100644
---- a/utils/clstated/sqlite.h
-+++ b/utils/clstated/sqlite.h
-@@ -23,5 +23,6 @@
- void clstate_set_topdir(char *topdir);
- int clstate_maindb_init(void);
- int clstate_insert_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
-+int clstate_remove_client(const unsigned char *addr, const unsigned char *clname, const size_t namelen);
- 
- #endif /* _SQLITE_H */
--- 
-1.7.1
+Until the last close occurs. ls -a will still list the .nfsxxxx entry.
+Most operations that the user may expect to fail on a deleted file such
+as link(), open(), access(), stat(), etc. will still succeed provided
+that you use the .nfsxxxx name. On the other hand, an operation such as
+rmdir() on the parent directory will not succeed because it still
+contains at least one file entry...
+
+> I also agree that if server or other mounts does something with file,
+server
+> will not send any notification. But for single mount it has to be ok.
+
+What's the killer application?
 
