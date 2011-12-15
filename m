@@ -1,122 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50499 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:29058 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752850Ab1LFUs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 15:48:56 -0500
-Date: Tue, 6 Dec 2011 15:48:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH] SUNRPC: create svc_xprt in proper network namespace
-Message-ID: <20111206204851.GB12640@fieldses.org>
-References: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
+	id S1756260Ab1LOSoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:44:04 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi4aD032282
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:04 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi17j010403
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:04 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 7/7] nfsdcld: add function to remove unreclaimed client records
+Date: Thu, 15 Dec 2011 13:44:01 -0500
+Message-Id: <1323974641-16515-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
+References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 06, 2011 at 02:19:10PM +0300, Stanislav Kinsbursky wrote:
-> This patch makes svc_xprt inherit network namespace link from it's socket.
+This should remove any client record that has a timestamp prior to
+the given time.
 
-And poor rdma gets left out.  OK.  Applying for 3.3 (with changelog typo
-fixed).
+Eventually, this call will need to be made cluster aware when this is
+run in a clustered configuration. For now, this is only suitable for
+single-host configurations.
 
---b.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   30 +++++++++++++++++++++++++++++-
+ utils/nfsdcld/sqlite.c  |   28 ++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 58 insertions(+), 1 deletions(-)
 
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  include/linux/sunrpc/svc_xprt.h          |    2 +-
->  net/sunrpc/svc_xprt.c                    |    6 +++---
->  net/sunrpc/svcsock.c                     |    8 +++++---
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->  4 files changed, 10 insertions(+), 8 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index 8620f79..18df516 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -109,7 +109,7 @@ static inline int register_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u
->  
->  int	svc_reg_xprt_class(struct svc_xprt_class *);
->  void	svc_unreg_xprt_class(struct svc_xprt_class *);
-> -void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
-> +void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
->  		      struct svc_serv *);
->  int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
->  			const int, const unsigned short, int);
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 447cd0e..f8f0627 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -147,8 +147,8 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
->   * Called by transport drivers to initialize the transport independent
->   * portion of the transport instance.
->   */
-> -void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
-> -		   struct svc_serv *serv)
-> +void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
-> +		   struct svc_xprt *xprt, struct svc_serv *serv)
->  {
->  	memset(xprt, 0, sizeof(*xprt));
->  	xprt->xpt_class = xcl;
-> @@ -163,7 +163,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
->  	spin_lock_init(&xprt->xpt_lock);
->  	set_bit(XPT_BUSY, &xprt->xpt_flags);
->  	rpc_init_wait_queue(&xprt->xpt_bc_pending, "xpt_bc_pending");
-> -	xprt->xpt_net = get_net(&init_net);
-> +	xprt->xpt_net = get_net(net);
->  }
->  EXPORT_SYMBOL_GPL(svc_xprt_init);
->  
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 71bed1c..277909e 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -739,7 +739,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
->  {
->  	int err, level, optname, one = 1;
->  
-> -	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
-> +	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
-> +		      &svsk->sk_xprt, serv);
->  	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
->  	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
->  	svsk->sk_sk->sk_write_space = svc_write_space;
-> @@ -1343,7 +1344,8 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
->  {
->  	struct sock	*sk = svsk->sk_sk;
->  
-> -	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
-> +	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
-> +		      &svsk->sk_xprt, serv);
->  	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
->  	if (sk->sk_state == TCP_LISTEN) {
->  		dprintk("setting up TCP socket for listening\n");
-> @@ -1659,7 +1661,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
->  		return ERR_PTR(-ENOMEM);
->  
->  	xprt = &svsk->sk_xprt;
-> -	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
-> +	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
->  
->  	serv->sv_bc_xprt = xprt;
->  
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index ba1296d..894cb42 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -453,7 +453,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
->  
->  	if (!cma_xprt)
->  		return NULL;
-> -	svc_xprt_init(&svc_rdma_class, &cma_xprt->sc_xprt, serv);
-> +	svc_xprt_init(&init_net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
->  	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
->  	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
->  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
-> 
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 2322ab7..6fabbe7 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -187,6 +187,32 @@ cld_check(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_gracedone(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
++			cmsg->cm_u.cm_gracetime);
++
++	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
++
++	/* set up reply: downcall with 0 status */
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -213,8 +239,10 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_Allow:
+ 		cld_check(clnt);
+ 		break;
+-	case Cld_NrToReclaim:
+ 	case Cld_GraceDone:
++		cld_gracedone(clnt);
++		break;
++	case Cld_NrToReclaim:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+ 			  cmsg->cm_cmd);
+ 		break;
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 63d5363..be1bb71 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -38,6 +38,7 @@
+ #include "config.h"
+ #endif /* HAVE_CONFIG_H */
+ 
++#include <dirent.h>
+ #include <errno.h>
+ #include <event.h>
+ #include <stdbool.h>
+@@ -358,3 +359,30 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/*
++ * remove any client records that were not reclaimed since grace_start.
++ */
++int
++sqlite_remove_unreclaimed(time_t grace_start)
++{
++	int ret;
++	char *err = NULL;
++
++	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
++			grace_start);
++	if (ret < 0) {
++		return ret;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		return ret;
++	}
++
++	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK)
++		xlog(D_GENERAL, "Delete failed: %s", err);
++
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_free(err);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 613ae97..b0f3f85 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -25,5 +25,6 @@ int sqlite_maindb_init(void);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
++int sqlite_remove_unreclaimed(const time_t grace_start);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.1
+
