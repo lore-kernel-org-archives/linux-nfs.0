@@ -1,100 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31232 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:36051 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756427Ab1LNNyx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 08:54:53 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDsrC9015368
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDspPk026219
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:54:53 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] nfsd: add a header describing upcall for clname tracking daemon
-Date: Wed, 14 Dec 2011 08:54:49 -0500
-Message-Id: <1323870891-3124-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
-References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
+	id S932589Ab1LOQBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 11:01:00 -0500
+Subject: [PATCH 7/7] SUNRPC: unregister service on creation in current network
+ namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 15 Dec 2011 20:00:40 +0300
+Message-ID: <20111215160040.2434.45624.stgit@localhost6.localdomain6>
+In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new header that describes the clname tracking daemon upcall. The
-daemon takes a versioned binary struct. Hopefully this should allow us
-to revise the struct later if it becomes necessary.
+On service shutdown we can be sure, that no more users of it left except
+current. Thus it looks like using current network namespace context is safe in
+this case.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- include/linux/nfsd/clstate.h |   59 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 59 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/clstate.h
+ fs/nfsd/nfssvc.c           |    4 ++--
+ include/linux/sunrpc/svc.h |    9 +++++----
+ net/sunrpc/svc.c           |   14 +++++++-------
+ 3 files changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/nfsd/clstate.h b/include/linux/nfsd/clstate.h
-new file mode 100644
-index 0000000..d571aa5
---- /dev/null
-+++ b/include/linux/nfsd/clstate.h
-@@ -0,0 +1,59 @@
-+/*
-+ * fs/nfsd/clstate.h - data type and function declarations for clstate mgmt
-+ *
-+ * Copyright (c) 2011 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLSTATE_H
-+#define _NFSD_CLSTATE_H
-+
-+/* latest upcall version available */
-+#define CLSTATE_MAX_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+/*
-+ * Maximum length of an address string. We could use INET6_ADDRSTRLEN, but
-+ * the kernel and userspace definitions are different.
-+ */
-+#define CLSTATE_MAX_ADDRESS_LEN 48
-+
-+enum clstate_command {
-+	Cl_Create,		/* create a record for this cm_id */
-+	Cl_Expire,		/* remove record for this cm_id */
-+	Cl_NrToReclaim,		/* how many client records need reclaim? */
-+	Cl_Allow,		/* is this cm_id allowed? */
-+	Cl_GraceDone		/* grace period is complete */
-+};
-+
-+/* message struct for communication with userspace */
-+struct clstate_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	uint32_t	cm_xid;			/* transaction id */
-+	int16_t		cm_status;		/* return code */
-+	uint16_t	cm_len;			/* length of cm_id */
-+	unsigned char	cm_addr[CLSTATE_MAX_ADDRESS_LEN]; /* server addr */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		unsigned char	cm_id[NFS4_OPAQUE_LIMIT]; /* client-provided */
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLSTATE_H */
--- 
-1.7.1
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index eda7d7e..fce472f 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -251,13 +251,13 @@ static void nfsd_shutdown(void)
+ 	nfsd_up = false;
+ }
+ 
+-static void nfsd_last_thread(struct svc_serv *serv)
++static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+ {
+ 	/* When last nfsd thread exits we need to do some clean-up */
+ 	nfsd_serv = NULL;
+ 	nfsd_shutdown();
+ 
+-	svc_rpcb_cleanup(serv);
++	svc_rpcb_cleanup(serv, net);
+ 
+ 	printk(KERN_WARNING "nfsd: last server has exited, flushing export "
+ 			    "cache\n");
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index d3563c2..7b65495 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -84,7 +84,8 @@ struct svc_serv {
+ 	unsigned int		sv_nrpools;	/* number of thread pools */
+ 	struct svc_pool *	sv_pools;	/* array of thread pools */
+ 
+-	void			(*sv_shutdown)(struct svc_serv *serv);
++	void			(*sv_shutdown)(struct svc_serv *serv,
++					       struct net *net);
+ 						/* Callback to use when last thread
+ 						 * exits.
+ 						 */
+@@ -413,14 +414,14 @@ struct svc_procedure {
+ /*
+  * Function prototypes.
+  */
+-void svc_rpcb_cleanup(struct svc_serv *serv);
++void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net);
+ struct svc_serv *svc_create(struct svc_program *, unsigned int,
+-			    void (*shutdown)(struct svc_serv *));
++			    void (*shutdown)(struct svc_serv *, struct net *net));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool, int node);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+-			void (*shutdown)(struct svc_serv *),
++			void (*shutdown)(struct svc_serv *, struct net *net),
+ 			svc_thread_fn, struct module *);
+ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 578f962..b7e4ef9 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -380,10 +380,10 @@ static int svc_rpcb_setup(struct svc_serv *serv, struct net *net)
+ 	return 0;
+ }
+ 
+-void svc_rpcb_cleanup(struct svc_serv *serv)
++void svc_rpcb_cleanup(struct svc_serv *serv, struct net *net)
+ {
+-	svc_unregister(serv, &init_net);
+-	rpcb_put_local(&init_net);
++	svc_unregister(serv, net);
++	rpcb_put_local(net);
+ }
+ EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
+ 
+@@ -409,7 +409,7 @@ static int svc_uses_rpcbind(struct svc_serv *serv)
+  */
+ static struct svc_serv *
+ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+-	     void (*shutdown)(struct svc_serv *serv))
++	     void (*shutdown)(struct svc_serv *serv, struct net *net))
+ {
+ 	struct svc_serv	*serv;
+ 	unsigned int vers;
+@@ -483,7 +483,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 
+ struct svc_serv *
+ svc_create(struct svc_program *prog, unsigned int bufsize,
+-	   void (*shutdown)(struct svc_serv *serv))
++	   void (*shutdown)(struct svc_serv *serv, struct net *net))
+ {
+ 	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
+ }
+@@ -491,7 +491,7 @@ EXPORT_SYMBOL_GPL(svc_create);
+ 
+ struct svc_serv *
+ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+-		  void (*shutdown)(struct svc_serv *serv),
++		  void (*shutdown)(struct svc_serv *serv, struct net *net),
+ 		  svc_thread_fn func, struct module *mod)
+ {
+ 	struct svc_serv *serv;
+@@ -532,7 +532,7 @@ svc_destroy(struct svc_serv *serv)
+ 	svc_close_all(&serv->sv_tempsocks);
+ 
+ 	if (serv->sv_shutdown)
+-		serv->sv_shutdown(serv);
++		serv->sv_shutdown(serv, current->nsproxy->net_ns);
+ 
+ 	svc_close_all(&serv->sv_permsocks);
+ 
 
