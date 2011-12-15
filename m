@@ -1,82 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:64602 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755184Ab1LGAuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 19:50:37 -0500
-Message-ID: <4EDEB9A7.8060406@cn.fujitsu.com>
-Date: Wed, 07 Dec 2011 08:56:07 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:42958 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753413Ab1LOWgF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 17:36:05 -0500
+Message-ID: <4EEA75DD.9080601@oracle.com>
+Date: Thu, 15 Dec 2011 14:34:05 -0800
+From: Maxim Uvarov <maxim.uvarov@oracle.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2] 4.1 CLNT: Test Case for OPEN file with claim_type is CLAIM_FH
-References: <4EC46E76.5040907@cn.fujitsu.com>
-In-Reply-To: <4EC46E76.5040907@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, john@johnmccutchan.com, rlove@rlove.org,
+        eparis@parisplace.org
+Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on nfs
+References: <1323903495-4084-1-git-send-email-maxim.uvarov@oracle.com> <1323903495-4084-2-git-send-email-maxim.uvarov@oracle.com> <20111214232254.GP2203@ZenIV.linux.org.uk> <4EEA469E.6070307@oracle.com> <20111215213256.GS2203@ZenIV.linux.org.uk> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863704@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863704@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Open NFS file with filehandle, write some data to the opened file,
-read and check it.
+On 12/15/2011 01:52 PM, Myklebust, Trond wrote:
+>> -----Original Message-----
+>> From: Al Viro [mailto:viro@ZenIV.linux.org.uk]
+>> Sent: Thursday, December 15, 2011 4:33 PM
+>> To: Maxim Uvarov
+>> Cc: linux-nfs@vger.kernel.org; bfields@fieldses.org; Myklebust, Trond;
+>> john@johnmccutchan.com; rlove@rlove.org; eparis@parisplace.org
+>> Subject: Re: [PATCH] NFS/INOTIFY: inotify user when deleting files on
+> nfs
+>>
+>> On Thu, Dec 15, 2011 at 11:12:30AM -0800, Maxim Uvarov wrote:
+>>
+>>> 1. Original VFS code already has "if NFS", in vfs_unlink(). Because
+> of
+>>> code does not call d_delete() it has to call notification from
+>>> d_delete().
+>>>
+>>> 2. inotify is done on VFS layer. So logically it has to work on all
+>>> file systems.
+>>
+>> You are using a very odd meaning of the word "logically", then.  Note
+> that
+>> inotify does *not* work on NFS, no matter what vfs_unlink() would do.
+>> Simply because files are removed on server, not in VFS.  And server
+> does not
+>> notify clients of such removals.  Ergo, any software that relies on
+> inotify
+>> delivering notifications of files being removed is broken on NFS.
+>> That has nothing whatsoever to the layer in kernel where it's handled;
+> the
+>> information asked for is simply not available to client.  Period.
+>>
+>> Incidentally, inotify does not work on a bunch of local filesystems,
+> starting
+>> with procfs.  And won't work, unless you are seriously proposing to
+> generate
+>> events on things like open()/dup2()/etc.  In this case we might very
+> well have
+>> objects appearing and disappearing without ever having had a dentry.
+>
+> The other thing to note is that even if there were value in having only
+> client support for the locally performed operations, the way NFS deletes
+> work is fundamentally different to the way that POSIX unlink works: if
+> the file is still open, it isn't deleted, it is just renamed. In
+> consequence, it not only still appears in readdir() requests (albeit
+> under a different name), but it acts in all ways shapes and forms as the
+> same regular file but with the curious property that when the last user
+> closes it gets deleted.
+>
+> IOW: the assumption that we would need to generate an
+> fsnotify_nameremove event here is in any case flawed. It would rather be
+> fsnotify_move, which I suspect would still trip up these LTP tests...
+>
+> Cheers
+>     Trond
+>
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/st_open.py |   38 +++++++++++++++++++++++++++++++++++++-
- 1 files changed, 37 insertions(+), 1 deletions(-)
+Thanks. My original idea was to generate absolutely the same event under 
+unlink(). Yes, original file in that case is not deleted, it is moved. 
+But from user side it's deletion. Users don't take care about
+/tmp/.nfs..  files, right? When you call unlink the only thing you do
+is to check return code, you are not walking along all folders to check
+where it could be moved.
 
-diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-index bd995a5..87b58b3 100644
---- a/nfs4.1/server41tests/st_open.py
-+++ b/nfs4.1/server41tests/st_open.py
-@@ -1,6 +1,6 @@
- from st_create_session import create_session
- from nfs4_const import *
--from environment import check, checklist, fail, create_file, open_file
-+from environment import check, checklist, fail, create_file, open_file, close_file
- from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
- from nfs4_type import creatverfattr, fattr4
- import nfs4_ops as op
-@@ -200,3 +200,39 @@ def testEXCLUSIVE4AtNameAttribute(t, env):
-     res = create_file(sess1, env.testname(t), mode=EXCLUSIVE4_1,
-                         verifier = "Justtest")
-     check(res, NFS4ERR_EXIST)
-+
-+def testOPENClaimFH(t, env):
-+    """OPEN file with claim_type is CLAIM_FH
-+
-+    FLAGS: open all
-+    CODE: OPEN7
-+    """
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+    res = create_file(sess1, env.testname(t))
-+    check(res)
-+
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-+    res = close_file(sess1, fh, stateid=stateid)
-+    check(res)
-+
-+    claim = open_claim4(CLAIM_FH)
-+    how = openflag4(OPEN4_NOCREATE)
-+    oowner = open_owner4(0, "My Open Owner 2")
-+    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
-+                      oowner, how, claim)
-+    res = sess1.compound([op.putfh(fh), open_op])
-+    check(res)
-+
-+    stateid = res.resarray[-1].stateid
-+    stateid.seqid = 0
-+    data = "write test data"
-+    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, data)])
-+    check(res)
-+    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 1000)])
-+    check(res)
-+    if not res.resarray[-1].eof:
-+        fail("EOF not set on read")
-+    desired = "\0"*5 + data
-+    if res.resarray[-1].data != desired:
-+        fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
--- 
-1.7.7
+I also agree that if server or other mounts does something with file, 
+server will not send any notification. But for single mount it has to be ok.
+
+Maxim.
 
 
