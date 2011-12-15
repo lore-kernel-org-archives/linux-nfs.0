@@ -1,109 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:56467 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919Ab1L2TUw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Dec 2011 14:20:52 -0500
-Received: by wgbdr13 with SMTP id dr13so23564994wgb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Dec 2011 11:20:50 -0800 (PST)
-MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <1324819508.5195.8.camel@lade.trondhjem.org>
-References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
-	<1324475851.7709.12.camel@lade.trondhjem.org>
-	<CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
-	<4EF6A898.2010207@tonian.com>
-	<1324806463.2740.6.camel@lade.trondhjem.org>
-	<4EF71125.1060901@tonian.com>
-	<1324819508.5195.8.camel@lade.trondhjem.org>
-Date: Thu, 29 Dec 2011 20:20:50 +0100
-Message-ID: <CAGue13r92miL8cyY_=ag1yLbwmmcMJeAGtMxTjshvST=44SP=A@mail.gmail.com>
-Subject: Re: Session timeout on RHEL6.2
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:14404 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759315Ab1LOSoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:44:03 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi3o8032274
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:03 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi17h010403
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:03 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 5/7] nfsdcld: add remove functionality
+Date: Thu, 15 Dec 2011 13:43:59 -0500
+Message-Id: <1323974641-16515-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
+References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Allow the kernel to ask for removal of a client record.
 
-There is a small inconsistency in your theory: to close idle session
-it's enough not to send sequence any more and there are no reason to
-re-establish session as soon as server returns EXPIRED.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   28 ++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.c  |   35 +++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 64 insertions(+), 0 deletions(-)
 
-Tigran.
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index de2e932..0252e78 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -135,6 +135,32 @@ cld_create(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_remove(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: remove client record.", __func__);
++
++	ret = sqlite_remove_client(cmsg->cm_u.cm_name.cn_id,
++				   cmsg->cm_u.cm_name.cn_len);
++
++	/* set up reply */
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -156,6 +182,8 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 		cld_create(clnt);
+ 		break;
+ 	case Cld_Expire:
++		cld_remove(clnt);
++		break;
+ 	case Cld_NrToReclaim:
+ 	case Cld_Allow:
+ 	case Cld_GraceDone:
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 2534ba5..5986dca 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -254,3 +254,38 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/* Remove a client record */
++int
++sqlite_remove_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "DELETE FROM clients WHERE id==?", -1,
++				 &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Statement prepare failed: %s",
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %s", sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(D_GENERAL, "Unexpected return code from delete: %s",
++				sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 4b99729..157c127 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -23,5 +23,6 @@
+ void sqlite_set_topdir(char *topdir);
+ int sqlite_maindb_init(void);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
++int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.1
 
-On Sun, Dec 25, 2011 at 2:25 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Sun, 2011-12-25 at 14:03 +0200, Benny Halevy wrote:
->> On 2011-12-25 11:47, Trond Myklebust wrote:
->> > On Sun, 2011-12-25 at 06:37 +0200, Benny Halevy wrote:
->> >> On 2011-12-21 22:11, Tigran Mkrtchyan wrote:
->> >>> On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
->> >>> <Trond.Myklebust@netapp.com> wrote:
->> >>>> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
->> >>>>> Dear friends,
->> >>>>>
->> >>>>> We are observing strange behavior with RHEL 6.2:
->> >>>>>
->> >>>>> Our the server lease time is 90 seconds. I can see that client
->> >>>>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
->> >>>>> At some point client sends SEQUENCE after 127 seconds and
->> >>>>> gets, as expected, EXPIRED.
->> >>>>
->> >>>> Why shouldn't the client be allowed to let the lease expire if nothing
->> >>>> is using that filesystem?
->> >>>>
->> >>>>> I this point I have to blame myself.
->> >>>>> Client comes with EXCHANGE_ID using the same clientid.
->> >>>>> We did not garbage collected clientid internally as this happens after
->> >>>>> 2*LEASE_TIME
->> >>>>> and return EXPIRE. This ping-pong never ends.
->> >>>>>
->> >>>>> This is probably mostly a bug on my side. Nevertheless we never observed late
->> >>>>> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
->> >>>>>
->> >>>>> I can open bug at RHEL if required.
->> >>>>
->> >>>> I wouldn't consider that a bug.
->> >>>
->> >>> As I said, there is a bug in exchange_id processing ( case 3 ) on my
->> >>> side. But to me it's sounds strange that client after more than 8
->> >>> hours of sending only sequence decided to send one of them later than
->> >>> lease time. Especially, that we did not have it with other kernels.
->> >>
->> >> I'm inclined to agree.  The client can let the lease expire for sure
->> >> and that's not a bug but the fact that the client sent the SEQUENCE operation
->> >> after the lease had expired indicates it might not be aware of that fact
->> >> and that seems to be a client bug.
->> >>
->> >> That said, I don't think that letting the lease expire when the client is idle
->> >> is the most polite thing to do. Why let the server clean up after the client
->> >> and revert to possibly un-optimized recovery paths rather than orderly
->> >> destruction of the state by the client?
->> >
->> > There are plenty of cases where the client can be idle for hours or even
->> > _days_. What's the point of pinging the server all the time after
->> > working hours?
->> >
->> > If someone wants to code up a DESTROY_SESSION and DESTROY_CLIENTID in
->> > order to make it formal, then fine, however note that we don't even do
->> > that on a full unmount today.
->> >
->>
->> The heavy lifting is releasing locks and returning layouts and delegations
->> sending DESTROY_{SESSION,CLIENTID} would be nice to have but I don't think
->> it's the most important issue.
->
-> Actually, that requirement to return state is what makes
-> DESTROY_CLIENTID a completely useless operation.
-> Forget what I said then: it's too stupid to implement...
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
