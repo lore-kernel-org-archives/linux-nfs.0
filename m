@@ -1,121 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17794 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:36060 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752994Ab1LGIrI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 03:47:08 -0500
-Message-ID: <4EDF2805.3090700@parallels.com>
-Date: Wed, 07 Dec 2011 12:47:01 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
+	id S1751651Ab1LOO7I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 09:59:08 -0500
+Message-ID: <1323961140.14317.2.camel@lade.trondhjem.org>
+Subject: Re: copy offload support in Linux - new system call needed?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "neilb@suse.de" <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] NFSd: use network-namespace-aware cache registering routines
-References: <20111206130330.25851.55807.stgit@localhost6.localdomain6> <20111206210234.GC12640@fieldses.org> <20111206211450.GD12640@fieldses.org>
-In-Reply-To: <20111206211450.GD12640@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        Joel Becker <jlbec@evilplan.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Date: Thu, 15 Dec 2011 09:59:00 -0500
+In-Reply-To: <20111214222723.GD7623@fieldses.org>
+References: <4EE8F75F.6070800@gmail.com>
+	 <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
+	 <20111214222723.GD7623@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-07.12.2011 01:14, J. Bruce Fields пишет:
-> On Tue, Dec 06, 2011 at 04:02:34PM -0500, J. Bruce Fields wrote:
->> On Tue, Dec 06, 2011 at 05:04:31PM +0300, Stanislav Kinsbursky wrote:
->>> This is a cleanup patch. Some day (hope, soon enough) generic cache_register()
->>> and cache_unregister() will be removed.
->>
->> OK, applying for 3.3.--b.
->
-> Whoops, no I'm not, these make modular builds fail.  Looks like we need
-> a couple EXPORT_SYMBOL_GPL()'s.  Could you resend?
->
+On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
+> On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
+> > On 12/14/2011 02:27 PM, Al Viro wrote:
+> > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
+> > >
+> > >>We had an active thread a couple of years back that came out of the
+> > >>reflink work and, at the time, there seemed to be moderately
+> > >>positive support for adding a new system call that would fit this
+> > >>use case (Joel Becker's copyfile()).
+> > >>
+> > >>Can we resurrect this effort? Is copyfile() still a good way to go,
+> > >>or should we look at other hooks?
+> > >copyfile(2) is probably a good way to go, provided that we do _not_
+> > >go baroque as it had happened the last time syscall had been discussed.
+> > >
+> > >IOW, to hell with progress reports, etc. - just a fastpath kind of
+> > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
+> > >If it works - fine, if not - caller has to be ready to deal with handling
+> > >cross-device case anyway.
+> > 
+> > I think that this approach makes a lot of sense. Most of the
+> > devices/targets that support the copy offload, will do it in very
+> > reasonable amounts of time.
+> 
+> The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
+> one operation:
+> 
+> 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
+>  
+> Perhaps we should ask for separate operations for the two cases.  (Or at
+> least a "please don't bother if this is going to take 8 hours" flag....)
 
-Sorry. My fault (I exported these symbols in other patch).
-Will resend soon.
+How would the server know? I suggest we deal with this by adding an
+ioctl() to allow the application to poll for progress: I'm assuming now
+that we don't expect more than 1 copyfile() system call at a time per
+file descriptor...
 
-> --b.
->
->>
->>>
->>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>>
->>> ---
->>>   fs/nfsd/export.c    |   10 +++++-----
->>>   fs/nfsd/nfs4idmap.c |   11 ++++++-----
->>>   2 files changed, 11 insertions(+), 10 deletions(-)
->>>
->>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
->>> index 62f3b90..d1feeef 100644
->>> --- a/fs/nfsd/export.c
->>> +++ b/fs/nfsd/export.c
->>> @@ -1226,12 +1226,12 @@ nfsd_export_init(void)
->>>   	int rv;
->>>   	dprintk("nfsd: initializing export module.\n");
->>>
->>> -	rv = cache_register(&svc_export_cache);
->>> +	rv = cache_register_net(&svc_export_cache,&init_net);
->>>   	if (rv)
->>>   		return rv;
->>> -	rv = cache_register(&svc_expkey_cache);
->>> +	rv = cache_register_net(&svc_expkey_cache,&init_net);
->>>   	if (rv)
->>> -		cache_unregister(&svc_export_cache);
->>> +		cache_unregister_net(&svc_export_cache,&init_net);
->>>   	return rv;
->>>
->>>   }
->>> @@ -1255,8 +1255,8 @@ nfsd_export_shutdown(void)
->>>
->>>   	dprintk("nfsd: shutting down export module.\n");
->>>
->>> -	cache_unregister(&svc_expkey_cache);
->>> -	cache_unregister(&svc_export_cache);
->>> +	cache_unregister_net(&svc_expkey_cache,&init_net);
->>> +	cache_unregister_net(&svc_export_cache,&init_net);
->>>   	svcauth_unix_purge();
->>>
->>>   	dprintk("nfsd: export shutdown complete.\n");
->>> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
->>> index 55780a2..9409627 100644
->>> --- a/fs/nfsd/nfs4idmap.c
->>> +++ b/fs/nfsd/nfs4idmap.c
->>> @@ -36,6 +36,7 @@
->>>   #include<linux/seq_file.h>
->>>   #include<linux/sched.h>
->>>   #include<linux/slab.h>
->>> +#include<net/net_namespace.h>
->>>   #include "idmap.h"
->>>   #include "nfsd.h"
->>>
->>> @@ -466,20 +467,20 @@ nfsd_idmap_init(void)
->>>   {
->>>   	int rv;
->>>
->>> -	rv = cache_register(&idtoname_cache);
->>> +	rv = cache_register_net(&idtoname_cache,&init_net);
->>>   	if (rv)
->>>   		return rv;
->>> -	rv = cache_register(&nametoid_cache);
->>> +	rv = cache_register_net(&nametoid_cache,&init_net);
->>>   	if (rv)
->>> -		cache_unregister(&idtoname_cache);
->>> +		cache_unregister_net(&idtoname_cache,&init_net);
->>>   	return rv;
->>>   }
->>>
->>>   void
->>>   nfsd_idmap_shutdown(void)
->>>   {
->>> -	cache_unregister(&idtoname_cache);
->>> -	cache_unregister(&nametoid_cache);
->>> +	cache_unregister_net(&idtoname_cache,&init_net);
->>> +	cache_unregister_net(&nametoid_cache,&init_net);
->>>   }
->>>
->>>   static int
->>>
-
-
+Cheers
+   Trond
 -- 
-Best regards,
-Stanislav Kinsbursky
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
