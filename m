@@ -1,176 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:64617 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753679Ab1LDNxP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:53:15 -0500
-Received: by wgbds13 with SMTP id ds13so4803254wgb.1
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:53:14 -0800 (PST)
+Received: from exprod6og114.obsmtp.com ([64.18.1.33]:55797 "HELO
+	exprod6og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1759162Ab1LOR15 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 12:27:57 -0500
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <4EDB6AA3.1030702@tonian.com>
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
-	<4EDB6AA3.1030702@tonian.com>
-Date: Sun, 4 Dec 2011 14:53:13 +0100
-Message-ID: <CAGue13qTUj0dHrwXUkvvsbsttwv9nsiYnjyDPtM5UB+FuFdwQA@mail.gmail.com>
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain;
+	charset="UTF-8"
+Subject: RE: copy offload support in Linux - new system call needed?
+Date: Thu, 15 Dec 2011 12:27:55 -0500
+Message-ID: <D3F292ADF945FB49B35E96C94C2061B91516E47E@nsmail.netscout.com>
+In-Reply-To: <1323968015.14317.28.camel@lade.trondhjem.org>
+References: <4EE8F75F.6070800@gmail.com> <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com> <20111214222723.GD7623@fieldses.org> <1323961140.14317.2.camel@lade.trondhjem.org> <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com> <1323965498.14317.13.camel@lade.trondhjem.org> <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com> <1323968015.14317.28.camel@lade.trondhjem.org>
+From: "Loke, Chetan" <Chetan.Loke@netscout.com>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Ric Wheeler" <ricwheeler@gmail.com>,
+        "Al Viro" <viro@ZenIV.linux.org.uk>, <linux-scsi@vger.kernel.org>,
+        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
+        "Hannes Reinecke" <hare@suse.de>,
+        "Andrew Morton" <akpm@linux-foundation.org>,
+        <linux-nfs@vger.kernel.org>, "Joel Becker" <jlbec@evilplan.org>,
+        "James Bottomley" <James.Bottomley@HansenPartnership.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 4, 2011 at 1:42 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
->> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>
->>
->> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->> ---
->>  fs/nfsd/nfs4proc.c  |    6 ++++++
->>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
->>  2 files changed, 26 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index fa38336..535aed2 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>        */
->>       status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
->>       WARN_ON(status && open->op_created);
->> +
->> +     if(status)
->> +             goto out;
->> +
->> +     /* set current state id */
->> +     memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
->
-> Since this should be done for all stateid-returning operations
-> I think that a cleaner approach could be to mark those as such in
-> nfsd4_ops by providing a per-op function to return the operation's
-> stateid.  You can then call this method from nfsd4_proc_compound()
-> after the call to nfsd4_encode_operation() and when status == 0.
-
-
-Ok , I will try to do that.
->
->>  out:
->>       nfsd4_cleanup_open_state(open, status);
->>       if (open->op_openowner)
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 47e94e3..a34d82e 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -51,10 +51,14 @@ time_t nfsd4_grace = 90;
->>  static time_t boot_time;
->>  static stateid_t zerostateid;             /* bits all 0 */
->>  static stateid_t onestateid;              /* bits all 1 */
->> +static stateid_t currentstateid;          /* other all 0, seqid 1 */
->>  static u64 current_sessionid = 1;
->>
->>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
->> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
->> +
->> +#define STATEID_OF(s, c)  ( CURRENT_STATEID((s)) ? &(c)->current_stateid : (s) )
->>
->>  /* forward declarations */
->>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
->> @@ -3314,13 +3318,15 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask, s
->>  */
->>  __be32
->>  nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
->> -                        stateid_t *stateid, int flags, struct file **filpp)
->> +                        stateid_t *stateid_in, int flags, struct file **filpp)
->>  {
->>       struct nfs4_stid *s;
->>       struct nfs4_ol_stateid *stp = NULL;
->>       struct nfs4_delegation *dp = NULL;
->>       struct svc_fh *current_fh = &cstate->current_fh;
->>       struct inode *ino = current_fh->fh_dentry->d_inode;
->> +     stateid_t *stateid;
->> +
->>       __be32 status;
->>
->>       if (filpp)
->> @@ -3329,9 +3335,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
->>       if (grace_disallows_io(ino))
->>               return nfserr_grace;
->>
->> -     if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
->> -             return check_special_stateids(current_fh, stateid, flags);
->> +     if (ZERO_STATEID(stateid_in) || ONE_STATEID(stateid_in))
->> +             return check_special_stateids(current_fh, stateid_in, flags);
->>
->> +     stateid = STATEID_OF(stateid_in, cstate);
->> +
->>       status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID, &s);
->>       if (status)
->>               return status;
->> @@ -3655,14 +3663,17 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>       __be32 status;
->>       struct nfs4_openowner *oo;
->>       struct nfs4_ol_stateid *stp;
->> +     stateid_t *stateid;
->>
->>       dprintk("NFSD: nfsd4_close on file %.*s\n",
->>                       (int)cstate->current_fh.fh_dentry->d_name.len,
->>                       cstate->current_fh.fh_dentry->d_name.name);
->>
->>       nfs4_lock_state();
->> +     stateid = STATEID_OF( &close->cl_stateid, cstate);
->
-> nit: extra space after open-parentheses
->
->> +
->>       status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
->> -                                     &close->cl_stateid,
->> +                                     stateid,
->>                                       NFS4_OPEN_STID|NFS4_CLOSED_STID,
->>                                       &stp);
->>       if (status)
->> @@ -3670,7 +3681,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>       oo = openowner(stp->st_stateowner);
->>       status = nfs_ok;
->>       update_stateid(&stp->st_stid.sc_stateid);
->> -     memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
->> +     memcpy(stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
->
-> Currently, nfsd4_encode_close uses close->cl_stateid so we need to keep its value
-> up-to-date. With the scheme I outlined above, copying into cstate->current_stateid can
-> be done in a centralized place.
->
-> Benny
->
->>
->>       nfsd4_close_open_stateid(stp);
->>       oo->oo_last_closed_stid = stp;
->> @@ -4400,7 +4411,7 @@ int
->>  nfs4_state_init(void)
->>  {
->>       int i, status;
->> -
->> +     uint32_t one = 1;
->>       status = nfsd4_init_slabs();
->>       if (status)
->>               return status;
->> @@ -4423,6 +4434,9 @@ nfs4_state_init(void)
->>               INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->>       }
->>       memset(&onestateid, ~0, sizeof(stateid_t));
->> +     /* seqid 1, other all 0 */
->> +     memcpy(&currentstateid , &one, sizeof(one));
->> +
->
-> you mean currentstateid.si_generation = cpu_to_be32(1) ?
-
-why it should be big endian here? I think xdr encoding will take care about it.
-
-Tigran.
-
->
->>       INIT_LIST_HEAD(&close_lru);
->>       INIT_LIST_HEAD(&client_lru);
->>       INIT_LIST_HEAD(&del_recall_lru);
+PiA+IHZpcnR1YWxpemF0aW9uIHZlbmRvcnMgd2hvIHN1cHBvcnQgdGhpcyBvZmZsb2FkIGRvIGl0
+IGF0IGEgbGF5ZXINCj4gYWJvdmUgdGhlIGd1ZXN0LU9TKEludHJhLUxVTih0bSkgbG9ja2luZyBv
+ciB3aGF0ZXZlciBmYW5jeSBsb2NraW5nKS4gU28NCj4gSSB0aGluayAnY29weWZpbGUnIGlzIGdv
+aW5nIHRvIGJlIGFwcGVhbGluZyB0byBhcHBsaWNhdGlvbi1kZXZlbG9wZXJzDQo+IG1vcmUgdGhh
+biB0aGUgaHlwZXJ2aXNvci12ZW5kb3JzLg0KPiANCj4gVGhlIGFwcGxpY2F0aW9uIGlzIHRoaW4g
+cHJvdmlzaW9uaW5nLCBub3QgdGhlICdjcCcgY29tbWFuZC4gV2hlbg0KDQoNCnRoaW4tcHJvdmlz
+aW9uaW5nIGlzIG9uZSB1c2UtY2FzZS4gVGhlcmUgYXJlIHF1aXRlIGEgZmV3IHVzZS1jYXNlcyBv
+ZiAnY29weWZpbGUnIGRlcGVuZGluZyBvbiB5b3VyIGJ1c2luZXNzLWxvZ2ljIGFuZCB0aGUgdHlw
+ZSBvZiBhcHBsaWFuY2UgeW91IHNlbGwuDQoNCg0KPiB2aXJ0dWFsaXNhdGlvbiB2ZW5kb3JzIGRv
+IHN1cHBvcnQgdGhpcywgaXQgd2lsbCBtYWlubHkgYmUgYXMgcGFydCBvZg0KPiB0aGVpciBpbWFn
+ZSBtYW5hZ2VtZW50IHRvb2xraXRzLCBub3QgdGhlIGh5cGVydmlzb3IuDQo+IA0KDQpUb29sa2l0
+cz8gTWF5IG5vdCBiZSB0cnVlLiBUaGUgdG9vbGtpdCBtaWdodCBuZWVkIHRvIHRhbGsgdG8gc29t
+ZSBoeXBlcnZpc29yLWNvbXBvbmVudCB0byBlbnN1cmUgTFVOLWxvY2tpbmcgZXRjIG9uIHRoZSB0
+YXJnZXQuIFNvIHRoaXMgaXMgbm90IGVudGlyZWx5IGlzb2xhdGVkIGFzIHlvdSBtaWdodCB0aGlu
+ay4gVGhlcmUgaXMgc29tZSBpbnRlZ3JhdGlvbi4gQXMgYW4gZXhhbXBsZShqdXN0IHRvIHByb3Zl
+IHRoZSBwb2ludCkgLSBIYXZlIHlvdSBldmVyIHNlZW4gYW55b25lIG5vdCB1c2UgdnNwaGVyZS1j
+bGllbnQgb24gVk13YXJlIGZvciBjb3B5aW5nIFZNIHRlbXBsYXRlcz8NCg0KDQo+ID4gU28gbGV0
+J3MgdGhpbmsgYWJvdXQgaXQgZnJvbSBlbmQtdXNlcnMgcGVyc3BlY3RpdmU6DQo+ID4gV29uJ3Qg
+ZXZlcnlvbmUgcmVwbGljYXRlIGNvZGUgdG8gY2hlY2sgLSAnQW0gSSBkb25lJz8gSXQgd2lsbCBq
+dXN0DQo+IG1ha2UgYXBwbGljYXRpb24gZm9sa3Mgd3JpdGUgbW9yZSAodWdseSljb2RlLiBCZWNh
+dXNlIHlvdSB3b3VsZCB0aGVuDQo+IGhhdmUgdG8gbWFpbnRhaW4gYW5vdGhlciBxdWV1ZS9ldGMg
+dG8gY2hlY2sgZm9yIHRoaXMgb3BlcmF0aW9uLg0KPiANCj4gJ0FtIEkgZG9uZScgaXMgZWFzeTog
+Y29weWZpbGUoKSByZXR1cm5zIHdpdGggdGhlIG51bWJlciBvZiBieXRlcyB0aGF0DQo+IGhhdmUg
+YmVlbiBjb3BpZWQuDQo+IA0KPiAnSXMgbXkgY29weWZpbGUoKSBzeXNjYWxsIG1ha2luZyBwcm9n
+cmVzcycgaXMgdGhlIHF1ZXN0aW9uIHRoYXQgbmVlZHMNCj4gYW5zd2VyaW5nLg0KPiANCg0KVW5k
+ZXJzdG9vZC4gQnV0IGFzIGEgdXNlciwgd2UgZG9uJ3Qga25vdyB3aGF0ICdhbSBJIGRvbmUnIGlz
+IGdvaW5nIHRvIHJlcG9ydC4NCg0KJ2FtIEkgZG9uZScgY2FuIHJldHVybjoNCjEpQUNLW2NvcHkg
+ZG9uZV0gLSBzaW1wbGlzdGljIGNhc2UuDQoyKUlOLXByb2dyZXNzLg0KMylOQUNLW2NvcHkgZmFp
+bGVkKHdpdGggc3RhdHVzIHZhbHVlcykgb3IgY29weSBwYXJ0aWFsbHkgY29tcGxldGVkXQ0KDQpB
+bmQgaWYgeW91IGFyZSB1c2luZyB0aGUgY29weS1WTSB1c2UtY2FzZSB0aGVuIHZlcnkgZmV3IFZN
+cyBhcmUgdW5kZXIgNEdCcy4gU28gd2Ugd2lsbCBoaXQgMikgYWJvdmUgbW9yZSBmcmVxdWVudGx5
+IHRoYW4gMSkgYW5kIDMpLg0KDQoNCj4gPiBXZSBjYW4ganVzdCBzdXBwb3J0IGZ1bGwtY29weS4g
+UGFydGlhbCBjb3BpZXMgY2FuIGJlIHJldHVybmVkIGFzDQo+IGZhaWx1cmUuDQo+IA0KPiBUaGVu
+IHlvdSBoYXZlIHRvIGNoZWNrIHRoZSBlbnRpcmUgcmFuZ2Ugb24gZXJyb3IgaW5zdGVhZCBvZiBq
+dXN0DQo+IHJlc3VtaW5nIHRoZSBjb3B5IGZyb20gd2hlcmUgaXQgc3RvcHBlZC4NCj4gDQoNCldo
+eSBub3QgcmVzdGFydD8gV2hhdCBpZiB0aGUgTFVOIHdhcyBpbXBsZW1lbnRpbmcgdGhpbi1wcm92
+aXNpb25pbmcgYW5kIG5vdyBpdCByYW4gb3V0LW9mLXNwYWNlIGFmdGVyIHBhcnRpYWxseSBjb3B5
+aW5nIHlvdXIgZGF0YS4NClNvIHdoeSBub3QgcmVzdGFydCB0aGUgY29weT8gSWYgdGhlIHRhcmdl
+dCBkb2Vzbid0IHN1cHBvcnQgYXV0by1leHRlbmQsIHNvbWVvbmUoc3RvcmFnZS1hZG1pbiBldGMp
+IHdvdWxkIGhhdmUgdG8gc3RlcC1pbiBhbmQgbWFuYWdlIHRoYXQgTFVOLg0KWW91IG1pZ2h0IGFz
+LXdlbGwgcmVzdGFydCB0aGUgY29weSBpbiB0aGlzIGNhc2UuDQoNCg0KDQpDaGV0YW4gTG9rZQ0K
+DQoNCg==
