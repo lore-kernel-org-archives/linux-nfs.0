@@ -1,64 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1275 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756915Ab1LNN5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 08:57:13 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvDnv007525
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:13 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBEDvC3Z005913
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 08:57:12 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names on stable storage (RFC)
-Date: Wed, 14 Dec 2011 08:57:05 -0500
-Message-Id: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
+Received: from exprod6og117.obsmtp.com ([64.18.1.39]:49726 "HELO
+	exprod6og117.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751295Ab1LOQPd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:15:33 -0500
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="UTF-8"
+Subject: RE: copy offload support in Linux - new system call needed?
+Date: Thu, 15 Dec 2011 11:08:25 -0500
+Message-ID: <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com>
+In-Reply-To: <1323961140.14317.2.camel@lade.trondhjem.org>
+References: <4EE8F75F.6070800@gmail.com> <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com> <20111214222723.GD7623@fieldses.org> <1323961140.14317.2.camel@lade.trondhjem.org>
+From: "Loke, Chetan" <Chetan.Loke@netscout.com>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Ric Wheeler" <ricwheeler@gmail.com>, "Al Viro" <viro@ZenIV.linux.org.uk>,
+        <linux-scsi@vger.kernel.org>,
+        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
+        "Hannes Reinecke" <hare@suse.de>,
+        "Andrew Morton" <akpm@linux-foundation.org>,
+        <linux-nfs@vger.kernel.org>, "Joel Becker" <jlbec@evilplan.org>,
+        "James Bottomley" <James.Bottomley@HansenPartnership.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the userspace portion of the knfsd client name tracking
-overhaul. See this patch series for an explanation:
-
-    nfsd: overhaul the client name tracking code (RFC)
-
-The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
-and handles the requests.
-
-The data is stored using a sqlite database. The main reason for this is
-that it takes care of most of the fussy details and atomicity concerns
-of tracking the information on stable storage.
-
-For now, the daemon is only suitable for single-host configurations.
-The plan is to later extend this to be suitable for clustered
-configurations as well.
-
-The code is still a little rough, so be gentle. It also lacks things
-like a manpage. I plan to add all that before doing a "formal" patch
-submission, but I wanted to get some early review of the overall design
-before to spend a lot of time knocking off the rough edges.
-
-Jeff Layton (7):
-  clstated: add clname tracking daemon stub
-  clstated: reattempt the pipe open if it fails on ENOENT
-  clstated: add autoconf goop for sqlite
-  clstated: add routines for a sqlite backend database
-  clstated: add remove functionality
-  clstated: add check/update functionality
-  clstated: add function to remove unreclaimed client records
-
- aclocal/libsqlite3.m4      |   33 +++
- configure.ac               |   23 ++
- utils/Makefile.am          |    4 +
- utils/clstated/Makefile.am |   14 +
- utils/clstated/clstated.c  |  355 +++++++++++++++++++++++++++
- utils/clstated/sqlite.c    |  572 ++++++++++++++++++++++++++++++++++++++++++++
- utils/clstated/sqlite.h    |   30 +++
- 7 files changed, 1031 insertions(+), 0 deletions(-)
- create mode 100644 aclocal/libsqlite3.m4
- create mode 100644 utils/clstated/Makefile.am
- create mode 100644 utils/clstated/clstated.c
- create mode 100644 utils/clstated/sqlite.c
- create mode 100644 utils/clstated/sqlite.h
-
+PiBIb3cgd291bGQgdGhlIHNlcnZlciBrbm93PyBJIHN1Z2dlc3Qgd2UgZGVhbCB3aXRoIHRoaXMg
+YnkgYWRkaW5nIGFuDQo+IGlvY3RsKCkgdG8gYWxsb3cgdGhlIGFwcGxpY2F0aW9uIHRvIHBvbGwg
+Zm9yIHByb2dyZXNzOiBJJ20gYXNzdW1pbmcgbm93DQoNCldoeSBub3Qgc3VwcG9ydCBzb21ldGhp
+bmcgbGlrZSB0aGUgYXN5bmMtaW9jYj8NCg0KDQo=
