@@ -1,73 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40294 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3186 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751418Ab1LUV7u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 16:59:50 -0500
-Date: Wed, 21 Dec 2011 16:59:22 -0500
+	id S1756356Ab1LOSoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:44:03 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi2H4010879
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:02 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi17f010403
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:02 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, bfields@fieldses.org,
-        steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <20111221165922.589101aa@tlielax.poochiereds.net>
-In-Reply-To: <20111221164810.78d600a9@tlielax.poochiereds.net>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
-	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-	<20111221163312.3405c1f3@tlielax.poochiereds.net>
-	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
-	<20111221164810.78d600a9@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/7] nfsdcld: add autoconf goop for sqlite
+Date: Thu, 15 Dec 2011 13:43:57 -0500
+Message-Id: <1323974641-16515-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
+References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Dec 2011 16:48:10 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+Mostly cribbed from Chuck Lever's new-statd rewrite a few years ago...
 
-> On Wed, 21 Dec 2011 16:37:30 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> > 
-> > On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
-> > 
-> > > On Wed, 21 Dec 2011 15:45:01 -0500
-> > > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > > 
-> > >> 
-> > >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
-> > >> 
-> > >>> The daemon takes a versioned binary struct. Hopefully this should allow
-> > >>> us to revise the struct later if it becomes necessary.
-> > >> 
-> > >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
-> > >> 
-> > > 
-> > > That's the main reason. We could, of course encode that string in hex or
-> > > something, and decode it on the other end. No one has presented a
-> > > strong argument for doing it that way as of yet though.
-> > > 
-> > > If anyone feels strongly about that, then it would be helpful to have
-> > > them pipe up now and state why they do...
-> > 
-> > <pipe>Because binary data structures are difficult to work with over time, which is why other NFSD user space interfaces are text-based.</pipe>
-> > 
-> > ;-)
-> > 
-> 
-> *sigh* that was the sort of comments I was hoping to get out of the RFC
-> postings. But ok...
-> 
-> I'll see about respinning the whole thing with either a text-based or
-> XDR-based upcall/downcall format. That'll take a while, but I'll see if
-> I can get it in shape in time for 3.3.
-> 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/libsqlite3.m4 |   33 +++++++++++++++++++++++++++++++++
+ configure.ac          |   22 ++++++++++++++++++++++
+ utils/Makefile.am     |    5 ++++-
+ 3 files changed, 59 insertions(+), 1 deletions(-)
+ create mode 100644 aclocal/libsqlite3.m4
 
-...and while we're discussing it. Does anyone have thoughts on which
-would be better? I'd probably prefer a text-based format. That's more
-flexible but is also going to be more verbose. I think we're still well
-under a page with these requests even in text however so I don't really
-see that as a problem.
-
+diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
+new file mode 100644
+index 0000000..73d1e46
+--- /dev/null
++++ b/aclocal/libsqlite3.m4
+@@ -0,0 +1,33 @@
++dnl Checks for matching sqlite3 header and library, and
++dnl sufficient sqlite3 version.
++dnl
++AC_DEFUN([AC_SQLITE3_VERS], [
++  AC_CHECK_HEADERS([sqlite3.h], ,)
++
++  dnl look for the library; do not add to LIBS if found
++  AC_CHECK_LIB([sqlite3], [sqlite3_libversion_number], [LIBSQLITE=-lsqlite3], ,)
++  AC_SUBST(LIBSQLITE)
++
++  AC_MSG_CHECKING(for suitable sqlite3 version)
++
++  AC_CACHE_VAL([libsqlite3_cv_is_recent],
++   [
++    saved_LIBS="$LIBS"
++    LIBS=-lsqlite3
++    AC_TRY_RUN([
++	#include <stdio.h>
++	#include <sqlite3.h>
++	int main()
++	{
++		int vers = sqlite3_libversion_number();
++
++		return vers != SQLITE_VERSION_NUMBER ||
++			vers < 3003000;
++	}
++       ], [libsqlite3_cv_is_recent=yes], [libsqlite3_cv_is_recent=no],
++       [libsqlite3_cv_is_recent=unknown])
++    LIBS="$saved_LIBS"])
++
++  AC_MSG_RESULT($libsqlite3_cv_is_recent)
++  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index c5b6a0f..bf018a2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -186,6 +186,12 @@ else
+ 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
+ fi
+ 
++AC_ARG_ENABLE(nfsdcld,
++	[AC_HELP_STRING([--enable-nfsdcld],
++			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=yes@:>@])],
++	enable_nfsdcld=$enableval,
++	enable_nfsdcld="maybe")
++
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
+ 
+@@ -259,6 +265,9 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  dnl Check for sqlite3
++  AC_SQLITE3_VERS
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -328,6 +337,19 @@ fi
+ dnl Check for IPv6 support
+ AC_IPV6
+ 
++dnl Decide what to do with nfsdcld based on sqlite3 test result
++if test "$enable_nfsv4" = "yes" -a "$libsqlite3_cv_is_recent" != "yes" ; then
++	if test "$enable_nfsdcld" = "yes"; then
++		AC_MSG_ERROR([nfsdcld requires sqlite3])
++	elif test "$enable_nfsdcld" != "no"; then
++		AC_MSG_WARN([nfsdcld requires sqlite3, autodisabling it])
++		enable_nfsdcld="no"
++	fi
++fi
++
++dnl Now set CONFIG_NFSDCLD properly
++AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" != "no" ])
++
+ dnl *************************************************************
+ dnl Check for headers
+ dnl *************************************************************
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index f42c7ee..5df7ca7 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -21,8 +21,11 @@ if CONFIG_MOUNT
+ OPTDIRS += mount
+ endif
+ 
++if CONFIG_NFSDCLD
++OPTDIRS += nfsdcld
++endif
++
+ SUBDIRS = \
+-	nfsdcld \
+ 	exportfs \
+ 	mountd \
+ 	nfsd \
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.1
+
