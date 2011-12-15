@@ -1,95 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f53.google.com ([209.85.216.53]:50257 "EHLO
-	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752277Ab1LSTu3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 14:50:29 -0500
-Received: by qadb15 with SMTP id b15so3542063qad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Dec 2011 11:50:28 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: eparis@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: fix regression in handling of context= option in NFSv4
-Date: Mon, 19 Dec 2011 14:50:23 -0500
-Message-Id: <1324324223-9933-1-git-send-email-jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:25545 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932523Ab1LOQAZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 11:00:25 -0500
+Subject: [PATCH 2/7] SUNRPC: register rpcbind programs in passed network
+ namespase context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 15 Dec 2011 19:59:59 +0300
+Message-ID: <20111215155959.2434.32339.stgit@localhost6.localdomain6>
+In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Setting the security context of a NFSv4 mount via the context= mount
-option is currently broken. The NFSv4 codepath allocates a parsed
-options struct, and then parses the mount options to fill it. It
-eventually calls nfs4_remote_mount which calls security_init_mnt_opts.
-That clobbers the lsm_opts struct that was populated earlier. This bug
-also looks like it causes a small memory leak on each v4 mount where
-context= is used.
+Registering rpcbind program requires rpcbind clients, which are per network
+namespace context.
 
-Fix this by moving the initialization of the lsm_opts into
-nfs_alloc_parsed_mount_data, and the freeing of the same into the
-functions that allocate the nfs_parsed_mount_data.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-I believe this regression was introduced quite some time ago, probably
-by commit c02d7adf.
-
-Cc: stable@vger.kernel.org
-Acked-by: Eric Paris <eparis@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/super.c |   11 +++--------
- 1 files changed, 3 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/clnt.h |    5 +++--
+ net/sunrpc/rpcb_clnt.c      |    8 ++++----
+ net/sunrpc/svc.c            |   10 +++++-----
+ 3 files changed, 12 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 1347774..5e112f6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -909,6 +909,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
- 		data->auth_flavor_len	= 1;
- 		data->version		= version;
- 		data->minorversion	= 0;
-+		security_init_mnt_opts(&data->lsm_opts);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 53afa56..1e56469 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -138,8 +138,9 @@ void		rpc_task_release_client(struct rpc_task *);
+ 
+ int		rpcb_create_local(void);
+ void		rpcb_put_local(void);
+-int		rpcb_register(u32, u32, int, unsigned short);
+-int		rpcb_v4_register(const u32 program, const u32 version,
++int		rpcb_register(struct net *, u32, u32, int, unsigned short);
++int		rpcb_v4_register(struct net *net, const u32 program,
++				 const u32 version,
+ 				 const struct sockaddr *address,
+ 				 const char *netid);
+ void		rpcb_getport_async(struct rpc_task *);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 43eff03..ea87b0c 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -425,7 +425,7 @@ static int rpcb_register_call(struct rpc_clnt *clnt, struct rpc_message *msg)
+  * IN6ADDR_ANY (ie available for all AF_INET and AF_INET6
+  * addresses).
+  */
+-int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
++int rpcb_register(struct net *net, u32 prog, u32 vers, int prot, unsigned short port)
+ {
+ 	struct rpcbind_args map = {
+ 		.r_prog		= prog,
+@@ -436,7 +436,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
+ 			"rpcbind\n", (port ? "" : "un"),
+@@ -563,7 +563,7 @@ static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
+  * service on any IPv4 address, but not on IPv6.  The latter
+  * advertises the service on all IPv4 and IPv6 addresses.
+  */
+-int rpcb_v4_register(const u32 program, const u32 version,
++int rpcb_v4_register(struct net *net, const u32 program, const u32 version,
+ 		     const struct sockaddr *address, const char *netid)
+ {
+ 	struct rpcbind_args map = {
+@@ -575,7 +575,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &map,
+ 	};
+-	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	if (sn->rpcb_local_clnt4 == NULL)
+ 		return -EPROTONOSUPPORT;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6e03888..e9c42ad 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -813,7 +813,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
  	}
- 	return data;
+ 
+-	error = rpcb_v4_register(program, version,
++	error = rpcb_v4_register(&init_net, program, version,
+ 					(const struct sockaddr *)&sin, netid);
+ 
+ 	/*
+@@ -821,7 +821,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 	 * registration request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(program, version, protocol, port);
++		error = rpcb_register(&init_net, program, version, protocol, port);
+ 
+ 	return error;
  }
-@@ -2222,8 +2223,6 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	if (data == NULL || mntfh == NULL)
- 		goto out_free_fh;
+@@ -860,7 +860,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
  
--	security_init_mnt_opts(&data->lsm_opts);
--
- 	/* Validate the mount data */
- 	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
- 	if (error < 0) {
-@@ -2623,9 +2622,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+-	error = rpcb_v4_register(program, version,
++	error = rpcb_v4_register(&init_net, program, version,
+ 					(const struct sockaddr *)&sin6, netid);
  
- 	mntfh = nfs_alloc_fhandle();
- 	if (data == NULL || mntfh == NULL)
--		goto out_free_fh;
--
--	security_init_mnt_opts(&data->lsm_opts);
-+		goto out;
+ 	/*
+@@ -963,14 +963,14 @@ static void __svc_unregister(const u32 program, const u32 version,
+ {
+ 	int error;
  
- 	/* Get a volume representation */
- 	server = nfs4_create_server(data, mntfh);
-@@ -2677,13 +2674,10 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+-	error = rpcb_v4_register(program, version, NULL, "");
++	error = rpcb_v4_register(&init_net, program, version, NULL, "");
  
- 	s->s_flags |= MS_ACTIVE;
+ 	/*
+ 	 * User space didn't support rpcbind v4, so retry this
+ 	 * request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(program, version, 0, 0);
++		error = rpcb_register(&init_net, program, version, 0, 0);
  
--	security_free_mnt_opts(&data->lsm_opts);
- 	nfs_free_fhandle(mntfh);
- 	return mntroot;
- 
- out:
--	security_free_mnt_opts(&data->lsm_opts);
--out_free_fh:
- 	nfs_free_fhandle(mntfh);
- 	return ERR_PTR(error);
- 
-@@ -2856,6 +2850,7 @@ out:
- 	kfree(data->nfs_server.export_path);
- 	kfree(data->nfs_server.hostname);
- 	kfree(data->fscache_uniq);
-+	security_free_mnt_opts(&data->lsm_opts);
- out_free_data:
- 	kfree(data);
- 	dprintk("<-- nfs4_mount() = %d%s\n", error,
--- 
-1.7.7.3
+ 	dprintk("svc: %s(%sv%u), error %d\n",
+ 			__func__, progname, version, error);
 
