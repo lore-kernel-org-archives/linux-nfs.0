@@ -1,52 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60305 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:34374 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932204Ab1LEUVe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Dec 2011 15:21:34 -0500
-Message-ID: <4EDD27AB.9010803@RedHat.com>
-Date: Mon, 05 Dec 2011 15:20:59 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1759035Ab1LOQAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 11:00:17 -0500
+Subject: [PATCH 1/7] SUNRPC: create rpcbind client in passed network namespace
+ context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 15 Dec 2011 19:59:51 +0300
+Message-ID: <20111215155951.2434.61942.stgit@localhost6.localdomain6>
+In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Anibal Monsalve Salazar <anibal@debian.org>
-CC: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-        Michael Rasmussen <mir@datanom.net>, 651032@bugs.debian.org,
-        Rares Aioanei <schaiba@gmail.com>, 649491@bugs.debian.org,
-        Bjoern Buerger <bbu@pengutronix.de>, 650904@bugs.debian.org,
-        steven@nchc.org.tw, 650948@bugs.debian.org
-Subject: Re: Bug#651032: /usr/sbin/rpc.idmapd: rpc.idmapd referring to none
- existing library
-References: <20111205071808.5626.67399.reportbug@sleipner.datanom.net> <20111205082520.GA5890@debian.org> <4EDCE8B2.1050702@RedHat.com> <20111205184206.GA5207@debian.org>
-In-Reply-To: <20111205184206.GA5207@debian.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Rpcbind clients are per network namespace.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On 12/05/2011 01:42 PM, Anibal Monsalve Salazar wrote:
-> On Mon, Dec 05, 2011 at 10:52:18AM -0500, Steve Dickson wrote:
->> Why not just use the --with-pluginpath configuration flag?
->> That's how we do it in Fedora...
-> 
-> The --with-pluginpath configuration option isn't in 0.24.
-> 
-> I run
-> 
->  ./configure --help
-> 
-> and it doesn't list the --with-pluginpath configuration option.
-> 
-> The configure commands doesn't unrecognize the --with-pluginpath option.
-> See below.
-> 
->  CFLAGS="-Wall -g -O2" ./configure --host=i486-linux-gnu \
->  --build=i486-linux-gnu --prefix=/usr --mandir=\${prefix}/share/man \
->  --infodir=\${prefix}/share/info --with-pluginpath=/lib/libnfsidmap
->  configure: WARNING: unrecognized options: --with-pluginpath
-> 
-> The git repo has patches to add the --with-pluginpath configuration
-> option. Do you plan to release libnfsidmap 0.25 soon?
-Sure.. I'll try to get one out asap...
+---
+ net/sunrpc/rpcb_clnt.c |   11 ++++++-----
+ 1 files changed, 6 insertions(+), 5 deletions(-)
 
-steved.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 46f5915..43eff03 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -344,11 +344,12 @@ out:
+ 	return result;
+ }
+ 
+-static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+-				    size_t salen, int proto, u32 version)
++static struct rpc_clnt *rpcb_create(struct net *net, char *hostname,
++				    struct sockaddr *srvaddr, size_t salen,
++				    int proto, u32 version)
+ {
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= net,
+ 		.protocol	= proto,
+ 		.address	= srvaddr,
+ 		.addrsize	= salen,
+@@ -708,8 +709,8 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	dprintk("RPC: %5u %s: trying rpcbind version %u\n",
+ 		task->tk_pid, __func__, bind_version);
+ 
+-	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
+-				bind_version);
++	rpcb_clnt = rpcb_create(xprt->xprt_net, clnt->cl_server, sap, salen,
++				xprt->prot, bind_version);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+ 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
 
