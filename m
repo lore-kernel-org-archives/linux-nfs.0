@@ -1,92 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o145.mxlogic.net ([208.65.145.78]:50230 "EHLO
-	p02c12o145.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752569Ab1LUWPZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 17:15:25 -0500
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 21 Dec 2011 17:04:02 -0500
-Subject: RE: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
-	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-	<20111221163312.3405c1f3@tlielax.poochiereds.net>
-	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
-	<20111221164810.78d600a9@tlielax.poochiereds.net>
- <20111221165922.589101aa@tlielax.poochiereds.net>
-In-Reply-To: <20111221165922.589101aa@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:37417 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751257Ab1LORZk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 12:25:40 -0500
+Message-ID: <1323969923.14317.31.camel@lade.trondhjem.org>
+Subject: Re: copy offload support in Linux - new system call needed?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: "Loke, Chetan" <Chetan.Loke@netscout.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-scsi@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        Joel Becker <jlbec@evilplan.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Date: Thu, 15 Dec 2011 12:25:23 -0500
+In-Reply-To: <4EEA2BF7.5030107@gmail.com>
+References: <4EE8F75F.6070800@gmail.com>
+	  <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
+	  <20111214222723.GD7623@fieldses.org>
+	  <1323961140.14317.2.camel@lade.trondhjem.org>
+	  <D3F292ADF945FB49B35E96C94C2061B91516E391@nsmail.netscout.com>
+	  <1323965498.14317.13.camel@lade.trondhjem.org>
+	  <D3F292ADF945FB49B35E96C94C2061B91516E3FC@nsmail.netscout.com>
+	 <1323968015.14317.28.camel@lade.trondhjem.org> <4EEA2BF7.5030107@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
+On Thu, 2011-12-15 at 12:18 -0500, Ric Wheeler wrote: 
+> What I would like to see is a way to make sure that we can interrupt any long 
+> running command & also make sure that our timeouts (for SCSI specifically) are 
+> not too aggressive.
 
-I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
+The draft NFSv4.2 protocol contains features to make interruption
+possible, so as far as the NFS client is concerned, that should be
+doable. I can't answer for CIFS or SCSI...
 
-	Thanx...
+Cheers
+  Trond 
 
-		ps
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
-Sent: Wednesday, December 21, 2011 4:59 PM
-To: Jeff Layton
-Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-
-On Wed, 21 Dec 2011 16:48:10 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Wed, 21 Dec 2011 16:37:30 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> > 
-> > On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
-> > 
-> > > On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
-> > > <chuck.lever@oracle.com> wrote:
-> > > 
-> > >> 
-> > >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
-> > >> 
-> > >>> The daemon takes a versioned binary struct. Hopefully this 
-> > >>> should allow us to revise the struct later if it becomes necessary.
-> > >> 
-> > >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
-> > >> 
-> > > 
-> > > That's the main reason. We could, of course encode that string in 
-> > > hex or something, and decode it on the other end. No one has 
-> > > presented a strong argument for doing it that way as of yet though.
-> > > 
-> > > If anyone feels strongly about that, then it would be helpful to 
-> > > have them pipe up now and state why they do...
-> > 
-> > <pipe>Because binary data structures are difficult to work with over 
-> > time, which is why other NFSD user space interfaces are 
-> > text-based.</pipe>
-> > 
-> > ;-)
-> > 
-> 
-> *sigh* that was the sort of comments I was hoping to get out of the 
-> RFC postings. But ok...
-> 
-> I'll see about respinning the whole thing with either a text-based or 
-> XDR-based upcall/downcall format. That'll take a while, but I'll see 
-> if I can get it in shape in time for 3.3.
-> 
-
-...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
-
---
-Jeff Layton <jlayton@redhat.com>
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
