@@ -1,72 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:37696 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751781Ab1LOPwh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 10:52:37 -0500
-Date: Thu, 15 Dec 2011 10:52:13 -0500
-From: Chris Mason <chris.mason@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: copy offload support in Linux - new system call needed?
-Message-ID: <20111215155213.GF18252@shiny>
-References: <4EE8F75F.6070800@gmail.com>
- <20111214192739.GN2203@ZenIV.linux.org.uk>
- <4EE8FC2E.3010207@gmail.com>
- <20111214222723.GD7623@fieldses.org>
- <1323961140.14317.2.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323961140.14317.2.camel@lade.trondhjem.org>
+Received: from mx1.redhat.com ([209.132.183.28]:1570 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751294Ab1LOSn1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:43:27 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIhQQK007958
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:26 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id pBFIhQq4021450
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:43:26 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/5] nfsd: overhaul the client name tracking code (RFC)
+Date: Thu, 15 Dec 2011 13:43:21 -0500
+Message-Id: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
-> On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
-> > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
-> > > On 12/14/2011 02:27 PM, Al Viro wrote:
-> > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
-> > > >
-> > > >>We had an active thread a couple of years back that came out of the
-> > > >>reflink work and, at the time, there seemed to be moderately
-> > > >>positive support for adding a new system call that would fit this
-> > > >>use case (Joel Becker's copyfile()).
-> > > >>
-> > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
-> > > >>or should we look at other hooks?
-> > > >copyfile(2) is probably a good way to go, provided that we do _not_
-> > > >go baroque as it had happened the last time syscall had been discussed.
-> > > >
-> > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
-> > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
-> > > >If it works - fine, if not - caller has to be ready to deal with handling
-> > > >cross-device case anyway.
-> > > 
-> > > I think that this approach makes a lot of sense. Most of the
-> > > devices/targets that support the copy offload, will do it in very
-> > > reasonable amounts of time.
-> > 
-> > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
-> > one operation:
-> > 
-> > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
-> >  
-> > Perhaps we should ask for separate operations for the two cases.  (Or at
-> > least a "please don't bother if this is going to take 8 hours" flag....)
-> 
-> How would the server know? I suggest we deal with this by adding an
-> ioctl() to allow the application to poll for progress: I'm assuming now
-> that we don't expect more than 1 copyfile() system call at a time per
-> file descriptor...
+This is the second version of this patchset. The main changes are:
 
-If we're using this to copy VM image files, I could easily imagine
-wanting to clone multiple copies of the VM in parallel.
+- a few minor bugfixes
 
--chris
+- some changes to the upcall struct format
+
+- renaming some of the objects to be prefixed with "cld" instead of
+  "clstated"
+
+One of the things that Bruce has long had on his wishlist is to replace
+the client name tracking code that the kernel uses:
+
+    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
+
+The existing code manipulates the filesystem directly to track this
+info. Not only is that something that makes the VFS maintainers look
+askance at knfsd, but it also is unsuitable in a clustered
+configuration.
+
+Typically we think of the grace period as a property of the server, but
+with a clustered filesystem, we need to consider it as a property of the
+cluster as a whole (or of the clustered filesystem). On a cold startup
+of the cluster, once any node grants a non-reclaim lock, then no more
+reclaim can be allowed on any node. Grace periods must be coordinated
+amongst all cluster nodes.
+
+In order to achieve that goal, we need to first allow the client name
+reclaim to be cluster aware as well. This patchset is a move toward that
+goal and covers the initial kernel part of such a change. A patchset to
+add a daemon to handle the upcalls will follow.
+
+Note that this patchset is still a little rough, so consider this an
+RFC for the overall design. We'll also need to consider a plan to
+deprecate the old client tracking code.
+
+The goal with this patchset is to replace the existing functionality,
+without disturbing the existing code too much. There's some room for
+more cleanup and reorganization once the old tracker is gone.
+
+Jeff Layton (5):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: add a generic flags field to nfs4_client
+  nfsd: add a header describing upcall to nfsdcld
+  nfsd: add the infrastructure to handle the cld upcall
+
+ fs/nfsd/nfs4recover.c    |  439 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4state.c      |   46 ++---
+ fs/nfsd/state.h          |   15 +-
+ include/linux/nfsd/cld.h |   57 ++++++
+ net/sunrpc/rpc_pipe.c    |    5 +
+ 5 files changed, 518 insertions(+), 44 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
 
