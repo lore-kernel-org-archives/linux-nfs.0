@@ -1,74 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:44107 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751418Ab1LUULt convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 15:11:49 -0500
-Received: by obcwo16 with SMTP id wo16so3482007obc.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Dec 2011 12:11:49 -0800 (PST)
-MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <1324475851.7709.12.camel@lade.trondhjem.org>
-References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
-	<1324475851.7709.12.camel@lade.trondhjem.org>
-Date: Wed, 21 Dec 2011 21:11:49 +0100
-Message-ID: <CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
-Subject: Re: Session timeout on RHEL6.2
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:44044 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758993Ab1LOQCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 11:02:31 -0500
+Date: Thu, 15 Dec 2011 11:03:30 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chris Mason <chris.mason@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        Joel Becker <jlbec@evilplan.org>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: copy offload support in Linux - new system call needed?
+Message-ID: <20111215110330.33aed3a6@barsoom.rdu.redhat.com>
+In-Reply-To: <20111215155213.GF18252@shiny>
+References: <4EE8F75F.6070800@gmail.com>
+	<20111214192739.GN2203@ZenIV.linux.org.uk>
+	<4EE8FC2E.3010207@gmail.com>
+	<20111214222723.GD7623@fieldses.org>
+	<1323961140.14317.2.camel@lade.trondhjem.org>
+	<20111215155213.GF18252@shiny>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
->> Dear friends,
->>
->> We are observing strange behavior with RHEL 6.2:
->>
->> Our the server lease time is 90 seconds. I can see that client
->> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
->> At some point client sends SEQUENCE after 127 seconds and
->> gets, as expected, EXPIRED.
->
-> Why shouldn't the client be allowed to let the lease expire if nothing
-> is using that filesystem?
->
->> I this point I have to blame myself.
->> Client comes with EXCHANGE_ID using the same clientid.
->> We did not garbage collected clientid internally as this happens after
->> 2*LEASE_TIME
->> and return EXPIRE. This ping-pong never ends.
->>
->> This is probably mostly a bug on my side. Nevertheless we never observed late
->> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
->>
->> I can open bug at RHEL if required.
->
-> I wouldn't consider that a bug.
+On Thu, 15 Dec 2011 10:52:13 -0500
+Chris Mason <chris.mason@oracle.com> wrote:
 
-As I said, there is a bug in exchange_id processing ( case 3 ) on my
-side. But to me it's sounds strange that client after more than 8
-hours of sending only sequence decided to send one of them later than
-lease time. Especially, that we did not have it with other kernels.
+> On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
+> > On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
+> > > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
+> > > > On 12/14/2011 02:27 PM, Al Viro wrote:
+> > > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
+> > > > >
+> > > > >>We had an active thread a couple of years back that came out of the
+> > > > >>reflink work and, at the time, there seemed to be moderately
+> > > > >>positive support for adding a new system call that would fit this
+> > > > >>use case (Joel Becker's copyfile()).
+> > > > >>
+> > > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
+> > > > >>or should we look at other hooks?
+> > > > >copyfile(2) is probably a good way to go, provided that we do _not_
+> > > > >go baroque as it had happened the last time syscall had been discussed.
+> > > > >
+> > > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
+> > > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
+> > > > >If it works - fine, if not - caller has to be ready to deal with handling
+> > > > >cross-device case anyway.
+> > > > 
+> > > > I think that this approach makes a lot of sense. Most of the
+> > > > devices/targets that support the copy offload, will do it in very
+> > > > reasonable amounts of time.
+> > > 
+> > > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
+> > > one operation:
+> > > 
+> > > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
+> > >  
+> > > Perhaps we should ask for separate operations for the two cases.  (Or at
+> > > least a "please don't bother if this is going to take 8 hours" flag....)
+> > 
+> > How would the server know? I suggest we deal with this by adding an
+> > ioctl() to allow the application to poll for progress: I'm assuming now
+> > that we don't expect more than 1 copyfile() system call at a time per
+> > file descriptor...
+> 
+> If we're using this to copy VM image files, I could easily imagine
+> wanting to clone multiple copies of the VM in parallel.
+> 
+> -chris
+> 
 
-Anyway, we will update our server tomorrow with bugfix.
+Not really a problem is it? Just dup() the fd before you issue the
+copyfile()? Or even simpler, just do periodic stat() on the destination
+file if you want a progress report.
 
-Tigran.
-
->
-> Trond
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Regardless, I like the simple approach that Al is suggesting here.
+-- 
+Jeff Layton <jlayton@redhat.com>
