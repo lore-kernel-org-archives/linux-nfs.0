@@ -1,141 +1,410 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:54105 "EHLO e5.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5956 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752363Ab1LIPYJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Dec 2011 10:24:09 -0500
-Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Fri, 9 Dec 2011 10:24:08 -0500
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id pB9FNgOn305080
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 10:23:42 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id pB9FNg0B021184
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Dec 2011 13:23:42 -0200
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+	id S1759312Ab1LOSoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Dec 2011 13:44:03 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi3fn010883
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:03 -0500
+Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi17g010403
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:02 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC v2 2/7] Added support for FH_EXPIRE_TYPE attribute.
-Date: Fri,  9 Dec 2011 10:23:27 -0500
-Message-Id: <1323444212-9855-3-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1323444212-9855-1-git-send-email-treinish@linux.vnet.ibm.com>
+Subject: [PATCH v2 4/7] nfsdcld: add routines for a sqlite backend database
+Date: Thu, 15 Dec 2011 13:43:58 -0500
+Message-Id: <1323974641-16515-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
+References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FH_EXPIRE_TYPE is used by the client to determine
-what type of filehandle the server is providing for a
-particular filesystem.
+Rather than roll our own "storage engine", use sqlite instead. It fits
+the bill nicely as it does:
 
-I added the bitmask to fsinfo since the bitmask is
-set per filesystem.
+- durable on-disk storage
+- the ability to constrain record uniqueness
+- a facility for collating and searching the host records
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+...it does add a build dependency to nfs-utils, but almost all modern
+distros provide those packages.
+
+The current incarnation of this code dynamically links against a
+provided sqlite library, but we could also consider including their
+single-file "amalgamation" to reduce dependencies (though with all
+the caveats that that entails).
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/client.c           |    2 ++
- fs/nfs/nfs4proc.c         |    3 ++-
- fs/nfs/nfs4xdr.c          |   27 +++++++++++++++++++++++++++
- include/linux/nfs_fs_sb.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 5 files changed, 33 insertions(+), 1 deletions(-)
+ utils/nfsdcld/Makefile.am |    4 +-
+ utils/nfsdcld/nfsdcld.c   |   16 ++-
+ utils/nfsdcld/sqlite.c    |  256 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h    |   27 +++++
+ 4 files changed, 297 insertions(+), 6 deletions(-)
+ create mode 100644 utils/nfsdcld/sqlite.c
+ create mode 100644 utils/nfsdcld/sqlite.h
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 873bf00..44dedfe 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -957,6 +957,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+index ed7ed42..8e4f2ab 100644
+--- a/utils/nfsdcld/Makefile.am
++++ b/utils/nfsdcld/Makefile.am
+@@ -6,9 +6,9 @@
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+ sbin_PROGRAMS	= nfsdcld
  
- 	server->time_delta = fsinfo->time_delta;
+-nfsdcld_SOURCES = nfsdcld.c
++nfsdcld_SOURCES = nfsdcld.c sqlite.c
  
-+	server->fhexpiretype = fsinfo->fhexpiretype;
-+
- 	/* We're airborne Set socket buffersize */
- 	rpc_setbufsize(server->client, server->wsize + 100, server->rsize + 100);
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index be2bbac..6bc393d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -140,7 +140,8 @@ const u32 nfs4_pathconf_bitmap[2] = {
- const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD0_MAXREAD
- 			| FATTR4_WORD0_MAXWRITE
--			| FATTR4_WORD0_LEASE_TIME,
-+			| FATTR4_WORD0_LEASE_TIME
-+			| FATTR4_WORD0_FH_EXPIRE_TYPE,
- 			FATTR4_WORD1_TIME_DELTA
- 			| FATTR4_WORD1_FS_LAYOUT_TYPES,
- 			FATTR4_WORD2_LAYOUT_BLKSIZE
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e6161b2..4d775e2 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4508,6 +4508,30 @@ static int decode_attr_layout_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return 0;
- }
+-nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
++nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE)
  
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index d82908f..de2e932 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -36,6 +36,7 @@
+ 
+ #include "xlog.h"
+ #include "nfslib.h"
++#include "sqlite.h"
+ 
+ #ifndef PIPEFS_DIR
+ #define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
+@@ -111,18 +112,20 @@ cld_pipe_reopen(struct cld_client *clnt)
+ static void
+ cld_create(struct cld_client *clnt)
+ {
++	int ret;
+ 	ssize_t bsize, wsize;
+ 	struct cld_msg *cmsg = &clnt->cl_msg;
+ 
+-	xlog(D_GENERAL, "%s: create client record", __func__);
++	xlog(D_GENERAL, "%s: create client record.", __func__);
+ 
+-	/* FIXME: create client record on storage here */
++	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
++				   cmsg->cm_u.cm_name.cn_len);
+ 
+-	/* set up reply */
+-	cmsg->cm_status = 0;
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
+ 
+ 	bsize = sizeof(*cmsg);
+ 
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
+ 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+ 	if (wsize != bsize) {
+ 		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+@@ -221,6 +224,11 @@ main(int argc, char **argv)
+ 	}
+ 
+ 	/* set up storage db */
++	rc = sqlite_maindb_init();
++	if (rc) {
++		xlog(L_ERROR, "Failed to open main database: %d", rc);
++		goto out;
++	}
+ 
+ 	/* set up event handler */
+ 	fd = cld_pipe_open(&clnt);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+new file mode 100644
+index 0000000..2534ba5
+--- /dev/null
++++ b/utils/nfsdcld/sqlite.c
+@@ -0,0 +1,256 @@
 +/*
-+ * The VFH expire type bitmask
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
 + */
 +
-+static int decode_attr_fh_expire_type(struct xdr_stream *xdr, uint32_t *bitmap,
-+					uint32_t *res)
++/*
++ * Explanation:
++ *
++ * This file contains the code to manage the sqlite backend database for the
++ * clstated upcall daemon.
++ *
++ * The main database is called main.sqlite and contains the following tables:
++ *
++ * parameters: simple key/value pairs for storing database info
++ *
++ * clients: one column containing a BLOB with the as sent by the client
++ * 	    and a timestamp (in epoch seconds) of when the record was
++ * 	    established
++ *
++ * FIXME: should we also record the fsid being accessed?
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <errno.h>
++#include <event.h>
++#include <stdbool.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sqlite3.h>
++#include <linux/limits.h>
++
++#include "xlog.h"
++
++#define CLD_SQLITE_SCHEMA_VERSION 1
++
++#ifndef CLD_SQLITE_TOPDIR
++#define CLD_SQLITE_TOPDIR NFS_STATEDIR "/nfsdcld"
++#endif
++
++/* in milliseconds */
++#define CLD_SQLITE_BUSY_TIMEOUT 10000
++
++/* private data structures */
++
++/* global variables */
++
++/* top level DB directory */
++static char *sqlite_topdir = CLD_SQLITE_TOPDIR;
++
++/* reusable pathname and sql command buffer */
++static char buf[PATH_MAX];
++
++/* global database handle */
++static sqlite3 *dbh;
++
++/* forward declarations */
++
++void
++sqlite_set_topdir(char *topdir)
 +{
-+	__be32 *p;
-+
-+	dprintk("%s: bitmap %x\n", __func__, bitmap[0]);
-+	*res = 0;
-+	if (bitmap[0] & FATTR4_WORD0_FH_EXPIRE_TYPE) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p)) {
-+			print_overflow_msg(__func__, xdr);
-+			return -EIO;
-+		}
-+		*res = be32_to_cpup(p);
-+		bitmap[0] &= ~FATTR4_WORD0_FH_EXPIRE_TYPE;
-+	}
-+	return 0;
-+
++	sqlite_topdir = topdir;
 +}
 +
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
- 	__be32 *savep;
-@@ -4523,6 +4547,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 
- 	fsinfo->rtmult = fsinfo->wtmult = 512;	/* ??? */
- 
-+	if ((status = decode_attr_fh_expire_type(xdr, bitmap, &fsinfo->fhexpiretype)) != 0)
-+		goto xdr_error;
++/* make a directory, ignoring EEXIST errors unless it's not a directory */
++static int
++mkdir_if_not_exist(char *dirname)
++{
++	int ret;
++	struct stat statbuf;
 +
- 	if ((status = decode_attr_lease_time(xdr, bitmap, &fsinfo->lease_time)) != 0)
- 		goto xdr_error;
- 	if ((status = decode_attr_maxfilesize(xdr, bitmap, &fsinfo->maxfilesize)) != 0)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b5479df..706c92b 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -112,6 +112,7 @@ struct nfs_server {
- 	unsigned int		dtsize;		/* readdir size */
- 	unsigned short		port;		/* "port=" setting */
- 	unsigned int		bsize;		/* server block size */
-+	unsigned int		fhexpiretype;   /* VFH attributes */
- 	unsigned int		acregmin;	/* attr cache timeouts */
- 	unsigned int		acregmax;
- 	unsigned int		acdirmin;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2a7c533..7252cab 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -123,6 +123,7 @@ struct nfs_fsinfo {
- 	__u32			lease_time; /* in seconds */
- 	__u32			layouttype; /* supported pnfs layout driver */
- 	__u32			blksize; /* preferred pnfs io block size */
-+	__u32			fhexpiretype; /* VFH attributes */
- };
- 
- struct nfs_fsstat {
++	ret = mkdir(dirname, S_IRWXU);
++	if (ret && errno != EEXIST)
++		return -errno;
++
++	ret = stat(dirname, &statbuf);
++	if (ret)
++		return -errno;
++
++	if (!S_ISDIR(statbuf.st_mode))
++		ret = -ENOTDIR;
++
++	return ret;
++}
++
++/*
++ * Open the "main" database, and attempt to initialize it by creating the
++ * parameters table and inserting the schema version into it. Ignore any errors
++ * from that, and then attempt to select the version out of it again. If the
++ * version appears wrong, then assume that the DB is corrupt or has been
++ * upgraded, and return an error. If all of that works, then attempt to create
++ * the "clients" table.
++ */
++int
++sqlite_maindb_init(void)
++{
++	int ret;
++	char *err = NULL;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = mkdir_if_not_exist(sqlite_topdir);
++	if (ret)
++		return ret;
++
++	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", sqlite_topdir);
++	if (ret < 0)
++		return ret;
++
++	buf[PATH_MAX - 1] = '\0';
++
++	ret = sqlite3_open(buf, &dbh);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to open main database: %d", ret);
++		return ret;
++	}
++
++	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to set sqlite busy timeout: %d", ret);
++		goto out_err;
++	}
++
++	/* Try to create table */
++	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
++				"(key TEXT PRIMARY KEY, value TEXT);",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to create parameter table: %d", ret);
++		goto out_err;
++	}
++
++	/* insert version into table -- ignore error if it fails */
++	ret = snprintf(buf, sizeof(buf),
++		       "INSERT OR IGNORE INTO parameters values (\"version\", "
++		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
++	if (ret < 0) {
++		goto out_err;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		goto out_err;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to insert into parameter table: %d",
++				ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_prepare_v2(dbh,
++		"SELECT value FROM parameters WHERE key == \"version\";",
++		 -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to prepare select statement: %d", ret);
++		goto out_err;
++	}
++
++	/* check schema version */
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(D_GENERAL, "Select statement execution failed: %s",
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	/* process SELECT result */
++	ret = sqlite3_column_int(stmt, 0);
++	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
++		xlog(L_ERROR, "Unsupported database schema version! "
++			"Expected %d, got %d.",
++			CLD_SQLITE_SCHEMA_VERSION, ret);
++		ret = -EINVAL;
++		goto out_err;
++	}
++
++	/* now create the "clients" table */
++	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS clients "
++				"(id BLOB PRIMARY KEY, time INTEGER);",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to create clients table: %s", err);
++		goto out_err;
++	}
++
++	sqlite3_free(err);
++	sqlite3_finalize(stmt);
++	return 0;
++
++out_err:
++	if (err) {
++		xlog(L_ERROR, "sqlite error: %s", err);
++		sqlite3_free(err);
++	}
++	sqlite3_finalize(stmt);
++	sqlite3_close(dbh);
++	return ret;
++}
++
++/*
++ * Create a client record
++ *
++ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
++ */
++int
++sqlite_insert_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
++				      "(?, strftime('%s', 'now'));", -1,
++					&stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Insert statement prepare failed: %s",
++			sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %d", sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(D_GENERAL, "Unexpected return code from insert: %s",
++				sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+new file mode 100644
+index 0000000..4b99729
+--- /dev/null
++++ b/utils/nfsdcld/sqlite.h
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifndef _SQLITE_H_
++#define _SQLITE_H_
++
++void sqlite_set_topdir(char *topdir);
++int sqlite_maindb_init(void);
++int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
++
++#endif /* _SQLITE_H */
 -- 
-1.7.4.4
+1.7.1
 
