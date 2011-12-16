@@ -1,45 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-1.desy.de ([131.169.56.84]:63371 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753551Ab1LDMK0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:10:26 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 7E58B1860
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Dec 2011 13:02:10 +0100 (MET)
-Received: from ZITSWEEP3.win.desy.de (zitsweep3.win.desy.de [131.169.97.97])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id EE2D113E82
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Dec 2011 13:02:09 +0100 (MET)
-Received: from smtp-intra-2.desy.de (lb-40-26.desy.de) by ZITSWEEP3.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta11593997583a96161fa0@ZITSWEEP3.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Sun, 4 Dec 2011 13:02:09 +0100
-Received: from ani.desy.de (vpn-060.desy.de [131.169.252.91])
-	by smtp-intra-2.desy.de (DESY-INTRA-2) with ESMTP id CCC67E3A
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Dec 2011 13:02:08 +0100 (MET)
-From: tigran.mkrtchyan@desy.de
-To: linux-nfs@vger.kernel.org
-Subject: nfsv41: add current_stateid processing
-Date: Sun,  4 Dec 2011 13:03:55 +0100
-Message-Id: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:49752 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751300Ab1LPIAb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Dec 2011 03:00:31 -0500
+Date: Fri, 16 Dec 2011 00:00:23 -0800
+From: Joel Becker <jlbec@evilplan.org>
+To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Hannes Reinecke <hare@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Subject: Re: copy offload support in Linux - new system call needed?
+Message-ID: <20111216080022.GA5183@noexit.corp.google.com>
+References: <4EE8F75F.6070800@gmail.com>
+ <20111214192739.GN2203@ZenIV.linux.org.uk>
+ <4EE8FC2E.3010207@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EE8FC2E.3010207@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-current_stateid processing will allow clients to construct compounds
-like OPEN + READ + CLOSE or OPEN +LAYOUTGET.
+On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
+> On 12/14/2011 02:27 PM, Al Viro wrote:
+> >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
+> >
+> >>We had an active thread a couple of years back that came out of the
+> >>reflink work and, at the time, there seemed to be moderately
+> >>positive support for adding a new system call that would fit this
+> >>use case (Joel Becker's copyfile()).
+> >>
+> >>Can we resurrect this effort? Is copyfile() still a good way to go,
+> >>or should we look at other hooks?
+> >copyfile(2) is probably a good way to go, provided that we do _not_
+> >go baroque as it had happened the last time syscall had been discussed.
+> >
+> >IOW, to hell with progress reports, etc. - just a fastpath kind of
+> >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
+> >If it works - fine, if not - caller has to be ready to deal with handling
+> >cross-device case anyway.
+> 
+> I think that this approach makes a lot of sense. Most of the
+> devices/targets that support the copy offload, will do it in very
+> reasonable amounts of time.
+> 
+> Let me see if I can dig up some of the presentations from the NetApp
+> guys who presented overviews or the specifications from the IETF and
+> T10....
 
-As dCache server marks all layouts return-on-close, any open to a file followed
-by LAYOUTGET. A combined compound will allow to do the same in one go.
+	Whee!  I've been down the rabbit hole, but I've promised myself
+to get the updated patch out soon.  I know that Trond et al are probably
+wondering what happened to the patch.  more soon.
 
-Currently linux client doesn't support it. But before we can get such functionality
-linux server have to support it as well. Here is an attempt to add it.
+Joel
 
-I made a dirty test with pynfs with to test OPEN+CLOSE in a single compound.
-If I read nfsd code correctly, READ and WRITE have to work as well. I will refactor
-pynfs a bit to easily construct such tests.
+-- 
 
-This is patches for preview to be sure that other server developers are happy with
-my approach before I change much more. 
+Life's Little Instruction Book #207
 
-Tigran.
+	"Swing for the fence."
 
+			http://www.jlbec.org/
+			jlbec@evilplan.org
