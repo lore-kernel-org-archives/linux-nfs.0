@@ -1,67 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63904 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752834Ab1LCQvZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 3 Dec 2011 11:51:25 -0500
-Message-ID: <4EDA5387.5070103@RedHat.com>
-Date: Sat, 03 Dec 2011 11:51:19 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Harald Dunkel <harri@afaics.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 fsid=0 export still necessary?
-References: <4EDA0650.9080702@afaics.de>
-In-Reply-To: <4EDA0650.9080702@afaics.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from i118-21-156-233.s30.a048.ap.plala.or.jp ([118.21.156.233]:45618
+	"EHLO rinabert.homeip.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751706Ab1LSOxr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 09:53:47 -0500
+From: Masanari Iida <standby24x7@gmail.com>
+To: linux-kernel@vger.kernel.org, jkosina@suse.cz, Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Masanari Iida <standby24x7@gmail.com>
+Subject: [PATCH] [Trivial]: nfs : Fix typo in dir.c
+Date: Mon, 19 Dec 2011 23:17:03 +0900
+Message-Id: <1324304223-10047-1-git-send-email-standby24x7@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Fix typo "iff" -> "if" in dir.c
 
+Signed-off-by: Masanari Iida <standby24x7@gmail.com>
+To: Jiri Kosina <jkosina@suse.cz>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+---
+ fs/nfs/dir.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-On 12/03/2011 06:21 AM, Harald Dunkel wrote:
-> -----BEGIN PGP SIGNED MESSAGE-----
-> Hash: SHA1
-> 
-> Hi folks,
-> 
-> several NFSv4-HOWTOs in the net require to export a root directory
-> with fsid=0 first. Other exported directory trees should be nested
-> within this root directory and exported with nohide. AFAIU the advan-
-> tage of the root dir is that the client can mount "server:/somedir"
-> instead of "server:/remote_mount_point/somedir".
-> 
-> Question: Is the common root directory optional? Since NFSv3 doesn't
-> support this name space feature, wouldn't it be more wise to omit
-> the root directory?
-No, the fsid=0 export option is no longer necessary to make v4
-exports compatible with v2/v3 exports. When the fsid option
-is not set, the default root is define as "/" which allows
-the v4 clients to mount the same exports as does the v2/v3 clients.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ac28990..ad32d4e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1127,7 +1127,7 @@ static int nfs_lookup_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		goto out_set_verifier;
+ 
+-	/* Force a full look up iff the parent directory has changed */
++	/* Force a full look up if the parent directory has changed */
+ 	if (!nfs_is_exclusive_create(dir, nd) && nfs_check_verifier(dir, dentry)) {
+ 		if (nfs_lookup_verify_inode(inode, nd))
+ 			goto out_zap_parent;
+-- 
+1.7.6.4
 
-Now if you do not what "/" as your default root, you can
-set fsid to something like fsid=/export. This will
-change to default root to the /export directory which
-means your v4 clients will only be able to access exports
-under the /export directory. 
-
-I believe the Linux server is the only server to have
-this option...
-
-steved.
-
-> 
-> 
-> Any helpful comment would be highly appreciated
-> 
-> Harri
-> -----BEGIN PGP SIGNATURE-----
-> Version: GnuPG v1.4.11 (GNU/Linux)
-> 
-> iEYEARECAAYFAk7aBlAACgkQUTlbRTxpHjeO0wCggdEdfcBzswibHAOG6w2xJa5r
-> B4QAn3MsYZR7xCh60c1X4AsNLnutXSPI
-> =nEBr
-> -----END PGP SIGNATURE-----
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
