@@ -1,74 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:65198 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2669 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753883Ab1LMOfQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Dec 2011 09:35:16 -0500
-Date: Tue, 13 Dec 2011 09:34:46 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, roel <roel.kluin@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>, sage@newdream.net,
-        Steve French <sfrench@samba.org>, linux-cifs@vger.kernel.org,
-        Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org, josef@redhat.com
-Subject: Re: ceph, cifs, nfs, fuse: boolean and / or confusion
-Message-ID: <20111213093446.02de1df1@tlielax.poochiereds.net>
-In-Reply-To: <1323733153.13849.17.camel@lade.trondhjem.org>
-References: <4EE688FC.8090606@gmail.com>
-	<20111212152856.871a8301.akpm@linux-foundation.org>
-	<1323733153.13849.17.camel@lade.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751497Ab1LSOV7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 09:21:59 -0500
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH] [Trivial]: nfs : Fix typo in dir.c
+Date: Mon, 19 Dec 2011 06:21:42 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C863B42@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <1324304223-10047-1-git-send-email-standby24x7@gmail.com>
+References: <1324304223-10047-1-git-send-email-standby24x7@gmail.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Masanari Iida" <standby24x7@gmail.com>, <linux-kernel@vger.kernel.org>,
+        <jkosina@suse.cz>
+Cc: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 12 Dec 2011 18:39:13 -0500
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2011-12-12 at 15:28 -0800, Andrew Morton wrote: 
-> > On Tue, 13 Dec 2011 00:06:36 +0100
-> > roel <roel.kluin@gmail.com> wrote:
-> > 
-> > > The test not SEEK_CUR or not SEEK_SET always evaluates to true
-> > > 
-> > > Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
-> > > ---
-> > >  fs/ceph/file.c   |    2 +-
-> > >  fs/cifs/cifsfs.c |    2 +-
-> > >  fs/fuse/file.c   |    2 +-
-> > >  fs/nfs/file.c    |    2 +-
-> > >  4 files changed, 4 insertions(+), 4 deletions(-)
-> > > 
-> <snip> 
-> > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > > index eca56d4..606ef0f 100644
-> > > --- a/fs/nfs/file.c
-> > > +++ b/fs/nfs/file.c
-> > > @@ -147,7 +147,7 @@ static loff_t nfs_file_llseek(struct file *filp, loff_t offset, int origin)
-> > >  	 * origin == SEEK_END || SEEK_DATA || SEEK_HOLE => we must revalidate
-> > >  	 * the cached file length
-> > >  	 */
-> > > -	if (origin != SEEK_SET || origin != SEEK_CUR) {
-> > > +	if (origin != SEEK_SET && origin != SEEK_CUR) {
-> > >  		struct inode *inode = filp->f_mapping->host;
-> > >  
-> > >  		int retval = nfs_revalidate_file_size(inode, filp);
-> > 
-> > This fix will cause changed runtime behaviour, such as NFS no longer
-> > running nfs_revalidate_file_size() for all seek modes.
+> -----Original Message-----
+> From: Masanari Iida [mailto:standby24x7@gmail.com]
+> Sent: Monday, December 19, 2011 9:17 AM
+> To: linux-kernel@vger.kernel.org; jkosina@suse.cz; Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org; Masanari Iida
+> Subject: [PATCH] [Trivial]: nfs : Fix typo in dir.c
 > 
-> As far as NFS is concerned, it reverts a regression. NFS only used to
-> run revalidate_file_size() for SEEK_END prior to commit
-> 06222e491e663dac939f04b125c9dc52126a75c4. I accept that we now also need
-> to run it for SEEK_HOLE and SEEK_DATA, but we've never had to do so for
-> SEEK_SET and SEEK_CUR.
+> Fix typo "iff" -> "if" in dir.c
 > 
-> I suspect the same is true of ceph, cifs etc...
+> Signed-off-by: Masanari Iida <standby24x7@gmail.com>
+> To: Jiri Kosina <jkosina@suse.cz>
+> To: Trond Myklebust <Trond.Myklebust@netapp.com>
+> To: linux-nfs@vger.kernel.org
+> ---
+>  fs/nfs/dir.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c index ac28990..ad32d4e 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1127,7 +1127,7 @@ static int nfs_lookup_revalidate(struct dentry
+> *dentry, struct nameidata *nd)
+>  	if (nfs_have_delegation(inode, FMODE_READ))
+>  		goto out_set_verifier;
+> 
+> -	/* Force a full look up iff the parent directory has changed */
+> +	/* Force a full look up if the parent directory has changed */
+>  	if (!nfs_is_exclusive_create(dir, nd) && nfs_check_verifier(dir,
+> dentry)) {
+>  		if (nfs_lookup_verify_inode(inode, nd))
+>  			goto out_zap_parent;
+> --
+> 1.7.6.4
 
-(cc'ing Josef Bacik on this too, since he made this change originally)
+That's not a typo. Iff is a common abbreviation for "if and only if".
+Google it...
 
-Agreed. The patch looks correct to me for NFS and CIFS at at least.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers
+  Trond
