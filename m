@@ -1,144 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from master.debian.org ([70.103.162.29]:46586 "EHLO
-	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751458Ab1LEIf7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:35:59 -0500
-Date: Mon, 5 Dec 2011 19:25:20 +1100
-From: Anibal Monsalve Salazar <anibal@debian.org>
-To: Steve Dickson <SteveD@redhat.com>, Kevin Coffman <kwc@umich.edu>
-Cc: linux-nfs@vger.kernel.org, Michael Rasmussen <mir@datanom.net>,
-        651032@bugs.debian.org
-Subject: Re: Bug#651032: /usr/sbin/rpc.idmapd: rpc.idmapd referring to none
- existing library
-Message-ID: <20111205082520.GA5890@debian.org>
-References: <20111205071808.5626.67399.reportbug@sleipner.datanom.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111205071808.5626.67399.reportbug@sleipner.datanom.net>
+Received: from mx1.redhat.com ([209.132.183.28]:4477 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752934Ab1LSUNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Dec 2011 15:13:07 -0500
+Message-ID: <1324325585.22363.16.camel@localhost>
+Subject: Re: [PATCH] nfs: fix regression in handling of context= option in
+ NFSv4
+From: Eric Paris <eparis@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Date: Mon, 19 Dec 2011 15:13:05 -0500
+In-Reply-To: <1324324223-9933-1-git-send-email-jlayton@redhat.com>
+References: <1324324223-9933-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Steve and Kevin,
+On Mon, 2011-12-19 at 14:50 -0500, Jeff Layton wrote:
+> Setting the security context of a NFSv4 mount via the context= mount
+> option is currently broken. The NFSv4 codepath allocates a parsed
+> options struct, and then parses the mount options to fill it. It
+> eventually calls nfs4_remote_mount which calls security_init_mnt_opts.
+> That clobbers the lsm_opts struct that was populated earlier. This bug
+> also looks like it causes a small memory leak on each v4 mount where
+> context= is used.
+> 
+> Fix this by moving the initialization of the lsm_opts into
+> nfs_alloc_parsed_mount_data, and the freeing of the same into the
+> functions that allocate the nfs_parsed_mount_data.
 
-To fix Debian Bug#649491[1], I moved the .so files to /lib and applied
-the following patch:
+I think this is a good lifetime, but I don't think we have it quite
+right.
 
---- a/libnfsidmap.c	2010-12-09 04:07:53.000000000 +1100
-+++ b/libnfsidmap.c	2011-12-05 11:23:46.000000000 +1100
-@@ -61,7 +61,7 @@ static struct mapping_plugin **nfs4_plug
- static struct mapping_plugin **gss_plugins = NULL;
- 
- #ifndef PATH_PLUGINS
--#define PATH_PLUGINS "/usr/lib/libnfsidmap"
-+#define PATH_PLUGINS "/lib/libnfsidmap"
- #endif
- #define PLUGIN_INIT_FUNC "libnfsidmap_plugin_init"
- 
-[1] http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=649491
+> @@ -2222,8 +2223,6 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+>  	if (data == NULL || mntfh == NULL)
+>  		goto out_free_fh;
 
-As Michael reported, libnfsidmap is still looking for the plugins in
-/usr/lib/libnfsidmap.
+Lets assume we allocated data, but failed on mntfh.  We are going to
+have called security_init_mnt_opts() but never have called the
+corresponding destructor.  True, it'll be fine today with selinux, but I
+make no promises what the future holds...
 
-What do I need to change in libnfsidmap to make it find the plugins in
-/lib/libnfsidmap?
+I'm pretty sure the v4 code has the same issue.  Maybe you should write
+an explicit nfs_free_parsed_mount_data() function to handle all of the
+error paths in v3 and v4?  Just a suggestion....
 
-Please see Michael's report below.
 
-Cheers,
-
-Anibal
-
-As Michael has reported, libnfsidmap2 is still looking 
-On Mon, Dec 05, 2011 at 08:18:08AM +0100, Michael Rasmussen wrote:
-> Package: nfs-common
-> Version: 1:1.2.5-2+b1
-> Severity: grave
-> File: /usr/sbin/rpc.idmapd
-> Justification: renders package unusable
-> 
-> rpc.idmapd -v
-> rpc.idmapd: libnfsidmap: using domain: midgaard
-> 
-> rpc.idmapd: libnfsidmap: Unable to load plugin:
-> /usr/lib/libnfsidmap/nsswitch.so: cannot open shared object file: No
-> such file or directory
-> 
-> rpc.idmapd: libnfsidmap: requested translation method, 'nsswitch', is
-> not available
-> 
-> rpc.idmapd: Unable to create name to user id mappings.
-> 
-> rpc.idmapd is searching for libnfsidmap plugins in the wrong directory
-> so bug #650904 must be reopen since the provided change made to
-> libnfsidmap2 does not make any difference rpc.idmapd still uses
-> /usr/lib/libnfsidmap.
-> 
-> 
-> -- Package-specific info:
-> -- rpcinfo --
->    program vers proto   port  service
->     100000    4   tcp    111  portmapper
->     100000    3   tcp    111  portmapper
->     100000    2   tcp    111  portmapper
->     100000    4   udp    111  portmapper
->     100000    3   udp    111  portmapper
->     100000    2   udp    111  portmapper
->     100007    2   udp    785  ypbind
->     100007    1   udp    785  ypbind
->     100007    2   tcp    786  ypbind
->     100007    1   tcp    786  ypbind
-> -- /etc/default/nfs-common --
-> NEED_STATD=no
-> STATDOPTS=
-> NEED_IDMAPD=yes
-> NEED_GSSD=
-> -- /etc/idmapd.conf --
-> [General]
-> Verbosity = 0
-> Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-> Domain = midgaard 
-> [Mapping]
-> Nobody-User = nobody
-> Nobody-Group = nogroup
-> -- /etc/fstab --
-> balder:/home	/home		nfs4	defaults,proto=tcp,retry=5,hard,intr,async,_netdev,rsize=32768,wsize=32768 0	0
-> -- /proc/mounts --
-> rpc_pipefs /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
-> balder:/home/ /home nfs4 rw,relatime,vers=4,rsize=32768,wsize=32768,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.2.79,minorversion=0,local_lock=none,addr=192.168.2.2 0 0
-> 
-> -- System Information:
-> Debian Release: wheezy/sid
->   APT prefers unstable
->   APT policy: (990, 'unstable'), (1, 'experimental')
-> Architecture: amd64 (x86_64)
-> 
-> Kernel: Linux 3.1.0-1-amd64 (SMP w/2 CPU cores)
-> Locale: LANG=en_US, LC_CTYPE=en_US (charmap=ISO-8859-1)
-> Shell: /bin/sh linked to /bin/bash
-> 
-> Versions of packages nfs-common depends on:
-> ii  adduser             3.113
-> ii  initscripts         2.88dsf-13.13
-> ii  libc6               2.13-21
-> ii  libcap2             1:2.22-1
-> ii  libcomerr2          1.42-1
-> ii  libdevmapper1.02.1  2:1.02.67-2
-> ii  libevent-2.0-5      2.0.16-stable-1
-> ii  libgssapi-krb5-2    1.10+dfsg~alpha1-6
-> ii  libgssglue1         0.3-3.1
-> ii  libk5crypto3        1.10+dfsg~alpha1-6
-> ii  libkeyutils1        1.5.2-2
-> ii  libkrb5-3           1.10+dfsg~alpha1-6
-> ii  libnfsidmap2        0.24-3
-> ii  libtirpc1           0.2.2-5
-> ii  libwrap0            7.6.q-21
-> ii  lsb-base            3.2-28
-> ii  rpcbind             0.2.0-6
-> ii  ucf                 3.0025+nmu2
-> 
-> Versions of packages nfs-common recommends:
-> ii  python  2.7.2-9
-> 
-> nfs-common suggests no packages.
-> 
-> -- no debconf information
