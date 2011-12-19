@@ -1,66 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:10583 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:2471 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755540Ab1LGLUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 06:20:43 -0500
-Subject: [PATCH 1/4] SUNRPC: use passed network namespace context in
- rpc_parse_scope_id()
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 07 Dec 2011 15:20:16 +0300
-Message-ID: <20111207112016.17273.44510.stgit@localhost6.localdomain6>
-In-Reply-To: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
-References: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751159Ab1LSWUZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Dec 2011 17:20:25 -0500
+Date: Mon, 19 Dec 2011 17:19:57 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org, fedfs-utils-devel@oss.oracle.com,
+        raven@themaw.net
+Subject: Re: [PATCH] NFSD: Change name of extended attribute containing
+ junction
+Message-ID: <20111219171957.70e13a1b@tlielax.poochiereds.net>
+In-Reply-To: <20111219215259.GA15613@fieldses.org>
+References: <20111219193843.30843.56764.stgit@degas.1015granger.net>
+	<20111219215259.GA15613@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use incomming network context in rpc_parse_scope_id() instead of hard-coded
-"init_net".
+On Mon, 19 Dec 2011 16:52:59 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> On Mon, Dec 19, 2011 at 02:38:43PM -0500, Chuck Lever wrote:
+> > As of fedfs-utils-0.8.0, user space stores all NFS junction
+> > information in a single extended attribute: "trusted.junction.nfs".
+> 
+> I suspect the break of backwards-compatibility is fine, but we should
+> add a note explaining it; would something like this be right?:
+> 
+> 	This breaks compatibility with fedfs-utils versions before
+> 	0.8.0.  As fedfs-utils has not been widely distributed, we don't
+> 	believe this will affect anyone.
+> 
+> (Cc'ing jlayton: does this cause a problem for whatever just went into
+> Fedora?)
+> 
 
----
- net/sunrpc/addr.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+Also cc'ing Ian, on whose shoulders I dumped the fedfs work...
 
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 67a655e..35eb188 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -156,8 +156,9 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
- }
- 
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static int rpc_parse_scope_id(const char *buf, const size_t buflen,
--			      const char *delim, struct sockaddr_in6 *sin6)
-+static int rpc_parse_scope_id(struct net *net, const char *buf,
-+			      const size_t buflen, const char *delim,
-+			      struct sockaddr_in6 *sin6)
- {
- 	char *p;
- 	size_t len;
-@@ -177,7 +178,7 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
- 		unsigned long scope_id = 0;
- 		struct net_device *dev;
- 
--		dev = dev_get_by_name(&init_net, p);
-+		dev = dev_get_by_name(net, p);
- 		if (dev != NULL) {
- 			scope_id = dev->ifindex;
- 			dev_put(dev);
-@@ -213,7 +214,7 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
- 	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
- 		return 0;
- 
--	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
-+	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
- 		return 0;
- 
- 	sin6->sin6_family = AF_INET6;
+That stuff just went into Fedora rawhide, and as everyone knows (or
+should) -- rawhide eats babies. At this point I don't think there's any
+need to worry about compatibility issues.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
