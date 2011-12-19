@@ -1,103 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60938 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753859Ab1LNPc4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 10:32:56 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEFWu7A016950
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 10:32:56 -0500
-Date: Wed, 14 Dec 2011 10:32:47 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-Message-ID: <20111214103247.3a67515f@tlielax.poochiereds.net>
-In-Reply-To: <4EE8BF63.6080906@RedHat.com>
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>
-	<4EE8BF63.6080906@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from out01.mta.xmission.com ([166.70.13.231]:36879 "EHLO
+	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751414Ab1LSQfn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 11:35:43 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "neilb\@suse.de" <neilb@suse.de>,
+        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "davem\@davemloft.net" <davem@davemloft.net>,
+        "devel\@openvz.org" <devel@openvz.org>
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
+	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
+	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
+Date: Mon, 19 Dec 2011 08:37:19 -0800
+In-Reply-To: <4EEF2C9A.8000403@parallels.com> (Stanislav Kinsbursky's message
+	of "Mon, 19 Dec 2011 16:22:50 +0400")
+Message-ID: <m1pqfkecw0.fsf@fess.ebiederm.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 14 Dec 2011 10:23:15 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
 
-> 
-> 
-> On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> > This patchset is the userspace portion of the knfsd client name tracking
-> > overhaul. See this patch series for an explanation:
-> > 
-> >     nfsd: overhaul the client name tracking code (RFC)
-> > 
-> > The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
-> > and handles the requests.
-> > 
-> > The data is stored using a sqlite database. The main reason for this is
-> > that it takes care of most of the fussy details and atomicity concerns
-> > of tracking the information on stable storage.
-> This will make nfs-utils dependent on the sqlite database... Any idea
-> what kinda of extra baggage this brings? 
-> 
+>> In practice what this means is that register_net_sysctl_table should
+>> work for any sysctl file anywhere under /proc/sys.  I think
+>> register_net_sysctl_table is the right solution for your problem.  The
+>> only possible caveat I can think of is you might hit Al's performance
+>> optimizations and need to create a common empty directory first with
+>> register_sysctl_paths.
+>
+> Sorry, but I forgot to mention one more important goal I would like to achieve:
+> I want to manage sysctl's variables in context of mount owner, but not viewer one.
+> IOW imagine, that we have one two network namespaces: "A" and "B". Both of them
+> have it's own net sysctl's root. And we have per-net sysctl "/proc/sys/var".
+> And for ns "A" variable was set to 0, and for "B" - to 1.
+> And B's "/proc/sys/var" is accessible from "A" namespace
+> ("/chroot_path/proc/sys/var" for example).
+> With this configuration I want to read "1" from both namespaces:
+> owner "B" (/proc/sys/var) and "A" ("/chroot_path/proc/sys/var").
+> Looks like simple using of register_net_sysctl_table doesn't allow me this,
+> because current net ns is used. And to achieve this goal I need my own sysctl
+> set for SUNRPC like it was done for network namespaces.
 
-Depends on what you mean by "baggage". What is your concern?
+Doing that independently of the rest of the sysctls is pretty horrible
+and confusing to users.   What I am planning might suit your needs and
+if not we need to talk some more about how to get the vfs to do
+something reasonable.
 
-For something like fedora, it'll mean a build-time dependency on
-sqlite-devel, and a runtime dependency on sqlite. We could consider
-embedding their single-file amalgamation code, but I'd prefer not to do
-that unless we really have to.
+>> That said since I am in the process of rewriting things some of this
+>> may change a little bit, but hopefully not in ways that immediately
+>> effect the users of register_sysctl_table.
+>>
+>> Don't use register_net_sysctl_ro_table.   I think what the implementors
+>> actually wanted was register_net_sysctl_table(&init_net, ...) and didn't
+>> know it.
+>>
+>> Don't put subdirectories in your sysctl tables.  Use a ctl_path to
+>> specify the entire directory where the files should show up.  Generally
+>> the code is easier to read in that form, and the code is simpler to deal
+>> with if we don't have to worry about directories.
+>>
+>> Don't play with the sysctl roots.  It is my intention to completely kill
+>> them off and replace them by moving the per net sysctl tree under
+>> /proc/<pid>/sys/.   Leaving behind symlinks in /proc/sys/net and I guess
+>> ultimately in /proc/sys/sunrpc/ and /proc/sys/fs/nfs...  Which actually
+>> seems to better describe your mental model.
+>>
+>
+>
+> I'm afraid, that this approach this not allow me to achieve the goal, mentioned
+> above, because current->nsproxy->net_ns will be used during lookup.
+> Or maybe I misunderstanding here?
 
-> > 
-> > For now, the daemon is only suitable for single-host configurations.
-> > The plan is to later extend this to be suitable for clustered
-> > configurations as well.
-> > 
-> > The code is still a little rough, so be gentle. It also lacks things
-> > like a manpage. I plan to add all that before doing a "formal" patch
-> > submission, but I wanted to get some early review of the overall design
-> > before to spend a lot of time knocking off the rough edges.
-> Finally the name of the daemon...  clstated does not make it clear that 
-> this is a nfs server daemon... maybe something like nfsdcld? 
-> 
+What I hope to do is to stop using current, and to behave like
+/proc/net.  Aka a per process view under /proc/<pid>/sys that matches
+the namespaces of the specified process.  
 
-Sure, we could change the name if that's desirable. Maybe
-nfsd.clnamed ? At this point it's really just a client name tracking
-daemon.
+The VFS really hates my use of current in the sysctl case, and I intend
+to stop.
 
-> steved.
-> 
-> > 
-> > Jeff Layton (7):
-> >   clstated: add clname tracking daemon stub
-> >   clstated: reattempt the pipe open if it fails on ENOENT
-> >   clstated: add autoconf goop for sqlite
-> >   clstated: add routines for a sqlite backend database
-> >   clstated: add remove functionality
-> >   clstated: add check/update functionality
-> >   clstated: add function to remove unreclaimed client records
-> > 
-> >  aclocal/libsqlite3.m4      |   33 +++
-> >  configure.ac               |   23 ++
-> >  utils/Makefile.am          |    4 +
-> >  utils/clstated/Makefile.am |   14 +
-> >  utils/clstated/clstated.c  |  355 +++++++++++++++++++++++++++
-> >  utils/clstated/sqlite.c    |  572 ++++++++++++++++++++++++++++++++++++++++++++
-> >  utils/clstated/sqlite.h    |   30 +++
-> >  7 files changed, 1031 insertions(+), 0 deletions(-)
-> >  create mode 100644 aclocal/libsqlite3.m4
-> >  create mode 100644 utils/clstated/Makefile.am
-> >  create mode 100644 utils/clstated/clstated.c
-> >  create mode 100644 utils/clstated/sqlite.c
-> >  create mode 100644 utils/clstated/sqlite.h
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I need to run and catch my plane.  It doesn't look like I will have
+access to this email address for the next two weeks :(  
 
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Eric
