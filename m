@@ -1,125 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lo.gmane.org ([80.91.229.12]:43709 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756649Ab1LGWpK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 17:45:10 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1RYQEe-0001ZM-4s
-	for linux-nfs@vger.kernel.org; Wed, 07 Dec 2011 23:45:08 +0100
-Received: from user-387o921.cable.mindspring.com ([208.124.36.65])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 23:45:08 +0100
-Received: from chris.j.arges by user-387o921.cable.mindspring.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 23:45:08 +0100
-To: linux-nfs@vger.kernel.org
-From: Chris J Arges <chris.j.arges@canonical.com>
-Subject: Re: [PATCH] nfsd4: permit read opens of executable-only files
-Date: Wed, 7 Dec 2011 22:42:32 +0000 (UTC)
-Message-ID: <loom.20111207T233110-295@post.gmane.org>
-References: <20110825161957.GC1114@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:47271 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752190Ab1LSMIY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 07:08:24 -0500
+Received: by eekc4 with SMTP id c4so5365931eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 19 Dec 2011 04:08:23 -0800 (PST)
+Message-ID: <4EEF2933.8090405@tonian.com>
+Date: Mon, 19 Dec 2011 14:08:19 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 4/5] nfsd: add a header describing upcall to nfsdcld
+References: <1323974606-16477-1-git-send-email-jlayton@redhat.com> <1323974606-16477-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1323974606-16477-5-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields <bfields@...> writes:
-
+On 2011-12-15 20:43, Jeff Layton wrote:
+> The daemon takes a versioned binary struct. Hopefully this should allow
+> us to revise the struct later if it becomes necessary.
 > 
-> From: J. Bruce Fields <bfields@...>
-> 
-> A client that wants to execute a file must be able to read it.  Read
-> opens over nfs are therefore implicitly allowed for executable files
-> even when those files are not readable.
-> 
-> NFSv2/v3 get this right by using a passed-in NFSD_MAY_OWNER_OVERRIDE on
-> read requests, but NFSv4 has gotten this wrong ever since
-> dc730e173785e29b297aa605786c94adaffe2544 "nfsd4: fix owner-override on
-> open", when we realized that the file owner shouldn't override
-> permissions on non-reclaim NFSv4 opens.
-> 
-> So we can't use NFSD_MAY_OWNER_OVERRIDE to tell nfsd_permission to allow
-> reads of executable files.
-> 
-> So, do the same thing we do whenever we encounter another weird NFS
-> permission nit: define yet another NFSD_MAY_* flag.
-> 
-> The industry's future standardization on 128-bit processors will be
-> motivated primarily by the need for integers with enough bits for all
-> the NFSD_MAY_* flags.
-> 
-> Reported-by: Leonardo Borda <leonardoborda@...>
-> Cc: stable@...
-> Signed-off-by: J. Bruce Fields <bfields@...>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
-<snip>
+>  include/linux/nfsd/cld.h |   57 ++++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 57 insertions(+), 0 deletions(-)
+>  create mode 100644 include/linux/nfsd/cld.h
+> 
+> diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+> new file mode 100644
+> index 0000000..d64a7e7
+> --- /dev/null
+> +++ b/include/linux/nfsd/cld.h
+> @@ -0,0 +1,57 @@
+> +/*
+> + * fs/nfsd/cld.h - upcall description for nfsdcld communication
+> + *
+> + * Copyright (c) 2011 Red Hat, Inc.
+> + * Author(s): Jeff Layton <jlayton@redhat.com>
+> + *
+> + *  This program is free software; you can redistribute it and/or modify
+> + *  it under the terms of the GNU General Public License as published by
+> + *  the Free Software Foundation; either version 2 of the License, or
+> + *  (at your option) any later version.
+> + *
+> + *  This program is distributed in the hope that it will be useful,
+> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> + *  GNU General Public License for more details.
+> + *
+> + *  You should have received a copy of the GNU General Public License
+> + *  along with this program; if not, write to the Free Software
+> + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+> + */
+> +
+> +#ifndef _NFSD_CLD_H
+> +#define _NFSD_CLD_H
+> +
+> +/* latest upcall version available */
+> +#define CLD_MAX_UPCALL_VERSION 1
+> +
+> +/* defined by RFC3530 */
+> +#define NFS4_OPAQUE_LIMIT 1024
+> +
+> +enum cld_command {
+> +	Cld_Create,		/* create a record for this cm_id */
+> +	Cld_Expire,		/* remove record for this cm_id */
+> +	Cld_Allow,		/* is this cm_id allowed? */
+> +	Cld_GraceDone,		/* grace period is complete */
+> +	Cld_NrToReclaim,	/* how many client records need reclaim? */
+> +};
+> +
+> +/* representation of long-form NFSv4 client ID */
+> +struct cld_name {
+> +	uint16_t	cn_len;				/* length of cm_id */
+> +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
+> +} __attribute__((packed));
+> +
+> +/* message struct for communication with userspace */
+> +struct cld_msg {
+> +	uint8_t		cm_vers;		/* upcall version */
+> +	uint8_t		cm_cmd;			/* upcall command */
+> +	uint32_t	cm_xid;			/* transaction id */
+> +	int16_t		cm_status;		/* return code */
 
+How about swapping the xid and status members so they'd align better?
 
-Bruce,
+Benny
 
-I've tested this patch against linux-3.0 and it doesn't allow me to execute 
-binaries with permissions of 111.
-Here is the BugLink for the Ubuntu bug: 
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/833300
-My method of reproducing the bug is documented here: 
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/833300/comments/22
-This is copied and pasted below:
-I can reproduce this failure on natty/oneiric just fine.
-
-I then applied the upstream patch (a043226bc140a2c1dde162246d68a67e5043e6b2), 
-that was identified in the public bug and upstream bug.
-
-After doing this I installed the tools on my laptop:
-  apt-get install nfs-common nfs-kernel-server
-
-Then I setup of /etc/exports as described in the bug to a directory on my laptop 
-(ext4).
-  /path/to/dir *(rw,sync,fsid=0,no_subtree_check)
-
-I then had to insert the module and restart the server:
-  sudo modprobe nfs
-  sudo service nfs-kernel-server restart
-
-I mounted the directory:
-  sudo mount -t nfs4 -o proto=tcp,port=2049 localhost:/ /mnt
-
-I created a similar c program and compiled. I put this into the shared folder.
-I could run it with normal permissions.
-I then did 'chmod 111 ./a.out' and then I could not run the program (Permission 
-denied) if I was doing it via the /mnt directory.
-
-arges@arges-virtual-machine:/mnt$ ls -la
-total 24
-drwxr-xr-x 2 4294967294 4294967294 4096 2011-11-17 10:12 .
-drwxr-xr-x 22 root root 4096 2011-11-17 09:57 ..
----x--x--x 1 4294967294 4294967294 8425 2011-11-17 10:12 a.out
--rw-r--r-- 1 4294967294 4294967294 73 2011-11-17 10:12 hello.c
-arges@arges-virtual-machine:/mnt$ ./a.out
--bash: ./a.out: Permission denied
-arges@arges-virtual-machine:/mnt$ mount -v
-/dev/vda1 on / type ext4 (rw,errors=remount-ro,commit=0)
-<snip>
-nfsd on /proc/fs/nfsd type nfsd (rw)
-localhost:/ on /mnt type nfs (rw,vers=4,addr=127.0.0.1,clientaddr=127.0.0.1)
-
-I could run it if I wasn't running it over the nfsv4 share (sanity check):
-
-arges@arges-virtual-machine:/mnt$ cd ~/Test/
-arges@arges-virtual-machine:~/Test$ ls -la
-total 24
-drwxr-xr-x 2 arges arges 4096 2011-11-17 10:12 .
-drwxr-xr-x 22 arges arges 4096 2011-11-17 10:10 ..
----x--x--x 1 arges arges 8425 2011-11-17 10:12 a.out
--rw-r--r-- 1 arges arges 73 2011-11-17 10:12 hello.c
-arges@arges-virtual-machine:~/Test$ ./a.out
-hello binary
-
-
-
-Thanks,
---chris j arges
-
-
-
+> +	union {
+> +		int64_t		cm_gracetime;	/* grace period start time */
+> +		struct cld_name	cm_name;
+> +	} __attribute__((packed)) cm_u;
+> +} __attribute__((packed));
+> +
+> +#endif /* !_NFSD_CLD_H */
