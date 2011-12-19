@@ -1,130 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:5702 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:52479 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756855Ab1LNKph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 05:45:37 -0500
-Subject: [PATCH 05/11] SUNRPC: register debug sysctl table per network
- namespace
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 14 Dec 2011 14:45:21 +0300
-Message-ID: <20111214104521.3991.38848.stgit@localhost6.localdomain6>
-In-Reply-To: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+	id S1751695Ab1LSVxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Dec 2011 16:53:00 -0500
+Date: Mon, 19 Dec 2011 16:52:59 -0500
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        fedfs-utils-devel@oss.oracle.com, jlayton@redhat.com
+Subject: Re: [PATCH] NFSD: Change name of extended attribute containing
+ junction
+Message-ID: <20111219215259.GA15613@fieldses.org>
+References: <20111219193843.30843.56764.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111219193843.30843.56764.stgit@degas.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch introduces per-net sysctl header for debug table and moves debug
-table registration to per-net opreations.
-Also, this patch moves SUNRPC sysctl root registration prior to per-net
-operations, since now they depends on it.
+On Mon, Dec 19, 2011 at 02:38:43PM -0500, Chuck Lever wrote:
+> As of fedfs-utils-0.8.0, user space stores all NFS junction
+> information in a single extended attribute: "trusted.junction.nfs".
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+I suspect the break of backwards-compatibility is fine, but we should
+add a note explaining it; would something like this be right?:
 
----
- net/sunrpc/netns.h       |    1 +
- net/sunrpc/sunrpc_syms.c |    9 ++++++---
- net/sunrpc/sysctl.c      |   17 +++++++----------
- 3 files changed, 14 insertions(+), 13 deletions(-)
+	This breaks compatibility with fedfs-utils versions before
+	0.8.0.  As fedfs-utils has not been widely distributed, we don't
+	believe this will affect anyone.
 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index a949ddb..05ce3b8 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -14,6 +14,7 @@ struct sunrpc_net {
- 	spinlock_t rpc_client_lock;
- #ifdef RPC_DEBUG
- 	struct ctl_table_set sysctls;
-+	struct ctl_table_header *debug_ctl_header;
- #endif
- };
- 
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 44759e9..0fd156a 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -90,18 +90,21 @@ init_sunrpc(void)
- 
- 	cache_initialize();
- 
--	err = register_pernet_subsys(&sunrpc_net_ops);
--	if (err)
--		goto out4;
- #ifdef RPC_DEBUG
- 	rpc_register_sysctl();
- #endif
-+	err = register_pernet_subsys(&sunrpc_net_ops);
-+	if (err)
-+		goto out4;
- 	cache_register(&unix_gid_cache);
- 	svc_init_xprt_sock();	/* svc sock transport */
- 	init_socket_xprt();	/* clnt sock transport */
- 	return 0;
- 
- out4:
-+#ifdef RPC_DEBUG
-+	rpc_unregister_sysctl();
-+#endif
- 	rpcauth_remove_module();
- out3:
- 	rpc_destroy_mempool();
-diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
-index adebf0a..eda80cf 100644
---- a/net/sunrpc/sysctl.c
-+++ b/net/sunrpc/sysctl.c
-@@ -42,7 +42,6 @@ EXPORT_SYMBOL_GPL(nlm_debug);
- #include <linux/nsproxy.h>
- #include "netns.h"
- 
--static struct ctl_table_header *sunrpc_table_header;
- static ctl_table		debug_table[];
- 
- struct ctl_path sunrpc_path[] = {
-@@ -79,6 +78,9 @@ int debug_sysctl_init(struct net *net)
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	setup_sysctl_set(&sn->sysctls, NULL, NULL);
-+	sn->debug_ctl_header = register_sunrpc_sysctl(net, debug_table);
-+	if (sn->debug_ctl_header == NULL)
-+		return -ENOMEM;
- 	return 0;
- }
- 
-@@ -86,26 +88,21 @@ void debug_sysctl_exit(struct net *net)
- {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
-+	unregister_sysctl_table(sn->debug_ctl_header);
-+	sn->debug_ctl_header = NULL;
- 	WARN_ON(!list_empty(&sn->sysctls.list));
- }
- 
- void
- rpc_register_sysctl(void)
- {
--	if (!sunrpc_table_header) {
--		register_sysctl_root(&sunrpc_debug_root);
--		sunrpc_table_header = register_sunrpc_sysctl(&init_net, debug_table);
--	}
-+	register_sysctl_root(&sunrpc_debug_root);
- }
- 
- void
- rpc_unregister_sysctl(void)
- {
--	if (sunrpc_table_header) {
--		unregister_sysctl_table(sunrpc_table_header);
--		unregister_sysctl_root(&sunrpc_debug_root);
--		sunrpc_table_header = NULL;
--	}
-+	unregister_sysctl_root(&sunrpc_debug_root);
- }
- 
- static int proc_do_xprt(ctl_table *table, int write,
+(Cc'ing jlayton: does this cause a problem for whatever just went into
+Fedora?)
 
+--b.
+
+> 
+> Both FedFS and NFS basic junctions are stored in this one attribute,
+> and the intention is that all future forms of NFS junction metadata
+> will be stored in this attribute.  Other protocols may use a different
+> extended attribute.
+> 
+> Thus NFSD needs to look only for that one extended attribute.  The
+> "trusted.junction.type" xattr is deprecated.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/vfs.c |   17 ++++++++++++++---
+>  1 files changed, 14 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index d1d4d5e..b494f86 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -594,8 +594,19 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
+>  	return error;
+>  }
+>  
+> -#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
+> -#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
+> +/*
+> + * NFS junction information is stored in an extended attribute.
+> + */
+> +#define NFSD_JUNCTION_XATTR_NAME	XATTR_TRUSTED_PREFIX "junction.nfs"
+> +
+> +/**
+> + * nfsd4_is_junction - Test if an object could be an NFS junction
+> + *
+> + * @dentry: object to test
+> + *
+> + * Returns 1 if "dentry" appears to contain NFS junction information.
+> + * Otherwise 0 is returned.
+> + */
+>  int nfsd4_is_junction(struct dentry *dentry)
+>  {
+>  	struct inode *inode = dentry->d_inode;
+> @@ -606,7 +617,7 @@ int nfsd4_is_junction(struct dentry *dentry)
+>  		return 0;
+>  	if (!(inode->i_mode & S_ISVTX))
+>  		return 0;
+> -	if (vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0) <= 0)
+> +	if (vfs_getxattr(dentry, NFSD_JUNCTION_XATTR_NAME, NULL, 0) <= 0)
+>  		return 0;
+>  	return 1;
+>  }
+> 
