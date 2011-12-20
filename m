@@ -1,106 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:44725 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933480Ab1LFOcr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 09:32:47 -0500
-Received: by eeaq14 with SMTP id q14so2936341eea.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 06:32:46 -0800 (PST)
-Message-ID: <4EDE278B.6020406@tonian.com>
-Date: Tue, 06 Dec 2011 16:32:43 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de> <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de> <4EDB6AA3.1030702@tonian.com> <20111206020851.GA4486@fieldses.org> <4EDDFBCD.3010608@tonian.com> <CAGue13r9EZJLco0OsfoPH4eyn7Txa0OJqBPavw5cFoiBPN3=2g@mail.gmail.com> <20111206134014.GB8657@fieldses.org>
-In-Reply-To: <20111206134014.GB8657@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:16206 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751866Ab1LSMpN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Dec 2011 07:45:13 -0500
+Date: Tue, 20 Dec 2011 07:45:00 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 4/5] nfsd: add a header describing upcall to nfsdcld
+Message-ID: <20111220074500.5d4cf286@tlielax.poochiereds.net>
+In-Reply-To: <4EEF2933.8090405@tonian.com>
+References: <1323974606-16477-1-git-send-email-jlayton@redhat.com>
+	<1323974606-16477-5-git-send-email-jlayton@redhat.com>
+	<4EEF2933.8090405@tonian.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-06 15:40, J. Bruce Fields wrote:
-> On Tue, Dec 06, 2011 at 02:31:14PM +0100, Tigran Mkrtchyan wrote:
->> On Tue, Dec 6, 2011 at 12:26 PM, Benny Halevy <bhalevy@tonian.com> wrote:
->>> On 2011-12-06 04:08, J. Bruce Fields wrote:
->>>> On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
->>>>> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
->>>>>> From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>>>>>
->>>>>>
->>>>>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>>>>> ---
->>>>>>  fs/nfsd/nfs4proc.c  |    6 ++++++
->>>>>>  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
->>>>>>  2 files changed, 26 insertions(+), 6 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>>>> index fa38336..535aed2 100644
->>>>>> --- a/fs/nfsd/nfs4proc.c
->>>>>> +++ b/fs/nfsd/nfs4proc.c
->>>>>> @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>>>      */
->>>>>>     status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
->>>>>>     WARN_ON(status && open->op_created);
->>>>>> +
->>>>>> +   if(status)
->>>>>> +           goto out;
->>>>>> +
->>>>>> +   /* set current state id */
->>>>>> +   memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
->>>>
->>>> That comment is a bit redundant.
->>>>
->>>>> Since this should be done for all stateid-returning operations
->>>>> I think that a cleaner approach could be to mark those as such in
->>>>> nfsd4_ops by providing a per-op function to return the operation's
->>>>> stateid.  You can then call this method from nfsd4_proc_compound()
->>>>> after the call to nfsd4_encode_operation() and when status == 0.
->>>>
->>>> So the choice is between
->>>>
->>>> +       memcpy(&cstate->current_stateid, &open->op_stateid,
->>>> sizeof(stateid_t));
->>>>
->>>> and
->>>>
->>>> +       static void get_open_stateid(stateid_t *s)
->>>> +       {
->>>> +               memcpy(s, open->op_stateid);
->>>> +       }
->>>> +
->>>> +       [OP_OPEN] = {
->>>> +               ...
->>>> +               .op_get_stateid = get_open_stateid,
->>>> +               ...
->>>> +       }
->>>>
->>>> ?
->>>>
->>>> I'm not so sure.
->>>
->>> The point is to copy the result stateid into the current_stateid
->>> in a centralized place: nfsd4_proc_compound() and do that for all
->>> stateid-modifying operations.
->>
->> Sounds good, nevertheless all operations call differently resulting
->> stateid which make it's not possible to use a unified schema.
+On Mon, 19 Dec 2011 14:08:19 +0200
+Benny Halevy <bhalevy@tonian.com> wrote:
 
-That was the point of introducing a per-op method to get the value.
-
+> On 2011-12-15 20:43, Jeff Layton wrote:
+> > The daemon takes a versioned binary struct. Hopefully this should allow
+> > us to revise the struct later if it becomes necessary.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/nfsd/cld.h |   57 ++++++++++++++++++++++++++++++++++++++++++++++
+> >  1 files changed, 57 insertions(+), 0 deletions(-)
+> >  create mode 100644 include/linux/nfsd/cld.h
+> > 
+> > diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+> > new file mode 100644
+> > index 0000000..d64a7e7
+> > --- /dev/null
+> > +++ b/include/linux/nfsd/cld.h
+> > @@ -0,0 +1,57 @@
+> > +/*
+> > + * fs/nfsd/cld.h - upcall description for nfsdcld communication
+> > + *
+> > + * Copyright (c) 2011 Red Hat, Inc.
+> > + * Author(s): Jeff Layton <jlayton@redhat.com>
+> > + *
+> > + *  This program is free software; you can redistribute it and/or modify
+> > + *  it under the terms of the GNU General Public License as published by
+> > + *  the Free Software Foundation; either version 2 of the License, or
+> > + *  (at your option) any later version.
+> > + *
+> > + *  This program is distributed in the hope that it will be useful,
+> > + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+> > + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> > + *  GNU General Public License for more details.
+> > + *
+> > + *  You should have received a copy of the GNU General Public License
+> > + *  along with this program; if not, write to the Free Software
+> > + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+> > + */
+> > +
+> > +#ifndef _NFSD_CLD_H
+> > +#define _NFSD_CLD_H
+> > +
+> > +/* latest upcall version available */
+> > +#define CLD_MAX_UPCALL_VERSION 1
+> > +
+> > +/* defined by RFC3530 */
+> > +#define NFS4_OPAQUE_LIMIT 1024
+> > +
+> > +enum cld_command {
+> > +	Cld_Create,		/* create a record for this cm_id */
+> > +	Cld_Expire,		/* remove record for this cm_id */
+> > +	Cld_Allow,		/* is this cm_id allowed? */
+> > +	Cld_GraceDone,		/* grace period is complete */
+> > +	Cld_NrToReclaim,	/* how many client records need reclaim? */
+> > +};
+> > +
+> > +/* representation of long-form NFSv4 client ID */
+> > +struct cld_name {
+> > +	uint16_t	cn_len;				/* length of cm_id */
+> > +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
+> > +} __attribute__((packed));
+> > +
+> > +/* message struct for communication with userspace */
+> > +struct cld_msg {
+> > +	uint8_t		cm_vers;		/* upcall version */
+> > +	uint8_t		cm_cmd;			/* upcall command */
+> > +	uint32_t	cm_xid;			/* transaction id */
+> > +	int16_t		cm_status;		/* return code */
 > 
-> Could we just remove all (or most) of those different fields and replace
-> them by cstate->current_stateid?
-
-Hmm, that will require changing the corresponding xdr result encoding
-routines to use the new field and all other use sites, but I don't think
-of a good reason why this won't work.
-
-Benny
-
+> How about swapping the xid and status members so they'd align better?
 > 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Benny
+> 
+
+Good catch. I'll fix that in the next iteration.
+
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
