@@ -1,379 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22702 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753101Ab1LUUe7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 15:34:59 -0500
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:55997 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809Ab1LTL5v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Dec 2011 06:57:51 -0500
+Received: by qadb15 with SMTP id b15so3945423qad.19
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Dec 2011 03:57:51 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org, steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 5/5] nfsd: add the infrastructure to handle the cld upcall
-Date: Wed, 21 Dec 2011 15:34:56 -0500
-Message-Id: <1324499696-10318-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, eparis@redhat.com
+Subject: [PATCH] nfs: fix regression in handling of context= option in NFSv4
+Date: Tue, 20 Dec 2011 06:57:45 -0500
+Message-Id: <1324382265-16254-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and add a mechanism for switching between the "legacy" tracker and
-the new one. The decision is made by looking to see whether the
-v4recoverydir exists. If it does, then the legacy client tracker is
-used.
+Setting the security context of a NFSv4 mount via the context= mount
+option is currently broken. The NFSv4 codepath allocates a parsed
+options struct, and then parses the mount options to fill it. It
+eventually calls nfs4_remote_mount which calls security_init_mnt_opts.
+That clobbers the lsm_opts struct that was populated earlier. This bug
+also looks like it causes a small memory leak on each v4 mount where
+context= is used.
 
-If it's not, then the kernel will create a "cld" pipe in rpc_pipefs.
-That pipe is used to talk to a daemon for handling the upcall.
+Fix this by moving the initialization of the lsm_opts into
+nfs_alloc_parsed_mount_data. Also, add a destructor for
+nfs_parsed_mount_data to make it easier to free all of the allocations
+hanging off of it, and to ensure that the security_free_mnt_opts is
+called whenever security_init_mnt_opts is.
 
+I believe this regression was introduced quite some time ago, probably
+by commit c02d7adf.
+
+Cc: stable@vger.kernel.org
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4recover.c |  318 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 317 insertions(+), 1 deletions(-)
+ fs/nfs/super.c |   43 +++++++++++++++++++------------------------
+ 1 files changed, 19 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 62fd534..333d65a 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1,5 +1,6 @@
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6a73e57..5c9feb0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -909,10 +909,24 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
+ 		data->auth_flavor_len	= 1;
+ 		data->version		= version;
+ 		data->minorversion	= 0;
++		security_init_mnt_opts(&data->lsm_opts);
+ 	}
+ 	return data;
+ }
+ 
++static void nfs_free_parsed_mount_data(struct nfs_parsed_mount_data *data)
++{
++	if (data) {
++		kfree(data->client_address);
++		kfree(data->mount_server.hostname);
++		kfree(data->nfs_server.export_path);
++		kfree(data->nfs_server.hostname);
++		kfree(data->fscache_uniq);
++		security_free_mnt_opts(&data->lsm_opts);
++		kfree(data);
++	}
++}
++
  /*
- *  Copyright (c) 2004 The Regents of the University of Michigan.
-+*  Copyright (c) 2011 Jeff Layton <jlayton@redhat.com>
- *  All rights reserved.
- *
- *  Andy Adamson <andros@citi.umich.edu>
-@@ -36,6 +37,10 @@
- #include <linux/namei.h>
- #include <linux/crypto.h>
- #include <linux/sched.h>
-+#include <linux/fs.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/nfsd/cld.h>
- 
- #include "nfsd.h"
- #include "state.h"
-@@ -467,12 +472,323 @@ static const struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
- 	.grace_done	= nfsd4_recdir_purge_old,
- };
- 
-+/* Globals */
-+#define NFSD_PIPE_DIR		"/nfsd"
-+
-+static struct dentry *cld_pipe;
-+
-+/* list of cld_msg's that are currently in use */
-+static DEFINE_SPINLOCK(cld_lock);
-+static LIST_HEAD(cld_list);
-+static unsigned int cld_xid;
-+
-+struct cld_upcall {
-+	struct list_head	cu_list;
-+	struct task_struct *	cu_task;
-+	struct cld_msg	cu_msg;
-+};
-+
-+static int
-+nfsd4_cld_upcall(struct cld_msg *cmsg)
-+{
-+	int ret;
-+	struct rpc_pipe_msg msg;
-+
-+	memset(&msg, 0, sizeof(msg));
-+	msg.data = cmsg;
-+	msg.len = sizeof(*cmsg);
-+
-+	ret = rpc_queue_upcall(cld_pipe->d_inode, &msg);
-+	if (ret < 0)
+  * Sanity-check a server address provided by the mount command.
+  *
+@@ -2220,9 +2234,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
+ 	mntfh = nfs_alloc_fhandle();
+ 	if (data == NULL || mntfh == NULL)
+-		goto out_free_fh;
+-
+-	security_init_mnt_opts(&data->lsm_opts);
 +		goto out;
-+
-+	set_current_state(TASK_UNINTERRUPTIBLE);
-+	schedule();
-+	__set_current_state(TASK_RUNNING);
-+
-+out:
-+	return ret;
-+}
-+
-+ssize_t cld_pipe_downcall(struct file *filp, const char __user *src,
-+			     size_t mlen)
-+{
-+	struct cld_upcall *tmp, *cup;
-+	struct cld_msg *cmsg = (struct cld_msg *)src;
-+	uint32_t xid;
-+
-+	if (mlen != sizeof(*cmsg)) {
-+		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
-+			sizeof(*cmsg));
-+		return -EINVAL;
-+	}
-+
-+	/* copy just the xid so we can try to find that */
-+	if (copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) != 0) {
-+		dprintk("%s: error when copying xid from userspace", __func__);
-+		return -EFAULT;
-+	}
-+
-+	/* walk the list and find corresponding xid */
-+	cup = NULL;
-+	spin_lock(&cld_lock);
-+	list_for_each_entry(tmp, &cld_list, cu_list) {
-+		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
-+			cup = tmp;
-+			list_del_init(&cup->cu_list);
-+			break;
-+		}
-+	}
-+	spin_unlock(&cld_lock);
-+
-+	/* couldn't find upcall? */
-+	if (!cup) {
-+		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__,
-+			cup->cu_msg.cm_xid);
-+		return -EINVAL;
-+	}
-+
-+	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
-+		return -EFAULT;
-+
-+	wake_up_process(cup->cu_task);
-+	return mlen;
-+}
-+
-+void
-+cld_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-+{
-+	struct cld_msg *cmsg = msg->data;
-+	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall,
-+						 cu_msg);
-+
-+	if (msg->errno >= 0)
-+		return;
-+	wake_up_process(cup->cu_task);
-+}
-+
-+static const struct rpc_pipe_ops cld_upcall_ops = {
-+	.upcall		= rpc_pipe_generic_upcall,
-+	.downcall	= cld_pipe_downcall,
-+	.destroy_msg	= cld_pipe_destroy_msg,
-+};
-+
-+int
-+nfsd4_init_cld_pipe(void)
-+{
-+	int ret;
-+	struct path path;
-+	struct vfsmount *mnt;
-+
-+	if (cld_pipe)
-+		return 0;
-+
-+	mnt = rpc_get_mount();
-+	if (IS_ERR(mnt))
-+		return PTR_ERR(mnt);
-+
-+	ret = vfs_path_lookup(mnt->mnt_root, mnt, NFSD_PIPE_DIR, 0, &path);
-+	if (ret)
-+		goto err;
-+
-+	cld_pipe = rpc_mkpipe(path.dentry, "cld", NULL,
-+				 &cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
-+	path_put(&path);
-+	if (!IS_ERR(cld_pipe))
-+		return 0;
-+
-+	ret = PTR_ERR(cld_pipe);
-+err:
-+	rpc_put_mount();
-+	return ret;
-+}
-+
-+void
-+nfsd4_remove_cld_pipe(void)
-+{
-+	int ret;
-+
-+	ret = rpc_unlink(cld_pipe);
-+	if (ret)
-+		printk(KERN_ERR "NFSD: error removing cld pipe: %d\n", ret);
-+	cld_pipe = NULL;
-+	rpc_put_mount();
-+}
-+
-+static struct cld_upcall *
-+alloc_cld_upcall(void)
-+{
-+	struct cld_upcall *new, *tmp;
-+
-+	new = kzalloc(sizeof(*new), GFP_KERNEL);
-+	if (!new)
-+		return new;
-+
-+	/* FIXME: hard cap on number in flight? */
-+restart_search:
-+	spin_lock(&cld_lock);
-+	list_for_each_entry(tmp, &cld_list, cu_list) {
-+		if (tmp->cu_msg.cm_xid == cld_xid) {
-+			cld_xid++;
-+			spin_unlock(&cld_lock);
-+			goto restart_search;
-+		}
-+	}
-+	new->cu_task = current;
-+	new->cu_msg.cm_vers = CLD_UPCALL_VERSION;
-+	put_unaligned(cld_xid++, &new->cu_msg.cm_xid);
-+	list_add(&new->cu_list, &cld_list);
-+	spin_unlock(&cld_lock);
-+
-+	dprintk("%s: allocated xid %u\n", __func__, new->cu_msg.cm_xid);
-+
-+	return new;
-+}
-+
-+static void
-+free_cld_upcall(struct cld_upcall *victim)
-+{
-+	spin_lock(&cld_lock);
-+	list_del(&victim->cu_list);
-+	spin_unlock(&cld_lock);
-+	kfree(victim);
-+}
-+
-+/* Ask daemon to create a new record */
-+static int
-+nfsd4_cld_create(struct nfs4_client *clp)
-+{
-+	int ret;
-+	struct cld_upcall *cup;
-+
-+	/* Don't upcall if it's already stored */
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return -EEXIST;
-+
-+	cup = alloc_cld_upcall();
-+	if (!cup)
-+		return -ENOMEM;
-+
-+	cup->cu_msg.cm_cmd = Cld_Create;
-+	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-+	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-+			clp->cl_name.len);
-+
-+	ret = nfsd4_cld_upcall(&cup->cu_msg);
-+	if (!ret) {
-+		ret = cup->cu_msg.cm_status;
-+		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+	}
-+
-+	free_cld_upcall(cup);
-+	return ret;
-+}
-+
-+/* Ask daemon to remove a record */
-+static int
-+nfsd4_cld_remove(struct nfs4_client *clp)
-+{
-+	int ret;
-+	struct cld_upcall *cup;
-+
-+	/* Don't upcall if it's already stored */
-+	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return -ENOENT;
-+
-+	cup = alloc_cld_upcall();
-+	if (!cup)
-+		return -ENOMEM;
-+
-+	cup->cu_msg.cm_cmd = Cld_Expire;
-+	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-+	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-+			clp->cl_name.len);
-+
-+	ret = nfsd4_cld_upcall(&cup->cu_msg);
-+	if (!ret) {
-+		ret = cup->cu_msg.cm_status;
-+		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+	}
-+
-+	free_cld_upcall(cup);
-+	return ret;
-+}
-+
-+/* Check for presence of a record, and update its timestamp */
-+static int
-+nfsd4_cld_check(struct nfs4_client *clp)
-+{
-+	int ret;
-+	struct cld_upcall *cup;
-+
-+	/* Don't upcall if one was already stored during this grace pd */
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return 0;
-+
-+	cup = alloc_cld_upcall();
-+	if (!cup)
-+		return -ENOMEM;
-+
-+	cup->cu_msg.cm_cmd = Cld_Allow;
-+	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-+	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-+			clp->cl_name.len);
-+
-+	ret = nfsd4_cld_upcall(&cup->cu_msg);
-+	if (!ret) {
-+		ret = cup->cu_msg.cm_status;
-+		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+	}
-+
-+	free_cld_upcall(cup);
-+	return ret;
-+}
-+
-+static int
-+nfsd4_cld_grace_done(time_t boot_time)
-+{
-+	int ret;
-+	struct cld_upcall *cup;
-+
-+	cup = alloc_cld_upcall();
-+	if (!cup)
-+		return -ENOMEM;
-+
-+	cup->cu_msg.cm_cmd = Cld_GraceDone;
-+	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-+	ret = nfsd4_cld_upcall(&cup->cu_msg);
-+	if (!ret)
-+		ret = cup->cu_msg.cm_status;
-+
-+	free_cld_upcall(cup);
-+	return ret;
-+}
-+
-+static const struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
-+	.init		= nfsd4_init_cld_pipe,
-+	.exit		= nfsd4_remove_cld_pipe,
-+	.create		= nfsd4_cld_create,
-+	.remove		= nfsd4_cld_remove,
-+	.check		= nfsd4_cld_check,
-+	.grace_done	= nfsd4_cld_grace_done,
-+};
-+
- int
- nfsd4_client_tracking_init(void)
- {
- 	int status;
-+	struct path path;
  
--	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-+	if (!client_tracking_ops) {
-+		client_tracking_ops = &nfsd4_cld_tracking_ops;
-+		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-+		if (!status) {
-+			if (S_ISDIR(path.dentry->d_inode->i_mode))
-+				client_tracking_ops =
-+						&nfsd4_legacy_tracking_ops;
-+			path_put(&path);
-+		}
-+	}
- 	status = client_tracking_ops->init();
- 	if (status) {
- 		printk(KERN_WARNING "NFSD: Unable to initialize client "
+ 	/* Validate the mount data */
+ 	error = nfs_validate_mount_data(raw_data, data, mntfh, dev_name);
+@@ -2234,8 +2246,6 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ #ifdef CONFIG_NFS_V4
+ 	if (data->version == 4) {
+ 		mntroot = nfs4_try_mount(flags, dev_name, data);
+-		kfree(data->client_address);
+-		kfree(data->nfs_server.export_path);
+ 		goto out;
+ 	}
+ #endif	/* CONFIG_NFS_V4 */
+@@ -2290,13 +2300,8 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	s->s_flags |= MS_ACTIVE;
+ 
+ out:
+-	kfree(data->nfs_server.hostname);
+-	kfree(data->mount_server.hostname);
+-	kfree(data->fscache_uniq);
+-	security_free_mnt_opts(&data->lsm_opts);
+-out_free_fh:
++	nfs_free_parsed_mount_data(data);
+ 	nfs_free_fhandle(mntfh);
+-	kfree(data);
+ 	return mntroot;
+ 
+ out_err_nosb:
+@@ -2623,9 +2628,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 
+ 	mntfh = nfs_alloc_fhandle();
+ 	if (data == NULL || mntfh == NULL)
+-		goto out_free_fh;
+-
+-	security_init_mnt_opts(&data->lsm_opts);
++		goto out;
+ 
+ 	/* Get a volume representation */
+ 	server = nfs4_create_server(data, mntfh);
+@@ -2676,13 +2679,10 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 
+ 	s->s_flags |= MS_ACTIVE;
+ 
+-	security_free_mnt_opts(&data->lsm_opts);
+ 	nfs_free_fhandle(mntfh);
+ 	return mntroot;
+ 
+ out:
+-	security_free_mnt_opts(&data->lsm_opts);
+-out_free_fh:
+ 	nfs_free_fhandle(mntfh);
+ 	return ERR_PTR(error);
+ 
+@@ -2837,7 +2837,7 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
+ 
+ 	data = nfs_alloc_parsed_mount_data(4);
+ 	if (data == NULL)
+-		goto out_free_data;
++		goto out;
+ 
+ 	/* Validate the mount data */
+ 	error = nfs4_validate_mount_data(raw_data, data, dev_name);
+@@ -2851,12 +2851,7 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
+ 		error = PTR_ERR(res);
+ 
+ out:
+-	kfree(data->client_address);
+-	kfree(data->nfs_server.export_path);
+-	kfree(data->nfs_server.hostname);
+-	kfree(data->fscache_uniq);
+-out_free_data:
+-	kfree(data);
++	nfs_free_parsed_mount_data(data);
+ 	dprintk("<-- nfs4_mount() = %d%s\n", error,
+ 			error != 0 ? " [error]" : "");
+ 	return res;
 -- 
-1.7.1
+1.7.7.3
 
