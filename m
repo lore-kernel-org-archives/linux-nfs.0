@@ -1,119 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51413 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:31345 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751481Ab1LUVdi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 16:33:38 -0500
-Date: Wed, 21 Dec 2011 16:33:12 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <20111221163312.3405c1f3@tlielax.poochiereds.net>
-In-Reply-To: <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
-	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752047Ab1LTKOw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Dec 2011 05:14:52 -0500
+Subject: [PATCH] SUNRPC: search for service transports in network namespace
+ context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 20 Dec 2011 14:14:19 +0300
+Message-ID: <20111220101419.5673.21926.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 21 Dec 2011 15:45:01 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Service transports are parametrized by network namespace. And thus lookup of
+transport instance have to take network namespace into account.
 
-> 
-> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
-> 
-> > The daemon takes a versioned binary struct. Hopefully this should allow
-> > us to revise the struct later if it becomes necessary.
-> 
-> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
-> 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-That's the main reason. We could, of course encode that string in hex or
-something, and decode it on the other end. No one has presented a
-strong argument for doing it that way as of yet though.
+---
+ fs/lockd/svc.c                  |    2 +-
+ fs/nfsd/nfsctl.c                |    4 ++--
+ include/linux/sunrpc/svc_xprt.h |    3 ++-
+ net/sunrpc/svc_xprt.c           |    6 +++++-
+ 4 files changed, 10 insertions(+), 5 deletions(-)
 
-If anyone feels strongly about that, then it would be helpful to have
-them pipe up now and state why they do...
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index c061b9a..ff379ff 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -193,7 +193,7 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
+ {
+ 	struct svc_xprt *xprt;
+ 
+-	xprt = svc_find_xprt(serv, name, family, 0);
++	xprt = svc_find_xprt(serv, name, &init_net, family, 0);
+ 	if (xprt == NULL)
+ 		return svc_create_xprt(serv, name, &init_net, family, port,
+ 						SVC_SOCK_DEFAULTS);
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index f9d0599..1f12f27 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -721,7 +721,7 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 	nfsd_serv->sv_nrthreads--;
+ 	return 0;
+ out_close:
+-	xprt = svc_find_xprt(nfsd_serv, transport, PF_INET, port);
++	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, PF_INET, port);
+ 	if (xprt != NULL) {
+ 		svc_close_xprt(xprt);
+ 		svc_xprt_put(xprt);
+@@ -747,7 +747,7 @@ static ssize_t __write_ports_delxprt(char *buf)
+ 	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
+ 		return -EINVAL;
+ 
+-	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
++	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, port);
+ 	if (xprt == NULL)
+ 		return -ENOTCONN;
+ 
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 18df516..21e3418 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -122,7 +122,8 @@ void	svc_delete_xprt(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ int	svc_print_xprts(char *buf, int maxlen);
+ struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+-			const sa_family_t af, const unsigned short port);
++			struct net *net, const sa_family_t af,
++			const unsigned short port);
+ int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index f8f0627..5fd123f 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1069,6 +1069,7 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+  * svc_find_xprt - find an RPC transport instance
+  * @serv: pointer to svc_serv to search
+  * @xcl_name: C string containing transport's class name
++ * @net: owner net pointer
+  * @af: Address family of transport's local address
+  * @port: transport's IP port number
+  *
+@@ -1081,7 +1082,8 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+  * service's list that has a matching class name.
+  */
+ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+-			       const sa_family_t af, const unsigned short port)
++			       struct net *net, const sa_family_t af,
++			       const unsigned short port)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *found = NULL;
+@@ -1092,6 +1094,8 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
++		if (xprt->xpt_net != net)
++			continue;
+ 		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
+ 			continue;
+ 		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
-> > 1 files changed, 56 insertions(+), 0 deletions(-)
-> > create mode 100644 include/linux/nfsd/cld.h
-> > 
-> > diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-> > new file mode 100644
-> > index 0000000..d97d678
-> > --- /dev/null
-> > +++ b/include/linux/nfsd/cld.h
-> > @@ -0,0 +1,56 @@
-> > +/*
-> > + * fs/nfsd/cld.h - upcall description for nfsdcld communication
-> > + *
-> > + * Copyright (c) 2011 Red Hat, Inc.
-> > + * Author(s): Jeff Layton <jlayton@redhat.com>
-> > + *
-> > + *  This program is free software; you can redistribute it and/or modify
-> > + *  it under the terms of the GNU General Public License as published by
-> > + *  the Free Software Foundation; either version 2 of the License, or
-> > + *  (at your option) any later version.
-> > + *
-> > + *  This program is distributed in the hope that it will be useful,
-> > + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-> > + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> > + *  GNU General Public License for more details.
-> > + *
-> > + *  You should have received a copy of the GNU General Public License
-> > + *  along with this program; if not, write to the Free Software
-> > + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-> > + */
-> > +
-> > +#ifndef _NFSD_CLD_H
-> > +#define _NFSD_CLD_H
-> > +
-> > +/* latest upcall version available */
-> > +#define CLD_UPCALL_VERSION 1
-> > +
-> > +/* defined by RFC3530 */
-> > +#define NFS4_OPAQUE_LIMIT 1024
-> > +
-> > +enum cld_command {
-> > +	Cld_Create,		/* create a record for this cm_id */
-> > +	Cld_Expire,		/* expire record for this cm_id */
-> > +	Cld_Allow,		/* is this cm_id allowed? */
-> > +	Cld_GraceDone,		/* grace period is complete */
-> > +};
-> > +
-> > +/* representation of long-form NFSv4 client ID */
-> > +struct cld_name {
-> > +	uint16_t	cn_len;				/* length of cm_id */
-> > +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-> > +} __attribute__((packed));
-> > +
-> > +/* message struct for communication with userspace */
-> > +struct cld_msg {
-> > +	uint8_t		cm_vers;		/* upcall version */
-> > +	uint8_t		cm_cmd;			/* upcall command */
-> > +	int16_t		cm_status;		/* return code */
-> > +	uint32_t	cm_xid;			/* transaction id */
-> > +	union {
-> > +		int64_t		cm_gracetime;	/* grace period start time */
-> > +		struct cld_name	cm_name;
-> > +	} __attribute__((packed)) cm_u;
-> > +} __attribute__((packed));
-> > +
-> > +#endif /* !_NFSD_CLD_H */
-> > -- 
-> > 1.7.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
