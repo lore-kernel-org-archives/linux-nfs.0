@@ -1,86 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752931Ab1LEIOH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:14:07 -0500
-Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:14:06 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 07/10] ctl: fix compiler warnings
-Date: Mon,  5 Dec 2011 10:14:01 +0200
-Message-Id: <1323072841-18376-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDC7C4E.1040901@tonian.com>
-References: <4EDC7C4E.1040901@tonian.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:58878 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751495Ab1LUJYR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 04:24:17 -0500
+Received: by wibhm6 with SMTP id hm6so1827799wib.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Dec 2011 01:24:15 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+Date: Wed, 21 Dec 2011 10:24:15 +0100
+Message-ID: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+Subject: Session timeout on RHEL6.2
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: multipart/mixed; boundary=f46d043be05e5feaa704b496bfcc
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+--f46d043be05e5feaa704b496bfcc
+Content-Type: text/plain; charset=UTF-8
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- ctl.c |   20 +++++++++-----------
- 1 files changed, 9 insertions(+), 11 deletions(-)
+Dear friends,
 
-diff --git a/ctl.c b/ctl.c
-index d989ab8..e5d16e3 100644
---- a/ctl.c
-+++ b/ctl.c
-@@ -75,11 +75,10 @@ struct event	ge;
- int
- main(int argc, char **argv)
- {
--	int		upcall_fd,
--			operation	= -1,
--			len;
--	char		c,
--			*prog;
-+	int		upcall_fd;
-+	int		operation = -1;
-+	char		c;
-+	char		*prog;
- 	pthread_t	t;
- 	void		*thr_val;
- 
-@@ -162,7 +161,7 @@ process_msg(int fd, short ev_type, void *arg)
- 		return;
- 	len = sizeof (bl_comm_res_t);
- 	if ((cc = read(fd, &msg, sizeof (msg))) != sizeof (msg)) {
--		printf("Failed to get all of message. Got %d, expected %d\n",
-+		printf("Failed to get all of message. Got %d, expected %Zd\n",
- 		    cc, sizeof (msg));
- 		resp->res_status = PNFS_BLOCK_FAILURE;
- 		write(fd, resp, len);
-@@ -352,9 +351,7 @@ get_dm(bl_comm_msg_t *msg, bl_comm_res_t *res, int *lenp)
- bl_comm_res_t *
- check_dm(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
- {
--	int	fd,
--		major,
--		minor;
-+	int	major, minor;
- 	char	*name;
- 	
- 	res->res_status = PNFS_BLOCK_SUCCESS;
-@@ -391,7 +388,7 @@ get_slice(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
- 	partition = minor & 0xf;
- 	res->res_status = PNFS_BLOCK_FAILURE;	// Default condition
- 	
--	printf("%s: %u:%u: ", __func__, major, minor); fflush(stdout);
-+	printf("%s: %u:%u: ", __func__, (unsigned)major, (unsigned)minor); fflush(stdout);
- 
- 	if (mknod(path, S_IFBLK | 0600, dev)) {
- 		perror("mknod");
-@@ -421,7 +418,8 @@ get_slice(bl_comm_msg_t *msg, bl_comm_res_t *res, int *len)
- 	res->res_status = PNFS_BLOCK_SUCCESS;
- 	res->u.slice.start = ppart->geom.start;
- 	res->u.slice.length = ppart->geom.length;
--	printf("Dev: %d:%d, Start: %llu, Length: %llu\n", major, minor,
-+	printf("Dev: %u:%u, Start: %llu, Length: %llu\n",
-+	       (unsigned)major, (unsigned)minor,
- 	       res->u.slice.start, res->u.slice.length);
- out:
- 	(void) unlink(path);
--- 
-1.7.6
+We are observing strange behavior with RHEL 6.2:
 
+Our the server lease time is 90 seconds. I can see that client
+sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+At some point client sends SEQUENCE after 127 seconds and
+gets, as expected, EXPIRED.
+
+I this point I have to blame myself.
+Client comes with EXCHANGE_ID using the same clientid.
+We did not garbage collected clientid internally as this happens after
+2*LEASE_TIME
+and return EXPIRE. This ping-pong never ends.
+
+This is probably mostly a bug on my side. Nevertheless we never observed late
+SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+
+I can open bug at RHEL if required.
+
+Regards,
+   Tigran.
+
+--f46d043be05e5feaa704b496bfcc
+Content-Type: application/octet-stream; name="sequence.dump"
+Content-Disposition: attachment; filename="sequence.dump"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gwg3pfq90
+
+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
+--f46d043be05e5feaa704b496bfcc--
