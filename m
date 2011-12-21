@@ -1,71 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:63124 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754837Ab1LNUaR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 15:30:17 -0500
-Message-ID: <4EE90753.6060700@gmail.com>
-Date: Wed, 14 Dec 2011 15:30:11 -0500
-From: Ric Wheeler <ricwheeler@gmail.com>
-MIME-Version: 1.0
-To: Jeremy Allison <jra@samba.org>
-CC: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: copy offload support in Linux - new system call needed?
-References: <4EE8F75F.6070800@gmail.com> <20111214195931.GC10664@samba2>
-In-Reply-To: <20111214195931.GC10664@samba2>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from acsinet15.oracle.com ([141.146.126.227]:45290 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751933Ab1LUWWH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 17:22:07 -0500
+Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
+Date: Wed, 21 Dec 2011 17:21:53 -0500
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <FB145782-E1E4-4BEE-9CD4-EF5653A77A91@oracle.com>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com> <1324499696-10318-5-git-send-email-jlayton@redhat.com> <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com> <20111221163312.3405c1f3@tlielax.poochiereds.net> <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com> <20111221164810.78d600a9@tlielax.poochiereds.net> <20111221165922.589101aa@tlielax.poochiereds.net> <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
+To: Peter Staubach <pstaubach@exagrid.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/14/2011 02:59 PM, Jeremy Allison wrote:
-> On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
->> Back at LinuxCon Prague, we talked about the new NFS and SCSI
->> commands that let us offload copy operations to a storage device
->> (like an NFS server or storage array).
->>
->> This got new life in the virtual machine world where you might want
->> to clone bulky guest files or ranges of blocks and was driven
->> through the standards bodies by vmware, microsoft and some of the
->> major storage vendors. Windows8 has this functionality fully coded
->> and integrated in the GUI, I assume vmware also uses it and there
->> are some vendors who announced support at the SNIA SDC conference.
->>
->> We had an active thread a couple of years back that came out of the
->> reflink work and, at the time, there seemed to be moderately
->> positive support for adding a new system call that would fit this
->> use case (Joel Becker's copyfile()).
->>
->> Can we resurrect this effort? Is copyfile() still a good way to go,
->> or should we look at other hooks?
-> Windows uses a COPYCHUNK call, which specifies the
-> following parameters:
->
-> Definition of a copy "chunk":
->
-> hyper source_off;
-> hyper target_off;
-> uint32 length;
->
-> and an array of these chunks which is passed
-> into their kernel.
->
-> This is what we have to implement in Samba.
->
-> Jeremy.
 
-This is a public pointer to the draft NFS proposal:
+On Dec 21, 2011, at 5:04 PM, Peter Staubach wrote:
 
-http://tools.ietf.org/id/draft-lentini-nfsv4-server-side-copy-06.txt
+> By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
 
-The T10 site has some click through that I was not too happy about agreeing to. 
-NetApp (Fred Knight) had some nice presentations that he presented about how 
-SCSI does this in two different ways...
+No, I mean something akin to what is done for the other NFSD upcall and downcall arguments and results.  A single set of decimal digits for simple arguments, and "keyword=value keyword=value,value" and so on for complex arguments.  I recommend text because that is similar to what is used for every other modern user space API that NFSD has.
 
-Ric
+> I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
+
+To be clear, there is just one binary data item here, and that's nfs_client_id4.  The other data items are integers, which have well-defined text representations.
+
+A new and separate API without any legacy baggage might be XDR, but text seems more appropriate here given the existence of other text APIs.  I'm not religious about this, just highlighting a few design choices.
+
+> 	Thanx...
+> 
+> 		ps
+> 
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
+> Sent: Wednesday, December 21, 2011 4:59 PM
+> To: Jeff Layton
+> Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+> 
+> On Wed, 21 Dec 2011 16:48:10 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+>> On Wed, 21 Dec 2011 16:37:30 -0500
+>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
+>>> 
+>>>> On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
+>>>> <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>>> 
+>>>>> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
+>>>>> 
+>>>>>> The daemon takes a versioned binary struct. Hopefully this 
+>>>>>> should allow us to revise the struct later if it becomes necessary.
+>>>>> 
+>>>>> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
+>>>>> 
+>>>> 
+>>>> That's the main reason. We could, of course encode that string in 
+>>>> hex or something, and decode it on the other end. No one has 
+>>>> presented a strong argument for doing it that way as of yet though.
+>>>> 
+>>>> If anyone feels strongly about that, then it would be helpful to 
+>>>> have them pipe up now and state why they do...
+>>> 
+>>> <pipe>Because binary data structures are difficult to work with over 
+>>> time, which is why other NFSD user space interfaces are 
+>>> text-based.</pipe>
+>>> 
+>>> ;-)
+>>> 
+>> 
+>> *sigh* that was the sort of comments I was hoping to get out of the 
+>> RFC postings. But ok...
+>> 
+>> I'll see about respinning the whole thing with either a text-based or 
+>> XDR-based upcall/downcall format. That'll take a while, but I'll see 
+>> if I can get it in shape in time for 3.3.
+>> 
+> 
+> ...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
+> 
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
 
 
 
