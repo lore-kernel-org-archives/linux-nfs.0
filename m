@@ -1,79 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50764 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2698 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757945Ab1LGQau (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 11:30:50 -0500
-Message-ID: <4EDF94AE.10302@RedHat.com>
-Date: Wed, 07 Dec 2011 11:30:38 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Harald Dunkel <harri@afaics.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 fsid=0 export still necessary?
-References: <4EDA0650.9080702@afaics.de> <4EDA5387.5070103@RedHat.com> <20111206011007.GD3678@fieldses.org>
-In-Reply-To: <20111206011007.GD3678@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751913Ab1LUUe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:34:58 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 3/5] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+Date: Wed, 21 Dec 2011 15:34:54 -0500
+Message-Id: <1324499696-10318-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We'll need a way to flag the nfs4_client as already being recorded on
+stable storage so that we don't continually upcall.
 
+The cl_cb_flags field is only using 2 bits right now, so repurpose that
+to a generic flags field. Rename NFSD4_CLIENT_KILL to
+NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
+flags. Add a mask that we can use for existing checks that look to see
+whether any flags are set, so that the new STABLE flag doesn't
+interfere.
 
-On 12/05/2011 08:10 PM, J. Bruce Fields wrote:
-> On Sat, Dec 03, 2011 at 11:51:19AM -0500, Steve Dickson wrote:
->> No, the fsid=0 export option is no longer necessary to make v4
->> exports compatible with v2/v3 exports. When the fsid option
->> is not set, the default root is define as "/" which allows
->> the v4 clients to mount the same exports as does the v2/v3 clients.
->>
->> Now if you do not what "/" as your default root, you can
->> set fsid to something like fsid=/export. This will
->> change to default root to the /export directory which
->> means your v4 clients will only be able to access exports
->> under the /export directory. 
-> 
-> I actually have some old patches that allow you to use an alternate root
-> for all NFS versions; you'd do something like:
-> 
-> 	/exports	*(ro, root)
-> 	/exports/foo	*(rw)
-> 	/exports/bar	*(rw)
-> 
-> and then a v2, v3, or v4 client would mount server:/foo or server:/bar.
-> 
-> But that was just a fun project, it wasn't clear to me whether anyone
-> wanted it particularly.
-> 
-> Also, that didn't seem like a great user interface.  I'd rather have
-> something like
-> 
-> 	rootpath=/exports
-> 	foo	*(rw)
-> 	bar	*(rw)
-> 
-> Actually, as long as we were doing that I'd rather replace /etc/exports
-> entirely; maybe do something like
-> 
-> 	[nfsd]
-> 		rootpath=/exports
-> 	[export "foo"]
-> 		clients=*
-> 		options=rw
-> 	[exports "bar"]
-> 		clients=*
-> 		options=rw
-> 
-> And also use the same file for other nfsd parameters:
-> 
-> 	[nfsd]
-> 		versions=2,3,4,4.1
-> 		threads=8
-> 		rootpath=/exports
-> 	[export "foo"]
-> 		...
-I kinda like this idea... In the systemd world, its less
-error prone to have daemons read their own configuration 
-files... 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |   12 ++++++------
+ fs/nfsd/state.h        |    8 +++++---
+ 2 files changed, 11 insertions(+), 9 deletions(-)
 
-Where would this new file live and what would be called?
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7748d6a..dc5da6b 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -756,7 +756,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+ 	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+-	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	do_probe_callback(clp);
+ }
+ 
+@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
+ /* must be called under the state lock */
+ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ {
+-	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
+ 	/*
+ 	 * Note this won't actually result in a null callback;
+ 	 * instead, nfsd4_do_callback_rpc() will detect the killed
+@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 		clp->cl_cb_conn.cb_xprt = NULL;
+ 	}
+-	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
++	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
+ 		return;
+ 	spin_lock(&clp->cl_lock);
+ 	/*
+ 	 * Only serialized callback code is allowed to clear these
+ 	 * flags; main nfsd code can only set them:
+ 	 */
+-	BUG_ON(!clp->cl_cb_flags);
+-	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
++	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
+ 	c = __nfsd4_find_backchannel(clp);
+ 	if (c) {
+@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+-	if (clp->cl_cb_flags)
++	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+ 		nfsd4_process_cb_update(cb);
+ 
+ 	clnt = clp->cl_cb_client;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index b07f5ea..1a21547 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -250,9 +250,11 @@ struct nfs4_client {
+ 
+ 	/* for v4.0 and v4.1 callbacks: */
+ 	struct nfs4_cb_conn	cl_cb_conn;
+-#define NFSD4_CLIENT_CB_UPDATE	1
+-#define NFSD4_CLIENT_KILL	2
+-	unsigned long		cl_cb_flags;
++#define NFSD4_CLIENT_STABLE		(0)	/* client on stable storage */
++#define NFSD4_CLIENT_CB_UPDATE		(1)
++#define NFSD4_CLIENT_CB_KILL		(2)
++#define NFSD4_CLIENT_CB_FLAG_MASK	(0x6)
++	unsigned long		cl_flags;
+ 	struct rpc_clnt		*cl_cb_client;
+ 	u32			cl_cb_ident;
+ #define NFSD4_CB_UP		0
+-- 
+1.7.1
 
-steved.
