@@ -1,51 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:59655 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757288Ab1LWO0Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 09:26:16 -0500
-Received: by vcbfk14 with SMTP id fk14so7330553vcb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 06:26:15 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAC3a_SD609RTOaCzh4g+Ukng8Z7+oQn+r-vEBMPDPMU7nxPWRA@mail.gmail.com>
-References: <CAC3a_SD609RTOaCzh4g+Ukng8Z7+oQn+r-vEBMPDPMU7nxPWRA@mail.gmail.com>
-Date: Fri, 23 Dec 2011 09:26:15 -0500
-Message-ID: <CADnza47Xo2Xt1zXiaAxoNWcwGDGi40a6jUhzFJkKu+oe-7PJGg@mail.gmail.com>
-Subject: Re: LAYOUTGET failure handling
-From: Fred Isaman <iisaman@netapp.com>
-To: vishal.thanki@gmail.com
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:50611 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752969Ab1LUVhk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 16:37:40 -0500
+Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20111221163312.3405c1f3@tlielax.poochiereds.net>
+Date: Wed, 21 Dec 2011 16:37:30 -0500
+Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com> <1324499696-10318-5-git-send-email-jlayton@redhat.com> <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com> <20111221163312.3405c1f3@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 23, 2011 at 6:21 AM, Vishal Thanki <vishalthanki@gmail.com> wrote:
-> Hi,
->
-> I am learning NFS (and pNFS) and not much familiar with its
-> implementation in Linux kernel. I have a question on the LAYOUTGET
-> operation.
->
-> I have a pNFS server setup which fakes most of the pNFS operations.
-> The "layout_get" implementation simply returns "-ENOENT". I am not
-> sure how this should be treated on the pNFS client side. In my
-> experiment, I am mounting the pNFS server and trying to read a file
-> (using "cat"). On wireshark trace (attached with the mail), I could
-> see that LAYOUTGET fails with NFS4ERR_BADLAYOUT error, but afterwards
-> I see the READ request from client and it is handled gracefully (and I
-> can see the contents of the file). Is this appropriate behavior?
->
 
-Yes.  The client asked for a layout.  The server said no.  So the
-client fell back to using standard io to the MDS.
-Right now this is basically how the linux client responds to almost all errors.
+On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
 
-Fred
+> On Wed, 21 Dec 2011 15:45:01 -0500
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
+>> 
+>>> The daemon takes a versioned binary struct. Hopefully this should allow
+>>> us to revise the struct later if it becomes necessary.
+>> 
+>> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
+>> 
+> 
+> That's the main reason. We could, of course encode that string in hex or
+> something, and decode it on the other end. No one has presented a
+> strong argument for doing it that way as of yet though.
+> 
+> If anyone feels strongly about that, then it would be helpful to have
+> them pipe up now and state why they do...
 
-> I am using RHEL6.1 (with pNFS patch for kernel 2.6.32 applied) on
-> server, and client is RHEL6.1 stock kernel.
->
-> I am sorry if this is not the appropriate forum for such kind of
-> questions, and pardon my ignorance/lack of knowledge in the domain.
->
-> Thanks,
-> Vishal
+<pipe>Because binary data structures are difficult to work with over time, which is why other NFSD user space interfaces are text-based.</pipe>
+
+;-)
+
+> 
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
+>>> 1 files changed, 56 insertions(+), 0 deletions(-)
+>>> create mode 100644 include/linux/nfsd/cld.h
+>>> 
+>>> diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+>>> new file mode 100644
+>>> index 0000000..d97d678
+>>> --- /dev/null
+>>> +++ b/include/linux/nfsd/cld.h
+>>> @@ -0,0 +1,56 @@
+>>> +/*
+>>> + * fs/nfsd/cld.h - upcall description for nfsdcld communication
+>>> + *
+>>> + * Copyright (c) 2011 Red Hat, Inc.
+>>> + * Author(s): Jeff Layton <jlayton@redhat.com>
+>>> + *
+>>> + *  This program is free software; you can redistribute it and/or modify
+>>> + *  it under the terms of the GNU General Public License as published by
+>>> + *  the Free Software Foundation; either version 2 of the License, or
+>>> + *  (at your option) any later version.
+>>> + *
+>>> + *  This program is distributed in the hope that it will be useful,
+>>> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+>>> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+>>> + *  GNU General Public License for more details.
+>>> + *
+>>> + *  You should have received a copy of the GNU General Public License
+>>> + *  along with this program; if not, write to the Free Software
+>>> + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+>>> + */
+>>> +
+>>> +#ifndef _NFSD_CLD_H
+>>> +#define _NFSD_CLD_H
+>>> +
+>>> +/* latest upcall version available */
+>>> +#define CLD_UPCALL_VERSION 1
+>>> +
+>>> +/* defined by RFC3530 */
+>>> +#define NFS4_OPAQUE_LIMIT 1024
+>>> +
+>>> +enum cld_command {
+>>> +	Cld_Create,		/* create a record for this cm_id */
+>>> +	Cld_Expire,		/* expire record for this cm_id */
+>>> +	Cld_Allow,		/* is this cm_id allowed? */
+>>> +	Cld_GraceDone,		/* grace period is complete */
+>>> +};
+>>> +
+>>> +/* representation of long-form NFSv4 client ID */
+>>> +struct cld_name {
+>>> +	uint16_t	cn_len;				/* length of cm_id */
+>>> +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
+>>> +} __attribute__((packed));
+>>> +
+>>> +/* message struct for communication with userspace */
+>>> +struct cld_msg {
+>>> +	uint8_t		cm_vers;		/* upcall version */
+>>> +	uint8_t		cm_cmd;			/* upcall command */
+>>> +	int16_t		cm_status;		/* return code */
+>>> +	uint32_t	cm_xid;			/* transaction id */
+>>> +	union {
+>>> +		int64_t		cm_gracetime;	/* grace period start time */
+>>> +		struct cld_name	cm_name;
+>>> +	} __attribute__((packed)) cm_u;
+>>> +} __attribute__((packed));
+>>> +
+>>> +#endif /* !_NFSD_CLD_H */
+>>> -- 
+>>> 1.7.1
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
