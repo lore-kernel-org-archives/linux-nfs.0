@@ -1,81 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34939 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:1026 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755022Ab1LZLj4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Dec 2011 06:39:56 -0500
-Subject: [PATCH v3 4/7] SUNRPC: pipefs dentry lookup helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 26 Dec 2011 15:39:22 +0300
-Message-ID: <20111226113922.13216.45211.stgit@localhost6.localdomain6>
-In-Reply-To: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
-References: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751764Ab1LUW2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 17:28:18 -0500
+Date: Wed, 21 Dec 2011 17:27:50 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Peter Staubach <pstaubach@exagrid.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+Message-ID: <20111221172750.638ed046@tlielax.poochiereds.net>
+In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
+	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
+	<20111221163312.3405c1f3@tlielax.poochiereds.net>
+	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
+	<20111221164810.78d600a9@tlielax.poochiereds.net>
+	<20111221165922.589101aa@tlielax.poochiereds.net>
+	<FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all places, where pipefs dentries are created, only directory inode is
-actually required to create new dentry. And all this directories has root
-pipefs dentry as their parent. So we actually don't need this pipefs mount
-point at all if some pipefs lookup method will be provided.
-IOW, all we really need is just superblock and simple lookup method to find
-root's child dentry with appropriate name. And this patch introduces this
-method.
-Note, that no locking implemented in rpc_d_lookup_sb(). So it can be used only
-in case of assurance, that pipefs superblock still exist. IOW, we can use this
-method only in pipefs mount-umount notification subscribers callbacks.
+On Wed, 21 Dec 2011 17:04:02 -0500
+Peter Staubach <pstaubach@exagrid.com> wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
+> 
+> I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
+> 
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
- net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+No, I was thinking along the lines of encoding the struct fields as
+key/value pairs in a string:
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 733ef50..4585985 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -51,6 +51,9 @@ enum {
- 	RPC_PIPEFS_UMOUNT,
- };
- 
-+extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+				      const unsigned char *dir_name);
-+
- extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
- 				       char __user *, size_t);
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 07fb7dd..1de840d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1008,6 +1008,22 @@ static const struct rpc_filelist files[] = {
- 	},
- };
- 
-+/*
-+ * This call can be used only in RPC pipefs mount notification hooks.
-+ */
-+struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
-+			       const unsigned char *dir_name)
-+{
-+	struct qstr dir = {
-+		.name = dir_name,
-+		.len = strlen(dir_name),
-+		.hash = full_name_hash(dir_name, strlen(dir_name)),
-+	};
-+
-+	return d_lookup(sb->s_root, &dir);
-+}
-+EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
+    "ver=1,cmd=create,clname=0x1a012bd..."
 
+...binary stuff like the nfs_client_id4 would be hex encoded. Integers
+would be converted to text representations, etc.
+
+I think if we're going to go to the trouble of encoding this stuff at
+all, it makes sense to do it in as flexible a manner as possible.
+
+Now that I think about it, using XDR has little benefit over the current
+packed binary struct. If we ever need to rev the format, it'll be just
+as much of a pain. With key/value pairs, we should be able to ensure
+that a mismatch between kernel and userspace versions is more easily
+dealt with.
+
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
+> Sent: Wednesday, December 21, 2011 4:59 PM
+> To: Jeff Layton
+> Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+> 
+> On Wed, 21 Dec 2011 16:48:10 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Wed, 21 Dec 2011 16:37:30 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> > > 
+> > > On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
+> > > 
+> > > > On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
+> > > > <chuck.lever@oracle.com> wrote:
+> > > > 
+> > > >> 
+> > > >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
+> > > >> 
+> > > >>> The daemon takes a versioned binary struct. Hopefully this 
+> > > >>> should allow us to revise the struct later if it becomes necessary.
+> > > >> 
+> > > >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
+> > > >> 
+> > > > 
+> > > > That's the main reason. We could, of course encode that string in 
+> > > > hex or something, and decode it on the other end. No one has 
+> > > > presented a strong argument for doing it that way as of yet though.
+> > > > 
+> > > > If anyone feels strongly about that, then it would be helpful to 
+> > > > have them pipe up now and state why they do...
+> > > 
+> > > <pipe>Because binary data structures are difficult to work with over 
+> > > time, which is why other NFSD user space interfaces are 
+> > > text-based.</pipe>
+> > > 
+> > > ;-)
+> > > 
+> > 
+> > *sigh* that was the sort of comments I was hoping to get out of the 
+> > RFC postings. But ok...
+> > 
+> > I'll see about respinning the whole thing with either a text-based or 
+> > XDR-based upcall/downcall format. That'll take a while, but I'll see 
+> > if I can get it in shape in time for 3.3.
+> > 
+> 
+> ...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
+> 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
