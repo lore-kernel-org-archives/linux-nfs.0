@@ -1,71 +1,379 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:60227 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752364Ab1LSTiq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Dec 2011 14:38:46 -0500
-Received: by vcbfk14 with SMTP id fk14so4305276vcb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Dec 2011 11:38:46 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFSD: Change name of extended attribute containing junction
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, fedfs-utils-devel@oss.oracle.com
-Date: Mon, 19 Dec 2011 14:38:43 -0500
-Message-ID: <20111219193843.30843.56764.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:33484 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754049Ab1LUUf1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:27 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 02/10] nfsdcld: add client tracking daemon stub
+Date: Wed, 21 Dec 2011 15:35:14 -0500
+Message-Id: <1324499722-10363-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As of fedfs-utils-0.8.0, user space stores all NFS junction
-information in a single extended attribute: "trusted.junction.nfs".
+This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
+The code here doesn't actually do anything on stable storage yet. That
+will be added in a later patch.
 
-Both FedFS and NFS basic junctions are stored in this one attribute,
-and the intention is that all future forms of NFS junction metadata
-will be stored in this attribute.  Other protocols may use a different
-extended attribute.
+The patch also adds a autoconf enable switch for the new daemon that
+defaults to "no", and a test for the upcall description header file.
 
-Thus NFSD needs to look only for that one extended attribute.  The
-"trusted.junction.type" xattr is deprecated.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ configure.ac              |   14 +++
+ utils/Makefile.am         |    4 +
+ utils/nfsdcld/Makefile.am |   14 +++
+ utils/nfsdcld/nfsdcld.c   |  263 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 295 insertions(+), 0 deletions(-)
+ create mode 100644 utils/nfsdcld/Makefile.am
+ create mode 100644 utils/nfsdcld/nfsdcld.c
 
- fs/nfsd/vfs.c |   17 ++++++++++++++---
- 1 files changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index d1d4d5e..b494f86 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -594,8 +594,19 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry, struct nfs4_ac
- 	return error;
- }
+diff --git a/configure.ac b/configure.ac
+index f101b86..eb071ef 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -186,6 +186,12 @@ else
+ 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
+ fi
  
--#define NFSD_XATTR_JUNCTION_PREFIX XATTR_TRUSTED_PREFIX "junction."
--#define NFSD_XATTR_JUNCTION_TYPE NFSD_XATTR_JUNCTION_PREFIX "type"
-+/*
-+ * NFS junction information is stored in an extended attribute.
-+ */
-+#define NFSD_JUNCTION_XATTR_NAME	XATTR_TRUSTED_PREFIX "junction.nfs"
++AC_ARG_ENABLE(nfsdcld,
++	[AC_HELP_STRING([--enable-nfsdcld],
++			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
++	enable_nfsdcld=$enableval,
++	enable_nfsdcld="no")
 +
-+/**
-+ * nfsd4_is_junction - Test if an object could be an NFS junction
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
+ 
+@@ -259,6 +265,13 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  if test "$enable_nfsdcld" = "yes"; then
++    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
++		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
++  fi
++
++  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -458,6 +471,7 @@ AC_CONFIG_FILES([
+ 	tools/nfs-iostat/Makefile
+ 	utils/Makefile
+ 	utils/blkmapd/Makefile
++	utils/nfsdcld/Makefile
+ 	utils/exportfs/Makefile
+ 	utils/gssd/Makefile
+ 	utils/idmapd/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index d074b85..5df7ca7 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -21,6 +21,10 @@ if CONFIG_MOUNT
+ OPTDIRS += mount
+ endif
+ 
++if CONFIG_NFSDCLD
++OPTDIRS += nfsdcld
++endif
++
+ SUBDIRS = \
+ 	exportfs \
+ 	mountd \
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+new file mode 100644
+index 0000000..ed7ed42
+--- /dev/null
++++ b/utils/nfsdcld/Makefile.am
+@@ -0,0 +1,14 @@
++## Process this file with automake to produce Makefile.in
++
++#man8_MANS	= nfsdcld.man
++#EXTRA_DIST = $(man8_MANS)
++
++AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
++sbin_PROGRAMS	= nfsdcld
++
++nfsdcld_SOURCES = nfsdcld.c
++
++nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
++
++MAINTAINERCLEANFILES = Makefile.in
++
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+new file mode 100644
+index 0000000..9d271c7
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -0,0 +1,263 @@
++/*
++ * nfsdcld.c -- NFSv4 client name tracking daemon
 + *
-+ * @dentry: object to test
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
 + *
-+ * Returns 1 if "dentry" appears to contain NFS junction information.
-+ * Otherwise 0 is returned.
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
 + */
- int nfsd4_is_junction(struct dentry *dentry)
- {
- 	struct inode *inode = dentry->d_inode;
-@@ -606,7 +617,7 @@ int nfsd4_is_junction(struct dentry *dentry)
- 		return 0;
- 	if (!(inode->i_mode & S_ISVTX))
- 		return 0;
--	if (vfs_getxattr(dentry, NFSD_XATTR_JUNCTION_TYPE, NULL, 0) <= 0)
-+	if (vfs_getxattr(dentry, NFSD_JUNCTION_XATTR_NAME, NULL, 0) <= 0)
- 		return 0;
- 	return 1;
- }
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <errno.h>
++#include <event.h>
++#include <stdbool.h>
++#include <getopt.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <linux/nfsd/cld.h>
++
++#include "xlog.h"
++#include "nfslib.h"
++
++#ifndef PIPEFS_DIR
++#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
++#endif
++
++#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
++
++#define UPCALL_VERSION		1
++
++/* private data structures */
++struct cld_client {
++	int			cl_fd;
++	struct event		cl_event;
++	struct cld_msg	cl_msg;
++};
++
++/* global variables */
++static char *pipepath = DEFAULT_CLD_PATH;
++
++static struct option longopts[] =
++{
++	{ "help", 0, NULL, 'h' },
++	{ "foreground", 0, NULL, 'F' },
++	{ "debug", 0, NULL, 'd' },
++	{ "pipe", 1, NULL, 'p' },
++	{ NULL, 0, 0, 0 },
++};
++
++/* forward declarations */
++static void cldcb(int UNUSED(fd), short which, void *data);
++
++static void
++usage(char *progname)
++{
++	printf("Usage:\n");
++	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
++}
++
++static int
++cld_pipe_open(struct cld_client *clnt)
++{
++	clnt->cl_fd = open(pipepath, O_RDWR, 0);
++	if (clnt->cl_fd < 0) {
++		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
++		return clnt->cl_fd;
++	}
++
++	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
++	event_add(&clnt->cl_event, NULL);
++
++	return clnt->cl_fd;
++}
++
++static void
++cld_pipe_reopen(struct cld_client *clnt)
++{
++	int fd;
++
++	fd = open(pipepath, O_RDWR, 0);
++	if (fd < 0) {
++		xlog_warn("%s: Re-opening of %s failed: %m");
++		return;
++	}
++
++	if ((clnt->cl_event.ev_flags & EVLIST_INIT))
++		event_del(&clnt->cl_event);
++	if (clnt->cl_fd > 0)
++		close(clnt->cl_fd);
++
++	clnt->cl_fd = fd;
++	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
++	/* event_add is done by the caller */
++}
++
++static void
++cld_create(struct cld_client *clnt)
++{
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: create client record", __func__);
++
++	/* FIXME: create client record on storage here */
++
++	/* set up reply */
++	cmsg->cm_status = 0;
++
++	bsize = sizeof(*cmsg);
++
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
++cld_not_implemented(struct cld_client *clnt)
++{
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
++
++	/* set up reply */
++	cmsg->cm_status = -EOPNOTSUPP;
++
++	bsize = sizeof(*cmsg);
++
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize)
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++
++	/* reopen pipe, just to be sure */
++	cld_pipe_reopen(clnt);
++}
++
++static void
++cldcb(int UNUSED(fd), short which, void *data)
++{
++	ssize_t len;
++	struct cld_client *clnt = data;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	if (which != EV_READ)
++		goto out;
++
++	len = atomicio(read, clnt->cl_fd, cmsg, sizeof(*cmsg));
++	if (len <= 0) {
++		xlog_warn("%s: pipe read failed: %m", __func__);
++		cld_pipe_reopen(clnt);
++		goto out;
++	}
++
++	if (cmsg->cm_vers != UPCALL_VERSION) {
++		xlog_warn("%s: unsupported upcall version: %hu", cmsg->cm_vers);
++		cld_pipe_reopen(clnt);
++		goto out;
++	}
++
++	switch(cmsg->cm_cmd) {
++	case Cld_Create:
++		cld_create(clnt);
++		break;
++	default:
++		xlog_warn("%s: command %u is not yet implemented", __func__,
++			  cmsg->cm_cmd);
++		cld_not_implemented(clnt);
++	}
++out:
++	event_add(&clnt->cl_event, NULL);
++}
++
++int
++main(int argc, char **argv)
++{
++	char arg;
++	int rc = 0, fd;
++	bool foreground = false;
++	char *progname;
++	struct cld_client clnt;
++
++	memset(&clnt, 0, sizeof(clnt));
++
++	progname = strdup(basename(argv[0]));
++	if (!progname) {
++		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
++		return 1;
++	}
++
++	event_init();
++	xlog_syslog(0);
++	xlog_stderr(1);
++
++	/* process command-line options */
++	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
++				  NULL)) != EOF) {
++		switch (arg) {
++		case 'd':
++			xlog_config(D_ALL, 1);
++			break;
++		case 'F':
++			foreground = true;
++			break;
++		case 'p':
++			pipepath = optarg;
++			break;
++		default:
++			usage(progname);
++			return 0;
++		}
++	}
++
++
++	xlog_open(progname);
++	if (!foreground) {
++		xlog_syslog(1);
++		xlog_stderr(0);
++		rc = daemon(0, 0);
++		if (rc) {
++			xlog(L_ERROR, "Unable to daemonize: %m");
++			goto out;
++		}
++	}
++
++	/* set up storage db */
++
++	/* set up event handler */
++	fd = cld_pipe_open(&clnt);
++	if (fd < 0) {
++		rc = fd;
++		goto out;
++	}
++
++	rc = event_dispatch();
++	if (rc < 0)
++		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
++
++	close(clnt.cl_fd);
++out:
++	free(progname);
++	return rc;
++}
+-- 
+1.7.1
 
