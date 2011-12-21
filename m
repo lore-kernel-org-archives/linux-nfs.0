@@ -1,57 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18218 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751491Ab1LSW0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 17:26:42 -0500
-Date: Mon, 19 Dec 2011 17:26:30 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        fedfs-utils-devel@oss.oracle.com, raven@themaw.net
-Subject: Re: [PATCH] NFSD: Change name of extended attribute containing
- junction
-Message-ID: <20111219222630.GC32599@pad.fieldses.org>
-References: <20111219193843.30843.56764.stgit@degas.1015granger.net>
- <20111219215259.GA15613@fieldses.org>
- <20111219171957.70e13a1b@tlielax.poochiereds.net>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:44107 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751418Ab1LUULt convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:11:49 -0500
+Received: by obcwo16 with SMTP id wo16so3482007obc.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Dec 2011 12:11:49 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111219171957.70e13a1b@tlielax.poochiereds.net>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <1324475851.7709.12.camel@lade.trondhjem.org>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+	<1324475851.7709.12.camel@lade.trondhjem.org>
+Date: Wed, 21 Dec 2011 21:11:49 +0100
+Message-ID: <CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
+Subject: Re: Session timeout on RHEL6.2
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 19, 2011 at 05:19:57PM -0500, Jeff Layton wrote:
-> On Mon, 19 Dec 2011 16:52:59 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Dec 19, 2011 at 02:38:43PM -0500, Chuck Lever wrote:
-> > > As of fedfs-utils-0.8.0, user space stores all NFS junction
-> > > information in a single extended attribute: "trusted.junction.nfs".
-> > 
-> > I suspect the break of backwards-compatibility is fine, but we should
-> > add a note explaining it; would something like this be right?:
-> > 
-> > 	This breaks compatibility with fedfs-utils versions before
-> > 	0.8.0.  As fedfs-utils has not been widely distributed, we don't
-> > 	believe this will affect anyone.
-> > 
-> > (Cc'ing jlayton: does this cause a problem for whatever just went into
-> > Fedora?)
-> > 
-> 
-> Also cc'ing Ian, on whose shoulders I dumped the fedfs work...
-> 
-> That stuff just went into Fedora rawhide, and as everyone knows (or
-> should) -- rawhide eats babies. At this point I don't think there's any
-> need to worry about compatibility issues.
+On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
+>> Dear friends,
+>>
+>> We are observing strange behavior with RHEL 6.2:
+>>
+>> Our the server lease time is 90 seconds. I can see that client
+>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+>> At some point client sends SEQUENCE after 127 seconds and
+>> gets, as expected, EXPIRED.
+>
+> Why shouldn't the client be allowed to let the lease expire if nothing
+> is using that filesystem?
+>
+>> I this point I have to blame myself.
+>> Client comes with EXCHANGE_ID using the same clientid.
+>> We did not garbage collected clientid internally as this happens after
+>> 2*LEASE_TIME
+>> and return EXPIRE. This ping-pong never ends.
+>>
+>> This is probably mostly a bug on my side. Nevertheless we never observed late
+>> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+>>
+>> I can open bug at RHEL if required.
+>
+> I wouldn't consider that a bug.
 
-OK, thanks.
+As I said, there is a bug in exchange_id processing ( case 3 ) on my
+side. But to me it's sounds strange that client after more than 8
+hours of sending only sequence decided to send one of them later than
+lease time. Especially, that we did not have it with other kernels.
 
-(Chuck, that's the more important question to me than whether we declare
-done or not: if it's alpha-quality code but somebody nevertheless
-manages to get a working setup out of it, we try to be nice to them and
-not break that.  If it's only been distributed in rawhide, and only a
-little while, chances of that are very small, so fine.)
+Anyway, we will update our server tomorrow with bugfix.
 
---b.
+Tigran.
+
+>
+> Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
