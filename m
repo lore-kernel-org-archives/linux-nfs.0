@@ -1,149 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12203 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47818 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754010Ab1LANSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 08:18:08 -0500
-Message-ID: <4ED77E8E.2040304@RedHat.com>
-Date: Thu, 01 Dec 2011 08:18:06 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Bruce Dubbs <bruce.dubbs@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfs server issues
-References: <4ED6BCEA.9050000@gmail.com>
-In-Reply-To: <4ED6BCEA.9050000@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754029Ab1LUUfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:31 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 06/10] nfsdcld: add check/update functionality
+Date: Wed, 21 Dec 2011 15:35:18 -0500
+Message-Id: <1324499722-10363-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add functions to check whether a client is allowed to reclaim, and
+update its timestamp in the DB if so. If either the query or update
+fails, then the host is not allowed to reclaim state.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   29 +++++++++++++++++++
+ utils/nfsdcld/sqlite.c  |   70 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 100 insertions(+), 0 deletions(-)
 
-On 11/30/2011 06:31 PM, Bruce Dubbs wrote:
-> I am trying to document the installation of nfs for Linux From Scratch.  The client works, but the server does not and I'm looking for some help.   If this is the wrong place to ask for help, please redirect me.
-> 
-> For now, I am only trying to get nfs version 3 to work.
-> 
-> # mount -t nfs -o nfsvers=3 lfs6:/home/bdubbs /mnt/test
->    [ mounts OK ]
-> # mount -t nfs -o nfsvers=3 localhost:/usr/src /mnt/tmp
-> # mount.nfs: requested NFS version or transport protocol is not supported
-The reason you getting the mounting error to localhost is because there are 
-no NFS services registered with rpcbind. Note the lack of nfs entires in
-your rpcinfo -p output. For the above mount to work you would need at least 
-the following entry:
-  100003    3   tcp   2049  nfs
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 885d79e..29c514c 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -186,6 +186,32 @@ cld_remove(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_check(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: check client record", __func__);
++
++	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
++				  cmsg->cm_u.cm_name.cn_len);
++
++	/* set up reply */
++	cmsg->cm_status = ret ? -EACCES : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -215,6 +241,9 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_Expire:
+ 		cld_remove(clnt);
+ 		break;
++	case Cld_Allow:
++		cld_check(clnt);
++		break;
+ 	default:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+ 			  cmsg->cm_cmd);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index a90e112..6d3c022 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -285,3 +285,73 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/*
++ * Is the given clname in the clients table? If so, then update its timestamp
++ * and return success. If the record isn't present, or the update fails, then
++ * return an error.
++ */
++int
++sqlite_check_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "id==?", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to prepare update statement: %s",
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %s", sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(D_GENERAL, "Unexpected return code from select: %d", ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	xlog(D_GENERAL, "Select returned %d rows", ret);
++	if (ret != 1) {
++		ret = -EACCES;
++		goto out_err;
++	}
++
++	sqlite3_finalize(stmt);
++	stmt = NULL;
++	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
++				      "time=strftime('%s', 'now') WHERE id==?",
++				 -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Unable to prepare update statement: %s",
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(D_GENERAL, "Bind blob failed: %s", sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(D_GENERAL, "Unexpected return code from update: %s",
++				sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 425f5ba..59ebd72 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -23,5 +23,6 @@
+ int sqlite_maindb_init(char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
++int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.1
 
-Figure out why that is not happening and you find the problem...
-
-steved.
-
-> 
-> Any pointers are appreciated.  Details of the procedures I've used are below.
-> 
->   -- Bruce Dubbs
->      linuxfromscratch.org
-> 
-> 
-> The packages I'm using:
-> 
-> linux-3.0.4
-> libtirpc-0.2.2
-> rpcbind-0.2.0
-> nfs-utils-1.2.5
-> glibc-2.14.1
-> util-linux-2.20
-> 
-> The build procedures were as follows:
-> 
-> 1. Restore nfs/nis headers omitted by glibc-2.14.1
-> 2. Build libtirpc
->    Remove auth_des.c authdes_prot.c des_crypt.c from Makefile
->    Comment out authdes_create() in rpc_soc.c
->    ./configure --prefix=/usr --libdir=/lib
-> 3. Build rpcbind
->    ./configure --prefix=/usr --bindir=/sbin
->    Update /etc/services for rpcbind on port 111
-> 4. Build nfs-utils
->    LIBS=-lpthread ./configure --prefix=/usr     \
->         --sysconfdir=/etc --disable-nfsv4 --disable-nfsv41  \
->         --disable-gss
-> 
-> Start rpcbind
-> Start rpc.mountd
-> Run   rpc.nfsd -p 2049 8
-> Start rpc.statd
-> Run   exportfs -ra
-> 
-> /etc/exports has:
-> /usr/src 192.168.0.0/24(rw,async,no_root_squash,subtree_check)
-> 
-> rpcinfo -p gives:
->     100000    4   tcp    111  portmapper
->     100000    3   tcp    111  portmapper
->     100000    2   tcp    111  portmapper
->     100000    4   udp    111  portmapper
->     100000    3   udp    111  portmapper
->     100000    2   udp    111  portmapper
->     100005    1   udp  52645  mountd
->     100005    1   tcp  47533  mountd
->     100005    2   udp  60954  mountd
->     100005    2   tcp  56425  mountd
->     100005    3   udp  33939  mountd
->     100005    3   tcp  56892  mountd
->     100024    1   udp  34641  status
->     100024    1   tcp  50491  status
-> 
-> # ps -ef|grep 'nfs\|rpc\|lock'
-> root       291     2  0 Nov26 ?        00:00:00 [kblockd]
-> root       498     2  0 Nov26 ?        00:00:00 [rpciod]
-> root       613     2  0 Nov26 ?        00:00:00 [nfsiod]
-> root      1136     2  0 Nov28 ?        00:00:00 [lockd]
-> root      1137     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1138     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1139     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1140     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1141     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1142     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1143     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1144     2  0 Nov28 ?        00:00:00 [nfsd]
-> root      1889     1  0 Nov28 ?        00:00:00 /usr/sbin/rpc.statd
-> root     12615     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     12618     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     12685     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     12711     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     12923     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     14127     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     14494     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     14861     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     15248     1  0 Nov29 ?        00:00:00 rpc.statd --no-notify
-> root     15819     1  0 Nov29 ?        00:00:00 /sbin/rpcbind
-> root     16423     1  0 12:34 ?        00:00:00 /usr/sbin/rpc.mountd
-> root     16432     1  0 12:36 ?        00:00:00 /usr/sbin/rpc.statd
-> 
-> Kernel configuration:
-> 
-> CONFIG_NETWORK_FILESYSTEMS=y
-> CONFIG_NFS_FS=y
-> CONFIG_NFS_V3=y
-> CONFIG_NFS_V3_ACL=y
-> CONFIG_NFS_V4=y
-> # CONFIG_NFS_V4_1 is not set
-> CONFIG_ROOT_NFS=y
-> # CONFIG_NFS_USE_LEGACY_DNS is not set
-> CONFIG_NFS_USE_KERNEL_DNS=y
-> # CONFIG_NFS_USE_NEW_IDMAPPER is not set
-> CONFIG_NFSD=y
-> # CONFIG_NFSD_DEPRECATED is not set
-> CONFIG_NFSD_V3=y
-> # CONFIG_NFSD_V3_ACL is not set
-> # CONFIG_NFSD_V4 is not set
-> CONFIG_LOCKD=y
-> CONFIG_LOCKD_V4=y
-> CONFIG_NFS_ACL_SUPPORT=y
-> CONFIG_NFS_COMMON=y
-> CONFIG_SUNRPC=y
-> CONFIG_SUNRPC_GSS=y
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
