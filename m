@@ -1,118 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o147.mxlogic.net ([208.65.144.80]:51783 "EHLO
-	p02c11o147.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751192Ab1LUWpd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 17:45:33 -0500
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 21 Dec 2011 17:33:23 -0500
-Subject: RE: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C22@IT-1874.Isys.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
-	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
-	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
-	<20111221163312.3405c1f3@tlielax.poochiereds.net>
-	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
-	<20111221164810.78d600a9@tlielax.poochiereds.net>
-	<20111221165922.589101aa@tlielax.poochiereds.net>
-	<FA8A9A935BFD3A4D8F0CDA1C4F611BCC057ECD1C18@IT-1874.Isys.com>
- <20111221172750.638ed046@tlielax.poochiereds.net>
-In-Reply-To: <20111221172750.638ed046@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:10795 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754029Ab1LUUf0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:26 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 07/10] nfsdcld: add function to remove unreclaimed client records
+Date: Wed, 21 Dec 2011 15:35:19 -0500
+Message-Id: <1324499722-10363-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I will need to disagree with the assertion regarding XDR and the packed struct.  XDR can handle a versioned struct very neatly.  It can do so just as easily as text string parsing and with greatly reduced overhead.
+This should remove any client record that has a timestamp prior to
+the given time.
 
-		Ps
+Eventually, this call will need to be made cluster aware when this is
+run in a clustered configuration. For now, this is only suitable for
+single-host configurations.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   29 +++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.c  |   28 ++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 58 insertions(+), 0 deletions(-)
 
------Original Message-----
-From: Jeff Layton [mailto:jlayton@redhat.com] 
-Sent: Wednesday, December 21, 2011 5:28 PM
-To: Peter Staubach
-Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 29c514c..b66fe39 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -212,6 +212,32 @@ cld_check(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_gracedone(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
++			cmsg->cm_u.cm_gracetime);
++
++	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
++
++	/* set up reply: downcall with 0 status */
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -244,6 +270,9 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_Allow:
+ 		cld_check(clnt);
+ 		break;
++	case Cld_GraceDone:
++		cld_gracedone(clnt);
++		break;
+ 	default:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+ 			  cmsg->cm_cmd);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 6d3c022..61fa448 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -38,6 +38,7 @@
+ #include "config.h"
+ #endif /* HAVE_CONFIG_H */
+ 
++#include <dirent.h>
+ #include <errno.h>
+ #include <event.h>
+ #include <stdbool.h>
+@@ -355,3 +356,30 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/*
++ * remove any client records that were not reclaimed since grace_start.
++ */
++int
++sqlite_remove_unreclaimed(time_t grace_start)
++{
++	int ret;
++	char *err = NULL;
++
++	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
++			grace_start);
++	if (ret < 0) {
++		return ret;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		return ret;
++	}
++
++	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK)
++		xlog(D_GENERAL, "Delete failed: %s", err);
++
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_free(err);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 59ebd72..c85e7d6 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -24,5 +24,6 @@ int sqlite_maindb_init(char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
++int sqlite_remove_unreclaimed(const time_t grace_start);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.1
 
-On Wed, 21 Dec 2011 17:04:02 -0500
-Peter Staubach <pstaubach@exagrid.com> wrote:
-
-> By text based, you don't really mean encoding the binary structure as a string of ascii hex bytes, right?  Bleah.
-> 
-> I would suggest that XDR encoding seems quite natural to use when passing binary structs around.
-> 
-
-No, I was thinking along the lines of encoding the struct fields as key/value pairs in a string:
-
-    "ver=1,cmd=create,clname=0x1a012bd..."
-
-...binary stuff like the nfs_client_id4 would be hex encoded. Integers would be converted to text representations, etc.
-
-I think if we're going to go to the trouble of encoding this stuff at all, it makes sense to do it in as flexible a manner as possible.
-
-Now that I think about it, using XDR has little benefit over the current packed binary struct. If we ever need to rev the format, it'll be just as much of a pain. With key/value pairs, we should be able to ensure that a mismatch between kernel and userspace versions is more easily dealt with.
-
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Jeff Layton
-> Sent: Wednesday, December 21, 2011 4:59 PM
-> To: Jeff Layton
-> Cc: Chuck Lever; bfields@fieldses.org; steved@redhat.com; 
-> linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to 
-> nfsdcld
-> 
-> On Wed, 21 Dec 2011 16:48:10 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Wed, 21 Dec 2011 16:37:30 -0500
-> > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > > 
-> > > On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
-> > > 
-> > > > On Wed, 21 Dec 2011 15:45:01 -0500 Chuck Lever 
-> > > > <chuck.lever@oracle.com> wrote:
-> > > > 
-> > > >> 
-> > > >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
-> > > >> 
-> > > >>> The daemon takes a versioned binary struct. Hopefully this 
-> > > >>> should allow us to revise the struct later if it becomes necessary.
-> > > >> 
-> > > >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
-> > > >> 
-> > > > 
-> > > > That's the main reason. We could, of course encode that string 
-> > > > in hex or something, and decode it on the other end. No one has 
-> > > > presented a strong argument for doing it that way as of yet though.
-> > > > 
-> > > > If anyone feels strongly about that, then it would be helpful to 
-> > > > have them pipe up now and state why they do...
-> > > 
-> > > <pipe>Because binary data structures are difficult to work with 
-> > > over time, which is why other NFSD user space interfaces are 
-> > > text-based.</pipe>
-> > > 
-> > > ;-)
-> > > 
-> > 
-> > *sigh* that was the sort of comments I was hoping to get out of the 
-> > RFC postings. But ok...
-> > 
-> > I'll see about respinning the whole thing with either a text-based 
-> > or XDR-based upcall/downcall format. That'll take a while, but I'll 
-> > see if I can get it in shape in time for 3.3.
-> > 
-> 
-> ...and while we're discussing it. Does anyone have thoughts on which would be better? I'd probably prefer a text-based format. That's more flexible but is also going to be more verbose. I think we're still well under a page with these requests even in text however so I don't really see that as a problem.
-> 
-
---
-Jeff Layton <jlayton@redhat.com>
