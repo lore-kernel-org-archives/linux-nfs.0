@@ -1,46 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58140 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:31694 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757078Ab1LBQYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Dec 2011 11:24:33 -0500
-Date: Fri, 2 Dec 2011 11:24:31 -0500
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, trond.myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
-Message-ID: <20111202162431.GC14393@fieldses.org>
-References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
- <4ED7EBFF.6030706@RedHat.com>
- <4ED7F7B9.2090205@netapp.com>
- <4ED8318B.5040400@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4ED8318B.5040400@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753101Ab1LUUfC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:02 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/5] nfsd: overhaul the client name tracking code
+Date: Wed, 21 Dec 2011 15:34:51 -0500
+Message-Id: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 01, 2011 at 09:01:47PM -0500, Steve Dickson wrote:
-> 
-> 
-> On 12/01/2011 04:55 PM, Bryan Schumaker wrote:
-> > On Thu Dec  1 16:05:03 2011, Steve Dickson wrote:
-> >> Now what is the motivating reason behind this re-architecture
-> >> other than making the upstream kernel literally impossible to 
-> >> back port to older kernels?? 
-> >>
-> > I wasn't thinking about backporting when I did this... is there a 
-> > better way to do this that wouldn't make it a pain to backport?
-> Yeah... Don't do it! 8-) Major architectural changes always destroy
-> any all chances of clean back ports... That's why they are generally 
-> done on major releases... the when 3.X was released... 
+This is the third iteration of this patchset. The main changes since
+the last set are fairly minor:
 
-There was nothing special about 3.0 other than the name; it could just
-as easily have been called 2.6.40.
+- the new cl_flags field has been merged with the cl_cb_flags field.
+  There are only 2 bits being used in cl_cb_flags currently, so it
+  made sense not to bloat out the struct with a new field.
 
-But anyway I don't see the big problem for backports.  Probably git can
-deal with the renames automatically, and even if it can't the fixup is
-going to be pretty obvious.  This isn't like the xdr changes that
-touched so many lines, it's mainly just a simple rename.
+- some minor changes to the upcall struct for better alignment (as
+  suggested by Benny)
 
---b.
+One of the things that Bruce has long had on his wishlist is to replace
+the client name tracking code that the kernel uses:
+
+    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
+
+The existing code manipulates the filesystem directly to track this
+info. Not only is that something that makes the VFS maintainers look
+askance at knfsd, but it also is unsuitable in a clustered
+configuration.
+
+Typically we think of the grace period as a property of the server, but
+with a clustered filesystem, we need to consider it as a property of the
+cluster as a whole (or of the clustered filesystem). On a cold startup
+of the cluster, once any node grants a non-reclaim lock, then no more
+reclaim can be allowed on any node. Grace periods must be coordinated
+amongst all cluster nodes.
+
+In order to achieve that goal, we need to first allow the client name
+"reclaim" to be cluster aware as well. This patchset is a move toward
+that goal and covers the initial kernel part of such a change. A
+patchset to add a daemon to handle the upcalls will follow.
+
+The goal with this patchset is to replace the existing functionality,
+without disturbing the existing code too much. For now, the plan is
+to leave the old tracking code in place until it becomes a burden to
+maintain. At that point, we'll need to come up with a plan to
+transition everyone off of the legacy state tracker.
+
+I think this set is now ready for merge and I'd like to see it go
+in for 3.3 if possible. The userspace piece will follow this in
+a separate patchset.
+
+Jeff Layton (5):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+  nfsd: add a header describing upcall to nfsdcld
+  nfsd: add the infrastructure to handle the cld upcall
+
+ fs/nfsd/nfs4callback.c   |   12 +-
+ fs/nfsd/nfs4recover.c    |  439 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4state.c      |   46 ++---
+ fs/nfsd/state.h          |   21 ++-
+ include/linux/nfsd/cld.h |   56 ++++++
+ net/sunrpc/rpc_pipe.c    |    5 +
+ 6 files changed, 526 insertions(+), 53 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
+
