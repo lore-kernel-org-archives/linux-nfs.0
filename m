@@ -1,41 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13605 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64436 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752096Ab1LYMsh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 07:48:37 -0500
-Message-ID: <1324817295.5195.0.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] SUNRPC: make SUNPRC clients list per network namespace
- context
+	id S1751911Ab1LUN7t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 08:59:49 -0500
+Message-ID: <1324475851.7709.12.camel@lade.trondhjem.org>
+Subject: Re: Session timeout on RHEL6.2
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Sun, 25 Dec 2011 13:48:15 +0100
-In-Reply-To: <20111214081918.2804.59143.stgit@localhost6.localdomain6>
-References: <20111214081918.2804.59143.stgit@localhost6.localdomain6>
+To: tigran.mkrtchyan@desy.de
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Date: Wed, 21 Dec 2011 14:57:31 +0100
+In-Reply-To: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2011-12-14 at 12:19 +0300, Stanislav Kinsbursky wrote: 
-> This patch moves static SUNRPC clients list and it's lock to sunrpc_net
-> structure.
-> Currently this list is used only for debug purposes. But later it will be used
-> also for selecting clients by networks namespace on PipeFS mount/umount events.
-> Per-network namespace lists will make this faster and simplier.
+On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote: 
+> Dear friends,
 > 
-> Note: client list is taken from "init_net" network namespace context in
-> rpc_show_tasks(). This will be changed with making SUNRPC sysctl's per network
-> namespace context.
+> We are observing strange behavior with RHEL 6.2:
 > 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> Our the server lease time is 90 seconds. I can see that client
+> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+> At some point client sends SEQUENCE after 127 seconds and
+> gets, as expected, EXPIRED.
 
-This doesn't seem to integrate with any of your patch series, and
-conflicts with everything that touches netns.h, for instance...
+Why shouldn't the client be allowed to let the lease expire if nothing
+is using that filesystem?
 
+> I this point I have to blame myself.
+> Client comes with EXCHANGE_ID using the same clientid.
+> We did not garbage collected clientid internally as this happens after
+> 2*LEASE_TIME
+> and return EXPIRE. This ping-pong never ends.
+> 
+> This is probably mostly a bug on my side. Nevertheless we never observed late
+> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+> 
+> I can open bug at RHEL if required.
+
+I wouldn't consider that a bug.
+
+Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
