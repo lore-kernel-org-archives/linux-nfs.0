@@ -1,80 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:61441 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752638Ab1LGRRS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2011 12:17:18 -0500
-Received: by vcbfk14 with SMTP id fk14so630241vcb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Dec 2011 09:17:17 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20111207171133.GD20079@fieldses.org>
-References: <1323207847-19118-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<20111206230823.GH12640@fieldses.org>
-	<4EDF677C.7030209@tonian.com>
-	<20111207171133.GD20079@fieldses.org>
-Date: Wed, 7 Dec 2011 18:17:17 +0100
-Message-ID: <CAFpJMDqaba1Zznb8+46earbqb9Kms+8Dt2oQ-fKcpFr1_bKYqA@mail.gmail.com>
-Subject: Re: [PATCH] nfsd41: handle current stateid in open and close
-From: Tiramisu Mokka <kofemann@googlemail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:35772 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751473Ab1LUVsh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 16:48:37 -0500
+Date: Wed, 21 Dec 2011 16:48:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+Message-ID: <20111221164810.78d600a9@tlielax.poochiereds.net>
+In-Reply-To: <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+	<1324499696-10318-5-git-send-email-jlayton@redhat.com>
+	<46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
+	<20111221163312.3405c1f3@tlielax.poochiereds.net>
+	<121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 7, 2011 at 18:11, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Dec 07, 2011 at 03:17:48PM +0200, Benny Halevy wrote:
->> On 2011-12-07 01:08, J. Bruce Fields wrote:
->> > It's a little verbose, but yes it does nicely collect the current
->> > stateid getting/setting into one place.  Benny, is the more or less what
->> > you were thinking of?
->>
->> Yes it is, though I also liked your direction of just using the current
->> stateid for xdr decoding and encoding.
->
-> I'd still have a slight preference for doing it that way, just because
-> it would take fewer lines of code--but I can live with this too, so I'll
-> leave the choice to Tigran's excellent taste....
+On Wed, 21 Dec 2011 16:37:30 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-I will prefer current approach as it makes less disaster than
-propagating the knowledge about stateid handling deep into xdr layer.
+> 
+> On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
+> 
+> > On Wed, 21 Dec 2011 15:45:01 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
+> >> 
+> >>> The daemon takes a versioned binary struct. Hopefully this should allow
+> >>> us to revise the struct later if it becomes necessary.
+> >> 
+> >> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
+> >> 
+> > 
+> > That's the main reason. We could, of course encode that string in hex or
+> > something, and decode it on the other end. No one has presented a
+> > strong argument for doing it that way as of yet though.
+> > 
+> > If anyone feels strongly about that, then it would be helpful to have
+> > them pipe up now and state why they do...
+> 
+> <pipe>Because binary data structures are difficult to work with over time, which is why other NFSD user space interfaces are text-based.</pipe>
+> 
+> ;-)
+> 
 
-Tigran.
+*sigh* that was the sort of comments I was hoping to get out of the RFC
+postings. But ok...
 
->
->> { ~0, { { ~0, ~0 }, ~0 } } is ugly but compact :)
->>
->> And the following may be an overkill...
->> {
->>       .si_generation = ~0,
->>       .si_opaque = {
->>               .so_clid = {
->>                       .cl_boot = ~0,
->>                       .cl_id = ~0,
->>               },
->>               .so_id = ~0
->>       }
->> };
->
-> Reminding myself of http://tools.ietf.org/html/rfc5661#section-8.2.3...
-> "Stateid values whose "other" field is either all zeros or all ones are
-> reserved."
->
-> Maybe:
->
-> #define all_ones   {{~0,~0 },~0}
-> #define all_zeroes {{ 0, 0 }, 0}
-> const stateid_t one_stateid = {
->        .si_generation = ~0,
->        .si_opaque = all_ones
-> };
-> const stateid_t current_stateid = {
->        .si_generation = 1,
->        .si_opaque = all_zeroes
-> };
-> ...
->
-> Or you could ditch the all_zeroes; it's just there for some kind of
-> symmetry.
->
-> --b.
+I'll see about respinning the whole thing with either a text-based or
+XDR-based upcall/downcall format. That'll take a while, but I'll see if
+I can get it in shape in time for 3.3.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
