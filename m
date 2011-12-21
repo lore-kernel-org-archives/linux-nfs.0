@@ -1,84 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54302 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25199 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932541Ab1LOQAh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Dec 2011 11:00:37 -0500
-Message-ID: <1323964833.14317.7.camel@lade.trondhjem.org>
-Subject: Re: copy offload support in Linux - new system call needed?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chris Mason <chris.mason@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Date: Thu, 15 Dec 2011 11:00:33 -0500
-In-Reply-To: <20111215155213.GF18252@shiny>
-References: <4EE8F75F.6070800@gmail.com>
-	 <20111214192739.GN2203@ZenIV.linux.org.uk> <4EE8FC2E.3010207@gmail.com>
-	 <20111214222723.GD7623@fieldses.org>
-	 <1323961140.14317.2.camel@lade.trondhjem.org>
-	 <20111215155213.GF18252@shiny>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1753640Ab1LUUf1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:27 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 10/10] nfsdcld: update the README
+Date: Wed, 21 Dec 2011 15:35:22 -0500
+Message-Id: <1324499722-10363-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2011-12-15 at 10:52 -0500, Chris Mason wrote: 
-> On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
-> > On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
-> > > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
-> > > > On 12/14/2011 02:27 PM, Al Viro wrote:
-> > > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
-> > > > >
-> > > > >>We had an active thread a couple of years back that came out of the
-> > > > >>reflink work and, at the time, there seemed to be moderately
-> > > > >>positive support for adding a new system call that would fit this
-> > > > >>use case (Joel Becker's copyfile()).
-> > > > >>
-> > > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
-> > > > >>or should we look at other hooks?
-> > > > >copyfile(2) is probably a good way to go, provided that we do _not_
-> > > > >go baroque as it had happened the last time syscall had been discussed.
-> > > > >
-> > > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
-> > > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
-> > > > >If it works - fine, if not - caller has to be ready to deal with handling
-> > > > >cross-device case anyway.
-> > > > 
-> > > > I think that this approach makes a lot of sense. Most of the
-> > > > devices/targets that support the copy offload, will do it in very
-> > > > reasonable amounts of time.
-> > > 
-> > > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
-> > > one operation:
-> > > 
-> > > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
-> > >  
-> > > Perhaps we should ask for separate operations for the two cases.  (Or at
-> > > least a "please don't bother if this is going to take 8 hours" flag....)
-> > 
-> > How would the server know? I suggest we deal with this by adding an
-> > ioctl() to allow the application to poll for progress: I'm assuming now
-> > that we don't expect more than 1 copyfile() system call at a time per
-> > file descriptor...
-> 
-> If we're using this to copy VM image files, I could easily imagine
-> wanting to clone multiple copies of the VM in parallel.
+Add info to the README about when this daemon should be started, and
+its build and runtime requirements.
 
-Sure, but in that case, your target file descriptors will differ, right?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ README |   25 +++++++++++++++++++++++--
+ 1 files changed, 23 insertions(+), 2 deletions(-)
 
-Cheers
-  Trond
-
+diff --git a/README b/README
+index e7588cf..cb1d2f5 100644
+--- a/README
++++ b/README
+@@ -15,6 +15,8 @@ libraries.  They are available from
+    http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/
+ Otherwise use --disable-nfsv4
+ 
++To use the nfsdcld tracking daemon, nfsv4 support must be enabled,
++and the libsqlite3 development libraries must be installed.
+ 
+ 1. COMPILING
+ 
+@@ -106,12 +108,31 @@ scripts can be written to work correctly.
+        the lock.
+        rpc.statd is only needed for NFSv2 and NFSv3 support.
+ 
+-   E/ rpc.nfsd
++   E/ nfsdcld
++       This daemon is only needed on kernels that support the nfsdcld
++       upcall, and only if the legacy client ID tracking isn't used. It
++       is also not needed if the server does not support NFSv4.
++
++       To determine whether you need this or not, do the following:
++
++           # cat /proc/fs/nfsd/versions
++
++       That should yield a list of NFS versions that this kernel supports,
++       if "4" or later is not in that list, or they are prefixed with a "-"
++       then you don't need to run this daemon. Next:
++
++           # cat /proc/fs/nfsd/nfsv4recoverydir
++
++       If that file is not present, or the directory that the above command
++       outputs is not present, then this daemon is required in order to
++       support lock recovery by the clients when the server reboots.
++
++   F/ rpc.nfsd
+        Starting nfsd will automatically start lockd.  The nfs server
+        will now be fully active and respond to any requests from
+        clients.
+        
+-   F/ sm-notify
++   G/ sm-notify
+        This will notify any client which might have locks from before
+        a reboot to try to reclaim their locks.  This should start
+        immediately after rpc.nfsd is started so that clients have a
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
