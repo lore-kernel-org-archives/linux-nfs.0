@@ -1,110 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35762 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753965Ab1LLU7p convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Dec 2011 15:59:45 -0500
-Received: by yenm11 with SMTP id m11so4143130yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 12:59:44 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <4EE62402.6050008@tonian.com>
-References: <1323621708-25138-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<1323621708-25138-6-git-send-email-tigran.mkrtchyan@desy.de>
-	<4EE62402.6050008@tonian.com>
-Date: Mon, 12 Dec 2011 21:59:37 +0100
-Message-ID: <CAFpJMDrgUfVRFQJ_wKzyRTn3-HQ=Yi4+w0b53AP-Rw3LxYwX9Q@mail.gmail.com>
-Subject: Re: [PATH v3 5/5] nfsd41: use pinter to current stateid to avoid
- extra copy
-From: Tiramisu Mokka <kofemann@googlemail.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:51972 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752361Ab1LUUfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Dec 2011 15:35:25 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 03/10] nfsdcld: add autoconf goop for sqlite
+Date: Wed, 21 Dec 2011 15:35:15 -0500
+Message-Id: <1324499722-10363-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
+References: <1324499722-10363-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 12, 2011 at 16:55, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2011-12-11 18:41, Tigran Mkrtchyan wrote:
->> From: Tigran Mkrtchyan <kofemann@gmail.com>
->>
->>
->> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
->> ---
->>  fs/nfsd/nfs4proc.c  |    6 +-----
->>  fs/nfsd/nfs4state.c |    7 +++----
->>  fs/nfsd/xdr4.h      |    3 +--
->>  3 files changed, 5 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index f2f7dfa..b7d1a7b 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -1126,10 +1126,7 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
->>  static void
->>  nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
->>  {
->> -     if (cstate->has_stateid) {
->> -             memset(&cstate->current_stateid, 0, sizeof(stateid_t));
->> -             cstate->has_stateid = false;
->> -     }
->> +     cstate->current_stateid = NULL;
->>  }
->>  /*
->>   * COMPOUND call.
->> @@ -1244,7 +1241,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->>               if (!op->status) {
->>                       if (opdesc->op_flags & PROVIDES_CURRENT_STATEID) {
->>                               opdesc->op_set_currentstateid(cstate, &op->u);
->> -                             cstate->has_stateid = true;
->>                       }
->>
->>                       if (opdesc->op_flags & CLEARS_CURRENT_STATEID)
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index d7b8f25..be77cd3 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4553,16 +4553,15 @@ nfs4_state_shutdown(void)
->>  static void
->>  get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
->>  {
->> -     if (cstate->has_stateid && CURRENT_STATEID(stateid))
->> -             memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
->> +     if (cstate->current_stateid && CURRENT_STATEID(stateid))
->> +             memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
->>  }
->>
->>  static void
->>  put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
->>  {
->>       if (cstate->minorversion) {
->> -             memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
->> -             cstate->has_stateid = true;
->> +             cstate->current_stateid = stateid;
->>       }
->>  }
->>
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index b8435d20..0ad0846 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -54,8 +54,7 @@ struct nfsd4_compound_state {
->>       size_t                  iovlen;
->>       u32                     minorversion;
->>       u32                     status;
->> -     stateid_t               current_stateid;
->> -     bool    has_stateid;
->> +     stateid_t       *current_stateid;
->
-> Certainly looks neat.  I'm all for squashing this part of the patchset,
-> or just all of it...
->
-> Better be defined as const stateid_t * so its contents would be read only
-> for its consumers.
+Mostly cribbed from Chuck Lever's new-statd rewrite a few years ago...
 
-sounds good. Thanks.
+This adds an autoconf test for the sqlite3 library and includes. If
+they're not working properly and nfsdcld was enabled, then configure
+will error out.
 
-Tigran.
->
-> Benny
->
->>  };
->>
->>  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/libsqlite3.m4 |   33 +++++++++++++++++++++++++++++++++
+ configure.ac          |    7 +++++++
+ 2 files changed, 40 insertions(+), 0 deletions(-)
+ create mode 100644 aclocal/libsqlite3.m4
+
+diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
+new file mode 100644
+index 0000000..73d1e46
+--- /dev/null
++++ b/aclocal/libsqlite3.m4
+@@ -0,0 +1,33 @@
++dnl Checks for matching sqlite3 header and library, and
++dnl sufficient sqlite3 version.
++dnl
++AC_DEFUN([AC_SQLITE3_VERS], [
++  AC_CHECK_HEADERS([sqlite3.h], ,)
++
++  dnl look for the library; do not add to LIBS if found
++  AC_CHECK_LIB([sqlite3], [sqlite3_libversion_number], [LIBSQLITE=-lsqlite3], ,)
++  AC_SUBST(LIBSQLITE)
++
++  AC_MSG_CHECKING(for suitable sqlite3 version)
++
++  AC_CACHE_VAL([libsqlite3_cv_is_recent],
++   [
++    saved_LIBS="$LIBS"
++    LIBS=-lsqlite3
++    AC_TRY_RUN([
++	#include <stdio.h>
++	#include <sqlite3.h>
++	int main()
++	{
++		int vers = sqlite3_libversion_number();
++
++		return vers != SQLITE_VERSION_NUMBER ||
++			vers < 3003000;
++	}
++       ], [libsqlite3_cv_is_recent=yes], [libsqlite3_cv_is_recent=no],
++       [libsqlite3_cv_is_recent=unknown])
++    LIBS="$saved_LIBS"])
++
++  AC_MSG_RESULT($libsqlite3_cv_is_recent)
++  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index eb071ef..e43ec3e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -265,9 +265,16 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  dnl Check for sqlite3
++  AC_SQLITE3_VERS
++
+   if test "$enable_nfsdcld" = "yes"; then
+     AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
+ 		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
++
++    if test "$libsqlite3_cv_is_recent" != "yes" ; then
++      AC_MSG_ERROR([nfsdcld requires sqlite3])
++    fi
+   fi
+ 
+   AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+-- 
+1.7.1
+
