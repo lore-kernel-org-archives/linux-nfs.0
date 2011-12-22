@@ -1,67 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42041 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22792 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754133Ab1LWNMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Dec 2011 08:12:20 -0500
-Date: Fri, 23 Dec 2011 08:11:49 -0500
+	id S1751774Ab1LVOjT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Dec 2011 09:39:19 -0500
+Date: Thu, 22 Dec 2011 09:38:55 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: "Rafael J. Wysocki" <rjw@sisk.pl>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
-        trond.myklebust@netapp.com, marek.belisko@gmail.com,
-        awilliam@redhat.com
-Subject: Re: [PATCH] sunrpc/nfs: don't allow TASK_KILLABLE sleeps to block
- the freezer
-Message-ID: <20111223081149.7fdbcaa1@tlielax.poochiereds.net>
-In-Reply-To: <201112012252.13568.rjw@sisk.pl>
-References: <1322775223-19115-1-git-send-email-jlayton@redhat.com>
-	<201112012252.13568.rjw@sisk.pl>
+To: Mike Frysinger <vapier@gentoo.org>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] nfsidmap: auto disable when keyutils is not found
+Message-ID: <20111222093855.40112b8c@tlielax.poochiereds.net>
+In-Reply-To: <1314991015-21484-1-git-send-email-vapier@gentoo.org>
+References: <1314991015-21484-1-git-send-email-vapier@gentoo.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 1 Dec 2011 22:52:13 +0100
-"Rafael J. Wysocki" <rjw@sisk.pl> wrote:
+On Fri,  2 Sep 2011 15:16:55 -0400
+Mike Frysinger <vapier@gentoo.org> wrote:
 
-> On Thursday, December 01, 2011, Jeff Layton wrote:
-> > Allow the freezer to skip wait_on_bit_killable sleeps in the sunrpc
-> > layer. This should allow suspend and hibernate events to proceed, even
-> > when there are RPC's pending on the wire.
-> > 
-> > Also, wrap the TASK_KILLABLE sleeps in NFS layer in freezer_do_not_count
-> > and freezer_count calls. This allows the freezer to skip tasks that are
-> > sleeping while looping on EJUKEBOX or NFS4ERR_DELAY sorts of errors.
-> > 
-> > Rafael, I've gone ahead and combined the two patches into one here
-> > and rebased this on top of the pm-freezer branch. Let me know if you'd
-> > prefer to keep it as two patches.
+> Since we already auto-disable based on libnfsidmap capabilities, don't
+> make keyutils a hard failure.
 > 
-> One patch is just fine for me, applied to linux-pm/linux-next.
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> ---
+>  aclocal/keyutils.m4    |    4 ++--
+>  aclocal/libnfsidmap.m4 |    3 +--
+>  configure.ac           |    2 +-
+>  3 files changed, 4 insertions(+), 5 deletions(-)
 > 
-> Thanks,
-> Rafael
-> 
-> 
+> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+> index 84bc112..a392c0e 100644
+> --- a/aclocal/keyutils.m4
+> +++ b/aclocal/keyutils.m4
+> @@ -6,6 +6,6 @@ AC_DEFUN([AC_KEYUTILS], [
+>    AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
+>    AC_SUBST(LIBKEYUTILS)
+>  
+> -  AC_CHECK_HEADERS([keyutils.h], ,
+> -  		   [AC_MSG_ERROR([keyutils.h header not found.])])
+> +  AC_CHECK_HEADERS([keyutils.h])
+> +
+>  ])dnl
+> diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
+> index 4faa923..484b1ec 100644
+> --- a/aclocal/libnfsidmap.m4
+> +++ b/aclocal/libnfsidmap.m4
+> @@ -15,7 +15,6 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
+>                            [Define to 1 if you have the `nfs4_set_debug' function.])])
+>  
+>    dnl only enable nfsidmap when libnfsidmap supports it
+> -  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [enable_nfsidmap=yes],
+> -               [enable_nfsidmap=no])
+> +  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid])
+>  
+>  ])dnl
 
--------------------[snip]----------------
+The above delta in this patch has caused a build-time regression.
 
-> > +
-> > +/* Like schedule_timeout_killable(), but should not block the freezer. */
-> > +#define freezable_schedule_timeout_killable(timeout)			\
-> > +({									\
-> > +	freezer_do_not_count();						\
-> > +	schedule_timeout_killable(timeout);				\
-> > +	freezer_count();						\
-> > +})
-> > +
+When you eliminated the 3rd argument to AC_CHECK_LIB, this started
+adding -lnfsidmap to $LIBS. That means that that library gets linked
+into every binary that's being built.
 
+I haven't determined the right fix for this yet, but I think
+libnfsidmap.m4 could use some cleanup.
 
-Whoops...I just noticed a problem with this patch.
+Any thoughts on the proper fix?
 
-freezable_schedule_timeout_killable does not return the return code
-from schedule_timeout_killable. Would you prefer for me to respin this
-patch, or send a new patch on top of this one that just fixes that bug?
+> diff --git a/configure.ac b/configure.ac
+> index c9fb27b..1a28f8a 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -266,7 +266,7 @@ if test "$enable_nfsv4" = yes; then
+>    fi
+>  fi
+>  dnl enable nfsidmap when its support by libnfsidmap
+> -AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
+> +AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
+>  
+>  
+>  if test "$knfsd_cv_glibc2" = no; then
 
+Cheers
 -- 
 Jeff Layton <jlayton@redhat.com>
