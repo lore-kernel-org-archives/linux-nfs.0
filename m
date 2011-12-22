@@ -1,70 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55492 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752182Ab1LWREo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Dec 2011 12:04:44 -0500
-Date: Fri, 23 Dec 2011 12:04:23 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org,
-        steved@redhat.com
-Subject: Re: [PATCH] nfsidmap: auto disable when keyutils is not found
-Message-ID: <20111223120423.023d6a15@tlielax.poochiereds.net>
-In-Reply-To: <20111223093401.52ad6812@tlielax.poochiereds.net>
-References: <1314991015-21484-1-git-send-email-vapier@gentoo.org>
-	<20111222093855.40112b8c@tlielax.poochiereds.net>
-	<201112221120.12395.vapier@gentoo.org>
-	<20111223093401.52ad6812@tlielax.poochiereds.net>
-Mime-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:57533 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751939Ab1LVSgm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 13:36:42 -0500
+Subject: Re: NFSv4 empty RPC thrashing?
+Mime-Version: 1.0 (Apple Message framework v1251.1)
 Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAOO4vO7nfROsXh6r6NTPF9MtXXNH0LawT=TfxXUea=wae3tYxw@mail.gmail.com>
+Date: Thu, 22 Dec 2011 13:36:36 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <67C3FBA0-8C89-46B4-80FF-1F043250DED4@oracle.com>
+References: <CAOO4vO7nfROsXh6r6NTPF9MtXXNH0LawT=TfxXUea=wae3tYxw@mail.gmail.com>
+To: Paul Anderson <pha@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 23 Dec 2011 09:34:01 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+Hi Paul, long time!
 
-> On Thu, 22 Dec 2011 11:20:11 -0500
-> Mike Frysinger <vapier@gentoo.org> wrote:
+On Dec 22, 2011, at 1:31 PM, Paul Anderson wrote:
+
+> Issue: extremely high rate packets like so (tcpdump):
 > 
-> > On Thursday 22 December 2011 09:38:55 Jeff Layton wrote:
-> > > On Fri,  2 Sep 2011 15:16:55 -0400 Mike Frysinger wrote:
-> > > > --- a/aclocal/libnfsidmap.m4
-> > > > +++ b/aclocal/libnfsidmap.m4
-> > > > 
-> > > > -  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [enable_nfsidmap=yes],
-> > > > -               [enable_nfsidmap=no])
-> > > > +  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid])
-> > > 
-> > > The above delta in this patch has caused a build-time regression.
-> > > 
-> > > When you eliminated the 3rd argument to AC_CHECK_LIB, this started
-> > > adding -lnfsidmap to $LIBS. That means that that library gets linked
-> > > into every binary that's being built.
-> > > 
-> > > I haven't determined the right fix for this yet, but I think
-> > > libnfsidmap.m4 could use some cleanup.
-> > 
-> > AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [])
-> > -mike
+> 16:31:09.308678 IP (tos 0x0, ttl 64, id 41517, offset 0, flags [DF],
+> proto TCP (6), length 144)
+>    r20.xxx.edu.1362383749 > nfsb.xxx.edu.nfs: 88 null
+> 16:31:09.308895 IP (tos 0x0, ttl 64, id 22578, offset 0, flags [DF],
+> proto TCP (6), length 100)
+>    nfsb.xxx.edu.nfs > r20.xxx.edu.1362383749: reply ok 44 null
+> 16:31:09.308926 IP (tos 0x0, ttl 64, id 41518, offset 0, flags [DF],
+> proto TCP (6), length 192)
+>    r20.xxx.edu.1379160965 > nfsb.xxx.edu.nfs: 136 null
 > 
-> Uhhh, no. That turns the result of this test into a noop. We might as
-> well remove it at that point.
+> All linux kernels are from kernel.org, version 2.6.38.5 with the
+> addition of Mosix.  All userland is Ubuntu 10.04LTS.
 > 
-> Perhaps I should phrase this question differently: What is the above
-> test supposed to achieve? IOW, what should happen if it passes or fails?
+> Scenario: the compute cluster is composed of 50-60 compute nodes, and
+> 10 or so head nodes that act as compute/login and high rate NFS
+> serving, for the purpose of largely sequential processing of high
+> volume genetic sequencing data (one recent job was 50-70TiBytes in, 50
+> TiBytes out).  We see this problem regularly (two servers are
+> currently being hit this way right now), and is apparently cleared
+> only on reboot of the server.
 > 
+> Something in our use of the cluster appears to be triggering what
+> looks like a race condition in the NFSv4 client/server communications.
+> This issue prevents us from using NFS reliably in our cluster.
+> Although we do very high I/O at times, this alone does not appear to
+> be the trigger.  It is possibly a related to a problem of having SLURM
+> starting 200-300 jobs at once, where each job hits a common NFS
+> fileserver for the program binaries, for example.  In our cluster
+> testing, this appears to reliably cause about half the jobs to fail
+> while loading the program itself - they hang in D state indefinitely,
+> but are killable.
+> 
+> Looking at dozens of clients, we can do tcpdump, and see messages
+> similar to the above being sent at a high rate from the gigabit
+> connected compute nodes - the main indication being a context switch
+> rate of 20-30K per second.  The 10 gigabit connected server is
+> functioning, but seeing context switch rates of 200-300K per second -
+> an exceptional rate that appears to slow down NFS services for all
+> other users.  I have not done any extensive packet capture to
+> determine actual traffic rates, but am pretty sure it is limited by
+> wire speed and CPU.
+> 
+> The client nodes in this scenario are not actively being used - some
+> show zero processes in D state, others show dozens of jobs stuck in D
+> state (these jobs are unkillable) - the NFSv4 server shows nfsd jobs
+> running flat out.
+> 
+> Mount commands look like this:
+> for h in $servers do ;
+>    mount -t nfs4 -o rw,soft,intr,nodev,nosuid,async ${h}:/ /net/$h
+> done
+> 
+> The NFSv4 servers all start using stock Ubuntu 10.04 setup - no tuning
+> has been done.
+> 
+> We can trivially get packet captures with more packets, but they are
+> all similar - 15-20 client nodes all pounding one NFS server node.
 
-Ahh nm, I think I see now...
+We'd need to see full-frame raw captures.  "tcpdump -s0 -w /tmp/raw"  Let's see a few megabytes.
 
-We just need to ensure that $ac_cv_lib_nfsidmap_nfs4_owner_to_uid gets
-set properly. If that's the case, then we probably want something like
-this:
-
-    AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [:])
-
-...autoconf treats bare brackets as if the argument weren't specified.
-I have a patch that I'll pass along once I've done a bit of testing
-with it.
+On the face of it, it looks like it could be a state reclaim loop, but I can't say until I see a full network capture.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
