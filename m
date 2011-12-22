@@ -1,53 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:44134 "EHLO
-	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751238Ab1LISX4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 13:23:56 -0500
-Date: Fri, 9 Dec 2011 12:59:25 -0500
-From: Nick Bowler <nbowler@elliptictech.com>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: NFS kmemleak reports.
-Message-ID: <20111209175925.GA14635@elliptictech.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:45171 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751819Ab1LVPVG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 10:21:06 -0500
+Date: Thu, 22 Dec 2011 10:20:51 -0500
+From: Jim Rees <rees@umich.edu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, bfields@fieldses.org,
+        steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+Message-ID: <20111222152051.GA2500@umich.edu>
+References: <1324499696-10318-1-git-send-email-jlayton@redhat.com>
+ <1324499696-10318-5-git-send-email-jlayton@redhat.com>
+ <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com>
+ <20111221163312.3405c1f3@tlielax.poochiereds.net>
+ <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
+ <20111222080706.7a064430@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20111222080706.7a064430@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+Jeff Layton wrote:
 
-Lately, I've been seeing dozens of kmemleak reports pointing at NFS.
-They all appear to be referring to the same "name" value which gets
-stored in dentry->d_fsdata by nfs_get_root.  But at a first glance
-the code seems to be taking some care to free these properly (although
-it's quite tricky for me to follow), so I'm not sure what's up.  These
-are NFSv3 client mounts.
+  Now that I've started looking at actually implementing this, I'm
+  leaning toward keeping this as a packed binary struct. The upcalls to
+  which you refer mostly use the cache_* interfaces in the kernel, and
+  the actual upcall "pipes" are in /proc. That code is already set up to
+  use primarily text based interfaces so it makes sense there.
+  
+  I looked at using that here and determined that the cache_* interface
+  was not well suited to this task. Those are geared toward interfaces
+  (like exportfs or mountd) where the information is primarily stored and
+  manipulated in userspace and the kernel upcalls to fetch that info and
+  populate its cache.
+  
+  In this case, the info is mostly coming from kernel space originally
+  and I believe that rpc_pipefs was better suited for this task. The
+  upcalls that use rpc_pipefs almost universally use a binary struct to
+  pass data between userspace and the kernel.
 
-This is with Linus' master as of a couple days ago, but I've also seen
-this on some older kernels (on different networks).  The machine in
-question is using autofs (which may explain the fairly large number of
-kmemleak reports, due to semi-frequent mounting/unmounting).
+Having recently added a new rpc_pipe upcall for idmapd, my only suggestion
+is that you think about compatibility issues if the message format changes.
+Ideally you want any combination of new/old * kernel/user to work.  But I
+suspect you've already thought about this.
 
-They all look essentially the same: one is quoted below.
-
-  unreferenced object 0xf18fb820 (size 32):
-    comm "mount.nfs", pid 5688, jiffies 15473748 (age 73861.344s)
-    hex dump (first 32 bytes):
-      65 6c 70 66 73 31 3a 2f 65 78 70 6f 72 74 2f 74  elpfs1:/export/t
-      6f 6f 6c 73 2f 65 6c 70 73 6f 66 74 00 00 00 00  ools/elpsoft....
-    backtrace:
-      [<c125d7f6>] kmemleak_alloc+0x21/0x3f
-      [<c10a95c2>] __kmalloc_track_caller+0x128/0x14a
-      [<c1093db6>] kstrdup+0x29/0x39
-      [<f85a7543>] nfs_get_root+0x29/0x11e [nfs]
-      [<f85ac6ee>] nfs_fs_mount+0x6d6/0x75b [nfs]
-      [<c10ae861>] mount_fs+0xe/0x95
-      [<c10bf2cd>] vfs_kern_mount+0x4a/0x78
-      [<c10bff7c>] do_kern_mount+0x2f/0xad
-      [<c10c129e>] do_mount+0x581/0x5cf
-      [<c10c1521>] sys_mount+0x61/0x94
-      [<c12718d0>] sysenter_do_call+0x12/0x36
-      [<ffffffff>] 0xffffffff
-
-Let me know if you need any more info,
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+I see no harm in using binary for an interface that's only intended for a
+particular user daemon (assuming you solve the compatibility problem).  Text
+is useful for things in /proc that someone might want to manipulate using
+their own tool.  For something like idmapd I don't think a text interface is
+necessary.  No one is going to write their own idmapd, and if they do, the
+binary upcall interface will be the least of their worries.  The same may be
+true of nfsdcld.
