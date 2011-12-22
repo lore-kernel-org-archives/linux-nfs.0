@@ -1,114 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17965 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933052Ab1LFKWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Dec 2011 05:22:11 -0500
-Subject: [PATCH] SUNRPC: create svc_xprt in proper network namespace
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 06 Dec 2011 14:19:10 +0300
-Message-ID: <20111206101910.1878.21798.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:30239 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755776Ab1LVTs1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 14:48:27 -0500
+Subject: Re: NFSv4 empty RPC thrashing?
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAOO4vO6KnNxEbs96OPi2oCYsy9PxUU=pnFuE3T2BhOwvcC-SRA@mail.gmail.com>
+Date: Thu, 22 Dec 2011 14:48:18 -0500
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <70A6F4A9-5285-4BC4-889B-6DCD65D40146@oracle.com>
+References: <CAOO4vO7nfROsXh6r6NTPF9MtXXNH0LawT=TfxXUea=wae3tYxw@mail.gmail.com> <67C3FBA0-8C89-46B4-80FF-1F043250DED4@oracle.com> <7BA9681E-6562-467F-9EBE-45F768E057B2@oracle.com> <CAOO4vO6KnNxEbs96OPi2oCYsy9PxUU=pnFuE3T2BhOwvcC-SRA@mail.gmail.com>
+To: Paul Anderson <pha@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes svc_xprt inherit network namespace link from it's socket.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+On Dec 22, 2011, at 2:37 PM, Paul Anderson wrote:
 
----
- include/linux/sunrpc/svc_xprt.h          |    2 +-
- net/sunrpc/svc_xprt.c                    |    6 +++---
- net/sunrpc/svcsock.c                     |    8 +++++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- 4 files changed, 10 insertions(+), 8 deletions(-)
+> See way below for inline comments...
+> 
+> On Thu, Dec 22, 2011 at 2:25 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Dec 22, 2011, at 1:36 PM, Chuck Lever wrote:
+>> 
+>>> Hi Paul, long time!
+>>> 
+>>> On Dec 22, 2011, at 1:31 PM, Paul Anderson wrote:
+>>> 
+>>>> Issue: extremely high rate packets like so (tcpdump):
+>>>> 
+>>>> 16:31:09.308678 IP (tos 0x0, ttl 64, id 41517, offset 0, flags [DF],
+>>>> proto TCP (6), length 144)
+>>>>   r20.xxx.edu.1362383749 > nfsb.xxx.edu.nfs: 88 null
+>>>> 16:31:09.308895 IP (tos 0x0, ttl 64, id 22578, offset 0, flags [DF],
+>>>> proto TCP (6), length 100)
+>>>>   nfsb.xxx.edu.nfs > r20.xxx.edu.1362383749: reply ok 44 null
+>>>> 16:31:09.308926 IP (tos 0x0, ttl 64, id 41518, offset 0, flags [DF],
+>>>> proto TCP (6), length 192)
+>>>>   r20.xxx.edu.1379160965 > nfsb.xxx.edu.nfs: 136 null
+>>>> 
+>>>> All linux kernels are from kernel.org, version 2.6.38.5 with the
+>>>> addition of Mosix.  All userland is Ubuntu 10.04LTS.
+>>>> 
+>>>> Scenario: the compute cluster is composed of 50-60 compute nodes, and
+>>>> 10 or so head nodes that act as compute/login and high rate NFS
+>>>> serving, for the purpose of largely sequential processing of high
+>>>> volume genetic sequencing data (one recent job was 50-70TiBytes in, 50
+>>>> TiBytes out).  We see this problem regularly (two servers are
+>>>> currently being hit this way right now), and is apparently cleared
+>>>> only on reboot of the server.
+>>>> 
+>>>> Something in our use of the cluster appears to be triggering what
+>>>> looks like a race condition in the NFSv4 client/server communications.
+>>>> This issue prevents us from using NFS reliably in our cluster.
+>>>> Although we do very high I/O at times, this alone does not appear to
+>>>> be the trigger.  It is possibly a related to a problem of having SLURM
+>>>> starting 200-300 jobs at once, where each job hits a common NFS
+>>>> fileserver for the program binaries, for example.  In our cluster
+>>>> testing, this appears to reliably cause about half the jobs to fail
+>>>> while loading the program itself - they hang in D state indefinitely,
+>>>> but are killable.
+>>>> 
+>>>> Looking at dozens of clients, we can do tcpdump, and see messages
+>>>> similar to the above being sent at a high rate from the gigabit
+>>>> connected compute nodes - the main indication being a context switch
+>>>> rate of 20-30K per second.  The 10 gigabit connected server is
+>>>> functioning, but seeing context switch rates of 200-300K per second -
+>>>> an exceptional rate that appears to slow down NFS services for all
+>>>> other users.  I have not done any extensive packet capture to
+>>>> determine actual traffic rates, but am pretty sure it is limited by
+>>>> wire speed and CPU.
+>>>> 
+>>>> The client nodes in this scenario are not actively being used - some
+>>>> show zero processes in D state, others show dozens of jobs stuck in D
+>>>> state (these jobs are unkillable) - the NFSv4 server shows nfsd jobs
+>>>> running flat out.
+>>>> 
+>>>> Mount commands look like this:
+>>>> for h in $servers do ;
+>>>>   mount -t nfs4 -o rw,soft,intr,nodev,nosuid,async ${h}:/ /net/$h
+>>>> done
+>>>> 
+>>>> The NFSv4 servers all start using stock Ubuntu 10.04 setup - no tuning
+>>>> has been done.
+>>>> 
+>>>> We can trivially get packet captures with more packets, but they are
+>>>> all similar - 15-20 client nodes all pounding one NFS server node.
+>>> 
+>>> We'd need to see full-frame raw captures.  "tcpdump -s0 -w /tmp/raw"  Let's see a few megabytes.
+>>> 
+>>> On the face of it, it looks like it could be a state reclaim loop, but I can't say until I see a full network capture.
+>> 
+>> Paul sent me a pair of pcap traces off-list.
+>> 
+>> This is yet another a state reclaim loop.  The server is returning NFS4ERR_EXPIRED to a READ request, but the client's subsequent RENEW gets NFS4_OK, so it doesn't do any state recovery.  It simply keeps retrying the READ.
+>> 
+>> Paul, have you tried upgrading your clients to the latest kernel.org release?  Was there a recent network partition or server reboot that triggers these events?
+> 
+> We are evaluating a move to 3.0.x, and hope to be able to do that
+> sooner rather than later.  The impetus there is a set of improvements
+> in XFS dirty page flushing that we hope will reduce filesystem
+> corruption on normal reboots.
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 8620f79..18df516 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -109,7 +109,7 @@ static inline int register_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u
- 
- int	svc_reg_xprt_class(struct svc_xprt_class *);
- void	svc_unreg_xprt_class(struct svc_xprt_class *);
--void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
-+void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
- 		      struct svc_serv *);
- int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
- 			const int, const unsigned short, int);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 447cd0e..f8f0627 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -147,8 +147,8 @@ EXPORT_SYMBOL_GPL(svc_xprt_put);
-  * Called by transport drivers to initialize the transport independent
-  * portion of the transport instance.
-  */
--void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
--		   struct svc_serv *serv)
-+void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
-+		   struct svc_xprt *xprt, struct svc_serv *serv)
- {
- 	memset(xprt, 0, sizeof(*xprt));
- 	xprt->xpt_class = xcl;
-@@ -163,7 +163,7 @@ void svc_xprt_init(struct svc_xprt_class *xcl, struct svc_xprt *xprt,
- 	spin_lock_init(&xprt->xpt_lock);
- 	set_bit(XPT_BUSY, &xprt->xpt_flags);
- 	rpc_init_wait_queue(&xprt->xpt_bc_pending, "xpt_bc_pending");
--	xprt->xpt_net = get_net(&init_net);
-+	xprt->xpt_net = get_net(net);
- }
- EXPORT_SYMBOL_GPL(svc_xprt_init);
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 71bed1c..277909e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -739,7 +739,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- {
- 	int err, level, optname, one = 1;
- 
--	svc_xprt_init(&svc_udp_class, &svsk->sk_xprt, serv);
-+	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
-+		      &svsk->sk_xprt, serv);
- 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
- 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
- 	svsk->sk_sk->sk_write_space = svc_write_space;
-@@ -1343,7 +1344,8 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- {
- 	struct sock	*sk = svsk->sk_sk;
- 
--	svc_xprt_init(&svc_tcp_class, &svsk->sk_xprt, serv);
-+	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_tcp_class,
-+		      &svsk->sk_xprt, serv);
- 	set_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
- 	if (sk->sk_state == TCP_LISTEN) {
- 		dprintk("setting up TCP socket for listening\n");
-@@ -1659,7 +1661,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 		return ERR_PTR(-ENOMEM);
- 
- 	xprt = &svsk->sk_xprt;
--	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
-+	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
- 
- 	serv->sv_bc_xprt = xprt;
- 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index ba1296d..894cb42 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -453,7 +453,7 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 
- 	if (!cma_xprt)
- 		return NULL;
--	svc_xprt_init(&svc_rdma_class, &cma_xprt->sc_xprt, serv);
-+	svc_xprt_init(&init_net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
- 	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
- 	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
- 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+I thought all those issues were cleared up by 2.6.38.  Good luck...
+
+> The two NFS servers in question were recently rebooted (one yesterday
+> shows this problem, the one I gave Chuck pcaps from was 8 days ago).
+> It would typically be the case on reboot that numerous processes in
+> the compute cluster would be attempting to access files, mostly
+> reading, but some writing.  I have not noticed if the thrashing
+> problem appears immediately on reboot - I thought it was not
+> instantaneous, but I could be wrong.
+
+For extra credit, you could try to capture network traffic on the clients while the server is rebooting to see if we can watch the putative state reclaim failure as it happens.  I'm guessing you'd have to wait until just after the server's grace period expires (90 seconds?) before things start going ka-fluey.
+
+Unless this is unbearable, I'd wait though until you have 3.0 deployed on your clients.  Either that will fix your problem, or it will be easier for us to patch if it doesn't.
+
+>> One reason this might happen is if the client is using an expired state ID for the READ, and then uses a valid client ID during the RENEW request.  This can happen if the client failed, some time earlier, to completely reclaim state after a server outage.
+>> 
+> Since we rarely, if ever reboot the entire cluster at once, this is plausible.
+> 
+> 
+> Paul
+> 
+> 
+>> 
+>> Bruce, is there any way to look at the state ID and client ID tokens to verify they are for the same lease?
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
