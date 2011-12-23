@@ -1,48 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:47373 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:29028 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753825Ab1LGLUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 06:20:43 -0500
-Subject: [PATCH 0/4] SUNRPC: pass network namespace context to sockaddr
- construction routines
+	id S1757354Ab1LWOyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Dec 2011 09:54:38 -0500
+Subject: [PATCH 3/3] NFS: don't mark freshly created callback sockets with
+ XPT_CHNGBUF
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
         devel@openvz.org
-Date: Wed, 07 Dec 2011 15:20:07 +0300
-Message-ID: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
+Date: Fri, 23 Dec 2011 18:53:49 +0300
+Message-ID: <20111223145349.847.70851.stgit@localhost6.localdomain6>
+In-Reply-To: <20111223145145.847.46221.stgit@localhost6.localdomain6>
+References: <20111223145145.847.46221.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is another precursor patch set aimed to remove hard-coded "init_net"
-reference from SUNRPC sockaddr convertion and construction routines.
+This is a cleanup patch.
+Check for XPT_CHNGBUF is done only for UPD sockets. NFS callbacks doesn't use
+them.
 
-The following series consists of:
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
+ fs/nfs/callback.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-Stanislav Kinsbursky (4):
-      SUNRPC: use passed network namespace context in rpc_parse_scope_id()
-      SUNRPC: use passed network namespace context in rpc_pton6()
-      SUNRPC: use passed network namespace context in rpc_pton()
-      SUNRPC: use passed network namespace context in rpc_uaddr2sockaddr()
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index d81040a..1bf3e9f 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -278,8 +278,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out_err;
+ 	}
+ 
+-	svc_sock_update_bufs(serv);
+-
+ 	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+ 	cb_info->serv = serv;
+ 	cb_info->rqst = rqstp;
 
-
- fs/nfs/dns_resolve.c        |    4 ++--
- fs/nfs/nfs4filelayoutdev.c  |    2 +-
- fs/nfs/nfs4namespace.c      |    2 +-
- fs/nfs/super.c              |    4 ++--
- fs/nfsd/nfs4state.c         |    2 +-
- fs/nfsd/nfsctl.c            |    2 +-
- include/linux/sunrpc/clnt.h |    4 ++--
- net/sunrpc/addr.c           |   24 +++++++++++++-----------
- net/sunrpc/rpcb_clnt.c      |    2 +-
- net/sunrpc/svcauth_unix.c   |    2 +-
- 10 files changed, 25 insertions(+), 23 deletions(-)
-
--- 
-Signature
