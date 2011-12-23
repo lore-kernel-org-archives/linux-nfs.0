@@ -1,82 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41549 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932835Ab1LFCIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Dec 2011 21:08:52 -0500
-Date: Mon, 5 Dec 2011 21:08:51 -0500
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: tigran.mkrtchyan@desy.de, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsv41: handle current stateid on open and close
-Message-ID: <20111206020851.GA4486@fieldses.org>
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
- <1323000237-13565-3-git-send-email-tigran.mkrtchyan@desy.de>
- <4EDB6AA3.1030702@tonian.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EDB6AA3.1030702@tonian.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:51857 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757649Ab1LWTrO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 14:47:14 -0500
+Received: by mail-qw0-f53.google.com with SMTP id b15so6236728qad.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 11:47:14 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] autoconf: don't let libnfsidmap test add -lnfsidmap to $LIBS
+Date: Fri, 23 Dec 2011 14:47:04 -0500
+Message-Id: <1324669625-2948-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+References: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 04, 2011 at 02:42:11PM +0200, Benny Halevy wrote:
-> On 2011-12-04 14:03, tigran.mkrtchyan@desy.de wrote:
-> > From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> > 
-> > 
-> > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> > ---
-> >  fs/nfsd/nfs4proc.c  |    6 ++++++
-> >  fs/nfsd/nfs4state.c |   26 ++++++++++++++++++++------
-> >  2 files changed, 26 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index fa38336..535aed2 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -400,6 +400,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	 */
-> >  	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
-> >  	WARN_ON(status && open->op_created);
-> > +
-> > +	if(status)
-> > +		goto out;
-> > +
-> > +	/* set current state id */
-> > +	memcpy(&cstate->current_stateid, &open->op_stateid, sizeof(stateid_t));
+...as that makes that library get linked into every binary. Also,
+replace "hardcoded" -lnfsidmap linker flag in Makefiles with
+a AC_SUBST variable.
 
-That comment is a bit redundant.
+This fixes a regression introduced in commit d7c64dd.
 
-> Since this should be done for all stateid-returning operations
-> I think that a cleaner approach could be to mark those as such in
-> nfsd4_ops by providing a per-op function to return the operation's
-> stateid.  You can then call this method from nfsd4_proc_compound()
-> after the call to nfsd4_encode_operation() and when status == 0.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/libnfsidmap.m4     |    9 ++++++---
+ utils/gssd/Makefile.am     |    2 +-
+ utils/idmapd/Makefile.am   |    2 +-
+ utils/nfsidmap/Makefile.am |    2 +-
+ 4 files changed, 9 insertions(+), 6 deletions(-)
 
-So the choice is between
-
-+       memcpy(&cstate->current_stateid, &open->op_stateid,
-sizeof(stateid_t));
-
-and
-
-+       static void get_open_stateid(stateid_t *s)
-+       {
-+               memcpy(s, open->op_stateid);
-+       }
+diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
+index 484b1ec..ae697e8 100644
+--- a/aclocal/libnfsidmap.m4
++++ b/aclocal/libnfsidmap.m4
+@@ -3,7 +3,7 @@ dnl
+ AC_DEFUN([AC_LIBNFSIDMAP], [
+ 
+   dnl Check for libnfsidmap, but do not add -lnfsidmap to LIBS
+-  AC_CHECK_LIB([nfsidmap], [nfs4_init_name_mapping], [libnfsidmap=1],
++  AC_CHECK_LIB([nfsidmap], [nfs4_init_name_mapping], [LIBNFSIDMAP=-lnfsidmap],
+                [AC_MSG_ERROR([libnfsidmap not found.])])
+ 
+   AC_CHECK_HEADERS([nfsidmap.h], ,
+@@ -14,7 +14,10 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
+                [AC_DEFINE([HAVE_NFS4_SET_DEBUG], 1,
+                           [Define to 1 if you have the `nfs4_set_debug' function.])])
+ 
+-  dnl only enable nfsidmap when libnfsidmap supports it
+-  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid])
++  dnl nfs4_owner_to_uid() doesn't appear in all versions of libnfsidmap
++  dnl We just need this test to set $ac_cv_lib_nfsidmap_nfs4_owner_to_uid
++  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [:])
 +
-+       [OP_OPEN] = {
-+               ...
-+               .op_get_stateid = get_open_stateid,
-+               ...
-+       }
++  AC_SUBST(LIBNFSIDMAP)
+ 
+ ])dnl
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index d7888ad..9136189 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -58,7 +58,7 @@ svcgssd_SOURCES = \
+ 
+ svcgssd_LDADD = \
+ 	../../support/nfs/libnfs.a \
+-	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) -lnfsidmap \
++	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
+ 	$(KRBLIBS)
+ 
+ svcgssd_LDFLAGS = $(KRBLDFLAGS)
+diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
+index f8578b0..58b33ec 100644
+--- a/utils/idmapd/Makefile.am
++++ b/utils/idmapd/Makefile.am
+@@ -16,7 +16,7 @@ idmapd_SOURCES = \
+ 	nfs_idmap.h \
+ 	queue.h
+ 
+-idmapd_LDADD = $(LIBEVENT) -lnfsidmap ../../support/nfs/libnfs.a
++idmapd_LDADD = $(LIBEVENT) $(LIBNFSIDMAP) ../../support/nfs/libnfs.a
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsidmap/Makefile.am b/utils/nfsidmap/Makefile.am
+index 037aa79..c0675c4 100644
+--- a/utils/nfsidmap/Makefile.am
++++ b/utils/nfsidmap/Makefile.am
+@@ -4,6 +4,6 @@ man8_MANS = nfsidmap.man
+ 
+ sbin_PROGRAMS	= nfsidmap
+ nfsidmap_SOURCES = nfsidmap.c
+-nfsidmap_LDADD = -lnfsidmap -lkeyutils ../../support/nfs/libnfs.a
++nfsidmap_LDADD = $(LIBNFSIDMAP) -lkeyutils ../../support/nfs/libnfs.a
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+-- 
+1.7.7.4
 
-?
-
-I'm not so sure.
-
-Anyway, thanks Tigran for looking at this.
-
-Do we want to guarantee that the client can't expire as long as a
-compound references the stateid?  I think that's the case.
-
---b.
