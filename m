@@ -1,114 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f42.google.com ([74.125.82.42]:62376 "EHLO
-	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750950Ab1LIHsw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Dec 2011 02:48:52 -0500
-Received: by wgbds13 with SMTP id ds13so2833979wgb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Dec 2011 23:48:51 -0800 (PST)
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:39083 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754005Ab1LWBfF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Dec 2011 20:35:05 -0500
+Received: by ggdk6 with SMTP id k6so6615688ggd.19
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Dec 2011 17:35:03 -0800 (PST)
+Message-ID: <4EF3DAC2.5040806@opensuse.org>
+Date: Thu, 22 Dec 2011 22:34:58 -0300
+From: =?UTF-8?B?Q3Jpc3RpYW4gUm9kcsOtZ3Vleg==?= <crrodriguez@opensuse.org>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
-References: <op.v565vhhjrwwil4@sfaibish1.corp.emc.com>
-	<813790898.1157715.1323399200260.JavaMail.root@erie.cs.uoguelph.ca>
-Date: Fri, 9 Dec 2011 08:48:51 +0100
-Message-ID: <CAGue13q3_eN-u--ajbS5FJzbn5GN6VwhVhd4p5fRPYenQegGog@mail.gmail.com>
-Subject: Re: [nfsv4] Slides from the pNFS BoF we delivered at LISA 11 - with
- attachment this time
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Rick Macklem <rmacklem@uoguelph.ca>
-Cc: Sorin Faibish <sfaibish@emc.com>, linux-nfs@vger.kernel.org,
-        honey@citi.umich.edu, nfsv4@ietf.org
-Content-Type: text/plain; charset=UTF-8
+To: Tom Gundersen <teg@jklm.no>
+CC: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>,
+        systemd-devel@lists.freedesktop.org
+Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
+References: <4EEFCBF0.1070407@opensuse.org> <1324602327-1789-1-git-send-email-teg@jklm.no>
+In-Reply-To: <1324602327-1789-1-git-send-email-teg@jklm.no>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 9, 2011 at 3:53 AM, Rick Macklem <rmacklem@uoguelph.ca> wrote:
-> Thanks for the slides, Sorin.
+On 22/12/11 22:05, Tom Gundersen wrote:
+> Making rpcbind sockect activated will greatly simplify
+> its integration in systemd systems. In essence, other services
+> may now assume that rpcbind is always available, even during very
+> early boot. This means that we no longer need to worry about any
+> ordering dependencies.
 >
-> Just fyi, it was correct to not mention a FreeBSD client, since the
-> 4.1 client code hasn't made it into any release yet. It is available
-> as a patch against the FreeBSD9.0 kernel, in case anyone is interested:
->   http://people.freebsd.org/~rmacklem/nfsv4.1-client/nfsv41.patch
+> This is based on a patch originally posted by Lennart Poettering:
+> <http://permalink.gmane.org/gmane.linux.nfs/33774>.
 >
-> I am just starting to work on the logistics of getting this into the
-> FreeBSD source tree, so it may be in a FreeBSD9.n release, where n > 0.
+> That patch was not merged due to the lack of a shared library and
+> as systemd was seen to be too Fedora specific.
 >
-> Also, the above does not include any pNFS support. I am about ready to
-> start coding pNFS client stuff, which brings me to...
-> - It will be difficult for me to make much progress without any
->  pNFS servers to test against. (The only NFSv4.1 server I have to
->  test against is Fedora15 and I don't think it knows how to do pNFS?
->  If there is a way to make Fedora15/16 (or any other freebie Linux
->  distro) do pNFS, please let me know.
+> Systemd now provides a shared library, and it is shipped by defalt in
+> OpenSUSE in addition to Fedora, and it is available in Debain, Gentoo,
+> Arch, and others.
 >
-> If others have suggestions on how I might gain access to pNFS servers
-> for testing, I would appreciate hearing.
-
-Hi Rick,
-
-we have user space pNFS server written in java. It's part of dCache
-project but can be used stand alone for testing. Requires JVM and disk
-space to store data blocks:
-
-1. checkout and build
-
-$ hg clone http://www.dcache.org/~tigran/cgi-bin/hgwebdir.cgi/jpnfs dcache-nfs
-$ cd dcache-nfs
-$ mvn clean package
-
-2. tweak nfs.properties:
-put you host ip instead of 192.168.2.108
-
-current setup will start mds and ds on the same host on ports 2049 and 2052.
-File system is re-initialized on restart.
-
-3. start it:
-$ java -jar target/jpNFS-0.0.4-SNAPSHOT-jar-with-dependencies.jar oncrpcsvc.xml
-
-4. test your client
-
-Regards,
-   Tigran.
-
- (However, I am not funded to
-> do any of this, so the suggestions can't include my spending $$$. I can
-> make it to a Bakeathon when it happens to be close to where I am, so I
-> can show up "on the cheap", like I did last June in Ann Arbor.)
+> This version of the patch has three changes from the original:
 >
-> rick
+>   * It uses the shared library.
+>   * It comes with unit files.
+>   * It is rebased on top of master.
 >
-> ----- Original Message -----
->> On Thu, 08 Dec 2011 19:40:19 -0500, Sorin Faibish <sfaibish@emc.com>
->> wrote:
->>
->> > Attached please find the slides that we presented yesterday at
->> > USENIX
->> > LISA 11
->> > conference in Boston. We would like to get more detailed input on
->> > other
->> > OS
->> > that will support pNFS server/client (this is for Rick as well) that
->> > were
->> > not mentioned in this slide set.
->> >
->> > /Sorin
->> >
->>
->>
->>
->> --
->> Best Regards
->> Sorin Faibish
->> Corporate Distinguished Engineer
->> Unified Storage Division
->>
->> EMC²
->> where information lives
->>
->> Phone: 508-435-1000 x 48545
->> Cellphone: 617-510-0422
->> Email : sfaibish@emc.com
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+> Please review the patch with "git show -b" or otherwise ignoring the
+> whitespace changes, or it will be extremely difficult to read.
+>
+> Comments welcome.
+>
+> v2: correctly enable systemd code at compile time
+>      handle the case where not all the required sockets were supplied
+>      listen on udp/tcp port 111 in addition to /var/run/rpcbind.sock
+>      do not daemonize
+>
+> Original-patch-by: Lennart Poettering<lennart@poettering.net>
+> Cc: Steve Dickson<steved@redhat.com>
+> Cc: systemd-devel@lists.freedesktop.org
+> Cc: Cristian Rodríguez<crrodriguez@opensuse.org>
+> Signed-off-by: Tom Gundersen<teg@jklm.no>
+> ---
+>
+> Thanks to Cristian for testing. The testcase I had been using was entirely flawed,
+> the code did in fact not work at all. Sorry about that!
+
+ACKed: Cristian Rodríguez<crrodriguez@opensuse.org>
+
+This version works as expected here.
+
+
