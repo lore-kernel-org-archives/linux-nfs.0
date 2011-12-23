@@ -1,85 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 5350504D.static.ziggozakelijk.nl ([83.80.80.77]:26035 "EHLO
-	ns2.tasking.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755708Ab1LARlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Dec 2011 12:41:04 -0500
-Received: from leonino.tasking.nl (nl-fg300a-1-dmz.tasking.nl [172.16.1.8])
-	by ns2.tasking.nl (8.14.5/8.14.5) with ESMTP id pB1HXBtS027072
-	for <linux-nfs@vger.kernel.org>; Thu, 1 Dec 2011 18:33:12 +0100 (MET)
-Received: from lahti.tasking.nl (lahti.tasking.nl [172.17.2.45])
-	by leonino.tasking.nl (8.14.3/8.14.3) with ESMTP id pB1HX8LR014975
-	for <linux-nfs@vger.kernel.org>; Thu, 1 Dec 2011 18:33:08 +0100 (MET)
-To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0
-Reply-To: dick@streefland.net (Dick Streefland)
-From: dick@streefland.net (Dick Streefland)
-Subject: [PATCH] retry for NFS v3 mounts
-Content-Type: text/plain; charset=us-ascii
-Message-ID: <37c5.4ed7ba54.3cfb1@altium.nl>
-Date: Thu, 01 Dec 2011 17:33:08 -0000
-From: rnews@altium.nl
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:51857 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753570Ab1LWTrM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 14:47:12 -0500
+Received: by qadb15 with SMTP id b15so6236728qad.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 11:47:11 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] autoconf: clean up linking in nfs-utils
+Date: Fri, 23 Dec 2011 14:47:02 -0500
+Message-Id: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mounting an NFS v3 volume from a server that is currently down,
-immediately fails with a timeout error, instead of retrying:
+This patchset is a cleanup of the linking in nfs-utils. This should
+reduce the number of unnecessary libraries that each of the binaries are
+linked against.
 
-# mount -t nfs -v -overs=3,proto=udp,bg server:/foo /mnt
-mount.nfs: trying text-based options 'vers=3,proto=udp,bg,addr=172.17.2.94'
-mount.nfs: prog 100003, trying vers=3, prot=17
-mount.nfs: portmap query failed: RPC: Timed out
+I've tested this on relatively recent machines with --enable-tirpc and
+--disable-tirpc and it seems to do the right thing. But, as there are a
+lot of possible combinations, it's difficult to know if this will break
+more obscure setups. For that reason, this should probably go in fairly
+soon to ensure that it gets plenty of testing.
 
-mount.nfs: mount to NFS server 'server:/foo' failed: timed out, giving up
+Jeff Layton (3):
+  autoconf: fix up libevent autoconf test
+  autoconf: don't let libnfsidmap test add -lnfsidmap to $LIBS
+  autoconf: only link binaries that need it to libtirpc
 
-# mount -t nfs -v -overs=3,proto=tcp,bg server:/foo /mnt
-mount.nfs: trying text-based options 'vers=3,proto=tcp,bg,addr=172.17.2.94'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: portmap query failed: RPC: Remote system error - No route to host
-
-mount.nfs: No route to host
-
-As a result, NFS mounts may not come up after a power failure when the
-client boots faster than the server. The attached patch for nfs-utils
-adds ESPIPE to the list of errors considered temporary, so that the
-mount will be retried:
-
-# mount -t nfs -v -overs=3,proto=udp,bg server:/foo /mnt
-mount.nfs: trying text-based options 'vers=3,proto=udp,bg,addr=172.17.2.94'
-mount.nfs: prog 100003, trying vers=3, prot=17
-mount.nfs: portmap query failed: RPC: Timed out
-
-mount.nfs: backgrounding "server:/foo"
-mount.nfs: mount options: "vers=3,proto=udp,bg,addr=172.17.2.94"
-
-# mount -t nfs -v -overs=3,proto=tcp,bg server:/foo /mnt
-mount.nfs: trying text-based options 'vers=3,proto=tcp,bg,addr=172.17.2.94'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: portmap query failed: RPC: Remote system error - No route to host
-
-mount.nfs: backgrounding "server:/foo"
-mount.nfs: mount options: "vers=3,proto=tcp,bg,addr=172.17.2.94"
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 4032bf3..7ca0b3e 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -663,6 +663,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
- 		case ECONNREFUSED:
- 		case EOPNOTSUPP:
- 		case EHOSTUNREACH:
-+		case ESPIPE:
- 			continue;
- 		default:
- 			goto out;
-@@ -848,6 +849,7 @@ static int nfs_is_permanent_error(int error)
- 	case ETIMEDOUT:
- 	case ECONNREFUSED:
- 	case EHOSTUNREACH:
-+	case ESPIPE:
- 		return 0;	/* temporary */
- 	default:
- 		return 1;	/* permanent */
+ aclocal/libevent.m4         |    3 ++-
+ aclocal/libnfsidmap.m4      |    9 ++++++---
+ aclocal/libtirpc.m4         |   15 +++++++++++++--
+ tools/rpcgen/Makefile.am    |    1 +
+ utils/gssd/Makefile.am      |    6 +++---
+ utils/idmapd/Makefile.am    |    2 +-
+ utils/mount/Makefile.am     |    3 ++-
+ utils/mountd/Makefile.am    |    2 +-
+ utils/nfsd/Makefile.am      |    2 +-
+ utils/nfsidmap/Makefile.am  |    2 +-
+ utils/showmount/Makefile.am |    3 ++-
+ utils/statd/Makefile.am     |    4 ++--
+ 12 files changed, 35 insertions(+), 17 deletions(-)
 
 -- 
-Dick
+1.7.7.4
 
