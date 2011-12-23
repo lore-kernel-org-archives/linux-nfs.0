@@ -1,48 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752732Ab1LEINo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:44 -0500
-Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:13:44 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/10] ctl: always return a value from find_dm_name
-Date: Mon,  5 Dec 2011 10:13:39 +0200
-Message-Id: <1323072819-18243-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDC7C4E.1040901@tonian.com>
-References: <4EDC7C4E.1040901@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:33829 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757300Ab1LWOyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Dec 2011 09:54:08 -0500
+Subject: [PATCH 1/3] SUNPRC: remove marking service temporary sockets with
+ XPT_CHNGBUF
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 23 Dec 2011 18:53:33 +0300
+Message-ID: <20111223145333.847.8290.stgit@localhost6.localdomain6>
+In-Reply-To: <20111223145145.847.46221.stgit@localhost6.localdomain6>
+References: <20111223145145.847.46221.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+This is a cleanup patch.
+Temporary sockets can be TCP only. But XPT_CHNGBUF service socket flag is
+checked only for UDP sockets on receive.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- ctl.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ net/sunrpc/svcsock.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/ctl.c b/ctl.c
-index 959ef6a..7432a09 100644
---- a/ctl.c
-+++ b/ctl.c
-@@ -494,7 +494,7 @@ find_dm_name(int major, int minor)
- 	if (((fd = get_output("/sbin/dmsetup", argv)) == -1) ||
- 	    ((fp = fdopen(fd, "r")) == NULL)) {
- 		printf("%s: get_output/fdopen failed\n", __func__);
--		return;
-+		return NULL;
- 	}
- 	while (fgets(buf, sizeof (buf), fp) != NULL) {
- 		t = __token_init(buf, '\t');
-@@ -545,6 +545,7 @@ error:
- 	
- 	fclose(fp);
- 	(void) wait(&status);
-+	return NULL;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 110735f..72b05f2 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1381,8 +1381,6 @@ void svc_sock_update_bufs(struct svc_serv *serv)
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list)
+ 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+-	list_for_each_entry(svsk, &serv->sv_tempsocks, sk_xprt.xpt_list)
+-		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+ 	spin_unlock_bh(&serv->sv_lock);
  }
- 
- static int
--- 
-1.7.6
+ EXPORT_SYMBOL_GPL(svc_sock_update_bufs);
 
