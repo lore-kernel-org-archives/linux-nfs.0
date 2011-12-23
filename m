@@ -1,116 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:37743 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:42041 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753205Ab1L2Ltd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Dec 2011 06:49:33 -0500
-Message-ID: <4EFC5391.7000601@parallels.com>
-Date: Thu, 29 Dec 2011 15:48:33 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
- named one
-References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com>
-In-Reply-To: <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1754133Ab1LWNMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Dec 2011 08:12:20 -0500
+Date: Fri, 23 Dec 2011 08:11:49 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Rafael J. Wysocki" <rjw@sisk.pl>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
+        trond.myklebust@netapp.com, marek.belisko@gmail.com,
+        awilliam@redhat.com
+Subject: Re: [PATCH] sunrpc/nfs: don't allow TASK_KILLABLE sleeps to block
+ the freezer
+Message-ID: <20111223081149.7fdbcaa1@tlielax.poochiereds.net>
+In-Reply-To: <201112012252.13568.rjw@sisk.pl>
+References: <1322775223-19115-1-git-send-email-jlayton@redhat.com>
+	<201112012252.13568.rjw@sisk.pl>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-28.12.2011 21:59, Chuck Lever пишет:
->
-> On Dec 28, 2011, at 12:30 PM, Stanislav Kinsbursky wrote:
->
->> 28.12.2011 21:03, Chuck Lever пишет:
->>>
->>> On Dec 28, 2011, at 10:17 AM, Stanislav Kinsbursky wrote:
->>>
->>>> Hello.
->>>> I've experienced a problem with registering Lockd service with rpcbind in container. My container operates in it's own network namespace context and has it's own root. But on service register, kernel tries to connect to named unix socket by using rpciod_workqueue. Thus any connect is done with the same fs->root, and this leads to that kernel socket, used for registering service with local portmapper, will always connect to the same user-space socket regardless to fs->root of process, requested register operation.
->>>> Possible solution for this problem, which I would like to discuss, is to add one more listening socket to rpcbind process. But this one should be anonymous. Anonymous unix sockets accept connections only within it's network namespace context, so kernel socket connect will be done always to the user-space socket in the same network namespace.
->>>
->>> A UNIX socket is used so that rpcbind can record the identity of the process on the other end of the socket.  That way only that user may unregister this service.  That user is known as the registration's "owner."  Whatever solution is chosen, I believe we need to preserve the registration owner functionality.
->>>
->>
->> Sorry, but I don't get get it.
->> What do you mean by "user" and "identity"?
->
-> When an RPC application registers itself with the local rpcbind daemon, it does so with an AF_UNIX socket.  rpcbind scrapes the UID of the RPC application process off the other end of the socket, and records that UID with the new registration.  For example:
->
-> [cel@forain ~]$ rpcinfo
->     program version netid     address                service    owner
->      100000    4    tcp6      ::.0.111               portmapper superuser
->      100000    3    tcp6      ::.0.111               portmapper superuser
->      100000    4    udp6      ::.0.111               portmapper superuser
->      100000    3    udp6      ::.0.111               portmapper superuser
->      100000    4    tcp       0.0.0.0.0.111          portmapper superuser
->      100000    3    tcp       0.0.0.0.0.111          portmapper superuser
->      100000    2    tcp       0.0.0.0.0.111          portmapper superuser
->      100000    4    udp       0.0.0.0.0.111          portmapper superuser
->      100000    3    udp       0.0.0.0.0.111          portmapper superuser
->      100000    2    udp       0.0.0.0.0.111          portmapper superuser
->      100000    4    local     /var/run/rpcbind.sock  portmapper superuser
->      100000    3    local     /var/run/rpcbind.sock  portmapper superuser
->      100024    1    udp       0.0.0.0.149.137        status     29
->      100024    1    tcp       0.0.0.0.152.179        status     29
->      100024    1    udp6      ::.148.0               status     29
->      100024    1    tcp6      ::.217.71              status     29
-> [cel@forain ~]$
->
-> The last column is the "owner."  That's the UID of the process that performed the registration.  Only processes running under that UID may unregister that service.
->
-> This doesn't work for registrations that were performed via a network interface (like lo).  It only works when an application uses the AF_UNIX socket.
->
-> The point of this is to prevent other users from replacing a registration.  Now any user can register an RPC service and be sure that it won't be stomped on by some other user.
->
-> Whatever solution to your problem you find, it must preserve this behavior.  Will using an anonymous socket allow rpcbind to discover the UID of the registering process?
->
+On Thu, 1 Dec 2011 22:52:13 +0100
+"Rafael J. Wysocki" <rjw@sisk.pl> wrote:
 
-First of all, thanks for detailed explanation.
-And the answer is yes - anonymous socket will allow rpcbind to discover the UID 
-of the registering process.
-At least I don't see any differences in this place between named and anonymous 
-socket (unix_listen and unix_stream_connect).
+> On Thursday, December 01, 2011, Jeff Layton wrote:
+> > Allow the freezer to skip wait_on_bit_killable sleeps in the sunrpc
+> > layer. This should allow suspend and hibernate events to proceed, even
+> > when there are RPC's pending on the wire.
+> > 
+> > Also, wrap the TASK_KILLABLE sleeps in NFS layer in freezer_do_not_count
+> > and freezer_count calls. This allows the freezer to skip tasks that are
+> > sleeping while looping on EJUKEBOX or NFS4ERR_DELAY sorts of errors.
+> > 
+> > Rafael, I've gone ahead and combined the two patches into one here
+> > and rebased this on top of the pm-freezer branch. Let me know if you'd
+> > prefer to keep it as two patches.
+> 
+> One patch is just fine for me, applied to linux-pm/linux-next.
+> 
+> Thanks,
+> Rafael
+> 
+> 
 
->
-> A TCP socket has two endpoints.  The source address and port for the local endpoint is chosen when the socket is bound.  The destination address and port for the remote endpoint is chosen when the socket is connected.
->
-> RPC client consumers, such as lockd, the NFS client, or the MNT client, have to make outbound TCP connections to other hosts.  In user space, RPC TCP sockets use the IP address of the current network namespace as their source address.
->
-> If the kernel RPC client makes a TCP connection to another host, how is the TCP socket's source address determined? If the answer is that kernel_bind() chooses this source address, and that kernel_bind() call is performed in the rpciod connect worker, then the source address is always chosen in the root network namespace (unless the rpciod connect worker is namespace aware).
->
+-------------------[snip]----------------
 
-This address to bind to is taken from transport, which is set on RPC client 
-creation (which is created in sync mode). So, no problem here, I hope.
+> > +
+> > +/* Like schedule_timeout_killable(), but should not block the freezer. */
+> > +#define freezable_schedule_timeout_killable(timeout)			\
+> > +({									\
+> > +	freezer_do_not_count();						\
+> > +	schedule_timeout_killable(timeout);				\
+> > +	freezer_count();						\
+> > +})
+> > +
 
->> I little bit more info about the whole "NFS in container" structure (as I see it):
->> 1) Each container operates in it's own network namespace and has it's own root.
->> 2) Each contatiner has it's own network device(s) and IP address(es).
->
-> Right.  As above, I assumed the IP address of the current network namespace is used as the source address on outbound TCP connections.  That would mean that the rpciod work queue that handles such connections would have to be network namespace aware.
->
 
-And it is. IOW, rpciod_workqueue just handles rpc_tasks as is.
+Whoops...I just noticed a problem with this patch.
 
-> If it is, why isn't this also enough for RPC over AF_UNIX sockets?  The network namespace in effect when the kernel performs the connect should determine which rpcbind is listening on the other end of the AF_UNIX socket in your local network namespace, unless I've misunderstood your problem.
->
-
-Because unix named (!) sockets are not network namespace aware. They are 
-"current->fs->root" aware. I.e. if this connect operation would be performed on 
-"sync mode" (i.e. from the context of mount of NFS server start operation), then 
-all will works fine (in case of each container works in it's own root, of course).
-But currently all connect operations are done by rpciod_workqueue. I.e. 
-regardless to root of process, started service registration, unix socket will be 
-always looked up by path "/var/run/rpcbind.sock" starting from rpciod_workqueue 
-root. I can set desired root before kernel connect during handling RPC task by 
-rpciod_workqueue and revert back to the old one after connection and this will 
-solve the problem to.
-But this approach looks like ugly hack to me. And also requires additional 
-pointer in sock_xprt structure to bypass desired context to rpciod_workqueue 
-handler.
+freezable_schedule_timeout_killable does not return the return code
+from schedule_timeout_killable. Would you prefer for me to respin this
+patch, or send a new patch on top of this one that just fixes that bug?
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Jeff Layton <jlayton@redhat.com>
