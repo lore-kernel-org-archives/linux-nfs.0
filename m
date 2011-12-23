@@ -1,99 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:39124 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751061Ab1LQWXj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Dec 2011 17:23:39 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
-Date: Sat, 17 Dec 2011 14:25:14 -0800
-In-Reply-To: <20111214104449.3991.61989.stgit@localhost6.localdomain6>
-	(Stanislav Kinsbursky's message of "Wed, 14 Dec 2011 14:44:49 +0300")
-Message-ID: <m1bor6rg39.fsf@fess.ebiederm.org>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:33333 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757086Ab1LWNZ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 08:25:58 -0500
+Date: Fri, 23 Dec 2011 08:25:46 -0500
+From: Jim Rees <rees@umich.edu>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+Cc: Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
+Message-ID: <20111223132546.GA10015@umich.edu>
+References: <1323266927-3686-1-git-send-email-bhalevy@tonian.com>
+ <4EF422A8.5070907@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4EF422A8.5070907@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
+fanchaoting wrote:
 
-> These routines are required for making SUNRPC sysctl's per network namespace
-> context.
+  Benny Halevy 写道:
+  > I am trying to build a pnfs client on a 32 bit system  and the
+  > pnfs-latest  kernel fails to compile. I get the following error
+  > 
+  >  >  Building modules, stage 2.
+  >  >  TEST    posttest
+  >  > MODPOST 2046 modules
+  >  >ERROR: "__udivdi3" [crypto/xor.ko] undefined!
+  >  >make[1]: *** [__modpost] Error 1
+  >  >make: *** [modules] Error 2
+  >  >make: *** Waiting for unfinished jobs....
+  >  >Succeed: decoded and checked 1244492 instructions
+  > 
+  > Reported-by: Rita Sequeira <rita.prajval@gmail.com>
+  > Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+  > ---
+  > 
+  > untested patch yet...
+  > 
+  >  crypto/xor.c |    3 ++-
+  >  1 files changed, 2 insertions(+), 1 deletions(-)
+  > 
+  > diff --git a/crypto/xor.c b/crypto/xor.c
+  > index 65433f5..2151ded 100644
+  > --- a/crypto/xor.c
+  > +++ b/crypto/xor.c
+  > @@ -95,7 +95,8 @@
+  >  
+  >  	ns_end -= ns_begin;
+  >  	if (ns_end > 0)
+  > -		speed = BENCH_SIZE / 1024 * count * NSEC_PER_SEC / ns_end;
+  > +		speed = BENCH_SIZE / 1024 * count *
+  > +				(unsigned)(NSEC_PER_SEC / ns_end);
+  >  	else
+  >  		speed = 17;
+  >  	tmpl->speed = speed;
+  
+  Hi,I also meet this problem ,but when  i use you patch ,i can't solve this
+  problem.
 
-Why does sunrpc require it's own sysctl root?  You should be able to use
-the generic per network namespace root and call it good.
+Maybe something like this?
 
-What makes register_net_sysctl_table and register_net_sysctl_ro_table
-unsuitable for sunrpc.  I skimmed through your patches and I haven't
-seen anything obvious.
+speed = do_div(BENCH_SIZE, 1024) * count * do_div(NSEC_PER_SEC, ns_end);
 
-Eric
-
-
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->
-> ---
->  include/linux/sysctl.h |    1 +
->  kernel/sysctl.c        |   11 +++++++++++
->  2 files changed, 12 insertions(+), 0 deletions(-)
->
-> diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-> index 703cfa3..be586a9 100644
-> --- a/include/linux/sysctl.h
-> +++ b/include/linux/sysctl.h
-> @@ -1084,6 +1084,7 @@ struct ctl_path {
->  };
->  
->  void register_sysctl_root(struct ctl_table_root *root);
-> +void unregister_sysctl_root(struct ctl_table_root *root);
->  struct ctl_table_header *__register_sysctl_paths(
->  	struct ctl_table_root *root, struct nsproxy *namespaces,
->  	const struct ctl_path *path, struct ctl_table *table);
-> diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-> index ae27196..fb016a9 100644
-> --- a/kernel/sysctl.c
-> +++ b/kernel/sysctl.c
-> @@ -1700,6 +1700,15 @@ void register_sysctl_root(struct ctl_table_root *root)
->  	list_add_tail(&root->root_list, &sysctl_table_root.root_list);
->  	spin_unlock(&sysctl_lock);
->  }
-> +EXPORT_SYMBOL_GPL(register_sysctl_root);
-> +
-> +void unregister_sysctl_root(struct ctl_table_root *root)
-> +{
-> +	spin_lock(&sysctl_lock);
-> +	list_del(&root->root_list);
-> +	spin_unlock(&sysctl_lock);
-> +}
-> +EXPORT_SYMBOL_GPL(unregister_sysctl_root);
->  
->  /*
->   * sysctl_perm does NOT grant the superuser all rights automatically, because
-> @@ -1925,6 +1934,7 @@ struct ctl_table_header *__register_sysctl_paths(
->  
->  	return header;
->  }
-> +EXPORT_SYMBOL_GPL(__register_sysctl_paths);
->  
->  /**
->   * register_sysctl_table_path - register a sysctl table hierarchy
-> @@ -2007,6 +2017,7 @@ void setup_sysctl_set(struct ctl_table_set *p,
->  	p->parent = parent ? parent : &sysctl_table_root.default_set;
->  	p->is_seen = is_seen;
->  }
-> +EXPORT_SYMBOL_GPL(setup_sysctl_set);
->  
->  #else /* !CONFIG_SYSCTL */
->  struct ctl_table_header *register_sysctl_table(struct ctl_table * table)
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
+This might not be exactly right because it changes the operator precedence,
+but it should eliminate the calls to __udivdi3.
