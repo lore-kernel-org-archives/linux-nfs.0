@@ -1,40 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:55546 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752207Ab1LYNyz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 08:54:55 -0500
-Date: Sun, 25 Dec 2011 08:54:43 -0500
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-        fanchaoting <fanchaoting@cn.fujitsu.com>,
-        Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
-Message-ID: <20111225135443.GA19491@umich.edu>
-References: <1323266927-3686-1-git-send-email-bhalevy@tonian.com>
- <4EF422A8.5070907@cn.fujitsu.com>
- <20111223132546.GA10015@umich.edu>
- <4EF6B516.5070609@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:23540 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757359Ab1LWOyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Dec 2011 09:54:09 -0500
+Subject: [PATCH 2/3] Lockd: don't mark freshly created sockets with XPT_CHNGBUF
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 23 Dec 2011 18:53:41 +0300
+Message-ID: <20111223145341.847.84279.stgit@localhost6.localdomain6>
+In-Reply-To: <20111223145145.847.46221.stgit@localhost6.localdomain6>
+References: <20111223145145.847.46221.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EF6B516.5070609@tonian.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny Halevy wrote:
+This is a cleanup patch. XPT_CHNGBUF bit is set on UDP socket creation. Calling
+svc_sock_update_bufs from lockd after is redundant.
+Below is Lockd UDP sockets creating call trace:
 
-  > speed = do_div(BENCH_SIZE, 1024) * count * do_div(NSEC_PER_SEC, ns_end);
-  > 
-  > This might not be exactly right because it changes the operator precedence,
-  > but it should eliminate the calls to __udivdi3.
-  
-  Hmm, you mean execution order? (which you do not)
-  C (and fortunately gcc too :) treats multiplication and division with the
-  same priority and executes them from left to right...
+lockd_up {
 
-Yes, execution order.  The original code executes left-to-right, my code
-executes the divisions first.
+make_socks
+create_lockd_family
+create_lockd_listener
+svc_create_xprt
+__svc_xpo_create
+svc_udp_create
+svc_create_socket
+svc_setup_socket
+svc_udp_init (raise XPT_CHNGBUF)
 
-But I wouldn't blindly apply this without understanding what's going on
-here.  I thought the -fno-tree-scev-cprop compiler flag was supposed to
-emit division code instead of calling into a library.
+....
+
+svc_sock_update_bufs (raise XPT_CHNGBUF again)
+
+....
+
+}
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/lockd/svc.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index ff379ff..55fea92 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -292,7 +292,6 @@ int lockd_up(void)
+ 		goto destroy_and_out;
+ 	}
+ 
+-	svc_sock_update_bufs(serv);
+ 	serv->sv_maxconn = nlm_max_connections;
+ 
+ 	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
+
