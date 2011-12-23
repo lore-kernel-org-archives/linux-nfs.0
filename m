@@ -1,254 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:39418 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751047Ab1LNRBS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Dec 2011 12:01:18 -0500
-Received: by wgbdr13 with SMTP id dr13so2128768wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 09:01:16 -0800 (PST)
-MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <20111213164406.GA29019@fieldses.org>
-References: <1323723627-413-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<1323723627-413-2-git-send-email-tigran.mkrtchyan@desy.de>
-	<20111213164406.GA29019@fieldses.org>
-Date: Wed, 14 Dec 2011 18:01:16 +0100
-Message-ID: <CAGue13o1SDoNtjjjbTcW=+79jWSowpac4cL6xNXUVs+vzru8kw@mail.gmail.com>
-Subject: Re: [PATH v4 1/3] nfsd41: handle current stateid in open and close
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:57298 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753570Ab1LWTrP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Dec 2011 14:47:15 -0500
+Received: by mail-qw0-f46.google.com with SMTP id c12so5224840qad.19
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Dec 2011 11:47:15 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] autoconf: only link binaries that need it to libtirpc
+Date: Fri, 23 Dec 2011 14:47:05 -0500
+Message-Id: <1324669625-2948-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+References: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 13, 2011 at 5:44 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Dec 12, 2011 at 10:00:25PM +0100, Tigran Mkrtchyan wrote:
->> From: Tigran Mkrtchyan <kofemann@gmail.com>
->>
->>
->> Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
->> ---
->>  fs/nfsd/current_stateid.h |   11 +++++++++++
->>  fs/nfsd/nfs4proc.c        |   35 ++++++++++++++++++++++++++++++-----
->>  fs/nfsd/nfs4state.c       |   36 ++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/xdr4.h            |    1 +
->>  4 files changed, 78 insertions(+), 5 deletions(-)
->>  create mode 100644 fs/nfsd/current_stateid.h
->>
->> diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
->> new file mode 100644
->> index 0000000..a83dd50
->> --- /dev/null
->> +++ b/fs/nfsd/current_stateid.h
->> @@ -0,0 +1,11 @@
->> +#ifndef _NFSD4_CURRENT_STATE_H
->> +#define _NFSD4_CURRENT_STATE_H
->> +
->> +#include "state.h"
->> +#include "xdr4.h"
->> +
->> +extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
->> +extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
->> +extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
->> +
->> +#endif   /* _NFSD4_CURRENT_STATE_H */
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index fa38336..3dfb235 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -39,6 +39,7 @@
->>  #include "cache.h"
->>  #include "xdr4.h"
->>  #include "vfs.h"
->> +#include "current_stateid.h"
->>
->>  #define NFSDDBG_FACILITY             NFSDDBG_PROC
->>
->> @@ -556,7 +557,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>                                    create->cr_name, create->cr_namelen,
->>                                    &create->cr_iattr, S_IFSOCK, 0, &resfh);
->>               break;
->> -
->>       case NF4FIFO:
->>               status = nfsd_create(rqstp, &cstate->current_fh,
->>                                    create->cr_name, create->cr_namelen,
->> @@ -1001,6 +1001,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
->>  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
->>                             void *);
->>  typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
->> +typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
->> +typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
->> +typedef void(*stateid_cleaner)(struct nfsd4_compound_state *);
->>
->>  enum nfsd4_op_flags {
->>       ALLOWED_WITHOUT_FH = 1 << 0,    /* No current filehandle required */
->> @@ -1034,6 +1037,9 @@ struct nfsd4_operation {
->>       char *op_name;
->>       /* Try to get response size before operation */
->>       nfsd4op_rsize op_rsize_bop;
->> +     stateid_setter op_get_currentstateid;
->> +     stateid_getter op_set_currentstateid;
->> +     stateid_cleaner op_clear_currentstateid;
->
-> Is op_clear_currentstateid ever going to have more than one
-> implementation?
->
-> If not, let's just make that one a flag and do
->
->        if (clear_currentstateid flag set on this op)
->                cstate->current_stateid = NULL;
->
+When we first added tirpc support, we took a "big hammer" approach, and
+had it add libtirpc to $LIBS. That had the effect of making it so that
+that library was linked into every binary. That's unnecessary, and
+wasteful with memory.
 
-ack
+Don't let AC_CHECK_LIB add -ltirpc to $LIBS. Instead, have the autoconf
+tests set $(LIBTIRPC) in the makefiles, and have the programs that
+need it explicitly include that library. In the event that we're not
+using libtirpc, then set $LIBTIRPC to a blank string.
 
-Tigran.
+This patch also fixes a subtle bug. If the library was usable, but the
+includes were not, the test would set $enable_tirpc to "no", but
+HAVE_LIBTIRPC would still be true. That configuration would likely
+fail to build.
 
-> --b.
->
->>  };
->>
->>  static struct nfsd4_operation nfsd4_ops[];
->> @@ -1116,6 +1122,11 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
->>       return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
->>  }
->>
->> +static void
->> +nfsd4_clear_currentstateid(struct nfsd4_compound_state *cstate)
->> +{
->> +     cstate->current_stateid = NULL;
->> +}
->>  /*
->>   * COMPOUND call.
->>   */
->> @@ -1216,13 +1227,24 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->>               if (op->status)
->>                       goto encode_op;
->>
->> -             if (opdesc->op_func)
->> +             if (opdesc->op_func) {
->> +                     if (opdesc->op_get_currentstateid)
->> +                             opdesc->op_get_currentstateid(cstate, &op->u);
->>                       op->status = opdesc->op_func(rqstp, cstate, &op->u);
->> -             else
->> +             } else
->>                       BUG_ON(op->status == nfs_ok);
->>
->> -             if (!op->status && need_wrongsec_check(rqstp))
->> -                     op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
->> +             if (!op->status) {
->> +                     if (opdesc->op_set_currentstateid) {
->> +                             opdesc->op_set_currentstateid(cstate, &op->u);
->> +                     }
->> +
->> +                     if (opdesc->op_clear_currentstateid)
->> +                             opdesc->op_clear_currentstateid(cstate);
->> +
->> +                     if (need_wrongsec_check(rqstp))
->> +                             op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
->> +             }
->>
->>  encode_op:
->>               /* Only from SEQUENCE */
->> @@ -1414,6 +1436,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>               .op_flags = OP_MODIFIES_SOMETHING,
->>               .op_name = "OP_CLOSE",
->>               .op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
->> +             .op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
->> +             .op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
->>       },
->>       [OP_COMMIT] = {
->>               .op_func = (nfsd4op_func)nfsd4_commit,
->> @@ -1484,6 +1508,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>               .op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
->>               .op_name = "OP_OPEN",
->>               .op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
->> +             .op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
->>       },
->>       [OP_OPEN_CONFIRM] = {
->>               .op_func = (nfsd4op_func)nfsd4_open_confirm,
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 47e94e3..594b44e 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -51,10 +51,12 @@ time_t nfsd4_grace = 90;
->>  static time_t boot_time;
->>  static stateid_t zerostateid;             /* bits all 0 */
->>  static stateid_t onestateid;              /* bits all 1 */
->> +static stateid_t currentstateid;         /* other all 0, seqid 1 */
->>  static u64 current_sessionid = 1;
->>
->>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
->>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
->> +#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
->>
->>  /* forward declarations */
->>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
->> @@ -4423,6 +4425,8 @@ nfs4_state_init(void)
->>               INIT_LIST_HEAD(&lock_ownerstr_hashtbl[i]);
->>       }
->>       memset(&onestateid, ~0, sizeof(stateid_t));
->> +     /* seqid 1, other all 0 */
->> +     currentstateid.si_generation = 1;
->>       INIT_LIST_HEAD(&close_lru);
->>       INIT_LIST_HEAD(&client_lru);
->>       INIT_LIST_HEAD(&del_recall_lru);
->> @@ -4545,3 +4549,35 @@ nfs4_state_shutdown(void)
->>       nfs4_unlock_state();
->>       nfsd4_destroy_callback_queue();
->>  }
->> +
->> +static void
->> +get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
->> +{
->> +     if (cstate->current_stateid && CURRENT_STATEID(stateid))
->> +             memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
->> +}
->> +
->> +static void
->> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
->> +{
->> +     if (cstate->minorversion)
->> +             cstate->current_stateid = stateid;
->> +}
->> +
->> +void
->> +nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
->> +{
->> +     put_stateid(cstate, &open->op_stateid);
->> +}
->> +
->> +void
->> +nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
->> +{
->> +     get_stateid(cstate, &close->cl_stateid);
->> +}
->> +
->> +void
->> +nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
->> +{
->> +     get_stateid(cstate, &close->cl_stateid);
->> +}
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index 2364747..c1fe8ba 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
->>       size_t                  iovlen;
->>       u32                     minorversion;
->>       u32                     status;
->> +     const stateid_t *current_stateid;
->>  };
->>
->>  static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
->> --
->> 1.7.7.4
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/libtirpc.m4         |   15 +++++++++++++--
+ tools/rpcgen/Makefile.am    |    1 +
+ utils/gssd/Makefile.am      |    4 ++--
+ utils/mount/Makefile.am     |    3 ++-
+ utils/mountd/Makefile.am    |    2 +-
+ utils/nfsd/Makefile.am      |    2 +-
+ utils/showmount/Makefile.am |    3 ++-
+ utils/statd/Makefile.am     |    4 ++--
+ 8 files changed, 24 insertions(+), 10 deletions(-)
+
+diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
+index 9f0fde0..19b8361 100644
+--- a/aclocal/libtirpc.m4
++++ b/aclocal/libtirpc.m4
+@@ -13,8 +13,8 @@ AC_DEFUN([AC_LIBTIRPC], [
+ 
+   if test "$enable_tirpc" != "no"; then
+ 
+-    dnl look for the library; add to LIBS if found
+-    AC_CHECK_LIB([tirpc], [clnt_tli_create], ,
++    dnl look for the library
++    AC_CHECK_LIB([tirpc], [clnt_tli_create], [:],
+                  [if test "$enable_tirpc" = "yes"; then
+ 			AC_MSG_ERROR([libtirpc not found.])
+ 		  else
+@@ -37,4 +37,15 @@ AC_DEFUN([AC_LIBTIRPC], [
+ 
+   fi
+ 
++  dnl now set $LIBTIRPC accordingly
++  if test "$enable_tirpc" != "no"; then
++    AC_DEFINE([HAVE_LIBTIRPC], 1,
++              [Define to 1 if you have and wish to use libtirpc.])
++    LIBTIRPC="-ltirpc"
++  else
++    LIBTIRPC=""
++  fi
++
++  AC_SUBST(LIBTIRPC)
++
+ ])dnl
+diff --git a/tools/rpcgen/Makefile.am b/tools/rpcgen/Makefile.am
+index 51a2bfa..8a9ec89 100644
+--- a/tools/rpcgen/Makefile.am
++++ b/tools/rpcgen/Makefile.am
+@@ -12,6 +12,7 @@ rpcgen_SOURCES = rpc_clntout.c rpc_cout.c rpc_hout.c rpc_main.c \
+ rpcgen_CFLAGS=$(CFLAGS_FOR_BUILD)
+ rpcgen_CPPLAGS=$(CPPFLAGS_FOR_BUILD)
+ rpcgen_LDFLAGS=$(LDFLAGS_FOR_BUILD)
++rpcgen_LDADD=$(LIBTIRPC)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index 9136189..d29e132 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -40,7 +40,7 @@ gssd_SOURCES = \
+ 
+ gssd_LDADD =	../../support/nfs/libnfs.a \
+ 		$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(KRBLIBS)
+-gssd_LDFLAGS = $(KRBLDFLAGS)
++gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
+ 
+ gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+ 	      $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
+@@ -59,7 +59,7 @@ svcgssd_SOURCES = \
+ svcgssd_LDADD = \
+ 	../../support/nfs/libnfs.a \
+ 	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
+-	$(KRBLIBS)
++	$(KRBLIBS) $(LIBTIRPC)
+ 
+ svcgssd_LDFLAGS = $(KRBLDFLAGS)
+ 
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index 7bc3e2b..7627854 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -24,7 +24,8 @@ EXTRA_DIST += nfsmount.conf
+ endif
+ 
+ mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+-		  ../../support/export/libexport.a
++		  ../../support/export/libexport.a \
++		  $(LIBTIRPC)
+ 
+ mount_nfs_SOURCES = $(mount_common)
+ 
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index eba81fc..375908e 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -12,7 +12,7 @@ mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
+ mountd_LDADD = ../../support/export/libexport.a \
+ 	       ../../support/nfs/libnfs.a \
+ 	       ../../support/misc/libmisc.a \
+-	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID)
++	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
+ mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 		  -I$(top_builddir)/support/include \
+ 		  -I$(top_srcdir)/support/export
+diff --git a/utils/nfsd/Makefile.am b/utils/nfsd/Makefile.am
+index c4c6fb0..1536065 100644
+--- a/utils/nfsd/Makefile.am
++++ b/utils/nfsd/Makefile.am
+@@ -8,7 +8,7 @@ KPREFIX		= @kprefix@
+ sbin_PROGRAMS	= nfsd
+ 
+ nfsd_SOURCES = nfsd.c nfssvc.c
+-nfsd_LDADD = ../../support/nfs/libnfs.a
++nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/showmount/Makefile.am b/utils/showmount/Makefile.am
+index 077b2c7..4ba5ead 100644
+--- a/utils/showmount/Makefile.am
++++ b/utils/showmount/Makefile.am
+@@ -7,7 +7,8 @@ sbin_PROGRAMS	= showmount
+ showmount_SOURCES = showmount.c
+ showmount_LDADD = ../../support/export/libexport.a \
+ 		  ../../support/nfs/libnfs.a \
+-	  	  ../../support/misc/libmisc.a
++		  ../../support/misc/libmisc.a \
++		  $(LIBTIRPC)
+ showmount_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 		   -I$(top_builddir)/support/export
+ 
+diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+index 1744791..dc2bfc4 100644
+--- a/utils/statd/Makefile.am
++++ b/utils/statd/Makefile.am
+@@ -15,10 +15,10 @@ BUILT_SOURCES = $(GENFILES)
+ statd_LDADD = ../../support/nsm/libnsm.a \
+ 	      ../../support/nfs/libnfs.a \
+ 	      ../../support/misc/libmisc.a \
+-	      $(LIBWRAP) $(LIBNSL) $(LIBCAP)
++	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ sm_notify_LDADD = ../../support/nsm/libnsm.a \
+ 		  ../../support/nfs/libnfs.a \
+-		  $(LIBNSL) $(LIBCAP)
++		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ 
+ EXTRA_DIST = sim_sm_inter.x $(man8_MANS) COPYRIGHT simulate.c
+ 
+-- 
+1.7.7.4
+
