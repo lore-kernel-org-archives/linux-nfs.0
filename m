@@ -1,65 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59277 "EHLO mx1.redhat.com"
+Received: from ogre.sisk.pl ([217.79.144.158]:39334 "EHLO ogre.sisk.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757264Ab1LNPJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 10:09:06 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEF96vM008023
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 10:09:06 -0500
-Message-ID: <4EE8BC10.3010005@RedHat.com>
-Date: Wed, 14 Dec 2011 10:09:04 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S1752023Ab1LWWed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Dec 2011 17:34:33 -0500
+From: "Rafael J. Wysocki" <rjw@sisk.pl>
 To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] clstated: reattempt the pipe open if it fails on
- ENOENT
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com> <1323871032-3191-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323871032-3191-3-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: [PATCH] sunrpc/nfs: don't allow TASK_KILLABLE sleeps to block the freezer
+Date: Fri, 23 Dec 2011 23:37:40 +0100
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@vger.kernel.org, tj@kernel.org, john@calva.com,
+        trond.myklebust@netapp.com, marek.belisko@gmail.com,
+        awilliam@redhat.com
+References: <1322775223-19115-1-git-send-email-jlayton@redhat.com> <201112012252.13568.rjw@sisk.pl> <20111223081149.7fdbcaa1@tlielax.poochiereds.net>
+In-Reply-To: <20111223081149.7fdbcaa1@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201112232337.40363.rjw@sisk.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/14/2011 08:57 AM, Jeff Layton wrote:
-> Generally, we want this daemon started before nfsd starts. Deal with the
-> situation where the pipe hasn't shown up yet.
-This can be done with your systemd start up script. Plus I'm not sure its 
-a good idea to steal cpu cycles waiting for an event that may never happen...
-
-steved.
-
+On Friday, December 23, 2011, Jeff Layton wrote:
+> On Thu, 1 Dec 2011 22:52:13 +0100
+> "Rafael J. Wysocki" <rjw@sisk.pl> wrote:
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  utils/clstated/clstated.c |   15 +++++++++++----
->  1 files changed, 11 insertions(+), 4 deletions(-)
+> > On Thursday, December 01, 2011, Jeff Layton wrote:
+> > > Allow the freezer to skip wait_on_bit_killable sleeps in the sunrpc
+> > > layer. This should allow suspend and hibernate events to proceed, even
+> > > when there are RPC's pending on the wire.
+> > > 
+> > > Also, wrap the TASK_KILLABLE sleeps in NFS layer in freezer_do_not_count
+> > > and freezer_count calls. This allows the freezer to skip tasks that are
+> > > sleeping while looping on EJUKEBOX or NFS4ERR_DELAY sorts of errors.
+> > > 
+> > > Rafael, I've gone ahead and combined the two patches into one here
+> > > and rebased this on top of the pm-freezer branch. Let me know if you'd
+> > > prefer to keep it as two patches.
+> > 
+> > One patch is just fine for me, applied to linux-pm/linux-next.
+> > 
+> > Thanks,
+> > Rafael
+> > 
+> > 
 > 
-> diff --git a/utils/clstated/clstated.c b/utils/clstated/clstated.c
-> index 93a2710..aab09a7 100644
-> --- a/utils/clstated/clstated.c
-> +++ b/utils/clstated/clstated.c
-> @@ -75,10 +75,17 @@ usage(char *progname)
->  static int
->  clstate_pipe_open(struct clstate_client *clnt)
->  {
-> -	clnt->cl_fd = open(pipepath, O_RDWR, 0);
-> -	if (clnt->cl_fd < 0) {
-> -		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
-> -		return clnt->cl_fd;
-> +	/* loop until the pipe is present or open fails for another reason */
-> +	for (;;) {
-> +		clnt->cl_fd = open(pipepath, O_RDWR, 0);
-> +		if (clnt->cl_fd >= 0) {
-> +			break;
-> +		} else if (errno != ENOENT) {
-> +			xlog(D_GENERAL, "%s: unable to open %s: %m", __func__,
-> +					pipepath);
-> +			return clnt->cl_fd;
-> +		}
-> +		sleep(1);
->  	}
->  
->  	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, clstatecb, clnt);
+> -------------------[snip]----------------
+> 
+> > > +
+> > > +/* Like schedule_timeout_killable(), but should not block the freezer. */
+> > > +#define freezable_schedule_timeout_killable(timeout)			\
+> > > +({									\
+> > > +	freezer_do_not_count();						\
+> > > +	schedule_timeout_killable(timeout);				\
+> > > +	freezer_count();						\
+> > > +})
+> > > +
+> 
+> 
+> Whoops...I just noticed a problem with this patch.
+> 
+> freezable_schedule_timeout_killable does not return the return code
+> from schedule_timeout_killable. Would you prefer for me to respin this
+> patch, or send a new patch on top of this one that just fixes that bug?
+
+Please send a new fix patch on top of it.
+
+Thanks,
+Rafael
