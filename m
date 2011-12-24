@@ -1,63 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:45461 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753679Ab1LDNuZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:50:25 -0500
-Received: by mail-ey0-f174.google.com with SMTP id k14so3593300eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:50:24 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 12/13] DEBUG: pnfs: printouts
-Date: Sun,  4 Dec 2011 15:50:18 +0200
-Message-Id: <1323006618-13925-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDB79A9.2080109@tonian.com>
-References: <4EDB79A9.2080109@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:40861 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751819Ab1LXVuP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 24 Dec 2011 16:50:15 -0500
+Date: Sat, 24 Dec 2011 16:50:12 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: file locking fix for 3.2
+Message-ID: <20111224215012.GA23495@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+Please pull the following change from the for-3.2 branch at:
 
----
- fs/nfs/nfs4xdr.c |    2 ++
- fs/nfs/pnfs.c    |    4 +++-
- 2 files changed, 5 insertions(+), 1 deletions(-)
+	git://linux-nfs.org/~bfields/linux.git for-3.2
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e6161b2..0bda77e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4448,6 +4448,7 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
+One small 3.2 regression in the file-locking code.  Seems like an
+unlikely bug (null dereference on kmalloc failure), but the fix is a
+one-liner.
+
+--b.
+
+J. Bruce Fields (1):
+      locks: fix null dereference on lease-break failure path
+
+ fs/locks.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+commit b67e18a8e3425725cc17cc7633bccb06fb3c9eda
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Dec 19 17:57:11 2011 -0500
+
+    locks: fix null dereference on lease-break failure path
+    
+    Commit 778fc546f749c588aa2f6cd50215d2715c374252 "locks: fix tracking of
+    inprogress lease breaks" introduced a null dereference on failure to
+    allocate memory.
+    
+    This means an open (without O_NONBLOCK set) on a file with a lease
+    applied (generally only done when Samba or nfsd (with v4) is running)
+    could crash if a kmalloc() fails.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 3b0d05d..96a487a 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1214,8 +1214,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+ 		goto out;
  
- 	/* pNFS is not supported by the underlying file system */
- 	if (num == 0) {
-+		dprintk("%s: num=0\n", __func__);
- 		*layouttype = 0;
- 		return 0;
- 	}
-@@ -4460,6 +4461,7 @@ static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	*layouttype = be32_to_cpup(p);
-+	dprintk("%s: layouttype=0x%x\n", __func__, *layouttype);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index baf7353..61778c9 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -97,8 +97,10 @@
- {
- 	struct pnfs_layoutdriver_type *ld_type = NULL;
+-	if (!locks_conflict(flock, new_fl))
+-		goto out;
++	if (flock->fl_type == F_RDLCK && !want_write)
++		goto out; /* no conflict */
  
--	if (id == 0)
-+	if (id == 0) {
-+		dprintk("%s: layout type %u\n", __func__, id);
- 		goto out_no_driver;
-+	}
- 	if (!(server->nfs_client->cl_exchange_flags &
- 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
- 		printk(KERN_ERR "%s: id %u cl_exchange_flags 0x%x\n", __func__,
--- 
-1.7.6
-
+ 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+ 		if (fl->fl_owner == current->files)
