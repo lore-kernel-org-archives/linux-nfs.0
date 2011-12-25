@@ -1,138 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:64861 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752613Ab1LMHra (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Dec 2011 02:47:30 -0500
-Received: by eaaj10 with SMTP id j10so995969eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Dec 2011 23:47:29 -0800 (PST)
-Message-ID: <4EE7030B.8050601@tonian.com>
-Date: Tue, 13 Dec 2011 09:47:23 +0200
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:50994 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751735Ab1LYMDy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 07:03:54 -0500
+Received: by eekc4 with SMTP id c4so10531106eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Dec 2011 04:03:53 -0800 (PST)
+Message-ID: <4EF71125.1060901@tonian.com>
+Date: Sun, 25 Dec 2011 14:03:49 +0200
 From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATCH] nfsd41: handle current stateid in open and close
-References: <1323207847-19118-1-git-send-email-tigran.mkrtchyan@desy.de> <20111206230823.GH12640@fieldses.org> <4EDF677C.7030209@tonian.com> <20111207171133.GD20079@fieldses.org> <4EE0E123.20401@tonian.com> <20111212224025.GB22927@fieldses.org>
-In-Reply-To: <20111212224025.GB22927@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: tigran.mkrtchyan@desy.de, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Session timeout on RHEL6.2
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>  <1324475851.7709.12.camel@lade.trondhjem.org>  <CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>  <4EF6A898.2010207@tonian.com> <1324806463.2740.6.camel@lade.trondhjem.org>
+In-Reply-To: <1324806463.2740.6.camel@lade.trondhjem.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-12-13 00:40, J. Bruce Fields wrote:
-> On Thu, Dec 08, 2011 at 06:09:07PM +0200, Benny Halevy wrote:
->> On 2011-12-07 19:11, J. Bruce Fields wrote:
->>> On Wed, Dec 07, 2011 at 03:17:48PM +0200, Benny Halevy wrote:
->>>> On 2011-12-07 01:08, J. Bruce Fields wrote:
->>>>> It's a little verbose, but yes it does nicely collect the current
->>>>> stateid getting/setting into one place.  Benny, is the more or less what
->>>>> you were thinking of?
+On 2011-12-25 11:47, Trond Myklebust wrote:
+> On Sun, 2011-12-25 at 06:37 +0200, Benny Halevy wrote: 
+>> On 2011-12-21 22:11, Tigran Mkrtchyan wrote:
+>>> On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
+>>> <Trond.Myklebust@netapp.com> wrote:
+>>>> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
+>>>>> Dear friends,
+>>>>>
+>>>>> We are observing strange behavior with RHEL 6.2:
+>>>>>
+>>>>> Our the server lease time is 90 seconds. I can see that client
+>>>>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+>>>>> At some point client sends SEQUENCE after 127 seconds and
+>>>>> gets, as expected, EXPIRED.
 >>>>
->>>> Yes it is, though I also liked your direction of just using the current
->>>> stateid for xdr decoding and encoding.
->>>
->>> I'd still have a slight preference for doing it that way, just because
->>> it would take fewer lines of code--but I can live with this too, so I'll
->>> leave the choice to Tigran's excellent taste....
->>>
->>>> { ~0, { { ~0, ~0 }, ~0 } } is ugly but compact :)
+>>>> Why shouldn't the client be allowed to let the lease expire if nothing
+>>>> is using that filesystem?
 >>>>
->>>> And the following may be an overkill...
->>>> {
->>>> 	.si_generation = ~0,
->>>> 	.si_opaque = {
->>>> 		.so_clid = {
->>>> 			.cl_boot = ~0,
->>>> 			.cl_id = ~0,
->>>> 		},
->>>> 		.so_id = ~0
->>>> 	}
->>>> };
+>>>>> I this point I have to blame myself.
+>>>>> Client comes with EXCHANGE_ID using the same clientid.
+>>>>> We did not garbage collected clientid internally as this happens after
+>>>>> 2*LEASE_TIME
+>>>>> and return EXPIRE. This ping-pong never ends.
+>>>>>
+>>>>> This is probably mostly a bug on my side. Nevertheless we never observed late
+>>>>> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+>>>>>
+>>>>> I can open bug at RHEL if required.
+>>>>
+>>>> I wouldn't consider that a bug.
 >>>
->>> Reminding myself of http://tools.ietf.org/html/rfc5661#section-8.2.3...
->>> "Stateid values whose "other" field is either all zeros or all ones are
->>> reserved."
->>>
->>> Maybe:
->>>
->>> #define all_ones   {{~0,~0 },~0}
->>> #define all_zeroes {{ 0, 0 }, 0}
->>> const stateid_t one_stateid = {
->>> 	.si_generation = ~0,
->>> 	.si_opaque = all_ones
->>> };
+>>> As I said, there is a bug in exchange_id processing ( case 3 ) on my
+>>> side. But to me it's sounds strange that client after more than 8
+>>> hours of sending only sequence decided to send one of them later than
+>>> lease time. Especially, that we did not have it with other kernels.
 >>
->> That looks like a good compromise to me.
+>> I'm inclined to agree.  The client can let the lease expire for sure
+>> and that's not a bug but the fact that the client sent the SEQUENCE operation
+>> after the lease had expired indicates it might not be aware of that fact
+>> and that seems to be a client bug.
 >>
->>> const stateid_t current_stateid = {
->>> 	.si_generation = 1,
->>> 	.si_opaque = all_zeroes
->>> };
->>> ...
->>>
->>> Or you could ditch the all_zeroes; it's just there for some kind of
->>> symmetry.
->>
->> Yeah, static initialization to zero is guaranteed.
+>> That said, I don't think that letting the lease expire when the client is idle
+>> is the most polite thing to do. Why let the server clean up after the client
+>> and revert to possibly un-optimized recovery paths rather than orderly
+>> destruction of the state by the client?
 > 
-> OK, applying the following assuming no objections.--b.
+> There are plenty of cases where the client can be idle for hours or even
+> _days_. What's the point of pinging the server all the time after
+> working hours?
+> 
+> If someone wants to code up a DESTROY_SESSION and DESTROY_CLIENTID in
+> order to make it formal, then fine, however note that we don't even do
+> that on a full unmount today.
+> 
 
-Ack
+The heavy lifting is releasing locks and returning layouts and delegations
+sending DESTROY_{SESSION,CLIENTID} would be nice to have but I don't think
+it's the most important issue.
 
 Benny
-
-> 
-> commit f32f3c2d3f09a586349ca9180885dc8741290fd9
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Mon Dec 12 15:00:35 2011 -0500
-> 
->     nfsd4: initialize special stateid's at compile time
->     
->     Stateid's with "other" ("opaque") field all zeros or all ones are
->     reserved.  We define all_ones separately on the off chance there will be
->     more such some day, though currently all the other special stateid's
->     have zero other field.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 6ab6779..213da7b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -49,12 +49,20 @@
->  time_t nfsd4_lease = 90;     /* default lease time */
->  time_t nfsd4_grace = 90;
->  static time_t boot_time;
-> -static stateid_t zerostateid;             /* bits all 0 */
-> -static stateid_t onestateid;              /* bits all 1 */
-> +
-> +#define all_ones {{~0,~0},~0}
-> +static const stateid_t one_stateid = {
-> +	.si_generation = ~0,
-> +	.si_opaque = all_ones,
-> +};
-> +static const stateid_t zero_stateid = {
-> +	/* all fields zero */
-> +};
-> +
->  static u64 current_sessionid = 1;
->  
-> -#define ZERO_STATEID(stateid) (!memcmp((stateid), &zerostateid, sizeof(stateid_t)))
-> -#define ONE_STATEID(stateid)  (!memcmp((stateid), &onestateid, sizeof(stateid_t)))
-> +#define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
-> +#define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
->  
->  /* forward declarations */
->  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-> @@ -4564,7 +4572,6 @@ nfs4_state_init(void)
->  	}
->  	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
->  		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
-> -	memset(&onestateid, ~0, sizeof(stateid_t));
->  	INIT_LIST_HEAD(&close_lru);
->  	INIT_LIST_HEAD(&client_lru);
->  	INIT_LIST_HEAD(&del_recall_lru);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
