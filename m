@@ -1,32 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53396 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759700Ab1LOXe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 18:34:57 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFNYvVe025815
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 18:34:57 -0500
-Message-ID: <4EEA841F.7090803@RedHat.com>
-Date: Thu, 15 Dec 2011 18:34:55 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:55546 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752207Ab1LYNyz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 08:54:55 -0500
+Date: Sun, 25 Dec 2011 08:54:43 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        fanchaoting <fanchaoting@cn.fujitsu.com>,
+        Benny Halevy <benny@tonian.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] fix do_xor_speed 64-bit devision issue on 32-bits arch
+Message-ID: <20111225135443.GA19491@umich.edu>
+References: <1323266927-3686-1-git-send-email-bhalevy@tonian.com>
+ <4EF422A8.5070907@cn.fujitsu.com>
+ <20111223132546.GA10015@umich.edu>
+ <4EF6B516.5070609@tonian.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>	<4EE8BF63.6080906@RedHat.com>	<20111214103247.3a67515f@tlielax.poochiereds.net>	<4EE8C45B.30207@RedHat.com>	<20111214110538.2adaf048@tlielax.poochiereds.net>	<4EE8CE18.2040306@RedHat.com>	<20111214113432.786ffbf7@tlielax.poochiereds.net>	<4EE9079D.2000607@RedHat.com>	<20111214160654.7c36fdc0@tlielax.poochiereds.net>	<4EE922EA.1010408@RedHat.com> <20111214204658.56063a5e@corrin.poochiereds.net>
-In-Reply-To: <20111214204658.56063a5e@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4EF6B516.5070609@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/14/2011 08:46 PM, Jeff Layton wrote:
-> Not to put too fine a point on it, but so far most of what I'm hearing
-> is fear, uncertainty and doubt about using sqlite for this. Does anyone
-> have a real technical reason as to why it's not suitable for this
-> purpose?
-> 
-Nope... Go for it!
+Benny Halevy wrote:
 
-steved.
+  > speed = do_div(BENCH_SIZE, 1024) * count * do_div(NSEC_PER_SEC, ns_end);
+  > 
+  > This might not be exactly right because it changes the operator precedence,
+  > but it should eliminate the calls to __udivdi3.
+  
+  Hmm, you mean execution order? (which you do not)
+  C (and fortunately gcc too :) treats multiplication and division with the
+  same priority and executes them from left to right...
+
+Yes, execution order.  The original code executes left-to-right, my code
+executes the divisions first.
+
+But I wouldn't blindly apply this without understanding what's going on
+here.  I thought the -fno-tree-scev-cprop compiler flag was supposed to
+emit division code instead of calling into a library.
