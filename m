@@ -1,72 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55269 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:16562 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751452Ab1LORoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 12:44:37 -0500
-Date: Thu, 15 Dec 2011 12:44:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Ric Wheeler <ricwheeler@gmail.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Hannes Reinecke <hare@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        Joel Becker <jlbec@evilplan.org>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>
-Subject: Re: copy offload support in Linux - new system call needed?
-Message-ID: <20111215174427.GA14614@fieldses.org>
-References: <4EE8F75F.6070800@gmail.com>
- <20111214192739.GN2203@ZenIV.linux.org.uk>
- <4EE8FC2E.3010207@gmail.com>
- <20111214222723.GD7623@fieldses.org>
- <1323961140.14317.2.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1323961140.14317.2.camel@lade.trondhjem.org>
+	id S1752895Ab1LYNZK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 08:25:10 -0500
+Message-ID: <1324819508.5195.8.camel@lade.trondhjem.org>
+Subject: Re: Session timeout on RHEL6.2
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: tigran.mkrtchyan@desy.de, linux-nfs <linux-nfs@vger.kernel.org>
+Date: Sun, 25 Dec 2011 14:25:08 +0100
+In-Reply-To: <4EF71125.1060901@tonian.com>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+	  <1324475851.7709.12.camel@lade.trondhjem.org>
+	  <CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
+	  <4EF6A898.2010207@tonian.com> <1324806463.2740.6.camel@lade.trondhjem.org>
+	 <4EF71125.1060901@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 15, 2011 at 09:59:00AM -0500, Trond Myklebust wrote:
-> On Wed, 2011-12-14 at 17:27 -0500, J. Bruce Fields wrote: 
-> > On Wed, Dec 14, 2011 at 02:42:38PM -0500, Ric Wheeler wrote:
-> > > On 12/14/2011 02:27 PM, Al Viro wrote:
-> > > >On Wed, Dec 14, 2011 at 02:22:07PM -0500, Ric Wheeler wrote:
-> > > >
-> > > >>We had an active thread a couple of years back that came out of the
-> > > >>reflink work and, at the time, there seemed to be moderately
-> > > >>positive support for adding a new system call that would fit this
-> > > >>use case (Joel Becker's copyfile()).
-> > > >>
-> > > >>Can we resurrect this effort? Is copyfile() still a good way to go,
-> > > >>or should we look at other hooks?
-> > > >copyfile(2) is probably a good way to go, provided that we do _not_
-> > > >go baroque as it had happened the last time syscall had been discussed.
-> > > >
-> > > >IOW, to hell with progress reports, etc. - just a fastpath kind of
-> > > >thing, in the same kind of relationship to cp(1) as rename(2) is to mv(1).
-> > > >If it works - fine, if not - caller has to be ready to deal with handling
-> > > >cross-device case anyway.
-> > > 
-> > > I think that this approach makes a lot of sense. Most of the
-> > > devices/targets that support the copy offload, will do it in very
-> > > reasonable amounts of time.
+On Sun, 2011-12-25 at 14:03 +0200, Benny Halevy wrote: 
+> On 2011-12-25 11:47, Trond Myklebust wrote:
+> > On Sun, 2011-12-25 at 06:37 +0200, Benny Halevy wrote: 
+> >> On 2011-12-21 22:11, Tigran Mkrtchyan wrote:
+> >>> On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
+> >>> <Trond.Myklebust@netapp.com> wrote:
+> >>>> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
+> >>>>> Dear friends,
+> >>>>>
+> >>>>> We are observing strange behavior with RHEL 6.2:
+> >>>>>
+> >>>>> Our the server lease time is 90 seconds. I can see that client
+> >>>>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+> >>>>> At some point client sends SEQUENCE after 127 seconds and
+> >>>>> gets, as expected, EXPIRED.
+> >>>>
+> >>>> Why shouldn't the client be allowed to let the lease expire if nothing
+> >>>> is using that filesystem?
+> >>>>
+> >>>>> I this point I have to blame myself.
+> >>>>> Client comes with EXCHANGE_ID using the same clientid.
+> >>>>> We did not garbage collected clientid internally as this happens after
+> >>>>> 2*LEASE_TIME
+> >>>>> and return EXPIRE. This ping-pong never ends.
+> >>>>>
+> >>>>> This is probably mostly a bug on my side. Nevertheless we never observed late
+> >>>>> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+> >>>>>
+> >>>>> I can open bug at RHEL if required.
+> >>>>
+> >>>> I wouldn't consider that a bug.
+> >>>
+> >>> As I said, there is a bug in exchange_id processing ( case 3 ) on my
+> >>> side. But to me it's sounds strange that client after more than 8
+> >>> hours of sending only sequence decided to send one of them later than
+> >>> lease time. Especially, that we did not have it with other kernels.
+> >>
+> >> I'm inclined to agree.  The client can let the lease expire for sure
+> >> and that's not a bug but the fact that the client sent the SEQUENCE operation
+> >> after the lease had expired indicates it might not be aware of that fact
+> >> and that seems to be a client bug.
+> >>
+> >> That said, I don't think that letting the lease expire when the client is idle
+> >> is the most polite thing to do. Why let the server clean up after the client
+> >> and revert to possibly un-optimized recovery paths rather than orderly
+> >> destruction of the state by the client?
 > > 
-> > The current NFSv4.2 draft rolls both the "fast" and "slow" cases into
-> > one operation:
+> > There are plenty of cases where the client can be idle for hours or even
+> > _days_. What's the point of pinging the server all the time after
+> > working hours?
 > > 
-> > 	http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-06#section-2
-> >  
-> > Perhaps we should ask for separate operations for the two cases.  (Or at
-> > least a "please don't bother if this is going to take 8 hours" flag....)
+> > If someone wants to code up a DESTROY_SESSION and DESTROY_CLIENTID in
+> > order to make it formal, then fine, however note that we don't even do
+> > that on a full unmount today.
+> > 
 > 
-> How would the server know?
+> The heavy lifting is releasing locks and returning layouts and delegations
+> sending DESTROY_{SESSION,CLIENTID} would be nice to have but I don't think
+> it's the most important issue.
 
-Sorry, "8 hours" was a joke--no, you can't require the server to predict
-whether an operation will take more or less than some precise duration.
+Actually, that requirement to return state is what makes
+DESTROY_CLIENTID a completely useless operation.
+Forget what I said then: it's too stupid to implement...
 
-I'm assuming the "fast" case that Al's proposing we do as a first step
-cover CoW operations?  (So O(1) or close to it, users typically won't be
-asking for progress reports, operation may be atomic (with no
-partial-failure case), ?)
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
