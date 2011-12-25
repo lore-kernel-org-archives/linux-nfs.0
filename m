@@ -1,55 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34607 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752356Ab1LEIN4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2011 03:13:56 -0500
-Received: by mail-bw0-f46.google.com with SMTP id zv3so1472947bkb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Dec 2011 00:13:55 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/10] add missing includes
-Date: Mon,  5 Dec 2011 10:13:50 +0200
-Message-Id: <1323072830-18309-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDC7C4E.1040901@tonian.com>
-References: <4EDC7C4E.1040901@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:35956 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751584Ab1LYJsC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Dec 2011 04:48:02 -0500
+Message-ID: <1324806463.2740.6.camel@lade.trondhjem.org>
+Subject: Re: Session timeout on RHEL6.2
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: tigran.mkrtchyan@desy.de, linux-nfs <linux-nfs@vger.kernel.org>
+Date: Sun, 25 Dec 2011 10:47:43 +0100
+In-Reply-To: <4EF6A898.2010207@tonian.com>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+	 <1324475851.7709.12.camel@lade.trondhjem.org>
+	 <CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
+	 <4EF6A898.2010207@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+On Sun, 2011-12-25 at 06:37 +0200, Benny Halevy wrote: 
+> On 2011-12-21 22:11, Tigran Mkrtchyan wrote:
+> > On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
+> > <Trond.Myklebust@netapp.com> wrote:
+> >> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
+> >>> Dear friends,
+> >>>
+> >>> We are observing strange behavior with RHEL 6.2:
+> >>>
+> >>> Our the server lease time is 90 seconds. I can see that client
+> >>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+> >>> At some point client sends SEQUENCE after 127 seconds and
+> >>> gets, as expected, EXPIRED.
+> >>
+> >> Why shouldn't the client be allowed to let the lease expire if nothing
+> >> is using that filesystem?
+> >>
+> >>> I this point I have to blame myself.
+> >>> Client comes with EXCHANGE_ID using the same clientid.
+> >>> We did not garbage collected clientid internally as this happens after
+> >>> 2*LEASE_TIME
+> >>> and return EXPIRE. This ping-pong never ends.
+> >>>
+> >>> This is probably mostly a bug on my side. Nevertheless we never observed late
+> >>> SEQUENCE with kernel > 2.6.39. A short packet dump attached.
+> >>>
+> >>> I can open bug at RHEL if required.
+> >>
+> >> I wouldn't consider that a bug.
+> > 
+> > As I said, there is a bug in exchange_id processing ( case 3 ) on my
+> > side. But to me it's sounds strange that client after more than 8
+> > hours of sending only sequence decided to send one of them later than
+> > lease time. Especially, that we did not have it with other kernels.
+> 
+> I'm inclined to agree.  The client can let the lease expire for sure
+> and that's not a bug but the fact that the client sent the SEQUENCE operation
+> after the lease had expired indicates it might not be aware of that fact
+> and that seems to be a client bug.
+> 
+> That said, I don't think that letting the lease expire when the client is idle
+> is the most polite thing to do. Why let the server clean up after the client
+> and revert to possibly un-optimized recovery paths rather than orderly
+> destruction of the state by the client?
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- ctl.c |    2 ++
- efi.c |    2 ++
- 2 files changed, 4 insertions(+), 0 deletions(-)
+There are plenty of cases where the client can be idle for hours or even
+_days_. What's the point of pinging the server all the time after
+working hours?
 
-diff --git a/ctl.c b/ctl.c
-index 7432a09..d989ab8 100644
---- a/ctl.c
-+++ b/ctl.c
-@@ -1,7 +1,9 @@
- #include <stdio.h>
- #include <string.h>
- #include <stdlib.h>
-+#include <unistd.h>
- #include <sys/time.h>
-+#include <sys/wait.h>
- #include <event.h>
- #include <pthread.h>
- 
-diff --git a/efi.c b/efi.c
-index b653092..67b6211 100644
---- a/efi.c
-+++ b/efi.c
-@@ -95,6 +95,8 @@
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
-+#include <unistd.h>
-+#include <sys/types.h>
- 
- #include "efi.h"
- 
+If someone wants to code up a DESTROY_SESSION and DESTROY_CLIENTID in
+order to make it formal, then fine, however note that we don't even do
+that on a full unmount today.
+
 -- 
-1.7.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
