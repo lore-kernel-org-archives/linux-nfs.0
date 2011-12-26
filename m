@@ -1,65 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46476 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:31338 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751334Ab1LLQ2A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Dec 2011 11:28:00 -0500
-Message-ID: <4EE62B78.9030000@parallels.com>
-Date: Mon, 12 Dec 2011 20:27:36 +0400
+	id S1755213Ab1LZLoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:44:22 -0500
+Subject: [PATCH v2 4/6] SUNPRC: cleanup RPC PipeFS pipes upcall interface
+To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 26 Dec 2011 15:43:49 +0300
+Message-ID: <20111226114349.13743.27944.stgit@localhost6.localdomain6>
+In-Reply-To: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+References: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/4] SUNRPC: pass network namespace context to sockaddr
- construction routines
-References: <20111207111716.17273.63010.stgit@localhost6.localdomain6> <20111208204648.GB32505@fieldses.org> <4EE62824.9090807@parallels.com> <20111212161542.GH18185@fieldses.org>
-In-Reply-To: <20111212161542.GH18185@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-12.12.2011 20:15, J. Bruce Fields пишет:
-> On Mon, Dec 12, 2011 at 08:13:24PM +0400, Stanislav Kinsbursky wrote:
->> 09.12.2011 00:46, J. Bruce Fields пишет:
->>> On Wed, Dec 07, 2011 at 03:20:07PM +0300, Stanislav Kinsbursky wrote:
->>>> This is another precursor patch set aimed to remove hard-coded "init_net"
->>>> reference from SUNRPC sockaddr convertion and construction routines.
->>>
->>> ACK--all look straightforward.  (Only complaint would be that this isn't
->>> terribly interesting till we see how these are used.)
->>>
->>
->> Actually, all is simple. These init_net pointers will be replaced
->> later by "transports, clients and others" network namespace
->> contexts.
->> I have some more patches for NFS layer. But I don't see any sense to
->> sent them now since no "virtualization" patches were commited yet.
->> So, currently, I'm trying to finalize "SUNRPC per network namespace"
->> task, and soon I'll send a patch set making SUNRPC sysctl's
->> network-namespace-aware. It is a little bit tricky and ugly from my
->> pow, so any ideas are welcome.
->
-> No ideas.... What's the ugly part?
->
-> --b.
+RPC pipe upcall doesn't requires only private pipe data. Thus RPC inode
+references in this code can be removed.
 
-I have some "idée fixe", that all this file system parts of SUNRPC (and NFS) 
-layers have to made per network namespace context in the same manner as sysfs 
-done. I.e. it's content should depends on mount point creator network namespace 
-context instead of "current" one.
-But proc (and sysctl's as well) doesn't allow to make it so simple like sysfs does.
-So, currently sysctl's code is about 30 lines. With my patches in will be 
-approximately 3-4 times longer.
-But this "dependence on mount point creator network namespace" goal is achieved.
-Anyway, I'll cleanup this code and send path set soon.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
+---
+ fs/nfs/blocklayout/blocklayoutdev.c |    2 +-
+ fs/nfs/blocklayout/blocklayoutdm.c  |    2 +-
+ fs/nfs/idmap.c                      |    4 ++--
+ include/linux/sunrpc/rpc_pipe_fs.h  |    2 +-
+ net/sunrpc/auth_gss/auth_gss.c      |    3 +--
+ net/sunrpc/rpc_pipe.c               |    3 +--
+ 6 files changed, 7 insertions(+), 9 deletions(-)
 
--- 
-Best regards,
-Stanislav Kinsbursky
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index d08ba91..8101919 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -146,7 +146,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 
+ 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
+ 	add_wait_queue(&bl_wq, &wq);
+-	rc = rpc_queue_upcall(bl_device_pipe->d_inode, &msg);
++	rc = rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg);
+ 	if (rc < 0) {
+ 		remove_wait_queue(&bl_wq, &wq);
+ 		rv = ERR_PTR(rc);
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+index d055c75..3c38244 100644
+--- a/fs/nfs/blocklayout/blocklayoutdm.c
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -66,7 +66,7 @@ static void dev_remove(dev_t dev)
+ 	msg.len = sizeof(bl_msg) + bl_msg.totallen;
+ 
+ 	add_wait_queue(&bl_wq, &wq);
+-	if (rpc_queue_upcall(bl_device_pipe->d_inode, &msg) < 0) {
++	if (rpc_queue_upcall(RPC_I(bl_device_pipe->d_inode)->pipe, &msg) < 0) {
+ 		remove_wait_queue(&bl_wq, &wq);
+ 		goto out;
+ 	}
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 47d1c6f..4194129 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -506,7 +506,7 @@ nfs_idmap_id(struct idmap *idmap, struct idmap_hashtable *h,
+ 	msg.len = sizeof(*im);
+ 
+ 	add_wait_queue(&idmap->idmap_wq, &wq);
+-	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
++	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
+ 		remove_wait_queue(&idmap->idmap_wq, &wq);
+ 		goto out;
+ 	}
+@@ -567,7 +567,7 @@ nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
+ 
+ 	add_wait_queue(&idmap->idmap_wq, &wq);
+ 
+-	if (rpc_queue_upcall(idmap->idmap_dentry->d_inode, &msg) < 0) {
++	if (rpc_queue_upcall(RPC_I(idmap->idmap_dentry->d_inode)->pipe, &msg) < 0) {
+ 		remove_wait_queue(&idmap->idmap_wq, &wq);
+ 		goto out;
+ 	}
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index c2fa330..ad78bea 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -64,7 +64,7 @@ extern void rpc_put_sb_net(const struct net *net);
+ 
+ extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
+ 				       char __user *, size_t);
+-extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
++extern int rpc_queue_upcall(struct rpc_pipe *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, struct qstr *, struct rpc_clnt *);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 89fc914..5ba678d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -475,8 +475,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+ 		return gss_new;
+ 	gss_msg = gss_add_msg(gss_new);
+ 	if (gss_msg == gss_new) {
+-		struct inode *inode = &gss_new->inode->vfs_inode;
+-		int res = rpc_queue_upcall(inode, &gss_new->msg);
++		int res = rpc_queue_upcall(gss_new->inode->pipe, &gss_new->msg);
+ 		if (res) {
+ 			gss_unhash_msg(gss_new);
+ 			gss_msg = ERR_PTR(res);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index cecdc1f..dc24af3 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -130,9 +130,8 @@ EXPORT_SYMBOL_GPL(rpc_pipe_generic_upcall);
+  * initialize the fields of @msg (other than @msg->list) appropriately.
+  */
+ int
+-rpc_queue_upcall(struct inode *inode, struct rpc_pipe_msg *msg)
++rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
+ {
+-	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
+ 	int res = -EPIPE;
+ 
+ 	spin_lock(&pipe->lock);
+
