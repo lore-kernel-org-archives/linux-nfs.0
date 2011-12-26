@@ -1,48 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-2.desy.de ([131.169.56.85]:57799 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753262Ab1LDMLf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 07:11:35 -0500
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 70A73E3F
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Dec 2011 13:02:23 +0100 (MET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 663FEE3A
-	for <linux-nfs@vger.kernel.org>; Sun,  4 Dec 2011 13:02:23 +0100 (MET)
-Received: from smtp-intra-2.desy.de (lb-40-26.desy.de) by ZITSWEEP2.win.desy.de
- (Clearswift SMTPRS 5.4.1) with ESMTP id <Ta11593d13283a961601330@ZITSWEEP2.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Sun, 4 Dec 2011 13:02:23 +0100
-From: tigran.mkrtchyan@desy.de
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 1/2] nfsv41: add current stateid into compound_state
-Date: Sun,  4 Dec 2011 13:03:56 +0100
-Message-Id: <1323000237-13565-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1323000237-13565-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mailhub.sw.ru ([195.214.232.25]:18080 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755383Ab1LZMZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 07:25:43 -0500
+Message-ID: <4EF867A2.2020003@parallels.com>
+Date: Mon, 26 Dec 2011 16:25:06 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: make SUNPRC clients list per network namespace
+ context
+References: <20111214081918.2804.59143.stgit@localhost6.localdomain6> <1324817295.5195.0.camel@lade.trondhjem.org>
+In-Reply-To: <1324817295.5195.0.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+25.12.2011 16:48, Trond Myklebust пишет:
+> On Wed, 2011-12-14 at 12:19 +0300, Stanislav Kinsbursky wrote:
+>> This patch moves static SUNRPC clients list and it's lock to sunrpc_net
+>> structure.
+>> Currently this list is used only for debug purposes. But later it will be used
+>> also for selecting clients by networks namespace on PipeFS mount/umount events.
+>> Per-network namespace lists will make this faster and simplier.
+>>
+>> Note: client list is taken from "init_net" network namespace context in
+>> rpc_show_tasks(). This will be changed with making SUNRPC sysctl's per network
+>> namespace context.
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>
+> This doesn't seem to integrate with any of your patch series, and
+> conflicts with everything that touches netns.h, for instance...
+>
 
+Yep, you are right. Currently this path doesn't apply, if you'll try to apply 
+patches in the same order I've sent them.
+This is caused by different development branches.
+Anyway, most of the patches will not apply to current tree.
+And I'll be glad to rebase and resent them on request.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- fs/nfsd/xdr4.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..7f26edd 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -54,6 +54,7 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
-+	stateid_t		current_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 -- 
-1.7.7.3
-
+Best regards,
+Stanislav Kinsbursky
