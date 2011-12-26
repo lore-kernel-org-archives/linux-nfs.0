@@ -1,62 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34374 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:7989 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759035Ab1LOQAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:00:17 -0500
-Subject: [PATCH 1/7] SUNRPC: create rpcbind client in passed network namespace
- context
+	id S1754585Ab1LZLjW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:39:22 -0500
+Subject: [PATCH v3 0/7] SUNRPC: initial part of making pipefs work in net ns
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
         devel@openvz.org
-Date: Thu, 15 Dec 2011 19:59:51 +0300
-Message-ID: <20111215155951.2434.61942.stgit@localhost6.localdomain6>
-In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
-References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+Date: Mon, 26 Dec 2011 15:38:48 +0300
+Message-ID: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rpcbind clients are per network namespace.
+This patch-set was created in context of clone of git branch:
+git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+v3:
+1) Rebased on tag "v3.2-rc7".
+
+v2:
+1) Rebased of current repo state (i.e. all commits were pulled before apply)
+
+This patch-set implements pipefs superblock creation per network namespace
+context instead of using single one for all possible contexts. Also, it
+provides pipefs dentries creation and destruction helpers for kernel routines.
+
+Additional description of the idea about how to make RPC pipefs work per
+network namespace context can be found in the letter titled "SUNRPC: "RPC
+pipefs per network namespace" preparations", which has been sent already to
+linux-nfs@vger.kernel.org.
+The following series consists of:
 
 ---
- net/sunrpc/rpcb_clnt.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 46f5915..43eff03 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -344,11 +344,12 @@ out:
- 	return result;
- }
- 
--static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
--				    size_t salen, int proto, u32 version)
-+static struct rpc_clnt *rpcb_create(struct net *net, char *hostname,
-+				    struct sockaddr *srvaddr, size_t salen,
-+				    int proto, u32 version)
- {
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= proto,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
-@@ -708,8 +709,8 @@ void rpcb_getport_async(struct rpc_task *task)
- 	dprintk("RPC: %5u %s: trying rpcbind version %u\n",
- 		task->tk_pid, __func__, bind_version);
- 
--	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
--				bind_version);
-+	rpcb_clnt = rpcb_create(xprt->xprt_net, clnt->cl_server, sap, salen,
-+				xprt->prot, bind_version);
- 	if (IS_ERR(rpcb_clnt)) {
- 		status = PTR_ERR(rpcb_clnt);
- 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+Stanislav Kinsbursky (7):
+      SUNRPC: create RPC pipefs superblock per network namespace context
+      SUNRPC: hold current network namespace while pipefs superblock is active
+      SUNRPC: send notification events on pipefs sb creation and destruction
+      SUNRPC: pipefs dentry lookup helper introduced
+      SUNRPC: put pipefs superblock link on network namespace
+      SUNRPC: pipefs per-net operations helper introduced
+      SUNRPC: added debug messages to RPC pipefs
 
+
+ include/linux/sunrpc/rpc_pipe_fs.h |   14 ++++
+ net/sunrpc/netns.h                 |    3 +
+ net/sunrpc/rpc_pipe.c              |  113 +++++++++++++++++++++++++++++++++++-
+ net/sunrpc/sunrpc_syms.c           |    1 
+ 4 files changed, 129 insertions(+), 2 deletions(-)
+
+-- 
+Signature
