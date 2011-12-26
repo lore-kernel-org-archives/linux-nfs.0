@@ -1,40 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:61297 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753267Ab1LFVNd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Dec 2011 16:13:33 -0500
-Received: by ggnr5 with SMTP id r5so6750605ggn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Dec 2011 13:13:32 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] Cache state owners [take 2]
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 06 Dec 2011 16:13:30 -0500
-Message-ID: <20111206210723.5969.85159.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:26493 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754703Ab1LZLvQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:51:16 -0500
+Message-ID: <4EF85F8B.6070004@parallels.com>
+Date: Mon, 26 Dec 2011 15:50:35 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 0/6] SUNPRC: cleanup PipeFS for network-namespace-aware
+ users
+References: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+In-Reply-To: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This has seen some light testing.  Changes since version 1:
+Hello, Trond.
+This patch set depend on
+"SUNRPC: initial part of making pipefs work in net ns"
+and
+"SUNRPC: remove non-exclusive pipe creation from RPC pipefs"
 
-  o Inclusion of additional nfs4_find_state_owners_locked() clean up
-  o Follow Bruce's suggestion to set ->destroy in common setup function
-  o Use time_in_range() instead of time_before() to check for expiry
-  o Discard state owners immediately in certain cases
-
----
-
-Chuck Lever (2):
-      NFS: Cache state owners after files are closed
-      NFS: Clean up nfs4_find_state_owners_locked()
-
-
- fs/nfs/client.c           |    8 ++++
- fs/nfs/nfs4_fs.h          |    3 +
- fs/nfs/nfs4state.c        |  102 ++++++++++++++++++++++++++++++++++++---------
- include/linux/nfs_fs_sb.h |    1 
- 4 files changed, 94 insertions(+), 20 deletions(-)
+I'm not sure about did you applied them already or not, so I've rebased and 
+resent them too.
 
 -- 
-Chuck Lever
+Best regards,
+Stanislav Kinsbursky
