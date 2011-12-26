@@ -1,86 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9368 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:24170 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751652Ab1LUNVl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Dec 2011 08:21:41 -0500
-Date: Wed, 21 Dec 2011 08:21:16 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 3/7] nfsdcld: add autoconf goop for sqlite
-Message-ID: <20111221082116.49e8215e@tlielax.poochiereds.net>
-In-Reply-To: <20111220211838.GA24085@fieldses.org>
-References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
-	<1323974641-16515-4-git-send-email-jlayton@redhat.com>
-	<20111220141749.583ce3d0@tlielax.poochiereds.net>
-	<20111220211838.GA24085@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754623Ab1LZLnu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:43:50 -0500
+Subject: [PATCH v2 0/6] SUNPRC: cleanup PipeFS for network-namespace-aware
+ users
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 26 Dec 2011 15:43:15 +0300
+Message-ID: <20111226114042.13743.73804.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 20 Dec 2011 16:18:38 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This patch-set was created in context of clone of git
+branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+tag: v3.2-rc7
 
-> On Tue, Dec 20, 2011 at 02:17:49PM -0500, Jeff Layton wrote:
-> > On Thu, 15 Dec 2011 13:43:57 -0500
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > Mostly cribbed from Chuck Lever's new-statd rewrite a few years ago...
-> > > 
-> > 
-> > Sending this to Bruce and Steve, but cc'ing the list in case other
-> > people have thoughts...
-> > 
-> > I have a couple of questions about configure/build behavior when the
-> > dependencies aren't present on the build system. The patch below
-> > autodisables the building of nfsdcld when sqlite isn't there or isn't
-> > functional, etc.
-> > 
-> > This is probably fine initially, but eventually I'd like to see the
-> > old state tracking code go away. At that point, this daemon will be
-> > required for NFSv4 serving.
-> > 
-> > Some questions:
-> > 
-> > 1) does anyone have a problem with deprecating the old state tracking
-> > code? I'd prefer we not maintain it in perpetuity, but maybe there's an
-> > argument for keeping it around?
-> 
-> Just the usual: the kernel community depends for some of its testing on
-> people being willing to upgrade to the latest kernel.  So we try to
-> ensure they can just drop in a new kernel without breaking a random
-> subsystem that (as non-NFS specialists) they don't ordinarily have to
-> think about....
-> 
+v2:
+1) rebased on tag "v3.2-rc7"
+2) some cleanup and minor changes
 
-There's the rub. The legacy scheme is completely transparent for most
-users. There's no daemon involved, so they don't need to set anything
-up. That's not the case with the new scheme.
+This is cleanup precursor patch set. It's required for easier further
+implementation of network-namespace-aware SUNRPC PipeFS pipes creators.
+Generally, this patch set split SUNRPC PipeFS logic into two parts: working
+with pipes (new rpc_pipe structure with link to PipeFS dentry) and
+creating/destroying PipeFS dentries (old rpc_inode structure with link to
+rpc_pipe).
+With this patch-set kernel PipeFS pipes users initially creates
+rpc_pipe data and then creates Pipefs dentries. Later these dentries will be
+created in notifier callbacks on PipeFS mount event from user-space and in
+network namespace operations for such modules like nfs and blocklayout.
 
-If we do want to eventually deprecate the old code, what I think we'd
-do is add printk's that say we're deprecating the old code in release
-3.x, and to ensure that nfsdcld is running. We'd want to do that for at
-least 2 releases before removing anything, but could do so for longer
-too.
+The following series consists of:
 
-> > 2) assuming we do want to eventually deprecate the old code. When
-> > should we plan to do this. Assuming that this goes into 3.3 and we add
-> > sufficient printk warnings when the old tracker is used, the earliest
-> > we could remove it is 3.5. Is that too aggressive?
-> 
-> That sounds a little aggressive.  It may depend on how much trouble we
-> find it is to keep it up to date.
-> 
-> Then again I guess it depends how obnoxiously we fail in the case the
-> new daemon isn't running.
-> 
+---
 
-Ok, it sounds like you're leaning toward keeping the old code around
-for now and not forcing anyone onto the new. The only downside I can
-see is the maintenance hassle (which is fairly low for now), and the
-fact that it adds a new dimension to the testing matrix. If we can live
-with that, then I won't worry about deprecating anything at this point.
+Stanislav Kinsbursky (6):
+      SUNRPC: replace inode lock with pipe lock for RPC PipeFS operations
+      SUNRPC: split SUNPRC PipeFS pipe data and inode creation
+      SUNRPC: cleanup PipeFS redundant RPC inode usage
+      SUNPRC: cleanup RPC PipeFS pipes upcall interface
+      SUNRPC: cleanup GSS pipes usage
+      SUNRPC: split SUNPRC PipeFS dentry and private pipe data creation
+
+
+ fs/nfs/blocklayout/blocklayout.c    |   16 ++
+ fs/nfs/blocklayout/blocklayout.h    |    2 
+ fs/nfs/blocklayout/blocklayoutdev.c |    2 
+ fs/nfs/blocklayout/blocklayoutdm.c  |    2 
+ fs/nfs/idmap.c                      |   28 +++-
+ include/linux/sunrpc/rpc_pipe_fs.h  |   20 ++-
+ net/sunrpc/auth_gss/auth_gss.c      |  130 ++++++++++--------
+ net/sunrpc/rpc_pipe.c               |  258 +++++++++++++++++++----------------
+ 8 files changed, 262 insertions(+), 196 deletions(-)
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Signature
