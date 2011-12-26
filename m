@@ -1,76 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:6210 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:34955 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932589Ab1LOQAu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 11:00:50 -0500
-Subject: [PATCH 6/7] SUNRPC: register service on creation in current network
- namespace
+	id S1754668Ab1LZLkV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:40:21 -0500
+Subject: [PATCH v3 7/7] SUNRPC: added debug messages to RPC pipefs
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
         devel@openvz.org
-Date: Thu, 15 Dec 2011 20:00:32 +0300
-Message-ID: <20111215160031.2434.9937.stgit@localhost6.localdomain6>
-In-Reply-To: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
-References: <20111215155252.2434.39434.stgit@localhost6.localdomain6>
+Date: Mon, 26 Dec 2011 15:39:47 +0300
+Message-ID: <20111226113947.13216.91503.stgit@localhost6.localdomain6>
+In-Reply-To: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
+References: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Service, using rpcbind (Lockd, NFSd) are starting from userspace call and thus
-we can use current network namespace.
-There could be a problem with NFSd service, because it's creation can be called
-through NFSd fs from different network namespace. But this is a part of "NFSd
-per net ns" task and will be fixed in future.
+This patch adds debug messages for notification events.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
- net/sunrpc/svc.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
+ net/sunrpc/rpc_pipe.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 137475a..578f962 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -20,6 +20,7 @@
- #include <linux/module.h>
- #include <linux/kthread.h>
- #include <linux/slab.h>
-+#include <linux/nsproxy.h>
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index e40ec55..0cafd59 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -33,6 +33,10 @@
+ #include "netns.h"
+ #include "sunrpc.h"
  
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
-@@ -366,16 +367,16 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
- 	return &serv->sv_pools[pidx % serv->sv_nrpools];
- }
++#define RPCDBG_FACILITY RPCDBG_DEBUG
++
++#define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
++
+ static struct vfsmount *rpc_mnt __read_mostly;
+ static int rpc_mount_count;
  
--static int svc_rpcb_setup(struct svc_serv *serv)
-+static int svc_rpcb_setup(struct svc_serv *serv, struct net *net)
- {
- 	int err;
- 
--	err = rpcb_create_local(&init_net);
-+	err = rpcb_create_local(net);
- 	if (err)
- 		return err;
- 
- 	/* Remove any stale portmap registrations */
--	svc_unregister(serv, &init_net);
-+	svc_unregister(serv, net);
- 	return 0;
- }
- 
-@@ -468,7 +469,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+@@ -1083,6 +1087,8 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
  	}
- 
- 	if (svc_uses_rpcbind(serv)) {
--	       	if (svc_rpcb_setup(serv) < 0) {
-+	       	if (svc_rpcb_setup(serv, current->nsproxy->net_ns) < 0) {
- 			kfree(serv->sv_pools);
- 			kfree(serv);
- 			return NULL;
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++	dprintk("RPC:	sending pipefs MOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+ 					   sb);
+@@ -1116,6 +1122,8 @@ void rpc_kill_sb(struct super_block *sb)
+ 	sn->pipefs_sb = NULL;
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+ 	put_net(net);
++	dprintk("RPC:	sending pipefs UMOUNT notification for net %p%s\n", net,
++								NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
 
