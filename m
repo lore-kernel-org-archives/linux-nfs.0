@@ -1,86 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33293 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:35737 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757799Ab1LGQcz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 11:32:55 -0500
-Date: Wed, 7 Dec 2011 11:32:52 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Harald Dunkel <harri@afaics.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 fsid=0 export still necessary?
-Message-ID: <20111207163252.GB20079@fieldses.org>
-References: <4EDA0650.9080702@afaics.de>
- <4EDA5387.5070103@RedHat.com>
- <20111206011007.GD3678@fieldses.org>
- <4EDF94AE.10302@RedHat.com>
+	id S1754613Ab1LZLbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:31:13 -0500
+Subject: [PATCH v2] SUNRPC: remove non-exclusive pipe creation from RPC pipefs
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 26 Dec 2011 15:30:37 +0300
+Message-ID: <20111226113007.12755.34823.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4EDF94AE.10302@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 07, 2011 at 11:30:38AM -0500, Steve Dickson wrote:
-> 
-> 
-> On 12/05/2011 08:10 PM, J. Bruce Fields wrote:
-> > On Sat, Dec 03, 2011 at 11:51:19AM -0500, Steve Dickson wrote:
-> >> No, the fsid=0 export option is no longer necessary to make v4
-> >> exports compatible with v2/v3 exports. When the fsid option
-> >> is not set, the default root is define as "/" which allows
-> >> the v4 clients to mount the same exports as does the v2/v3 clients.
-> >>
-> >> Now if you do not what "/" as your default root, you can
-> >> set fsid to something like fsid=/export. This will
-> >> change to default root to the /export directory which
-> >> means your v4 clients will only be able to access exports
-> >> under the /export directory. 
-> > 
-> > I actually have some old patches that allow you to use an alternate root
-> > for all NFS versions; you'd do something like:
-> > 
-> > 	/exports	*(ro, root)
-> > 	/exports/foo	*(rw)
-> > 	/exports/bar	*(rw)
-> > 
-> > and then a v2, v3, or v4 client would mount server:/foo or server:/bar.
-> > 
-> > But that was just a fun project, it wasn't clear to me whether anyone
-> > wanted it particularly.
-> > 
-> > Also, that didn't seem like a great user interface.  I'd rather have
-> > something like
-> > 
-> > 	rootpath=/exports
-> > 	foo	*(rw)
-> > 	bar	*(rw)
-> > 
-> > Actually, as long as we were doing that I'd rather replace /etc/exports
-> > entirely; maybe do something like
-> > 
-> > 	[nfsd]
-> > 		rootpath=/exports
-> > 	[export "foo"]
-> > 		clients=*
-> > 		options=rw
-> > 	[exports "bar"]
-> > 		clients=*
-> > 		options=rw
-> > 
-> > And also use the same file for other nfsd parameters:
-> > 
-> > 	[nfsd]
-> > 		versions=2,3,4,4.1
-> > 		threads=8
-> > 		rootpath=/exports
-> > 	[export "foo"]
-> > 		...
-> I kinda like this idea... In the systemd world, its less
-> error prone to have daemons read their own configuration 
-> files... 
-> 
-> Where would this new file live and what would be called?
+This patch was created in context of clone of git branch:
+git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
+and rebased on tag "v3.2-rc7".
 
-I'm not sure.... Where did you end up putting the file for nfs mount
-configuration?
+v2:
+1) rebased on tag "v3.2-rc7".
 
---b.
+SUNRPC pipefs non-exclusive pipe creation code looks obsolete. IOW, as I see
+it, all pipes are creating with unique full path and only once.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    1 -
+ net/sunrpc/rpc_pipe.c              |   44 +++++-------------------------------
+ 2 files changed, 6 insertions(+), 39 deletions(-)
+
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index e4ea430..08aae01 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -30,7 +30,6 @@ struct rpc_inode {
+ 	int pipelen;
+ 	int nreaders;
+ 	int nwriters;
+-	int nkern_readwriters;
+ 	wait_queue_head_t waitq;
+ #define RPC_PIPE_WAIT_FOR_OPEN	1
+ 	int flags;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index bfddd68..e2f7b7f 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -555,7 +555,6 @@ static int __rpc_mkpipe(struct inode *dir, struct dentry *dentry,
+ 	if (err)
+ 		return err;
+ 	rpci = RPC_I(dentry->d_inode);
+-	rpci->nkern_readwriters = 1;
+ 	rpci->private = private;
+ 	rpci->flags = flags;
+ 	rpci->ops = ops;
+@@ -588,16 +587,12 @@ static int __rpc_unlink(struct inode *dir, struct dentry *dentry)
+ static int __rpc_rmpipe(struct inode *dir, struct dentry *dentry)
+ {
+ 	struct inode *inode = dentry->d_inode;
+-	struct rpc_inode *rpci = RPC_I(inode);
+ 
+-	rpci->nkern_readwriters--;
+-	if (rpci->nkern_readwriters != 0)
+-		return 0;
+ 	rpc_close_pipes(inode);
+ 	return __rpc_unlink(dir, dentry);
+ }
+ 
+-static struct dentry *__rpc_lookup_create(struct dentry *parent,
++static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+ 					  struct qstr *name)
+ {
+ 	struct dentry *dentry;
+@@ -605,27 +600,13 @@ static struct dentry *__rpc_lookup_create(struct dentry *parent,
+ 	dentry = d_lookup(parent, name);
+ 	if (!dentry) {
+ 		dentry = d_alloc(parent, name);
+-		if (!dentry) {
+-			dentry = ERR_PTR(-ENOMEM);
+-			goto out_err;
+-		}
++		if (!dentry)
++			return ERR_PTR(-ENOMEM);
+ 	}
+-	if (!dentry->d_inode)
++	if (dentry->d_inode == NULL) {
+ 		d_set_d_op(dentry, &rpc_dentry_operations);
+-out_err:
+-	return dentry;
+-}
+-
+-static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+-					  struct qstr *name)
+-{
+-	struct dentry *dentry;
+-
+-	dentry = __rpc_lookup_create(parent, name);
+-	if (IS_ERR(dentry))
+-		return dentry;
+-	if (dentry->d_inode == NULL)
+ 		return dentry;
++	}
+ 	dput(dentry);
+ 	return ERR_PTR(-EEXIST);
+ }
+@@ -813,22 +794,9 @@ struct dentry *rpc_mkpipe(struct dentry *parent, const char *name,
+ 	q.hash = full_name_hash(q.name, q.len),
+ 
+ 	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
+-	dentry = __rpc_lookup_create(parent, &q);
++	dentry = __rpc_lookup_create_exclusive(parent, &q);
+ 	if (IS_ERR(dentry))
+ 		goto out;
+-	if (dentry->d_inode) {
+-		struct rpc_inode *rpci = RPC_I(dentry->d_inode);
+-		if (rpci->private != private ||
+-				rpci->ops != ops ||
+-				rpci->flags != flags) {
+-			dput (dentry);
+-			err = -EBUSY;
+-			goto out_err;
+-		}
+-		rpci->nkern_readwriters++;
+-		goto out;
+-	}
+-
+ 	err = __rpc_mkpipe(dir, dentry, umode, &rpc_pipe_fops,
+ 			   private, ops, flags);
+ 	if (err)
+
