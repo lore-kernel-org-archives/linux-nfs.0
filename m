@@ -1,105 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26481 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:34939 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753734Ab1LNQ0B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 11:26:01 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBEGQ09r003757
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Dec 2011 11:26:01 -0500
-Message-ID: <4EE8CE18.2040306@RedHat.com>
-Date: Wed, 14 Dec 2011 11:26:00 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755022Ab1LZLj4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Dec 2011 06:39:56 -0500
+Subject: [PATCH v3 4/7] SUNRPC: pipefs dentry lookup helper introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 26 Dec 2011 15:39:22 +0300
+Message-ID: <20111226113922.13216.45211.stgit@localhost6.localdomain6>
+In-Reply-To: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
+References: <20111226113504.13216.19798.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] clstated: add a daemon to track NFSv4 client names
- on stable storage (RFC)
-References: <1323871032-3191-1-git-send-email-jlayton@redhat.com>	<4EE8BF63.6080906@RedHat.com>	<20111214103247.3a67515f@tlielax.poochiereds.net>	<4EE8C45B.30207@RedHat.com> <20111214110538.2adaf048@tlielax.poochiereds.net>
-In-Reply-To: <20111214110538.2adaf048@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In all places, where pipefs dentries are created, only directory inode is
+actually required to create new dentry. And all this directories has root
+pipefs dentry as their parent. So we actually don't need this pipefs mount
+point at all if some pipefs lookup method will be provided.
+IOW, all we really need is just superblock and simple lookup method to find
+root's child dentry with appropriate name. And this patch introduces this
+method.
+Note, that no locking implemented in rpc_d_lookup_sb(). So it can be used only
+in case of assurance, that pipefs superblock still exist. IOW, we can use this
+method only in pipefs mount-umount notification subscribers callbacks.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On 12/14/2011 11:05 AM, Jeff Layton wrote:
-> On Wed, 14 Dec 2011 10:44:27 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 12/14/2011 10:32 AM, Jeff Layton wrote:
->>> On Wed, 14 Dec 2011 10:23:15 -0500
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 12/14/2011 08:57 AM, Jeff Layton wrote:
->>>>> This patchset is the userspace portion of the knfsd client name tracking
->>>>> overhaul. See this patch series for an explanation:
->>>>>
->>>>>     nfsd: overhaul the client name tracking code (RFC)
->>>>>
->>>>> The daemon listens for upcalls on the rpc_pipefs pipe using libevent,
->>>>> and handles the requests.
->>>>>
->>>>> The data is stored using a sqlite database. The main reason for this is
->>>>> that it takes care of most of the fussy details and atomicity concerns
->>>>> of tracking the information on stable storage.
->>>> This will make nfs-utils dependent on the sqlite database... Any idea
->>>> what kinda of extra baggage this brings? 
->>>>
->>>
->>> Depends on what you mean by "baggage". What is your concern?
->> In Fedora doing a 'yum install sqlite' which would require
->> a ton of other package needing to be install... The Required
->> for nfs-utils is getting pretty long at this point... 
->>  
-> 
-> I don't think it pulls in that much. This is pretty minimal for dependencies:
-> 
-> $ ldd /usr/lib/libsqlite3.so.0.8.6 
-> 	linux-gate.so.1 =>  (0x00e05000)
-> 	libdl.so.2 => /lib/libdl.so.2 (0x001bd000)
-> 	libpthread.so.0 => /lib/libpthread.so.0 (0x00769000)
-> 	libc.so.6 => /lib/libc.so.6 (0x00e27000)
-> 	/lib/ld-linux.so.2 (0x4e572000)
-> 
-> I think the command-line tools have some dependency on ncurses and
-> readline and such, but I don't think it's that much really...
-> 
-> In any case, perhaps it's time to split the nfs-utils packaging for
-> fedora into client and server pieces? Clients really only need
-> a few of the tools, but they can't install that on fedora without
-> getting all of the server pieces too.
-Yeah I thinking this is quickly becoming slippery slope... In the end I'm
-all for looking into using dbs instead of flat files but I'm just
-worrying about the size of nfs-utils footprint... Maybe unnecessarily 
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    3 +++
+ net/sunrpc/rpc_pipe.c              |   16 ++++++++++++++++
+ 2 files changed, 19 insertions(+), 0 deletions(-)
 
-Question, how would admin look at the list of client? Will that
-even be needed? 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 733ef50..4585985 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -51,6 +51,9 @@ enum {
+ 	RPC_PIPEFS_UMOUNT,
+ };
+ 
++extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++				      const unsigned char *dir_name);
++
+ extern ssize_t rpc_pipe_generic_upcall(struct file *, struct rpc_pipe_msg *,
+ 				       char __user *, size_t);
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 07fb7dd..1de840d 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1008,6 +1008,22 @@ static const struct rpc_filelist files[] = {
+ 	},
+ };
+ 
++/*
++ * This call can be used only in RPC pipefs mount notification hooks.
++ */
++struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
++			       const unsigned char *dir_name)
++{
++	struct qstr dir = {
++		.name = dir_name,
++		.len = strlen(dir_name),
++		.hash = full_name_hash(dir_name, strlen(dir_name)),
++	};
++
++	return d_lookup(sb->s_root, &dir);
++}
++EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
 
->>>>> For now, the daemon is only suitable for single-host configurations.
->>>>> The plan is to later extend this to be suitable for clustered
->>>>> configurations as well.
->>>>>
->>>>> The code is still a little rough, so be gentle. It also lacks things
->>>>> like a manpage. I plan to add all that before doing a "formal" patch
->>>>> submission, but I wanted to get some early review of the overall design
->>>>> before to spend a lot of time knocking off the rough edges.
->>>> Finally the name of the daemon...  clstated does not make it clear that 
->>>> this is a nfs server daemon... maybe something like nfsdcld? 
->>>>
->>>
->>> Sure, we could change the name if that's desirable. Maybe
->>> nfsd.clnamed ? At this point it's really just a client name tracking
->>> daemon.
->> How about nfsdcld ;-) short, to the point and easy to type... 8-) 
->>
-> 
-> Ok, I'm not religious on this issue. I'll plan to rename it to that.
-> 
-Thanks!
-
-steved.
