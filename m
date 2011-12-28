@@ -1,62 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28463 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:8865 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758954Ab1LOSoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Dec 2011 13:44:02 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi2Dt010871
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:02 -0500
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id pBFIi17d010403
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Dec 2011 13:44:01 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/7] autoconf: fix up libevent autoconf test
-Date: Thu, 15 Dec 2011 13:43:55 -0500
-Message-Id: <1323974641-16515-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
-References: <1323974641-16515-1-git-send-email-jlayton@redhat.com>
+	id S1752875Ab1L1PSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Dec 2011 10:18:00 -0500
+Message-ID: <4EFB330A.7070908@parallels.com>
+Date: Wed, 28 Dec 2011 19:17:30 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [RFC] RPCBIND: add anonymous listening socket in addition to named
+ one
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have it set LIBEVENT to -levent and use that in the Makefiles instead
-of hardcoding it.
+Hello.
+I've experienced a problem with registering Lockd service with rpcbind in 
+container. My container operates in it's own network namespace context and has 
+it's own root. But on service register, kernel tries to connect to named unix 
+socket by using rpciod_workqueue. Thus any connect is done with the same 
+fs->root, and this leads to that kernel socket, used for registering service 
+with local portmapper, will always connect to the same user-space socket 
+regardless to fs->root of process, requested register operation.
+Possible solution for this problem, which I would like to discuss, is to add one 
+more listening socket to rpcbind process. But this one should be anonymous. 
+Anonymous unix sockets accept connections only within it's network namespace 
+context, so kernel socket connect will be done always to the user-space socket 
+in the same network namespace.
+Does anyone have any objections to this? Or, probably, better solution for the 
+problem?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- aclocal/libevent.m4      |    3 ++-
- utils/idmapd/Makefile.am |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/aclocal/libevent.m4 b/aclocal/libevent.m4
-index 3c962b3..b5ac00f 100644
---- a/aclocal/libevent.m4
-+++ b/aclocal/libevent.m4
-@@ -2,8 +2,9 @@ dnl Checks for libevent
- AC_DEFUN([AC_LIBEVENT], [
- 
-   dnl Check for libevent, but do not add -levent to LIBS
--  AC_CHECK_LIB([event], [event_dispatch], [libevent=1],
-+  AC_CHECK_LIB([event], [event_dispatch], [LIBEVENT=-levent],
-                [AC_MSG_ERROR([libevent not found.])])
-+  AC_SUBST(LIBEVENT)
- 
-   AC_CHECK_HEADERS([event.h], ,
-                    [AC_MSG_ERROR([libevent headers not found.])])
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index 4328e41..f8578b0 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -16,7 +16,7 @@ idmapd_SOURCES = \
- 	nfs_idmap.h \
- 	queue.h
- 
--idmapd_LDADD = -levent -lnfsidmap ../../support/nfs/libnfs.a
-+idmapd_LDADD = $(LIBEVENT) -lnfsidmap ../../support/nfs/libnfs.a
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
 -- 
-1.7.1
-
+Best regards,
+Stanislav Kinsbursky
