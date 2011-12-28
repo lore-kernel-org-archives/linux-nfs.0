@@ -1,64 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40462 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751172Ab1LAJrL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Dec 2011 04:47:11 -0500
-Received: by eaak14 with SMTP id k14so1885202eaa.19
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Dec 2011 01:47:10 -0800 (PST)
-Message-ID: <4ED74D19.7060302@tonian.com>
-Date: Thu, 01 Dec 2011 11:47:05 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Marc Eshel <eshel@almaden.ibm.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Garth Gibson <garth@panasas.com>, Fred Isaman <iisaman@netapp.com>,
-        linux-nfs@vger.kernel.org, Matt Benjamin <matt@linuxbox.com>
-Subject: Re: [PATCH 0/4] nfs41: allow layoutget at pnfs_do_multiple_writes
-References: <1322603848.11286.7.camel@lade.trondhjem.org> <4ED55F78.205@panasas.com> <1322606842.11286.33.camel@lade.trondhjem.org> <4ED563AC.5040501@panasas.com> <1322609431.11286.56.camel@lade.trondhjem.org> <OFF7649CC5.E17B103B-ON88257957.0081DB7B-88257957.0082E12A@us.ibm.com> <1322611689.11286.72.camel@lade.trondhjem.org> <OF5755ED9D.CC1FAA6E-ON88257958.00014359-88257958.0001D4D0@us.ibm.com> <1322613425.11286.86.camel@lade.trondhjem.org> <OFCC6E3358.498C4568-ON88257958.00043206-88257958.0004D550@us.ibm.com> <20111130194410.GB32028@fieldses.org>
-In-Reply-To: <20111130194410.GB32028@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:45688 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752246Ab1L1RDu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Dec 2011 12:03:50 -0500
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to named one
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4EFB330A.7070908@parallels.com>
+Date: Wed, 28 Dec 2011 12:03:37 -0500
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com>
+References: <4EFB330A.7070908@parallels.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-11-30 21:44, J. Bruce Fields wrote:
-> On Tue, Nov 29, 2011 at 04:52:59PM -0800, Marc Eshel wrote:
->> Trond Myklebust <Trond.Myklebust@netapp.com> wrote on 11/29/2011 04:37:05 
->> PM:
->>>
->>> Peng Tao, bhalevy, Boaz Harrosh, Garth Gibson, Fred Isaman, linux-
->>> nfs, Matt Benjamin
->>>
->>> On Tue, 2011-11-29 at 16:20 -0800, Marc Eshel wrote: 
->>>> You ignored my main point, I was talking about the server side, my 
->> point 
->>>> was that there is nothing to build on on the serve side since the pNFS 
->>
->>>> Linux server is not happening.
->>>> Marc.
->>>
->>> Sorry. I misunderstood your concern. As far as I know, the main problem
->>> there is also one of investment: nobody has stepped up to help Bruce
->>> write a pNFS server.
->>>
->>> I'm less worried about this now than I was earlier, because other open
->>> source efforts are gaining traction (see Ganesha - which is being
->>> sponsored by IBM, and projects such as Tigran's java based pNFS server).
->>> The other point is that we've developed client test-rigs that don't
->>> depend on the availability of a Linux server (newpynfs and the pynfs
->>> based proxy).
->>
->> You got it backward, Ganesha is getting traction precisely because the 
->> Linux kernel server is not happening :)
-> 
-> My understanding is the same as Trond's--the reason it's not happening
-> is because nobody is making an effort to merge it.  What am I missing?
-> 
 
-Tonian is working on this and we've allocated resources also to help
-out on your nfs4.1 todo list.
+On Dec 28, 2011, at 10:17 AM, Stanislav Kinsbursky wrote:
 
-Benny
+> Hello.
+> I've experienced a problem with registering Lockd service with rpcbind in container. My container operates in it's own network namespace context and has it's own root. But on service register, kernel tries to connect to named unix socket by using rpciod_workqueue. Thus any connect is done with the same fs->root, and this leads to that kernel socket, used for registering service with local portmapper, will always connect to the same user-space socket regardless to fs->root of process, requested register operation.
+> Possible solution for this problem, which I would like to discuss, is to add one more listening socket to rpcbind process. But this one should be anonymous. Anonymous unix sockets accept connections only within it's network namespace context, so kernel socket connect will be done always to the user-space socket in the same network namespace.
 
-> --b.
+A UNIX socket is used so that rpcbind can record the identity of the process on the other end of the socket.  That way only that user may unregister this service.  That user is known as the registration's "owner."  Whatever solution is chosen, I believe we need to preserve the registration owner functionality.
+
+> Does anyone have any objections to this? Or, probably, better solution for the problem?
+
+
+Isn't this also an issue for TCP connections to other hosts?  How does the kernel RPC client choose a TCP connection's source address?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
