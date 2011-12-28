@@ -1,132 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:50611 "EHLO
+Received: from rcsinet15.oracle.com ([148.87.113.117]:30444 "EHLO
 	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752969Ab1LUVhk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Dec 2011 16:37:40 -0500
-Subject: Re: [PATCH v3 4/5] nfsd: add a header describing upcall to nfsdcld
+	with ESMTP id S1754027Ab1L1R7N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Dec 2011 12:59:13 -0500
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to named one
 Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20111221163312.3405c1f3@tlielax.poochiereds.net>
-Date: Wed, 21 Dec 2011 16:37:30 -0500
-Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <121533D1-9C5C-45EA-AF8F-90AA4167B066@oracle.com>
-References: <1324499696-10318-1-git-send-email-jlayton@redhat.com> <1324499696-10318-5-git-send-email-jlayton@redhat.com> <46975244-4C42-4DC9-832B-E3597B8013FD@oracle.com> <20111221163312.3405c1f3@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <4EFB521B.7060004@parallels.com>
+Date: Wed, 28 Dec 2011 12:59:00 -0500
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com>
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Dec 21, 2011, at 4:33 PM, Jeff Layton wrote:
+On Dec 28, 2011, at 12:30 PM, Stanislav Kinsbursky wrote:
 
-> On Wed, 21 Dec 2011 15:45:01 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 28.12.2011 21:03, Chuck Lever пишет:
+>> 
+>> On Dec 28, 2011, at 10:17 AM, Stanislav Kinsbursky wrote:
+>> 
+>> > Hello.
+>> > I've experienced a problem with registering Lockd service with rpcbind in container. My container operates in it's own network namespace context and has it's own root. But on service register, kernel tries to connect to named unix socket by using rpciod_workqueue. Thus any connect is done with the same fs->root, and this leads to that kernel socket, used for registering service with local portmapper, will always connect to the same user-space socket regardless to fs->root of process, requested register operation.
+>> > Possible solution for this problem, which I would like to discuss, is to add one more listening socket to rpcbind process. But this one should be anonymous. Anonymous unix sockets accept connections only within it's network namespace context, so kernel socket connect will be done always to the user-space socket in the same network namespace.
+>> 
+>> A UNIX socket is used so that rpcbind can record the identity of the process on the other end of the socket.  That way only that user may unregister this service.  That user is known as the registration's "owner."  Whatever solution is chosen, I believe we need to preserve the registration owner functionality.
+>> 
 > 
->> 
->> On Dec 21, 2011, at 3:34 PM, Jeff Layton wrote:
->> 
->>> The daemon takes a versioned binary struct. Hopefully this should allow
->>> us to revise the struct later if it becomes necessary.
->> 
->> This breaks the pattern of using text-based up- and downcalls in NFSD.  I assume this is binary because nfs_client_id4 is a string of opaque bytes?
->> 
-> 
-> That's the main reason. We could, of course encode that string in hex or
-> something, and decode it on the other end. No one has presented a
-> strong argument for doing it that way as of yet though.
-> 
-> If anyone feels strongly about that, then it would be helpful to have
-> them pipe up now and state why they do...
+> Sorry, but I don't get get it.
+> What do you mean by "user" and "identity"?
 
-<pipe>Because binary data structures are difficult to work with over time, which is why other NFSD user space interfaces are text-based.</pipe>
+When an RPC application registers itself with the local rpcbind daemon, it does so with an AF_UNIX socket.  rpcbind scrapes the UID of the RPC application process off the other end of the socket, and records that UID with the new registration.  For example:
 
-;-)
+[cel@forain ~]$ rpcinfo
+   program version netid     address                service    owner
+    100000    4    tcp6      ::.0.111               portmapper superuser
+    100000    3    tcp6      ::.0.111               portmapper superuser
+    100000    4    udp6      ::.0.111               portmapper superuser
+    100000    3    udp6      ::.0.111               portmapper superuser
+    100000    4    tcp       0.0.0.0.0.111          portmapper superuser
+    100000    3    tcp       0.0.0.0.0.111          portmapper superuser
+    100000    2    tcp       0.0.0.0.0.111          portmapper superuser
+    100000    4    udp       0.0.0.0.0.111          portmapper superuser
+    100000    3    udp       0.0.0.0.0.111          portmapper superuser
+    100000    2    udp       0.0.0.0.0.111          portmapper superuser
+    100000    4    local     /var/run/rpcbind.sock  portmapper superuser
+    100000    3    local     /var/run/rpcbind.sock  portmapper superuser
+    100024    1    udp       0.0.0.0.149.137        status     29
+    100024    1    tcp       0.0.0.0.152.179        status     29
+    100024    1    udp6      ::.148.0               status     29
+    100024    1    tcp6      ::.217.71              status     29
+[cel@forain ~]$
+
+The last column is the "owner."  That's the UID of the process that performed the registration.  Only processes running under that UID may unregister that service.
+
+This doesn't work for registrations that were performed via a network interface (like lo).  It only works when an application uses the AF_UNIX socket.
+
+The point of this is to prevent other users from replacing a registration.  Now any user can register an RPC service and be sure that it won't be stomped on by some other user.
+
+Whatever solution to your problem you find, it must preserve this behavior.  Will using an anonymous socket allow rpcbind to discover the UID of the registering process?
 
 > 
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
->>> 1 files changed, 56 insertions(+), 0 deletions(-)
->>> create mode 100644 include/linux/nfsd/cld.h
->>> 
->>> diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
->>> new file mode 100644
->>> index 0000000..d97d678
->>> --- /dev/null
->>> +++ b/include/linux/nfsd/cld.h
->>> @@ -0,0 +1,56 @@
->>> +/*
->>> + * fs/nfsd/cld.h - upcall description for nfsdcld communication
->>> + *
->>> + * Copyright (c) 2011 Red Hat, Inc.
->>> + * Author(s): Jeff Layton <jlayton@redhat.com>
->>> + *
->>> + *  This program is free software; you can redistribute it and/or modify
->>> + *  it under the terms of the GNU General Public License as published by
->>> + *  the Free Software Foundation; either version 2 of the License, or
->>> + *  (at your option) any later version.
->>> + *
->>> + *  This program is distributed in the hope that it will be useful,
->>> + *  but WITHOUT ANY WARRANTY; without even the implied warranty of
->>> + *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
->>> + *  GNU General Public License for more details.
->>> + *
->>> + *  You should have received a copy of the GNU General Public License
->>> + *  along with this program; if not, write to the Free Software
->>> + *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
->>> + */
->>> +
->>> +#ifndef _NFSD_CLD_H
->>> +#define _NFSD_CLD_H
->>> +
->>> +/* latest upcall version available */
->>> +#define CLD_UPCALL_VERSION 1
->>> +
->>> +/* defined by RFC3530 */
->>> +#define NFS4_OPAQUE_LIMIT 1024
->>> +
->>> +enum cld_command {
->>> +	Cld_Create,		/* create a record for this cm_id */
->>> +	Cld_Expire,		/* expire record for this cm_id */
->>> +	Cld_Allow,		/* is this cm_id allowed? */
->>> +	Cld_GraceDone,		/* grace period is complete */
->>> +};
->>> +
->>> +/* representation of long-form NFSv4 client ID */
->>> +struct cld_name {
->>> +	uint16_t	cn_len;				/* length of cm_id */
->>> +	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
->>> +} __attribute__((packed));
->>> +
->>> +/* message struct for communication with userspace */
->>> +struct cld_msg {
->>> +	uint8_t		cm_vers;		/* upcall version */
->>> +	uint8_t		cm_cmd;			/* upcall command */
->>> +	int16_t		cm_status;		/* return code */
->>> +	uint32_t	cm_xid;			/* transaction id */
->>> +	union {
->>> +		int64_t		cm_gracetime;	/* grace period start time */
->>> +		struct cld_name	cm_name;
->>> +	} __attribute__((packed)) cm_u;
->>> +} __attribute__((packed));
->>> +
->>> +#endif /* !_NFSD_CLD_H */
->>> -- 
->>> 1.7.1
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> > Does anyone have any objections to this? Or, probably, better solution for the problem?
+>> 
+>> 
+>> Isn't this also an issue for TCP connections to other hosts?  How does the kernel RPC client choose a TCP connection's source address?
 >> 
 > 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'm confused here too. What TPC connections are you talking about? And what source address?
+
+A TCP socket has two endpoints.  The source address and port for the local endpoint is chosen when the socket is bound.  The destination address and port for the remote endpoint is chosen when the socket is connected.
+
+RPC client consumers, such as lockd, the NFS client, or the MNT client, have to make outbound TCP connections to other hosts.  In user space, RPC TCP sockets use the IP address of the current network namespace as their source address.
+
+If the kernel RPC client makes a TCP connection to another host, how is the TCP socket's source address determined? If the answer is that kernel_bind() chooses this source address, and that kernel_bind() call is performed in the rpciod connect worker, then the source address is always chosen in the root network namespace (unless the rpciod connect worker is namespace aware).
+
+> I little bit more info about the whole "NFS in container" structure (as I see it):
+> 1) Each container operates in it's own network namespace and has it's own root.
+> 2) Each contatiner has it's own network device(s) and IP address(es).
+
+Right.  As above, I assumed the IP address of the current network namespace is used as the source address on outbound TCP connections.  That would mean that the rpciod work queue that handles such connections would have to be network namespace aware.
+
+If it is, why isn't this also enough for RPC over AF_UNIX sockets?  The network namespace in effect when the kernel performs the connect should determine which rpcbind is listening on the other end of the AF_UNIX socket in your local network namespace, unless I've misunderstood your problem.
+
+> 3) Each container has it's own rpcbind process instance.
+> 4) Each service (like LockD and NFSd  in future) will register itself with all per-net rpcbind instances it have to.
 
 -- 
 Chuck Lever
