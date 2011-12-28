@@ -1,39 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:41971 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753684Ab1LDNr7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Dec 2011 08:47:59 -0500
-Received: by eaak14 with SMTP id k14so3592866eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Dec 2011 05:47:57 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/13] SQUASHME: pnfsd: add missing nfs4_unlock_state in nfs4_pnfs_return_layout
-Date: Sun,  4 Dec 2011 15:47:49 +0200
-Message-Id: <1323006469-13460-1-git-send-email-benny@tonian.com>
-In-Reply-To: <4EDB79A9.2080109@tonian.com>
-References: <4EDB79A9.2080109@tonian.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:43138 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753864Ab1L1Ral (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Dec 2011 12:30:41 -0500
+Message-ID: <4EFB521B.7060004@parallels.com>
+Date: Wed, 28 Dec 2011 21:30:03 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
+ named one
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com>
+In-Reply-To: <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@tonian.com>
+28.12.2011 21:03, Chuck Lever пишет:
+>
+> On Dec 28, 2011, at 10:17 AM, Stanislav Kinsbursky wrote:
+>
+> > Hello.
+> > I've experienced a problem with registering Lockd service with rpcbind in 
+> container. My container operates in it's own network namespace context and has 
+> it's own root. But on service register, kernel tries to connect to named unix 
+> socket by using rpciod_workqueue. Thus any connect is done with the same 
+> fs->root, and this leads to that kernel socket, used for registering service 
+> with local portmapper, will always connect to the same user-space socket 
+> regardless to fs->root of process, requested register operation.
+> > Possible solution for this problem, which I would like to discuss, is to add 
+> one more listening socket to rpcbind process. But this one should be 
+> anonymous. Anonymous unix sockets accept connections only within it's network 
+> namespace context, so kernel socket connect will be done always to the 
+> user-space socket in the same network namespace.
+>
+> A UNIX socket is used so that rpcbind can record the identity of the process 
+> on the other end of the socket.  That way only that user may unregister this 
+> service.  That user is known as the registration's "owner."  Whatever solution 
+> is chosen, I believe we need to preserve the registration owner functionality.
+>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Sorry, but I don't get get it.
+What do you mean by "user" and "identity"?
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index d77df33..42e2bb0 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -989,6 +989,7 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 	if (lrp->args.lr_return_type == RETURN_FILE) {
- 		fp = find_file(ino);
- 		if (!fp) {
-+			nfs4_unlock_state();
- 			dprintk("%s: RETURN_FILE: no nfs4_file for ino %p:%lu\n",
- 				__func__, ino, ino ? ino->i_ino : 0L);
- 			/* If we had a layout on the file the nfs4_file would
+> > Does anyone have any objections to this? Or, probably, better solution for 
+> the problem?
+>
+>
+> Isn't this also an issue for TCP connections to other hosts?  How does the 
+> kernel RPC client choose a TCP connection's source address?
+>
+
+I'm confused here too. What TPC connections are you talking about? And what 
+source address?
+
+I little bit more info about the whole "NFS in container" structure (as I see it):
+1) Each container operates in it's own network namespace and has it's own root.
+2) Each contatiner has it's own network device(s) and IP address(es).
+3) Each container has it's own rpcbind process instance.
+4) Each service (like LockD and NFSd  in future) will register itself with all 
+per-net rpcbind instances it have to.
+
 -- 
-1.7.6
-
+Best regards,
+Stanislav Kinsbursky
