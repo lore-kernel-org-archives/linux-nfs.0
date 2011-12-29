@@ -1,115 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51055 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755196Ab1LNUAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 15:00:32 -0500
-Date: Wed, 14 Dec 2011 15:00:29 -0500
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] nfsd: overhaul the client name tracking code (RFC)
-Message-ID: <20111214200029.GA7623@fieldses.org>
-References: <1323870891-3124-1-git-send-email-jlayton@redhat.com>
- <18F62B11-1541-4B87-95A7-8106459903DF@oracle.com>
- <20111214094920.6d3fafa8@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20111214094920.6d3fafa8@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:27475 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754227Ab1L2QXw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Dec 2011 11:23:52 -0500
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to named one
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4EFC9189.5040605@parallels.com>
+Date: Thu, 29 Dec 2011 11:23:40 -0500
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 14, 2011 at 09:49:20AM -0500, Jeff Layton wrote:
-> On Wed, 14 Dec 2011 09:35:57 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+
+On Dec 29, 2011, at 11:12 AM, Stanislav Kinsbursky wrote:
+
+> 29.12.2011 20:03, Chuck Lever пишет:
+>>> Because unix named (!) sockets are not network namespace aware.
+>> 
+>> OK, this is the part I was unaware of.  Bruce and I had talked about this a few months ago, and my take-away was that these sockets were network namespace-aware, such that this was supposed to work as we want, already.
+>> 
+>>> They are "current->fs->root" aware.
+>> 
+>> In other words, these are relative to the local file namespace, not the local network namespace.  I was afraid of that.
+>> 
+>>> I.e. if this connect operation would be performed on "sync mode" (i.e. from the context of mount of NFS server start operation), then all will works fine (in case of each container works in it's own root, of course).
+>>> But currently all connect operations are done by rpciod_workqueue. I.e. regardless to root of process, started service registration, unix socket will be always looked up by path "/var/run/rpcbind.sock" starting from rpciod_workqueue root. I can set desired root before kernel connect during handling RPC task by rpciod_workqueue and revert back to the old one after connection and this will solve the problem to.
+>>> But this approach looks like ugly hack to me. And also requires additional pointer in sock_xprt structure to bypass desired context to rpciod_workqueue handler.
+>> 
+>> Can several network namespaces share the same file namespace?  That might cause them to share the same rpcbind, which is undesirable.  Might this also be a problem for user space?
+>> 
 > 
-> > 
-> > On Dec 14, 2011, at 8:54 AM, Jeff Layton wrote:
-> > 
-> > > First, a little background: I've recently been tasked with a project
-> > > to make active/active serving of NFSv4 from clustered filesystems work.
-> > > This is a large-scale, long-term project, but there are pieces of the
-> > > existing code that are clearly unsuitable in such a configuration...
-> > > 
-> > > One of the things that Bruce has long had on his wishlist is to replace
-> > > the client name tracking code that the kernel uses:
-> > > 
-> > >    http://wiki.linux-nfs.org/wiki/index.php/Nfsd4_server_recovery
-> > > 
-> > > The existing code manipulates the filesystem directly to track this
-> > > info. Not only is that something that makes the VFS maintainers look
-> > > askance at knfsd, but it also is unsuitable in a clustered
-> > > configuration.
-> > > 
-> > > Typically we think of the grace period as a property of the server, but
-> > > with a clustered filesystem, we need to consider it as a property of the
-> > > cluster as a whole. On a cold startup of the cluster, once any node
-> > > grants a non-reclaim lock, then no more reclaim can be allowed on any
-> > > node. Grace periods must be coordinated amongst all cluster nodes.
-> > 
-> > Agreed, but as you go forward with this effort, you should consider that NFSv4 migration allows individual file systems to be in grace.
+> Yes, they can. But only in general. And it will be a problem for user space programs, using unix named sockets for network related stuff (like rpcbind, for instance).
+> But, actually, I don't see any sense in having several network namespaces with the same root. Probably someone can suggest a specific "real life" solution, which can use such scheme.
 
->From the point of view of the protocol--I think all that means is that a
-client should be prepared to handle GRACE errors at any time, and should
-treat them more or less the same as they would a DELAY error?
+I can't think of one either.
 
-> Yes. The eventual goal is eliminate the grace period on failovers once
-> the cluster fs is up and running, and out of its initial grace period.
-> 
-> In order to do that, we'll need to push grace period handling into the
-> VFS layer to some degree, probably by providing a standard set of grace
-> period handling ops and allowing the filesystems to override them in
-> some fashion (maybe a new set of export ops?).
+> But it's not a container and thus no guarantees should be provided in this case from my pow.
 
-That's what I've always imagined we'd do.
+That's probably reasonable, and should be documented publicly if we take the approach of keeping a unique /var/run/rpcbind.sock for each network namespace.
 
-Long-term it would be nice if even local filesystems could respect the
-grace period: local applications really shouldn't be grabbing new locks
-then either, and currently the only way to prevent that is to delay
-starting them until a grace period has passed.
+> Or we need to throw away this unix sockets approach and use only network namespace aware routines. But again, does this really required?
 
---b.
+/var/run/rpcbind.sock is a formal libtirpc/rpcbind API that is common to libtirpc on other OSes.  Now, it's not likely that any application except the kernel uses it directly.  Still, I'm leery of removing it entirely. 
 
-> In any case, design of that is a later phase of this project once I get
-> this part settled...
-> 
-> > > In order to achieve that goal, we need to first allow the client name
-> > > reclaim to be cluster aware as well. This patchset is a move toward that
-> > > goal and covers the initial kernel part of such a change. A patchset to
-> > > add a daemon to handle the upcalls will follow.
-> > > 
-> > > Note that this patchset is still a little rough, so consider this an
-> > > RFC for the overall design. We'll also need to consider a plan to
-> > > deprecate the old client tracking code.
-> > > 
-> > > The goal with this patchset is to replace the existing functionality,
-> > > without disturbing the existing code too much. There's some room for
-> > > more cleanup and reorganization once the old tracker is gone.
-> > > 
-> > > Jeff Layton (5):
-> > >  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-> > >  sunrpc: create nfsd dir in rpc_pipefs
-> > >  nfsd: add a header describing upcall for clname tracking daemon
-> > >  nfsd: add a cl_daddr field and a generic flags field to nfs4_client
-> > >  nfsd: add the infrastructure to handle the clstate upcall
-> > > 
-> > > fs/nfsd/nfs4recover.c        |  442 +++++++++++++++++++++++++++++++++++++++++-
-> > > fs/nfsd/nfs4state.c          |   49 ++---
-> > > fs/nfsd/state.h              |   16 +-
-> > > include/linux/nfsd/clstate.h |   59 ++++++
-> > > net/sunrpc/rpc_pipe.c        |    5 +
-> > > 5 files changed, 526 insertions(+), 45 deletions(-)
-> > > create mode 100644 include/linux/nfsd/clstate.h
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+My sense is that handing an fs->root value to the rpciod workqueue gives us behavior that is closest to what we have now in a single network namespace configuration.  In other words, it's a change that introduces the least amount of "surprise" to the current RPC architecture.
+
+Do you have a patch so we can see just how ugly this might get?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
