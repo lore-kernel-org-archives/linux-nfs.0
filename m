@@ -1,70 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:35369 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:17553 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755539Ab1LGLUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Dec 2011 06:20:43 -0500
-Subject: [PATCH 2/4] SUNRPC: use passed network namespace context in
- rpc_pton6()
-To: Trond.Myklebust@netapp.com
+	id S1754535Ab1L2RFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Dec 2011 12:05:10 -0500
+Message-ID: <4EFC9D86.8020008@parallels.com>
+Date: Thu, 29 Dec 2011 21:04:06 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 07 Dec 2011 15:20:24 +0300
-Message-ID: <20111207112024.17273.38379.stgit@localhost6.localdomain6>
-In-Reply-To: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
-References: <20111207111716.17273.63010.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
+ named one
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com> <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
+In-Reply-To: <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use incomming network context in rpc_pton6() instead of hard-coded "init_net".
+29.12.2011 20:23, Chuck Lever пишет:
+>
+> On Dec 29, 2011, at 11:12 AM, Stanislav Kinsbursky wrote:
+>
+>> 29.12.2011 20:03, Chuck Lever пишет:
+>>>> Because unix named (!) sockets are not network namespace aware.
+>>>
+>>> OK, this is the part I was unaware of.  Bruce and I had talked about this a few months ago, and my take-away was that these sockets were network namespace-aware, such that this was supposed to work as we want, already.
+>>>
+>>>> They are "current->fs->root" aware.
+>>>
+>>> In other words, these are relative to the local file namespace, not the local network namespace.  I was afraid of that.
+>>>
+>>>> I.e. if this connect operation would be performed on "sync mode" (i.e. from the context of mount of NFS server start operation), then all will works fine (in case of each container works in it's own root, of course).
+>>>> But currently all connect operations are done by rpciod_workqueue. I.e. regardless to root of process, started service registration, unix socket will be always looked up by path "/var/run/rpcbind.sock" starting from rpciod_workqueue root. I can set desired root before kernel connect during handling RPC task by rpciod_workqueue and revert back to the old one after connection and this will solve the problem to.
+>>>> But this approach looks like ugly hack to me. And also requires additional pointer in sock_xprt structure to bypass desired context to rpciod_workqueue handler.
+>>>
+>>> Can several network namespaces share the same file namespace?  That might cause them to share the same rpcbind, which is undesirable.  Might this also be a problem for user space?
+>>>
+>>
+>> Yes, they can. But only in general. And it will be a problem for user space programs, using unix named sockets for network related stuff (like rpcbind, for instance).
+>> But, actually, I don't see any sense in having several network namespaces with the same root. Probably someone can suggest a specific "real life" solution, which can use such scheme.
+>
+> I can't think of one either.
+>
+>> But it's not a container and thus no guarantees should be provided in this case from my pow.
+>
+> That's probably reasonable, and should be documented publicly if we take the approach of keeping a unique /var/run/rpcbind.sock for each network namespace.
+>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Ok, thanks for notice.
 
----
- net/sunrpc/addr.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+>> Or we need to throw away this unix sockets approach and use only network namespace aware routines. But again, does this really required?
+>
+> /var/run/rpcbind.sock is a formal libtirpc/rpcbind API that is common to libtirpc on other OSes.  Now, it's not likely that any application except the kernel uses it directly.  Still, I'm leery of removing it entirely.
+>
 
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 35eb188..c13a521 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -198,7 +198,7 @@ static int rpc_parse_scope_id(struct net *net, const char *buf,
- 	return 0;
- }
- 
--static size_t rpc_pton6(const char *buf, const size_t buflen,
-+static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- 			struct sockaddr *sap, const size_t salen)
- {
- 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-@@ -214,14 +214,14 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
- 	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
- 		return 0;
- 
--	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
-+	if (!rpc_parse_scope_id(net, buf, buflen, delim, sin6))
- 		return 0;
- 
- 	sin6->sin6_family = AF_INET6;
- 	return sizeof(struct sockaddr_in6);
- }
- #else
--static size_t rpc_pton6(const char *buf, const size_t buflen,
-+static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- 			struct sockaddr *sap, const size_t salen)
- {
- 	return 0;
-@@ -249,7 +249,7 @@ size_t rpc_pton(const char *buf, const size_t buflen,
- 
- 	for (i = 0; i < buflen; i++)
- 		if (buf[i] == ':')
--			return rpc_pton6(buf, buflen, sap, salen);
-+			return rpc_pton6(&init_net, buf, buflen, sap, salen);
- 	return rpc_pton4(buf, buflen, sap, salen);
- }
- EXPORT_SYMBOL_GPL(rpc_pton);
+BTW, I'm not proposing to remove it.
 
+> My sense is that handing an fs->root value to the rpciod workqueue gives us behavior that is closest to what we have now in a single network namespace configuration.  In other words, it's a change that introduces the least amount of "surprise" to the current RPC architecture.
+>
+
+I dug a little bit into rpcbind sources and probably you are right.
+
+> Do you have a patch so we can see just how ugly this might get?
+>
+
+Not yet. But will send soon.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
