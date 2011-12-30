@@ -1,60 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43474 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27235 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753096Ab1LSUXv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Dec 2011 15:23:51 -0500
-Date: Tue, 20 Dec 2011 15:23:40 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Eric Paris <eparis@redhat.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix regression in handling of context= option in
- NFSv4
-Message-ID: <20111220152340.1781369b@tlielax.poochiereds.net>
-In-Reply-To: <1324325585.22363.16.camel@localhost>
-References: <1324324223-9933-1-git-send-email-jlayton@redhat.com>
-	<1324325585.22363.16.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751160Ab1L3BD6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Dec 2011 20:03:58 -0500
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: Session timeout on RHEL6.2
+Date: Thu, 29 Dec 2011 17:03:39 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C9E2CBF@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <CAGue13r92miL8cyY_=ag1yLbwmmcMJeAGtMxTjshvST=44SP=A@mail.gmail.com>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com><1324475851.7709.12.camel@lade.trondhjem.org><CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com><4EF6A898.2010207@tonian.com><1324806463.2740.6.camel@lade.trondhjem.org><4EF71125.1060901@tonian.com><1324819508.5195.8.camel@lade.trondhjem.org> <CAGue13r92miL8cyY_=ag1yLbwmmcMJeAGtMxTjshvST=44SP=A@mail.gmail.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: <tigran.mkrtchyan@desy.de>
+Cc: "Benny Halevy" <bhalevy@tonian.com>,
+        "linux-nfs" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 19 Dec 2011 15:13:05 -0500
-Eric Paris <eparis@redhat.com> wrote:
-
-> On Mon, 2011-12-19 at 14:50 -0500, Jeff Layton wrote:
-> > Setting the security context of a NFSv4 mount via the context= mount
-> > option is currently broken. The NFSv4 codepath allocates a parsed
-> > options struct, and then parses the mount options to fill it. It
-> > eventually calls nfs4_remote_mount which calls security_init_mnt_opts.
-> > That clobbers the lsm_opts struct that was populated earlier. This bug
-> > also looks like it causes a small memory leak on each v4 mount where
-> > context= is used.
-> > 
-> > Fix this by moving the initialization of the lsm_opts into
-> > nfs_alloc_parsed_mount_data, and the freeing of the same into the
-> > functions that allocate the nfs_parsed_mount_data.
-> 
-> I think this is a good lifetime, but I don't think we have it quite
-> right.
-> 
-> > @@ -2222,8 +2223,6 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
-> >  	if (data == NULL || mntfh == NULL)
-> >  		goto out_free_fh;
-> 
-> Lets assume we allocated data, but failed on mntfh.  We are going to
-> have called security_init_mnt_opts() but never have called the
-> corresponding destructor.  True, it'll be fine today with selinux, but I
-> make no promises what the future holds...
-> 
-> I'm pretty sure the v4 code has the same issue.  Maybe you should write
-> an explicit nfs_free_parsed_mount_data() function to handle all of the
-> error paths in v3 and v4?  Just a suggestion....
-> 
-> 
-
-That's a reasonable suggestion. I'll respin this with a destructor for
-parsed_mount_data structs.
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBUaWdyYW4gTWtydGNoeWFuIFtt
+YWlsdG86dGlncmFuLm1rcnRjaHlhbkBkZXN5LmRlXQ0KPiBTZW50OiBUaHVyc2RheSwgRGVjZW1i
+ZXIgMjksIDIwMTEgODoyMSBQTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogQmVubnkg
+SGFsZXZ5OyBsaW51eC1uZnMNCj4gU3ViamVjdDogUmU6IFNlc3Npb24gdGltZW91dCBvbiBSSEVM
+Ni4yDQo+IA0KPiBIaSBUcm9uZCwNCj4gDQo+IFRoZXJlIGlzIGEgc21hbGwgaW5jb25zaXN0ZW5j
+eSBpbiB5b3VyIHRoZW9yeTogdG8gY2xvc2UgaWRsZSBzZXNzaW9uIGl0J3MgZW5vdWdoDQo+IG5v
+dCB0byBzZW5kIHNlcXVlbmNlIGFueSBtb3JlIGFuZCB0aGVyZSBhcmUgbm8gcmVhc29uIHRvIHJl
+LWVzdGFibGlzaA0KPiBzZXNzaW9uIGFzIHNvb24gYXMgc2VydmVyIHJldHVybnMgRVhQSVJFRC4N
+Cg0KSSBkb24ndCB1bmRlcnN0YW5kLiBJJ3ZlIG5ldmVyIHB1dCBmb3J3YXJkIGFueSAidGhlb3J5
+IiBpbnZvbHZpbmcgZm9yY2luZyB0aGUgY2xpZW50IHRvIHJlLWVzdGFibGlzaCB0aGUgc2Vzc2lv
+biBqdXN0IGJlY2F1c2UgdGhlIHNlcnZlciByZXR1cm5zIEVYUElSRUQuIEl0IHNob3VsZCBiZSBy
+ZS1lc3RhYmxpc2hpbmcgc2Vzc2lvbnMgaWZmIHdlIHdhbnQgdG8gYWNjZXNzIHRoZSBmaWxlc3lz
+dGVtIGFuZCB0aGUgc2VydmVyIHRlbGxzIGl0IHRoYXQgdGhlIHNlc3Npb24gZXhwaXJlZC4NCg0K
+VHJvbmQNCg0KDQo+IFRpZ3Jhbi4NCj4gDQo+IE9uIFN1biwgRGVjIDI1LCAyMDExIGF0IDI6MjUg
+UE0sIFRyb25kIE15a2xlYnVzdA0KPiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3Rl
+Og0KPiA+IE9uIFN1biwgMjAxMS0xMi0yNSBhdCAxNDowMyArMDIwMCwgQmVubnkgSGFsZXZ5IHdy
+b3RlOg0KPiA+PiBPbiAyMDExLTEyLTI1IDExOjQ3LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+
+ID4+ID4gT24gU3VuLCAyMDExLTEyLTI1IGF0IDA2OjM3ICswMjAwLCBCZW5ueSBIYWxldnkgd3Jv
+dGU6DQo+ID4+ID4+IE9uIDIwMTEtMTItMjEgMjI6MTEsIFRpZ3JhbiBNa3J0Y2h5YW4gd3JvdGU6
+DQo+ID4+ID4+PiBPbiBXZWQsIERlYyAyMSwgMjAxMSBhdCAyOjU3IFBNLCBUcm9uZCBNeWtsZWJ1
+c3QNCj4gPj4gPj4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4+ID4+
+Pj4gT24gV2VkLCAyMDExLTEyLTIxIGF0IDEwOjI0ICswMTAwLCBUaWdyYW4gTWtydGNoeWFuIHdy
+b3RlOg0KPiA+PiA+Pj4+PiBEZWFyIGZyaWVuZHMsDQo+ID4+ID4+Pj4+DQo+ID4+ID4+Pj4+IFdl
+IGFyZSBvYnNlcnZpbmcgc3RyYW5nZSBiZWhhdmlvciB3aXRoIFJIRUwgNi4yOg0KPiA+PiA+Pj4+
+Pg0KPiA+PiA+Pj4+PiBPdXIgdGhlIHNlcnZlciBsZWFzZSB0aW1lIGlzIDkwIHNlY29uZHMuIEkg
+Y2FuIHNlZSB0aGF0IGNsaWVudA0KPiA+PiA+Pj4+PiBzZW5kcyBTRVFVRU5DRSBldmVyeSA2MCBz
+ZWMuIEFuZCB0aGlzIGlzIGZvciBzb21lIGhvdXJzICggfjggKS4NCj4gPj4gPj4+Pj4gQXQgc29t
+ZSBwb2ludCBjbGllbnQgc2VuZHMgU0VRVUVOQ0UgYWZ0ZXIgMTI3IHNlY29uZHMgYW5kIGdldHMs
+DQo+ID4+ID4+Pj4+IGFzIGV4cGVjdGVkLCBFWFBJUkVELg0KPiA+PiA+Pj4+DQo+ID4+ID4+Pj4g
+V2h5IHNob3VsZG4ndCB0aGUgY2xpZW50IGJlIGFsbG93ZWQgdG8gbGV0IHRoZSBsZWFzZSBleHBp
+cmUgaWYNCj4gPj4gPj4+PiBub3RoaW5nIGlzIHVzaW5nIHRoYXQgZmlsZXN5c3RlbT8NCj4gPj4g
+Pj4+Pg0KPiA+PiA+Pj4+PiBJIHRoaXMgcG9pbnQgSSBoYXZlIHRvIGJsYW1lIG15c2VsZi4NCj4g
+Pj4gPj4+Pj4gQ2xpZW50IGNvbWVzIHdpdGggRVhDSEFOR0VfSUQgdXNpbmcgdGhlIHNhbWUgY2xp
+ZW50aWQuDQo+ID4+ID4+Pj4+IFdlIGRpZCBub3QgZ2FyYmFnZSBjb2xsZWN0ZWQgY2xpZW50aWQg
+aW50ZXJuYWxseSBhcyB0aGlzDQo+ID4+ID4+Pj4+IGhhcHBlbnMgYWZ0ZXIgMipMRUFTRV9USU1F
+IGFuZCByZXR1cm4gRVhQSVJFLiBUaGlzIHBpbmctcG9uZw0KPiA+PiA+Pj4+PiBuZXZlciBlbmRz
+Lg0KPiA+PiA+Pj4+Pg0KPiA+PiA+Pj4+PiBUaGlzIGlzIHByb2JhYmx5IG1vc3RseSBhIGJ1ZyBv
+biBteSBzaWRlLiBOZXZlcnRoZWxlc3Mgd2UgbmV2ZXINCj4gPj4gPj4+Pj4gb2JzZXJ2ZWQgbGF0
+ZSBTRVFVRU5DRSB3aXRoIGtlcm5lbCA+IDIuNi4zOS4gQSBzaG9ydCBwYWNrZXQNCj4gZHVtcCBh
+dHRhY2hlZC4NCj4gPj4gPj4+Pj4NCj4gPj4gPj4+Pj4gSSBjYW4gb3BlbiBidWcgYXQgUkhFTCBp
+ZiByZXF1aXJlZC4NCj4gPj4gPj4+Pg0KPiA+PiA+Pj4+IEkgd291bGRuJ3QgY29uc2lkZXIgdGhh
+dCBhIGJ1Zy4NCj4gPj4gPj4+DQo+ID4+ID4+PiBBcyBJIHNhaWQsIHRoZXJlIGlzIGEgYnVnIGlu
+IGV4Y2hhbmdlX2lkIHByb2Nlc3NpbmcgKCBjYXNlIDMgKSBvbg0KPiA+PiA+Pj4gbXkgc2lkZS4g
+QnV0IHRvIG1lIGl0J3Mgc291bmRzIHN0cmFuZ2UgdGhhdCBjbGllbnQgYWZ0ZXIgbW9yZQ0KPiA+
+PiA+Pj4gdGhhbiA4IGhvdXJzIG9mIHNlbmRpbmcgb25seSBzZXF1ZW5jZSBkZWNpZGVkIHRvIHNl
+bmQgb25lIG9mIHRoZW0NCj4gPj4gPj4+IGxhdGVyIHRoYW4gbGVhc2UgdGltZS4gRXNwZWNpYWxs
+eSwgdGhhdCB3ZSBkaWQgbm90IGhhdmUgaXQgd2l0aCBvdGhlcg0KPiBrZXJuZWxzLg0KPiA+PiA+
+Pg0KPiA+PiA+PiBJJ20gaW5jbGluZWQgdG8gYWdyZWUuIMKgVGhlIGNsaWVudCBjYW4gbGV0IHRo
+ZSBsZWFzZSBleHBpcmUgZm9yDQo+ID4+ID4+IHN1cmUgYW5kIHRoYXQncyBub3QgYSBidWcgYnV0
+IHRoZSBmYWN0IHRoYXQgdGhlIGNsaWVudCBzZW50IHRoZQ0KPiA+PiA+PiBTRVFVRU5DRSBvcGVy
+YXRpb24gYWZ0ZXIgdGhlIGxlYXNlIGhhZCBleHBpcmVkIGluZGljYXRlcyBpdCBtaWdodA0KPiA+
+PiA+PiBub3QgYmUgYXdhcmUgb2YgdGhhdCBmYWN0IGFuZCB0aGF0IHNlZW1zIHRvIGJlIGEgY2xp
+ZW50IGJ1Zy4NCj4gPj4gPj4NCj4gPj4gPj4gVGhhdCBzYWlkLCBJIGRvbid0IHRoaW5rIHRoYXQg
+bGV0dGluZyB0aGUgbGVhc2UgZXhwaXJlIHdoZW4gdGhlDQo+ID4+ID4+IGNsaWVudCBpcyBpZGxl
+IGlzIHRoZSBtb3N0IHBvbGl0ZSB0aGluZyB0byBkby4gV2h5IGxldCB0aGUgc2VydmVyDQo+ID4+
+ID4+IGNsZWFuIHVwIGFmdGVyIHRoZSBjbGllbnQgYW5kIHJldmVydCB0byBwb3NzaWJseSB1bi1v
+cHRpbWl6ZWQNCj4gPj4gPj4gcmVjb3ZlcnkgcGF0aHMgcmF0aGVyIHRoYW4gb3JkZXJseSBkZXN0
+cnVjdGlvbiBvZiB0aGUgc3RhdGUgYnkgdGhlDQo+IGNsaWVudD8NCj4gPj4gPg0KPiA+PiA+IFRo
+ZXJlIGFyZSBwbGVudHkgb2YgY2FzZXMgd2hlcmUgdGhlIGNsaWVudCBjYW4gYmUgaWRsZSBmb3Ig
+aG91cnMgb3INCj4gPj4gPiBldmVuIF9kYXlzXy4gV2hhdCdzIHRoZSBwb2ludCBvZiBwaW5naW5n
+IHRoZSBzZXJ2ZXIgYWxsIHRoZSB0aW1lDQo+ID4+ID4gYWZ0ZXIgd29ya2luZyBob3Vycz8NCj4g
+Pj4gPg0KPiA+PiA+IElmIHNvbWVvbmUgd2FudHMgdG8gY29kZSB1cCBhIERFU1RST1lfU0VTU0lP
+TiBhbmQNCj4gREVTVFJPWV9DTElFTlRJRA0KPiA+PiA+IGluIG9yZGVyIHRvIG1ha2UgaXQgZm9y
+bWFsLCB0aGVuIGZpbmUsIGhvd2V2ZXIgbm90ZSB0aGF0IHdlIGRvbid0DQo+ID4+ID4gZXZlbiBk
+byB0aGF0IG9uIGEgZnVsbCB1bm1vdW50IHRvZGF5Lg0KPiA+PiA+DQo+ID4+DQo+ID4+IFRoZSBo
+ZWF2eSBsaWZ0aW5nIGlzIHJlbGVhc2luZyBsb2NrcyBhbmQgcmV0dXJuaW5nIGxheW91dHMgYW5k
+DQo+ID4+IGRlbGVnYXRpb25zIHNlbmRpbmcgREVTVFJPWV97U0VTU0lPTixDTElFTlRJRH0gd291
+bGQgYmUgbmljZSB0byBoYXZlDQo+ID4+IGJ1dCBJIGRvbid0IHRoaW5rIGl0J3MgdGhlIG1vc3Qg
+aW1wb3J0YW50IGlzc3VlLg0KPiA+DQo+ID4gQWN0dWFsbHksIHRoYXQgcmVxdWlyZW1lbnQgdG8g
+cmV0dXJuIHN0YXRlIGlzIHdoYXQgbWFrZXMNCj4gPiBERVNUUk9ZX0NMSUVOVElEIGEgY29tcGxl
+dGVseSB1c2VsZXNzIG9wZXJhdGlvbi4NCj4gPiBGb3JnZXQgd2hhdCBJIHNhaWQgdGhlbjogaXQn
+cyB0b28gc3R1cGlkIHRvIGltcGxlbWVudC4uLg0KPiA+DQo+ID4gLS0NCj4gPiBUcm9uZCBNeWts
+ZWJ1c3QNCj4gPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCj4gPg0KPiA+IE5ldEFwcA0K
+PiA+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+ID4gd3d3Lm5ldGFwcC5jb20NCj4gPg0K
