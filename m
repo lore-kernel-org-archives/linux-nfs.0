@@ -1,178 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16026 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755771Ab1LNQ5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Dec 2011 11:57:00 -0500
-Message-ID: <4EE8D558.1080301@netapp.com>
-Date: Wed, 14 Dec 2011 11:56:56 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:44196 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753160Ab1L3L1i convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Dec 2011 06:27:38 -0500
+Received: by wibhm6 with SMTP id hm6so6876594wib.19
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Dec 2011 03:27:36 -0800 (PST)
 MIME-Version: 1.0
-To: Casey Bodley <cbodley@citi.umich.edu>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Only reinitilize the recall_lru list under the
- recall lock
-References: <1323812158-5183-1-git-send-email-bjschuma@netapp.com> <20111213221209.GA30904@fieldses.org> <4EE8A7BA.6050406@netapp.com> <20111214140744.GA4322@fieldses.org> <4EE8B3C9.8070800@netapp.com> <CAMeBU_2LCtuzaFtxMZ1VASoU5UcJo805_sJ2ovbtPZTWDUL-Bg@mail.gmail.com>
-In-Reply-To: <CAMeBU_2LCtuzaFtxMZ1VASoU5UcJo805_sJ2ovbtPZTWDUL-Bg@mail.gmail.com>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430C9E2CBF@SACMVEXC2-PRD.hq.netapp.com>
+References: <CAGue13pWcOKeQH9nr=VK2ZCMLpC2s1=yQwuyxAEuuizjSh1Z+g@mail.gmail.com>
+	<1324475851.7709.12.camel@lade.trondhjem.org>
+	<CAGue13pSKnxNK_UWnh0KXz_w-CbeWQjmDS1H7ZBVMRiV25JqmQ@mail.gmail.com>
+	<4EF6A898.2010207@tonian.com>
+	<1324806463.2740.6.camel@lade.trondhjem.org>
+	<4EF71125.1060901@tonian.com>
+	<1324819508.5195.8.camel@lade.trondhjem.org>
+	<CAGue13r92miL8cyY_=ag1yLbwmmcMJeAGtMxTjshvST=44SP=A@mail.gmail.com>
+	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430C9E2CBF@SACMVEXC2-PRD.hq.netapp.com>
+Date: Fri, 30 Dec 2011 12:27:36 +0100
+Message-ID: <CAGue13qbh1_97EZ80mt_YdKM5WKZ2hNigyTr_FkJcv-E2S_2mA@mail.gmail.com>
+Subject: Re: Session timeout on RHEL6.2
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed Dec 14 11:35:32 2011, Casey Bodley wrote:
-> On Wed, Dec 14, 2011 at 9:33 AM, Bryan Schumaker <bjschuma@netapp.com> wrote:
->> On Wed Dec 14 09:07:44 2011, J. Bruce Fields wrote:
->>> On Wed, Dec 14, 2011 at 08:42:18AM -0500, Bryan Schumaker wrote:
->>>> On Tue Dec 13 17:12:09 2011, J. Bruce Fields wrote:
->>>>> On Tue, Dec 13, 2011 at 04:35:58PM -0500, bjschuma@netapp.com wrote:
->>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>>>
->>>>>> unhash_delegation() will grab the recall lock before calling
->>>>>> list_del_init() in each of these places.  This patch removes the
->>>>>> redundant calls.
->>>>>
->>>>> Looks right, thanks.  (How did you happen across this?)
->>>>
->>>> I was looking over the fault injection stuff to see if I can figure out
->>>> where an occasional oops was coming from.  It seems to happen when I
->>>> forget delegations, so I was looking at how other functions release
->>>> delegations to see if there was something I missed.  The oops doesn't
->>>> happen often enough for me to know if this patch fixes it yet, though.
->>>
->>> Hm, OK.  Could you post the oops?
+On Fri, Dec 30, 2011 at 2:03 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>> -----Original Message-----
+>> From: Tigran Mkrtchyan [mailto:tigran.mkrtchyan@desy.de]
+>> Sent: Thursday, December 29, 2011 8:21 PM
+>> To: Myklebust, Trond
+>> Cc: Benny Halevy; linux-nfs
+>> Subject: Re: Session timeout on RHEL6.2
 >>
->> I don't see it in the logs on the server, but I'll keep looking.  I'll
->> post it the next time I come across it.
+>> Hi Trond,
+>>
+>> There is a small inconsistency in your theory: to close idle session it's enough
+>> not to send sequence any more and there are no reason to re-establish
+>> session as soon as server returns EXPIRED.
 >
-> I'm not sure if this is the same oops, but I'm able to reproduce it
-> consistently against Bruce's 3.2.0-rc1 tree with fault injection
-> enabled.  I use the windows client to read a file, then 'echo 0 >
-> /sys/kernel/debug/nfsd/forget_delegations'.  I just tested with the
-> patch above, and was able to reproduce the same oops:
+> I don't understand. I've never put forward any "theory" involving forcing the client to re-establish the session just because the server returns EXPIRED. It should be re-establishing sessions iff we want to access the filesystem and the server tells it that the session expired.
+
+My apologies if I was not clear. I just wanted to say that it doesn't
+looks like expected client behavior.
+
+Tigran.
+
 >
-> [ 1200.251735] NFSD Fault Injection: forget_delegations (all)
-> [ 1200.251830] general protection fault: 0000 [#1] SMP
-> [ 1200.252450] CPU 1
-> [ 1200.252597] Modules linked in:
-> [ 1200.253062]
-> [ 1200.253256] Pid: 2004, comm: bash Not tainted 3.2.0-rc1+ #9 VMware,
-> Inc. VMware Virtual Platform/440BX Desktop Reference Platform
-> [ 1200.254102] RIP: 0010:[<ffffffff811ae7f5>]  [<ffffffff811ae7f5>]
-> nfsd_process_n_delegations+0x3e/0xbe
-> [ 1200.254746] RSP: 0018:ffff88003b579e08  EFLAGS: 00010287
-> [ 1200.255067] RAX: dead000000100100 RBX: 0000000000000000 RCX: 00000001802c002b
-> [ 1200.255458] RDX: ffff88003d2d3328 RSI: ffffffff811aa49e RDI: ffff88003d2d3308
-> [ 1200.255842] RBP: ffff88003b579e58 R08: ffff88003b558000 R09: ffff88003d2d3480
-> [ 1200.256226] R10: ffff88003b68b750 R11: 0000000000000040 R12: dead0000001000f8
-> [ 1200.256610] R13: 0000000000000001 R14: 000000000000002b R15: 00000000000000d5
-> [ 1200.257029] FS:  00007fbad1d44700(0000) GS:ffff88003fa20000(0000)
-> knlGS:0000000000000000
-> [ 1200.257512] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [ 1200.257850] CR2: 00007fbad1d49000 CR3: 000000003b593000 CR4: 00000000000006e0
-> [ 1200.258272] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> [ 1200.258693] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> [ 1200.259083] Process bash (pid: 2004, threadinfo ffff88003b578000,
-> task ffff88003cc3dfe0)
-> [ 1200.259561] Stack:
-> [ 1200.259768]  ffffffff811aa49e ffff88003d2d3308 ffffffff81be1560
-> ffff88003d2d3328
-> [ 1200.260553]  ffff88003b579e88 ffffffff81a2b6a0 0000000000000000
-> 0000000000000002
-> [ 1200.261337]  ffff88003d8c1550 ffff88003d8c1528 ffff88003b579e88
-> ffffffff811ae897
-> [ 1200.262121] Call Trace:
-> [ 1200.262346]  [<ffffffff811aa49e>] ? nfs4_put_delegation+0x55/0x55
-> [ 1200.262701]  [<ffffffff811ae897>] nfsd_forget_delegations+0x22/0x40
-> [ 1200.263119]  [<ffffffff8119d3e7>] nfsd_inject_set+0x3f/0x46
-> [ 1200.263470]  [<ffffffff810fb878>] simple_attr_write+0x8a/0xb2
-> [ 1200.263818]  [<ffffffff810e0949>] vfs_write+0xa7/0xfa
-> [ 1200.264136]  [<ffffffff810e0b41>] sys_write+0x45/0x69
-> [ 1200.264483]  [<ffffffff81450f3b>] system_call_fastpath+0x16/0x1b
-> [ 1200.264832] Code: 45 31 ed 41 54 53 48 89 fb 48 83 ec 28 49 63 c6
-> 48 c1 e0 04 4c 8b a0 b0 12 be 81 48 05 b0 12 be 81 48 89 45 c0 49 83
-> ec 08 eb 57
-> [ 1200.270209]  8b 7c 24 28 49 8d 54 24 28 48 89 55 c8 48 83 ef 20 48 8b 47
-> [ 1200.272534] RIP  [<ffffffff811ae7f5>] nfsd_process_n_delegations+0x3e/0xbe
-> [ 1200.273007]  RSP <ffff88003b579e08>
-> [ 1200.273331] ---[ end trace 0071bb3837d120e2 ]---
-
-That's similar to the one I just got.  Thanks for the test case!  I had 
-been opening two files in order to get a read delegation, I didn't 
-think of trying with just one.  Here is what I got:
-
-Dec 14 11:21:01 localhost -- MARK --
-Dec 14 11:45:00 localhost kernel: [ 7716.735003] NFSD Fault Injection: 
-forget_delegations (all)
-Dec 14 11:45:00 localhost kernel: [ 7716.735814] CPU 0 
-Dec 14 11:45:00 localhost kernel: [ 7716.735902] Modules linked in: 
-dm_mod md5 nfsd exportfs nfs lockd fscache auth_rpcgss nfs_acl sunrpc 
-ipv6 ext2 mbcache loop snd_hda_intel snd_hda_codec snd_hwdep snd_pcm 
-snd_timer psmouse snd serio_raw soundcore pcspkr snd_page_alloc 
-virtio_balloon i2c_piix4 evdev i2c_core floppy processor button btrfs 
-zlib_deflate crc32c libcrc32c sr_mod cdrom pata_acpi uhci_hcd ata_piix 
-usbcore usb_common libata scsi_mod virtio_net virtio_pci virtio_blk 
-virtio_ring virtio
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] 
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] Pid: 17423, comm: bash 
-Not tainted 3.2.0-rc1-BRYAN+ #1 Bochs Bochs
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] RIP: 
-0010:[<ffffffffa0415533>]  [<ffffffffa0415533>] 
-nfsd_process_n_delegations+0x53/0xe0 [nfsd]
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] RSP: 
-0018:ffff880034121e18  EFLAGS: 00010202
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] RAX: dead000000100100 
-RBX: 0000000000000000 RCX: 0000000000000200
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] RDX: dead0000001000f8 
-RSI: 000060ffc0001270 RDI: ffffea0000d93400
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] RBP: ffff880034121e68 
-R08: ffffffffa040fc26 R09: 0000000000000000
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] R10: ffff88002b206a90 
-R11: 0000000000000000 R12: ffff88002eed4188
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] R13: 0000000000000001 
-R14: ffff88002eed41a8 R15: ffffffffa040fcb0
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] FS:  
-00007f09bfb8c700(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] CS:  0010 DS: 0000 ES: 
-0000 CR0: 0000000080050033
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] CR2: 00007f09bfb92000 
-CR3: 000000003a90f000 CR4: 00000000000006f0
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] DR0: 0000000000000000 
-DR1: 0000000000000000 DR2: 0000000000000000
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] DR3: 0000000000000000 
-DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Dec 14 11:45:00 localhost kernel: [ 7716.737782] Process bash (pid: 
-17423, threadinfo ffff880034120000, task ffff88003c0064a0)
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  ffffffffa041ffb0 
-00000000000000f7 ffffffffa04283b0 dead0000001000f8
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  ffff880034121e58 
-0000000000000000 ffffffffa041ffb0 ffff88002eed48d0
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  0000000000000002 
-ffff88002eed48a8 ffff880034121e88 ffffffffa04155e5
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffffa04155e5>] 
-nfsd_forget_delegations+0x25/0x50 [nfsd]
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffffa03fd75c>] 
-nfsd_inject_set+0x3c/0x70 [nfsd]
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff81186f22>] 
-simple_attr_write+0xc2/0xe0
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff811630ef>] 
-vfs_write+0xaf/0x180
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff8116341a>] 
-sys_write+0x4a/0x90
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  [<ffffffff81417e42>] 
-system_call_fastpath+0x16/0x1b
-Dec 14 11:45:00 localhost kernel: [ 7716.737782]  RSP <ffff880034121e18>
-Dec 14 11:45:00 localhost kernel: [ 7716.754976] ---[ end trace 
-f7471c4cb1a3a2f4 ]---
-
-- Bryan
+> Trond
 >
+>
+>> Tigran.
 >>
->> - Bryan
->>>
->>> --b.
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+>> On Sun, Dec 25, 2011 at 2:25 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Sun, 2011-12-25 at 14:03 +0200, Benny Halevy wrote:
+>> >> On 2011-12-25 11:47, Trond Myklebust wrote:
+>> >> > On Sun, 2011-12-25 at 06:37 +0200, Benny Halevy wrote:
+>> >> >> On 2011-12-21 22:11, Tigran Mkrtchyan wrote:
+>> >> >>> On Wed, Dec 21, 2011 at 2:57 PM, Trond Myklebust
+>> >> >>> <Trond.Myklebust@netapp.com> wrote:
+>> >> >>>> On Wed, 2011-12-21 at 10:24 +0100, Tigran Mkrtchyan wrote:
+>> >> >>>>> Dear friends,
+>> >> >>>>>
+>> >> >>>>> We are observing strange behavior with RHEL 6.2:
+>> >> >>>>>
+>> >> >>>>> Our the server lease time is 90 seconds. I can see that client
+>> >> >>>>> sends SEQUENCE every 60 sec. And this is for some hours ( ~8 ).
+>> >> >>>>> At some point client sends SEQUENCE after 127 seconds and gets,
+>> >> >>>>> as expected, EXPIRED.
+>> >> >>>>
+>> >> >>>> Why shouldn't the client be allowed to let the lease expire if
+>> >> >>>> nothing is using that filesystem?
+>> >> >>>>
+>> >> >>>>> I this point I have to blame myself.
+>> >> >>>>> Client comes with EXCHANGE_ID using the same clientid.
+>> >> >>>>> We did not garbage collected clientid internally as this
+>> >> >>>>> happens after 2*LEASE_TIME and return EXPIRE. This ping-pong
+>> >> >>>>> never ends.
+>> >> >>>>>
+>> >> >>>>> This is probably mostly a bug on my side. Nevertheless we never
+>> >> >>>>> observed late SEQUENCE with kernel > 2.6.39. A short packet
+>> dump attached.
+>> >> >>>>>
+>> >> >>>>> I can open bug at RHEL if required.
+>> >> >>>>
+>> >> >>>> I wouldn't consider that a bug.
+>> >> >>>
+>> >> >>> As I said, there is a bug in exchange_id processing ( case 3 ) on
+>> >> >>> my side. But to me it's sounds strange that client after more
+>> >> >>> than 8 hours of sending only sequence decided to send one of them
+>> >> >>> later than lease time. Especially, that we did not have it with other
+>> kernels.
+>> >> >>
+>> >> >> I'm inclined to agree.  The client can let the lease expire for
+>> >> >> sure and that's not a bug but the fact that the client sent the
+>> >> >> SEQUENCE operation after the lease had expired indicates it might
+>> >> >> not be aware of that fact and that seems to be a client bug.
+>> >> >>
+>> >> >> That said, I don't think that letting the lease expire when the
+>> >> >> client is idle is the most polite thing to do. Why let the server
+>> >> >> clean up after the client and revert to possibly un-optimized
+>> >> >> recovery paths rather than orderly destruction of the state by the
+>> client?
+>> >> >
+>> >> > There are plenty of cases where the client can be idle for hours or
+>> >> > even _days_. What's the point of pinging the server all the time
+>> >> > after working hours?
+>> >> >
+>> >> > If someone wants to code up a DESTROY_SESSION and
+>> DESTROY_CLIENTID
+>> >> > in order to make it formal, then fine, however note that we don't
+>> >> > even do that on a full unmount today.
+>> >> >
+>> >>
+>> >> The heavy lifting is releasing locks and returning layouts and
+>> >> delegations sending DESTROY_{SESSION,CLIENTID} would be nice to have
+>> >> but I don't think it's the most important issue.
+>> >
+>> > Actually, that requirement to return state is what makes
+>> > DESTROY_CLIENTID a completely useless operation.
+>> > Forget what I said then: it's too stupid to implement...
+>> >
+>> > --
+>> > Trond Myklebust
+>> > Linux NFS client maintainer
+>> >
+>> > NetApp
+>> > Trond.Myklebust@netapp.com
+>> > www.netapp.com
+>> >
