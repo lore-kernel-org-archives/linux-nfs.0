@@ -1,86 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:59854 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750863Ab2ATHr1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jan 2012 02:47:27 -0500
-Date: Fri, 20 Jan 2012 10:48:18 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Sasha Levin <levinsasha928@gmail.com>, linux-kernel@vger.kernel.org,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: [patch] nfsd: remove some unneeded checks
-Message-ID: <20120120074818.GA12039@mwanda>
-References: <1321611289-21809-1-git-send-email-levinsasha928@gmail.com>
- <20120116115258.GC3294@mwanda>
- <20120116155031.GC1750@fieldses.org>
- <20120118095601.GE3356@mwanda>
- <20120118224107.GC27205@fieldses.org>
+Received: from out02.mta.xmission.com ([166.70.13.232]:47392 "EHLO
+	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751041Ab2ACDqz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jan 2012 22:46:55 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "neilb\@suse.de" <neilb@suse.de>,
+        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "davem\@davemloft.net" <davem@davemloft.net>,
+        "devel\@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
+	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
+	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
+	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>
+Date: Mon, 02 Jan 2012 19:49:00 -0800
+In-Reply-To: <4EEF7364.8000407@parallels.com> (Stanislav Kinsbursky's message
+	of "Mon, 19 Dec 2011 21:24:52 +0400")
+Message-ID: <m1vcotigyb.fsf@fess.ebiederm.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="y0ulUmNC+osPPQO6"
-In-Reply-To: <20120118224107.GC27205@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
 
---y0ulUmNC+osPPQO6
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> 19.12.2011 20:37, Eric W. Biederman пишет:
+>> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
+>>
+>> Doing that independently of the rest of the sysctls is pretty horrible
+>> and confusing to users.   What I am planning might suit your needs and
+>> if not we need to talk some more about how to get the vfs to do
+>> something reasonable.
+>>
+>
+> Ok, Eric. Would be glad to discuss your sysctls plans.
+> But actually you already know my needs: I would like to make sysctls work in the
+> way like sysfs does: i.e. content of files depends on mount maker -
+> not viewer.
 
-We check for zero length strings in the caller now, so these aren't
-needed.
+What drives the desire to have sysctls depend on the mount maker?
+Especially what drives that desire not to have it have a /proc/<pid>/sys
+directory that reflects the sysctls for a given process.
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Eric
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index cf8a6bd..8e9689a 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -87,7 +87,7 @@ static int expkey_parse(struct cache_detail *cd, char *me=
-sg, int mlen)
- 	struct svc_expkey key;
- 	struct svc_expkey *ek =3D NULL;
-=20
--	if (mlen < 1 || mesg[mlen-1] !=3D '\n')
-+	if (mesg[mlen - 1] !=3D '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] =3D 0;
-=20
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 01153ea..6ab3573 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -509,7 +509,7 @@ static int unix_gid_parse(struct cache_detail *cd,
- 	time_t expiry;
- 	struct unix_gid ug, *ugp;
-=20
--	if (mlen <=3D 0 || mesg[mlen-1] !=3D '\n')
-+	if (mesg[mlen - 1] !=3D '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] =3D 0;
-=20
-
---y0ulUmNC+osPPQO6
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAEBAgAGBQJPGRxBAAoJEOnZkXI/YHqRyf8P/i/NqAK8OY+Lbddyd44jVQeZ
-FcDAvv4zuiXW9nBYrirVUz5YZ+d/YHsGaK1PYdMdYb/zyy8+ziabdTccLjoEhwei
-5TsOq+sXxSexHkZAg0jO4KBaLjEfETVcDzCOkfcWJ5HxknrShXwu9bMK1Vcf8S0n
-PxRUK2YywibCb4osejsDZiG60H+f0kb2p33eC5QbaD+jmDCD9fzJrLZ4wkdV2lD0
-Gq3J6ZxKYLbjkO9sxgZBf8f34EuDi16KWmbDP3JJuvFXQp+1ylHAswwEeJ7j60HC
-mgXJCMiep3t3isEQWEJpa3/YH+/N7saRezLZomLgMYoeHnCL5hpjx7vgmDZhHlfY
-jX2bdLDAexkM207IG5E89sV75LBK4MBR+P16bCb7S05GYWD4uHSsHjc5Gv0GetVO
-9nj7nMxhiYw2vDPJwH+zvNLZWDfyavZFejPqk/chn0FQtXN7jollLkx6bhNhiDpu
-JOkLdxCjDuwCaDJSr86sYHIpBgyAvREFjKWyRdf8iIHEANtnFfXLRD7j28fBoqQQ
-fs4N3UP7MoL54WIU4TLnfJF/KR1ZRKZFAUS2SxZBOhgC4Fq9Jz0L0CxQN30fa7eW
-yeihJ7gGcotARw14si9aWT9PYFbNdrSx71U1wqGqUeWSPaWpPsjVKnjaTbSiE+S9
-O6SCazuAOgvDx0icdklY
-=FLA6
------END PGP SIGNATURE-----
-
---y0ulUmNC+osPPQO6--
