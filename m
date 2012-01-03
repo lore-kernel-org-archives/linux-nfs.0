@@ -1,91 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52504 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756144Ab2AXRMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 12:12:20 -0500
+	id S1753644Ab2ACW55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jan 2012 17:57:57 -0500
+Date: Tue, 3 Jan 2012 17:57:57 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] svcrpc: fix double-free on shutdown of nfsd after
+ changing pool mode
+Message-ID: <20120103225757.GA9294@fieldses.org>
+References: <1325631381-9231-1-git-send-email-bfields@redhat.com>
+ <1325631381-9231-4-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH 1/1] SUNRPC: Adding status trace points
-Date: Tue, 24 Jan 2012 09:12:03 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE025B3@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <4F1EB353.1060205@RedHat.com>
-References: <1327348480-32549-1-git-send-email-steved@redhat.com>	 <1327348480-32549-2-git-send-email-steved@redhat.com> <1327354611.2628.20.camel@lade.trondhjem.org> <4F1EB353.1060205@RedHat.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Steve Dickson" <SteveD@redhat.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1325631381-9231-4-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGV2ZSBEaWNrc29uIFttYWls
-dG86U3RldmVEQHJlZGhhdC5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIEphbnVhcnkgMjQsIDIwMTIg
-NTozNCBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogTGludXggTkZTIE1haWxpbmcg
-TGlzdA0KPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMV0gU1VOUlBDOiBBZGRpbmcgc3RhdHVzIHRy
-YWNlIHBvaW50cw0KPiANCj4gSGV5LA0KPiANCj4gT24gMDEvMjMvMjAxMiAwNDozNiBQTSwgVHJv
-bmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIE1vbiwgMjAxMi0wMS0yMyBhdCAxNDo1NCAtMDUw
-MCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4gVGhpcyBwYXRjaCBhZGRzIHRocmVlIHRyYWNl
-IHBvaW50cyB0byB0aGUgc3RhdHVzIHJvdXRpbmVzIGluIHRoZQ0KPiA+PiBzdW5ycGMgc3RhdGUg
-bWFjaGluZS4NCj4gPj4NCj4gPj4gU2lnbmVkLW9mZi1ieTogU3RldmUgRGlja3NvbiA8c3RldmVk
-QHJlZGhhdC5jb20+DQo+ID4+IC0tLQ0KPiA+PiAgaW5jbHVkZS90cmFjZS9ldmVudHMvc3VucnBj
-LmggfCAgIDQ1DQo+ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrDQo+
-ID4+ICBuZXQvc3VucnBjL2NsbnQuYyAgICAgICAgICAgICB8ICAgIDQgKysrDQo+ID4+ICAyIGZp
-bGVzIGNoYW5nZWQsIDQ5IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4+DQo+ID4+
-IGRpZmYgLS1naXQgYS9pbmNsdWRlL3RyYWNlL2V2ZW50cy9zdW5ycGMuaA0KPiA+PiBiL2luY2x1
-ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oIGluZGV4IDE4NTJmMTEuLmJjYTVhZDMgMTAwNjQ0DQo+
-ID4+IC0tLSBhL2luY2x1ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oDQo+ID4+ICsrKyBiL2luY2x1
-ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oDQo+ID4+IEBAIC04LDYgKzgsNTEgQEANCj4gPj4gICNp
-bmNsdWRlIDxsaW51eC9zdW5ycGMvY2xudC5oPg0KPiA+PiAgI2luY2x1ZGUgPGxpbnV4L3RyYWNl
-cG9pbnQuaD4NCj4gPj4NCj4gPj4gK0RFQ0xBUkVfRVZFTlRfQ0xBU1MocnBjX3Rhc2tfc3RhdHVz
-LA0KPiA+PiArDQo+ID4+ICsJVFBfUFJPVE8oc3RydWN0IHJwY190YXNrICp0YXNrKSwNCj4gPj4g
-Kw0KPiA+PiArCVRQX0FSR1ModGFzayksDQo+ID4+ICsNCj4gPj4gKwlUUF9TVFJVQ1RfX2VudHJ5
-KA0KPiA+PiArCQlfX2ZpZWxkKGludCwgc3RhdHVzKQ0KPiA+PiArCSksDQo+ID4+ICsNCj4gPj4g
-KwlUUF9mYXN0X2Fzc2lnbigNCj4gPj4gKwkJX19lbnRyeS0+c3RhdHVzID0gdGFzay0+dGtfc3Rh
-dHVzOw0KPiA+PiArCSksDQo+ID4+ICsNCj4gPj4gKwlUUF9wcmludGsoInN0YXR1cyAlZCIsIF9f
-ZW50cnktPnN0YXR1cykgKTsNCj4gPg0KPiA+IEhvdyBkbyB5b3UgdGVsbCB3aGljaCBSUEMgdGFz
-ayB0aGlzIHJlZmVycyB0byBpbiB0aGUgb3V0cHV0Pw0KPiA+RnJvbSB0aGUgdGFzayBwb2ludGVy
-IEkgc2VuZCB1cCB0byB0aGUgcHJvYi4gT25jZSBJIGhhdmUgdGhhdA0KPiBwb2ludGVyIEkgY2Fu
-IGdyYWIgYW55IGZpZWxkIG91dCBpdC4gQW4gZXhhbXBsZToNCj4gDQo+IHByb2JlIGtlcm5lbC50
-cmFjZSgicnBjX2NhbGxfc3RhdHVzIikNCj4gew0KPiAgICAgdGVycm9yID0gdGFza19zdGF0dXMo
-JHRhc2spOw0KPiAgICAgaWYgKHRlcnJvcikNCj4gICAgICAgICBwcmludGYoIiVzWyVkXTpjYWxs
-X3N0YXR1czolczolczogZXJyb3IgJWQgKCVzKVxuIiwNCj4gICAgICAgICAgICAgZXhlY25hbWUo
-KSwgcGlkKCksIGNsX3NlcnZlcigkdGFzayksIGNsX3Byb2coJHRhc2spLA0KPiAgICAgICAgICAg
-ICB0ZXJyb3IsIGVycm5vX3N0cih0ZXJyb3IpKTsNCj4gfQ0KPiBUaGUgaG9tZSBncm93biByb3V0
-aW5lIHRhc2tfc3RhdHVzKCR0YXNrKSBwdWxscyB0aGUgc3RhdHVzIG91dCB0YXNrDQo+IHN0cnVj
-dHVyZS4gSWYgdGhlcmUgaXMgc3RhdHVzIEkgd2lsbCBnZXQgdGhlIGZvbGxvd2luZyBvdXRwdXQ6
-DQo+ICAgICBtb3VudC5uZnNbMTMzNjhdOmNhbGxfc3RhdHVzOnZmMTY6bmZzWzRdOjA6IGVycm9y
-IC0zMiAoRVBJUEUpDQo+IA0KPiBUaGUgYnVpbHQgaW4gcm91dGluZSBleGVjbmFtZSgpIGFuZCBw
-aWQoKSBzdXBwbHkgdGhlIHByb2Nlc3MgbmFtZSBhbmQgcGlkLg0KPiBUaGUgaG9tZSBncm93biBy
-b3V0aW5lcywgY2xfc2VydmVyKCR0YXNrKSBhbmQgY2xfcHJvZygkdGFzaykgcHVsbCBvdXQgdGhl
-DQo+IHNlcnZlciwgcHJvdG9jb2wsIGFuZCB2ZXJzaW9uIGZyb20gdGhlIHRhc2suIEZpbmFsbHkg
-dGhlIGJ1aWx0IGluIHJvdXRpbmUNCj4gZXJybm9fc3RyKCkgaXMgdXNlZCBmb3IgdGhlIGVycm5v
-IHRvIHN0cmluZyBjb252ZXJzaW9uLg0KPiANCj4gDQo+ID4gU2hvdWxkbid0IHdlIHJhdGhlciBt
-YWtlIHRoZSBhYm92ZQ0KPiA+DQo+ID4gCVRQX3ByaW50aygidGFzazolcEAlcCwgc3RhdHVzICVk
-IiwgX19lbnRyeS0+dGFzaywgX19lbnRyeS0+Y2xudCwNCj4gX19lbnRyeS0+c3RhdHVzKQ0KPiA+
-DQo+ID4gc28gdGhhdCBpdCBtYXRjaGVzIHRoZSBmb3JtYXQgaW4gdGhlIHByZXZpb3VzIHRyYWNl
-cG9pbnQgcGF0Y2g/DQo+IFN1cmUgaWYgeW91IHdhbnQgdG8gc3RhbmRhcmRpemVyIG9uIHRoYXQg
-dHlwZSBvZiBmb3JtYXQgdGhhdHMNCj4gZmluZSB3aXRoIG1lLi4uIGJ1dCwgYXMgeW91IGRvIGlu
-IHlvdXIgdHJhY2UgcG9pbnRzLCB3ZSBzaG91bGQgYWxzbw0KPiBtYWtlIHRoZSBjbG50IHBvaW50
-IGF2YWlsYWJsZSB0byB0aGUgcHJvYiBieSBtYWtpbmcgaXQgcGFydCBvZiB0aGUNCj4gVFBfQVJH
-UygpLiBUaGUgbW9yZSBkYXRhIHdlIGNhbiBsb29rIGF0IHRoZSBiZXR0ZXIuLg0KPiANCj4gUXVl
-c3Rpb24gYWJvdXQgVFBfcHJpbnRrKCkgc3RhdGVtZW50cz8gSG93IGRvIHlvdSB1c2VzIHRoZW0/
-IE1lYW5pbmcNCj4gaG93IGdldCB0aGVtIHRvIHByaW50PyBJJ3ZlIG5ldmVyIG5lZWRlZCBvciB1
-c2VkIHRoZW0gc2luY2UgSQ0KPiBhbHdheXMgdXNlZCBwcm9icyB0byBncmFiIHRoYXQgdHlwZSBv
-ZiBpbmZvLg0KDQoNClRoZXJlIGFyZSAyIGRpZmZlcmVudCBpbnRlcmZhY2VzIGluIC9zeXMva2Vy
-bmVsL2RlYnVnL3RyYWNpbmcgdGhhdCB5b3UgY2FuIHVzZSB0byB0dXJuIHRoZSB0cmFjaW5nIG9u
-IGFuZCBvZmYuIFNlZSB0aGUgZGVzY3JpcHRpb24gaW4gRG9jdW1lbnRhdGlvbi90cmFjZS9ldmVu
-dHMudHh0DQoNCg0KPiA+IEFsc28sIHdoeSBhcmUgeW91IGFkZGluZyB0cmFjZXBvaW50cyBmb3Ig
-c3BlY2lmaWMgc3RhdGVzIGluDQo+ID4gbmV0L3N1bnJwYy9jbG50LmM/DQo+IEkgd2FzIGp1c3Qg
-bG9va2luZyBmb3Igc3RhdHVzIG5vdCBzdGF0ZS4gQmFzaWNhbGx5IHRvIHNlZSBpZiB0aGVyZSBp
-cw0KPiBhbiBwcm9ibGVtIGF0IGFsbC4uLg0KPiANCj4gPiBJcyB0aGUgaW50ZW50aW9uIHRvIGFs
-bG93IHRoZSB1c2VyIHRvIHRhcmdldCBzcGVjaWZpYw0KPiA+IGJ1Z3MgdGhhdCBtaWdodCBiZSBo
-YXJkZXIgdG8gc3BvdCBpbiB0aGUgb3V0cHV0IGZyb20NCj4gPiB0cmFjZV9ycGNfdGFza19ydW5f
-YWN0aW9uKCk/DQo+IFRoZXNlIHdlcmUgYXJjaGl0ZWN0ZWQgZXhwbGljaXRseSBzaG93IGlmIGEg
-YmluZCB3YXMgZmFpbGluZyBhbmQgd2h5DQo+IG9yIGlmIGEgY29ubmVjdGlvbiB3YXMgZmFpbGlu
-ZyBhbmQgd2h5LiBBIG11Y2ggaGlnaGVyIGxldmVsIChhbmQNCj4gc2ltcGxlcikgdGhhbiB0aGUg
-aW5mbyB0cmFjZV9ycGNfdGFza19ydW5fYWN0aW9uIHN1cHBsaWVzLg0KPiBUaGV5IGFyZSBtb3Jl
-IGRpcmVjdGVkIGF0IGFkbWluIHR5cGVzIHZlcnNlcyBkZXZlbG9wZXIgdHlwZXMuDQoNCk9LLiBD
-YW4geW91IGFkZCB0aGF0IGluZm9ybWF0aW9uIHRvIHRoZSBjaGFuZ2Vsb2c/IFdlIG1pZ2h0IGFs
-c28gY29uc2lkZXIgbWFpbnRhaW5pbmcgYSBkb2N1bWVudCBpbiBEb2N1bWVudHMvZmlsZXN5c3Rl
-bXMvbmZzIHRoYXQgcHJvdmlkZXMgYmFzaWMgaW5mb3JtYXRpb24gb24gd2hpY2ggdHJhY2Vwb2lu
-dHMgd2UgY29uc2lkZXIgdG8gYmUgJ2FkbWluIGRlYnVnZ2luZycgYWlkcywgYW5kIGhvdyB0aGV5
-IG1heSBiZSB1c2VkLg0KDQo=
+On Tue, Jan 03, 2012 at 05:56:20PM -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> The pool_to and to_pool fields of the global svc_pool_map are freed on
+> shutdown, but are initialized in nfsd startup only in the
+> SVC_POOL_PERCPU and SVC_POOL_PERNODE cases.
+> 
+> They *are* initialized to zero on kernel startup.  So as long as you use
+> only SVC_POOL_GLOBAL (the default), this will never be a problem.
+> 
+> You're also OK if you only ever use SVC_POOL_PERCPU or SVC_POOL_PERNODE.
+> 
+> However, the following sequence events leads to a double-free:
+> 
+> 	1. set SVC_POOL_PERCPU or SVC_POOL_PERNODE
+> 	2. start nfsd: both fields are initialized.
+> 	3. shutdown nfsd: both fields are freed.
+> 	4. set SVC_POOL_GLOBAL
+> 	5. start nfsd: the fields are left untouched.
+> 	6. shutdown nfsd: now we try to free them again.
+> 
+> Step 4 is actually unnecessary, since (for some bizarre reason), nfsd
+> automatically resets the pool mode to SVC_POOL_GLOBAL on shutdown.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+Oops, also adding a stable cc for this.
+
+--b.
+
+> ---
+>  net/sunrpc/svc.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index e9632bb..1dd5fd0 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -167,6 +167,7 @@ svc_pool_map_alloc_arrays(struct svc_pool_map *m, unsigned int maxpools)
+>  
+>  fail_free:
+>  	kfree(m->to_pool);
+> +	m->to_pool = NULL;
+>  fail:
+>  	return -ENOMEM;
+>  }
+> @@ -287,7 +288,9 @@ svc_pool_map_put(void)
+>  	if (!--m->count) {
+>  		m->mode = SVC_POOL_DEFAULT;
+>  		kfree(m->to_pool);
+> +		m->to_pool = NULL;
+>  		kfree(m->pool_to);
+> +		m->pool_to = NULL;
+>  		m->npools = 0;
+>  	}
+>  
+> -- 
+> 1.7.5.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
