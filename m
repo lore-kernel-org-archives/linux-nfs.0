@@ -1,63 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35727 "EHLO fieldses.org"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:50924 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752761Ab2AXXLA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 18:11:00 -0500
-Date: Tue, 24 Jan 2012 18:11:00 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
-Message-ID: <20120124231059.GG12426@fieldses.org>
-References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
- <20120124230855.GE12426@fieldses.org>
+	id S1756815Ab2ADUb1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jan 2012 15:31:27 -0500
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Wed, 4 Jan 2012 15:31:26 -0500
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q04KVNKW247634
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Jan 2012 15:31:23 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q04KVMGn019337
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Jan 2012 18:31:22 -0200
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q04KVKiO019220
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Jan 2012 18:31:20 -0200
+In-Reply-To: <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
+References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com> <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120124230855.GE12426@fieldses.org>
+Subject: Linux pNFS status meeting 01/05/12
+Message-ID: <OFA87AD733.E4260468-ON8825797B.00708512-8825797B.0070B0A1@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 4 Jan 2012 12:31:02 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 24, 2012 at 06:08:55PM -0500, J. Bruce Fields wrote:
-> On Mon, Jan 23, 2012 at 03:01:01PM -0500, Jeff Layton wrote:
-> > This is the fourth iteration of this patchset. I had originally asked
-> > Bruce to take the last one for 3.3, but decided at the last minute to
-> > wait on it a bit. I knew there would be some changes needed in the
-> > upcall, so by waiting we can avoid needing to deal with those in code
-> > that has already shipped. I would like to see this patchset considered
-> > for 3.4 however.
-> > 
-> > The previous patchset can be viewed here. That set also contains a
-> > more comprehensive description of the rationale for this:
-> > 
-> >     http://www.spinics.net/lists/linux-nfs/msg26324.html
-> > 
-> > There have been a number of significant changes since the last set:
-> > 
-> > - the remove/expire upcall is now gone. In a clustered environment, the
-> > records would need to be refcounted in order to handle that properly. That
-> > becomes a sticky problem when you could have nodes rebooting. We don't
-> > really need to remove these records individually however. Cleaning them
-> > out only when the grace period ends should be sufficient.
-> 
-> I don't think so:
-> 
-> 	1. Client establishes state with server.
-> 	2. Network goes down.
-> 	3. A lease period passes without the client being able to renew.
-> 	   The server expires the client and grants conflicting locks to
-> 	   other clients.
-> 	3. Server reboots.
+Meeting on Thursday 01/05/12 at 9:30 AM PST (12:30 PM EST)
 
-(Doh.  Counting is hard.)
 
---b.
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
 
-> 	4. Network comes back up.
-> 
-> At this point, the client sees that the server has rebooted and is in
-> its grace period, and reclaims.  Ooops.
-> 
-> The server needs to be able to tell the client "nope, you're not allowed
-> to reclaim any more" at this point.
-> 
-> So we need some sort of remove/expire upcall.
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
+
+
