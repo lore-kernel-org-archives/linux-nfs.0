@@ -1,109 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53618 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753224Ab2AQTNj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 14:13:39 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/8] NFSv4: Clean up nfs4_get_state_owner
-Date: Tue, 17 Jan 2012 14:13:27 -0500
-Message-Id: <1326827613-7997-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:59949 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757074Ab2ADV4l convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 16:56:41 -0500
+Subject: Re: [PATCH] NFS: Fix a few issues with cached state owners
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1325713927-25519-1-git-send-email-Trond.Myklebust@netapp.com>
+Date: Wed, 4 Jan 2012 16:56:36 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com>
+References: <1325697256.18462.24.camel@lade.trondhjem.org> <1325713927-25519-1-git-send-email-Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h   |    2 +-
- fs/nfs/nfs4proc.c  |    2 +-
- fs/nfs/nfs4state.c |   24 +++++++++++-------------
- 3 files changed, 13 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 4d7d0ae..6d439c2 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -319,7 +319,7 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session)
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
--extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
-+extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *, gfp_t);
- extern void nfs4_put_state_owner(struct nfs4_state_owner *);
- extern void nfs4_purge_state_owners(struct nfs_server *);
- extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f0c849c..4072754 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1754,7 +1754,7 @@ static int _nfs4_do_open(struct inode *dir, struct dentry *dentry, fmode_t fmode
- 
- 	/* Protect against reboot recovery conflicts */
- 	status = -ENOMEM;
--	if (!(sp = nfs4_get_state_owner(server, cred))) {
-+	if (!(sp = nfs4_get_state_owner(server, cred, GFP_KERNEL))) {
- 		dprintk("nfs4_do_open: nfs4_get_state_owner failed!\n");
- 		goto out_err;
- 	}
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a53f33b..a8a42a6 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -444,13 +444,17 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
-  *
-  */
- static struct nfs4_state_owner *
--nfs4_alloc_state_owner(void)
-+nfs4_alloc_state_owner(struct nfs_server *server,
-+		struct rpc_cred *cred,
-+		gfp_t gfp_flags)
- {
- 	struct nfs4_state_owner *sp;
- 
--	sp = kzalloc(sizeof(*sp),GFP_NOFS);
-+	sp = kzalloc(sizeof(*sp), gfp_flags);
- 	if (!sp)
- 		return NULL;
-+	sp->so_server = server;
-+	sp->so_cred = get_rpccred(cred);
- 	spin_lock_init(&sp->so_lock);
- 	INIT_LIST_HEAD(&sp->so_states);
- 	rpc_init_wait_queue(&sp->so_sequence.wait, "Seqid_waitqueue");
-@@ -516,7 +520,8 @@ static void nfs4_gc_state_owners(struct nfs_server *server)
-  * Returns a pointer to an instantiated nfs4_state_owner struct, or NULL.
-  */
- struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
--					      struct rpc_cred *cred)
-+					      struct rpc_cred *cred,
-+					      gfp_t gfp_flags)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs4_state_owner *sp, *new;
-@@ -526,20 +531,13 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
- 	spin_unlock(&clp->cl_lock);
- 	if (sp != NULL)
- 		goto out;
--	new = nfs4_alloc_state_owner();
-+	new = nfs4_alloc_state_owner(server, cred, gfp_flags);
- 	if (new == NULL)
- 		goto out;
--	new->so_server = server;
--	new->so_cred = cred;
--	spin_lock(&clp->cl_lock);
- 	sp = nfs4_insert_state_owner_locked(new);
- 	spin_unlock(&clp->cl_lock);
--	if (sp == new)
--		get_rpccred(cred);
--	else {
--		rpc_destroy_wait_queue(&new->so_sequence.wait);
--		kfree(new);
--	}
-+	if (sp != new)
-+		nfs4_free_state_owner(new);
- out:
- 	nfs4_gc_state_owners(server);
- 	return sp;
+On Jan 4, 2012, at 4:52 PM, Trond Myklebust wrote:
+
+> The garbage collector needs to remove the entry from the lru list
+> _and_ the red-black tree atomically in order avoid races in
+> nfs4_get_state_owner.
+> 
+> Fix a case in nfs4_get_state_owner in which the garbage-collector
+> list was being manipulated while not holding the appropriate spin
+> lock.
+> 
+> nfs4_drop_state_owner doesn't need to look at sp->so_lru: the caller
+> must have a reference to the state owner, so it can't be on the
+> garbage-collection list.
+> 
+> Run the garbage collector _after_ we've looked up the state owner
+> for efficiency reasons.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+> ---
+> fs/nfs/nfs4state.c |   23 ++++++++++++++++-------
+> 1 files changed, 16 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index b9ade99..dc78e0e 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -389,6 +389,8 @@ nfs4_find_state_owner_locked(struct nfs_server *server, struct rpc_cred *cred)
+> 		else if (cred > sp->so_cred)
+> 			p = &parent->rb_right;
+> 		else {
+> +			if (!list_empty(&sp->so_lru))
+> +				list_del_init(&sp->so_lru);
+> 			atomic_inc(&sp->so_count);
+> 			return sp;
+> 		}
+> @@ -413,6 +415,8 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
+> 		else if (new->so_cred > sp->so_cred)
+> 			p = &parent->rb_right;
+> 		else {
+> +			if (!list_empty(&sp->so_lru))
+> +				list_del_init(&sp->so_lru);
+> 			atomic_inc(&sp->so_count);
+> 			return sp;
+> 		}
+> @@ -459,6 +463,13 @@ nfs4_alloc_state_owner(void)
+> }
+> 
+> static void
+> +nfs4_drop_state_owner_locked(struct nfs_server *server, struct nfs4_state_owner *sp)
+> +{
+> +	rb_erase(&sp->so_server_node, &server->state_owners);
+> +	RB_CLEAR_NODE(&sp->so_server_node);
+> +}
+> +
+> +static void
+> nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+> {
+> 	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
+> @@ -466,9 +477,8 @@ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+> 		struct nfs_client *clp = server->nfs_client;
+> 
+> 		spin_lock(&clp->cl_lock);
+> -		list_del_init(&sp->so_lru);
+> -		rb_erase(&sp->so_server_node, &server->state_owners);
+> -		RB_CLEAR_NODE(&sp->so_server_node);
+> +		if (!RB_EMPTY_NODE(&sp->so_server_node))
+> +			nfs4_drop_state_owner_locked(server, sp);
+> 		spin_unlock(&clp->cl_lock);
+> 	}
+> }
+> @@ -499,6 +509,7 @@ static void nfs4_gc_state_owners(struct nfs_server *server)
+> 				sp->so_expires + clp->cl_lease_time))
+> 			break;
+> 		list_move(&sp->so_lru, &doomed);
+> +		nfs4_drop_state_owner_locked(server, sp);
+> 	}
+> 	spin_unlock(&clp->cl_lock);
+> 
+> @@ -521,8 +532,6 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+> 	struct nfs_client *clp = server->nfs_client;
+> 	struct nfs4_state_owner *sp, *new;
+> 
+> -	nfs4_gc_state_owners(server);
+> -
+> 	spin_lock(&clp->cl_lock);
+> 	sp = nfs4_find_state_owner_locked(server, cred);
+> 	spin_unlock(&clp->cl_lock);
+> @@ -530,7 +539,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+> 		goto out;
+> 	new = nfs4_alloc_state_owner();
+> 	if (new == NULL)
+> -		return NULL;
+> +		goto out;
+> 	new->so_server = server;
+> 	new->so_cred = cred;
+> 	spin_lock(&clp->cl_lock);
+> @@ -543,7 +552,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+> 		kfree(new);
+> 	}
+> out:
+> -	list_del_init(&sp->so_lru);
+> +	nfs4_gc_state_owners(server);
+> 	return sp;
+> }
+> 
+> -- 
+> 1.7.7.5
+> 
+
 -- 
-1.7.7.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
