@@ -1,40 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:44214 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:19445 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755379Ab2AYNrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 08:47:24 -0500
-Subject: [PATCH 0/4] SUNRPC: service release in network namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 25 Jan 2012 17:47:00 +0400
-Message-ID: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1750805Ab2ADROf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 12:14:35 -0500
+Message-ID: <1325697256.18462.24.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 2/2] NFS: Cache state owners after files are closed
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 04 Jan 2012 12:14:16 -0500
+In-Reply-To: <1ABF105B-C779-4CF7-9494-0AA775407718@oracle.com>
+References: <20111206210723.5969.85159.stgit@degas.1015granger.net>
+	 <20111206211348.5969.61933.stgit@degas.1015granger.net>
+	 <1325692415.18462.6.camel@lade.trondhjem.org>
+	 <1325692758.18462.10.camel@lade.trondhjem.org>
+	 <CBB27FEB-BA9A-408E-85A7-A3F63F7B280B@oracle.com>
+	 <1325693647.18462.15.camel@lade.trondhjem.org>
+	 <1ABF105B-C779-4CF7-9494-0AA775407718@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set is the final step towards to making LockD network namespace
-aware.
-I can't prove, that this patch set is enough for NFSd (just haven't try), by
-Lockd works fine and patches for it will be send soon.
+On Wed, 2012-01-04 at 12:07 -0500, Chuck Lever wrote: 
+> On Jan 4, 2012, at 11:14 AM, Trond Myklebust wrote:
+> As you state above, on our client state owners actually pin resources.  They are more than a label and a counter.
+> 
+> If you prefer "GC last" I can change my patch (or you can).
 
-The following series consists of:
+Please do. It is slightly more efficient in the corner case I pointed
+out, and should leave all other cases unaffected...
 
----
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Stanislav Kinsbursky (4):
-      SUNRPC: clear svc pools lists helper introduced
-      SUNRPC: clear svc transports lists helper introduced
-      SUNRPC: service destruction in network namespace context
-      SUNRPC: service shutdown function in network namespace context introduced
-
-
- include/linux/sunrpc/svcsock.h |    2 +-
- net/sunrpc/svc.c               |   36 +++++++++++++++++++++-----------
- net/sunrpc/svc_xprt.c          |   45 ++++++++++++++++++++++++++++------------
- 3 files changed, 56 insertions(+), 27 deletions(-)
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
