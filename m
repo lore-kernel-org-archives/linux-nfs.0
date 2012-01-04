@@ -1,212 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6861 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750771Ab2AYTbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 14:31:11 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0PJVATE002193
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 14:31:11 -0500
-Message-ID: <4F20587E.9070209@RedHat.com>
-Date: Wed, 25 Jan 2012 14:31:10 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and recreated
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>	<1327348931-785-10-git-send-email-jlayton@redhat.com>	<4F2046F8.80609@RedHat.com> <20120125140954.5312a80f@tlielax.poochiereds.net>
-In-Reply-To: <20120125140954.5312a80f@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:62406 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756502Ab2ADRHL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 12:07:11 -0500
+Subject: Re: [PATCH 2/2] NFS: Cache state owners after files are closed
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1325693647.18462.15.camel@lade.trondhjem.org>
+Date: Wed, 4 Jan 2012 12:07:07 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <1ABF105B-C779-4CF7-9494-0AA775407718@oracle.com>
+References: <20111206210723.5969.85159.stgit@degas.1015granger.net> <20111206211348.5969.61933.stgit@degas.1015granger.net> <1325692415.18462.6.camel@lade.trondhjem.org> <1325692758.18462.10.camel@lade.trondhjem.org> <CBB27FEB-BA9A-408E-85A7-A3F63F7B280B@oracle.com> <1325693647.18462.15.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Jan 4, 2012, at 11:14 AM, Trond Myklebust wrote:
 
-On 01/25/2012 02:09 PM, Jeff Layton wrote:
-> On Wed, 25 Jan 2012 13:16:24 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
+> On Wed, 2012-01-04 at 11:08 -0500, Chuck Lever wrote: 
+>> On Jan 4, 2012, at 10:59 AM, Trond Myklebust wrote:
+>> 
+>>> On Wed, 2012-01-04 at 10:53 -0500, Trond Myklebust wrote: 
+>>>> On Tue, 2011-12-06 at 16:13 -0500, Chuck Lever wrote: 
+>>>>> Servers have a finite amount of memory to store NFSv4 open and lock
+>>>>> owners.  Moreover, servers may have a difficult time determining when
+>>>>> they can reap their state owner table, thanks to gray areas in the
+>>>>> NFSv4 protocol specification.  Thus clients should be careful to reuse
+>>>>> state owners when possible.
+>>>>> 
+>>>>> Currently Linux is not too careful.  When a user has closed all her
+>>>>> files on one mount point, the state owner's reference count goes to
+>>>>> zero, and it is released.  The next OPEN allocates a new one.  A
+>>>>> workload that serially opens and closes files can run through a large
+>>>>> number of open owners this way.
+>>>>> 
+>>>>> When a state owner's reference count goes to zero, slap it onto a free
+>>>>> list for that nfs_server, with an expiry time.  Garbage collect before
+>>>>> looking for a state owner.  This makes state owners for active users
+>>>>> available for re-use.
+>>>>> 
+>>>>> Now that there can be unused state owners remaining at umount time,
+>>>>> purge the state owner free list when a server is destroyed.  Also be
+>>>>> sure not to reclaim unused state owners during state recovery.
+>>>>> 
+>>>>> This change has benefits for the client as well.  For some workloads,
+>>>>> this approach drops the number of OPEN_CONFIRM calls from the same as
+>>>>> the number of OPEN calls, down to just one.  This reduces wire traffic
+>>>>> and thus open(2) latency.  Before this patch, untarring a kernel
+>>>>> source tarball shows the OPEN_CONFIRM call counter steadily increasing
+>>>>> through the test.  With the patch, the OPEN_CONFIRM count remains at 1
+>>>>> throughout the entire untar.
+>>>>> 
+>>>>> As long as the expiry time is kept short, I don't think garbage
+>>>>> collection should be terribly expensive, although it does bounce the
+>>>>> clp->cl_lock around a bit.
+>>>>> 
+>>>>> [ At some point we should rationalize the use of the nfs_server
+>>>>> ->destroy method. ]
+>>>>> 
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>> <snip> 
+>>>>> +
+>>>>> +static void nfs4_gc_state_owners(struct nfs_server *server)
+>>>>> +{
+>>>>> +	struct nfs_client *clp = server->nfs_client;
+>>>>> +	struct nfs4_state_owner *sp, *tmp;
+>>>>> +	unsigned long now = jiffies;
+>>>>> +	LIST_HEAD(doomed);
+>>>>> +
+>>>>> +	spin_lock(&clp->cl_lock);
+>>>>> +	list_for_each_entry_safe(sp, tmp, &server->state_owners_lru, so_lru) {
+>>>>> +		/* NB: LRU is sorted so that oldest is at the head */
+>>>>> +		if (time_in_range(now, sp->so_expires,
+>>>>> +				sp->so_expires + clp->cl_lease_time))
+>>>>> +			break;
+>>>>> +		list_move(&sp->so_lru, &doomed);
+>>>>> +	}
+>>>>> +	spin_unlock(&clp->cl_lock);
+>>>> 
+>>>> There is a race here: the state owner is still visible in the rb-tree,
+>>>> and so a second thread that calls nfs4_get_state_owner() may still pick
+>>>> up one of these open owners that are now on your 'doomed' list.
+>>>> 
+>>>> I think you rather need to do the equivalent of an
+>>>> 'nfs4_drop_state_owner' in your loop above in order to be 100% safe.
+>>>> 
+>>>>> +	list_for_each_entry_safe(sp, tmp, &doomed, so_lru) {
+>>>>> +		list_del_init(&sp->so_lru);
+>>>>> +		nfs4_release_state_owner(sp);
+>>>>> +	}
+>>>>> +}
+>>>>> +
+>>>>> /**
+>>>>> * nfs4_get_state_owner - Look up a state owner given a credential
+>>>>> * @server: nfs_server to search
+>>>>> @@ -483,11 +521,13 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+>>>>> 	struct nfs_client *clp = server->nfs_client;
+>>>>> 	struct nfs4_state_owner *sp, *new;
+>>>>> 
+>>>>> +	nfs4_gc_state_owners(server);
+>>>>> +
+>>> 
+>>> One more thing: doesn't it make more sense to do the garbage collection
+>>> after you've looked up the state owner? Even if the open owner has been
+>>> expired on the server, you will still gain by avoiding the extra
+>>> allocation.
+>> 
+>> I think "GC first" is more fair.  If you really want to make sure an idle open owner is not re-used passed the sell-by, we have to do GC first.  Otherwise an open owner can languish for days if there's no other activity, and will get re-used on the next open.
 > 
->> Hey Jeff,
->>
->> Commit inline... 
->>
->> On 01/23/2012 03:02 PM, Jeff Layton wrote:
->>> This can happen if nfsd is shut down and restarted. If that occurs,
->>> then reopen the pipe so we're not waiting for data on the defunct
->>> pipe.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
->>>  1 files changed, 74 insertions(+), 10 deletions(-)
->>>
->>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
->>> index b0c08e2..0dc5b37 100644
->>> --- a/utils/nfsdcld/nfsdcld.c
->>> +++ b/utils/nfsdcld/nfsdcld.c
->>> @@ -57,6 +57,8 @@ struct cld_client {
->>>  
->>>  /* global variables */
->>>  static char *pipepath = DEFAULT_CLD_PATH;
->>> +static int 		inotify_fd = -1;
->>> +static struct event	pipedir_event;
->>>  
->>>  static struct option longopts[] =
->>>  {
->>> @@ -68,8 +70,10 @@ static struct option longopts[] =
->>>  	{ NULL, 0, 0, 0 },
->>>  };
->>>  
->>> +
->>>  /* forward declarations */
->>>  static void cldcb(int UNUSED(fd), short which, void *data);
->>> +static void cld_pipe_reopen(struct cld_client *clnt);
->>>  
->>>  static void
->>>  usage(char *progname)
->>> @@ -80,10 +84,62 @@ usage(char *progname)
->>>  
->>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
->>>  
->>> +static void
->>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
->>> +{
->>> +	int ret, oldfd;
->>> +	char evbuf[INOTIFY_EVENT_MAX];
->>> +	char *dirc = NULL, *pname;
->>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
->>> +	struct cld_client *clnt = data;
->>> +
->>> +	if (which != EV_READ)
->>> +		return;
->>> +
->>> +	dirc = strndup(pipepath, PATH_MAX);
->>> +	if (!dirc) {
->>> +		xlog_err("%s: unable to allocate memory", __func__);
->>> +		goto out;
->>> +	}
->>> +
->>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
->>> +	if (ret < 0) {
->>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
->>> +		goto out;
->>> +	}
->>> +
->>> +	/* check to see if we have a filename in the evbuf */
->>> +	if (!event->len)
->>> +		goto out;
->>> +
->>> +	pname = basename(dirc);
->>> +
->>> +	/* does the filename match our pipe? */
->>> +	if (strncmp(pname, event->name, event->len))
->>> +		goto out;
->>> +
->>> +	/*
->>> +	 * reopen the pipe. The old fd is not closed until the new one is
->>> +	 * opened, so we know they should be different if the reopen is
->>> +	 * successful.
->>> +	 */
->>> +	oldfd = clnt->cl_fd;
->>> +	do {
->>> +		cld_pipe_reopen(clnt);
->>> +	} while (oldfd == clnt->cl_fd);
->> Doesn't this have a potential for an infinite loop? 
->>
->> steved.  
-> 
-> 
-> Yes. If reopening the new pipe continually fails then it will loop
-> forever.
-Would it be more accurate to say it would be spinning forever? 
-Since there is no sleep or delay in cld_pipe_reopen, what's
-going to stop the daemon from spinning in a CPU bound loop?
+> Why do we care about fairness here? The only use for the garbage
+> collector is to ensure that state owners that refer to credentials that
+> are no longer in use get kicked out.  I don't see why we should throw out
+> an open owner that matches our search criteria.
 
-steved.
+You can't avoid that.  It's easy to find some workload where "GC last" tosses a state owner right before an application wants to reuse it.  We will always have this problem as long as we garbage collect.
+
+Right now the client is maximally aggressive about tossing state owners.  That is an existence proof that it's really not critical if we throw these away a little more aggressively than is optimal.  It would be much less conservative to allow some state owners to live a long time ("GC last" does not guarantee a lifetime upper bound), since we've never allowed a state owner to live a long time before.
+
+>> It seems to me that on-the-wire behavior would be inconsistent if some open owners were re-used after a long idle, some were not, and the precise re-use behavior depended on workload.  "GC first" gives nicely predictable behavior.
 > 
->>> +
->>> +	/* readd the event for the cl_event pipe */
->>> +	event_add(&clnt->cl_event, NULL);
->>> +
->>> +out:
->>> +	event_add(&pipedir_event, NULL);
->>> +	free(dirc);
->>> +}
->>> +
->>>  static int
->>>  cld_pipe_open(struct cld_client *clnt)
->>>  {
->>> -	int ifd, wat;
->>> +	int wat;
->>>  	ssize_t ret;
->>>  	char *dirc, *dname;
->>>  	char event[INOTIFY_EVENT_MAX];
->>> @@ -97,16 +153,16 @@ cld_pipe_open(struct cld_client *clnt)
->>>  
->>>  	dname = dirname(dirc);
->>>  
->>> -	ifd = inotify_init();
->>> -	if (ifd < 0) {
->>> +	inotify_fd = inotify_init();
->>> +	if (inotify_fd < 0) {
->>>  		xlog_err("%s: inotify_init failed: %m", __func__);
->>>  		goto out_free;
->>>  	}
->>>  
->>> -	wat = inotify_add_watch(ifd, dname, IN_CREATE);
->>> +	wat = inotify_add_watch(inotify_fd, dname, IN_CREATE);
->>>  	if (wat < 0) {
->>>  		xlog_err("%s: inotify_add_watch failed: %m", __func__);
->>> -		goto out;
->>> +		goto out_err;
->>>  	}
->>>  
->>>  	for (;;) {
->>> @@ -117,24 +173,31 @@ cld_pipe_open(struct cld_client *clnt)
->>>  		else if (errno != ENOENT) {
->>>  			xlog_err("%s: unable to open %s: %m", __func__,
->>>  					pipepath);
->>> -			goto out;
->>> +			goto out_err;
->>>  		}
->>> -		ret = read(ifd, event, INOTIFY_EVENT_MAX);
->>> +		ret = read(inotify_fd, event, INOTIFY_EVENT_MAX);
->>>  		if (ret < 0) {
->>>  			xlog_err("%s: read from inotify fd failed: %m",
->>>  					__func__);
->>> -			goto out;
->>> +			goto out_err;
->>>  		}
->>>  	}
->>>  
->>> +	/* set event for the pipe reads */
->>>  	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
->>>  	event_add(&clnt->cl_event, NULL);
->>>  
->>> -out:
->>> -	close(ifd);
->>> +	/* another event for inotify read */
->>> +	event_set(&pipedir_event, inotify_fd, EV_READ, cld_inotify_cb, clnt);
->>> +	event_add(&pipedir_event, NULL);
->>> +
->>>  out_free:
->>>  	free(dirc);
->>>  	return clnt->cl_fd;
->>> +
->>> +out_err:
->>> +	close(inotify_fd);
->>> +	goto out_free;
->>>  }
->>>  
->>>  static void
->>> @@ -142,6 +205,7 @@ cld_pipe_reopen(struct cld_client *clnt)
->>>  {
->>>  	int fd;
->>>  
->>> +	xlog(D_GENERAL, "%s: reopening pipe", __func__);
->>>  	fd = open(pipepath, O_RDWR, 0);
->>>  	if (fd < 0) {
->>>  		xlog_warn("%s: Re-opening of %s failed: %m",
->>> -- 1.7.7.5
-> 
-> 
+> Inconsistent how?
+
+I think I explained it already.  Some state owners get re-used, some don't, and there's no real pattern.  It's an invitation to unwanted load-dependent behavior (he said, having spent the past month tracking down unwanted load-dependent behavior).  I don't have something specific in mind at the moment.
+
+> An open owner is just a label and a counter. The
+> server isn't going to be using it for anything other than figuring out
+> ordering semantics (minor version 0 only) and share lock semantics.
+
+As you state above, on our client state owners actually pin resources.  They are more than a label and a counter.
+
+If you prefer "GC last" I can change my patch (or you can).  I think "GC first" is a much cleaner implementation.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
