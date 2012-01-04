@@ -1,80 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:35818 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750795Ab2AGQ5y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2012 11:57:54 -0500
-Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type fully matches
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:35483 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756482Ab2ADT4m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 14:56:42 -0500
+Received: by mail-vx0-f174.google.com with SMTP id fk14so13490667vcb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2012 11:56:42 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
-Date: Sat, 7 Jan 2012 11:57:42 -0500
-Cc: linux@razik.name, Trond.Myklebust@netapp.com, penberg@kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-Id: <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com>
-References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
-To: Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH 1/5] configure.ac: Clean up help string for --with-statdpath
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 04 Jan 2012 14:56:39 -0500
+Message-ID: <20120104195639.21904.79259.stgit@degas.1015granger.net>
+In-Reply-To: <20120104194136.21904.36616.stgit@degas.1015granger.net>
+References: <20120104194136.21904.36616.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+Neither m4 nor the vim colorizer like unbalanced single quotes.
+Similar change as commit 34ee5730.
 
-On Jan 7, 2012, at 4:12 AM, Sasha Levin wrote:
+Also, the default value of the command line option is conventionally
+listed in the right-hand side argument of AC_HELP_STRING.
 
-> Currently, we'll try mounting any device who's major device number is
-> UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
-> as 9p devices) but it wouldn't cause any issues since mounting the device
-> as NFS would fail quickly and the code proceeded to doing the proper mount:
-> 
-> 	[  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
-> 	[  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
-> 
-> Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
-> mounting NFS root, which means that now we don't immediately fail and instead
-> it takes an additional 90+ seconds until we stop retrying.
-> 
-> This meant that it would take an additional 90 seconds to boot when we're not
-> using a device type which gets detected in order before NFS.
+Introduced by commit 5c3e2665: "statd: Decouple statd's state
+directory from the NFS state directory," (September 20, 2011).
 
-The long timeouts are kind of irrelevant, in my view.  The real problem is that NFS was tried at all in this case.  That behavior was not introduced by 6829a058.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> This patch modifies the NFS type check to require device type to be
-> 'Root_NFS' instead of requiring the device to have an UNNAMED_MAJOR major.
-> This makes boot process cleaner since we now won't go through the NFS mounting
-> code at all when the device isn't an NFS root ("/dev/nfs").
+ configure.ac |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-Agreed.  I like this approach.
-
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> ---
-> init/do_mounts.c |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/init/do_mounts.c b/init/do_mounts.c
-> index 06225d2..da76f2c 100644
-> --- a/init/do_mounts.c
-> +++ b/init/do_mounts.c
-> @@ -475,7 +475,7 @@ void __init change_floppy(char *fmt, ...)
-> void __init mount_root(void)
-> {
-> #ifdef CONFIG_ROOT_NFS
-> -	if (MAJOR(ROOT_DEV) == UNNAMED_MAJOR) {
-> +	if (ROOT_DEV == Root_NFS) {
-> 		if (mount_nfs_root())
-> 			return;
-> 
-> -- 
-> 1.7.8.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/configure.ac b/configure.ac
+index f101b86..d3656bf 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -24,9 +24,8 @@ AC_ARG_WITH(statedir,
+ 	statedir=/var/lib/nfs)
+ 	AC_SUBST(statedir)
+ AC_ARG_WITH(statdpath,
+-	[AC_HELP_STRING([--with-statdpath=/foo @<:@default=/var/lib/nfs@:>@],
+-		[define statd's state dir as /foo instead of the NFS statedir]
+-	)],
++	[AC_HELP_STRING([--with-statdpath=/foo],
++			[define the statd state dir as /foo instead of the NFS statedir @<:@default=/var/lib/nfs@:>@])],
+ 	statdpath=$withval,
+ 	statdpath=$statedir
+ 	)
 
