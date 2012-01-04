@@ -1,86 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57723 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755086Ab2AQQkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:40:45 -0500
-Date: Tue, 17 Jan 2012 11:40:44 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bertrand Jacquin <bjacquin@exosec.fr>
+Received: from acsinet15.oracle.com ([141.146.126.227]:21136 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757137Ab2ADWje (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 17:39:34 -0500
+Subject: Re: [PATCH] NFS: Cache state owners after files are closed
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1325716152.25276.3.camel@lade.trondhjem.org>
+Date: Wed, 4 Jan 2012 17:39:29 -0500
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: I/O Wait on exportfs
-Message-ID: <20120117164044.GC13977@fieldses.org>
-References: <20120117142945.GA19990@lady-voodoo.exosec.local>
- <20120117150901.GA12274@fieldses.org>
- <20120117154319.GB19990@lady-voodoo.exosec.local>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20120117154319.GB19990@lady-voodoo.exosec.local>
+Message-Id: <D08F83C3-C3E1-498E-9E82-6C61CB5D9E04@oracle.com>
+References: <C0783437-7D8F-4A45-913A-B49692D37AC2@oracle.com> <1325716037-27762-1-git-send-email-Trond.Myklebust@netapp.com> <1325716152.25276.3.camel@lade.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 04:43:19PM +0100, Bertrand Jacquin wrote:
-> Le mardi 17 janvier 2012 à 16h09, « J. Bruce Fields » a écrit :
-> > On Tue, Jan 17, 2012 at 03:29:45PM +0100, Bertrand Jacquin wrote:
-> > > For a specific case I have /etc/exports with 1281 entries as I need
-> > > mount --bind to be exported to NFS Clients too.
-> > 
-> > Could you explain what you mean by that?
-> 
-> In this case, I need /srv/mail to be exported to clients. But for a 1
-> month period, I need folders present in /srv/mail2 to be accessible in
-> /srv/mail.
-> 
-> We are moving datas to a SAN, and to avoid modifying any mail configuration
-> (and the long list depending on it), I mount /srv/mail2 subdirectory to
-> /srv/mailsubdirectory until all subdirectory are migrated :
-> 
->  # mount /dev/drbd5 /srv/mail
->  # mount /dev/mapper/iqn.dXX:san1.target0-lun0 /srv/mail2
->  # <moving data from /srv/mail/user1 to /srv/mail2/user1>
->  # mount --bind /srv/mail2/user1 /srv/mail/user1
-> 
-> To make /srv/mail2/user1 data visible for NFS client, I need to use
-> crossmnt options in /etc/exports as nohide is client per client.
-> 
-> exports(5) say :
-> 
->   Thus when a child filesystem "B" is mounted on a parent "A", setting
-> 	crossmnt on "A" has the same effect as setting "nohide" on B.
-> 
-> But I can't say that this had work at all, but adding child filesystem
-> in /etc/export, then 'mount -o remount' NFS partition on client fix
-> that. I'm maybe wrong, but my tests put me in that way.
 
-That's a bug, it should be enough just to export /srv/mail, and the
-mounts underneath should then automatically be exported.
+On Jan 4, 2012, at 5:29 PM, Trond Myklebust wrote:
 
-Hm--there have been a couple fixes in that area recently.  You might try
-building the most recent nfs-utils.
-
-Then you shouldn't need to list every subexport explicitly in
-/etc/exports.
-
-(That may not solve your performance problem, though.)
-
---b.
-
+> On Wed, 2012-01-04 at 17:27 -0500, Trond Myklebust wrote: 
+>> [Trond: Fixed a garbage collection race and a few efficiency issues]
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
-> > > Since I have ~1100 entries, reexporting /etc/exports have some bad
-> > > effects to connected clients, load rise to ~500 for 4/5 minutes, this is
-> > > always reproducible.
-> > > 
-> > > This was using 'exportfs -ra'. I did try with 'exportfs
-> > > 192.168.0.1:/srv/mail/1234' to avoid reexport every directories, and
-> > > the sync process but the result is the same.
-> > 
-> > Does a -t option (see rpc.mountd(8)) help?
-> 
-> This is interesting
-> 
-> Bertrand
-> 
-> -- 
-> Bertrand Jacquin, EXOSEC (http://www.exosec.fr/)
-> ZAC des Metz - 3 Rue du petit robinson - 78350 JOUY EN JOSAS
-> Tel: +33 1 30 67 60 65  -  Fax: +33 1 75 43 40 70
-> GSM: +33 6 71 01 70 30  -  mailto:bjacquin@exosec.fr
+> As you can see from the resulting patch, I found a couple more
+> optimisations: mainly to do with optimising away the dropping and then
+> retaking of the client->cl_lock...
+
+Noted.  Good to eliminate more contention on that lock.  I'll try it out.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
