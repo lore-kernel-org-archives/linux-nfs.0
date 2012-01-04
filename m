@@ -1,56 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38645 "EHLO mx2.netapp.com"
+Received: from smtp5-g21.free.fr ([212.27.42.5]:48503 "EHLO smtp5-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932440Ab2ASReQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 12:34:16 -0500
+	id S1753397Ab2ADUIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jan 2012 15:08:50 -0500
+From: Jim Meyering <jim@meyering.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] mountd: Support junction management plug-ins
+In-Reply-To: <20120104195716.21904.62916.stgit@degas.1015granger.net> (Chuck
+	Lever's message of "Wed, 04 Jan 2012 14:57:16 -0500")
+References: <20120104194136.21904.36616.stgit@degas.1015granger.net>
+	<20120104195716.21904.62916.stgit@degas.1015granger.net>
+Date: Wed, 04 Jan 2012 21:08:41 +0100
+Message-ID: <87ipkrcjsm.fsf@rho.meyering.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [PATCH 0/5] SUNRPC: make caches network namespace aware
-Date: Thu, 19 Jan 2012 09:34:11 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE01F0E@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <20120119154731.GB527@fieldses.org>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <1326986392.6114.1.camel@lade.trondhjem.org> <4F18376C.9090504@parallels.com> <20120119154731.GB527@fieldses.org>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: <bfields@fieldses.org>, "Stanislav Kinsbursky" <skinsbursky@parallels.com>
-Cc: "Dr James Bruce Fields" <bfields@redhat.com>, <linux-nfs@vger.kernel.org>,
-        "Pavel Emelianov" <xemul@parallels.com>, <neilb@suse.de>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        "James Bottomley" <jbottomley@parallels.com>, <davem@davemloft.net>,
-        <devel@openvz.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBiZmllbGRzQGZpZWxkc2VzLm9y
-ZyBbbWFpbHRvOmJmaWVsZHNAZmllbGRzZXMub3JnXQ0KPiBTZW50OiBUaHVyc2RheSwgSmFudWFy
-eSAxOSwgMjAxMiAxMDo0OCBBTQ0KPiBUbzogU3RhbmlzbGF2IEtpbnNidXJza3kNCj4gQ2M6IE15
-a2xlYnVzdCwgVHJvbmQ7IERyIEphbWVzIEJydWNlIEZpZWxkczsgbGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZzsNCj4gUGF2ZWwgRW1lbGlhbm92OyBuZWlsYkBzdXNlLmRlOyBuZXRkZXZAdmdlci5r
-ZXJuZWwub3JnOyBsaW51eC0NCj4ga2VybmVsQHZnZXIua2VybmVsLm9yZzsgSmFtZXMgQm90dG9t
-bGV5OyBkYXZlbUBkYXZlbWxvZnQubmV0Ow0KPiBkZXZlbEBvcGVudnoub3JnDQo+IFN1YmplY3Q6
-IFJlOiBbUEFUQ0ggMC81XSBTVU5SUEM6IG1ha2UgY2FjaGVzIG5ldHdvcmsgbmFtZXNwYWNlIGF3
-YXJlDQo+IA0KPiBPbiBUaHUsIEphbiAxOSwgMjAxMiBhdCAwNzozMTo1NlBNICswNDAwLCBTdGFu
-aXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gPiAxOS4wMS4yMDEyIDE5OjE5LCBUcm9uZCBNeWts
-ZWJ1c3Qg0L/QuNGI0LXRgjoNCj4gPiA+T24gVGh1LCAyMDEyLTAxLTE5IGF0IDE4OjQ4ICswNDAw
-LCBTdGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gPiA+Pk9uZSBtb3JlIHN0ZXAgdG93YXJk
-cyB0byAiTkZTIGluIGNvbnRhaW5lciIuDQo+ID4gPj5XaXRoIHRoaXMgcGF0Y2ggc2V0IGNhY2hl
-cyBhcmUgYWxsb2NhdGVkIHBlciBuZXR3b3JrIG5hbWVzcGFjZS4NCj4gPiA+Pg0KPiA+ID4+VGhl
-IGZvbGxvd2luZyBzZXJpZXMgY29uc2lzdHMgb2Y6DQo+ID4gPj4NCj4gPiA+Pi0tLQ0KPiA+ID4+
-DQo+ID4gPj5TdGFuaXNsYXYgS2luc2J1cnNreSAoNSk6DQo+ID4gPj4gICAgICAgU1VOUlBDOiBj
-YWNoZSBjcmVhdGlvbiBhbmQgZGVzdHJ1Y3Rpb24gcm91dGluZXMgaW50cm9kdWNlZA0KPiA+ID4+
-ICAgICAgIFNVTlJQQzogY3JlYXRlIHVuaXggZ2lkIGNhY2hlIHBlciBuZXR3b3JrIG5hbWVzcGFj
-ZQ0KPiA+ID4+ICAgICAgIFNVTlJQQzogY3JlYXRlIEdTUyBhdXRoIGNhY2hlIHBlciBuZXR3b3Jr
-IG5hbWVzcGFjZQ0KPiA+ID4+ICAgICAgIFNVTlJQQzogaXAgbWFwIGNhY2hlIHBlciBuZXR3b3Jr
-IG5hbWVzcGFjZSBjbGVhbnVwDQo+ID4gPj4gICAgICAgU1VOUlBDOiBnZW5lcmljIGNhY2hlIHJl
-Z2lzdGVyIHJvdXRpbmVzIHJlbW92ZWQNCj4gPiA+DQo+ID4gPlRoZSBwYXRjaGVzIGxvb2sgZ29v
-ZCwgYW5kIEkndmUgYXBwbGllZCB0aGVtIGZvciBub3cgaW4gbXkgJ2RldmVsJw0KPiA+ID5icmFu
-Y2ggc28gd2UgY2FuIHRlc3QgdGhlbSwgYnV0IEknZCBsaWtlIHRvIGdldCBhbiBBY2svTmFjayBm
-cm9tDQo+ID4gPkJydWNlIGJlZm9yZSBjb21taXR0aW5nIHRvIG1lcmdpbmcgdGhlbS4NCj4gPiA+
-DQo+ID4NCj4gPiBDb29sLCB0aGFua3MuDQo+ID4gQlRXLCB0aGVzZSBwYXRjaGVzIGRlcGVuZHMg
-b24gcGF0Y2ggIk5GU2Q6IHVzZSBuZXR3b3JrLW5hbWVzcGFjZS0NCj4gYXdhcmUNCj4gPiBjYWNo
-ZSByZWdpc3RlcmluZyByb3V0aW5lcyIsIHdoaWNoIEJydWNlIHRvb2sgYWxyZWFkeSAoYW5kIGl0
-J3MgZXZlbg0KPiA+IGluIGxpbnV4LW5leHQgYWxyZWFkeSksIGJ1dCBub3QgaW4geW91ciBkZXZl
-bCB0cmVlIGZvciBzb21lIHJlYXNvbi4NCj4gDQo+IEFuZCBMaW51cyBoYXMgcHVsbGVkIHRob3Nl
-LCBzbyBpZiBUcm9uZCBiYXNlcyBoaXMgdHJlZSBvbiAtcmMxLCBoZSdsbCBoYXZlDQo+ICJORlNk
-OiB1c2UgbmV0d29yay1uYW1lc3BhY2UtYXdhcmUgY2FjaGUgcmVnaXN0ZXJpbmcgcm91dGluZXMi
-Lg0KDQpPSy4gSW4gdGhhdCBjYXNlIEkgc2hvdWxkIGhhdmUgdGhlbS4uLiANCg0K
+Chuck Lever wrote:
+> To support FedFS and NFS junctions without introducing additional
+> build-time or run-time dependencies on nfs-utils, the community has
+> chosen to use a dynamically loadable library to handle junction
+> resolution.
+...
+
+Hi Chuck,
+
+You may just be following existing practice in nfs-utils (there
+are numerous other examples of this off-by-one error[1]), but the
+post-snprintf length check must fail when the returned length is
+equal to the specified buffer length.
+
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index d2ae456..d4f04ab 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -802,6 +802,229 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
+>  	return found;
+>  }
+>
+> +#ifdef HAVE_NFS_PLUGIN_H
+> +#include <dlfcn.h>
+> +#include <nfs-plugin.h>
+> +
+> +/*
+> + * Walk through a set of FS locations and build a set of export options.
+> + * Returns true if all went to plan; otherwise, false.
+> + */
+> +static _Bool
+> +locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+> +		char *options, size_t remaining, int *ttl)
+> +{
+> +	char *server, *last_path, *rootpath, *ptr;
+> +	_Bool seen = false;
+> +
+> +	last_path = NULL;
+> +	rootpath = NULL;
+> +	server = NULL;
+> +	ptr = options;
+> +	*ttl = 0;
+> +
+> +	for (;;) {
+> +		enum jp_status status;
+> +		int len;
+> +
+> +		status = ops->jp_get_next_location(locations, &server,
+> +							&rootpath, ttl);
+> +		if (status == JP_EMPTY)
+> +			break;
+> +		if (status != JP_OK) {
+> +			xlog(D_GENERAL, "%s: failed to parse location: %s",
+> +				__func__, ops->jp_error(status));
+> +			goto out_false;
+> +		}
+> +		xlog(D_GENERAL, "%s: Location: %s:%s",
+> +			__func__, server, rootpath);
+> +
+> +		if (last_path && strcmp(rootpath, last_path) == 0) {
+> +			len = snprintf(ptr, remaining, "+%s", server);
+> +			if (len < 0) {
+> +				xlog(D_GENERAL, "%s: snprintf: %m", __func__);
+> +				goto out_false;
+> +			}
+> +			if ((size_t)len > remaining) {
+
+s/>/>=/
+
+snprintf returning the specified size indicates that the
+result+NUL did not fit in the specified buffer.
+
+> +				xlog(D_GENERAL, "%s: options buffer overflow", __func__);
+> +				goto out_false;
+> +			}
+> +			remaining -= (size_t)len;
+> +			ptr += len;
+> +		} else {
+> +			if (last_path == NULL)
+> +				len = snprintf(ptr, remaining, "refer=%s@%s",
+> +							rootpath, server);
+> +			else
+> +				len = snprintf(ptr, remaining, ":%s@%s",
+> +							rootpath, server);
+> +			if (len < 0) {
+> +				xlog(D_GENERAL, "%s: snprintf: %m", __func__);
+> +				goto out_false;
+> +			}
+> +			if ((size_t)len > remaining) {
+
+Same here.
+
+> +				xlog(D_GENERAL, "%s: options buffer overflow",
+> +					__func__);
+> +				goto out_false;
+> +			}
+> +			remaining -= (size_t)len;
+> +			ptr += len;
+> +			last_path = rootpath;
+> +		}
+
+[1] Here are other examples of that error:
+
+  $ git grep -A13 snprintf|grep ' > '
+  support/nfs/cacheio.c-  if (len > *lp)
+  support/nfs/cacheio.c-  if (len > *lp)
+  support/nfs/getport.c-  if (len < 0 || (size_t)len > count)
+  utils/exportfs/exportfs.c-              if (fname_len > PATH_MAX) {
+  utils/gssd/gssd_proc.c- if (nbytes > INFOBUFLEN)
