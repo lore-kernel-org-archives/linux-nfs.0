@@ -1,42 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:26712 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753692Ab2AaKJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 05:09:17 -0500
-Subject: [PATCH v2 0/4] SUNRPC: service release in network namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 14:08:50 +0400
-Message-ID: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet15.oracle.com ([148.87.113.117]:60608 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757036Ab2ADV6F convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 16:58:05 -0500
+Subject: Re: [PATCH] NFS: Fix a few issues with cached state owners
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com>
+Date: Wed, 4 Jan 2012 16:58:01 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <A9614C89-6666-420F-B945-B5C879034086@oracle.com>
+References: <1325697256.18462.24.camel@lade.trondhjem.org> <1325713927-25519-1-git-send-email-Trond.Myklebust@netapp.com> <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: Added comment to BUG_ON's in svc_destroy() to make code looks clearer.
 
-This patch set is the final step towards to making LockD network namespace
-aware.
-I can't prove, that this patch set is enough for NFSd (just haven't try), by
-Lockd works fine and patches for it will be send soon.
+On Jan 4, 2012, at 4:56 PM, Chuck Lever wrote:
 
-The following series consists of:
+> 
+> On Jan 4, 2012, at 4:52 PM, Trond Myklebust wrote:
+> 
+>> The garbage collector needs to remove the entry from the lru list
+>> _and_ the red-black tree atomically in order avoid races in
+>> nfs4_get_state_owner.
+>> 
+>> Fix a case in nfs4_get_state_owner in which the garbage-collector
+>> list was being manipulated while not holding the appropriate spin
+>> lock.
+>> 
+>> nfs4_drop_state_owner doesn't need to look at sp->so_lru: the caller
+>> must have a reference to the state owner, so it can't be on the
+>> garbage-collection list.
+>> 
+>> Run the garbage collector _after_ we've looked up the state owner
+>> for efficiency reasons.
+>> 
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
----
+You might consider squashing this with my patch.  The list_del_init() outside the cl_lock is enough to warrant it.
 
-Stanislav Kinsbursky (4):
-      SUNRPC: clear svc pools lists helper introduced
-      SUNRPC: clear svc transports lists helper introduced
-      SUNRPC: service destruction in network namespace context
-      SUNRPC: service shutdown function in network namespace context introduced
+> 
+>> ---
+>> fs/nfs/nfs4state.c |   23 ++++++++++++++++-------
+>> 1 files changed, 16 insertions(+), 7 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index b9ade99..dc78e0e 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -389,6 +389,8 @@ nfs4_find_state_owner_locked(struct nfs_server *server, struct rpc_cred *cred)
+>> 		else if (cred > sp->so_cred)
+>> 			p = &parent->rb_right;
+>> 		else {
+>> +			if (!list_empty(&sp->so_lru))
+>> +				list_del_init(&sp->so_lru);
+>> 			atomic_inc(&sp->so_count);
+>> 			return sp;
+>> 		}
+>> @@ -413,6 +415,8 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
+>> 		else if (new->so_cred > sp->so_cred)
+>> 			p = &parent->rb_right;
+>> 		else {
+>> +			if (!list_empty(&sp->so_lru))
+>> +				list_del_init(&sp->so_lru);
+>> 			atomic_inc(&sp->so_count);
+>> 			return sp;
+>> 		}
+>> @@ -459,6 +463,13 @@ nfs4_alloc_state_owner(void)
+>> }
+>> 
+>> static void
+>> +nfs4_drop_state_owner_locked(struct nfs_server *server, struct nfs4_state_owner *sp)
+>> +{
+>> +	rb_erase(&sp->so_server_node, &server->state_owners);
+>> +	RB_CLEAR_NODE(&sp->so_server_node);
+>> +}
+>> +
+>> +static void
+>> nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+>> {
+>> 	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
+>> @@ -466,9 +477,8 @@ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+>> 		struct nfs_client *clp = server->nfs_client;
+>> 
+>> 		spin_lock(&clp->cl_lock);
+>> -		list_del_init(&sp->so_lru);
+>> -		rb_erase(&sp->so_server_node, &server->state_owners);
+>> -		RB_CLEAR_NODE(&sp->so_server_node);
+>> +		if (!RB_EMPTY_NODE(&sp->so_server_node))
+>> +			nfs4_drop_state_owner_locked(server, sp);
+>> 		spin_unlock(&clp->cl_lock);
+>> 	}
+>> }
+>> @@ -499,6 +509,7 @@ static void nfs4_gc_state_owners(struct nfs_server *server)
+>> 				sp->so_expires + clp->cl_lease_time))
+>> 			break;
+>> 		list_move(&sp->so_lru, &doomed);
+>> +		nfs4_drop_state_owner_locked(server, sp);
+>> 	}
+>> 	spin_unlock(&clp->cl_lock);
+>> 
+>> @@ -521,8 +532,6 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+>> 	struct nfs_client *clp = server->nfs_client;
+>> 	struct nfs4_state_owner *sp, *new;
+>> 
+>> -	nfs4_gc_state_owners(server);
+>> -
+>> 	spin_lock(&clp->cl_lock);
+>> 	sp = nfs4_find_state_owner_locked(server, cred);
+>> 	spin_unlock(&clp->cl_lock);
+>> @@ -530,7 +539,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+>> 		goto out;
+>> 	new = nfs4_alloc_state_owner();
+>> 	if (new == NULL)
+>> -		return NULL;
+>> +		goto out;
+>> 	new->so_server = server;
+>> 	new->so_cred = cred;
+>> 	spin_lock(&clp->cl_lock);
+>> @@ -543,7 +552,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+>> 		kfree(new);
+>> 	}
+>> out:
+>> -	list_del_init(&sp->so_lru);
+>> +	nfs4_gc_state_owners(server);
+>> 	return sp;
+>> }
+>> 
+>> -- 
+>> 1.7.7.5
+>> 
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
- include/linux/sunrpc/svcsock.h |    2 +-
- net/sunrpc/svc.c               |   38 ++++++++++++++++++++++++----------
- net/sunrpc/svc_xprt.c          |   45 ++++++++++++++++++++++++++++------------
- 3 files changed, 59 insertions(+), 26 deletions(-)
+
 
