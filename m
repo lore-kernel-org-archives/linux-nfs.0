@@ -1,83 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751255Ab2AOQRd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:33 -0500
-Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:32 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v6 4/9] nfsd41: consume current stateid on read and write
-Date: Sun, 15 Jan 2012 17:20:05 +0100
-Message-Id: <1326644410-7482-5-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from smtp.eu.citrix.com ([62.200.22.115]:28740 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757846Ab2AEUEh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2012 15:04:37 -0500
+Subject: Re: [PATCH 5/6] net: add paged frag destructor support to
+ kernel_sendpage.
+From: Ian Campbell <Ian.Campbell@citrix.com>
+To: David Miller <davem@davemloft.net>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
+        "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>,
+        "pekkas@netcore.fi" <pekkas@netcore.fi>,
+        "jmorris@namei.org" <jmorris@namei.org>,
+        "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>,
+        "kaber@trash.net" <kaber@trash.net>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "gregkh@suse.de" <gregkh@suse.de>,
+        "drbd-user@lists.linbit.com" <drbd-user@lists.linbit.com>,
+        "devel@driverdev.osuosl.org" <devel@driverdev.osuosl.org>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+        "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20120105.141522.1303730212186060591.davem@davemloft.net>
+References: <1325783399.25206.413.camel@zakaz.uk.xensource.com>
+	 <1325783624-14601-5-git-send-email-ian.campbell@citrix.com>
+	 <20120105.141522.1303730212186060591.davem@davemloft.net>
+Content-Type: text/plain; charset="ISO-8859-1"
+Date: Thu, 5 Jan 2012 20:04:34 +0000
+Message-ID: <1325793874.29084.25.camel@dagon.hellion.org.uk>
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Thu, 2012-01-05 at 19:15 +0000, David Miller wrote:
+> From: Ian Campbell <ian.campbell@citrix.com>
+> Date: Thu, 5 Jan 2012 17:13:43 +0000
+> 
+> > -static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffset,
+> > +static ssize_t do_tcp_sendpages(struct sock *sk,
+> > +				struct page **pages,
+> > +				struct skb_frag_destructor **destructors,
+> > +				int poffset,
+> >  			 size_t psize, int flags)
+> >  {
+> >  	struct tcp_sock *tp = tcp_sk(sk);
+> 
+> An array of destructors is madness, and the one call site that specifies this
+> passes an address of a single entry.
 
+I figured it was easy enough to accommodate the multiple destructor case
+but you are right that is overkill given the current (and realistically,
+expected) usage, I'll change that for the next round.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |    2 ++
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   12 ++++++++++++
- 3 files changed, 16 insertions(+), 0 deletions(-)
+(that's assuming we don't end up with some scheme where the struct page
+* is in the destructor struct like I was investigating previously to
+alleviate the frag size overhead. I guess this illustrates nicely why
+that approach got ugly: these array propagate all the way up the call
+chain if you do that)
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index 21550b6..6e54d19 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
-  */
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
-+extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
-+extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
- 
- #endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f66a8b2..9a61bbf 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1546,6 +1546,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_READ",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
- 	},
- 	[OP_READDIR] = {
- 		.op_func = (nfsd4op_func)nfsd4_readdir,
-@@ -1624,6 +1625,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_name = "OP_WRITE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
- 	},
- 	[OP_RELEASE_LOCKOWNER] = {
- 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5665061..1c97912 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4745,3 +4745,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
- {
- 	get_stateid(cstate, &locku->lu_stateid);
- }
-+
-+void
-+nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
-+{
-+	get_stateid(cstate, &read->rd_stateid);
-+}
-+
-+void
-+nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
-+{
-+	get_stateid(cstate, &write->wr_stateid);
-+}
--- 
-1.7.7.5
+> This also would never even have to occur if you put the destructor inside of
+> struct page instead.
+> 
+> Finally, except for the skb_shared_info() layout optimization in patch #1 which
+> I alreayd applied, this stuff is not baked enough for the 3.3 merge window.
+
+Sure thing, I should have made it clear in my intro mail that I was
+aiming for 3.4.
+
+Thanks,
+Ian
 
