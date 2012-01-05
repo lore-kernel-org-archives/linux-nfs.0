@@ -1,77 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57536 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754682Ab2AQQ2V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:28:21 -0500
-Date: Tue, 17 Jan 2012 11:28:20 -0500
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: svcgssd: Allow administrators to specify timeout for the
- cached context
-Message-ID: <20120117162820.GA13977@fieldses.org>
-References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
- <20120117134951.GA15479@umich.edu>
- <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
+Received: from smtp.mail.umich.edu ([141.211.12.86]:37273 "EHLO
+	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755489Ab2AES5N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2012 13:57:13 -0500
+Date: Thu, 5 Jan 2012 13:57:07 -0500
+From: Jim Rees <rees@umich.edu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] autoconf: clean up linking in nfs-utils
+Message-ID: <20120105185707.GA4757@umich.edu>
+References: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+ <20111224145456.GA13830@umich.edu>
+ <20111224165301.GA16658@umich.edu>
+ <20120105133748.5cfa2506@dantu.rdu.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120105133748.5cfa2506@dantu.rdu.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 03:38:47PM +0000, Sachin Prabhu wrote:
-> On Tue, 2012-01-17 at 08:49 -0500, Jim Rees wrote:
-> > Sachin Prabhu wrote:
-> > 
-> >   We had a user report that for an export shared with sec=krb5*, any
-> >   changes in user credentials(ex: add user to a secondary group) take some
-> >   time before they take effect over the NFS share.
-> > 
-> > Re-authenticating, either by removing the service ticket or by re-running
-> > kinit at the client, should also flush the old credentials.  Can you confirm
-> > that works?
-> 
-> We have tried it but it doesn't work unless you actually clean up the
-> cache on the NFS server with the command 
-> echo `date +'%s'` > /proc/net/rpc/auth.rpcsec.context/flush
-> 
-> To reproduce:
-> 1) Export a nfs4 share using kerberos authentication
-> /export-krb5 *(rw,sec=krb5)
-> 2) Create user foo part of group foo. Make sure that the user details
-> for this user are available both on client and server.
-> 3) Create group bar.
-> 4) Create 2 directories on the nfs share.
-> Directory foo with ownership root.foo and mode set to 2775
-> Directory bar with ownership root.bar and mode set to 2775
-> 
-> On the client, 
-> 1) mount the share export from the nfs server from step1
-> 2) Login and obtain a kerberos principal for user foo.
-> 3) create file in /mnt/foo/ and confirm that the user can write to the
-> directory
-> 4) try and create file in /mnt/bar. This should fail since the user
-> doesn't have permissions to write to this directory.
-> 5) Modify user foo to add additional group bar. Make sure that these
-> details are available on both the nfs server and client.
-> 6) Re-login as foo and confirm that the user is part of group bar using
-> the id command. Re-initialise the kerberos ticket.
-> 7) try creating file in /mnt/foo. This is successful.
-> 8) try creating file in /mnt/bar. This fails even though user has
-> permission to write to this directory.
+Jeff Layton wrote:
 
-I think that's because none of these client operations actually destroy
-the context kept in the kernel on the client side.  You probably will
-see the change if you add an umount/mount step between client steps 5
-and 6.
+  On Sat, 24 Dec 2011 11:53:01 -0500
+  Jim Rees <rees@umich.edu> wrote:
+  
+  > Jim Rees wrote:
+  > 
+  >   Jeff Layton wrote:
+  >   
+  >     This patchset is a cleanup of the linking in nfs-utils. This should
+  >     reduce the number of unnecessary libraries that each of the binaries are
+  >     linked against.
+  >   
+  >   This is probably unrelated to your patches, but here's what I get:
+  >   
+  >   ...
+  >   /bin/bash ../../libtool --tag=CC   --mode=link gcc -Wall -Wextra -Wstrict-prototypes  -pipe -g -O2   -o nfsidmap nfsidmap.o -lnfsidmap -lkeyutils -lnfsidmap -ltirpc 
+  >   libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -g -O2 -o nfsidmap nfsidmap.o  -lkeyutils -lnfsidmap -ltirpc
+  >   nfsidmap.o: In function `key_revoke':
+  >   /home/rees/p/nfs-utils/utils/nfsidmap/nfsidmap.c:153: undefined reference to `xlog_syslog'
+  >   ...
+  > 
+  > Never mind, cockpit error.  I ran autogen in the wrong directory.  Now I'm
+  > getting this:
+  > 
+  > % configure --prefix=/usr --sysconfdir=/etc --enable-nfsv41 --enable-ipv6 \
+  > ?   --disable-gss --disable-uuid --enable-tirpc --without-tcp-wrappers \
+  > ?   --disable-libmount-mount
+  > ...
+  > checking for bindresvport_sa... no
+  > configure: error: Missing library functions needed for IPv6.
+  
+  Sorry I didn't respond to this sooner...
+  
+  Did you ever figure out what's going on here? Is this a regression
+  caused by this patchset?
 
-That should be fixed too, some day.
-
-It might also be nice to have a server-side command that does the
-/proc/net/rpc/auth.rpcsec.context/flush thing.  I'm not sure what a good
-UI would be.
-
-But the configurable timeout also seems like a reasonable thing to have.
-
---b.
+No, I didn't.  I can try reverting your patch to see what happens if you
+want.  Do you know where bindresvport_sa is supposed to come from?
