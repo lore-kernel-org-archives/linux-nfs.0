@@ -1,123 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59879 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19915 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752028Ab2A3SEh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jan 2012 13:04:37 -0500
-Date: Mon, 30 Jan 2012 20:06:53 +0200
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: Ian Campbell <Ian.Campbell@citrix.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 6/6] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
-Message-ID: <20120130180652.GC9345@redhat.com>
-References: <1327494389.24561.316.camel@zakaz.uk.xensource.com>
- <1327494434-21566-6-git-send-email-ian.campbell@citrix.com>
- <20120126131136.GA16400@redhat.com>
- <1327938713.26983.248.camel@zakaz.uk.xensource.com>
- <20120130162306.GB9345@redhat.com>
- <1327941813.26983.270.camel@zakaz.uk.xensource.com>
+	id S1758290Ab2AEVnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jan 2012 16:43:09 -0500
+Message-ID: <4F06196A.60900@RedHat.com>
+Date: Thu, 05 Jan 2012 16:43:06 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327941813.26983.270.camel@zakaz.uk.xensource.com>
+To: Jim Meyering <jim@meyering.net>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] gssd: avoid double-free upon write failure
+References: <87lipqumid.fsf@rho.meyering.net>
+In-Reply-To: <87lipqumid.fsf@rho.meyering.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 30, 2012 at 04:43:33PM +0000, Ian Campbell wrote:
-> On Mon, 2012-01-30 at 16:23 +0000, Michael S. Tsirkin wrote:
-> > On Mon, Jan 30, 2012 at 03:51:53PM +0000, Ian Campbell wrote:
-> > > On Thu, 2012-01-26 at 13:11 +0000, Michael S. Tsirkin wrote:
-> > > > On Wed, Jan 25, 2012 at 12:27:14PM +0000, Ian Campbell wrote:
-> > > > > This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> > > > > at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> > > > > wire. If this happens to an NFS WRITE RPC then the write() system call
-> > > > > completes and the userspace process can continue, potentially modifying data
-> > > > > referenced by the retransmission before the retransmission occurs.
-> > > > > 
-> > > > > Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> > > > > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > Cc: "David S. Miller" <davem@davemloft.net>
-> > > > > Cc: Neil Brown <neilb@suse.de>
-> > > > > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > > Cc: linux-nfs@vger.kernel.org
-> > > > > Cc: netdev@vger.kernel.org
-> > > > 
-> > > > This doesn't include either of the two options you proposed to address
-> > > > the sender blocked forever by receiver issue with bridged septups and
-> > > > endpoints such a tap device or a socket on the same box,
-> > > > does it?
-> > > 
-> > > There was never any response to Bruce's question:
-> > > http://thread.gmane.org/gmane.linux.network/210873/focus=44849
-> > > 
-> > >         Stupid question: Is it a requirement that you be safe against DOS by a
-> > >         rogue process with a tap device?  (And if so, does current code satisfy
-> > >         that requirement?)
-> > > 
-> > > IMHO the answer to both questions is no, there are plenty of ways a
-> > > rogue process with a tap device can wreak havoc.
-> > 
-> > I thought the answer is an obviious yes :(
-> > What are these ways tap can wreak havoc?
+
+
+On 01/02/2012 10:55 AM, Jim Meyering wrote:
 > 
-> Can't they spoof traffic
-> and all sorts of things like that?
-> Hrm. I
-> suppose that the same as any peer on the network so we already handle
-> that sort of thing. Maybe that's a red herring then.
+> * utils/gssd/context_lucid.c (prepare_krb5_rfc1964_buffer): Free just-
+> calloc'd enc_key.data from one place, unconditionally, after calling
+> write_lucid_keyblock, rather than from three places.  Before, upon
+> failed write, we would free it, then goto out_err, where we would
+> free it again, if it happened to be non-NULL.
+> Coverity spotted the possible double free.
+Committed....
 
-Right. It typically does not include DOS on the sender :)
+steved.
 
+> ---
+>  utils/gssd/context_lucid.c |    9 ++++-----
+>  1 files changed, 4 insertions(+), 5 deletions(-)
 > 
-> > > > How about patching __skb_queue_tail to do a deep copy?
-> > > > That would seem to handle both tap and socket cases -
-> > > > any other ones left?
-> > > 
-> > > Wouldn't that mean we were frequently (almost always) copying for lots
-> > > of other cases too? That would rather defeat the purpose of being able
-> > > to hand pages off to the network stack in a zero copy fashion.
-> > 
-> > Yes but the case of an rpc connection to the same box
-> > is very rare I think, not worth optimizing for.
+> diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
+> index 3e695ab..64146d7 100644
+> --- a/utils/gssd/context_lucid.c
+> +++ b/utils/gssd/context_lucid.c
+> @@ -80,6 +80,7 @@ prepare_krb5_rfc1964_buffer(gss_krb5_lucid_context_v1_t *lctx,
+>  	uint32_t i;
+>  	char *skd, *dkd;
+>  	gss_buffer_desc fakeoid;
+> +	int err;
 > 
-> But changing __skb_queue_tail doesn't only impact rpc connections to the
-> same box, does it? At least I can see plenty of callers of
-> __skb_queue_tail which don't look like they would want a copy to occur
-> -- plenty of drivers for one thing.
-> Perhaps in combination with a per-queue flag or per-socket flag to
-> enable it though it might work though?
-
-Right. I missed that. I'm guessing drivers don't hang on to skbs
-indefinitely.  Still, copying is always safe - maybe the right thing to
-do is to add an __skb_queue_tail variant that does not copy, and
-gradually convert drivers that care to that API?
-
-> > > > If we do this, I think it would be beneficial to pass a flag
-> > > > to the destructor indicating that a deep copy was done:
-> > > > this would allow senders to detect that and adapt.
-> > > 
-> > > If you were doing a deep copy anyway you might as well create a
-> > > completely new skb and release the old one, thereby causing the
-> > > destructors to fire in the normal way for it SKB. The copy wouldn't have
-> > > destructors because the pages would no longer be owned by the sender.
-> > > 
-> > > Ian.
-> > 
-> > What I mean is that page pin + deep copy might be more expensive
-> > than directly copying. So the owner of the original skb
-> > cares whether we did a deep copy or zero copy transmit worked.
+>  	/*
+>  	 * The new Kerberos interface to get the gss context
+> @@ -138,11 +139,10 @@ prepare_krb5_rfc1964_buffer(gss_krb5_lucid_context_v1_t *lctx,
+>  	dkd = (char *) enc_key.data;
+>  	for (i = 0; i < enc_key.length; i++)
+>  		dkd[i] = skd[i] ^ 0xf0;
+> -	if (write_lucid_keyblock(&p, end, &enc_key)) {
+> -		free(enc_key.data);
+> -		goto out_err;
+> -	}
+> +	err = write_lucid_keyblock(&p, end, &enc_key);
+>  	free(enc_key.data);
+> +	if (err)
+> +		goto out_err;
 > 
-> You mean so they can adaptively do a copy directly next time?
-> I think that would add a fair bit more complexity to what, as you point
-> out, is a fairly rare occurrence.
+>  	if (write_lucid_keyblock(&p, end, &lctx->rfc1964_kd.ctx_key))
+>  		goto out_err;
+> @@ -153,7 +153,6 @@ out_err:
+>  	printerr(0, "ERROR: failed serializing krb5 context for kernel\n");
+>  	if (buf->value) free(buf->value);
+>  	buf->length = 0;
+> -	if (enc_key.data) free(enc_key.data);
+>  	return -1;
+>  }
 > 
-> Ian.
-
-For sunrpc yes but I was thinking about utilizing this
-mechanism for e.g. kvm in the future. It might be more common
-there. I agree this might be a future extension.
-
--- 
-MSt
+> --
+> 1.7.8.1.391.g2c2ad
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
