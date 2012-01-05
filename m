@@ -1,49 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog107.obsmtp.com ([207.126.144.123]:57654 "EHLO
-	eu1sys200aog107.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751262Ab2AZOna (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 09:43:30 -0500
-Message-ID: <4F2164BC.3020102@st.com>
-Date: Thu, 26 Jan 2012 14:35:40 +0000
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Reply-To: srinivas.kandagatla@st.com
-MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
-        stuart.menefy@st.com
-Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
- mount.
-References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <20120125154539.GA20734@umich.edu> <4F21071B.4070000@st.com> <4F2110DA.7060603@panasas.com> <4F2113FF.9080407@st.com> <4F213437.5020802@panasas.com>
-In-Reply-To: <4F213437.5020802@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:38553 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277Ab2AEWis (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2012 17:38:48 -0500
+Received: by qcqz2 with SMTP id z2so606642qcq.19
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jan 2012 14:38:47 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: rees@umich.edu, linux-nfs@vger.kernel.org
+Subject: [PATCH v2] autoconf: only link binaries that need it to libtirpc
+Date: Thu,  5 Jan 2012 17:38:43 -0500
+Message-Id: <1325803123-4527-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All,
-Thankyou for your feedback on my patch.
- Am going to re-send the rebased patch in different email-thread with
-few other updates to existing nfs-retry code.
+When we first added tirpc support, we took a "big hammer" approach, and
+had it add libtirpc to $LIBS. That had the effect of making it so that
+that library was linked into every binary. That's unnecessary, and
+wasteful with memory.
 
-Thanks
-srini
-Boaz Harrosh wrote:
-> On 01/26/2012 10:51 AM, Srinivas KANDAGATLA wrote:
->   
->> An nfs root mount attempt timeouts in about 3 sec's and in commit
->> 43717c7d, "NFS: Retry mounting NFSROOT" each retry has additional sleep
->> which gives sufficient delay between retries.
->>     
->
-> Grate thanks. Make perfect sense
->
->   
->>>> Thanks,
->>>> srini
->>>>     
->>>>         
->
-> Thanks
-> Boaz
->   
+Don't let AC_CHECK_LIB add -ltirpc to $LIBS. Instead, have the autoconf
+tests set $(LIBTIRPC) in the makefiles, and have the programs that
+need it explicitly include that library. In the event that we're not
+using libtirpc, then set $LIBTIRPC to a blank string.
+
+This necessitates a change to the bindresvport_sa check too. Since that
+library is no longer included in $LIBS, we need to convert that check
+to use AC_CHECK_LIB instead of AC_CHECK_FUNCS.
+
+This patch also fixes a subtle bug. If the library was usable, but the
+includes were not, the test would set $enable_tirpc to "no", but
+HAVE_LIBTIRPC would still be true. That configuration would likely
+fail to build.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/ipv6.m4             |    5 ++++-
+ aclocal/libtirpc.m4         |   15 +++++++++++++--
+ tools/rpcgen/Makefile.am    |    1 +
+ utils/gssd/Makefile.am      |    4 ++--
+ utils/mount/Makefile.am     |    3 ++-
+ utils/mountd/Makefile.am    |    2 +-
+ utils/nfsd/Makefile.am      |    2 +-
+ utils/showmount/Makefile.am |    3 ++-
+ utils/statd/Makefile.am     |    4 ++--
+ 9 files changed, 28 insertions(+), 11 deletions(-)
+
+diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
+index 5ee8fb6..56a9e2f 100644
+--- a/aclocal/ipv6.m4
++++ b/aclocal/ipv6.m4
+@@ -15,9 +15,12 @@ AC_DEFUN([AC_IPV6], [
+     fi
+ 
+     dnl IPv6-enabled networking functions required for IPv6
+-    AC_CHECK_FUNCS([getifaddrs getnameinfo bindresvport_sa], ,
++    AC_CHECK_FUNCS([getifaddrs getnameinfo], ,
+                    [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
+ 
++    AC_CHECK_LIB([tirpc], [bindresvport_sa], ,
++		 [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
++
+     dnl Need to detect presence of IPv6 networking at run time via
+     dnl getaddrinfo(3); old versions of glibc do not support ADDRCONFIG
+     AC_CHECK_DECL([AI_ADDRCONFIG], ,
+diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
+index 9f0fde0..19b8361 100644
+--- a/aclocal/libtirpc.m4
++++ b/aclocal/libtirpc.m4
+@@ -13,8 +13,8 @@ AC_DEFUN([AC_LIBTIRPC], [
+ 
+   if test "$enable_tirpc" != "no"; then
+ 
+-    dnl look for the library; add to LIBS if found
+-    AC_CHECK_LIB([tirpc], [clnt_tli_create], ,
++    dnl look for the library
++    AC_CHECK_LIB([tirpc], [clnt_tli_create], [:],
+                  [if test "$enable_tirpc" = "yes"; then
+ 			AC_MSG_ERROR([libtirpc not found.])
+ 		  else
+@@ -37,4 +37,15 @@ AC_DEFUN([AC_LIBTIRPC], [
+ 
+   fi
+ 
++  dnl now set $LIBTIRPC accordingly
++  if test "$enable_tirpc" != "no"; then
++    AC_DEFINE([HAVE_LIBTIRPC], 1,
++              [Define to 1 if you have and wish to use libtirpc.])
++    LIBTIRPC="-ltirpc"
++  else
++    LIBTIRPC=""
++  fi
++
++  AC_SUBST(LIBTIRPC)
++
+ ])dnl
+diff --git a/tools/rpcgen/Makefile.am b/tools/rpcgen/Makefile.am
+index 51a2bfa..8a9ec89 100644
+--- a/tools/rpcgen/Makefile.am
++++ b/tools/rpcgen/Makefile.am
+@@ -12,6 +12,7 @@ rpcgen_SOURCES = rpc_clntout.c rpc_cout.c rpc_hout.c rpc_main.c \
+ rpcgen_CFLAGS=$(CFLAGS_FOR_BUILD)
+ rpcgen_CPPLAGS=$(CPPFLAGS_FOR_BUILD)
+ rpcgen_LDFLAGS=$(LDFLAGS_FOR_BUILD)
++rpcgen_LDADD=$(LIBTIRPC)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index 9136189..d29e132 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -40,7 +40,7 @@ gssd_SOURCES = \
+ 
+ gssd_LDADD =	../../support/nfs/libnfs.a \
+ 		$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(KRBLIBS)
+-gssd_LDFLAGS = $(KRBLDFLAGS)
++gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
+ 
+ gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+ 	      $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
+@@ -59,7 +59,7 @@ svcgssd_SOURCES = \
+ svcgssd_LDADD = \
+ 	../../support/nfs/libnfs.a \
+ 	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
+-	$(KRBLIBS)
++	$(KRBLIBS) $(LIBTIRPC)
+ 
+ svcgssd_LDFLAGS = $(KRBLDFLAGS)
+ 
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index 7bc3e2b..7627854 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -24,7 +24,8 @@ EXTRA_DIST += nfsmount.conf
+ endif
+ 
+ mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+-		  ../../support/export/libexport.a
++		  ../../support/export/libexport.a \
++		  $(LIBTIRPC)
+ 
+ mount_nfs_SOURCES = $(mount_common)
+ 
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index eba81fc..375908e 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -12,7 +12,7 @@ mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
+ mountd_LDADD = ../../support/export/libexport.a \
+ 	       ../../support/nfs/libnfs.a \
+ 	       ../../support/misc/libmisc.a \
+-	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID)
++	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
+ mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 		  -I$(top_builddir)/support/include \
+ 		  -I$(top_srcdir)/support/export
+diff --git a/utils/nfsd/Makefile.am b/utils/nfsd/Makefile.am
+index c4c6fb0..1536065 100644
+--- a/utils/nfsd/Makefile.am
++++ b/utils/nfsd/Makefile.am
+@@ -8,7 +8,7 @@ KPREFIX		= @kprefix@
+ sbin_PROGRAMS	= nfsd
+ 
+ nfsd_SOURCES = nfsd.c nfssvc.c
+-nfsd_LDADD = ../../support/nfs/libnfs.a
++nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/showmount/Makefile.am b/utils/showmount/Makefile.am
+index 077b2c7..4ba5ead 100644
+--- a/utils/showmount/Makefile.am
++++ b/utils/showmount/Makefile.am
+@@ -7,7 +7,8 @@ sbin_PROGRAMS	= showmount
+ showmount_SOURCES = showmount.c
+ showmount_LDADD = ../../support/export/libexport.a \
+ 		  ../../support/nfs/libnfs.a \
+-	  	  ../../support/misc/libmisc.a
++		  ../../support/misc/libmisc.a \
++		  $(LIBTIRPC)
+ showmount_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 		   -I$(top_builddir)/support/export
+ 
+diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
+index 1744791..dc2bfc4 100644
+--- a/utils/statd/Makefile.am
++++ b/utils/statd/Makefile.am
+@@ -15,10 +15,10 @@ BUILT_SOURCES = $(GENFILES)
+ statd_LDADD = ../../support/nsm/libnsm.a \
+ 	      ../../support/nfs/libnfs.a \
+ 	      ../../support/misc/libmisc.a \
+-	      $(LIBWRAP) $(LIBNSL) $(LIBCAP)
++	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ sm_notify_LDADD = ../../support/nsm/libnsm.a \
+ 		  ../../support/nfs/libnfs.a \
+-		  $(LIBNSL) $(LIBCAP)
++		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+ 
+ EXTRA_DIST = sim_sm_inter.x $(man8_MANS) COPYRIGHT simulate.c
+ 
+-- 
+1.7.7.4
 
