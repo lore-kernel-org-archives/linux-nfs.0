@@ -1,324 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56184 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62999 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932561Ab2AMULP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:15 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 07/44] NFS: Convert NFS v2 into a module
-Date: Fri, 13 Jan 2012 15:10:16 -0500
-Message-Id: <1326485453-1350-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+	id S1753099Ab2AEShx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jan 2012 13:37:53 -0500
+Date: Thu, 5 Jan 2012 13:37:48 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] autoconf: clean up linking in nfs-utils
+Message-ID: <20120105133748.5cfa2506@dantu.rdu.redhat.com>
+In-Reply-To: <20111224165301.GA16658@umich.edu>
+References: <1324669625-2948-1-git-send-email-jlayton@redhat.com>
+	<20111224145456.GA13830@umich.edu>
+	<20111224165301.GA16658@umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Sat, 24 Dec 2011 11:53:01 -0500
+Jim Rees <rees@umich.edu> wrote:
 
-You need to run `modprobe nfs2` before you can use it.
+> Jim Rees wrote:
+> 
+>   Jeff Layton wrote:
+>   
+>     This patchset is a cleanup of the linking in nfs-utils. This should
+>     reduce the number of unnecessary libraries that each of the binaries are
+>     linked against.
+>   
+>   This is probably unrelated to your patches, but here's what I get:
+>   
+>   ...
+>   /bin/bash ../../libtool --tag=CC   --mode=link gcc -Wall -Wextra -Wstrict-prototypes  -pipe -g -O2   -o nfsidmap nfsidmap.o -lnfsidmap -lkeyutils -lnfsidmap -ltirpc 
+>   libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -g -O2 -o nfsidmap nfsidmap.o  -lkeyutils -lnfsidmap -ltirpc
+>   nfsidmap.o: In function `key_revoke':
+>   /home/rees/p/nfs-utils/utils/nfsidmap/nfsidmap.c:153: undefined reference to `xlog_syslog'
+>   ...
+> 
+> Never mind, cockpit error.  I ran autogen in the wrong directory.  Now I'm
+> getting this:
+> 
+> % configure --prefix=/usr --sysconfdir=/etc --enable-nfsv41 --enable-ipv6 \
+> ?   --disable-gss --disable-uuid --enable-tirpc --without-tcp-wrappers \
+> ?   --disable-libmount-mount
+> ...
+> checking for bindresvport_sa... no
+> configure: error: Missing library functions needed for IPv6.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Kconfig          |    2 +-
- fs/nfs/Makefile         |    2 +-
- fs/nfs/client.c         |   15 +--------------
- fs/nfs/file.c           |    6 ------
- fs/nfs/nfs2/Makefile    |    5 +++++
- fs/nfs/nfs2/dir.c       |   30 ++++++++++++++++++++++++++++++
- fs/nfs/nfs2/file.c      |   32 ++++++++++++++++++++++++++++++++
- fs/nfs/nfs2/module.c    |   45 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs2/nfs2.h      |   17 +++++++++++++++++
- fs/nfs/nfs2/proc.c      |    1 +
- include/linux/nfs_xdr.h |    3 +--
- 11 files changed, 134 insertions(+), 24 deletions(-)
- create mode 100644 fs/nfs/nfs2/Makefile
- create mode 100644 fs/nfs/nfs2/dir.c
- create mode 100644 fs/nfs/nfs2/file.c
- create mode 100644 fs/nfs/nfs2/module.c
- create mode 100644 fs/nfs/nfs2/nfs2.h
+Sorry I didn't respond to this sooner...
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 5419166..b28e56f 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -30,7 +30,7 @@ config NFS_FS
- 	  If unsure, say N.
- 
- config NFS_V2
--	bool "NFS client support for NFS version 2"
-+	tristate "NFS client support for NFS version 2"
- 	depends on NFS_FS
- 	help
- 	  This option enables support for version 2 of the NFS protocol
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 44db87d..5733451 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,7 +9,6 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V2)	+= nfs2/proc.o nfs2/xdr.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-@@ -23,5 +22,6 @@ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
- 
-+obj-$(CONFIG_NFS_V2) += nfs2/
- obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
- obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 168b469..20d1708 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -121,22 +121,12 @@ struct rpc_stat nfs_rpcstat = {
-  * Once everything has been converted this function will
-  * be removed.
-  */
--#if defined(CONFIG_NFS_V2) || defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
-+#if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
- static void nfs_module_null_function(void)
- {
- }
- #endif
- 
--#ifdef CONFIG_NFS_V2
--static struct nfs_subversion nfs_v2_mod = {
--	.version  = 2,
--	.rpc_vers = &nfs_version2,
--	.rpc_ops  = &nfs_v2_clientops,
--	.reference = nfs_module_null_function,
--	.unreference = nfs_module_null_function,
--};
--#endif /* CONFIG_NFS_V2 */
--
- #ifdef CONFIG_NFS_V3
- static struct nfs_subversion nfs_v3_mod = {
- 	.version  = 3,
-@@ -242,9 +232,6 @@ EXPORT_SYMBOL_GPL(unregister_nfs_version);
-  */
- void __init nfs_register_versions(void)
- {
--#ifdef CONFIG_NFS_V2
--	register_nfs_version(&nfs_v2_mod);
--#endif
- #ifdef CONFIG_NFS_V3
- 	register_nfs_version(&nfs_v3_mod);
- #endif
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 227694e..4ac4dae 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -44,12 +44,6 @@
- 
- static const struct vm_operations_struct nfs_file_vm_ops;
- 
--const struct inode_operations nfs_file_inode_operations = {
--	.permission	= nfs_permission,
--	.getattr	= nfs_getattr,
--	.setattr	= nfs_setattr,
--};
--
- #ifdef CONFIG_NFS_V3
- const struct inode_operations nfs3_file_inode_operations = {
- 	.permission	= nfs_permission,
-diff --git a/fs/nfs/nfs2/Makefile b/fs/nfs/nfs2/Makefile
-new file mode 100644
-index 0000000..0ca3b59
---- /dev/null
-+++ b/fs/nfs/nfs2/Makefile
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for NFS v2
-+#
-+obj-$(CONFIG_NFS_V2) += nfs2.o
-+nfs2-y := module.o dir.o file.o proc.o xdr.o
-diff --git a/fs/nfs/nfs2/dir.c b/fs/nfs/nfs2/dir.c
-new file mode 100644
-index 0000000..64e2154
---- /dev/null
-+++ b/fs/nfs/nfs2/dir.c
-@@ -0,0 +1,30 @@
-+/*
-+ * Copyright (C) 1992  Rick Sladkey
-+ */
-+#include <linux/fs.h>
-+
-+#include "../nfs.h"
-+#include "nfs2.h"
-+
-+const struct inode_operations nfs_dir_inode_operations = {
-+	.create		= nfs_create,
-+	.lookup		= nfs_lookup,
-+	.link		= nfs_link,
-+	.unlink		= nfs_unlink,
-+	.symlink	= nfs_symlink,
-+	.mkdir		= nfs_mkdir,
-+	.rmdir		= nfs_rmdir,
-+	.mknod		= nfs_mknod,
-+	.rename		= nfs_rename,
-+	.permission	= nfs_permission,
-+	.getattr	= nfs_getattr,
-+	.setattr	= nfs_setattr,
-+};
-+
-+const struct dentry_operations nfs_dentry_operations = {
-+	.d_revalidate	= nfs_lookup_revalidate,
-+	.d_delete	= nfs_dentry_delete,
-+	.d_iput		= nfs_dentry_iput,
-+	.d_automount	= nfs_d_automount,
-+	.d_release	= nfs_d_release,
-+};
-diff --git a/fs/nfs/nfs2/file.c b/fs/nfs/nfs2/file.c
-new file mode 100644
-index 0000000..bfe6412
---- /dev/null
-+++ b/fs/nfs/nfs2/file.c
-@@ -0,0 +1,32 @@
-+/*
-+ * Copyright (C) 1992  Rick Sladkey
-+ */
-+#include <linux/fs.h>
-+
-+#include "../nfs.h"
-+#include "nfs2.h"
-+
-+const struct inode_operations nfs_file_inode_operations = {
-+	.permission	= nfs_permission,
-+	.getattr	= nfs_getattr,
-+	.setattr	= nfs_setattr,
-+};
-+
-+const struct file_operations nfs_file_operations = {
-+	.llseek		= nfs_file_llseek,
-+	.read		= do_sync_read,
-+	.write		= do_sync_write,
-+	.aio_read	= nfs_file_read,
-+	.aio_write	= nfs_file_write,
-+	.mmap		= nfs_file_mmap,
-+	.open		= nfs_file_open,
-+	.flush		= nfs_file_flush,
-+	.release	= nfs_file_release,
-+	.fsync		= nfs_file_fsync,
-+	.lock		= nfs_lock,
-+	.flock		= nfs_flock,
-+	.splice_read	= nfs_file_splice_read,
-+	.splice_write	= nfs_file_splice_write,
-+	.check_flags	= nfs_check_flags,
-+	.setlease	= nfs_setlease,
-+};
-diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
-new file mode 100644
-index 0000000..04d415a
---- /dev/null
-+++ b/fs/nfs/nfs2/module.c
-@@ -0,0 +1,45 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ *
-+ * Initialize the NFS v2 module
-+ */
-+
-+#include <linux/module.h>
-+#include "../nfs.h"
-+
-+#include "nfs2.h"
-+
-+static void nfs2_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs2_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+struct nfs_subversion nfs_v2 = {
-+	.version  = 2,
-+	.rpc_vers = &nfs_version2,
-+	.rpc_ops  = &nfs_v2_clientops,
-+
-+	.reference = nfs2_reference,
-+	.unreference = nfs2_unreference,
-+};
-+
-+static int __init init_nfs_v2(void)
-+{
-+	register_nfs_version(&nfs_v2);
-+	return 0;
-+}
-+
-+static void __exit exit_nfs_v2(void)
-+{
-+	unregister_nfs_version(&nfs_v2);
-+}
-+
-+MODULE_LICENSE("GPL");
-+
-+module_init(init_nfs_v2);
-+module_exit(exit_nfs_v2);
-diff --git a/fs/nfs/nfs2/nfs2.h b/fs/nfs/nfs2/nfs2.h
-new file mode 100644
-index 0000000..6274821
---- /dev/null
-+++ b/fs/nfs/nfs2/nfs2.h
-@@ -0,0 +1,17 @@
-+#ifndef __LINUX_FS_NFS_NFS2_H
-+#define __LINUX_FS_NFS_NFS2_H
-+
-+#include <linux/fs.h>
-+#include <linux/sunrpc/clnt.h>
-+
-+extern struct rpc_version nfs_version2;
-+extern const struct nfs_rpc_ops nfs_v2_clientops;
-+
-+extern const struct inode_operations nfs_file_inode_operations;
-+extern const struct file_operations nfs_file_operations;
-+
-+extern const struct inode_operations nfs_dir_inode_operations;
-+extern const struct file_operations nfs_dir_operations;
-+extern const struct dentry_operations nfs_dentry_operations;
-+
-+#endif /* __LINUX_FS_NFS_NFS2_H */
-diff --git a/fs/nfs/nfs2/proc.c b/fs/nfs/nfs2/proc.c
-index 65eafa3..6590fc7 100644
---- a/fs/nfs/nfs2/proc.c
-+++ b/fs/nfs/nfs2/proc.c
-@@ -42,6 +42,7 @@
- #include <linux/nfs_page.h>
- #include <linux/lockd/bind.h>
- #include "../internal.h"
-+#include "nfs2.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a764cef..0ca9f10 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -3,6 +3,7 @@
- 
- #include <linux/nfsacl.h>
- #include <linux/nfs3.h>
-+#include <linux/nfs4.h>
- #include <linux/sunrpc/gss_api.h>
- 
- /*
-@@ -1272,10 +1273,8 @@ struct nfs_rpc_ops {
- /*
-  * Function vectors etc. for the NFS client
-  */
--extern const struct nfs_rpc_ops	nfs_v2_clientops;
- extern const struct nfs_rpc_ops	nfs_v3_clientops;
- extern const struct nfs_rpc_ops	nfs_v4_clientops;
--extern struct rpc_version	nfs_version2;
- extern struct rpc_version	nfs_version3;
- extern struct rpc_version	nfs_version4;
- 
+Did you ever figure out what's going on here? Is this a regression
+caused by this patchset?
+
 -- 
-1.7.8.3
-
+Jeff Layton <jlayton@redhat.com>
