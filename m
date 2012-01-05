@@ -1,356 +1,232 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47039 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932762Ab2AMULb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:31 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 31/44] NFS: Move v4 getroot code to the v4 directory
-Date: Fri, 13 Jan 2012 15:10:40 -0500
-Message-Id: <1326485453-1350-32-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+Received: from smtp02.citrix.com ([66.165.176.63]:41658 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757749Ab2AERXt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2012 12:23:49 -0500
+From: Ian Campbell <ian.campbell@citrix.com>
+To: netdev@vger.kernel.org
+CC: David Miller <davem@davemloft.net>, Eric Dumazet <eric.dumazet@gmail.com>,
+        Ian Campbell <ian.campbell@citrix.com>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 6/6] sunrpc: use SKB fragment destructors to delay completion until page is released by network stack.
+Date: Thu, 5 Jan 2012 17:13:44 +0000
+Message-ID: <1325783624-14601-6-git-send-email-ian.campbell@citrix.com>
+In-Reply-To: <1325783399.25206.413.camel@zakaz.uk.xensource.com>
+References: <1325783399.25206.413.camel@zakaz.uk.xensource.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+This prevents an issue where an ACK is delayed, a retransmit is queued (either
+at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+wire. If this happens to an NFS WRITE RPC then the write() system call
+completes and the userspace process can continue, potentially modifying data
+referenced by the retransmission before the retransmission occurs.
 
-The future module uses these functions, so I am moving them into the v4
-directory rather than export v4-only functions to the v4 module.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
 ---
- fs/nfs/Makefile       |    3 +-
- fs/nfs/getroot.c      |  130 +---------------------------------------------
- fs/nfs/nfs.h          |    3 +
- fs/nfs/nfs4/getroot.c |  137 +++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 144 insertions(+), 129 deletions(-)
- create mode 100644 fs/nfs/nfs4/getroot.c
+ include/linux/sunrpc/xdr.h  |    2 ++
+ include/linux/sunrpc/xprt.h |    5 ++++-
+ net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+ net/sunrpc/svcsock.c        |    3 ++-
+ net/sunrpc/xprt.c           |   13 +++++++++++++
+ net/sunrpc/xprtsock.c       |    3 ++-
+ 6 files changed, 45 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 87213a8..5335ce2 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -13,7 +13,8 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4/proc.o nfs4/xdr.o nfs4/state.o nfs4/renewd.o \
- 			   nfs4/delegation.o nfs4/idmap.o \
- 			   nfs4/callback.o nfs4/callback_xdr.o \
- 			   nfs4/callback_proc.o nfs4/namespace.o \
--			   nfs4/client.o nfs4/module.o nfs4/sysctl.o
-+			   nfs4/client.o nfs4/module.o nfs4/sysctl.o \
-+			   nfs4/getroot.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 64e086e..8847d5b 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -45,7 +45,7 @@
-  * Set the superblock root dentry.
-  * Note that this function frees the inode in case of error.
-  */
--static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *inode)
-+int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *inode)
- {
- 	/* The mntroot acts as the dummy root dentry for this superblock */
- 	if (sb->s_root == NULL) {
-@@ -71,6 +71,7 @@ static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *i
- 	}
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs_superblock_set_dummy_root);
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index a20970e..172f81e 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -16,6 +16,7 @@
+ #include <asm/byteorder.h>
+ #include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
++#include <linux/skbuff.h>
  
  /*
-  * get an NFS2/NFS3 root dentry from the root filehandle
-@@ -138,130 +139,3 @@ out:
- 	nfs_free_fattr(fsinfo.fattr);
- 	return ret;
- }
--
--#ifdef CONFIG_NFS_V4
--
--int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
--{
--	struct nfs_fsinfo fsinfo;
--	int ret = -ENOMEM;
--
--	dprintk("--> nfs4_get_rootfh()\n");
--
--	fsinfo.fattr = nfs_alloc_fattr();
--	if (fsinfo.fattr == NULL)
--		goto out;
--
--	/* Start by getting the root filehandle from the server */
--	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
--	if (ret < 0) {
--		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
--		goto out;
--	}
--
--	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
--			|| !S_ISDIR(fsinfo.fattr->mode)) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot encountered non-directory\n");
--		ret = -ENOTDIR;
--		goto out;
--	}
--
--	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot obtained referral\n");
--		ret = -EREMOTE;
--		goto out;
--	}
--
--	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
--out:
--	nfs_free_fattr(fsinfo.fattr);
--	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
--	return ret;
--}
--
--/*
-- * get an NFS4 root dentry from the root filehandle
-- */
--struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
--			     const char *devname)
--{
--	struct nfs_server *server = NFS_SB(sb);
--	struct nfs_fattr *fattr = NULL;
--	struct dentry *ret;
--	struct inode *inode;
--	void *name = kstrdup(devname, GFP_KERNEL);
--	int error;
--
--	dprintk("--> nfs4_get_root()\n");
--
--	if (!name)
--		return ERR_PTR(-ENOMEM);
--
--	/* get the info about the server and filesystem */
--	error = nfs4_server_capabilities(server, mntfh);
--	if (error < 0) {
--		dprintk("nfs_get_root: getcaps error = %d\n",
--			-error);
--		kfree(name);
--		return ERR_PTR(error);
--	}
--
--	fattr = nfs_alloc_fattr();
--	if (fattr == NULL) {
--		kfree(name);
--		return ERR_PTR(-ENOMEM);
--	}
--
--	/* get the actual root for this mount */
--	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
--	if (error < 0) {
--		dprintk("nfs_get_root: getattr error = %d\n", -error);
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
--	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
--		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
--
--	inode = nfs_fhget(sb, mntfh, fattr);
--	if (IS_ERR(inode)) {
--		dprintk("nfs_get_root: get root inode failed\n");
--		ret = ERR_CAST(inode);
--		goto out;
--	}
--
--	error = nfs_superblock_set_dummy_root(sb, inode);
--	if (error != 0) {
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	/* root dentries normally start off anonymous and get spliced in later
--	 * if the dentry tree reaches them; however if the dentry already
--	 * exists, we'll pick it up at this point and use it as the root
--	 */
--	ret = d_obtain_alias(inode);
--	if (IS_ERR(ret)) {
--		dprintk("nfs_get_root: get root dentry failed\n");
--		goto out;
--	}
--
--	security_d_instantiate(ret, inode);
--	spin_lock(&ret->d_lock);
--	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
--		ret->d_fsdata = name;
--		name = NULL;
--	}
--	spin_unlock(&ret->d_lock);
--out:
--	if (name)
--		kfree(name);
--	nfs_free_fattr(fattr);
--	dprintk("<-- nfs4_get_root()\n");
--	return ret;
--}
--
--#endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 7b40e24..5fee8ec 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -91,6 +91,9 @@ int nfs_lock(struct file *, int, struct file_lock *);
- int nfs_flock(struct file *, int, struct file_lock *);
- int nfs_setlease(struct file *, long, struct file_lock **);
+  * Buffer adjustment
+@@ -57,6 +58,7 @@ struct xdr_buf {
+ 			tail[1];	/* Appended after page data */
  
-+/* Exported in getroot.c */
-+int nfs_superblock_set_dummy_root(struct super_block *, struct inode *);
+ 	struct page **	pages;		/* Array of contiguous pages */
++	struct skb_frag_destructor *destructor;
+ 	unsigned int	page_base,	/* Start of page data */
+ 			page_len,	/* Length of page data */
+ 			flags;		/* Flags for data disposition */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 15518a1..75131eb 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -92,7 +92,10 @@ struct rpc_rqst {
+ 						/* A cookie used to track the
+ 						   state of the transport
+ 						   connection */
+-	
++	struct skb_frag_destructor destructor;	/* SKB paged fragment
++						 * destructor for
++						 * transmitted pages*/
 +
- /* Exported in inode.c */
- int nfs_setattr(struct dentry *, struct iattr *);
- int nfs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
-diff --git a/fs/nfs/nfs4/getroot.c b/fs/nfs/nfs4/getroot.c
-new file mode 100644
-index 0000000..9e7841c
---- /dev/null
-+++ b/fs/nfs/nfs4/getroot.c
-@@ -0,0 +1,137 @@
+ 	/*
+ 	 * Partial send handling
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f0268ea..06f363f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
+ static void	call_reserveresult(struct rpc_task *task);
+ static void	call_allocate(struct rpc_task *task);
+ static void	call_decode(struct rpc_task *task);
++static void	call_complete(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+ static void	call_transmit(struct rpc_task *task);
+@@ -1115,6 +1116,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 			 (char *)req->rq_buffer + req->rq_callsize,
+ 			 req->rq_rcvsize);
+ 
++	req->rq_snd_buf.destructor = &req->destructor;
++
+ 	p = rpc_encode_header(task);
+ 	if (p == NULL) {
+ 		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+@@ -1278,6 +1281,7 @@ call_connect_status(struct rpc_task *task)
+ static void
+ call_transmit(struct rpc_task *task)
+ {
++	struct rpc_rqst *req = task->tk_rqstp;
+ 	dprint_status(task);
+ 
+ 	task->tk_action = call_status;
+@@ -1311,8 +1315,8 @@ call_transmit(struct rpc_task *task)
+ 	call_transmit_status(task);
+ 	if (rpc_reply_expected(task))
+ 		return;
+-	task->tk_action = rpc_exit_task;
+-	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ }
+ 
+ /*
+@@ -1385,7 +1389,8 @@ call_bc_transmit(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
++	skb_frag_destructor_unref(&req->destructor);
+ 	if (task->tk_status < 0) {
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+@@ -1425,7 +1430,6 @@ call_bc_transmit(struct rpc_task *task)
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
+-	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+ }
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+@@ -1591,12 +1595,14 @@ call_decode(struct rpc_task *task)
+ 		return;
+ 	}
+ 
+-	task->tk_action = rpc_exit_task;
++	task->tk_action = call_complete;
+ 
+ 	if (decode) {
+ 		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
+ 						      task->tk_msg.rpc_resp);
+ 	}
++	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
++	skb_frag_destructor_unref(&req->destructor);
+ 	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
+ 			task->tk_status);
+ 	return;
+@@ -1611,6 +1617,17 @@ out_retry:
+ 	}
+ }
+ 
 +/*
-+ * Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
++ * 8.	Wait for pages to be released by the network stack.
 + */
-+
-+#include <linux/dcache.h>
-+#include <linux/nfs.h>
-+#include <linux/nfs_fs.h>
-+#include <linux/security.h>
-+
-+#include "nfs4_fs.h"
-+#include "../nfs.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_CLIENT
-+
-+int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
++static void
++call_complete(struct rpc_task *task)
 +{
-+	struct nfs_fsinfo fsinfo;
-+	int ret = -ENOMEM;
-+
-+	dprintk("--> nfs4_get_rootfh()\n");
-+
-+	fsinfo.fattr = nfs_alloc_fattr();
-+	if (fsinfo.fattr == NULL)
-+		goto out;
-+
-+	/* Start by getting the root filehandle from the server */
-+	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
-+	if (ret < 0) {
-+		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
-+		goto out;
-+	}
-+
-+	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
-+			|| !S_ISDIR(fsinfo.fattr->mode)) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot encountered non-directory\n");
-+		ret = -ENOTDIR;
-+		goto out;
-+	}
-+
-+	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot obtained referral\n");
-+		ret = -EREMOTE;
-+		goto out;
-+	}
-+
-+	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
-+out:
-+	nfs_free_fattr(fsinfo.fattr);
-+	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
-+	return ret;
++	dprintk("RPC: %5u call_complete result %d\n",
++		task->tk_pid, task->tk_status);
++	task->tk_action = rpc_exit_task;
 +}
 +
-+/*
-+ * get an NFS4 root dentry from the root filehandle
-+ */
-+struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
-+			     const char *devname)
+ static __be32 *
+ rpc_encode_header(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0e6b919..aa7f108 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ 	while (pglen > 0) {
+ 		if (slen == size)
+ 			flags = 0;
+-		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
++		result = kernel_sendpage(sock, *ppage, xdr->destructor,
++					 base, size, flags);
+ 		if (result > 0)
+ 			len += result;
+ 		if (result != size)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index c64c0ef..5f28bc7 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1101,6 +1101,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ 	xprt->xid = net_random();
+ }
+ 
++static int xprt_complete_skb_pages(void *calldata)
 +{
-+	struct nfs_server *server = NFS_SB(sb);
-+	struct nfs_fattr *fattr = NULL;
-+	struct dentry *ret;
-+	struct inode *inode;
-+	void *name = kstrdup(devname, GFP_KERNEL);
-+	int error;
++	struct rpc_task *task = calldata;
++	struct rpc_rqst	*req = task->tk_rqstp;
 +
-+	dprintk("--> nfs4_get_root()\n");
-+
-+	if (!name)
-+		return ERR_PTR(-ENOMEM);
-+
-+	/* get the info about the server and filesystem */
-+	error = nfs4_server_capabilities(server, mntfh);
-+	if (error < 0) {
-+		dprintk("nfs_get_root: getcaps error = %d\n",
-+			-error);
-+		kfree(name);
-+		return ERR_PTR(error);
-+	}
-+
-+	fattr = nfs_alloc_fattr();
-+	if (fattr == NULL) {
-+		kfree(name);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	/* get the actual root for this mount */
-+	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
-+	if (error < 0) {
-+		dprintk("nfs_get_root: getattr error = %d\n", -error);
-+		ret = ERR_PTR(error);
-+		goto out;
-+	}
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
-+	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
-+		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
-+
-+	inode = nfs_fhget(sb, mntfh, fattr);
-+	if (IS_ERR(inode)) {
-+		dprintk("nfs_get_root: get root inode failed\n");
-+		ret = ERR_CAST(inode);
-+		goto out;
-+	}
-+
-+	error = nfs_superblock_set_dummy_root(sb, inode);
-+	if (error != 0) {
-+		ret = ERR_PTR(error);
-+		goto out;
-+	}
-+
-+	/* root dentries normally start off anonymous and get spliced in later
-+	 * if the dentry tree reaches them; however if the dentry already
-+	 * exists, we'll pick it up at this point and use it as the root
-+	 */
-+	ret = d_obtain_alias(inode);
-+	if (IS_ERR(ret)) {
-+		dprintk("nfs_get_root: get root dentry failed\n");
-+		goto out;
-+	}
-+
-+	security_d_instantiate(ret, inode);
-+	spin_lock(&ret->d_lock);
-+	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
-+		ret->d_fsdata = name;
-+		name = NULL;
-+	}
-+	spin_unlock(&ret->d_lock);
-+out:
-+	if (name)
-+		kfree(name);
-+	nfs_free_fattr(fattr);
-+	dprintk("<-- nfs4_get_root()\n");
-+	return ret;
++	dprintk("RPC: %5u completing skb pages\n", task->tk_pid);
++	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
++	return 0;
 +}
++
+ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+@@ -1113,6 +1123,9 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ 	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
++	atomic_set(&req->destructor.ref, 1);
++	req->destructor.destroy = &xprt_complete_skb_pages;
++	req->destructor.data = task;
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+ 			req, ntohl(req->rq_xid));
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 38b2fec..5406977 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
++		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
++					  base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
 -- 
-1.7.8.3
+1.7.2.5
 
