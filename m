@@ -1,51 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:44303 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756018Ab2ASQhn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2012 11:37:43 -0500
-Received: by wics10 with SMTP id s10so94469wic.19
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 08:37:42 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:58484 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757073Ab2AEVmp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jan 2012 16:42:45 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q05Lgjta026494
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Jan 2012 16:42:45 -0500
+Message-ID: <4F061954.6030208@RedHat.com>
+Date: Thu, 05 Jan 2012 16:42:44 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20120119134814.GA527@fieldses.org>
-References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
-	<OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
-	<OFA87AD733.E4260468-ON8825797B.00708512-8825797B.0070B0A1@us.ibm.com>
-	<OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
-	<20120119134814.GA527@fieldses.org>
-Date: Thu, 19 Jan 2012 11:37:42 -0500
-Message-ID: <CAHVgHyVAvjdAzRUOmR2R-VMkwrBUn-U+ix5=veBmEYppQKtO=g@mail.gmail.com>
-Subject: Re: Linux pNFS status meeting 01/19/12
-From: Andy Adamson <androsadamson@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Marc Eshel <eshel@almaden.ibm.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: Karel Zak <kzak@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] mount.nfs: don't overwrite mount options from /etc/nfsmount.conf
+References: <1324563292-22058-1-git-send-email-kzak@redhat.com>
+In-Reply-To: <1324563292-22058-1-git-send-email-kzak@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have a dentist appointment (teeth cleaning) at noon.
 
--->Andy
 
-On Thu, Jan 19, 2012 at 8:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Jan 18, 2012 at 01:00:30PM -0800, Marc Eshel wrote:
->> Meeting on Thursday 01/19/12 at 9:30 AM PST (12:30 PM EST)
->
-> Apologies, I'll miss this one.--b.
->
->>
->>
->> USA Toll-Free: 888-426-6840
->> USA Caller Paid: 215-861-6239
->>
->> Israel Toll-Free: 1-809-417-783
->>
->> Participant Code: 8792872
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 12/22/2011 09:14 AM, Karel Zak wrote:
+> The libmount (as well as mount(8)) ignores mount options from command
+> line if running in restricted mode (suid, non-root-user) and all
+> options are read from fstab only.
+> 
+> It means that all options are replaced with stuff from fstab,
+> including mount options from nfsmount.conf. This is bug.
+> 
+> We have to apply fstab and then nfsmount.conf.
+> 
+> Signed-off-by: Karel Zak <kzak@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/mount/mount_libmount.c |   15 +++++++++++++++
+>  1 files changed, 15 insertions(+), 0 deletions(-)
+> 
+> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+> index e450d79..e8f17a9 100644
+> --- a/utils/mount/mount_libmount.c
+> +++ b/utils/mount/mount_libmount.c
+> @@ -346,6 +346,21 @@ static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
+>  
+>  	if (chk_mountpoint(mount_point))
+>  		goto err;
+> +
+> +	/*
+> +	 * The libmount strictly uses only options from fstab if running in
+> +	 * restricted mode (suid, non-root user). This is done in
+> +	 * mnt_context_prepare_mount() by default.
+> +	 *
+> +	 * We have to read fstab before nfsmount.conf, otherwise the options
+> +	 * from nfsmount.conf will be ignored (overwrited).
+> +	 */
+> +	rc = mnt_context_apply_fstab(cxt);
+> +	if (rc) {
+> +		nfs_error(_("%s: failed to apply fstab options\n"), progname);
+> +		goto err;
+> +	}
+> +
+>  	/*
+>  	 * Concatenate mount options from the configuration file
+>  	 */
