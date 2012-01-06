@@ -1,69 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48318 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756974Ab2AKQX0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 11:23:26 -0500
-Message-ID: <1326299003.17212.7.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce
- context
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Date: Wed, 11 Jan 2012 11:23:23 -0500
-In-Reply-To: <4F0C35F3.7060508@parallels.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-		 <1325285705.10984.4.camel@lade.trondhjem.org>
-	 <1325797111.11084.22.camel@lade.trondhjem.org>
-	 <4F0C35F3.7060508@parallels.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:47618 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752928Ab2AFVdL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 16:33:11 -0500
+Message-ID: <1325892770.4847.1.camel@lappy>
+Subject: Re: Boot regression caused by commit 6829a048
+From: Sasha Levin <levinsasha928@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: chuck.lever@oracle.com, linux@razik.name,
+        Pekka Enberg <penberg@kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Date: Sat, 07 Jan 2012 01:32:50 +0200
+In-Reply-To: <1325874404.32470.6.camel@lade.trondhjem.org>
+References: <1325871176.4629.35.camel@lappy>
+	 <1325874404.32470.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-01-10 at 16:58 +0400, Stanislav Kinsbursky wrote: 
-> 06.01.2012 00:58, Trond Myklebust пишет:
-> > The second problem that was highlighted was the fact that as they stand
-> > today, these patchsets do not allow for bisection. When we hit the Oops,
-> > I had Bryan try to bisect where the problem arose. He ended up pointing
-> > at the patch "SUNRPC: handle RPC client pipefs dentries by network
-> > namespace aware routine", which is indeed the cause, but which is one of
-> > the _dependencies_ for all the PipeFS notifier patches that fix the
-> > problem.
-> >
+On Fri, 2012-01-06 at 13:26 -0500, Trond Myklebust wrote:
+> On Fri, 2012-01-06 at 19:32 +0200, Sasha Levin wrote: 
+> > Hi all,
+> > 
+> > I've noticed a boot regression caused by commit 6829a048 ("NFS: Retry
+> > mounting NFSROOT") which has increased boot time by 95 seconds.
+> > 
+> > The scenario is as follows:
+> >  - A virtual guest running under the KVM tool.
+> >  - Guest is using kernel automatic IP DHCP configuration ("ip=dhcp").
+> >  - Guest is booting from a 9p device (which is not detected as block,
+> > and gets mounted after NFS tries to do its mounts).
+> >  - No NFS server at all, no NFS parameters passed to the guest kernel.
+> > 
+> > Under this scenario, theres an additional 95 second delay before NFS
+> > fails and tries to boot using 9p:
+> > 
+> > [...]
+> > [    6.505269] md: autorun ...
+> > [    6.506954] md: ... autorun DONE.
+> > [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+> > [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+> > [...]
 > 
-> I'm confused here. Does this means, that I have to fix patch "SUNRPC: handle RPC 
-> client pipefs dentries by network namespace aware routine" to make it able to 
-> bisect?
+> Can't you avoid the whole NFS root mount attempt by setting "root=2:0"
+> directly instead of relying on 'mount_root' to do it for you?
 
-What I mean is that currently, I have various ways to Oops the kernel
-when I apply "SUNRPC: handle RPC client pipefs dentries by network
-namespace aware routine" before all these other followup patches are
-applied.
+I am specifying root and root parameters fully:
 
-One way to could fix this, might be to add dummy versions of
-rpc_pipefs_notifier_register()/unregister() so that "NFS: idmap PipeFS
-notifier introduced" and the other such patches can be applied without
-compilation errors or Oopses before the "handle RPC client pipefs
-dentries..." patch is applied. The latter could then enable the real
-rpc_pipefs_notifier_register()/....
+"root=/dev/root rw rootflags=rw,trans=virtio,version=9p2000.L
+rootfstype=9p"
 
-The point is to not have these patches add _known_ bugs to the kernel at
-any point, so that someone who is trying to track down an unknown bug
-via "git bisect" doesn't have to also cope with these avoidable
-issues...
+Actually, I'm not sure why NFS comes to play at all in this case.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Sasha.
 
