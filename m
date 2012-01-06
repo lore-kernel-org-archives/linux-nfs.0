@@ -1,43 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:35868 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752725Ab2AZLMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 06:12:01 -0500
-Subject: [PATCH 2/5] NFS: build fixed in case of NFS_USE_NEW_IDMAPPER is
- undefined
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 26 Jan 2012 15:11:41 +0400
-Message-ID: <20120126111141.8386.95788.stgit@localhost6.localdomain6>
-In-Reply-To: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
-References: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:47856 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933012Ab2AFJmv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 04:42:51 -0500
+Received: by eaad14 with SMTP id d14so860470eaa.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2012 01:42:50 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v5 4/8] nfsd41: consume current stateid on read and write
+Date: Fri,  6 Jan 2012 10:45:12 +0100
+Message-Id: <1325843116-20570-5-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- fs/nfs/idmap.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   12 ++++++++++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index aed3d2e..04f58d4 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -378,6 +378,7 @@ int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf,
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 21550b6..6e54d19 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+  */
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
++extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
  
- #include "nfs4_fs.h"
- #include "internal.h"
-+#include "netns.h"
- 
- #define IDMAP_HASH_SZ          128
- 
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3e7b97f..20c8d24 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1864,6 +1864,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_READ",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
+ 	},
+ 	[OP_READDIR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_readdir,
+@@ -1942,6 +1943,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_WRITE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+ 	},
+ 	[OP_RELEASE_LOCKOWNER] = {
+ 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5add33f8..cf9bc80 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4757,3 +4757,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
+ {
+ 	get_stateid(cstate, &locku->lu_stateid);
+ }
++
++void
++nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
++{
++	get_stateid(cstate, &read->rd_stateid);
++}
++
++void
++nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
++{
++	get_stateid(cstate, &write->wr_stateid);
++}
+-- 
+1.7.7.5
 
