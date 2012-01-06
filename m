@@ -1,51 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3140 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389Ab2AZPQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 10:16:30 -0500
-Message-ID: <4F216E4C.7030907@netapp.com>
-Date: Thu, 26 Jan 2012 10:16:28 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:54395 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752163Ab2AFHYb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 02:24:31 -0500
+Message-ID: <4F06A18E.4010706@panasas.com>
+Date: Fri, 6 Jan 2012 09:23:58 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Belisko Marek <marek.belisko@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: fanotify - fschange filesystem notification on nfs mounted directory
-References: <CAAfyv35wM-G0_sFbpZ-829_Lrwz7FNT8hyPeT7XnMzF64YZ6bQ@mail.gmail.com>
-In-Reply-To: <CAAfyv35wM-G0_sFbpZ-829_Lrwz7FNT8hyPeT7XnMzF64YZ6bQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Benny Halevy <bhalevy@tonian.com>, Fred Isaman <iisaman@netapp.com>
+Subject: [PATCHSET 0/2] pnfs-obj: Important BUG fixing also for @Stable
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu Jan 26 03:00:26 2012, Belisko Marek wrote:
-> Hi,
->
-> I'm working on fschange
-> (http://stefan.buettcher.org/cs/fschange/index.html) on which fanotify
-> is based also.
->
-> It is reporting changes (when file or dir is created, changed, deleted
-> ...) working fine over "normal filesystems".
-> Our intention is to used to report changes on directory which is
-> mounted over nfs. This case doesn't work at all
-> (we got some events about rename only). Is there anything what should
-> be setup in nfs options or this case basically
-> didn't work at all? I'm only nfs user and don't understand details.
+Hi Trond
 
-You didn't set up anything wrong, the case just doesn't work for 
-finding changes on the server.  Files created locally should trigger 
-inotify events through the VFS, but tracking changes made on the server 
-is more difficult.  Notifications are part of the NFS v4.1 protocol, 
-but I don't think anything has been implemented right now.
+I'm sending in two patches that fixes a bad hung, memory leak, a WARN_ON
+and plain wrong protocol handling. In regard to objlayout error handling.
+These are also aimed at Stable@ for the 3.2 Kernel.
+(Actually these bugs are in since 3.0, I might produce another version
+ for 3.[1,0] after these go in)
 
-Maybe something in userland like gamin could help?  
-http://people.gnome.org/~veillard/gamin/
+I have simulated errors at various layers, reads and writes, in combination
+of different tests, and they work as I expect. .i.e IO continues to MDS and
+oblayout is returned on error.
 
-- Bryan
+Please include these patches for 3.3 and they can go to Stable@ for 3.2
+has well.
 
->
-> Thanks in advance,
->
-> marek
->
+list of patches:
+[PATCH 1/2] pnfs-obj: pNFS errors are communicated on iodata->pnfs_error
 
+	This is just a stupidity and neglect. Benny can you understand
+	what happened here?
 
+[PATCH 2/2] pnfs-obj: Must return layout on IO error
+
+	This patch is mainly for pnfs.c but I think it is very simple
+	and totally not affecting anybody but objlayout. So it should
+	be safe, and does fixes my main problem.
+	Fred please review?
+
+Please Review
+
+Thanks
+Boaz
