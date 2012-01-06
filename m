@@ -1,81 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45749 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754678Ab2AIW3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jan 2012 17:29:05 -0500
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [GIT PULL] Please pull NFS client bugfixes and cleanups
-Date: Mon, 9 Jan 2012 14:28:48 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CCB08B1@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <201201092315.28230.wolfgang.walter@stwm.de>
-References: <1326142671.9041.1.camel@lade.trondhjem.org> <201201092315.28230.wolfgang.walter@stwm.de>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Wolfgang Walter" <wolfgang.walter@stwm.de>
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:55640 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758055Ab2AFVg3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 16:36:29 -0500
+Message-ID: <1325892968.4847.4.camel@lappy>
+Subject: Re: Boot regression caused by commit 6829a048
+From: Sasha Levin <levinsasha928@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux@razik.name, Trond.Myklebust@netapp.com,
+        Pekka Enberg <penberg@kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Date: Sat, 07 Jan 2012 01:36:08 +0200
+In-Reply-To: <5A327123-1097-474C-A7F6-7C29BB71FCEE@oracle.com>
+References: <1325871176.4629.35.camel@lappy>
+	 <5A327123-1097-474C-A7F6-7C29BB71FCEE@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBXb2xmZ2FuZyBXYWx0ZXIgW21h
-aWx0bzp3b2xmZ2FuZy53YWx0ZXJAc3R3bS5kZV0NCj4gU2VudDogTW9uZGF5LCBKYW51YXJ5IDA5
-LCAyMDEyIDU6MTUgUE0NCj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gQ2M6IExpbnVzIFRvcnZh
-bGRzOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwu
-b3JnDQo+IFN1YmplY3Q6IFJlOiBbR0lUIFBVTExdIFBsZWFzZSBwdWxsIE5GUyBjbGllbnQgYnVn
-Zml4ZXMgYW5kIGNsZWFudXBzDQo+IA0KPiBPbiBNb25kYXkgMDkgSmFudWFyeSAyMDEyLCBUcm9u
-ZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gSGkgTGludXMsDQo+ID4NCj4gPiBQbGVhc2UgcHVsbCBm
-cm9tIHRoZSAibmZzLWZvci0zLjMiIGJyYW5jaCBvZiB0aGUgcmVwb3NpdG9yeSBhdA0KPiA+DQo+
-ID4gICAgZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0DQo+ID4gbmZzLQ0KPiBmb3ItMy4zDQo+ID4NCj4gPiBUaGlzIHdpbGwgdXBk
-YXRlIHRoZSBmb2xsb3dpbmcgZmlsZXMgdGhyb3VnaCB0aGUgYXBwZW5kZWQgY2hhbmdlc2V0cy4N
-Cj4gPg0KPiA+ICAgQ2hlZXJzLA0KPiA+ICAgICBUcm9uZA0KPiA+DQo+ID4NCj4gPiBjb21taXQg
-MDc0YjFkMTJmZTI1MDBkN2Q0NTM5MDJmOTI2NmU2Njc0YjMwZDg0Yw0KPiA+IEF1dGhvcjogVHJv
-bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiBEYXRlOiAgIE1v
-biBKYW4gOSAxMzo0NjoyNiAyMDEyIC0wNTAwDQo+ID4NCj4gPiAgICAgTkZTdjQ6IENoYW5nZSB0
-aGUgZGVmYXVsdCBzZXR0aW5nIG9mIHRoZSBuZnM0X2Rpc2FibGVfaWRtYXBwaW5nDQo+IHBhcmFt
-ZXRlcg0KPiA+DQo+ID4gICAgIE5vdyB0aGF0IHRoZSB1c2Ugb2YgbnVtZXJpYyB1aWRzL2dpZHMg
-aXMgb2ZmaWNpYWxseSBzYW5jdGlvbmVkIGluDQo+ID4gICAgIFJGQzM1MzBiaXMsIGl0IGlzIHRp
-bWUgdG8gY2hhbmdlIHRoZSBkZWZhdWx0IGhlcmUgdG8gJ2VuYWJsZWQnLg0KPiA+DQo+ID4gICAg
-IEJ5IGRvaW5nIHNvLCB3ZSBlbnN1cmUgdGhhdCBORlN2NCBjb3BpZXMgdGhlIGJlaGF2aW91ciBv
-ZiBORlN2Mw0KPiA+IHdoZW4NCj4gd2UncmUNCj4gPiAgICAgdXNpbmcgdGhlIGRlZmF1bHQgQVVU
-SF9TWVMgYXV0aGVudGljYXRpb24gKGkuZS4gd2hlbiB0aGUgY2xpZW50IHVzZXMgdGhlDQo+ID4g
-ICAgIG51bWVyaWMgdWlkcy9naWRzIGFzIGF1dGhlbnRpY2F0aW9uIHRva2VucyksIHNvIHRoYXQg
-d2hlbiBuZXcgZmlsZXMgYXJlDQo+ID4gICAgIGNyZWF0ZWQsIHRoZXkgd2lsbCBhcHBlYXIgdG8g
-aGF2ZSB0aGUgY29ycmVjdCB1c2VyL2dyb3VwLg0KPiA+ICAgICBJdCBhbHNvIGZpeGVzIGEgbnVt
-YmVyIG9mIGJhY2t3YXJkIGNvbXBhdGliaWxpdHkgaXNzdWVzIHdoZW4gbWlncmF0aW5nDQo+ID4g
-ICAgIGZyb20gTkZTdjMgdG8gTkZTdjQgb24gYSBwbGF0Zm9ybSB3aGVyZSB0aGUgc2VydmVyIHVz
-ZXMgZGlmZmVyZW50DQo+IHVpZC9naWQNCj4gPiAgICAgbWFwcGluZ3MgdGhhbiB0aGUgY2xpZW50
-Lg0KPiA+DQo+ID4gICAgIE5vdGUgYWxzbyB0aGF0IHRoaXMgc2V0dGluZyBoYXMgYmVlbiBzdWNj
-ZXNzZnVsbHkgdGVzdGVkIGFnYWluc3Qgc2VydmVycw0KPiA+ICAgICB0aGF0IGRvIG5vdCBzdXBw
-b3J0IG51bWVyaWMgdWlkcy9naWRzIGF0IHNldmVyYWwNCj4gQ29ubmVjdGF0aG9uL0Jha2VhdGhv
-bg0KPiA+ICAgICBldmVudHMgYXQgdGhpcyBwb2ludCwgYW5kIHRoZSBmYWxsIGJhY2sgdG8gdXNp
-bmcgc3RyaW5nIG5hbWVzL2dyb3VwcyBoYXMNCj4gPiAgICAgYmVlbiBzaG93biB0byB3b3JrIHdl
-bGwgaW4gYWxsIHRob3NlIHRlc3QgY2FzZXMuDQo+ID4NCj4gPiAgICAgU2lnbmVkLW9mZi1ieTog
-VHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPg0KPiANCj4g
-DQo+IERvZXMgdGhpcyBtZWFuIHRoYXQgb25lIGhhcyB0byBtb2RpZnkgYWxsIG9uZSdzIGNsaWVu
-dHMgdG8gZ2V0IHRoZSBvbGQNCj4gYmVoYXZpb3VyPw0KPiANCj4gSSdtIG5vdCBzdXJlIGlmIHRo
-aXMgaXMgYSByZWFsbHkgZ29vZCBpZGVhLiBJIGRvbid0IHNlZSB0aGUgYWR2YW50YWdlLiBUaGlz
-IHdpbGwNCj4gYnJlYWsgYSBsb3Qgb2YgZXhpc3RpbmcgaW5zdGFsbGF0aW9ucyB3aGVuIHVwZ3Jh
-ZGluZyB0byA+PTMuMy4gQW5kIHNvbWVvbmUNCj4gbWlncmF0aW5nIGZyb20gTkZTdjMgdG8gTkZT
-djQgaGFzIHRvIGdpdmUgc29tZSB0aG91Z2h0cyB0byBpdCBhbnl3YXkuDQoNClBsZWFzZSByZWFk
-IHRoZSBjaGFuZ2Vsb2cgYW5kIGRvY3VtZW50YXRpb246DQoNCklmIHlvdXIgc2VydmVyIGRvZXNu
-4oCZdCBzdXBwb3J0IG51bWVyaWMgdWlkcy9naWRzLCB0aGVuIHlvdSB3aWxsIHNlZSBfbm9fIGNo
-YW5nZSBpbiBiZWhhdmlvdXIuDQoNCklmIHlvdXIgc2VydmVyIGRvZXMgc3VwcG9ydCBudW1lcmlj
-IHVpZHMvZ2lkcywgYW5kIGhhcyB0aGUgc2FtZSBtYXBwaW5nIGJldHdlZW4gbnVtZXJpYyB1aWRz
-L2dpZHMgYW5kIHVzZXJuYW1lL2dyb3VwbmFtZSBhcyB5b3VyIGNsaWVudHMsIHRoZW4geW91IHdp
-bGwgc2VlIF9ub18gY2hhbmdlIGluIGJlaGF2aW91ci4NCg0KSWYgeW91ciBzZXJ2ZXIgZG9lcyBz
-dXBwb3J0IG51bWVyaWMgdWlkcy9naWRzLCBidXQgdGhlIG1hcHBpbmcgYmV0d2VlbiBudW1lcmlj
-IHVpZHMvZ2lkcyBhbmQgdXNlcm5hbWUvZ3JvdXBuYW1lIGRpZmZlcnMgYmV0d2VlbiBzZXJ2ZXIg
-YW5kIGNsaWVudCAoZS5nLi4gdWlkPTIwIG1hcHMgdG8gZGlmZmVyZW50IHVzZXJzIG9uIHRoZSBj
-bGllbnQgYW5kIHNlcnZlcikgdGhlbiB5b3UgYWxyZWFkeSBoYWQgYSBwcm9ibGVtIGluIHRoYXQg
-Y3JlYXRpbmcgdGhlIGZpbGUgdXNpbmcgTkZTdjQgd291bGQgcmVzdWx0IGluIHlvdSBzZWVpbmcg
-dGhlIHdyb25nIG93bmVyIGFuZC9vciBncm91cC4gSWYgdGhpcyBjYXNlLCBhbmQgdGhpcyBjYXNl
-IG9ubHksIHRoZSBjaGFuZ2UgdG8gbmZzNF9kaXNhYmxlX2lkbWFwcGVyIHdpbGwgcmVzdWx0IGlu
-IHlvdSBub3cgc2VlaW5nIHRoZSBjb3JyZWN0IG93bmVyL2dyb3VwIGZvciB0aGVzZSBmaWxlcyAo
-anVzdCBhcyBpZiB5b3Ugd2VyZSB1c2luZyBORlN2MykuDQoNCklPVzogdGhlIG9ubHkgcGVvcGxl
-IHdobyB3aWxsIHdhbnQgdG8gdXNlIHRoZSBvbGQgc2V0dGluZyBhcmUgdGhvc2Ugd2l0aCBicm9r
-ZW4gc2VydmVycyB0aGF0IHJldHVybiBpbmNvcnJlY3QgZXJyb3JzIHdoZW4gY29uZnJvbnRlZCB3
-aXRoIGEgbnVtZXJpYyB1aWQvZ2lkLiBXZSBoYXZlIGZvdW5kIG5vIGV2aWRlbmNlIHRoYXQgYW55
-IHN1Y2ggc2VydmVycyBleGlzdCBkdXJpbmcgdGhlIGxhc3QgZnVsbCB5ZWFyIG9mIHRlc3Rpbmcu
-DQoNClRyb25kDQo=
+On Fri, 2012-01-06 at 13:29 -0500, Chuck Lever wrote:
+> On Jan 6, 2012, at 12:32 PM, Sasha Levin wrote:
+> 
+> > Hi all,
+> > 
+> > I've noticed a boot regression caused by commit 6829a048 ("NFS: Retry
+> > mounting NFSROOT") which has increased boot time by 95 seconds.
+> > 
+> > The scenario is as follows:
+> > - A virtual guest running under the KVM tool.
+> > - Guest is using kernel automatic IP DHCP configuration ("ip=dhcp").
+> > - Guest is booting from a 9p device (which is not detected as block,
+> > and gets mounted after NFS tries to do its mounts).
+> > - No NFS server at all, no NFS parameters passed to the guest kernel.
+> > 
+> > Under this scenario, theres an additional 95 second delay before NFS
+> > fails and tries to boot using 9p:
+> > 
+> > [...]
+> > [    6.505269] md: autorun ...
+> > [    6.506954] md: ... autorun DONE.
+> > [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+> > [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+> > [...]
+> > 
+> > This probably happens since the NFS server isn't configured, so the
+> > bootserver is automatically assumed to be the DHCP server, and with the
+> > commit above we won't simply fail immediately when the NFS code fails
+> > connecting to it.
+> > 
+> > I'm not quite sure about the correct solution for this. While I can
+> > forcefully disable NFS, is it really the right solution? Should we be
+> > retrying a NFS server even if one wasn't specifically set?
+> 
+> What DHCP options are passed to the client?  You can specify the "nfsrootdebug" boot command line option to explore this a little more.
+
+This is what came out:
+
+[    5.220654] NFS: nfs mount opts='vers=2,udp,rsize=4096,wsize=4096,nolock,addr=0.0.0.0'
+[    5.226382] NFS:   parsing nfs mount option 'vers=2'
+[    5.227707] NFS:   parsing nfs mount option 'udp'
+[    5.228781] NFS:   parsing nfs mount option 'rsize=4096'
+[    5.230307] NFS:   parsing nfs mount option 'wsize=4096'
+[    5.231537] NFS:   parsing nfs mount option 'nolock'
+[    5.232834] NFS:   parsing nfs mount option 'addr=0.0.0.0'
+[    5.234069] NFS: mount program didn't pass remote address
+
+> Typically ip= is used specifically with NFSROOT.  You might review Documentation/filesystems/nfs/nfsroot.txt to see if some combination of boot command line options gives more desirable behavior.
+
+Within nfsroot.txt, it says I should specify "root=/dev/nfs" so that
+nfsroot would be used. Why do we try mounting nfsroot if I specifically
+specify something else under "root="?
+
+
+-- 
+
+Sasha.
+
