@@ -1,96 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.scalarmail.ca ([98.158.95.75]:28188 "EHLO
-	ironport-01.sms.scalar.ca" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755453Ab2AXQls (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2012 11:41:48 -0500
-Date: Tue, 24 Jan 2012 11:41:44 -0500
-From: Nick Bowler <nbowler@elliptictech.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: NFS auth_rpcgss client crash in 3.3-rc1+ (regression)
-Message-ID: <20120124164144.GA19315@elliptictech.com>
-References: <20120124041251.GA16952@elliptictech.com>
+Received: from mx2.netapp.com ([216.240.18.37]:37362 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030354Ab2AFPvN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 10:51:13 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "<tigran.mkrtchyan@desy.de>" <tigran.mkrtchyan@desy.de>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+Subject: Re: server reboot recovery is broken with 3.1 (3.2?) with nfsv41
+ clients
+Date: Fri, 6 Jan 2012 15:50:42 +0000
+Message-ID: <27ECC95F-A1B6-43A8-AC1C-F01D680F50D7@netapp.com>
+References: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
+ <081C1E0B-795E-4138-B66A-479F73BB3AC5@netapp.com>
+ <CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
+ <CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
+ <F19688880B763E40B28B2B462677FBF805E3A4A802@MX09A.corp.emc.com>
+ <CAGue13q8RbFmqWzz4BkL_hAfiFayM79MZUrL8nx=4SZDWy7tpQ@mail.gmail.com>
+ <CAGue13qS1y69BuOXgnFoYPmKDJRMWiXnkLvXqN5cP0qro+MU7A@mail.gmail.com>
+In-Reply-To: <CAGue13qS1y69BuOXgnFoYPmKDJRMWiXnkLvXqN5cP0qro+MU7A@mail.gmail.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120124041251.GA16952@elliptictech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-01-23 23:12 -0500, Nick Bowler wrote:
-> I'm seeing crashes similar to the following with latest Linus' git on an
-> NFSv4 client machine.  User home directories are NFS mounted with
-> sec=krb5, and the crash often occurs immediately or shortly after the
-> first successful login.  However, it does not always crash: it happens
-> maybe 50% of the time.  Most of the time the box is dead as a result.
+Hi Tigran
+
+Sorry - I dropped the ball on this one.  I'll try reproducing it now.
+
+-->Andy
+
+On Jan 6, 2012, at 10:39 AM, Tigran Mkrtchyan wrote:
+
+> FYI,
 > 
-> I see this in Linux 3.3-rc1 as well, but I've not had a chance to bisect
-> it yet (might be tricky since it's not 100% reliable).  The server is
-> running Linux 3.2.1.
-
-I forgot to mention that this is a regression from 3.2 on the client.
-
->   general protection fault: 0000 [#1] PREEMPT SMP 
->   CPU 3 
->   Modules linked in: netconsole sha1_ssse3 sha1_generic hmac aes_x86_64 aes_generic cbc cts rpcsec_gss_krb5 nfs lockd auth_rpcgss nfs_acl sunrpc ipv6 coretemp hwmon_vid hwmon snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss nls_iso8859_1 nls_cp437 vfat fat acpi_cpufreq mperf snd_hda_codec_hdmi snd_hda_codec_realtek arc4 snd_hda_intel snd_hda_codec ath9k mac80211 snd_pcm i915 drm_kms_helper drm snd_timer ath9k_common ath9k_hw ath cfg80211 snd intel_agp i2c_algo_bit r8169 intel_gtt psmouse evdev agpgart video i2c_i801 soundcore i2c_core snd_page_alloc mii
->   
->   Pid: 2088, comm: zsh Not tainted 3.3.0-rc1-00060-gc1aab02 #12 System manufacturer System Product Name/P8H67-I DELUXE
->   RIP: 0010:[<ffffffff811848fe>]  [<ffffffff811848fe>] strcmp+0x4/0x21
->   RSP: 0018:ffff88022f2b9808  EFLAGS: 00010282
->   RAX: 0000000000000000 RBX: ffff880234a13c60 RCX: ffff8802317aa6c0
->   RDX: 0038004000000000 RSI: ffff8802316d2170 RDI: 0038004000000000
->   RBP: ffff88022f2b9808 R08: ffff8802319e1600 R09: ffff88022f2b9918
->   R10: ffffffff810089c5 R11: ffff88022f2b9968 R12: ffff88023167fba8
->   R13: 0000000000000000 R14: ffff8802369ca2e0 R15: ffff880234ac8780
->   FS:  00007fee11170700(0000) GS:ffff88023fb80000(0000) knlGS:0000000000000000
->   CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->   CR2: 00007fee10613f80 CR3: 000000023169d000 CR4: 00000000000406e0
->   DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->   DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->   Process zsh (pid: 2088, threadinfo ffff88022f2b8000, task ffff88023586bca0)
->   Stack:
->    ffff88022f2b9818 ffffffffa02eeeae ffff88022f2b9888 ffffffffa02b3f88
->    ffff88022f2b9838 0000000000000000 0000000000000000 ffff880234a13c6c
->    ffff88022f2b9848 ffff88022f2b9848 ffff8802304b3800 ffff8802319e1600
->   Call Trace:
->    [<ffffffffa02eeeae>] gss_match+0x44/0x5e [auth_rpcgss]
->    [<ffffffffa02b3f88>] rpcauth_lookup_credcache+0xdf/0x221 [sunrpc]
->    [<ffffffffa02eef11>] gss_lookup_cred+0x9/0xb [auth_rpcgss]
->    [<ffffffffa02b4c77>] generic_bind_cred+0x17/0x19 [sunrpc]
->    [<ffffffffa02b469d>] rpcauth_refreshcred+0x47/0x15a [sunrpc]
->    [<ffffffffa02aeca7>] ? xprt_reserve+0x23e/0x24b [sunrpc]
->    [<ffffffffa02ab387>] call_refresh+0x5c/0x60 [sunrpc]
->    [<ffffffffa02b33e8>] __rpc_execute+0x76/0x28b [sunrpc]
->    [<ffffffffa02b365e>] rpc_execute+0x3d/0x41 [sunrpc]
->    [<ffffffffa02accdc>] rpc_run_task+0xdf/0xeb [sunrpc]
->    [<ffffffffa02acdc3>] rpc_call_sync+0x3d/0x5e [sunrpc]
->    [<ffffffffa031cd63>] ? nfs_fattr_init+0x21/0x41 [nfs]
->    [<ffffffffa0330fb6>] _nfs4_call_sync+0x1c/0x1e [nfs]
->    [<ffffffffa032d278>] nfs4_call_sync+0x11/0x13 [nfs]
->    [<ffffffffa0330e8a>] _nfs4_proc_access+0xf4/0x151 [nfs]
->    [<ffffffffa0330f16>] nfs4_proc_access+0x2f/0x55 [nfs]
->    [<ffffffffa03198b5>] nfs_do_access+0x1a8/0x3e9 [nfs]
->    [<ffffffffa02b4e90>] ? generic_lookup_cred+0x10/0x12 [sunrpc]
->    [<ffffffffa02b441b>] ? rpcauth_lookupcred+0x8e/0xab [sunrpc]
->    [<ffffffffa0319bc3>] nfs_permission+0xcd/0x160 [nfs]
->    [<ffffffff810b285b>] inode_permission+0x66/0x9f
->    [<ffffffff810b2928>] link_path_walk+0x94/0x463
->    [<ffffffff810b2f80>] ? path_init+0x1d1/0x2f4
->    [<ffffffff810bf73b>] ? vfsmount_lock_local_unlock+0x34/0x3f
->    [<ffffffff810b16d0>] ? complete_walk+0x8c/0xe1
->    [<ffffffff810b30f7>] path_lookupat+0x54/0x314
->    [<ffffffff81188515>] ? strncpy_from_user+0x34/0x37
->    [<ffffffff810b33d5>] do_path_lookup+0x1e/0x54
->    [<ffffffff810b4bec>] user_path_at_empty+0x4e/0x94
->    [<ffffffff810ac857>] ? cp_new_stat+0xe9/0x101
->    [<ffffffff810b4c3e>] user_path_at+0xc/0xe
->    [<ffffffff810ac9db>] vfs_fstatat+0x3a/0x65
->    [<ffffffff810aca37>] vfs_stat+0x16/0x18
->    [<ffffffff810acb34>] sys_newstat+0x1a/0x34
->    [<ffffffff81300222>] system_call_fastpath+0x16/0x1b
->   Code: 48 ff c1 80 39 00 75 f8 eb 0d 48 ff c1 48 ff ca 75 05 c6 01 00 eb 0e 40 8a 3e 48 ff c6 40 88 39 40 84 ff 75 e5 c9 c3 55 48 89 e5 <8a> 07 8a 16 48 ff c7 48 ff c6 38 d0 74 07 19 c0 83 c8 01 eb 06 
->   RIP  [<ffffffff811848fe>] strcmp+0x4/0x21
->    RSP <ffff88022f2b9808>
->   ---[ end trace 3bf9223f590824da ]---
-
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+> this is still the case with 3.2
+> 
+> Tigran.
+> 
+> On Tue, Nov 22, 2011 at 1:07 PM, Tigran Mkrtchyan
+> <tigran.mkrtchyan@desy.de> wrote:
+>> as usually....
+>> 
+>> TIgran.
+>> 
+>> 
+>> On Tue, Nov 22, 2011 at 3:07 AM,  <tao.peng@emc.com> wrote:
+>>>> -----Original Message-----
+>>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Tigran
+>>>> Mkrtchyan
+>>>> Sent: Monday, November 21, 2011 5:52 PM
+>>>> To: Adamson, Andy
+>>>> Cc: linux-nfs
+>>>> Subject: Re: server reboot recovery is broken with 3.1 (3.2?) with nfsv41 clients
+>>>> 
+>>>> RHEL6.2 has the same issue. I just rebooted server (mds + ds) during read.
+>>>> 
+>>>> Kernel thread dump attached.
+>>> Forgot attachment? :)
+>>> 
+>>>> 
+>>>> Tigran.
+>>>> 
+>>>> On Fri, Nov 18, 2011 at 5:09 PM, Tigran Mkrtchyan
+>>>> <tigran.mkrtchyan@desy.de> wrote:
+>>>>> Both!
+>>>>> 
+>>>>> On Fri, Nov 18, 2011 at 3:08 PM, Adamson, Andy
+>>>>> <William.Adamson@netapp.com> wrote:
+>>>>>> 
+>>>>>> On Nov 18, 2011, at 8:57 AM, Tigran Mkrtchyan wrote:
+>>>>>> 
+>>>>>>> Dear  nfs hackers,
+>>>>>>> 
+>>>>>>> it looks like with kernel 3.1 client cant recover from server reboots.
+>>>>>>> The nfs mount hangs and there are no packages sent from a client to the server.
+>>>>>>> This was IO with pnfs.
+>>>>>> 
+>>>>>> 
+>>>>>> Hi Tigran
+>>>>>> 
+>>>>>> Is this an MDS reboot? DS reboot?
+>>>>>> 
+>>>>>> Thanks
+>>>>>> 
+>>>>>> -->Andy
+>>>>>>> 
+>>>>>>> Regards,
+>>>>>>>   Tigran.
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>> 
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>> 
+>>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>>> 
 
