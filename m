@@ -1,64 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9786 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752735Ab2AZVuW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:50:22 -0500
-Message-ID: <4F21CA97.3020906@RedHat.com>
-Date: Thu, 26 Jan 2012 16:50:15 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not
- needed.
-References: <1327608461-15305-1-git-send-email-steved@redhat.com> <20120126203006.GD31531@fieldses.org>
-In-Reply-To: <20120126203006.GD31531@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:47856 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933112Ab2AFJmz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 04:42:55 -0500
+Received: by mail-ey0-f174.google.com with SMTP id d14so860470eaa.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2012 01:42:54 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v5 8/8] nfsv41: handle current stateid on LAYOUTGET
+Date: Fri,  6 Jan 2012 10:45:16 +0100
+Message-Id: <1325843116-20570-9-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-On 01/26/2012 03:30 PM, J. Bruce Fields wrote:
-> On Thu, Jan 26, 2012 at 03:07:41PM -0500, Steve Dickson wrote:
->> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
->> libgssglue libraries which is not needed since libgssglue
->> will dynamically load the gssapi interface defined in the
->> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  aclocal/kerberos5.m4 |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
->> index dfa5738..7574e2d 100644
->> --- a/aclocal/kerberos5.m4
->> +++ b/aclocal/kerberos5.m4
->> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
->>      fi
->>      if test "$K5CONFIG" != ""; then
->>        KRBCFLAGS=`$K5CONFIG --cflags`
->> -      KRBLIBS=`$K5CONFIG --libs gssapi`
->> +      KRBLIBS=`$K5CONFIG --libs`
-> 
-> OK, so that's gathering krb5-config output which gives us the list of -l
-> switches we need to link in kerberos libraries, and removing the
-> "gssapi" argument has the effect of removing "-lgssapi_krb5" from the
-> output.
-Right...
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |    3 ++-
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   12 ++++++++++++
+ 3 files changed, 16 insertions(+), 1 deletions(-)
 
-> 
-> Ack, I guess, except: I'm a little confused why we want to link with
-> *any* kerberos libraries, if rpc.gssd and rpc.svcgssd are supposed to
-> themselves be completely mechanism-independent and are supposed to
-> dlopen() aything they need for kerberos.
-Well when they are not liked with any kerberos libs the following
-are undefined http://fpaste.org/rWOR/
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 6e54d19..9fc23c9 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -10,6 +10,7 @@
+ extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
+ extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
+ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_set_layoutgetstateid(struct nfsd4_compound_state *, struct nfsd4_pnfs_layoutget *);
+ 
+ /*
+  * functions to consume current state id
+@@ -18,5 +19,5 @@ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
+ extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
+ extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
+-
++extern void nfsd4_get_layoutgetstateid(struct nfsd4_compound_state *, struct nfsd4_pnfs_layoutget *);
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 8ee49d8..f227f71 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2034,6 +2034,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_LAYOUTGET] = {
+ 		.op_func = (nfsd4op_func)nfsd4_layoutget,
+ 		.op_name = "OP_LAYOUTGET",
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_layoutgetstateid,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_layoutgetstateid,
+ 	},
+ 	[OP_LAYOUTCOMMIT] = {
+ 		.op_func = (nfsd4op_func)nfsd4_layoutcommit,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cf9bc80..000cae7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4743,6 +4743,12 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
+ 	put_stateid(cstate, &lock->lk_resp_stateid);
+ }
+ 
++void
++nfsd4_set_layoutgetstateid(struct nfsd4_compound_state *cstate, struct nfsd4_pnfs_layoutget *lgp)
++{
++	put_stateid(cstate, &lgp->lg_sid);
++}
++
+ /*
+  * functions to consume current state id
+  */
+@@ -4769,3 +4775,9 @@ nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *
+ {
+ 	get_stateid(cstate, &write->wr_stateid);
+ }
++
++void
++nfsd4_get_layoutgetstateid(struct nfsd4_compound_state *cstate, struct nfsd4_pnfs_layoutget *lgp)
++{
++	get_stateid(cstate, &lgp->lg_sid);
++}
+-- 
+1.7.7.5
 
-I'm treading on a thin ice here but I'm thinking those undefines are
-not part the gssapi. Only the gssapi routines are dynamically linked.
-
-Thanks for the time!
-
-steved.
