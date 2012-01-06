@@ -1,168 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53637 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754441Ab2AQTNn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 14:13:43 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:38114 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030358Ab2AFPjo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 10:39:44 -0500
+Received: by wibhm6 with SMTP id hm6so1149997wib.19
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2012 07:39:43 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <CAGue13q8RbFmqWzz4BkL_hAfiFayM79MZUrL8nx=4SZDWy7tpQ@mail.gmail.com>
+References: <CAGue13oSMCs=mSMHsX2f_=+Eqc3i3rG8vkq0rSnMTm_sqpwcnw@mail.gmail.com>
+	<081C1E0B-795E-4138-B66A-479F73BB3AC5@netapp.com>
+	<CAGue13pFCq22xUmJny7+7czc8WkPhjos2A+_BombOf3G8icwJA@mail.gmail.com>
+	<CAGue13r+vZRkmpiHVPodyoYXt+SVCfDdgHJOF74TmL5=ci=q1w@mail.gmail.com>
+	<F19688880B763E40B28B2B462677FBF805E3A4A802@MX09A.corp.emc.com>
+	<CAGue13q8RbFmqWzz4BkL_hAfiFayM79MZUrL8nx=4SZDWy7tpQ@mail.gmail.com>
+Date: Fri, 6 Jan 2012 16:39:42 +0100
+Message-ID: <CAGue13qS1y69BuOXgnFoYPmKDJRMWiXnkLvXqN5cP0qro+MU7A@mail.gmail.com>
+Subject: Re: server reboot recovery is broken with 3.1 (3.2?) with nfsv41 clients
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] NFS: Optimise away unnecessary setattrs for open(O_TRUNC);
-Date: Tue, 17 Jan 2012 14:13:33 -0500
-Message-Id: <1326827613-7997-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1326827613-7997-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-2-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-3-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-4-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-5-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-6-git-send-email-Trond.Myklebust@netapp.com>
- <1326827613-7997-7-git-send-email-Trond.Myklebust@netapp.com>
+Cc: William.Adamson@netapp.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we will correctly optimise away a truncate that doesn't
-change the file size. However, in the case of open(O_TRUNC), we
-also want to optimise away the time changes.
+FYI,
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c      |   25 +++++++++++++++++++------
- fs/nfs/inode.c    |    4 ++--
- fs/nfs/nfs4proc.c |   10 +++++++---
- 3 files changed, 28 insertions(+), 11 deletions(-)
+this is still the case with 3.2
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index fd9a872..bb132a8 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1429,6 +1429,7 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
- 	}
- 
- 	open_flags = nd->intent.open.flags;
-+	attr.ia_valid = 0;
- 
- 	ctx = create_nfs_open_context(dentry, open_flags);
- 	res = ERR_CAST(ctx);
-@@ -1437,11 +1438,14 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
- 
- 	if (nd->flags & LOOKUP_CREATE) {
- 		attr.ia_mode = nd->intent.open.create_mode;
--		attr.ia_valid = ATTR_MODE;
-+		attr.ia_valid |= ATTR_MODE;
- 		attr.ia_mode &= ~current_umask();
--	} else {
-+	} else
- 		open_flags &= ~(O_EXCL | O_CREAT);
--		attr.ia_valid = 0;
-+
-+	if (open_flags & O_TRUNC) {
-+		attr.ia_valid |= ATTR_SIZE;
-+		attr.ia_size = 0;
- 	}
- 
- 	/* Open the file on the server */
-@@ -1495,6 +1499,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	struct inode *inode;
- 	struct inode *dir;
- 	struct nfs_open_context *ctx;
-+	struct iattr attr;
- 	int openflags, ret = 0;
- 
- 	if (nd->flags & LOOKUP_RCU)
-@@ -1523,19 +1528,27 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	/* We cannot do exclusive creation on a positive dentry */
- 	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
- 		goto no_open_dput;
--	/* We can't create new files, or truncate existing ones here */
--	openflags &= ~(O_CREAT|O_EXCL|O_TRUNC);
-+	/* We can't create new files here */
-+	openflags &= ~(O_CREAT|O_EXCL);
- 
- 	ctx = create_nfs_open_context(dentry, openflags);
- 	ret = PTR_ERR(ctx);
- 	if (IS_ERR(ctx))
- 		goto out;
-+
-+	attr.ia_valid = 0;
-+	if (openflags & O_TRUNC) {
-+		attr.ia_valid |= ATTR_SIZE;
-+		attr.ia_size = 0;
-+		nfs_wb_all(inode);
-+	}
-+
- 	/*
- 	 * Note: we're not holding inode->i_mutex and so may be racing with
- 	 * operations that change the directory. We therefore save the
- 	 * change attribute *before* we do the RPC call.
- 	 */
--	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, NULL);
-+	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr);
- 	if (IS_ERR(inode)) {
- 		ret = PTR_ERR(inode);
- 		switch (ret) {
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 577ad5a..65486e6 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -402,7 +402,7 @@ out_no_inode:
- 	goto out;
- }
- 
--#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE)
-+#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE|ATTR_OPEN)
- 
- int
- nfs_setattr(struct dentry *dentry, struct iattr *attr)
-@@ -424,7 +424,7 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 
- 	/* Optimization: if the end result is no change, don't RPC */
- 	attr->ia_valid &= NFS_VALID_ATTRS;
--	if ((attr->ia_valid & ~ATTR_FILE) == 0)
-+	if ((attr->ia_valid & ~(ATTR_FILE|ATTR_OPEN)) == 0)
- 		return 0;
- 
- 	/* Write all dirty data */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7d431d7..0c71981 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -830,7 +830,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p->o_arg.bitmask = server->attr_bitmask;
- 	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
- 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
--	if (flags & O_CREAT) {
-+	if (attrs != NULL && attrs->ia_valid != 0) {
- 		u32 *s;
- 
- 		p->o_arg.u.attrs = &p->attrs;
-@@ -887,7 +887,7 @@ static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode
- {
- 	int ret = 0;
- 
--	if (open_mode & O_EXCL)
-+	if (open_mode & (O_EXCL|O_TRUNC))
- 		goto out;
- 	switch (mode & (FMODE_READ|FMODE_WRITE)) {
- 		case FMODE_READ:
-@@ -1035,7 +1035,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
- 	struct nfs4_state *state = opendata->state;
- 	struct nfs_inode *nfsi = NFS_I(state->inode);
- 	struct nfs_delegation *delegation;
--	int open_mode = opendata->o_arg.open_flags & O_EXCL;
-+	int open_mode = opendata->o_arg.open_flags & (O_EXCL|O_TRUNC);
- 	fmode_t fmode = opendata->o_arg.fmode;
- 	nfs4_stateid stateid;
- 	int ret = -EAGAIN;
-@@ -2432,6 +2432,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 		}
- 	}
- 
-+	/* Deal with open(O_TRUNC) */
-+	if (attr->ia_valid & ATTR_OPEN)
-+		attr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
-+
- 	status = nfs4_do_setattr(inode, cred, fattr, sattr, state);
- 	if (status == 0)
- 		nfs_setattr_update_inode(inode, sattr);
--- 
-1.7.7.5
+Tigran.
 
+On Tue, Nov 22, 2011 at 1:07 PM, Tigran Mkrtchyan
+<tigran.mkrtchyan@desy.de> wrote:
+> as usually....
+>
+> TIgran.
+>
+>
+> On Tue, Nov 22, 2011 at 3:07 AM,  <tao.peng@emc.com> wrote:
+>>> -----Original Message-----
+>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Tigran
+>>> Mkrtchyan
+>>> Sent: Monday, November 21, 2011 5:52 PM
+>>> To: Adamson, Andy
+>>> Cc: linux-nfs
+>>> Subject: Re: server reboot recovery is broken with 3.1 (3.2?) with nfsv41 clients
+>>>
+>>> RHEL6.2 has the same issue. I just rebooted server (mds + ds) during read.
+>>>
+>>> Kernel thread dump attached.
+>> Forgot attachment? :)
+>>
+>>>
+>>> Tigran.
+>>>
+>>> On Fri, Nov 18, 2011 at 5:09 PM, Tigran Mkrtchyan
+>>> <tigran.mkrtchyan@desy.de> wrote:
+>>> > Both!
+>>> >
+>>> > On Fri, Nov 18, 2011 at 3:08 PM, Adamson, Andy
+>>> > <William.Adamson@netapp.com> wrote:
+>>> >>
+>>> >> On Nov 18, 2011, at 8:57 AM, Tigran Mkrtchyan wrote:
+>>> >>
+>>> >>> Dear  nfs hackers,
+>>> >>>
+>>> >>> it looks like with kernel 3.1 client cant recover from server reboots.
+>>> >>> The nfs mount hangs and there are no packages sent from a client to the server.
+>>> >>> This was IO with pnfs.
+>>> >>
+>>> >>
+>>> >> Hi Tigran
+>>> >>
+>>> >> Is this an MDS reboot? DS reboot?
+>>> >>
+>>> >> Thanks
+>>> >>
+>>> >> -->Andy
+>>> >>>
+>>> >>> Regards,
+>>> >>>   Tigran.
+>>> >>> --
+>>> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> >>> the body of a message to majordomo@vger.kernel.org
+>>> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> >>
+>>> >> --
+>>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> >> the body of a message to majordomo@vger.kernel.org
+>>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> >>
+>>> >
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
