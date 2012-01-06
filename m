@@ -1,62 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:44478 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751864Ab2AYSvb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 13:51:31 -0500
-Message-ID: <4F204F20.5080809@panasas.com>
-Date: Wed, 25 Jan 2012 20:51:12 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>,
-        <linux-nfs@vger.kernel.org>, <akpm@linux-foundation.org>,
-        <mingo@redhat.com>, <neilb@suse.de>, <stuart.menefy@st.com>
-Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
- mount.
-References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <4F202BD4.5020400@panasas.com> <20120125183200.GA26907@umich.edu>
-In-Reply-To: <20120125183200.GA26907@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:51162 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758968Ab2AFS3d convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 13:29:33 -0500
+Subject: Re: Boot regression caused by commit 6829a048
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1325871176.4629.35.camel@lappy>
+Date: Fri, 6 Jan 2012 13:29:22 -0500
+Cc: linux@razik.name, Trond.Myklebust@netapp.com,
+        Pekka Enberg <penberg@kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Message-Id: <5A327123-1097-474C-A7F6-7C29BB71FCEE@oracle.com>
+References: <1325871176.4629.35.camel@lappy>
+To: Sasha Levin <levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/25/2012 08:32 PM, Jim Rees wrote:
-> Boaz Harrosh wrote:
+
+On Jan 6, 2012, at 12:32 PM, Sasha Levin wrote:
+
+> Hi all,
 > 
->   On 01/25/2012 04:50 PM, Srinivas KANDAGATLA wrote:
->   > From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
->   > 
->   > This patch adds mountretry kernel parameter for nfs root mount.
->   > mount retry indicates the number of times nfs root mount attempts to be
->   > made before giving up. If this option is not specified, the default
->   > value of 3 retries is used.
->   > 
->   
->   If the system is set to have root on NFS. And the root is not found
->   what does it do? does it Just bums out with a recovery console?
->   
->   So what better options does it have other then retry for ever. die?
->   
->   I always thought that was inconsistent. With an hard mount NFS
->   will never give up and will retry for ever freezing all IOers until
->   the server came back. Only with root-mount it gives up.
->   
->   Please explain what is the benefits of giving up at all. Can a machine
->   be at all usable without it's root? 
+> I've noticed a boot regression caused by commit 6829a048 ("NFS: Retry
+> mounting NFSROOT") which has increased boot time by 95 seconds.
 > 
-> Doesn't grub have some fallback logic in case the given kernel/root fails?
+> The scenario is as follows:
+> - A virtual guest running under the KVM tool.
+> - Guest is using kernel automatic IP DHCP configuration ("ip=dhcp").
+> - Guest is booting from a 9p device (which is not detected as block,
+> and gets mounted after NFS tries to do its mounts).
+> - No NFS server at all, no NFS parameters passed to the guest kernel.
+> 
+> Under this scenario, theres an additional 95 second delay before NFS
+> fails and tries to boot using 9p:
+> 
+> [...]
+> [    6.505269] md: autorun ...
+> [    6.506954] md: ... autorun DONE.
+> [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+> [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+> [...]
+> 
+> This probably happens since the NFS server isn't configured, so the
+> bootserver is automatically assumed to be the DHCP server, and with the
+> commit above we won't simply fail immediately when the NFS code fails
+> connecting to it.
+> 
+> I'm not quite sure about the correct solution for this. While I can
+> forcefully disable NFS, is it really the right solution? Should we be
+> retrying a NFS server even if one wasn't specifically set?
 
-If grub has one set, then it can also put a parameter to specify the retry count.
-(I do like this patch)
+What DHCP options are passed to the client?  You can specify the "nfsrootdebug" boot command line option to explore this a little more.
 
-> Also, don't you want some indication that it's not working other than just a
-> blank screen?
+Typically ip= is used specifically with NFSROOT.  You might review Documentation/filesystems/nfs/nfsroot.txt to see if some combination of boot command line options gives more desirable behavior.
 
-Sure print like hell on every loop bigger then 5 (And sleep between trys)
-but keep trying until interrupted (alt+ctrl+delete)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-I'm just saying that the default should be "max_uint" not 5
 
-Just my $0.017
-Boaz
 
 
