@@ -1,57 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:40597 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757528Ab2AKN3R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 08:29:17 -0500
-Message-ID: <4F0D8E95.60706@panasas.com>
-Date: Wed, 11 Jan 2012 15:28:53 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Benny Halevy <bhalevy@tonian.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        <lsf-pc@lists.linux-foundation.org>, <linux-fsdevel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [LSF/MM TOPIC] [ATTEND] linux-pnfs server implementations
-References: <4EF6A6CA.1020606@tonian.com> <4F0AE25C.5020706@panasas.com> <20120109192517.GB16973@fieldses.org> <CAEMWVhvaNOENPC2jRMB7zuP4ScsNmp5BMfXYmnFL71_N-4D0Rw@mail.gmail.com>
-In-Reply-To: <CAEMWVhvaNOENPC2jRMB7zuP4ScsNmp5BMfXYmnFL71_N-4D0Rw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:44504 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750812Ab2AGJMP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2012 04:12:15 -0500
+From: Sasha Levin <levinsasha928@gmail.com>
+To: chuck.lever@oracle.com, linux@razik.name, Trond.Myklebust@netapp.com
+Cc: penberg@kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH] nfs: Don't try mounting device as nfs root unless type fully matches
+Date: Sat,  7 Jan 2012 11:12:03 +0200
+Message-Id: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/11/2012 09:44 AM, Benny Halevy wrote:
->>
->> Understood that it may depend on where things stand in April, but: what
->> specifically do you think will be likely to require the attention of a
->> wider group of linux filesystem developers (ass opposed to just nfs
->> developers)?
-> 
-> I have nothing specific at this time. My thinking was to present the
-> what's and why's
-> of the prerequisites in high level and maybe provide an example.
-> 
+Currently, we'll try mounting any device who's major device number is
+UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
+as 9p devices) but it wouldn't cause any issues since mounting the device
+as NFS would fail quickly and the code proceeded to doing the proper mount:
 
-At the time there where some reservations from people about some of the
-added hooks and vectors. If there are still, we would like to hear them
-and either address them or argue their validity.
+	[  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+	[  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
 
-I think this talk should be expanded with Jeff's suggestions. here:
-> - RichACLs
-> - Share/Deny mode support on open
-> - mandatory locking that doesn't rely on weirdo file modes
-> 
-> It's always going to be hard for us to compete with dedicated
-> appliances. Where Linux can shine though is in allowing for more
-> innovative combinations.
-> 
-> Being able to do active/active NFS serving from clustered filesystems,
-> for instance is something that we can eventually attain but that would
-> be harder to do in an appliance. This sort of discussion might also
-> dovetail with Benny's proposal about pNFS serving.
+Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
+mounting NFS root, which means that now we don't immediately fail and instead
+it takes an additional 90+ seconds until we stop retrying.
 
-So the broader topic can be:
-	"The things we want/need from the Kernel to make it exportable"
+This meant that it would take an additional 90 seconds to boot when we're not
+using a device type which gets detected in order before NFS.
 
-Thanks
-Boaz
+This patch modifies the NFS type check to require device type to be
+'Root_NFS' instead of requiring the device to have an UNNAMED_MAJOR major.
+This makes boot process cleaner since we now won't go through the NFS mounting
+code at all when the device isn't an NFS root ("/dev/nfs").
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ init/do_mounts.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/init/do_mounts.c b/init/do_mounts.c
+index 06225d2..da76f2c 100644
+--- a/init/do_mounts.c
++++ b/init/do_mounts.c
+@@ -475,7 +475,7 @@ void __init change_floppy(char *fmt, ...)
+ void __init mount_root(void)
+ {
+ #ifdef CONFIG_ROOT_NFS
+-	if (MAJOR(ROOT_DEV) == UNNAMED_MAJOR) {
++	if (ROOT_DEV == Root_NFS) {
+ 		if (mount_nfs_root())
+ 			return;
+ 
+-- 
+1.7.8.2
+
