@@ -1,45 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:37825 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751562Ab2ALGrf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 01:47:35 -0500
-Date: Thu, 12 Jan 2012 09:47:22 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:61205 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751812Ab2AGI7U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2012 03:59:20 -0500
+Message-ID: <1325926751.4847.8.camel@lappy>
+Subject: Re: Boot regression caused by commit 6829a048
+From: Sasha Levin <levinsasha928@gmail.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: [patch] svcrdma: endian bug in send_write_chunks()
-Message-ID: <20120112064722.GB2408@elgon.mountain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Cc: chuck.lever@oracle.com, linux@razik.name,
+        Pekka Enberg <penberg@kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Date: Sat, 07 Jan 2012 10:59:11 +0200
+In-Reply-To: <1325891801.11799.5.camel@lade.trondhjem.org>
+References: <1325871176.4629.35.camel@lappy>
+	 <1325874404.32470.6.camel@lade.trondhjem.org>
+	 <1325892770.4847.1.camel@lappy>
+	 <1325891801.11799.5.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sparse complains because arg_ch->rs_length is declared as network
-endian but we're treating it as CPU endian.
+On Fri, 2012-01-06 at 18:16 -0500, Trond Myklebust wrote:
+> A simple fix would be either:
+> 
+> A) skip the root=/dev/root.
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+"/dev/root" is actually the name of the 9p device, I can't omit that part since then 9p won't boot.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 249a835..30fda86 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -409,7 +409,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 		u64 rs_offset;
- 
- 		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
--		write_len = min(xfer_len, arg_ch->rs_length);
-+		write_len = min(xfer_len, ntohl(arg_ch->rs_length));
- 
- 		/* Prepare the response chunk given the length actually
- 		 * written */
-@@ -481,7 +481,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
- 	     chunk_no++) {
- 		u64 rs_offset;
- 		ch = &arg_ary->wc_array[chunk_no].wc_target;
--		write_len = min(xfer_len, ch->rs_length);
-+		write_len = min(xfer_len, ntohl(ch->rs_length));
- 
- 		/* Prepare the reply chunk given the length actually
- 		 * written */
+> B) change mount_root to also test MINOR(ROOT_DEV), which should equal
+> 255 if ROOT_DEV==Root_NFS 
+
+I'll simply check if ROOT_DEV==Root_NFS then.
+
+-- 
+
+Sasha.
+
