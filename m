@@ -1,128 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44137 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756314Ab2AJOcW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 09:32:22 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z25so965522iab.19
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 06:32:22 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH RESEND 3/9] pnfsblock: move find lock page logic out of bl_write_pagelist
-Date: Tue, 10 Jan 2012 22:30:29 +0800
-Message-Id: <1326205835-2011-4-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
-References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:35818 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750795Ab2AGQ5y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2012 11:57:54 -0500
+Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type fully matches
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
+Date: Sat, 7 Jan 2012 11:57:42 -0500
+Cc: linux@razik.name, Trond.Myklebust@netapp.com, penberg@kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com>
+References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
+To: Sasha Levin <levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also avoid unnecessary lock_page if page is handled by others.
+Hi-
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
- 1 files changed, 54 insertions(+), 24 deletions(-)
+On Jan 7, 2012, at 4:12 AM, Sasha Levin wrote:
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 4ced0b0..c83ad70 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -484,6 +484,55 @@ cleanup:
- 	return ret;
- }
- 
-+/* Find or create a zeroing page marked being writeback.
-+ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-+ * to indicate write out.
-+ */
-+static struct page *
-+bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
-+			struct pnfs_block_extent *cow_read)
-+{
-+	struct page *page;
-+	int locked = 0;
-+	page = find_get_page(inode->i_mapping, index);
-+	if (page)
-+		goto check_page;
-+
-+	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
-+	if (unlikely(!page)) {
-+		dprintk("%s oom\n", __func__);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	locked = 1;
-+
-+check_page:
-+	/* PageDirty: Other will write this out
-+	 * PageWriteback: Other is writing this out
-+	 * PageUptodate: It was read before
-+	 */
-+	if (PageDirty(page) || PageWriteback(page)) {
-+		print_page(page);
-+		if (locked)
-+			unlock_page(page);
-+		page_cache_release(page);
-+		return NULL;
-+	}
-+
-+	if (!locked) {
-+		lock_page(page);
-+		locked = 1;
-+		goto check_page;
-+	}
-+	if (!PageUptodate(page)) {
-+		/* New page, readin or zero it */
-+		init_page_for_write(page, cow_read);
-+	}
-+	set_page_writeback(page);
-+	unlock_page(page);
-+
-+	return page;
-+}
-+
- static enum pnfs_try_status
- bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- {
-@@ -543,32 +592,13 @@ fill_invalid_ext:
- 			dprintk("%s zero %dth page: index %lu isect %llu\n",
- 				__func__, npg_zero, index,
- 				(unsigned long long)isect);
--			page =
--			    find_or_create_page(wdata->inode->i_mapping, index,
--						GFP_NOFS);
--			if (!page) {
--				dprintk("%s oom\n", __func__);
--				wdata->pnfs_error = -ENOMEM;
-+			page = bl_find_get_zeroing_page(wdata->inode, index,
-+							cow_read);
-+			if (unlikely(IS_ERR(page))) {
-+				wdata->pnfs_error = PTR_ERR(page);
- 				goto out;
--			}
--
--			/* PageDirty: Other will write this out
--			 * PageWriteback: Other is writing this out
--			 * PageUptodate: It was read before
--			 * sector_initialized: already written out
--			 */
--			if (PageDirty(page) || PageWriteback(page)) {
--				print_page(page);
--				unlock_page(page);
--				page_cache_release(page);
-+			} else if (page == NULL)
- 				goto next_page;
--			}
--			if (!PageUptodate(page)) {
--				/* New page, readin or zero it */
--				init_page_for_write(page, cow_read);
--			}
--			set_page_writeback(page);
--			unlock_page(page);
- 
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
- 						       PAGE_CACHE_SECTORS);
+> Currently, we'll try mounting any device who's major device number is
+> UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
+> as 9p devices) but it wouldn't cause any issues since mounting the device
+> as NFS would fail quickly and the code proceeded to doing the proper mount:
+> 
+> 	[  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
+> 	[  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
+> 
+> Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
+> mounting NFS root, which means that now we don't immediately fail and instead
+> it takes an additional 90+ seconds until we stop retrying.
+> 
+> This meant that it would take an additional 90 seconds to boot when we're not
+> using a device type which gets detected in order before NFS.
+
+The long timeouts are kind of irrelevant, in my view.  The real problem is that NFS was tried at all in this case.  That behavior was not introduced by 6829a058.
+
+> This patch modifies the NFS type check to require device type to be
+> 'Root_NFS' instead of requiring the device to have an UNNAMED_MAJOR major.
+> This makes boot process cleaner since we now won't go through the NFS mounting
+> code at all when the device isn't an NFS root ("/dev/nfs").
+
+Agreed.  I like this approach.
+
+> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+> ---
+> init/do_mounts.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/init/do_mounts.c b/init/do_mounts.c
+> index 06225d2..da76f2c 100644
+> --- a/init/do_mounts.c
+> +++ b/init/do_mounts.c
+> @@ -475,7 +475,7 @@ void __init change_floppy(char *fmt, ...)
+> void __init mount_root(void)
+> {
+> #ifdef CONFIG_ROOT_NFS
+> -	if (MAJOR(ROOT_DEV) == UNNAMED_MAJOR) {
+> +	if (ROOT_DEV == Root_NFS) {
+> 		if (mount_nfs_root())
+> 			return;
+> 
+> -- 
+> 1.7.8.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.1.262.g5ef3d
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
