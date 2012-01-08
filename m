@@ -1,100 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932688Ab2AMULR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:17 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 09/44] NFS: Move v3 to its own subdirectory
-Date: Fri, 13 Jan 2012 15:10:18 -0500
-Message-Id: <1326485453-1350-10-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:42140 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751262Ab2AHIhV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2012 03:37:21 -0500
+Message-ID: <4F095595.4060309@panasas.com>
+Date: Sun, 8 Jan 2012 10:36:37 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Randy Dunlap <rdunlap@xenotime.net>
+CC: Stephen Rothwell <sfr@canb.auug.org.au>, <linux-next@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linus <torvalds@linux-foundation.org>,
+        open-osd development <osd-dev@open-osd.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: linux-next: Tree for Jan 5 (exofs or nfs ?)
+References: <20120105191218.42825638a431bc1aba4879de@canb.auug.org.au> <4F0644C1.6000405@xenotime.net>
+In-Reply-To: <4F0644C1.6000405@xenotime.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 01/06/2012 02:48 AM, Randy Dunlap wrote:
+> On 01/05/2012 12:12 AM, Stephen Rothwell wrote:
+>> Hi all,
+>>
+>> Changes since 20120104:
+> 
+> 
+> fs/built-in.o: In function `_write_done':
+> objio_osd.c:(.text+0x134971): undefined reference to `ore_check_io'
+> fs/built-in.o: In function `_read_done':
+> objio_osd.c:(.text+0x134a11): undefined reference to `ore_check_io'
+> fs/built-in.o: In function `objio_alloc_io_state':
+> objio_osd.c:(.text+0x1353da): undefined reference to `ore_get_rw_state'
+> fs/built-in.o: In function `objio_alloc_lseg':
+> (.text+0x135724): undefined reference to `ore_verify_layout'
+> fs/built-in.o: In function `objio_free_result':
+> (.text+0x135966): undefined reference to `ore_put_io_state'
+> fs/built-in.o: In function `objio_read_pagelist':
+> (.text+0x135be5): undefined reference to `ore_read'
+> fs/built-in.o: In function `objio_write_pagelist':
+> (.text+0x135d46): undefined reference to `ore_write'
+> 
+> 
+> Full randconfig file is attached.
+> 
+> 
 
-This keeps all the v3 code together and separate from the rest of the
-NFS code.
+I have a fix queued for this for linus to pull and Stable@. It should be
+in linux-next. Though people reported problems with my git server, im
+investigating. Next linux-next should have it.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile                    |    4 ++--
- fs/nfs/{nfs3acl.c => nfs3/acl.c}   |    2 +-
- fs/nfs/{nfs3proc.c => nfs3/proc.c} |    4 ++--
- fs/nfs/{nfs3xdr.c => nfs3/xdr.c}   |    2 +-
- 4 files changed, 6 insertions(+), 6 deletions(-)
- rename fs/nfs/{nfs3acl.c => nfs3/acl.c} (99%)
- rename fs/nfs/{nfs3proc.c => nfs3/proc.c} (99%)
- rename fs/nfs/{nfs3xdr.c => nfs3/xdr.c} (99%)
+http://git.open-osd.org/gitweb.cgi?p=linux-open-osd.git;a=commit;h=831c2dc5f47c1dc79c32229d75065ada1dcc66e1
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 5733451..7d674a0 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,8 +9,8 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
--nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
-+nfs-$(CONFIG_NFS_V3)	+= nfs3/proc.o nfs3/xdr.o
-+nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3/acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3/acl.c
-similarity index 99%
-rename from fs/nfs/nfs3acl.c
-rename to fs/nfs/nfs3/acl.c
-index 7ef2397..ac589ff 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3/acl.c
-@@ -6,7 +6,7 @@
- #include <linux/posix_acl_xattr.h>
- #include <linux/nfsacl.h>
- 
--#include "internal.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY	NFSDBG_PROC
- 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3/proc.c
-similarity index 99%
-rename from fs/nfs/nfs3proc.c
-rename to fs/nfs/nfs3/proc.c
-index d4bc9ed9..f37ddb9 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3/proc.c
-@@ -18,8 +18,8 @@
- #include <linux/lockd/bind.h>
- #include <linux/nfs_mount.h>
- 
--#include "iostat.h"
--#include "internal.h"
-+#include "../iostat.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3/xdr.c
-similarity index 99%
-rename from fs/nfs/nfs3xdr.c
-rename to fs/nfs/nfs3/xdr.c
-index 183c6b1..be27fb8 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3/xdr.c
-@@ -20,7 +20,7 @@
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfsacl.h>
--#include "internal.h"
-+#include "../internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
- 
--- 
-1.7.8.3
-
+Thanks
+Boaz
