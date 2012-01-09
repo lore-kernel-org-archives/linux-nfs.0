@@ -1,84 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:23052 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755369Ab2ALVbN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 16:31:13 -0500
-Date: Fri, 13 Jan 2012 00:32:10 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [patch] svcrdma: endian bug in send_write_chunks()
-Message-ID: <20120112213210.GR3644@mwanda>
-References: <20120112064722.GB2408@elgon.mountain>
- <20120112162141.GC6563@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:45749 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754678Ab2AIW3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jan 2012 17:29:05 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="tV/+6PImfyFtriLg"
-In-Reply-To: <20120112162141.GC6563@fieldses.org>
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [GIT PULL] Please pull NFS client bugfixes and cleanups
+Date: Mon, 9 Jan 2012 14:28:48 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CCB08B1@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <201201092315.28230.wolfgang.walter@stwm.de>
+References: <1326142671.9041.1.camel@lade.trondhjem.org> <201201092315.28230.wolfgang.walter@stwm.de>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Wolfgang Walter" <wolfgang.walter@stwm.de>
+Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---tV/+6PImfyFtriLg
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Thu, Jan 12, 2012 at 11:21:41AM -0500, J. Bruce Fields wrote:
-> On Thu, Jan 12, 2012 at 09:47:22AM +0300, Dan Carpenter wrote:
-> > Sparse complains because arg_ch->rs_length is declared as network
-> > endian but we're treating it as CPU endian.
->=20
-> This looks like it would actually change behavior on a little endian
-> architecture, so how did this work before?
->=20
-> >From some quick grepping, I see assignments both of the form
->=20
-> 	...rs_length =3D ntohl(...)
->=20
-> and
->=20
-> 	...rs_length =3D htonl(...)
->=20
-> but only see one declaration for a field named rs_length.
->=20
-> So my best guess would be that the code is ugly but working as is, and
-> needs cleanup by someone who knows how this field was intended to be
-> used.
-
-Gar.  Sorry for that.  I knew it changed the behavior, and I tried
-to see how the original code worked, but I didn't read carefully
-enough.  I'll try be more careful next time.
-
-Thanks for catching that.
-
-regards,
-dan carpenter
-
-
---tV/+6PImfyFtriLg
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.11 (GNU/Linux)
-
-iQIcBAEBAgAGBQJPD1FZAAoJEOnZkXI/YHqRqNIP/jVgLACKLIo0C/UI9DKry7yq
-Oso3ovMFytlficXKQWowc1yNg9bPf1Y9RBKuI6ia7eKS2FP188cpWRPOy9mYIXMY
-Pt001iQ3eEGQERhC2LQ1VBO995we38wKNEWVxrYPIYll5bcYiVyWZ62R9G05/heo
-3k0bAVeM1RQaLlzXTGrWdQgU8Vf0XYRYLk529N/xtgfY/bKWlbm4zjxKHBwM+Bic
-K5mh8yyorcQmCYUt02tkLfiaQcXZzzz+BU59WhzcX0I8TrZYVY/XtxNmXl/zKd7+
-O3woiKTOu7jseYNLY1r8R3OjcnlTvvfQU7Zd9lg+xckW+0XArQWTFK7XyGqnEZd0
-FnW9kdgyCCbw1/hzra93vARHwgPHoy4DHXqLIesXiq77zabYbdodsbhr1jdcG0bF
-KvFwQEAYCXCp7u64qOToW0lVLuKKBwzcEt8MYBLT4RsL2cFr5wmgKbfkPCrUR12A
-B6EJnGijYf7HLlr7XWPUQ8j8APuQpQOPat4XZ4dVrK/drRFDAr80AXhBFxlAgko7
-bEsoy1pbAbGCzJhrtimo8MrTYv8z397yrJcq78VeAylRm2PkatY0Sir8frXqXXew
-Ik1H9VT9FlQhlQM1HjrQABPUez6pYfC50vzwh5/hkzqjA882cPUv9sGHhGTDhOeS
-FjaNbBW6NGfCYnOtw92z
-=Y2lf
------END PGP SIGNATURE-----
-
---tV/+6PImfyFtriLg--
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBXb2xmZ2FuZyBXYWx0ZXIgW21h
+aWx0bzp3b2xmZ2FuZy53YWx0ZXJAc3R3bS5kZV0NCj4gU2VudDogTW9uZGF5LCBKYW51YXJ5IDA5
+LCAyMDEyIDU6MTUgUE0NCj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gQ2M6IExpbnVzIFRvcnZh
+bGRzOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwu
+b3JnDQo+IFN1YmplY3Q6IFJlOiBbR0lUIFBVTExdIFBsZWFzZSBwdWxsIE5GUyBjbGllbnQgYnVn
+Zml4ZXMgYW5kIGNsZWFudXBzDQo+IA0KPiBPbiBNb25kYXkgMDkgSmFudWFyeSAyMDEyLCBUcm9u
+ZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gSGkgTGludXMsDQo+ID4NCj4gPiBQbGVhc2UgcHVsbCBm
+cm9tIHRoZSAibmZzLWZvci0zLjMiIGJyYW5jaCBvZiB0aGUgcmVwb3NpdG9yeSBhdA0KPiA+DQo+
+ID4gICAgZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0DQo+ID4gbmZzLQ0KPiBmb3ItMy4zDQo+ID4NCj4gPiBUaGlzIHdpbGwgdXBk
+YXRlIHRoZSBmb2xsb3dpbmcgZmlsZXMgdGhyb3VnaCB0aGUgYXBwZW5kZWQgY2hhbmdlc2V0cy4N
+Cj4gPg0KPiA+ICAgQ2hlZXJzLA0KPiA+ICAgICBUcm9uZA0KPiA+DQo+ID4NCj4gPiBjb21taXQg
+MDc0YjFkMTJmZTI1MDBkN2Q0NTM5MDJmOTI2NmU2Njc0YjMwZDg0Yw0KPiA+IEF1dGhvcjogVHJv
+bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiBEYXRlOiAgIE1v
+biBKYW4gOSAxMzo0NjoyNiAyMDEyIC0wNTAwDQo+ID4NCj4gPiAgICAgTkZTdjQ6IENoYW5nZSB0
+aGUgZGVmYXVsdCBzZXR0aW5nIG9mIHRoZSBuZnM0X2Rpc2FibGVfaWRtYXBwaW5nDQo+IHBhcmFt
+ZXRlcg0KPiA+DQo+ID4gICAgIE5vdyB0aGF0IHRoZSB1c2Ugb2YgbnVtZXJpYyB1aWRzL2dpZHMg
+aXMgb2ZmaWNpYWxseSBzYW5jdGlvbmVkIGluDQo+ID4gICAgIFJGQzM1MzBiaXMsIGl0IGlzIHRp
+bWUgdG8gY2hhbmdlIHRoZSBkZWZhdWx0IGhlcmUgdG8gJ2VuYWJsZWQnLg0KPiA+DQo+ID4gICAg
+IEJ5IGRvaW5nIHNvLCB3ZSBlbnN1cmUgdGhhdCBORlN2NCBjb3BpZXMgdGhlIGJlaGF2aW91ciBv
+ZiBORlN2Mw0KPiA+IHdoZW4NCj4gd2UncmUNCj4gPiAgICAgdXNpbmcgdGhlIGRlZmF1bHQgQVVU
+SF9TWVMgYXV0aGVudGljYXRpb24gKGkuZS4gd2hlbiB0aGUgY2xpZW50IHVzZXMgdGhlDQo+ID4g
+ICAgIG51bWVyaWMgdWlkcy9naWRzIGFzIGF1dGhlbnRpY2F0aW9uIHRva2VucyksIHNvIHRoYXQg
+d2hlbiBuZXcgZmlsZXMgYXJlDQo+ID4gICAgIGNyZWF0ZWQsIHRoZXkgd2lsbCBhcHBlYXIgdG8g
+aGF2ZSB0aGUgY29ycmVjdCB1c2VyL2dyb3VwLg0KPiA+ICAgICBJdCBhbHNvIGZpeGVzIGEgbnVt
+YmVyIG9mIGJhY2t3YXJkIGNvbXBhdGliaWxpdHkgaXNzdWVzIHdoZW4gbWlncmF0aW5nDQo+ID4g
+ICAgIGZyb20gTkZTdjMgdG8gTkZTdjQgb24gYSBwbGF0Zm9ybSB3aGVyZSB0aGUgc2VydmVyIHVz
+ZXMgZGlmZmVyZW50DQo+IHVpZC9naWQNCj4gPiAgICAgbWFwcGluZ3MgdGhhbiB0aGUgY2xpZW50
+Lg0KPiA+DQo+ID4gICAgIE5vdGUgYWxzbyB0aGF0IHRoaXMgc2V0dGluZyBoYXMgYmVlbiBzdWNj
+ZXNzZnVsbHkgdGVzdGVkIGFnYWluc3Qgc2VydmVycw0KPiA+ICAgICB0aGF0IGRvIG5vdCBzdXBw
+b3J0IG51bWVyaWMgdWlkcy9naWRzIGF0IHNldmVyYWwNCj4gQ29ubmVjdGF0aG9uL0Jha2VhdGhv
+bg0KPiA+ICAgICBldmVudHMgYXQgdGhpcyBwb2ludCwgYW5kIHRoZSBmYWxsIGJhY2sgdG8gdXNp
+bmcgc3RyaW5nIG5hbWVzL2dyb3VwcyBoYXMNCj4gPiAgICAgYmVlbiBzaG93biB0byB3b3JrIHdl
+bGwgaW4gYWxsIHRob3NlIHRlc3QgY2FzZXMuDQo+ID4NCj4gPiAgICAgU2lnbmVkLW9mZi1ieTog
+VHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPg0KPiANCj4g
+DQo+IERvZXMgdGhpcyBtZWFuIHRoYXQgb25lIGhhcyB0byBtb2RpZnkgYWxsIG9uZSdzIGNsaWVu
+dHMgdG8gZ2V0IHRoZSBvbGQNCj4gYmVoYXZpb3VyPw0KPiANCj4gSSdtIG5vdCBzdXJlIGlmIHRo
+aXMgaXMgYSByZWFsbHkgZ29vZCBpZGVhLiBJIGRvbid0IHNlZSB0aGUgYWR2YW50YWdlLiBUaGlz
+IHdpbGwNCj4gYnJlYWsgYSBsb3Qgb2YgZXhpc3RpbmcgaW5zdGFsbGF0aW9ucyB3aGVuIHVwZ3Jh
+ZGluZyB0byA+PTMuMy4gQW5kIHNvbWVvbmUNCj4gbWlncmF0aW5nIGZyb20gTkZTdjMgdG8gTkZT
+djQgaGFzIHRvIGdpdmUgc29tZSB0aG91Z2h0cyB0byBpdCBhbnl3YXkuDQoNClBsZWFzZSByZWFk
+IHRoZSBjaGFuZ2Vsb2cgYW5kIGRvY3VtZW50YXRpb246DQoNCklmIHlvdXIgc2VydmVyIGRvZXNu
+4oCZdCBzdXBwb3J0IG51bWVyaWMgdWlkcy9naWRzLCB0aGVuIHlvdSB3aWxsIHNlZSBfbm9fIGNo
+YW5nZSBpbiBiZWhhdmlvdXIuDQoNCklmIHlvdXIgc2VydmVyIGRvZXMgc3VwcG9ydCBudW1lcmlj
+IHVpZHMvZ2lkcywgYW5kIGhhcyB0aGUgc2FtZSBtYXBwaW5nIGJldHdlZW4gbnVtZXJpYyB1aWRz
+L2dpZHMgYW5kIHVzZXJuYW1lL2dyb3VwbmFtZSBhcyB5b3VyIGNsaWVudHMsIHRoZW4geW91IHdp
+bGwgc2VlIF9ub18gY2hhbmdlIGluIGJlaGF2aW91ci4NCg0KSWYgeW91ciBzZXJ2ZXIgZG9lcyBz
+dXBwb3J0IG51bWVyaWMgdWlkcy9naWRzLCBidXQgdGhlIG1hcHBpbmcgYmV0d2VlbiBudW1lcmlj
+IHVpZHMvZ2lkcyBhbmQgdXNlcm5hbWUvZ3JvdXBuYW1lIGRpZmZlcnMgYmV0d2VlbiBzZXJ2ZXIg
+YW5kIGNsaWVudCAoZS5nLi4gdWlkPTIwIG1hcHMgdG8gZGlmZmVyZW50IHVzZXJzIG9uIHRoZSBj
+bGllbnQgYW5kIHNlcnZlcikgdGhlbiB5b3UgYWxyZWFkeSBoYWQgYSBwcm9ibGVtIGluIHRoYXQg
+Y3JlYXRpbmcgdGhlIGZpbGUgdXNpbmcgTkZTdjQgd291bGQgcmVzdWx0IGluIHlvdSBzZWVpbmcg
+dGhlIHdyb25nIG93bmVyIGFuZC9vciBncm91cC4gSWYgdGhpcyBjYXNlLCBhbmQgdGhpcyBjYXNl
+IG9ubHksIHRoZSBjaGFuZ2UgdG8gbmZzNF9kaXNhYmxlX2lkbWFwcGVyIHdpbGwgcmVzdWx0IGlu
+IHlvdSBub3cgc2VlaW5nIHRoZSBjb3JyZWN0IG93bmVyL2dyb3VwIGZvciB0aGVzZSBmaWxlcyAo
+anVzdCBhcyBpZiB5b3Ugd2VyZSB1c2luZyBORlN2MykuDQoNCklPVzogdGhlIG9ubHkgcGVvcGxl
+IHdobyB3aWxsIHdhbnQgdG8gdXNlIHRoZSBvbGQgc2V0dGluZyBhcmUgdGhvc2Ugd2l0aCBicm9r
+ZW4gc2VydmVycyB0aGF0IHJldHVybiBpbmNvcnJlY3QgZXJyb3JzIHdoZW4gY29uZnJvbnRlZCB3
+aXRoIGEgbnVtZXJpYyB1aWQvZ2lkLiBXZSBoYXZlIGZvdW5kIG5vIGV2aWRlbmNlIHRoYXQgYW55
+IHN1Y2ggc2VydmVycyBleGlzdCBkdXJpbmcgdGhlIGxhc3QgZnVsbCB5ZWFyIG9mIHRlc3Rpbmcu
+DQoNClRyb25kDQo=
