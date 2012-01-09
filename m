@@ -1,64 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62013 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756960Ab2ARERg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 23:17:36 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/10] NFS: Remove unnecessary includes from linux/nfs_fs_i.h
-Date: Tue, 17 Jan 2012 23:17:04 -0500
-Message-Id: <1326860233-27947-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:60944 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752424Ab2AIMt6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 07:49:58 -0500
+Message-ID: <4F0AE25C.5020706@panasas.com>
+Date: Mon, 9 Jan 2012 14:49:32 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Benny Halevy <bhalevy@tonian.com>
+CC: <lsf-pc@lists.linux-foundation.org>, <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [LSF/MM TOPIC] [ATTEND] linux-pnfs server implementations
+References: <4EF6A6CA.1020606@tonian.com>
+In-Reply-To: <4EF6A6CA.1020606@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also from linux/nfs_xdr.h.
+On 12/25/2011 06:30 AM, Benny Halevy wrote:
+> Now that the client side of pnfs is in the mainline kernel
+> I believe it is time to consider the inclusion of the server side.
+> 
+> I propose the following agenda for discussion
+> (order may change with no advance notice :)
+> 
+> * What's currently available in git://linux-nfs.org/~halevy/linux-pnfs.git
+>   - What are the sub-projects
+>   - How they relate to each other
+> 
+> * High-level design of the implementation
+> 
+> * Summary of generic changes in nfsd
+> 
+> * For each of the different sub-projects, briefly present:
+>   - What does it do
+>   - Benefits and Potential
+>   - Limitations
+>   - Status
+>   - To-do
+> 
+> * Prerequisites for inclusion
+> 
+> * Discussion
+> 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pagelist.c        |    1 +
- include/linux/nfs_fs_i.h |    4 ----
- include/linux/nfs_xdr.h  |    1 -
- 3 files changed, 1 insertions(+), 5 deletions(-)
+Me too! This subject is close to my heart, as exofs is the most
+complete and advanced pNFSD base implementation. Last testing
+has demonstrated amazing performance and scalability. Saturating
+10G from a single client and saturating 4*10G storage cluster
+from multiple clients.(Though there were problems with too many
+clients)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 5668f7c..77a184e 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -13,6 +13,7 @@
- #include <linux/file.h>
- #include <linux/sched.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/nfs.h>
- #include <linux/nfs3.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_page.h>
-diff --git a/include/linux/nfs_fs_i.h b/include/linux/nfs_fs_i.h
-index 8617302..a5c50d9 100644
---- a/include/linux/nfs_fs_i.h
-+++ b/include/linux/nfs_fs_i.h
-@@ -1,10 +1,6 @@
- #ifndef _NFS_FS_I
- #define _NFS_FS_I
- 
--#include <asm/types.h>
--#include <linux/list.h>
--#include <linux/nfs.h>
--
- struct nlm_lockowner;
- 
- /*
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a764cef..f5188e1 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -2,7 +2,6 @@
- #define _LINUX_NFS_XDR_H
- 
- #include <linux/nfsacl.h>
--#include <linux/nfs3.h>
- #include <linux/sunrpc/gss_api.h>
- 
- /*
--- 
-1.7.7.5
+> Benny
 
+Thanks
+Boaz
