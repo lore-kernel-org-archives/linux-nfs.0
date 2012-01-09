@@ -1,94 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39088 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58825 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751301Ab2AZV3D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:29:03 -0500
-Message-ID: <4F21C58E.5070407@netapp.com>
-Date: Thu, 26 Jan 2012 16:28:46 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S933047Ab2AITZU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jan 2012 14:25:20 -0500
+Date: Mon, 9 Jan 2012 14:25:17 -0500
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, lsf-pc@lists.linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, NFS list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [LSF/MM TOPIC] [ATTEND] linux-pnfs server implementations
+Message-ID: <20120109192517.GB16973@fieldses.org>
+References: <4EF6A6CA.1020606@tonian.com>
+ <4F0AE25C.5020706@panasas.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Clean up the test_stateid function
-References: <1327510095-26125-1-git-send-email-bjschuma@netapp.com> <20120126212554.GE700@fieldses.org>
-In-Reply-To: <20120126212554.GE700@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F0AE25C.5020706@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu Jan 26 16:25:54 2012, J. Bruce Fields wrote:
-> On Wed, Jan 25, 2012 at 11:48:15AM -0500, bjschuma@netapp.com wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> When I initially wrote it, I didn't understand how lists worked so I
->> wrote something that didn't use them.  I think making a list of stateids
->> to test is a more straightforward implementation, especially compared to
->> especially compared to decoding stateids while simultaneously encoding
->> a reply to the client.
->
-> Thanks, yes, I'll be much happier with something like this.  The only
-> thing I'm worried about:
->
->>  static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
->>  {
->>  	/* We want more bytes than seem to be available.
->> @@ -1385,31 +1369,36 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
->>  static __be32
->>  nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
->>  {
->> -	unsigned int nbytes;
->> -	stateid_t si;
->>  	int i;
->> -	__be32 *p;
->> -	__be32 status;
->> +	__be32 *p, status;
->> +	struct nfsd4_test_stateid_id *stateid;
->>  
->>  	READ_BUF(4);
->>  	test_stateid->ts_num_ids = ntohl(*p++);
->>  
->> -	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
->> -	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
->> -		goto xdr_error;
->> -
->> -	test_stateid->ts_saved_args = argp;
->> -	save_buf(argp, &test_stateid->ts_savedp);
->> +	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
->>  
->>  	for (i = 0; i < test_stateid->ts_num_ids; i++) {
->> -		status = nfsd4_decode_stateid(argp, &si);
->> +		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
->
-> Hm, are you sure this will always get freed in all cases?
->
-> Off the top of my head: the compound gets decode in one fell swoop.  The
-> we process and encode each op one at a time.  So, for example, if we
-> fail later in the decoding, or if processing fails on an earlier op than
-> this one, then we're not going to hit the free in the encoder:
->
->>  nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
->>  			  struct nfsd4_test_stateid *test_stateid)
->>  {
-> ...
->> +	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
->> +		*p++ = htonl(stateid->ts_id_status);
->> +		list_del(&stateid->ts_id_list);
->> +		kfree(stateid);
->
-> Hence the defer_free/release_compoundargs stuff.  If you grep through
-> nfs4xdr.c for defer_free I think you'll see how it works.
+On Mon, Jan 09, 2012 at 02:49:32PM +0200, Boaz Harrosh wrote:
+> On 12/25/2011 06:30 AM, Benny Halevy wrote:
+> > Now that the client side of pnfs is in the mainline kernel
+> > I believe it is time to consider the inclusion of the server side.
 
-I'll take a look, thanks!  I didn't know about the defer_free option, 
-but using it makes sense here.  I'll fix up the patches and send a new 
-version.
+We're also closing in on the basic 4.1 todo's, so I agree that it will
+soon be time to talk about merging server-side pNFS.
 
-- Bryan
+> > I propose the following agenda for discussion
+> > (order may change with no advance notice :)
+> > 
+> > * What's currently available in git://linux-nfs.org/~halevy/linux-pnfs.git
+> >   - What are the sub-projects
+> >   - How they relate to each other
+> > 
+> > * High-level design of the implementation
+> > 
+> > * Summary of generic changes in nfsd
+> > 
+> > * For each of the different sub-projects, briefly present:
+> >   - What does it do
+> >   - Benefits and Potential
+> >   - Limitations
+> >   - Status
+> >   - To-do
+> > 
+> > * Prerequisites for inclusion
 
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Understood that it may depend on where things stand in April, but: what
+specifically do you think will be likely to require the attention of a
+wider group of linux filesystem developers (ass opposed to just nfs
+developers)?
 
+--b.
 
+> > * Discussion
+> > 
+> 
+> Me too! This subject is close to my heart, as exofs is the most
+> complete and advanced pNFSD base implementation. Last testing
+> has demonstrated amazing performance and scalability. Saturating
+> 10G from a single client and saturating 4*10G storage cluster
+> from multiple clients.(Though there were problems with too many
+> clients)
