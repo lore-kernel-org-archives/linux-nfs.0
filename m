@@ -1,177 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50552 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754700Ab2AQQAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:00:32 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 2/6] locks: give break_lease its own flags
-Date: Tue, 17 Jan 2012 11:00:25 -0500
-Message-Id: <1326816029-13913-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
-References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+Received: from mailin.studentenwerk.mhn.de ([141.84.225.229]:36917 "EHLO
+	email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755793Ab2AIWXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 17:23:19 -0500
+From: Wolfgang Walter <wolfgang.walter@stwm.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes and cleanups
+Date: Mon, 9 Jan 2012 23:15:27 +0100
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+References: <1326142671.9041.1.camel@lade.trondhjem.org>
+In-Reply-To: <1326142671.9041.1.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201201092315.28230.wolfgang.walter@stwm.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Monday 09 January 2012, Trond Myklebust wrote:
+> Hi Linus,
+> 
+> Please pull from the "nfs-for-3.3" branch of the repository at
+> 
+>    git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-
+for-3.3
+> 
+> This will update the following files through the appended changesets.
+> 
+>   Cheers,
+>     Trond
+> 
+> 
+> commit 074b1d12fe2500d7d453902f9266e6674b30d84c
+> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date:   Mon Jan 9 13:46:26 2012 -0500
+> 
+>     NFSv4: Change the default setting of the nfs4_disable_idmapping 
+parameter
+>     
+>     Now that the use of numeric uids/gids is officially sanctioned in
+>     RFC3530bis, it is time to change the default here to 'enabled'.
+>     
+>     By doing so, we ensure that NFSv4 copies the behaviour of NFSv3 when 
+we're
+>     using the default AUTH_SYS authentication (i.e. when the client uses the
+>     numeric uids/gids as authentication tokens), so that when new files are
+>     created, they will appear to have the correct user/group.
+>     It also fixes a number of backward compatibility issues when migrating
+>     from NFSv3 to NFSv4 on a platform where the server uses different 
+uid/gid
+>     mappings than the client.
+>     
+>     Note also that this setting has been successfully tested against servers
+>     that do not support numeric uids/gids at several Connectathon/Bakeathon
+>     events at this point, and the fall back to using string names/groups has
+>     been shown to work well in all those test cases.
+>     
+>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
 
-Instead of passing O_* flags to break_lease, give it its own set of
-constants to use.  We'll want more bits here soon.
 
-Be careful to continue treating these bits the same way for now, so
-there isn't a "flag day" for break_lease callers.  We'll probably change
-the constants eventually, though.
+Does this mean that one has to modify all one's clients to get the old 
+behaviour?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c         |   10 +++++-----
- fs/nfsd/vfs.c      |    6 +++---
- fs/open.c          |    4 ++--
- include/linux/fs.h |   40 ++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 50 insertions(+), 10 deletions(-)
+I'm not sure if this is a really good idea. I don't see the advantage. This 
+will break a lot of existing installations when upgrading to >=3.3. And 
+someone migrating from NFSv3 to NFSv4 has to give some thoughts to it anyway.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index bc55194..d6661a6 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1188,12 +1188,12 @@ static void time_out_leases(struct inode *inode)
- /**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-- *	@mode: the open mode (read or write)
-+ *	@mode: the type of leases to break
-  *
-  *	break_lease (inlined for speed) has checked there already is at least
-- *	some kind of lock (maybe a lease) on this file.  Leases are broken on
-- *	a call to open() or truncate().  This function can sleep unless you
-- *	specified %O_NONBLOCK to your open().
-+ *	some kind of lock (maybe a lease) on this file.
-+ *	This function will wait for the lease to be broken unless you include
-+ *	BREAK_NONBLOCK in the mode.
-  */
- int __break_lease(struct inode *inode, unsigned int mode)
- {
-@@ -1202,7 +1202,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
- 	struct file_lock *fl;
- 	unsigned long break_time;
- 	int i_have_this_lease = 0;
--	int want_write = (mode & O_ACCMODE) != O_RDONLY;
-+	int want_write = break_all_leases(mode);
- 
- 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 8968913..a522b2f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -276,7 +276,7 @@ static int nfsd_break_lease(struct inode *inode)
- {
- 	if (!S_ISREG(inode->i_mode))
- 		return 0;
--	return break_lease(inode, O_WRONLY | O_NONBLOCK);
-+	return break_lease(inode, BREAK_ALL_LEASES | BREAK_NONBLOCK);
- }
- 
- /*
-@@ -731,8 +731,8 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
- 
- 	if (access & NFSD_MAY_NOT_BREAK_LEASE)
- 		return 0;
--	mode = (access & NFSD_MAY_WRITE) ? O_WRONLY : O_RDONLY;
--	return break_lease(inode, mode | O_NONBLOCK);
-+	mode = (access & NFSD_MAY_WRITE) ? BREAK_ALL_LEASES : BREAK_WRITE_LEASES;
-+	return break_lease(inode, mode | BREAK_NONBLOCK);
- }
- 
- /*
-diff --git a/fs/open.c b/fs/open.c
-index 22c41b5..b7d55e2 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -105,7 +105,7 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
- 	 * Make sure that there are no leases.  get_write_access() protects
- 	 * against the truncate racing with a lease-granting setlease().
- 	 */
--	error = break_lease(inode, O_WRONLY);
-+	error = break_lease(inode, BREAK_ALL_LEASES);
- 	if (error)
- 		goto put_write_and_out;
- 
-@@ -685,7 +685,7 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
- 	if (error)
- 		goto cleanup_all;
- 
--	error = break_lease(inode, f->f_flags);
-+	error = open_break_lease(inode, f->f_flags);
- 	if (error)
- 		goto cleanup_all;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 425d05d..939cb3b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1083,6 +1083,35 @@ static inline int file_check_writeable(struct file *filp)
- #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
- #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
- 
-+/* break-lease flags */
-+/*
-+ * These agree with O_RDONLY, O_WRONLY, O_ACCMODE, and O_NONBLOCK as a
-+ * (possibly temporary) courtesy to developers of any out-of-tree
-+ * code that calls break_lease:
-+ */
-+#define BREAK_WRITE_LEASES	00000000
-+#define BREAK_ALL_LEASES	00000001
-+#define BREAK_TYPE_MASK		00000003
-+#define BREAK_NONBLOCK		00004000
-+/*
-+ * Read delegations are also broken on operations that modify file
-+ * metadata or the set of links that point to a file:
-+ */
-+#define BREAK_ONLY_DELEGS	00000010
-+
-+/*
-+ * Make it easy to allow O_RDONLY, O_RDWR, O_WRONLY to continue to work
-+ * as they did before, for now:
-+ */
-+static inline bool break_write_leases(unsigned int type)
-+{
-+	return ((type & BREAK_TYPE_MASK) == BREAK_WRITE_LEASES);
-+}
-+static inline bool break_all_leases(unsigned int type)
-+{
-+	return ((type & BREAK_TYPE_MASK) == BREAK_ALL_LEASES);
-+}
-+
- /*
-  * Special return value from posix_lock_file() and vfs_lock_file() for
-  * asynchronous locking.
-@@ -2005,6 +2034,13 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
- 		return __break_lease(inode, mode);
- 	return 0;
- }
-+
-+static inline int open_break_lease(struct inode *inode, unsigned int mode)
-+{
-+	unsigned int type = (mode & O_ACCMODE) == O_RDONLY ?
-+			BREAK_WRITE_LEASES : BREAK_ALL_LEASES;
-+	return __break_lease(inode, type);
-+}
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -2044,6 +2080,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int open_break_lease(struct inode *inode, unsigned int mode)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
+
+Regards,
 -- 
-1.7.5.4
-
+Wolfgang Walter
+Studentenwerk München
+Anstalt des öffentlichen Rechts
