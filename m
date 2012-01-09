@@ -1,89 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:50606 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750873Ab2AYV4G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 16:56:06 -0500
-Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120125215415.GB22216@fieldses.org>
-Date: Wed, 25 Jan 2012 16:55:54 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <C2D8B860-6B9F-4187-B9DE-9BF52C8398B0@oracle.com>
-References: <20120125064158.4551a012@tlielax.poochiereds.net> <20120125131116.GA17873@fieldses.org> <20120125083820.637c8362@tlielax.poochiereds.net> <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com> <20120125171401.GI17873@fieldses.org> <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com> <20120125185529.GJ17873@fieldses.org> <20120125152356.10bdd772@tlielax.poochiereds.net> <20120125212553.GA22216@fieldses.org> <A8128BCD-0914-4D2B-81BF-A4A4EF0F2561@oracle.com> <20120125215415.GB22216@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:38185 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754807Ab2AINaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 08:30:25 -0500
+Subject: [PATCH 5 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        "J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
+        adilger@whamcloud.com
+Date: Mon, 09 Jan 2012 14:21:58 +0100
+Message-ID: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+the NFS version. NFSv2 gets 32-bit hashes only.
 
-On Jan 25, 2012, at 4:54 PM, J. Bruce Fields wrote:
-
-> On Wed, Jan 25, 2012 at 04:29:02PM -0500, Chuck Lever wrote:
->> 
->> On Jan 25, 2012, at 4:25 PM, J. Bruce Fields wrote:
->> 
->>> On Wed, Jan 25, 2012 at 03:23:56PM -0500, Jeff Layton wrote:
->>>> I suggest that we only allow the reclaim of locks
->>>> on the original address against which they were established.
->>> 
->>> I'm not sure what that means.
->>> 
->>> If a server stops responding, the v4.0 client has two choices: it can
->>> either wait for the server to come back, and reclaim when it does.  Or
->>> if it supports failover it can go find another server and perform
->>> reclaims over there.
->> 
->> Honestly, I don't think that's possible in NFSv4.0.
-> 
-> Well, it was *supposed* to be possible, wasn't it?  I thought fixing up
-> 3530 to make that work was part of what the discussion around
-> http://datatracker.ietf.org/doc/draft-dnoveck-nfsv4-migration-issues/
-> was about?  (OK, I should actually read that.)
-
-No, that's just for migration.  Failover is different, though it uses some of the same mechanisms.
-
-> Agreed that there doesn't seem to be an agreed-upon way to do it now....
-> 
-> --b.
-> 
->> The richer information provided by fs_locations_info can allow the client to determine whether two servers share more than simply data.  That information does not exist in NFSv4.0, so there's no way a client can expect that two servers lists in fs_locations results will always have the same NFSv4 state.
->> 
->> Thus I believe that NFSv4.0 replication is limited to read-only data.  But I have to go back and read that chapter of 3530 again.
->> 
->>> I'm a little unclear how it does that, but I suppose it first tests
->>> somehow to see whether its existing state is supported, and if not, it
->>> establishes a new clientid with SETCLIENTID/SETCILENTID_CONFIRM using
->>> its old name, and then attempts to reclaim.
->>> 
->>> You're now requiring it *not* to do that if it happens that the servers
->>> all rebooted in the meantime.  How does it know that that's what
->>> happened?
->>> 
->>> Or maybe that's not what you want to require, I'm not sure.
->>> 
->>> --b.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+NOTE: This patch got rather complex as Christoph asked to set the
+filp->f_mode flag in the open call or immediatly after dentry_open()
+in nfsd_open() to avoid races.
+Personally I still do not see a reason for that and in my opinion
+FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+follows directly after nfsd_open() without a chance of races.
 
 
+Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Acked-by: J. Bruce Fields<bfields@redhat.com>
+---
+ fs/nfsd/vfs.c |   15 +++++++++++++--
+ fs/nfsd/vfs.h |    2 ++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 20fa252..f162dc3 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -785,9 +785,15 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+ 			    flags, current_cred());
+ 	if (IS_ERR(*filp))
+ 		host_err = PTR_ERR(*filp);
+-	else
++	else {
+ 		host_err = ima_file_check(*filp, may_flags);
+ 
++		if (may_flags & NFSD_MAY_64BIT_COOKIE)
++			(*filp)->f_mode |= FMODE_64BITHASH;
++		else
++			(*filp)->f_mode |= FMODE_32BITHASH;
++	}
++
+ out_nfserr:
+ 	err = nfserrno(host_err);
+ out:
+@@ -2011,8 +2017,13 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
+ 	__be32		err;
+ 	struct file	*file;
+ 	loff_t		offset = *offsetp;
++	int             may_flags = NFSD_MAY_READ;
++
++	/* NFSv2 only supports 32 bit cookies */
++	if (rqstp->rq_vers > 2)
++		may_flags |= NFSD_MAY_64BIT_COOKIE;
+ 
+-	err = nfsd_open(rqstp, fhp, S_IFDIR, NFSD_MAY_READ, &file);
++	err = nfsd_open(rqstp, fhp, S_IFDIR, may_flags, &file);
+ 	if (err)
+ 		goto out;
+ 
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 1dcd238..ec0611b 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -27,6 +27,8 @@
+ #define NFSD_MAY_BYPASS_GSS		0x400
+ #define NFSD_MAY_READ_IF_EXEC		0x800
+ 
++#define NFSD_MAY_64BIT_COOKIE		0x1000 /* 64 bit readdir cookies for >= NFSv3 */
++
+ #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
+ #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+ 
 
