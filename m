@@ -1,67 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dresden.studentenwerk.mhn.de ([141.84.225.229]:38055 "EHLO
-	email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751984Ab2AJKxy convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 05:53:54 -0500
-From: Wolfgang Walter <wolfgang.walter@stwm.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [GIT PULL] Please pull NFS client bugfixes and cleanups
-Date: Tue, 10 Jan 2012 11:53:50 +0100
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <1326142671.9041.1.camel@lade.trondhjem.org> <201201100149.00716.wolfgang.walter@stwm.de> <1326160381.13527.4.camel@lade.trondhjem.org>
-In-Reply-To: <1326160381.13527.4.camel@lade.trondhjem.org>
+Received: from natasha.panasas.com ([67.152.220.90]:58925 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753426Ab2AIKjJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 05:39:09 -0500
+Message-ID: <4F0AC3C1.5040303@panasas.com>
+Date: Mon, 9 Jan 2012 12:38:57 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-  charset="utf-8"
-Message-Id: <201201101153.51438.wolfgang.walter@stwm.de>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SQUASHME: pnfsd-exofs: Fix the RAID5 export
+References: <4EC13EEA.3030404@tonian.com> <4EDBACDD.3010609@tonian.com> <4F0A9F00.4020308@tonian.com>
+In-Reply-To: <4F0A9F00.4020308@tonian.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Am Dienstag, 10. Januar 2012 schrieb Trond Myklebust:
-> On Tue, 2012-01-10 at 01:49 +0100, Wolfgang Walter wrote:
-> > On Monday 09 January 2012, Trond Myklebust wrote:
-> > > On Mon, 2012-01-09 at 14:28 -0800, Myklebust, Trond wrote:
-> > > > > -----Original Message-----
-> > > >
-> > > > Please read the changelog and documentation:
-> > > >
-> > > > If your server doesn’t support numeric uids/gids, then you will see
-> > > > _no_ change in behaviour.
-> >
-> > Hmm, what does that mean exactly? Does a linux nfs4-server support
-> > numeric uids/gids? If yes, by default or do I need do set an option?
->
-> The patch requires no changes to a configuration that is already
-> working. That's the whole point I've been trying to get across.
 
-So if user foo has uid 500 on the server and uid 600 on the client that will 
-still work with AUTH_SYS:
+BAD RAID Math in layout_get.
 
-client: uid 500 => foo@REALM
-server: foo@REALM => uid 600
+TODO: ore_calc_stripe_info, which is already called, as all
+the needed information calculated by _align_io. Only that
+first_stripe_start is only set in case of RAID, but lo_get
+always needs it. Move the set of first_stripe_start inside
+ore_calc_stripe_info, to the generic part.
 
-and vice-versa?
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/exofs/export.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-> > I always thought that the idmapper with its translation were exactly for
-> > that case. If I have a homogenous uid/gid name space why would I want to
-> > use names and translate anyway?
->
-> For RPCSEC_GSS authentication. That's the only case that the original
-> RFC3530 cared about. The problems arise when people use AUTH_SYS, and
-> this protocol change+patch is the solution.
-
-
-Regards,
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index 8a0e510..621bd11 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -96,7 +96,8 @@ void ore_layout_2_pnfs_layout(struct pnfs_osd_layout *pl,
+ 
+ static void _align_io(struct ore_layout *layout, u64 *offset, u64 *length)
+ {
+-	u64 stripe_size = layout->group_width * layout->stripe_unit;
++	u64 stripe_size = (layout->group_width - layout->parity) *
++							layout->stripe_unit;
+ 	u64 group_size = stripe_size * layout->group_depth;
+ 
+ 	*offset = div64_u64(*offset, group_size) * group_size;
 -- 
-Wolfgang Walter
-Studentenwerk München
-Anstalt des öffentlichen Rechts
-Abteilungsleiter IT
-Leopoldstraße 15
-80802 München
-Tel: +49 89 38196 276
-Fax: +49 89 38196 150
-Email: wolfgang.walter@stwm.de
-http://www.studentenwerk-muenchen.de/
+1.7.2.3
+
+
