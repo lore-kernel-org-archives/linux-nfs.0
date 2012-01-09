@@ -1,152 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:60608 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757036Ab2ADV6F convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 16:58:05 -0500
-Subject: Re: [PATCH] NFS: Fix a few issues with cached state owners
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com>
-Date: Wed, 4 Jan 2012 16:58:01 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <A9614C89-6666-420F-B945-B5C879034086@oracle.com>
-References: <1325697256.18462.24.camel@lade.trondhjem.org> <1325713927-25519-1-git-send-email-Trond.Myklebust@netapp.com> <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:42404 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752690Ab2AIKQl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 05:16:41 -0500
+Subject: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v4)
+To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com, bfields@redhat.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Date: Mon, 09 Jan 2012 11:16:28 +0100
+Message-ID: <20120109101628.2218398.94904.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+With the ext3/ext4 directory index implementation hashes are used to specify
+offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+hashes and therefore the probability of hash collisions for larger directories
+is rather high. As recently reported on the NFS mailing list that theoretical
+problem also happens on real systems:
+http://comments.gmane.org/gmane.linux.nfs/40863
 
-On Jan 4, 2012, at 4:56 PM, Chuck Lever wrote:
+The following series adds two new f_mode flags to tell ext4
+to use 32-bit or 64-bit hash values for llseek() calls.
+These flags can then used by network file systems, such as NFS, to
+request 32-bit or 64-bit offsets (hashes).
 
-> 
-> On Jan 4, 2012, at 4:52 PM, Trond Myklebust wrote:
-> 
->> The garbage collector needs to remove the entry from the lru list
->> _and_ the red-black tree atomically in order avoid races in
->> nfs4_get_state_owner.
->> 
->> Fix a case in nfs4_get_state_owner in which the garbage-collector
->> list was being manipulated while not holding the appropriate spin
->> lock.
->> 
->> nfs4_drop_state_owner doesn't need to look at sp->so_lru: the caller
->> must have a reference to the state owner, so it can't be on the
->> garbage-collection list.
->> 
->> Run the garbage collector _after_ we've looked up the state owner
->> for efficiency reasons.
->> 
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Version 4
+- Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
+  CONFIG_COMPAT in the 
+  "Return 32/64-bit dir name hash according to usage type"
+  patch
 
-You might consider squashing this with my patch.  The list_del_init() outside the cl_lock is enough to warrant it.
+Version 3:
+- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
+  as it was included upstream separately
+- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+  two separate patches as suggested by Bruce, one patch to rename 
+  'access' to 'may_flags'. And the remainder of the original patch to set 
+  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+  NFSD_MAY_64BIT_COOKIE flag
 
-> 
->> ---
->> fs/nfs/nfs4state.c |   23 ++++++++++++++++-------
->> 1 files changed, 16 insertions(+), 7 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index b9ade99..dc78e0e 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -389,6 +389,8 @@ nfs4_find_state_owner_locked(struct nfs_server *server, struct rpc_cred *cred)
->> 		else if (cred > sp->so_cred)
->> 			p = &parent->rb_right;
->> 		else {
->> +			if (!list_empty(&sp->so_lru))
->> +				list_del_init(&sp->so_lru);
->> 			atomic_inc(&sp->so_count);
->> 			return sp;
->> 		}
->> @@ -413,6 +415,8 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
->> 		else if (new->so_cred > sp->so_cred)
->> 			p = &parent->rb_right;
->> 		else {
->> +			if (!list_empty(&sp->so_lru))
->> +				list_del_init(&sp->so_lru);
->> 			atomic_inc(&sp->so_count);
->> 			return sp;
->> 		}
->> @@ -459,6 +463,13 @@ nfs4_alloc_state_owner(void)
->> }
->> 
->> static void
->> +nfs4_drop_state_owner_locked(struct nfs_server *server, struct nfs4_state_owner *sp)
->> +{
->> +	rb_erase(&sp->so_server_node, &server->state_owners);
->> +	RB_CLEAR_NODE(&sp->so_server_node);
->> +}
->> +
->> +static void
->> nfs4_drop_state_owner(struct nfs4_state_owner *sp)
->> {
->> 	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
->> @@ -466,9 +477,8 @@ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
->> 		struct nfs_client *clp = server->nfs_client;
->> 
->> 		spin_lock(&clp->cl_lock);
->> -		list_del_init(&sp->so_lru);
->> -		rb_erase(&sp->so_server_node, &server->state_owners);
->> -		RB_CLEAR_NODE(&sp->so_server_node);
->> +		if (!RB_EMPTY_NODE(&sp->so_server_node))
->> +			nfs4_drop_state_owner_locked(server, sp);
->> 		spin_unlock(&clp->cl_lock);
->> 	}
->> }
->> @@ -499,6 +509,7 @@ static void nfs4_gc_state_owners(struct nfs_server *server)
->> 				sp->so_expires + clp->cl_lease_time))
->> 			break;
->> 		list_move(&sp->so_lru, &doomed);
->> +		nfs4_drop_state_owner_locked(server, sp);
->> 	}
->> 	spin_unlock(&clp->cl_lock);
->> 
->> @@ -521,8 +532,6 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
->> 	struct nfs_client *clp = server->nfs_client;
->> 	struct nfs4_state_owner *sp, *new;
->> 
->> -	nfs4_gc_state_owners(server);
->> -
->> 	spin_lock(&clp->cl_lock);
->> 	sp = nfs4_find_state_owner_locked(server, cred);
->> 	spin_unlock(&clp->cl_lock);
->> @@ -530,7 +539,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
->> 		goto out;
->> 	new = nfs4_alloc_state_owner();
->> 	if (new == NULL)
->> -		return NULL;
->> +		goto out;
->> 	new->so_server = server;
->> 	new->so_cred = cred;
->> 	spin_lock(&clp->cl_lock);
->> @@ -543,7 +552,7 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
->> 		kfree(new);
->> 	}
->> out:
->> -	list_del_init(&sp->so_lru);
->> +	nfs4_gc_state_owners(server);
->> 	return sp;
->> }
->> 
->> -- 
->> 1.7.7.5
->> 
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+Version 2:
+- use f_mode instead of O_* flags and also in a separate patch
+- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+- fix SEEK_END in ext4_dir_llseek()
+- set f_mode flags in NFS code as early as possible and introduce a new
+  NFSD_MAY_64BIT_COOKIE flag for that
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--
+Bernd Schubert
+Fraunhofer ITWM
 
