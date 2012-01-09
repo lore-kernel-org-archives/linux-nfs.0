@@ -1,105 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:32321 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752775Ab2AZLMK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 06:12:10 -0500
-Subject: [PATCH 3/5] NFS: search for client session id in proper network
- namespace
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:37807 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932153Ab2AIQDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 11:03:36 -0500
+Received: by obcwo16 with SMTP id wo16so4262234obc.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jan 2012 08:03:35 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
 To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 26 Jan 2012 15:11:49 +0400
-Message-ID: <20120126111149.8386.51043.stgit@localhost6.localdomain6>
-In-Reply-To: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
-References: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
+        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 1/9] pnfsblock: cleanup bl_mark_sectors_init
+Date: Tue, 10 Jan 2012 00:02:11 +0800
+Message-Id: <1326124939-2152-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
+References: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Network namespace is taken from request transport and passed as a part of
-cb_process_state structure.
+It does not need to manipulate on partial initialized blocks.
+Writeback code takes care of it.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/callback.h      |    1 +
- fs/nfs/callback_proc.c |    2 +-
- fs/nfs/callback_xdr.c  |    1 +
- fs/nfs/client.c        |    4 ++--
- fs/nfs/internal.h      |    3 ++-
- 5 files changed, 7 insertions(+), 4 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |    6 +--
+ fs/nfs/blocklayout/blocklayout.h |    3 +-
+ fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
+ 3 files changed, 8 insertions(+), 77 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index c89d3b9..197e0d3 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -39,6 +39,7 @@ struct cb_process_state {
- 	__be32			drc_status;
- 	struct nfs_client	*clp;
- 	int			slotid;
-+	struct net		*net;
- };
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 281ae95..4ced0b0 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -571,8 +571,7 @@ fill_invalid_ext:
+ 			unlock_page(page);
  
- struct cb_compound_hdr_arg {
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 0e6e63f..f71978d 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -461,7 +461,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	int i;
- 	__be32 status = htonl(NFS4ERR_BADSESSION);
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+@@ -621,8 +620,7 @@ next_page:
+ 		}
+ 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 42acf7e..60728ac 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -186,8 +186,7 @@ struct pnfs_block_extent *
+ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent **cow_read);
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages);
++			     sector_t offset, sector_t length);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *bl_alloc_extent(void);
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 19fa7b0..0fc1321 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
+ 	return status;
+ }
  
--	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
-+	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr, &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
- 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index f2be3e1e..8c2a969 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -861,6 +861,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 		.drc_status = 0,
- 		.clp = NULL,
- 		.slotid = -1,
-+		.net = rqstp->rq_xprt->xpt_net,
- 	};
- 	unsigned int nops = 0;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9e11d29..2328dcb 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1232,11 +1232,11 @@ nfs4_find_client_ident(struct net *net, int cb_ident)
-  * Returns NULL if no such client
-  */
- struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *addr,
-+nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
+-static void set_needs_init(sector_t *array, sector_t offset)
+-{
+-	sector_t *p = array;
+-
+-	dprintk("%s enter\n", __func__);
+-	if (!p)
+-		return;
+-	while (*p < offset)
+-		p++;
+-	if (*p == offset)
+-		return;
+-	else if (*p == ~0) {
+-		*p++ = offset;
+-		*p = ~0;
+-		return;
+-	} else {
+-		sector_t *save = p;
+-		dprintk("%s Adding %llu\n", __func__, (u64)offset);
+-		while (*p != ~0)
+-			p++;
+-		p++;
+-		memmove(save + 1, save, (char *)p - (char *)save);
+-		*save = offset;
+-		return;
+-	}
+-}
+-
+ /* We are relying on page lock to serialize this */
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
  {
- 	struct nfs_client *clp;
--	struct nfs_net *nn = net_generic(&init_net, nfs_net_id);
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
+@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
  
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b38b733..0c3648a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -152,7 +152,8 @@ extern void nfs_cleanup_cb_ident_idr(struct net *);
- extern void nfs_put_client(struct nfs_client *);
- extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
- extern struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *);
-+nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
-+				struct nfs4_sessionid *);
- extern struct nfs_server *nfs_create_server(
- 					const struct nfs_parsed_mount_data *,
- 					struct nfs_fh *);
+ /* Marks sectors in [offest, offset_length) as having been initialized.
+  * All lengths are step-aligned, where step is min(pagesize, blocksize).
+- * Notes where partial block is initialized, and helps prepare it for
+- * complete initialization later.
++ * Currently assumes offset is page-aligned
+  */
+-/* Currently assumes offset is page-aligned */
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages)
++			     sector_t offset, sector_t length)
+ {
+-	sector_t s, start, end;
+-	sector_t *array = NULL; /* Pages to mark */
++	sector_t start, end;
+ 
+ 	dprintk("%s(offset=%llu,len=%llu) enter\n",
+ 		__func__, (u64)offset, (u64)length);
+-	s = max((sector_t) 3,
+-		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
+-	dprintk("%s set max=%llu\n", __func__, (u64)s);
+-	if (pages) {
+-		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
+-		if (!array)
+-			goto outerr;
+-		array[0] = ~0;
+-	}
+ 
+ 	start = normalize(offset, marks->im_block_size);
+ 	end = normalize_up(offset + length, marks->im_block_size);
+@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+ 		goto outerr;
+ 
+ 	spin_lock(&marks->im_lock);
+-
+-	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
+-	     s < offset; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s pre-area pages\n", __func__);
+-		/* Portion of used block is not initialized */
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+ 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
+ 		goto out_unlock;
+-	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
+-	     s < end; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s post-area pages\n", __func__);
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+-
+ 	spin_unlock(&marks->im_lock);
+ 
+-	if (pages) {
+-		if (array[0] == ~0) {
+-			kfree(array);
+-			*pages = NULL;
+-		} else
+-			*pages = array;
+-	}
+ 	return 0;
+ 
+- out_unlock:
++out_unlock:
+ 	spin_unlock(&marks->im_lock);
+- outerr:
+-	if (pages) {
+-		kfree(array);
+-		*pages = NULL;
+-	}
++outerr:
+ 	return -ENOMEM;
+ }
+ 
+-- 
+1.7.1.262.g5ef3d
 
