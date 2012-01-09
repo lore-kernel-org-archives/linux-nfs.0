@@ -1,94 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10299 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932765Ab2AMULj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:39 -0500
-From: bjschuma@netapp.com
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:53187 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932178Ab2AIQEE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 11:04:04 -0500
+Received: by mail-gx0-f174.google.com with SMTP id k6so1615246ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jan 2012 08:04:03 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 39/44] NFS: Create accessor functions for the nfs_client_list()
-Date: Fri, 13 Jan 2012 15:10:48 -0500
-Message-Id: <1326485453-1350-40-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
+        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 3/9] pnfsblock: move find lock page logic out of bl_write_pagelist
+Date: Tue, 10 Jan 2012 00:02:13 +0800
+Message-Id: <1326124939-2152-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
+References: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Also avoid unnecessary lock_page if page is handled by others.
 
-This list is used by nfs4_find_no_client_ident(), and needs to be locked
-before traversing.  Since this function is about to move to a different
-file, I created functions to get a pointer to the list head and manage
-the lock.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/client.c |   26 ++++++++++++++++++++------
- fs/nfs/nfs.h    |    2 ++
- 2 files changed, 22 insertions(+), 6 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |   78 ++++++++++++++++++++++++++------------
+ 1 files changed, 54 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 778ef62..56da3b6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1177,17 +1177,18 @@ struct nfs_client *
- nfs4_find_client_no_ident(const struct sockaddr *addr)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 4ced0b0..c83ad70 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -484,6 +484,55 @@ cleanup:
+ 	return ret;
+ }
+ 
++/* Find or create a zeroing page marked being writeback.
++ * Return ERR_PTR on error, NULL to indicate skip this page and page itself
++ * to indicate write out.
++ */
++static struct page *
++bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
++			struct pnfs_block_extent *cow_read)
++{
++	struct page *page;
++	int locked = 0;
++	page = find_get_page(inode->i_mapping, index);
++	if (page)
++		goto check_page;
++
++	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
++	if (unlikely(!page)) {
++		dprintk("%s oom\n", __func__);
++		return ERR_PTR(-ENOMEM);
++	}
++	locked = 1;
++
++check_page:
++	/* PageDirty: Other will write this out
++	 * PageWriteback: Other is writing this out
++	 * PageUptodate: It was read before
++	 */
++	if (PageDirty(page) || PageWriteback(page)) {
++		print_page(page);
++		if (locked)
++			unlock_page(page);
++		page_cache_release(page);
++		return NULL;
++	}
++
++	if (!locked) {
++		lock_page(page);
++		locked = 1;
++		goto check_page;
++	}
++	if (!PageUptodate(page)) {
++		/* New page, readin or zero it */
++		init_page_for_write(page, cow_read);
++	}
++	set_page_writeback(page);
++	unlock_page(page);
++
++	return page;
++}
++
+ static enum pnfs_try_status
+ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
  {
- 	struct nfs_client *clp;
-+	struct list_head *cl_list = nfs_client_list_start();
+@@ -543,32 +592,13 @@ fill_invalid_ext:
+ 			dprintk("%s zero %dth page: index %lu isect %llu\n",
+ 				__func__, npg_zero, index,
+ 				(unsigned long long)isect);
+-			page =
+-			    find_or_create_page(wdata->inode->i_mapping, index,
+-						GFP_NOFS);
+-			if (!page) {
+-				dprintk("%s oom\n", __func__);
+-				wdata->pnfs_error = -ENOMEM;
++			page = bl_find_get_zeroing_page(wdata->inode, index,
++							cow_read);
++			if (unlikely(IS_ERR(page))) {
++				wdata->pnfs_error = PTR_ERR(page);
+ 				goto out;
+-			}
+-
+-			/* PageDirty: Other will write this out
+-			 * PageWriteback: Other is writing this out
+-			 * PageUptodate: It was read before
+-			 * sector_initialized: already written out
+-			 */
+-			if (PageDirty(page) || PageWriteback(page)) {
+-				print_page(page);
+-				unlock_page(page);
+-				page_cache_release(page);
++			} else if (page == NULL)
+ 				goto next_page;
+-			}
+-			if (!PageUptodate(page)) {
+-				/* New page, readin or zero it */
+-				init_page_for_write(page, cow_read);
+-			}
+-			set_page_writeback(page);
+-			unlock_page(page);
  
--	spin_lock(&nfs_client_lock);
--	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+	list_for_each_entry(clp, cl_list, cl_share_link) {
- 		if (nfs4_cb_match_client(addr, clp, 0) == false)
- 			continue;
- 		atomic_inc(&clp->cl_count);
--		spin_unlock(&nfs_client_lock);
--		return clp;
-+		goto out;
- 	}
--	spin_unlock(&nfs_client_lock);
--	return NULL;
-+	clp = NULL;
-+out:
-+	nfs_client_list_end();
-+	return clp;
- }
- 
- /*
-@@ -1850,6 +1851,19 @@ static void nfs_server_list_stop(struct seq_file *p, void *v)
- 	spin_unlock(&nfs_client_lock);
- }
- 
-+struct list_head *nfs_client_list_start(void)
-+{
-+	spin_lock(&nfs_client_lock);
-+	return &nfs_client_list;
-+}
-+EXPORT_SYMBOL_GPL(nfs_client_list_start);
-+
-+void nfs_client_list_end(void)
-+{
-+	spin_unlock(&nfs_client_lock);
-+}
-+EXPORT_SYMBOL_GPL(nfs_client_list_end);
-+
- /*
-  * display a header line followed by a load of call lines
-  */
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 13321fd..5f2d632 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -66,6 +66,8 @@ void unregister_nfs_version(struct nfs_subversion *);
- struct nfs_server *nfs_alloc_server(void);
- struct nfs_server *do_nfs_clone_server(struct nfs_server *, struct nfs_server *,
- 				       struct nfs_fh *, struct nfs_fattr *);
-+struct list_head *nfs_client_list_start(void);
-+void nfs_client_list_end(void);
- 
- /* Exported in dir.c */
- int nfs_lookup_revalidate(struct dentry *, struct nameidata *);
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+ 						       PAGE_CACHE_SECTORS);
 -- 
-1.7.8.3
+1.7.1.262.g5ef3d
 
