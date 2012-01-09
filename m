@@ -1,28 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:33062 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753541Ab2AQNtz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 08:49:55 -0500
-Date: Tue, 17 Jan 2012 08:49:51 -0500
-From: Jim Rees <rees@umich.edu>
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>
-Subject: Re: svcgssd: Allow administrators to specify timeout for the cached
- context
-Message-ID: <20120117134951.GA15479@umich.edu>
-References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:39350 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932153Ab2AIQCw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 11:02:52 -0500
+Received: by ggdk6 with SMTP id k6so1614395ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jan 2012 08:02:52 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu
+Subject: [PATCH 0/9] pnfsblock: patches for 3.3
+Date: Tue, 10 Jan 2012 00:02:10 +0800
+Message-Id: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sachin Prabhu wrote:
+Hi Trond,
 
-  We had a user report that for an export shared with sec=krb5*, any
-  changes in user credentials(ex: add user to a secondary group) take some
-  time before they take effect over the NFS share.
+These are blocklayout patches for 3.3. All have been sent to list before and merged by Benny.
 
-Re-authenticating, either by removing the service ticket or by re-running
-kinit at the client, should also flush the old credentials.  Can you confirm
-that works?
+Patches can also be found at http://github.com/bergwolf/linux.git for-trond-3.3
+
+Thanks,
+Tao
+
+Peng Tao (9):
+  pnfsblock: cleanup bl_mark_sectors_init
+  pnfsblock: acquire im_lock in _preload_range
+  pnfsblock: move find lock page logic out of bl_write_pagelist
+  pnfsblock: set read/write tk_status to pnfs_error
+  pnfsblock: remove rpc_call_ops from struct parallel_io
+  pnfsblock: clean up _add_entry
+  pnfsblock: alloc short extent before submit bio
+  pnfsblock: don't spinlock when freeing block_dev
+  pnfsblock: limit bio page count
+
+ fs/nfs/blocklayout/blocklayout.c |  202 ++++++++++++++++++++++++-------------
+ fs/nfs/blocklayout/blocklayout.h |   12 ++-
+ fs/nfs/blocklayout/extents.c     |  176 ++++++++++++++-------------------
+ 3 files changed, 215 insertions(+), 175 deletions(-)
+
