@@ -1,68 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53829 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:14372 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753706Ab2AaPMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 10:12:31 -0500
-Date: Tue, 31 Jan 2012 10:12:16 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Thomas Gleixner <tglx@linutronix.de>
-Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
- allocation
-Message-ID: <20120131101216.00788753@tlielax.poochiereds.net>
-In-Reply-To: <4F2800B4.6040302@panasas.com>
-References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-	<4F2700E2.9020803@RedHat.com>
-	<1327957652.4090.32.camel@lade.trondhjem.org>
-	<20120130185753.50280816@tlielax.poochiereds.net>
-	<4F2800B4.6040302@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932393Ab2AJRnp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jan 2012 12:43:45 -0500
+Message-ID: <4F0C789C.5010508@parallels.com>
+Date: Tue, 10 Jan 2012 21:42:52 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "bjschuma@netapp.com" <bjschuma@netapp.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 0/4] NFS: Modularize NFS v3
+References: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1322758102-29260-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 31 Jan 2012 16:54:44 +0200
-Boaz Harrosh <bharrosh@panasas.com> wrote:
-
-> On 01/31/2012 01:57 AM, Jeff Layton wrote:
-> >     WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
-> > 
-> > For now, this patch is really just papering over that problem, but it
-> > should be "mostly harmless". That said, I'm ok with dropping it if
-> > Thomas is planning to fix this in the debugobjects code however.
-> > 
-> 
-> I disagree it's harmless. What if kmem_cache_free/kmem_cache_alloc deploys
-> a poisoning schema, in debug mode. Which stumps over memory. Is it
-> initialized then?
-> 
-
-Different slab allocators handle that differently. As best I can tell:
-
-SLAB: calls ctor on the poisoned object before handing it back out
-
-SLUB: avoids poisoning the object if there's a ->ctor defined
-
-SLOB: I'm not sure -- haven't looked at it
-
-> What was the last state of the timer, is it safe for resume?
-> 
-
-Yes, either way it's safe to reuse the recycled object, aside from the
-problem with debugobjects. If it's not then that's clearly a bug in the
-slab allocator.
-
-> For us this is a new object we should initialize it.
-> 
-
-I tend to agree that not relying on slab ctor functions is preferable.
-They are widely used though so this problem almost assuredly exists in
-other places besides just rpc_pipefs. If it's not fixed in the
-debugobjects code (or the slab allocators) then I wouldn't be surprised
-if this popped up again in another area.
+Hi, Bryan.
+Are you still on progress with this stuff?
+I'm wondering, because I have to reorganize RPC versions and programs code in 
+the way to collect statistics per container. I actually have few patches 
+already, which implements functionality similar to your new versions adding.
+And thus it would be great to know, do i need to take your work into account or not.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Stanislav Kinsbursky
