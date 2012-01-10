@@ -1,75 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:34973 "EHLO
-	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753425Ab2AZWiY convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 17:38:24 -0500
-Received: by obcva7 with SMTP id va7so1067168obc.19
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 14:38:23 -0800 (PST)
+Received: from out02.mta.xmission.com ([166.70.13.232]:47292 "EHLO
+	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756246Ab2AJWhW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 17:37:22 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>,
+        "neilb\@suse.de" <neilb@suse.de>,
+        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields\@fieldses.org" <bfields@fieldses.org>,
+        "davem\@davemloft.net" <davem@davemloft.net>,
+        "devel\@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
+	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
+	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
+	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
+	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>
+	<m1vcotigyb.fsf@fess.ebiederm.org> <4F0C150F.1020007@parallels.com>
+Date: Tue, 10 Jan 2012 14:39:36 -0800
+In-Reply-To: <4F0C150F.1020007@parallels.com> (Stanislav Kinsbursky's message
+	of "Tue, 10 Jan 2012 14:38:07 +0400")
+Message-ID: <m1ehv76v2v.fsf@fess.ebiederm.org>
 MIME-Version: 1.0
-In-Reply-To: <4F21CA97.3020906@RedHat.com>
-References: <1327608461-15305-1-git-send-email-steved@redhat.com>
-	<20120126203006.GD31531@fieldses.org>
-	<4F21CA97.3020906@RedHat.com>
-Date: Thu, 26 Jan 2012 17:38:23 -0500
-Message-ID: <CAKnQG+cQpGwJng22cB8BQ8x_j9VhwDE94xj=1xezjvpp6MsVEg@mail.gmail.com>
-Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not needed.
-From: Kevin Coffman <kwc@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 26, 2012 at 4:50 PM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 01/26/2012 03:30 PM, J. Bruce Fields wrote:
->> On Thu, Jan 26, 2012 at 03:07:41PM -0500, Steve Dickson wrote:
->>> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
->>> libgssglue libraries which is not needed since libgssglue
->>> will dynamically load the gssapi interface defined in the
->>> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
->>>
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>> ---
->>>  aclocal/kerberos5.m4 |    2 +-
->>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
->>> index dfa5738..7574e2d 100644
->>> --- a/aclocal/kerberos5.m4
->>> +++ b/aclocal/kerberos5.m4
->>> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
->>>      fi
->>>      if test "$K5CONFIG" != ""; then
->>>        KRBCFLAGS=`$K5CONFIG --cflags`
->>> -      KRBLIBS=`$K5CONFIG --libs gssapi`
->>> +      KRBLIBS=`$K5CONFIG --libs`
->>
->> OK, so that's gathering krb5-config output which gives us the list of -l
->> switches we need to link in kerberos libraries, and removing the
->> "gssapi" argument has the effect of removing "-lgssapi_krb5" from the
->> output.
-> Right...
->
->>
->> Ack, I guess, except: I'm a little confused why we want to link with
->> *any* kerberos libraries, if rpc.gssd and rpc.svcgssd are supposed to
->> themselves be completely mechanism-independent and are supposed to
->> dlopen() aything they need for kerberos.
-> Well when they are not liked with any kerberos libs the following
-> are undefined http://fpaste.org/rWOR/
->
-> I'm treading on a thin ice here but I'm thinking those undefines are
-> not part the gssapi. Only the gssapi routines are dynamically linked.
->
-> Thanks for the time!
+Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
 
-Most of those functions are dealing with finding credentials caches
-and keytabs and examining them.  (Trying to pick the right credential
-cache to use, and trying to find the right keytab entry to use...)  As
-Steve said, those are strictly Kerberos functions, not GSSAPI.
+> 03.01.2012 07:49, Eric W. Biederman Ð¿Ð¸ÑˆÐµÑ‚:
+>> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
+>>
+>>> 19.12.2011 20:37, Eric W. Biederman Ð¿Ð¸ÑˆÐµÑ‚:
+>>>> Stanislav Kinsbursky<skinsbursky@parallels.com>   writes:
+>>>>
+>>>> Doing that independently of the rest of the sysctls is pretty horrible
+>>>> and confusing to users.   What I am planning might suit your needs and
+>>>> if not we need to talk some more about how to get the vfs to do
+>>>> something reasonable.
+>>>>
+>>>
+>>> Ok, Eric. Would be glad to discuss your sysctls plans.
+>>> But actually you already know my needs: I would like to make sysctls work in the
+>>> way like sysfs does: i.e. content of files depends on mount maker -
+>>> not viewer.
+>>
+>> What drives the desire to have sysctls depend on the mount maker?
+>
+> Because we can (will, actually) have nested fs root's for containers. IOW,
+> container's root will be accessible from it's creator context. And I want to
+> tune container's fs from creators context.
 
-K.C.
+Tuning the child context from the parent context is an entirely
+reasonable thing to do.  To affect a namespace that is not yours
+the requirement is simply that we don't use current to lookup the
+sysctl.  So what I am proposing should work for your case.
+
+>> Especially what drives that desire not to have it have a /proc/<pid>/sys
+>> directory that reflects the sysctls for a given process.
+>>
+>
+> This is not so important for me, where to access sysctl's. But I'm worrying
+> about backward compatibility. IOW, I'm afraid of changing path
+> "/proc/sys/sunprc/*" to "/proc/<pid>/sys/sunrpc". This would break a lot of
+> user-space programs.
+
+The part that keeps it all working is by adding a symlink from /proc/sys
+to /proc/self/sys.  That technique has worked well for /proc/net, and I
+don't expect there will be any problems with /proc/sys either.  It is
+possible but is very rare for the introduction of a symlink in a path
+to cause problems.
+
+Eric
+
