@@ -1,71 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38718 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750927Ab2ALQVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jan 2012 11:21:46 -0500
-Date: Thu, 12 Jan 2012 11:21:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [patch] svcrdma: endian bug in send_write_chunks()
-Message-ID: <20120112162141.GC6563@fieldses.org>
-References: <20120112064722.GB2408@elgon.mountain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120112064722.GB2408@elgon.mountain>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:44137 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756349Ab2AJOcb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 09:32:31 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z25so965522iab.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 06:32:31 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
+        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH RESEND 4/9] pnfsblock: set read/write tk_status to pnfs_error
+Date: Tue, 10 Jan 2012 22:30:30 +0800
+Message-Id: <1326205835-2011-5-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
+References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 12, 2012 at 09:47:22AM +0300, Dan Carpenter wrote:
-> Sparse complains because arg_ch->rs_length is declared as network
-> endian but we're treating it as CPU endian.
+To pass the IO status to upper layer.
 
-This looks like it would actually change behavior on a little endian
-architecture, so how did this work before?
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
->From some quick grepping, I see assignments both of the form
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index c83ad70..883bb27 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -216,6 +216,7 @@ bl_end_par_io_read(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
+ 
++	rdata->task.tk_status = rdata->pnfs_error;
+ 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+@@ -405,7 +406,7 @@ static void bl_end_par_io_write(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
+ 
+-	wdata->task.tk_status = 0;
++	wdata->task.tk_status = wdata->pnfs_error;
+ 	wdata->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
+ 	schedule_work(&wdata->task.u.tk_work);
+-- 
+1.7.1.262.g5ef3d
 
-	...rs_length = ntohl(...)
-
-and
-
-	...rs_length = htonl(...)
-
-but only see one declaration for a field named rs_length.
-
-So my best guess would be that the code is ugly but working as is, and
-needs cleanup by someone who knows how this field was intended to be
-used.
-
-?
-
---b.
-
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index 249a835..30fda86 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -409,7 +409,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->  		u64 rs_offset;
->  
->  		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
-> -		write_len = min(xfer_len, arg_ch->rs_length);
-> +		write_len = min(xfer_len, ntohl(arg_ch->rs_length));
->  
->  		/* Prepare the response chunk given the length actually
->  		 * written */
-> @@ -481,7 +481,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->  	     chunk_no++) {
->  		u64 rs_offset;
->  		ch = &arg_ary->wc_array[chunk_no].wc_target;
-> -		write_len = min(xfer_len, ch->rs_length);
-> +		write_len = min(xfer_len, ntohl(ch->rs_length));
->  
->  		/* Prepare the reply chunk given the length actually
->  		 * written */
