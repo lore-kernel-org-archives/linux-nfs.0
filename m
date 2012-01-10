@@ -1,88 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:38185 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754807Ab2AINaZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 08:30:25 -0500
-Subject: [PATCH 5 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        "J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
-        adilger@whamcloud.com
-Date: Mon, 09 Jan 2012 14:21:58 +0100
-Message-ID: <20120109132158.2616029.30467.stgit@localhost.localdomain>
-In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
-MIME-Version: 1.0
+Received: from mexforward.lss.emc.com ([128.222.32.20]:27188 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755960Ab2AJCrK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 21:47:10 -0500
+From: <tao.peng@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bergwolf@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, <mdw@umich.edu>, <honey@citi.umich.edu>
+Date: Mon, 9 Jan 2012 21:46:32 -0500
+Subject: RE: [PATCH 0/9] pnfsblock: patches for 3.3
+Message-ID: <F19688880B763E40B28B2B462677FBF805E7E67E44@MX09A.corp.emc.com>
+References: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
+ <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CCB0792@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CCB0792@SACMVEXC2-PRD.hq.netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-the NFS version. NFSv2 gets 32-bit hashes only.
-
-NOTE: This patch got rather complex as Christoph asked to set the
-filp->f_mode flag in the open call or immediatly after dentry_open()
-in nfsd_open() to avoid races.
-Personally I still do not see a reason for that and in my opinion
-FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
-follows directly after nfsd_open() without a chance of races.
-
-
-Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Acked-by: J. Bruce Fields<bfields@redhat.com>
----
- fs/nfsd/vfs.c |   15 +++++++++++++--
- fs/nfsd/vfs.h |    2 ++
- 2 files changed, 15 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 20fa252..f162dc3 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -785,9 +785,15 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 			    flags, current_cred());
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
--	else
-+	else {
- 		host_err = ima_file_check(*filp, may_flags);
- 
-+		if (may_flags & NFSD_MAY_64BIT_COOKIE)
-+			(*filp)->f_mode |= FMODE_64BITHASH;
-+		else
-+			(*filp)->f_mode |= FMODE_32BITHASH;
-+	}
-+
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
-@@ -2011,8 +2017,13 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
- 	__be32		err;
- 	struct file	*file;
- 	loff_t		offset = *offsetp;
-+	int             may_flags = NFSD_MAY_READ;
-+
-+	/* NFSv2 only supports 32 bit cookies */
-+	if (rqstp->rq_vers > 2)
-+		may_flags |= NFSD_MAY_64BIT_COOKIE;
- 
--	err = nfsd_open(rqstp, fhp, S_IFDIR, NFSD_MAY_READ, &file);
-+	err = nfsd_open(rqstp, fhp, S_IFDIR, may_flags, &file);
- 	if (err)
- 		goto out;
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 1dcd238..ec0611b 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -27,6 +27,8 @@
- #define NFSD_MAY_BYPASS_GSS		0x400
- #define NFSD_MAY_READ_IF_EXEC		0x800
- 
-+#define NFSD_MAY_64BIT_COOKIE		0x1000 /* 64 bit readdir cookies for >= NFSv3 */
-+
- #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
- #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
- 
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIE15a2xlYnVzdCwNCj4gVHJvbmQNCj4gU2VudDogVHVlc2RheSwgSmFudWFyeSAx
+MCwgMjAxMiAyOjA1IEFNDQo+IFRvOiBQZW5nIFRhbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZzsgbWR3QHVtaWNoLmVkdTsgaG9uZXlAY2l0aS51bWljaC5lZHUNCj4gU3ViamVjdDog
+UkU6IFtQQVRDSCAwLzldIHBuZnNibG9jazogcGF0Y2hlcyBmb3IgMy4zDQo+IA0KPiBIaSBUYW8s
+DQo+IA0KPiBBdCB0aGlzIHBvaW50IGluIHRoZSBtZXJnZSB3aW5kb3csIEknbSBub3QgZ29pbmcg
+dG8gdGFrZSBhbnkgbmV3DQo+IHBORlMtcmVsYXRlZCBwYXRjaGVzIGZvciAzLjMgdGhhdCBoYXZl
+IG5vdCBiZWVuIGluIHRoZSBsaW51eC1uZXh0IHRyZWUsDQo+IGJ1dCBJIGNhbiBxdWV1ZSB1cCB0
+aGUgYnVnZml4ZXMgZm9yIGluY2x1c2lvbiBpbiBhIHBvc3QtcmMxIGJ1Z2ZpeGVzDQo+IHB1c2gu
+IENvdWxkIHlvdSBwbGVhc2UgcmVzZW5kIHRob3NlLCBvbiB0b3Agb2YgYSBjbGVhbiBuZnMtZm9y
+LTMuMw0KPiBicmFuY2g/DQo+IA0KT0suIFdpbGwgZG8gaXQgbGF0ZXIgdG9kYXkuDQoNClRoYW5r
+cywNClRhbw0KDQo+IENoZWVycw0KPiAgIFRyb25kDQo+IA0KPiA+IC0tLS0tT3JpZ2luYWwgTWVz
+c2FnZS0tLS0tDQo+ID4gRnJvbTogUGVuZyBUYW8gW21haWx0bzpiZXJnd29sZkBnbWFpbC5jb21d
+DQo+ID4gU2VudDogTW9uZGF5LCBKYW51YXJ5IDA5LCAyMDEyIDExOjAyIEFNDQo+ID4gVG86IE15
+a2xlYnVzdCwgVHJvbmQNCj4gPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgbWR3QHVt
+aWNoLmVkdTsgaG9uZXlAY2l0aS51bWljaC5lZHUNCj4gPiBTdWJqZWN0OiBbUEFUQ0ggMC85XSBw
+bmZzYmxvY2s6IHBhdGNoZXMgZm9yIDMuMw0KPiA+DQo+ID4gSGkgVHJvbmQsDQo+ID4NCj4gPiBU
+aGVzZSBhcmUgYmxvY2tsYXlvdXQgcGF0Y2hlcyBmb3IgMy4zLiBBbGwgaGF2ZSBiZWVuIHNlbnQg
+dG8gbGlzdA0KPiBiZWZvcmUgYW5kDQo+ID4gbWVyZ2VkIGJ5IEJlbm55Lg0KPiA+DQo+ID4gUGF0
+Y2hlcyBjYW4gYWxzbyBiZSBmb3VuZCBhdCBodHRwOi8vZ2l0aHViLmNvbS9iZXJnd29sZi9saW51
+eC5naXQNCj4gZm9yLXRyb25kLQ0KPiA+IDMuMw0KPiA+DQo+ID4gVGhhbmtzLA0KPiA+IFRhbw0K
+PiA+DQo+ID4gUGVuZyBUYW8gKDkpOg0KPiA+ICAgcG5mc2Jsb2NrOiBjbGVhbnVwIGJsX21hcmtf
+c2VjdG9yc19pbml0DQo+ID4gICBwbmZzYmxvY2s6IGFjcXVpcmUgaW1fbG9jayBpbiBfcHJlbG9h
+ZF9yYW5nZQ0KPiA+ICAgcG5mc2Jsb2NrOiBtb3ZlIGZpbmQgbG9jayBwYWdlIGxvZ2ljIG91dCBv
+ZiBibF93cml0ZV9wYWdlbGlzdA0KPiA+ICAgcG5mc2Jsb2NrOiBzZXQgcmVhZC93cml0ZSB0a19z
+dGF0dXMgdG8gcG5mc19lcnJvcg0KPiA+ICAgcG5mc2Jsb2NrOiByZW1vdmUgcnBjX2NhbGxfb3Bz
+IGZyb20gc3RydWN0IHBhcmFsbGVsX2lvDQo+ID4gICBwbmZzYmxvY2s6IGNsZWFuIHVwIF9hZGRf
+ZW50cnkNCj4gPiAgIHBuZnNibG9jazogYWxsb2Mgc2hvcnQgZXh0ZW50IGJlZm9yZSBzdWJtaXQg
+YmlvDQo+ID4gICBwbmZzYmxvY2s6IGRvbid0IHNwaW5sb2NrIHdoZW4gZnJlZWluZyBibG9ja19k
+ZXYNCj4gPiAgIHBuZnNibG9jazogbGltaXQgYmlvIHBhZ2UgY291bnQNCj4gPg0KPiA+ICBmcy9u
+ZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAyMDINCj4gKysrKysrKysrKysrKysrKysr
+KysrKysrLS0tLS0tLQ0KPiA+IC0tLS0tLQ0KPiA+ICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2ts
+YXlvdXQuaCB8ICAgMTIgKystDQo+ID4gIGZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMgICAg
+IHwgIDE3Ng0KPiArKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAgMyBmaWxl
+cyBjaGFuZ2VkLCAyMTUgaW5zZXJ0aW9ucygrKSwgMTc1IGRlbGV0aW9ucygtKQ0KPiANCj4gLS0N
+Cj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
+aWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
+Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
+bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
