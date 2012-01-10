@@ -1,36 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53618 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:7014 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753118Ab2AQTNj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 14:13:39 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/8] NFS: Remove unnecessary includes from linux/nfs_fs_i.h
-Date: Tue, 17 Jan 2012 14:13:26 -0500
-Message-Id: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S932152Ab2AJNE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jan 2012 08:04:58 -0500
+Subject: [PATCH v2 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 10 Jan 2012 17:04:40 +0400
+Message-ID: <20120110130440.1672.43785.stgit@localhost6.localdomain6>
+In-Reply-To: <20120110130323.1672.97025.stgit@localhost6.localdomain6>
+References: <20120110130323.1672.97025.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/nfs_fs_i.h |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
+This is a cleanup patch. We don't need this reference anymore, because
+blocklayout pipes dentries now creates and destroys in per-net operations and
+on PipeFS mount/umount notification.
+Note that nfs4blocklayout_register_net() now returns 0 instead of -ENOENT in
+case of PipeFS superblock absence. This is ok, because blocklayout pipe dentry
+will be created on PipeFS mount event.
 
-diff --git a/include/linux/nfs_fs_i.h b/include/linux/nfs_fs_i.h
-index 8617302..a5c50d9 100644
---- a/include/linux/nfs_fs_i.h
-+++ b/include/linux/nfs_fs_i.h
-@@ -1,10 +1,6 @@
- #ifndef _NFS_FS_I
- #define _NFS_FS_I
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfs/blocklayout/blocklayout.c |    9 +--------
+ 1 files changed, 1 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 322d920..2c70202 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1034,7 +1034,7 @@ static struct dentry *nfs4blocklayout_register_net(struct net *net,
  
--#include <asm/types.h>
--#include <linux/list.h>
--#include <linux/nfs.h>
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (!pipefs_sb)
+-		return ERR_PTR(-ENOENT);
++		return 0;
+ 	dentry = nfs4blocklayout_register_sb(pipefs_sb, pipe);
+ 	rpc_put_sb_net(net);
+ 	return dentry;
+@@ -1085,7 +1085,6 @@ static struct pernet_operations nfs4blocklayout_net_ops = {
+ 
+ static int __init nfs4blocklayout_init(void)
+ {
+-	struct vfsmount *mnt;
+ 	int ret;
+ 
+ 	dprintk("%s: NFSv4 Block Layout Driver Registering...\n", __func__);
+@@ -1095,12 +1094,6 @@ static int __init nfs4blocklayout_init(void)
+ 		goto out;
+ 
+ 	init_waitqueue_head(&bl_wq);
 -
- struct nlm_lockowner;
- 
- /*
--- 
-1.7.7.5
+-	mnt = rpc_get_mount();
+-	if (IS_ERR(mnt)) {
+-		ret = PTR_ERR(mnt);
+-		goto out_remove;
+-	}
+ 	ret = rpc_pipefs_notifier_register(&nfs4blocklayout_block);
+ 	if (ret)
+ 		goto out_remove;
 
