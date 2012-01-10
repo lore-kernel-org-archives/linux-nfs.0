@@ -1,69 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:55670 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751836Ab2AXMSU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2012 07:18:20 -0500
-Received: by wics10 with SMTP id s10so2890726wic.19
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 04:18:19 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:24805 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754821Ab2AJKua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jan 2012 05:50:30 -0500
+Message-ID: <4F0C17E2.6030003@parallels.com>
+Date: Tue, 10 Jan 2012 14:50:10 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <4F1E9BB3.1000406@tonian.com>
-References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<4F1E9BB3.1000406@tonian.com>
-Date: Tue, 24 Jan 2012 13:18:19 +0100
-Message-ID: <CAGue13rZcMxT0L=87s1s4T6odythXqoAFpM0t-Sh049-cDA8+w@mail.gmail.com>
-Subject: Re: [PATCH 0/5] more test on current stateid processing
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce
+ context
+References: <20111129090754.20730.64567.stgit@localhost6.localdomain6> <1325285705.10984.4.camel@lade.trondhjem.org>
+In-Reply-To: <1325285705.10984.4.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 24, 2012 at 12:53 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> On 2012-01-15 21:05, Tigran Mkrtchyan wrote:
->> This is the result of testing my changes in linux:
+31.12.2011 02:55, Trond Myklebust пишет:
+> On Tue, 2011-11-29 at 13:10 +0300, Stanislav Kinsbursky wrote:
+>> This patch set was created in context of clone of git
+>> branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+>> tag: v3.1
 >>
->> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
->> .....
+>> This patch set depends on previous patch sets titled:
+>> 1) "SUNRPC: initial part of making pipefs work in net ns"
+>> 2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
+>> 3) "SUNRPC: make RPC clients use network-namespace-aware PipeFS routines"
+>> 4) "NFS: create clients and IDMAP pipes per network namespace"
 >>
->> **************************************************
->> CSID1    st_current_stateid.testOpenAndClose                      : PASS
->> CSID2    st_current_stateid.testLockLockU                         : PASS
->> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
->> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
->> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
->> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
->> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
->>            OP_LAYOUTGET should return NFS4_OK, instead got
->>            NFS4ERR_NOTSUPP
+>> This patch set is the final part of making SUNRPC PipeFS and it's users work in
+>> network namespace context.
+>>
+>> The following series consists of:
+>>
+>> ---
+>>
+>> Stanislav Kinsbursky (5):
+>>        NFS: handle blocklayout pipe PipeFS dentry by network namespace aware routines
+>>        NFS: blocklayout pipe creation per network namespace context introduced
+>>        NFS: blocklayout PipeFS notifier introduced
+>>        NFS: remove RPC PipeFS mount point reference from blocklayout routines
+>>        SUNRPC: kernel PipeFS mount point creation routines removed
+>>
+>>
+>>   fs/nfs/blocklayout/blocklayout.c    |  154 ++++++++++++++++++++++++++++-------
+>>   fs/nfs/blocklayout/blocklayout.h    |    3 -
+>>   fs/nfs/blocklayout/blocklayoutdev.c |    5 +
+>>   fs/nfs/blocklayout/blocklayoutdm.c  |    7 +-
+>>   fs/nfs/inode.c                      |    1
+>>   fs/nfs/netns.h                      |    1
+>>   include/linux/sunrpc/rpc_pipe_fs.h  |    2
+>>   net/sunrpc/rpc_pipe.c               |   21 -----
+>>   8 files changed, 137 insertions(+), 57 deletions(-)
 >
-> I guess this is not against my kernel but rather against Bruce's / mainline?
-
-Yes, This is against Bruce's tree. With your I get LAYOUT_TRYLATER :-D
-
-Tigran.
-
 >
-> Benny
+> These patches need rebasing in order to apply on top of 3.2-rc7...
 >
->> CSID8    st_current_stateid.testOpenSetattr                       : PASS
->> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
->>
->> **************************************************
->> $
->>
->> Tigran Mkrtchyan (5):
->>   client: move current stateid test into a dedicated module
->>   client: test current stateid processing on PUTROOTFH
->>   client: test current stateid processing with OPEN+LAYOUTGET in a
->>     single compound
->>   client: test current stateid processing with OPEN and SETATTR
->>   client: test OPEN+FREE_STETEID+CLOSE in a single compound
->>
->>  nfs4.1/server41tests/__init__.py           |    1 +
->>  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
->>  nfs4.1/server41tests/st_open.py            |   76 -------------
->>  3 files changed, 162 insertions(+), 76 deletions(-)
->>  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
->>
+
+Will resend rebased version soon.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
