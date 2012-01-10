@@ -1,121 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:2292 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:7227 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754319Ab2AaLIp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 06:08:45 -0500
-Subject: [PATCH 6/6] Lockd: shutdown NLM hosts in network namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 15:08:29 +0400
-Message-ID: <20120131110829.14364.32351.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
-References: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S932317Ab2AJBxT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 20:53:19 -0500
+Message-ID: <1326160381.13527.4.camel@lade.trondhjem.org>
+Subject: Re: [GIT PULL] Please pull NFS client bugfixes and cleanups
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Wolfgang Walter <wolfgang.walter@stwm.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Mon, 09 Jan 2012 20:53:01 -0500
+In-Reply-To: <201201100149.00716.wolfgang.walter@stwm.de>
+References: <1326142671.9041.1.camel@lade.trondhjem.org>
+	 <A4C37DBDA23D504B9F8F6ED1AD1F4F3245A40D11@SACMVEXC2-PRD.hq.netapp.com>
+	 <1326149428.10779.10.camel@lade.trondhjem.org>
+	 <201201100149.00716.wolfgang.walter@stwm.de>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lockd now managed in network namespace context. And this patch introduces
-network namespace related NLM hosts shutdown in case of releasing per-net Lockd
-resources.
+On Tue, 2012-01-10 at 01:49 +0100, Wolfgang Walter wrote: 
+> On Monday 09 January 2012, Trond Myklebust wrote:
+> > On Mon, 2012-01-09 at 14:28 -0800, Myklebust, Trond wrote: 
+> > > > -----Original Message-----
+> > > Please read the changelog and documentation:
+> > > 
+> > > If your server doesn’t support numeric uids/gids, then you will see _no_ 
+> > > change in behaviour.
+> 
+> Hmm, what does that mean exactly? Does a linux nfs4-server support numeric 
+> uids/gids? If yes, by default or do I need do set an option?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
----
- fs/lockd/host.c             |   26 +++++++++++++++++++-------
- fs/lockd/svc.c              |    4 +++-
- include/linux/lockd/lockd.h |    1 +
- 3 files changed, 23 insertions(+), 8 deletions(-)
+The patch requires no changes to a configuration that is already
+working. That's the whole point I've been trying to get across.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 9ebd91d..eb75ca7 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -565,12 +565,8 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	nsm_release(nsm);
- }
- 
--/*
-- * Shut down the hosts module.
-- * Note that this routine is called only at server shutdown time.
-- */
- void
--nlm_shutdown_hosts(void)
-+nlm_shutdown_hosts_net(struct net *net)
- {
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
-@@ -582,6 +578,8 @@ nlm_shutdown_hosts(void)
- 	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
- 	for_each_host(host, pos, chain, nlm_server_hosts) {
-+		if (net && host->net != net)
-+			continue;
- 		host->h_expires = jiffies - 1;
- 		if (host->h_rpcclnt) {
- 			rpc_shutdown_client(host->h_rpcclnt);
-@@ -592,15 +590,29 @@ nlm_shutdown_hosts(void)
- 	/* Then, perform a garbage collection pass */
- 	nlm_gc_hosts();
- 	mutex_unlock(&nlm_host_mutex);
-+}
-+
-+/*
-+ * Shut down the hosts module.
-+ * Note that this routine is called only at server shutdown time.
-+ */
-+void
-+nlm_shutdown_hosts(void)
-+{
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
-+
-+	nlm_shutdown_hosts_net(NULL);
- 
- 	/* complain if any hosts are left */
- 	if (nrhosts != 0) {
- 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
- 		dprintk("lockd: %lu hosts left:\n", nrhosts);
- 		for_each_host(host, pos, chain, nlm_server_hosts) {
--			dprintk("       %s (cnt %d use %d exp %ld)\n",
-+			dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
- 				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires);
-+				host->h_inuse, host->h_expires, host->net);
- 		}
- 	}
- }
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 86e17e8..b34100e 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -281,8 +281,10 @@ static void lockd_down_net(struct net *net)
- 	struct svc_serv *serv = nlmsvc_rqst->rq_server;
- 
- 	if (ln->nlmsvc_users) {
--		if (--ln->nlmsvc_users == 0)
-+		if (--ln->nlmsvc_users == 0) {
-+			nlm_shutdown_hosts_net(net);
- 			svc_shutdown_net(serv, net);
-+		}
- 	} else {
- 		printk(KERN_ERR "lockd_down_net: no users! task=%p, net=%p\n",
- 				nlmsvc_task, net);
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 94b3d13..f04ce6a 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -234,6 +234,7 @@ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
-+void		  nlm_shutdown_hosts_net(struct net *net);
- void		  nlm_host_rebooted(const struct nlm_reboot *);
- 
- /*
+> > > 
+> > > If your server does support numeric uids/gids, and has the same mapping 
+> between numeric uids/gids and username/groupname as your clients, then you 
+> will see _no_ change in behaviour.
+> > > 
+> > > If your server does support numeric uids/gids, but the mapping between 
+> > > numeric uids/gids and username/groupname differs between server and client 
+> > > (e.g.. uid=20 maps to different users on the client and server) then you 
+> > > already had a problem in that creating the file using NFSv4 would result 
+> > > in you seeing the wrong owner and/or group. If this case, and this case 
+> > > only, the change to nfs4_disable_idmapper will result in you now seeing 
+> > > the correct owner/group for these files (just as if you were using NFSv3).
+> 
+> The only thing I can say is that in the moment client and server are using 
+> rpc.idmapd and it works perfectly well.
+
+Then why are you complaining?
+
+"This patch does nothing for me is NOT a reason to stop others from
+benefiting from it"
+
+> > > 
+> > > IOW: the only people who will want to use the old setting are those with 
+> > > broken servers that return incorrect errors when confronted with a numeric 
+> > > uid/gid. We have found no evidence that any such servers exist during the 
+> > > last full year of testing.
+> > 
+> > Actually, let me amend that last statement.
+> > 
+> > The only broken server we found was the Linux server, which was
+> > returning NFS4ERR_BADNAME in a situation where the protocol specified
+> > that it should be returning NFS4ERR_BADOWNER. This is why we have the
+> > little comment "The following works around a Linux server bug!" in the
+> > client code.
+> > Commit f6af99ec1b261e21219d5eba99e3af48fc6c32d4 (nfsd4: name->id mapping
+> > should fail with BADOWNER not BADNAME) fixed that server bug exactly one
+> > year ago, and the fix was subsequently pushed to stable@kernel.org...
+> > 
+> > IOW: unless you find something earth-shattering when you enable the
+> > option in your existing clients (the option has existed since 2.6.39),
+> > I'd prefer to change the default as soon as possible in order to fix the
+> > existing brokenness for those people running NFSv4 without the benefit
+> > of an ldap/nis/yp server to ensure a homogeneous uid/gid name space...
+> 
+> I always thought that the idmapper with its translation were exactly for that 
+> case. If I have a homogenous uid/gid name space why would I want to use names 
+> and translate anyway?
+
+For RPCSEC_GSS authentication. That's the only case that the original
+RFC3530 cared about. The problems arise when people use AUTH_SYS, and
+this protocol change+patch is the solution.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
