@@ -1,81 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54666 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752307Ab2A3VHr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jan 2012 16:07:47 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
- allocation
-Date: Mon, 30 Jan 2012 21:07:37 +0000
-Message-ID: <1327957652.4090.32.camel@lade.trondhjem.org>
-References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-	 <4F2700E2.9020803@RedHat.com>
-In-Reply-To: <4F2700E2.9020803@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:40767 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752613Ab2AJL1V convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jan 2012 06:27:21 -0500
+Subject: Re: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
+Mime-Version: 1.0 (Apple Message framework v1084)
+Content-Type: text/plain; charset=us-ascii
+From: Andreas Dilger <adilger@whamcloud.com>
+In-Reply-To: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+Date: Tue, 10 Jan 2012 04:27:15 -0700
+Cc: linux-nfs@vger.kernel.org,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        ext4 development <linux-ext4@vger.kernel.org>,
+        linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
+        Fan Yong <yong.fan@whamcloud.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Eric Sandeen <sandeen@redhat.com>
+Message-Id: <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAxLTMwIGF0IDE1OjQzIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMDEvMjQvMjAxMiAxMjo0MCBQTSwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gVGhl
-IGRlYnVnb2JqZWN0cyBjb2RlIHdpbGwgc29tZXRpbWVzIHBvcCBhIHdhcm5pbmcgbGlrZSB0aGlz
-IHdoZW4gdGhlDQo+ID4gcXVldWVfdGltZW91dCBqb2IgaXMgcXVldWVkIHRvIGEgd29ya3F1ZXVl
-Og0KPiA+IA0KPiA+IFsgNTE1Ny4xMjg1MTRdIFdBUk5JTkc6IGF0IGxpYi9kZWJ1Z29iamVjdHMu
-YzoyNjIgZGVidWdfcHJpbnRfb2JqZWN0KzB4OGMvMHhiMCgpDQo+ID4gWyA1MTU3LjEyODc0Ml0g
-SGFyZHdhcmUgbmFtZTogQm9jaHMNCj4gPiBbIDUxNTcuMTI4NzQyXSBPREVCVUc6IGFjdGl2YXRl
-IG5vdCBhdmFpbGFibGUgKGFjdGl2ZSBzdGF0ZSAwKSBvYmplY3QgdHlwZTogdGltZXJfbGlzdCBo
-aW50OiBzdHViX3RpbWVyKzB4MC8weDIwDQo+ID4gWyA1MTU3LjEyODc0Ml0gTW9kdWxlcyBsaW5r
-ZWQgaW46IG5mc2QoTykgbmZzX2FjbCBhdXRoX3JwY2dzcyBsb2NrZCBzdW5ycGMgZmxvcHB5IHZp
-cnRpb19uZXQgaTJjX3BpaXg0IGkyY19jb3JlIHZpcnRpb19iYWxsb29uIGpveWRldiBwY3Nwa3Ig
-dmlydGlvX2JsayBbbGFzdCB1bmxvYWRlZDogbmZzZF0NCj4gPiBbIDUxNTcuMTI4NzQyXSBQaWQ6
-IDEzMTIsIGNvbW06IHJwYy5uZnNkIFRhaW50ZWQ6IEcgICAgICAgIFcgIE8gMy4zLjAtcmMxKyAj
-MQ0KPiA+IFsgNTE1Ny4xMjg3NDJdIENhbGwgVHJhY2U6DQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
-ZmZmZmZmZmY4MTA2MTM1Zj5dIHdhcm5fc2xvd3BhdGhfY29tbW9uKzB4N2YvMHhjMA0KPiA+IFsg
-NTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODEwNjE0NTY+XSB3YXJuX3Nsb3dwYXRoX2ZtdCsweDQ2
-LzB4NTANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMzJiYTJjPl0gZGVidWdfcHJp
-bnRfb2JqZWN0KzB4OGMvMHhiMA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODEwNzBk
-YjA+XSA/IHRpbWVyX2RlYnVnX2hpbnQrMHgxMC8weDEwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
-ZmZmZmZmZmY4MTMyYzAyYj5dIGRlYnVnX29iamVjdF9hY3RpdmF0ZSsweGZiLzB4MTkwDQo+ID4g
-WyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3MjcyOD5dID8gbG9ja190aW1lcl9iYXNlLmlz
-cmEuMjQrMHgzOC8weDcwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3NDY3Nj5d
-IG1vZF90aW1lcisweGY2LzB4NDUwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3
-NDllOD5dIGFkZF90aW1lcisweDE4LzB4MjANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZm
-ZjgxMDgxNjhlPl0gcXVldWVfZGVsYXllZF93b3JrX29uKzB4YmUvMHgxNDANCj4gPiBbIDUxNTcu
-MTI4NzQyXSAgWzxmZmZmZmZmZjgxMDg0NDQxPl0gcXVldWVfZGVsYXllZF93b3JrKzB4MjEvMHg0
-MA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmYTAwNmU1Njg+XSBycGNfcXVldWVfdXBj
-YWxsKzB4ZTgvMHgxMDAgW3N1bnJwY10NCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEw
-MTJhMTIxPl0gX19jbGRfcGlwZV91cGNhbGwrMHg2MS8weGMwIFtuZnNkXQ0KPiA+IFsgNTE1Ny4x
-Mjg3NDJdICBbPGZmZmZmZmZmYTAxMmFkOTg+XSBuZnNkNF9jbGRfaW5pdCsweDQ4LzB4MTQwIFtu
-ZnNkXQ0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmYTAxMmIyMmE+XSBuZnNkNF9jbGll
-bnRfdHJhY2tpbmdfaW5pdCsweDJhLzB4YzAgW25mc2RdDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
-ZmZmZmZmZmY4MTY5Nzk3ZT5dID8gbXV0ZXhfdW5sb2NrKzB4ZS8weDEwDQo+ID4gWyA1MTU3LjEy
-ODc0Ml0gIFs8ZmZmZmZmZmZhMDEyNjZmYT5dIG5mczRfc3RhdGVfc3RhcnQrMHgxYS8weDEwMCBb
-bmZzZF0NCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEwMTAyOGM1Pl0gbmZzZF9zdmMr
-MHgxMzUvMHgyMDAgW25mc2RdDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmZhMDEwM2Rm
-MD5dID8gd3JpdGVfbWF4Ymxrc2l6ZSsweDEzMC8weDEzMCBbbmZzZF0NCj4gPiBbIDUxNTcuMTI4
-NzQyXSAgWzxmZmZmZmZmZmEwMTAzZTZkPl0gd3JpdGVfdGhyZWFkcysweDdkLzB4ZDAgW25mc2Rd
-DQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTFkZDE2YT5dID8gc2ltcGxlX3RyYW5z
-YWN0aW9uX2dldCsweGNhLzB4ZTANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEwMTAy
-ZWU3Pl0gbmZzY3RsX3RyYW5zYWN0aW9uX3dyaXRlKzB4NTcvMHg5MCBbbmZzZF0NCj4gPiBbIDUx
-NTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMWI0YzlmPl0gdmZzX3dyaXRlKzB4YWYvMHgxOTANCj4g
-PiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMWI0ZmRkPl0gc3lzX3dyaXRlKzB4NGQvMHg5
-MA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODE2YTM0Njk+XSBzeXN0ZW1fY2FsbF9m
-YXN0cGF0aCsweDE2LzB4MWINCj4gPiANCj4gPiBUaGlzIG9jY3VycyB3aGVuIGFuIHJwY19pbm9k
-ZSBvYmplY3QgaXMgcmVjeWNsZWQuIFRoZSBzbGFiIGNvbnN0cnVjdG9yDQo+ID4gcm91dGluZSBk
-b2Vzbid0IG5lY2Vzc2FyaWx5IGdldCBjYWxsZWQgb24gaXQgYWdhaW4sIHNvIHRoZSBkZWJ1Z29i
-amVjdHMNCj4gPiBjb2RlIGlzbid0IGF3YXJlIHRoYXQgaXQncyBhbHJlYWR5IGluaXRpYWxpemVk
-Lg0KPiA+IA0KPiA+IFdvcmsgYXJvdW5kIHRoaXMgcHJvYmxlbSBieSBpbml0aWFsaXppbmcgdGhl
-IGRlbGF5ZWQgd29yayBldmVyeSB0aW1lDQo+ID4gYW4gaW5vZGUgaXMgYWxsb2NhdGVkIG91dCBv
-ZiB0aGUgc2xhYiwgbm90IGp1c3Qgd2hlbiBhIG5ldyBzbGFiIGlzLg0KPiA+IA0KPiA+IENjOiBC
-b2F6IEhhcnJvc2ggPGJoYXJyb3NoQHBhbmFzYXMuY29tPg0KPiA+IFNpZ25lZC1vZmYtYnk6IEpl
-ZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+DQo+IEkgd2FzIHNlZWluZyB0aGlzIHdhcm5p
-bmcgYXMgd2VsbCBhbmQgdGhpcyBwYXRjaCBkaWQgcmVtb3ZlIHRoYXQgd2FybmluZy4uLg0KPiAN
-Cj4gVGVzdGVkLWJ5OiBTdGV2ZSBEaWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCg0KT0ssIGJ1
-dCB3aHkgYXJlIHdlIHNlZWluZyB0aGUgd2FybmluZyBpbiB0aGUgZmlyc3QgcGxhY2U/IFdoeSBp
-cyBhIHRpbWVyDQp0aGF0IHdhcyBpbml0aWFsaXNlZCBzdWRkZW5seSBmaW5kaW5nIGl0c2VsZiBp
-biBhIG5vbi1pbml0aWFsaXNlZCBzdGF0ZT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 2012-01-09, at 6:21 AM, Bernd Schubert wrote:
+> With the ext3/ext4 directory index implementation hashes are used to specify
+> offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
+> on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
+> hashes and therefore the probability of hash collisions for larger directories
+> is rather high. As recently reported on the NFS mailing list that theoretical
+> problem also happens on real systems:
+> http://comments.gmane.org/gmane.linux.nfs/40863
+> 
+> The following series adds two new f_mode flags to tell ext4
+> to use 32-bit or 64-bit hash values for llseek() calls.
+> These flags can then used by network file systems, such as NFS, to
+> request 32-bit or 64-bit offsets (hashes).
+
+Ted, it would be great if these patches could land.  We hit issues like
+this previously as well, which is why we started this patch series in the
+first place.
+
+> Version 5
+> - update NFSD_MAY_64BIT_COOKIE to 0x1000
+> 
+> Version 4
+> - Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
+>  CONFIG_COMPAT in the 
+>  "Return 32/64-bit dir name hash according to usage type"
+>  patch
+> 
+> Version 3:
+> - remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
+>  as it was included upstream separately
+> - split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
+>  two separate patches as suggested by Bruce, one patch to rename 
+>  'access' to 'may_flags'. And the remainder of the original patch to set 
+>  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
+>  NFSD_MAY_64BIT_COOKIE flag
+> 
+> Version 2:
+> - use f_mode instead of O_* flags and also in a separate patch
+> - introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
+> - fix SEEK_END in ext4_dir_llseek()
+> - set f_mode flags in NFS code as early as possible and introduce a new
+>  NFSD_MAY_64BIT_COOKIE flag for that
+> 
+> --
+> Bernd Schubert
+> Fraunhofer ITWM
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+Cheers, Andreas
+--
+Andreas Dilger                       Whamcloud, Inc.
+Principal Engineer                   http://www.whamcloud.com/
+
+
+
+
