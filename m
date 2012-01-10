@@ -1,70 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:47453 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234Ab2AOQR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:28 -0500
-Received: by eaae11 with SMTP id e11so75323eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:27 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v6 0/9] handle curruent stateid
-Date: Sun, 15 Jan 2012 17:20:01 +0100
-Message-Id: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mailhub.sw.ru ([195.214.232.25]:27702 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932125Ab2AJMN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Jan 2012 07:13:27 -0500
+Subject: [PATCH v2 5/6] NFS: handle NFS idmap pipe PipeFS dentries by network
+ namespace aware routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 10 Jan 2012 16:13:11 +0400
+Message-ID: <20120110121311.7307.73576.stgit@localhost6.localdomain6>
+In-Reply-To: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
+References: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+This patch makes NFS idmap pipes dentries allocated and destroyed in network
+namespace context by PipeFS network namespace aware routines.
+Network namespace context is obtained from nfs_client structure.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
+---
+ fs/nfs/idmap.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 53 insertions(+), 8 deletions(-)
 
-Implemented for:
-
-  OPEN
-  OPENDOWNGRADE 
-  CLOSE
-  LOCK
-  LOCKU
-  DELEGRETURN
-  FREE_STATEID
-  SETATTR
-  READ
-  WRITE
-  SAVEFH
-  RESTOREFH
-  PUTFH
-  PUTROOTFH
-  PUTPUBFH
-  LOOKUP
-  CREATE 
-
-PNFS released patches will be submitted as soon as patches will be merged with Benny's tree.
-
-I will clean-up and submit corresponding pynfs test later today or tomorrow.
-
-Comments and suggestions are welcome
-
-Tigran.
-
-Tigran Mkrtchyan (9):
-  nfsd4: initialize current stateid at compile time
-  nfsd41: handle current stateid in open and close
-  nfsd41: handle current stateid on lock and locku
-  nfsd41: consume current stateid on read and write
-  nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-  nfsd41: save and restore current stateid with current fh
-  nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-  nfsd41: handle current stateid in SETATTR and FREE_STATEID
-  nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
-
- fs/nfsd/current_stateid.h |   27 ++++++++++++
- fs/nfsd/nfs4proc.c        |   55 ++++++++++++++++++++-----
- fs/nfsd/nfs4state.c       |   99 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/xdr4.h            |    2 +
- 4 files changed, 172 insertions(+), 11 deletions(-)
- create mode 100644 fs/nfsd/current_stateid.h
-
--- 
-1.7.7.5
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 9c701b5..2bab772 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -348,6 +348,56 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
+ 	.destroy_msg	= idmap_pipe_destroy_msg,
+ };
+ 
++static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
++{
++	if (pipe->dentry)
++		rpc_unlink(pipe->dentry);
++}
++
++static int __nfs_idmap_register(struct dentry *dir,
++				     struct idmap *idmap,
++				     struct rpc_pipe *pipe)
++{
++	struct dentry *dentry;
++
++	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
++	if (IS_ERR(dentry))
++		return PTR_ERR(dentry);
++	pipe->dentry = dentry;
++	return 0;
++}
++
++static void nfs_idmap_unregister(struct nfs_client *clp,
++				      struct rpc_pipe *pipe)
++{
++	struct net *net = clp->net;
++	struct super_block *pipefs_sb;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (pipefs_sb) {
++		__nfs_idmap_unregister(pipe);
++		rpc_put_sb_net(net);
++	}
++}
++
++static int nfs_idmap_register(struct nfs_client *clp,
++				   struct idmap *idmap,
++				   struct rpc_pipe *pipe)
++{
++	struct net *net = clp->net;
++	struct super_block *pipefs_sb;
++	int err = 0;
++
++	pipefs_sb = rpc_get_sb_net(net);
++	if (pipefs_sb) {
++		if (clp->cl_rpcclient->cl_dentry)
++			err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
++						   idmap, pipe);
++		rpc_put_sb_net(net);
++	}
++	return err;
++}
++
+ int
+ nfs_idmap_new(struct nfs_client *clp)
+ {
+@@ -367,12 +417,8 @@ nfs_idmap_new(struct nfs_client *clp)
+ 		kfree(idmap);
+ 		return error;
+ 	}
+-
+-	if (clp->cl_rpcclient->cl_dentry)
+-		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_dentry,
+-				"idmap", idmap, pipe);
+-	if (IS_ERR(pipe->dentry)) {
+-		error = PTR_ERR(pipe->dentry);
++	error = nfs_idmap_register(clp, idmap, pipe);
++	if (error) {
+ 		rpc_destroy_pipe_data(pipe);
+ 		kfree(idmap);
+ 		return error;
+@@ -395,8 +441,7 @@ nfs_idmap_delete(struct nfs_client *clp)
+ 
+ 	if (!idmap)
+ 		return;
+-	if (idmap->idmap_pipe->dentry)
+-		rpc_unlink(idmap->idmap_pipe->dentry);
++	nfs_idmap_unregister(clp, idmap->idmap_pipe);
+ 	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	clp->cl_idmap = NULL;
+ 	kfree(idmap);
 
