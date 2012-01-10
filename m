@@ -1,129 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp5-g21.free.fr ([212.27.42.5]:48503 "EHLO smtp5-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753397Ab2ADUIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jan 2012 15:08:50 -0500
-From: Jim Meyering <jim@meyering.net>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] mountd: Support junction management plug-ins
-In-Reply-To: <20120104195716.21904.62916.stgit@degas.1015granger.net> (Chuck
-	Lever's message of "Wed, 04 Jan 2012 14:57:16 -0500")
-References: <20120104194136.21904.36616.stgit@degas.1015granger.net>
-	<20120104195716.21904.62916.stgit@degas.1015granger.net>
-Date: Wed, 04 Jan 2012 21:08:41 +0100
-Message-ID: <87ipkrcjsm.fsf@rho.meyering.net>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:38402 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752110Ab2AJOcE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 09:32:04 -0500
+Received: by ggdk6 with SMTP id k6so229514ggd.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 06:32:03 -0800 (PST)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
+        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH RESEND 1/9] pnfsblock: cleanup bl_mark_sectors_init
+Date: Tue, 10 Jan 2012 22:30:27 +0800
+Message-Id: <1326205835-2011-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
+References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> To support FedFS and NFS junctions without introducing additional
-> build-time or run-time dependencies on nfs-utils, the community has
-> chosen to use a dynamically loadable library to handle junction
-> resolution.
-...
+It does not need to manipulate on partial initialized blocks.
+Writeback code takes care of it.
 
-Hi Chuck,
+Signed-off-by: Peng Tao <peng_tao@emc.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    6 +--
+ fs/nfs/blocklayout/blocklayout.h |    3 +-
+ fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
+ 3 files changed, 8 insertions(+), 77 deletions(-)
 
-You may just be following existing practice in nfs-utils (there
-are numerous other examples of this off-by-one error[1]), but the
-post-snprintf length check must fail when the returned length is
-equal to the specified buffer length.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 281ae95..4ced0b0 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -571,8 +571,7 @@ fill_invalid_ext:
+ 			unlock_page(page);
+ 
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+@@ -621,8 +620,7 @@ next_page:
+ 		}
+ 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+-						       PAGE_CACHE_SECTORS,
+-						       NULL);
++						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+ 				dprintk("%s bl_mark_sectors_init fail %d\n",
+ 					__func__, ret);
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 42acf7e..60728ac 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -186,8 +186,7 @@ struct pnfs_block_extent *
+ bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent **cow_read);
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages);
++			     sector_t offset, sector_t length);
+ void bl_put_extent(struct pnfs_block_extent *be);
+ struct pnfs_block_extent *bl_alloc_extent(void);
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 19fa7b0..0fc1321 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
+ 	return status;
+ }
+ 
+-static void set_needs_init(sector_t *array, sector_t offset)
+-{
+-	sector_t *p = array;
+-
+-	dprintk("%s enter\n", __func__);
+-	if (!p)
+-		return;
+-	while (*p < offset)
+-		p++;
+-	if (*p == offset)
+-		return;
+-	else if (*p == ~0) {
+-		*p++ = offset;
+-		*p = ~0;
+-		return;
+-	} else {
+-		sector_t *save = p;
+-		dprintk("%s Adding %llu\n", __func__, (u64)offset);
+-		while (*p != ~0)
+-			p++;
+-		p++;
+-		memmove(save + 1, save, (char *)p - (char *)save);
+-		*save = offset;
+-		return;
+-	}
+-}
+-
+ /* We are relying on page lock to serialize this */
+ int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
+ {
+@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
+ 
+ /* Marks sectors in [offest, offset_length) as having been initialized.
+  * All lengths are step-aligned, where step is min(pagesize, blocksize).
+- * Notes where partial block is initialized, and helps prepare it for
+- * complete initialization later.
++ * Currently assumes offset is page-aligned
+  */
+-/* Currently assumes offset is page-aligned */
+ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+-			     sector_t offset, sector_t length,
+-			     sector_t **pages)
++			     sector_t offset, sector_t length)
+ {
+-	sector_t s, start, end;
+-	sector_t *array = NULL; /* Pages to mark */
++	sector_t start, end;
+ 
+ 	dprintk("%s(offset=%llu,len=%llu) enter\n",
+ 		__func__, (u64)offset, (u64)length);
+-	s = max((sector_t) 3,
+-		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
+-	dprintk("%s set max=%llu\n", __func__, (u64)s);
+-	if (pages) {
+-		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
+-		if (!array)
+-			goto outerr;
+-		array[0] = ~0;
+-	}
+ 
+ 	start = normalize(offset, marks->im_block_size);
+ 	end = normalize_up(offset + length, marks->im_block_size);
+@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
+ 		goto outerr;
+ 
+ 	spin_lock(&marks->im_lock);
+-
+-	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
+-	     s < offset; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s pre-area pages\n", __func__);
+-		/* Portion of used block is not initialized */
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+ 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
+ 		goto out_unlock;
+-	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
+-	     s < end; s += PAGE_CACHE_SECTORS) {
+-		dprintk("%s post-area pages\n", __func__);
+-		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
+-			set_needs_init(array, s);
+-	}
+-
+ 	spin_unlock(&marks->im_lock);
+ 
+-	if (pages) {
+-		if (array[0] == ~0) {
+-			kfree(array);
+-			*pages = NULL;
+-		} else
+-			*pages = array;
+-	}
+ 	return 0;
+ 
+- out_unlock:
++out_unlock:
+ 	spin_unlock(&marks->im_lock);
+- outerr:
+-	if (pages) {
+-		kfree(array);
+-		*pages = NULL;
+-	}
++outerr:
+ 	return -ENOMEM;
+ }
+ 
+-- 
+1.7.1.262.g5ef3d
 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index d2ae456..d4f04ab 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -802,6 +802,229 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
->  	return found;
->  }
->
-> +#ifdef HAVE_NFS_PLUGIN_H
-> +#include <dlfcn.h>
-> +#include <nfs-plugin.h>
-> +
-> +/*
-> + * Walk through a set of FS locations and build a set of export options.
-> + * Returns true if all went to plan; otherwise, false.
-> + */
-> +static _Bool
-> +locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
-> +		char *options, size_t remaining, int *ttl)
-> +{
-> +	char *server, *last_path, *rootpath, *ptr;
-> +	_Bool seen = false;
-> +
-> +	last_path = NULL;
-> +	rootpath = NULL;
-> +	server = NULL;
-> +	ptr = options;
-> +	*ttl = 0;
-> +
-> +	for (;;) {
-> +		enum jp_status status;
-> +		int len;
-> +
-> +		status = ops->jp_get_next_location(locations, &server,
-> +							&rootpath, ttl);
-> +		if (status == JP_EMPTY)
-> +			break;
-> +		if (status != JP_OK) {
-> +			xlog(D_GENERAL, "%s: failed to parse location: %s",
-> +				__func__, ops->jp_error(status));
-> +			goto out_false;
-> +		}
-> +		xlog(D_GENERAL, "%s: Location: %s:%s",
-> +			__func__, server, rootpath);
-> +
-> +		if (last_path && strcmp(rootpath, last_path) == 0) {
-> +			len = snprintf(ptr, remaining, "+%s", server);
-> +			if (len < 0) {
-> +				xlog(D_GENERAL, "%s: snprintf: %m", __func__);
-> +				goto out_false;
-> +			}
-> +			if ((size_t)len > remaining) {
-
-s/>/>=/
-
-snprintf returning the specified size indicates that the
-result+NUL did not fit in the specified buffer.
-
-> +				xlog(D_GENERAL, "%s: options buffer overflow", __func__);
-> +				goto out_false;
-> +			}
-> +			remaining -= (size_t)len;
-> +			ptr += len;
-> +		} else {
-> +			if (last_path == NULL)
-> +				len = snprintf(ptr, remaining, "refer=%s@%s",
-> +							rootpath, server);
-> +			else
-> +				len = snprintf(ptr, remaining, ":%s@%s",
-> +							rootpath, server);
-> +			if (len < 0) {
-> +				xlog(D_GENERAL, "%s: snprintf: %m", __func__);
-> +				goto out_false;
-> +			}
-> +			if ((size_t)len > remaining) {
-
-Same here.
-
-> +				xlog(D_GENERAL, "%s: options buffer overflow",
-> +					__func__);
-> +				goto out_false;
-> +			}
-> +			remaining -= (size_t)len;
-> +			ptr += len;
-> +			last_path = rootpath;
-> +		}
-
-[1] Here are other examples of that error:
-
-  $ git grep -A13 snprintf|grep ' > '
-  support/nfs/cacheio.c-  if (len > *lp)
-  support/nfs/cacheio.c-  if (len > *lp)
-  support/nfs/getport.c-  if (len < 0 || (size_t)len > count)
-  utils/exportfs/exportfs.c-              if (fname_len > PATH_MAX) {
-  utils/gssd/gssd_proc.c- if (nbytes > INFOBUFLEN)
