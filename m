@@ -1,128 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:41346 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752176Ab2AKTdr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 14:33:47 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "neilb\@suse.de" <neilb@suse.de>,
-        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "davem\@davemloft.net" <davem@davemloft.net>,
-        "devel\@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
-	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
-	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
-	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>
-	<m1vcotigyb.fsf@fess.ebiederm.org> <4F0C150F.1020007@parallels.com>
-	<m1ehv76v2v.fsf@fess.ebiederm.org> <4F0D5A9E.5030501@parallels.com>
-	<m1sjjm40k8.fsf@fess.ebiederm.org> <4F0DCEA8.7040205@parallels.com>
-Date: Wed, 11 Jan 2012 11:36:04 -0800
-In-Reply-To: <4F0DCEA8.7040205@parallels.com> (Stanislav Kinsbursky's message
-	of "Wed, 11 Jan 2012 22:02:16 +0400")
-Message-ID: <m18vle2frv.fsf@fess.ebiederm.org>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:40252 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932114Ab2AJQgQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 11:36:16 -0500
+Received: by wibhm6 with SMTP id hm6so3541212wib.19
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 08:36:15 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20120110161406.GA8994@umich.edu>
+References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com> <20120110161406.GA8994@umich.edu>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Wed, 11 Jan 2012 00:35:51 +0800
+Message-ID: <CA+a=Yy4uaQmR7Zyi3HO5=tF2XbBsKaSgG90_SN2GUWAnTsZVUQ@mail.gmail.com>
+Subject: Re: [PATCH RESEND 0/9] pnfsblock patches for 3.3 post-rc1
+To: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linuxnfs <linux-nfs@vger.kernel.org>, mdw@umich.edu, honey@citi.umich.edu
+Content-Type: multipart/mixed; boundary=bcaec53d550d231f6a04b62f1d2a
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
+--bcaec53d550d231f6a04b62f1d2a
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-> 11.01.2012 21:21, Eric W. Biederman пишет:
->>>>>> Especially what drives that desire not to have it have a /proc/<pid>/sys
->>>>>> directory that reflects the sysctls for a given process.
->>>>>>
->>>>>
->>>>> This is not so important for me, where to access sysctl's. But I'm worrying
->>>>> about backward compatibility. IOW, I'm afraid of changing path
->>>>> "/proc/sys/sunprc/*" to "/proc/<pid>/sys/sunrpc". This would break a lot of
->>>>> user-space programs.
->>>>
->>>> The part that keeps it all working is by adding a symlink from /proc/sys
->>>> to /proc/self/sys.  That technique has worked well for /proc/net, and I
->>>> don't expect there will be any problems with /proc/sys either.  It is
->>>> possible but is very rare for the introduction of a symlink in a path
->>>> to cause problems.
->>>>
->>>
->>> Probably I don't understand you, but as I see it now, symlink to "/proc/self/"
->>> is unacceptable because of the following:
->>> 1) will be used current context (any) instead of desired one
->> (Using the current context is the desirable outcome for existing tools).
->>> 1) if CT has other pid namespace - then we just have broken link.
->>
->> Assuming the process in question is not in the pid namespace available
->> to proc then yes you will indeed have a broken link.  But a broken
->> link is only a problem for new applications that are doing something strange.
->>
+On Wed, Jan 11, 2012 at 12:14 AM, Jim Rees <rees@umich.edu> wrote:
+> Peng Tao wrote:
 >
-> I believe, that container is assuming to work in  it's own network and pid
-> namespaces.
-> With your approach, if I'm not mistaken, container's /proc/net and /proc/sys
-> tunables will be unaccessible from parent environment. Or I'm wrong here?
-
-Wrong.
-
->> I am proposing treating /proc/sys like /proc/net has already been
->> treated.  Aka move have the version of /proc/sys that relative to a
->> process be visible at: /proc/<pid>/sys, and with a compat symlink
->> from /proc/sys ->  /proc/self/sys.
->>
->> Just like has already been done with /proc/net.
->>
+> =C2=A0These are pnfsblock patches rebased on top of nfs-for-3.3. All patc=
+hes
+> =C2=A0were sent to list before and merged by Benny.
 >
-> 1) On one hand it looks logical, that any nested dentries in /proc are tied to
-> pid namespace. But on the other hand we have a lot of tunables in /proc/net,
-> /proc/sys, etc. which have nothing with processes or whatever similar.
+> Once again, 8/9 and 9/9 failed to make it to the list. =C2=A0Are these av=
+ailable
+> via git?
+sigh... vger seems always eating them... Thank you for pointing it out!
 
-Please stop and take a look at /proc/net.  If your /proc/net is not a
-symlink please look at a modern kernel.
+Trond, please find 8/9 and 9/9 in attachments. 2/9 was lost before so
+I also attached it here just in case. All patches are also available
+at
+git://github.com/bergwolf/linux.git for-trond-3.3
+which is based on top of nfs-for-3.3
 
-/proc/<pid>/net reflects the network namespace of the task in question.
+--=20
+Thanks,
+Tao
 
-> 2) currently /proc processes directories (i.e. /proc/1/, etc) depends on mount
-> maker context. But /proc/sys and /proc/net doesn't. This looks weird and
-> despondently, from my pow. What do you think about it?
+--bcaec53d550d231f6a04b62f1d2a
+Content-Type: application/octet-stream;
+	name="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
+Content-Disposition: attachment;
+	filename="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gx950m2o0
 
-Yep.  Sysfs is weird.  Ideally sysfs would display all devices all of
-the time but unfortunately that breaks backwards compatibility.
+RnJvbSA4ODNkNTk5ODE5YmFlOWUzOGIxZGMyMjY5MzYyYmFhNDQ4OWUyNzVhIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBX
+ZWQsIDIgTm92IDIwMTEgMDE6MTE6MTQgLTA0MDAKU3ViamVjdDogW1BBVENIIFJFU0VORCAyLzld
+IHBuZnNibG9jazogYWNxdWlyZSBpbV9sb2NrIGluIF9wcmVsb2FkX3JhbmdlCgpXaGVuIGNhbGxp
+bmcgX2FkZF9lbnRyeSwgd2Ugc2hvdWxkIHRha2UgdGhlIGltX2xvY2sgdG8gcHJvdGVjdAphZ2Fp
+bnMgb3RoZXIgbW9kaWZpZXJzLgoKQ2M6IDxzdGFibGVAa2VybmVsLm9yZz4gIzMuMSsKU2lnbmVk
+LW9mZi1ieTogUGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+ClNpZ25lZC1vZmYtYnk6IEJlbm55
+IEhhbGV2eSA8YmhhbGV2eUB0b25pYW4uY29tPgotLS0KIGZzL25mcy9ibG9ja2xheW91dC9leHRl
+bnRzLmMgfCAgIDExICsrKysrKy0tLS0tCiAxIGZpbGVzIGNoYW5nZWQsIDYgaW5zZXJ0aW9ucygr
+KSwgNSBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50
+cy5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYwppbmRleCAwZmMxMzIxLi5mMzgzNTI0
+IDEwMDY0NAotLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jCisrKyBiL2ZzL25mcy9i
+bG9ja2xheW91dC9leHRlbnRzLmMKQEAgLTEzOSwxMSArMTM5LDEzIEBAIHN0YXRpYyBpbnQgX3Nl
+dF9yYW5nZShzdHJ1Y3QgbXlfdHJlZSAqdHJlZSwgaW50MzJfdCB0YWcsIHU2NCBzLCB1NjQgbGVu
+Z3RoKQogfQogCiAvKiBFbnN1cmUgdGhhdCBmdXR1cmUgb3BlcmF0aW9ucyBvbiBnaXZlbiByYW5n
+ZSBvZiB0cmVlIHdpbGwgbm90IG1hbGxvYyAqLwotc3RhdGljIGludCBfcHJlbG9hZF9yYW5nZShz
+dHJ1Y3QgbXlfdHJlZSAqdHJlZSwgdTY0IG9mZnNldCwgdTY0IGxlbmd0aCkKK3N0YXRpYyBpbnQg
+X3ByZWxvYWRfcmFuZ2Uoc3RydWN0IHBuZnNfaW52YWxfbWFya2luZ3MgKm1hcmtzLAorCQl1NjQg
+b2Zmc2V0LCB1NjQgbGVuZ3RoKQogewogCXU2NCBzdGFydCwgZW5kLCBzOwogCWludCBjb3VudCwg
+aSwgdXNlZCA9IDAsIHN0YXR1cyA9IC1FTk9NRU07CiAJc3RydWN0IHBuZnNfaW52YWxfdHJhY2tp
+bmcgKipzdG9yYWdlOworCXN0cnVjdCBteV90cmVlICAqdHJlZSA9ICZtYXJrcy0+aW1fdHJlZTsK
+IAogCWRwcmludGsoIiVzKCVsbHUsICVsbHUpIGVudGVyXG4iLCBfX2Z1bmNfXywgb2Zmc2V0LCBs
+ZW5ndGgpOwogCXN0YXJ0ID0gbm9ybWFsaXplKG9mZnNldCwgdHJlZS0+bXR0X3N0ZXBfc2l6ZSk7
+CkBAIC0xNjEsMTIgKzE2MywxMSBAQCBzdGF0aWMgaW50IF9wcmVsb2FkX3JhbmdlKHN0cnVjdCBt
+eV90cmVlICp0cmVlLCB1NjQgb2Zmc2V0LCB1NjQgbGVuZ3RoKQogCQkJZ290byBvdXRfY2xlYW51
+cDsKIAl9CiAKLQkvKiBOb3cgbmVlZCBsb2NrIC0gSE9XPz8/ICovCi0KKwlzcGluX2xvY2soJm1h
+cmtzLT5pbV9sb2NrKTsKIAlmb3IgKHMgPSBzdGFydDsgcyA8IGVuZDsgcyArPSB0cmVlLT5tdHRf
+c3RlcF9zaXplKQogCQl1c2VkICs9IF9hZGRfZW50cnkodHJlZSwgcywgSU5URVJOQUxfRVhJU1RT
+LCBzdG9yYWdlW3VzZWRdKTsKKwlzcGluX3VubG9jaygmbWFya3MtPmltX2xvY2spOwogCi0JLyog
+VW5sb2NrIC0gSE9XPz8/ICovCiAJc3RhdHVzID0gMDsKIAogIG91dF9jbGVhbnVwOgpAQCAtMjQ2
+LDcgKzI0Nyw3IEBAIGludCBibF9tYXJrX3NlY3RvcnNfaW5pdChzdHJ1Y3QgcG5mc19pbnZhbF9t
+YXJraW5ncyAqbWFya3MsCiAKIAlzdGFydCA9IG5vcm1hbGl6ZShvZmZzZXQsIG1hcmtzLT5pbV9i
+bG9ja19zaXplKTsKIAllbmQgPSBub3JtYWxpemVfdXAob2Zmc2V0ICsgbGVuZ3RoLCBtYXJrcy0+
+aW1fYmxvY2tfc2l6ZSk7Ci0JaWYgKF9wcmVsb2FkX3JhbmdlKCZtYXJrcy0+aW1fdHJlZSwgc3Rh
+cnQsIGVuZCAtIHN0YXJ0KSkKKwlpZiAoX3ByZWxvYWRfcmFuZ2UobWFya3MsIHN0YXJ0LCBlbmQg
+LSBzdGFydCkpCiAJCWdvdG8gb3V0ZXJyOwogCiAJc3Bpbl9sb2NrKCZtYXJrcy0+aW1fbG9jayk7
+Ci0tIAoxLjcuMS4yNjIuZzVlZjNkCgo=
+--bcaec53d550d231f6a04b62f1d2a
+Content-Type: application/octet-stream;
+	name="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
+Content-Disposition: attachment;
+	filename="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gx950m2s1
 
-In proc we have the opportunity to display nearly everything all of the
-time and I think that opportunity is worth seizing.
+RnJvbSBiYzIwNTQ4YTZkMTM3M2M3MjAwNWNhMWQzM2QzNzdlMDE4NjBmNzdiIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBU
+aHUsIDEwIE5vdiAyMDExIDAyOjQ1OjQ0IC0wNTAwClN1YmplY3Q6IFtQQVRDSCBSRVNFTkQgOC85
+XSBwbmZzYmxvY2s6IGRvbid0IHNwaW5sb2NrIHdoZW4gZnJlZWluZyBibG9ja19kZXYKCmJsX2Zy
+ZWVfYmxvY2tfZGV2KCkgbWF5IHNsZWVwLiBXZSBjYW4gbm90IGNhbGwgaXQgd2l0aCBzcGlubG9j
+ayBoZWxkLgpCZXNpZGVzLCB0aGVyZSBpcyBubyBuZWVkIHRvIHRha2UgYm1fbG9jayBhcyB3ZSBh
+cmUgbGFzdCB1c2VyIGZyZWVpbmcgYm1fZGV2bGlzdC4KCkNjOiA8c3RhYmxlQGtlcm5lbC5vcmc+
+ICMzLjErClNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQt
+b2ZmLWJ5OiBCZW5ueSBIYWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxv
+Y2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAgMTEgKysrKy0tLS0tLS0KIDEgZmlsZXMgY2hhbmdl
+ZCwgNCBpbnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL25mcy9i
+bG9ja2xheW91dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0
+LmMKaW5kZXggMWRkMjk4My4uYzljNzRiZiAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0
+L2Jsb2NrbGF5b3V0LmMKKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKQEAg
+LTgzNywxNiArODM3LDEzIEBAIGJsX2NsZWFudXBfbGF5b3V0Y29tbWl0KHN0cnVjdCBuZnM0X2xh
+eW91dGNvbW1pdF9kYXRhICpsY2RhdGEpCiBzdGF0aWMgdm9pZCBmcmVlX2Jsa19tb3VudGlkKHN0
+cnVjdCBibG9ja19tb3VudF9pZCAqbWlkKQogewogCWlmIChtaWQpIHsKLQkJc3RydWN0IHBuZnNf
+YmxvY2tfZGV2ICpkZXY7Ci0JCXNwaW5fbG9jaygmbWlkLT5ibV9sb2NrKTsKLQkJd2hpbGUgKCFs
+aXN0X2VtcHR5KCZtaWQtPmJtX2Rldmxpc3QpKSB7Ci0JCQlkZXYgPSBsaXN0X2ZpcnN0X2VudHJ5
+KCZtaWQtPmJtX2Rldmxpc3QsCi0JCQkJCSAgICAgICBzdHJ1Y3QgcG5mc19ibG9ja19kZXYsCi0J
+CQkJCSAgICAgICBibV9ub2RlKTsKKwkJc3RydWN0IHBuZnNfYmxvY2tfZGV2ICpkZXYsICp0bXA7
+CisKKwkJLyogTm8gbmVlZCB0byB0YWtlIGJtX2xvY2sgYXMgd2UgYXJlIGxhc3QgdXNlciBmcmVl
+aW5nIGJtX2Rldmxpc3QgKi8KKwkJbGlzdF9mb3JfZWFjaF9lbnRyeV9zYWZlKGRldiwgdG1wLCAm
+bWlkLT5ibV9kZXZsaXN0LCBibV9ub2RlKSB7CiAJCQlsaXN0X2RlbCgmZGV2LT5ibV9ub2RlKTsK
+IAkJCWJsX2ZyZWVfYmxvY2tfZGV2KGRldik7CiAJCX0KLQkJc3Bpbl91bmxvY2soJm1pZC0+Ym1f
+bG9jayk7CiAJCWtmcmVlKG1pZCk7CiAJfQogfQotLSAKMS43LjEuMjYyLmc1ZWYzZAoK
+--bcaec53d550d231f6a04b62f1d2a
+Content-Type: application/octet-stream;
+	name="0009-pnfsblock-limit-bio-page-count.patch"
+Content-Disposition: attachment;
+	filename="0009-pnfsblock-limit-bio-page-count.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gx950m2t2
 
-Having to mount a filesystem simply because the designers of the
-filesystem were not creative enough to figure out how to display
-all of the information the filesystem is responsible for displaying
-without having namespace conflicts is unfortunate.
-
-> And what do you think about "conteinerization" of /proc contents in the way like
-> "sysfs" was done?
-
-I think the way sysfs is done is a pain in the neck to use.  Especially
-in the context of commands like "ip netns exec".  With the sysfs model
-there is a lot of extra state to manage.
-
-I totally agree that the way sysfs is done is much better than the way
-/proc/sys is done today.  Looking at current can be limiting in the
-general case.
-
-My current preference is the way /proc/net was done.
-
-> Implementing /proc "conteinerization" in this way can give us great flexibility.
-> For example, /proc/net (and /proc/sys/sunrpc) depends on mount owner net
-> namespace, /proc/sysvipc depends on mount owner ipc namespace, etc.
-> And this approach doesn't break backward compatibility as well.
-
-The thing is /proc/net is already done.
-
-All I see with making things like /proc/net depend on the context of the
-process that called mount is a need to call mount much more often.
-
-Eric
+RnJvbSAwYjNhY2JhMzEwYWEwY2I2MGU0OWMzZTAwYzZlOTg0MDQ0OTcxYjgyIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBT
+YXQsIDE5IE5vdiAyMDExIDA0OjE2OjUyIC0wNTAwClN1YmplY3Q6IFtQQVRDSCBSRVNFTkQgOS85
+XSBwbmZzYmxvY2s6IGxpbWl0IGJpbyBwYWdlIGNvdW50CgpPbmUgYmlvIGNhbiBoYXZlIGF0IG1v
+c3QgQklPX01BWF9QQUdFUyBwYWdlcy4gV2Ugc2hvdWxkIGxpbWl0IGl0IGJlYyBvdGhlcndpc2UK
+YmlvX2FsbG9jIHdpbGwgZmFpbCB3aGVuIHRoZXJlIGFyZSBtYW55IHBhZ2VzIGluIG9uZSByZWFk
+L3dyaXRlX3BhZ2VsaXN0LgoKQ2M6IDxzdGFibGVAa2VybmVsLm9yZz4gIzMuMSsKU2lnbmVkLW9m
+Zi1ieTogUGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+ClNpZ25lZC1vZmYtYnk6IEJlbm55IEhh
+bGV2eSA8YmhhbGV2eUB0b25pYW4uY29tPgotLS0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
+eW91dC5jIHwgICAxNyArKysrKysrKysrKy0tLS0tLQogMSBmaWxlcyBjaGFuZ2VkLCAxMSBpbnNl
+cnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91
+dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKaW5kZXgg
+YzljNzRiZi4uNDhjZmFjMyAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
+b3V0LmMKKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKQEAgLTE0NywxNCAr
+MTQ3LDE5IEBAIHN0YXRpYyBzdHJ1Y3QgYmlvICpibF9hbGxvY19pbml0X2JpbyhpbnQgbnBnLCBz
+ZWN0b3JfdCBpc2VjdCwKIHsKIAlzdHJ1Y3QgYmlvICpiaW87CiAKKwlucGcgPSBtaW4obnBnLCBC
+SU9fTUFYX1BBR0VTKTsKIAliaW8gPSBiaW9fYWxsb2MoR0ZQX05PSU8sIG5wZyk7Ci0JaWYgKCFi
+aW8pCi0JCXJldHVybiBOVUxMOworCWlmICghYmlvICYmIChjdXJyZW50LT5mbGFncyAmIFBGX01F
+TUFMTE9DKSkgeworCQl3aGlsZSAoIWJpbyAmJiAobnBnIC89IDIpKQorCQkJYmlvID0gYmlvX2Fs
+bG9jKEdGUF9OT0lPLCBucGcpOworCX0KIAotCWJpby0+Ymlfc2VjdG9yID0gaXNlY3QgLSBiZS0+
+YmVfZl9vZmZzZXQgKyBiZS0+YmVfdl9vZmZzZXQ7Ci0JYmlvLT5iaV9iZGV2ID0gYmUtPmJlX21k
+ZXY7Ci0JYmlvLT5iaV9lbmRfaW8gPSBlbmRfaW87Ci0JYmlvLT5iaV9wcml2YXRlID0gcGFyOwor
+CWlmIChiaW8pIHsKKwkJYmlvLT5iaV9zZWN0b3IgPSBpc2VjdCAtIGJlLT5iZV9mX29mZnNldCAr
+IGJlLT5iZV92X29mZnNldDsKKwkJYmlvLT5iaV9iZGV2ID0gYmUtPmJlX21kZXY7CisJCWJpby0+
+YmlfZW5kX2lvID0gZW5kX2lvOworCQliaW8tPmJpX3ByaXZhdGUgPSBwYXI7CisJfQogCXJldHVy
+biBiaW87CiB9CiAKLS0gCjEuNy4xLjI2Mi5nNWVmM2QKCg==
+--bcaec53d550d231f6a04b62f1d2a--
