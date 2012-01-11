@@ -1,88 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55125 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755203Ab2APPue (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jan 2012 10:50:34 -0500
-Date: Mon, 16 Jan 2012 10:50:31 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Sasha Levin <levinsasha928@gmail.com>, linux-kernel@vger.kernel.org,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [patch] nfsd: oopses in cache_parse()
-Message-ID: <20120116155031.GC1750@fieldses.org>
-References: <1321611289-21809-1-git-send-email-levinsasha928@gmail.com>
- <20120116115258.GC3294@mwanda>
+Received: from natasha.panasas.com ([67.152.220.90]:40597 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757528Ab2AKN3R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 08:29:17 -0500
+Message-ID: <4F0D8E95.60706@panasas.com>
+Date: Wed, 11 Jan 2012 15:28:53 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120116115258.GC3294@mwanda>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        <lsf-pc@lists.linux-foundation.org>, <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [LSF/MM TOPIC] [ATTEND] linux-pnfs server implementations
+References: <4EF6A6CA.1020606@tonian.com> <4F0AE25C.5020706@panasas.com> <20120109192517.GB16973@fieldses.org> <CAEMWVhvaNOENPC2jRMB7zuP4ScsNmp5BMfXYmnFL71_N-4D0Rw@mail.gmail.com>
+In-Reply-To: <CAEMWVhvaNOENPC2jRMB7zuP4ScsNmp5BMfXYmnFL71_N-4D0Rw@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 16, 2012 at 02:52:58PM +0300, Dan Carpenter wrote:
-> We fixed expkey_parse() in b2ea70afad "nfsd: Fix oops when parsing a
-> 0 length export" but there are other cache_parse() implimentations
-> which have the same issue.
+On 01/11/2012 09:44 AM, Benny Halevy wrote:
+>>
+>> Understood that it may depend on where things stand in April, but: what
+>> specifically do you think will be likely to require the attention of a
+>> wider group of linux filesystem developers (ass opposed to just nfs
+>> developers)?
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> Since half of the implimentations get this wrong, maybe we should
-> just check for this in cache_do_downcall().  Is there ever a valid
-> reason to pass a zero length string to cache_parse()?
-
-I don't think so, no.  Checking in cache_do_downcall() sounds like a
-good idea.
-
---b.
-
-> 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index cf8a6bd..1d147a8 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -496,7 +496,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
->  	struct svc_export exp = {}, *expp;
->  	int an_int;
->  
-> -	if (mesg[mlen-1] != '\n')
-> +	if (mlen < 1 || mesg[mlen - 1] != '\n')
->  		return -EINVAL;
->  	mesg[mlen-1] = 0;
->  
-> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-> index a6e711a..d945d71 100644
-> --- a/fs/nfs/dns_resolve.c
-> +++ b/fs/nfs/dns_resolve.c
-> @@ -217,7 +217,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char *buf, int buflen)
->  	ssize_t len;
->  	int ret = -EINVAL;
->  
-> -	if (buf[buflen-1] != '\n')
-> +	if (buflen < 1 || buf[buflen - 1] != '\n')
->  		goto out;
->  	buf[buflen-1] = '\0';
->  
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index 9409627..f8456a4 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -202,7 +202,7 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
->  	int len;
->  	int error = -EINVAL;
->  
-> -	if (buf[buflen - 1] != '\n')
-> +	if (buflen < 1 || buf[buflen - 1] != '\n')
->  		return (-EINVAL);
->  	buf[buflen - 1]= '\0';
->  
-> @@ -378,7 +378,7 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
->  	char *buf1;
->  	int error = -EINVAL;
->  
-> -	if (buf[buflen - 1] != '\n')
-> +	if (buflen < 1 || buf[buflen - 1] != '\n')
->  		return (-EINVAL);
->  	buf[buflen - 1]= '\0';
->  
+> I have nothing specific at this time. My thinking was to present the
+> what's and why's
+> of the prerequisites in high level and maybe provide an example.
 > 
 
+At the time there where some reservations from people about some of the
+added hooks and vectors. If there are still, we would like to hear them
+and either address them or argue their validity.
 
+I think this talk should be expanded with Jeff's suggestions. here:
+> - RichACLs
+> - Share/Deny mode support on open
+> - mandatory locking that doesn't rely on weirdo file modes
+> 
+> It's always going to be hard for us to compete with dedicated
+> appliances. Where Linux can shine though is in allowing for more
+> innovative combinations.
+> 
+> Being able to do active/active NFS serving from clustered filesystems,
+> for instance is something that we can eventually attain but that would
+> be harder to do in an appliance. This sort of discussion might also
+> dovetail with Benny's proposal about pNFS serving.
+
+So the broader topic can be:
+	"The things we want/need from the Kernel to make it exportable"
+
+Thanks
+Boaz
