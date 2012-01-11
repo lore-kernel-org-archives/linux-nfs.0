@@ -1,51 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55971 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61447 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754700Ab2AQQe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:34:26 -0500
-Date: Tue, 17 Jan 2012 11:34:26 -0500
-To: Jim Rees <rees@umich.edu>
-Cc: Sachin Prabhu <sprabhu@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: svcgssd: Allow administrators to specify timeout for the
- cached context
-Message-ID: <20120117163426.GB13977@fieldses.org>
-References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
- <20120117134951.GA15479@umich.edu>
- <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
- <20120117163133.GB3387@umich.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120117163133.GB3387@umich.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S933750Ab2AKSgT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 13:36:19 -0500
+Message-ID: <1326306977.20284.4.camel@lade.trondhjem.org>
+Subject: Re: [PATCH v2 4/5] NFS: remove RPC PipeFS mount point reference
+ from blocklayout routines
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 11 Jan 2012 13:36:17 -0500
+In-Reply-To: <1326306793.20284.3.camel@lade.trondhjem.org>
+References: <20120110130323.1672.97025.stgit@localhost6.localdomain6>
+	 <20120110130440.1672.43785.stgit@localhost6.localdomain6>
+	 <1326306793.20284.3.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 11:31:33AM -0500, Jim Rees wrote:
-> Sachin Prabhu wrote:
+On Wed, 2012-01-11 at 13:33 -0500, Trond Myklebust wrote: 
+> On Tue, 2012-01-10 at 17:04 +0400, Stanislav Kinsbursky wrote: 
+> > This is a cleanup patch. We don't need this reference anymore, because
+> > blocklayout pipes dentries now creates and destroys in per-net operations and
+> > on PipeFS mount/umount notification.
+> > Note that nfs4blocklayout_register_net() now returns 0 instead of -ENOENT in
+> > case of PipeFS superblock absence. This is ok, because blocklayout pipe dentry
+> > will be created on PipeFS mount event.
+> > 
+> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> > 
+> > ---
+> >  fs/nfs/blocklayout/blocklayout.c |    9 +--------
+> >  1 files changed, 1 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> > index 322d920..2c70202 100644
+> > --- a/fs/nfs/blocklayout/blocklayout.c
+> > +++ b/fs/nfs/blocklayout/blocklayout.c
+> > @@ -1034,7 +1034,7 @@ static struct dentry *nfs4blocklayout_register_net(struct net *net,
+> >  
+> >  	pipefs_sb = rpc_get_sb_net(net);
+> >  	if (!pipefs_sb)
+> > -		return ERR_PTR(-ENOENT);
+> > +		return 0;
 > 
->   On Tue, 2012-01-17 at 08:49 -0500, Jim Rees wrote:
->   > Sachin Prabhu wrote:
->   > 
->   >   We had a user report that for an export shared with sec=krb5*, any
->   >   changes in user credentials(ex: add user to a secondary group) take some
->   >   time before they take effect over the NFS share.
->   > 
->   > Re-authenticating, either by removing the service ticket or by re-running
->   > kinit at the client, should also flush the old credentials.  Can you confirm
->   > that works?
->   
->   We have tried it but it doesn't work unless you actually clean up the
->   cache on the NFS server with the command 
->   echo `date +'%s'` > /proc/net/rpc/auth.rpcsec.context/flush
-> 
-> Bruce, shouldn't this work?  Is this a bug or a feature?
+> This looks like a typo of some sort. The caller in
+> nfs4blocklayout_net_init() checks for IS_ERR(), not NULL. I'll just
+> remove this hunk...
 
-kdestroy, kinit, etc. on the client only affect userspace; the NFS
-client in the kernel continues to use the same gss context.
+Never mind. I see what's going on now... It should be NULL, and not 0
+for coding style reasons, though...
 
-You're right, if those commands did remove the gss context, then the
-client would have to go get a new one, and that would trigger an svcgssd
-on the server side that should get the up-to-date information.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
