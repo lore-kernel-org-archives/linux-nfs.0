@@ -1,74 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.eu.citrix.com ([62.200.22.115]:28740 "EHLO
-	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757846Ab2AEUEh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jan 2012 15:04:37 -0500
-Subject: Re: [PATCH 5/6] net: add paged frag destructor support to
- kernel_sendpage.
-From: Ian Campbell <Ian.Campbell@citrix.com>
-To: David Miller <davem@davemloft.net>
-CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "eric.dumazet@gmail.com" <eric.dumazet@gmail.com>,
-        "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>,
-        "pekkas@netcore.fi" <pekkas@netcore.fi>,
-        "jmorris@namei.org" <jmorris@namei.org>,
-        "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>,
-        "kaber@trash.net" <kaber@trash.net>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "gregkh@suse.de" <gregkh@suse.de>,
-        "drbd-user@lists.linbit.com" <drbd-user@lists.linbit.com>,
-        "devel@driverdev.osuosl.org" <devel@driverdev.osuosl.org>,
-        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20120105.141522.1303730212186060591.davem@davemloft.net>
-References: <1325783399.25206.413.camel@zakaz.uk.xensource.com>
-	 <1325783624-14601-5-git-send-email-ian.campbell@citrix.com>
-	 <20120105.141522.1303730212186060591.davem@davemloft.net>
-Content-Type: text/plain; charset="ISO-8859-1"
-Date: Thu, 5 Jan 2012 20:04:34 +0000
-Message-ID: <1325793874.29084.25.camel@dagon.hellion.org.uk>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:34877 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752522Ab2AKKy7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 05:54:59 -0500
+Received: by eaal12 with SMTP id l12so121598eaa.19
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jan 2012 02:54:57 -0800 (PST)
+Message-ID: <4F0D6A7E.9020206@tonian.com>
+Date: Wed, 11 Jan 2012 12:54:54 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SQUASHME: pnfsd-exofs: Fix the RAID5 export
+References: <4EC13EEA.3030404@tonian.com> <4EDBACDD.3010609@tonian.com> <4F0A9F00.4020308@tonian.com> <4F0AC3C1.5040303@panasas.com> <4F0AC4D3.4060701@panasas.com>
+In-Reply-To: <4F0AC4D3.4060701@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-01-05 at 19:15 +0000, David Miller wrote:
-> From: Ian Campbell <ian.campbell@citrix.com>
-> Date: Thu, 5 Jan 2012 17:13:43 +0000
+On 2012-01-09 12:43, Boaz Harrosh wrote:
+> Benny hi, thanks.
 > 
-> > -static ssize_t do_tcp_sendpages(struct sock *sk, struct page **pages, int poffset,
-> > +static ssize_t do_tcp_sendpages(struct sock *sk,
-> > +				struct page **pages,
-> > +				struct skb_frag_destructor **destructors,
-> > +				int poffset,
-> >  			 size_t psize, int flags)
-> >  {
-> >  	struct tcp_sock *tp = tcp_sk(sk);
+> You will need all the other ORE patches. But they should be
+> in Linus tree before the 3.3-rc1 so you might just get them
+> from there.
+
+OK.
+
 > 
-> An array of destructors is madness, and the one call site that specifies this
-> passes an address of a single entry.
+> And this below! With out this fix, the objlayout driver hits
 
-I figured it was easy enough to accommodate the multiple destructor case
-but you are right that is overkill given the current (and realistically,
-expected) usage, I'll change that for the next round.
+I'll pull this fix only to pnfs-all-3.2 then and the ORE patches
+will be "merged" via rebase onto 3.3-rc1
 
-(that's assuming we don't end up with some scheme where the struct page
-* is in the destructor struct like I was investigating previously to
-alleviate the frag size overhead. I guess this illustrates nicely why
-that approach got ugly: these array propagate all the way up the call
-chain if you do that)
+> a BUG_ON. Do you think I should check all raid parameters
+> at client so a BAD server will not crash a client?
 
-> This also would never even have to occur if you put the destructor inside of
-> struct page instead.
+Yes.  I'd drop the layout in LAYOUTGET if it's not self-consistent.
+
+Benny
+
 > 
-> Finally, except for the skb_shared_info() layout optimization in patch #1 which
-> I alreayd applied, this stuff is not baked enough for the 3.3 merge window.
-
-Sure thing, I should have made it clear in my intro mail that I was
-aiming for 3.4.
-
-Thanks,
-Ian
-
+> 
+> Thanks
+> Boaz
+> On 01/09/2012 12:38 PM, Boaz Harrosh wrote:
+>>
+>> BAD RAID Math in layout_get.
+>>
+>> TODO: ore_calc_stripe_info, which is already called, as all
+>> the needed information calculated by _align_io. Only that
+>> first_stripe_start is only set in case of RAID, but lo_get
+>> always needs it. Move the set of first_stripe_start inside
+>> ore_calc_stripe_info, to the generic part.
+>>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> ---
+>>  fs/exofs/export.c |    3 ++-
+>>  1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+>> index 8a0e510..621bd11 100644
+>> --- a/fs/exofs/export.c
+>> +++ b/fs/exofs/export.c
+>> @@ -96,7 +96,8 @@ void ore_layout_2_pnfs_layout(struct pnfs_osd_layout *pl,
+>>  
+>>  static void _align_io(struct ore_layout *layout, u64 *offset, u64 *length)
+>>  {
+>> -	u64 stripe_size = layout->group_width * layout->stripe_unit;
+>> +	u64 stripe_size = (layout->group_width - layout->parity) *
+>> +							layout->stripe_unit;
+>>  	u64 group_size = stripe_size * layout->group_depth;
+>>  
+>>  	*offset = div64_u64(*offset, group_size) * group_size;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
