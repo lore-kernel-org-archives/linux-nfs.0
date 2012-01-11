@@ -1,94 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33769 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:37051 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753300Ab2ASOtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 09:49:43 -0500
-Subject: [PATCH 1/5] SUNRPC: cache creation and destruction routines introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 19 Jan 2012 18:49:06 +0400
-Message-ID: <20120119144906.9957.59183.stgit@localhost6.localdomain6>
-In-Reply-To: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1755743Ab2AKTpE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 14:45:04 -0500
+Message-ID: <1326311086.26351.1.camel@lade.trondhjem.org>
+Subject: Re: [PATCH RESEND 0/9] pnfsblock patches for 3.3 post-rc1
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: Jim Rees <rees@umich.edu>, linuxnfs <linux-nfs@vger.kernel.org>,
+        mdw@umich.edu, honey@citi.umich.edu
+Date: Wed, 11 Jan 2012 14:44:46 -0500
+In-Reply-To: <CA+a=Yy4uaQmR7Zyi3HO5=tF2XbBsKaSgG90_SN2GUWAnTsZVUQ@mail.gmail.com>
+References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
+	 <20120110161406.GA8994@umich.edu>
+	 <CA+a=Yy4uaQmR7Zyi3HO5=tF2XbBsKaSgG90_SN2GUWAnTsZVUQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch prepares infrastructure for network namespace aware cache detail
-allocation.
-One note about adding network namespace link to cache structure. It's going to
-be used later in NFS DNS cache parsing routine (nfs_dns_parse for rpc_pton()
-call).
+On Wed, 2012-01-11 at 00:35 +0800, Peng Tao wrote: 
+> On Wed, Jan 11, 2012 at 12:14 AM, Jim Rees <rees@umich.edu> wrote:
+> > Peng Tao wrote:
+> >
+> >  These are pnfsblock patches rebased on top of nfs-for-3.3. All patches
+> >  were sent to list before and merged by Benny.
+> >
+> > Once again, 8/9 and 9/9 failed to make it to the list.  Are these available
+> > via git?
+> sigh... vger seems always eating them... Thank you for pointing it out!
+> 
+> Trond, please find 8/9 and 9/9 in attachments. 2/9 was lost before so
+> I also attached it here just in case. All patches are also available
+> at
+> git://github.com/bergwolf/linux.git for-trond-3.3
+> which is based on top of nfs-for-3.3
+> 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Please note that if you want patches to go into the stable stream, the
+email address is now
 
----
- include/linux/sunrpc/cache.h |    4 ++++
- net/sunrpc/cache.c           |   26 ++++++++++++++++++++++++++
- 2 files changed, 30 insertions(+), 0 deletions(-)
+Cc: stable@vger.kernel.org
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 590a8ab..259381c 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -117,6 +117,7 @@ struct cache_detail {
- 		struct cache_detail_procfs procfs;
- 		struct cache_detail_pipefs pipefs;
- 	} u;
-+	struct net		*net;
- };
- 
- 
-@@ -202,6 +203,9 @@ extern int cache_register_net(struct cache_detail *cd, struct net *net);
- extern void cache_unregister(struct cache_detail *cd);
- extern void cache_unregister_net(struct cache_detail *cd, struct net *net);
- 
-+extern struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net);
-+extern void cache_destroy_net(struct cache_detail *cd, struct net *net);
-+
- extern void sunrpc_init_cache_detail(struct cache_detail *cd);
- extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
- extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index f128154..9ef5926 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1662,6 +1662,32 @@ void cache_unregister(struct cache_detail *cd)
- }
- EXPORT_SYMBOL_GPL(cache_unregister);
- 
-+struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
-+{
-+	struct cache_detail *cd;
-+
-+	cd = kmemdup(tmpl, sizeof(struct cache_detail), GFP_KERNEL);
-+	if (cd == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	cd->hash_table = kzalloc(cd->hash_size * sizeof(struct cache_head *),
-+				 GFP_KERNEL);
-+	if (cd->hash_table == NULL) {
-+		kfree(cd);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	cd->net = net;
-+	return cd;
-+}
-+EXPORT_SYMBOL_GPL(cache_create_net);
-+
-+void cache_destroy_net(struct cache_detail *cd, struct net *net)
-+{
-+	kfree(cd->hash_table);
-+	kfree(cd);
-+}
-+EXPORT_SYMBOL_GPL(cache_destroy_net);
-+
- static ssize_t cache_read_pipefs(struct file *filp, char __user *buf,
- 				 size_t count, loff_t *ppos)
- {
+instead of the old stable@kernel.org.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
