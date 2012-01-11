@@ -1,37 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:54920 "EHLO minas.ics.muni.cz"
+Received: from mailhub.sw.ru ([195.214.232.25]:42217 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751567Ab2ASN5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 08:57:25 -0500
-Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
-	(authenticated user=xhejtman@IS.MUNI.CZ bits=0)
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id q0JDots6011407
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 14:50:56 +0100
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.76)
-	(envelope-from <xhejtman@anubis.ics.muni.cz>)
-	id 1RnsO4-00050a-8O
-	for linux-nfs@vger.kernel.org; Thu, 19 Jan 2012 14:50:44 +0100
-Date: Thu, 19 Jan 2012 14:50:44 +0100
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 and high-availability
-Message-ID: <20120119135044.GS10362@ics.muni.cz>
+	id S933472Ab2AKPSr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jan 2012 10:18:47 -0500
+Subject: [PATCH v2 4/6] SUNRPC: remove RPC client pipefs dentries after
+ unregister
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 11 Jan 2012 19:18:26 +0400
+Message-ID: <20120111151826.5891.87727.stgit@localhost6.localdomain6>
+In-Reply-To: <20120111151051.5891.1830.stgit@localhost6.localdomain6>
+References: <20120111151051.5891.1830.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Without this patch we have races:
 
-are there currently any options for HA setups with NFSv4? Is it possible to
-migrate an NFSv4 klient from one server to another one on the fly? (Without
-remount, closing all apps, and so on, in the case that all NFSv4 servers share
-the same storage).
+rpc_fill_super				rpc_free_client
+rpc_pipefs_event(MOUNT)			rpc_remove_pipedir
+spin_lock(&rpc_client_lock);
+rpc_setup_pipedir_sb
+spin_unlock(&rpc_client_lock);
+					spin_lock(&rpc_client_lock);
+					(remove from list)
+					spin_unlock(&rpc_client_lock);
+					MEAMORY LEAKED
 
-I know it could be possible to migrate IP address from a crashed NFSv4 server
-to another one, but this solution seems to be a last resort for us. Are there
-any options client based?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
--- 
-Luká¹ Hejtmánek
+---
+ net/sunrpc/clnt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 4170745..c89ceb8 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -578,7 +578,6 @@ rpc_free_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_protname, clnt->cl_server);
+-	rpc_clnt_remove_pipedir(clnt);
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
+ 		goto out_free;
+@@ -587,6 +586,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 		kfree(clnt->cl_server);
+ out_free:
+ 	rpc_unregister_client(clnt);
++	rpc_clnt_remove_pipedir(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+
