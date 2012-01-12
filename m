@@ -1,41 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52845 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750970Ab2ALPTd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:19:33 -0500
-Received: by iabz25 with SMTP id z25so2865171iab.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:19:33 -0800 (PST)
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:49896 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753494Ab2ALP1Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:27:16 -0500
+Received: by vcbfk14 with SMTP id fk14so1422430vcb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:27:15 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
 From: Peng Tao <bergwolf@gmail.com>
+Date: Thu, 12 Jan 2012 23:26:54 +0800
+Message-ID: <CA+a=Yy4iS0G=xjSZ96gs8QNGsArjRe=RprqBLm6yOdG+atczqA@mail.gmail.com>
+Subject: Re: [PATCH-v2 0/9] pnfsblock patches for 3.3 post-rc1
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu
-Subject: [PATCH-v2 0/9] pnfsblock patches for 3.3 post-rc1
-Date: Thu, 12 Jan 2012 23:18:39 +0800
-Message-Id: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+Content-Type: multipart/mixed; boundary=f46d043c81740d76b104b6566209
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--f46d043c81740d76b104b6566209
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+On Thu, Jan 12, 2012 at 11:18 PM, Peng Tao <bergwolf@gmail.com> wrote:
+> Hi Trond,
+>
+> These are pnfsblock patches rebased on top of nfs-for-3.3. All patches we=
+re sent to list before and merged by Benny.
+>
+> This version fixes the stable kernel mail address.
+>
+> Thanks,
+> Tao
+>
+> Peng Tao (9):
+> =C2=A0pnfsblock: cleanup bl_mark_sectors_init
+> =C2=A0pnfsblock: acquire im_lock in _preload_range
+> =C2=A0pnfsblock: move find lock page logic out of bl_write_pagelist
+> =C2=A0pnfsblock: set read/write tk_status to pnfs_error
+> =C2=A0pnfsblock: remove rpc_call_ops from struct parallel_io
+> =C2=A0pnfsblock: clean up _add_entry
+> =C2=A0pnfsblock: alloc short extent before submit bio
+> =C2=A0pnfsblock: don't spinlock when freeing block_dev
+> =C2=A0pnfsblock: limit bio page count
+>
+> =C2=A0fs/nfs/blocklayout/blocklayout.c | =C2=A0202 ++++++++++++++++++++++=
+++-------------
+> =C2=A0fs/nfs/blocklayout/blocklayout.h | =C2=A0 12 ++-
+> =C2=A0fs/nfs/blocklayout/extents.c =C2=A0 =C2=A0 | =C2=A0176 ++++++++++++=
+++-------------------
+> =C2=A03 files changed, 215 insertions(+), 175 deletions(-)
+>
+
 Hi Trond,
 
-These are pnfsblock patches rebased on top of nfs-for-3.3. All patches were sent to list before and merged by Benny.
-
-This version fixes the stable kernel mail address.
+I also attach patch 2, 8, 9 here just in case vger eats them again...
 
 Thanks,
 Tao
 
-Peng Tao (9):
-  pnfsblock: cleanup bl_mark_sectors_init
-  pnfsblock: acquire im_lock in _preload_range
-  pnfsblock: move find lock page logic out of bl_write_pagelist
-  pnfsblock: set read/write tk_status to pnfs_error
-  pnfsblock: remove rpc_call_ops from struct parallel_io
-  pnfsblock: clean up _add_entry
-  pnfsblock: alloc short extent before submit bio
-  pnfsblock: don't spinlock when freeing block_dev
-  pnfsblock: limit bio page count
+--f46d043c81740d76b104b6566209
+Content-Type: application/octet-stream;
+	name="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
+Content-Disposition: attachment;
+	filename="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gxbxj3nj0
 
- fs/nfs/blocklayout/blocklayout.c |  202 ++++++++++++++++++++++++-------------
- fs/nfs/blocklayout/blocklayout.h |   12 ++-
- fs/nfs/blocklayout/extents.c     |  176 ++++++++++++++-------------------
- 3 files changed, 215 insertions(+), 175 deletions(-)
+RnJvbSA5M2ZlZDBkYjdiZDdiZTY2ZTM1ZDlkOTRiOWMyNjFjYzNiODM0ZWEwIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBX
+ZWQsIDIgTm92IDIwMTEgMDE6MTE6MTQgLTA0MDAKU3ViamVjdDogW1BBVENILXYyIDIvOV0gcG5m
+c2Jsb2NrOiBhY3F1aXJlIGltX2xvY2sgaW4gX3ByZWxvYWRfcmFuZ2UKCldoZW4gY2FsbGluZyBf
+YWRkX2VudHJ5LCB3ZSBzaG91bGQgdGFrZSB0aGUgaW1fbG9jayB0byBwcm90ZWN0CmFnYWlucyBv
+dGhlciBtb2RpZmllcnMuCgpDYzogPHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmc+ICMzLjErClNpZ25l
+ZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQtb2ZmLWJ5OiBCZW5u
+eSBIYWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxvY2tsYXlvdXQvZXh0
+ZW50cy5jIHwgICAxMSArKysrKystLS0tLQogMSBmaWxlcyBjaGFuZ2VkLCA2IGluc2VydGlvbnMo
+KyksIDUgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVu
+dHMuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMKaW5kZXggMGZjMTMyMS4uZjM4MzUy
+NCAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYworKysgYi9mcy9uZnMv
+YmxvY2tsYXlvdXQvZXh0ZW50cy5jCkBAIC0xMzksMTEgKzEzOSwxMyBAQCBzdGF0aWMgaW50IF9z
+ZXRfcmFuZ2Uoc3RydWN0IG15X3RyZWUgKnRyZWUsIGludDMyX3QgdGFnLCB1NjQgcywgdTY0IGxl
+bmd0aCkKIH0KIAogLyogRW5zdXJlIHRoYXQgZnV0dXJlIG9wZXJhdGlvbnMgb24gZ2l2ZW4gcmFu
+Z2Ugb2YgdHJlZSB3aWxsIG5vdCBtYWxsb2MgKi8KLXN0YXRpYyBpbnQgX3ByZWxvYWRfcmFuZ2Uo
+c3RydWN0IG15X3RyZWUgKnRyZWUsIHU2NCBvZmZzZXQsIHU2NCBsZW5ndGgpCitzdGF0aWMgaW50
+IF9wcmVsb2FkX3JhbmdlKHN0cnVjdCBwbmZzX2ludmFsX21hcmtpbmdzICptYXJrcywKKwkJdTY0
+IG9mZnNldCwgdTY0IGxlbmd0aCkKIHsKIAl1NjQgc3RhcnQsIGVuZCwgczsKIAlpbnQgY291bnQs
+IGksIHVzZWQgPSAwLCBzdGF0dXMgPSAtRU5PTUVNOwogCXN0cnVjdCBwbmZzX2ludmFsX3RyYWNr
+aW5nICoqc3RvcmFnZTsKKwlzdHJ1Y3QgbXlfdHJlZSAgKnRyZWUgPSAmbWFya3MtPmltX3RyZWU7
+CiAKIAlkcHJpbnRrKCIlcyglbGx1LCAlbGx1KSBlbnRlclxuIiwgX19mdW5jX18sIG9mZnNldCwg
+bGVuZ3RoKTsKIAlzdGFydCA9IG5vcm1hbGl6ZShvZmZzZXQsIHRyZWUtPm10dF9zdGVwX3NpemUp
+OwpAQCAtMTYxLDEyICsxNjMsMTEgQEAgc3RhdGljIGludCBfcHJlbG9hZF9yYW5nZShzdHJ1Y3Qg
+bXlfdHJlZSAqdHJlZSwgdTY0IG9mZnNldCwgdTY0IGxlbmd0aCkKIAkJCWdvdG8gb3V0X2NsZWFu
+dXA7CiAJfQogCi0JLyogTm93IG5lZWQgbG9jayAtIEhPVz8/PyAqLwotCisJc3Bpbl9sb2NrKCZt
+YXJrcy0+aW1fbG9jayk7CiAJZm9yIChzID0gc3RhcnQ7IHMgPCBlbmQ7IHMgKz0gdHJlZS0+bXR0
+X3N0ZXBfc2l6ZSkKIAkJdXNlZCArPSBfYWRkX2VudHJ5KHRyZWUsIHMsIElOVEVSTkFMX0VYSVNU
+Uywgc3RvcmFnZVt1c2VkXSk7CisJc3Bpbl91bmxvY2soJm1hcmtzLT5pbV9sb2NrKTsKIAotCS8q
+IFVubG9jayAtIEhPVz8/PyAqLwogCXN0YXR1cyA9IDA7CiAKICBvdXRfY2xlYW51cDoKQEAgLTI0
+Niw3ICsyNDcsNyBAQCBpbnQgYmxfbWFya19zZWN0b3JzX2luaXQoc3RydWN0IHBuZnNfaW52YWxf
+bWFya2luZ3MgKm1hcmtzLAogCiAJc3RhcnQgPSBub3JtYWxpemUob2Zmc2V0LCBtYXJrcy0+aW1f
+YmxvY2tfc2l6ZSk7CiAJZW5kID0gbm9ybWFsaXplX3VwKG9mZnNldCArIGxlbmd0aCwgbWFya3Mt
+PmltX2Jsb2NrX3NpemUpOwotCWlmIChfcHJlbG9hZF9yYW5nZSgmbWFya3MtPmltX3RyZWUsIHN0
+YXJ0LCBlbmQgLSBzdGFydCkpCisJaWYgKF9wcmVsb2FkX3JhbmdlKG1hcmtzLCBzdGFydCwgZW5k
+IC0gc3RhcnQpKQogCQlnb3RvIG91dGVycjsKIAogCXNwaW5fbG9jaygmbWFya3MtPmltX2xvY2sp
+OwotLSAKMS43LjEuMjYyLmc1ZWYzZAoK
+--f46d043c81740d76b104b6566209
+Content-Type: application/octet-stream;
+	name="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
+Content-Disposition: attachment;
+	filename="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gxbxj3nl1
 
+RnJvbSBhODU0Yzc5YjFkOTEwYmY0NGUwZWVmYWI1ZTJlNGJkOWVkMzEyNjliIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBU
+aHUsIDEwIE5vdiAyMDExIDAyOjQ1OjQ0IC0wNTAwClN1YmplY3Q6IFtQQVRDSC12MiA4LzldIHBu
+ZnNibG9jazogZG9uJ3Qgc3BpbmxvY2sgd2hlbiBmcmVlaW5nIGJsb2NrX2RldgoKYmxfZnJlZV9i
+bG9ja19kZXYoKSBtYXkgc2xlZXAuIFdlIGNhbiBub3QgY2FsbCBpdCB3aXRoIHNwaW5sb2NrIGhl
+bGQuCkJlc2lkZXMsIHRoZXJlIGlzIG5vIG5lZWQgdG8gdGFrZSBibV9sb2NrIGFzIHdlIGFyZSBs
+YXN0IHVzZXIgZnJlZWluZyBibV9kZXZsaXN0LgoKQ2M6IDxzdGFibGVAdmdlci5rZXJuZWwub3Jn
+PiAjMy4xKwpTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8cGVuZ190YW9AZW1jLmNvbT4KU2lnbmVk
+LW9mZi1ieTogQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHRvbmlhbi5jb20+Ci0tLQogZnMvbmZzL2Js
+b2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDExICsrKystLS0tLS0tCiAxIGZpbGVzIGNoYW5n
+ZWQsIDQgaW5zZXJ0aW9ucygrKSwgNyBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMv
+YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91
+dC5jCmluZGV4IDFkZDI5ODMuLmM5Yzc0YmYgMTAwNjQ0Ci0tLSBhL2ZzL25mcy9ibG9ja2xheW91
+dC9ibG9ja2xheW91dC5jCisrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCkBA
+IC04MzcsMTYgKzgzNywxMyBAQCBibF9jbGVhbnVwX2xheW91dGNvbW1pdChzdHJ1Y3QgbmZzNF9s
+YXlvdXRjb21taXRfZGF0YSAqbGNkYXRhKQogc3RhdGljIHZvaWQgZnJlZV9ibGtfbW91bnRpZChz
+dHJ1Y3QgYmxvY2tfbW91bnRfaWQgKm1pZCkKIHsKIAlpZiAobWlkKSB7Ci0JCXN0cnVjdCBwbmZz
+X2Jsb2NrX2RldiAqZGV2OwotCQlzcGluX2xvY2soJm1pZC0+Ym1fbG9jayk7Ci0JCXdoaWxlICgh
+bGlzdF9lbXB0eSgmbWlkLT5ibV9kZXZsaXN0KSkgewotCQkJZGV2ID0gbGlzdF9maXJzdF9lbnRy
+eSgmbWlkLT5ibV9kZXZsaXN0LAotCQkJCQkgICAgICAgc3RydWN0IHBuZnNfYmxvY2tfZGV2LAot
+CQkJCQkgICAgICAgYm1fbm9kZSk7CisJCXN0cnVjdCBwbmZzX2Jsb2NrX2RldiAqZGV2LCAqdG1w
+OworCisJCS8qIE5vIG5lZWQgdG8gdGFrZSBibV9sb2NrIGFzIHdlIGFyZSBsYXN0IHVzZXIgZnJl
+ZWluZyBibV9kZXZsaXN0ICovCisJCWxpc3RfZm9yX2VhY2hfZW50cnlfc2FmZShkZXYsIHRtcCwg
+Jm1pZC0+Ym1fZGV2bGlzdCwgYm1fbm9kZSkgewogCQkJbGlzdF9kZWwoJmRldi0+Ym1fbm9kZSk7
+CiAJCQlibF9mcmVlX2Jsb2NrX2RldihkZXYpOwogCQl9Ci0JCXNwaW5fdW5sb2NrKCZtaWQtPmJt
+X2xvY2spOwogCQlrZnJlZShtaWQpOwogCX0KIH0KLS0gCjEuNy4xLjI2Mi5nNWVmM2QKCg==
+--f46d043c81740d76b104b6566209
+Content-Type: application/octet-stream;
+	name="0009-pnfsblock-limit-bio-page-count.patch"
+Content-Disposition: attachment;
+	filename="0009-pnfsblock-limit-bio-page-count.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gxbxj3nn2
+
+RnJvbSA1M2M0OGY3ZDIwNGExMmQyYWI1MDNmNTIzYjMyYTM1ZjMwZWUxYTFlIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBT
+YXQsIDE5IE5vdiAyMDExIDA0OjE2OjUyIC0wNTAwClN1YmplY3Q6IFtQQVRDSC12MiA5LzldIHBu
+ZnNibG9jazogbGltaXQgYmlvIHBhZ2UgY291bnQKCk9uZSBiaW8gY2FuIGhhdmUgYXQgbW9zdCBC
+SU9fTUFYX1BBR0VTIHBhZ2VzLiBXZSBzaG91bGQgbGltaXQgaXQgYmVjIG90aGVyd2lzZQpiaW9f
+YWxsb2Mgd2lsbCBmYWlsIHdoZW4gdGhlcmUgYXJlIG1hbnkgcGFnZXMgaW4gb25lIHJlYWQvd3Jp
+dGVfcGFnZWxpc3QuCgpDYzogPHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmc+ICMzLjErClNpZ25lZC1v
+ZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQtb2ZmLWJ5OiBCZW5ueSBI
+YWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2ts
+YXlvdXQuYyB8ICAgMTcgKysrKysrKysrKystLS0tLS0KIDEgZmlsZXMgY2hhbmdlZCwgMTEgaW5z
+ZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlv
+dXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCmluZGV4
+IGM5Yzc0YmYuLjQ4Y2ZhYzMgMTAwNjQ0Ci0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
+eW91dC5jCisrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCkBAIC0xNDcsMTQg
+KzE0NywxOSBAQCBzdGF0aWMgc3RydWN0IGJpbyAqYmxfYWxsb2NfaW5pdF9iaW8oaW50IG5wZywg
+c2VjdG9yX3QgaXNlY3QsCiB7CiAJc3RydWN0IGJpbyAqYmlvOwogCisJbnBnID0gbWluKG5wZywg
+QklPX01BWF9QQUdFUyk7CiAJYmlvID0gYmlvX2FsbG9jKEdGUF9OT0lPLCBucGcpOwotCWlmICgh
+YmlvKQotCQlyZXR1cm4gTlVMTDsKKwlpZiAoIWJpbyAmJiAoY3VycmVudC0+ZmxhZ3MgJiBQRl9N
+RU1BTExPQykpIHsKKwkJd2hpbGUgKCFiaW8gJiYgKG5wZyAvPSAyKSkKKwkJCWJpbyA9IGJpb19h
+bGxvYyhHRlBfTk9JTywgbnBnKTsKKwl9CiAKLQliaW8tPmJpX3NlY3RvciA9IGlzZWN0IC0gYmUt
+PmJlX2Zfb2Zmc2V0ICsgYmUtPmJlX3Zfb2Zmc2V0OwotCWJpby0+YmlfYmRldiA9IGJlLT5iZV9t
+ZGV2OwotCWJpby0+YmlfZW5kX2lvID0gZW5kX2lvOwotCWJpby0+YmlfcHJpdmF0ZSA9IHBhcjsK
+KwlpZiAoYmlvKSB7CisJCWJpby0+Ymlfc2VjdG9yID0gaXNlY3QgLSBiZS0+YmVfZl9vZmZzZXQg
+KyBiZS0+YmVfdl9vZmZzZXQ7CisJCWJpby0+YmlfYmRldiA9IGJlLT5iZV9tZGV2OworCQliaW8t
+PmJpX2VuZF9pbyA9IGVuZF9pbzsKKwkJYmlvLT5iaV9wcml2YXRlID0gcGFyOworCX0KIAlyZXR1
+cm4gYmlvOwogfQogCi0tIAoxLjcuMS4yNjIuZzVlZjNkCgo=
+--f46d043c81740d76b104b6566209--
