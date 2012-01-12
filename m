@@ -1,146 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:27470 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754086Ab2AWUDB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:03:01 -0500
-Subject: Re: [PATCH 1/1] SUNRPC: Adding status trace points
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1327348480-32549-2-git-send-email-steved@redhat.com>
-Date: Mon, 23 Jan 2012 15:02:56 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <383508F5-8A0B-4EBE-B81B-6A75887CD156@oracle.com>
-References: <1327348480-32549-1-git-send-email-steved@redhat.com> <1327348480-32549-2-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:54480 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752926Ab2ALTWQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 14:22:16 -0500
+Message-ID: <1326396135.6198.9.camel@lade.trondhjem.org>
+Subject: Re: [PATCH] nfsidmap: Purge the keyring when its full.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Thu, 12 Jan 2012 14:22:15 -0500
+In-Reply-To: <1326383899-4358-1-git-send-email-steved@redhat.com>
+References: <1326383899-4358-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jan 23, 2012, at 2:54 PM, Steve Dickson wrote:
-
-> This patch adds three trace points to the status routines
-> in the sunrpc state machine.
+On Thu, 2012-01-12 at 10:58 -0500, Steve Dickson wrote: 
+> When a key can not be added to a keyring because
+> the keyring is full, keyctl_instantiate() will fail
+> with the errno being set to -EDQUOT. To recover,
+> purge the keyring of all its keys and then try to
+> add the new key.
 > 
 > Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
-> include/trace/events/sunrpc.h |   45 +++++++++++++++++++++++++++++++++++++++++
-> net/sunrpc/clnt.c             |    4 +++
-> 2 files changed, 49 insertions(+), 0 deletions(-)
+>  utils/nfsidmap/nfsidmap.c |   14 ++++++++++++--
+>  1 files changed, 12 insertions(+), 2 deletions(-)
 > 
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> index 1852f11..bca5ad3 100644
-> --- a/include/trace/events/sunrpc.h
-> +++ b/include/trace/events/sunrpc.h
-> @@ -8,6 +8,51 @@
-> #include <linux/sunrpc/clnt.h>
-> #include <linux/tracepoint.h>
-> 
-> +DECLARE_EVENT_CLASS(rpc_task_status,
-> +
-> +	TP_PROTO(struct rpc_task *task),
-> +
-> +	TP_ARGS(task),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(int, status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->status = task->tk_status;
-> +	),
-> +
-> +	TP_printk("status %d", __entry->status)
-> +);
-> +
-> +DEFINE_EVENT(rpc_task_status, rpc_call_status,
-> +	TP_PROTO(struct rpc_task *task), 
-> +
-> +	TP_ARGS(task)
-> +);
-> +
-> +DEFINE_EVENT(rpc_task_status, rpc_bind_status,
-> +	TP_PROTO(struct rpc_task *task), 
-> +
-> +	TP_ARGS(task)
-> +);
-> +
-> +TRACE_EVENT(rpc_connect_status,
-> +	TP_PROTO(int status),
-> +
-> +	TP_ARGS(status),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(int, status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->status = status;
-> +	),
-> +
-> +	TP_printk("status=%d", __entry->status)
-> +);
-> +
-> DECLARE_EVENT_CLASS(rpc_task_running,
-> 
-> 	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index f0268ea..bbe7385 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -55,6 +55,7 @@ static DEFINE_SPINLOCK(rpc_client_lock);
-> 
-> static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
-> 
-> +#include <trace/events/sunrpc.h>
+> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+> index ce8cf3e..470f9d4 100644
+> --- a/utils/nfsidmap/nfsidmap.c
+> +++ b/utils/nfsidmap/nfsidmap.c
+> @@ -3,6 +3,7 @@
+>  #include <stdio.h>
+>  #include <stdlib.h>
+>  #include <string.h>
+> +#include <errno.h>
+>  
+>  #include <pwd.h>
+>  #include <grp.h>
+> @@ -25,6 +26,7 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
+>  #define DEFAULT_KEYRING "id_resolver"
+>  #endif
+>  
+> +static int keyring_clear(char *keyring);
+>  
+>  #define UIDKEYS 0x1
+>  #define GIDKEYS 0x2
+> @@ -52,6 +54,14 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>  
+>  	if (rc == 0) {
+>  		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+> +		if (rc < 0 && errno == -EDQUOT) {
 
-I'd prefer that this #include be kept with the others at the head of the file, unless there is a strong reason this one needs to be inconsistent.
+Shouldn't the above be a test for -ENFILE (or perhaps for both)?
 
-I'm glad a clean way was found to add trace points to the RPC client.
-
-> static void	call_start(struct rpc_task *task);
-> static void	call_reserve(struct rpc_task *task);
-> @@ -1163,6 +1164,7 @@ call_bind_status(struct rpc_task *task)
-> 		return;
-> 	}
-> 
-> +	trace_rpc_bind_status(task);
-> 	switch (task->tk_status) {
-> 	case -ENOMEM:
-> 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-> @@ -1262,6 +1264,7 @@ call_connect_status(struct rpc_task *task)
-> 		return;
-> 	}
-> 
-> +	trace_rpc_connect_status(status);
-
-Is this trace point as useful as, say, a trace point in xprt_connect_status(), or in the transport's connect worker?  The way transport connection works today is that all of the actual work is handled while sending an RPC, and is basically hidden from the FSM.
-
-I'd like to capture connection events, I'm just wondering if a trace point here is the best way to do it.
-
-> 	switch (status) {
-> 		/* if soft mounted, test if we've timed out */
-> 	case -ETIMEDOUT:
-> @@ -1450,6 +1453,7 @@ call_status(struct rpc_task *task)
-> 		return;
-> 	}
-> 
-> +	trace_rpc_call_status(task);
-> 	task->tk_status = 0;
-> 	switch(status) {
-> 	case -EHOSTDOWN:
-> -- 
-> 1.7.7.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +			/*
+> +			 * The keyring is full. Clear the keyring and try again
+> +			 */
+> +			rc = keyring_clear(DEFAULT_KEYRING);
+> +			if (rc == 0)
+> +				rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+> +		}
+>  		if (rc < 0)
+>  			xlog_err("id_lookup: keyctl_instantiate failed: %m");
+>  	}
+> @@ -105,7 +115,6 @@ static int keyring_clear(char *keyring)
+>  	char buf[BUFSIZ];
+>  	key_serial_t key;
+>  
+> -	xlog_syslog(0);
+>  	if (keyring == NULL)
+>  		keyring = DEFAULT_KEYRING;
+>  
+> @@ -172,7 +181,7 @@ static int key_revoke(char *keystr, int keymask)
+>  		if ((keymask & mask) == 0)
+>  			continue;
+>  
+> -		if (strncmp(ptr+4, keystr, strlen(keystr)) != NULL)
+> +		if (strncmp(ptr+4, keystr, strlen(keystr)) != 0)
+>  			continue;
+>  
+>  		if (verbose) {
+> @@ -255,6 +264,7 @@ int main(int argc, char **argv)
+>  		return rc;		
+>  	}
+>  	if (clearing) {
+> +		xlog_syslog(0);
+>  		rc = keyring_clear(DEFAULT_KEYRING);
+>  		return rc;		
+>  	}
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
