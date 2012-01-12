@@ -1,119 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:27702 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932125Ab2AJMN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 07:13:27 -0500
-Subject: [PATCH v2 5/6] NFS: handle NFS idmap pipe PipeFS dentries by network
- namespace aware routines
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 10 Jan 2012 16:13:11 +0400
-Message-ID: <20120110121311.7307.73576.stgit@localhost6.localdomain6>
-In-Reply-To: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
-References: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:56026 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754417Ab2ALTha (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 14:37:30 -0500
+Message-ID: <4F0F3679.7090304@opengridcomputing.com>
+Date: Thu, 12 Jan 2012 13:37:29 -0600
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch] svcrdma: endian bug in send_write_chunks()
+References: <20120112064722.GB2408@elgon.mountain>   <20120112162141.GC6563@fieldses.org>  <1326395759.6198.7.camel@lade.trondhjem.org>  <4F0F3380.4000406@opengridcomputing.com> <1326396510.6198.12.camel@lade.trondhjem.org>
+In-Reply-To: <1326396510.6198.12.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes NFS idmap pipes dentries allocated and destroyed in network
-namespace context by PipeFS network namespace aware routines.
-Network namespace context is obtained from nfs_client structure.
+On 1/12/12 1:28 PM, Trond Myklebust wrote:
+> On Thu, 2012-01-12 at 13:24 -0600, Tom Tucker wrote:
+>> On 1/12/12 1:15 PM, Trond Myklebust wrote:
+>>> On Thu, 2012-01-12 at 11:21 -0500, J. Bruce Fields wrote:
+>>>> On Thu, Jan 12, 2012 at 09:47:22AM +0300, Dan Carpenter wrote:
+>>>>> Sparse complains because arg_ch->rs_length is declared as network
+>>>>> endian but we're treating it as CPU endian.
+>>>> This looks like it would actually change behavior on a little endian
+>>>> architecture, so how did this work before?
+>>>>
+>>>>>  From some quick grepping, I see assignments both of the form
+>>>> 	...rs_length = ntohl(...)
+>>>>
+>>>> and
+>>>>
+>>>> 	...rs_length = htonl(...)
+>>>>
+>>>> but only see one declaration for a field named rs_length.
+>>>>
+>>>> So my best guess would be that the code is ugly but working as is, and
+>>>> needs cleanup by someone who knows how this field was intended to be
+>>>> used.
+>>> It looks to me as if rs_handle and rs_offset are being similarly abused.
+>>> Basically, we need a serious clean up in svc_rdma_marshall.c to separate
+>>> out those variables that are in XDR-encoded form and those that are not.
+>>>
+>> The abuse is taking place because the marshal/unmarshall is being done
+>> in-place and it seemed wasteful at the time to add a chunk of memory to
+>> preserve the aesthetic. A union would 'work', but you still wouldn't
+>> 'know' whether the data was NBO or not by where it was -- which seems like
+>> the intent of the __beXX in the first place.
+> These are not variables that are used in hundreds of different places:
+> why not just do the conversion from big-endian to cpu-endian when you
+> actually need to use them?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+That would work fine actually. At the time, I was trying to put all that 
+marshalling logic in that one file and reuse the already present 
+client-side header file that copies that stuff when it decodes it.
 
----
- fs/nfs/idmap.c |   61 +++++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 53 insertions(+), 8 deletions(-)
+I'll dig around a little bit and see what might be the simplest way to 
+clean this up.
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 9c701b5..2bab772 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -348,6 +348,56 @@ static const struct rpc_pipe_ops idmap_upcall_ops = {
- 	.destroy_msg	= idmap_pipe_destroy_msg,
- };
- 
-+static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
-+{
-+	if (pipe->dentry)
-+		rpc_unlink(pipe->dentry);
-+}
-+
-+static int __nfs_idmap_register(struct dentry *dir,
-+				     struct idmap *idmap,
-+				     struct rpc_pipe *pipe)
-+{
-+	struct dentry *dentry;
-+
-+	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
-+	if (IS_ERR(dentry))
-+		return PTR_ERR(dentry);
-+	pipe->dentry = dentry;
-+	return 0;
-+}
-+
-+static void nfs_idmap_unregister(struct nfs_client *clp,
-+				      struct rpc_pipe *pipe)
-+{
-+	struct net *net = clp->net;
-+	struct super_block *pipefs_sb;
-+
-+	pipefs_sb = rpc_get_sb_net(net);
-+	if (pipefs_sb) {
-+		__nfs_idmap_unregister(pipe);
-+		rpc_put_sb_net(net);
-+	}
-+}
-+
-+static int nfs_idmap_register(struct nfs_client *clp,
-+				   struct idmap *idmap,
-+				   struct rpc_pipe *pipe)
-+{
-+	struct net *net = clp->net;
-+	struct super_block *pipefs_sb;
-+	int err = 0;
-+
-+	pipefs_sb = rpc_get_sb_net(net);
-+	if (pipefs_sb) {
-+		if (clp->cl_rpcclient->cl_dentry)
-+			err = __nfs_idmap_register(clp->cl_rpcclient->cl_dentry,
-+						   idmap, pipe);
-+		rpc_put_sb_net(net);
-+	}
-+	return err;
-+}
-+
- int
- nfs_idmap_new(struct nfs_client *clp)
- {
-@@ -367,12 +417,8 @@ nfs_idmap_new(struct nfs_client *clp)
- 		kfree(idmap);
- 		return error;
- 	}
--
--	if (clp->cl_rpcclient->cl_dentry)
--		pipe->dentry = rpc_mkpipe_dentry(clp->cl_rpcclient->cl_dentry,
--				"idmap", idmap, pipe);
--	if (IS_ERR(pipe->dentry)) {
--		error = PTR_ERR(pipe->dentry);
-+	error = nfs_idmap_register(clp, idmap, pipe);
-+	if (error) {
- 		rpc_destroy_pipe_data(pipe);
- 		kfree(idmap);
- 		return error;
-@@ -395,8 +441,7 @@ nfs_idmap_delete(struct nfs_client *clp)
- 
- 	if (!idmap)
- 		return;
--	if (idmap->idmap_pipe->dentry)
--		rpc_unlink(idmap->idmap_pipe->dentry);
-+	nfs_idmap_unregister(clp, idmap->idmap_pipe);
- 	rpc_destroy_pipe_data(idmap->idmap_pipe);
- 	clp->cl_idmap = NULL;
- 	kfree(idmap);
+Tom
+
 
