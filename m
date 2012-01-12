@@ -1,80 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751255Ab2AOQRj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:39 -0500
-Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:38 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v6 8/9] nfsd41: handle current stateid in SETATTR and FREE_STATEID
-Date: Sun, 15 Jan 2012 17:20:09 +0100
-Message-Id: <1326644410-7482-9-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:31535 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751629Ab2ALHQY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 02:16:24 -0500
+Date: Thu, 12 Jan 2012 10:16:14 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: [patch] nfs: check for integer overflow in decode_devicenotify_args()
+Message-ID: <20120112071614.GC2975@elgon.mountain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 32 bit, if n is too large then "n * sizeof(*args->devs)" could
+overflow and args->devs would be smaller than expected.
 
-
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 ---
- fs/nfsd/current_stateid.h |    2 ++
- fs/nfsd/nfs4proc.c        |    1 +
- fs/nfsd/nfs4state.c       |   13 +++++++++++++
- 3 files changed, 16 insertions(+), 0 deletions(-)
+This is a static checker fix.  I haven't tested this.  Sorry for that.
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index 6e54d19..e1ae950 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -14,6 +14,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
- /*
-  * functions to consume current state id
-  */
-+extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
-+extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
- extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 620abcc..124934a 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1606,6 +1606,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_SETATTR",
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setattr_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_setattrstateid,
- 	},
- 	[OP_SETCLIENTID] = {
- 		.op_func = (nfsd4op_func)nfsd4_setclientid,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1c97912..8214c0f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4734,6 +4734,19 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
- /*
-  * functions to consume current state id
-  */
-+
-+void
-+nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
-+{
-+	get_stateid(cstate, &fsp->fr_stateid);
-+}
-+
-+void
-+nfsd4_get_setattrstateid(struct nfsd4_compound_state *cstate, struct nfsd4_setattr *setattr)
-+{
-+	get_stateid(cstate, &setattr->sa_stateid);
-+}
-+
- void
- nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
- {
--- 
-1.7.7.5
-
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 726e59a..d50b274 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -305,6 +305,10 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
+ 	n = ntohl(*p++);
+ 	if (n <= 0)
+ 		goto out;
++	if (n > ULONG_MAX / sizeof(*args->devs)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
+ 
+ 	args->devs = kmalloc(n * sizeof(*args->devs), GFP_KERNEL);
+ 	if (!args->devs) {
