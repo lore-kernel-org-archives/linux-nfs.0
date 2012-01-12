@@ -1,81 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:36764 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752539Ab2AOWbM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 17:31:12 -0500
-Received: by vcbfo1 with SMTP id fo1so695715vcb.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 14:31:11 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:47391 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751457Ab2ALWWG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jan 2012 17:22:06 -0500
+Date: Thu, 12 Jan 2012 17:22:04 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd changes for 3.3
+Message-ID: <20120112222204.GB9592@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20120115205446.GA29596@fieldses.org>
-References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
-	<20120115205446.GA29596@fieldses.org>
-Date: Sun, 15 Jan 2012 23:31:11 +0100
-Message-ID: <CAFpJMDp3OvkCf0DPAvdZDPV_8F=8Z_C0euTjdtKxuiq3=rxMmw@mail.gmail.com>
-Subject: Re: [PATCH 0/5] more test on current stateid processing
-From: Tiramisu Mokka <kofemann@googlemail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
--- kofemann
-/** caffeinated mutations of the core personality */
+nfsd changes for 3.3 are available from
 
+  git://linux-nfs.org/~bfields/linux.git for-3.3
 
+This was a fairly quiet cycle.  About the only new feature is Bryan's
+fault-injection code, which simulates certain kinds of bad server
+behavior as a way to test client recovery paths.
 
-On Sun, Jan 15, 2012 at 21:54, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Sun, Jan 15, 2012 at 08:05:23PM +0100, Tigran Mkrtchyan wrote:
->>
->> This is the result of testing my changes in linux:
->>
->> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
->> .....
->>
->> **************************************************
->> CSID1    st_current_stateid.testOpenAndClose                      : PASS
->> CSID2    st_current_stateid.testLockLockU                         : PASS
->> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
->> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
->> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
->> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
->> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
->>            OP_LAYOUTGET should return NFS4_OK, instead got
->>            NFS4ERR_NOTSUPP
->
-> We should fix pynfs41 so no pnfs-dependent tests are run without "pnfs"
-> being explicitly asked for on the commandline....
+Other than that, mostly bugfixes: some fixes for reboot recovery
+(especially in the NFSv4.1 case), fixes for unusual races on shutdown of
+the nfsd server, and some continuing overhaul of the NFSv4 state
+(especially handling of lockowners).
 
-Well, echange_id has this information. pynfs have to respect it.
+Neil also asked to have his name taken out of the MAINTAINER entry,
+though he continues to be an important (if now more occasional)
+contributor.  Thanks very much to Neil for his service over the years!
 
-Tigran.
->
-> --b.
->
->> CSID8    st_current_stateid.testOpenSetattr                       : PASS
->> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
->>
->> **************************************************
->> $
->>
->> Tigran Mkrtchyan (5):
->>   client: move current stateid test into a dedicated module
->>   client: test current stateid processing on PUTROOTFH
->>   client: test current stateid processing with OPEN+LAYOUTGET in a
->>     single compound
->>   client: test current stateid processing with OPEN and SETATTR
->>   client: test OPEN+FREE_STETEID+CLOSE in a single compound
->>
->>  nfs4.1/server41tests/__init__.py           |    1 +
->>  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
->>  nfs4.1/server41tests/st_open.py            |   76 -------------
->>  3 files changed, 162 insertions(+), 76 deletions(-)
->>  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
->>
->> --
->> 1.7.7.5
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
+
+Bryan Schumaker (7):
+      NFSD: Added fault injection
+      NFSD: Added fault injection script
+      NFSD: Added fault injection documentation
+      NFSD: Call nfsd4_init_slabs() from init_nfsd()
+      NFSD: Remove unnecessary whitespace
+      NFSD: Only reinitilize the recall_lru list under the recall lock
+      NFSD: forget_delegations should use list_for_each_entry_safe
+
+Chuck Lever (1):
+      NFSD: Change name of extended attribute containing junction
+
+J. Bruce Fields (17):
+      nfsd4: fix lockowner matching
+      nfsd4: cleanup lock clientid handling in sessions case
+      nfsd4: maintain one seqid stream per (lockowner, file)
+      nfsd4: hash lockowners to simplify RELEASE_LOCKOWNER
+      nfsd4: share open and lock owner hash tables
+      nfsd4: fix CONFIG_NFSD_FAULT_INJECTION compile error
+      nfsd4: add a separate (lockowner, inode) lookup
+      svcrpc: make svc_delete_xprt static
+      svcrpc: destroy server sockets all at once
+      svcrpc: avoid memory-corruption on pool shutdown
+      svcrpc: update outdated BKL comment
+      nfsd4: initialize special stateid's at compile time
+      nfsd4: fix spurious 4.1 post-reboot failures
+      nfsd4: be forgiving in the absence of the recovery directory
+      svcrpc: fix double-free on shutdown of nfsd after changing pool mode
+      svcrpc: don't revert to SVC_POOL_DEFAULT on nfsd shutdown
+      nfsd4: nfsd4_create_clid_dir return value is unused
+
+Mi Jinlong (1):
+      nfsd41: allow non-reclaim open-by-fh's in 4.1
+
+NeilBrown (1):
+      Update NFSD MAINTAINER
+
+Sasha Levin (1):
+      nfsd: Fix oops when parsing a 0 length export
+
+Stanislav Kinsbursky (2):
+      SUNRPC: create svc_xprt in proper network namespace
+      NFSd: use network-namespace-aware cache registering routines
+
+Thomas Meyer (1):
+      nfsd4: Use kmemdup rather than duplicating its implementation
+
+ CREDITS                                           |    5 +
+ Documentation/filesystems/nfs/00-INDEX            |    2 +
+ Documentation/filesystems/nfs/fault_injection.txt |   69 +++++
+ MAINTAINERS                                       |    1 -
+ fs/nfsd/Kconfig                                   |   10 +
+ fs/nfsd/Makefile                                  |    1 +
+ fs/nfsd/export.c                                  |   12 +-
+ fs/nfsd/fault_inject.c                            |   91 ++++++
+ fs/nfsd/fault_inject.h                            |   28 ++
+ fs/nfsd/nfs4idmap.c                               |   11 +-
+ fs/nfsd/nfs4proc.c                                |    7 +-
+ fs/nfsd/nfs4recover.c                             |   22 +-
+ fs/nfsd/nfs4state.c                               |  328 +++++++++++++++------
+ fs/nfsd/nfs4xdr.c                                 |    3 +-
+ fs/nfsd/nfsctl.c                                  |   10 +-
+ fs/nfsd/nfsd.h                                    |   20 +-
+ fs/nfsd/state.h                                   |    3 +-
+ fs/nfsd/vfs.c                                     |   17 +-
+ include/linux/sunrpc/svc_xprt.h                   |    3 +-
+ include/linux/sunrpc/svcsock.h                    |    2 +-
+ net/sunrpc/cache.c                                |    2 +
+ net/sunrpc/svc.c                                  |   25 +-
+ net/sunrpc/svc_xprt.c                             |   62 +++--
+ net/sunrpc/svcsock.c                              |    8 +-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c          |    2 +-
+ tools/nfsd/inject_fault.sh                        |   49 +++
+ 26 files changed, 624 insertions(+), 169 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/fault_injection.txt
+ create mode 100644 fs/nfsd/fault_inject.c
+ create mode 100644 fs/nfsd/fault_inject.h
+ create mode 100755 tools/nfsd/inject_fault.sh
