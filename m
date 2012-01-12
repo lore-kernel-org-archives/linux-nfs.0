@@ -1,252 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42081 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:25741 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751879Ab2AZV4R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:56:17 -0500
-Date: Thu, 26 Jan 2012 16:56:15 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
- fails
-Message-ID: <20120126215615.GF700@fieldses.org>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+	id S1753134Ab2ALJSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jan 2012 04:18:22 -0500
+Message-ID: <4F0EA51C.1060001@parallels.com>
+Date: Thu, 12 Jan 2012 13:17:16 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
+References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>	<20111214104449.3991.61989.stgit@localhost6.localdomain6>	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>	<m1vcotigyb.fsf@fess.ebiederm.org> <4F0C150F.1020007@parallels.com>	<m1ehv76v2v.fsf@fess.ebiederm.org> <4F0D5A9E.5030501@parallels.com>	<m1sjjm40k8.fsf@fess.ebiederm.org> <4F0DCEA8.7040205@parallels.com> <m18vle2frv.fsf@fess.ebiederm.org>
+In-Reply-To: <m18vle2frv.fsf@fess.ebiederm.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm assuming you meant to send this to Trond, not me?
+11.01.2012 23:36, Eric W. Biederman пишет:
+>
+> Please stop and take a look at /proc/net.  If your /proc/net is not a
+> symlink please look at a modern kernel.
+>
+> /proc/<pid>/net reflects the network namespace of the task in question.
+>
 
---b.
+Ok, I know that.
+I know, that if some task with pid N is in other network namespace, then 
+/proc/<N>/net contents will differ to /proc/selt/net contents.
 
-On Thu, Jan 26, 2012 at 04:54:23PM -0500, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> This patch removes the CONFIG_NFS_USE_NEW_IDMAPPER compile option.
-> First, the idmapper will attempt to map the id using /sbin/request-key
-> and nfsidmap.  If this fails (if /etc/request-key.conf is not configured
-> properly) then the idmapper will call the legacy code to perform the
-> mapping.  I left a comment stating where the legacy code begins to make
-> it easier for somebody to remove in the future.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
-> I tested this on both Archlinux with nfs-utils 1.2.5 and on Fedora with
-> nfs-utils 1.2.6-rc6.  It did what was expected in both cases.
-> 
->  fs/nfs/Kconfig            |   11 ------
->  fs/nfs/idmap.c            |   76 +++++++++++++++------------------------------
->  fs/nfs/sysctl.c           |    2 -
->  include/linux/nfs_idmap.h |   25 ---------------
->  4 files changed, 25 insertions(+), 89 deletions(-)
-> 
-> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> index dbcd821..021d2cf 100644
-> --- a/fs/nfs/Kconfig
-> +++ b/fs/nfs/Kconfig
-> @@ -132,14 +132,3 @@ config NFS_USE_KERNEL_DNS
->  	select DNS_RESOLVER
->  	select KEYS
->  	default y
-> -
-> -config NFS_USE_NEW_IDMAPPER
-> -	bool "Use the new idmapper upcall routine"
-> -	depends on NFS_V4 && KEYS
-> -	help
-> -	  Say Y here if you want NFS to use the new idmapper upcall functions.
-> -	  You will need /sbin/request-key (usually provided by the keyutils
-> -	  package).  For details, read
-> -	  <file:Documentation/filesystems/nfs/idmapper.txt>.
-> -
-> -	  If you are unsure, say N.
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index 2c05f19..56b1104 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -142,8 +142,6 @@ static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
->  	return snprintf(buf, buflen, "%u", id);
->  }
->  
-> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
-> -
->  #include <linux/cred.h>
->  #include <linux/sunrpc/sched.h>
->  #include <linux/nfs4.h>
-> @@ -327,43 +325,7 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
->  	return ret;
->  }
->  
-> -int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
-> -{
-> -	if (nfs_map_string_to_numeric(name, namelen, uid))
-> -		return 0;
-> -	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
-> -}
-> -
-> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
-> -{
-> -	if (nfs_map_string_to_numeric(name, namelen, gid))
-> -		return 0;
-> -	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
-> -}
-> -
-> -int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
-> -{
-> -	int ret = -EINVAL;
-> -
-> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-> -		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-> -	if (ret < 0)
-> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
-> -	return ret;
-> -}
-> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
-> -{
-> -	int ret = -EINVAL;
-> -
-> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-> -		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
-> -	if (ret < 0)
-> -		ret = nfs_map_numeric_to_string(gid, buf, buflen);
-> -	return ret;
-> -}
-> -
-> -#else  /* CONFIG_NFS_USE_NEW_IDMAPPER not defined */
-> -
-> +/* idmap classic begins here */
->  #include <linux/module.h>
->  #include <linux/mutex.h>
->  #include <linux/init.h>
-> @@ -795,19 +757,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
->  int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
->  {
->  	struct idmap *idmap = server->nfs_client->cl_idmap;
-> +	int ret = -EINVAL;
->  
->  	if (nfs_map_string_to_numeric(name, namelen, uid))
->  		return 0;
-> -	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
-> +	ret = nfs_idmap_lookup_id(name, namelen, "uid", uid);
-> +	if (ret < 0)
-> +		ret = nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
-> +	return ret;
->  }
->  
-> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
-> +int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
->  {
->  	struct idmap *idmap = server->nfs_client->cl_idmap;
-> +	int ret = -EINVAL;
->  
-> -	if (nfs_map_string_to_numeric(name, namelen, uid))
-> +	if (nfs_map_string_to_numeric(name, namelen, gid))
->  		return 0;
-> -	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
-> +	ret = nfs_idmap_lookup_id(name, namelen, "gid", gid);
-> +	if (ret < 0)
-> +		ret = nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, gid);
-> +	return ret;
->  }
->  
->  int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
-> @@ -815,22 +785,26 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
->  	struct idmap *idmap = server->nfs_client->cl_idmap;
->  	int ret = -EINVAL;
->  
-> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-> -		ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
-> +		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-> +		if (ret < 0)
-> +			ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-> +	}
->  	if (ret < 0)
->  		ret = nfs_map_numeric_to_string(uid, buf, buflen);
->  	return ret;
->  }
-> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
-> +int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
->  {
->  	struct idmap *idmap = server->nfs_client->cl_idmap;
->  	int ret = -EINVAL;
->  
-> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-> -		ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
-> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
-> +		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
-> +		if (ret < 0)
-> +			ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, gid, buf);
-> +	}
->  	if (ret < 0)
-> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
-> +		ret = nfs_map_numeric_to_string(gid, buf, buflen);
->  	return ret;
->  }
-> -
-> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
-> diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-> index 978aaeb..ad4d2e7 100644
-> --- a/fs/nfs/sysctl.c
-> +++ b/fs/nfs/sysctl.c
-> @@ -32,7 +32,6 @@ static ctl_table nfs_cb_sysctls[] = {
->  		.extra1 = (int *)&nfs_set_port_min,
->  		.extra2 = (int *)&nfs_set_port_max,
->  	},
-> -#ifndef CONFIG_NFS_USE_NEW_IDMAPPER
->  	{
->  		.procname = "idmap_cache_timeout",
->  		.data = &nfs_idmap_cache_timeout,
-> @@ -40,7 +39,6 @@ static ctl_table nfs_cb_sysctls[] = {
->  		.mode = 0644,
->  		.proc_handler = proc_dointvec_jiffies,
->  	},
-> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
->  #endif
->  	{
->  		.procname	= "nfs_mountpoint_timeout",
-> diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
-> index 308c188..717fa50 100644
-> --- a/include/linux/nfs_idmap.h
-> +++ b/include/linux/nfs_idmap.h
-> @@ -69,36 +69,11 @@ struct nfs_server;
->  struct nfs_fattr;
->  struct nfs4_string;
->  
-> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
-> -
->  int nfs_idmap_init(void);
->  void nfs_idmap_quit(void);
-> -
-> -static inline int nfs_idmap_new(struct nfs_client *clp)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline void nfs_idmap_delete(struct nfs_client *clp)
-> -{
-> -}
-> -
-> -#else /* CONFIG_NFS_USE_NEW_IDMAPPER not set */
-> -
-> -static inline int nfs_idmap_init(void)
-> -{
-> -	return 0;
-> -}
-> -
-> -static inline void nfs_idmap_quit(void)
-> -{
-> -}
-> -
->  int nfs_idmap_new(struct nfs_client *);
->  void nfs_idmap_delete(struct nfs_client *);
->  
-> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
-> -
->  void nfs_fattr_init_names(struct nfs_fattr *fattr,
->  		struct nfs4_string *owner_name,
->  		struct nfs4_string *group_name);
-> -- 
-> 1.7.8.4
-> 
+>> And what do you think about "conteinerization" of /proc contents in the way like
+>> "sysfs" was done?
+>
+> I think the way sysfs is done is a pain in the neck to use.  Especially
+> in the context of commands like "ip netns exec".  With the sysfs model
+> there is a lot of extra state to manage.
+>
+> I totally agree that the way sysfs is done is much better than the way
+> /proc/sys is done today.  Looking at current can be limiting in the
+> general case.
+>
+> My current preference is the way /proc/net was done.
+>
+
+Ok. But this approach still requires some additional data to manage in user 
+space. I.e. it's really easy to manage container's context using it's fs root, 
+because container's root is a part of initial configuration. But container's 
+processed pids numbers in parent context are unpredictable.
+
+>> Implementing /proc "conteinerization" in this way can give us great flexibility.
+>> For example, /proc/net (and /proc/sys/sunrpc) depends on mount owner net
+>> namespace, /proc/sysvipc depends on mount owner ipc namespace, etc.
+>> And this approach doesn't break backward compatibility as well.
+>
+> The thing is /proc/net is already done.
+>
+> All I see with making things like /proc/net depend on the context of the
+> process that called mount is a need to call mount much more often.
+>
+
+/proc/net is a part or /proc. And /proc mount is called per container. So this 
+is just like it is.
+
+I have some solution I mind, which looks quite simple to implement, doesn't 
+require significant additional state to manage and suits my needs.
+Please, consider this.
+It's based on sysfs containerization approach, but simplified a lot.
+Sysctl's (comparing to sysfs entries) entries are the same for all namespaces.
+This actually means, that we don't need any additional infrastructure for 
+managing dentries. All we need to know on read/write operations with sysctl's is 
+the namespaces /proc was mounted from.
+
+Thus if we:
+
+1) replace /proc sb->s_fsdata content from pid_namespace to nsproxy and
+2) add link to /proc sb to ctl_table and
+3) add ns tag (pid, net, else or none) to ctl_table
+
+then we will have all we need to manage sysctl's content in the way we want.
+And looks like this approach doesn't break backward compatibility.
+
+What do you think about it?
+
+-- 
+Best regards,
+Stanislav Kinsbursky
