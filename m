@@ -1,62 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from email2.etri.re.kr ([129.254.16.132]:35039 "EHLO
-	email2.etri.info" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750743Ab2ACFdY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jan 2012 00:33:24 -0500
+Received: from mailhub.sw.ru ([195.214.232.25]:21345 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752698Ab2ALIqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jan 2012 03:46:04 -0500
+Message-ID: <4F0E9DA5.5060505@parallels.com>
+Date: Thu, 12 Jan 2012 12:45:25 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="ks_c_5601-1987"
-Subject: Question about direct IO in pnfs 
-Date: Tue, 3 Jan 2012 14:33:22 +0900
-Message-ID: <5E11524165CB9F4889E16DC6D29BAAD5021AD1BF@email2>
-From: =?ks_c_5601-1987?B?sei89r+1?= <sykim@etri.re.kr>
-To: <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 4/5] NFS: remove RPC PipeFS mount point reference from
+ blocklayout routines
+References: <20120110130323.1672.97025.stgit@localhost6.localdomain6>	 <20120110130440.1672.43785.stgit@localhost6.localdomain6>	 <1326306793.20284.3.camel@lade.trondhjem.org> <1326306977.20284.4.camel@lade.trondhjem.org>
+In-Reply-To: <1326306977.20284.4.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These days, I¡¯m studying pnfs¡¯ functionalities.
+11.01.2012 22:36, Trond Myklebust Ð¿Ð¸ÑˆÐµÑ‚:
+> On Wed, 2012-01-11 at 13:33 -0500, Trond Myklebust wrote:
+>> On Tue, 2012-01-10 at 17:04 +0400, Stanislav Kinsbursky wrote:
+>>> This is a cleanup patch. We don't need this reference anymore, because
+>>> blocklayout pipes dentries now creates and destroys in per-net operations and
+>>> on PipeFS mount/umount notification.
+>>> Note that nfs4blocklayout_register_net() now returns 0 instead of -ENOENT in
+>>> case of PipeFS superblock absence. This is ok, because blocklayout pipe dentry
+>>> will be created on PipeFS mount event.
+>>>
+>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>
+>>> ---
+>>>   fs/nfs/blocklayout/blocklayout.c |    9 +--------
+>>>   1 files changed, 1 insertions(+), 8 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>>> index 322d920..2c70202 100644
+>>> --- a/fs/nfs/blocklayout/blocklayout.c
+>>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>>> @@ -1034,7 +1034,7 @@ static struct dentry *nfs4blocklayout_register_net(struct net *net,
+>>>
+>>>   	pipefs_sb = rpc_get_sb_net(net);
+>>>   	if (!pipefs_sb)
+>>> -		return ERR_PTR(-ENOENT);
+>>> +		return 0;
+>>
+>> This looks like a typo of some sort. The caller in
+>> nfs4blocklayout_net_init() checks for IS_ERR(), not NULL. I'll just
+>> remove this hunk...
+>
+> Never mind. I see what's going on now... It should be NULL, and not 0
+> for coding style reasons, though...
+>
 
-It seems that the pnfs code does not support direct I/O.
+Yep, NULL of course, sorry.
 
-Actually, in direct IO mode, the generic_file_aio_read() is not called. 
-
-Is there a plan to support direct IO in pnfs?
-
-And in nfs_file_direct_read() comment,
-
-what¡¯s meaning of the sentence(in order to avoid gfar¡¯s check ~ end of file)?
-
-/**   
- * nfs_file_direct_read - file direct read operation for NFS files     
- * @iocb: target I/O control block 
- * @iov: vector of user buffers into which to read data 
- * @nr_segs: size of iov vector  
- * @pos: byte offset in file where reading starts 
- *   
- * We use this function for direct reads instead of calling 
- * generic_file_aio_read() in order to avoid gfar's check to see if     
- * the request starts before the end of the file. For that check     
- * to work, we must generate a GETATTR before each direct read, and     
- * even then there is a window between the GETATTR and the subsequent     
- * READ where the file size could change. Our preference is simply     
- * to do all reads the application wants, and the server will take     
- * care of managing the end of file boundary. 
- *   
- * This function also eliminates unnecessarily updating the file's     
- * atime locally, as the NFS server sets the file's atime, and this     
- * client must read the updated atime from the server back into its     
- * cache.   
- */
-
----------------------------------------------------------------------
-SOO-YOUNG KIM
-Senior Member of Engineering Staff
-Storage System Research Team
-Electronics and Telecommunications Research Institute
-
-138 Gajeong-no, Yuseong-gu, Daejeon, 305-700 KOREA
-Phone : 82-42-860-1682 Fax : 82-42-860-6699 
-Mobile : 82-10-9696-3032 E-mail : sykim@etri.re.kr
-ETRI Homepage : www.etri.re.kr
----------------------------------------------------------------------
-
+-- 
+Best regards,
+Stanislav Kinsbursky
