@@ -1,83 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:47856 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933012Ab2AFJmv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 04:42:51 -0500
-Received: by eaad14 with SMTP id d14so860470eaa.19
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2012 01:42:50 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v5 4/8] nfsd41: consume current stateid on read and write
-Date: Fri,  6 Jan 2012 10:45:12 +0100
-Message-Id: <1325843116-20570-5-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:51441 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751792Ab2ALTQD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 14:16:03 -0500
+Message-ID: <1326395759.6198.7.camel@lade.trondhjem.org>
+Subject: Re: [patch] svcrdma: endian bug in send_write_chunks()
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Dan Carpenter <dan.carpenter@oracle.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        Tom Tucker <tom@opengridcomputing.com>
+Date: Thu, 12 Jan 2012 14:15:59 -0500
+In-Reply-To: <20120112162141.GC6563@fieldses.org>
+References: <20120112064722.GB2408@elgon.mountain>
+	 <20120112162141.GC6563@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Thu, 2012-01-12 at 11:21 -0500, J. Bruce Fields wrote: 
+> On Thu, Jan 12, 2012 at 09:47:22AM +0300, Dan Carpenter wrote:
+> > Sparse complains because arg_ch->rs_length is declared as network
+> > endian but we're treating it as CPU endian.
+> 
+> This looks like it would actually change behavior on a little endian
+> architecture, so how did this work before?
+> 
+> >From some quick grepping, I see assignments both of the form
+> 
+> 	...rs_length = ntohl(...)
+> 
+> and
+> 
+> 	...rs_length = htonl(...)
+> 
+> but only see one declaration for a field named rs_length.
+> 
+> So my best guess would be that the code is ugly but working as is, and
+> needs cleanup by someone who knows how this field was intended to be
+> used.
 
+It looks to me as if rs_handle and rs_offset are being similarly abused.
+Basically, we need a serious clean up in svc_rdma_marshall.c to separate
+out those variables that are in XDR-encoded form and those that are not.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |    2 ++
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   12 ++++++++++++
- 3 files changed, 16 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index 21550b6..6e54d19 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
-  */
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
-+extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
-+extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
- 
- #endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3e7b97f..20c8d24 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1864,6 +1864,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_READ",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
- 	},
- 	[OP_READDIR] = {
- 		.op_func = (nfsd4op_func)nfsd4_readdir,
-@@ -1942,6 +1943,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_name = "OP_WRITE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
- 	},
- 	[OP_RELEASE_LOCKOWNER] = {
- 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5add33f8..cf9bc80 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4757,3 +4757,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
- {
- 	get_stateid(cstate, &locku->lu_stateid);
- }
-+
-+void
-+nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
-+{
-+	get_stateid(cstate, &read->rd_stateid);
-+}
-+
-+void
-+nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
-+{
-+	get_stateid(cstate, &write->wr_stateid);
-+}
 -- 
-1.7.7.5
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
