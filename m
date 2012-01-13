@@ -1,45 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:31504 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751295Ab2AZOxm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 09:53:42 -0500
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: Chuck Lever <chuck.lever@oracle.com>, lsf-pc@lists.linux-foundation.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-	<4F2147BA.6030607@itwm.fraunhofer.de>
-Date: Thu, 26 Jan 2012 09:53:33 -0500
-In-Reply-To: <4F2147BA.6030607@itwm.fraunhofer.de> (Bernd Schubert's message
-	of "Thu, 26 Jan 2012 13:31:54 +0100")
-Message-ID: <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932744Ab2AMULT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:19 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 15/44] NFS: Move init_aclclient() into the v4 subdirectory
+Date: Fri, 13 Jan 2012 15:10:24 -0500
+Message-Id: <1326485453-1350-16-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>>>> "Bernd" == Bernd Schubert <bernd.schubert@itwm.fraunhofer.de> writes:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Bernd> We from the Fraunhofer FhGFS team would like to also see the T10
-Bernd> DIF/DIX API exposed to user space, so that we could make use of
-Bernd> it for our FhGFS file system.  And I think this feature is not
-Bernd> only useful for file systems, but in general, scientific
-Bernd> applications, databases, etc also would benefit from insurance of
-Bernd> data integrity.
+I move this function into the v4 subdirectory so it can exist in the
+future v4 module, instead of the generic client.
 
-I'm attending a SNIA meeting today to discuss a (cross-OS) data
-integrity aware API. We'll see what comes out of that.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile      |    3 ++-
+ fs/nfs/client.c      |   14 ++------------
+ fs/nfs/nfs4/client.c |   12 ++++++++++++
+ 3 files changed, 16 insertions(+), 13 deletions(-)
+ create mode 100644 fs/nfs/nfs4/client.c
 
-With the Linux hat on I'm still mainly interested in pursuing the
-sys_dio interface Joel and I proposed last year. We have good experience
-with that I/O model and it suits applications that want to interact with
-the protection information well. libaio is also on my list.
-
-But obviously any help and input is appreciated...
-
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index d782c47..16e3489 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -12,7 +12,8 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4/proc.o nfs4/xdr.o nfs4/state.o nfs4/renewd.o \
+ 			   nfs4/delegation.o nfs4/idmap.o \
+ 			   nfs4/callback.o nfs4/callback_xdr.o \
+-			   nfs4/callback_proc.o nfs4/namespace.o
++			   nfs4/callback_proc.o nfs4/namespace.o \
++			   nfs4/client.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index e24dd90..6c19290 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -42,6 +42,7 @@
+ 
+ #include <asm/system.h>
+ 
++#include "nfs4/nfs4.h"
+ #include "nfs4/nfs4_fs.h"
+ #include "nfs4/callback.h"
+ #include "nfs4/delegation.h"
+@@ -53,8 +54,6 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+-static void nfs_init_server_aclclient(struct nfs_server *server);
+-
+ static DEFINE_SPINLOCK(nfs_client_lock);
+ static DEFINE_SPINLOCK(nfs_version_lock);
+ static LIST_HEAD(nfs_versions);
+@@ -137,7 +136,7 @@ static struct nfs_subversion nfs_v4_mod = {
+ 
+ 	.reference = nfs_module_null_function,
+ 	.unreference = nfs_module_null_function,
+-	.init_aclclient = nfs_init_server_aclclient,
++	.init_aclclient = nfs4_init_aclclient,
+ };
+ #endif /* CONFIG_NFS_V4 */
+ 
+@@ -801,15 +800,6 @@ static int nfs_start_lockd(struct nfs_server *server)
+ }
+ 
+ /*
+- * Initialise an NFSv3 ACL client connection
+- */
+-static void nfs_init_server_aclclient(struct nfs_server *server)
+-{
+-	server->flags &= ~NFS_MOUNT_NOACL;
+-	server->caps &= ~NFS_CAP_ACLS;
+-}
+-
+-/*
+  * Create a general RPC client
+  */
+ static int nfs_init_server_rpcclient(struct nfs_server *server,
+diff --git a/fs/nfs/nfs4/client.c b/fs/nfs/nfs4/client.c
+new file mode 100644
+index 0000000..bbc415d
+--- /dev/null
++++ b/fs/nfs/nfs4/client.c
+@@ -0,0 +1,12 @@
++/*
++ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
++ */
++#include <linux/sunrpc/sched.h>
++#include <linux/nfs_fs_sb.h>
++#include <linux/nfs_mount.h>
++
++void nfs4_init_aclclient(struct nfs_server *server)
++{
++	server->flags &= ~NFS_MOUNT_NOACL;
++	server->flags &= ~NFS_CAP_ACLS;
++}
 -- 
-Martin K. Petersen	Oracle Linux Engineering
+1.7.8.3
+
