@@ -1,38 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:21136 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757137Ab2ADWje (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 17:39:34 -0500
-Subject: Re: [PATCH] NFS: Cache state owners after files are closed
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1325716152.25276.3.camel@lade.trondhjem.org>
-Date: Wed, 4 Jan 2012 17:39:29 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <D08F83C3-C3E1-498E-9E82-6C61CB5D9E04@oracle.com>
-References: <C0783437-7D8F-4A45-913A-B49692D37AC2@oracle.com> <1325716037-27762-1-git-send-email-Trond.Myklebust@netapp.com> <1325716152.25276.3.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932688Ab2AMULR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:17 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 09/44] NFS: Move v3 to its own subdirectory
+Date: Fri, 13 Jan 2012 15:10:18 -0500
+Message-Id: <1326485453-1350-10-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Jan 4, 2012, at 5:29 PM, Trond Myklebust wrote:
+This keeps all the v3 code together and separate from the rest of the
+NFS code.
 
-> On Wed, 2012-01-04 at 17:27 -0500, Trond Myklebust wrote: 
->> [Trond: Fixed a garbage collection race and a few efficiency issues]
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> As you can see from the resulting patch, I found a couple more
-> optimisations: mainly to do with optimising away the dropping and then
-> retaking of the client->cl_lock...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile                    |    4 ++--
+ fs/nfs/{nfs3acl.c => nfs3/acl.c}   |    2 +-
+ fs/nfs/{nfs3proc.c => nfs3/proc.c} |    4 ++--
+ fs/nfs/{nfs3xdr.c => nfs3/xdr.c}   |    2 +-
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+ rename fs/nfs/{nfs3acl.c => nfs3/acl.c} (99%)
+ rename fs/nfs/{nfs3proc.c => nfs3/proc.c} (99%)
+ rename fs/nfs/{nfs3xdr.c => nfs3/xdr.c} (99%)
 
-Noted.  Good to eliminate more contention on that lock.  I'll try it out.
-
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 5733451..7d674a0 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -9,8 +9,8 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+-nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+-nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
++nfs-$(CONFIG_NFS_V3)	+= nfs3/proc.o nfs3/xdr.o
++nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3/acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3/acl.c
+similarity index 99%
+rename from fs/nfs/nfs3acl.c
+rename to fs/nfs/nfs3/acl.c
+index 7ef2397..ac589ff 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3/acl.c
+@@ -6,7 +6,7 @@
+ #include <linux/posix_acl_xattr.h>
+ #include <linux/nfsacl.h>
+ 
+-#include "internal.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3/proc.c
+similarity index 99%
+rename from fs/nfs/nfs3proc.c
+rename to fs/nfs/nfs3/proc.c
+index d4bc9ed9..f37ddb9 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3/proc.c
+@@ -18,8 +18,8 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/nfs_mount.h>
+ 
+-#include "iostat.h"
+-#include "internal.h"
++#include "../iostat.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3/xdr.c
+similarity index 99%
+rename from fs/nfs/nfs3xdr.c
+rename to fs/nfs/nfs3/xdr.c
+index 183c6b1..be27fb8 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3/xdr.c
+@@ -20,7 +20,7 @@
+ #include <linux/nfs3.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfsacl.h>
+-#include "internal.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.8.3
 
