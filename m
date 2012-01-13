@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:63398 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753494Ab2ALPUe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:20:34 -0500
-Received: by ghbg16 with SMTP id g16so311074ghb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:20:33 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH-v2 6/9] pnfsblock: clean up _add_entry
-Date: Thu, 12 Jan 2012 23:18:45 +0800
-Message-Id: <1326381528-2232-7-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:26221 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756922Ab2AMJJU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 04:09:20 -0500
+Subject: [PATCH v2 0/4] SUNRPC: pass network namespace context to sockaddr
+ construction routines
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 13 Jan 2012 13:08:54 +0400
+Message-ID: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is wrong to kmalloc in _add_entry() as it is inside
-spinlock. memory should be already allocated _add_entry() is called.
+This patch-set was created in context of clone of git branch:
+git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
+head: devel
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+v2:
+1) Rebased on up-to-date state ("devel" head).
+2) patches change logs updated
+
+This is another precursor patch set aimed to remove hard-coded "init_net"
+reference from SUNRPC sockaddr convertion and construction routines.
+
+The following series consists of:
+
 ---
- fs/nfs/blocklayout/extents.c |    8 +-------
- 1 files changed, 1 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index f383524..d0f52ed 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -110,13 +110,7 @@ static int _add_entry(struct my_tree *tree, u64 s, int32_t tag,
- 		return 0;
- 	} else {
- 		struct pnfs_inval_tracking *new;
--		if (storage)
--			new = storage;
--		else {
--			new = kmalloc(sizeof(*new), GFP_NOFS);
--			if (!new)
--				return -ENOMEM;
--		}
-+		new = storage;
- 		new->it_sector = s;
- 		new->it_tags = (1 << tag);
- 		list_add(&new->it_link, &pos->it_link);
+Stanislav Kinsbursky (4):
+      SUNRPC: parametrize rpc_parse_scope_id() by network context
+      SUNRPC: parametrize rpc_pton6() by network context
+      SUNRPC: parametrize rpc_pton() by network context
+      SUNRPC: parametrize rpc_uaddr2sockaddr() by network context
+
+
+ fs/nfs/dns_resolve.c        |    4 ++--
+ fs/nfs/nfs4filelayoutdev.c  |    2 +-
+ fs/nfs/nfs4namespace.c      |    2 +-
+ fs/nfs/super.c              |    4 ++--
+ fs/nfsd/nfs4state.c         |    2 +-
+ fs/nfsd/nfsctl.c            |    2 +-
+ include/linux/sunrpc/clnt.h |    4 ++--
+ net/sunrpc/addr.c           |   26 +++++++++++++++-----------
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ net/sunrpc/svcauth_unix.c   |    2 +-
+ 10 files changed, 27 insertions(+), 23 deletions(-)
+
 -- 
-1.7.1.262.g5ef3d
-
+Signature
