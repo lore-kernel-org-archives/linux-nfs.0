@@ -1,101 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8292 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:2780 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751925Ab2AZScg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 13:32:36 -0500
-From: Weston Andros Adamson <dros@netapp.com>
+	id S932075Ab2AMKDP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 05:03:15 -0500
+Subject: [PATCH v2 2/4] SUNRPC: pass network namespace to service registering
+ routines
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] NFS: printks in fs/nfs/ should start with NFS:
-Date: Thu, 26 Jan 2012 13:32:22 -0500
-Message-Id: <1327602743-1152-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1327602743-1152-1-git-send-email-dros@netapp.com>
-References: <1327602743-1152-1-git-send-email-dros@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 13 Jan 2012 14:02:48 +0400
+Message-ID: <20120113100248.12259.69162.stgit@localhost6.localdomain6>
+In-Reply-To: <20120113095121.12259.52250.stgit@localhost6.localdomain6>
+References: <20120113095121.12259.52250.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Messages like "Got error -10052 from the server on DESTROY_SESSION. Session
-has been destroyed regardless" can be confusing to users who aren't very
-familiar with NFS.
+Lockd and NFSd services will handle requests from and to many network
+nsamespaces. And thus have to be registered and unregistered per network
+namespace.
 
-NOTE: This patch ignores any printks() that start by printing __func__ - that
-will be in a separate patch.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/idmap.c          |    3 ++-
- fs/nfs/nfs4filelayout.c |    2 +-
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4state.c      |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- 5 files changed, 6 insertions(+), 5 deletions(-)
+ include/linux/sunrpc/svc.h |    2 +-
+ net/sunrpc/svc.c           |   42 +++++++++++++++++++++++-------------------
+ net/sunrpc/svcsock.c       |    3 ++-
+ 3 files changed, 26 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index ff084d2..91b1e2a 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -175,7 +175,8 @@ int nfs_idmap_init(void)
- 	struct key *keyring;
- 	int ret = 0;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 35b37b1..d3563c2 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -428,7 +428,7 @@ void		   svc_destroy(struct svc_serv *);
+ int		   svc_process(struct svc_rqst *);
+ int		   bc_svc_process(struct svc_serv *, struct rpc_rqst *,
+ 			struct svc_rqst *);
+-int		   svc_register(const struct svc_serv *, const int,
++int		   svc_register(const struct svc_serv *, struct net *, const int,
+ 				const unsigned short, const unsigned short);
  
--	printk(KERN_NOTICE "Registering the %s key type\n", key_type_id_resolver.name);
-+	printk(KERN_NOTICE "NFS: Registering the %s key type\n",
-+		key_type_id_resolver.name);
+ void		   svc_wake_up(struct svc_serv *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 8f6c255..03d2dfc 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -30,7 +30,7 @@
  
- 	cred = prepare_kernel_cred(NULL);
- 	if (!cred)
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index b4f8f96..9a058b8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -575,7 +575,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 			goto out_err_free;
- 		fl->fh_array[i]->size = be32_to_cpup(p++);
- 		if (sizeof(struct nfs_fh) < fl->fh_array[i]->size) {
--			printk(KERN_ERR "Too big fh %d received %d\n",
-+			printk(KERN_ERR "NFS: Too big fh %d received %d\n",
- 			       i, fl->fh_array[i]->size);
- 			goto out_err_free;
- 		}
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 05dbba6..0773bbb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5371,7 +5371,7 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+ #define RPCDBG_FACILITY	RPCDBG_SVCDSP
  
- 	if (status)
- 		printk(KERN_WARNING
--			"Got error %d from the server on DESTROY_SESSION. "
-+			"NFS: Got error %d from the server on DESTROY_SESSION. "
- 			"Session has been destroyed regardless...\n", status);
+-static void svc_unregister(const struct svc_serv *serv);
++static void svc_unregister(const struct svc_serv *serv, struct net *net);
  
- 	dprintk("<-- nfs4_proc_destroy_session\n");
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7d09860..b43a65d 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1764,7 +1764,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 	} while (atomic_read(&clp->cl_count) > 1);
- 	return;
- out_error:
--	printk(KERN_WARNING "Error: state manager failed on NFSv4 server %s"
-+	printk(KERN_WARNING "NFS: state manager failed on NFSv4 server %s"
- 			" with error %d\n", clp->cl_hostname, -status);
- 	nfs4_end_drain_session(clp);
- 	nfs4_clear_state_manager_bit(clp);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4633d40..0f24f14 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1023,7 +1023,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	 * Now we backfill the bitmap and the attribute buffer length.
- 	 */
- 	if (len != ((char *)p - (char *)q) + 4) {
--		printk(KERN_ERR "nfs: Attr length error, %u != %Zu\n",
-+		printk(KERN_ERR "NFS: Attr length error, %u != %Zu\n",
- 				len, ((char *)p - (char *)q) + 4);
- 		BUG();
+ #define svc_serv_is_pooled(serv)    ((serv)->sv_function)
+ 
+@@ -375,13 +375,13 @@ static int svc_rpcb_setup(struct svc_serv *serv)
+ 		return err;
+ 
+ 	/* Remove any stale portmap registrations */
+-	svc_unregister(serv);
++	svc_unregister(serv, &init_net);
+ 	return 0;
+ }
+ 
+ void svc_rpcb_cleanup(struct svc_serv *serv)
+ {
+-	svc_unregister(serv);
++	svc_unregister(serv, &init_net);
+ 	rpcb_put_local(&init_net);
+ }
+ EXPORT_SYMBOL_GPL(svc_rpcb_cleanup);
+@@ -790,7 +790,8 @@ EXPORT_SYMBOL_GPL(svc_exit_thread);
+  * Returns zero on success; a negative errno value is returned
+  * if any error occurs.
+  */
+-static int __svc_rpcb_register4(const u32 program, const u32 version,
++static int __svc_rpcb_register4(struct net *net, const u32 program,
++				const u32 version,
+ 				const unsigned short protocol,
+ 				const unsigned short port)
+ {
+@@ -813,7 +814,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
  	}
--- 
-1.7.4.4
+ 
+-	error = rpcb_v4_register(&init_net, program, version,
++	error = rpcb_v4_register(net, program, version,
+ 					(const struct sockaddr *)&sin, netid);
+ 
+ 	/*
+@@ -821,7 +822,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 	 * registration request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(&init_net, program, version, protocol, port);
++		error = rpcb_register(net, program, version, protocol, port);
+ 
+ 	return error;
+ }
+@@ -837,7 +838,8 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+  * Returns zero on success; a negative errno value is returned
+  * if any error occurs.
+  */
+-static int __svc_rpcb_register6(const u32 program, const u32 version,
++static int __svc_rpcb_register6(struct net *net, const u32 program,
++				const u32 version,
+ 				const unsigned short protocol,
+ 				const unsigned short port)
+ {
+@@ -860,7 +862,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
+ 
+-	error = rpcb_v4_register(&init_net, program, version,
++	error = rpcb_v4_register(net, program, version,
+ 					(const struct sockaddr *)&sin6, netid);
+ 
+ 	/*
+@@ -880,7 +882,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+  * Returns zero on success; a negative errno value is returned
+  * if any error occurs.
+  */
+-static int __svc_register(const char *progname,
++static int __svc_register(struct net *net, const char *progname,
+ 			  const u32 program, const u32 version,
+ 			  const int family,
+ 			  const unsigned short protocol,
+@@ -890,12 +892,12 @@ static int __svc_register(const char *progname,
+ 
+ 	switch (family) {
+ 	case PF_INET:
+-		error = __svc_rpcb_register4(program, version,
++		error = __svc_rpcb_register4(net, program, version,
+ 						protocol, port);
+ 		break;
+ #if IS_ENABLED(CONFIG_IPV6)
+ 	case PF_INET6:
+-		error = __svc_rpcb_register6(program, version,
++		error = __svc_rpcb_register6(net, program, version,
+ 						protocol, port);
+ #endif
+ 	}
+@@ -909,14 +911,16 @@ static int __svc_register(const char *progname,
+ /**
+  * svc_register - register an RPC service with the local portmapper
+  * @serv: svc_serv struct for the service to register
++ * @net: net namespace for the service to register
+  * @family: protocol family of service's listener socket
+  * @proto: transport protocol number to advertise
+  * @port: port to advertise
+  *
+  * Service is registered for any address in the passed-in protocol family
+  */
+-int svc_register(const struct svc_serv *serv, const int family,
+-		 const unsigned short proto, const unsigned short port)
++int svc_register(const struct svc_serv *serv, struct net *net,
++		 const int family, const unsigned short proto,
++		 const unsigned short port)
+ {
+ 	struct svc_program	*progp;
+ 	unsigned int		i;
+@@ -941,7 +945,7 @@ int svc_register(const struct svc_serv *serv, const int family,
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
+-			error = __svc_register(progp->pg_name, progp->pg_prog,
++			error = __svc_register(net, progp->pg_name, progp->pg_prog,
+ 						i, family, proto, port);
+ 			if (error < 0)
+ 				break;
+@@ -958,19 +962,19 @@ int svc_register(const struct svc_serv *serv, const int family,
+  * any "inet6" entries anyway.  So a PMAP_UNSET should be sufficient
+  * in this case to clear all existing entries for [program, version].
+  */
+-static void __svc_unregister(const u32 program, const u32 version,
++static void __svc_unregister(struct net *net, const u32 program, const u32 version,
+ 			     const char *progname)
+ {
+ 	int error;
+ 
+-	error = rpcb_v4_register(&init_net, program, version, NULL, "");
++	error = rpcb_v4_register(net, program, version, NULL, "");
+ 
+ 	/*
+ 	 * User space didn't support rpcbind v4, so retry this
+ 	 * request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(&init_net, program, version, 0, 0);
++		error = rpcb_register(net, program, version, 0, 0);
+ 
+ 	dprintk("svc: %s(%sv%u), error %d\n",
+ 			__func__, progname, version, error);
+@@ -984,7 +988,7 @@ static void __svc_unregister(const u32 program, const u32 version,
+  * The result of unregistration is reported via dprintk for those who want
+  * verification of the result, but is otherwise not important.
+  */
+-static void svc_unregister(const struct svc_serv *serv)
++static void svc_unregister(const struct svc_serv *serv, struct net *net)
+ {
+ 	struct svc_program *progp;
+ 	unsigned long flags;
+@@ -1001,7 +1005,7 @@ static void svc_unregister(const struct svc_serv *serv)
+ 
+ 			dprintk("svc: attempting to unregister %sv%u\n",
+ 				progp->pg_name, i);
+-			__svc_unregister(progp->pg_prog, i, progp->pg_name);
++			__svc_unregister(net, progp->pg_prog, i, progp->pg_name);
+ 		}
+ 	}
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 4645709..e8af0c9 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1409,7 +1409,8 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 
+ 	/* Register socket with portmapper */
+ 	if (*errp >= 0 && pmap_register)
+-		*errp = svc_register(serv, inet->sk_family, inet->sk_protocol,
++		*errp = svc_register(serv, sock->sk->sk_net, inet->sk_family,
++				     inet->sk_protocol,
+ 				     ntohs(inet_sk(inet)->inet_sport));
+ 
+ 	if (*errp < 0) {
 
