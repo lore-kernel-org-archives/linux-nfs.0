@@ -1,155 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog105.obsmtp.com ([207.126.144.119]:38845 "EHLO
-	eu1sys200aog105.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751466Ab2A0ISy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jan 2012 03:18:54 -0500
-Message-ID: <4F225BED.7000005@st.com>
-Date: Fri, 27 Jan 2012 08:10:21 +0000
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Reply-To: srinivas.kandagatla@st.com
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org, mingo@redhat.com,
-        neilb@suse.de, stuart.menefy@st.com, bharrosh@panasas.com,
-        rees@umich.edu, linux@razik.name
-Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min
- max delays.
-References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com> <EBFEB6A8-4943-4D9E-9139-73D14ACB32DD@oracle.com>
-In-Reply-To: <EBFEB6A8-4943-4D9E-9139-73D14ACB32DD@oracle.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:56184 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932561Ab2AMULS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:18 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 13/44] NFS: Remove unused code
+Date: Fri, 13 Jan 2012 15:10:22 -0500
+Message-Id: <1326485453-1350-14-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Jan 26, 2012, at 9:42 AM, Srinivas KANDAGATLA wrote:
->
->   
->> From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
->>
->> This patch attempts to minimize the delay in nfs root mount, which
->> happens as side effect of nfs-root mount retry by changing the
->> NFSROOT_TIMEOUT_MIN and NFSROOT_TIMEOUT_MAX values.
->>
->> Current strategy is, if do_mount_root fails, sleep for 5 seconds for the
->> second attempt followed by a 5<<1 seconds delay for each loop with a
->> maximum of 30 seconds delay.
->> For 5 retries it would take.
->>
->> 	5 + 10 + 20 + 30 + 30 = 95 Seconds
->> with
->> 	each do_mount_root timeout @ 3-4 seconds x 5 = 15 seconds.
->>
->> Which means Kernel can only attempt the succession root-mounts or panic
->> after 110 seconds.
->>
->> So changing min and max timeouts will have the below delays.
->> 	0  + 1 + 3 + 7 + 15	= 26 Seconds.
->> and with
->> 	each do_mount_root timeout @ 3-4 seconds x 5 = 15 seconds.
->> Which means Kernel can only attempt the succession root-mounts or panic
->> after 41 seconds
->>
->> As, do_mount_root timesout in 3-4 seconds which should be sufficient
->> delay to start of the second nfs mount attempt and increasing delay
->> after that makes more sense.
->>
->> I clearly see an advantange in changing these values because, Without
->> this patch my board mounts nfs in 9-10 seconds, however with this patch
->> can mount nfs in 4-5 seconds.
->>     
->
-> This feels like tuning the default settings for a very specific set up.  In the original thread for this work, 41 seconds would probably not be long enough for the network switch to enable the port.
->   
-Probably you might be right.
-We could address that by increasing NFSROOT_RETRY_MAX to 7 from 5.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-However, I want to highlight an another major issue of having an min
-timeout start at 5.
-Most of the boards (or SOC's) have in-build ethernet MAC's and external
-Ethernet PHY's, Linux PHY (& phy state-machine) framework takes on an
-average of 2-3 seconds from phy_start to get the ethernet PHY into a
-Link-up state.
-All those above boards which used to mount NFS in 3-4 seconds prior to
-the original "NFS: Retry mounting NFSROOT" patch and few other patches,
-NOW mounts NFS root in 9-10 seconds.
-Which is the case with all the ST boards and most of the embedded boards
-with external PHY's fall in.
+These structures and functions are no longer needed in the generic
+client since they are defined in the NFS v2 and v3 modules.
 
-Having the timeout start from 0 will address the uses case mentioned
-above and increasing the loops from 5 to 8 will increase the total NFS
-root timeout to 109 seconds.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c        |    8 --------
+ fs/nfs/dir.c           |   23 -----------------------
+ fs/nfs/file.c          |   19 -------------------
+ include/linux/nfs_fs.h |   26 --------------------------
+ 4 files changed, 0 insertions(+), 76 deletions(-)
 
-0  + 1 + 3 + 7 + 15 + 31 + 31  = 88
- + 
-each do_mount_root timeout @ 3-4 seconds x 7 = 21 = 109 seconds
-
-
-Finally the intention of the patch was to address most of the use-cases
-and not just the one I hit, increasing the retries to 7 should address
-the orignal network switch case and reducing the timeout-min should help
-other boards do nfs mounts as quickly as it used to happen before.
-
-Let me know if this sounds OK to you so that I can generate a new patch?
-
-
-
-Thanks,
-srini
-> I don't have a better solution at this time, but I think the current defaults will work (possibly with added delay) on most systems, whereas the proposed settings will probably result in more panics.  I prefer to keep the current settings until we have a solution that doesn't break other systems.
->
->   
->> Signed-off-by: Srinivas Kandagatla <srinivas.kandagatla@st.com>
->> ---
->> Hello All,
->> With latest kernel I can see that my nfs-root mounts with big delay
->> of 5 seconds when compared to 2.6.32. It took 9-10 seconds, where as in 2.6.32 it took 4-5 seconds.
->>
->> However with modifications to NFSROOT_TIMEOUT_MIN and NFSROOT_TIMEOUT_MAX,  nfs root mounts as it used to do it in 2.6.32.
->> As first nfs mount timeout itself introduces sufficient delay to start the second retry.
->> I think changing the min-max values will help people to nfs boot there boards faster than it is in 3.3 kernel.
->>
->> Comments ?
->>
->> Thanks.
->> srini
->>
->>
->>
->> init/do_mounts.c |    6 +++---
->> 1 files changed, 3 insertions(+), 3 deletions(-)
->>
->> diff --git a/init/do_mounts.c b/init/do_mounts.c
->> index ef6478f..b8214ce 100644
->> --- a/init/do_mounts.c
->> +++ b/init/do_mounts.c
->> @@ -361,8 +361,8 @@ out:
->>
->> #ifdef CONFIG_ROOT_NFS
->>
->> -#define NFSROOT_TIMEOUT_MIN	5
->> -#define NFSROOT_TIMEOUT_MAX	30
->> +#define NFSROOT_TIMEOUT_MIN	1
->> +#define NFSROOT_TIMEOUT_MAX	32
->> #define NFSROOT_RETRY_MAX	5
->>
->> static int __init mount_nfs_root(void)
->> @@ -390,7 +390,7 @@ static int __init mount_nfs_root(void)
->> 			break;
->>
->> 		/* Wait, in case the server refused us immediately */
->> -		ssleep(timeout);
->> +		ssleep(timeout - 1);
->> 		timeout <<= 1;
->> 		if (timeout > NFSROOT_TIMEOUT_MAX)
->> 			timeout = NFSROOT_TIMEOUT_MAX;
->> -- 
->> 1.6.3.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>     
->
->   
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ffb5994..1e1bbf8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -803,19 +803,11 @@ static int nfs_start_lockd(struct nfs_server *server)
+ /*
+  * Initialise an NFSv3 ACL client connection
+  */
+-#ifdef CONFIG_NFS_V3_ACL
+ static void nfs_init_server_aclclient(struct nfs_server *server)
+ {
+ 	server->flags &= ~NFS_MOUNT_NOACL;
+ 	server->caps &= ~NFS_CAP_ACLS;
+ }
+-#else
+-static inline void nfs_init_server_aclclient(struct nfs_server *server)
+-{
+-	server->flags &= ~NFS_MOUNT_NOACL;
+-	server->caps &= ~NFS_CAP_ACLS;
+-}
+-#endif
+ 
+ /*
+  * Create a general RPC client
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 41a5161..0348727 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -61,21 +61,6 @@ const struct file_operations nfs_dir_operations = {
+ 	.fsync		= nfs_fsync_dir,
+ };
+ 
+-const struct inode_operations nfs_dir_inode_operations = {
+-	.create		= nfs_create,
+-	.lookup		= nfs_lookup,
+-	.link		= nfs_link,
+-	.unlink		= nfs_unlink,
+-	.symlink	= nfs_symlink,
+-	.mkdir		= nfs_mkdir,
+-	.rmdir		= nfs_rmdir,
+-	.mknod		= nfs_mknod,
+-	.rename		= nfs_rename,
+-	.permission	= nfs_permission,
+-	.getattr	= nfs_getattr,
+-	.setattr	= nfs_setattr,
+-};
+-
+ const struct address_space_operations nfs_dir_aops = {
+ 	.freepage = nfs_readdir_clear_array,
+ };
+@@ -1230,14 +1215,6 @@ void nfs_d_release(struct dentry *dentry)
+ }
+ EXPORT_SYMBOL_GPL(nfs_d_release);
+ 
+-const struct dentry_operations nfs_dentry_operations = {
+-	.d_revalidate	= nfs_lookup_revalidate,
+-	.d_delete	= nfs_dentry_delete,
+-	.d_iput		= nfs_dentry_iput,
+-	.d_automount	= nfs_d_automount,
+-	.d_release	= nfs_d_release,
+-};
+-
+ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, struct nameidata *nd)
+ {
+ 	struct dentry *res;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 74c47eb..d9f11c5 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -845,25 +845,6 @@ int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
+ }
+ EXPORT_SYMBOL_GPL(nfs_setlease);
+ 
+-const struct file_operations nfs_file_operations = {
+-	.llseek		= nfs_file_llseek,
+-	.read		= do_sync_read,
+-	.write		= do_sync_write,
+-	.aio_read	= nfs_file_read,
+-	.aio_write	= nfs_file_write,
+-	.mmap		= nfs_file_mmap,
+-	.open		= nfs_file_open,
+-	.flush		= nfs_file_flush,
+-	.release	= nfs_file_release,
+-	.fsync		= nfs_file_fsync,
+-	.lock		= nfs_lock,
+-	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.splice_write	= nfs_file_splice_write,
+-	.check_flags	= nfs_check_flags,
+-	.setlease	= nfs_setlease,
+-};
+-
+ #ifdef CONFIG_NFS_V4
+ static int
+ nfs4_file_open(struct inode *inode, struct file *filp)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 666ebea..4814fcc 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -405,11 +405,6 @@ extern __be32 root_nfs_parse_addr(char *name); /*__init*/
+ /*
+  * linux/fs/nfs/file.c
+  */
+-extern const struct inode_operations nfs_file_inode_operations;
+-#if IS_ENABLED(CONFIG_NFS_V3)
+-extern const struct inode_operations nfs3_file_inode_operations;
+-#endif /* CONFIG_NFS_V3 */
+-extern const struct file_operations nfs_file_operations;
+ #ifdef CONFIG_NFS_V4
+ extern const struct file_operations nfs4_file_operations;
+ #endif /* CONFIG_NFS_V4 */
+@@ -433,22 +428,6 @@ static inline struct rpc_cred *nfs_file_cred(struct file *file)
+ }
+ 
+ /*
+- * linux/fs/nfs/xattr.c
+- */
+-#ifdef CONFIG_NFS_V3_ACL
+-extern ssize_t nfs3_listxattr(struct dentry *, char *, size_t);
+-extern ssize_t nfs3_getxattr(struct dentry *, const char *, void *, size_t);
+-extern int nfs3_setxattr(struct dentry *, const char *,
+-			const void *, size_t, int);
+-extern int nfs3_removexattr (struct dentry *, const char *name);
+-#else
+-# define nfs3_listxattr NULL
+-# define nfs3_getxattr NULL
+-# define nfs3_setxattr NULL
+-# define nfs3_removexattr NULL
+-#endif
+-
+-/*
+  * linux/fs/nfs/direct.c
+  */
+ extern ssize_t nfs_direct_IO(int, struct kiocb *, const struct iovec *, loff_t,
+@@ -463,12 +442,7 @@ extern ssize_t nfs_file_direct_write(struct kiocb *iocb,
+ /*
+  * linux/fs/nfs/dir.c
+  */
+-extern const struct inode_operations nfs_dir_inode_operations;
+-#if IS_ENABLED(CONFIG_NFS_V3)
+-extern const struct inode_operations nfs3_dir_inode_operations;
+-#endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_dir_operations;
+-extern const struct dentry_operations nfs_dentry_operations;
+ 
+ extern void nfs_force_lookup_revalidate(struct inode *dir);
+ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh, struct nfs_fattr *fattr);
+-- 
+1.7.8.3
 
