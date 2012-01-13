@@ -1,94 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:21302 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:41779 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753990Ab2AaKJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 05:09:42 -0500
-Subject: [PATCH v2 4/4] SUNRPC: service shutdown function in network namespace
- context introduced
+	id S932711Ab2AMULM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:12 -0500
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 14:09:25 +0400
-Message-ID: <20120131100925.4342.34740.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
-References: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 02/44] NFS: Relocate the stat_to_errno() function
+Date: Fri, 13 Jan 2012 15:10:11 -0500
+Message-Id: <1326485453-1350-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is enough for releasing resources, allocated for network
-namespace context, in case of sharing service between them.
-IOW, each service "user" (LockD, NFSd, etc), which wants to share service
-between network namespaces, have to release related resources by the function,
-introduced in this patch, instead of performing service shutdown (of course in
-case the service is shared already to the moment of release).
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+This was located in a file belonging to NFS v2, but it is also used by
+v3.  I moved it to a generic NFS client file to keep it from
+disappearing once v2 becomes a module.
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/svc.c |   33 ++++++++++++++++++++-------------
- 1 files changed, 20 insertions(+), 13 deletions(-)
+ fs/nfs/client.c  |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs2xdr.c |   64 ----------------------------------------------------
+ 2 files changed, 66 insertions(+), 64 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6cc0ea3..78abac4 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -510,6 +510,24 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
- }
- EXPORT_SYMBOL_GPL(svc_create_pooled);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 41bd67f..b8e9769 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -2014,6 +2014,72 @@ void nfs_fs_proc_exit(void)
  
-+void svc_shutdown_net(struct svc_serv *serv, struct net *net)
+ #endif /* CONFIG_PROC_FS */
+ 
++/* Mapping from NFS error code to "errno" error code. */
++#define errno_NFSERR_IO		EIO
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++int nfs_stat_to_errno(enum nfs_stat status)
 +{
-+	/*
-+	 * The set of xprts (contained in the sv_tempsocks and
-+	 * sv_permsocks lists) is now constant, since it is modified
-+	 * only by accepting new sockets (done by service threads in
-+	 * svc_recv) or aging old ones (done by sv_temptimer), or
-+	 * configuration changes (excluded by whatever locking the
-+	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
-+	 * safe to traverse those lists and shut everything down:
-+	 */
-+	svc_close_net(serv, net);
++	int i;
 +
-+	if (serv->sv_shutdown)
-+		serv->sv_shutdown(serv, net);
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
 +}
-+EXPORT_SYMBOL_GPL(svc_shutdown_net);
 +
- /*
-  * Destroy an RPC service. Should be called with appropriate locking to
-  * protect the sv_nrthreads, sv_permsocks and sv_tempsocks.
-@@ -532,16 +550,8 @@ svc_destroy(struct svc_serv *serv)
- 		printk("svc_destroy: no threads for serv=%p!\n", serv);
+ module_param(nfs4_disable_idmapping, bool, 0644);
+ MODULE_PARM_DESC(nfs4_disable_idmapping,
+ 		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 792cb13..61df96d 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -1057,70 +1057,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
  
- 	del_timer_sync(&serv->sv_temptimer);
--	/*
--	 * The set of xprts (contained in the sv_tempsocks and
--	 * sv_permsocks lists) is now constant, since it is modified
--	 * only by accepting new sockets (done by service threads in
--	 * svc_recv) or aging old ones (done by sv_temptimer), or
--	 * configuration changes (excluded by whatever locking the
--	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
--	 * safe to traverse those lists and shut everything down:
--	 */
--	svc_close_net(serv, net);
-+
-+	svc_shutdown_net(serv, net);
- 
- 	/*
- 	 * The last user is gone and thus all sockets have to be destroyed to
-@@ -550,9 +560,6 @@ svc_destroy(struct svc_serv *serv)
- 	BUG_ON(!list_empty(&serv->sv_permsocks));
- 	BUG_ON(!list_empty(&serv->sv_tempsocks));
- 
--	if (serv->sv_shutdown)
--		serv->sv_shutdown(serv, net);
 -
- 	cache_clean_deferred(serv);
- 
- 	if (svc_serv_is_pooled(serv))
+-/*
+- * We need to translate between nfs status return values and
+- * the local errno values which may not be the same.
+- */
+-static const struct {
+-	int stat;
+-	int errno;
+-} nfs_errtbl[] = {
+-	{ NFS_OK,		0		},
+-	{ NFSERR_PERM,		-EPERM		},
+-	{ NFSERR_NOENT,		-ENOENT		},
+-	{ NFSERR_IO,		-errno_NFSERR_IO},
+-	{ NFSERR_NXIO,		-ENXIO		},
+-/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
+-	{ NFSERR_ACCES,		-EACCES		},
+-	{ NFSERR_EXIST,		-EEXIST		},
+-	{ NFSERR_XDEV,		-EXDEV		},
+-	{ NFSERR_NODEV,		-ENODEV		},
+-	{ NFSERR_NOTDIR,	-ENOTDIR	},
+-	{ NFSERR_ISDIR,		-EISDIR		},
+-	{ NFSERR_INVAL,		-EINVAL		},
+-	{ NFSERR_FBIG,		-EFBIG		},
+-	{ NFSERR_NOSPC,		-ENOSPC		},
+-	{ NFSERR_ROFS,		-EROFS		},
+-	{ NFSERR_MLINK,		-EMLINK		},
+-	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
+-	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
+-	{ NFSERR_DQUOT,		-EDQUOT		},
+-	{ NFSERR_STALE,		-ESTALE		},
+-	{ NFSERR_REMOTE,	-EREMOTE	},
+-#ifdef EWFLUSH
+-	{ NFSERR_WFLUSH,	-EWFLUSH	},
+-#endif
+-	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
+-	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
+-	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
+-	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
+-	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
+-	{ NFSERR_BADTYPE,	-EBADTYPE	},
+-	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
+-	{ -1,			-EIO		}
+-};
+-
+-/**
+- * nfs_stat_to_errno - convert an NFS status code to a local errno
+- * @status: NFS status code to convert
+- *
+- * Returns a local errno value, or -EIO if the NFS status code is
+- * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+- */
+-int nfs_stat_to_errno(enum nfs_stat status)
+-{
+-	int i;
+-
+-	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
+-		if (nfs_errtbl[i].stat == (int)status)
+-			return nfs_errtbl[i].errno;
+-	}
+-	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
+-	return nfs_errtbl[i].errno;
+-}
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
+-- 
+1.7.8.3
 
