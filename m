@@ -1,112 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:4547 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932561Ab2AMULM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:12 -0500
-From: bjschuma@netapp.com
+	id S1757123Ab2AMJJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 04:09:28 -0500
+Subject: [PATCH v2 1/4] SUNRPC: parametrize rpc_parse_scope_id() by network
+ context
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 03/44] NFS: Make v2 configurable
-Date: Fri, 13 Jan 2012 15:10:12 -0500
-Message-Id: <1326485453-1350-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 13 Jan 2012 13:09:03 +0400
+Message-ID: <20120113090903.1598.30645.stgit@localhost6.localdomain6>
+In-Reply-To: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+References: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Parametrize rpc_parse_scope_id() by network context and thus force it's caller
+to pass in network context instead of using hard-coded "init_net".
 
-With this patch NFS v2 will no longer be automatically compiled in.
-Instead, users will have to select NFS_V2 during Kconfig if they want to
-use v2.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/Kconfig  |    9 +++++++++
- fs/nfs/Makefile |    5 +++--
- fs/nfs/client.c |   11 ++++++++++-
- 3 files changed, 22 insertions(+), 3 deletions(-)
+ net/sunrpc/addr.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index dbcd821..5419166 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -29,6 +29,15 @@ config NFS_FS
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index ee77742..cc83de1 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -156,8 +156,9 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
+ }
  
- 	  If unsure, say N.
+ #if IS_ENABLED(CONFIG_IPV6)
+-static int rpc_parse_scope_id(const char *buf, const size_t buflen,
+-			      const char *delim, struct sockaddr_in6 *sin6)
++static int rpc_parse_scope_id(struct net *net, const char *buf,
++			      const size_t buflen, const char *delim,
++			      struct sockaddr_in6 *sin6)
+ {
+ 	char *p;
+ 	size_t len;
+@@ -177,7 +178,7 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
+ 		unsigned long scope_id = 0;
+ 		struct net_device *dev;
  
-+config NFS_V2
-+	bool "NFS client support for NFS version 2"
-+	depends on NFS_FS
-+	help
-+	  This option enables support for version 2 of the NFS protocol
-+	  (RFC 1094) in the kernel's NFS client.
-+
-+	  If unsure, say Y.
-+
- config NFS_V3
- 	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index b58613d..7ddd45d 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -4,11 +4,12 @@
+-		dev = dev_get_by_name(&init_net, p);
++		dev = dev_get_by_name(net, p);
+ 		if (dev != NULL) {
+ 			scope_id = dev->ifindex;
+ 			dev_put(dev);
+@@ -213,7 +214,7 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
+ 	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
+ 		return 0;
  
- obj-$(CONFIG_NFS_FS) += nfs.o
+-	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
++	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
+ 		return 0;
  
--nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
--			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
-+nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
-+			   direct.o pagelist.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
-+nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index b8e9769..01cb068 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -90,7 +90,9 @@ static int nfs4_disable_idmapping = 0;
-  * RPC cruft for NFS
-  */
- static struct rpc_version *nfs_version[5] = {
-+#ifdef CONFIG_NFS_V2
- 	[2]			= &nfs_version2,
-+#endif
- #ifdef CONFIG_NFS_V3
- 	[3]			= &nfs_version3,
- #endif
-@@ -829,7 +831,7 @@ static int nfs_init_server(struct nfs_server *server,
- 		.hostname = data->nfs_server.hostname,
- 		.addr = (const struct sockaddr *)&data->nfs_server.address,
- 		.addrlen = data->nfs_server.addrlen,
--		.rpc_ops = &nfs_v2_clientops,
-+		.rpc_ops = NULL,
- 		.proto = data->nfs_server.protocol,
- 	};
- 	struct rpc_timeout timeparms;
-@@ -838,10 +840,17 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	dprintk("--> nfs_init_server()\n");
- 
-+
-+#ifdef CONFIG_NFS_V2
-+	if (data->version == 2)
-+		cl_init.rpc_ops = &nfs_v2_clientops;
-+#endif
- #ifdef CONFIG_NFS_V3
- 	if (data->version == 3)
- 		cl_init.rpc_ops = &nfs_v3_clientops;
- #endif
-+	if (cl_init.rpc_ops == NULL)
-+		return -EPROTONOSUPPORT;
- 
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
--- 
-1.7.8.3
+ 	sin6->sin6_family = AF_INET6;
 
