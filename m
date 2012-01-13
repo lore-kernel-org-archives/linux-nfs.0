@@ -1,137 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:60023 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754066Ab2AWUCY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:24 -0500
-Received: by mail-qw0-f46.google.com with SMTP id c10so2031574qad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:24 -0800 (PST)
-MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 05/11] nfsdcld: add function to remove unreclaimed client records
-Date: Mon, 23 Jan 2012 15:02:05 -0500
-Message-Id: <1327348931-785-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:10299 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932757Ab2AMULk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:40 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 40/44] NFS: Export functions from client.c
+Date: Fri, 13 Jan 2012 15:10:49 -0500
+Message-Id: <1326485453-1350-41-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This should remove any client record that has a timestamp prior to
-the given time.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Eventually, this call will need to be made cluster aware when this is
-run in a clustered configuration. For now, this is only suitable for
-single-host configurations.
+I am about to move over nfs v4-only code from client.c to nfs4/client.c.
+These functions will be needed by that code, so they cannot be declared
+static.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- utils/nfsdcld/nfsdcld.c |   29 +++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.c  |   28 ++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h  |    1 +
- 3 files changed, 58 insertions(+), 0 deletions(-)
+ fs/nfs/client.c |   34 +++++++++++++++++++++-------------
+ fs/nfs/nfs.h    |   11 +++++++++++
+ 2 files changed, 32 insertions(+), 13 deletions(-)
 
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 2930de4..151dd16 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -187,6 +187,32 @@ cld_check(struct cld_client *clnt)
- }
- 
- static void
-+cld_gracedone(struct cld_client *clnt)
-+{
-+	int ret;
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
-+
-+	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
-+			cmsg->cm_u.cm_gracetime);
-+
-+	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
-+
-+	/* set up reply: downcall with 0 status */
-+	cmsg->cm_status = ret ? -EREMOTEIO : ret;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+		cld_pipe_reopen(clnt);
-+	}
-+}
-+
-+static void
- cldcb(int UNUSED(fd), short which, void *data)
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 56da3b6..8e053a4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -402,8 +402,8 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
+  * Test if two socket addresses represent the same actual socket,
+  * by comparing (only) relevant fields, excluding the port number.
+  */
+-static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+-				     const struct sockaddr *sa2)
++int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
++			      const struct sockaddr *sa2)
  {
- 	ssize_t len;
-@@ -216,6 +242,9 @@ cldcb(int UNUSED(fd), short which, void *data)
- 	case Cld_Allow:
- 		cld_check(clnt);
- 		break;
-+	case Cld_GraceDone:
-+		cld_gracedone(clnt);
-+		break;
- 	default:
- 		xlog_warn("%s: command %u is not yet implemented", __func__,
- 			  cmsg->cm_cmd);
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index 814e421..a0bcf2f 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -38,6 +38,7 @@
- #include "config.h"
- #endif /* HAVE_CONFIG_H */
- 
-+#include <dirent.h>
- #include <errno.h>
- #include <event.h>
- #include <stdbool.h>
-@@ -320,3 +321,30 @@ out_err:
- 	sqlite3_finalize(stmt);
- 	return ret;
+ 	if (sa1->sa_family != sa2->sa_family)
+ 		return 0;
+@@ -416,6 +416,7 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
+ 	}
+ 	return 0;
  }
-+
-+/*
-+ * remove any client records that were not reclaimed since grace_start.
-+ */
-+int
-+sqlite_remove_unreclaimed(time_t grace_start)
-+{
-+	int ret;
-+	char *err = NULL;
-+
-+	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
-+			grace_start);
-+	if (ret < 0) {
-+		return ret;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		ret = -EINVAL;
-+		return ret;
-+	}
-+
-+	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
-+	if (ret != SQLITE_OK)
-+		xlog(D_GENERAL, "Delete failed: %s", err);
-+
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
-+	sqlite3_free(err);
-+	return ret;
-+}
-diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-index 7fc5ea4..f6ed348 100644
---- a/utils/nfsdcld/sqlite.h
-+++ b/utils/nfsdcld/sqlite.h
-@@ -23,5 +23,6 @@
- int sqlite_maindb_init(char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
-+int sqlite_remove_unreclaimed(const time_t grace_start);
++EXPORT_SYMBOL_GPL(nfs_sockaddr_match_ipaddr);
  
- #endif /* _SQLITE_H */
+ /*
+  * Test if two socket addresses represent the same actual socket,
+@@ -498,7 +499,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+  * Look up a client by IP address and protocol version
+  * - creates a new record if one doesn't yet exist
+  */
+-static struct nfs_client *
++struct nfs_client *
+ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	       const struct rpc_timeout *timeparms,
+ 	       const char *ip_addr,
+@@ -571,6 +572,7 @@ found_client:
+ 	dprintk("--> nfs_get_client() = %p [share]\n", clp);
+ 	return clp;
+ }
++EXPORT_SYMBOL_GPL(nfs_get_client);
+ 
+ /*
+  * Mark a server as ready or failed
+@@ -580,6 +582,7 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ 	clp->cl_cons_state = state;
+ 	wake_up_all(&nfs_client_active_wq);
+ }
++EXPORT_SYMBOL_GPL(nfs_mark_client_ready);
+ 
+ /*
+  * With sessions, the client is not marked ready until after a
+@@ -600,8 +603,8 @@ int nfs4_check_client_ready(struct nfs_client *clp)
+ /*
+  * Initialise the timeout values for a connection
+  */
+-static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+-				    unsigned int timeo, unsigned int retrans)
++void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
++			     unsigned int timeo, unsigned int retrans)
+ {
+ 	to->to_initval = timeo * HZ / 10;
+ 	to->to_retries = retrans;
+@@ -637,14 +640,15 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ 		BUG();
+ 	}
+ }
++EXPORT_SYMBOL_GPL(nfs_init_timeout_values);
+ 
+ /*
+  * Create an RPC client handle
+  */
+-static int nfs_create_rpc_client(struct nfs_client *clp,
+-				 const struct rpc_timeout *timeparms,
+-				 rpc_authflavor_t flavor,
+-				 int discrtry, int noresvport)
++int nfs_create_rpc_client(struct nfs_client *clp,
++			  const struct rpc_timeout *timeparms,
++			  rpc_authflavor_t flavor,
++			  int discrtry, int noresvport)
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+@@ -677,6 +681,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 	clp->cl_rpcclient = clnt;
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs_create_rpc_client);
+ 
+ /*
+  * Version 2 or 3 client destruction
+@@ -730,7 +735,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ /*
+  * Create a general RPC client
+  */
+-static int nfs_init_server_rpcclient(struct nfs_server *server,
++int nfs_init_server_rpcclient(struct nfs_server *server,
+ 		const struct rpc_timeout *timeo,
+ 		rpc_authflavor_t pseudoflavour)
+ {
+@@ -762,6 +767,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs_init_server_rpcclient);
+ 
+ /*
+  * Initialise an NFS2 or NFS3 client
+@@ -947,7 +953,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ /*
+  * Probe filesystem information, including the FSID on v2/v3
+  */
+-static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
++int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
+ {
+ 	struct nfs_fsinfo fsinfo;
+ 	struct nfs_client *clp = server->nfs_client;
+@@ -987,11 +993,12 @@ out_error:
+ 	dprintk("nfs_probe_fsinfo: error = %d\n", -error);
+ 	return error;
+ }
++EXPORT_SYMBOL_GPL(nfs_probe_fsinfo);
+ 
+ /*
+  * Copy useful information when duplicating a server record
+  */
+-static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
++void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
+ {
+ 	target->flags = source->flags;
+ 	target->rsize = source->rsize;
+@@ -1003,8 +1010,9 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
+ 	target->caps = source->caps;
+ 	target->options = source->options;
+ }
++EXPORT_SYMBOL_GPL(nfs_server_copy_userdata);
+ 
+-static void nfs_server_insert_lists(struct nfs_server *server)
++void nfs_server_insert_lists(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 5f2d632..464c64a 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -68,6 +68,17 @@ struct nfs_server *do_nfs_clone_server(struct nfs_server *, struct nfs_server *,
+ 				       struct nfs_fh *, struct nfs_fattr *);
+ struct list_head *nfs_client_list_start(void);
+ void nfs_client_list_end(void);
++int nfs_sockaddr_match_ipaddr(const struct sockaddr *, const struct sockaddr *);
++int nfs_create_rpc_client(struct nfs_client *, const struct rpc_timeout *,
++			  rpc_authflavor_t, int, int);
++struct nfs_client *nfs_get_client(const struct nfs_client_initdata *,
++				  const struct rpc_timeout *, const char *,
++				  rpc_authflavor_t, int);
++int nfs_probe_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
++void nfs_server_insert_lists(struct nfs_server *);
++void nfs_init_timeout_values(struct rpc_timeout *, int, unsigned int, unsigned int);
++int nfs_init_server_rpcclient(struct nfs_server *, const struct rpc_timeout *, rpc_authflavor_t);
++void nfs_server_copy_userdata(struct nfs_server *, struct nfs_server *);
+ 
+ /* Exported in dir.c */
+ int nfs_lookup_revalidate(struct dentry *, struct nameidata *);
 -- 
-1.7.7.5
+1.7.8.3
 
