@@ -1,124 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:47432 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753010Ab2AWTyo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 14:54:44 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1RpPyU-0003dQ-8C
-	for linux-nfs@vger.kernel.org; Mon, 23 Jan 2012 14:54:42 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] SUNRPC: Adding status trace points
-Date: Mon, 23 Jan 2012 14:54:40 -0500
-Message-Id: <1327348480-32549-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1327348480-32549-1-git-send-email-steved@redhat.com>
-References: <1327348480-32549-1-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47039 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932765Ab2AMULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:33 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 33/44] NFS: Move over the v4_file_operations structure
+Date: Fri, 13 Jan 2012 15:10:42 -0500
+Message-Id: <1326485453-1350-34-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds three trace points to the status routines
-in the sunrpc state machine.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+So it can be used by the module.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- include/trace/events/sunrpc.h |   45 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/clnt.c             |    4 +++
- 2 files changed, 49 insertions(+), 0 deletions(-)
+ fs/nfs/Makefile    |    2 +-
+ fs/nfs/file.c      |   32 --------------------------------
+ fs/nfs/nfs4/file.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 39 insertions(+), 33 deletions(-)
+ create mode 100644 fs/nfs/nfs4/file.c
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 1852f11..bca5ad3 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -8,6 +8,51 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/tracepoint.h>
- 
-+DECLARE_EVENT_CLASS(rpc_task_status,
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 94d8631..041f947 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -14,7 +14,7 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4/proc.o nfs4/xdr.o nfs4/state.o nfs4/renewd.o \
+ 			   nfs4/callback.o nfs4/callback_xdr.o \
+ 			   nfs4/callback_proc.o nfs4/namespace.o \
+ 			   nfs4/client.o nfs4/module.o nfs4/sysctl.o \
+-			   nfs4/getroot.o nfs4/inode.o
++			   nfs4/getroot.o nfs4/inode.o nfs4/file.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index a691996..2728f4e 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -844,35 +844,3 @@ int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
+ 	return -EINVAL;
+ }
+ EXPORT_SYMBOL_GPL(nfs_setlease);
+-
+-#ifdef CONFIG_NFS_V4
+-static int
+-nfs4_file_open(struct inode *inode, struct file *filp)
+-{
+-	/*
+-	 * NFSv4 opens are handled in d_lookup and d_revalidate. If we get to
+-	 * this point, then something is very wrong
+-	 */
+-	dprintk("NFS: %s called! inode=%p filp=%p\n", __func__, inode, filp);
+-	return -ENOTDIR;
+-}
+-
+-const struct file_operations nfs4_file_operations = {
+-	.llseek		= nfs_file_llseek,
+-	.read		= do_sync_read,
+-	.write		= do_sync_write,
+-	.aio_read	= nfs_file_read,
+-	.aio_write	= nfs_file_write,
+-	.mmap		= nfs_file_mmap,
+-	.open		= nfs4_file_open,
+-	.flush		= nfs_file_flush,
+-	.release	= nfs_file_release,
+-	.fsync		= nfs_file_fsync,
+-	.lock		= nfs_lock,
+-	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.splice_write	= nfs_file_splice_write,
+-	.check_flags	= nfs_check_flags,
+-	.setlease	= nfs_setlease,
+-};
+-#endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs4/file.c b/fs/nfs/nfs4/file.c
+new file mode 100644
+index 0000000..6b6a4c8
+--- /dev/null
++++ b/fs/nfs/nfs4/file.c
+@@ -0,0 +1,38 @@
++/*
++ *  Copyright (C) 1992  Rick Sladkey
++ */
++#include <linux/fs.h>
++#include <linux/nfs_fs.h>
++#include "../nfs.h"
 +
-+	TP_PROTO(struct rpc_task *task),
++#define NFSDBG_FACILITY		NFSDBG_FILE
 +
-+	TP_ARGS(task),
++static int
++nfs4_file_open(struct inode *inode, struct file *filp)
++{
++	/*
++	 * NFSv4 opens are handled in d_lookup and d_revalidate. If we get to
++	 * this point, then something is very wrong
++	 */
++	dprintk("NFS: %s called! inode=%p filp=%p\n", __func__, inode, filp);
++	return -ENOTDIR;
++}
 +
-+	TP_STRUCT__entry(
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->status = task->tk_status;
-+	),
-+
-+	TP_printk("status %d", __entry->status)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_call_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_bind_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+TRACE_EVENT(rpc_connect_status,
-+	TP_PROTO(int status),
-+
-+	TP_ARGS(status),
-+
-+	TP_STRUCT__entry(
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->status = status;
-+	),
-+
-+	TP_printk("status=%d", __entry->status)
-+);
-+
- DECLARE_EVENT_CLASS(rpc_task_running,
- 
- 	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f0268ea..bbe7385 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -55,6 +55,7 @@ static DEFINE_SPINLOCK(rpc_client_lock);
- 
- static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
- 
-+#include <trace/events/sunrpc.h>
- 
- static void	call_start(struct rpc_task *task);
- static void	call_reserve(struct rpc_task *task);
-@@ -1163,6 +1164,7 @@ call_bind_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_bind_status(task);
- 	switch (task->tk_status) {
- 	case -ENOMEM:
- 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-@@ -1262,6 +1264,7 @@ call_connect_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_connect_status(status);
- 	switch (status) {
- 		/* if soft mounted, test if we've timed out */
- 	case -ETIMEDOUT:
-@@ -1450,6 +1453,7 @@ call_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_call_status(task);
- 	task->tk_status = 0;
- 	switch(status) {
- 	case -EHOSTDOWN:
++const struct file_operations nfs4_file_operations = {
++	.llseek		= nfs_file_llseek,
++	.read		= do_sync_read,
++	.write		= do_sync_write,
++	.aio_read	= nfs_file_read,
++	.aio_write	= nfs_file_write,
++	.mmap		= nfs_file_mmap,
++	.open		= nfs4_file_open,
++	.flush		= nfs_file_flush,
++	.release	= nfs_file_release,
++	.fsync		= nfs_file_fsync,
++	.lock		= nfs_lock,
++	.flock		= nfs_flock,
++	.splice_read	= nfs_file_splice_read,
++	.splice_write	= nfs_file_splice_write,
++	.check_flags	= nfs_check_flags,
++	.setlease	= nfs_setlease,
++};
 -- 
-1.7.7.5
+1.7.8.3
 
