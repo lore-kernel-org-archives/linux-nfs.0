@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33936 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56184 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932781Ab2AMULo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:44 -0500
+	id S932745Ab2AMULT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:19 -0500
 From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 44/44] NFS: Convert NFS v4 into a module
-Date: Fri, 13 Jan 2012 15:10:53 -0500
-Message-Id: <1326485453-1350-45-git-send-email-bjschuma@netapp.com>
+Subject: [PATCH 16/44] NFS: Create a version-specific do_submount() function
+Date: Fri, 13 Jan 2012 15:10:25 -0500
+Message-Id: <1326485453-1350-17-git-send-email-bjschuma@netapp.com>
 In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,129 +16,190 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Bryan Schumaker <bjschuma@netapp.com>
 
-You need to run `modprobe nfs4` before you can use it.
+This gives v4 a chance to check if we are doing a normal submount or a
+referral.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/Kconfig       |    2 +-
- fs/nfs/Makefile      |    1 +
- fs/nfs/inode.c       |    1 -
- fs/nfs/nfs4/module.c |    9 +++++++--
- fs/nfs/nfs4/nfs4.h   |    2 --
- fs/nfs/super.c       |   12 ------------
- 6 files changed, 9 insertions(+), 18 deletions(-)
+ fs/nfs/client.c         |    1 +
+ fs/nfs/namespace.c      |   32 +++++++++++++++++---------------
+ fs/nfs/nfs.h            |    4 ++++
+ fs/nfs/nfs2/module.c    |    1 +
+ fs/nfs/nfs3/module.c    |    1 +
+ fs/nfs/nfs4/namespace.c |   11 +++++++++++
+ fs/nfs/nfs4/nfs4.h      |    2 ++
+ 7 files changed, 37 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 57c4b19..608b84a 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -70,7 +70,7 @@ config NFS_V3_ACL
- 	  If unsure, say N.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 6c19290..b4e13be 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -137,6 +137,7 @@ static struct nfs_subversion nfs_v4_mod = {
+ 	.reference = nfs_module_null_function,
+ 	.unreference = nfs_module_null_function,
+ 	.init_aclclient = nfs4_init_aclclient,
++	.do_submount = nfs4_do_submount,
+ };
+ #endif /* CONFIG_NFS_V4 */
  
- config NFS_V4
--	bool "NFS client support for NFS version 4"
-+	tristate "NFS client support for NFS version 4"
- 	depends on NFS_FS
- 	select SUNRPC_GSS
- 	help
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 34f752d..2a88234 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -25,5 +25,6 @@ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 18c5e4f..5fedb66 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -18,6 +18,7 @@
+ #include <linux/vfs.h>
+ #include <linux/sunrpc/gss_api.h>
+ #include "internal.h"
++#include "nfs.h"
  
- obj-$(CONFIG_NFS_V2) += nfs2/
- obj-$(CONFIG_NFS_V3) += nfs3/
-+obj-$(CONFIG_NFS_V4) += nfs4/
- obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
- obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d7afc2b..d5f1b5c 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1665,7 +1665,6 @@ static void __exit exit_nfs_fs(void)
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_unregister("nfs");
- #endif
--	nfs_cleanup_cb_ident_idr();
- 	unregister_nfs_fs();
- 	nfs_fs_proc_exit();
- 	nfsiod_stop();
-diff --git a/fs/nfs/nfs4/module.c b/fs/nfs/nfs4/module.c
-index c57b642..80f77c8 100644
---- a/fs/nfs/nfs4/module.c
-+++ b/fs/nfs/nfs4/module.c
-@@ -41,7 +41,7 @@ static struct nfs_subversion nfs_v4 = {
- 	.do_clone_mount = nfs4_do_clone_mount,
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -27,11 +28,6 @@ static LIST_HEAD(nfs_automount_list);
+ static DECLARE_DELAYED_WORK(nfs_automount_task, nfs_expire_automounts);
+ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+ 
+-static struct vfsmount *nfs_do_submount(struct dentry *dentry,
+-					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr,
+-					rpc_authflavor_t authflavor);
+-
+ /*
+  * nfs_path - reconstruct the path given an arbitrary dentry
+  * @base - used to return pointer to the end of devname part of path
+@@ -212,6 +208,16 @@ static inline int nfs_lookup_with_sec(struct nfs_server *server,
+ }
+ #endif /* CONFIG_NFS_V4 */
+ 
++static struct vfsmount *nfs_version_submount(struct nfs_server *server,
++					     struct dentry *dentry,
++					     struct nfs_fh *fh,
++					     struct nfs_fattr *fattr,
++					     rpc_authflavor_t authflavor)
++{
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
++	return nfs_mod->do_submount(dentry, fh, fattr, authflavor);
++}
++
+ /*
+  * nfs_d_automount - Handle crossing a mountpoint on the server
+  * @path - The mountpoint
+@@ -261,12 +267,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 		goto out;
+ 	}
+ 
+-	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+-		mnt = nfs_do_refmount(path->dentry);
+-	else
+-		mnt = nfs_do_submount(path->dentry, fh, fattr, flavor);
+-	if (IS_ERR(mnt))
+-		goto out;
++	mnt = nfs_version_submount(server, path->dentry, fh, fattr, flavor);
+ 
+ 	dprintk("%s: done, success\n", __func__);
+ 	mntget(mnt); /* prevent immediate expiration */
+@@ -335,10 +336,10 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+  * @authflavor - security flavor to use when performing the mount
+  *
+  */
+-static struct vfsmount *nfs_do_submount(struct dentry *dentry,
+-					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr,
+-					rpc_authflavor_t authflavor)
++struct vfsmount *nfs_do_submount(struct dentry *dentry,
++				 struct nfs_fh *fh,
++				 struct nfs_fattr *fattr,
++				 rpc_authflavor_t authflavor)
+ {
+ 	struct nfs_clone_mount mountdata = {
+ 		.sb = dentry->d_sb,
+@@ -371,3 +372,4 @@ out:
+ 	dprintk("<-- nfs_do_submount() = %p\n", mnt);
+ 	return mnt;
+ }
++EXPORT_SYMBOL_GPL(nfs_do_submount);
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 6b746d7..181b3b3 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -20,6 +20,8 @@ struct nfs_subversion {
+ 	void (*reference)(void);	/* For reference counting */
+ 	void (*unreference)(void);	/* Also for reference counting */
+ 	void (*init_aclclient)(struct nfs_server *);
++	struct vfsmount *(*do_submount)(struct dentry *, struct nfs_fh *,
++					struct nfs_fattr *, rpc_authflavor_t);
  };
  
--int __init init_nfs_v4(void)
-+static int __init init_nfs_v4(void)
- {
- 	int ret;
+ void nfs_register_versions(void);
+@@ -70,5 +72,7 @@ int nfs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
  
-@@ -60,9 +60,14 @@ error_0:
- 	return ret;
- }
+ /* Exported in namespace.c */
+ struct vfsmount *nfs_d_automount(struct path *);
++struct vfsmount *nfs_do_submount(struct dentry *, struct nfs_fh *,
++				 struct nfs_fattr *, rpc_authflavor_t);
  
--void exit_nfs_v4(void)
-+static void __exit exit_nfs_v4(void)
- {
- 	unregister_nfs_version(&nfs_v4);
- 	unregister_filesystem(&nfs4_fs_type);
- 	nfs4_unregister_sysctl();
+ #endif /* __LINUX_INTERNAL_NFS_H */
+diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
+index 60302c7..ffdee2b 100644
+--- a/fs/nfs/nfs2/module.c
++++ b/fs/nfs/nfs2/module.c
+@@ -27,6 +27,7 @@ struct nfs_subversion nfs_v2 = {
+ 	.reference = nfs2_reference,
+ 	.unreference = nfs2_unreference,
+ 	.init_aclclient = nfs2_init_aclclient,
++	.do_submount = nfs_do_submount,
+ };
+ 
+ static int __init init_nfs_v2(void)
+diff --git a/fs/nfs/nfs3/module.c b/fs/nfs/nfs3/module.c
+index 4c097a5..0eb8124 100644
+--- a/fs/nfs/nfs3/module.c
++++ b/fs/nfs/nfs3/module.c
+@@ -27,6 +27,7 @@ struct nfs_subversion nfs_v3 = {
+ 	.reference = nfs3_reference,
+ 	.unreference = nfs3_unreference,
+ 	.init_aclclient = nfs3_init_aclclient,
++	.do_submount = nfs_do_submount,
+ };
+ 
+ static int __init init_nfs_v3(void)
+diff --git a/fs/nfs/nfs4/namespace.c b/fs/nfs/nfs4/namespace.c
+index 6a21d95..0ec675e 100644
+--- a/fs/nfs/nfs4/namespace.c
++++ b/fs/nfs/nfs4/namespace.c
+@@ -19,6 +19,7 @@
+ #include "../internal.h"
+ #include "nfs4_fs.h"
+ #include "../dns_resolve.h"
++#include "../nfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -263,3 +264,13 @@ out:
+ 	dprintk("%s: done\n", __func__);
+ 	return mnt;
  }
 +
-+MODULE_LICENSE("GPL");
-+
-+module_init(init_nfs_v4);
-+module_exit(exit_nfs_v4);
++struct vfsmount *nfs4_do_submount(struct dentry *dentry,
++				  struct nfs_fh *fh,
++				  struct nfs_fattr *fattr,
++				  rpc_authflavor_t authflavor)
++{
++	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
++		return nfs_do_refmount(dentry);
++	return nfs_do_submount(dentry, fh, fattr, authflavor);
++}
 diff --git a/fs/nfs/nfs4/nfs4.h b/fs/nfs/nfs4/nfs4.h
-index 111ba82..dd8f94b 100644
+index 8ed9951..4640a95 100644
 --- a/fs/nfs/nfs4/nfs4.h
 +++ b/fs/nfs/nfs4/nfs4.h
-@@ -5,8 +5,6 @@
+@@ -2,5 +2,7 @@
+ #define __LINUX_FS_NFS_NFS4_H
  
- extern struct file_system_type nfs4_fs_type;
+ void nfs4_init_aclclient(struct nfs_server *);
++struct vfsmount *nfs4_do_submount(struct dentry *, struct nfs_fh *,
++				  struct nfs_fattr *, rpc_authflavor_t);
  
--int init_nfs_v4(void);
--void exit_nfs_v4(void);
- struct nfs_server *nfs4_alloc_server(void);
- struct nfs_server *nfs4_clone_server(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d2d1b6b..c4c5244 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -318,18 +318,9 @@ int __init register_nfs_fs(void)
- 	ret = nfs_register_sysctl();
- 	if (ret < 0)
- 		goto error_1;
--#if IS_ENABLED(CONFIG_NFS_V4)
--	ret = init_nfs_v4();
--	if (ret < 0)
--		goto error_2;
--#endif
- 	register_shrinker(&acl_shrinker);
- 	return 0;
- 
--#if IS_ENABLED(CONFIG_NFS_V4)
--error_2:
--	nfs_unregister_sysctl();
--#endif
- error_1:
- 	unregister_filesystem(&nfs_fs_type);
- error_0:
-@@ -342,9 +333,6 @@ error_0:
- void __exit unregister_nfs_fs(void)
- {
- 	unregister_shrinker(&acl_shrinker);
--#if IS_ENABLED(CONFIG_NFS_V4)
--	exit_nfs_v4();
--#endif
- 	nfs_unregister_sysctl();
- 	unregister_filesystem(&nfs_fs_type);
- }
+ #endif /* __LINUX_FS_NFS_NFS4_H */
 -- 
 1.7.8.3
 
