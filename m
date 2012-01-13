@@ -1,140 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36572 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751430Ab2AYU2R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 15:28:17 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0PKSH6B016964
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 15:28:17 -0500
-Date: Wed, 25 Jan 2012 15:28:14 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and
- recreated
-Message-ID: <20120125152814.391ae064@tlielax.poochiereds.net>
-In-Reply-To: <4F20587E.9070209@RedHat.com>
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
-	<1327348931-785-10-git-send-email-jlayton@redhat.com>
-	<4F2046F8.80609@RedHat.com>
-	<20120125140954.5312a80f@tlielax.poochiereds.net>
-	<4F20587E.9070209@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932748Ab2AMULU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:20 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 18/44] NFS: Give versions a custom have_delegation() function
+Date: Fri, 13 Jan 2012 15:10:27 -0500
+Message-Id: <1326485453-1350-19-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 25 Jan 2012 14:31:10 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> 
-> 
-> On 01/25/2012 02:09 PM, Jeff Layton wrote:
-> > On Wed, 25 Jan 2012 13:16:24 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >> Hey Jeff,
-> >>
-> >> Commit inline... 
-> >>
-> >> On 01/23/2012 03:02 PM, Jeff Layton wrote:
-> >>> This can happen if nfsd is shut down and restarted. If that occurs,
-> >>> then reopen the pipe so we're not waiting for data on the defunct
-> >>> pipe.
-> >>>
-> >>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> >>> ---
-> >>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
-> >>>  1 files changed, 74 insertions(+), 10 deletions(-)
-> >>>
-> >>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-> >>> index b0c08e2..0dc5b37 100644
-> >>> --- a/utils/nfsdcld/nfsdcld.c
-> >>> +++ b/utils/nfsdcld/nfsdcld.c
-> >>> @@ -57,6 +57,8 @@ struct cld_client {
-> >>>  
-> >>>  /* global variables */
-> >>>  static char *pipepath = DEFAULT_CLD_PATH;
-> >>> +static int 		inotify_fd = -1;
-> >>> +static struct event	pipedir_event;
-> >>>  
-> >>>  static struct option longopts[] =
-> >>>  {
-> >>> @@ -68,8 +70,10 @@ static struct option longopts[] =
-> >>>  	{ NULL, 0, 0, 0 },
-> >>>  };
-> >>>  
-> >>> +
-> >>>  /* forward declarations */
-> >>>  static void cldcb(int UNUSED(fd), short which, void *data);
-> >>> +static void cld_pipe_reopen(struct cld_client *clnt);
-> >>>  
-> >>>  static void
-> >>>  usage(char *progname)
-> >>> @@ -80,10 +84,62 @@ usage(char *progname)
-> >>>  
-> >>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
-> >>>  
-> >>> +static void
-> >>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
-> >>> +{
-> >>> +	int ret, oldfd;
-> >>> +	char evbuf[INOTIFY_EVENT_MAX];
-> >>> +	char *dirc = NULL, *pname;
-> >>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
-> >>> +	struct cld_client *clnt = data;
-> >>> +
-> >>> +	if (which != EV_READ)
-> >>> +		return;
-> >>> +
-> >>> +	dirc = strndup(pipepath, PATH_MAX);
-> >>> +	if (!dirc) {
-> >>> +		xlog_err("%s: unable to allocate memory", __func__);
-> >>> +		goto out;
-> >>> +	}
-> >>> +
-> >>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
-> >>> +	if (ret < 0) {
-> >>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
-> >>> +		goto out;
-> >>> +	}
-> >>> +
-> >>> +	/* check to see if we have a filename in the evbuf */
-> >>> +	if (!event->len)
-> >>> +		goto out;
-> >>> +
-> >>> +	pname = basename(dirc);
-> >>> +
-> >>> +	/* does the filename match our pipe? */
-> >>> +	if (strncmp(pname, event->name, event->len))
-> >>> +		goto out;
-> >>> +
-> >>> +	/*
-> >>> +	 * reopen the pipe. The old fd is not closed until the new one is
-> >>> +	 * opened, so we know they should be different if the reopen is
-> >>> +	 * successful.
-> >>> +	 */
-> >>> +	oldfd = clnt->cl_fd;
-> >>> +	do {
-> >>> +		cld_pipe_reopen(clnt);
-> >>> +	} while (oldfd == clnt->cl_fd);
-> >> Doesn't this have a potential for an infinite loop? 
-> >>
-> >> steved.  
-> > 
-> > 
-> > Yes. If reopening the new pipe continually fails then it will loop
-> > forever.
-> Would it be more accurate to say it would be spinning forever? 
-> Since there is no sleep or delay in cld_pipe_reopen, what's
-> going to stop the daemon from spinning in a CPU bound loop?
-> 
+v2 and v3 don't have delegations, so this is an empty function in those
+cases and only defined for v4.
 
-Well, not spinning in a userspace loop...it'll continually be cycling on
-an open() call that's not working for whatever reason. We sort of have
-to loop on that though. I think the best we can do is add a sleep(1) in
-there or something. Would that be sufficient?
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c          |    1 +
+ fs/nfs/inode.c           |    6 ++++++
+ fs/nfs/nfs.h             |    2 ++
+ fs/nfs/nfs2/module.c     |    6 ++++++
+ fs/nfs/nfs3/module.c     |    6 ++++++
+ fs/nfs/nfs4/delegation.c |    2 +-
+ fs/nfs/nfs4/delegation.h |    9 ++-------
+ fs/nfs/write.c           |    1 +
+ 8 files changed, 25 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 6091414..e00f268 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -137,6 +137,7 @@ static struct nfs_subversion nfs_v4_mod = {
+ 	.reference = nfs_module_null_function,
+ 	.unreference = nfs_module_null_function,
+ 	.init_aclclient = nfs4_init_aclclient,
++	.have_delegation = nfs4_have_delegation,
+ 	.do_submount = nfs4_do_submount,
+ 	.do_clone_mount = nfs4_do_clone_mount,
+ };
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 3588727..1c7e24f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -124,6 +124,12 @@ void nfs_evict_inode(struct inode *inode)
+ 	nfs_clear_inode(inode);
+ }
+ 
++int nfs_have_delegation(struct inode *inode, fmode_t flags)
++{
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
++	return nfs_mod->have_delegation(inode, flags);
++}
++
+ /**
+  * nfs_sync_mapping - helper to flush all mmapped dirty data to disk
+  */
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 0f119ab..7be27f4 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -22,6 +22,7 @@ struct nfs_subversion {
+ 	void (*reference)(void);	/* For reference counting */
+ 	void (*unreference)(void);	/* Also for reference counting */
+ 	void (*init_aclclient)(struct nfs_server *);
++	int (*have_delegation)(struct inode *, fmode_t);
+ 	struct vfsmount *(*do_submount)(struct dentry *, struct nfs_fh *,
+ 					struct nfs_fattr *, rpc_authflavor_t);
+ 	struct vfsmount *(*do_clone_mount)(struct nfs_server *, const char *,
+@@ -73,6 +74,7 @@ int nfs_setlease(struct file *, long, struct file_lock **);
+ /* Exported in inode.c */
+ int nfs_setattr(struct dentry *, struct iattr *);
+ int nfs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
++int nfs_have_delegation(struct inode *, fmode_t);
+ 
+ /* Exported in namespace.c */
+ struct vfsmount *nfs_d_automount(struct path *);
+diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
+index 768c375..ccbb759 100644
+--- a/fs/nfs/nfs2/module.c
++++ b/fs/nfs/nfs2/module.c
+@@ -19,6 +19,11 @@ static void nfs2_unreference(void)
+ 	module_put(THIS_MODULE);
+ }
+ 
++static int nfs2_no_delegation(struct inode *inode, fmode_t flags)
++{
++	return 0;
++}
++
+ struct nfs_subversion nfs_v2 = {
+ 	.version  = 2,
+ 	.rpc_vers = &nfs_version2,
+@@ -27,6 +32,7 @@ struct nfs_subversion nfs_v2 = {
+ 	.reference = nfs2_reference,
+ 	.unreference = nfs2_unreference,
+ 	.init_aclclient = nfs2_init_aclclient,
++	.have_delegation = nfs2_no_delegation,
+ 	.do_submount = nfs_do_submount,
+ 	.do_clone_mount = nfs_do_clone_mount,
+ };
+diff --git a/fs/nfs/nfs3/module.c b/fs/nfs/nfs3/module.c
+index 0898339..10cfab8 100644
+--- a/fs/nfs/nfs3/module.c
++++ b/fs/nfs/nfs3/module.c
+@@ -19,6 +19,11 @@ static void nfs3_unreference(void)
+ 	module_put(THIS_MODULE);
+ }
+ 
++static int nfs3_no_delegation(struct inode *inode, fmode_t flags)
++{
++	return 0;
++}
++
+ struct nfs_subversion nfs_v3 = {
+ 	.version  = 3,
+ 	.rpc_vers = &nfs_version3,
+@@ -27,6 +32,7 @@ struct nfs_subversion nfs_v3 = {
+ 	.reference = nfs3_reference,
+ 	.unreference = nfs3_unreference,
+ 	.init_aclclient = nfs3_init_aclclient,
++	.have_delegation = nfs3_no_delegation,
+ 	.do_submount = nfs_do_submount,
+ 	.do_clone_mount = nfs_do_clone_mount,
+ };
+diff --git a/fs/nfs/nfs4/delegation.c b/fs/nfs/nfs4/delegation.c
+index 2f3dc3e..800f44e 100644
+--- a/fs/nfs/nfs4/delegation.c
++++ b/fs/nfs/nfs4/delegation.c
+@@ -47,7 +47,7 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation)
+  *
+  * Returns one if inode has the indicated delegation, otherwise zero.
+  */
+-int nfs_have_delegation(struct inode *inode, fmode_t flags)
++int nfs4_have_delegation(struct inode *inode, fmode_t flags)
+ {
+ 	struct nfs_delegation *delegation;
+ 	int ret = 0;
+diff --git a/fs/nfs/nfs4/delegation.h b/fs/nfs/nfs4/delegation.h
+index d9322e4..675ceea 100644
+--- a/fs/nfs/nfs4/delegation.h
++++ b/fs/nfs/nfs4/delegation.h
+@@ -56,14 +56,9 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
+ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+ 
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+-int nfs_have_delegation(struct inode *inode, fmode_t flags);
++int nfs4_have_delegation(struct inode *inode, fmode_t flags);
+ 
+ #else
+-static inline int nfs_have_delegation(struct inode *inode, fmode_t flags)
+-{
+-	return 0;
+-}
+-
+ static inline int nfs_inode_return_delegation(struct inode *inode)
+ {
+ 	return 0;
+@@ -72,7 +67,7 @@ static inline int nfs_inode_return_delegation(struct inode *inode)
+ 
+ static inline int nfs_have_delegated_attributes(struct inode *inode)
+ {
+-	return nfs_have_delegation(inode, FMODE_READ) &&
++	return nfs4_have_delegation(inode, FMODE_READ) &&
+ 		!(NFS_I(inode)->cache_validity & NFS_INO_REVAL_FORCED);
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d5f61af..f9ca30c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -30,6 +30,7 @@
+ #include "nfs4/nfs4_fs.h"
+ #include "fscache.h"
+ #include "pnfs.h"
++#include "nfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.8.3
+
