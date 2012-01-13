@@ -1,46 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18187 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:41779 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757696Ab2AMKDB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 05:03:01 -0500
-Subject: [PATCH v2 1/4] SUNRPC: use proper network namespace in rpcbind
- RPCBPROC_GETADDR procedure
+	id S932688Ab2AMULN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 15:11:13 -0500
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 14:02:40 +0400
-Message-ID: <20120113100240.12259.99660.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113095121.12259.52250.stgit@localhost6.localdomain6>
-References: <20120113095121.12259.52250.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 05/44] NFS: Move v2 to new subdirectory
+Date: Fri, 13 Jan 2012 15:10:14 -0500
+Message-Id: <1326485453-1350-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass request socket network namespace to rpc_uaddr2sockaddr() instead of
-hardcoded "init_net",  when decoding address in RPCBPROC_GETADDR procedure.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Still compiled as part of the nfs module, this prepares for making it
+its own module.
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/rpcb_clnt.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/nfs/Makefile                  |    2 +-
+ fs/nfs/{ => nfs2}/proc.c         |    2 +-
+ fs/nfs/{nfs2xdr.c => nfs2/xdr.c} |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+ rename fs/nfs/{ => nfs2}/proc.c (99%)
+ rename fs/nfs/{nfs2xdr.c => nfs2/xdr.c} (99%)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 7c6fac0..4ce3a8e 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -934,7 +934,8 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	dprintk("RPC: %5u RPCB_%s reply: %s\n", task->tk_pid,
- 			task->tk_msg.rpc_proc->p_name, (char *)p);
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 7ddd45d..44db87d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -9,7 +9,7 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+-nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
++nfs-$(CONFIG_NFS_V2)	+= nfs2/proc.o nfs2/xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+diff --git a/fs/nfs/proc.c b/fs/nfs/nfs2/proc.c
+similarity index 99%
+rename from fs/nfs/proc.c
+rename to fs/nfs/nfs2/proc.c
+index f48125d..65eafa3 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/nfs2/proc.c
+@@ -41,7 +41,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ #include <linux/lockd/bind.h>
+-#include "internal.h"
++#include "../internal.h"
  
--	if (rpc_uaddr2sockaddr(&init_net, (char *)p, len, sap, sizeof(address)) == 0)
-+	if (rpc_uaddr2sockaddr(req->rq_xprt->xprt_net, (char *)p, len,
-+				sap, sizeof(address)) == 0)
- 		goto out_fail;
- 	rpcb->r_port = rpc_get_port(sap);
+ #define NFSDBG_FACILITY		NFSDBG_PROC
  
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2/xdr.c
+similarity index 99%
+rename from fs/nfs/nfs2xdr.c
+rename to fs/nfs/nfs2/xdr.c
+index 61df96d..4b052a2 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2/xdr.c
+@@ -21,7 +21,7 @@
+ #include <linux/nfs.h>
+ #include <linux/nfs2.h>
+ #include <linux/nfs_fs.h>
+-#include "internal.h"
++#include "../internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
+-- 
+1.7.8.3
 
