@@ -1,79 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog107.obsmtp.com ([207.126.144.123]:41271 "EHLO
-	eu1sys200aog107.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751154Ab2AZI64 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 03:58:56 -0500
-Message-ID: <4F2113FF.9080407@st.com>
-Date: Thu, 26 Jan 2012 08:51:12 +0000
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Reply-To: srinivas.kandagatla@st.com
+Received: from fieldses.org ([174.143.236.118]:41657 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751465Ab2ANBiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jan 2012 20:38:54 -0500
+Date: Fri, 13 Jan 2012 20:38:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, NeilBrown <neilb@suse.de>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Christoph Hellwig <hch@infradead.org>,
+        Matthew Treinish <treinish@linux.vnet.ibm.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20120114013834.GA20464@fieldses.org>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321056809.8733.2.camel@lade.trondhjem.org>
+ <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
+ <1321338825.8267.2.camel@lade.trondhjem.org>
+ <20120113170914.GA31414@us.ibm.com>
 MIME-Version: 1.0
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
-        stuart.menefy@st.com
-Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
- mount.
-References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <20120125154539.GA20734@umich.edu> <4F21071B.4070000@st.com> <4F2110DA.7060603@panasas.com>
-In-Reply-To: <4F2110DA.7060603@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120113170914.GA31414@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Boaz Harrosh wrote:
-> On 01/26/2012 09:56 AM, Srinivas KANDAGATLA wrote:
->   
->> Jim Rees wrote:
->>     
->>> Srinivas KANDAGATLA wrote:
->>>
->>>   From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
->>>   
->>>   This patch adds mountretry kernel parameter for nfs root mount.
->>>   mount retry indicates the number of times nfs root mount attempts to be
->>>   made before giving up. If this option is not specified, the default
->>>   value of 3 retries is used.
->>>
->>> This has already been fixed in commit 43717c7d, "NFS: Retry mounting
->>> NFSROOT".  The retry count is fixed at 5.  Is there some reason you think
->>> the retry count should be configurable?
->>>   
->>>       
->> Thanks for pointing to the fixed commit. I did realize soon after
->> sending this patch to mailing list.
->>
->> Only reason I can think of having retry count configurable is, an
->> arbitrary number(3 or 5 or n) of retry count may not be enough to
->> address all the use cases.
->> So, I think the user should be given a chance to configure the retry
->> count if he wish to, either timeout quickly and try the succession
->> root-mount or If he wish to keep kernel trying very harder till he gets
->> the NFS root mount successful.
->>
->>     
->
-> I agree. Specially if there is no "succession root-mount" setup then user
-> can specify a very large count.
->
-> Is there some delay between retries. So not to burn 100% power?
->
->   
-An nfs root mount attempt timeouts in about 3 sec's and in commit
-43717c7d, "NFS: Retry mounting NFSROOT" each retry has additional sleep
-which gives sufficient delay between retries.
->> Thanks,
->> srini
->>     
->
-> Thanks
-> Boaz
->
->   
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>     
->
->   
+On Fri, Jan 13, 2012 at 11:09:14AM -0600, Malahal Naineni wrote:
+> Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
+> > On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
+> > 
+> > > If a server has objects that are never renamed, it can easily use volatile
+> > > file handles.
+> > > If a server has objects which can be renamed and wants to use volatile file
+> > > handles, then if such an object is open and is about to be renamed, it must
+> > > first log to stable storage some mapping to allow it to access the file from
+> > > the old volatile file handle.  And of course it cannot allow renames during
+> > > the grace period, but I think we already have that.
+> > > Also, if the VFH is such that it will be  lost on a reboot, the server must
+> > > log it to stable storage before allowing an open.
+> > 
+> > BTW: If the namespace is stable, then the server can easily implement
+> > permanent filehandles. Use a hash of the pathname as the filehandle, and
+> > set up a hidden directory ('/.filehandles') containing symlinks that map
+> > said hash back to the correct pathname. No need for volatile
+> > filehandles.
+> 
+> Neil and Trond, one of our use cases is for a read only file system. The
+> name space is stable and Volatile File Handle support should not have
+> any issues under those conditions, correct?
 
+Dumb question: remind me which filesystem your exporting that can't
+already generate stable filehandles?
+
+--b.
+
+> 
+> Trond, trying to understand how we can make file handles permanent at
+> the servers with your ideas. We do use linux NFS server. Looks like the
+> server needs a new config parameter to hide '/.filehandles' and use it
+> for storing permanent file handles. Also, the solution needs a tool
+> that generates/populates './filehandles' directory. I don't know how
+> best we should handle hash collisions at this point (shouldn't be an
+> issue once we agree to a method though). Anything else I am missing?
+> 
+> Any thoughts from linux NFS server community? Is this approach
+> acceptable?
+> 
+> Regards, Malahal.
+> 
