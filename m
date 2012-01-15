@@ -1,44 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:8587 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757753Ab2AMKEB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 05:04:01 -0500
-Message-ID: <4F10017B.3070808@parallels.com>
-Date: Fri, 13 Jan 2012 14:03:39 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from speedmark.co.id ([202.51.112.171]:49720 "EHLO
+	mail.fafakids.web.id" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753334Ab2APEzf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 23:55:35 -0500
+Message-ID: <5e5567e835a72f1b56c5015c61c678e9.squirrel@webmail.speedmark.co.id>
+Date: Mon, 16 Jan 2012 06:25:25 +0700 (WIT)
+Subject: Please Help.
+From: "Tai Bei" <bei@optusnet.com.au>
+Reply-To: mr.tai@9.cn
 MIME-Version: 1.0
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v5 0/6] SUNRPC: rcbind clients virtualization
-References: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=US-ASCII
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-13.01.2012 12:52, Stanislav Kinsbursky пишет:
-> This patch-set was created in context of clone of git branch:
-> git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-> head: devel
->
-> v5:
-> 1) Rebased on up-to-date state ("devel" head).
-> 2) Added two more patches from latter series ("SUNRPC: register services with
-> per-net rpcbind"), because logically this series is the more suitable place for
-> them.
+It is understandable that you might be a little bit apprehensive because
+you do not know me but I have a lucrative business proposal of mutual
+interest to share with you. I got your reference in my search for someone
+who suits my proposed business relationship. I am Mr. Tai Bei bank officer
+with the International bank of Taipei. I will need you to assist me in
+executing a business project from Taiwan to your country. It involves the
+transfer of money. Everything concerning this transaction shall be legally
+done without hitch.
 
-Three patches from "SUNRPC: register services with per-net rpcbind" series:
-a) [1/7] "SUNRPC: create rpcbind client in passed network namespace context"
-b) [2/7] "SUNRPC: register rpcbind programs in passed network namespase context"
-c) [4/7] "SUNRPC: parametrize local rpcbind clients creation with net ns"
 
--- 
-Best regards,
-Stanislav Kinsbursky
+Once the funds have been successfully transferred into your account, we
+shall share in the ratio to be agreed by both of us. Contact me for more
+information about this operation immediately I receive a positive response
+from you.
+
+
+Kind Regards,
+Mr. Tai Bei
+
