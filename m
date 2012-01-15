@@ -1,171 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62013 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756986Ab2ARERh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 23:17:37 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/10] NFSv4: Move contents of struct rpc_sequence into struct nfs_seqid_counter
-Date: Tue, 17 Jan 2012 23:17:09 -0500
-Message-Id: <1326860233-27947-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1326860233-27947-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1326860233-27947-1-git-send-email-Trond.Myklebust@netapp.com>
- <1326860233-27947-2-git-send-email-Trond.Myklebust@netapp.com>
- <1326860233-27947-3-git-send-email-Trond.Myklebust@netapp.com>
- <1326860233-27947-4-git-send-email-Trond.Myklebust@netapp.com>
- <1326860233-27947-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:45894 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751944Ab2AOTDB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 14:03:01 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id A504F176B
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:59 +0100 (MET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 6B82313E85
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:59 +0100 (MET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH 5/5] client: test OPEN+FREE_STETEID+CLOSE in a single compound
+Date: Sun, 15 Jan 2012 20:05:28 +0100
+Message-Id: <1326654328-20557-6-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- fs/nfs/nfs4_fs.h   |   16 +++-------------
- fs/nfs/nfs4state.c |   36 +++++++++++++++++++++++-------------
- 2 files changed, 26 insertions(+), 26 deletions(-)
+ nfs4.1/server41tests/st_current_stateid.py |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 583ded0..cef9d5d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -53,21 +53,13 @@ struct nfs4_minor_version_ops {
- 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
- };
- 
--/*
-- * struct rpc_sequence ensures that RPC calls are sent in the exact
-- * order that they appear on the list.
-- */
--struct rpc_sequence {
--	struct rpc_wait_queue	wait;	/* RPC call delay queue */
--	spinlock_t lock;		/* Protects the list */
--	struct list_head list;		/* Defines sequence of RPC calls */
--};
--
- #define NFS_SEQID_CONFIRMED 1
- struct nfs_seqid_counter {
--	struct rpc_sequence *sequence;
- 	int flags;
- 	u32 counter;
-+	spinlock_t lock;		/* Protects the list */
-+	struct list_head list;		/* Defines sequence of RPC calls */
-+	struct rpc_wait_queue	wait;	/* RPC call delay queue */
- };
- 
- struct nfs_seqid {
-@@ -99,7 +91,6 @@ struct nfs4_state_owner {
- 	unsigned long	     so_flags;
- 	struct list_head     so_states;
- 	struct nfs_seqid_counter so_seqid;
--	struct rpc_sequence  so_sequence;
- 	int		     so_owner_id;
- };
- 
-@@ -142,7 +133,6 @@ struct nfs4_lock_state {
- 	int			ls_flags;
- 	int			ls_id;
- 	struct nfs_seqid_counter	ls_seqid;
--	struct rpc_sequence	ls_sequence;
- 	nfs4_stateid		ls_stateid;
- 	atomic_t		ls_count;
- 	struct nfs4_lock_owner	ls_owner;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5abf236..cf7bc39 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -384,6 +384,22 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
- 	ida_remove(&server->openowner_id, sp->so_owner_id);
- }
- 
-+static void
-+nfs4_init_seqid_counter(struct nfs_seqid_counter *sc)
-+{
-+	sc->flags = 0;
-+	sc->counter = 0;
-+	spin_lock_init(&sc->lock);
-+	INIT_LIST_HEAD(&sc->list);
-+	rpc_init_wait_queue(&sc->wait, "Seqid_waitqueue");
-+}
+diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41tests/st_current_stateid.py
+index 3732907..fb0c360 100644
+--- a/nfs4.1/server41tests/st_current_stateid.py
++++ b/nfs4.1/server41tests/st_current_stateid.py
+@@ -146,3 +146,16 @@ def testOpenSetattr(t, env):
+     res = sess.compound( open_op + 
+            [ op.setattr(current_stateid, {FATTR4_SIZE: size})])
+     check(res, NFS4_OK)
 +
-+static void
-+nfs4_destroy_seqid_counter(struct nfs_seqid_counter *sc)
-+{
-+	rpc_destroy_wait_queue(&sc->wait);
-+}
++def testOpenFreestateidClose(t, env):
++    """test current state id processing by having OPEN, FREE_STATEID and CLOSE
++       in a single compound
 +
- /*
-  * nfs4_alloc_state_owner(): this is called on the OPEN or CREATE path to
-  * create a new state_owner.
-@@ -403,10 +419,7 @@ nfs4_alloc_state_owner(struct nfs_server *server,
- 	sp->so_cred = get_rpccred(cred);
- 	spin_lock_init(&sp->so_lock);
- 	INIT_LIST_HEAD(&sp->so_states);
--	rpc_init_wait_queue(&sp->so_sequence.wait, "Seqid_waitqueue");
--	sp->so_seqid.sequence = &sp->so_sequence;
--	spin_lock_init(&sp->so_sequence.lock);
--	INIT_LIST_HEAD(&sp->so_sequence.list);
-+	nfs4_init_seqid_counter(&sp->so_seqid);
- 	atomic_set(&sp->so_count, 1);
- 	INIT_LIST_HEAD(&sp->so_lru);
- 	return sp;
-@@ -428,7 +441,7 @@ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
- 
- static void nfs4_free_state_owner(struct nfs4_state_owner *sp)
- {
--	rpc_destroy_wait_queue(&sp->so_sequence.wait);
-+	nfs4_destroy_seqid_counter(&sp->so_seqid);
- 	put_rpccred(sp->so_cred);
- 	kfree(sp);
- }
-@@ -748,10 +761,7 @@ static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, f
- 	lsp = kzalloc(sizeof(*lsp), GFP_NOFS);
- 	if (lsp == NULL)
- 		return NULL;
--	rpc_init_wait_queue(&lsp->ls_sequence.wait, "lock_seqid_waitqueue");
--	spin_lock_init(&lsp->ls_sequence.lock);
--	INIT_LIST_HEAD(&lsp->ls_sequence.list);
--	lsp->ls_seqid.sequence = &lsp->ls_sequence;
-+	nfs4_init_seqid_counter(&lsp->ls_seqid);
- 	atomic_set(&lsp->ls_count, 1);
- 	lsp->ls_state = state;
- 	lsp->ls_owner.lo_type = type;
-@@ -780,7 +790,7 @@ static void nfs4_free_lock_state(struct nfs4_lock_state *lsp)
- 	struct nfs_server *server = lsp->ls_state->owner->so_server;
- 
- 	ida_simple_remove(&server->lockowner_id, lsp->ls_id);
--	rpc_destroy_wait_queue(&lsp->ls_sequence.wait);
-+	nfs4_destroy_seqid_counter(&lsp->ls_seqid);
- 	kfree(lsp);
- }
- 
-@@ -914,7 +924,7 @@ struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_m
- void nfs_release_seqid(struct nfs_seqid *seqid)
- {
- 	if (!list_empty(&seqid->list)) {
--		struct rpc_sequence *sequence = seqid->sequence->sequence;
-+		struct nfs_seqid_counter *sequence = seqid->sequence;
- 
- 		spin_lock(&sequence->lock);
- 		list_del_init(&seqid->list);
-@@ -936,7 +946,7 @@ void nfs_free_seqid(struct nfs_seqid *seqid)
-  */
- static void nfs_increment_seqid(int status, struct nfs_seqid *seqid)
- {
--	BUG_ON(list_first_entry(&seqid->sequence->sequence->list, struct nfs_seqid, list) != seqid);
-+	BUG_ON(list_first_entry(&seqid->sequence->list, struct nfs_seqid, list) != seqid);
- 	switch (status) {
- 		case 0:
- 			break;
-@@ -987,7 +997,7 @@ void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid)
- 
- int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task)
- {
--	struct rpc_sequence *sequence = seqid->sequence->sequence;
-+	struct nfs_seqid_counter *sequence = seqid->sequence;
- 	int status = 0;
- 
- 	spin_lock(&sequence->lock);
++    FLAGS: currentstateid all
++    CODE: CSID9
++    """
++    sess1 = env.c1.new_client_session(env.testname(t))
++
++    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
++    res = sess1.compound(open_op + [op.free_stateid(current_stateid), op.close(0, current_stateid)])
++    checklist(res, [NFS4ERR_STALE_STATEID, NFS4ERR_BAD_STATEID])
 -- 
 1.7.7.5
 
