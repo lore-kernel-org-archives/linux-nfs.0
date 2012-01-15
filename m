@@ -1,49 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog110.obsmtp.com ([207.126.144.129]:49565 "EHLO
-	eu1sys200aog110.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751431Ab2AZPOc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 10:14:32 -0500
-Message-ID: <4F216C11.9070906@st.com>
-Date: Thu, 26 Jan 2012 15:06:57 +0000
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Reply-To: srinivas.kandagatla@st.com
+Received: from fieldses.org ([174.143.236.118]:49992 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752254Ab2AOUys (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Jan 2012 15:54:48 -0500
+Date: Sun, 15 Jan 2012 15:54:46 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] more test on current stateid processing
+Message-ID: <20120115205446.GA29596@fieldses.org>
+References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org, mingo@redhat.com,
-        neilb@suse.de, stuart.menefy@st.com, chuck.lever@oracle.com,
-        bharrosh@panasas.com
-Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min
- max delays.
-References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com> <20120126145520.GA10112@umich.edu>
-In-Reply-To: <20120126145520.GA10112@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jim Rees wrote:
-> You may want to read the mailing list thread from the earlier patch.  I
-> don't remember the details but lowering the panic timeout from 110 to 41
-> seconds may re-introduce the problem that patch was trying to solve.  You
-> could increase the retry count to compensate.
->   
->From commit  43717c7d, "NFS: Retry mounting NFSROOT" log.
-Original problems looks exactly same as the one I encountered.
-First operation was an rpcbind request to determine which port the NFS
-server was listening on timeout in 2-3 seconds, by this time Switch was
-ready. which was then followed by default nfs port 2049 selection at
-this time the nfs mount was successful.
+On Sun, Jan 15, 2012 at 08:05:23PM +0100, Tigran Mkrtchyan wrote:
+> 
+> This is the result of testing my changes in linux:
+> 
+> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
+> .....
+> 
+> **************************************************
+> CSID1    st_current_stateid.testOpenAndClose                      : PASS
+> CSID2    st_current_stateid.testLockLockU                         : PASS
+> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
+> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
+> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
+> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
+> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
+>            OP_LAYOUTGET should return NFS4_OK, instead got
+>            NFS4ERR_NOTSUPP
 
-In my case the PHY became ready just before the second attempt, same as
-LAN switch in the original issue.
-I think most of the cases fall in this category.
-So there was no delay before this patch except the timeout from rpcbind
-was sufficient delay to get the Switch/PHY(in my case) in working state.
+We should fix pynfs41 so no pnfs-dependent tests are run without "pnfs"
+being explicitly asked for on the commandline....
 
-I think introduction of timeout actually was not necessary for the
-second attempt.
+--b.
 
-If user want to have more delay than 41 secs, he will be able to
-increase the retry count from my mount-retry kernel param patch.
-
-Thanks,
-srini
+> CSID8    st_current_stateid.testOpenSetattr                       : PASS
+> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
+> 
+> **************************************************
+> $
+> 
+> Tigran Mkrtchyan (5):
+>   client: move current stateid test into a dedicated module
+>   client: test current stateid processing on PUTROOTFH
+>   client: test current stateid processing with OPEN+LAYOUTGET in a
+>     single compound
+>   client: test current stateid processing with OPEN and SETATTR
+>   client: test OPEN+FREE_STETEID+CLOSE in a single compound
+> 
+>  nfs4.1/server41tests/__init__.py           |    1 +
+>  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
+>  nfs4.1/server41tests/st_open.py            |   76 -------------
+>  3 files changed, 162 insertions(+), 76 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
+> 
+> -- 
+> 1.7.7.5
+> 
