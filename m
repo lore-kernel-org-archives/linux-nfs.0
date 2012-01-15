@@ -1,113 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:55929 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752346Ab2AaBPT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 20:15:19 -0500
-Message-ID: <4F273FD4.3020005@cn.fujitsu.com>
-Date: Tue, 31 Jan 2012 09:11:48 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
-References: <1327963365-2921-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <1327963365-2921-1-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:47453 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751234Ab2AOQR2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:28 -0500
+Received: by eaae11 with SMTP id e11so75323eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:27 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v6 0/9] handle curruent stateid
+Date: Sun, 15 Jan 2012 17:20:01 +0100
+Message-Id: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-J. Bruce Fields ŽÊ“¹:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Move calculation of the default into a helper function.
-> 
-> Get rid of an unused variable "err" while we're there.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
->  1 files changed, 24 insertions(+), 20 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index eda7d7e..2ad5ffe 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -307,33 +307,37 @@ static void set_max_drc(void)
->  	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
->  }
->  
-> -int nfsd_create_serv(void)
-> +static int nfsd_get_default_max_blksize(void)
->  {
-> -	int err = 0;
-> +	struct sysinfo i;
-> +	unsigned long target;
-> +	unsigned long bytes;
-> +
-> +	si_meminfo(&i);
-> +	target = i.totalram << PAGE_SHIFT;
-> +	/*
-> +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
-> +	 * machines, but only uses 32K on 128M machines.  Bottom out at
-> +	 * 8K on 32M and smaller.  Of course, this is only a default.
-> +	 */
-> +	target <<= 12;
+This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
 
-  Should use target = i.totalram << (PAGE_SHIFT - 12);
+Implemented for:
 
-  target = i.totalram << PAGE_SHIFT; and 
-  target <<= 12;
-  means target = i.totalram << (PAGE_SHIFT + 12);
+  OPEN
+  OPENDOWNGRADE 
+  CLOSE
+  LOCK
+  LOCKU
+  DELEGRETURN
+  FREE_STATEID
+  SETATTR
+  READ
+  WRITE
+  SAVEFH
+  RESTOREFH
+  PUTFH
+  PUTROOTFH
+  PUTPUBFH
+  LOOKUP
+  CREATE 
 
-thanks,
-Mi Jinlong
+PNFS released patches will be submitted as soon as patches will be merged with Benny's tree.
 
-> +
-> +	bytes = NFSSVC_MAXBLKSIZE;
-> +	while (bytes > target && bytes >= 8*1024*2)
-> +		bytes /= 2;
-> +	return bytes;
-> +}
->  
-> +int nfsd_create_serv(void)
-> +{
->  	WARN_ON(!mutex_is_locked(&nfsd_mutex));
->  	if (nfsd_serv) {
->  		svc_get(nfsd_serv);
->  		return 0;
->  	}
-> -	if (nfsd_max_blksize == 0) {
-> -		/* choose a suitable default */
-> -		struct sysinfo i;
-> -		si_meminfo(&i);
-> -		/* Aim for 1/4096 of memory per thread
-> -		 * This gives 1MB on 4Gig machines
-> -		 * But only uses 32K on 128M machines.
-> -		 * Bottom out at 8K on 32M and smaller.
-> -		 * Of course, this is only a default.
-> -		 */
-> -		nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
-> -		i.totalram <<= PAGE_SHIFT - 12;
-> -		while (nfsd_max_blksize > i.totalram &&
-> -		       nfsd_max_blksize >= 8*1024*2)
-> -			nfsd_max_blksize /= 2;
-> -	}
-> +	if (nfsd_max_blksize == 0)
-> +		nfsd_max_blksize = nfsd_get_default_max_blksize();
->  	nfsd_reset_versions();
-> -
->  	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
->  				      nfsd_last_thread, nfsd, THIS_MODULE);
->  	if (nfsd_serv == NULL)
-> @@ -341,7 +345,7 @@ int nfsd_create_serv(void)
->  
->  	set_max_drc();
->  	do_gettimeofday(&nfssvc_boot);		/* record boot time */
-> -	return err;
-> +	return 0;
->  }
->  
->  int nfsd_nrpools(void)
+I will clean-up and submit corresponding pynfs test later today or tomorrow.
+
+Comments and suggestions are welcome
+
+Tigran.
+
+Tigran Mkrtchyan (9):
+  nfsd4: initialize current stateid at compile time
+  nfsd41: handle current stateid in open and close
+  nfsd41: handle current stateid on lock and locku
+  nfsd41: consume current stateid on read and write
+  nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+  nfsd41: save and restore current stateid with current fh
+  nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+  nfsd41: handle current stateid in SETATTR and FREE_STATEID
+  nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+
+ fs/nfsd/current_stateid.h |   27 ++++++++++++
+ fs/nfsd/nfs4proc.c        |   55 ++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c       |   99 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/xdr4.h            |    2 +
+ 4 files changed, 172 insertions(+), 11 deletions(-)
+ create mode 100644 fs/nfsd/current_stateid.h
+
+-- 
+1.7.7.5
 
