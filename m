@@ -1,54 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out02.mta.xmission.com ([166.70.13.232]:47392 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751041Ab2ACDqz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jan 2012 22:46:55 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "neilb\@suse.de" <neilb@suse.de>,
-        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "davem\@davemloft.net" <davem@davemloft.net>,
-        "devel\@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
-	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
-	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
-	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>
-Date: Mon, 02 Jan 2012 19:49:00 -0800
-In-Reply-To: <4EEF7364.8000407@parallels.com> (Stanislav Kinsbursky's message
-	of "Mon, 19 Dec 2011 21:24:52 +0400")
-Message-ID: <m1vcotigyb.fsf@fess.ebiederm.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40420 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751255Ab2AOQRe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:34 -0500
+Received: by mail-ey0-f174.google.com with SMTP id e11so75329eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:34 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v6 5/9] nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+Date: Sun, 15 Jan 2012 17:20:06 +0100
+Message-Id: <1326644410-7482-6-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-> 19.12.2011 20:37, Eric W. Biederman пишет:
->> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->>
->> Doing that independently of the rest of the sysctls is pretty horrible
->> and confusing to users.   What I am planning might suit your needs and
->> if not we need to talk some more about how to get the vfs to do
->> something reasonable.
->>
->
-> Ok, Eric. Would be glad to discuss your sysctls plans.
-> But actually you already know my needs: I would like to make sysctls work in the
-> way like sysfs does: i.e. content of files depends on mount maker -
-> not viewer.
 
-What drives the desire to have sysctls depend on the mount maker?
-Especially what drives that desire not to have it have a /proc/<pid>/sys
-directory that reflects the sysctls for a given process.
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/nfs4proc.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
 
-Eric
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9a61bbf..66bd005 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1523,21 +1523,24 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_PUTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+ 	[OP_PUTPUBFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTPUBFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+ 	[OP_PUTROOTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTROOTFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+-- 
+1.7.7.5
 
