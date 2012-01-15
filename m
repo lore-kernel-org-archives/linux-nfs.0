@@ -1,58 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61212 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751879Ab2AZVy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:54:29 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 3/3] NFS: Update idmapper documentation
-Date: Thu, 26 Jan 2012 16:54:25 -0500
-Message-Id: <1327614865-29322-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751255Ab2AOQRg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:36 -0500
+Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:35 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v6 6/9] nfsd41: save and restore current stateid with current fh
+Date: Sun, 15 Jan 2012 17:20:07 +0100
+Message-Id: <1326644410-7482-7-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- Documentation/filesystems/nfs/idmapper.txt |   20 ++++++++++++++------
- 1 files changed, 14 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4proc.c |    2 ++
+ fs/nfsd/xdr4.h     |    1 +
+ 2 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-index 120fd3c..fe03d10 100644
---- a/Documentation/filesystems/nfs/idmapper.txt
-+++ b/Documentation/filesystems/nfs/idmapper.txt
-@@ -4,13 +4,21 @@ ID Mapper
- =========
- Id mapper is used by NFS to translate user and group ids into names, and to
- translate user and group names into ids.  Part of this translation involves
--performing an upcall to userspace to request the information.  Id mapper will
--user request-key to perform this upcall and cache the result.  The program
--/usr/sbin/nfs.idmap should be called by request-key, and will perform the
--translation and initialize a key with the resulting information.
-+performing an upcall to userspace to request the information.  There are two
-+ways NFS could obtain this information: placing a call to /sbin/request-key
-+or by placing a call to the rpc.idmap daemon.
-+
-+NFS will attempt to call /sbin/request-key first.  If this succeeds, the
-+result will be cached using the generic request-key cache.  This call should
-+only fail if /etc/request-key.conf is not configured for the id_resolver key
-+type, see the "Configuring" section below if you wish to use the request-key
-+method.
-+
-+If the call to /sbin/request-key fails (if /etc/request-key.conf is not
-+configured with the id_resolver key type), then the idmapper will ask the
-+legacy rpc.idmap daemon for the id mapping.  This result will be stored
-+in a custom NFS idmap cache.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 66bd005..59d9b4b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -453,6 +453,7 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_restorefh;
  
-- NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-- feature.
+ 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
++	cstate->current_stateid = cstate->save_stateid;
+ 	return nfs_ok;
+ }
  
- ===========
- Configuring
+@@ -464,6 +465,7 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_nofilehandle;
+ 
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
++	cstate->save_stateid = cstate->current_stateid;
+ 	return nfs_ok;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index c1fe8ba..2ae378e 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
+ 	u32			minorversion;
+ 	u32			status;
+ 	const stateid_t	*current_stateid;
++	const stateid_t	*save_stateid;
+ };
+ 
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 -- 
-1.7.8.4
+1.7.7.5
 
