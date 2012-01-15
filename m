@@ -1,46 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50872 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752561Ab2AZUHj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 15:07:39 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0QK7drx030646
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 15:07:39 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q0QK7c7m024830
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 15:07:38 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not needed.
-Date: Thu, 26 Jan 2012 15:07:41 -0500
-Message-Id: <1327608461-15305-1-git-send-email-steved@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751255Ab2AOQRh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:37 -0500
+Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:37 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v6 7/9] nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+Date: Sun, 15 Jan 2012 17:20:08 +0100
+Message-Id: <1326644410-7482-8-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
-libgssglue libraries which is not needed since libgssglue
-will dynamically load the gssapi interface defined in the
-/etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- aclocal/kerberos5.m4 |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4proc.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
-index dfa5738..7574e2d 100644
---- a/aclocal/kerberos5.m4
-+++ b/aclocal/kerberos5.m4
-@@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
-     fi
-     if test "$K5CONFIG" != ""; then
-       KRBCFLAGS=`$K5CONFIG --cflags`
--      KRBLIBS=`$K5CONFIG --libs gssapi`
-+      KRBLIBS=`$K5CONFIG --libs`
-       K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
-       AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
-       if test -f $dir/include/gssapi/gssapi_krb5.h -a \
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 59d9b4b..620abcc 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1445,7 +1445,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_CREATE] = {
+ 		.op_func = (nfsd4op_func)nfsd4_create,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME | OP_CLEAR_STATEID,
+ 		.op_name = "OP_CREATE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_create_rsize,
+ 	},
+@@ -1491,12 +1491,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 	[OP_LOOKUP] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lookup,
+-		.op_flags = OP_HANDLES_WRONGSEC,
++		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
+ 		.op_name = "OP_LOOKUP",
+ 	},
+ 	[OP_LOOKUPP] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lookupp,
+-		.op_flags = OP_HANDLES_WRONGSEC,
++		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
+ 		.op_name = "OP_LOOKUPP",
+ 	},
+ 	[OP_NVERIFY] = {
 -- 
 1.7.7.5
 
