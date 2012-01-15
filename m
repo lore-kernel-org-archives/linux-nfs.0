@@ -1,102 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9791 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756207Ab2AJM6p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 07:58:45 -0500
-Message-ID: <4F0C35F3.7060508@parallels.com>
-Date: Tue, 10 Jan 2012 16:58:27 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:36764 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752539Ab2AOWbM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 17:31:12 -0500
+Received: by vcbfo1 with SMTP id fo1so695715vcb.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 14:31:11 -0800 (PST)
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce
- context
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>	 <1325285705.10984.4.camel@lade.trondhjem.org> <1325797111.11084.22.camel@lade.trondhjem.org>
-In-Reply-To: <1325797111.11084.22.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+In-Reply-To: <20120115205446.GA29596@fieldses.org>
+References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<20120115205446.GA29596@fieldses.org>
+Date: Sun, 15 Jan 2012 23:31:11 +0100
+Message-ID: <CAFpJMDp3OvkCf0DPAvdZDPV_8F=8Z_C0euTjdtKxuiq3=rxMmw@mail.gmail.com>
+Subject: Re: [PATCH 0/5] more test on current stateid processing
+From: Tiramisu Mokka <kofemann@googlemail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.01.2012 00:58, Trond Myklebust пишет:
-> On Fri, 2011-12-30 at 17:55 -0500, Trond Myklebust wrote:
->> On Tue, 2011-11-29 at 13:10 +0300, Stanislav Kinsbursky wrote:
->>> This patch set was created in context of clone of git
->>> branch: git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
->>> tag: v3.1
->>>
->>> This patch set depends on previous patch sets titled:
->>> 1) "SUNRPC: initial part of making pipefs work in net ns"
->>> 2) "SUNPRC: cleanup PipeFS for network-namespace-aware users"
->>> 3) "SUNRPC: make RPC clients use network-namespace-aware PipeFS routines"
->>> 4) "NFS: create clients and IDMAP pipes per network namespace"
->>>
->>> This patch set is the final part of making SUNRPC PipeFS and it's users work in
->>> network namespace context.
->>>
->>> The following series consists of:
->>>
->>> ---
->>>
->>> Stanislav Kinsbursky (5):
->>>        NFS: handle blocklayout pipe PipeFS dentry by network namespace aware routines
->>>        NFS: blocklayout pipe creation per network namespace context introduced
->>>        NFS: blocklayout PipeFS notifier introduced
->>>        NFS: remove RPC PipeFS mount point reference from blocklayout routines
->>>        SUNRPC: kernel PipeFS mount point creation routines removed
->>>
->>>
->>>   fs/nfs/blocklayout/blocklayout.c    |  154 ++++++++++++++++++++++++++++-------
->>>   fs/nfs/blocklayout/blocklayout.h    |    3 -
->>>   fs/nfs/blocklayout/blocklayoutdev.c |    5 +
->>>   fs/nfs/blocklayout/blocklayoutdm.c  |    7 +-
->>>   fs/nfs/inode.c                      |    1
->>>   fs/nfs/netns.h                      |    1
->>>   include/linux/sunrpc/rpc_pipe_fs.h  |    2
->>>   net/sunrpc/rpc_pipe.c               |   21 -----
->>>   8 files changed, 137 insertions(+), 57 deletions(-)
+-- kofemann
+/** caffeinated mutations of the core personality */
+
+
+
+On Sun, Jan 15, 2012 at 21:54, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Sun, Jan 15, 2012 at 08:05:23PM +0100, Tigran Mkrtchyan wrote:
 >>
+>> This is the result of testing my changes in linux:
 >>
->> These patches need rebasing in order to apply on top of 3.2-rc7...
+>> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
+>> .....
+>>
+>> **************************************************
+>> CSID1    st_current_stateid.testOpenAndClose                      : PASS
+>> CSID2    st_current_stateid.testLockLockU                         : PASS
+>> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
+>> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
+>> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
+>> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
+>> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
+>>            OP_LAYOUTGET should return NFS4_OK, instead got
+>>            NFS4ERR_NOTSUPP
 >
-> OK. Further testing seems to indicate that we're going to have to
-> postpone merging these patches until the 3.4 merge window.
->
-> The problems are twofold:
->
-> As the patches stand now in the linux-next tree, they can (and
-> occasionally do) Oops on unmount. The reason was that I rejected the
-> PipeFS notifier patch for the idmapper (due to the reported problem of
-> nfs_idmap_init/nfs_idmap_quit being undefined when CONFIG_NFS_V4 is
-> undefined), and the fact that it is missing causes the unmount at the
-> end of our tests to hit the BUG() in fs/dcache.c:905. This suggests that
-> we will have the same problem with the pNFS block layout driver, since I
-> still haven't received a rebased update of the 5 'create blocklayout
-> pipe per network namesapce context' patches.
->
+> We should fix pynfs41 so no pnfs-dependent tests are run without "pnfs"
+> being explicitly asked for on the commandline....
 
-Hello, Trond.
-I've resend the patch set (rebased with fix for nfs_idmap_init/nfs_idmap_quit).
+Well, echange_id has this information. pynfs have to respect it.
 
-> The second problem that was highlighted was the fact that as they stand
-> today, these patchsets do not allow for bisection. When we hit the Oops,
-> I had Bryan try to bisect where the problem arose. He ended up pointing
-> at the patch "SUNRPC: handle RPC client pipefs dentries by network
-> namespace aware routine", which is indeed the cause, but which is one of
-> the _dependencies_ for all the PipeFS notifier patches that fix the
-> problem.
+Tigran.
 >
-
-I'm confused here. Does this means, that I have to fix patch "SUNRPC: handle RPC 
-client pipefs dentries by network namespace aware routine" to make it able to 
-bisect?
-
--- 
-Best regards,
-Stanislav Kinsbursky
+> --b.
+>
+>> CSID8    st_current_stateid.testOpenSetattr                       : PASS
+>> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
+>>
+>> **************************************************
+>> $
+>>
+>> Tigran Mkrtchyan (5):
+>>   client: move current stateid test into a dedicated module
+>>   client: test current stateid processing on PUTROOTFH
+>>   client: test current stateid processing with OPEN+LAYOUTGET in a
+>>     single compound
+>>   client: test current stateid processing with OPEN and SETATTR
+>>   client: test OPEN+FREE_STETEID+CLOSE in a single compound
+>>
+>>  nfs4.1/server41tests/__init__.py           |    1 +
+>>  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
+>>  nfs4.1/server41tests/st_open.py            |   76 -------------
+>>  3 files changed, 162 insertions(+), 76 deletions(-)
+>>  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
+>>
+>> --
+>> 1.7.7.5
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
