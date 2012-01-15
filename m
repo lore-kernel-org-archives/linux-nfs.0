@@ -1,42 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55491 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932244Ab2ASQYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 11:24:34 -0500
-Date: Thu, 19 Jan 2012 11:24:31 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH 2/5] SUNRPC: create unix gid cache per network namespace
-Message-ID: <20120119162431.GC527@fieldses.org>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
- <20120119144914.9957.73951.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120119144914.9957.73951.stgit@localhost6.localdomain6>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751255Ab2AOQRd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:33 -0500
+Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:32 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v6 4/9] nfsd41: consume current stateid on read and write
+Date: Sun, 15 Jan 2012 17:20:05 +0100
+Message-Id: <1326644410-7482-5-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 19, 2012 at 06:49:14PM +0400, Stanislav Kinsbursky wrote:
-> This patch makes unix_gid_cache cache detail allocated and registered per
-> network namespace context.
-> Thus with this patch unix_gid_cache contents for network namespace "X" are
-> controlled from proc file system mount for the same network namespace "X".
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-I'm confused--this seems half-done.  I see that you're creating the gid
-caches dynamically, but there's still this static definition:
 
->  struct cache_detail unix_gid_cache = {
->  	.owner		= THIS_MODULE,
->  	.hash_size	= GID_HASHMAX,
-> -	.hash_table	= gid_table,
->  	.name		= "auth.unix.gid",
->  	.cache_put	= unix_gid_put,
->  	.cache_upcall	= unix_gid_upcall,
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   12 ++++++++++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
-And it looks like unix_gid_lookup is still using this static
-unix_gid_cache.  Maybe I'm missing something....
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 21550b6..6e54d19 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+  */
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
++extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
+ 
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f66a8b2..9a61bbf 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1546,6 +1546,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_READ",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
+ 	},
+ 	[OP_READDIR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_readdir,
+@@ -1624,6 +1625,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_WRITE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+ 	},
+ 	[OP_RELEASE_LOCKOWNER] = {
+ 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5665061..1c97912 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4745,3 +4745,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
+ {
+ 	get_stateid(cstate, &locku->lu_stateid);
+ }
++
++void
++nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
++{
++	get_stateid(cstate, &read->rd_stateid);
++}
++
++void
++nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
++{
++	get_stateid(cstate, &write->wr_stateid);
++}
+-- 
+1.7.7.5
 
---b.
