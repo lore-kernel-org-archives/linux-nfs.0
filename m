@@ -1,72 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:13256 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932613Ab2ASRw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 12:52:29 -0500
-Message-ID: <4F18583F.1000209@parallels.com>
-Date: Thu, 19 Jan 2012 21:51:59 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:16720 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754271Ab2APLxH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jan 2012 06:53:07 -0500
+Date: Mon, 16 Jan 2012 14:52:58 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: [patch] nfsd: oopses in cache_parse()
+Message-ID: <20120116115258.GC3294@mwanda>
+References: <1321611289-21809-1-git-send-email-levinsasha928@gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 3/5] SUNRPC: create GSS auth cache per network namespace
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <20120119144922.9957.39352.stgit@localhost6.localdomain6> <20120119163149.GD527@fieldses.org> <4F184D28.3030207@parallels.com> <20120119174002.GA2907@fieldses.org>
-In-Reply-To: <20120119174002.GA2907@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="bKyqfOwhbdpXa4YI"
+In-Reply-To: <1321611289-21809-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-19.01.2012 21:40, J. Bruce Fields пишет:
-> On Thu, Jan 19, 2012 at 09:04:40PM +0400, Stanislav Kinsbursky wrote:
->> 19.01.2012 20:31, J. Bruce Fields пишет:
->>> On Thu, Jan 19, 2012 at 06:49:23PM +0400, Stanislav Kinsbursky wrote:
->>>> @@ -1000,6 +996,7 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
->>>>   	struct xdr_netobj tmpobj;
->>>>   	struct rsi *rsip, rsikey;
->>>>   	int ret;
->>>> +	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
->>>
->>> OK, so you're getting the network namespace out of the rqstp, and, then
->>> passing it down, makes sense.  And:
->>>
->>>> @@ -1079,6 +1076,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
->>>>   	__be32		*rpcstart;
->>>>   	__be32		*reject_stat = resv->iov_base + resv->iov_len;
->>>>   	int		ret;
->>>> +	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
->>>
->>> ... same for the gss cache.  Looks good.
->>>
->>> How do you plan to test this?
->>>
->>
->> Do you mean something special or in general?
->> Currently I validate all my chages in container by using simple test environment.
->> I would be appreciate for any hints to tests, than can help.
->
-> The server needs to be tested after these changes, and we need to make
-> sure the caches affected still work.
->
-> (I suspect the gid cache code will oops if it's used after these
-> patches, since the table is left NULl?)
->
-> And then we should also test in a container environment, with different
-> instances of mountd and rpc.svcidmapd running in each container, to
-> verify that the right thing happens.
->
 
-Ok. I'll test server with 2-nd version of these patches tomorrow and reply with 
-the results.
-Thanks, Bruce.
+--bKyqfOwhbdpXa4YI
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+We fixed expkey_parse() in b2ea70afad "nfsd: Fix oops when parsing a
+0 length export" but there are other cache_parse() implimentations
+which have the same issue.
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+Since half of the implimentations get this wrong, maybe we should
+just check for this in cache_do_downcall().  Is there ever a valid
+reason to pass a zero length string to cache_parse()?
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index cf8a6bd..1d147a8 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -496,7 +496,7 @@ static int svc_export_parse(struct cache_detail *cd, ch=
+ar *mesg, int mlen)
+ 	struct svc_export exp =3D {}, *expp;
+ 	int an_int;
+=20
+-	if (mesg[mlen-1] !=3D '\n')
++	if (mlen < 1 || mesg[mlen - 1] !=3D '\n')
+ 		return -EINVAL;
+ 	mesg[mlen-1] =3D 0;
+=20
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index a6e711a..d945d71 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -217,7 +217,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char =
+*buf, int buflen)
+ 	ssize_t len;
+ 	int ret =3D -EINVAL;
+=20
+-	if (buf[buflen-1] !=3D '\n')
++	if (buflen < 1 || buf[buflen - 1] !=3D '\n')
+ 		goto out;
+ 	buf[buflen-1] =3D '\0';
+=20
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 9409627..f8456a4 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -202,7 +202,7 @@ idtoname_parse(struct cache_detail *cd, char *buf, int =
+buflen)
+ 	int len;
+ 	int error =3D -EINVAL;
+=20
+-	if (buf[buflen - 1] !=3D '\n')
++	if (buflen < 1 || buf[buflen - 1] !=3D '\n')
+ 		return (-EINVAL);
+ 	buf[buflen - 1]=3D '\0';
+=20
+@@ -378,7 +378,7 @@ nametoid_parse(struct cache_detail *cd, char *buf, int =
+buflen)
+ 	char *buf1;
+ 	int error =3D -EINVAL;
+=20
+-	if (buf[buflen - 1] !=3D '\n')
++	if (buflen < 1 || buf[buflen - 1] !=3D '\n')
+ 		return (-EINVAL);
+ 	buf[buflen - 1]=3D '\0';
+=20
 
 
--- 
-Best regards,
-Stanislav Kinsbursky
+--bKyqfOwhbdpXa4YI
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQIcBAEBAgAGBQJPFA+ZAAoJEOnZkXI/YHqRKCUP/ipCvCv63JE5c116KQynw2KA
+W4uqcUUWouUC9Zi1RWvdqSQPHKrZyaCuUaI1Eou8KSL3rh/f+VfxP7dQY2386i5a
+m4WMIzkOuzQzUhrh9OwED6icTsa/GGne4gHudBfCOHc3SfaL676RvQStLVTRTAkh
+n8Vu09x9q2IBkbLosffjnCVrHnnqiZuhrbSAYQruzmGZnAPOhfzY+eGGRYd0Ri+N
+57urc0oWBjJ7y2yq+faqHDsb8SdO6O7c+nkGDPFivmthUN7JbyOLgh8gzWfmPU+Q
+91HoLst6F1vamlmgUPRtUcqBTFopE+rePGH69PH+hs5Cpo02/DDRZUvoCsGaiBzT
+NYcrMi78aGJIae5DIt6WgrGSl5X+fahdf1h7at4jHAonnBbrazAHwaGSXEBJSpD1
+X+sZV2CCi4ckIfmYSNpRsJ6XrhLu48GAGLgil3SoKhko9zxJTrsrj+vj8U4WumJO
+yuOTumVBGSc/tIKfOTDf96LViYwXW4KYe/ACchFIA+oLAZQvM94tQW47rXYuc7mk
+BTnAAIVgAjN4kQuz2YQxig++xAOKSgNdOrh2dg5he4larJ+G/g5GfZut7NPVbxRV
+UUyX2cYOs8hzYxxdXzyl/IKZZMl3dvKR6kErMEoWK7pwKVefMoBRZ1P021jltr46
+3leX0BXD2ePyM4Mujmee
+=Vqr+
+-----END PGP SIGNATURE-----
+
+--bKyqfOwhbdpXa4YI--
