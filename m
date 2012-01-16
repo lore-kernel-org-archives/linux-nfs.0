@@ -1,185 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9010 "EHLO relay.sw.ru"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:38379 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755555Ab2AMJJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 04:09:45 -0500
-Subject: [PATCH v2 3/4] SUNRPC: parametrize rpc_pton() by network context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 13:09:19 +0400
-Message-ID: <20120113090919.1598.95630.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
-References: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+	id S1754778Ab2APR7u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Jan 2012 12:59:50 -0500
+Received: from /spool/local
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 16 Jan 2012 12:59:50 -0500
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 3DB4C38C9927
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 11:52:35 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0GGqUTa2269358
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 11:52:31 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0GGqTHs013217
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 14:52:29 -0200
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0GGqTbv013183
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 14:52:29 -0200
+Date: Mon, 16 Jan 2012 10:52:28 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20120116165228.GA4990@us.ibm.com>
+References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
+ <1321056809.8733.2.camel@lade.trondhjem.org>
+ <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
+ <1321338825.8267.2.camel@lade.trondhjem.org>
+ <20120113170914.GA31414@us.ibm.com>
+ <20120114013834.GA20464@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120114013834.GA20464@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Parametrize rpc_pton() by network context and thus force it's callers to pass
-in network context instead of using hard-coded "init_net".
+J. Bruce Fields [bfields@fieldses.org] wrote:
+> On Fri, Jan 13, 2012 at 11:09:14AM -0600, Malahal Naineni wrote:
+> > Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
+> > > On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
+> > > 
+> > > > If a server has objects that are never renamed, it can easily use volatile
+> > > > file handles.
+> > > > If a server has objects which can be renamed and wants to use volatile file
+> > > > handles, then if such an object is open and is about to be renamed, it must
+> > > > first log to stable storage some mapping to allow it to access the file from
+> > > > the old volatile file handle.  And of course it cannot allow renames during
+> > > > the grace period, but I think we already have that.
+> > > > Also, if the VFH is such that it will be  lost on a reboot, the server must
+> > > > log it to stable storage before allowing an open.
+> > > 
+> > > BTW: If the namespace is stable, then the server can easily implement
+> > > permanent filehandles. Use a hash of the pathname as the filehandle, and
+> > > set up a hidden directory ('/.filehandles') containing symlinks that map
+> > > said hash back to the correct pathname. No need for volatile
+> > > filehandles.
+> > 
+> > Neil and Trond, one of our use cases is for a read only file system. The
+> > name space is stable and Volatile File Handle support should not have
+> > any issues under those conditions, correct?
+> 
+> Dumb question: remind me which filesystem your exporting that can't
+> already generate stable filehandles?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Only answers can be dumb! Bruce, we have ext3/ext4 file systems on two
+separate servers. The file systems are mirrored using rsync as and when
+needed. We would like to use the servers as replicas.
 
----
- fs/nfs/dns_resolve.c        |    4 ++--
- fs/nfs/nfs4filelayoutdev.c  |    2 +-
- fs/nfs/nfs4namespace.c      |    2 +-
- fs/nfs/super.c              |    4 ++--
- fs/nfsd/nfsctl.c            |    2 +-
- include/linux/sunrpc/clnt.h |    2 +-
- net/sunrpc/addr.c           |    7 ++++---
- net/sunrpc/svcauth_unix.c   |    2 +-
- 8 files changed, 13 insertions(+), 12 deletions(-)
+Since the file systems are mirrored using "rsync", the NFS file handles
+each server exports would be different. We would like to use volatile
+file handles feature of NFSv4 for this.
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 200eb67..7edc62a 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -20,7 +20,7 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name, size_t namelen,
- 
- 	ip_len = dns_query(NULL, name, namelen, NULL, &ip_addr, NULL);
- 	if (ip_len > 0)
--		ret = rpc_pton(ip_addr, ip_len, sa, salen);
-+		ret = rpc_pton(&init_net, ip_addr, ip_len, sa, salen);
- 	else
- 		ret = -ESRCH;
- 	kfree(ip_addr);
-@@ -224,7 +224,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char *buf, int buflen)
- 	len = qword_get(&buf, buf1, sizeof(buf1));
- 	if (len <= 0)
- 		goto out;
--	key.addrlen = rpc_pton(buf1, len,
-+	key.addrlen = rpc_pton(&init_net, buf1, len,
- 			(struct sockaddr *)&key.addr,
- 			sizeof(key.addr));
- 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 8ae9190..0d8b952 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -457,7 +457,7 @@ decode_ds_addr(struct xdr_stream *streamp, gfp_t gfp_flags)
- 
- 	INIT_LIST_HEAD(&da->da_node);
- 
--	if (!rpc_pton(buf, portstr-buf, (struct sockaddr *)&da->da_addr,
-+	if (!rpc_pton(&init_net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
- 		      sizeof(da->da_addr))) {
- 		dprintk("%s: error parsing address %s\n", __func__, buf);
- 		goto out_free_da;
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 919a369..48a9acd 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -98,7 +98,7 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- {
- 	ssize_t ret;
- 
--	ret = rpc_pton(string, len, sa, salen);
-+	ret = rpc_pton(&init_net, string, len, sa, salen);
- 	if (ret == 0) {
- 		ret = nfs_dns_resolve_name(server->client->cl_xprt->xprt_net,
- 					   string, len, sa, salen);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e45feb0..b79f2a1 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1408,7 +1408,7 @@ static int nfs_parse_mount_options(char *raw,
- 			if (string == NULL)
- 				goto out_nomem;
- 			mnt->nfs_server.addrlen =
--				rpc_pton(string, strlen(string),
-+				rpc_pton(&init_net, string, strlen(string),
- 					(struct sockaddr *)
- 					&mnt->nfs_server.address,
- 					sizeof(mnt->nfs_server.address));
-@@ -1430,7 +1430,7 @@ static int nfs_parse_mount_options(char *raw,
- 			if (string == NULL)
- 				goto out_nomem;
- 			mnt->mount_server.addrlen =
--				rpc_pton(string, strlen(string),
-+				rpc_pton(&init_net, string, strlen(string),
- 					(struct sockaddr *)
- 					&mnt->mount_server.address,
- 					sizeof(mnt->mount_server.address));
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index bb4a11d..3bc8242 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -222,7 +222,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	if (qword_get(&buf, fo_path, size) < 0)
- 		return -EINVAL;
- 
--	if (rpc_pton(fo_path, size, sap, salen) == 0)
-+	if (rpc_pton(&init_net, fo_path, size, sap, salen) == 0)
- 		return -EINVAL;
- 
- 	return nlmsvc_unlock_all_by_ip(sap);
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index e891a8a..7bd114f 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -163,7 +163,7 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
- 
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
--size_t		rpc_pton(const char *, const size_t,
-+size_t		rpc_pton(struct net *, const char *, const size_t,
- 			 struct sockaddr *, const size_t);
- char *		rpc_sockaddr2uaddr(const struct sockaddr *, gfp_t);
- size_t		rpc_uaddr2sockaddr(const char *, const size_t,
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 18c40a2..82b06b7 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -230,6 +230,7 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- 
- /**
-  * rpc_pton - Construct a sockaddr in @sap
-+ * @net: applicable network namespace
-  * @buf: C string containing presentation format IP address
-  * @buflen: length of presentation address in bytes
-  * @sap: buffer into which to plant socket address
-@@ -242,14 +243,14 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
-  * socket address, if successful.  Returns zero if an error
-  * occurred.
-  */
--size_t rpc_pton(const char *buf, const size_t buflen,
-+size_t rpc_pton(struct net *net, const char *buf, const size_t buflen,
- 		struct sockaddr *sap, const size_t salen)
- {
- 	unsigned int i;
- 
- 	for (i = 0; i < buflen; i++)
- 		if (buf[i] == ':')
--			return rpc_pton6(&init_net, buf, buflen, sap, salen);
-+			return rpc_pton6(net, buf, buflen, sap, salen);
- 	return rpc_pton4(buf, buflen, sap, salen);
- }
- EXPORT_SYMBOL_GPL(rpc_pton);
-@@ -340,7 +341,7 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
- 	port = (unsigned short)((porthi << 8) | portlo);
- 
- 	*c = '\0';
--	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
-+	if (rpc_pton(&init_net, buf, strlen(buf), sap, salen) == 0)
- 		return 0;
- 
- 	switch (sap->sa_family) {
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 01153ea..2f8c426 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -211,7 +211,7 @@ static int ip_map_parse(struct cache_detail *cd,
- 	len = qword_get(&mesg, buf, mlen);
- 	if (len <= 0) return -EINVAL;
- 
--	if (rpc_pton(buf, len, &address.sa, sizeof(address)) == 0)
-+	if (rpc_pton(&init_net, buf, len, &address.sa, sizeof(address)) == 0)
- 		return -EINVAL;
- 	switch (address.sa.sa_family) {
- 	case AF_INET:
+Hope that helps.
+
+Regards, Malahal.
 
