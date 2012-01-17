@@ -1,50 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35725 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752603Ab2AXXKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 18:10:10 -0500
-Date: Tue, 24 Jan 2012 18:10:09 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from exo1066.net2.nerim.net ([213.41.175.60]:63503 "EHLO
+	mx1.exosec.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754384Ab2AQPoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 10:44:00 -0500
+Date: Tue, 17 Jan 2012 16:43:19 +0100
+From: Bertrand Jacquin <bjacquin@exosec.fr>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
-Message-ID: <20120124231009.GF12426@fieldses.org>
-References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+Subject: Re: I/O Wait on exportfs
+Message-ID: <20120117154319.GB19990@lady-voodoo.exosec.local>
+References: <20120117142945.GA19990@lady-voodoo.exosec.local>
+ <20120117150901.GA12274@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20120117150901.GA12274@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 23, 2012 at 03:01:01PM -0500, Jeff Layton wrote:
-> - a number of the client_tracking functions have been changed to void
-> return functions. Since the callers all ignore the return codes of those
-> functions, there was little benefit in passing them back.
+Le mardi 17 janvier 2012 à 16h09, « J. Bruce Fields » a écrit :
+> On Tue, Jan 17, 2012 at 03:29:45PM +0100, Bertrand Jacquin wrote:
+> > For a specific case I have /etc/exports with 1281 entries as I need
+> > mount --bind to be exported to NFS Clients too.
+> 
+> Could you explain what you mean by that?
 
-If you'd like to make that patch #1, I could apply it now.
+In this case, I need /srv/mail to be exported to clients. But for a 1
+month period, I need folders present in /srv/mail2 to be accessible in
+/srv/mail.
 
---b.
+We are moving datas to a SAN, and to avoid modifying any mail configuration
+(and the long list depending on it), I mount /srv/mail2 subdirectory to
+/srv/mailsubdirectory until all subdirectory are migrated :
 
+ # mount /dev/drbd5 /srv/mail
+ # mount /dev/mapper/iqn.dXX:san1.target0-lun0 /srv/mail2
+ # <moving data from /srv/mail/user1 to /srv/mail2/user1>
+ # mount --bind /srv/mail2/user1 /srv/mail/user1
+
+To make /srv/mail2/user1 data visible for NFS client, I need to use
+crossmnt options in /etc/exports as nohide is client per client.
+
+exports(5) say :
+
+  Thus when a child filesystem "B" is mounted on a parent "A", setting
+	crossmnt on "A" has the same effect as setting "nohide" on B.
+
+But I can't say that this had work at all, but adding child filesystem
+in /etc/export, then 'mount -o remount' NFS partition on client fix
+that. I'm maybe wrong, but my tests put me in that way.
+
+> > Since I have ~1100 entries, reexporting /etc/exports have some bad
+> > effects to connected clients, load rise to ~500 for 4/5 minutes, this is
+> > always reproducible.
+> > 
+> > This was using 'exportfs -ra'. I did try with 'exportfs
+> > 192.168.0.1:/srv/mail/1234' to avoid reexport every directories, and
+> > the sync process but the result is the same.
 > 
-> Comments and suggestions are welcome...
-> 
-> Jeff Layton (6):
->   nfsd: add nfsd4_client_tracking_ops struct and a way to set it
->   sunrpc: create nfsd dir in rpc_pipefs
->   nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
->   nfsd: add a header describing upcall to nfsdcld
->   nfsd: add the infrastructure to handle the cld upcall
->   nfsd: get boot generation number from upcall instead of boot_time
-> 
->  fs/nfsd/nfs4callback.c   |   12 +-
->  fs/nfsd/nfs4recover.c    |  480 +++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfsd/nfs4state.c      |   63 +++----
->  fs/nfsd/state.h          |   22 ++-
->  include/linux/nfsd/cld.h |   58 ++++++
->  net/sunrpc/rpc_pipe.c    |    5 +
->  6 files changed, 581 insertions(+), 59 deletions(-)
->  create mode 100644 include/linux/nfsd/cld.h
-> 
-> -- 
-> 1.7.7.5
-> 
+> Does a -t option (see rpc.mountd(8)) help?
+
+This is interesting
+
+Bertrand
+
+-- 
+Bertrand Jacquin, EXOSEC (http://www.exosec.fr/)
+ZAC des Metz - 3 Rue du petit robinson - 78350 JOUY EN JOSAS
+Tel: +33 1 30 67 60 65  -  Fax: +33 1 75 43 40 70
+GSM: +33 6 71 01 70 30  -  mailto:bjacquin@exosec.fr
