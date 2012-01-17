@@ -1,111 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24984 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754965Ab2AXNeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 08:34:13 -0500
-Message-ID: <4F1EB353.1060205@RedHat.com>
-Date: Tue, 24 Jan 2012 08:34:11 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from exo1066.net2.nerim.net ([213.41.175.60]:6288 "EHLO
+	mx1.exosec.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755324Ab2AQQxy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:53:54 -0500
+Date: Tue, 17 Jan 2012 17:53:12 +0100
+From: Bertrand Jacquin <bjacquin@exosec.fr>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: I/O Wait on exportfs
+Message-ID: <20120117165311.GI27065@lady-voodoo.exosec.local>
+References: <20120117142945.GA19990@lady-voodoo.exosec.local>
+ <20120117150901.GA12274@fieldses.org>
+ <20120117154319.GB19990@lady-voodoo.exosec.local>
+ <20120117164044.GC13977@fieldses.org>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: Adding status trace points
-References: <1327348480-32549-1-git-send-email-steved@redhat.com>	 <1327348480-32549-2-git-send-email-steved@redhat.com> <1327354611.2628.20.camel@lade.trondhjem.org>
-In-Reply-To: <1327354611.2628.20.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20120117164044.GC13977@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
-
-On 01/23/2012 04:36 PM, Trond Myklebust wrote:
-> On Mon, 2012-01-23 at 14:54 -0500, Steve Dickson wrote: 
->> This patch adds three trace points to the status routines
->> in the sunrpc state machine.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  include/trace/events/sunrpc.h |   45 +++++++++++++++++++++++++++++++++++++++++
->>  net/sunrpc/clnt.c             |    4 +++
->>  2 files changed, 49 insertions(+), 0 deletions(-)
->>
->> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
->> index 1852f11..bca5ad3 100644
->> --- a/include/trace/events/sunrpc.h
->> +++ b/include/trace/events/sunrpc.h
->> @@ -8,6 +8,51 @@
->>  #include <linux/sunrpc/clnt.h>
->>  #include <linux/tracepoint.h>
->>  
->> +DECLARE_EVENT_CLASS(rpc_task_status,
->> +
->> +	TP_PROTO(struct rpc_task *task),
->> +
->> +	TP_ARGS(task),
->> +
->> +	TP_STRUCT__entry(
->> +		__field(int, status)
->> +	),
->> +
->> +	TP_fast_assign(
->> +		__entry->status = task->tk_status;
->> +	),
->> +
->> +	TP_printk("status %d", __entry->status)
->> +);
+Le mardi 17 janvier 2012 à 17h40, « J. Bruce Fields » a écrit :
+> On Tue, Jan 17, 2012 at 04:43:19PM +0100, Bertrand Jacquin wrote:
+> > Le mardi 17 janvier 2012 à 16h09, « J. Bruce Fields » a écrit :
+> > > On Tue, Jan 17, 2012 at 03:29:45PM +0100, Bertrand Jacquin wrote:
+> > > > For a specific case I have /etc/exports with 1281 entries as I need
+> > > > mount --bind to be exported to NFS Clients too.
+> > > 
+> > > Could you explain what you mean by that?
+> > 
+> > In this case, I need /srv/mail to be exported to clients. But for a 1
+> > month period, I need folders present in /srv/mail2 to be accessible in
+> > /srv/mail.
+> > 
+> > We are moving datas to a SAN, and to avoid modifying any mail configuration
+> > (and the long list depending on it), I mount /srv/mail2 subdirectory to
+> > /srv/mailsubdirectory until all subdirectory are migrated :
+> > 
+> >  # mount /dev/drbd5 /srv/mail
+> >  # mount /dev/mapper/iqn.dXX:san1.target0-lun0 /srv/mail2
+> >  # <moving data from /srv/mail/user1 to /srv/mail2/user1>
+> >  # mount --bind /srv/mail2/user1 /srv/mail/user1
+> > 
+> > To make /srv/mail2/user1 data visible for NFS client, I need to use
+> > crossmnt options in /etc/exports as nohide is client per client.
+> > 
+> > exports(5) say :
+> > 
+> >   Thus when a child filesystem "B" is mounted on a parent "A", setting
+> > 	crossmnt on "A" has the same effect as setting "nohide" on B.
+> > 
+> > But I can't say that this had work at all, but adding child filesystem
+> > in /etc/export, then 'mount -o remount' NFS partition on client fix
+> > that. I'm maybe wrong, but my tests put me in that way.
 > 
-> How do you tell which RPC task this refers to in the output? 
->From the task pointer I send up to the prob. Once I have that
-pointer I can grab any field out it. An example:
-
-probe kernel.trace("rpc_call_status")
-{
-    terror = task_status($task);
-    if (terror)
-        printf("%s[%d]:call_status:%s:%s: error %d (%s)\n", 
-            execname(), pid(), cl_server($task), cl_prog($task), 
-            terror, errno_str(terror));
-}
-The home grown routine task_status($task) pulls the status out task 
-structure. If there is status I will get the following output:
-    mount.nfs[13368]:call_status:vf16:nfs[4]:0: error -32 (EPIPE)
-
-The built in routine execname() and pid() supply the process name
-and pid. The home grown routines, cl_server($task) and cl_prog($task)
-pull out the server, protocol, and version from the task. Finally
-the built in routine errno_str() is used for the errno to string 
-conversion. 
-
-
-> Shouldn't we rather make the above
+> That's a bug, it should be enough just to export /srv/mail, and the
+> mounts underneath should then automatically be exported.
 > 
-> 	TP_printk("task:%p@%p, status %d", __entry->task, __entry->clnt, __entry->status)
+> Hm--there have been a couple fixes in that area recently.  You might try
+> building the most recent nfs-utils.
 > 
-> so that it matches the format in the previous tracepoint patch?
-Sure if you want to standardizer on that type of format thats 
-fine with me... but, as you do in your trace points, we should also
-make the clnt point available to the prob by making it part of the
-TP_ARGS(). The more data we can look at the better..
+> Then you shouldn't need to list every subexport explicitly in
+> /etc/exports.
 
-Question about TP_printk() statements? How do you uses them? Meaning
-how get them to print? I've never needed or used them since I
-always used probs to grab that type of info.
+With nfs-utils 1.2.5 this is fine.
 
-> 
-> Also, why are you adding tracepoints for specific states in
-> net/sunrpc/clnt.c? 
-I was just looking for status not state. Basically to see if there is
-an problem at all... 
+Thanks for your help.
 
-> Is the intention to allow the user to target specific
-> bugs that might be harder to spot in the output from
-> trace_rpc_task_run_action()?
-These were architected explicitly show if a bind was failing and why
-or if a connection was failing and why. A much higher level (and 
-simpler) than the info trace_rpc_task_run_action supplies.
-They are more directed at admin types verses developer types.
+Bertrand
 
-(Note, these trace points are currently in RHEL and we have found 
-them somewhat useful)
-
-steved.
+-- 
+Bertrand Jacquin, EXOSEC (http://www.exosec.fr/)
+ZAC des Metz - 3 Rue du petit robinson - 78350 JOUY EN JOSAS
+Tel: +33 1 30 67 60 65  -  Fax: +33 1 75 43 40 70
+GSM: +33 6 71 01 70 30  -  mailto:bjacquin@exosec.fr
