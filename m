@@ -1,78 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18907 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:55971 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980Ab2AaKJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 05:09:40 -0500
-Subject: [PATCH v2 1/4] SUNRPC: clear svc pools lists helper introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 14:09:00 +0400
-Message-ID: <20120131100900.4342.85712.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
-References: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
+	id S1754700Ab2AQQe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:34:26 -0500
+Date: Tue, 17 Jan 2012 11:34:26 -0500
+To: Jim Rees <rees@umich.edu>
+Cc: Sachin Prabhu <sprabhu@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: svcgssd: Allow administrators to specify timeout for the
+ cached context
+Message-ID: <20120117163426.GB13977@fieldses.org>
+References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
+ <20120117134951.GA15479@umich.edu>
+ <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
+ <20120117163133.GB3387@umich.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120117163133.GB3387@umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch moves removing of service transport from it's pools ready lists to
-separated function. Also this clear is now done with list_for_each_entry_safe()
-helper.
-This is a precursor patch, which would be usefull with service shutdown in
-network namespace context, introduced later in the series.
+On Tue, Jan 17, 2012 at 11:31:33AM -0500, Jim Rees wrote:
+> Sachin Prabhu wrote:
+> 
+>   On Tue, 2012-01-17 at 08:49 -0500, Jim Rees wrote:
+>   > Sachin Prabhu wrote:
+>   > 
+>   >   We had a user report that for an export shared with sec=krb5*, any
+>   >   changes in user credentials(ex: add user to a secondary group) take some
+>   >   time before they take effect over the NFS share.
+>   > 
+>   > Re-authenticating, either by removing the service ticket or by re-running
+>   > kinit at the client, should also flush the old credentials.  Can you confirm
+>   > that works?
+>   
+>   We have tried it but it doesn't work unless you actually clean up the
+>   cache on the NFS server with the command 
+>   echo `date +'%s'` > /proc/net/rpc/auth.rpcsec.context/flush
+> 
+> Bruce, shouldn't this work?  Is this a bug or a feature?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+kdestroy, kinit, etc. on the client only affect userspace; the NFS
+client in the kernel continues to use the same gss context.
 
----
- net/sunrpc/svc_xprt.c |   19 +++++++++++++------
- 1 files changed, 13 insertions(+), 6 deletions(-)
+You're right, if those commands did remove the gss context, then the
+client would have to go get a new one, and that would trigger an svcgssd
+on the server side that should get the up-to-date information.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index de1e1a8..50bf7c1 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -932,26 +932,33 @@ static void svc_close_list(struct list_head *xprt_list)
- 	}
- }
- 
--void svc_close_all(struct svc_serv *serv)
-+static void svc_clear_pools(struct svc_serv *serv)
- {
- 	struct svc_pool *pool;
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *tmp;
- 	int i;
- 
--	svc_close_list(&serv->sv_tempsocks);
--	svc_close_list(&serv->sv_permsocks);
--
- 	for (i = 0; i < serv->sv_nrpools; i++) {
- 		pool = &serv->sv_pools[i];
- 
- 		spin_lock_bh(&pool->sp_lock);
--		while (!list_empty(&pool->sp_sockets)) {
--			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
-+		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
- 			list_del_init(&xprt->xpt_ready);
- 		}
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
-+}
-+
-+void svc_close_all(struct svc_serv *serv)
-+{
-+	struct svc_xprt *xprt;
-+	struct svc_xprt *tmp;
-+
-+	svc_close_list(&serv->sv_tempsocks);
-+	svc_close_list(&serv->sv_permsocks);
-+
-+	svc_clear_pools(serv);
- 	/*
- 	 * At this point the sp_sockets lists will stay empty, since
- 	 * svc_enqueue will not add new entries without taking the
-
+--b.
