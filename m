@@ -1,89 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from www.linutronix.de ([62.245.132.108]:56785 "EHLO
-	Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752575Ab2AaV4N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Jan 2012 16:56:13 -0500
-Date: Tue, 31 Jan 2012 22:56:05 +0100 (CET)
-From: Thomas Gleixner <tglx@linutronix.de>
-To: Jeff Layton <jlayton@redhat.com>
-cc: Boaz Harrosh <bharrosh@panasas.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>, linux-mm@kvack.org
-Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
- allocation
-In-Reply-To: <20120131101216.00788753@tlielax.poochiereds.net>
-Message-ID: <alpine.LFD.2.02.1201312231311.6143@ionos>
-References: <1327426850-14837-1-git-send-email-jlayton@redhat.com> <4F2700E2.9020803@RedHat.com> <1327957652.4090.32.camel@lade.trondhjem.org> <20120130185753.50280816@tlielax.poochiereds.net> <4F2800B4.6040302@panasas.com>
- <20120131101216.00788753@tlielax.poochiereds.net>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:48949 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752505Ab2AQRWx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 12:22:53 -0500
+Received: from /spool/local
+	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Tue, 17 Jan 2012 10:22:52 -0700
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id BF72219D804B
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 10:22:45 -0700 (MST)
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0HHMXqh096922
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 10:22:34 -0700
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0HHMWLH002451
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 10:22:33 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0HHMVis002342
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 10:22:31 -0700
+Date: Tue, 17 Jan 2012 11:22:31 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20120117172231.GA21603@us.ibm.com>
+References: <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
+ <1321338825.8267.2.camel@lade.trondhjem.org>
+ <20120113170914.GA31414@us.ibm.com>
+ <20120114013834.GA20464@fieldses.org>
+ <20120116165228.GA4990@us.ibm.com>
+ <20120117151826.GB12274@fieldses.org>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120117151826.GB12274@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 31 Jan 2012, Jeff Layton wrote:
-
-> On Tue, 31 Jan 2012 16:54:44 +0200
-> Boaz Harrosh <bharrosh@panasas.com> wrote:
+J. Bruce Fields [bfields@fieldses.org] wrote:
+> > Only answers can be dumb! Bruce, we have ext3/ext4 file systems on two
+> > separate servers. The file systems are mirrored using rsync as and when
+> > needed. We would like to use the servers as replicas.
 > 
-> > On 01/31/2012 01:57 AM, Jeff Layton wrote:
-> > >     WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
-> > > 
-> > > For now, this patch is really just papering over that problem, but it
-> > > should be "mostly harmless". That said, I'm ok with dropping it if
-> > > Thomas is planning to fix this in the debugobjects code however.
-> > > 
-> > 
-> > I disagree it's harmless. What if kmem_cache_free/kmem_cache_alloc deploys
-> > a poisoning schema, in debug mode. Which stumps over memory. Is it
-> > initialized then?
-> > 
+> And why aren't you rsync'ing the underlying filesystem image instead?
+> Is that too slow?
+
+The file system image is too big to do entire image level rsync'ing.
+
+> > Since the file systems are mirrored using "rsync", the NFS file handles
+> > each server exports would be different. We would like to use volatile
+> > file handles feature of NFSv4 for this.
 > 
-> Different slab allocators handle that differently. As best I can tell:
-> 
-> SLAB: calls ctor on the poisoned object before handing it back out
-> 
-> SLUB: avoids poisoning the object if there's a ->ctor defined
+> In theory the hidden directory for reverse lookups would work, but it
+> seems like it would be complicated to get right:
+> 	- How do you generate the directory and keep it up to date?
+> 	- What happens if somebody breaks the rules and updates the
+> 	  filesystem while it's being exported?
 
-Brilliant. Preventing debug code from catching bugs is really a great
-idea. This needs to be fixed ASAP.
- 
-> SLOB: I'm not sure -- haven't looked at it
-> 
-> > What was the last state of the timer, is it safe for resume?
-> > 
-> 
-> Yes, either way it's safe to reuse the recycled object, aside from the
-> problem with debugobjects. If it's not then that's clearly a bug in the
-> slab allocator.
-> > For us this is a new object we should initialize it.
-> > 
-> 
-> I tend to agree that not relying on slab ctor functions is preferable.
-> They are widely used though so this problem almost assuredly exists in
-> other places besides just rpc_pipefs. If it's not fixed in the
-> debugobjects code (or the slab allocators) then I wouldn't be surprised
-> if this popped up again in another area.
+I think so too. We think Volatile file handle support on the client side
+is simpler for our use case (read only NFS file systems)
 
-There is nothing the debugobjects code can do about this. The
-indication for removing the object from the hash is the
-kmem_cache_free() operation and from that point on the object is not
-longer usable. That's correct and it's not going to change.
-
-The correct solution to this problem is to do the following:
-
-Extend the kmemcache with a debug_ctor() callback. 
-
-In case of slab poisoning make it call ctor().
-
-In case of debugobjects (w/o slab poisoning) make it a function which
-reinitializes the timer or what ever subobject which needs an explicit
-state check. In case of timers this should be a separate function
-(e.g. timer_reinit()) which soleley makes the timer known to the debug
-code again.
-
-Thanks,
-
-	tglx
+Regards, Malahal.
 
