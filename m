@@ -1,185 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:37230 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750970Ab2ALPTv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:19:51 -0500
-Received: by ggdk6 with SMTP id k6so1013385ggd.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:19:50 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH-v2 1/9] pnfsblock: cleanup bl_mark_sectors_init
-Date: Thu, 12 Jan 2012 23:18:40 +0800
-Message-Id: <1326381528-2232-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:46960 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753056Ab2AQLo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 06:44:28 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0HBiSde026294
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 06:44:28 -0500
+Subject: svcgssd: Allow administrators to specify timeout for the cached
+ context
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <steved@redhat.com>
+Date: Tue, 17 Jan 2012 11:44:27 +0000
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It does not need to manipulate on partial initialized blocks.
-Writeback code takes care of it.
+We had a user report that for an export shared with sec=krb5*, any
+changes in user credentials(ex: add user to a secondary group) take some
+time before they take effect over the NFS share. 
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c |    6 +--
- fs/nfs/blocklayout/blocklayout.h |    3 +-
- fs/nfs/blocklayout/extents.c     |   76 ++-----------------------------------
- 3 files changed, 8 insertions(+), 77 deletions(-)
+The problem was determined to be caused by the svcgssd process caching
+the user credentials. The user credentials were initially cached for an
+unlimited amount of time. There was some improvement in this behaviour
+with the commit
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 281ae95..4ced0b0 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -571,8 +571,7 @@ fill_invalid_ext:
- 			unlock_page(page);
- 
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
--						       PAGE_CACHE_SECTORS,
--						       NULL);
-+						       PAGE_CACHE_SECTORS);
- 			if (unlikely(ret)) {
- 				dprintk("%s bl_mark_sectors_init fail %d\n",
- 					__func__, ret);
-@@ -621,8 +620,7 @@ next_page:
- 		}
- 		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
--						       PAGE_CACHE_SECTORS,
--						       NULL);
-+						       PAGE_CACHE_SECTORS);
- 			if (unlikely(ret)) {
- 				dprintk("%s bl_mark_sectors_init fail %d\n",
- 					__func__, ret);
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 42acf7e..60728ac 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -186,8 +186,7 @@ struct pnfs_block_extent *
- bl_find_get_extent(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent **cow_read);
- int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
--			     sector_t offset, sector_t length,
--			     sector_t **pages);
-+			     sector_t offset, sector_t length);
- void bl_put_extent(struct pnfs_block_extent *be);
- struct pnfs_block_extent *bl_alloc_extent(void);
- int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect);
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 19fa7b0..0fc1321 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -179,33 +179,6 @@ static int _preload_range(struct my_tree *tree, u64 offset, u64 length)
- 	return status;
- }
- 
--static void set_needs_init(sector_t *array, sector_t offset)
--{
--	sector_t *p = array;
--
--	dprintk("%s enter\n", __func__);
--	if (!p)
--		return;
--	while (*p < offset)
--		p++;
--	if (*p == offset)
--		return;
--	else if (*p == ~0) {
--		*p++ = offset;
--		*p = ~0;
--		return;
--	} else {
--		sector_t *save = p;
--		dprintk("%s Adding %llu\n", __func__, (u64)offset);
--		while (*p != ~0)
--			p++;
--		p++;
--		memmove(save + 1, save, (char *)p - (char *)save);
--		*save = offset;
--		return;
--	}
--}
--
- /* We are relying on page lock to serialize this */
- int bl_is_sector_init(struct pnfs_inval_markings *marks, sector_t isect)
- {
-@@ -261,28 +234,15 @@ static int is_range_written(struct pnfs_inval_markings *marks,
- 
- /* Marks sectors in [offest, offset_length) as having been initialized.
-  * All lengths are step-aligned, where step is min(pagesize, blocksize).
-- * Notes where partial block is initialized, and helps prepare it for
-- * complete initialization later.
-+ * Currently assumes offset is page-aligned
+svcgssd: use the actual context expiration for cache
+commit eb3a145789b9eedd39b56e1d76f412435abaa747
+
+The cache expiration time is now set to the time for which the kerberos
+ticket is valid. However this is still considered too long. The proposed
+solution is to allow administrators to explicitly set a timeout for
+which the cache is valid. This is similar to changes which went into
+gssd, the corresponding client side program.
+
+The patch adds a -t <timeout> option to rpc.svcgssd so that the server's
+administrator can specify an expiry timeout for the cached context.
+After this timeout, an upcall is made to obtain the new user
+credentials.
+
+The default, timeout 0 results in the old behaviour.
+
+Signed-off-bye: Sachin Prabhu <sprabhu@redhat.com>
+
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index 1afff9e..db99ea3 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -70,6 +70,8 @@
   */
--/* Currently assumes offset is page-aligned */
- int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
--			     sector_t offset, sector_t length,
--			     sector_t **pages)
-+			     sector_t offset, sector_t length)
+ int pipefds[2] = { -1, -1};
+ 
++unsigned int context_timeout = 0;
++
+ static void
+ mydaemon(int nochdir, int noclose)
  {
--	sector_t s, start, end;
--	sector_t *array = NULL; /* Pages to mark */
-+	sector_t start, end;
- 
- 	dprintk("%s(offset=%llu,len=%llu) enter\n",
- 		__func__, (u64)offset, (u64)length);
--	s = max((sector_t) 3,
--		2 * (marks->im_block_size / (PAGE_CACHE_SECTORS)));
--	dprintk("%s set max=%llu\n", __func__, (u64)s);
--	if (pages) {
--		array = kmalloc(s * sizeof(sector_t), GFP_NOFS);
--		if (!array)
--			goto outerr;
--		array[0] = ~0;
--	}
- 
- 	start = normalize(offset, marks->im_block_size);
- 	end = normalize_up(offset + length, marks->im_block_size);
-@@ -290,41 +250,15 @@ int bl_mark_sectors_init(struct pnfs_inval_markings *marks,
- 		goto outerr;
- 
- 	spin_lock(&marks->im_lock);
--
--	for (s = normalize_up(start, PAGE_CACHE_SECTORS);
--	     s < offset; s += PAGE_CACHE_SECTORS) {
--		dprintk("%s pre-area pages\n", __func__);
--		/* Portion of used block is not initialized */
--		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
--			set_needs_init(array, s);
--	}
- 	if (_set_range(&marks->im_tree, EXTENT_INITIALIZED, offset, length))
- 		goto out_unlock;
--	for (s = normalize_up(offset + length, PAGE_CACHE_SECTORS);
--	     s < end; s += PAGE_CACHE_SECTORS) {
--		dprintk("%s post-area pages\n", __func__);
--		if (!_has_tag(&marks->im_tree, s, EXTENT_INITIALIZED))
--			set_needs_init(array, s);
--	}
--
- 	spin_unlock(&marks->im_lock);
- 
--	if (pages) {
--		if (array[0] == ~0) {
--			kfree(array);
--			*pages = NULL;
--		} else
--			*pages = array;
--	}
- 	return 0;
- 
-- out_unlock:
-+out_unlock:
- 	spin_unlock(&marks->im_lock);
-- outerr:
--	if (pages) {
--		kfree(array);
--		*pages = NULL;
--	}
-+outerr:
- 	return -ENOMEM;
+@@ -167,7 +169,7 @@ sig_hup(int signal)
+ static void
+ usage(char *progname)
+ {
+-	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal]\n",
++	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal] [-t timeout]\n",
+ 		progname);
+ 	exit(1);
  }
+@@ -185,7 +187,7 @@ main(int argc, char *argv[])
+ 	char *progname;
+ 	char *principal = NULL;
  
--- 
-1.7.1.262.g5ef3d
+-	while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
++	while ((opt = getopt(argc, argv, "fivrnp:t:")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+ 				fg = 1;
+@@ -205,6 +207,9 @@ main(int argc, char *argv[])
+ 			case 'p':
+ 				principal = optarg;
+ 				break;
++			case 't':
++				context_timeout = atoi(optarg);
++				break;
+ 			default:
+ 				usage(argv[0]);
+ 				break;
+diff --git a/utils/gssd/svcgssd.h b/utils/gssd/svcgssd.h
+index 9a2e2e8..869fb63 100644
+--- a/utils/gssd/svcgssd.h
++++ b/utils/gssd/svcgssd.h
+@@ -40,4 +40,6 @@ void gssd_run(void);
+ 
+ #define GSSD_SERVICE_NAME	"nfs"
+ 
++extern unsigned int context_timeout;
++
+ #endif /* _RPC_SVCGSSD_H_ */
+diff --git a/utils/gssd/svcgssd.man b/utils/gssd/svcgssd.man
+index 7b2de6b..3688af0 100644
+--- a/utils/gssd/svcgssd.man
++++ b/utils/gssd/svcgssd.man
+@@ -45,6 +45,14 @@ Use the system default credentials
+ .RI (host/ FQDN @ REALM )
+ rather than the default
+ .RI nfs/ FQDN @ REALM .
++.TP
++.B -t timeout
++Timeout, in seconds, for kernel gss contexts. This option allows you to force
++new kernel contexts to be negotiated after
++.I timeout
++seconds, which allows changing Kerberos tickets and identities frequently.
++The default is no explicit timeout, which means the kernel context will live
++the lifetime of the Kerberos service ticket used in its creation.
+ .SH SEE ALSO
+ .BR rpc.gssd(8),
+ .SH AUTHORS
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index c714d99..dae10ca 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -497,6 +497,10 @@ handle_nullreq(FILE *f) {
+ 	/* We no longer need the gss context */
+ 	gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
+ 
++	/* If timeout set, override context timeout */
++	if (context_timeout)
++		ctx_endtime = time(0) + context_timeout;
++
+ 	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
+ 			hostbased_name);
+ continue_needed:
+
 
