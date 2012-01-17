@@ -1,52 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39673 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:50562 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932487Ab2ASRmp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 12:42:45 -0500
-Subject: [PATCH v2 0/5] SUNRPC: make caches network namespace aware
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 19 Jan 2012 21:42:13 +0400
-Message-ID: <20120119173823.23767.91876.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754977Ab2AQQAd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:00:33 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 6/6] locks: break delegations on link
+Date: Tue, 17 Jan 2012 11:00:29 -0500
+Message-Id: <1326816029-13913-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-1) Fixed silly usage of unix gid cache template instead on per-net cache
-instance.
-2) Postfix "_template" was added to all caches templates to make sure, that no
-misaunderstanding or direct usage of template object will happen in future.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-One more step towards to "NFS in container".
-With this patch set caches are allocated per network namespace.
-
-The following series consists of:
-
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/namei.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-Stanislav Kinsbursky (5):
-      SUNRPC: cache creation and destruction routines introduced
-      SUNRPC: create unix gid cache per network namespace
-      SUNRPC: create GSS auth cache per network namespace
-      SUNRPC: ip map cache per network namespace cleanup
-      SUNRPC: generic cache register routines removed
-
-
- include/linux/sunrpc/cache.h       |    6 +
- include/linux/sunrpc/svcauth_gss.h |    2 
- net/sunrpc/auth_gss/auth_gss.c     |   21 +++++
- net/sunrpc/auth_gss/svcauth_gss.c  |  165 +++++++++++++++++++++++++-----------
- net/sunrpc/cache.c                 |   34 +++++--
- net/sunrpc/netns.h                 |    3 +
- net/sunrpc/sunrpc_syms.c           |   15 ++-
- net/sunrpc/svcauth_unix.c          |  126 +++++++++++++++------------
- 8 files changed, 252 insertions(+), 120 deletions(-)
-
+diff --git a/fs/namei.c b/fs/namei.c
+index facf295..1607e5e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2919,8 +2919,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	/* Make sure we don't allow creating hardlink to an unlinked file */
+ 	if (inode->i_nlink == 0)
+ 		error =  -ENOENT;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = break_lease(inode, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 	mutex_unlock(&inode->i_mutex);
+ 	if (!error)
+ 		fsnotify_link(dir, inode, new_dentry);
 -- 
-Signature
+1.7.5.4
+
