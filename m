@@ -1,56 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38107 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:42290 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757583Ab2AMKC5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 05:02:57 -0500
-Subject: [PATCH v2 0/4] SUNRPC: register services with per-net rpcbind
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 14:02:31 +0400
-Message-ID: <20120113095121.12259.52250.stgit@localhost6.localdomain6>
+	id S1753887Ab2AQSrn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 13:47:43 -0500
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RnE4N-000445-9U
+	for linux-nfs@vger.kernel.org; Tue, 17 Jan 2012 13:47:43 -0500
+Date: Tue, 17 Jan 2012 13:47:43 -0500
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20120117184743.GB15460@fieldses.org>
+References: <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
+ <1321338825.8267.2.camel@lade.trondhjem.org>
+ <20120113170914.GA31414@us.ibm.com>
+ <20120114013834.GA20464@fieldses.org>
+ <20120116165228.GA4990@us.ibm.com>
+ <20120117151826.GB12274@fieldses.org>
+ <20120117172231.GA21603@us.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120117172231.GA21603@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch-set was created in context of clone of git branch:
-git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git.
-head: devel
+On Tue, Jan 17, 2012 at 11:22:31AM -0600, Malahal Naineni wrote:
+> J. Bruce Fields [bfields@fieldses.org] wrote:
+> > > Only answers can be dumb! Bruce, we have ext3/ext4 file systems on two
+> > > separate servers. The file systems are mirrored using rsync as and when
+> > > needed. We would like to use the servers as replicas.
+> > 
+> > And why aren't you rsync'ing the underlying filesystem image instead?
+> > Is that too slow?
+> 
+> The file system image is too big to do entire image level rsync'ing.
 
-v2:
-1) Rebased on up-to-date state ("devel" head).
-2) 3 patches from previous series:
-a) [1/7] "SUNRPC: create rpcbind client in passed network namespace context"
-b) [2/7] "SUNRPC: register rpcbind programs in passed network namespase context"
-c) [4/7] "SUNRPC: parametrize local rpcbind clients creation with net ns"
-moved to series:
-[PATCH v5 0/6] SUNRPC: rcbind clients virtualization
+Is there any way you could get hints from the filesystem about which
+blocks are actually used, that could make this as efficient?
 
-This patch set makes service registered with per-net rpcbind and required for
-making Lockd and NFSd services able to handle requests from and to different
-network namespaces.
+> > > Since the file systems are mirrored using "rsync", the NFS file handles
+> > > each server exports would be different. We would like to use volatile
+> > > file handles feature of NFSv4 for this.
+> > 
+> > In theory the hidden directory for reverse lookups would work, but it
+> > seems like it would be complicated to get right:
+> > 	- How do you generate the directory and keep it up to date?
+> > 	- What happens if somebody breaks the rules and updates the
+> > 	  filesystem while it's being exported?
+> 
+> I think so too. We think Volatile file handle support on the client side
+> is simpler for our use case (read only NFS file systems)
 
-The following series consists of:
+Won't it be confusing to applications if inode numbers change on
+migration?
 
----
-
-Stanislav Kinsbursky (4):
-      SUNRPC: use proper network namespace in rpcbind RPCBPROC_GETADDR procedure
-      SUNRPC: pass network namespace to service registering routines
-      SUNRPC: register service on creation in current network namespace
-      SUNRPC: unregister service on creation in current network namespace
-
-
- fs/nfsd/nfssvc.c           |    4 +--
- include/linux/sunrpc/svc.h |   11 ++++----
- net/sunrpc/rpcb_clnt.c     |    3 +-
- net/sunrpc/svc.c           |   61 ++++++++++++++++++++++++--------------------
- net/sunrpc/svcsock.c       |    3 +-
- 5 files changed, 45 insertions(+), 37 deletions(-)
-
--- 
-Signature
+--b.
