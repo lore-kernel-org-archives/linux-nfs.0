@@ -1,122 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.mera.ru ([195.98.57.161]:8256 "EHLO mail.mera.ru"
+Received: from fieldses.org ([174.143.236.118]:43347 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751041Ab2A0Ibh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jan 2012 03:31:37 -0500
-From: "Vlasov, Vladimir" <vvlasov@mera.ru>
-To: NeilBrown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Re-init lockd and kstatd in runtime.
-Date: Fri, 27 Jan 2012 08:31:34 +0000
-Message-ID: <06EFEBD57610DE4FBCA0449DDF4E102B0878A3@tecas.te.mera.ru>
-References: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
- <20120126224042.63cdd70e@notabene.brown>
-Content-Type: text/plain; charset="us-ascii"
+	id S1750817Ab2AQTn0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 14:43:26 -0500
+Date: Tue, 17 Jan 2012 14:43:25 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <kofemann@googlemail.com>
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATH v6 2/9] nfsd41: handle current stateid in open and close
+Message-ID: <20120117194325.GB16118@fieldses.org>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <1326644410-7482-3-git-send-email-tigran.mkrtchyan@desy.de>
+ <20120117194054.GA16118@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120117194054.GA16118@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Finally I have found notes on HA NFS on SLES9 - http://www.gatsby.ucl.ac.uk/~johnp/compute/ha-nfs-sles9.html
-There are more info on this topic, for instance http://linux-ha.org/DRBD/NFS
-Suddenly I realized that previous designer was following these guidelines :-)
-
-I have found that all documents suggest to have both primary and standby hosts configured as NFS server only and start/stop server processes when role is changed.
-This way /var/lib/nfs, even relocating on DRBD partition, is always available on NFS server startup.
-So, it is OK to have /var/lib/nfs as link to the folder on DRBD partition.
-
-What I have different is that my system breaks rule of acting as NFS servers only: standby host acts as NFS client until it becomes primary, then it should act as server.
-
-
-I'll summarize info here:
-"server" is DNS record, resolved into IP of the primary host.
-
-HOST1, primary:
-/dev/drbd is mounted as /storage
-/storage is exported
-server:/storage is mounted as /some/path
-/var/lib/nfs is link to the /some/path/var/lib/nfs and is available
-
-HOST2:
-/dev/drbd is not mounted, /storage is empty
-server:/storage is mounted as /some/path
-/var/lib/nfs is link to the /some/path/var/lib/nfs and is empty
-
-So, due to this /some/path mount existing on both hosts I have problem with initialization of the kstatd on the standby host, where /var/lib/nfs looks like empty folder.
-I have requirement for having /some/path on both hosts, so I can't fallback to guidelines advices.
-I need to do NFS client became NFS server somehow. There should be some runtime re-initialization. This is what I'm looking for.
-
-Could someone comment on this?
-Is there any way to do so?
-Or any better solution?
-
-By the way, browsing sources I have found that one can set nsm_use_kstatd to 1 on lockd exit, then initialization will be successful on next mount or export attempts.
-I think someone can find it useful so created patch. Unfortunately I don't have neither time nor enough code knowledge.
-In my case this proposal has drawback - lockd exits when all mounts are unmounted only, so I have to umount /some/path first and then mount it back.
-It can be painful as soon as some files can be opened by local user and umount will complain with it's usual "device is busy".
-
-Also I was thinking about having /var/lin/nfs locally, separate for each host, so kstatd will be initialized always, but how do I share vital info about clients then?
-I have found it to be dead-end.
-
-
-Best regards
-Vladimir Vlasov
-
------Original Message-----
-From: Vlasov, Vladimir 
-Sent: Thursday, January 26, 2012 4:14 PM
-To: 'NeilBrown'
-Cc: linux-nfs@vger.kernel.org
-Subject: RE: Re-init lockd and kstatd in runtime.
-
-Yes, it is SLES10 SP3 and I'm a customer.
-I'm not sure that Novell can help me, I expect the same proposal from them - "just make sure that /var/lib/nfs is available on startup".
-I'm not satisfied with this because I have some kind of high availability system built with two Linux hosts.
-
-Hosts share DRBD partition and one acting as primary exports, for instance /some/path.
-As soon as primary host fails, another one becomes primary and exports /some/path.
-There are more hosts on the network, they mount:
-server:/some/path
-where "server" is resolved to the IP of current primary host which currently exports path.
-
-So, in order to keep and overtake data about clients, /var/lib/nfs is replaced with link and points to /some/path/var/lib/nfs.
-If You don't familiar with DRBD then the most important thing You should know is that it is available for R/W on primary host only.
-So, on primary host DRBD is R/W, /var/lib/nfs is available and kstatd starts.
-On another host DRBD is NOT R/W, /var/lib/nfs is empry and kstatd doesn't start.
-This is why I'm looking for how do I re-init it at any time.
-
-I was looking for guidelines of using NFS in clusters but didn't found anything useful.
-
-Best regards
-Vladimir Vlasov
-
------Original Message-----
-From: NeilBrown [mailto:neilb@suse.de] 
-Sent: Thursday, January 26, 2012 3:41 PM
-To: Vlasov, Vladimir
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Re-init lockd and kstatd in runtime.
-
-On Thu, 26 Jan 2012 11:15:02 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> wrote:
-
-> Hi.
+On Tue, Jan 17, 2012 at 02:40:54PM -0500, bfields wrote:
+> On Sun, Jan 15, 2012 at 05:20:03PM +0100, Tigran Mkrtchyan wrote:
+> > +static void
+> > +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+> > +{
+> > +	if (cstate->minorversion)
+> > +		cstate->current_stateid = stateid;
+> > +}
+> ...
+> > @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+> >  	size_t			iovlen;
+> >  	u32			minorversion;
+> >  	u32			status;
+> > +	const stateid_t	*current_stateid;
+> >  };
 > 
-> I'm wondering if there is any way to re-init lockd and kstatd after startup?
+> I'd be more comfortable with passing stateid's by value rather than by
+> reference.
 > 
-> Look, in svc.c static variable nsm_use_kstatd is set to 1.
-> Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set to 0.
-> And we end up without kstatd.
+> Presumably you're only ever pointing into one of the argument or result
+> structures which are currently guaranteed to be around for as long as
+> the compound is processed.
 > 
-> Lockd will exit as soon as last NFS mount is unmounted and on next mount attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 already and kstatd init will be skipped.
-> 
-> So, looks like if /var/lib/nfs/state is missed on host startup, there is no way to recover and tell kernel init kstatd later on demand. Or?
+> But it'd seem safer not to have to worry about the lifetime of the
+> pointed-to data at all, and just copy the stateid--it's only 16 bytes.
 
-This would be SLES10 - correct?
+Other than that, the patches look fine to me.
 
-I suggest you simply make sure /var/lib/nfs/state is not missing at startup.
-
-The issue sounds vaguely familiar ... maybe it is fixed in SLES10-SP4...
-
-What release are you running?  Are you a SLES customer?  If you are, you would be better off logging a support request on the SUSE bugzilla (bugzilla.novell.com).
-
-NeilBrown
-
+--b.
