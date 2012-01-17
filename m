@@ -1,35 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:38639 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753927Ab2AYPSY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 10:18:24 -0500
-Message-ID: <4F201D30.8010606@panasas.com>
-Date: Wed, 25 Jan 2012 17:18:08 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:24531 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932113Ab2AQXrl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 18:47:41 -0500
+Message-ID: <4F160894.7000901@Oracle.com>
+Date: Tue, 17 Jan 2012 17:47:32 -0600
+From: Bill Baker <Bill.Baker@Oracle.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "J. von Balzac" <jhm.balzac@gmail.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 - Linux server, FreeBSD client
-References: <CAG+vHK+OUSdEc5L=_oeq4Y9iwseusspPTG=jwUvoOQd5587O9Q@mail.gmail.com> <20120125143449.GB17873@fieldses.org>
-In-Reply-To: <20120125143449.GB17873@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+To: nfsv4@ietf.org, linux-nfs@vger.kernel.org
+Subject: Registration is OPEN for Connectathon 2012
+References: <4EDBDC4B.7040900@oracle.com>
+In-Reply-To: <4EDBDC4B.7040900@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/25/2012 04:34 PM, J. Bruce Fields wrote:
-> Also, "fsid=0" tricks aren't necessary any more: if you just leave out
-> that line, then v4 clients will be able to mount /exp/freebsd/* just as
-> v2/v3 clients would.
-> 
 
-I suspected this, but have been using fsid=0 since forever and the :/ mounts.
-I'll check it out
+Greetings, all,
 
-I know it's not your expertise, but is it also true for pnfs. (Benny's tree)
-Or like before pnfs export must have the fsid=0 set?
+Registration is OPEN for Connectathon 2012.  You'll
+find the registration form on our details website:
 
-What about multiple SBs / FSs exporting pnfs should that work? I guess I should
-try it.
+http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon-details
 
-Thanks
-Boaz
+We kept the fees the same as last year, $750 per company
+up to a maximum of 10 people.
+
+If you have a proposal for a talk, please send me a
+brief abstract.  Depending on the number of requests,
+we'll hold talks upstairs on Tuesday and Wednesday
+afternoon, as we did last year.
+
+Please forward this message to other interested parties.
+
+Regards,
+-- 
+Bill Baker, Oracle Solaris NFS development
