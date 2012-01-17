@@ -1,76 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46621 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932148Ab2ASPnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 10:43:55 -0500
-Message-ID: <4F183A1A.1050208@parallels.com>
-Date: Thu, 19 Jan 2012 19:43:22 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:51895 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753396Ab2AQUOt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 15:14:49 -0500
+Received: by wibhm6 with SMTP id hm6so1696941wib.19
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 12:14:48 -0800 (PST)
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Dr James Bruce Fields <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <1326986392.6114.1.camel@lade.trondhjem.org> <4F18376C.9090504@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE01EE4@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE01EE4@SACMVEXC2-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20120117194054.GA16118@fieldses.org>
+References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<1326644410-7482-3-git-send-email-tigran.mkrtchyan@desy.de>
+	<20120117194054.GA16118@fieldses.org>
+Date: Tue, 17 Jan 2012 21:14:47 +0100
+Message-ID: <CAGue13oDaGn3DbyVDmAZhxqZ1+bwd53X0o-a+Hix-nHgwZ4wBw@mail.gmail.com>
+Subject: Re: [PATH v6 2/9] nfsd41: handle current stateid in open and close
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-19.01.2012 19:34, Myklebust, Trond пишет:
->> -----Original Message-----
->> From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
->> Sent: Thursday, January 19, 2012 10:32 AM
->> To: Myklebust, Trond
->> Cc: Dr James Bruce Fields; linux-nfs@vger.kernel.org; Pavel Emelianov;
->> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
->> James Bottomley; bfields@fieldses.org; davem@davemloft.net;
->> devel@openvz.org
->> Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
->>
->> 19.01.2012 19:19, Trond Myklebust пишет:
->>> On Thu, 2012-01-19 at 18:48 +0400, Stanislav Kinsbursky wrote:
->>>> One more step towards to "NFS in container".
->>>> With this patch set caches are allocated per network namespace.
->>>>
->>>> The following series consists of:
->>>>
->>>> ---
->>>>
->>>> Stanislav Kinsbursky (5):
->>>>         SUNRPC: cache creation and destruction routines introduced
->>>>         SUNRPC: create unix gid cache per network namespace
->>>>         SUNRPC: create GSS auth cache per network namespace
->>>>         SUNRPC: ip map cache per network namespace cleanup
->>>>         SUNRPC: generic cache register routines removed
->>>
->>> The patches look good, and I've applied them for now in my 'devel'
->>> branch so we can test them, but I'd like to get an Ack/Nack from Bruce
->>> before committing to merging them.
->>>
->>
->> Cool, thanks.
->> BTW, these patches depends on patch "NFSd: use network-namespace-
->> aware cache registering routines", which Bruce took already (and it's even in
->> linux-next already), but not in your devel tree for some reason.
+On Tue, Jan 17, 2012 at 8:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Sun, Jan 15, 2012 at 05:20:03PM +0100, Tigran Mkrtchyan wrote:
+>> +static void
+>> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+>> +{
+>> +     if (cstate->minorversion)
+>> +             cstate->current_stateid = stateid;
+>> +}
+> ...
+>> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+>>       size_t                  iovlen;
+>>       u32                     minorversion;
+>>       u32                     status;
+>> +     const stateid_t *current_stateid;
+>>  };
 >
-> In that case, would it make more sense to carry them in Bruce's tree?
+> I'd be more comfortable with passing stateid's by value rather than by
+> reference.
 >
+> Presumably you're only ever pointing into one of the argument or result
+> structures which are currently guaranteed to be around for as long as
+> the compound is processed.
+>
+> But it'd seem safer not to have to worry about the lifetime of the
+> pointed-to data at all, and just copy the stateid--it's only 16 bytes.
 
-It's up to you, of course.  But, frankly, I don't think so.
-To be more precise, only the last patch ("SUNRPC: generic cache register 
-routines removed") depends on the patch, which is in linux-next already. IOW, 
-those patch removed NFSd dependence on cache_register() and cache_unregister() 
-routines and was commited to linux-next at Wed, 7 Dec 2011.
+Sure, it's only 16 bytes. Nevertheless, there are no allocation or
+de-allocation of it. It just pointing to an existing stateid. Should be
+safe to use pointer. And yes, it's just 16 bytes, but if we can avoid to
+copy them why not?
 
+Of course I can change it if you want to.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+Tigran.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
