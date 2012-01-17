@@ -1,35 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:32803 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752996Ab2AINMO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 08:12:14 -0500
-Message-ID: <4F0AE7A4.8020003@itwm.fraunhofer.de>
-Date: Mon, 09 Jan 2012 14:12:04 +0100
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mailedge.sta.samsung.com ([63.166.115.4]:41807 "EHLO
+	cuda1.sta.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755086Ab2AQQiH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 11:38:07 -0500
+From: Fan Zhang <fzhang@sta.samsung.com>
+To: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Tue, 17 Jan 2012 10:17:22 -0600
+Subject: Bypass encrypt and decrypt data in dm-crypt
+Message-ID: <2DFF60F1B02D0940A28208B18A97A53C786EDE6549@staex7mb2.telecom.sna.samsung.com>
+References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+ <1326816029-13913-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1326816029-13913-3-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-CC: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        "J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
-        adilger@whamcloud.com
-Subject: Re: [PATCH 4 4/4] nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)
-References: <20120109101628.2218398.94904.stgit@localhost.localdomain> <20120109101649.2218398.23334.stgit@localhost.localdomain>
-In-Reply-To: <20120109101649.2218398.23334.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/09/2012 11:16 AM, Bernd Schubert wrote:
->   #define NFSD_MAY_BYPASS_GSS		0x400
->   #define NFSD_MAY_READ_IF_EXEC		0x800
->
-> +#define NFSD_MAY_64BIT_COOKIE	2048 /* 64 bit readdir cookies for>= NFSv3 */
-> +
+All:
 
-Oh, I just notice the format of the flags has been updated in the mean 
-time and the value for NFSD_MAY_64BIT_COOKIE needs to be increased to 
-avoid an conflict.
-Will send a new series in a moment.
 
-Sorry for not noticing it earlier,
-Bernd
-
+We are using dm-crypt for Android device encryption.  However, we need reserve some sectors in block device for status and integration check and do not want to encrypt/decrypt some sectors when using dm-crypt.
+ 
+So in crypt_convert_block()
+ 
+When 
+offset sector of ctx +  sector number of bio_in  is the range of bypass sector list.
+ 
+ 
+instead call 
+if (bio_data_dir(ctx->bio_in) == WRITE)
+ r = crypt_copy_write_data(bv_in, bv_out, offset, 1 << SECTOR_SHIFT);
+else
+ r = crypt_copy_read_data(bv_in, bv_out, offset, 1 << SECTOR_SHIFT);
+ 
+I want to call another function to copy data of a sector from 
+ctx->bio_in to 
+ctx->bio_out directly.
+ 
+ 
+I tried the following implementation 
+ 
+struct bio_vec *bv_in = bio_iovec_idx(ctx->bio_in, ctx->idx_in);
+struct bio_vec *bv_out = bio_iovec_idx(ctx->bio_out, ctx->idx_out);
+struct page * page_in = bv_in->bv_page;
+struct page * page_out = bv_out->bv_page;
+ 
+void * addr1 = kmap_atomic(page_in, KM_USER0);
+void * addr2 = kmap_atomic(page_out, KM_USER1);
+ 
+unsigned int offset = ctx->offset_in;
+ 
+memcpy(addr2 + offset, addr1 + offset, 1 << SECTOR_SHIFT);
+ 
+kunmap_atomic(addr2, KM_USER1);
+kunmap_atomic(addr1, KM_USER0);
+ 
+but above implementation does not work.
+ 
+Could you give me a kint to reslove this issue?
+ 
+ 
+Thanks
+ 
+Fan
+ 
+ 
+ 
+ 
