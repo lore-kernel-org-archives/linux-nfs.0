@@ -1,193 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:41895 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:57723 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932187Ab2ASOtq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 09:49:46 -0500
-Subject: [PATCH 2/5] SUNRPC: create unix gid cache per network namespace
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 19 Jan 2012 18:49:14 +0400
-Message-ID: <20120119144914.9957.73951.stgit@localhost6.localdomain6>
-In-Reply-To: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+	id S1755086Ab2AQQkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:40:45 -0500
+Date: Tue, 17 Jan 2012 11:40:44 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bertrand Jacquin <bjacquin@exosec.fr>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: I/O Wait on exportfs
+Message-ID: <20120117164044.GC13977@fieldses.org>
+References: <20120117142945.GA19990@lady-voodoo.exosec.local>
+ <20120117150901.GA12274@fieldses.org>
+ <20120117154319.GB19990@lady-voodoo.exosec.local>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20120117154319.GB19990@lady-voodoo.exosec.local>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes unix_gid_cache cache detail allocated and registered per
-network namespace context.
-Thus with this patch unix_gid_cache contents for network namespace "X" are
-controlled from proc file system mount for the same network namespace "X".
+On Tue, Jan 17, 2012 at 04:43:19PM +0100, Bertrand Jacquin wrote:
+> Le mardi 17 janvier 2012 à 16h09, « J. Bruce Fields » a écrit :
+> > On Tue, Jan 17, 2012 at 03:29:45PM +0100, Bertrand Jacquin wrote:
+> > > For a specific case I have /etc/exports with 1281 entries as I need
+> > > mount --bind to be exported to NFS Clients too.
+> > 
+> > Could you explain what you mean by that?
+> 
+> In this case, I need /srv/mail to be exported to clients. But for a 1
+> month period, I need folders present in /srv/mail2 to be accessible in
+> /srv/mail.
+> 
+> We are moving datas to a SAN, and to avoid modifying any mail configuration
+> (and the long list depending on it), I mount /srv/mail2 subdirectory to
+> /srv/mailsubdirectory until all subdirectory are migrated :
+> 
+>  # mount /dev/drbd5 /srv/mail
+>  # mount /dev/mapper/iqn.dXX:san1.target0-lun0 /srv/mail2
+>  # <moving data from /srv/mail/user1 to /srv/mail2/user1>
+>  # mount --bind /srv/mail2/user1 /srv/mail/user1
+> 
+> To make /srv/mail2/user1 data visible for NFS client, I need to use
+> crossmnt options in /etc/exports as nohide is client per client.
+> 
+> exports(5) say :
+> 
+>   Thus when a child filesystem "B" is mounted on a parent "A", setting
+> 	crossmnt on "A" has the same effect as setting "nohide" on B.
+> 
+> But I can't say that this had work at all, but adding child filesystem
+> in /etc/export, then 'mount -o remount' NFS partition on client fix
+> that. I'm maybe wrong, but my tests put me in that way.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+That's a bug, it should be enough just to export /srv/mail, and the
+mounts underneath should then automatically be exported.
 
----
- net/sunrpc/netns.h        |    1 +
- net/sunrpc/sunrpc_syms.c  |   14 ++++++++++----
- net/sunrpc/svcauth_unix.c |   36 +++++++++++++++++++++++++++++++-----
- 3 files changed, 42 insertions(+), 9 deletions(-)
+Hm--there have been a couple fixes in that area recently.  You might try
+building the most recent nfs-utils.
 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 1fdeb1b..309f88d 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -9,6 +9,7 @@ struct cache_detail;
- struct sunrpc_net {
- 	struct proc_dir_entry *proc_net_rpc;
- 	struct cache_detail *ip_map_cache;
-+	struct cache_detail *unix_gid_cache;
- 
- 	struct super_block *pipefs_sb;
- 	struct mutex pipefs_sb_lock;
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index b4217dc..38a72a1 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -26,6 +26,9 @@
- 
- int sunrpc_net_id;
- 
-+extern int unix_gid_cache_create(struct net *net);
-+extern int unix_gid_cache_destroy(struct net *net);
-+
- static __net_init int sunrpc_init_net(struct net *net)
- {
- 	int err;
-@@ -39,11 +42,17 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_ipmap;
- 
-+	err = unix_gid_cache_create(net);
-+	if (err)
-+		goto err_unixgid;
-+
- 	rpc_pipefs_init_net(net);
- 	INIT_LIST_HEAD(&sn->all_clients);
- 	spin_lock_init(&sn->rpc_client_lock);
- 	return 0;
- 
-+err_unixgid:
-+	ip_map_cache_destroy(net);
- err_ipmap:
- 	rpc_proc_exit(net);
- err_proc:
-@@ -52,6 +61,7 @@ err_proc:
- 
- static __net_exit void sunrpc_exit_net(struct net *net)
- {
-+	unix_gid_cache_destroy(net);
- 	ip_map_cache_destroy(net);
- 	rpc_proc_exit(net);
- }
-@@ -63,8 +73,6 @@ static struct pernet_operations sunrpc_net_ops = {
- 	.size = sizeof(struct sunrpc_net),
- };
- 
--extern struct cache_detail unix_gid_cache;
--
- static int __init
- init_sunrpc(void)
- {
-@@ -86,7 +94,6 @@ init_sunrpc(void)
- #ifdef RPC_DEBUG
- 	rpc_register_sysctl();
- #endif
--	cache_register(&unix_gid_cache);
- 	svc_init_xprt_sock();	/* svc sock transport */
- 	init_socket_xprt();	/* clnt sock transport */
- 	return 0;
-@@ -109,7 +116,6 @@ cleanup_sunrpc(void)
- 	svc_cleanup_xprt_sock();
- 	unregister_rpc_pipefs();
- 	rpc_destroy_mempool();
--	cache_unregister(&unix_gid_cache);
- 	unregister_pernet_subsys(&sunrpc_net_ops);
- #ifdef RPC_DEBUG
- 	rpc_unregister_sysctl();
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 2f8c426..c753ae4 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -436,7 +436,6 @@ struct unix_gid {
- 	uid_t			uid;
- 	struct group_info	*gi;
- };
--static struct cache_head	*gid_table[GID_HASHMAX];
- 
- static void unix_gid_put(struct kref *kref)
- {
-@@ -495,7 +494,6 @@ static int unix_gid_upcall(struct cache_detail *cd, struct cache_head *h)
- }
- 
- static struct unix_gid *unix_gid_lookup(uid_t uid);
--extern struct cache_detail unix_gid_cache;
- 
- static int unix_gid_parse(struct cache_detail *cd,
- 			char *mesg, int mlen)
-@@ -544,14 +542,14 @@ static int unix_gid_parse(struct cache_detail *cd,
- 		struct cache_head *ch;
- 		ug.h.flags = 0;
- 		ug.h.expiry_time = expiry;
--		ch = sunrpc_cache_update(&unix_gid_cache,
-+		ch = sunrpc_cache_update(cd,
- 					 &ug.h, &ugp->h,
- 					 hash_long(uid, GID_HASHBITS));
- 		if (!ch)
- 			err = -ENOMEM;
- 		else {
- 			err = 0;
--			cache_put(ch, &unix_gid_cache);
-+			cache_put(ch, cd);
- 		}
- 	} else
- 		err = -ENOMEM;
-@@ -590,7 +588,6 @@ static int unix_gid_show(struct seq_file *m,
- struct cache_detail unix_gid_cache = {
- 	.owner		= THIS_MODULE,
- 	.hash_size	= GID_HASHMAX,
--	.hash_table	= gid_table,
- 	.name		= "auth.unix.gid",
- 	.cache_put	= unix_gid_put,
- 	.cache_upcall	= unix_gid_upcall,
-@@ -602,6 +599,35 @@ struct cache_detail unix_gid_cache = {
- 	.alloc		= unix_gid_alloc,
- };
- 
-+int unix_gid_cache_create(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct cache_detail *cd;
-+	int err;
-+
-+	cd = cache_create_net(&unix_gid_cache, net);
-+	if (IS_ERR(cd))
-+		return PTR_ERR(cd);
-+	err = cache_register_net(cd, net);
-+	if (err) {
-+		cache_destroy_net(&unix_gid_cache, net);
-+		return err;
-+	}
-+	sn->unix_gid_cache = cd;
-+	return 0;
-+}
-+
-+void unix_gid_cache_destroy(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct cache_detail *cd = sn->unix_gid_cache;
-+
-+	sn->unix_gid_cache = NULL;
-+	cache_purge(cd);
-+	cache_unregister_net(cd, net);
-+	cache_destroy_net(cd, net);
-+}
-+
- static struct unix_gid *unix_gid_lookup(uid_t uid)
- {
- 	struct unix_gid ug;
+Then you shouldn't need to list every subexport explicitly in
+/etc/exports.
 
+(That may not solve your performance problem, though.)
+
+--b.
+
+> 
+> > > Since I have ~1100 entries, reexporting /etc/exports have some bad
+> > > effects to connected clients, load rise to ~500 for 4/5 minutes, this is
+> > > always reproducible.
+> > > 
+> > > This was using 'exportfs -ra'. I did try with 'exportfs
+> > > 192.168.0.1:/srv/mail/1234' to avoid reexport every directories, and
+> > > the sync process but the result is the same.
+> > 
+> > Does a -t option (see rpc.mountd(8)) help?
+> 
+> This is interesting
+> 
+> Bertrand
+> 
+> -- 
+> Bertrand Jacquin, EXOSEC (http://www.exosec.fr/)
+> ZAC des Metz - 3 Rue du petit robinson - 78350 JOUY EN JOSAS
+> Tel: +33 1 30 67 60 65  -  Fax: +33 1 75 43 40 70
+> GSM: +33 6 71 01 70 30  -  mailto:bjacquin@exosec.fr
