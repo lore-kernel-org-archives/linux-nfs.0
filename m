@@ -1,63 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44171 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50554 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751443Ab2AZUaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 15:30:06 -0500
-Date: Thu, 26 Jan 2012 15:30:06 -0500
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not
- needed.
-Message-ID: <20120126203006.GD31531@fieldses.org>
-References: <1327608461-15305-1-git-send-email-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327608461-15305-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754716Ab2AQQAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:00:32 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 0/6] Fix NFSv4 delegations
+Date: Tue, 17 Jan 2012 11:00:23 -0500
+Message-Id: <1326816029-13913-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 26, 2012 at 03:07:41PM -0500, Steve Dickson wrote:
-> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
-> libgssglue libraries which is not needed since libgssglue
-> will dynamically load the gssapi interface defined in the
-> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  aclocal/kerberos5.m4 |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
-> index dfa5738..7574e2d 100644
-> --- a/aclocal/kerberos5.m4
-> +++ b/aclocal/kerberos5.m4
-> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
->      fi
->      if test "$K5CONFIG" != ""; then
->        KRBCFLAGS=`$K5CONFIG --cflags`
-> -      KRBLIBS=`$K5CONFIG --libs gssapi`
-> +      KRBLIBS=`$K5CONFIG --libs`
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-OK, so that's gathering krb5-config output which gives us the list of -l
-switches we need to link in kerberos libraries, and removing the
-"gssapi" argument has the effect of removing "-lgssapi_krb5" from the
-output.
+NFSv4 delegations are currently implemented as leases.  However, leases
+don't have quite the same semantics, which means that delegations are
+currently enforced correctly only for conflicts between NFSv4 clients.
 
-Ack, I guess, except: I'm a little confused why we want to link with
-*any* kerberos libraries, if rpc.gssd and rpc.svcgssd are supposed to
-themselves be completely mechanism-independent and are supposed to
-dlopen() aything they need for kerberos.
+I previously attempted to address this by "fixing" the existing lease
+behavior, assuming it was a bug--but from further investigation it looks
+like that would be the wrong thing to do for Samba.
+
+So instead I'm defining a new FL_DELEG flag to mark NFSv4 delegations,
+and varying behavior based on that.  Delegations aren't meant to be
+available to userspace for now--nfsd is the only user.
+
+In theory this code allows both read and write delegations, but I'm only
+using read delegations for now--write delegations are a project for
+another day.  (At which point write leases will probably need some
+fixing while we're at it.)
+
+Still to do: if OPEN(dirfd, name) returns a delegation to the client,
+then the client should be guaranteed that the opened file is still
+linked as (dirfd, name).  But the current nfsd code allows a rename or
+unlink to intervene between the lookup and the request for a delegation.
 
 --b.
 
->        K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
->        AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
->        if test -f $dir/include/gssapi/gssapi_krb5.h -a \
-> -- 
-> 1.7.7.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+J. Bruce Fields (6):
+  locks: introduce new FL_DELEG lock flag.
+  locks: give break_lease its own flags
+  locks: break delegations on unlink
+  locks: break delegations on rename
+  locks: break delegations on any attribute modification
+  locks: break delegations on link
+
+ Documentation/filesystems/directory-locking |   11 +++---
+ fs/attr.c                                   |    3 ++
+ fs/locks.c                                  |   51 +++++++++++++++++++-------
+ fs/namei.c                                  |   27 ++++++++++++--
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |    6 ++--
+ fs/open.c                                   |    4 +-
+ include/linux/fs.h                          |   50 ++++++++++++++++++++++++--
+ 8 files changed, 122 insertions(+), 32 deletions(-)
+
+-- 
+1.7.5.4
+
