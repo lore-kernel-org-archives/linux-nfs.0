@@ -1,215 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4041 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53635 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755897Ab2APTwB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jan 2012 14:52:01 -0500
-Message-ID: <4F147FDA.4030300@RedHat.com>
-Date: Mon, 16 Jan 2012 14:51:54 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3] autoconf: only link binaries that need it to libtirpc
-References: <1326466030-29907-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1326466030-29907-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754133Ab2AQTNn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 14:13:43 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/8] NFS: Move struct nfs_unique_id into struct nfs_seqid_counter
+Date: Tue, 17 Jan 2012 14:13:32 -0500
+Message-Id: <1326827613-7997-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1326827613-7997-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h   |    8 ++++++--
+ fs/nfs/nfs4proc.c  |   10 +++++-----
+ fs/nfs/nfs4state.c |   10 +++++-----
+ 3 files changed, 16 insertions(+), 12 deletions(-)
 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index cef9d5d..b7e5a1d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -53,8 +53,14 @@ struct nfs4_minor_version_ops {
+ 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
+ };
+ 
++struct nfs_unique_id {
++	struct rb_node rb_node;
++	__u64 id;
++};
++
+ #define NFS_SEQID_CONFIRMED 1
+ struct nfs_seqid_counter {
++	int owner_id;
+ 	int flags;
+ 	u32 counter;
+ 	spinlock_t lock;		/* Protects the list */
+@@ -91,7 +97,6 @@ struct nfs4_state_owner {
+ 	unsigned long	     so_flags;
+ 	struct list_head     so_states;
+ 	struct nfs_seqid_counter so_seqid;
+-	int		     so_owner_id;
+ };
+ 
+ enum {
+@@ -131,7 +136,6 @@ struct nfs4_lock_state {
+ 	struct nfs4_state *	ls_state;	/* Pointer to open state */
+ #define NFS_LOCK_INITIALIZED 1
+ 	int			ls_flags;
+-	int			ls_id;
+ 	struct nfs_seqid_counter	ls_seqid;
+ 	nfs4_stateid		ls_stateid;
+ 	atomic_t		ls_count;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3233ee0..7d431d7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -824,7 +824,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.open_flags = flags;
+ 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
+ 	p->o_arg.clientid = server->nfs_client->cl_clientid;
+-	p->o_arg.id = sp->so_owner_id;
++	p->o_arg.id = sp->so_seqid.owner_id;
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = server->attr_bitmask;
+@@ -1449,7 +1449,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		rcu_read_unlock();
+ 	}
+ 	/* Update sequence id. */
+-	data->o_arg.id = sp->so_owner_id;
++	data->o_arg.id = sp->so_seqid.owner_id;
+ 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
+ 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
+@@ -4032,7 +4032,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (status != 0)
+ 		goto out;
+ 	lsp = request->fl_u.nfs4_fl.owner;
+-	arg.lock_owner.id = lsp->ls_id;
++	arg.lock_owner.id = lsp->ls_seqid.owner_id;
+ 	arg.lock_owner.s_dev = server->s_dev;
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	switch (status) {
+@@ -4278,7 +4278,7 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
+ 		goto out_free_seqid;
+ 	p->arg.lock_stateid = &lsp->ls_stateid;
+ 	p->arg.lock_owner.clientid = server->nfs_client->cl_clientid;
+-	p->arg.lock_owner.id = lsp->ls_id;
++	p->arg.lock_owner.id = lsp->ls_seqid.owner_id;
+ 	p->arg.lock_owner.s_dev = server->s_dev;
+ 	p->res.lock_seqid = p->arg.lock_seqid;
+ 	p->lsp = lsp;
+@@ -4696,7 +4696,7 @@ void nfs4_release_lockowner(const struct nfs4_lock_state *lsp)
+ 	if (!args)
+ 		return;
+ 	args->lock_owner.clientid = server->nfs_client->cl_clientid;
+-	args->lock_owner.id = lsp->ls_id;
++	args->lock_owner.id = lsp->ls_seqid.owner_id;
+ 	args->lock_owner.s_dev = server->s_dev;
+ 	msg.rpc_argp = args;
+ 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, args);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index cf7bc39..a42e60d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -366,7 +366,7 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
+ 			return sp;
+ 		}
+ 	}
+-	err = ida_get_new(&server->openowner_id, &new->so_owner_id);
++	err = ida_get_new(&server->openowner_id, &new->so_seqid.owner_id);
+ 	if (err)
+ 		return ERR_PTR(err);
+ 	rb_link_node(&new->so_server_node, parent, p);
+@@ -381,7 +381,7 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
+ 
+ 	if (!RB_EMPTY_NODE(&sp->so_server_node))
+ 		rb_erase(&sp->so_server_node, &server->state_owners);
+-	ida_remove(&server->openowner_id, sp->so_owner_id);
++	ida_remove(&server->openowner_id, sp->so_seqid.owner_id);
+ }
+ 
+ static void
+@@ -775,8 +775,8 @@ static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, f
+ 	default:
+ 		goto out_free;
+ 	}
+-	lsp->ls_id = ida_simple_get(&server->lockowner_id, 0, 0, GFP_NOFS);
+-	if (lsp->ls_id < 0)
++	lsp->ls_seqid.owner_id = ida_simple_get(&server->lockowner_id, 0, 0, GFP_NOFS);
++	if (lsp->ls_seqid.owner_id < 0)
+ 		goto out_free;
+ 	INIT_LIST_HEAD(&lsp->ls_locks);
+ 	return lsp;
+@@ -789,7 +789,7 @@ static void nfs4_free_lock_state(struct nfs4_lock_state *lsp)
+ {
+ 	struct nfs_server *server = lsp->ls_state->owner->so_server;
+ 
+-	ida_simple_remove(&server->lockowner_id, lsp->ls_id);
++	ida_simple_remove(&server->lockowner_id, lsp->ls_seqid.owner_id);
+ 	nfs4_destroy_seqid_counter(&lsp->ls_seqid);
+ 	kfree(lsp);
+ }
+-- 
+1.7.7.5
 
-On 01/13/2012 09:47 AM, Jeff Layton wrote:
-> This patch is essentially the same as the previous version, but has
-> been respun to fix up some merge conflicts with some of Chuck's
-> recent changes.
-> 
-> When we first added tirpc support, we took a "big hammer" approach, and
-> had it add libtirpc to $LIBS. That had the effect of making it so that
-> that library was linked into every binary. That's unnecessary, and
-> wasteful with memory.
-> 
-> Don't let AC_CHECK_LIB add -ltirpc to $LIBS. Instead, have the autoconf
-> tests set $(LIBTIRPC) in the makefiles, and have the programs that
-> need it explicitly include that library. In the event that we're not
-> using libtirpc, then set $LIBTIRPC to a blank string.
-> 
-> This necessitates a change to the bindresvport_sa check too. Since that
-> library is no longer included in $LIBS, we need to convert that check
-> to use AC_CHECK_LIB instead of AC_CHECK_FUNCS.
-> 
-> This patch also fixes a subtle bug. If the library was usable, but the
-> includes were not, the test would set $enable_tirpc to "no", but
-> HAVE_LIBTIRPC would still be true. That configuration would likely
-> fail to build.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed...
-
-steved.
-
-> ---
->  aclocal/ipv6.m4             |    4 +++-
->  aclocal/libtirpc.m4         |   15 +++++++++++++--
->  tools/rpcgen/Makefile.am    |    1 +
->  utils/gssd/Makefile.am      |    4 ++--
->  utils/mount/Makefile.am     |    3 ++-
->  utils/mountd/Makefile.am    |    2 +-
->  utils/nfsd/Makefile.am      |    2 +-
->  utils/showmount/Makefile.am |    3 ++-
->  utils/statd/Makefile.am     |    4 ++--
->  9 files changed, 27 insertions(+), 11 deletions(-)
-> 
-> diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
-> index 4e39fbe..75a8582 100644
-> --- a/aclocal/ipv6.m4
-> +++ b/aclocal/ipv6.m4
-> @@ -10,9 +10,11 @@ AC_DEFUN([AC_IPV6], [
->      fi
->  
->      dnl IPv6-enabled networking functions required for IPv6
-> -    AC_CHECK_FUNCS([getifaddrs getnameinfo bindresvport_sa], ,
-> +    AC_CHECK_FUNCS([getifaddrs getnameinfo], ,
->                     [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
->  
-> +    AC_CHECK_LIB([tirpc], [bindresvport_sa], [:],
-> +		 [AC_MSG_ERROR([Missing library functions needed for IPv6.])])
->    fi
->  
->  ])dnl
-> diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
-> index 9f0fde0..19b8361 100644
-> --- a/aclocal/libtirpc.m4
-> +++ b/aclocal/libtirpc.m4
-> @@ -13,8 +13,8 @@ AC_DEFUN([AC_LIBTIRPC], [
->  
->    if test "$enable_tirpc" != "no"; then
->  
-> -    dnl look for the library; add to LIBS if found
-> -    AC_CHECK_LIB([tirpc], [clnt_tli_create], ,
-> +    dnl look for the library
-> +    AC_CHECK_LIB([tirpc], [clnt_tli_create], [:],
->                   [if test "$enable_tirpc" = "yes"; then
->  			AC_MSG_ERROR([libtirpc not found.])
->  		  else
-> @@ -37,4 +37,15 @@ AC_DEFUN([AC_LIBTIRPC], [
->  
->    fi
->  
-> +  dnl now set $LIBTIRPC accordingly
-> +  if test "$enable_tirpc" != "no"; then
-> +    AC_DEFINE([HAVE_LIBTIRPC], 1,
-> +              [Define to 1 if you have and wish to use libtirpc.])
-> +    LIBTIRPC="-ltirpc"
-> +  else
-> +    LIBTIRPC=""
-> +  fi
-> +
-> +  AC_SUBST(LIBTIRPC)
-> +
->  ])dnl
-> diff --git a/tools/rpcgen/Makefile.am b/tools/rpcgen/Makefile.am
-> index 51a2bfa..8a9ec89 100644
-> --- a/tools/rpcgen/Makefile.am
-> +++ b/tools/rpcgen/Makefile.am
-> @@ -12,6 +12,7 @@ rpcgen_SOURCES = rpc_clntout.c rpc_cout.c rpc_hout.c rpc_main.c \
->  rpcgen_CFLAGS=$(CFLAGS_FOR_BUILD)
->  rpcgen_CPPLAGS=$(CPPFLAGS_FOR_BUILD)
->  rpcgen_LDFLAGS=$(LDFLAGS_FOR_BUILD)
-> +rpcgen_LDADD=$(LIBTIRPC)
->  
->  MAINTAINERCLEANFILES = Makefile.in
->  
-> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-> index 9136189..d29e132 100644
-> --- a/utils/gssd/Makefile.am
-> +++ b/utils/gssd/Makefile.am
-> @@ -40,7 +40,7 @@ gssd_SOURCES = \
->  
->  gssd_LDADD =	../../support/nfs/libnfs.a \
->  		$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(KRBLIBS)
-> -gssd_LDFLAGS = $(KRBLDFLAGS)
-> +gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
->  
->  gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
->  	      $(RPCSECGSS_CFLAGS) $(GSSGLUE_CFLAGS) $(KRBCFLAGS)
-> @@ -59,7 +59,7 @@ svcgssd_SOURCES = \
->  svcgssd_LDADD = \
->  	../../support/nfs/libnfs.a \
->  	$(RPCSECGSS_LIBS) $(GSSGLUE_LIBS) $(LIBNFSIDMAP) \
-> -	$(KRBLIBS)
-> +	$(KRBLIBS) $(LIBTIRPC)
->  
->  svcgssd_LDFLAGS = $(KRBLDFLAGS)
->  
-> diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-> index 7bc3e2b..7627854 100644
-> --- a/utils/mount/Makefile.am
-> +++ b/utils/mount/Makefile.am
-> @@ -24,7 +24,8 @@ EXTRA_DIST += nfsmount.conf
->  endif
->  
->  mount_nfs_LDADD = ../../support/nfs/libnfs.a \
-> -		  ../../support/export/libexport.a
-> +		  ../../support/export/libexport.a \
-> +		  $(LIBTIRPC)
->  
->  mount_nfs_SOURCES = $(mount_common)
->  
-> diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
-> index 5a2d1b6..7db968b 100644
-> --- a/utils/mountd/Makefile.am
-> +++ b/utils/mountd/Makefile.am
-> @@ -12,7 +12,7 @@ mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
->  mountd_LDADD = ../../support/export/libexport.a \
->  	       ../../support/nfs/libnfs.a \
->  	       ../../support/misc/libmisc.a \
-> -	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBDL)
-> +	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBDL) $(LIBTIRPC)
->  mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
->  		  -I$(top_builddir)/support/include \
->  		  -I$(top_srcdir)/support/export
-> diff --git a/utils/nfsd/Makefile.am b/utils/nfsd/Makefile.am
-> index c4c6fb0..1536065 100644
-> --- a/utils/nfsd/Makefile.am
-> +++ b/utils/nfsd/Makefile.am
-> @@ -8,7 +8,7 @@ KPREFIX		= @kprefix@
->  sbin_PROGRAMS	= nfsd
->  
->  nfsd_SOURCES = nfsd.c nfssvc.c
-> -nfsd_LDADD = ../../support/nfs/libnfs.a
-> +nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC)
->  
->  MAINTAINERCLEANFILES = Makefile.in
->  
-> diff --git a/utils/showmount/Makefile.am b/utils/showmount/Makefile.am
-> index 077b2c7..4ba5ead 100644
-> --- a/utils/showmount/Makefile.am
-> +++ b/utils/showmount/Makefile.am
-> @@ -7,7 +7,8 @@ sbin_PROGRAMS	= showmount
->  showmount_SOURCES = showmount.c
->  showmount_LDADD = ../../support/export/libexport.a \
->  		  ../../support/nfs/libnfs.a \
-> -	  	  ../../support/misc/libmisc.a
-> +		  ../../support/misc/libmisc.a \
-> +		  $(LIBTIRPC)
->  showmount_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
->  		   -I$(top_builddir)/support/export
->  
-> diff --git a/utils/statd/Makefile.am b/utils/statd/Makefile.am
-> index 1744791..dc2bfc4 100644
-> --- a/utils/statd/Makefile.am
-> +++ b/utils/statd/Makefile.am
-> @@ -15,10 +15,10 @@ BUILT_SOURCES = $(GENFILES)
->  statd_LDADD = ../../support/nsm/libnsm.a \
->  	      ../../support/nfs/libnfs.a \
->  	      ../../support/misc/libmisc.a \
-> -	      $(LIBWRAP) $(LIBNSL) $(LIBCAP)
-> +	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
->  sm_notify_LDADD = ../../support/nsm/libnsm.a \
->  		  ../../support/nfs/libnfs.a \
-> -		  $(LIBNSL) $(LIBCAP)
-> +		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
->  
->  EXTRA_DIST = sim_sm_inter.x $(man8_MANS) COPYRIGHT simulate.c
->  
-> -- 1.7.1
