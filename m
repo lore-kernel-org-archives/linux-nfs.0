@@ -1,64 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49992 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752254Ab2AOUys (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 15 Jan 2012 15:54:48 -0500
-Date: Sun, 15 Jan 2012 15:54:46 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] more test on current stateid processing
-Message-ID: <20120115205446.GA29596@fieldses.org>
-References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:58341 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754587Ab2AQQbd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 11:31:33 -0500
+Date: Tue, 17 Jan 2012 11:31:33 -0500
+From: Jim Rees <rees@umich.edu>
+To: Sachin Prabhu <sprabhu@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, Steve Dickson <steved@redhat.com>
+Subject: Re: svcgssd: Allow administrators to specify timeout for the cached
+ context
+Message-ID: <20120117163133.GB3387@umich.edu>
+References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
+ <20120117134951.GA15479@umich.edu>
+ <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jan 15, 2012 at 08:05:23PM +0100, Tigran Mkrtchyan wrote:
-> 
-> This is the result of testing my changes in linux:
-> 
-> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
-> .....
-> 
-> **************************************************
-> CSID1    st_current_stateid.testOpenAndClose                      : PASS
-> CSID2    st_current_stateid.testLockLockU                         : PASS
-> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
-> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
-> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
-> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
-> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
->            OP_LAYOUTGET should return NFS4_OK, instead got
->            NFS4ERR_NOTSUPP
+Sachin Prabhu wrote:
 
-We should fix pynfs41 so no pnfs-dependent tests are run without "pnfs"
-being explicitly asked for on the commandline....
+  On Tue, 2012-01-17 at 08:49 -0500, Jim Rees wrote:
+  > Sachin Prabhu wrote:
+  > 
+  >   We had a user report that for an export shared with sec=krb5*, any
+  >   changes in user credentials(ex: add user to a secondary group) take some
+  >   time before they take effect over the NFS share.
+  > 
+  > Re-authenticating, either by removing the service ticket or by re-running
+  > kinit at the client, should also flush the old credentials.  Can you confirm
+  > that works?
+  
+  We have tried it but it doesn't work unless you actually clean up the
+  cache on the NFS server with the command 
+  echo `date +'%s'` > /proc/net/rpc/auth.rpcsec.context/flush
 
---b.
-
-> CSID8    st_current_stateid.testOpenSetattr                       : PASS
-> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
-> 
-> **************************************************
-> $
-> 
-> Tigran Mkrtchyan (5):
->   client: move current stateid test into a dedicated module
->   client: test current stateid processing on PUTROOTFH
->   client: test current stateid processing with OPEN+LAYOUTGET in a
->     single compound
->   client: test current stateid processing with OPEN and SETATTR
->   client: test OPEN+FREE_STETEID+CLOSE in a single compound
-> 
->  nfs4.1/server41tests/__init__.py           |    1 +
->  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
->  nfs4.1/server41tests/st_open.py            |   76 -------------
->  3 files changed, 162 insertions(+), 76 deletions(-)
->  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
-> 
-> -- 
-> 1.7.7.5
-> 
+Bruce, shouldn't this work?  Is this a bug or a feature?
