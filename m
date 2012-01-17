@@ -1,211 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39077 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55511 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752113Ab2AXPlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 10:41:55 -0500
-Message-ID: <4F1ED12D.3090001@RedHat.com>
-Date: Tue, 24 Jan 2012 10:41:33 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754401Ab2AQPS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 10:18:27 -0500
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1RnAnq-0003Vz-Jt
+	for linux-nfs@vger.kernel.org; Tue, 17 Jan 2012 10:18:26 -0500
+Date: Tue, 17 Jan 2012 10:18:26 -0500
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
+Message-ID: <20120117151826.GB12274@fieldses.org>
+References: <1321056809.8733.2.camel@lade.trondhjem.org>
+ <20111112144953.GA3740@infradead.org>
+ <20111113145400.6c7a9be3@notabene.brown>
+ <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
+ <20111113163632.GA28574@fieldses.org>
+ <20111114080745.57083bfe@notabene.brown>
+ <1321338825.8267.2.camel@lade.trondhjem.org>
+ <20120113170914.GA31414@us.ibm.com>
+ <20120114013834.GA20464@fieldses.org>
+ <20120116165228.GA4990@us.ibm.com>
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, Neil Horman <nhorman@redhat.com>
-Subject: Re: [PATCH v2] SUNRPC: Add trace events to the sunrpc subsystem
-References: <1327090364-6549-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1327090364-6549-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120116165228.GA4990@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Trond
-
-On 01/20/2012 03:12 PM, Trond Myklebust wrote:
-> Add declarations to allow tracing of RPC call creation, running, sleeping,
-> and destruction.
+On Mon, Jan 16, 2012 at 10:52:28AM -0600, Malahal Naineni wrote:
+> J. Bruce Fields [bfields@fieldses.org] wrote:
+> > On Fri, Jan 13, 2012 at 11:09:14AM -0600, Malahal Naineni wrote:
+> > > Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
+> > > > On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
+> > > > 
+> > > > > If a server has objects that are never renamed, it can easily use volatile
+> > > > > file handles.
+> > > > > If a server has objects which can be renamed and wants to use volatile file
+> > > > > handles, then if such an object is open and is about to be renamed, it must
+> > > > > first log to stable storage some mapping to allow it to access the file from
+> > > > > the old volatile file handle.  And of course it cannot allow renames during
+> > > > > the grace period, but I think we already have that.
+> > > > > Also, if the VFH is such that it will be  lost on a reboot, the server must
+> > > > > log it to stable storage before allowing an open.
+> > > > 
+> > > > BTW: If the namespace is stable, then the server can easily implement
+> > > > permanent filehandles. Use a hash of the pathname as the filehandle, and
+> > > > set up a hidden directory ('/.filehandles') containing symlinks that map
+> > > > said hash back to the correct pathname. No need for volatile
+> > > > filehandles.
+> > > 
+> > > Neil and Trond, one of our use cases is for a read only file system. The
+> > > name space is stable and Volatile File Handle support should not have
+> > > any issues under those conditions, correct?
+> > 
+> > Dumb question: remind me which filesystem your exporting that can't
+> > already generate stable filehandles?
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  include/linux/sunrpc/sched.h  |    2 +-
->  include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/sched.c            |   12 ++++
->  3 files changed, 137 insertions(+), 1 deletions(-)
->  create mode 100644 include/trace/events/sunrpc.h
-> 
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index bd337f9..f7b2df5 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -271,7 +271,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
->  }
->  
->  #ifdef RPC_DEBUG
-> -static inline const char * rpc_qname(struct rpc_wait_queue *q)
-> +static inline const char * rpc_qname(const struct rpc_wait_queue *q)
->  {
->  	return ((q && q->name) ? q->name : "unknown");
->  }
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> new file mode 100644
-> index 0000000..51cc949
-> --- /dev/null
-> +++ b/include/trace/events/sunrpc.h
-> @@ -0,0 +1,124 @@
-> +#undef TRACE_SYSTEM
-> +#define TRACE_SYSTEM sunrpc
-> +
-> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
-> +#define _TRACE_SUNRPC_H
-> +
-> +#include <linux/sunrpc/sched.h>
-> +#include <linux/sunrpc/clnt.h>
-> +#include <linux/tracepoint.h>
-> +
-> +DECLARE_EVENT_CLASS(rpc_task_running,
-> +
-> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-> +
-> +	TP_ARGS(clnt, task, action),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(const struct rpc_clnt *, clnt)
-> +		__field(const struct rpc_task *, task)
-> +		__field(const void *, action)
-> +		__field(unsigned long, runstate)
-> +		__field(int, status)
-> +		__field(unsigned short, flags)
-> +		),
-> +
-> +	TP_fast_assign(
-> +		__entry->clnt = clnt;
-> +		__entry->task = task;
-> +		__entry->action = action;
-> +		__entry->runstate = task->tk_runstate;
-> +		__entry->status = task->tk_status;
-> +		__entry->flags = task->tk_flags;
-> +		),
-> +
-> +	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
-> +		__entry->task,
-> +		__entry->clnt,
-> +		__entry->flags,
-> +		__entry->runstate,
-> +		__entry->status,
-> +		__entry->action
-> +		)
-> +);
-> +
-> +DEFINE_EVENT(rpc_task_running, rpc_task_begin,
-> +
-> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-> +
-> +	TP_ARGS(clnt, task, action)
-> +
-> +);
-> +
-> +DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
-> +
-> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-> +
-> +	TP_ARGS(clnt, task, action)
-> +
-> +);
-> +
-> +DEFINE_EVENT(rpc_task_running, rpc_task_complete,
-> +
-> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-> +
-> +	TP_ARGS(clnt, task, action)
-> +
-> +);
-> +
-> +DECLARE_EVENT_CLASS(rpc_task_queued,
-> +
-> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-> +
-> +	TP_ARGS(clnt, task, q),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(const struct rpc_clnt *, clnt)
-> +		__field(const struct rpc_task *, task)
-> +		__field(const struct rpc_wait_queue *, queue)
-> +		__field(unsigned long, timeout)
-> +		__field(unsigned long, runstate)
-> +		__field(int, status)
-> +		__field(unsigned short, flags)
-> +		),
-> +
-> +	TP_fast_assign(
-> +		__entry->clnt = clnt;
-> +		__entry->task = task;
-> +		__entry->queue = q;
-> +		__entry->timeout = task->tk_timeout;
-> +		__entry->runstate = task->tk_runstate;
-> +		__entry->status = task->tk_status;
-> +		__entry->flags = task->tk_flags;
-> +		),
-> +
-> +	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-> +		__entry->task,
-> +		__entry->clnt,
-> +		__entry->flags,
-> +		__entry->runstate,
-> +		__entry->status,
-> +		__entry->timeout,
-> +		rpc_qname(__entry->queue)
-> +		)
-> +);
-It turns out using rpc_qname() is not quite right... 
-Neil Horman, from our internal review,  points out:
+> Only answers can be dumb! Bruce, we have ext3/ext4 file systems on two
+> separate servers. The file systems are mirrored using rsync as and when
+> needed. We would like to use the servers as replicas.
 
-"IIRC we do the TP_fast_assign and TP_printk separately
-because we don't serialize the printk on the code path that generates it.  I.e.
-the data that __entry->queue points to may be freed by the time the printk
-dereferences it.  I think what you need is to declare in the __entry:
-__string(	qname, rpc_qname(q))
+And why aren't you rsync'ing the underlying filesystem image instead?
+Is that too slow?
 
-in TP_fast_assign replace the queue assignment with  something like
-__entry->qname = __assign_str(rpc_qname(q));
+> Since the file systems are mirrored using "rsync", the NFS file handles
+> each server exports would be different. We would like to use volatile
+> file handles feature of NFSv4 for this.
 
-And then in the printk:
-__get_str(qname);"
+In theory the hidden directory for reverse lookups would work, but it
+seems like it would be complicated to get right:
+	- How do you generate the directory and keep it up to date?
+	- What happens if somebody breaks the rules and updates the
+	  filesystem while it's being exported?
 
-Which basically translate into the following (untested):
-DECLARE_EVENT_CLASS(rpc_task_queued,
+Somehow it feels like there should be a simpler solution.
 
-    TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
+Maybe there would be other applications for that kind of
+filehandle->file mapping, though, I don't know.
 
-    TP_ARGS(clnt, task, q),
-
-    TP_STRUCT__entry(
-        __field(const struct rpc_clnt *, clnt)
-        __field(const struct rpc_task *, task)
-        __string(qname, rpc_qname(q))
-        __field(unsigned long, timeout)
-        __field(unsigned long, runstate)
-        __field(int, status)
-        __field(unsigned short, flags)
-        ),
-
-    TP_fast_assign(
-        __entry->clnt = clnt;
-        __entry->task = task;
-        __entry->qname = __assign_str(rpc_qname(q));
-        __entry->timeout = task->tk_timeout;
-        __entry->runstate = task->tk_runstate;
-        __entry->status = task->tk_status;
-        __entry->flags = task->tk_flags;
-        ),
-
-    TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-        __entry->task,
-        __entry->clnt,
-        __entry->flags,
-        __entry->runstate,
-        __entry->status,
-        __entry->timeout,
-        __get_str(__entry->qname)
-        )
-);
-
-There are a number of examples of this in include/trace/events.
-
-steved.
+--b.
