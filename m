@@ -1,25 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:56251 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751708Ab2AZOzY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 09:55:24 -0500
-Date: Thu, 26 Jan 2012 09:55:20 -0500
-From: Jim Rees <rees@umich.edu>
-To: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org, mingo@redhat.com,
-        neilb@suse.de, stuart.menefy@st.com, chuck.lever@oracle.com,
-        bharrosh@panasas.com
-Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min
- max delays.
-Message-ID: <20120126145520.GA10112@umich.edu>
-References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
+Received: from fieldses.org ([174.143.236.118]:50558 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754957Ab2AQQAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 11:00:32 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 5/6] locks: break delegations on any attribute modification
+Date: Tue, 17 Jan 2012 11:00:28 -0500
+Message-Id: <1326816029-13913-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-You may want to read the mailing list thread from the earlier patch.  I
-don't remember the details but lowering the panic timeout from 110 to 41
-seconds may re-introduce the problem that patch was trying to solve.  You
-could increase the retry count to compensate.
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+NFSv4 uses leases to guarantee that clients can cache metadata as well
+as data.
+
+This covers chmod, chown, etc.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/attr.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/fs/attr.c b/fs/attr.c
+index 7ee7ba4..15a2a09 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -232,6 +232,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+ 	error = security_inode_setattr(dentry, attr);
+ 	if (error)
+ 		return error;
++	error = break_lease(inode, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
++	if (error)
++		return error;
+ 
+ 	if (inode->i_op->setattr)
+ 		error = inode->i_op->setattr(dentry, attr);
+-- 
+1.7.5.4
+
