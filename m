@@ -1,116 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60805 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53637 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753237Ab2AaPjt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 10:39:49 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/2] NFS: Call test_stateid() and free_stateid() with correct stateids
-Date: Tue, 31 Jan 2012 10:39:30 -0500
-Message-Id: <1328024370-20347-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328024370-20347-1-git-send-email-bjschuma@netapp.com>
-References: <1328024370-20347-1-git-send-email-bjschuma@netapp.com>
+	id S1754441Ab2AQTNn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 14:13:43 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/8] NFS: Optimise away unnecessary setattrs for open(O_TRUNC);
+Date: Tue, 17 Jan 2012 14:13:33 -0500
+Message-Id: <1326827613-7997-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1326827613-7997-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1326827613-7997-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1326827613-7997-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Currently, we will correctly optimise away a truncate that doesn't
+change the file size. However, in the case of open(O_TRUNC), we
+also want to optimise away the time changes.
 
-I noticed that test_stateid() was always using the same stateid for open
-and lock recovery.  After poking around a bit, I discovered that it was
-always testing with a delegation stateid (even if there was no
-delegation present).  I figured this wasn't correct, so now delegation
-and open stateids are tested during open_expired() and lock stateids are
-tested during lock_expired().
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   58 ++++++++++++++++++++++++++++++++++++++++++----------
- 1 files changed, 47 insertions(+), 11 deletions(-)
+ fs/nfs/dir.c      |   25 +++++++++++++++++++------
+ fs/nfs/inode.c    |    4 ++--
+ fs/nfs/nfs4proc.c |   10 +++++++---
+ 3 files changed, 28 insertions(+), 11 deletions(-)
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index fd9a872..bb132a8 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1429,6 +1429,7 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 	}
+ 
+ 	open_flags = nd->intent.open.flags;
++	attr.ia_valid = 0;
+ 
+ 	ctx = create_nfs_open_context(dentry, open_flags);
+ 	res = ERR_CAST(ctx);
+@@ -1437,11 +1438,14 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 
+ 	if (nd->flags & LOOKUP_CREATE) {
+ 		attr.ia_mode = nd->intent.open.create_mode;
+-		attr.ia_valid = ATTR_MODE;
++		attr.ia_valid |= ATTR_MODE;
+ 		attr.ia_mode &= ~current_umask();
+-	} else {
++	} else
+ 		open_flags &= ~(O_EXCL | O_CREAT);
+-		attr.ia_valid = 0;
++
++	if (open_flags & O_TRUNC) {
++		attr.ia_valid |= ATTR_SIZE;
++		attr.ia_size = 0;
+ 	}
+ 
+ 	/* Open the file on the server */
+@@ -1495,6 +1499,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct inode *inode;
+ 	struct inode *dir;
+ 	struct nfs_open_context *ctx;
++	struct iattr attr;
+ 	int openflags, ret = 0;
+ 
+ 	if (nd->flags & LOOKUP_RCU)
+@@ -1523,19 +1528,27 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	/* We cannot do exclusive creation on a positive dentry */
+ 	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
+ 		goto no_open_dput;
+-	/* We can't create new files, or truncate existing ones here */
+-	openflags &= ~(O_CREAT|O_EXCL|O_TRUNC);
++	/* We can't create new files here */
++	openflags &= ~(O_CREAT|O_EXCL);
+ 
+ 	ctx = create_nfs_open_context(dentry, openflags);
+ 	ret = PTR_ERR(ctx);
+ 	if (IS_ERR(ctx))
+ 		goto out;
++
++	attr.ia_valid = 0;
++	if (openflags & O_TRUNC) {
++		attr.ia_valid |= ATTR_SIZE;
++		attr.ia_size = 0;
++		nfs_wb_all(inode);
++	}
++
+ 	/*
+ 	 * Note: we're not holding inode->i_mutex and so may be racing with
+ 	 * operations that change the directory. We therefore save the
+ 	 * change attribute *before* we do the RPC call.
+ 	 */
+-	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, NULL);
++	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr);
+ 	if (IS_ERR(inode)) {
+ 		ret = PTR_ERR(inode);
+ 		switch (ret) {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 577ad5a..65486e6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -402,7 +402,7 @@ out_no_inode:
+ 	goto out;
+ }
+ 
+-#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE)
++#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE|ATTR_OPEN)
+ 
+ int
+ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+@@ -424,7 +424,7 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 	/* Optimization: if the end result is no change, don't RPC */
+ 	attr->ia_valid &= NFS_VALID_ATTRS;
+-	if ((attr->ia_valid & ~ATTR_FILE) == 0)
++	if ((attr->ia_valid & ~(ATTR_FILE|ATTR_OPEN)) == 0)
+ 		return 0;
+ 
+ 	/* Write all dirty data */
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 09e3341..c02ebe4 100644
+index 7d431d7..0c71981 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1725,15 +1725,32 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
- }
+@@ -830,7 +830,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.bitmask = server->attr_bitmask;
+ 	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+-	if (flags & O_CREAT) {
++	if (attrs != NULL && attrs->ia_valid != 0) {
+ 		u32 *s;
  
- #if defined(CONFIG_NFS_V4_1)
--static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
-+static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+ 		p->o_arg.u.attrs = &p->attrs;
+@@ -887,7 +887,7 @@ static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode
  {
--	int status;
-+	int status = NFS_OK;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	int ret = 0;
  
--	status = nfs41_test_stateid(server, &state->stateid);
--	if (status == NFS_OK)
--		return 0;
--	nfs41_free_stateid(server, &state->stateid);
-+	if (state->flags & flags) {
-+		status = nfs41_test_stateid(server, stateid);
-+		if (status != NFS_OK) {
-+			nfs41_free_stateid(server, stateid);
-+			state->flags &= ~flags;
-+		}
-+	}
-+	return status;
-+}
-+
-+static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
-+{
-+	int deleg_status, open_status;
-+	int deleg_flags = 1 << NFS_DELEGATED_STATE;
-+	int open_flags = (1 << NFS_O_RDONLY_STATE) | (1 << NFS_O_WRONLY_STATE) | (1 << NFS_O_RDWR_STATE);
-+
-+	deleg_status = nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
-+	open_status = nfs41_check_expired_stateid(state,  &state->open_stateid, open_flags);
-+
-+	if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
-+		return NFS_OK;
- 	return nfs4_open_expired(sp, state);
- }
- #endif
-@@ -4505,15 +4522,34 @@ out:
- }
+-	if (open_mode & O_EXCL)
++	if (open_mode & (O_EXCL|O_TRUNC))
+ 		goto out;
+ 	switch (mode & (FMODE_READ|FMODE_WRITE)) {
+ 		case FMODE_READ:
+@@ -1035,7 +1035,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 	struct nfs4_state *state = opendata->state;
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	struct nfs_delegation *delegation;
+-	int open_mode = opendata->o_arg.open_flags & O_EXCL;
++	int open_mode = opendata->o_arg.open_flags & (O_EXCL|O_TRUNC);
+ 	fmode_t fmode = opendata->o_arg.fmode;
+ 	nfs4_stateid stateid;
+ 	int ret = -EAGAIN;
+@@ -2432,6 +2432,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
  
- #if defined(CONFIG_NFS_V4_1)
--static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
-+static int nfs41_check_expired_locks(struct nfs4_state *state)
- {
--	int status;
-+	int status, ret = NFS_OK;
-+	struct nfs4_lock_state *lsp;
- 	struct nfs_server *server = NFS_SERVER(state->inode);
- 
--	status = nfs41_test_stateid(server, &state->stateid);
-+	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
-+		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
-+			status = nfs41_test_stateid(server, &lsp->ls_stateid);
-+			if (status != NFS_OK) {
-+				nfs41_free_stateid(server, &lsp->ls_stateid);
-+				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
-+				ret = status;
-+			}
-+		}
-+	};
++	/* Deal with open(O_TRUNC) */
++	if (attr->ia_valid & ATTR_OPEN)
++		attr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
 +
-+	return ret;
-+}
-+
-+static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
-+{
-+	int status = NFS_OK;
-+
-+	if (test_bit(LK_STATE_IN_USE, &state->flags))
-+		status = nfs41_check_expired_locks(state);
- 	if (status == NFS_OK)
--		return 0;
--	nfs41_free_stateid(server, &state->stateid);
-+		return status;
- 	return nfs4_lock_expired(state, request);
- }
- #endif
+ 	status = nfs4_do_setattr(inode, cred, fattr, sattr, state);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
 -- 
-1.7.8.4
+1.7.7.5
 
