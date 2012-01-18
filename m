@@ -1,218 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:65492 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932754Ab2AMUL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:29 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 30/44] NFS: Move over NFS v4 sysctls
-Date: Fri, 13 Jan 2012 15:10:39 -0500
-Message-Id: <1326485453-1350-31-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+	id S1751915Ab2ARMOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jan 2012 07:14:46 -0500
+Subject: Re: svcgssd: Allow administrators to specify timeout for the cached
+ context
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Date: Wed, 18 Jan 2012 12:14:38 +0000
+In-Reply-To: <20120117184901.GC15460@fieldses.org>
+References: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
+	 <20120117134951.GA15479@umich.edu>
+	 <1326814728.2747.59.camel@sprabhu.fab.redhat.com>
+	 <20120117163133.GB3387@umich.edu> <20120117163426.GB13977@fieldses.org>
+	 <20120117172444.GA3787@umich.edu> <20120117184901.GC15460@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1326888879.2747.66.camel@sprabhu.fab.redhat.com>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, 2012-01-17 at 13:49 -0500, J. Bruce Fields wrote:
+> On Tue, Jan 17, 2012 at 12:24:44PM -0500, Jim Rees wrote:
+> > J. Bruce Fields wrote:
+> > 
+> >   On Tue, Jan 17, 2012 at 11:31:33AM -0500, Jim Rees wrote:
+> >   > Sachin Prabhu wrote:
+> >   > 
+> >   >   On Tue, 2012-01-17 at 08:49 -0500, Jim Rees wrote:
+> >   >   > Sachin Prabhu wrote:
+> >   >   > 
+> >   >   >   We had a user report that for an export shared with sec=krb5*, any
+> >   >   >   changes in user credentials(ex: add user to a secondary group) take some
+> >   >   >   time before they take effect over the NFS share.
+> >   >   > 
+> >   >   > Re-authenticating, either by removing the service ticket or by re-running
+> >   >   > kinit at the client, should also flush the old credentials.  Can you confirm
+> >   >   > that works?
+> >   >   
+> >   >   We have tried it but it doesn't work unless you actually clean up the
+> >   >   cache on the NFS server with the command 
+> >   >   echo `date +'%s'` > /proc/net/rpc/auth.rpcsec.context/flush
+> >   > 
+> >   > Bruce, shouldn't this work?  Is this a bug or a feature?
+> >   
+> >   kdestroy, kinit, etc. on the client only affect userspace; the NFS
+> >   client in the kernel continues to use the same gss context.
+> > 
+> > I would find it surprising if kdestroy didn't actually discard my
+> > credentials.  In fact I might even view this as a security risk.
+> 
+> Volunteers to fix this are welcomed....  I think this might be part of
+> the project Simo Sorce is working on, but I'm not sure.
 
-I moved the sysctls from the generic NFS client to the v4 subdirectory
-and then changed the v4 startup function to register sysctls when it is
-run.
+I have tested by setting a timeout on the the client side rpc.gssd.
+Using kdestroy-kinit, I was able to get a new kerberos ticket and
+subsequently force the NFS server to obtain new credentials for the
+user.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile            |    2 +-
- fs/nfs/nfs.h               |    2 --
- fs/nfs/nfs4/module.c       |    9 +++++++++
- fs/nfs/nfs4/nfs4.h         |    3 +++
- fs/nfs/{ => nfs4}/sysctl.c |   27 +++------------------------
- fs/nfs/sysctl.c            |   28 ----------------------------
- 6 files changed, 16 insertions(+), 55 deletions(-)
- copy fs/nfs/{ => nfs4}/sysctl.c (69%)
+I do agree with Jim Rees that this is a security issue. The user can use
+kdestroy to destroy credentials before logging out. However the
+credentials cached in the kernel will allow the user to continue
+accessing the NFS share for as long as the cache is valid.
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 3850b1f..87213a8 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -13,7 +13,7 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4/proc.o nfs4/xdr.o nfs4/state.o nfs4/renewd.o \
- 			   nfs4/delegation.o nfs4/idmap.o \
- 			   nfs4/callback.o nfs4/callback_xdr.o \
- 			   nfs4/callback_proc.o nfs4/namespace.o \
--			   nfs4/client.o nfs4/module.o
-+			   nfs4/client.o nfs4/module.o nfs4/sysctl.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 455bacf..7b40e24 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -51,8 +51,6 @@ struct nfs_subversion {
- 					   struct nfs_clone_mount *);
- };
- 
--void nfs_register_versions(void);
--
- struct nfs_subversion *get_nfs_version(unsigned int);
- struct nfs_subversion *get_nfs_client_version(struct nfs_client *);
- struct nfs_subversion *get_nfs_server_version(struct nfs_server *);
-diff --git a/fs/nfs/nfs4/module.c b/fs/nfs/nfs4/module.c
-index 4ac3069..9edd174 100644
---- a/fs/nfs/nfs4/module.c
-+++ b/fs/nfs/nfs4/module.c
-@@ -43,11 +43,20 @@ static struct nfs_subversion nfs_v4 = {
- 
- int __init init_nfs_v4(void)
- {
-+	int ret;
-+
-+	ret = nfs4_register_sysctl();
-+	if (ret < 0)
-+		goto error_0;
- 	register_nfs_version(&nfs_v4);
- 	return 0;
-+
-+error_0:
-+	return ret;
- }
- 
- void exit_nfs_v4(void)
- {
- 	unregister_nfs_version(&nfs_v4);
-+	nfs4_unregister_sysctl();
- }
-diff --git a/fs/nfs/nfs4/nfs4.h b/fs/nfs/nfs4/nfs4.h
-index 227a617..5f69528 100644
---- a/fs/nfs/nfs4/nfs4.h
-+++ b/fs/nfs/nfs4/nfs4.h
-@@ -20,4 +20,7 @@ int nfs4_validate_text_mount_data(void *, struct nfs_parsed_mount_data *,
- int nfs4_alloc_client(struct nfs_client *, const struct nfs_client_initdata *);
- void nfs4_put_client(struct nfs_client *);
- 
-+int nfs4_register_sysctl(void);
-+void nfs4_unregister_sysctl(void);
-+
- #endif /* __LINUX_FS_NFS_NFS4_H */
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/nfs4/sysctl.c
-similarity index 69%
-copy from fs/nfs/sysctl.c
-copy to fs/nfs/nfs4/sysctl.c
-index d839b40d..8250314 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/nfs4/sysctl.c
-@@ -13,16 +13,13 @@
- #include <linux/nfs_idmap.h>
- #include <linux/nfs_fs.h>
- 
--#include "nfs4/callback.h"
-+#include "callback.h"
- 
--#ifdef CONFIG_NFS_V4
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
--#endif
- static struct ctl_table_header *nfs_callback_sysctl_table;
- 
- static ctl_table nfs_cb_sysctls[] = {
--#ifdef CONFIG_NFS_V4
- 	{
- 		.procname = "nfs_callback_tcpport",
- 		.data = &nfs_callback_set_tcpport,
-@@ -32,7 +29,6 @@ static ctl_table nfs_cb_sysctls[] = {
- 		.extra1 = (int *)&nfs_set_port_min,
- 		.extra2 = (int *)&nfs_set_port_max,
- 	},
--#ifndef CONFIG_NFS_USE_NEW_IDMAPPER
- 	{
- 		.procname = "idmap_cache_timeout",
- 		.data = &nfs_idmap_cache_timeout,
-@@ -40,23 +36,6 @@ static ctl_table nfs_cb_sysctls[] = {
- 		.mode = 0644,
- 		.proc_handler = proc_dointvec_jiffies,
- 	},
--#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
--#endif
--	{
--		.procname	= "nfs_mountpoint_timeout",
--		.data		= &nfs_mountpoint_expiry_timeout,
--		.maxlen		= sizeof(nfs_mountpoint_expiry_timeout),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_jiffies,
--	},
--	{
--		.procname	= "nfs_congestion_kb",
--		.data		= &nfs_congestion_kb,
--		.maxlen		= sizeof(nfs_congestion_kb),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--	{ }
- };
- 
- static ctl_table nfs_cb_sysctl_dir[] = {
-@@ -77,7 +56,7 @@ static ctl_table nfs_cb_sysctl_root[] = {
- 	{ }
- };
- 
--int nfs_register_sysctl(void)
-+int nfs4_register_sysctl(void)
- {
- 	nfs_callback_sysctl_table = register_sysctl_table(nfs_cb_sysctl_root);
- 	if (nfs_callback_sysctl_table == NULL)
-@@ -85,7 +64,7 @@ int nfs_register_sysctl(void)
- 	return 0;
- }
- 
--void nfs_unregister_sysctl(void)
-+void nfs4_unregister_sysctl(void)
- {
- 	unregister_sysctl_table(nfs_callback_sysctl_table);
- 	nfs_callback_sysctl_table = NULL;
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index d839b40d..6b3f253 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -9,39 +9,11 @@
- #include <linux/fs.h>
- #include <linux/sysctl.h>
- #include <linux/module.h>
--#include <linux/nfs4.h>
--#include <linux/nfs_idmap.h>
- #include <linux/nfs_fs.h>
- 
--#include "nfs4/callback.h"
--
--#ifdef CONFIG_NFS_V4
--static const int nfs_set_port_min = 0;
--static const int nfs_set_port_max = 65535;
--#endif
- static struct ctl_table_header *nfs_callback_sysctl_table;
- 
- static ctl_table nfs_cb_sysctls[] = {
--#ifdef CONFIG_NFS_V4
--	{
--		.procname = "nfs_callback_tcpport",
--		.data = &nfs_callback_set_tcpport,
--		.maxlen = sizeof(int),
--		.mode = 0644,
--		.proc_handler = proc_dointvec_minmax,
--		.extra1 = (int *)&nfs_set_port_min,
--		.extra2 = (int *)&nfs_set_port_max,
--	},
--#ifndef CONFIG_NFS_USE_NEW_IDMAPPER
--	{
--		.procname = "idmap_cache_timeout",
--		.data = &nfs_idmap_cache_timeout,
--		.maxlen = sizeof(int),
--		.mode = 0644,
--		.proc_handler = proc_dointvec_jiffies,
--	},
--#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
--#endif
- 	{
- 		.procname	= "nfs_mountpoint_timeout",
- 		.data		= &nfs_mountpoint_expiry_timeout,
--- 
-1.7.8.3
+Sachin Prabhu
+
 
