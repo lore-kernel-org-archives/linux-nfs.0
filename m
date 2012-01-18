@@ -1,61 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:34396 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933024Ab2AFJmv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 04:42:51 -0500
-Received: by mail-bk0-f46.google.com with SMTP id jm19so273098bkc.19
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jan 2012 01:42:51 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:62013 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756960Ab2ARERg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 23:17:36 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v5 5/8] nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-Date: Fri,  6 Jan 2012 10:45:13 +0100
-Message-Id: <1325843116-20570-6-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1325843116-20570-1-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: [PATCH v2 01/10] NFS: Remove unnecessary includes from linux/nfs_fs_i.h
+Date: Tue, 17 Jan 2012 23:17:04 -0500
+Message-Id: <1326860233-27947-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+Also from linux/nfs_xdr.h.
 
-
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/nfs4proc.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+ fs/nfs/pagelist.c        |    1 +
+ include/linux/nfs_fs_i.h |    4 ----
+ include/linux/nfs_xdr.h  |    1 -
+ 3 files changed, 1 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 20c8d24..76b96a2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1841,21 +1841,24 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTPUBFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTPUBFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTROOTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTROOTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 5668f7c..77a184e 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -13,6 +13,7 @@
+ #include <linux/file.h>
+ #include <linux/sched.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/nfs.h>
+ #include <linux/nfs3.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_page.h>
+diff --git a/include/linux/nfs_fs_i.h b/include/linux/nfs_fs_i.h
+index 8617302..a5c50d9 100644
+--- a/include/linux/nfs_fs_i.h
++++ b/include/linux/nfs_fs_i.h
+@@ -1,10 +1,6 @@
+ #ifndef _NFS_FS_I
+ #define _NFS_FS_I
+ 
+-#include <asm/types.h>
+-#include <linux/list.h>
+-#include <linux/nfs.h>
+-
+ struct nlm_lockowner;
+ 
+ /*
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a764cef..f5188e1 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -2,7 +2,6 @@
+ #define _LINUX_NFS_XDR_H
+ 
+ #include <linux/nfsacl.h>
+-#include <linux/nfs3.h>
+ #include <linux/sunrpc/gss_api.h>
+ 
+ /*
 -- 
 1.7.7.5
 
