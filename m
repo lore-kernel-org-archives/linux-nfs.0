@@ -1,158 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40698 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751990Ab2AWR5c convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 12:57:32 -0500
-Message-ID: <1327341448.2628.1.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] SUNRPC: Clean up the RPCSEC_GSS service ticket requests
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 23 Jan 2012 12:57:28 -0500
-In-Reply-To: <20120123165124.GA32197@fieldses.org>
-References: <1325608907-17801-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120103165544.GC6309@fieldses.org> <20120123165124.GA32197@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:35610 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753116Ab2ARWAJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2012 17:00:09 -0500
+Message-ID: <4F1740D9.8090707@panasas.com>
+Date: Wed, 18 Jan 2012 23:59:53 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: <stable@vger.kernel.org>
+CC: Greg KH <greg@kroah.com>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/2] pnfs-obj: Must return layout on IO error (linux-3.1.y)
+References: <20120111154700.5A847262B@git.kroah.org> <20120112231449.GB20151@kroah.com> <4F174005.9080403@panasas.com>
+In-Reply-To: <4F174005.9080403@panasas.com>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2012-01-23 at 11:51 -0500, Bruce Fields wrote: 
-> general protection fault: 0000 [#1] PREEMPT SMP 
-> CPU 0 
-> Modules linked in: rpcsec_gss_krb5 nfs nfsd lockd nfs_acl auth_rpcgss sunrpc [last unloaded: scsi_wait_scan]
-> 
-> Pid: 6645, comm: 192.168.122.11- Not tainted 3.2.0-00001-g68c9715 #966 Bochs Bochs
-> RIP: 0010:[<ffffffff81516399>]  [<ffffffff81516399>] strnlen+0x9/0x40
-> RSP: 0018:ffff8800376b77d0  EFLAGS: 00010286
-> RAX: ffffffff81d027fc RBX: ffff88003758e398 RCX: ffffffffff0a0004
-> RDX: 5a5a5a5a5a5a5a5a RSI: ffffffffffffffff RDI: 5a5a5a5a5a5a5a5a
-> RBP: ffff8800376b77d0 R08: 000000000000fffb R09: 0000ffffffffff0a
-> R10: 0000000000000001 R11: 0000000000000000 R12: ffff8800b758e38f
-> R13: 5a5a5a5a5a5a5a5a R14: ffffffffffffffff R15: 00000000ffffffff
-> FS:  0000000000000000(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 00000000004073e0 CR3: 0000000001e05000 CR4: 00000000000006f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process 192.168.122.11- (pid: 6645, threadinfo ffff8800376b6000, task ffff88003b576080)
-> Stack:
->  ffff8800376b7820 ffffffff815179ef ffff8800376b7800 ffffffff81097110
->  ffff8800376b7810 ffff88003758e398 ffffffffa00524f9 ffffffffa00524f7
->  ffff8800376b78a0 ffff8800b758e38f ffff8800376b7890 ffffffff81518b6a
-> Call Trace:
->  [<ffffffff815179ef>] string+0x4f/0xf0
->  [<ffffffff81097110>] ? is_module_address+0x30/0x60
->  [<ffffffff81518b6a>] vsnprintf+0x1da/0x5b0
->  [<ffffffff81088964>] ? static_obj+0x44/0x60
->  [<ffffffff81518f80>] sprintf+0x40/0x50
->  [<ffffffffa004d938>] gss_setup_upcall+0x1d8/0x2d0 [auth_rpcgss]
->  [<ffffffffa004dcc3>] gss_cred_init+0xc3/0x3a0 [auth_rpcgss]
->  [<ffffffffa000c3ac>] ? rpcauth_lookup_credcache+0x21c/0x2c0 [sunrpc]
->  [<ffffffff81077500>] ? wake_up_bit+0x40/0x40
->  [<ffffffff81950afd>] ? sub_preempt_count+0x9d/0xd0
->  [<ffffffffa000c327>] rpcauth_lookup_credcache+0x197/0x2c0 [sunrpc]
->  [<ffffffffa000c190>] ? rpcauth_refreshcred+0x1d0/0x1d0 [sunrpc]
->  [<ffffffff8105b1a2>] ? local_bh_enable_ip+0x82/0x100
->  [<ffffffffa004c5ce>] gss_lookup_cred+0xe/0x10 [auth_rpcgss]
->  [<ffffffffa000cdbf>] generic_bind_cred+0x1f/0x30 [sunrpc]
->  [<ffffffffa000c061>] rpcauth_refreshcred+0xa1/0x1d0 [sunrpc]
->  [<ffffffffa00006d3>] call_refresh+0x43/0x70 [sunrpc]
->  [<ffffffffa000a8c6>] __rpc_execute+0x66/0x2b0 [sunrpc]
->  [<ffffffff810774ef>] ? wake_up_bit+0x2f/0x40
->  [<ffffffffa000ab53>] rpc_execute+0x43/0x50 [sunrpc]
->  [<ffffffffa0002315>] rpc_run_task+0x75/0x90 [sunrpc]
->  [<ffffffffa0002432>] rpc_call_sync+0x42/0x70 [sunrpc]
->  [<ffffffffa00e5a1f>] nfs4_proc_setclientid+0x1af/0x210 [nfs]
->  [<ffffffffa00f2e17>] nfs4_init_clientid+0xc7/0x130 [nfs]
->  [<ffffffff8194d55b>] ? _raw_spin_unlock_irq+0x3b/0x60
->  [<ffffffffa00f24dd>] nfs4_run_state_manager+0x2ad/0x600 [nfs]
->  [<ffffffffa00f2230>] ? nfs4_do_reclaim+0x590/0x590 [nfs]
->  [<ffffffff81076fc6>] kthread+0x96/0xa0
->  [<ffffffff81955bf4>] kernel_thread_helper+0x4/0x10
->  [<ffffffff81046548>] ? finish_task_switch+0x88/0xf0
->  [<ffffffff8194d961>] ? retint_restore_args+0xe/0xe
->  [<ffffffff81076f30>] ? __init_kthread_worker+0x70/0x70
->  [<ffffffff81955bf0>] ? gs_change+0xb/0xb
-> Code: 66 90 48 83 c2 01 80 3a 00 75 f7 48 89 d0 48 29 f8 c9 c3 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 85 f6 48 89 e5 74 2e <80> 3f 00 74 29 48 83 ee 01 48 89 f8 eb 12 66 0f 1f 84 00 00 00 
-> RIP  [<ffffffff81516399>] strnlen+0x9/0x40
->  RSP <ffff8800376b77d0>
-> ---[ end trace bff324891ae17805 ]---
 
-Does the following patch help?
+As mandated by the standard. In case of an IO error, a pNFS
+objects layout driver must return it's layout. This is because
+all device errors are reported to the server as part of the
+layout return buffer.
 
-8<------------------------------------------------------------------------ 
->From 831dd055bd8111f02bca7c248cba25261969e318 Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Mon, 23 Jan 2012 12:49:36 -0500
-Subject: [PATCH] SUNRPC: Fix machine creds in generic_create_cred and
- generic_match
+This is implemented the same way PNFS_LAYOUTRET_ON_SETATTR
+is done, through a bit flag on the pnfs_layoutdriver_type->flags
+member. The flag is set by the layout driver that wants a
+layout_return preformed at pnfs_ld_{write,read}_done in case
+of an error.
+(Though I have not defined a wrapper like pnfs_ld_layoutret_on_setattr
+ because this code is never called outside of pnfs.c and pnfs IO
+ paths)
 
-- generic_create_cred needs to copy the '.principal' field.
-- generic_match needs to ignore the groups and match on the '.principal'
-  field.
+Without this patch 3.[0-2] Kernels leak memory and have an annoying
+WARN_ON after every IO error utilizing the pnfs-obj driver.
 
-This fixes an Oops that was introduced by commit 68c9715 (SUNRPC:
-Clean up the RPCSEC_GSS service ticket requests)
-
+[This is the linux-3.1.y version of mainline [fe0fe83] patch]
+CC: Stable Tree <stable@kernel.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- net/sunrpc/auth_generic.c |   17 ++++++++++++++++-
- 1 files changed, 16 insertions(+), 1 deletions(-)
+ fs/nfs/objlayout/objio_osd.c |    3 ++-
+ fs/nfs/pnfs.c                |   12 ++++++++++++
+ fs/nfs/pnfs.h                |    1 +
+ 3 files changed, 15 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 1426ec3..75762f3 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -92,6 +92,7 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 	if (gcred->acred.group_info != NULL)
- 		get_group_info(gcred->acred.group_info);
- 	gcred->acred.machine_cred = acred->machine_cred;
-+	gcred->acred.principal = acred->principal;
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index d0cda12..bd80718 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -1015,7 +1015,8 @@ static const struct nfs_pageio_ops objio_pg_write_ops = {
+ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.id = LAYOUT_OSD2_OBJECTS,
+ 	.name = "LAYOUT_OSD2_OBJECTS",
+-	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
++	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
++				   PNFS_LAYOUTRET_ON_ERROR,
  
- 	dprintk("RPC:       allocated %s cred %p for uid %d gid %d\n",
- 			gcred->acred.machine_cred ? "machine" : "generic",
-@@ -123,6 +124,17 @@ generic_destroy_cred(struct rpc_cred *cred)
- 	call_rcu(&cred->cr_rcu, generic_free_cred_callback);
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ee73d9a..6f6d43a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1177,6 +1177,15 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
+ 		put_lseg(data->lseg);
+ 		data->lseg = NULL;
+ 		dprintk("pnfs write error = %d\n", data->pnfs_error);
++		if (NFS_SERVER(data->inode)->pnfs_curr_ld->flags &
++						PNFS_LAYOUTRET_ON_ERROR) {
++			/* Don't lo_commit on error, Server will needs to
++			 * preform a file recovery.
++			 */
++			clear_bit(NFS_INO_LAYOUTCOMMIT,
++				  &NFS_I(data->inode)->flags);
++			pnfs_return_layout(data->inode);
++		}
+ 	}
+ 	data->mds_ops->rpc_release(data);
  }
+@@ -1271,6 +1280,9 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
+ 		put_lseg(data->lseg);
+ 		data->lseg = NULL;
+ 		dprintk("pnfs write error = %d\n", data->pnfs_error);
++		if (NFS_SERVER(data->inode)->pnfs_curr_ld->flags &
++						PNFS_LAYOUTRET_ON_ERROR)
++			pnfs_return_layout(data->inode);
+ 	}
+ 	data->mds_ops->rpc_release(data);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1509530..53d593a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -68,6 +68,7 @@ enum {
+ enum layoutdriver_policy_flags {
+ 	/* Should the pNFS client commit and return the layout upon a setattr */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
++	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
+ };
  
-+static int
-+machine_cred_match(struct auth_cred *acred, struct generic_cred *gcred, int flags)
-+{
-+	if (!gcred->acred.machine_cred ||
-+	    gcred->acred.principal != acred->principal ||
-+	    gcred->acred.uid != acred->uid ||
-+	    gcred->acred.gid != acred->gid)
-+		return 0;
-+	return 1;
-+}
-+
- /*
-  * Match credentials against current process creds.
-  */
-@@ -132,9 +144,12 @@ generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- 	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
- 	int i;
- 
-+	if (acred->machine_cred)
-+		return machine_cred_match(acred, gcred, flags);
-+
- 	if (gcred->acred.uid != acred->uid ||
- 	    gcred->acred.gid != acred->gid ||
--	    gcred->acred.machine_cred != acred->machine_cred)
-+	    gcred->acred.machine_cred != 0)
- 		goto out_nomatch;
- 
- 	/* Optimisation in the case where pointers are identical... */
+ struct nfs4_deviceid_node;
 -- 
-1.7.7.5
+1.7.2.3
 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
