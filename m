@@ -1,136 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46960 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40181 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753056Ab2AQLo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 06:44:28 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0HBiSde026294
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Jan 2012 06:44:28 -0500
-Subject: svcgssd: Allow administrators to specify timeout for the cached
- context
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <steved@redhat.com>
-Date: Tue, 17 Jan 2012 11:44:27 +0000
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1326800668.2747.55.camel@sprabhu.fab.redhat.com>
-Mime-Version: 1.0
+	id S1756968Ab2ARERg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 23:17:36 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 03/10] NFSv4: Replace state_owner->so_owner_id with an ida based allocator
+Date: Tue, 17 Jan 2012 23:17:06 -0500
+Message-Id: <1326860233-27947-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1326860233-27947-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1326860233-27947-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We had a user report that for an export shared with sec=krb5*, any
-changes in user credentials(ex: add user to a secondary group) take some
-time before they take effect over the NFS share. 
+We're unlikely to ever need more than 2^31 simultaneous open owners,
+so let's replace the custom allocator with the generic ida allocator.
 
-The problem was determined to be caused by the svcgssd process caching
-the user credentials. The user credentials were initially cached for an
-unlimited amount of time. There was some improvement in this behaviour
-with the commit
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/client.c           |    2 ++
+ fs/nfs/nfs4_fs.h          |    2 +-
+ fs/nfs/nfs4proc.c         |    4 ++--
+ fs/nfs/nfs4state.c        |   17 ++++++++++++-----
+ include/linux/nfs_fs_sb.h |    3 ++-
+ 5 files changed, 19 insertions(+), 9 deletions(-)
 
-svcgssd: use the actual context expiration for cache
-commit eb3a145789b9eedd39b56e1d76f412435abaa747
-
-The cache expiration time is now set to the time for which the kerberos
-ticket is valid. However this is still considered too long. The proposed
-solution is to allow administrators to explicitly set a timeout for
-which the cache is valid. This is similar to changes which went into
-gssd, the corresponding client side program.
-
-The patch adds a -t <timeout> option to rpc.svcgssd so that the server's
-administrator can specify an expiry timeout for the cached context.
-After this timeout, an upcall is made to obtain the new user
-credentials.
-
-The default, timeout 0 results in the old behaviour.
-
-Signed-off-bye: Sachin Prabhu <sprabhu@redhat.com>
-
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index 1afff9e..db99ea3 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -70,6 +70,8 @@
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ca9a4aa..8d1739d 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1092,6 +1092,7 @@ static struct nfs_server *nfs_alloc_server(void)
+ 		return NULL;
+ 	}
+ 
++	ida_init(&server->openowner_id);
+ 	pnfs_init_server(server);
+ 
+ 	return server;
+@@ -1117,6 +1118,7 @@ void nfs_free_server(struct nfs_server *server)
+ 
+ 	nfs_put_client(server->nfs_client);
+ 
++	ida_destroy(&server->openowner_id);
+ 	nfs_free_iostats(server->io_stats);
+ 	bdi_destroy(&server->backing_dev_info);
+ 	kfree(server);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 6d439c2..a754f47 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -92,7 +92,6 @@ struct nfs_unique_id {
+  * semantics by allowing the server to identify replayed requests.
   */
- int pipefds[2] = { -1, -1};
+ struct nfs4_state_owner {
+-	struct nfs_unique_id so_owner_id;
+ 	struct nfs_server    *so_server;
+ 	struct list_head     so_lru;
+ 	unsigned long        so_expires;
+@@ -106,6 +105,7 @@ struct nfs4_state_owner {
+ 	struct list_head     so_states;
+ 	struct nfs_seqid_counter so_seqid;
+ 	struct rpc_sequence  so_sequence;
++	int		     so_owner_id;
+ };
  
-+unsigned int context_timeout = 0;
-+
- static void
- mydaemon(int nochdir, int noclose)
- {
-@@ -167,7 +169,7 @@ sig_hup(int signal)
- static void
- usage(char *progname)
- {
--	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal]\n",
-+	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal] [-t timeout]\n",
- 		progname);
- 	exit(1);
+ enum {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4072754..1ddedf0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -815,7 +815,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.open_flags = flags;
+ 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
+ 	p->o_arg.clientid = server->nfs_client->cl_clientid;
+-	p->o_arg.id = sp->so_owner_id.id;
++	p->o_arg.id = sp->so_owner_id;
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = server->attr_bitmask;
+@@ -1440,7 +1440,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		rcu_read_unlock();
+ 	}
+ 	/* Update sequence id. */
+-	data->o_arg.id = sp->so_owner_id.id;
++	data->o_arg.id = sp->so_owner_id;
+ 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
+ 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a8a42a6..8472707 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -405,6 +405,7 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
+ 	struct rb_node **p = &server->state_owners.rb_node,
+ 		       *parent = NULL;
+ 	struct nfs4_state_owner *sp;
++	int err;
+ 
+ 	while (*p != NULL) {
+ 		parent = *p;
+@@ -421,8 +422,9 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
+ 			return sp;
+ 		}
+ 	}
+-	nfs_alloc_unique_id_locked(&server->openowner_id,
+-					&new->so_owner_id, 1, 64);
++	err = ida_get_new(&server->openowner_id, &new->so_owner_id);
++	if (err)
++		return ERR_PTR(err);
+ 	rb_link_node(&new->so_server_node, parent, p);
+ 	rb_insert_color(&new->so_server_node, &server->state_owners);
+ 	return new;
+@@ -435,7 +437,7 @@ nfs4_remove_state_owner_locked(struct nfs4_state_owner *sp)
+ 
+ 	if (!RB_EMPTY_NODE(&sp->so_server_node))
+ 		rb_erase(&sp->so_server_node, &server->state_owners);
+-	nfs_free_unique_id(&server->openowner_id, &sp->so_owner_id);
++	ida_remove(&server->openowner_id, sp->so_owner_id);
  }
-@@ -185,7 +187,7 @@ main(int argc, char *argv[])
- 	char *progname;
- 	char *principal = NULL;
  
--	while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
-+	while ((opt = getopt(argc, argv, "fivrnp:t:")) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -205,6 +207,9 @@ main(int argc, char *argv[])
- 			case 'p':
- 				principal = optarg;
- 				break;
-+			case 't':
-+				context_timeout = atoi(optarg);
-+				break;
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/svcgssd.h b/utils/gssd/svcgssd.h
-index 9a2e2e8..869fb63 100644
---- a/utils/gssd/svcgssd.h
-+++ b/utils/gssd/svcgssd.h
-@@ -40,4 +40,6 @@ void gssd_run(void);
+ /*
+@@ -534,8 +536,13 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
+ 	new = nfs4_alloc_state_owner(server, cred, gfp_flags);
+ 	if (new == NULL)
+ 		goto out;
+-	sp = nfs4_insert_state_owner_locked(new);
+-	spin_unlock(&clp->cl_lock);
++	do {
++		if (ida_pre_get(&server->openowner_id, gfp_flags) == 0)
++			break;
++		spin_lock(&clp->cl_lock);
++		sp = nfs4_insert_state_owner_locked(new);
++		spin_unlock(&clp->cl_lock);
++	} while (sp == ERR_PTR(-EAGAIN));
+ 	if (sp != new)
+ 		nfs4_free_state_owner(new);
+ out:
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index e0863d3..645537e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -3,6 +3,7 @@
  
- #define GSSD_SERVICE_NAME	"nfs"
+ #include <linux/list.h>
+ #include <linux/backing-dev.h>
++#include <linux/idr.h>
+ #include <linux/wait.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/sunrpc/xprt.h>
+@@ -151,9 +152,9 @@ struct nfs_server {
  
-+extern unsigned int context_timeout;
-+
- #endif /* _RPC_SVCGSSD_H_ */
-diff --git a/utils/gssd/svcgssd.man b/utils/gssd/svcgssd.man
-index 7b2de6b..3688af0 100644
---- a/utils/gssd/svcgssd.man
-+++ b/utils/gssd/svcgssd.man
-@@ -45,6 +45,14 @@ Use the system default credentials
- .RI (host/ FQDN @ REALM )
- rather than the default
- .RI nfs/ FQDN @ REALM .
-+.TP
-+.B -t timeout
-+Timeout, in seconds, for kernel gss contexts. This option allows you to force
-+new kernel contexts to be negotiated after
-+.I timeout
-+seconds, which allows changing Kerberos tickets and identities frequently.
-+The default is no explicit timeout, which means the kernel context will live
-+the lifetime of the Kerberos service ticket used in its creation.
- .SH SEE ALSO
- .BR rpc.gssd(8),
- .SH AUTHORS
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index c714d99..dae10ca 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -497,6 +497,10 @@ handle_nullreq(FILE *f) {
- 	/* We no longer need the gss context */
- 	gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
- 
-+	/* If timeout set, override context timeout */
-+	if (context_timeout)
-+		ctx_endtime = time(0) + context_timeout;
-+
- 	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
- 			hostbased_name);
- continue_needed:
-
+ 	/* the following fields are protected by nfs_client->cl_lock */
+ 	struct rb_root		state_owners;
+-	struct rb_root		openowner_id;
+ 	struct rb_root		lockowner_id;
+ #endif
++	struct ida		openowner_id;
+ 	struct list_head	state_owners_lru;
+ 	struct list_head	layouts;
+ 	struct list_head	delegations;
+-- 
+1.7.7.5
 
