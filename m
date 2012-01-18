@@ -1,44 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50562 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:47013 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754977Ab2AQQAd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:00:33 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 6/6] locks: break delegations on link
-Date: Tue, 17 Jan 2012 11:00:29 -0500
-Message-Id: <1326816029-13913-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
-References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+	id S1756990Ab2ARERh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Jan 2012 23:17:37 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 08/10] NFS: Optimise away unnecessary setattrs for open(O_TRUNC);
+Date: Tue, 17 Jan 2012 23:17:11 -0500
+Message-Id: <1326860233-27947-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1326860233-27947-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1326860233-27947-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1326860233-27947-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Currently, we will correctly optimise away a truncate that doesn't
+change the file size. However, in the case of open(O_TRUNC), we
+also want to optimise away the time changes.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/namei.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c      |   25 +++++++++++++++++++------
+ fs/nfs/inode.c    |    4 ++--
+ fs/nfs/nfs4proc.c |   10 +++++++---
+ 3 files changed, 28 insertions(+), 11 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index facf295..1607e5e 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2919,8 +2919,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	/* Make sure we don't allow creating hardlink to an unlinked file */
- 	if (inode->i_nlink == 0)
- 		error =  -ENOENT;
--	else
--		error = dir->i_op->link(old_dentry, dir, new_dentry);
-+	else {
-+		error = break_lease(inode, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
-+		if (!error)
-+			error = dir->i_op->link(old_dentry, dir, new_dentry);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index fd9a872..bb132a8 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1429,6 +1429,7 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 	}
+ 
+ 	open_flags = nd->intent.open.flags;
++	attr.ia_valid = 0;
+ 
+ 	ctx = create_nfs_open_context(dentry, open_flags);
+ 	res = ERR_CAST(ctx);
+@@ -1437,11 +1438,14 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
+ 
+ 	if (nd->flags & LOOKUP_CREATE) {
+ 		attr.ia_mode = nd->intent.open.create_mode;
+-		attr.ia_valid = ATTR_MODE;
++		attr.ia_valid |= ATTR_MODE;
+ 		attr.ia_mode &= ~current_umask();
+-	} else {
++	} else
+ 		open_flags &= ~(O_EXCL | O_CREAT);
+-		attr.ia_valid = 0;
++
++	if (open_flags & O_TRUNC) {
++		attr.ia_valid |= ATTR_SIZE;
++		attr.ia_size = 0;
+ 	}
+ 
+ 	/* Open the file on the server */
+@@ -1495,6 +1499,7 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	struct inode *inode;
+ 	struct inode *dir;
+ 	struct nfs_open_context *ctx;
++	struct iattr attr;
+ 	int openflags, ret = 0;
+ 
+ 	if (nd->flags & LOOKUP_RCU)
+@@ -1523,19 +1528,27 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
+ 	/* We cannot do exclusive creation on a positive dentry */
+ 	if ((openflags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))
+ 		goto no_open_dput;
+-	/* We can't create new files, or truncate existing ones here */
+-	openflags &= ~(O_CREAT|O_EXCL|O_TRUNC);
++	/* We can't create new files here */
++	openflags &= ~(O_CREAT|O_EXCL);
+ 
+ 	ctx = create_nfs_open_context(dentry, openflags);
+ 	ret = PTR_ERR(ctx);
+ 	if (IS_ERR(ctx))
+ 		goto out;
++
++	attr.ia_valid = 0;
++	if (openflags & O_TRUNC) {
++		attr.ia_valid |= ATTR_SIZE;
++		attr.ia_size = 0;
++		nfs_wb_all(inode);
 +	}
- 	mutex_unlock(&inode->i_mutex);
- 	if (!error)
- 		fsnotify_link(dir, inode, new_dentry);
++
+ 	/*
+ 	 * Note: we're not holding inode->i_mutex and so may be racing with
+ 	 * operations that change the directory. We therefore save the
+ 	 * change attribute *before* we do the RPC call.
+ 	 */
+-	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, NULL);
++	inode = NFS_PROTO(dir)->open_context(dir, ctx, openflags, &attr);
+ 	if (IS_ERR(inode)) {
+ 		ret = PTR_ERR(inode);
+ 		switch (ret) {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 577ad5a..65486e6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -402,7 +402,7 @@ out_no_inode:
+ 	goto out;
+ }
+ 
+-#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE)
++#define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE|ATTR_OPEN)
+ 
+ int
+ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+@@ -424,7 +424,7 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 
+ 	/* Optimization: if the end result is no change, don't RPC */
+ 	attr->ia_valid &= NFS_VALID_ATTRS;
+-	if ((attr->ia_valid & ~ATTR_FILE) == 0)
++	if ((attr->ia_valid & ~(ATTR_FILE|ATTR_OPEN)) == 0)
+ 		return 0;
+ 
+ 	/* Write all dirty data */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7d431d7..f2a4d32 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -830,7 +830,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.bitmask = server->attr_bitmask;
+ 	p->o_arg.dir_bitmask = server->cache_consistency_bitmask;
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+-	if (flags & O_CREAT) {
++	if (attrs != NULL && attrs->ia_valid != 0) {
+ 		u32 *s;
+ 
+ 		p->o_arg.u.attrs = &p->attrs;
+@@ -887,7 +887,7 @@ static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode
+ {
+ 	int ret = 0;
+ 
+-	if (open_mode & O_EXCL)
++	if (open_mode & (O_EXCL|O_TRUNC))
+ 		goto out;
+ 	switch (mode & (FMODE_READ|FMODE_WRITE)) {
+ 		case FMODE_READ:
+@@ -1035,7 +1035,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 	struct nfs4_state *state = opendata->state;
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	struct nfs_delegation *delegation;
+-	int open_mode = opendata->o_arg.open_flags & O_EXCL;
++	int open_mode = opendata->o_arg.open_flags & (O_EXCL|O_TRUNC);
+ 	fmode_t fmode = opendata->o_arg.fmode;
+ 	nfs4_stateid stateid;
+ 	int ret = -EAGAIN;
+@@ -2432,6 +2432,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
++	/* Deal with open(O_TRUNC) */
++	if (sattr->ia_valid & ATTR_OPEN)
++		sattr->ia_valid &= ~(ATTR_MTIME|ATTR_CTIME|ATTR_OPEN);
++
+ 	status = nfs4_do_setattr(inode, cred, fattr, sattr, state);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
 -- 
-1.7.5.4
+1.7.7.5
 
