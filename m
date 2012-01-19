@@ -1,17 +1,18 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:46553 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:21136 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756900Ab2ASRni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 12:43:38 -0500
-Subject: [PATCH v2 5/5] SUNRPC: generic cache register routines removed
+	id S1757132Ab2ASRmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 12:42:50 -0500
+Subject: [PATCH v2 1/5] SUNRPC: cache creation and destruction routines
+ introduced
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
         devel@openvz.org
-Date: Thu, 19 Jan 2012 21:42:53 +0400
-Message-ID: <20120119174253.23767.73033.stgit@localhost6.localdomain6>
+Date: Thu, 19 Jan 2012 21:42:21 +0400
+Message-ID: <20120119174221.23767.91209.stgit@localhost6.localdomain6>
 In-Reply-To: <20120119173823.23767.91876.stgit@localhost6.localdomain6>
 References: <20120119173823.23767.91876.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
@@ -19,58 +20,76 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All cache users now uses network-namespace-aware routines, so generic ones
-are obsolete.
+This patch prepares infrastructure for network namespace aware cache detail
+allocation.
+One note about adding network namespace link to cache structure. It's going to
+be used later in NFS DNS cache parsing routine (nfs_dns_parse for rpc_pton()
+call).
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
 ---
- include/linux/sunrpc/cache.h |    2 --
- net/sunrpc/cache.c           |   12 ------------
- 2 files changed, 0 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/cache.h |    4 ++++
+ net/sunrpc/cache.c           |   26 ++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 0 deletions(-)
 
 diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 259381c..f5fd616 100644
+index 590a8ab..259381c 100644
 --- a/include/linux/sunrpc/cache.h
 +++ b/include/linux/sunrpc/cache.h
-@@ -198,9 +198,7 @@ extern void cache_flush(void);
- extern void cache_purge(struct cache_detail *detail);
- #define NEVER (0x7FFFFFFF)
- extern void __init cache_initialize(void);
--extern int cache_register(struct cache_detail *cd);
- extern int cache_register_net(struct cache_detail *cd, struct net *net);
--extern void cache_unregister(struct cache_detail *cd);
+@@ -117,6 +117,7 @@ struct cache_detail {
+ 		struct cache_detail_procfs procfs;
+ 		struct cache_detail_pipefs pipefs;
+ 	} u;
++	struct net		*net;
+ };
+ 
+ 
+@@ -202,6 +203,9 @@ extern int cache_register_net(struct cache_detail *cd, struct net *net);
+ extern void cache_unregister(struct cache_detail *cd);
  extern void cache_unregister_net(struct cache_detail *cd, struct net *net);
  
- extern struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net);
++extern struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net);
++extern void cache_destroy_net(struct cache_detail *cd, struct net *net);
++
+ extern void sunrpc_init_cache_detail(struct cache_detail *cd);
+ extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
+ extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index a450b8a..f21ece0 100644
+index f128154..9ef5926 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -1645,12 +1645,6 @@ int cache_register_net(struct cache_detail *cd, struct net *net)
+@@ -1662,6 +1662,32 @@ void cache_unregister(struct cache_detail *cd)
  }
- EXPORT_SYMBOL_GPL(cache_register_net);
+ EXPORT_SYMBOL_GPL(cache_unregister);
  
--int cache_register(struct cache_detail *cd)
--{
--	return cache_register_net(cd, &init_net);
--}
--EXPORT_SYMBOL_GPL(cache_register);
--
- void cache_unregister_net(struct cache_detail *cd, struct net *net)
++struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
++{
++	struct cache_detail *cd;
++
++	cd = kmemdup(tmpl, sizeof(struct cache_detail), GFP_KERNEL);
++	if (cd == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	cd->hash_table = kzalloc(cd->hash_size * sizeof(struct cache_head *),
++				 GFP_KERNEL);
++	if (cd->hash_table == NULL) {
++		kfree(cd);
++		return ERR_PTR(-ENOMEM);
++	}
++	cd->net = net;
++	return cd;
++}
++EXPORT_SYMBOL_GPL(cache_create_net);
++
++void cache_destroy_net(struct cache_detail *cd, struct net *net)
++{
++	kfree(cd->hash_table);
++	kfree(cd);
++}
++EXPORT_SYMBOL_GPL(cache_destroy_net);
++
+ static ssize_t cache_read_pipefs(struct file *filp, char __user *buf,
+ 				 size_t count, loff_t *ppos)
  {
- 	remove_cache_proc_entries(cd, net);
-@@ -1658,12 +1652,6 @@ void cache_unregister_net(struct cache_detail *cd, struct net *net)
- }
- EXPORT_SYMBOL_GPL(cache_unregister_net);
- 
--void cache_unregister(struct cache_detail *cd)
--{
--	cache_unregister_net(cd, &init_net);
--}
--EXPORT_SYMBOL_GPL(cache_unregister);
--
- struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
- {
- 	struct cache_detail *cd;
 
