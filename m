@@ -1,101 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43675 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755429Ab2AMIwr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 03:52:47 -0500
-Subject: [PATCH v5 3/6] SUNRPC: optimize net_ns dereferencing in rpcbind
- registering calls
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 12:52:26 +0400
-Message-ID: <20120113085226.31750.88117.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-References: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:44303 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756018Ab2ASQhn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2012 11:37:43 -0500
+Received: by wics10 with SMTP id s10so94469wic.19
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 08:37:42 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20120119134814.GA527@fieldses.org>
+References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com>
+	<OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com>
+	<OFA87AD733.E4260468-ON8825797B.00708512-8825797B.0070B0A1@us.ibm.com>
+	<OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
+	<20120119134814.GA527@fieldses.org>
+Date: Thu, 19 Jan 2012 11:37:42 -0500
+Message-ID: <CAHVgHyVAvjdAzRUOmR2R-VMkwrBUn-U+ix5=veBmEYppQKtO=g@mail.gmail.com>
+Subject: Re: Linux pNFS status meeting 01/19/12
+From: Andy Adamson <androsadamson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Marc Eshel <eshel@almaden.ibm.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static rpcbind registering functions can be parametrized by network namespace
-pointer, calculated only once, instead of using init_net pointer (or taking it
-from current when virtualization will be comleted) in many places.
+I have a dentist appointment (teeth cleaning) at noon.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+-->Andy
 
----
- net/sunrpc/rpcb_clnt.c |   18 +++++++++---------
- 1 files changed, 9 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 3df276a..371d229 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -451,14 +451,14 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- /*
-  * Fill in AF_INET family-specific arguments to register
-  */
--static int rpcb_register_inet4(const struct sockaddr *sap,
-+static int rpcb_register_inet4(struct sunrpc_net *sn,
-+			       const struct sockaddr *sap,
- 			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin->sin_port);
- 	int result;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -479,14 +479,14 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- /*
-  * Fill in AF_INET6 family-specific arguments to register
-  */
--static int rpcb_register_inet6(const struct sockaddr *sap,
-+static int rpcb_register_inet6(struct sunrpc_net *sn,
-+			       const struct sockaddr *sap,
- 			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin6->sin6_port);
- 	int result;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -504,10 +504,10 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	return result;
- }
- 
--static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
-+static int rpcb_unregister_all_protofamilies(struct sunrpc_net *sn,
-+					     struct rpc_message *msg)
- {
- 	struct rpcbind_args *map = msg->rpc_argp;
--	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
- 		"local rpcbind\n",
-@@ -580,13 +580,13 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 		return -EPROTONOSUPPORT;
- 
- 	if (address == NULL)
--		return rpcb_unregister_all_protofamilies(&msg);
-+		return rpcb_unregister_all_protofamilies(sn, &msg);
- 
- 	switch (address->sa_family) {
- 	case AF_INET:
--		return rpcb_register_inet4(address, &msg);
-+		return rpcb_register_inet4(sn, address, &msg);
- 	case AF_INET6:
--		return rpcb_register_inet6(address, &msg);
-+		return rpcb_register_inet6(sn, address, &msg);
- 	}
- 
- 	return -EAFNOSUPPORT;
-
+On Thu, Jan 19, 2012 at 8:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Jan 18, 2012 at 01:00:30PM -0800, Marc Eshel wrote:
+>> Meeting on Thursday 01/19/12 at 9:30 AM PST (12:30 PM EST)
+>
+> Apologies, I'll miss this one.--b.
+>
+>>
+>>
+>> USA Toll-Free: 888-426-6840
+>> USA Caller Paid: 215-861-6239
+>>
+>> Israel Toll-Free: 1-809-417-783
+>>
+>> Participant Code: 8792872
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
