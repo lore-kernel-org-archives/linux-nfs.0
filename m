@@ -1,131 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9218 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:6180 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755942Ab2ASOuB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 09:50:01 -0500
-Subject: [PATCH 4/5] SUNRPC: ip map cache per network namespace cleanup
-To: Trond.Myklebust@netapp.com
+	id S932171Ab2ASQCK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 11:02:10 -0500
+Message-ID: <4F183E5D.2020609@parallels.com>
+Date: Thu, 19 Jan 2012 20:01:33 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 19 Jan 2012 18:49:31 +0400
-Message-ID: <20120119144931.9957.78601.stgit@localhost6.localdomain6>
-In-Reply-To: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Dr James Bruce Fields <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <1326986392.6114.1.camel@lade.trondhjem.org> <4F18376C.9090504@parallels.com> <20120119154731.GB527@fieldses.org>
+In-Reply-To: <20120119154731.GB527@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch converts ip_map_cache per network namespace implemenetation to the
-same view, as other caches done in the series.
-Besides generalization, code becomes shorter with this patch.
+19.01.2012 19:47, bfields@fieldses.org пишет:
+> On Thu, Jan 19, 2012 at 07:31:56PM +0400, Stanislav Kinsbursky wrote:
+>> 19.01.2012 19:19, Trond Myklebust пишет:
+>>> On Thu, 2012-01-19 at 18:48 +0400, Stanislav Kinsbursky wrote:
+>>>> One more step towards to "NFS in container".
+>>>> With this patch set caches are allocated per network namespace.
+>>>>
+>>>> The following series consists of:
+>>>>
+>>>> ---
+>>>>
+>>>> Stanislav Kinsbursky (5):
+>>>>        SUNRPC: cache creation and destruction routines introduced
+>>>>        SUNRPC: create unix gid cache per network namespace
+>>>>        SUNRPC: create GSS auth cache per network namespace
+>>>>        SUNRPC: ip map cache per network namespace cleanup
+>>>>        SUNRPC: generic cache register routines removed
+>>>
+>>> The patches look good, and I've applied them for now in my 'devel'
+>>> branch so we can test them, but I'd like to get an Ack/Nack from Bruce
+>>> before committing to merging them.
+>>>
+>>
+>> Cool, thanks.
+>> BTW, these patches depends on patch "NFSd: use
+>> network-namespace-aware cache registering routines", which Bruce
+>> took already (and it's even in linux-next already), but not in your
+>> devel tree for some reason.
+>
+> And Linus has pulled those, so if Trond bases his tree on -rc1, he'll
+> have "NFSd: use network-namespace-aware cache registering routines".
+>
+> You know best what you're planning to submit over the next cycle, and
+> what the dependencies are, and which side (client or server) it's likely
+> to touch more.  So, your choice, I think.  If necessary Trond and I can
+> probably do a merge between us at some point.
+>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Actually, I'm not going to patch NFSd in this cycle. Some more NFS and Lockd 
+patches will follow soon.
+So, probably, Trond's tree suits better.
 
----
- net/sunrpc/svcauth_unix.c |   71 +++++++++++++++++++--------------------------
- 1 files changed, 30 insertions(+), 41 deletions(-)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index c753ae4..0a50788 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -211,7 +211,7 @@ static int ip_map_parse(struct cache_detail *cd,
- 	len = qword_get(&mesg, buf, mlen);
- 	if (len <= 0) return -EINVAL;
- 
--	if (rpc_pton(&init_net, buf, len, &address.sa, sizeof(address)) == 0)
-+	if (rpc_pton(cd->net, buf, len, &address.sa, sizeof(address)) == 0)
- 		return -EINVAL;
- 	switch (address.sa.sa_family) {
- 	case AF_INET:
-@@ -875,56 +875,45 @@ struct auth_ops svcauth_unix = {
- 	.set_client	= svcauth_unix_set_client,
- };
- 
-+struct cache_detail ip_map_cache = {
-+	.owner		= THIS_MODULE,
-+	.hash_size	= IP_HASHMAX,
-+	.name		= "auth.unix.ip",
-+	.cache_put	= ip_map_put,
-+	.cache_upcall	= ip_map_upcall,
-+	.cache_parse	= ip_map_parse,
-+	.cache_show	= ip_map_show,
-+	.match		= ip_map_match,
-+	.init		= ip_map_init,
-+	.update		= update,
-+	.alloc		= ip_map_alloc,
-+};
-+
- int ip_map_cache_create(struct net *net)
- {
--	int err = -ENOMEM;
--	struct cache_detail *cd;
--	struct cache_head **tbl;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct cache_detail *cd;
-+	int err;
- 
--	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
--	if (cd == NULL)
--		goto err_cd;
--
--	tbl = kzalloc(IP_HASHMAX * sizeof(struct cache_head *), GFP_KERNEL);
--	if (tbl == NULL)
--		goto err_tbl;
--
--	cd->owner = THIS_MODULE,
--	cd->hash_size = IP_HASHMAX,
--	cd->hash_table = tbl,
--	cd->name = "auth.unix.ip",
--	cd->cache_put = ip_map_put,
--	cd->cache_upcall = ip_map_upcall,
--	cd->cache_parse = ip_map_parse,
--	cd->cache_show = ip_map_show,
--	cd->match = ip_map_match,
--	cd->init = ip_map_init,
--	cd->update = update,
--	cd->alloc = ip_map_alloc,
--
-+	cd = cache_create_net(&ip_map_cache, net);
-+	if (IS_ERR(cd))
-+		return PTR_ERR(cd);
- 	err = cache_register_net(cd, net);
--	if (err)
--		goto err_reg;
--
-+	if (err) {
-+		cache_destroy_net(cd, net);
-+		return err;
-+	}
- 	sn->ip_map_cache = cd;
- 	return 0;
--
--err_reg:
--	kfree(tbl);
--err_tbl:
--	kfree(cd);
--err_cd:
--	return err;
- }
- 
- void ip_map_cache_destroy(struct net *net)
- {
--	struct sunrpc_net *sn;
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct cache_detail *cd = sn->ip_map_cache;
- 
--	sn = net_generic(net, sunrpc_net_id);
--	cache_purge(sn->ip_map_cache);
--	cache_unregister_net(sn->ip_map_cache, net);
--	kfree(sn->ip_map_cache->hash_table);
--	kfree(sn->ip_map_cache);
-+	sn->ip_map_cache = NULL;
-+	cache_purge(cd);
-+	cache_unregister_net(cd, net);
-+	cache_destroy_net(cd, net);
- }
-
+-- 
+Best regards,
+Stanislav Kinsbursky
