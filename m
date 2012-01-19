@@ -1,51 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52845 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753494Ab2ALPUR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:20:17 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z25so2865171iab.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:20:16 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH-v2 4/9] pnfsblock: set read/write tk_status to pnfs_error
-Date: Thu, 12 Jan 2012 23:18:43 +0800
-Message-Id: <1326381528-2232-5-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:46218 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757027Ab2ASRKh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 12:10:37 -0500
+Message-ID: <4F184E70.5070902@parallels.com>
+Date: Thu, 19 Jan 2012 21:10:08 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 4/5] SUNRPC: ip map cache per network namespace cleanup
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <20120119144931.9957.78601.stgit@localhost6.localdomain6> <20120119163722.GE527@fieldses.org>
+In-Reply-To: <20120119163722.GE527@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To pass the IO status to upper layer.
+19.01.2012 20:37, J. Bruce Fields пишет:
+> On Thu, Jan 19, 2012 at 06:49:31PM +0400, Stanislav Kinsbursky wrote:
+>> This patch converts ip_map_cache per network namespace implemenetation to the
+>> same view, as other caches done in the series.
+>> Besides generalization, code becomes shorter with this patch.
+>
+> Again, isnt' it ip_map_cache, and not one of the dynamically created
+> cache details, that's being passed to the lookup routines?
+>
+> I may just be confused....
+>
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfs/blocklayout/blocklayout.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Nope. ip_map_cache was made per network namespace a long time ago.
+But it was done in other way: no static templates - just allocation and 
+initialization.
+But static template looks clearer to me. So I've used this approach for other 
+caches. And decided to update ip_map_cache management in the same way.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index c83ad70..883bb27 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -216,6 +216,7 @@ bl_end_par_io_read(void *data)
- {
- 	struct nfs_read_data *rdata = data;
- 
-+	rdata->task.tk_status = rdata->pnfs_error;
- 	INIT_WORK(&rdata->task.u.tk_work, bl_read_cleanup);
- 	schedule_work(&rdata->task.u.tk_work);
- }
-@@ -405,7 +406,7 @@ static void bl_end_par_io_write(void *data)
- {
- 	struct nfs_write_data *wdata = data;
- 
--	wdata->task.tk_status = 0;
-+	wdata->task.tk_status = wdata->pnfs_error;
- 	wdata->verf.committed = NFS_FILE_SYNC;
- 	INIT_WORK(&wdata->task.u.tk_work, bl_write_cleanup);
- 	schedule_work(&wdata->task.u.tk_work);
 -- 
-1.7.1.262.g5ef3d
-
+Best regards,
+Stanislav Kinsbursky
