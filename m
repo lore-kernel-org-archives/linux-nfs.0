@@ -1,60 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:48225 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751131Ab2AZMcA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 07:32:00 -0500
-Message-ID: <4F2147BA.6030607@itwm.fraunhofer.de>
-Date: Thu, 26 Jan 2012 13:31:54 +0100
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from fieldses.org ([174.143.236.118]:48702 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755948Ab2ASPrf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 10:47:35 -0500
+Date: Thu, 19 Jan 2012 10:47:31 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Dr James Bruce Fields <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
+Message-ID: <20120119154731.GB527@fieldses.org>
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+ <1326986392.6114.1.camel@lade.trondhjem.org>
+ <4F18376C.9090504@parallels.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: lsf-pc@lists.linux-foundation.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-In-Reply-To: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F18376C.9090504@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/17/2012 09:15 PM, Chuck Lever wrote:
-> Hi-
->
-> I know there is some work on ext4 regarding metadata corruption
-> detection; btrfs also has some corruption detection facilities.  The
-> IETF NFS working group is considering the addition of corruption
-> detection to the next NFSv4 minor version.  T10 has introduced
-> DIF/DIX.
->
-> I'm probably ignorant of the current state of implementation in
-> Linux, but I'm interested in understanding common ground among local
-> file systems, block storage, and network file systems.  Example
-> questions include:  Do we need standardized APIs for block device
-> corruption detection?  How much of T10 DIF/DIX should NFS support?
-> What are the drivers for this feature (broad use cases)?
->
+On Thu, Jan 19, 2012 at 07:31:56PM +0400, Stanislav Kinsbursky wrote:
+> 19.01.2012 19:19, Trond Myklebust пишет:
+> >On Thu, 2012-01-19 at 18:48 +0400, Stanislav Kinsbursky wrote:
+> >>One more step towards to "NFS in container".
+> >>With this patch set caches are allocated per network namespace.
+> >>
+> >>The following series consists of:
+> >>
+> >>---
+> >>
+> >>Stanislav Kinsbursky (5):
+> >>       SUNRPC: cache creation and destruction routines introduced
+> >>       SUNRPC: create unix gid cache per network namespace
+> >>       SUNRPC: create GSS auth cache per network namespace
+> >>       SUNRPC: ip map cache per network namespace cleanup
+> >>       SUNRPC: generic cache register routines removed
+> >
+> >The patches look good, and I've applied them for now in my 'devel'
+> >branch so we can test them, but I'd like to get an Ack/Nack from Bruce
+> >before committing to merging them.
+> >
+> 
+> Cool, thanks.
+> BTW, these patches depends on patch "NFSd: use
+> network-namespace-aware cache registering routines", which Bruce
+> took already (and it's even in linux-next already), but not in your
+> devel tree for some reason.
 
-Other network file systems such as Lustre already use their own network 
-data checksums. As far as I know Lustre plans (planned?) to use 
-underlying ZFS checksums also for network transfers, so real 
-client-to-disk (end-to-end) checksums. Using T10 DIF/DIX might be on 
-their todo list.
+And Linus has pulled those, so if Trond bases his tree on -rc1, he'll
+have "NFSd: use network-namespace-aware cache registering routines".
 
-We from the Fraunhofer FhGFS team would like to also see the T10 DIF/DIX 
-API exposed to user space, so that we could make use of it for our FhGFS 
-file system.
-And I think this feature is not only useful for file systems, but in 
-general, scientific applications, databases, etc also would benefit from 
-insurance of data integrity.
+You know best what you're planning to submit over the next cycle, and
+what the dependencies are, and which side (client or server) it's likely
+to touch more.  So, your choice, I think.  If necessary Trond and I can
+probably do a merge between us at some point.
 
+Either way, I'll go take a look at them now....--b.
 
-Cheers,
-Bernd
-
-
---
-Bernd Schubert
-Fraunhofer ITWM
+--b.
