@@ -1,96 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:35216 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752368Ab2AYLtE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 06:49:04 -0500
-Message-ID: <4F1FEBFD.5020804@panasas.com>
-Date: Wed, 25 Jan 2012 13:48:13 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:37209 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932608Ab2ASRnP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 12:43:15 -0500
+Subject: [PATCH v2 4/5] SUNRPC: ip map cache per network namespace cleanup
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 19 Jan 2012 21:42:45 +0400
+Message-ID: <20120119174245.23767.27061.stgit@localhost6.localdomain6>
+In-Reply-To: <20120119173823.23767.91876.stgit@localhost6.localdomain6>
+References: <20120119173823.23767.91876.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: <trond.myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode allocation
-References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/24/2012 07:40 PM, Jeff Layton wrote:
-> The debugobjects code will sometimes pop a warning like this when the
-> queue_timeout job is queued to a workqueue:
-> 
-> [ 5157.128514] WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
-> [ 5157.128742] Hardware name: Bochs
-> [ 5157.128742] ODEBUG: activate not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
-> [ 5157.128742] Modules linked in: nfsd(O) nfs_acl auth_rpcgss lockd sunrpc floppy virtio_net i2c_piix4 i2c_core virtio_balloon joydev pcspkr virtio_blk [last unloaded: nfsd]
-> [ 5157.128742] Pid: 1312, comm: rpc.nfsd Tainted: G        W  O 3.3.0-rc1+ #1
-> [ 5157.128742] Call Trace:
-> [ 5157.128742]  [<ffffffff8106135f>] warn_slowpath_common+0x7f/0xc0
-> [ 5157.128742]  [<ffffffff81061456>] warn_slowpath_fmt+0x46/0x50
-> [ 5157.128742]  [<ffffffff8132ba2c>] debug_print_object+0x8c/0xb0
-> [ 5157.128742]  [<ffffffff81070db0>] ? timer_debug_hint+0x10/0x10
-> [ 5157.128742]  [<ffffffff8132c02b>] debug_object_activate+0xfb/0x190
-> [ 5157.128742]  [<ffffffff81072728>] ? lock_timer_base.isra.24+0x38/0x70
-> [ 5157.128742]  [<ffffffff81074676>] mod_timer+0xf6/0x450
-> [ 5157.128742]  [<ffffffff810749e8>] add_timer+0x18/0x20
-> [ 5157.128742]  [<ffffffff8108168e>] queue_delayed_work_on+0xbe/0x140
-> [ 5157.128742]  [<ffffffff81084441>] queue_delayed_work+0x21/0x40
-> [ 5157.128742]  [<ffffffffa006e568>] rpc_queue_upcall+0xe8/0x100 [sunrpc]
-> [ 5157.128742]  [<ffffffffa012a121>] __cld_pipe_upcall+0x61/0xc0 [nfsd]
-> [ 5157.128742]  [<ffffffffa012ad98>] nfsd4_cld_init+0x48/0x140 [nfsd]
-> [ 5157.128742]  [<ffffffffa012b22a>] nfsd4_client_tracking_init+0x2a/0xc0 [nfsd]
-> [ 5157.128742]  [<ffffffff8169797e>] ? mutex_unlock+0xe/0x10
-> [ 5157.128742]  [<ffffffffa01266fa>] nfs4_state_start+0x1a/0x100 [nfsd]
-> [ 5157.128742]  [<ffffffffa01028c5>] nfsd_svc+0x135/0x200 [nfsd]
-> [ 5157.128742]  [<ffffffffa0103df0>] ? write_maxblksize+0x130/0x130 [nfsd]
-> [ 5157.128742]  [<ffffffffa0103e6d>] write_threads+0x7d/0xd0 [nfsd]
-> [ 5157.128742]  [<ffffffff811dd16a>] ? simple_transaction_get+0xca/0xe0
-> [ 5157.128742]  [<ffffffffa0102ee7>] nfsctl_transaction_write+0x57/0x90 [nfsd]
-> [ 5157.128742]  [<ffffffff811b4c9f>] vfs_write+0xaf/0x190
-> [ 5157.128742]  [<ffffffff811b4fdd>] sys_write+0x4d/0x90
-> [ 5157.128742]  [<ffffffff816a3469>] system_call_fastpath+0x16/0x1b
-> 
-> This occurs when an rpc_inode object is recycled. The slab constructor
-> routine doesn't necessarily get called on it again, so the debugobjects
-> code isn't aware that it's already initialized.
-> 
-> Work around this problem by initializing the delayed work every time
-> an inode is allocated out of the slab, not just when a new slab is.
-> 
-> Cc: Boaz Harrosh <bharrosh@panasas.com>
+This patch converts ip_map_cache per network namespace implemenetation to the
+same view, as other caches done in the series.
+Besides generalization, code becomes shorter with this patch.
 
-Looks good. I agree with this patch. It seems that's the way
-workqueues and the objects debugger where meant to be used.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Thanks
-Boaz
+---
+ net/sunrpc/svcauth_unix.c |   71 +++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 41 deletions(-)
 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/rpc_pipe.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index 63a7a7a..58e1dd1 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -178,6 +178,8 @@ rpc_alloc_inode(struct super_block *sb)
->  	rpci = (struct rpc_inode *)kmem_cache_alloc(rpc_inode_cachep, GFP_KERNEL);
->  	if (!rpci)
->  		return NULL;
-> +
-> +	INIT_DELAYED_WORK(&rpci->queue_timeout, rpc_timeout_upcall_queue);
->  	return &rpci->vfs_inode;
->  }
->  
-> @@ -1073,8 +1075,6 @@ init_once(void *foo)
->  	INIT_LIST_HEAD(&rpci->pipe);
->  	rpci->pipelen = 0;
->  	init_waitqueue_head(&rpci->waitq);
-> -	INIT_DELAYED_WORK(&rpci->queue_timeout,
-> -			    rpc_timeout_upcall_queue);
->  	rpci->ops = NULL;
->  }
->  
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index a6eef38..bcd574f 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -211,7 +211,7 @@ static int ip_map_parse(struct cache_detail *cd,
+ 	len = qword_get(&mesg, buf, mlen);
+ 	if (len <= 0) return -EINVAL;
+ 
+-	if (rpc_pton(&init_net, buf, len, &address.sa, sizeof(address)) == 0)
++	if (rpc_pton(cd->net, buf, len, &address.sa, sizeof(address)) == 0)
+ 		return -EINVAL;
+ 	switch (address.sa.sa_family) {
+ 	case AF_INET:
+@@ -876,56 +876,45 @@ struct auth_ops svcauth_unix = {
+ 	.set_client	= svcauth_unix_set_client,
+ };
+ 
++static struct cache_detail ip_map_cache_template = {
++	.owner		= THIS_MODULE,
++	.hash_size	= IP_HASHMAX,
++	.name		= "auth.unix.ip",
++	.cache_put	= ip_map_put,
++	.cache_upcall	= ip_map_upcall,
++	.cache_parse	= ip_map_parse,
++	.cache_show	= ip_map_show,
++	.match		= ip_map_match,
++	.init		= ip_map_init,
++	.update		= update,
++	.alloc		= ip_map_alloc,
++};
++
+ int ip_map_cache_create(struct net *net)
+ {
+-	int err = -ENOMEM;
+-	struct cache_detail *cd;
+-	struct cache_head **tbl;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct cache_detail *cd;
++	int err;
+ 
+-	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
+-	if (cd == NULL)
+-		goto err_cd;
+-
+-	tbl = kzalloc(IP_HASHMAX * sizeof(struct cache_head *), GFP_KERNEL);
+-	if (tbl == NULL)
+-		goto err_tbl;
+-
+-	cd->owner = THIS_MODULE,
+-	cd->hash_size = IP_HASHMAX,
+-	cd->hash_table = tbl,
+-	cd->name = "auth.unix.ip",
+-	cd->cache_put = ip_map_put,
+-	cd->cache_upcall = ip_map_upcall,
+-	cd->cache_parse = ip_map_parse,
+-	cd->cache_show = ip_map_show,
+-	cd->match = ip_map_match,
+-	cd->init = ip_map_init,
+-	cd->update = update,
+-	cd->alloc = ip_map_alloc,
+-
++	cd = cache_create_net(&ip_map_cache_template, net);
++	if (IS_ERR(cd))
++		return PTR_ERR(cd);
+ 	err = cache_register_net(cd, net);
+-	if (err)
+-		goto err_reg;
+-
++	if (err) {
++		cache_destroy_net(cd, net);
++		return err;
++	}
+ 	sn->ip_map_cache = cd;
+ 	return 0;
+-
+-err_reg:
+-	kfree(tbl);
+-err_tbl:
+-	kfree(cd);
+-err_cd:
+-	return err;
+ }
+ 
+ void ip_map_cache_destroy(struct net *net)
+ {
+-	struct sunrpc_net *sn;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct cache_detail *cd = sn->ip_map_cache;
+ 
+-	sn = net_generic(net, sunrpc_net_id);
+-	cache_purge(sn->ip_map_cache);
+-	cache_unregister_net(sn->ip_map_cache, net);
+-	kfree(sn->ip_map_cache->hash_table);
+-	kfree(sn->ip_map_cache);
++	sn->ip_map_cache = NULL;
++	cache_purge(cd);
++	cache_unregister_net(cd, net);
++	cache_destroy_net(cd, net);
+ }
 
