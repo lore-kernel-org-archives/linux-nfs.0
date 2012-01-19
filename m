@@ -1,91 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17502 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:13256 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755807Ab2AYNrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 08:47:52 -0500
-Subject: [PATCH 4/4] SUNRPC: service shutdown function in network namespace
- context introduced
-To: Trond.Myklebust@netapp.com
+	id S932613Ab2ASRw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 12:52:29 -0500
+Message-ID: <4F18583F.1000209@parallels.com>
+Date: Thu, 19 Jan 2012 21:51:59 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 25 Jan 2012 17:47:34 +0400
-Message-ID: <20120125134734.13662.40246.stgit@localhost6.localdomain6>
-In-Reply-To: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
-References: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 3/5] SUNRPC: create GSS auth cache per network namespace
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <20120119144922.9957.39352.stgit@localhost6.localdomain6> <20120119163149.GD527@fieldses.org> <4F184D28.3030207@parallels.com> <20120119174002.GA2907@fieldses.org>
+In-Reply-To: <20120119174002.GA2907@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is enough for releasing resources, allocated for network
-namespace context, in case of sharing service between them.
-IOW, each service "user" (LockD, NFSd, etc), which wants to share service
-between network namespaces, have to release related resources by the function,
-introduced in this patch, instead of performing service shutdown (of course in
-case the service is shared already to the moment of release).
+19.01.2012 21:40, J. Bruce Fields пишет:
+> On Thu, Jan 19, 2012 at 09:04:40PM +0400, Stanislav Kinsbursky wrote:
+>> 19.01.2012 20:31, J. Bruce Fields пишет:
+>>> On Thu, Jan 19, 2012 at 06:49:23PM +0400, Stanislav Kinsbursky wrote:
+>>>> @@ -1000,6 +996,7 @@ static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
+>>>>   	struct xdr_netobj tmpobj;
+>>>>   	struct rsi *rsip, rsikey;
+>>>>   	int ret;
+>>>> +	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
+>>>
+>>> OK, so you're getting the network namespace out of the rqstp, and, then
+>>> passing it down, makes sense.  And:
+>>>
+>>>> @@ -1079,6 +1076,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+>>>>   	__be32		*rpcstart;
+>>>>   	__be32		*reject_stat = resv->iov_base + resv->iov_len;
+>>>>   	int		ret;
+>>>> +	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
+>>>
+>>> ... same for the gss cache.  Looks good.
+>>>
+>>> How do you plan to test this?
+>>>
+>>
+>> Do you mean something special or in general?
+>> Currently I validate all my chages in container by using simple test environment.
+>> I would be appreciate for any hints to tests, than can help.
+>
+> The server needs to be tested after these changes, and we need to make
+> sure the caches affected still work.
+>
+> (I suspect the gid cache code will oops if it's used after these
+> patches, since the table is left NULl?)
+>
+> And then we should also test in a container environment, with different
+> instances of mountd and rpc.svcidmapd running in each container, to
+> verify that the right thing happens.
+>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Ok. I'll test server with 2-nd version of these patches tomorrow and reply with 
+the results.
+Thanks, Bruce.
 
----
- net/sunrpc/svc.c |   33 ++++++++++++++++++++-------------
- 1 files changed, 20 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 279bbd8..3adfd26 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -510,6 +510,24 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
- }
- EXPORT_SYMBOL_GPL(svc_create_pooled);
- 
-+void svc_shutdown_net(struct svc_serv *serv, struct net *net)
-+{
-+	/*
-+	 * The set of xprts (contained in the sv_tempsocks and
-+	 * sv_permsocks lists) is now constant, since it is modified
-+	 * only by accepting new sockets (done by service threads in
-+	 * svc_recv) or aging old ones (done by sv_temptimer), or
-+	 * configuration changes (excluded by whatever locking the
-+	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
-+	 * safe to traverse those lists and shut everything down:
-+	 */
-+	svc_close_net(serv, net);
-+
-+	if (serv->sv_shutdown)
-+		serv->sv_shutdown(serv, net);
-+}
-+EXPORT_SYMBOL_GPL(svc_shutdown_net);
-+
- /*
-  * Destroy an RPC service. Should be called with appropriate locking to
-  * protect the sv_nrthreads, sv_permsocks and sv_tempsocks.
-@@ -532,23 +550,12 @@ svc_destroy(struct svc_serv *serv)
- 		printk("svc_destroy: no threads for serv=%p!\n", serv);
- 
- 	del_timer_sync(&serv->sv_temptimer);
--	/*
--	 * The set of xprts (contained in the sv_tempsocks and
--	 * sv_permsocks lists) is now constant, since it is modified
--	 * only by accepting new sockets (done by service threads in
--	 * svc_recv) or aging old ones (done by sv_temptimer), or
--	 * configuration changes (excluded by whatever locking the
--	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
--	 * safe to traverse those lists and shut everything down:
--	 */
--	svc_close_net(serv, net);
-+
-+	svc_shutdown_net(serv, net);
- 
- 	BUG_ON(!list_empty(&serv->sv_permsocks));
- 	BUG_ON(!list_empty(&serv->sv_tempsocks));
- 
--	if (serv->sv_shutdown)
--		serv->sv_shutdown(serv, net);
--
- 	cache_clean_deferred(serv);
- 
- 	if (svc_serv_is_pooled(serv))
-
+-- 
+Best regards,
+Stanislav Kinsbursky
