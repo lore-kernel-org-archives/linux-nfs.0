@@ -1,59 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:40090 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757085Ab2ADWH0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 17:07:26 -0500
-Subject: Re: [PATCH] NFS: Fix a few issues with cached state owners
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1325714612.25276.1.camel@lade.trondhjem.org>
-Date: Wed, 4 Jan 2012 17:07:21 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <C0783437-7D8F-4A45-913A-B49692D37AC2@oracle.com>
-References: <1325697256.18462.24.camel@lade.trondhjem.org> <1325713927-25519-1-git-send-email-Trond.Myklebust@netapp.com> <BB6B1D30-BEA3-402E-BF77-1C21F182C46F@oracle.com> <A9614C89-6666-420F-B945-B5C879034086@oracle.com> <1325714612.25276.1.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:21484 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753091Ab2ASPG1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 10:06:27 -0500
+Subject: [PATCH] NFS: decode destination address in proper network namespace
+ context
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 19 Jan 2012 19:05:57 +0400
+Message-ID: <20120119150553.16860.77882.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch replaces "init_net" with NFS client's owner net in rpc_pton() call
+in decode_ds_addr().
 
-On Jan 4, 2012, at 5:03 PM, Trond Myklebust wrote:
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-> On Wed, 2012-01-04 at 16:58 -0500, Chuck Lever wrote: 
->> On Jan 4, 2012, at 4:56 PM, Chuck Lever wrote:
->> 
->>> 
->>> On Jan 4, 2012, at 4:52 PM, Trond Myklebust wrote:
->>> 
->>>> The garbage collector needs to remove the entry from the lru list
->>>> _and_ the red-black tree atomically in order avoid races in
->>>> nfs4_get_state_owner.
->>>> 
->>>> Fix a case in nfs4_get_state_owner in which the garbage-collector
->>>> list was being manipulated while not holding the appropriate spin
->>>> lock.
->>>> 
->>>> nfs4_drop_state_owner doesn't need to look at sp->so_lru: the caller
->>>> must have a reference to the state owner, so it can't be on the
->>>> garbage-collection list.
->>>> 
->>>> Run the garbage collector _after_ we've looked up the state owner
->>>> for efficiency reasons.
->>>> 
->>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>> 
->>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
->> 
->> You might consider squashing this with my patch.  The list_del_init() outside the cl_lock is enough to warrant it.
-> 
-> Sure, as long as you're fine with that.
+---
+ fs/nfs/nfs4filelayoutdev.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-Usually I like to see who did what, but I think this should be one patch for better bisecting behavior and to make it easy for distributors to find and apply this fix.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 0d8b952..6eb59b0 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -378,7 +378,7 @@ out:
+  * Currently only supports ipv4, ipv6 and one multi-path address.
+  */
+ static struct nfs4_pnfs_ds_addr *
+-decode_ds_addr(struct xdr_stream *streamp, gfp_t gfp_flags)
++decode_ds_addr(struct net *net, struct xdr_stream *streamp, gfp_t gfp_flags)
+ {
+ 	struct nfs4_pnfs_ds_addr *da = NULL;
+ 	char *buf, *portstr;
+@@ -457,7 +457,7 @@ decode_ds_addr(struct xdr_stream *streamp, gfp_t gfp_flags)
+ 
+ 	INIT_LIST_HEAD(&da->da_node);
+ 
+-	if (!rpc_pton(&init_net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
++	if (!rpc_pton(net, buf, portstr-buf, (struct sockaddr *)&da->da_addr,
+ 		      sizeof(da->da_addr))) {
+ 		dprintk("%s: error parsing address %s\n", __func__, buf);
+ 		goto out_free_da;
+@@ -625,7 +625,8 @@ decode_device(struct inode *ino, struct pnfs_device *pdev, gfp_t gfp_flags)
+ 
+ 		mp_count = be32_to_cpup(p); /* multipath count */
+ 		for (j = 0; j < mp_count; j++) {
+-			da = decode_ds_addr(&stream, gfp_flags);
++			da = decode_ds_addr(NFS_SERVER(ino)->nfs_client->net,
++					    &stream, gfp_flags);
+ 			if (da)
+ 				list_add_tail(&da->da_node, &dsaddrs);
+ 		}
 
