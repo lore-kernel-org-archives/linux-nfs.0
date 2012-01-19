@@ -1,102 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50516 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:46621 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932675Ab2AXCr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jan 2012 21:47:29 -0500
-Message-Id: <20120124023930.111927471@clark.kroah.org>
-Date: Mon, 23 Jan 2012 18:34:50 -0800
-From: Greg KH <gregkh@suse.de>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        alan@lxorguk.ukuu.org.uk, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        Sasha Levin <levinsasha928@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [070/129] nfsd: Fix oops when parsing a 0 length export
-In-Reply-To: <20120124024041.GA18422@kroah.com>
+	id S932148Ab2ASPnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 10:43:55 -0500
+Message-ID: <4F183A1A.1050208@parallels.com>
+Date: Thu, 19 Jan 2012 19:43:22 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Dr James Bruce Fields <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6> <1326986392.6114.1.camel@lade.trondhjem.org> <4F18376C.9090504@parallels.com> <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE01EE4@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE01EE4@SACMVEXC2-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-3.2-stable review patch.  If anyone has any objections, please let me know.
+19.01.2012 19:34, Myklebust, Trond пишет:
+>> -----Original Message-----
+>> From: Stanislav Kinsbursky [mailto:skinsbursky@parallels.com]
+>> Sent: Thursday, January 19, 2012 10:32 AM
+>> To: Myklebust, Trond
+>> Cc: Dr James Bruce Fields; linux-nfs@vger.kernel.org; Pavel Emelianov;
+>> neilb@suse.de; netdev@vger.kernel.org; linux-kernel@vger.kernel.org;
+>> James Bottomley; bfields@fieldses.org; davem@davemloft.net;
+>> devel@openvz.org
+>> Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
+>>
+>> 19.01.2012 19:19, Trond Myklebust пишет:
+>>> On Thu, 2012-01-19 at 18:48 +0400, Stanislav Kinsbursky wrote:
+>>>> One more step towards to "NFS in container".
+>>>> With this patch set caches are allocated per network namespace.
+>>>>
+>>>> The following series consists of:
+>>>>
+>>>> ---
+>>>>
+>>>> Stanislav Kinsbursky (5):
+>>>>         SUNRPC: cache creation and destruction routines introduced
+>>>>         SUNRPC: create unix gid cache per network namespace
+>>>>         SUNRPC: create GSS auth cache per network namespace
+>>>>         SUNRPC: ip map cache per network namespace cleanup
+>>>>         SUNRPC: generic cache register routines removed
+>>>
+>>> The patches look good, and I've applied them for now in my 'devel'
+>>> branch so we can test them, but I'd like to get an Ack/Nack from Bruce
+>>> before committing to merging them.
+>>>
+>>
+>> Cool, thanks.
+>> BTW, these patches depends on patch "NFSd: use network-namespace-
+>> aware cache registering routines", which Bruce took already (and it's even in
+>> linux-next already), but not in your devel tree for some reason.
+>
+> In that case, would it make more sense to carry them in Bruce's tree?
+>
 
-------------------
-Content-Length: 3820
-Lines: 76
-
-From: Sasha Levin <levinsasha928@gmail.com>
-
-commit b2ea70afade7080360ac55c4e64ff7a5fafdb67b upstream.
-
-expkey_parse() oopses when handling a 0 length export. This is easily
-triggerable from usermode by writing 0 bytes into
-'/proc/[proc id]/net/rpc/nfsd.fh/channel'.
-
-Below is the log:
-
-[ 1402.286893] BUG: unable to handle kernel paging request at ffff880077c49fff
-[ 1402.287632] IP: [<ffffffff812b4b99>] expkey_parse+0x28/0x2e1
-[ 1402.287632] PGD 2206063 PUD 1fdfd067 PMD 1ffbc067 PTE 8000000077c49160
-[ 1402.287632] Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-[ 1402.287632] CPU 1
-[ 1402.287632] Pid: 20198, comm: trinity Not tainted 3.2.0-rc2-sasha-00058-gc65cd37 #6
-[ 1402.287632] RIP: 0010:[<ffffffff812b4b99>]  [<ffffffff812b4b99>] expkey_parse+0x28/0x2e1
-[ 1402.287632] RSP: 0018:ffff880077f0fd68  EFLAGS: 00010292
-[ 1402.287632] RAX: ffff880077c49fff RBX: 00000000ffffffea RCX: 0000000001043400
-[ 1402.287632] RDX: 0000000000000000 RSI: ffff880077c4a000 RDI: ffffffff82283de0
-[ 1402.287632] RBP: ffff880077f0fe18 R08: 0000000000000001 R09: ffff880000000000
-[ 1402.287632] R10: 0000000000000000 R11: 0000000000000001 R12: ffff880077c4a000
-[ 1402.287632] R13: ffffffff82283de0 R14: 0000000001043400 R15: ffffffff82283de0
-[ 1402.287632] FS:  00007f25fec3f700(0000) GS:ffff88007d400000(0000) knlGS:0000000000000000
-[ 1402.287632] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1402.287632] CR2: ffff880077c49fff CR3: 0000000077e1d000 CR4: 00000000000406e0
-[ 1402.287632] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[ 1402.287632] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[ 1402.287632] Process trinity (pid: 20198, threadinfo ffff880077f0e000, task ffff880077db17b0)
-[ 1402.287632] Stack:
-[ 1402.287632]  ffff880077db17b0 ffff880077c4a000 ffff880077f0fdb8 ffffffff810b411e
-[ 1402.287632]  ffff880000000000 ffff880077db17b0 ffff880077c4a000 ffffffff82283de0
-[ 1402.287632]  0000000001043400 ffffffff82283de0 ffff880077f0fde8 ffffffff81111f63
-[ 1402.287632] Call Trace:
-[ 1402.287632]  [<ffffffff810b411e>] ? lock_release+0x1af/0x1bc
-[ 1402.287632]  [<ffffffff81111f63>] ? might_fault+0x97/0x9e
-[ 1402.287632]  [<ffffffff81111f1a>] ? might_fault+0x4e/0x9e
-[ 1402.287632]  [<ffffffff81a8bcf2>] cache_do_downcall+0x3e/0x4f
-[ 1402.287632]  [<ffffffff81a8c950>] cache_write.clone.16+0xbb/0x130
-[ 1402.287632]  [<ffffffff81a8c9df>] ? cache_write_pipefs+0x1a/0x1a
-[ 1402.287632]  [<ffffffff81a8c9f8>] cache_write_procfs+0x19/0x1b
-[ 1402.287632]  [<ffffffff8118dc54>] proc_reg_write+0x8e/0xad
-[ 1402.287632]  [<ffffffff8113fe81>] vfs_write+0xaa/0xfd
-[ 1402.287632]  [<ffffffff8114142d>] ? fget_light+0x35/0x9e
-[ 1402.287632]  [<ffffffff8113ff8b>] sys_write+0x48/0x6f
-[ 1402.287632]  [<ffffffff81bbdb92>] system_call_fastpath+0x16/0x1b
-[ 1402.287632] Code: c0 c9 c3 55 48 63 d2 48 89 e5 48 8d 44 32 ff 41 57 41 56 41 55 41 54 53 bb ea ff ff ff 48 81 ec 88 00 00 00 48 89 b5 58 ff ff ff
-[ 1402.287632]  38 0a 0f 85 89 02 00 00 c6 00 00 48 8b 3d 44 4a e5 01 48 85
-[ 1402.287632] RIP  [<ffffffff812b4b99>] expkey_parse+0x28/0x2e1
-[ 1402.287632]  RSP <ffff880077f0fd68>
-[ 1402.287632] CR2: ffff880077c49fff
-[ 1402.287632] ---[ end trace 368ef53ff773a5e3 ]---
-
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/nfsd/export.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -87,7 +87,7 @@ static int expkey_parse(struct cache_det
- 	struct svc_expkey key;
- 	struct svc_expkey *ek = NULL;
- 
--	if (mesg[mlen-1] != '\n')
-+	if (mlen < 1 || mesg[mlen-1] != '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
- 
+It's up to you, of course.  But, frankly, I don't think so.
+To be more precise, only the last patch ("SUNRPC: generic cache register 
+routines removed") depends on the patch, which is in linux-next already. IOW, 
+those patch removed NFSd dependence on cache_register() and cache_unregister() 
+routines and was commited to linux-next at Wed, 7 Dec 2011.
 
 
+-- 
+Best regards,
+Stanislav Kinsbursky
