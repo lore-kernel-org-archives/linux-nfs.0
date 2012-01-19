@@ -1,172 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7548 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751722Ab2AZMrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 07:47:53 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0QClr8r007254
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 07:47:53 -0500
-Message-ID: <4F214B77.8050300@RedHat.com>
-Date: Thu, 26 Jan 2012 07:47:51 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:59525 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751545Ab2ASRXS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2012 12:23:18 -0500
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 19 Jan 2012 10:23:14 -0700
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 03855C90102
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 12:21:58 -0500 (EST)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0JHLurj285534
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 12:21:56 -0500
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0JHLgRU027086
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 10:21:42 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0JHLgBg027035
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2012 10:21:42 -0700
+Date: Thu, 19 Jan 2012 11:21:39 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 and high-availability
+Message-ID: <20120119172139.GA3048@us.ibm.com>
+References: <20120119135044.GS10362@ics.muni.cz>
+ <201201191552.30691.misch@schwartzkopff.org>
+ <20120119154951.GV10362@ics.muni.cz>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and recreated
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>	<1327348931-785-10-git-send-email-jlayton@redhat.com>	<4F2046F8.80609@RedHat.com>	<20120125140954.5312a80f@tlielax.poochiereds.net>	<4F20587E.9070209@RedHat.com>	<20120125152814.391ae064@tlielax.poochiereds.net>	<4F207C7C.4090207@RedHat.com> <20120125183206.5efcd845@corrin.poochiereds.net>
-In-Reply-To: <20120125183206.5efcd845@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120119154951.GV10362@ics.muni.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 01/25/2012 06:32 PM, Jeff Layton wrote:
-> On Wed, 25 Jan 2012 17:04:44 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
+Lukas Hejtmanek [xhejtman@ics.muni.cz] wrote:
+> On Thu, Jan 19, 2012 at 03:52:30PM +0100, Michael Schwartzkopff wrote:
+> > Yes. You can setup a NFSv4 cluster using a cluster manager like pacemaker.
+> > 
+> > Last time I set it up there were some issues with locking and timeouts. I 
+> > don't know if this is already fixed. I'd have to try it myself again.
 > 
->>
->>
->> On 01/25/2012 03:28 PM, Jeff Layton wrote:
->>> On Wed, 25 Jan 2012 14:31:10 -0500
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 01/25/2012 02:09 PM, Jeff Layton wrote:
->>>>> On Wed, 25 Jan 2012 13:16:24 -0500
->>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>>> Hey Jeff,
->>>>>>
->>>>>> Commit inline... 
->>>>>>
->>>>>> On 01/23/2012 03:02 PM, Jeff Layton wrote:
->>>>>>> This can happen if nfsd is shut down and restarted. If that occurs,
->>>>>>> then reopen the pipe so we're not waiting for data on the defunct
->>>>>>> pipe.
->>>>>>>
->>>>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>>>>>> ---
->>>>>>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
->>>>>>>  1 files changed, 74 insertions(+), 10 deletions(-)
->>>>>>>
->>>>>>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
->>>>>>> index b0c08e2..0dc5b37 100644
->>>>>>> --- a/utils/nfsdcld/nfsdcld.c
->>>>>>> +++ b/utils/nfsdcld/nfsdcld.c
->>>>>>> @@ -57,6 +57,8 @@ struct cld_client {
->>>>>>>  
->>>>>>>  /* global variables */
->>>>>>>  static char *pipepath = DEFAULT_CLD_PATH;
->>>>>>> +static int 		inotify_fd = -1;
->>>>>>> +static struct event	pipedir_event;
->>>>>>>  
->>>>>>>  static struct option longopts[] =
->>>>>>>  {
->>>>>>> @@ -68,8 +70,10 @@ static struct option longopts[] =
->>>>>>>  	{ NULL, 0, 0, 0 },
->>>>>>>  };
->>>>>>>  
->>>>>>> +
->>>>>>>  /* forward declarations */
->>>>>>>  static void cldcb(int UNUSED(fd), short which, void *data);
->>>>>>> +static void cld_pipe_reopen(struct cld_client *clnt);
->>>>>>>  
->>>>>>>  static void
->>>>>>>  usage(char *progname)
->>>>>>> @@ -80,10 +84,62 @@ usage(char *progname)
->>>>>>>  
->>>>>>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
->>>>>>>  
->>>>>>> +static void
->>>>>>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
->>>>>>> +{
->>>>>>> +	int ret, oldfd;
->>>>>>> +	char evbuf[INOTIFY_EVENT_MAX];
->>>>>>> +	char *dirc = NULL, *pname;
->>>>>>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
->>>>>>> +	struct cld_client *clnt = data;
->>>>>>> +
->>>>>>> +	if (which != EV_READ)
->>>>>>> +		return;
->>>>>>> +
->>>>>>> +	dirc = strndup(pipepath, PATH_MAX);
->>>>>>> +	if (!dirc) {
->>>>>>> +		xlog_err("%s: unable to allocate memory", __func__);
->>>>>>> +		goto out;
->>>>>>> +	}
->>>>>>> +
->>>>>>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
->>>>>>> +	if (ret < 0) {
->>>>>>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
->>>>>>> +		goto out;
->>>>>>> +	}
->>>>>>> +
->>>>>>> +	/* check to see if we have a filename in the evbuf */
->>>>>>> +	if (!event->len)
->>>>>>> +		goto out;
->>>>>>> +
->>>>>>> +	pname = basename(dirc);
->>>>>>> +
->>>>>>> +	/* does the filename match our pipe? */
->>>>>>> +	if (strncmp(pname, event->name, event->len))
->>>>>>> +		goto out;
->>>>>>> +
->>>>>>> +	/*
->>>>>>> +	 * reopen the pipe. The old fd is not closed until the new one is
->>>>>>> +	 * opened, so we know they should be different if the reopen is
->>>>>>> +	 * successful.
->>>>>>> +	 */
->>>>>>> +	oldfd = clnt->cl_fd;
->>>>>>> +	do {
->>>>>>> +		cld_pipe_reopen(clnt);
->>>>>>> +	} while (oldfd == clnt->cl_fd);
->>>>>> Doesn't this have a potential for an infinite loop? 
->>>>>>
->>>>>> steved.  
->>>>>
->>>>>
->>>>> Yes. If reopening the new pipe continually fails then it will loop
->>>>> forever.
->>>> Would it be more accurate to say it would be spinning forever? 
->>>> Since there is no sleep or delay in cld_pipe_reopen, what's
->>>> going to stop the daemon from spinning in a CPU bound loop?
->>>>
->>>
->>> Well, not spinning in a userspace loop...it'll continually be cycling on
->>> an open() call that's not working for whatever reason. We sort of have
->>> to loop on that though. I think the best we can do is add a sleep(1) in
->>> there or something. Would that be sufficient?
->>>
->> I still think it going to needlessly suck up CPU cycles... 
->>
->> The way I handled this in the rpc.idmapd daemon was to do the
->> reopen on a SIGHUP signal. Then in NFS server initscript 
->> I did the following:
->>     /usr/bin/pkill -HUP rpc.idmapd
->>
->> Thoughts?
->>
-> 
-> Ugh, that requires manual intervention if the pipe is removed and
-> recreated. If someone restarts nfsd and doesn't send the signal, then
-> they won't get the upcalls. I'd prefer something that "just works".
-I have not seen any bz open saying rpc.idmapd doesn't just work... 
+> but this seems to be the mentioned server side HA mode. But can I move running
+> client to another server (with anoter different IP)?
 
-> 
-> Seriously, is it that big a deal to just loop here? One open(2) call
-> every second doesn't seem that bad, and honestly if a new pipe pops up
-> and the daemon can't open it then a few CPU cycles is the least of your
-> worries.
-> 
-Put the daemon in that loop and then run the top command in another 
-window.. If the daemon is at the top of the list then it is a big
-deal because that daemon will on the top forever for no reason, in
-the cast of the NFS server not coming back. 
-
-tia,
-
-steved.
+Not possible today. There are some patches out there for migration but
+you will have to wait until some current problems with migration are
+resolved and the solution gets accepted upstream.
 
