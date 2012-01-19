@@ -1,48 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:41869 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751985Ab2A1QwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jan 2012 11:52:11 -0500
-Received: by vcbgb30 with SMTP id gb30so1857689vcb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Jan 2012 08:52:10 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:33769 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753300Ab2ASOtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 09:49:43 -0500
+Subject: [PATCH 1/5] SUNRPC: cache creation and destruction routines introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 19 Jan 2012 18:49:06 +0400
+Message-ID: <20120119144906.9957.59183.stgit@localhost6.localdomain6>
+In-Reply-To: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-In-Reply-To: <4F201D30.8010606@panasas.com>
-References: <CAG+vHK+OUSdEc5L=_oeq4Y9iwseusspPTG=jwUvoOQd5587O9Q@mail.gmail.com>
-	<20120125143449.GB17873@fieldses.org>
-	<4F201D30.8010606@panasas.com>
-Date: Sat, 28 Jan 2012 17:52:10 +0100
-Message-ID: <CAG+vHKJ2SLE+ertiPHLU48TP-xxQdyx+VJ3nS-oT70EYYPp7Aw@mail.gmail.com>
-Subject: Re: NFSv4 - Linux server, FreeBSD client
-From: "J. von Balzac" <jhm.balzac@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+This patch prepares infrastructure for network namespace aware cache detail
+allocation.
+One note about adding network namespace link to cache structure. It's going to
+be used later in NFS DNS cache parsing routine (nfs_dns_parse for rpc_pton()
+call).
 
-It's not like we've known each other for very long hehe but i am
-deleting this Google account, screw them and screw their privacy
-issues.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-So just FYI. I'll report back with some other account.
+---
+ include/linux/sunrpc/cache.h |    4 ++++
+ net/sunrpc/cache.c           |   26 ++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 0 deletions(-)
 
-On 25 January 2012 16:18, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 01/25/2012 04:34 PM, J. Bruce Fields wrote:
->> Also, "fsid=0" tricks aren't necessary any more: if you just leave out
->> that line, then v4 clients will be able to mount /exp/freebsd/* just as
->> v2/v3 clients would.
->>
->
-> I suspected this, but have been using fsid=0 since forever and the :/ mounts.
-> I'll check it out
->
-> I know it's not your expertise, but is it also true for pnfs. (Benny's tree)
-> Or like before pnfs export must have the fsid=0 set?
->
-> What about multiple SBs / FSs exporting pnfs should that work? I guess I should
-> try it.
->
-> Thanks
-> Boaz
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 590a8ab..259381c 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -117,6 +117,7 @@ struct cache_detail {
+ 		struct cache_detail_procfs procfs;
+ 		struct cache_detail_pipefs pipefs;
+ 	} u;
++	struct net		*net;
+ };
+ 
+ 
+@@ -202,6 +203,9 @@ extern int cache_register_net(struct cache_detail *cd, struct net *net);
+ extern void cache_unregister(struct cache_detail *cd);
+ extern void cache_unregister_net(struct cache_detail *cd, struct net *net);
+ 
++extern struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net);
++extern void cache_destroy_net(struct cache_detail *cd, struct net *net);
++
+ extern void sunrpc_init_cache_detail(struct cache_detail *cd);
+ extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
+ extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index f128154..9ef5926 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1662,6 +1662,32 @@ void cache_unregister(struct cache_detail *cd)
+ }
+ EXPORT_SYMBOL_GPL(cache_unregister);
+ 
++struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
++{
++	struct cache_detail *cd;
++
++	cd = kmemdup(tmpl, sizeof(struct cache_detail), GFP_KERNEL);
++	if (cd == NULL)
++		return ERR_PTR(-ENOMEM);
++
++	cd->hash_table = kzalloc(cd->hash_size * sizeof(struct cache_head *),
++				 GFP_KERNEL);
++	if (cd->hash_table == NULL) {
++		kfree(cd);
++		return ERR_PTR(-ENOMEM);
++	}
++	cd->net = net;
++	return cd;
++}
++EXPORT_SYMBOL_GPL(cache_create_net);
++
++void cache_destroy_net(struct cache_detail *cd, struct net *net)
++{
++	kfree(cd->hash_table);
++	kfree(cd);
++}
++EXPORT_SYMBOL_GPL(cache_destroy_net);
++
+ static ssize_t cache_read_pipefs(struct file *filp, char __user *buf,
+ 				 size_t count, loff_t *ppos)
+ {
+
