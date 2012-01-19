@@ -1,107 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58998 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932746Ab2AMULZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:25 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 26/44] NFS: Create an idr_lock to protect the cb_idr
-Date: Fri, 13 Jan 2012 15:10:35 -0500
-Message-Id: <1326485453-1350-27-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+	id S1751033Ab2ASQh0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 11:37:26 -0500
+Date: Thu, 19 Jan 2012 11:37:22 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH 4/5] SUNRPC: ip map cache per network namespace cleanup
+Message-ID: <20120119163722.GE527@fieldses.org>
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+ <20120119144931.9957.78601.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120119144931.9957.78601.stgit@localhost6.localdomain6>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Jan 19, 2012 at 06:49:31PM +0400, Stanislav Kinsbursky wrote:
+> This patch converts ip_map_cache per network namespace implemenetation to the
+> same view, as other caches done in the series.
+> Besides generalization, code becomes shorter with this patch.
 
-I eventually plan to move the code protecting the cb_ident_idr to a file
-in the nfs4/ directory.  This patch creates a new lock to prepare for
-the move.
+Again, isnt' it ip_map_cache, and not one of the dynamically created
+cache details, that's being passed to the lookup routines?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c |   26 +++++++++++++++-----------
- 1 files changed, 15 insertions(+), 11 deletions(-)
+I may just be confused....
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 998c3be..dc10b2e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -61,7 +61,8 @@ static LIST_HEAD(nfs_client_list);
- static LIST_HEAD(nfs_volume_list);
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
- #ifdef CONFIG_NFS_V4
--static DEFINE_IDR(cb_ident_idr); /* Protected by nfs_client_lock */
-+static DEFINE_SPINLOCK(nfs_idr_lock);
-+static DEFINE_IDR(cb_ident_idr); /* Protected by nfs_idr_lock */
- 
- /*
-  * Get a unique NFSv4.0 callback identifier which will be used
-@@ -76,9 +77,9 @@ static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
- retry:
- 	if (!idr_pre_get(&cb_ident_idr, GFP_KERNEL))
- 		return -ENOMEM;
--	spin_lock(&nfs_client_lock);
-+	spin_lock(&nfs_idr_lock);
- 	ret = idr_get_new(&cb_ident_idr, clp, &clp->cl_cb_ident);
--	spin_unlock(&nfs_client_lock);
-+	spin_unlock(&nfs_idr_lock);
- 	if (ret == -EAGAIN)
- 		goto retry;
- 	return ret;
-@@ -291,11 +292,12 @@ void nfs_cleanup_cb_ident_idr(void)
- 	idr_destroy(&cb_ident_idr);
- }
- 
--/* nfs_client_lock held */
--static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
-+static void nfs_cb_idr_remove(struct nfs_client *clp)
- {
-+	spin_lock(&nfs_idr_lock);
- 	if (clp->cl_cb_ident)
- 		idr_remove(&cb_ident_idr, clp->cl_cb_ident);
-+	spin_unlock(&nfs_idr_lock);
- }
- 
- static void pnfs_init_server(struct nfs_server *server)
-@@ -314,7 +316,7 @@ void nfs_cleanup_cb_ident_idr(void)
- {
- }
- 
--static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
-+static void nfs_cb_idr_remove(struct nfs_client *clp)
- {
- }
- 
-@@ -364,7 +366,7 @@ void nfs_put_client(struct nfs_client *clp)
- 
- 	if (atomic_dec_and_lock(&clp->cl_count, &nfs_client_lock)) {
- 		list_del(&clp->cl_share_link);
--		nfs_cb_idr_remove_locked(clp);
-+		nfs_cb_idr_remove(clp);
- 		spin_unlock(&nfs_client_lock);
- 
- 		BUG_ON(!list_empty(&clp->cl_superblocks));
-@@ -1246,11 +1248,13 @@ nfs4_find_client_ident(int cb_ident)
- {
- 	struct nfs_client *clp;
- 
--	spin_lock(&nfs_client_lock);
-+	spin_lock(&nfs_idr_lock);
- 	clp = idr_find(&cb_ident_idr, cb_ident);
--	if (clp)
--		atomic_inc(&clp->cl_count);
--	spin_unlock(&nfs_client_lock);
-+	if (clp) {
-+		if (!atomic_inc_not_zero(&clp->cl_count))
-+			clp = NULL;
-+	}
-+	spin_unlock(&nfs_idr_lock);
- 	return clp;
- }
- 
--- 
-1.7.8.3
+--b.
 
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/svcauth_unix.c |   71 +++++++++++++++++++--------------------------
+>  1 files changed, 30 insertions(+), 41 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index c753ae4..0a50788 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -211,7 +211,7 @@ static int ip_map_parse(struct cache_detail *cd,
+>  	len = qword_get(&mesg, buf, mlen);
+>  	if (len <= 0) return -EINVAL;
+>  
+> -	if (rpc_pton(&init_net, buf, len, &address.sa, sizeof(address)) == 0)
+> +	if (rpc_pton(cd->net, buf, len, &address.sa, sizeof(address)) == 0)
+>  		return -EINVAL;
+>  	switch (address.sa.sa_family) {
+>  	case AF_INET:
+> @@ -875,56 +875,45 @@ struct auth_ops svcauth_unix = {
+>  	.set_client	= svcauth_unix_set_client,
+>  };
+>  
+> +struct cache_detail ip_map_cache = {
+> +	.owner		= THIS_MODULE,
+> +	.hash_size	= IP_HASHMAX,
+> +	.name		= "auth.unix.ip",
+> +	.cache_put	= ip_map_put,
+> +	.cache_upcall	= ip_map_upcall,
+> +	.cache_parse	= ip_map_parse,
+> +	.cache_show	= ip_map_show,
+> +	.match		= ip_map_match,
+> +	.init		= ip_map_init,
+> +	.update		= update,
+> +	.alloc		= ip_map_alloc,
+> +};
+> +
+>  int ip_map_cache_create(struct net *net)
+>  {
+> -	int err = -ENOMEM;
+> -	struct cache_detail *cd;
+> -	struct cache_head **tbl;
+>  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+> +	struct cache_detail *cd;
+> +	int err;
+>  
+> -	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
+> -	if (cd == NULL)
+> -		goto err_cd;
+> -
+> -	tbl = kzalloc(IP_HASHMAX * sizeof(struct cache_head *), GFP_KERNEL);
+> -	if (tbl == NULL)
+> -		goto err_tbl;
+> -
+> -	cd->owner = THIS_MODULE,
+> -	cd->hash_size = IP_HASHMAX,
+> -	cd->hash_table = tbl,
+> -	cd->name = "auth.unix.ip",
+> -	cd->cache_put = ip_map_put,
+> -	cd->cache_upcall = ip_map_upcall,
+> -	cd->cache_parse = ip_map_parse,
+> -	cd->cache_show = ip_map_show,
+> -	cd->match = ip_map_match,
+> -	cd->init = ip_map_init,
+> -	cd->update = update,
+> -	cd->alloc = ip_map_alloc,
+> -
+> +	cd = cache_create_net(&ip_map_cache, net);
+> +	if (IS_ERR(cd))
+> +		return PTR_ERR(cd);
+>  	err = cache_register_net(cd, net);
+> -	if (err)
+> -		goto err_reg;
+> -
+> +	if (err) {
+> +		cache_destroy_net(cd, net);
+> +		return err;
+> +	}
+>  	sn->ip_map_cache = cd;
+>  	return 0;
+> -
+> -err_reg:
+> -	kfree(tbl);
+> -err_tbl:
+> -	kfree(cd);
+> -err_cd:
+> -	return err;
+>  }
+>  
+>  void ip_map_cache_destroy(struct net *net)
+>  {
+> -	struct sunrpc_net *sn;
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+> +	struct cache_detail *cd = sn->ip_map_cache;
+>  
+> -	sn = net_generic(net, sunrpc_net_id);
+> -	cache_purge(sn->ip_map_cache);
+> -	cache_unregister_net(sn->ip_map_cache, net);
+> -	kfree(sn->ip_map_cache->hash_table);
+> -	kfree(sn->ip_map_cache);
+> +	sn->ip_map_cache = NULL;
+> +	cache_purge(cd);
+> +	cache_unregister_net(cd, net);
+> +	cache_destroy_net(cd, net);
+>  }
+> 
