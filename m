@@ -1,46 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:53336 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753373Ab2AaCKn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 21:10:43 -0500
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        lsf-pc@lists.linux-foundation.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-	<4F2147BA.6030607@itwm.fraunhofer.de>
-	<yq1k44e1pn6.fsf@sermon.lab.mkp.net>
-	<4F217F0C.6030105@itwm.fraunhofer.de>
-Date: Mon, 30 Jan 2012 21:10:31 -0500
-In-Reply-To: <4F217F0C.6030105@itwm.fraunhofer.de> (Bernd Schubert's message
-	of "Thu, 26 Jan 2012 17:27:56 +0100")
-Message-ID: <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
+Received: from fieldses.org ([174.143.236.118]:49368 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751635Ab2ASWkF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Jan 2012 17:40:05 -0500
+Date: Thu, 19 Jan 2012 17:40:02 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Dr James Bruce Fields <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        xemul@parallels.com, neilb@suse.de, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jbottomley@parallels.com,
+        davem@davemloft.net, devel@openvz.org
+Subject: Re: [PATCH 0/5] SUNRPC: make caches network namespace aware
+Message-ID: <20120119224002.GB5177@fieldses.org>
+References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+ <1326986392.6114.1.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1326986392.6114.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>>>> "Bernd" == Bernd Schubert <bernd.schubert@itwm.fraunhofer.de> writes:
+On Thu, Jan 19, 2012 at 10:19:52AM -0500, Trond Myklebust wrote:
+> On Thu, 2012-01-19 at 18:48 +0400, Stanislav Kinsbursky wrote: 
+> > One more step towards to "NFS in container".
+> > With this patch set caches are allocated per network namespace.
+> > 
+> > The following series consists of:
+> > 
+> > ---
+> > 
+> > Stanislav Kinsbursky (5):
+> >       SUNRPC: cache creation and destruction routines introduced
+> >       SUNRPC: create unix gid cache per network namespace
+> >       SUNRPC: create GSS auth cache per network namespace
+> >       SUNRPC: ip map cache per network namespace cleanup
+> >       SUNRPC: generic cache register routines removed
+> 
+> The patches look good, and I've applied them for now in my 'devel'
+> branch so we can test them, but I'd like to get an Ack/Nack from Bruce
+> before committing to merging them.
 
-Bernd> Hmm, direct IO would mean we could not use the page cache. As we
-Bernd> are using it, that would not really suit us. libaio then might be
-Bernd> another option then.
+They look good to me.  I'd like to hear how they've been tested--that
+done, they'll have my ack.
 
-Bernd> What kind of help do you exactly need?
-
-As far as libaio is concerned I had a PoC working a few years ago. I'll
-be happy to revive it if people are actually interested. So a real world
-use case would be a great help...
-
-But James is right that buffered I/O is much more challenging than
-direct I/O. And all the use cases we have had have involved databases
-and business apps that were doing direct I/O anyway.
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+--b.
