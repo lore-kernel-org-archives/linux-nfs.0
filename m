@@ -1,68 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:35483 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755819Ab2ADT5J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 14:57:09 -0500
-Received: by mail-vx0-f174.google.com with SMTP id fk14so13490667vcb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jan 2012 11:57:09 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/5] mountd: remove newline from xlog() format specifier
- strings
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 04 Jan 2012 14:57:07 -0500
-Message-ID: <20120104195707.21904.17223.stgit@degas.1015granger.net>
-In-Reply-To: <20120104194136.21904.36616.stgit@degas.1015granger.net>
-References: <20120104194136.21904.36616.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:13978 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751344Ab2ATVk2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jan 2012 16:40:28 -0500
+Message-ID: <1327095610.9266.1.camel@lade.trondhjem.org>
+Subject: Re: [PATCH RFC] SUNPRC: remove marking service temporary sockets
+ with XPT_CHNGBUF
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Fri, 20 Jan 2012 16:40:10 -0500
+In-Reply-To: <20120120125243.7733.81374.stgit@localhost6.localdomain6>
+References: <20120120125243.7733.81374.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: xlog() already adds a newline to the end of each line of
-output.  Remove the superfluous newline from a number of xlog()
-call sites in mountd.
+On Fri, 2012-01-20 at 16:55 +0400, Stanislav Kinsbursky wrote: 
+> This is a cleanup patch.
+> Service temporary sockets can be TCP or RDMA only. But XPT_CHNGBUF service
+> socket flag is checked only for UDP sockets on receive.
+> Thus (if I don't miss something non-obvious) this bit raising for temporary
+> sockets can be removed.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> ---
+>  net/sunrpc/svcsock.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index e8af0c9..2867249 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1381,8 +1381,6 @@ void svc_sock_update_bufs(struct svc_serv *serv)
+>  	spin_lock_bh(&serv->sv_lock);
+>  	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list)
+>  		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+> -	list_for_each_entry(svsk, &serv->sv_tempsocks, sk_xprt.xpt_list)
+> -		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+>  	spin_unlock_bh(&serv->sv_lock);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_sock_update_bufs);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I'm assuming that Bruce will prefer to carry this, since it is
+completely orthogonal to the net namespace patchsets.
 
- utils/mountd/fsloc.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/utils/mountd/fsloc.c b/utils/mountd/fsloc.c
-index e2add2d..704b7a0 100644
---- a/utils/mountd/fsloc.c
-+++ b/utils/mountd/fsloc.c
-@@ -40,12 +40,12 @@ static void replicas_print(struct servers *sp)
- {
- 	int i;
- 	if (!sp) {
--		xlog(L_NOTICE, "NULL replicas pointer\n");
-+		xlog(L_NOTICE, "NULL replicas pointer");
- 		return;
- 	}
--	xlog(L_NOTICE, "replicas listsize=%i\n", sp->h_num);
-+	xlog(L_NOTICE, "replicas listsize=%i", sp->h_num);
- 	for (i=0; i<sp->h_num; i++) {
--		xlog(L_NOTICE, "    %s:%s\n",
-+		xlog(L_NOTICE, "    %s:%s",
- 		       sp->h_mp[i]->h_host, sp->h_mp[i]->h_path);
- 	}
- }
-@@ -125,13 +125,13 @@ static struct servers *method_list(char *data)
- 	int i, listsize;
- 	struct servers *rv=NULL;
- 
--	xlog(L_NOTICE, "method_list(%s)\n", data);
-+	xlog(L_NOTICE, "method_list(%s)", data);
- 	for (ptr--, listsize=1; ptr; ptr=index(ptr, ':'), listsize++)
- 		ptr++;
- 	list = malloc(listsize * sizeof(char *));
- 	copy = strdup(data);
- 	if (copy)
--		xlog(L_NOTICE, "converted to %s\n", copy);
-+		xlog(L_NOTICE, "converted to %s", copy);
- 	if (list && copy) {
- 		ptr = copy;
- 		for (i=0; i<listsize; i++) {
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
