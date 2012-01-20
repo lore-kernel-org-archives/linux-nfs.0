@@ -1,73 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36908 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:15160 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752819Ab2AQUpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 15:45:12 -0500
-Date: Tue, 17 Jan 2012 15:45:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATH v6 2/9] nfsd41: handle current stateid in open and close
-Message-ID: <20120117204510.GD16118@fieldses.org>
-References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
- <1326644410-7482-3-git-send-email-tigran.mkrtchyan@desy.de>
- <20120117194054.GA16118@fieldses.org>
- <CAGue13oDaGn3DbyVDmAZhxqZ1+bwd53X0o-a+Hix-nHgwZ4wBw@mail.gmail.com>
+	id S1753444Ab2ATQR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Jan 2012 11:17:28 -0500
+Message-ID: <4F199372.7090501@parallels.com>
+Date: Fri, 20 Jan 2012 20:16:50 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CAGue13oDaGn3DbyVDmAZhxqZ1+bwd53X0o-a+Hix-nHgwZ4wBw@mail.gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 0/2] SUNRPC: make /proc helpers network-namespace-aware
+References: <20111206123748.15702.93290.stgit@localhost6.localdomain6>	 <4F19512F.1000903@parallels.com> <20120120143047.GB9877@fieldses.org> <1327070356.23030.0.camel@lade.trondhjem.org>
+In-Reply-To: <1327070356.23030.0.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 09:14:47PM +0100, Tigran Mkrtchyan wrote:
-> On Tue, Jan 17, 2012 at 8:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Sun, Jan 15, 2012 at 05:20:03PM +0100, Tigran Mkrtchyan wrote:
-> >> +static void
-> >> +put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-> >> +{
-> >> +     if (cstate->minorversion)
-> >> +             cstate->current_stateid = stateid;
-> >> +}
-> > ...
-> >> @@ -54,6 +54,7 @@ struct nfsd4_compound_state {
-> >>       size_t                  iovlen;
-> >>       u32                     minorversion;
-> >>       u32                     status;
-> >> +     const stateid_t *current_stateid;
-> >>  };
-> >
-> > I'd be more comfortable with passing stateid's by value rather than by
-> > reference.
-> >
-> > Presumably you're only ever pointing into one of the argument or result
-> > structures which are currently guaranteed to be around for as long as
-> > the compound is processed.
-> >
-> > But it'd seem safer not to have to worry about the lifetime of the
-> > pointed-to data at all, and just copy the stateid--it's only 16 bytes.
-> 
-> Sure, it's only 16 bytes. Nevertheless, there are no allocation or
-> de-allocation of it. It just pointing to an existing stateid.
+20.01.2012 18:39, Trond Myklebust пишет:
+> On Fri, 2012-01-20 at 09:30 -0500, bfields@fieldses.org wrote:
+>> On Fri, Jan 20, 2012 at 03:34:07PM +0400, Stanislav Kinsbursky wrote:
+>>> Excuse me, Trond, Bruce, but what about this patch set?
+>>> It is not included in Trond's "devel" branch.
+>>> Maybe they are in your repo, Bruce?
+>>
+>> Everything that I had from you is in -rc1 now.
+>>
+>> --b.
+>
+> I can carry these patches if you like. They don't seem to conflict with
+> anything already in my repository.
+>
 
-Well, it's conceivable some day that we could for example take more of a
-one-op-at-a-time approach to compound processing and free the arguments
-and results from the previous op once we're done processing and xdr
-encoding it, in which case continuing to refer to a stateid from the
-previous op would be unsafe.
+Yes, would be great. Thank you.
 
-Or maybe some day there will be an operation that sets the current
-stateid without also returning it in an argument, in which case we could
-be tempted to take a pointer to a field in an object without being
-assured how long that object will be around.
-
-Likely?  Maybe not.  I'd still feel safer not having to think about it.
-
-> Should be safe to use pointer. And yes, it's just 16 bytes, but if we can
-> avoid to
-> copy them why not?
-> 
-> Of course I can change it if you want to.
-
-I'd prefer that.
-
---b.
+-- 
+Best regards,
+Stanislav Kinsbursky
