@@ -1,229 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:11435 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:36063 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755555Ab2AMIwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 03:52:37 -0500
-Subject: [PATCH v5 1/6] SUNRPC: move rpcbind internals to sunrpc part of
- network namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 12:52:10 +0400
-Message-ID: <20120113085210.31750.18151.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-References: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752049Ab2ATUMt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Jan 2012 15:12:49 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] SUNRPC: Add trace events to the sunrpc subsystem
+Date: Fri, 20 Jan 2012 15:12:44 -0500
+Message-Id: <1327090364-6549-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes rpcbind logic works in network namespace context. IOW each
-network namespace will have it's own unique rpcbind internals (clients and
-friends) required for registering svc services per network namespace.
+Add declarations to allow tracing of RPC call creation, running, sleeping,
+and destruction.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/netns.h     |    5 ++++
- net/sunrpc/rpcb_clnt.c |   64 ++++++++++++++++++++++++++----------------------
- 2 files changed, 40 insertions(+), 29 deletions(-)
+ include/linux/sunrpc/sched.h  |    2 +-
+ include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c            |   12 ++++
+ 3 files changed, 137 insertions(+), 1 deletions(-)
+ create mode 100644 include/trace/events/sunrpc.h
 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 0f3af34..1fdeb1b 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -15,6 +15,11 @@ struct sunrpc_net {
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index bd337f9..f7b2df5 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -271,7 +271,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
+ }
  
- 	struct list_head all_clients;
- 	spinlock_t rpc_client_lock;
-+
-+	struct rpc_clnt *rpcb_local_clnt;
-+	struct rpc_clnt *rpcb_local_clnt4;
-+	spinlock_t rpcb_clnt_lock;
-+	unsigned int rpcb_users;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 8761bf8..7d32f19 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -23,12 +23,15 @@
- #include <linux/errno.h>
- #include <linux/mutex.h>
- #include <linux/slab.h>
-+#include <linux/nsproxy.h>
- #include <net/ipv6.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xprtsock.h>
- 
-+#include "netns.h"
-+
  #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
- #endif
-@@ -111,12 +114,6 @@ static void			rpcb_getport_done(struct rpc_task *, void *);
- static void			rpcb_map_release(void *data);
- static struct rpc_program	rpcb_program;
- 
--static struct rpc_clnt *	rpcb_local_clnt;
--static struct rpc_clnt *	rpcb_local_clnt4;
--
--DEFINE_SPINLOCK(rpcb_clnt_lock);
--unsigned int			rpcb_users;
--
- struct rpcbind_args {
- 	struct rpc_xprt *	r_xprt;
- 
-@@ -167,29 +164,31 @@ static void rpcb_map_release(void *data)
- static int rpcb_get_local(void)
+-static inline const char * rpc_qname(struct rpc_wait_queue *q)
++static inline const char * rpc_qname(const struct rpc_wait_queue *q)
  {
- 	int cnt;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (rpcb_users)
--		rpcb_users++;
--	cnt = rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (sn->rpcb_users)
-+		sn->rpcb_users++;
-+	cnt = sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	return cnt;
+ 	return ((q && q->name) ? q->name : "unknown");
  }
- 
- void rpcb_put_local(void)
- {
--	struct rpc_clnt *clnt = rpcb_local_clnt;
--	struct rpc_clnt *clnt4 = rpcb_local_clnt4;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
-+	struct rpc_clnt *clnt = sn->rpcb_local_clnt;
-+	struct rpc_clnt *clnt4 = sn->rpcb_local_clnt4;
- 	int shutdown;
- 
--	spin_lock(&rpcb_clnt_lock);
--	if (--rpcb_users == 0) {
--		rpcb_local_clnt = NULL;
--		rpcb_local_clnt4 = NULL;
-+	spin_lock(&sn->rpcb_clnt_lock);
-+	if (--sn->rpcb_users == 0) {
-+		sn->rpcb_local_clnt = NULL;
-+		sn->rpcb_local_clnt4 = NULL;
- 	}
--	shutdown = !rpcb_users;
--	spin_unlock(&rpcb_clnt_lock);
-+	shutdown = !sn->rpcb_users;
-+	spin_unlock(&sn->rpcb_clnt_lock);
- 
- 	if (shutdown) {
- 		/*
-@@ -204,14 +203,16 @@ void rpcb_put_local(void)
- 
- static void rpcb_set_local(struct rpc_clnt *clnt, struct rpc_clnt *clnt4)
- {
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+new file mode 100644
+index 0000000..51cc949
+--- /dev/null
++++ b/include/trace/events/sunrpc.h
+@@ -0,0 +1,124 @@
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sunrpc
 +
- 	/* Protected by rpcb_create_local_mutex */
--	rpcb_local_clnt = clnt;
--	rpcb_local_clnt4 = clnt4;
-+	sn->rpcb_local_clnt = clnt;
-+	sn->rpcb_local_clnt4 = clnt4;
- 	smp_wmb(); 
--	rpcb_users = 1;
-+	sn->rpcb_users = 1;
- 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
--			"%p, rpcb_local_clnt4: %p)\n", rpcb_local_clnt,
--			rpcb_local_clnt4);
-+			"%p, rpcb_local_clnt4: %p)\n", sn->rpcb_local_clnt,
-+			sn->rpcb_local_clnt4);
- }
++#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SUNRPC_H
++
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/tracepoint.h>
++
++DECLARE_EVENT_CLASS(rpc_task_running,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__field(const void *, action)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__entry->action = action;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->action
++		)
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_begin,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_complete,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DECLARE_EVENT_CLASS(rpc_task_queued,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__field(const struct rpc_wait_queue *, queue)
++		__field(unsigned long, timeout)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__entry->queue = q;
++		__entry->timeout = task->tk_timeout;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->timeout,
++		rpc_qname(__entry->queue)
++		)
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++#endif /* _TRACE_SUNRPC_H */
++
++#include <trace/define_trace.h>
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index f982dfe..d79c63d 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -28,6 +28,9 @@
+ #define RPCDBG_FACILITY		RPCDBG_SCHED
+ #endif
  
++#define CREATE_TRACE_POINTS
++#include <trace/events/sunrpc.h>
++
  /*
-@@ -431,6 +432,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
+  * RPC slabs and memory pools
+  */
+@@ -251,6 +254,8 @@ static inline void rpc_task_set_debuginfo(struct rpc_task *task)
  
- 	dprintk("RPC:       %sregistering (%u, %u, %d, %u) with local "
- 			"rpcbind\n", (port ? "" : "un"),
-@@ -440,7 +442,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	if (port)
- 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
- 
--	return rpcb_register_call(rpcb_local_clnt, &msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt, &msg);
- }
- 
- /*
-@@ -453,6 +455,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin->sin_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -465,7 +468,7 @@ static int rpcb_register_inet4(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -480,6 +483,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	struct rpcbind_args *map = msg->rpc_argp;
- 	unsigned short port = ntohs(sin6->sin6_port);
- 	int result;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
- 
-@@ -492,7 +496,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	result = rpcb_register_call(rpcb_local_clnt4, msg);
-+	result = rpcb_register_call(sn->rpcb_local_clnt4, msg);
- 	kfree(map->r_addr);
- 	return result;
- }
-@@ -500,6 +504,7 @@ static int rpcb_register_inet6(const struct sockaddr *sap,
- static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
+ static void rpc_set_active(struct rpc_task *task)
  {
- 	struct rpcbind_args *map = msg->rpc_argp;
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
- 
- 	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
- 		"local rpcbind\n",
-@@ -508,7 +513,7 @@ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
- 	map->r_addr = "";
- 	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
- 
--	return rpcb_register_call(rpcb_local_clnt4, msg);
-+	return rpcb_register_call(sn->rpcb_local_clnt4, msg);
++	trace_rpc_task_begin(task->tk_client, task, NULL);
++
+ 	rpc_task_set_debuginfo(task);
+ 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
  }
+@@ -267,6 +272,8 @@ static int rpc_complete_task(struct rpc_task *task)
+ 	unsigned long flags;
+ 	int ret;
  
- /**
-@@ -566,8 +571,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 	struct rpc_message msg = {
- 		.rpc_argp	= &map,
- 	};
-+	struct sunrpc_net *sn = net_generic(&init_net, sunrpc_net_id);
++	trace_rpc_task_complete(task->tk_client, task, NULL);
++
+ 	spin_lock_irqsave(&wq->lock, flags);
+ 	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+ 	ret = atomic_dec_and_test(&task->tk_count);
+@@ -324,6 +331,8 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
+ 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
+ 			task->tk_pid, rpc_qname(q), jiffies);
  
--	if (rpcb_local_clnt4 == NULL)
-+	if (sn->rpcb_local_clnt4 == NULL)
- 		return -EPROTONOSUPPORT;
++	trace_rpc_task_sleep(task->tk_client, task, q);
++
+ 	__rpc_add_wait_queue(q, task, queue_priority);
  
- 	if (address == NULL)
+ 	BUG_ON(task->tk_callback != NULL);
+@@ -378,6 +387,8 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
+ 		return;
+ 	}
+ 
++	trace_rpc_task_wakeup(task->tk_client, task, queue);
++
+ 	__rpc_remove_wait_queue(queue, task);
+ 
+ 	rpc_make_runnable(task);
+@@ -701,6 +712,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 			if (do_action == NULL)
+ 				break;
+ 		}
++		trace_rpc_task_run_action(task->tk_client, task, task->tk_action);
+ 		do_action(task);
+ 
+ 		/*
+-- 
+1.7.7.5
 
