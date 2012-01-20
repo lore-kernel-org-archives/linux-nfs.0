@@ -1,254 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:10137 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:3888 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752923Ab2AWR0Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jan 2012 12:26:24 -0500
-Subject: [PATCH 1/4] NFS: make nfs_client_list per net ns
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 23 Jan 2012 21:26:05 +0400
-Message-ID: <20120123172605.29637.15682.stgit@localhost6.localdomain6>
-In-Reply-To: <20120123171404.29637.19810.stgit@localhost6.localdomain6>
-References: <20120123171404.29637.19810.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1753609Ab2ATUMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Jan 2012 15:12:25 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] SUNRPC: constify rpc_clnt fields cl_server and cl_protname
+Date: Fri, 20 Jan 2012 15:12:16 -0500
+Message-Id: <1327090338-6496-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch splits global list of NFS clients into per-net-ns array of lists.
-This looks more strict and clearer.
-BTW, this patch also makes "/proc/fs/nfsfs/servers" entry content depends on
-/proc mount owner pid namespace. See below for details.
+...and get rid of the superfluous cl_inline_name.
 
-NOTE: few words about how was /proc/fs/nfsfs/ entries content show per network
-namespace done. This is a little bit tricky and not the best is could be. But
-it's cheap (proper fix for /proc conteinerization is a hard nut to crack).
-The idea is simple: take proper network namespace from pid namespace
-child reaper nsproxy of /proc/ mount creator.
-This actually means, that if there are 2 containers with different net
-namespace sharing pid namespace, then read of /proc/fs/nfsfs/ entries will
-always return content, taken from net namespace of pid namespace creator task
-(and thus second namespace set wil be unvisible).
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/client.c   |   38 +++++++++++++++++++++++++++-----------
- fs/nfs/idmap.c    |    5 ++---
- fs/nfs/inode.c    |    1 +
- fs/nfs/internal.h |    2 +-
- fs/nfs/netns.h    |    1 +
- 5 files changed, 32 insertions(+), 15 deletions(-)
+ include/linux/sunrpc/clnt.h |    9 ++++-----
+ net/sunrpc/clnt.c           |   29 ++++++++++++-----------------
+ net/sunrpc/rpcb_clnt.c      |    2 +-
+ 3 files changed, 17 insertions(+), 23 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 98af1cb..058eb9b 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -39,6 +39,8 @@
- #include <net/ipv6.h>
- #include <linux/nfs_xdr.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <linux/nsproxy.h>
-+#include <linux/pid_namespace.h>
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 9e754e3..db6970c 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -41,8 +41,8 @@ struct rpc_clnt {
+ 				cl_vers,	/* RPC version number */
+ 				cl_maxproc;	/* max procedure number */
  
- #include <asm/system.h>
- 
-@@ -49,11 +51,11 @@
- #include "internal.h"
- #include "fscache.h"
- #include "pnfs.h"
-+#include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- DEFINE_SPINLOCK(nfs_client_lock);
--LIST_HEAD(nfs_client_list);
- static LIST_HEAD(nfs_volume_list);
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
- #ifdef CONFIG_NFS_V4
-@@ -464,8 +466,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- {
- 	struct nfs_client *clp;
- 	const struct sockaddr *sap = data->addr;
-+	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
- 
--	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
- 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
-@@ -483,9 +486,6 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		/* Match the full socket address */
- 		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
--		/* Match network namespace */
--		if (clp->net != data->net)
--			continue;
- 
- 		atomic_inc(&clp->cl_count);
- 		return clp;
-@@ -506,6 +506,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- {
- 	struct nfs_client *clp, *new = NULL;
- 	int error;
-+	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
- 
- 	dprintk("--> nfs_get_client(%s,v%u)\n",
- 		cl_init->hostname ?: "", cl_init->rpc_ops->version);
-@@ -531,7 +532,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 	/* install a new client and return with it unready */
- install_client:
- 	clp = new;
--	list_add(&clp->cl_share_link, &nfs_client_list);
-+	list_add(&clp->cl_share_link, &nn->nfs_client_list);
- 	spin_unlock(&nfs_client_lock);
- 
- 	error = cl_init->rpc_ops->init_client(clp, timeparms, ip_addr,
-@@ -1227,9 +1228,10 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- 			   struct nfs4_sessionid *sid)
- {
- 	struct nfs_client *clp;
-+	struct nfs_net *nn = net_generic(&init_net, nfs_net_id);
- 
- 	spin_lock(&nfs_client_lock);
--	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
- 		if (nfs4_cb_match_client(addr, clp, 1) == false)
- 			continue;
- 
-@@ -1757,6 +1759,13 @@ out_free_server:
- 	return ERR_PTR(error);
- }
- 
-+void nfs_clients_init(struct net *net)
-+{
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
-+
-+	INIT_LIST_HEAD(&nn->nfs_client_list);
-+}
-+
- #ifdef CONFIG_PROC_FS
- static struct proc_dir_entry *proc_fs_nfs;
- 
-@@ -1810,13 +1819,15 @@ static int nfs_server_list_open(struct inode *inode, struct file *file)
- {
- 	struct seq_file *m;
- 	int ret;
-+	struct pid_namespace *pid_ns = file->f_dentry->d_sb->s_fs_info;
-+	struct net *net = pid_ns->child_reaper->nsproxy->net_ns;
- 
- 	ret = seq_open(file, &nfs_server_list_ops);
- 	if (ret < 0)
- 		return ret;
- 
- 	m = file->private_data;
--	m->private = PDE(inode)->data;
-+	m->private = net;
- 
- 	return 0;
- }
-@@ -1826,9 +1837,11 @@ static int nfs_server_list_open(struct inode *inode, struct file *file)
-  */
- static void *nfs_server_list_start(struct seq_file *m, loff_t *_pos)
- {
-+	struct nfs_net *nn = net_generic(m->private, nfs_net_id);
-+
- 	/* lock the list against modification */
- 	spin_lock(&nfs_client_lock);
--	return seq_list_start_head(&nfs_client_list, *_pos);
-+	return seq_list_start_head(&nn->nfs_client_list, *_pos);
- }
- 
- /*
-@@ -1836,7 +1849,9 @@ static void *nfs_server_list_start(struct seq_file *m, loff_t *_pos)
-  */
- static void *nfs_server_list_next(struct seq_file *p, void *v, loff_t *pos)
- {
--	return seq_list_next(v, &nfs_client_list, pos);
-+	struct nfs_net *nn = net_generic(p->private, nfs_net_id);
-+
-+	return seq_list_next(v, &nn->nfs_client_list, pos);
- }
- 
- /*
-@@ -1853,9 +1868,10 @@ static void nfs_server_list_stop(struct seq_file *p, void *v)
- static int nfs_server_list_show(struct seq_file *m, void *v)
- {
- 	struct nfs_client *clp;
-+	struct nfs_net *nn = net_generic(m->private, nfs_net_id);
- 
- 	/* display header on line 1 */
--	if (v == &nfs_client_list) {
-+	if (v == &nn->nfs_client_list) {
- 		seq_puts(m, "NV SERVER   PORT USE HOSTNAME\n");
- 		return 0;
- 	}
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index ff084d2..92deaf8 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -571,13 +571,12 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
- 			    void *ptr)
- {
- 	struct super_block *sb = ptr;
-+	struct nfs_net *nn = net_generic(sb->s_fs_info, nfs_net_id);
- 	struct nfs_client *clp;
- 	int error = 0;
- 
- 	spin_lock(&nfs_client_lock);
--	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
--		if (clp->net != sb->s_fs_info)
--			continue;
-+	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
- 		if (clp->rpc_ops != &nfs_v4_clientops)
- 			continue;
- 		error = __rpc_pipefs_event(clp, event, sb);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d2c760e..e8f81e5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1558,6 +1558,7 @@ EXPORT_SYMBOL_GPL(nfs_net_id);
- 
- static int nfs_net_init(struct net *net)
- {
-+	nfs_clients_init(net);
- 	return nfs_dns_resolver_cache_init(net);
- }
- 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index cdb121d..a9ae806 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -146,6 +146,7 @@ extern void nfs_umount(const struct nfs_mount_request *info);
- 
- /* client.c */
- extern const struct rpc_program nfs_program;
-+extern void nfs_clients_init(struct net *net);
- 
- extern void nfs_cleanup_cb_ident_idr(void);
- extern void nfs_put_client(struct nfs_client *);
-@@ -183,7 +184,6 @@ static inline void nfs_fs_proc_exit(void)
- #endif
- #ifdef CONFIG_NFS_V4
- extern spinlock_t nfs_client_lock;
--extern struct list_head nfs_client_list;
- #endif
- 
- /* nfs4namespace.c */
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 39ae4ca..feb33c3 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -7,6 +7,7 @@
- struct nfs_net {
- 	struct cache_detail *nfs_dns_resolve;
- 	struct rpc_pipe *bl_device_pipe;
-+	struct list_head nfs_client_list;
+-	char *			cl_server;	/* server machine name */
+-	char *			cl_protname;	/* protocol name */
++	const char *		cl_server;	/* server machine name */
++	const char *		cl_protname;	/* protocol name */
+ 	struct rpc_auth *	cl_auth;	/* authenticator */
+ 	struct rpc_stat *	cl_stats;	/* per-program statistics */
+ 	struct rpc_iostats *	cl_metrics;	/* per-client statistics */
+@@ -62,7 +62,6 @@ struct rpc_clnt {
+ 	struct rpc_rtt		cl_rtt_default;
+ 	struct rpc_timeout	cl_timeout_default;
+ 	struct rpc_program *	cl_program;
+-	char			cl_inline_name[32];
+ 	char			*cl_principal;	/* target to authenticate to */
  };
  
- extern int nfs_net_id;
+@@ -97,7 +96,7 @@ struct rpc_procinfo {
+ 	unsigned int		p_count;	/* call count */
+ 	unsigned int		p_timer;	/* Which RTT timer to use */
+ 	u32			p_statidx;	/* Which procedure to account */
+-	char *			p_name;		/* name of procedure */
++	const char *		p_name;		/* name of procedure */
+ };
+ 
+ #ifdef __KERNEL__
+@@ -109,7 +108,7 @@ struct rpc_create_args {
+ 	size_t			addrsize;
+ 	struct sockaddr		*saddress;
+ 	const struct rpc_timeout *timeout;
+-	char			*servername;
++	const char		*servername;
+ 	struct rpc_program	*program;
+ 	u32			prognumber;	/* overrides program->number */
+ 	u32			version;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 4c68480..e9b22e8 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -273,15 +273,9 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 		goto out_err;
+ 	clnt->cl_parent = clnt;
+ 
+-	clnt->cl_server = clnt->cl_inline_name;
+-	if (len > sizeof(clnt->cl_inline_name)) {
+-		char *buf = kmalloc(len, GFP_KERNEL);
+-		if (buf != NULL)
+-			clnt->cl_server = buf;
+-		else
+-			len = sizeof(clnt->cl_inline_name);
+-	}
+-	strlcpy(clnt->cl_server, args->servername, len);
++	clnt->cl_server = kstrdup(args->servername, GFP_KERNEL);
++	if (clnt->cl_server == NULL)
++		goto out_no_server;
+ 
+ 	clnt->cl_xprt     = xprt;
+ 	clnt->cl_procinfo = version->procs;
+@@ -346,8 +340,8 @@ out_no_path:
+ out_no_principal:
+ 	rpc_free_iostats(clnt->cl_metrics);
+ out_no_stats:
+-	if (clnt->cl_server != clnt->cl_inline_name)
+-		kfree(clnt->cl_server);
++	kfree(clnt->cl_server);
++out_no_server:
+ 	kfree(clnt);
+ out_err:
+ 	xprt_put(xprt);
+@@ -470,6 +464,9 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	new = kmemdup(clnt, sizeof(*new), GFP_KERNEL);
+ 	if (!new)
+ 		goto out_no_clnt;
++	new->cl_server = kstrdup(clnt->cl_server, GFP_KERNEL);
++	if (new->cl_server == NULL)
++		goto out_no_server;
+ 	new->cl_parent = clnt;
+ 	/* Turn off autobind on clones */
+ 	new->cl_autobind = 0;
+@@ -500,6 +497,8 @@ out_no_path:
+ out_no_principal:
+ 	rpc_free_iostats(new->cl_metrics);
+ out_no_stats:
++	kfree(new->cl_server);
++out_no_server:
+ 	kfree(new);
+ out_no_clnt:
+ 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
+@@ -565,13 +564,9 @@ rpc_free_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_protname, clnt->cl_server);
+-	if (clnt->cl_parent != clnt) {
++	if (clnt->cl_parent != clnt)
+ 		rpc_release_client(clnt->cl_parent);
+-		goto out_free;
+-	}
+-	if (clnt->cl_server != clnt->cl_inline_name)
+-		kfree(clnt->cl_server);
+-out_free:
++	kfree(clnt->cl_server);
+ 	rpc_unregister_client(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 4ce3a8e..d397801 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -343,7 +343,7 @@ out:
+ 	return result;
+ }
+ 
+-static struct rpc_clnt *rpcb_create(struct net *net, char *hostname,
++static struct rpc_clnt *rpcb_create(struct net *net, const char *hostname,
+ 				    struct sockaddr *srvaddr, size_t salen,
+ 				    int proto, u32 version)
+ {
+-- 
+1.7.7.5
 
