@@ -1,35 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.mera.ru ([195.98.57.161]:50937 "EHLO mail.mera.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751396Ab2AZLPE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 06:15:04 -0500
-Received: from [192.168.20.11] (helo=tecas.te.mera.ru)
-	by mail.mera.ru with esmtps (TLSv1:AES128-SHA:128)
-	(Exim 4.71 (FreeBSD))
-	(envelope-from <vvlasov@mera.ru>)
-	id 1RqNIF-000Gxw-0s
-	for linux-nfs@vger.kernel.org; Thu, 26 Jan 2012 15:15:03 +0400
-From: "Vlasov, Vladimir" <vvlasov@mera.ru>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re-init lockd and kstatd in runtime.
-Date: Thu, 26 Jan 2012 11:15:02 +0000
-Message-ID: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-we0-f174.google.com ([74.125.82.174]:53668 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751878Ab2AVODo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2012 09:03:44 -0500
+Received: by werb13 with SMTP id b13so1529515wer.19
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2012 06:03:43 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH] pnfs: clean up initiate_file_draining layout lookup
+Date: Sun, 22 Jan 2012 16:03:39 +0200
+Message-Id: <1327241019-7863-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+Fixes the following compiler warning:
 
-I'm wondering if there is any way to re-init lockd and kstatd after startup?
+fs/nfs/callback_proc.c: In function 'do_callback_layoutrecall':
+fs/nfs/callback_proc.c:115:26: warning: 'lo' may be used uninitialized in this function
 
-Look, in svc.c static variable nsm_use_kstatd is set to 1.
-Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set to 0.
-And we end up without kstatd.
+Reported-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/callback_proc.c |   56 ++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 38 insertions(+), 18 deletions(-)
 
-Lockd will exit as soon as last NFS mount is unmounted and on next mount attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 already and kstatd init will be skipped.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 43926ad..e8d83a7 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -108,42 +108,62 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-static u32 initiate_file_draining(struct nfs_client *clp,
+-				  struct cb_layoutrecallargs *args)
++/*
++ * Lookup a layout by filehandle.
++ *
++ * Note: gets a refcount on the layout hdr and on its respective inode.
++ * Caller must put the layout hdr and the inode.
++ *
++ * TODO: keep track of all layouts (and delegations) in a hash table
++ * hashed by filehandle.
++ */
++static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp, struct nfs_fh *fh)
+ {
+ 	struct nfs_server *server;
+-	struct pnfs_layout_hdr *lo;
+ 	struct inode *ino;
+-	bool found = false;
+-	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+-	LIST_HEAD(free_me_list);
++	struct pnfs_layout_hdr *lo;
+ 
+-	spin_lock(&clp->cl_lock);
+-	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+-			if (nfs_compare_fh(&args->cbl_fh,
+-					   &NFS_I(lo->plh_inode)->fh))
++			if (nfs_compare_fh(fh, &NFS_I(lo->plh_inode)->fh))
+ 				continue;
+ 			ino = igrab(lo->plh_inode);
+ 			if (!ino)
+ 				continue;
+-			found = true;
+-			/* Without this, layout can be freed as soon
+-			 * as we release cl_lock.
+-			 */
+ 			get_layout_hdr(lo);
+-			break;
++			return lo;
+ 		}
+-		if (found)
+-			break;
+ 	}
++
++	return NULL;
++}
++
++static struct pnfs_layout_hdr * get_layout_by_fh(struct nfs_client *clp, struct nfs_fh *fh)
++{
++	struct pnfs_layout_hdr *lo;
++
++	spin_lock(&clp->cl_lock);
++	rcu_read_lock();
++	lo = get_layout_by_fh_locked(clp, fh);
+ 	rcu_read_unlock();
+ 	spin_unlock(&clp->cl_lock);
+ 
+-	if (!found)
++	return lo;
++}
++
++static u32 initiate_file_draining(struct nfs_client *clp,
++				  struct cb_layoutrecallargs *args)
++{
++	struct inode *ino;
++	struct pnfs_layout_hdr *lo;
++	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
++	LIST_HEAD(free_me_list);
++
++	lo = get_layout_by_fh(clp, &args->cbl_fh);
++	if (!lo)
+ 		return NFS4ERR_NOMATCHING_LAYOUT;
+ 
++	ino = lo->plh_inode;
+ 	spin_lock(&ino->i_lock);
+ 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 	    mark_matching_lsegs_invalid(lo, &free_me_list,
+-- 
+1.7.6.5
 
-So, looks like if /var/lib/nfs/state is missed on host startup, there is no way to recover and tell kernel init kstatd later on demand. Or?
-
-Best regards
-Vladimir Vlasov
