@@ -1,242 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47698 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754015Ab2ACQzq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jan 2012 11:55:46 -0500
-Date: Tue, 3 Jan 2012 11:55:44 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Clean up the RPCSEC_GSS service ticket requests
-Message-ID: <20120103165544.GC6309@fieldses.org>
-References: <1325608907-17801-1-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1325608907-17801-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:53068 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751756Ab2AVSnP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2012 13:43:15 -0500
+Received: by eekc14 with SMTP id c14so1081297eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2012 10:43:13 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v7 00/10] handle curruent stateid
+Date: Sun, 22 Jan 2012 19:45:59 +0100
+Message-Id: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 03, 2012 at 11:41:47AM -0500, Trond Myklebust wrote:
-> Instead of hacking specific service names into gss_encode_v1_msg, we should
-> just allow the caller to specify the service name explicitly.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Just curious: do you have some callers in mind he will need different
-service names?
+The same as v6, expect that the last patch changes current_stateid 
+in compoind from reference to a value. As patches have to be squashed
+anyway this aproach is simple that re-write all.
 
-(But I agree reagardless that this is the more logical layering; fwiw:
+This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
 
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
+Implemented for:
 
-.)
+ OPEN
+ OPENDOWNGRADE
+ CLOSE
+ LOCK
+ LOCKU
+ DELEGRETURN
+ FREE_STATEID
+ SETATTR
+ READ
+ WRITE
+ SAVEFH
+ RESTOREFH
+ PUTFH
+ PUTROOTFH
+ PUTPUBFH
+ LOOKUP
+ CREATE
 
---b.
 
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/client.c                 |    2 +-
->  fs/nfsd/nfs4callback.c          |    2 +-
->  include/linux/sunrpc/auth.h     |    3 +-
->  include/linux/sunrpc/auth_gss.h |    2 +-
->  net/sunrpc/auth_generic.c       |    6 +++-
->  net/sunrpc/auth_gss/auth_gss.c  |   40 ++++++++++++++++++++++----------------
->  6 files changed, 32 insertions(+), 23 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 873bf00..32ea371 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -185,7 +185,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
->  	clp->cl_minorversion = cl_init->minorversion;
->  	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
->  #endif
-> -	cred = rpc_lookup_machine_cred();
-> +	cred = rpc_lookup_machine_cred("*");
->  	if (!IS_ERR(cred))
->  		clp->cl_machine_cred = cred;
->  	nfs_fscache_get_client_cookie(clp);
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 7748d6a..6f3ebb4 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -718,7 +718,7 @@ int set_callback_cred(void)
->  {
->  	if (callback_cred)
->  		return 0;
-> -	callback_cred = rpc_lookup_machine_cred();
-> +	callback_cred = rpc_lookup_machine_cred("nfs");
->  	if (!callback_cred)
->  		return -ENOMEM;
->  	return 0;
-> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-> index febc4db..7874a8a 100644
-> --- a/include/linux/sunrpc/auth.h
-> +++ b/include/linux/sunrpc/auth.h
-> @@ -26,6 +26,7 @@ struct auth_cred {
->  	uid_t	uid;
->  	gid_t	gid;
->  	struct group_info *group_info;
-> +	const char *principal;
->  	unsigned char machine_cred : 1;
->  };
->  
-> @@ -127,7 +128,7 @@ void			rpc_destroy_generic_auth(void);
->  void 			rpc_destroy_authunix(void);
->  
->  struct rpc_cred *	rpc_lookup_cred(void);
-> -struct rpc_cred *	rpc_lookup_machine_cred(void);
-> +struct rpc_cred *	rpc_lookup_machine_cred(const char *service_name);
->  int			rpcauth_register(const struct rpc_authops *);
->  int			rpcauth_unregister(const struct rpc_authops *);
->  struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
-> diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-> index 8eee9db..f1cfd4c 100644
-> --- a/include/linux/sunrpc/auth_gss.h
-> +++ b/include/linux/sunrpc/auth_gss.h
-> @@ -82,8 +82,8 @@ struct gss_cred {
->  	enum rpc_gss_svc	gc_service;
->  	struct gss_cl_ctx __rcu	*gc_ctx;
->  	struct gss_upcall_msg	*gc_upcall;
-> +	const char		*gc_principal;
->  	unsigned long		gc_upcall_timestamp;
-> -	unsigned char		gc_machine_cred : 1;
->  };
->  
->  #endif /* __KERNEL__ */
-> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-> index e010a01..1426ec3 100644
-> --- a/net/sunrpc/auth_generic.c
-> +++ b/net/sunrpc/auth_generic.c
-> @@ -41,15 +41,17 @@ EXPORT_SYMBOL_GPL(rpc_lookup_cred);
->  /*
->   * Public call interface for looking up machine creds.
->   */
-> -struct rpc_cred *rpc_lookup_machine_cred(void)
-> +struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
->  {
->  	struct auth_cred acred = {
->  		.uid = RPC_MACHINE_CRED_USERID,
->  		.gid = RPC_MACHINE_CRED_GROUPID,
-> +		.principal = service_name,
->  		.machine_cred = 1,
->  	};
->  
-> -	dprintk("RPC:       looking up machine cred\n");
-> +	dprintk("RPC:       looking up machine cred for service %s\n",
-> +			service_name);
->  	return generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
->  }
->  EXPORT_SYMBOL_GPL(rpc_lookup_machine_cred);
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index afb5655..28d72d2 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -392,7 +392,8 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
->  }
->  
->  static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
-> -				struct rpc_clnt *clnt, int machine_cred)
-> +				struct rpc_clnt *clnt,
-> +				const char *service_name)
->  {
->  	struct gss_api_mech *mech = gss_msg->auth->mech;
->  	char *p = gss_msg->databuf;
-> @@ -407,12 +408,8 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
-> -	if (machine_cred) {
-> -		len = sprintf(p, "service=* ");
-> -		p += len;
-> -		gss_msg->msg.len += len;
-> -	} else if (!strcmp(clnt->cl_program->name, "nfs4_cb")) {
-> -		len = sprintf(p, "service=nfs ");
-> +	if (service_name != NULL) {
-> +		len = sprintf(p, "service=%s ", service_name);
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
-> @@ -429,17 +426,18 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
->  }
->  
->  static void gss_encode_msg(struct gss_upcall_msg *gss_msg,
-> -				struct rpc_clnt *clnt, int machine_cred)
-> +				struct rpc_clnt *clnt,
-> +				const char *service_name)
->  {
->  	if (pipe_version == 0)
->  		gss_encode_v0_msg(gss_msg);
->  	else /* pipe_version == 1 */
-> -		gss_encode_v1_msg(gss_msg, clnt, machine_cred);
-> +		gss_encode_v1_msg(gss_msg, clnt, service_name);
->  }
->  
-> -static inline struct gss_upcall_msg *
-> -gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
-> -		int machine_cred)
-> +static struct gss_upcall_msg *
-> +gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
-> +		uid_t uid, const char *service_name)
->  {
->  	struct gss_upcall_msg *gss_msg;
->  	int vers;
-> @@ -459,7 +457,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
->  	atomic_set(&gss_msg->count, 1);
->  	gss_msg->uid = uid;
->  	gss_msg->auth = gss_auth;
-> -	gss_encode_msg(gss_msg, clnt, machine_cred);
-> +	gss_encode_msg(gss_msg, clnt, service_name);
->  	return gss_msg;
->  }
->  
-> @@ -471,7 +469,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
->  	struct gss_upcall_msg *gss_new, *gss_msg;
->  	uid_t uid = cred->cr_uid;
->  
-> -	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
-> +	gss_new = gss_alloc_msg(gss_auth, clnt, uid, gss_cred->gc_principal);
->  	if (IS_ERR(gss_new))
->  		return gss_new;
->  	gss_msg = gss_add_msg(gss_new);
-> @@ -995,7 +993,9 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
->  	 */
->  	cred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_NEW;
->  	cred->gc_service = gss_auth->service;
-> -	cred->gc_machine_cred = acred->machine_cred;
-> +	cred->gc_principal = NULL;
-> +	if (acred->machine_cred)
-> +		cred->gc_principal = acred->principal;
->  	kref_get(&gss_auth->kref);
->  	return &cred->gc_base;
->  
-> @@ -1030,7 +1030,12 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
->  	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
->  		return 0;
->  out:
-> -	if (acred->machine_cred != gss_cred->gc_machine_cred)
-> +	if (acred->principal != NULL) {
-> +		if (gss_cred->gc_principal == NULL)
-> +			return 0;
-> +		return strcmp(acred->principal, gss_cred->gc_principal) == 0;
-> +	}
-> +	if (gss_cred->gc_principal != NULL)
->  		return 0;
->  	return rc->cr_uid == acred->uid;
->  }
-> @@ -1104,7 +1109,8 @@ static int gss_renew_cred(struct rpc_task *task)
->  	struct rpc_auth *auth = oldcred->cr_auth;
->  	struct auth_cred acred = {
->  		.uid = oldcred->cr_uid,
-> -		.machine_cred = gss_cred->gc_machine_cred,
-> +		.principal = gss_cred->gc_principal,
-> +		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
->  	};
->  	struct rpc_cred *new;
->  
-> -- 
-> 1.7.7.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Coresponding pynfs test already submited.
+
+Tigran.
+
+Tigran Mkrtchyan (10):
+  nfsd4: initialize current stateid at compile time
+  nfsd41: handle current stateid in open and close
+  nfsd41: handle current stateid on lock and locku
+  nfsd41: consume current stateid on read and write
+  nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+  nfsd41: save and restore current stateid with current fh
+  nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+  nfsd41: handle current stateid in SETATTR and FREE_STATEID
+  nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+  nfsd41: use current stateid by value
+
+ fs/nfsd/current_stateid.h |   28 +++++++++++
+ fs/nfsd/nfs4proc.c        |   61 +++++++++++++++++++++----
+ fs/nfsd/nfs4state.c       |  110 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/xdr4.h            |    4 ++
+ 4 files changed, 192 insertions(+), 11 deletions(-)
+ create mode 100644 fs/nfsd/current_stateid.h
+
+-- 
+1.7.7.5
+
