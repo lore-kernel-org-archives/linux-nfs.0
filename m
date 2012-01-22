@@ -1,57 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56251 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932299Ab2AEVsY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jan 2012 16:48:24 -0500
-Message-ID: <4F061AA5.6020808@RedHat.com>
-Date: Thu, 05 Jan 2012 16:48:21 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] Bug fixes and NFS junction support
-References: <20120104194136.21904.36616.stgit@degas.1015granger.net>
-In-Reply-To: <20120104194136.21904.36616.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:65535 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752025Ab2AVSnU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2012 13:43:20 -0500
+Received: by mail-ey0-f174.google.com with SMTP id c13so10528eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2012 10:43:19 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v7 04/10] nfsd41: consume current stateid on read and write
+Date: Sun, 22 Jan 2012 19:46:03 +0100
+Message-Id: <1327257968-14522-5-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
-On 01/04/2012 02:56 PM, Chuck Lever wrote:
-> Four minor bug fix patches, for what they're worth, then...
-> 
-> The fifth patch adds support in mountd for loading a plug-in to
-> resolve NFS junctions.  The plug-in will be provided by fedfs-utils.
-> Source code will be posted very soon for review.
-> 
-> We'd like to see this in Fedora 17, if convenient.  Meantime, let's
-> review what I've got.
-> 
-> ---
-> 
-> Chuck Lever (5):
->       mountd: Support junction management plug-ins
->       mountd: remove newline from xlog() format specifier strings
->       mountd: Plug v4root memory leak
->       configure.ac: Don't check for AI_ADDRCONFIG
->       configure.ac: Clean up help string for --with-statdpath
-All 5 patches have been committed...
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   12 ++++++++++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
-I went ahead and fixed the snprintf length issue that was
-brought up with the 5th patch... I neglected of fix the 
-other issues that were pointed out... I will leave them
-on my todo list but as always patches are welcome! 8-)
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 21550b6..6e54d19 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -16,5 +16,7 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+  */
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
++extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
+ 
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f66a8b2..9a61bbf 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1546,6 +1546,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_READ",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
+ 	},
+ 	[OP_READDIR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_readdir,
+@@ -1624,6 +1625,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_name = "OP_WRITE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+ 	},
+ 	[OP_RELEASE_LOCKOWNER] = {
+ 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5665061..1c97912 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4745,3 +4745,15 @@ nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *
+ {
+ 	get_stateid(cstate, &locku->lu_stateid);
+ }
++
++void
++nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
++{
++	get_stateid(cstate, &read->rd_stateid);
++}
++
++void
++nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
++{
++	get_stateid(cstate, &write->wr_stateid);
++}
+-- 
+1.7.7.5
 
-steved.
-
-> 
-> 
->  aclocal/ipv6.m4          |   11 --
->  configure.ac             |   10 +-
->  utils/mountd/Makefile.am |    2 
->  utils/mountd/cache.c     |  225 ++++++++++++++++++++++++++++++++++++++++++++++
->  utils/mountd/fsloc.c     |   10 +-
->  utils/mountd/v4root.c    |    2 
->  6 files changed, 237 insertions(+), 23 deletions(-)
-> 
