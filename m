@@ -1,18 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:47453 "EHLO
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:62170 "EHLO
 	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751255Ab2AOQRc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:32 -0500
-Received: by mail-ey0-f174.google.com with SMTP id e11so75323eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:31 -0800 (PST)
+	with ESMTP id S1753530Ab2AWWUm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 17:20:42 -0500
+Received: by eaac13 with SMTP id c13so779191eaa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 14:20:41 -0800 (PST)
 From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
 Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v6 3/9] nfsd41: handle current stateid on lock and locku
-Date: Sun, 15 Jan 2012 17:20:04 +0100
-Message-Id: <1326644410-7482-4-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: [PATH v7 10/10] nfsd41: use current stateid by value
+Date: Mon, 23 Jan 2012 23:23:35 +0100
+Message-Id: <1327357415-30099-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -21,99 +19,113 @@ From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- fs/nfsd/current_stateid.h |   11 ++++++++++-
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   22 ++++++++++++++++++++--
- 3 files changed, 32 insertions(+), 3 deletions(-)
+ fs/nfsd/current_stateid.h |    1 +
+ fs/nfsd/nfs4proc.c        |   12 +++++++++---
+ fs/nfsd/nfs4state.c       |   19 +++++++++++++++----
+ fs/nfsd/xdr4.h            |    6 ++++--
+ 4 files changed, 29 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index a83dd50..21550b6 100644
+index d8c9992..4123551 100644
 --- a/fs/nfsd/current_stateid.h
 +++ b/fs/nfsd/current_stateid.h
-@@ -4,8 +4,17 @@
+@@ -4,6 +4,7 @@
  #include "state.h"
  #include "xdr4.h"
  
-+/*
-+ * functions to set current state id
-+ */
- extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
--extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
- extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- 
-+/*
-+ * functions to consume current state id
-+ */
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
-+
- #endif   /* _NFSD4_CURRENT_STATE_H */
++extern void clear_current_stateid(struct nfsd4_compound_state *cstate);
+ /*
+  * functions to set current state id
+  */
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a457551..f66a8b2 100644
+index dffc9bd..56c1977 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1474,6 +1474,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCK",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lock_rsize,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_lockstateid,
- 	},
- 	[OP_LOCKT] = {
- 		.op_func = (nfsd4op_func)nfsd4_lockt,
-@@ -1484,6 +1485,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCKU",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
+@@ -453,7 +453,10 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_restorefh;
+ 
+ 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
+-	cstate->current_stateid = cstate->save_stateid;
++	if (cstate->has_ssid) {
++		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
++		cstate->has_csid = true;
++	}
+ 	return nfs_ok;
+ }
+ 
+@@ -465,7 +468,10 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_nofilehandle;
+ 
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+-	cstate->save_stateid = cstate->current_stateid;
++	if (cstate->has_csid) {
++		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
++		cstate->has_ssid = true;
++	}
+ 	return nfs_ok;
+ }
+ 
+@@ -1238,7 +1244,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 				opdesc->op_set_currentstateid(cstate, &op->u);
+ 
+ 			if (opdesc->op_flags & OP_CLEAR_STATEID)
+-				cstate->current_stateid = NULL;
++				clear_current_stateid(cstate);
+ 
+ 			if (need_wrongsec_check(rqstp))
+ 				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6322a59..5665061 100644
+index 9c5a239..c6d2980 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4710,6 +4710,9 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- 		cstate->current_stateid = stateid;
- }
- 
-+/*
-+ * functions to set current state id
-+ */
- void
- nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+@@ -4699,15 +4699,26 @@ nfs4_state_shutdown(void)
+ static void
+ get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
  {
-@@ -4717,13 +4720,28 @@ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *op
+-	if (cstate->current_stateid && CURRENT_STATEID(stateid))
+-		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
++	if (cstate->has_csid && CURRENT_STATEID(stateid))
++		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
  }
  
- void
-+nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	put_stateid(cstate, &close->cl_stateid);
+ static void
+ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ {
+-	if (cstate->minorversion)
+-		cstate->current_stateid = stateid;
++	if (cstate->minorversion) {
++		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
++		cstate->has_csid = true;
++	}
 +}
 +
 +void
-+nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lock)
++clear_current_stateid(struct nfsd4_compound_state *cstate)
 +{
-+	put_stateid(cstate, &lock->lk_resp_stateid);
-+}
-+
-+/*
-+ * functions to consume current state id
-+ */
-+void
- nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
- {
- 	get_stateid(cstate, &close->cl_stateid);
++	if (cstate->has_csid) {
++		memcpy(&cstate->current_stateid, &zero_stateid, sizeof(stateid_t));
++		cstate->has_csid = false;
++	}
  }
  
- void
--nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
- {
--	get_stateid(cstate, &close->cl_stateid);
-+	get_stateid(cstate, &locku->lu_stateid);
- }
+ /*
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2ae378e..3692ba8 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -54,8 +54,10 @@ struct nfsd4_compound_state {
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
+-	const stateid_t	*current_stateid;
+-	const stateid_t	*save_stateid;
++	stateid_t	current_stateid;
++	bool			has_csid; /* true if compound has current state id */
++	stateid_t	save_stateid;
++	bool 			has_ssid; /* true if compound has saved state id */
+ };
+ 
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 -- 
 1.7.7.5
 
