@@ -1,56 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:42404 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752690Ab2AIKQl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 05:16:41 -0500
-Subject: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v4)
-To: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com, bfields@redhat.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Date: Mon, 09 Jan 2012 11:16:28 +0100
-Message-ID: <20120109101628.2218398.94904.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:36010 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab2AWUBn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:01:43 -0500
+Received: by qabg24 with SMTP id g24so1996217qab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:01:43 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 3/6] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+Date: Mon, 23 Jan 2012 15:01:04 -0500
+Message-Id: <1327348867-699-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With the ext3/ext4 directory index implementation hashes are used to specify
-offsets for llseek(). For compatibility with NFSv2 and 32-bit user space
-on 64-bit systems (kernel space) ext3/ext4 currently only return 32-bit 
-hashes and therefore the probability of hash collisions for larger directories
-is rather high. As recently reported on the NFS mailing list that theoretical
-problem also happens on real systems:
-http://comments.gmane.org/gmane.linux.nfs/40863
+We'll need a way to flag the nfs4_client as already being recorded on
+stable storage so that we don't continually upcall.
 
-The following series adds two new f_mode flags to tell ext4
-to use 32-bit or 64-bit hash values for llseek() calls.
-These flags can then used by network file systems, such as NFS, to
-request 32-bit or 64-bit offsets (hashes).
+The cl_cb_flags field is only using 2 bits right now, so repurpose that
+to a generic flags field. Rename NFSD4_CLIENT_KILL to
+NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
+flags. Add a mask that we can use for existing checks that look to see
+whether any flags are set, so that the new STABLE flag doesn't
+interfere.
 
-Version 4
-- Andreas noticed there was HAVE_IS_COMPAT_TASK instead of 
-  CONFIG_COMPAT in the 
-  "Return 32/64-bit dir name hash according to usage type"
-  patch
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |   12 ++++++------
+ fs/nfsd/state.h        |    8 +++++---
+ 2 files changed, 11 insertions(+), 9 deletions(-)
 
-Version 3:
-- remove patch "RFC: Remove check for a 32-bit cookie in nfsd4_readdir()", 
-  as it was included upstream separately
-- split "nfsd: vfs_llseek() with 32 or 64 bit offsets (hashes)" into two
-  two separate patches as suggested by Bruce, one patch to rename 
-  'access' to 'may_flags'. And the remainder of the original patch to set 
-  FMODE_32BITHASH/FMODE_64BITHASH flags and to introduce the new 
-  NFSD_MAY_64BIT_COOKIE flag
-
-Version 2:
-- use f_mode instead of O_* flags and also in a separate patch
-- introduce EXT4_HTREE_EOF_32BIT and EXT4_HTREE_EOF_64BIT
-- fix SEEK_END in ext4_dir_llseek()
-- set f_mode flags in NFS code as early as possible and introduce a new
-  NFSD_MAY_64BIT_COOKIE flag for that
-
---
-Bernd Schubert
-Fraunhofer ITWM
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 6f3ebb4..730e2cc 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -756,7 +756,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+ 	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+-	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	do_probe_callback(clp);
+ }
+ 
+@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
+ /* must be called under the state lock */
+ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ {
+-	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
+ 	/*
+ 	 * Note this won't actually result in a null callback;
+ 	 * instead, nfsd4_do_callback_rpc() will detect the killed
+@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 		clp->cl_cb_conn.cb_xprt = NULL;
+ 	}
+-	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
++	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
+ 		return;
+ 	spin_lock(&clp->cl_lock);
+ 	/*
+ 	 * Only serialized callback code is allowed to clear these
+ 	 * flags; main nfsd code can only set them:
+ 	 */
+-	BUG_ON(!clp->cl_cb_flags);
+-	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
++	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
+ 	c = __nfsd4_find_backchannel(clp);
+ 	if (c) {
+@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+-	if (clp->cl_cb_flags)
++	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+ 		nfsd4_process_cb_update(cb);
+ 
+ 	clnt = clp->cl_cb_client;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 8f539ee..0f9a0ac 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -250,9 +250,11 @@ struct nfs4_client {
+ 
+ 	/* for v4.0 and v4.1 callbacks: */
+ 	struct nfs4_cb_conn	cl_cb_conn;
+-#define NFSD4_CLIENT_CB_UPDATE	1
+-#define NFSD4_CLIENT_KILL	2
+-	unsigned long		cl_cb_flags;
++#define NFSD4_CLIENT_STABLE		(0)	/* client on stable storage */
++#define NFSD4_CLIENT_CB_UPDATE		(1)
++#define NFSD4_CLIENT_CB_KILL		(2)
++#define NFSD4_CLIENT_CB_FLAG_MASK	(0x6)
++	unsigned long		cl_flags;
+ 	struct rpc_clnt		*cl_cb_client;
+ 	u32			cl_cb_ident;
+ #define NFSD4_CB_UP		0
+-- 
+1.7.7.5
 
