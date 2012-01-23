@@ -1,218 +1,383 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24362 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751720Ab2AZPbD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 10:31:03 -0500
-Message-ID: <4F2171B5.2030103@RedHat.com>
-Date: Thu, 26 Jan 2012 10:31:01 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:60023 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab2AWUCU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:20 -0500
+Received: by qadc10 with SMTP id c10so2031574qad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:19 -0800 (PST)
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and recreated
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>	<1327348931-785-10-git-send-email-jlayton@redhat.com>	<4F2046F8.80609@RedHat.com>	<20120125140954.5312a80f@tlielax.poochiereds.net>	<4F20587E.9070209@RedHat.com>	<20120125152814.391ae064@tlielax.poochiereds.net>	<4F207C7C.4090207@RedHat.com>	<20120125183206.5efcd845@corrin.poochiereds.net>	<4F214B77.8050300@RedHat.com>	<20120126082830.23324255@corrin.poochiereds.net> <20120126093059.5c732d75@corrin.poochiereds.net>
-In-Reply-To: <20120126093059.5c732d75@corrin.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 01/11] nfsdcld: add client tracking daemon stub
+Date: Mon, 23 Jan 2012 15:02:01 -0500
+Message-Id: <1327348931-785-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
+The code here doesn't actually do anything on stable storage yet. That
+will be added in a later patch.
 
+The patch also adds a autoconf enable switch for the new daemon that
+defaults to "no", and a test for the upcall description header file.
 
-On 01/26/2012 09:30 AM, Jeff Layton wrote:
-> On Thu, 26 Jan 2012 08:28:30 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
->> On Thu, 26 Jan 2012 07:47:51 -0500
->> Steve Dickson <SteveD@redhat.com> wrote:
->>
->>>
->>>
->>> On 01/25/2012 06:32 PM, Jeff Layton wrote:
->>>> On Wed, 25 Jan 2012 17:04:44 -0500
->>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>
->>>>>
->>>>>
->>>>> On 01/25/2012 03:28 PM, Jeff Layton wrote:
->>>>>> On Wed, 25 Jan 2012 14:31:10 -0500
->>>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>
->>>>>>>
->>>>>>>
->>>>>>> On 01/25/2012 02:09 PM, Jeff Layton wrote:
->>>>>>>> On Wed, 25 Jan 2012 13:16:24 -0500
->>>>>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>>>
->>>>>>>>> Hey Jeff,
->>>>>>>>>
->>>>>>>>> Commit inline... 
->>>>>>>>>
->>>>>>>>> On 01/23/2012 03:02 PM, Jeff Layton wrote:
->>>>>>>>>> This can happen if nfsd is shut down and restarted. If that occurs,
->>>>>>>>>> then reopen the pipe so we're not waiting for data on the defunct
->>>>>>>>>> pipe.
->>>>>>>>>>
->>>>>>>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>>>>>>>>> ---
->>>>>>>>>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
->>>>>>>>>>  1 files changed, 74 insertions(+), 10 deletions(-)
->>>>>>>>>>
->>>>>>>>>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
->>>>>>>>>> index b0c08e2..0dc5b37 100644
->>>>>>>>>> --- a/utils/nfsdcld/nfsdcld.c
->>>>>>>>>> +++ b/utils/nfsdcld/nfsdcld.c
->>>>>>>>>> @@ -57,6 +57,8 @@ struct cld_client {
->>>>>>>>>>  
->>>>>>>>>>  /* global variables */
->>>>>>>>>>  static char *pipepath = DEFAULT_CLD_PATH;
->>>>>>>>>> +static int 		inotify_fd = -1;
->>>>>>>>>> +static struct event	pipedir_event;
->>>>>>>>>>  
->>>>>>>>>>  static struct option longopts[] =
->>>>>>>>>>  {
->>>>>>>>>> @@ -68,8 +70,10 @@ static struct option longopts[] =
->>>>>>>>>>  	{ NULL, 0, 0, 0 },
->>>>>>>>>>  };
->>>>>>>>>>  
->>>>>>>>>> +
->>>>>>>>>>  /* forward declarations */
->>>>>>>>>>  static void cldcb(int UNUSED(fd), short which, void *data);
->>>>>>>>>> +static void cld_pipe_reopen(struct cld_client *clnt);
->>>>>>>>>>  
->>>>>>>>>>  static void
->>>>>>>>>>  usage(char *progname)
->>>>>>>>>> @@ -80,10 +84,62 @@ usage(char *progname)
->>>>>>>>>>  
->>>>>>>>>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
->>>>>>>>>>  
->>>>>>>>>> +static void
->>>>>>>>>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
->>>>>>>>>> +{
->>>>>>>>>> +	int ret, oldfd;
->>>>>>>>>> +	char evbuf[INOTIFY_EVENT_MAX];
->>>>>>>>>> +	char *dirc = NULL, *pname;
->>>>>>>>>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
->>>>>>>>>> +	struct cld_client *clnt = data;
->>>>>>>>>> +
->>>>>>>>>> +	if (which != EV_READ)
->>>>>>>>>> +		return;
->>>>>>>>>> +
->>>>>>>>>> +	dirc = strndup(pipepath, PATH_MAX);
->>>>>>>>>> +	if (!dirc) {
->>>>>>>>>> +		xlog_err("%s: unable to allocate memory", __func__);
->>>>>>>>>> +		goto out;
->>>>>>>>>> +	}
->>>>>>>>>> +
->>>>>>>>>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
->>>>>>>>>> +	if (ret < 0) {
->>>>>>>>>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
->>>>>>>>>> +		goto out;
->>>>>>>>>> +	}
->>>>>>>>>> +
->>>>>>>>>> +	/* check to see if we have a filename in the evbuf */
->>>>>>>>>> +	if (!event->len)
->>>>>>>>>> +		goto out;
->>>>>>>>>> +
->>>>>>>>>> +	pname = basename(dirc);
->>>>>>>>>> +
->>>>>>>>>> +	/* does the filename match our pipe? */
->>>>>>>>>> +	if (strncmp(pname, event->name, event->len))
->>>>>>>>>> +		goto out;
->>>>>>>>>> +
->>>>>>>>>> +	/*
->>>>>>>>>> +	 * reopen the pipe. The old fd is not closed until the new one is
->>>>>>>>>> +	 * opened, so we know they should be different if the reopen is
->>>>>>>>>> +	 * successful.
->>>>>>>>>> +	 */
->>>>>>>>>> +	oldfd = clnt->cl_fd;
->>>>>>>>>> +	do {
->>>>>>>>>> +		cld_pipe_reopen(clnt);
->>>>>>>>>> +	} while (oldfd == clnt->cl_fd);
->>>>>>>>> Doesn't this have a potential for an infinite loop? 
->>>>>>>>>
->>>>>>>>> steved.  
->>>>>>>>
->>>>>>>>
->>>>>>>> Yes. If reopening the new pipe continually fails then it will loop
->>>>>>>> forever.
->>>>>>> Would it be more accurate to say it would be spinning forever? 
->>>>>>> Since there is no sleep or delay in cld_pipe_reopen, what's
->>>>>>> going to stop the daemon from spinning in a CPU bound loop?
->>>>>>>
->>>>>>
->>>>>> Well, not spinning in a userspace loop...it'll continually be cycling on
->>>>>> an open() call that's not working for whatever reason. We sort of have
->>>>>> to loop on that though. I think the best we can do is add a sleep(1) in
->>>>>> there or something. Would that be sufficient?
->>>>>>
->>>>> I still think it going to needlessly suck up CPU cycles... 
->>>>>
->>>>> The way I handled this in the rpc.idmapd daemon was to do the
->>>>> reopen on a SIGHUP signal. Then in NFS server initscript 
->>>>> I did the following:
->>>>>     /usr/bin/pkill -HUP rpc.idmapd
->>>>>
->>>>> Thoughts?
->>>>>
->>>>
->>>> Ugh, that requires manual intervention if the pipe is removed and
->>>> recreated. If someone restarts nfsd and doesn't send the signal, then
->>>> they won't get the upcalls. I'd prefer something that "just works".
->>> I have not seen any bz open saying rpc.idmapd doesn't just work... 
->>>
->>>>
->>>> Seriously, is it that big a deal to just loop here? One open(2) call
->>>> every second doesn't seem that bad, and honestly if a new pipe pops up
->>>> and the daemon can't open it then a few CPU cycles is the least of your
->>>> worries.
->>>>
->>> Put the daemon in that loop and then run the top command in another 
->>> window.. If the daemon is at the top of the list then it is a big
->>> deal because that daemon will on the top forever for no reason, in
->>> the cast of the NFS server not coming back. 
->>>
->>
->> This situation is really unlikely. The daemon does not reopen the pipe
->> when the old one goes away. It reopens it when a new one with the same
->> name is recreated in the directory.
->>
->> That's an important distinction because in order to get into this loop,
->> you'd need to:
->>
->> 1/ remove the old pipe -- this happens when the daemon is shut down
-Just to be clear, when this happens, that while loop is *not* executed
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ configure.ac              |   14 +++
+ utils/Makefile.am         |    4 +
+ utils/nfsdcld/Makefile.am |   14 +++
+ utils/nfsdcld/nfsdcld.c   |  264 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 296 insertions(+), 0 deletions(-)
+ create mode 100644 utils/nfsdcld/Makefile.am
+ create mode 100644 utils/nfsdcld/nfsdcld.c
 
->>
->> 2/ create a new pipe -- this happens when the daemon is restarted
-Then when this happens that while loop is *not* executed.
+diff --git a/configure.ac b/configure.ac
+index 920e8da..d50e54e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -185,6 +185,12 @@ else
+ 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
+ fi
+ 
++AC_ARG_ENABLE(nfsdcld,
++	[AC_HELP_STRING([--enable-nfsdcld],
++			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
++	enable_nfsdcld=$enableval,
++	enable_nfsdcld="no")
++
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
+ 
+@@ -260,6 +266,13 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  if test "$enable_nfsdcld" = "yes"; then
++    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
++		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
++  fi
++
++  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -460,6 +473,7 @@ AC_CONFIG_FILES([
+ 	tools/nfs-iostat/Makefile
+ 	utils/Makefile
+ 	utils/blkmapd/Makefile
++	utils/nfsdcld/Makefile
+ 	utils/exportfs/Makefile
+ 	utils/gssd/Makefile
+ 	utils/idmapd/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index d074b85..5df7ca7 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -21,6 +21,10 @@ if CONFIG_MOUNT
+ OPTDIRS += mount
+ endif
+ 
++if CONFIG_NFSDCLD
++OPTDIRS += nfsdcld
++endif
++
+ SUBDIRS = \
+ 	exportfs \
+ 	mountd \
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+new file mode 100644
+index 0000000..ed7ed42
+--- /dev/null
++++ b/utils/nfsdcld/Makefile.am
+@@ -0,0 +1,14 @@
++## Process this file with automake to produce Makefile.in
++
++#man8_MANS	= nfsdcld.man
++#EXTRA_DIST = $(man8_MANS)
++
++AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
++sbin_PROGRAMS	= nfsdcld
++
++nfsdcld_SOURCES = nfsdcld.c
++
++nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
++
++MAINTAINERCLEANFILES = Makefile.in
++
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+new file mode 100644
+index 0000000..fab35ae
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -0,0 +1,264 @@
++/*
++ * nfsdcld.c -- NFSv4 client name tracking daemon
++ *
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <errno.h>
++#include <event.h>
++#include <stdbool.h>
++#include <getopt.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <linux/nfsd/cld.h>
++
++#include "xlog.h"
++#include "nfslib.h"
++
++#ifndef PIPEFS_DIR
++#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
++#endif
++
++#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
++
++#define UPCALL_VERSION		1
++
++/* private data structures */
++struct cld_client {
++	int			cl_fd;
++	struct event		cl_event;
++	struct cld_msg	cl_msg;
++};
++
++/* global variables */
++static char *pipepath = DEFAULT_CLD_PATH;
++
++static struct option longopts[] =
++{
++	{ "help", 0, NULL, 'h' },
++	{ "foreground", 0, NULL, 'F' },
++	{ "debug", 0, NULL, 'd' },
++	{ "pipe", 1, NULL, 'p' },
++	{ NULL, 0, 0, 0 },
++};
++
++/* forward declarations */
++static void cldcb(int UNUSED(fd), short which, void *data);
++
++static void
++usage(char *progname)
++{
++	printf("Usage:\n");
++	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
++}
++
++static int
++cld_pipe_open(struct cld_client *clnt)
++{
++	clnt->cl_fd = open(pipepath, O_RDWR, 0);
++	if (clnt->cl_fd < 0) {
++		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
++		return clnt->cl_fd;
++	}
++
++	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
++	event_add(&clnt->cl_event, NULL);
++
++	return clnt->cl_fd;
++}
++
++static void
++cld_pipe_reopen(struct cld_client *clnt)
++{
++	int fd;
++
++	fd = open(pipepath, O_RDWR, 0);
++	if (fd < 0) {
++		xlog_warn("%s: Re-opening of %s failed: %m",
++				__func__, pipepath);
++		return;
++	}
++
++	if (clnt->cl_event.ev_flags & EVLIST_INIT)
++		event_del(&clnt->cl_event);
++	if (clnt->cl_fd > 0)
++		close(clnt->cl_fd);
++
++	clnt->cl_fd = fd;
++	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
++	/* event_add is done by the caller */
++}
++
++static void
++cld_create(struct cld_client *clnt)
++{
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: create client record", __func__);
++
++	/* FIXME: create client record on storage here */
++
++	/* set up reply */
++	cmsg->cm_status = 0;
++
++	bsize = sizeof(*cmsg);
++
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
++cld_not_implemented(struct cld_client *clnt)
++{
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
++
++	/* set up reply */
++	cmsg->cm_status = -EOPNOTSUPP;
++
++	bsize = sizeof(*cmsg);
++
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize)
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++
++	/* reopen pipe, just to be sure */
++	cld_pipe_reopen(clnt);
++}
++
++static void
++cldcb(int UNUSED(fd), short which, void *data)
++{
++	ssize_t len;
++	struct cld_client *clnt = data;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	if (which != EV_READ)
++		goto out;
++
++	len = atomicio(read, clnt->cl_fd, cmsg, sizeof(*cmsg));
++	if (len <= 0) {
++		xlog_warn("%s: pipe read failed: %m", __func__);
++		cld_pipe_reopen(clnt);
++		goto out;
++	}
++
++	if (cmsg->cm_vers != UPCALL_VERSION) {
++		xlog_warn("%s: unsupported upcall version: %hu", cmsg->cm_vers);
++		cld_pipe_reopen(clnt);
++		goto out;
++	}
++
++	switch(cmsg->cm_cmd) {
++	case Cld_Create:
++		cld_create(clnt);
++		break;
++	default:
++		xlog_warn("%s: command %u is not yet implemented", __func__,
++			  cmsg->cm_cmd);
++		cld_not_implemented(clnt);
++	}
++out:
++	event_add(&clnt->cl_event, NULL);
++}
++
++int
++main(int argc, char **argv)
++{
++	char arg;
++	int rc = 0, fd;
++	bool foreground = false;
++	char *progname;
++	struct cld_client clnt;
++
++	memset(&clnt, 0, sizeof(clnt));
++
++	progname = strdup(basename(argv[0]));
++	if (!progname) {
++		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
++		return 1;
++	}
++
++	event_init();
++	xlog_syslog(0);
++	xlog_stderr(1);
++
++	/* process command-line options */
++	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
++				  NULL)) != EOF) {
++		switch (arg) {
++		case 'd':
++			xlog_config(D_ALL, 1);
++			break;
++		case 'F':
++			foreground = true;
++			break;
++		case 'p':
++			pipepath = optarg;
++			break;
++		default:
++			usage(progname);
++			return 0;
++		}
++	}
++
++
++	xlog_open(progname);
++	if (!foreground) {
++		xlog_syslog(1);
++		xlog_stderr(0);
++		rc = daemon(0, 0);
++		if (rc) {
++			xlog(L_ERROR, "Unable to daemonize: %m");
++			goto out;
++		}
++	}
++
++	/* set up storage db */
++
++	/* set up event handler */
++	fd = cld_pipe_open(&clnt);
++	if (fd < 0) {
++		rc = fd;
++		goto out;
++	}
++
++	rc = event_dispatch();
++	if (rc < 0)
++		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
++
++	close(clnt.cl_fd);
++out:
++	free(progname);
++	return rc;
++}
+-- 
+1.7.7.5
 
->>
-> 
-> To clarify, the above happen when knfsd are stopped and started...
-> 
->> 3/ not be able to open the new pipe for some reason, even though you
->> were able to open the old one
-Only when 1,2,3 happens synchronously will that while loop be execute, correct?
-
-More the to the point, stopping the server will *not* cause this while 
-to be execute until the server is restarted, correct?
-
->>
->> The reason I put this in a loop is because it's possible (though not
->> likely) that you'd hit condition #3 temporarily. In that event, looping
->> and retrying an open(2) call every second seems entirely reasonable and
->> is more fault tolerant than just dying here. The open of a pipe takes
->> much less than 1s, so there's plenty of time between open attempts for
->> the machine to get other things done
-By no means am I saying not to make it fault tolerant... Please do! I'm
-just worried about the daemon spinning out of control.. :-)
-
->>
->> If it turns out that there's a problem, the admin can shut down the
->> daemon at that point. They may need to do so anyway in order to resolve
->> the situation if the thing preventing the opening of the pipe isn't
->> temporary.
-I guess I would rather figure this out now, during the design, than
-after the bits hit the street... 
-
-steved.
