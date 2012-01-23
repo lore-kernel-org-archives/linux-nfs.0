@@ -1,44 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:29368 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:41080 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756281Ab2AXRE3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 12:04:29 -0500
-Subject: [PATCH] NFS: don't mark freshly created callback sockets with
- XPT_CHNGBUF
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 24 Jan 2012 21:04:11 +0400
-Message-ID: <20120124170411.22663.6138.stgit@localhost6.localdomain6>
+	id S1754236Ab2AWVMr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jan 2012 16:12:47 -0500
+Date: Mon, 23 Jan 2012 16:12:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tigran Mkrtchyan <kofemann@googlemail.com>
+Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: Re: [PATH v7 00/10] handle curruent stateid
+Message-ID: <20120123211247.GA1452@fieldses.org>
+References: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cleanup patch.
-Check for XPT_CHNGBUF is done only for UPD sockets. NFS callbacks doesn't use
-them.
+On Sun, Jan 22, 2012 at 07:45:59PM +0100, Tigran Mkrtchyan wrote:
+> From: Tigran Mkrtchyan <kofemann@gmail.com>
+> 
+> The same as v6, expect that the last patch changes current_stateid 
+> in compoind from reference to a value. As patches have to be squashed
+> anyway
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Why?
 
----
- fs/nfs/callback.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+If it's really only possible as a single big patch I'd actually rather
+have it submitted that way....
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index d81040a..1bf3e9f 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -278,8 +278,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		goto out_err;
- 	}
- 
--	svc_sock_update_bufs(serv);
--
- 	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
- 	cb_info->serv = serv;
- 	cb_info->rqst = rqstp;
+> this aproach is simple that re-write all.
 
+Fine, but #10 doesn't seem to have made it to my mailbox or to the list?
+
+--b.
+
+> 
+> This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
+> 
+> Implemented for:
+> 
+>  OPEN
+>  OPENDOWNGRADE
+>  CLOSE
+>  LOCK
+>  LOCKU
+>  DELEGRETURN
+>  FREE_STATEID
+>  SETATTR
+>  READ
+>  WRITE
+>  SAVEFH
+>  RESTOREFH
+>  PUTFH
+>  PUTROOTFH
+>  PUTPUBFH
+>  LOOKUP
+>  CREATE
+> 
+> 
+> Coresponding pynfs test already submited.
+> 
+> Tigran.
+> 
+> Tigran Mkrtchyan (10):
+>   nfsd4: initialize current stateid at compile time
+>   nfsd41: handle current stateid in open and close
+>   nfsd41: handle current stateid on lock and locku
+>   nfsd41: consume current stateid on read and write
+>   nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+>   nfsd41: save and restore current stateid with current fh
+>   nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+>   nfsd41: handle current stateid in SETATTR and FREE_STATEID
+>   nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+>   nfsd41: use current stateid by value
+> 
+>  fs/nfsd/current_stateid.h |   28 +++++++++++
+>  fs/nfsd/nfs4proc.c        |   61 +++++++++++++++++++++----
+>  fs/nfsd/nfs4state.c       |  110 ++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfsd/xdr4.h            |    4 ++
+>  4 files changed, 192 insertions(+), 11 deletions(-)
+>  create mode 100644 fs/nfsd/current_stateid.h
+> 
+> -- 
+> 1.7.7.5
+> 
