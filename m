@@ -1,71 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:35851 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751472Ab2AYMqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 07:46:34 -0500
-Message-ID: <4F1FF9A0.2000505@panasas.com>
-Date: Wed, 25 Jan 2012 14:46:24 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:52081 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab2AWUBl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:01:41 -0500
+Received: by qcsf13 with SMTP id f13so1753141qcs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:01:40 -0800 (PST)
 MIME-Version: 1.0
-To: <tigran.mkrtchyan@desy.de>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: blacklisted DS with pnfs
-References: <CAGue13ozQQ=qn-TqpLF093HbbnZdKAshrhHZ97OSj7u0SDVxng@mail.gmail.com> <4F1FF91B.3010708@panasas.com>
-In-Reply-To: <4F1FF91B.3010708@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 2/6] sunrpc: create nfsd dir in rpc_pipefs
+Date: Mon, 23 Jan 2012 15:01:03 -0500
+Message-Id: <1327348867-699-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/25/2012 02:44 PM, Boaz Harrosh wrote:
-> On 01/25/2012 11:56 AM, Tigran Mkrtchyan wrote:
->> Hi,
->>
->> we have observed that in some situations ( probably network glitches )
->> the pnfs client blacklisted one of the data servers:
->>
->> NFS: data server 83a95099 connection error -12. Deviceid [22000000000]
->> marked out of use.
->>
->> As a result, data server can't be used by this client anymore.
->>
->> Is there a way to let client to forget about data server?
->> Some magic in /proc ?
->>
->> This is SL6.2 (RHEL 6.2):
->> # uname -a
->> Linux p3-wgs13 2.6.32-220.2.1.el6.x86_64 #1 SMP Thu Dec 22 11:15:52
->> CST 2011 x86_64 x86_64 x86_64 GNU/Linux
->> #
->>
-> 
-> Look in the source code, I think there is a RECALL that the server
-> can do to trash the all device cache. or one of the devices.
-> 
-> What happens is that the device is marked with error but is in 
-> cache so is not re-fetched.
-> 
-> wait let me look ....
-> 
-> I found it! The server sends a NOTIFY_DEVICEID4_CHANGE. The
-> client will remove the deviceid from cache and unmount if needed.
-> Next layout with that deviceid will re-establish the connection and
-> will put a new clean entry in the dev cache.
-> 
+Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
+upcall.
 
-If you want to see for your self look at:
- callback_proc.c::nfs4_callback_devicenotify()
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-Boaz
-> [If you decide to enhance pynfs to send a NOTIFY_DEVICEID4_CHANGE as an admin
->  tool. That would be interesting]
-> 
->> Regards,
->>    Tigran.
-> 
-> Cheers
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 63a7a7a..3dc2c6e 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -986,6 +986,7 @@ enum {
+ 	RPCAUTH_statd,
+ 	RPCAUTH_nfsd4_cb,
+ 	RPCAUTH_cache,
++	RPCAUTH_nfsd,
+ 	RPCAUTH_RootEOF
+ };
+ 
+@@ -1018,6 +1019,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "cache",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_nfsd] = {
++		.name = "nfsd",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ };
+ 
+ static int
+-- 
+1.7.7.5
 
