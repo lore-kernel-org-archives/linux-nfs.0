@@ -1,43 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:40095 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752904Ab2AYQU7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 11:20:59 -0500
-Message-ID: <4F202BD4.5020400@panasas.com>
-Date: Wed, 25 Jan 2012 18:20:36 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:36365 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753127Ab2AWWCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jan 2012 17:02:05 -0500
+Date: Mon, 23 Jan 2012 17:02:04 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Clean up the RPCSEC_GSS service ticket requests
+Message-ID: <20120123220204.GC1452@fieldses.org>
+References: <1325608907-17801-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120103165544.GC6309@fieldses.org>
+ <20120123165124.GA32197@fieldses.org>
+ <1327341448.2628.1.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-CC: <linux-nfs@vger.kernel.org>, <akpm@linux-foundation.org>,
-        <mingo@redhat.com>, <neilb@suse.de>, <stuart.menefy@st.com>
-Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
- mount.
-References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com>
-In-Reply-To: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1327341448.2628.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/25/2012 04:50 PM, Srinivas KANDAGATLA wrote:
-> From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
-> 
-> This patch adds mountretry kernel parameter for nfs root mount.
-> mount retry indicates the number of times nfs root mount attempts to be
-> made before giving up. If this option is not specified, the default
-> value of 3 retries is used.
-> 
+On Mon, Jan 23, 2012 at 12:57:28PM -0500, Trond Myklebust wrote:
+> Does the following patch help?
 
-If the system is set to have root on NFS. And the root is not found
-what does it do? does it Just bums out with a recovery console?
+Yep!
 
-So what better options does it have other then retry for ever. die?
+	Tested-by: J. Bruce Fields <bfields@redhat.com>
 
-I always thought that was inconsistent. With an hard mount NFS
-will never give up and will retry for ever freezing all IOers until
-the server came back. Only with root-mount it gives up.
-
-Please explain what is the benefits of giving up at all. Can a machine
-be at all usable without it's root? 
-
-Thanks
-Boaz
+--b.
