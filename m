@@ -1,68 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58484 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757073Ab2AEVmp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jan 2012 16:42:45 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q05Lgjta026494
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Jan 2012 16:42:45 -0500
-Message-ID: <4F061954.6030208@RedHat.com>
-Date: Thu, 05 Jan 2012 16:42:44 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:48851 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753603Ab2AWWXw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 17:23:52 -0500
+Received: by werb13 with SMTP id b13so2524829wer.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 14:23:50 -0800 (PST)
 MIME-Version: 1.0
-To: Karel Zak <kzak@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mount.nfs: don't overwrite mount options from /etc/nfsmount.conf
-References: <1324563292-22058-1-git-send-email-kzak@redhat.com>
-In-Reply-To: <1324563292-22058-1-git-send-email-kzak@redhat.com>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <20120123211247.GA1452@fieldses.org>
+References: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<20120123211247.GA1452@fieldses.org>
+Date: Mon, 23 Jan 2012 23:23:50 +0100
+Message-ID: <CAGue13pu8=sSrf71KxgkP-GhpM4nv0yF5LfGr29T_Lp4Oj27cw@mail.gmail.com>
+Subject: Re: [PATH v7 00/10] handle curruent stateid
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tigran Mkrtchyan <kofemann@googlemail.com>, linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <kofemann@gmail.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jan 23, 2012 at 10:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Sun, Jan 22, 2012 at 07:45:59PM +0100, Tigran Mkrtchyan wrote:
+>> From: Tigran Mkrtchyan <kofemann@gmail.com>
+>>
+>> The same as v6, expect that the last patch changes current_stateid
+>> in compoind from reference to a value. As patches have to be squashed
+>> anyway
+>
+> Why?
 
+for me none of them makes sense alone. But, of course, you have your own rules.
 
-On 12/22/2011 09:14 AM, Karel Zak wrote:
-> The libmount (as well as mount(8)) ignores mount options from command
-> line if running in restricted mode (suid, non-root-user) and all
-> options are read from fstab only.
-> 
-> It means that all options are replaced with stuff from fstab,
-> including mount options from nfsmount.conf. This is bug.
-> 
-> We have to apply fstab and then nfsmount.conf.
-> 
-> Signed-off-by: Karel Zak <kzak@redhat.com>
-Committed...
+>
+> If it's really only possible as a single big patch I'd actually rather
+> have it submitted that way....
+>
+>> this aproach is simple that re-write all.
+>
+> Fine, but #10 doesn't seem to have made it to my mailbox or to the list?
 
-steved.
-> ---
->  utils/mount/mount_libmount.c |   15 +++++++++++++++
->  1 files changed, 15 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-> index e450d79..e8f17a9 100644
-> --- a/utils/mount/mount_libmount.c
-> +++ b/utils/mount/mount_libmount.c
-> @@ -346,6 +346,21 @@ static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
->  
->  	if (chk_mountpoint(mount_point))
->  		goto err;
-> +
-> +	/*
-> +	 * The libmount strictly uses only options from fstab if running in
-> +	 * restricted mode (suid, non-root user). This is done in
-> +	 * mnt_context_prepare_mount() by default.
-> +	 *
-> +	 * We have to read fstab before nfsmount.conf, otherwise the options
-> +	 * from nfsmount.conf will be ignored (overwrited).
-> +	 */
-> +	rc = mnt_context_apply_fstab(cxt);
-> +	if (rc) {
-> +		nfs_error(_("%s: failed to apply fstab options\n"), progname);
-> +		goto err;
-> +	}
-> +
->  	/*
->  	 * Concatenate mount options from the configuration file
->  	 */
+Ha! turned out that 000*.patch does not include 0010-X.patch :-D
+
+Tigran.
+
+>
+> --b.
+>
+>>
+>> This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
+>>
+>> Implemented for:
+>>
+>>  OPEN
+>>  OPENDOWNGRADE
+>>  CLOSE
+>>  LOCK
+>>  LOCKU
+>>  DELEGRETURN
+>>  FREE_STATEID
+>>  SETATTR
+>>  READ
+>>  WRITE
+>>  SAVEFH
+>>  RESTOREFH
+>>  PUTFH
+>>  PUTROOTFH
+>>  PUTPUBFH
+>>  LOOKUP
+>>  CREATE
+>>
+>>
+>> Coresponding pynfs test already submited.
+>>
+>> Tigran.
+>>
+>> Tigran Mkrtchyan (10):
+>>   nfsd4: initialize current stateid at compile time
+>>   nfsd41: handle current stateid in open and close
+>>   nfsd41: handle current stateid on lock and locku
+>>   nfsd41: consume current stateid on read and write
+>>   nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+>>   nfsd41: save and restore current stateid with current fh
+>>   nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+>>   nfsd41: handle current stateid in SETATTR and FREE_STATEID
+>>   nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+>>   nfsd41: use current stateid by value
+>>
+>>  fs/nfsd/current_stateid.h |   28 +++++++++++
+>>  fs/nfsd/nfs4proc.c        |   61 +++++++++++++++++++++----
+>>  fs/nfsd/nfs4state.c       |  110 ++++++++++++++++++++++++++++++++++++++++++++-
+>>  fs/nfsd/xdr4.h            |    4 ++
+>>  4 files changed, 192 insertions(+), 11 deletions(-)
+>>  create mode 100644 fs/nfsd/current_stateid.h
+>>
+>> --
+>> 1.7.7.5
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
