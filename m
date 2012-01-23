@@ -1,220 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-1.desy.de ([131.169.56.84]:45876 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751451Ab2AOTCo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 14:02:44 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id D7B961764
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:42 +0100 (MET)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8976313E86
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:40 +0100 (MET)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 1/5] client: move current stateid test into a dedicated module
-Date: Sun, 15 Jan 2012 20:05:24 +0100
-Message-Id: <1326654328-20557-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:52081 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab2AWUBr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:01:47 -0500
+Received: by mail-qy0-f174.google.com with SMTP id f13so1753141qcs.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:01:47 -0800 (PST)
+MIME-Version: 1.0
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 6/6] nfsd: get boot generation number from upcall instead of boot_time
+Date: Mon, 23 Jan 2012 15:01:07 -0500
+Message-Id: <1327348867-699-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Replace boot_time as a mechanism for generating clientids with a
+number that we upcall for from stable storage. If the upcall is
+not available, then call get_seconds() to set it similarly to
+how we do this today.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- nfs4.1/server41tests/__init__.py           |    1 +
- nfs4.1/server41tests/st_current_stateid.py |   86 ++++++++++++++++++++++++++++
- nfs4.1/server41tests/st_open.py            |   76 ------------------------
- 3 files changed, 87 insertions(+), 76 deletions(-)
- create mode 100644 nfs4.1/server41tests/st_current_stateid.py
+ fs/nfsd/nfs4recover.c |   41 ++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c   |   19 +++++++++++++------
+ fs/nfsd/state.h       |    2 +-
+ 3 files changed, 50 insertions(+), 12 deletions(-)
 
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index eb92538..2bedb57 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -20,4 +20,5 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_block.py",
- ##           "st_debug.py",
- ##           "st_loop",
-+           "st_current_stateid.py",
-            ]
-diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41tests/st_current_stateid.py
-new file mode 100644
-index 0000000..1f24ec9
---- /dev/null
-+++ b/nfs4.1/server41tests/st_current_stateid.py
-@@ -0,0 +1,86 @@
-+from st_create_session import create_session
-+from nfs4_const import *
-+
-+from environment import check, checklist, fail, create_file, open_file, close_file
-+from environment import open_create_file_op
-+from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
-+from nfs4_type import creatverfattr, fattr4, stateid4, locker4, lock_owner4
-+from nfs4_type import open_to_lock_owner4
-+import nfs4_ops as op
-+import threading
-+
-+
-+current_stateid = stateid4(1, '\0' * 12)
-+
-+def testOpenAndClose(t, env):
-+    """test current state id processing by having OPEN and CLOSE
-+       in a single compound
-+
-+    FLAGS: currentstateid all
-+    CODE: CSID1
-+    """    
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+
-+    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-+    res = sess1.compound(open_op + [op.close(0, current_stateid)])
-+    check(res, NFS4_OK)
-+
-+def testLockLockU(t, env):
-+    """test current state id processing by having LOCK and LOCKU
-+       in a single compound
-+
-+    FLAGS: currentstateid all
-+    CODE: CSID2
-+    """
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+
-+    res = create_file(sess1, env.testname(t))
-+    check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-+
-+    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
-+    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
-+    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
-+	op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX) ]
-+    res = sess1.compound([op.putfh(fh)] + lock_ops)
-+    check(res, NFS4_OK)
-+
-+def testOpenWriteClose(t, env):
-+    """test current state id processing by having OPEN, WRITE and CLOSE
-+       in a single compound
-+
-+    FLAGS: currentstateid all
-+    CODE: CSID3
-+    """
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+
-+    data = "write test data"
-+    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
-+    res = sess1.compound(open_op + [op.write(current_stateid, 5, FILE_SYNC4, data),
-+        op.close(0, current_stateid)])
-+    check(res, NFS4_OK)
-+
-+def testLockWriteLocku(t, env):
-+    """test current state id processing by having LOCK, WRITE and LOCKU
-+       in a single compound
-+
-+    FLAGS: currentstateid all
-+    CODE: CSID4
-+    """
-+    sess1 = env.c1.new_client_session(env.testname(t))
-+
-+    res = create_file(sess1, env.testname(t))
-+    check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-+
-+    data = "write test data"
-+    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
-+    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
-+    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
-+        op.write(current_stateid, 5, FILE_SYNC4, data),
-+        op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX),
-+        op.close(0, stateid)]
-+    res = sess1.compound([op.putfh(fh)] + lock_ops)
-+    check(res, NFS4_OK)
-diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
-index 1c51f71..895916a 100644
---- a/nfs4.1/server41tests/st_open.py
-+++ b/nfs4.1/server41tests/st_open.py
-@@ -240,79 +240,3 @@ def testOPENClaimFH(t, env):
-     if res.resarray[-1].data != desired:
-         fail("Expected %r, got %r" % (desired, res.resarray[-1].data))
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 7ef9327..1477dc5 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -50,7 +50,7 @@
  
--def testOpenAndClose(t, env):
--    """test current state id processing by having OPEN and CLOSE
--       in a single compound
--
--    FLAGS: currentstateid open all
--    CODE: OPEN31
--    """
--    current_stateid = stateid4(1, '\0' * 12)
--    sess1 = env.c1.new_client_session(env.testname(t))
--
--    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
--    res = sess1.compound(open_op + [op.close(0, current_stateid)])
--    check(res, NFS4_OK)
--
--def testLockLockU(t, env):
--    """test current state id processing by having LOCK and LOCKU
--       in a single compound
--
--    FLAGS: currentstateid open all
--    CODE: OPEN32
--    """
--    current_stateid = stateid4(1, '\0' * 12)
--    sess1 = env.c1.new_client_session(env.testname(t))
--
--    res = create_file(sess1, env.testname(t))
--    check(res)
--    fh = res.resarray[-1].object
--    stateid = res.resarray[-2].stateid
--
--    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
--    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
--    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
--	op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX) ]
--    res = sess1.compound([op.putfh(fh)] + lock_ops)
--    check(res, NFS4_OK)
--
--def testOpenWriteClose(t, env):
--    """test current state id processing by having OPEN, WRITE and CLOSE
--       in a single compound
--
--    FLAGS: currentstateid open all
--    CODE: OPEN33
--    """
--    current_stateid = stateid4(1, '\0' * 12)
--    sess1 = env.c1.new_client_session(env.testname(t))
--
--    data = "write test data"
--    open_op = open_create_file_op(sess1, env.testname(t), open_create=OPEN4_CREATE)
--    res = sess1.compound(open_op + [op.write(current_stateid, 5, FILE_SYNC4, data),
--        op.close(0, current_stateid)])
--    check(res, NFS4_OK)
--
--def testLockWriteLocku(t, env):
--    """test current state id processing by having LOCK, WRITE and LOCKU
--       in a single compound
--
--    FLAGS: currentstateid open all
--    CODE: OPEN34
--    """
--    current_stateid = stateid4(1, '\0' * 12)
--    sess1 = env.c1.new_client_session(env.testname(t))
--
--    res = create_file(sess1, env.testname(t))
--    check(res)
--    fh = res.resarray[-1].object
--    stateid = res.resarray[-2].stateid
--
--    data = "write test data"
--    open_to_lock_owner = open_to_lock_owner4( 0, stateid, 0, lock_owner4(0, "lock1"))
--    lock_owner = locker4(open_owner=open_to_lock_owner, new_lock_owner=True)
--    lock_ops = [ op.lock(WRITE_LT, False, 0, NFS4_UINT64_MAX, lock_owner),
--        op.write(current_stateid, 5, FILE_SYNC4, data),
--        op.locku(WRITE_LT, 0, current_stateid, 0, NFS4_UINT64_MAX),
--        op.close(0, stateid)]
--    res = sess1.compound([op.putfh(fh)] + lock_ops)
--    check(res, NFS4_OK)
+ /* Declarations */
+ struct nfsd4_client_tracking_ops {
+-	int (*init)(void);
++	int (*init)(uint32_t *);
+ 	void (*exit)(void);
+ 	void (*create)(struct nfs4_client *);
+ 	void (*remove)(struct nfs4_client *);
+@@ -409,7 +409,7 @@ nfsd4_init_recdir(void)
+ }
+ 
+ static int
+-nfsd4_load_reboot_recovery_data(void)
++nfsd4_load_reboot_recovery_data(uint32_t *boot_gen)
+ {
+ 	int status;
+ 
+@@ -420,6 +420,8 @@ nfsd4_load_reboot_recovery_data(void)
+ 	nfs4_unlock_state();
+ 	if (status)
+ 		printk(KERN_ERR "NFSD: Failure reading reboot recovery data\n");
++	else
++		*boot_gen = (uint32_t)get_seconds();
+ 	return status;
+ }
+ 
+@@ -689,6 +691,35 @@ free_cld_upcall(struct cld_upcall *victim)
+ 	kfree(victim);
+ }
+ 
++static int
++nfsd4_cld_init(uint32_t *boot_gen)
++{
++	int ret;
++	struct cld_upcall *cup;
++
++	ret = nfsd4_init_cld_pipe();
++	if (ret)
++		return ret;
++
++	/* upcall for boot gen */
++	cup = alloc_cld_upcall();
++	if (!cup)
++		return -ENOMEM;
++
++	cup->cu_msg.cm_cmd = Cld_Init;
++
++	ret = cld_pipe_upcall(&cup->cu_msg);
++	if (!ret) {
++		ret = cup->cu_msg.cm_status;
++		if (!ret)
++			*boot_gen = cup->cu_msg.cm_u.cm_generation;
++	}
++
++	free_cld_upcall(cup);
++	return ret;
++
++}
++
+ /* Ask daemon to create a new record */
+ static void
+ nfsd4_cld_create(struct nfs4_client *clp)
+@@ -781,7 +812,7 @@ out_err:
+ }
+ 
+ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+-	.init		= nfsd4_init_cld_pipe,
++	.init		= nfsd4_cld_init,
+ 	.exit		= nfsd4_remove_cld_pipe,
+ 	.create		= nfsd4_cld_create,
+ 	.check		= nfsd4_cld_check,
+@@ -789,7 +820,7 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+ };
+ 
+ int
+-nfsd4_client_tracking_init(void)
++nfsd4_client_tracking_init(uint32_t *boot_gen)
+ {
+ 	int status;
+ 	struct path path;
+@@ -808,7 +839,7 @@ nfsd4_client_tracking_init(void)
+ 	if (!client_tracking_ops->init)
+ 		return 0;
+ 
+-	status = client_tracking_ops->init();
++	status = client_tracking_ops->init(boot_gen);
+ 	if (status) {
+ 		printk(KERN_WARNING "NFSD: Unable to initialize client "
+ 				    "recovery tracking! (%d)\n", status);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 971a117..47e4981 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -49,6 +49,7 @@
+ time_t nfsd4_lease = 90;     /* default lease time */
+ time_t nfsd4_grace = 90;
+ static time_t boot_time;
++static uint32_t boot_gen;
+ 
+ #define all_ones {{~0,~0},~0}
+ static const stateid_t one_stateid = {
+@@ -975,10 +976,10 @@ renew_client(struct nfs4_client *clp)
+ static int
+ STALE_CLIENTID(clientid_t *clid)
+ {
+-	if (clid->cl_boot == boot_time)
++	if (clid->cl_boot == boot_gen)
+ 		return 0;
+-	dprintk("NFSD stale clientid (%08x/%08x) boot_time %08lx\n",
+-		clid->cl_boot, clid->cl_id, boot_time);
++	dprintk("NFSD stale clientid (%08x/%08x) boot_gen %08x\n",
++		clid->cl_boot, clid->cl_id, boot_gen);
+ 	return 1;
+ }
+ 
+@@ -1132,7 +1133,7 @@ static void gen_clid(struct nfs4_client *clp)
+ {
+ 	static u32 current_clientid = 1;
+ 
+-	clp->cl_clientid.cl_boot = boot_time;
++	clp->cl_clientid.cl_boot = boot_gen;
+ 	clp->cl_clientid.cl_id = current_clientid++; 
+ }
+ 
+@@ -3175,7 +3176,7 @@ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *s
+ static int
+ STALE_STATEID(stateid_t *stateid)
+ {
+-	if (stateid->si_opaque.so_clid.cl_boot == boot_time)
++	if (stateid->si_opaque.so_clid.cl_boot == boot_gen)
+ 		return 0;
+ 	dprintk("NFSD: stale stateid " STATEID_FMT "!\n",
+ 		STATEID_VAL(stateid));
+@@ -4630,7 +4631,13 @@ out_free_laundry:
+ int
+ nfs4_state_start(void)
+ {
+-	nfsd4_client_tracking_init();
++	int ret;
++
++	ret = nfsd4_client_tracking_init(&boot_gen);
++
++	/* if init fails, then we still need to set boot_gen */
++	if (ret)
++		boot_gen = (uint32_t)get_seconds();
+ 	return __nfs4_state_start();
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 0f9a0ac..dd1f688 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -487,7 +487,7 @@ extern __be32 nfs4_validate_stateid(struct nfs4_client *, stateid_t *);
+ extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+ 
+ /* nfs4recover operations */
+-extern int nfsd4_client_tracking_init(void);
++extern int nfsd4_client_tracking_init(uint32_t *boot_gen);
+ extern void nfsd4_client_tracking_exit(void);
+ extern void nfsd4_client_record_create(struct nfs4_client *clp);
+ extern void nfsd4_client_record_remove(struct nfs4_client *clp);
 -- 
 1.7.7.5
 
