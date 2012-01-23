@@ -1,76 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34138 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:24996 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932310Ab2ASOuI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jan 2012 09:50:08 -0500
-Subject: [PATCH 5/5] SUNRPC: generic cache register routines removed
+	id S1753449Ab2AWR0U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jan 2012 12:26:20 -0500
+Subject: [PATCH 0/4] NFS: make internal list network namespace aware
 To: Trond.Myklebust@netapp.com
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
         netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
         jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
         devel@openvz.org
-Date: Thu, 19 Jan 2012 18:49:39 +0400
-Message-ID: <20120119144939.9957.12606.stgit@localhost6.localdomain6>
-In-Reply-To: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
-References: <20120119144517.9957.59143.stgit@localhost6.localdomain6>
+Date: Mon, 23 Jan 2012 21:25:56 +0400
+Message-ID: <20120123171404.29637.19810.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All cache users now uses network-namespace-aware routines, so generic ones
-are obsolete.
+This patch set moves static internal lists of NFS clients and NFS servers, as
+well as static IDR's structure and lock, protecting all that stuff, to network
+namespace context.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+The following series consists of:
 
 ---
- include/linux/sunrpc/cache.h |    2 --
- net/sunrpc/cache.c           |   12 ------------
- 2 files changed, 0 insertions(+), 14 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 259381c..f5fd616 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -198,9 +198,7 @@ extern void cache_flush(void);
- extern void cache_purge(struct cache_detail *detail);
- #define NEVER (0x7FFFFFFF)
- extern void __init cache_initialize(void);
--extern int cache_register(struct cache_detail *cd);
- extern int cache_register_net(struct cache_detail *cd, struct net *net);
--extern void cache_unregister(struct cache_detail *cd);
- extern void cache_unregister_net(struct cache_detail *cd, struct net *net);
- 
- extern struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index a450b8a..f21ece0 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1645,12 +1645,6 @@ int cache_register_net(struct cache_detail *cd, struct net *net)
- }
- EXPORT_SYMBOL_GPL(cache_register_net);
- 
--int cache_register(struct cache_detail *cd)
--{
--	return cache_register_net(cd, &init_net);
--}
--EXPORT_SYMBOL_GPL(cache_register);
--
- void cache_unregister_net(struct cache_detail *cd, struct net *net)
- {
- 	remove_cache_proc_entries(cd, net);
-@@ -1658,12 +1652,6 @@ void cache_unregister_net(struct cache_detail *cd, struct net *net)
- }
- EXPORT_SYMBOL_GPL(cache_unregister_net);
- 
--void cache_unregister(struct cache_detail *cd)
--{
--	cache_unregister_net(cd, &init_net);
--}
--EXPORT_SYMBOL_GPL(cache_unregister);
--
- struct cache_detail *cache_create_net(struct cache_detail *tmpl, struct net *net)
- {
- 	struct cache_detail *cd;
+Stanislav Kinsbursky (4):
+      NFS: make nfs_client_list per net ns
+      NFS: make nfs_volume_list per net ns
+      NFS: make cb_ident_idr per net ns
+      NFS: make nfs_client_lock per net ns
+
+
+ fs/nfs/callback_xdr.c |    2 -
+ fs/nfs/client.c       |  137 +++++++++++++++++++++++++++++++------------------
+ fs/nfs/idmap.c        |    9 +--
+ fs/nfs/inode.c        |    3 +
+ fs/nfs/internal.h     |    9 +--
+ fs/nfs/netns.h        |    6 ++
+ 6 files changed, 104 insertions(+), 62 deletions(-)
 
