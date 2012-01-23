@@ -1,96 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e38.co.us.ibm.com ([32.97.110.159]:33153 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752270Ab2A3TaP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 14:30:15 -0500
-Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 30 Jan 2012 12:30:14 -0700
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 1107319D804F
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2012 12:30:02 -0700 (MST)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0UJTxsb088746
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2012 12:30:00 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0UJTxTD007358
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2012 12:29:59 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0UJTwDL007339
-	for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2012 12:29:58 -0700
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC] [PATCH 00/13] NFS4 replication support
-Date: Mon, 30 Jan 2012 13:29:42 -0600
-Message-Id: <1327951795-16400-1-git-send-email-malahal@us.ibm.com>
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:36010 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753803Ab2AWUBp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:01:45 -0500
+Received: by mail-qw0-f53.google.com with SMTP id g24so1996217qab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:01:44 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 4/6] nfsd: add a header describing upcall to nfsdcld
+Date: Mon, 23 Jan 2012 15:01:05 -0500
+Message-Id: <1327348867-699-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patch set supports NFS4 replication for read only file
-systems.  The beginning set of patches are derived from Chuck Lever's
-migration tree. The later set of patches support replication from the
-interface built from the migration patches. Simple testing shows that it
-works!
+The daemon takes a versioned binary struct. Hopefully this should allow
+us to revise the struct later if it becomes necessary.
 
-Here are some issues that I already know. Hopefully all of them
-including any new issues will be resolved with the help of this list.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/nfsd/cld.h |   58 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 58 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
 
-1. Replacing a transport (rpc_xprt) needs waiting for all the pending
-   RPC tasks.  This doesn't work for now.
-2. In order to use the replicated server, in addition to replacing the
-   transport, we also clone a new nfs_client.  Currently the old
-   nfs_client structure is not released. We can wait for all the active
-   commands and then release the nfs_client (needs more work!). Or
-   simply keep all old nfs_clients until nfs_free_server() is called and
-   then release them.
-
-Regards, Malahal.
-
-
-
-Chuck Lever (3):
-  SUNRPC: Add API to acquire source address
-  NFS: Add an API for cloning an nfs_client
-  NFS: Save root file handle in nfs_server
-
-Malahal Naineni (6):
-  NFS: Store server locations for replication
-  NFS: Add replica servers to volumes proc file.
-  NFS: Add replace transport infrastructure for replication
-  NFS: Add replication capability to state manager thread.
-  NFS: Handle replication on a timeout error
-  NFS: Avoid spurious replication recoveries
-
-Trond Myklebust (4):
-  SUNRPC: Allow temporary blocking of an rpc client
-  SUNRPC: Use RCU to dereference the rpc_clnt.cl_xprt field
-  SUNRPC: Move clnt->cl_server into struct rpc_xprt
-  SUNRPC: Add a helper to switch the transport of the rpc_client
-
- fs/nfs/callback.c            |    3 +-
- fs/nfs/callback_proc.c       |    9 +-
- fs/nfs/client.c              |   84 +++++++-
- fs/nfs/getroot.c             |    3 +
- fs/nfs/internal.h            |    4 +
- fs/nfs/nfs4_fs.h             |    6 +
- fs/nfs/nfs4namespace.c       |  148 +++++++++++++
- fs/nfs/nfs4proc.c            |   69 ++++++-
- fs/nfs/nfs4state.c           |   39 +++-
- fs/nfs/nfs4xdr.c             |   16 +-
- fs/nfs/super.c               |   56 +++++
- include/linux/nfs_fs_sb.h    |    8 +
- include/linux/nfs_xdr.h      |    3 +
- include/linux/sunrpc/clnt.h  |   22 ++-
- include/linux/sunrpc/debug.h |   11 +
- include/linux/sunrpc/xprt.h  |    2 +
- net/sunrpc/clnt.c            |  473 ++++++++++++++++++++++++++++++++++++-----
- net/sunrpc/rpc_pipe.c        |    5 +-
- net/sunrpc/rpcb_clnt.c       |   24 ++-
- net/sunrpc/stats.c           |    6 +-
- net/sunrpc/xprt.c            |   15 ++-
- 21 files changed, 902 insertions(+), 104 deletions(-)
-
+diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+new file mode 100644
+index 0000000..b144a70
+--- /dev/null
++++ b/include/linux/nfsd/cld.h
+@@ -0,0 +1,58 @@
++/*
++ * fs/nfsd/cld.h - upcall description for nfsdcld communication
++ *
++ * Copyright (c) 2011 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef _NFSD_CLD_H
++#define _NFSD_CLD_H
++
++/* latest upcall version available */
++#define CLD_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++enum cld_command {
++	Cld_Init,		/* called when nfsd starts */
++	Cld_Create,		/* create a record for this cm_id */
++	Cld_Allow,		/* is this cm_id allowed? */
++	Cld_GraceDone,		/* grace period is complete */
++};
++
++/* representation of long-form NFSv4 client ID */
++struct cld_name {
++	uint16_t	cn_len;				/* length of cm_id */
++	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
++} __attribute__((packed));
++
++/* message struct for communication with userspace */
++struct cld_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		int64_t		cm_index;	/* clientid index */
++		uint32_t	cm_generation;	/* boot generation index */
++		struct cld_name	cm_name;
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLD_H */
 -- 
-1.7.8.3
+1.7.7.5
 
