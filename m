@@ -1,175 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:49896 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753494Ab2ALP1Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:27:16 -0500
-Received: by vcbfk14 with SMTP id fk14so1422430vcb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:27:15 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 12 Jan 2012 23:26:54 +0800
-Message-ID: <CA+a=Yy4iS0G=xjSZ96gs8QNGsArjRe=RprqBLm6yOdG+atczqA@mail.gmail.com>
-Subject: Re: [PATCH-v2 0/9] pnfsblock patches for 3.3 post-rc1
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu
-Content-Type: multipart/mixed; boundary=f46d043c81740d76b104b6566209
+Received: from acsinet15.oracle.com ([141.146.126.227]:27470 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754086Ab2AWUDB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:03:01 -0500
+Subject: Re: [PATCH 1/1] SUNRPC: Adding status trace points
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1327348480-32549-2-git-send-email-steved@redhat.com>
+Date: Mon, 23 Jan 2012 15:02:56 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <383508F5-8A0B-4EBE-B81B-6A75887CD156@oracle.com>
+References: <1327348480-32549-1-git-send-email-steved@redhat.com> <1327348480-32549-2-git-send-email-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---f46d043c81740d76b104b6566209
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jan 12, 2012 at 11:18 PM, Peng Tao <bergwolf@gmail.com> wrote:
-> Hi Trond,
->
-> These are pnfsblock patches rebased on top of nfs-for-3.3. All patches we=
-re sent to list before and merged by Benny.
->
-> This version fixes the stable kernel mail address.
->
-> Thanks,
-> Tao
->
-> Peng Tao (9):
-> =C2=A0pnfsblock: cleanup bl_mark_sectors_init
-> =C2=A0pnfsblock: acquire im_lock in _preload_range
-> =C2=A0pnfsblock: move find lock page logic out of bl_write_pagelist
-> =C2=A0pnfsblock: set read/write tk_status to pnfs_error
-> =C2=A0pnfsblock: remove rpc_call_ops from struct parallel_io
-> =C2=A0pnfsblock: clean up _add_entry
-> =C2=A0pnfsblock: alloc short extent before submit bio
-> =C2=A0pnfsblock: don't spinlock when freeing block_dev
-> =C2=A0pnfsblock: limit bio page count
->
-> =C2=A0fs/nfs/blocklayout/blocklayout.c | =C2=A0202 ++++++++++++++++++++++=
-++-------------
-> =C2=A0fs/nfs/blocklayout/blocklayout.h | =C2=A0 12 ++-
-> =C2=A0fs/nfs/blocklayout/extents.c =C2=A0 =C2=A0 | =C2=A0176 ++++++++++++=
-++-------------------
-> =C2=A03 files changed, 215 insertions(+), 175 deletions(-)
->
+On Jan 23, 2012, at 2:54 PM, Steve Dickson wrote:
 
-Hi Trond,
+> This patch adds three trace points to the status routines
+> in the sunrpc state machine.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> include/trace/events/sunrpc.h |   45 +++++++++++++++++++++++++++++++++++++++++
+> net/sunrpc/clnt.c             |    4 +++
+> 2 files changed, 49 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> index 1852f11..bca5ad3 100644
+> --- a/include/trace/events/sunrpc.h
+> +++ b/include/trace/events/sunrpc.h
+> @@ -8,6 +8,51 @@
+> #include <linux/sunrpc/clnt.h>
+> #include <linux/tracepoint.h>
+> 
+> +DECLARE_EVENT_CLASS(rpc_task_status,
+> +
+> +	TP_PROTO(struct rpc_task *task),
+> +
+> +	TP_ARGS(task),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(int, status)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->status = task->tk_status;
+> +	),
+> +
+> +	TP_printk("status %d", __entry->status)
+> +);
+> +
+> +DEFINE_EVENT(rpc_task_status, rpc_call_status,
+> +	TP_PROTO(struct rpc_task *task), 
+> +
+> +	TP_ARGS(task)
+> +);
+> +
+> +DEFINE_EVENT(rpc_task_status, rpc_bind_status,
+> +	TP_PROTO(struct rpc_task *task), 
+> +
+> +	TP_ARGS(task)
+> +);
+> +
+> +TRACE_EVENT(rpc_connect_status,
+> +	TP_PROTO(int status),
+> +
+> +	TP_ARGS(status),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(int, status)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->status = status;
+> +	),
+> +
+> +	TP_printk("status=%d", __entry->status)
+> +);
+> +
+> DECLARE_EVENT_CLASS(rpc_task_running,
+> 
+> 	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index f0268ea..bbe7385 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -55,6 +55,7 @@ static DEFINE_SPINLOCK(rpc_client_lock);
+> 
+> static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
+> 
+> +#include <trace/events/sunrpc.h>
 
-I also attach patch 2, 8, 9 here just in case vger eats them again...
+I'd prefer that this #include be kept with the others at the head of the file, unless there is a strong reason this one needs to be inconsistent.
 
-Thanks,
-Tao
+I'm glad a clean way was found to add trace points to the RPC client.
 
---f46d043c81740d76b104b6566209
-Content-Type: application/octet-stream;
-	name="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
-Content-Disposition: attachment;
-	filename="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gxbxj3nj0
+> static void	call_start(struct rpc_task *task);
+> static void	call_reserve(struct rpc_task *task);
+> @@ -1163,6 +1164,7 @@ call_bind_status(struct rpc_task *task)
+> 		return;
+> 	}
+> 
+> +	trace_rpc_bind_status(task);
+> 	switch (task->tk_status) {
+> 	case -ENOMEM:
+> 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
+> @@ -1262,6 +1264,7 @@ call_connect_status(struct rpc_task *task)
+> 		return;
+> 	}
+> 
+> +	trace_rpc_connect_status(status);
 
-RnJvbSA5M2ZlZDBkYjdiZDdiZTY2ZTM1ZDlkOTRiOWMyNjFjYzNiODM0ZWEwIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBX
-ZWQsIDIgTm92IDIwMTEgMDE6MTE6MTQgLTA0MDAKU3ViamVjdDogW1BBVENILXYyIDIvOV0gcG5m
-c2Jsb2NrOiBhY3F1aXJlIGltX2xvY2sgaW4gX3ByZWxvYWRfcmFuZ2UKCldoZW4gY2FsbGluZyBf
-YWRkX2VudHJ5LCB3ZSBzaG91bGQgdGFrZSB0aGUgaW1fbG9jayB0byBwcm90ZWN0CmFnYWlucyBv
-dGhlciBtb2RpZmllcnMuCgpDYzogPHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmc+ICMzLjErClNpZ25l
-ZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQtb2ZmLWJ5OiBCZW5u
-eSBIYWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxvY2tsYXlvdXQvZXh0
-ZW50cy5jIHwgICAxMSArKysrKystLS0tLQogMSBmaWxlcyBjaGFuZ2VkLCA2IGluc2VydGlvbnMo
-KyksIDUgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVu
-dHMuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMKaW5kZXggMGZjMTMyMS4uZjM4MzUy
-NCAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYworKysgYi9mcy9uZnMv
-YmxvY2tsYXlvdXQvZXh0ZW50cy5jCkBAIC0xMzksMTEgKzEzOSwxMyBAQCBzdGF0aWMgaW50IF9z
-ZXRfcmFuZ2Uoc3RydWN0IG15X3RyZWUgKnRyZWUsIGludDMyX3QgdGFnLCB1NjQgcywgdTY0IGxl
-bmd0aCkKIH0KIAogLyogRW5zdXJlIHRoYXQgZnV0dXJlIG9wZXJhdGlvbnMgb24gZ2l2ZW4gcmFu
-Z2Ugb2YgdHJlZSB3aWxsIG5vdCBtYWxsb2MgKi8KLXN0YXRpYyBpbnQgX3ByZWxvYWRfcmFuZ2Uo
-c3RydWN0IG15X3RyZWUgKnRyZWUsIHU2NCBvZmZzZXQsIHU2NCBsZW5ndGgpCitzdGF0aWMgaW50
-IF9wcmVsb2FkX3JhbmdlKHN0cnVjdCBwbmZzX2ludmFsX21hcmtpbmdzICptYXJrcywKKwkJdTY0
-IG9mZnNldCwgdTY0IGxlbmd0aCkKIHsKIAl1NjQgc3RhcnQsIGVuZCwgczsKIAlpbnQgY291bnQs
-IGksIHVzZWQgPSAwLCBzdGF0dXMgPSAtRU5PTUVNOwogCXN0cnVjdCBwbmZzX2ludmFsX3RyYWNr
-aW5nICoqc3RvcmFnZTsKKwlzdHJ1Y3QgbXlfdHJlZSAgKnRyZWUgPSAmbWFya3MtPmltX3RyZWU7
-CiAKIAlkcHJpbnRrKCIlcyglbGx1LCAlbGx1KSBlbnRlclxuIiwgX19mdW5jX18sIG9mZnNldCwg
-bGVuZ3RoKTsKIAlzdGFydCA9IG5vcm1hbGl6ZShvZmZzZXQsIHRyZWUtPm10dF9zdGVwX3NpemUp
-OwpAQCAtMTYxLDEyICsxNjMsMTEgQEAgc3RhdGljIGludCBfcHJlbG9hZF9yYW5nZShzdHJ1Y3Qg
-bXlfdHJlZSAqdHJlZSwgdTY0IG9mZnNldCwgdTY0IGxlbmd0aCkKIAkJCWdvdG8gb3V0X2NsZWFu
-dXA7CiAJfQogCi0JLyogTm93IG5lZWQgbG9jayAtIEhPVz8/PyAqLwotCisJc3Bpbl9sb2NrKCZt
-YXJrcy0+aW1fbG9jayk7CiAJZm9yIChzID0gc3RhcnQ7IHMgPCBlbmQ7IHMgKz0gdHJlZS0+bXR0
-X3N0ZXBfc2l6ZSkKIAkJdXNlZCArPSBfYWRkX2VudHJ5KHRyZWUsIHMsIElOVEVSTkFMX0VYSVNU
-Uywgc3RvcmFnZVt1c2VkXSk7CisJc3Bpbl91bmxvY2soJm1hcmtzLT5pbV9sb2NrKTsKIAotCS8q
-IFVubG9jayAtIEhPVz8/PyAqLwogCXN0YXR1cyA9IDA7CiAKICBvdXRfY2xlYW51cDoKQEAgLTI0
-Niw3ICsyNDcsNyBAQCBpbnQgYmxfbWFya19zZWN0b3JzX2luaXQoc3RydWN0IHBuZnNfaW52YWxf
-bWFya2luZ3MgKm1hcmtzLAogCiAJc3RhcnQgPSBub3JtYWxpemUob2Zmc2V0LCBtYXJrcy0+aW1f
-YmxvY2tfc2l6ZSk7CiAJZW5kID0gbm9ybWFsaXplX3VwKG9mZnNldCArIGxlbmd0aCwgbWFya3Mt
-PmltX2Jsb2NrX3NpemUpOwotCWlmIChfcHJlbG9hZF9yYW5nZSgmbWFya3MtPmltX3RyZWUsIHN0
-YXJ0LCBlbmQgLSBzdGFydCkpCisJaWYgKF9wcmVsb2FkX3JhbmdlKG1hcmtzLCBzdGFydCwgZW5k
-IC0gc3RhcnQpKQogCQlnb3RvIG91dGVycjsKIAogCXNwaW5fbG9jaygmbWFya3MtPmltX2xvY2sp
-OwotLSAKMS43LjEuMjYyLmc1ZWYzZAoK
---f46d043c81740d76b104b6566209
-Content-Type: application/octet-stream;
-	name="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
-Content-Disposition: attachment;
-	filename="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gxbxj3nl1
+Is this trace point as useful as, say, a trace point in xprt_connect_status(), or in the transport's connect worker?  The way transport connection works today is that all of the actual work is handled while sending an RPC, and is basically hidden from the FSM.
 
-RnJvbSBhODU0Yzc5YjFkOTEwYmY0NGUwZWVmYWI1ZTJlNGJkOWVkMzEyNjliIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBU
-aHUsIDEwIE5vdiAyMDExIDAyOjQ1OjQ0IC0wNTAwClN1YmplY3Q6IFtQQVRDSC12MiA4LzldIHBu
-ZnNibG9jazogZG9uJ3Qgc3BpbmxvY2sgd2hlbiBmcmVlaW5nIGJsb2NrX2RldgoKYmxfZnJlZV9i
-bG9ja19kZXYoKSBtYXkgc2xlZXAuIFdlIGNhbiBub3QgY2FsbCBpdCB3aXRoIHNwaW5sb2NrIGhl
-bGQuCkJlc2lkZXMsIHRoZXJlIGlzIG5vIG5lZWQgdG8gdGFrZSBibV9sb2NrIGFzIHdlIGFyZSBs
-YXN0IHVzZXIgZnJlZWluZyBibV9kZXZsaXN0LgoKQ2M6IDxzdGFibGVAdmdlci5rZXJuZWwub3Jn
-PiAjMy4xKwpTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8cGVuZ190YW9AZW1jLmNvbT4KU2lnbmVk
-LW9mZi1ieTogQmVubnkgSGFsZXZ5IDxiaGFsZXZ5QHRvbmlhbi5jb20+Ci0tLQogZnMvbmZzL2Js
-b2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMgfCAgIDExICsrKystLS0tLS0tCiAxIGZpbGVzIGNoYW5n
-ZWQsIDQgaW5zZXJ0aW9ucygrKSwgNyBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMv
-YmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91
-dC5jCmluZGV4IDFkZDI5ODMuLmM5Yzc0YmYgMTAwNjQ0Ci0tLSBhL2ZzL25mcy9ibG9ja2xheW91
-dC9ibG9ja2xheW91dC5jCisrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCkBA
-IC04MzcsMTYgKzgzNywxMyBAQCBibF9jbGVhbnVwX2xheW91dGNvbW1pdChzdHJ1Y3QgbmZzNF9s
-YXlvdXRjb21taXRfZGF0YSAqbGNkYXRhKQogc3RhdGljIHZvaWQgZnJlZV9ibGtfbW91bnRpZChz
-dHJ1Y3QgYmxvY2tfbW91bnRfaWQgKm1pZCkKIHsKIAlpZiAobWlkKSB7Ci0JCXN0cnVjdCBwbmZz
-X2Jsb2NrX2RldiAqZGV2OwotCQlzcGluX2xvY2soJm1pZC0+Ym1fbG9jayk7Ci0JCXdoaWxlICgh
-bGlzdF9lbXB0eSgmbWlkLT5ibV9kZXZsaXN0KSkgewotCQkJZGV2ID0gbGlzdF9maXJzdF9lbnRy
-eSgmbWlkLT5ibV9kZXZsaXN0LAotCQkJCQkgICAgICAgc3RydWN0IHBuZnNfYmxvY2tfZGV2LAot
-CQkJCQkgICAgICAgYm1fbm9kZSk7CisJCXN0cnVjdCBwbmZzX2Jsb2NrX2RldiAqZGV2LCAqdG1w
-OworCisJCS8qIE5vIG5lZWQgdG8gdGFrZSBibV9sb2NrIGFzIHdlIGFyZSBsYXN0IHVzZXIgZnJl
-ZWluZyBibV9kZXZsaXN0ICovCisJCWxpc3RfZm9yX2VhY2hfZW50cnlfc2FmZShkZXYsIHRtcCwg
-Jm1pZC0+Ym1fZGV2bGlzdCwgYm1fbm9kZSkgewogCQkJbGlzdF9kZWwoJmRldi0+Ym1fbm9kZSk7
-CiAJCQlibF9mcmVlX2Jsb2NrX2RldihkZXYpOwogCQl9Ci0JCXNwaW5fdW5sb2NrKCZtaWQtPmJt
-X2xvY2spOwogCQlrZnJlZShtaWQpOwogCX0KIH0KLS0gCjEuNy4xLjI2Mi5nNWVmM2QKCg==
---f46d043c81740d76b104b6566209
-Content-Type: application/octet-stream;
-	name="0009-pnfsblock-limit-bio-page-count.patch"
-Content-Disposition: attachment;
-	filename="0009-pnfsblock-limit-bio-page-count.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gxbxj3nn2
+I'd like to capture connection events, I'm just wondering if a trace point here is the best way to do it.
 
-RnJvbSA1M2M0OGY3ZDIwNGExMmQyYWI1MDNmNTIzYjMyYTM1ZjMwZWUxYTFlIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBT
-YXQsIDE5IE5vdiAyMDExIDA0OjE2OjUyIC0wNTAwClN1YmplY3Q6IFtQQVRDSC12MiA5LzldIHBu
-ZnNibG9jazogbGltaXQgYmlvIHBhZ2UgY291bnQKCk9uZSBiaW8gY2FuIGhhdmUgYXQgbW9zdCBC
-SU9fTUFYX1BBR0VTIHBhZ2VzLiBXZSBzaG91bGQgbGltaXQgaXQgYmVjIG90aGVyd2lzZQpiaW9f
-YWxsb2Mgd2lsbCBmYWlsIHdoZW4gdGhlcmUgYXJlIG1hbnkgcGFnZXMgaW4gb25lIHJlYWQvd3Jp
-dGVfcGFnZWxpc3QuCgpDYzogPHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmc+ICMzLjErClNpZ25lZC1v
-ZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQtb2ZmLWJ5OiBCZW5ueSBI
-YWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2ts
-YXlvdXQuYyB8ICAgMTcgKysrKysrKysrKystLS0tLS0KIDEgZmlsZXMgY2hhbmdlZCwgMTEgaW5z
-ZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlv
-dXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCmluZGV4
-IGM5Yzc0YmYuLjQ4Y2ZhYzMgMTAwNjQ0Ci0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
-eW91dC5jCisrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dC5jCkBAIC0xNDcsMTQg
-KzE0NywxOSBAQCBzdGF0aWMgc3RydWN0IGJpbyAqYmxfYWxsb2NfaW5pdF9iaW8oaW50IG5wZywg
-c2VjdG9yX3QgaXNlY3QsCiB7CiAJc3RydWN0IGJpbyAqYmlvOwogCisJbnBnID0gbWluKG5wZywg
-QklPX01BWF9QQUdFUyk7CiAJYmlvID0gYmlvX2FsbG9jKEdGUF9OT0lPLCBucGcpOwotCWlmICgh
-YmlvKQotCQlyZXR1cm4gTlVMTDsKKwlpZiAoIWJpbyAmJiAoY3VycmVudC0+ZmxhZ3MgJiBQRl9N
-RU1BTExPQykpIHsKKwkJd2hpbGUgKCFiaW8gJiYgKG5wZyAvPSAyKSkKKwkJCWJpbyA9IGJpb19h
-bGxvYyhHRlBfTk9JTywgbnBnKTsKKwl9CiAKLQliaW8tPmJpX3NlY3RvciA9IGlzZWN0IC0gYmUt
-PmJlX2Zfb2Zmc2V0ICsgYmUtPmJlX3Zfb2Zmc2V0OwotCWJpby0+YmlfYmRldiA9IGJlLT5iZV9t
-ZGV2OwotCWJpby0+YmlfZW5kX2lvID0gZW5kX2lvOwotCWJpby0+YmlfcHJpdmF0ZSA9IHBhcjsK
-KwlpZiAoYmlvKSB7CisJCWJpby0+Ymlfc2VjdG9yID0gaXNlY3QgLSBiZS0+YmVfZl9vZmZzZXQg
-KyBiZS0+YmVfdl9vZmZzZXQ7CisJCWJpby0+YmlfYmRldiA9IGJlLT5iZV9tZGV2OworCQliaW8t
-PmJpX2VuZF9pbyA9IGVuZF9pbzsKKwkJYmlvLT5iaV9wcml2YXRlID0gcGFyOworCX0KIAlyZXR1
-cm4gYmlvOwogfQogCi0tIAoxLjcuMS4yNjIuZzVlZjNkCgo=
---f46d043c81740d76b104b6566209--
+> 	switch (status) {
+> 		/* if soft mounted, test if we've timed out */
+> 	case -ETIMEDOUT:
+> @@ -1450,6 +1453,7 @@ call_status(struct rpc_task *task)
+> 		return;
+> 	}
+> 
+> +	trace_rpc_call_status(task);
+> 	task->tk_status = 0;
+> 	switch(status) {
+> 	case -EHOSTDOWN:
+> -- 
+> 1.7.7.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
