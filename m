@@ -1,72 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54609 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751399Ab2AYOeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 09:34:50 -0500
-Date: Wed, 25 Jan 2012 09:34:49 -0500
-To: "J. von Balzac" <jhm.balzac@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 - Linux server, FreeBSD client
-Message-ID: <20120125143449.GB17873@fieldses.org>
-References: <CAG+vHK+OUSdEc5L=_oeq4Y9iwseusspPTG=jwUvoOQd5587O9Q@mail.gmail.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:60023 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754066Ab2AWUCY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:24 -0500
+Received: by mail-qw0-f46.google.com with SMTP id c10so2031574qad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:24 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAG+vHK+OUSdEc5L=_oeq4Y9iwseusspPTG=jwUvoOQd5587O9Q@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 05/11] nfsdcld: add function to remove unreclaimed client records
+Date: Mon, 23 Jan 2012 15:02:05 -0500
+Message-Id: <1327348931-785-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 21, 2012 at 06:04:17PM +0100, J. von Balzac wrote:
-> Hello,
-> 
-> Linux (kernel 3.2) /etc/exports contains the following:
-> 
-> /exp  -ro,fsid=0,async,subtree_check,all_squash,crossmnt 192.168.1.0/24
-> /exp/freebsd  -ro,no_acl,async,subtree_check,all_squash 192.168.1.0/24
-> /exp/freebsd/extra -rw,no_acl,async,subtree_check,no_root_squash 192.168.1.0/24
-> /exp/freebsd/ports  -rw,no_acl,async,subtree_check,no_root_squash 192.168.1.0/24
+This should remove any client record that has a timestamp prior to
+the given time.
 
-Note no_acl is actually meaningless, and async and subtree_check are
-generally not recommended.
+Eventually, this call will need to be made cluster aware when this is
+run in a clustered configuration. For now, this is only suitable for
+single-host configurations.
 
-Also, "fsid=0" tricks aren't necessary any more: if you just leave out
-that line, then v4 clients will be able to mount /exp/freebsd/* just as
-v2/v3 clients would.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   29 +++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.c  |   28 ++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 58 insertions(+), 0 deletions(-)
 
-> I have also tested it without no_acl, and with the alternative
-> 192.168.1.0/24(options).
-> 
-> The used mount command on FreeBSD and the resulting error:
-> 
-> # mount_nfs -o nfsv4 192.168.1.3:/freebsd/ports /usr/ports
-> mount_nfs: /usr/ports, : Operation not permitted
-> 
-> I am emailing this list and not FreeBSD, because of this next output
-> from tcpdump. Note that 192.168.1.3 is the server and 192.168.1.10 is
-> the client:
-> 
-> 17:00:21.761418 IP (tos 0x0, ttl 64, id 62972, offset 0, flags [DF],
-> proto TCP (6), length 116)
->     192.168.1.3.2049 > 192.168.1.10.1382070341: reply ok 60 getattr
-> ERROR: Operation not permitted
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 2930de4..151dd16 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -187,6 +187,32 @@ cld_check(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_gracedone(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
++			cmsg->cm_u.cm_gracetime);
++
++	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
++
++	/* set up reply: downcall with 0 status */
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		cld_pipe_reopen(clnt);
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -216,6 +242,9 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_Allow:
+ 		cld_check(clnt);
+ 		break;
++	case Cld_GraceDone:
++		cld_gracedone(clnt);
++		break;
+ 	default:
+ 		xlog_warn("%s: command %u is not yet implemented", __func__,
+ 			  cmsg->cm_cmd);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 814e421..a0bcf2f 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -38,6 +38,7 @@
+ #include "config.h"
+ #endif /* HAVE_CONFIG_H */
+ 
++#include <dirent.h>
+ #include <errno.h>
+ #include <event.h>
+ #include <stdbool.h>
+@@ -320,3 +321,30 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/*
++ * remove any client records that were not reclaimed since grace_start.
++ */
++int
++sqlite_remove_unreclaimed(time_t grace_start)
++{
++	int ret;
++	char *err = NULL;
++
++	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
++			grace_start);
++	if (ret < 0) {
++		return ret;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		return ret;
++	}
++
++	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK)
++		xlog(D_GENERAL, "Delete failed: %s", err);
++
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_free(err);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 7fc5ea4..f6ed348 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -23,5 +23,6 @@
+ int sqlite_maindb_init(char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
++int sqlite_remove_unreclaimed(const time_t grace_start);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.7.7.5
 
-Huh--does tcpdump even know how to parse NFSv4, or is that actually an
-NFSv3 call?
-
-The tcpdump output isn't very informative--wireshark is usually more
-helpful.
-
-What version of nfs-utils are you using?
-
---b.
-
-> 
-> The entire output of the tcpdump can be found at the following url:
-> http://sprunge.us/OVbQ
-> 
-> Looking forward to resolving this.
-> Jan.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
