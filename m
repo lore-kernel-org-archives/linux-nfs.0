@@ -1,160 +1,254 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:40252 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932114Ab2AJQgQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 11:36:16 -0500
-Received: by wibhm6 with SMTP id hm6so3541212wib.19
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 08:36:15 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:10137 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752923Ab2AWR0Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jan 2012 12:26:24 -0500
+Subject: [PATCH 1/4] NFS: make nfs_client_list per net ns
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 23 Jan 2012 21:26:05 +0400
+Message-ID: <20120123172605.29637.15682.stgit@localhost6.localdomain6>
+In-Reply-To: <20120123171404.29637.19810.stgit@localhost6.localdomain6>
+References: <20120123171404.29637.19810.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-In-Reply-To: <20120110161406.GA8994@umich.edu>
-References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com> <20120110161406.GA8994@umich.edu>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 11 Jan 2012 00:35:51 +0800
-Message-ID: <CA+a=Yy4uaQmR7Zyi3HO5=tF2XbBsKaSgG90_SN2GUWAnTsZVUQ@mail.gmail.com>
-Subject: Re: [PATCH RESEND 0/9] pnfsblock patches for 3.3 post-rc1
-To: Jim Rees <rees@umich.edu>, Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linuxnfs <linux-nfs@vger.kernel.org>, mdw@umich.edu, honey@citi.umich.edu
-Content-Type: multipart/mixed; boundary=bcaec53d550d231f6a04b62f1d2a
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---bcaec53d550d231f6a04b62f1d2a
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+This patch splits global list of NFS clients into per-net-ns array of lists.
+This looks more strict and clearer.
+BTW, this patch also makes "/proc/fs/nfsfs/servers" entry content depends on
+/proc mount owner pid namespace. See below for details.
 
-On Wed, Jan 11, 2012 at 12:14 AM, Jim Rees <rees@umich.edu> wrote:
-> Peng Tao wrote:
->
-> =C2=A0These are pnfsblock patches rebased on top of nfs-for-3.3. All patc=
-hes
-> =C2=A0were sent to list before and merged by Benny.
->
-> Once again, 8/9 and 9/9 failed to make it to the list. =C2=A0Are these av=
-ailable
-> via git?
-sigh... vger seems always eating them... Thank you for pointing it out!
+NOTE: few words about how was /proc/fs/nfsfs/ entries content show per network
+namespace done. This is a little bit tricky and not the best is could be. But
+it's cheap (proper fix for /proc conteinerization is a hard nut to crack).
+The idea is simple: take proper network namespace from pid namespace
+child reaper nsproxy of /proc/ mount creator.
+This actually means, that if there are 2 containers with different net
+namespace sharing pid namespace, then read of /proc/fs/nfsfs/ entries will
+always return content, taken from net namespace of pid namespace creator task
+(and thus second namespace set wil be unvisible).
 
-Trond, please find 8/9 and 9/9 in attachments. 2/9 was lost before so
-I also attached it here just in case. All patches are also available
-at
-git://github.com/bergwolf/linux.git for-trond-3.3
-which is based on top of nfs-for-3.3
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
---=20
-Thanks,
-Tao
+---
+ fs/nfs/client.c   |   38 +++++++++++++++++++++++++++-----------
+ fs/nfs/idmap.c    |    5 ++---
+ fs/nfs/inode.c    |    1 +
+ fs/nfs/internal.h |    2 +-
+ fs/nfs/netns.h    |    1 +
+ 5 files changed, 32 insertions(+), 15 deletions(-)
 
---bcaec53d550d231f6a04b62f1d2a
-Content-Type: application/octet-stream;
-	name="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
-Content-Disposition: attachment;
-	filename="0002-pnfsblock-acquire-im_lock-in-_preload_range.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gx950m2o0
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 98af1cb..058eb9b 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -39,6 +39,8 @@
+ #include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/nsproxy.h>
++#include <linux/pid_namespace.h>
+ 
+ #include <asm/system.h>
+ 
+@@ -49,11 +51,11 @@
+ #include "internal.h"
+ #include "fscache.h"
+ #include "pnfs.h"
++#include "netns.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+ DEFINE_SPINLOCK(nfs_client_lock);
+-LIST_HEAD(nfs_client_list);
+ static LIST_HEAD(nfs_volume_list);
+ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+ #ifdef CONFIG_NFS_V4
+@@ -464,8 +466,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ {
+ 	struct nfs_client *clp;
+ 	const struct sockaddr *sap = data->addr;
++	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
+ 
+-	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
++	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+@@ -483,9 +486,6 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		/* Match the full socket address */
+ 		if (!nfs_sockaddr_cmp(sap, clap))
+ 			continue;
+-		/* Match network namespace */
+-		if (clp->net != data->net)
+-			continue;
+ 
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
+@@ -506,6 +506,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ {
+ 	struct nfs_client *clp, *new = NULL;
+ 	int error;
++	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
+ 
+ 	dprintk("--> nfs_get_client(%s,v%u)\n",
+ 		cl_init->hostname ?: "", cl_init->rpc_ops->version);
+@@ -531,7 +532,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	/* install a new client and return with it unready */
+ install_client:
+ 	clp = new;
+-	list_add(&clp->cl_share_link, &nfs_client_list);
++	list_add(&clp->cl_share_link, &nn->nfs_client_list);
+ 	spin_unlock(&nfs_client_lock);
+ 
+ 	error = cl_init->rpc_ops->init_client(clp, timeparms, ip_addr,
+@@ -1227,9 +1228,10 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
+ 			   struct nfs4_sessionid *sid)
+ {
+ 	struct nfs_client *clp;
++	struct nfs_net *nn = net_generic(&init_net, nfs_net_id);
+ 
+ 	spin_lock(&nfs_client_lock);
+-	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
++	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+ 		if (nfs4_cb_match_client(addr, clp, 1) == false)
+ 			continue;
+ 
+@@ -1757,6 +1759,13 @@ out_free_server:
+ 	return ERR_PTR(error);
+ }
+ 
++void nfs_clients_init(struct net *net)
++{
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++
++	INIT_LIST_HEAD(&nn->nfs_client_list);
++}
++
+ #ifdef CONFIG_PROC_FS
+ static struct proc_dir_entry *proc_fs_nfs;
+ 
+@@ -1810,13 +1819,15 @@ static int nfs_server_list_open(struct inode *inode, struct file *file)
+ {
+ 	struct seq_file *m;
+ 	int ret;
++	struct pid_namespace *pid_ns = file->f_dentry->d_sb->s_fs_info;
++	struct net *net = pid_ns->child_reaper->nsproxy->net_ns;
+ 
+ 	ret = seq_open(file, &nfs_server_list_ops);
+ 	if (ret < 0)
+ 		return ret;
+ 
+ 	m = file->private_data;
+-	m->private = PDE(inode)->data;
++	m->private = net;
+ 
+ 	return 0;
+ }
+@@ -1826,9 +1837,11 @@ static int nfs_server_list_open(struct inode *inode, struct file *file)
+  */
+ static void *nfs_server_list_start(struct seq_file *m, loff_t *_pos)
+ {
++	struct nfs_net *nn = net_generic(m->private, nfs_net_id);
++
+ 	/* lock the list against modification */
+ 	spin_lock(&nfs_client_lock);
+-	return seq_list_start_head(&nfs_client_list, *_pos);
++	return seq_list_start_head(&nn->nfs_client_list, *_pos);
+ }
+ 
+ /*
+@@ -1836,7 +1849,9 @@ static void *nfs_server_list_start(struct seq_file *m, loff_t *_pos)
+  */
+ static void *nfs_server_list_next(struct seq_file *p, void *v, loff_t *pos)
+ {
+-	return seq_list_next(v, &nfs_client_list, pos);
++	struct nfs_net *nn = net_generic(p->private, nfs_net_id);
++
++	return seq_list_next(v, &nn->nfs_client_list, pos);
+ }
+ 
+ /*
+@@ -1853,9 +1868,10 @@ static void nfs_server_list_stop(struct seq_file *p, void *v)
+ static int nfs_server_list_show(struct seq_file *m, void *v)
+ {
+ 	struct nfs_client *clp;
++	struct nfs_net *nn = net_generic(m->private, nfs_net_id);
+ 
+ 	/* display header on line 1 */
+-	if (v == &nfs_client_list) {
++	if (v == &nn->nfs_client_list) {
+ 		seq_puts(m, "NV SERVER   PORT USE HOSTNAME\n");
+ 		return 0;
+ 	}
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index ff084d2..92deaf8 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -571,13 +571,12 @@ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+ 			    void *ptr)
+ {
+ 	struct super_block *sb = ptr;
++	struct nfs_net *nn = net_generic(sb->s_fs_info, nfs_net_id);
+ 	struct nfs_client *clp;
+ 	int error = 0;
+ 
+ 	spin_lock(&nfs_client_lock);
+-	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+-		if (clp->net != sb->s_fs_info)
+-			continue;
++	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+ 		if (clp->rpc_ops != &nfs_v4_clientops)
+ 			continue;
+ 		error = __rpc_pipefs_event(clp, event, sb);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index d2c760e..e8f81e5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1558,6 +1558,7 @@ EXPORT_SYMBOL_GPL(nfs_net_id);
+ 
+ static int nfs_net_init(struct net *net)
+ {
++	nfs_clients_init(net);
+ 	return nfs_dns_resolver_cache_init(net);
+ }
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index cdb121d..a9ae806 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -146,6 +146,7 @@ extern void nfs_umount(const struct nfs_mount_request *info);
+ 
+ /* client.c */
+ extern const struct rpc_program nfs_program;
++extern void nfs_clients_init(struct net *net);
+ 
+ extern void nfs_cleanup_cb_ident_idr(void);
+ extern void nfs_put_client(struct nfs_client *);
+@@ -183,7 +184,6 @@ static inline void nfs_fs_proc_exit(void)
+ #endif
+ #ifdef CONFIG_NFS_V4
+ extern spinlock_t nfs_client_lock;
+-extern struct list_head nfs_client_list;
+ #endif
+ 
+ /* nfs4namespace.c */
+diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
+index 39ae4ca..feb33c3 100644
+--- a/fs/nfs/netns.h
++++ b/fs/nfs/netns.h
+@@ -7,6 +7,7 @@
+ struct nfs_net {
+ 	struct cache_detail *nfs_dns_resolve;
+ 	struct rpc_pipe *bl_device_pipe;
++	struct list_head nfs_client_list;
+ };
+ 
+ extern int nfs_net_id;
 
-RnJvbSA4ODNkNTk5ODE5YmFlOWUzOGIxZGMyMjY5MzYyYmFhNDQ4OWUyNzVhIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBX
-ZWQsIDIgTm92IDIwMTEgMDE6MTE6MTQgLTA0MDAKU3ViamVjdDogW1BBVENIIFJFU0VORCAyLzld
-IHBuZnNibG9jazogYWNxdWlyZSBpbV9sb2NrIGluIF9wcmVsb2FkX3JhbmdlCgpXaGVuIGNhbGxp
-bmcgX2FkZF9lbnRyeSwgd2Ugc2hvdWxkIHRha2UgdGhlIGltX2xvY2sgdG8gcHJvdGVjdAphZ2Fp
-bnMgb3RoZXIgbW9kaWZpZXJzLgoKQ2M6IDxzdGFibGVAa2VybmVsLm9yZz4gIzMuMSsKU2lnbmVk
-LW9mZi1ieTogUGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+ClNpZ25lZC1vZmYtYnk6IEJlbm55
-IEhhbGV2eSA8YmhhbGV2eUB0b25pYW4uY29tPgotLS0KIGZzL25mcy9ibG9ja2xheW91dC9leHRl
-bnRzLmMgfCAgIDExICsrKysrKy0tLS0tCiAxIGZpbGVzIGNoYW5nZWQsIDYgaW5zZXJ0aW9ucygr
-KSwgNSBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50
-cy5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYwppbmRleCAwZmMxMzIxLi5mMzgzNTI0
-IDEwMDY0NAotLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jCisrKyBiL2ZzL25mcy9i
-bG9ja2xheW91dC9leHRlbnRzLmMKQEAgLTEzOSwxMSArMTM5LDEzIEBAIHN0YXRpYyBpbnQgX3Nl
-dF9yYW5nZShzdHJ1Y3QgbXlfdHJlZSAqdHJlZSwgaW50MzJfdCB0YWcsIHU2NCBzLCB1NjQgbGVu
-Z3RoKQogfQogCiAvKiBFbnN1cmUgdGhhdCBmdXR1cmUgb3BlcmF0aW9ucyBvbiBnaXZlbiByYW5n
-ZSBvZiB0cmVlIHdpbGwgbm90IG1hbGxvYyAqLwotc3RhdGljIGludCBfcHJlbG9hZF9yYW5nZShz
-dHJ1Y3QgbXlfdHJlZSAqdHJlZSwgdTY0IG9mZnNldCwgdTY0IGxlbmd0aCkKK3N0YXRpYyBpbnQg
-X3ByZWxvYWRfcmFuZ2Uoc3RydWN0IHBuZnNfaW52YWxfbWFya2luZ3MgKm1hcmtzLAorCQl1NjQg
-b2Zmc2V0LCB1NjQgbGVuZ3RoKQogewogCXU2NCBzdGFydCwgZW5kLCBzOwogCWludCBjb3VudCwg
-aSwgdXNlZCA9IDAsIHN0YXR1cyA9IC1FTk9NRU07CiAJc3RydWN0IHBuZnNfaW52YWxfdHJhY2tp
-bmcgKipzdG9yYWdlOworCXN0cnVjdCBteV90cmVlICAqdHJlZSA9ICZtYXJrcy0+aW1fdHJlZTsK
-IAogCWRwcmludGsoIiVzKCVsbHUsICVsbHUpIGVudGVyXG4iLCBfX2Z1bmNfXywgb2Zmc2V0LCBs
-ZW5ndGgpOwogCXN0YXJ0ID0gbm9ybWFsaXplKG9mZnNldCwgdHJlZS0+bXR0X3N0ZXBfc2l6ZSk7
-CkBAIC0xNjEsMTIgKzE2MywxMSBAQCBzdGF0aWMgaW50IF9wcmVsb2FkX3JhbmdlKHN0cnVjdCBt
-eV90cmVlICp0cmVlLCB1NjQgb2Zmc2V0LCB1NjQgbGVuZ3RoKQogCQkJZ290byBvdXRfY2xlYW51
-cDsKIAl9CiAKLQkvKiBOb3cgbmVlZCBsb2NrIC0gSE9XPz8/ICovCi0KKwlzcGluX2xvY2soJm1h
-cmtzLT5pbV9sb2NrKTsKIAlmb3IgKHMgPSBzdGFydDsgcyA8IGVuZDsgcyArPSB0cmVlLT5tdHRf
-c3RlcF9zaXplKQogCQl1c2VkICs9IF9hZGRfZW50cnkodHJlZSwgcywgSU5URVJOQUxfRVhJU1RT
-LCBzdG9yYWdlW3VzZWRdKTsKKwlzcGluX3VubG9jaygmbWFya3MtPmltX2xvY2spOwogCi0JLyog
-VW5sb2NrIC0gSE9XPz8/ICovCiAJc3RhdHVzID0gMDsKIAogIG91dF9jbGVhbnVwOgpAQCAtMjQ2
-LDcgKzI0Nyw3IEBAIGludCBibF9tYXJrX3NlY3RvcnNfaW5pdChzdHJ1Y3QgcG5mc19pbnZhbF9t
-YXJraW5ncyAqbWFya3MsCiAKIAlzdGFydCA9IG5vcm1hbGl6ZShvZmZzZXQsIG1hcmtzLT5pbV9i
-bG9ja19zaXplKTsKIAllbmQgPSBub3JtYWxpemVfdXAob2Zmc2V0ICsgbGVuZ3RoLCBtYXJrcy0+
-aW1fYmxvY2tfc2l6ZSk7Ci0JaWYgKF9wcmVsb2FkX3JhbmdlKCZtYXJrcy0+aW1fdHJlZSwgc3Rh
-cnQsIGVuZCAtIHN0YXJ0KSkKKwlpZiAoX3ByZWxvYWRfcmFuZ2UobWFya3MsIHN0YXJ0LCBlbmQg
-LSBzdGFydCkpCiAJCWdvdG8gb3V0ZXJyOwogCiAJc3Bpbl9sb2NrKCZtYXJrcy0+aW1fbG9jayk7
-Ci0tIAoxLjcuMS4yNjIuZzVlZjNkCgo=
---bcaec53d550d231f6a04b62f1d2a
-Content-Type: application/octet-stream;
-	name="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
-Content-Disposition: attachment;
-	filename="0008-pnfsblock-don-t-spinlock-when-freeing-block_dev.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gx950m2s1
-
-RnJvbSBiYzIwNTQ4YTZkMTM3M2M3MjAwNWNhMWQzM2QzNzdlMDE4NjBmNzdiIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBU
-aHUsIDEwIE5vdiAyMDExIDAyOjQ1OjQ0IC0wNTAwClN1YmplY3Q6IFtQQVRDSCBSRVNFTkQgOC85
-XSBwbmZzYmxvY2s6IGRvbid0IHNwaW5sb2NrIHdoZW4gZnJlZWluZyBibG9ja19kZXYKCmJsX2Zy
-ZWVfYmxvY2tfZGV2KCkgbWF5IHNsZWVwLiBXZSBjYW4gbm90IGNhbGwgaXQgd2l0aCBzcGlubG9j
-ayBoZWxkLgpCZXNpZGVzLCB0aGVyZSBpcyBubyBuZWVkIHRvIHRha2UgYm1fbG9jayBhcyB3ZSBh
-cmUgbGFzdCB1c2VyIGZyZWVpbmcgYm1fZGV2bGlzdC4KCkNjOiA8c3RhYmxlQGtlcm5lbC5vcmc+
-ICMzLjErClNpZ25lZC1vZmYtYnk6IFBlbmcgVGFvIDxwZW5nX3Rhb0BlbWMuY29tPgpTaWduZWQt
-b2ZmLWJ5OiBCZW5ueSBIYWxldnkgPGJoYWxldnlAdG9uaWFuLmNvbT4KLS0tCiBmcy9uZnMvYmxv
-Y2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAgMTEgKysrKy0tLS0tLS0KIDEgZmlsZXMgY2hhbmdl
-ZCwgNCBpbnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL25mcy9i
-bG9ja2xheW91dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0
-LmMKaW5kZXggMWRkMjk4My4uYzljNzRiZiAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0
-L2Jsb2NrbGF5b3V0LmMKKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKQEAg
-LTgzNywxNiArODM3LDEzIEBAIGJsX2NsZWFudXBfbGF5b3V0Y29tbWl0KHN0cnVjdCBuZnM0X2xh
-eW91dGNvbW1pdF9kYXRhICpsY2RhdGEpCiBzdGF0aWMgdm9pZCBmcmVlX2Jsa19tb3VudGlkKHN0
-cnVjdCBibG9ja19tb3VudF9pZCAqbWlkKQogewogCWlmIChtaWQpIHsKLQkJc3RydWN0IHBuZnNf
-YmxvY2tfZGV2ICpkZXY7Ci0JCXNwaW5fbG9jaygmbWlkLT5ibV9sb2NrKTsKLQkJd2hpbGUgKCFs
-aXN0X2VtcHR5KCZtaWQtPmJtX2Rldmxpc3QpKSB7Ci0JCQlkZXYgPSBsaXN0X2ZpcnN0X2VudHJ5
-KCZtaWQtPmJtX2Rldmxpc3QsCi0JCQkJCSAgICAgICBzdHJ1Y3QgcG5mc19ibG9ja19kZXYsCi0J
-CQkJCSAgICAgICBibV9ub2RlKTsKKwkJc3RydWN0IHBuZnNfYmxvY2tfZGV2ICpkZXYsICp0bXA7
-CisKKwkJLyogTm8gbmVlZCB0byB0YWtlIGJtX2xvY2sgYXMgd2UgYXJlIGxhc3QgdXNlciBmcmVl
-aW5nIGJtX2Rldmxpc3QgKi8KKwkJbGlzdF9mb3JfZWFjaF9lbnRyeV9zYWZlKGRldiwgdG1wLCAm
-bWlkLT5ibV9kZXZsaXN0LCBibV9ub2RlKSB7CiAJCQlsaXN0X2RlbCgmZGV2LT5ibV9ub2RlKTsK
-IAkJCWJsX2ZyZWVfYmxvY2tfZGV2KGRldik7CiAJCX0KLQkJc3Bpbl91bmxvY2soJm1pZC0+Ym1f
-bG9jayk7CiAJCWtmcmVlKG1pZCk7CiAJfQogfQotLSAKMS43LjEuMjYyLmc1ZWYzZAoK
---bcaec53d550d231f6a04b62f1d2a
-Content-Type: application/octet-stream;
-	name="0009-pnfsblock-limit-bio-page-count.patch"
-Content-Disposition: attachment;
-	filename="0009-pnfsblock-limit-bio-page-count.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gx950m2t2
-
-RnJvbSAwYjNhY2JhMzEwYWEwY2I2MGU0OWMzZTAwYzZlOTg0MDQ0OTcxYjgyIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPgpEYXRlOiBT
-YXQsIDE5IE5vdiAyMDExIDA0OjE2OjUyIC0wNTAwClN1YmplY3Q6IFtQQVRDSCBSRVNFTkQgOS85
-XSBwbmZzYmxvY2s6IGxpbWl0IGJpbyBwYWdlIGNvdW50CgpPbmUgYmlvIGNhbiBoYXZlIGF0IG1v
-c3QgQklPX01BWF9QQUdFUyBwYWdlcy4gV2Ugc2hvdWxkIGxpbWl0IGl0IGJlYyBvdGhlcndpc2UK
-YmlvX2FsbG9jIHdpbGwgZmFpbCB3aGVuIHRoZXJlIGFyZSBtYW55IHBhZ2VzIGluIG9uZSByZWFk
-L3dyaXRlX3BhZ2VsaXN0LgoKQ2M6IDxzdGFibGVAa2VybmVsLm9yZz4gIzMuMSsKU2lnbmVkLW9m
-Zi1ieTogUGVuZyBUYW8gPHBlbmdfdGFvQGVtYy5jb20+ClNpZ25lZC1vZmYtYnk6IEJlbm55IEhh
-bGV2eSA8YmhhbGV2eUB0b25pYW4uY29tPgotLS0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
-eW91dC5jIHwgICAxNyArKysrKysrKysrKy0tLS0tLQogMSBmaWxlcyBjaGFuZ2VkLCAxMSBpbnNl
-cnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL25mcy9ibG9ja2xheW91
-dC9ibG9ja2xheW91dC5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKaW5kZXgg
-YzljNzRiZi4uNDhjZmFjMyAxMDA2NDQKLS0tIGEvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5
-b3V0LmMKKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmMKQEAgLTE0NywxNCAr
-MTQ3LDE5IEBAIHN0YXRpYyBzdHJ1Y3QgYmlvICpibF9hbGxvY19pbml0X2JpbyhpbnQgbnBnLCBz
-ZWN0b3JfdCBpc2VjdCwKIHsKIAlzdHJ1Y3QgYmlvICpiaW87CiAKKwlucGcgPSBtaW4obnBnLCBC
-SU9fTUFYX1BBR0VTKTsKIAliaW8gPSBiaW9fYWxsb2MoR0ZQX05PSU8sIG5wZyk7Ci0JaWYgKCFi
-aW8pCi0JCXJldHVybiBOVUxMOworCWlmICghYmlvICYmIChjdXJyZW50LT5mbGFncyAmIFBGX01F
-TUFMTE9DKSkgeworCQl3aGlsZSAoIWJpbyAmJiAobnBnIC89IDIpKQorCQkJYmlvID0gYmlvX2Fs
-bG9jKEdGUF9OT0lPLCBucGcpOworCX0KIAotCWJpby0+Ymlfc2VjdG9yID0gaXNlY3QgLSBiZS0+
-YmVfZl9vZmZzZXQgKyBiZS0+YmVfdl9vZmZzZXQ7Ci0JYmlvLT5iaV9iZGV2ID0gYmUtPmJlX21k
-ZXY7Ci0JYmlvLT5iaV9lbmRfaW8gPSBlbmRfaW87Ci0JYmlvLT5iaV9wcml2YXRlID0gcGFyOwor
-CWlmIChiaW8pIHsKKwkJYmlvLT5iaV9zZWN0b3IgPSBpc2VjdCAtIGJlLT5iZV9mX29mZnNldCAr
-IGJlLT5iZV92X29mZnNldDsKKwkJYmlvLT5iaV9iZGV2ID0gYmUtPmJlX21kZXY7CisJCWJpby0+
-YmlfZW5kX2lvID0gZW5kX2lvOworCQliaW8tPmJpX3ByaXZhdGUgPSBwYXI7CisJfQogCXJldHVy
-biBiaW87CiB9CiAKLS0gCjEuNy4xLjI2Mi5nNWVmM2QKCg==
---bcaec53d550d231f6a04b62f1d2a--
