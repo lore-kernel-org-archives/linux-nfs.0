@@ -1,303 +1,349 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33231 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35449 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757099Ab2ADW1i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jan 2012 17:27:38 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Cache state owners after files are closed
-Date: Wed,  4 Jan 2012 17:27:17 -0500
-Message-Id: <1325716037-27762-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <C0783437-7D8F-4A45-913A-B49692D37AC2@oracle.com>
-References: <C0783437-7D8F-4A45-913A-B49692D37AC2@oracle.com>
+	id S1750824Ab2AWRHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jan 2012 12:07:05 -0500
+Date: Mon, 23 Jan 2012 12:07:03 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@netapp.com>
+Subject: Re: [PATCH] SUNRPC: Clean up the RPCSEC_GSS service ticket requests
+Message-ID: <20120123170703.GB32197@fieldses.org>
+References: <1325608907-17801-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120103165544.GC6309@fieldses.org>
+ <20120123165124.GA32197@fieldses.org>
+ <4F1D9123.5010204@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F1D9123.5010204@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Mon, Jan 23, 2012 at 11:56:03AM -0500, Bryan Schumaker wrote:
+> On Mon Jan 23 11:51:24 2012, Bruce Fields wrote:
+> > On Tue, Jan 03, 2012 at 11:55:44AM -0500, Bruce Fields wrote:
+> >> On Tue, Jan 03, 2012 at 11:41:47AM -0500, Trond Myklebust wrote:
+> >>> Instead of hacking specific service names into gss_encode_v1_msg, we should
+> >>> just allow the caller to specify the service name explicitly.
+> >>
+> >> Just curious: do you have some callers in mind he will need different
+> >> service names?
+> >>
+> >> (But I agree reagardless that this is the more logical layering; fwiw:
+> >>
+> >> 	Acked-by: J. Bruce Fields <bfields@redhat.com>
+> >
+> > Bah, is that what I get for acking without testing?  (Do Bryan's tests not do a
+> > krb5 mount?)
+> 
+> I don't have kerberos set up on our test machines right now, and my 
+> Jenkins scripts don't have parameters for mounting with alternate 
+> security flavors.  I'll add it to my TODO list to make sure these cases 
+> are tested, too.
 
-Servers have a finite amount of memory to store NFSv4 open and lock
-owners.  Moreover, servers may have a difficult time determining when
-they can reap their state owner table, thanks to gray areas in the
-NFSv4 protocol specification.  Thus clients should be careful to reuse
-state owners when possible.
+I think that would be really useful.
 
-Currently Linux is not too careful.  When a user has closed all her
-files on one mount point, the state owner's reference count goes to
-zero, and it is released.  The next OPEN allocates a new one.  A
-workload that serially opens and closes files can run through a large
-number of open owners this way.
+(My regular connectathon tests are in bin/d-cthon in
+git://linux-nfs.org/~bfields/testd.git.  I think it's totally
+uninteresting--just a bunch of "mount; run cthon; umount", basically,
+but feel free to look.  I currently do one cthon run on the client's
+local filesystem just to catch anything really dumb, then run it over
+v4, v3, v4/krb5, v3/krb5, v4/krb5i, v4/krb5p, v4.1, and v4.1/krb5.
 
-When a state owner's reference count goes to zero, slap it onto a free
-list for that nfs_server, with an expiry time.  Garbage collect before
-looking for a state owner.  This makes state owners for active users
-available for re-use.
+Oh, and what looks like a bizarre module-loading race makes my krb5
+mounts fail occasionally.  I haven't figured out how it's happening
+yet....)
 
-Now that there can be unused state owners remaining at umount time,
-purge the state owner free list when a server is destroyed.  Also be
-sure not to reclaim unused state owners during state recovery.
+--b.
 
-This change has benefits for the client as well.  For some workloads,
-this approach drops the number of OPEN_CONFIRM calls from the same as
-the number of OPEN calls, down to just one.  This reduces wire traffic
-and thus open(2) latency.  Before this patch, untarring a kernel
-source tarball shows the OPEN_CONFIRM call counter steadily increasing
-through the test.  With the patch, the OPEN_CONFIRM count remains at 1
-throughout the entire untar.
-
-As long as the expiry time is kept short, I don't think garbage
-collection should be terribly expensive, although it does bounce the
-clp->cl_lock around a bit.
-
-[ At some point we should rationalize the use of the nfs_server
-->destroy method. ]
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-[Trond: Fixed a garbage collection race and a few efficiency issues]
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/client.c           |    8 ++++
- fs/nfs/nfs4_fs.h          |    3 ++
- fs/nfs/nfs4state.c        |   88 ++++++++++++++++++++++++++++++++++++++++-----
- include/linux/nfs_fs_sb.h |    1 +
- 4 files changed, 91 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 32ea371..41bd67f 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -250,6 +250,11 @@ static void pnfs_init_server(struct nfs_server *server)
- 	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
- }
- 
-+static void nfs4_destroy_server(struct nfs_server *server)
-+{
-+	nfs4_purge_state_owners(server);
-+}
-+
- #else
- static void nfs4_shutdown_client(struct nfs_client *clp)
- {
-@@ -1065,6 +1070,7 @@ static struct nfs_server *nfs_alloc_server(void)
- 	INIT_LIST_HEAD(&server->master_link);
- 	INIT_LIST_HEAD(&server->delegations);
- 	INIT_LIST_HEAD(&server->layouts);
-+	INIT_LIST_HEAD(&server->state_owners_lru);
- 
- 	atomic_set(&server->active, 0);
- 
-@@ -1538,6 +1544,7 @@ static int nfs4_server_common_setup(struct nfs_server *server,
- 
- 	nfs_server_insert_lists(server);
- 	server->mount_time = jiffies;
-+	server->destroy = nfs4_destroy_server;
- out:
- 	nfs_free_fattr(fattr);
- 	return error;
-@@ -1719,6 +1726,7 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
- 
- 	/* Copy data from the source */
- 	server->nfs_client = source->nfs_client;
-+	server->destroy = source->destroy;
- 	atomic_inc(&server->nfs_client->cl_count);
- 	nfs_server_copy_userdata(server, source);
- 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 693ae22..4d7d0ae 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -94,6 +94,8 @@ struct nfs_unique_id {
- struct nfs4_state_owner {
- 	struct nfs_unique_id so_owner_id;
- 	struct nfs_server    *so_server;
-+	struct list_head     so_lru;
-+	unsigned long        so_expires;
- 	struct rb_node	     so_server_node;
- 
- 	struct rpc_cred	     *so_cred;	 /* Associated cred */
-@@ -319,6 +321,7 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session)
- 
- extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
- extern void nfs4_put_state_owner(struct nfs4_state_owner *);
-+extern void nfs4_purge_state_owners(struct nfs_server *);
- extern struct nfs4_state * nfs4_get_open_state(struct inode *, struct nfs4_state_owner *);
- extern void nfs4_put_open_state(struct nfs4_state *);
- extern void nfs4_close_state(struct nfs4_state *, fmode_t);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6354e4f..8aadb38 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -49,6 +49,7 @@
- #include <linux/ratelimit.h>
- #include <linux/workqueue.h>
- #include <linux/bitops.h>
-+#include <linux/jiffies.h>
- 
- #include "nfs4_fs.h"
- #include "callback.h"
-@@ -388,6 +389,8 @@ nfs4_find_state_owner_locked(struct nfs_server *server, struct rpc_cred *cred)
- 		else if (cred > sp->so_cred)
- 			p = &parent->rb_right;
- 		else {
-+			if (!list_empty(&sp->so_lru))
-+				list_del_init(&sp->so_lru);
- 			atomic_inc(&sp->so_count);
- 			return sp;
- 		}
-@@ -412,6 +415,8 @@ nfs4_insert_state_owner_locked(struct nfs4_state_owner *new)
- 		else if (new->so_cred > sp->so_cred)
- 			p = &parent->rb_right;
- 		else {
-+			if (!list_empty(&sp->so_lru))
-+				list_del_init(&sp->so_lru);
- 			atomic_inc(&sp->so_count);
- 			return sp;
- 		}
-@@ -453,6 +458,7 @@ nfs4_alloc_state_owner(void)
- 	spin_lock_init(&sp->so_sequence.lock);
- 	INIT_LIST_HEAD(&sp->so_sequence.list);
- 	atomic_set(&sp->so_count, 1);
-+	INIT_LIST_HEAD(&sp->so_lru);
- 	return sp;
- }
- 
-@@ -470,6 +476,37 @@ nfs4_drop_state_owner(struct nfs4_state_owner *sp)
- 	}
- }
- 
-+static void nfs4_free_state_owner(struct nfs4_state_owner *sp)
-+{
-+	rpc_destroy_wait_queue(&sp->so_sequence.wait);
-+	put_rpccred(sp->so_cred);
-+	kfree(sp);
-+}
-+
-+static void nfs4_gc_state_owners(struct nfs_server *server)
-+{
-+	struct nfs_client *clp = server->nfs_client;
-+	struct nfs4_state_owner *sp, *tmp;
-+	unsigned long now = jiffies;
-+	LIST_HEAD(doomed);
-+
-+	spin_lock(&clp->cl_lock);
-+	list_for_each_entry_safe(sp, tmp, &server->state_owners_lru, so_lru) {
-+		/* NB: LRU is sorted so that oldest is at the head */
-+		if (time_in_range(now, sp->so_expires,
-+				sp->so_expires + clp->cl_lease_time))
-+			break;
-+		list_move(&sp->so_lru, &doomed);
-+		nfs4_remove_state_owner_locked(sp);
-+	}
-+	spin_unlock(&clp->cl_lock);
-+
-+	list_for_each_entry_safe(sp, tmp, &doomed, so_lru) {
-+		list_del_init(&sp->so_lru);
-+		nfs4_free_state_owner(sp);
-+	}
-+}
-+
- /**
-  * nfs4_get_state_owner - Look up a state owner given a credential
-  * @server: nfs_server to search
-@@ -487,10 +524,10 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
- 	sp = nfs4_find_state_owner_locked(server, cred);
- 	spin_unlock(&clp->cl_lock);
- 	if (sp != NULL)
--		return sp;
-+		goto out;
- 	new = nfs4_alloc_state_owner();
- 	if (new == NULL)
--		return NULL;
-+		goto out;
- 	new->so_server = server;
- 	new->so_cred = cred;
- 	spin_lock(&clp->cl_lock);
-@@ -502,26 +539,58 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
- 		rpc_destroy_wait_queue(&new->so_sequence.wait);
- 		kfree(new);
- 	}
-+out:
-+	nfs4_gc_state_owners(server);
- 	return sp;
- }
- 
- /**
-  * nfs4_put_state_owner - Release a nfs4_state_owner
-  * @sp: state owner data to release
-- *
-  */
- void nfs4_put_state_owner(struct nfs4_state_owner *sp)
- {
--	struct nfs_client *clp = sp->so_server->nfs_client;
--	struct rpc_cred *cred = sp->so_cred;
-+	struct nfs_server *server = sp->so_server;
-+	struct nfs_client *clp = server->nfs_client;
- 
- 	if (!atomic_dec_and_lock(&sp->so_count, &clp->cl_lock))
- 		return;
--	nfs4_remove_state_owner_locked(sp);
-+
-+	if (!RB_EMPTY_NODE(&sp->so_server_node)) {
-+		sp->so_expires = jiffies;
-+		list_move_tail(&sp->so_lru, &server->state_owners_lru);
-+		spin_unlock(&clp->cl_lock);
-+	} else {
-+		nfs4_remove_state_owner_locked(sp);
-+		spin_unlock(&clp->cl_lock);
-+		nfs4_free_state_owner(sp);
-+	}
-+}
-+
-+/**
-+ * nfs4_purge_state_owners - Release all cached state owners
-+ * @server: nfs_server with cached state owners to release
-+ *
-+ * Called at umount time.  Remaining state owners will be on
-+ * the LRU with ref count of zero.
-+ */
-+void nfs4_purge_state_owners(struct nfs_server *server)
-+{
-+	struct nfs_client *clp = server->nfs_client;
-+	struct nfs4_state_owner *sp, *tmp;
-+	LIST_HEAD(doomed);
-+
-+	spin_lock(&clp->cl_lock);
-+	list_for_each_entry_safe(sp, tmp, &server->state_owners_lru, so_lru) {
-+		list_move(&sp->so_lru, &doomed);
-+		nfs4_remove_state_owner_locked(sp);
-+	}
- 	spin_unlock(&clp->cl_lock);
--	rpc_destroy_wait_queue(&sp->so_sequence.wait);
--	put_rpccred(cred);
--	kfree(sp);
-+
-+	list_for_each_entry_safe(sp, tmp, &doomed, so_lru) {
-+		list_del_init(&sp->so_lru);
-+		nfs4_free_state_owner(sp);
-+	}
- }
- 
- static struct nfs4_state *
-@@ -1393,6 +1462,7 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
- restart:
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
-+		nfs4_purge_state_owners(server);
- 		spin_lock(&clp->cl_lock);
- 		for (pos = rb_first(&server->state_owners);
- 		     pos != NULL;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b5479df..ba4d765 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -153,6 +153,7 @@ struct nfs_server {
- 	struct rb_root		openowner_id;
- 	struct rb_root		lockowner_id;
- #endif
-+	struct list_head	state_owners_lru;
- 	struct list_head	layouts;
- 	struct list_head	delegations;
- 	void (*destroy)(struct nfs_server *);
--- 
-1.7.7.5
-
+> 
+> - Bryan
+> 
+> >
+> > Not sure where the bug is, except on a quick look auth_cred got a princpal
+> > argument, but I can't tell whether it's always initialized.
+> >
+> > --b.
+> >
+> > general protection fault: 0000 [#1] PREEMPT SMP 
+> > CPU 0 
+> > Modules linked in: rpcsec_gss_krb5 nfs nfsd lockd nfs_acl auth_rpcgss sunrpc [last unloaded: scsi_wait_scan]
+> >
+> > Pid: 6645, comm: 192.168.122.11- Not tainted 3.2.0-00001-g68c9715 #966 Bochs Bochs
+> > RIP: 0010:[<ffffffff81516399>]  [<ffffffff81516399>] strnlen+0x9/0x40
+> > RSP: 0018:ffff8800376b77d0  EFLAGS: 00010286
+> > RAX: ffffffff81d027fc RBX: ffff88003758e398 RCX: ffffffffff0a0004
+> > RDX: 5a5a5a5a5a5a5a5a RSI: ffffffffffffffff RDI: 5a5a5a5a5a5a5a5a
+> > RBP: ffff8800376b77d0 R08: 000000000000fffb R09: 0000ffffffffff0a
+> > R10: 0000000000000001 R11: 0000000000000000 R12: ffff8800b758e38f
+> > R13: 5a5a5a5a5a5a5a5a R14: ffffffffffffffff R15: 00000000ffffffff
+> > FS:  0000000000000000(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
+> > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> > CR2: 00000000004073e0 CR3: 0000000001e05000 CR4: 00000000000006f0
+> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > Process 192.168.122.11- (pid: 6645, threadinfo ffff8800376b6000, task ffff88003b576080)
+> > Stack:
+> >  ffff8800376b7820 ffffffff815179ef ffff8800376b7800 ffffffff81097110
+> >  ffff8800376b7810 ffff88003758e398 ffffffffa00524f9 ffffffffa00524f7
+> >  ffff8800376b78a0 ffff8800b758e38f ffff8800376b7890 ffffffff81518b6a
+> > Call Trace:
+> >  [<ffffffff815179ef>] string+0x4f/0xf0
+> >  [<ffffffff81097110>] ? is_module_address+0x30/0x60
+> >  [<ffffffff81518b6a>] vsnprintf+0x1da/0x5b0
+> >  [<ffffffff81088964>] ? static_obj+0x44/0x60
+> >  [<ffffffff81518f80>] sprintf+0x40/0x50
+> >  [<ffffffffa004d938>] gss_setup_upcall+0x1d8/0x2d0 [auth_rpcgss]
+> >  [<ffffffffa004dcc3>] gss_cred_init+0xc3/0x3a0 [auth_rpcgss]
+> >  [<ffffffffa000c3ac>] ? rpcauth_lookup_credcache+0x21c/0x2c0 [sunrpc]
+> >  [<ffffffff81077500>] ? wake_up_bit+0x40/0x40
+> >  [<ffffffff81950afd>] ? sub_preempt_count+0x9d/0xd0
+> >  [<ffffffffa000c327>] rpcauth_lookup_credcache+0x197/0x2c0 [sunrpc]
+> >  [<ffffffffa000c190>] ? rpcauth_refreshcred+0x1d0/0x1d0 [sunrpc]
+> >  [<ffffffff8105b1a2>] ? local_bh_enable_ip+0x82/0x100
+> >  [<ffffffffa004c5ce>] gss_lookup_cred+0xe/0x10 [auth_rpcgss]
+> >  [<ffffffffa000cdbf>] generic_bind_cred+0x1f/0x30 [sunrpc]
+> >  [<ffffffffa000c061>] rpcauth_refreshcred+0xa1/0x1d0 [sunrpc]
+> >  [<ffffffffa00006d3>] call_refresh+0x43/0x70 [sunrpc]
+> >  [<ffffffffa000a8c6>] __rpc_execute+0x66/0x2b0 [sunrpc]
+> >  [<ffffffff810774ef>] ? wake_up_bit+0x2f/0x40
+> >  [<ffffffffa000ab53>] rpc_execute+0x43/0x50 [sunrpc]
+> >  [<ffffffffa0002315>] rpc_run_task+0x75/0x90 [sunrpc]
+> >  [<ffffffffa0002432>] rpc_call_sync+0x42/0x70 [sunrpc]
+> >  [<ffffffffa00e5a1f>] nfs4_proc_setclientid+0x1af/0x210 [nfs]
+> >  [<ffffffffa00f2e17>] nfs4_init_clientid+0xc7/0x130 [nfs]
+> >  [<ffffffff8194d55b>] ? _raw_spin_unlock_irq+0x3b/0x60
+> >  [<ffffffffa00f24dd>] nfs4_run_state_manager+0x2ad/0x600 [nfs]
+> >  [<ffffffffa00f2230>] ? nfs4_do_reclaim+0x590/0x590 [nfs]
+> >  [<ffffffff81076fc6>] kthread+0x96/0xa0
+> >  [<ffffffff81955bf4>] kernel_thread_helper+0x4/0x10
+> >  [<ffffffff81046548>] ? finish_task_switch+0x88/0xf0
+> >  [<ffffffff8194d961>] ? retint_restore_args+0xe/0xe
+> >  [<ffffffff81076f30>] ? __init_kthread_worker+0x70/0x70
+> >  [<ffffffff81955bf0>] ? gs_change+0xb/0xb
+> > Code: 66 90 48 83 c2 01 80 3a 00 75 f7 48 89 d0 48 29 f8 c9 c3 66 66 66 66 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 85 f6 48 89 e5 74 2e <80> 3f 00 74 29 48 83 ee 01 48 89 f8 eb 12 66 0f 1f 84 00 00 00 
+> > RIP  [<ffffffff81516399>] strnlen+0x9/0x40
+> >  RSP <ffff8800376b77d0>
+> > ---[ end trace bff324891ae17805 ]---
+> >
+> >
+> >>
+> >> .)
+> >>
+> >> --b.
+> >>
+> >>>
+> >>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> >>> ---
+> >>>  fs/nfs/client.c                 |    2 +-
+> >>>  fs/nfsd/nfs4callback.c          |    2 +-
+> >>>  include/linux/sunrpc/auth.h     |    3 +-
+> >>>  include/linux/sunrpc/auth_gss.h |    2 +-
+> >>>  net/sunrpc/auth_generic.c       |    6 +++-
+> >>>  net/sunrpc/auth_gss/auth_gss.c  |   40 ++++++++++++++++++++++----------------
+> >>>  6 files changed, 32 insertions(+), 23 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> >>> index 873bf00..32ea371 100644
+> >>> --- a/fs/nfs/client.c
+> >>> +++ b/fs/nfs/client.c
+> >>> @@ -185,7 +185,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+> >>>  	clp->cl_minorversion = cl_init->minorversion;
+> >>>  	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+> >>>  #endif
+> >>> -	cred = rpc_lookup_machine_cred();
+> >>> +	cred = rpc_lookup_machine_cred("*");
+> >>>  	if (!IS_ERR(cred))
+> >>>  		clp->cl_machine_cred = cred;
+> >>>  	nfs_fscache_get_client_cookie(clp);
+> >>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >>> index 7748d6a..6f3ebb4 100644
+> >>> --- a/fs/nfsd/nfs4callback.c
+> >>> +++ b/fs/nfsd/nfs4callback.c
+> >>> @@ -718,7 +718,7 @@ int set_callback_cred(void)
+> >>>  {
+> >>>  	if (callback_cred)
+> >>>  		return 0;
+> >>> -	callback_cred = rpc_lookup_machine_cred();
+> >>> +	callback_cred = rpc_lookup_machine_cred("nfs");
+> >>>  	if (!callback_cred)
+> >>>  		return -ENOMEM;
+> >>>  	return 0;
+> >>> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+> >>> index febc4db..7874a8a 100644
+> >>> --- a/include/linux/sunrpc/auth.h
+> >>> +++ b/include/linux/sunrpc/auth.h
+> >>> @@ -26,6 +26,7 @@ struct auth_cred {
+> >>>  	uid_t	uid;
+> >>>  	gid_t	gid;
+> >>>  	struct group_info *group_info;
+> >>> +	const char *principal;
+> >>>  	unsigned char machine_cred : 1;
+> >>>  };
+> >>>  
+> >>> @@ -127,7 +128,7 @@ void			rpc_destroy_generic_auth(void);
+> >>>  void 			rpc_destroy_authunix(void);
+> >>>  
+> >>>  struct rpc_cred *	rpc_lookup_cred(void);
+> >>> -struct rpc_cred *	rpc_lookup_machine_cred(void);
+> >>> +struct rpc_cred *	rpc_lookup_machine_cred(const char *service_name);
+> >>>  int			rpcauth_register(const struct rpc_authops *);
+> >>>  int			rpcauth_unregister(const struct rpc_authops *);
+> >>>  struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
+> >>> diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+> >>> index 8eee9db..f1cfd4c 100644
+> >>> --- a/include/linux/sunrpc/auth_gss.h
+> >>> +++ b/include/linux/sunrpc/auth_gss.h
+> >>> @@ -82,8 +82,8 @@ struct gss_cred {
+> >>>  	enum rpc_gss_svc	gc_service;
+> >>>  	struct gss_cl_ctx __rcu	*gc_ctx;
+> >>>  	struct gss_upcall_msg	*gc_upcall;
+> >>> +	const char		*gc_principal;
+> >>>  	unsigned long		gc_upcall_timestamp;
+> >>> -	unsigned char		gc_machine_cred : 1;
+> >>>  };
+> >>>  
+> >>>  #endif /* __KERNEL__ */
+> >>> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+> >>> index e010a01..1426ec3 100644
+> >>> --- a/net/sunrpc/auth_generic.c
+> >>> +++ b/net/sunrpc/auth_generic.c
+> >>> @@ -41,15 +41,17 @@ EXPORT_SYMBOL_GPL(rpc_lookup_cred);
+> >>>  /*
+> >>>   * Public call interface for looking up machine creds.
+> >>>   */
+> >>> -struct rpc_cred *rpc_lookup_machine_cred(void)
+> >>> +struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
+> >>>  {
+> >>>  	struct auth_cred acred = {
+> >>>  		.uid = RPC_MACHINE_CRED_USERID,
+> >>>  		.gid = RPC_MACHINE_CRED_GROUPID,
+> >>> +		.principal = service_name,
+> >>>  		.machine_cred = 1,
+> >>>  	};
+> >>>  
+> >>> -	dprintk("RPC:       looking up machine cred\n");
+> >>> +	dprintk("RPC:       looking up machine cred for service %s\n",
+> >>> +			service_name);
+> >>>  	return generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
+> >>>  }
+> >>>  EXPORT_SYMBOL_GPL(rpc_lookup_machine_cred);
+> >>> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> >>> index afb5655..28d72d2 100644
+> >>> --- a/net/sunrpc/auth_gss/auth_gss.c
+> >>> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> >>> @@ -392,7 +392,8 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
+> >>>  }
+> >>>  
+> >>>  static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> >>> -				struct rpc_clnt *clnt, int machine_cred)
+> >>> +				struct rpc_clnt *clnt,
+> >>> +				const char *service_name)
+> >>>  {
+> >>>  	struct gss_api_mech *mech = gss_msg->auth->mech;
+> >>>  	char *p = gss_msg->databuf;
+> >>> @@ -407,12 +408,8 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> >>>  		p += len;
+> >>>  		gss_msg->msg.len += len;
+> >>>  	}
+> >>> -	if (machine_cred) {
+> >>> -		len = sprintf(p, "service=* ");
+> >>> -		p += len;
+> >>> -		gss_msg->msg.len += len;
+> >>> -	} else if (!strcmp(clnt->cl_program->name, "nfs4_cb")) {
+> >>> -		len = sprintf(p, "service=nfs ");
+> >>> +	if (service_name != NULL) {
+> >>> +		len = sprintf(p, "service=%s ", service_name);
+> >>>  		p += len;
+> >>>  		gss_msg->msg.len += len;
+> >>>  	}
+> >>> @@ -429,17 +426,18 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> >>>  }
+> >>>  
+> >>>  static void gss_encode_msg(struct gss_upcall_msg *gss_msg,
+> >>> -				struct rpc_clnt *clnt, int machine_cred)
+> >>> +				struct rpc_clnt *clnt,
+> >>> +				const char *service_name)
+> >>>  {
+> >>>  	if (pipe_version == 0)
+> >>>  		gss_encode_v0_msg(gss_msg);
+> >>>  	else /* pipe_version == 1 */
+> >>> -		gss_encode_v1_msg(gss_msg, clnt, machine_cred);
+> >>> +		gss_encode_v1_msg(gss_msg, clnt, service_name);
+> >>>  }
+> >>>  
+> >>> -static inline struct gss_upcall_msg *
+> >>> -gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
+> >>> -		int machine_cred)
+> >>> +static struct gss_upcall_msg *
+> >>> +gss_alloc_msg(struct gss_auth *gss_auth, struct rpc_clnt *clnt,
+> >>> +		uid_t uid, const char *service_name)
+> >>>  {
+> >>>  	struct gss_upcall_msg *gss_msg;
+> >>>  	int vers;
+> >>> @@ -459,7 +457,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
+> >>>  	atomic_set(&gss_msg->count, 1);
+> >>>  	gss_msg->uid = uid;
+> >>>  	gss_msg->auth = gss_auth;
+> >>> -	gss_encode_msg(gss_msg, clnt, machine_cred);
+> >>> +	gss_encode_msg(gss_msg, clnt, service_name);
+> >>>  	return gss_msg;
+> >>>  }
+> >>>  
+> >>> @@ -471,7 +469,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+> >>>  	struct gss_upcall_msg *gss_new, *gss_msg;
+> >>>  	uid_t uid = cred->cr_uid;
+> >>>  
+> >>> -	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
+> >>> +	gss_new = gss_alloc_msg(gss_auth, clnt, uid, gss_cred->gc_principal);
+> >>>  	if (IS_ERR(gss_new))
+> >>>  		return gss_new;
+> >>>  	gss_msg = gss_add_msg(gss_new);
+> >>> @@ -995,7 +993,9 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
+> >>>  	 */
+> >>>  	cred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_NEW;
+> >>>  	cred->gc_service = gss_auth->service;
+> >>> -	cred->gc_machine_cred = acred->machine_cred;
+> >>> +	cred->gc_principal = NULL;
+> >>> +	if (acred->machine_cred)
+> >>> +		cred->gc_principal = acred->principal;
+> >>>  	kref_get(&gss_auth->kref);
+> >>>  	return &cred->gc_base;
+> >>>  
+> >>> @@ -1030,7 +1030,12 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
+> >>>  	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
+> >>>  		return 0;
+> >>>  out:
+> >>> -	if (acred->machine_cred != gss_cred->gc_machine_cred)
+> >>> +	if (acred->principal != NULL) {
+> >>> +		if (gss_cred->gc_principal == NULL)
+> >>> +			return 0;
+> >>> +		return strcmp(acred->principal, gss_cred->gc_principal) == 0;
+> >>> +	}
+> >>> +	if (gss_cred->gc_principal != NULL)
+> >>>  		return 0;
+> >>>  	return rc->cr_uid == acred->uid;
+> >>>  }
+> >>> @@ -1104,7 +1109,8 @@ static int gss_renew_cred(struct rpc_task *task)
+> >>>  	struct rpc_auth *auth = oldcred->cr_auth;
+> >>>  	struct auth_cred acred = {
+> >>>  		.uid = oldcred->cr_uid,
+> >>> -		.machine_cred = gss_cred->gc_machine_cred,
+> >>> +		.principal = gss_cred->gc_principal,
+> >>> +		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
+> >>>  	};
+> >>>  	struct rpc_cred *new;
+> >>>  
+> >>> -- 
+> >>> 1.7.7.5
+> >>>
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
