@@ -1,107 +1,306 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34102 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755555Ab2AMJJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 04:09:50 -0500
-Subject: [PATCH v2 4/4] SUNRPC: parametrize rpc_uaddr2sockaddr() by network
- context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 13:09:27 +0400
-Message-ID: <20120113090927.1598.31109.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
-References: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:60023 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754066Ab2AWUCa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:30 -0500
+Received: by mail-qw0-f46.google.com with SMTP id c10so2031574qad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:30 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 10/11] nfsdcld: add a manpage for nfsdcld
+Date: Mon, 23 Jan 2012 15:02:10 -0500
+Message-Id: <1327348931-785-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Parametrize rpc_uaddr2sockaddr() by network context and thus force it's callers to pass
-in network context instead of using hard-coded "init_net".
+...for now I'm including the POD source for the manpage. We can drop
+from the repo if desired though.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c         |    2 +-
- include/linux/sunrpc/clnt.h |    2 +-
- net/sunrpc/addr.c           |    8 +++++---
- net/sunrpc/rpcb_clnt.c      |    2 +-
- 4 files changed, 8 insertions(+), 6 deletions(-)
+ utils/nfsdcld/Makefile.am |    4 +-
+ utils/nfsdcld/nfsdcld.man |  180 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/nfsdcld.pod |   67 +++++++++++++++++
+ 3 files changed, 249 insertions(+), 2 deletions(-)
+ create mode 100644 utils/nfsdcld/nfsdcld.man
+ create mode 100644 utils/nfsdcld/nfsdcld.pod
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9ca16dc..56ad8ca 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1301,7 +1301,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
- 	else
- 		goto out_err;
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+index 8e4f2ab..f320dff 100644
+--- a/utils/nfsdcld/Makefile.am
++++ b/utils/nfsdcld/Makefile.am
+@@ -1,7 +1,7 @@
+ ## Process this file with automake to produce Makefile.in
  
--	conn->cb_addrlen = rpc_uaddr2sockaddr(se->se_callback_addr_val,
-+	conn->cb_addrlen = rpc_uaddr2sockaddr(&init_net, se->se_callback_addr_val,
- 					    se->se_callback_addr_len,
- 					    (struct sockaddr *)&conn->cb_addr,
- 					    sizeof(conn->cb_addr));
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 7bd114f..9e754e3 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -166,7 +166,7 @@ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
- size_t		rpc_pton(struct net *, const char *, const size_t,
- 			 struct sockaddr *, const size_t);
- char *		rpc_sockaddr2uaddr(const struct sockaddr *, gfp_t);
--size_t		rpc_uaddr2sockaddr(const char *, const size_t,
-+size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
- 				   struct sockaddr *, const size_t);
+-#man8_MANS	= nfsdcld.man
+-#EXTRA_DIST = $(man8_MANS)
++man8_MANS	= nfsdcld.man
++EXTRA_DIST	= $(man8_MANS)
  
- static inline unsigned short rpc_get_port(const struct sockaddr *sap)
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 82b06b7..d11418f 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -297,6 +297,7 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
- 
- /**
-  * rpc_uaddr2sockaddr - convert a universal address to a socket address.
-+ * @net: applicable network namespace
-  * @uaddr: C string containing universal address to convert
-  * @uaddr_len: length of universal address string
-  * @sap: buffer into which to plant socket address
-@@ -308,8 +309,9 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
-  * Returns the size of the socket address if successful; otherwise
-  * zero is returned.
-  */
--size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
--			  struct sockaddr *sap, const size_t salen)
-+size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
-+			  const size_t uaddr_len, struct sockaddr *sap,
-+			  const size_t salen)
- {
- 	char *c, buf[RPCBIND_MAXUADDRLEN + sizeof('\0')];
- 	unsigned long portlo, porthi;
-@@ -341,7 +343,7 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
- 	port = (unsigned short)((porthi << 8) | portlo);
- 
- 	*c = '\0';
--	if (rpc_pton(&init_net, buf, strlen(buf), sap, salen) == 0)
-+	if (rpc_pton(net, buf, strlen(buf), sap, salen) == 0)
- 		return 0;
- 
- 	switch (sap->sa_family) {
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 6d6a84f..7c6fac0 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -934,7 +934,7 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	dprintk("RPC: %5u RPCB_%s reply: %s\n", task->tk_pid,
- 			task->tk_msg.rpc_proc->p_name, (char *)p);
- 
--	if (rpc_uaddr2sockaddr((char *)p, len, sap, sizeof(address)) == 0)
-+	if (rpc_uaddr2sockaddr(&init_net, (char *)p, len, sap, sizeof(address)) == 0)
- 		goto out_fail;
- 	rpcb->r_port = rpc_get_port(sap);
- 
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+ sbin_PROGRAMS	= nfsdcld
+diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+new file mode 100644
+index 0000000..bad5f34
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.man
+@@ -0,0 +1,180 @@
++.\" Automatically generated by Pod::Man 2.22 (Pod::Simple 3.13)
++.\"
++.\" Standard preamble:
++.\" ========================================================================
++.de Sp \" Vertical space (when we can't use .PP)
++.if t .sp .5v
++.if n .sp
++..
++.de Vb \" Begin verbatim text
++.ft CW
++.nf
++.ne \\$1
++..
++.de Ve \" End verbatim text
++.ft R
++.fi
++..
++.\" Set up some character translations and predefined strings.  \*(-- will
++.\" give an unbreakable dash, \*(PI will give pi, \*(L" will give a left
++.\" double quote, and \*(R" will give a right double quote.  \*(C+ will
++.\" give a nicer C++.  Capital omega is used to do unbreakable dashes and
++.\" therefore won't be available.  \*(C` and \*(C' expand to `' in nroff,
++.\" nothing in troff, for use with C<>.
++.tr \(*W-
++.ds C+ C\v'-.1v'\h'-1p'\s-2+\h'-1p'+\s0\v'.1v'\h'-1p'
++.ie n \{\
++.    ds -- \(*W-
++.    ds PI pi
++.    if (\n(.H=4u)&(1m=24u) .ds -- \(*W\h'-12u'\(*W\h'-12u'-\" diablo 10 pitch
++.    if (\n(.H=4u)&(1m=20u) .ds -- \(*W\h'-12u'\(*W\h'-8u'-\"  diablo 12 pitch
++.    ds L" ""
++.    ds R" ""
++.    ds C` ""
++.    ds C' ""
++'br\}
++.el\{\
++.    ds -- \|\(em\|
++.    ds PI \(*p
++.    ds L" ``
++.    ds R" ''
++'br\}
++.\"
++.\" Escape single quotes in literal strings from groff's Unicode transform.
++.ie \n(.g .ds Aq \(aq
++.el       .ds Aq '
++.\"
++.\" If the F register is turned on, we'll generate index entries on stderr for
++.\" titles (.TH), headers (.SH), subsections (.SS), items (.Ip), and index
++.\" entries marked with X<> in POD.  Of course, you'll have to process the
++.\" output yourself in some meaningful fashion.
++.ie \nF \{\
++.    de IX
++.    tm Index:\\$1\t\\n%\t"\\$2"
++..
++.    nr % 0
++.    rr F
++.\}
++.el \{\
++.    de IX
++..
++.\}
++.\"
++.\" Accent mark definitions (@(#)ms.acc 1.5 88/02/08 SMI; from UCB 4.2).
++.\" Fear.  Run.  Save yourself.  No user-serviceable parts.
++.    \" fudge factors for nroff and troff
++.if n \{\
++.    ds #H 0
++.    ds #V .8m
++.    ds #F .3m
++.    ds #[ \f1
++.    ds #] \fP
++.\}
++.if t \{\
++.    ds #H ((1u-(\\\\n(.fu%2u))*.13m)
++.    ds #V .6m
++.    ds #F 0
++.    ds #[ \&
++.    ds #] \&
++.\}
++.    \" simple accents for nroff and troff
++.if n \{\
++.    ds ' \&
++.    ds ` \&
++.    ds ^ \&
++.    ds , \&
++.    ds ~ ~
++.    ds /
++.\}
++.if t \{\
++.    ds ' \\k:\h'-(\\n(.wu*8/10-\*(#H)'\'\h"|\\n:u"
++.    ds ` \\k:\h'-(\\n(.wu*8/10-\*(#H)'\`\h'|\\n:u'
++.    ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'^\h'|\\n:u'
++.    ds , \\k:\h'-(\\n(.wu*8/10)',\h'|\\n:u'
++.    ds ~ \\k:\h'-(\\n(.wu-\*(#H-.1m)'~\h'|\\n:u'
++.    ds / \\k:\h'-(\\n(.wu*8/10-\*(#H)'\z\(sl\h'|\\n:u'
++.\}
++.    \" troff and (daisy-wheel) nroff accents
++.ds : \\k:\h'-(\\n(.wu*8/10-\*(#H+.1m+\*(#F)'\v'-\*(#V'\z.\h'.2m+\*(#F'.\h'|\\n:u'\v'\*(#V'
++.ds 8 \h'\*(#H'\(*b\h'-\*(#H'
++.ds o \\k:\h'-(\\n(.wu+\w'\(de'u-\*(#H)/2u'\v'-.3n'\*(#[\z\(de\v'.3n'\h'|\\n:u'\*(#]
++.ds d- \h'\*(#H'\(pd\h'-\w'~'u'\v'-.25m'\f2\(hy\fP\v'.25m'\h'-\*(#H'
++.ds D- D\\k:\h'-\w'D'u'\v'-.11m'\z\(hy\v'.11m'\h'|\\n:u'
++.ds th \*(#[\v'.3m'\s+1I\s-1\v'-.3m'\h'-(\w'I'u*2/3)'\s-1o\s+1\*(#]
++.ds Th \*(#[\s+2I\s-2\h'-\w'I'u*3/5'\v'-.3m'o\v'.3m'\*(#]
++.ds ae a\h'-(\w'a'u*4/10)'e
++.ds Ae A\h'-(\w'A'u*4/10)'E
++.    \" corrections for vroff
++.if v .ds ~ \\k:\h'-(\\n(.wu*9/10-\*(#H)'\s-2\u~\d\s+2\h'|\\n:u'
++.if v .ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'\v'-.4m'^\v'.4m'\h'|\\n:u'
++.    \" for low resolution devices (crt and lpr)
++.if \n(.H>23 .if \n(.V>19 \
++\{\
++.    ds : e
++.    ds 8 ss
++.    ds o a
++.    ds d- d\h'-1'\(ga
++.    ds D- D\h'-1'\(hy
++.    ds th \o'bp'
++.    ds Th \o'LP'
++.    ds ae ae
++.    ds Ae AE
++.\}
++.rm #[ #] #H #V #F C
++.\" ========================================================================
++.\"
++.IX Title "NFSDCLD 8"
++.TH NFSDCLD 8 "2011-12-21" "" ""
++.\" For nroff, turn off justification.  Always turn off hyphenation; it makes
++.\" way too many mistakes in technical documents.
++.if n .ad l
++.nh
++.SH "NAME"
++nfsdcld \- NFSv4 Client Tracking Daemon
++.SH "SYNOPSIS"
++.IX Header "SYNOPSIS"
++nfsdcld [\-d] [\-F] [\-p path] [\-s stable storage dir]
++.SH "DESCRIPTION"
++.IX Header "DESCRIPTION"
++nfsdcld is the NFSv4 client tracking daemon. It is not necessary to run
++this daemon on machines that are not acting as NFSv4 servers.
++.PP
++When a network partition is combined with a server reboot, there are
++edge conditions that can cause the server to grant lock reclaims when
++other clients have taken conflicting locks in the interim. A more detailed
++explanation of this issue is described in \s-1RFC\s0 3530, section 8.6.3.
++.PP
++In order to prevent these problems, the server must track a small amount
++of per-client information on stable storage. This daemon provides the
++userspace piece of that functionality.
++.SH "OPTIONS"
++.IX Header "OPTIONS"
++.IP "\fB\-d\fR, \fB\-\-debug\fR" 4
++.IX Item "-d, --debug"
++Enable debug level logging.
++.IP "\fB\-F\fR, \fB\-\-foreground\fR" 4
++.IX Item "-F, --foreground"
++Runs the daemon in the foreground and prints all output to stderr
++.IP "\fB\-p\fR \fIpipe\fR, \fB\-\-pipe\fR=\fIpipe\fR" 4
++.IX Item "-p pipe, --pipe=pipe"
++Location of the \*(L"cld\*(R" upcall pipe. The default value is
++\&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
++daemon starts then it will wait for it to be created.
++.IP "\fB\-s\fR \fIstoragedir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
++.IX Item "-s storagedir, --storagedir=storage_dir"
++Directory where stable storage information should be kept. The default
++value is \fI/var/lib/nfs/nfsdcld\fR.
++.SH "NOTES"
++.IX Header "NOTES"
++The Linux kernel NFSv4 server has historically tracked this information
++on stable storage by manipulating information on the filesystem
++directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
++points.
++.PP
++This daemon requires a kernel that supports the nfsdcld upcall. If the
++kernel does not support the new upcall, or is using the legacy client
++name tracking code then it will not create the pipe that nfsdcld uses to
++talk to the kernel.
++.SH "AUTHORS"
++.IX Header "AUTHORS"
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
+diff --git a/utils/nfsdcld/nfsdcld.pod b/utils/nfsdcld/nfsdcld.pod
+new file mode 100644
+index 0000000..2ff1d3d
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.pod
+@@ -0,0 +1,67 @@
++# turn into a manpage with the following command:
++#
++# pod2man -s 8 -c '' -r '' --stderr nfsdcld.pod > nfsdcld.man
++#
++
++=head1 NAME
++
++nfsdcld - NFSv4 Client Tracking Daemon
++
++=head1 SYNOPSIS
++
++nfsdcld [-d] [-F] [-p path] [-s stable storage dir]
++
++=head1 DESCRIPTION
++
++nfsdcld is the NFSv4 client tracking daemon. It is not necessary to run
++this daemon on machines that are not acting as NFSv4 servers.
++
++When a network partition is combined with a server reboot, there are
++edge conditions that can cause the server to grant lock reclaims when
++other clients have taken conflicting locks in the interim. A more detailed
++explanation of this issue is described in RFC 3530, section 8.6.3.
++
++In order to prevent these problems, the server must track a small amount
++of per-client information on stable storage. This daemon provides the
++userspace piece of that functionality.
++
++=head1 OPTIONS
++
++=over
++
++=item B<-d>, B<--debug>
++
++Enable debug level logging.
++
++=item B<-F>, B<--foreground>
++
++Runs the daemon in the foreground and prints all output to stderr
++
++=item B<-p> I<pipe>, B<--pipe>=I<pipe>
++
++Location of the "cld" upcall pipe. The default value is
++I</var/lib/nfs/rpc_pipefs/nfsd/cld>. If the pipe does not exist when the
++daemon starts then it will wait for it to be created.
++
++=item B<-s> I<storagedir>, B<--storagedir>=I<storage_dir>
++
++Directory where stable storage information should be kept. The default
++value is I</var/lib/nfs/nfsdcld>.
++
++=back
++
++=head1 NOTES
++
++The Linux kernel NFSv4 server has historically tracked this information
++on stable storage by manipulating information on the filesystem
++directly, in the directory to which I</proc/fs/nfsd/nfsv4recoverydir>
++points.
++
++This daemon requires a kernel that supports the nfsdcld upcall. If the
++kernel does not support the new upcall, or is using the legacy client
++name tracking code then it will not create the pipe that nfsdcld uses to
++talk to the kernel.
++
++=head1 AUTHORS
++
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
+-- 
+1.7.7.5
 
