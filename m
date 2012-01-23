@@ -1,88 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:56773 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751357Ab2AYNR3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 08:17:29 -0500
-Received: by wgbed3 with SMTP id ed3so5252246wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 05:17:28 -0800 (PST)
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:57475 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754006Ab2AWUCV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:21 -0500
+Received: by mail-qw0-f53.google.com with SMTP id g24so1996566qab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:20 -0800 (PST)
 MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <4F1FF9A0.2000505@panasas.com>
-References: <CAGue13ozQQ=qn-TqpLF093HbbnZdKAshrhHZ97OSj7u0SDVxng@mail.gmail.com>
-	<4F1FF91B.3010708@panasas.com>
-	<4F1FF9A0.2000505@panasas.com>
-Date: Wed, 25 Jan 2012 14:17:27 +0100
-Message-ID: <CAGue13ot0YWOxWZFT6BUnbHZdOnJs9eRxNpq2f=gvzCyxb03YA@mail.gmail.com>
-Subject: Re: blacklisted DS with pnfs
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 02/11] nfsdcld: add autoconf goop for sqlite
+Date: Mon, 23 Jan 2012 15:02:02 -0500
+Message-Id: <1327348931-785-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Boaz I will check.
+Mostly cribbed from Chuck Lever's new-statd rewrite a few years ago...
 
-I believe rhel6 kernel does not support  device notification.
-Currently we just generated a new device id.
+This adds an autoconf test for the sqlite3 library and includes. If
+they're not working properly and nfsdcld was enabled, then configure
+will error out.
 
-Tigran.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ aclocal/libsqlite3.m4 |   33 +++++++++++++++++++++++++++++++++
+ configure.ac          |    7 +++++++
+ 2 files changed, 40 insertions(+), 0 deletions(-)
+ create mode 100644 aclocal/libsqlite3.m4
 
-On Wed, Jan 25, 2012 at 1:46 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 01/25/2012 02:44 PM, Boaz Harrosh wrote:
->> On 01/25/2012 11:56 AM, Tigran Mkrtchyan wrote:
->>> Hi,
->>>
->>> we have observed that in some situations ( probably network glitches )
->>> the pnfs client blacklisted one of the data servers:
->>>
->>> NFS: data server 83a95099 connection error -12. Deviceid [22000000000]
->>> marked out of use.
->>>
->>> As a result, data server can't be used by this client anymore.
->>>
->>> Is there a way to let client to forget about data server?
->>> Some magic in /proc ?
->>>
->>> This is SL6.2 (RHEL 6.2):
->>> # uname -a
->>> Linux p3-wgs13 2.6.32-220.2.1.el6.x86_64 #1 SMP Thu Dec 22 11:15:52
->>> CST 2011 x86_64 x86_64 x86_64 GNU/Linux
->>> #
->>>
->>
->> Look in the source code, I think there is a RECALL that the server
->> can do to trash the all device cache. or one of the devices.
->>
->> What happens is that the device is marked with error but is in
->> cache so is not re-fetched.
->>
->> wait let me look ....
->>
->> I found it! The server sends a NOTIFY_DEVICEID4_CHANGE. The
->> client will remove the deviceid from cache and unmount if needed.
->> Next layout with that deviceid will re-establish the connection and
->> will put a new clean entry in the dev cache.
->>
->
-> If you want to see for your self look at:
->  callback_proc.c::nfs4_callback_devicenotify()
->
-> Boaz
->> [If you decide to enhance pynfs to send a NOTIFY_DEVICEID4_CHANGE as an admin
->>  tool. That would be interesting]
->>
->>> Regards,
->>>    Tigran.
->>
->> Cheers
->> Boaz
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/aclocal/libsqlite3.m4 b/aclocal/libsqlite3.m4
+new file mode 100644
+index 0000000..73d1e46
+--- /dev/null
++++ b/aclocal/libsqlite3.m4
+@@ -0,0 +1,33 @@
++dnl Checks for matching sqlite3 header and library, and
++dnl sufficient sqlite3 version.
++dnl
++AC_DEFUN([AC_SQLITE3_VERS], [
++  AC_CHECK_HEADERS([sqlite3.h], ,)
++
++  dnl look for the library; do not add to LIBS if found
++  AC_CHECK_LIB([sqlite3], [sqlite3_libversion_number], [LIBSQLITE=-lsqlite3], ,)
++  AC_SUBST(LIBSQLITE)
++
++  AC_MSG_CHECKING(for suitable sqlite3 version)
++
++  AC_CACHE_VAL([libsqlite3_cv_is_recent],
++   [
++    saved_LIBS="$LIBS"
++    LIBS=-lsqlite3
++    AC_TRY_RUN([
++	#include <stdio.h>
++	#include <sqlite3.h>
++	int main()
++	{
++		int vers = sqlite3_libversion_number();
++
++		return vers != SQLITE_VERSION_NUMBER ||
++			vers < 3003000;
++	}
++       ], [libsqlite3_cv_is_recent=yes], [libsqlite3_cv_is_recent=no],
++       [libsqlite3_cv_is_recent=unknown])
++    LIBS="$saved_LIBS"])
++
++  AC_MSG_RESULT($libsqlite3_cv_is_recent)
++  AM_CONDITIONAL(CONFIG_SQLITE3, [test "$libsqlite3_cv_is_recent" = "yes"])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index d50e54e..134b609 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -266,9 +266,16 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  dnl Check for sqlite3
++  AC_SQLITE3_VERS
++
+   if test "$enable_nfsdcld" = "yes"; then
+     AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
+ 		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
++
++    if test "$libsqlite3_cv_is_recent" != "yes" ; then
++      AC_MSG_ERROR([nfsdcld requires sqlite3])
++    fi
+   fi
+ 
+   AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+-- 
+1.7.7.5
+
