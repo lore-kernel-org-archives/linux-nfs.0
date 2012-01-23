@@ -1,56 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47092 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755954Ab2AKOLs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jan 2012 09:11:48 -0500
-Date: Wed, 11 Jan 2012 09:11:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@tonian.com>, lsf-pc@lists.linux-foundation.org,
-        linux-fsdevel@vger.kernel.org, NFS list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [LSF/MM TOPIC] [ATTEND] linux-pnfs server implementations
-Message-ID: <20120111141145.GA32230@fieldses.org>
-References: <4EF6A6CA.1020606@tonian.com>
- <4F0AE25C.5020706@panasas.com>
- <20120109192517.GB16973@fieldses.org>
- <CAEMWVhvaNOENPC2jRMB7zuP4ScsNmp5BMfXYmnFL71_N-4D0Rw@mail.gmail.com>
- <4F0D8E95.60706@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F0D8E95.60706@panasas.com>
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:47433 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752075Ab2AWTyo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 14:54:44 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1RpPyT-0003dQ-MZ
+	for linux-nfs@vger.kernel.org; Mon, 23 Jan 2012 14:54:42 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/1] SUNRPC: Status trace points
+Date: Mon, 23 Jan 2012 14:54:39 -0500
+Message-Id: <1327348480-32549-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 11, 2012 at 03:28:53PM +0200, Boaz Harrosh wrote:
-> On 01/11/2012 09:44 AM, Benny Halevy wrote:
-> >>
-> >> Understood that it may depend on where things stand in April, but: what
-> >> specifically do you think will be likely to require the attention of a
-> >> wider group of linux filesystem developers (ass opposed to just nfs
-> >> developers)?
-> > 
-> > I have nothing specific at this time. My thinking was to present the
-> > what's and why's
-> > of the prerequisites in high level and maybe provide an example.
-> > 
-> 
-> At the time there where some reservations from people about some of the
-> added hooks and vectors. If there are still, we would like to hear them
-> and either address them or argue their validity.
+Here are three more trace points that add to the trace 
+points Trond  posted last week. Meaning this patch is 
+dependent on Trond's patch. 
 
-OK.
+They recorded the status of binds and connections which
+is useful when debugging hangs and loops. I used them
+injunction with the systemtap probs in the tracepoints/ 
+directory of my (unsupported) systemtap git tree:
+   git://fedorapeople.org/~steved/systemtap.git
+(Note, the probs I used to test Trond's trace points
+are also in that directory)
 
-> I think this talk should be expanded with Jeff's suggestions. here:
-> > - RichACLs
-> > - Share/Deny mode support on open
-> > - mandatory locking that doesn't rely on weirdo file modes
-...
-> So the broader topic can be:
-> 	"The things we want/need from the Kernel to make it exportable"
+Steve Dickson (1):
+  SUNRPC: Adding status trace points
 
-Agreed that no matter where we are there will likely be a long list of
-thorny questions of that sort....
+ include/trace/events/sunrpc.h |   45 +++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/clnt.c             |    4 +++
+ 2 files changed, 49 insertions(+), 0 deletions(-)
 
---b.
+-- 
+1.7.7.5
+
