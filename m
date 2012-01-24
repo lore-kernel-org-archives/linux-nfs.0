@@ -1,75 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44137 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756267Ab2AJOck (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2012 09:32:40 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z25so965522iab.19
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2012 06:32:39 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15547 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751456Ab2AXVvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 16:51:53 -0500
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH RESEND 5/9] pnfsblock: remove rpc_call_ops from struct parallel_io
-Date: Tue, 10 Jan 2012 22:30:31 +0800
-Message-Id: <1326205835-2011-6-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
-References: <1326205835-2011-1-git-send-email-bergwolf@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/2] NFS: Call test_stateid() and free_stateid() with correct stateids
+Date: Tue, 24 Jan 2012 16:51:49 -0500
+Message-Id: <1327441909-1445-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1327441909-1445-1-git-send-email-bjschuma@netapp.com>
+References: <1327441909-1445-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-block layout can just make use of generic read/write_done.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+I noticed that test_stateid() was always using the same stateid for open
+and lock recovery.  After poking around a bit, I discovered that it was
+always testing with a delegation stateid (even if there was no
+delegation present).  I figured this wasn't correct, so now delegation
+and open stateids are tested during open_expired() and lock stateids are
+tested during lock_expired().
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   13 -------------
- 1 files changed, 0 insertions(+), 13 deletions(-)
+ fs/nfs/nfs4proc.c |   58 ++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 47 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 883bb27..7fc69c9 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -90,7 +90,6 @@ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-  */
- struct parallel_io {
- 	struct kref refcnt;
--	struct rpc_call_ops call_ops;
- 	void (*pnfs_callback) (void *data);
- 	void *data;
- };
-@@ -221,14 +220,6 @@ bl_end_par_io_read(void *data)
- 	schedule_work(&rdata->task.u.tk_work);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 21a78bb..982e1b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1711,15 +1711,32 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
  }
  
--/* We don't want normal .rpc_call_done callback used, so we replace it
-- * with this stub.
-- */
--static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
--{
--	return;
--}
--
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
+ #if defined(CONFIG_NFS_V4_1)
+-static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
  {
-@@ -248,8 +239,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
--	par->call_ops = *rdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_read;
- 	/* At this point, we can no longer jump to use_mds */
+-	int status;
++	int status = NFS_OK;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
  
-@@ -559,8 +548,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	par = alloc_parallel(wdata);
- 	if (!par)
- 		return PNFS_NOT_ATTEMPTED;
--	par->call_ops = *wdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_write;
- 	/* At this point, have to be more careful with error handling */
+-	status = nfs41_test_stateid(server, &state->stateid);
+-	if (status == NFS_OK)
+-		return 0;
+-	nfs41_free_stateid(server, &state->stateid);
++	if (state->flags & flags) {
++		status = nfs41_test_stateid(server, stateid);
++		if (status != NFS_OK) {
++			nfs41_free_stateid(server, stateid);
++			state->flags &= ~flags;
++		}
++	}
++	return status;
++}
++
++static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++{
++	int deleg_status, open_status;
++	int deleg_flags = 1 << NFS_DELEGATED_STATE;
++	int open_flags = (1 << NFS_O_RDONLY_STATE) | (1 << NFS_O_WRONLY_STATE) | (1 << NFS_O_RDWR_STATE);
++
++	deleg_status = nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
++	open_status = nfs41_check_expired_stateid(state,  &state->open_stateid, open_flags);
++
++	if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
++		return NFS_OK;
+ 	return nfs4_open_expired(sp, state);
+ }
+ #endif
+@@ -4478,15 +4495,34 @@ out:
+ }
  
+ #if defined(CONFIG_NFS_V4_1)
+-static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
++static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+-	int status;
++	int status, ret = NFS_OK;
++	struct nfs4_lock_state *lsp;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+-	status = nfs41_test_stateid(server, &state->stateid);
++	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
++		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
++			status = nfs41_test_stateid(server, &lsp->ls_stateid);
++			if (status != NFS_OK) {
++				nfs41_free_stateid(server, &lsp->ls_stateid);
++				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
++				ret = status;
++			}
++		}
++	};
++
++	return ret;
++}
++
++static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
++{
++	int status = NFS_OK;
++
++	if (test_bit(LK_STATE_IN_USE, &state->flags))
++		status = nfs41_check_expired_locks(state);
+ 	if (status == NFS_OK)
+-		return 0;
+-	nfs41_free_stateid(server, &state->stateid);
++		return status;
+ 	return nfs4_lock_expired(state, request);
+ }
+ #endif
 -- 
-1.7.1.262.g5ef3d
+1.7.8.4
 
