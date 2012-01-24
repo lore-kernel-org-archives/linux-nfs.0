@@ -1,75 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52845 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753494Ab2ALPUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 10:20:25 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z25so2865171iab.19
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Jan 2012 07:20:25 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu,
-        Peng Tao <peng_tao@emc.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH-v2 5/9] pnfsblock: remove rpc_call_ops from struct parallel_io
-Date: Thu, 12 Jan 2012 23:18:44 +0800
-Message-Id: <1326381528-2232-6-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
-References: <1326381528-2232-1-git-send-email-bergwolf@gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:29368 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756281Ab2AXRE3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 12:04:29 -0500
+Subject: [PATCH] NFS: don't mark freshly created callback sockets with
+ XPT_CHNGBUF
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 24 Jan 2012 21:04:11 +0400
+Message-ID: <20120124170411.22663.6138.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-block layout can just make use of generic read/write_done.
+This is a cleanup patch.
+Check for XPT_CHNGBUF is done only for UPD sockets. NFS callbacks doesn't use
+them.
 
-Signed-off-by: Peng Tao <peng_tao@emc.com>
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/nfs/blocklayout/blocklayout.c |   13 -------------
- 1 files changed, 0 insertions(+), 13 deletions(-)
+ fs/nfs/callback.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 883bb27..7fc69c9 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -90,7 +90,6 @@ static int is_writable(struct pnfs_block_extent *be, sector_t isect)
-  */
- struct parallel_io {
- 	struct kref refcnt;
--	struct rpc_call_ops call_ops;
- 	void (*pnfs_callback) (void *data);
- 	void *data;
- };
-@@ -221,14 +220,6 @@ bl_end_par_io_read(void *data)
- 	schedule_work(&rdata->task.u.tk_work);
- }
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index d81040a..1bf3e9f 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -278,8 +278,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out_err;
+ 	}
  
--/* We don't want normal .rpc_call_done callback used, so we replace it
-- * with this stub.
-- */
--static void bl_rpc_do_nothing(struct rpc_task *task, void *calldata)
--{
--	return;
--}
+-	svc_sock_update_bufs(serv);
 -
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
- {
-@@ -248,8 +239,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
--	par->call_ops = *rdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_read;
- 	/* At this point, we can no longer jump to use_mds */
- 
-@@ -559,8 +548,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	par = alloc_parallel(wdata);
- 	if (!par)
- 		return PNFS_NOT_ATTEMPTED;
--	par->call_ops = *wdata->mds_ops;
--	par->call_ops.rpc_call_done = bl_rpc_do_nothing;
- 	par->pnfs_callback = bl_end_par_io_write;
- 	/* At this point, have to be more careful with error handling */
- 
--- 
-1.7.1.262.g5ef3d
+ 	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+ 	cb_info->serv = serv;
+ 	cb_info->rqst = rqstp;
 
