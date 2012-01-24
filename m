@@ -1,94 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:44284 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:45275 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756183Ab2AJMNQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 07:13:16 -0500
-Subject: [PATCH v2 3/6] NFS: pass NFS client owner network namespace to RPC
- client creation routine
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 10 Jan 2012 16:12:54 +0400
-Message-ID: <20120110121254.7307.59834.stgit@localhost6.localdomain6>
-In-Reply-To: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
-References: <20120110120946.7307.60098.stgit@localhost6.localdomain6>
+	id S1756144Ab2AXRMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 12:12:20 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+	charset="utf-8"
+Subject: RE: [PATCH 1/1] SUNRPC: Adding status trace points
+Date: Tue, 24 Jan 2012 09:12:03 -0800
+Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CE025B3@SACMVEXC2-PRD.hq.netapp.com>
+In-Reply-To: <4F1EB353.1060205@RedHat.com>
+References: <1327348480-32549-1-git-send-email-steved@redhat.com>	 <1327348480-32549-2-git-send-email-steved@redhat.com> <1327354611.2628.20.camel@lade.trondhjem.org> <4F1EB353.1060205@RedHat.com>
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Steve Dickson" <SteveD@redhat.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch replaces static "init_net" with nfs_client->net pointer in RPC
-client creation calls.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- fs/nfs/client.c     |    2 +-
- fs/nfs/internal.h   |    1 +
- fs/nfs/mount_clnt.c |    4 ++--
- fs/nfs/super.c      |    1 +
- 4 files changed, 5 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4fb5cae..18153c2 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -642,7 +642,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= clp->net,
- 		.protocol	= clp->cl_proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c60fa0b..e07627d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -138,6 +138,7 @@ struct nfs_mount_request {
- 	int			noresvport;
- 	unsigned int		*auth_flav_len;
- 	rpc_authflavor_t	*auth_flavs;
-+	struct net		*net;
- };
- 
- extern int nfs_mount(struct nfs_mount_request *info);
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index d4c2d6b..4fbe3a8 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -153,7 +153,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 		.rpc_resp	= &result,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= info->net,
- 		.protocol	= info->protocol,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
-@@ -225,7 +225,7 @@ void nfs_umount(const struct nfs_mount_request *info)
- 		.to_retries = 2,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= info->net,
- 		.protocol	= IPPROTO_UDP,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 7495039..9395136 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1612,6 +1612,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
- 		.auth_flav_len	= &server_authlist_len,
- 		.auth_flavs	= server_authlist,
-+		.net		= args->net,
- 	};
- 	int status;
- 
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGV2ZSBEaWNrc29uIFttYWls
+dG86U3RldmVEQHJlZGhhdC5jb21dDQo+IFNlbnQ6IFR1ZXNkYXksIEphbnVhcnkgMjQsIDIwMTIg
+NTozNCBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogTGludXggTkZTIE1haWxpbmcg
+TGlzdA0KPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMV0gU1VOUlBDOiBBZGRpbmcgc3RhdHVzIHRy
+YWNlIHBvaW50cw0KPiANCj4gSGV5LA0KPiANCj4gT24gMDEvMjMvMjAxMiAwNDozNiBQTSwgVHJv
+bmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIE1vbiwgMjAxMi0wMS0yMyBhdCAxNDo1NCAtMDUw
+MCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4gVGhpcyBwYXRjaCBhZGRzIHRocmVlIHRyYWNl
+IHBvaW50cyB0byB0aGUgc3RhdHVzIHJvdXRpbmVzIGluIHRoZQ0KPiA+PiBzdW5ycGMgc3RhdGUg
+bWFjaGluZS4NCj4gPj4NCj4gPj4gU2lnbmVkLW9mZi1ieTogU3RldmUgRGlja3NvbiA8c3RldmVk
+QHJlZGhhdC5jb20+DQo+ID4+IC0tLQ0KPiA+PiAgaW5jbHVkZS90cmFjZS9ldmVudHMvc3VucnBj
+LmggfCAgIDQ1DQo+ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrDQo+
+ID4+ICBuZXQvc3VucnBjL2NsbnQuYyAgICAgICAgICAgICB8ICAgIDQgKysrDQo+ID4+ICAyIGZp
+bGVzIGNoYW5nZWQsIDQ5IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4+DQo+ID4+
+IGRpZmYgLS1naXQgYS9pbmNsdWRlL3RyYWNlL2V2ZW50cy9zdW5ycGMuaA0KPiA+PiBiL2luY2x1
+ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oIGluZGV4IDE4NTJmMTEuLmJjYTVhZDMgMTAwNjQ0DQo+
+ID4+IC0tLSBhL2luY2x1ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oDQo+ID4+ICsrKyBiL2luY2x1
+ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oDQo+ID4+IEBAIC04LDYgKzgsNTEgQEANCj4gPj4gICNp
+bmNsdWRlIDxsaW51eC9zdW5ycGMvY2xudC5oPg0KPiA+PiAgI2luY2x1ZGUgPGxpbnV4L3RyYWNl
+cG9pbnQuaD4NCj4gPj4NCj4gPj4gK0RFQ0xBUkVfRVZFTlRfQ0xBU1MocnBjX3Rhc2tfc3RhdHVz
+LA0KPiA+PiArDQo+ID4+ICsJVFBfUFJPVE8oc3RydWN0IHJwY190YXNrICp0YXNrKSwNCj4gPj4g
+Kw0KPiA+PiArCVRQX0FSR1ModGFzayksDQo+ID4+ICsNCj4gPj4gKwlUUF9TVFJVQ1RfX2VudHJ5
+KA0KPiA+PiArCQlfX2ZpZWxkKGludCwgc3RhdHVzKQ0KPiA+PiArCSksDQo+ID4+ICsNCj4gPj4g
+KwlUUF9mYXN0X2Fzc2lnbigNCj4gPj4gKwkJX19lbnRyeS0+c3RhdHVzID0gdGFzay0+dGtfc3Rh
+dHVzOw0KPiA+PiArCSksDQo+ID4+ICsNCj4gPj4gKwlUUF9wcmludGsoInN0YXR1cyAlZCIsIF9f
+ZW50cnktPnN0YXR1cykgKTsNCj4gPg0KPiA+IEhvdyBkbyB5b3UgdGVsbCB3aGljaCBSUEMgdGFz
+ayB0aGlzIHJlZmVycyB0byBpbiB0aGUgb3V0cHV0Pw0KPiA+RnJvbSB0aGUgdGFzayBwb2ludGVy
+IEkgc2VuZCB1cCB0byB0aGUgcHJvYi4gT25jZSBJIGhhdmUgdGhhdA0KPiBwb2ludGVyIEkgY2Fu
+IGdyYWIgYW55IGZpZWxkIG91dCBpdC4gQW4gZXhhbXBsZToNCj4gDQo+IHByb2JlIGtlcm5lbC50
+cmFjZSgicnBjX2NhbGxfc3RhdHVzIikNCj4gew0KPiAgICAgdGVycm9yID0gdGFza19zdGF0dXMo
+JHRhc2spOw0KPiAgICAgaWYgKHRlcnJvcikNCj4gICAgICAgICBwcmludGYoIiVzWyVkXTpjYWxs
+X3N0YXR1czolczolczogZXJyb3IgJWQgKCVzKVxuIiwNCj4gICAgICAgICAgICAgZXhlY25hbWUo
+KSwgcGlkKCksIGNsX3NlcnZlcigkdGFzayksIGNsX3Byb2coJHRhc2spLA0KPiAgICAgICAgICAg
+ICB0ZXJyb3IsIGVycm5vX3N0cih0ZXJyb3IpKTsNCj4gfQ0KPiBUaGUgaG9tZSBncm93biByb3V0
+aW5lIHRhc2tfc3RhdHVzKCR0YXNrKSBwdWxscyB0aGUgc3RhdHVzIG91dCB0YXNrDQo+IHN0cnVj
+dHVyZS4gSWYgdGhlcmUgaXMgc3RhdHVzIEkgd2lsbCBnZXQgdGhlIGZvbGxvd2luZyBvdXRwdXQ6
+DQo+ICAgICBtb3VudC5uZnNbMTMzNjhdOmNhbGxfc3RhdHVzOnZmMTY6bmZzWzRdOjA6IGVycm9y
+IC0zMiAoRVBJUEUpDQo+IA0KPiBUaGUgYnVpbHQgaW4gcm91dGluZSBleGVjbmFtZSgpIGFuZCBw
+aWQoKSBzdXBwbHkgdGhlIHByb2Nlc3MgbmFtZSBhbmQgcGlkLg0KPiBUaGUgaG9tZSBncm93biBy
+b3V0aW5lcywgY2xfc2VydmVyKCR0YXNrKSBhbmQgY2xfcHJvZygkdGFzaykgcHVsbCBvdXQgdGhl
+DQo+IHNlcnZlciwgcHJvdG9jb2wsIGFuZCB2ZXJzaW9uIGZyb20gdGhlIHRhc2suIEZpbmFsbHkg
+dGhlIGJ1aWx0IGluIHJvdXRpbmUNCj4gZXJybm9fc3RyKCkgaXMgdXNlZCBmb3IgdGhlIGVycm5v
+IHRvIHN0cmluZyBjb252ZXJzaW9uLg0KPiANCj4gDQo+ID4gU2hvdWxkbid0IHdlIHJhdGhlciBt
+YWtlIHRoZSBhYm92ZQ0KPiA+DQo+ID4gCVRQX3ByaW50aygidGFzazolcEAlcCwgc3RhdHVzICVk
+IiwgX19lbnRyeS0+dGFzaywgX19lbnRyeS0+Y2xudCwNCj4gX19lbnRyeS0+c3RhdHVzKQ0KPiA+
+DQo+ID4gc28gdGhhdCBpdCBtYXRjaGVzIHRoZSBmb3JtYXQgaW4gdGhlIHByZXZpb3VzIHRyYWNl
+cG9pbnQgcGF0Y2g/DQo+IFN1cmUgaWYgeW91IHdhbnQgdG8gc3RhbmRhcmRpemVyIG9uIHRoYXQg
+dHlwZSBvZiBmb3JtYXQgdGhhdHMNCj4gZmluZSB3aXRoIG1lLi4uIGJ1dCwgYXMgeW91IGRvIGlu
+IHlvdXIgdHJhY2UgcG9pbnRzLCB3ZSBzaG91bGQgYWxzbw0KPiBtYWtlIHRoZSBjbG50IHBvaW50
+IGF2YWlsYWJsZSB0byB0aGUgcHJvYiBieSBtYWtpbmcgaXQgcGFydCBvZiB0aGUNCj4gVFBfQVJH
+UygpLiBUaGUgbW9yZSBkYXRhIHdlIGNhbiBsb29rIGF0IHRoZSBiZXR0ZXIuLg0KPiANCj4gUXVl
+c3Rpb24gYWJvdXQgVFBfcHJpbnRrKCkgc3RhdGVtZW50cz8gSG93IGRvIHlvdSB1c2VzIHRoZW0/
+IE1lYW5pbmcNCj4gaG93IGdldCB0aGVtIHRvIHByaW50PyBJJ3ZlIG5ldmVyIG5lZWRlZCBvciB1
+c2VkIHRoZW0gc2luY2UgSQ0KPiBhbHdheXMgdXNlZCBwcm9icyB0byBncmFiIHRoYXQgdHlwZSBv
+ZiBpbmZvLg0KDQoNClRoZXJlIGFyZSAyIGRpZmZlcmVudCBpbnRlcmZhY2VzIGluIC9zeXMva2Vy
+bmVsL2RlYnVnL3RyYWNpbmcgdGhhdCB5b3UgY2FuIHVzZSB0byB0dXJuIHRoZSB0cmFjaW5nIG9u
+IGFuZCBvZmYuIFNlZSB0aGUgZGVzY3JpcHRpb24gaW4gRG9jdW1lbnRhdGlvbi90cmFjZS9ldmVu
+dHMudHh0DQoNCg0KPiA+IEFsc28sIHdoeSBhcmUgeW91IGFkZGluZyB0cmFjZXBvaW50cyBmb3Ig
+c3BlY2lmaWMgc3RhdGVzIGluDQo+ID4gbmV0L3N1bnJwYy9jbG50LmM/DQo+IEkgd2FzIGp1c3Qg
+bG9va2luZyBmb3Igc3RhdHVzIG5vdCBzdGF0ZS4gQmFzaWNhbGx5IHRvIHNlZSBpZiB0aGVyZSBp
+cw0KPiBhbiBwcm9ibGVtIGF0IGFsbC4uLg0KPiANCj4gPiBJcyB0aGUgaW50ZW50aW9uIHRvIGFs
+bG93IHRoZSB1c2VyIHRvIHRhcmdldCBzcGVjaWZpYw0KPiA+IGJ1Z3MgdGhhdCBtaWdodCBiZSBo
+YXJkZXIgdG8gc3BvdCBpbiB0aGUgb3V0cHV0IGZyb20NCj4gPiB0cmFjZV9ycGNfdGFza19ydW5f
+YWN0aW9uKCk/DQo+IFRoZXNlIHdlcmUgYXJjaGl0ZWN0ZWQgZXhwbGljaXRseSBzaG93IGlmIGEg
+YmluZCB3YXMgZmFpbGluZyBhbmQgd2h5DQo+IG9yIGlmIGEgY29ubmVjdGlvbiB3YXMgZmFpbGlu
+ZyBhbmQgd2h5LiBBIG11Y2ggaGlnaGVyIGxldmVsIChhbmQNCj4gc2ltcGxlcikgdGhhbiB0aGUg
+aW5mbyB0cmFjZV9ycGNfdGFza19ydW5fYWN0aW9uIHN1cHBsaWVzLg0KPiBUaGV5IGFyZSBtb3Jl
+IGRpcmVjdGVkIGF0IGFkbWluIHR5cGVzIHZlcnNlcyBkZXZlbG9wZXIgdHlwZXMuDQoNCk9LLiBD
+YW4geW91IGFkZCB0aGF0IGluZm9ybWF0aW9uIHRvIHRoZSBjaGFuZ2Vsb2c/IFdlIG1pZ2h0IGFs
+c28gY29uc2lkZXIgbWFpbnRhaW5pbmcgYSBkb2N1bWVudCBpbiBEb2N1bWVudHMvZmlsZXN5c3Rl
+bXMvbmZzIHRoYXQgcHJvdmlkZXMgYmFzaWMgaW5mb3JtYXRpb24gb24gd2hpY2ggdHJhY2Vwb2lu
+dHMgd2UgY29uc2lkZXIgdG8gYmUgJ2FkbWluIGRlYnVnZ2luZycgYWlkcywgYW5kIGhvdyB0aGV5
+IG1heSBiZSB1c2VkLg0KDQo=
