@@ -1,67 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:37848 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752695Ab2AaLH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 06:07:58 -0500
-Subject: [PATCH 0/6] Lockd: make it network namespace aware
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 15:07:38 +0400
-Message-ID: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:55670 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751836Ab2AXMSU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2012 07:18:20 -0500
+Received: by wics10 with SMTP id s10so2890726wic.19
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 04:18:19 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4F1E9BB3.1000406@tonian.com>
+References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+	<4F1E9BB3.1000406@tonian.com>
+Date: Tue, 24 Jan 2012 13:18:19 +0100
+Message-ID: <CAGue13rZcMxT0L=87s1s4T6odythXqoAFpM0t-Sh049-cDA8+w@mail.gmail.com>
+Subject: Re: [PATCH 0/5] more test on current stateid processing
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With this patch set Lockd will be able to handle lock requests from different
-network namespaces separately.
+On Tue, Jan 24, 2012 at 12:53 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> On 2012-01-15 21:05, Tigran Mkrtchyan wrote:
+>> This is the result of testing my changes in linux:
+>>
+>> $ ./testserver.py  --maketree 192.168.178.20:/tmp currentstateid
+>> .....
+>>
+>> **************************************************
+>> CSID1    st_current_stateid.testOpenAndClose                      : PASS
+>> CSID2    st_current_stateid.testLockLockU                         : PASS
+>> CSID3    st_current_stateid.testOpenWriteClose                    : PASS
+>> CSID4    st_current_stateid.testLockWriteLocku                    : PASS
+>> CSID5    st_current_stateid.testOpenPutrootfhClose                : PASS
+>> CSID6    st_current_stateid.testCloseNoStateid                    : PASS
+>> CSID7    st_current_stateid.testOpenLayoutGet                     : FAILURE
+>>            OP_LAYOUTGET should return NFS4_OK, instead got
+>>            NFS4ERR_NOTSUPP
+>
+> I guess this is not against my kernel but rather against Bruce's / mainline?
 
-Main ideas of the patch set are:
+Yes, This is against Bruce's tree. With your I get LAYOUT_TRYLATER :-D
 
-1) per-net Lockd users counter and resources.
+Tigran.
 
-2) nlmsvc_users counter become global one (equal to sum of all per-net
-counters).
-
-3) On lockd_up() call:
-a) if nlmsvc_users if equal to 0, then lockd thread is started.
-b) if current per-net counter equal to 0, then per-net resources are allocated
-(lockd_up_net() function).
-c) global and current net users counters are increased by one.
-
-4) On lockd_down() call:
-a) global and current net users counters are decreased by one.
-b) if current per-net counter become equal to 0, then per-net resources are
-allocated (lockd_down_net() function).
-c) if nlmsvc_users become equal to 0, then lockd thread is stopped.
-
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (6):
-      Lockd: create permanent lockd sockets in current network namespace
-      Lockd: pernet usage counter introduced
-      Lockd: per-net up and down routines introduced
-      LockD: make nlm hosts network namespace aware
-      LockD: make NSM network namespace aware
-      Lockd: shutdown NLM hosts in network namespace context
-
-
- fs/lockd/clntlock.c         |    3 +
- fs/lockd/host.c             |   42 ++++++++++++---
- fs/lockd/mon.c              |   13 +++--
- fs/lockd/netns.h            |   12 ++++
- fs/lockd/svc.c              |  117 +++++++++++++++++++++++++++++++++++++------
- fs/nfs/client.c             |    1 
- include/linux/lockd/bind.h  |    1 
- include/linux/lockd/lockd.h |    5 +-
- include/linux/sunrpc/svc.h  |    2 +
- net/sunrpc/svc.c            |    3 +
- 10 files changed, 166 insertions(+), 33 deletions(-)
- create mode 100644 fs/lockd/netns.h
-
+>
+> Benny
+>
+>> CSID8    st_current_stateid.testOpenSetattr                       : PASS
+>> CSID9    st_current_stateid.testOpenFreestateidClose              : PA
+>>
+>> **************************************************
+>> $
+>>
+>> Tigran Mkrtchyan (5):
+>>   client: move current stateid test into a dedicated module
+>>   client: test current stateid processing on PUTROOTFH
+>>   client: test current stateid processing with OPEN+LAYOUTGET in a
+>>     single compound
+>>   client: test current stateid processing with OPEN and SETATTR
+>>   client: test OPEN+FREE_STETEID+CLOSE in a single compound
+>>
+>>  nfs4.1/server41tests/__init__.py           |    1 +
+>>  nfs4.1/server41tests/st_current_stateid.py |  161 ++++++++++++++++++++++++++++
+>>  nfs4.1/server41tests/st_open.py            |   76 -------------
+>>  3 files changed, 162 insertions(+), 76 deletions(-)
+>>  create mode 100644 nfs4.1/server41tests/st_current_stateid.py
+>>
