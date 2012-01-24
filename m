@@ -1,103 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39573 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:39077 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750873Ab2AYWLw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 17:11:52 -0500
-Date: Wed, 25 Jan 2012 17:11:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
-Message-ID: <20120125221149.GC22216@fieldses.org>
-References: <20120125083820.637c8362@tlielax.poochiereds.net>
- <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com>
- <20120125171401.GI17873@fieldses.org>
- <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
- <20120125185529.GJ17873@fieldses.org>
- <20120125152356.10bdd772@tlielax.poochiereds.net>
- <20120125212553.GA22216@fieldses.org>
- <A8128BCD-0914-4D2B-81BF-A4A4EF0F2561@oracle.com>
- <20120125215415.GB22216@fieldses.org>
- <C2D8B860-6B9F-4187-B9DE-9BF52C8398B0@oracle.com>
+	id S1752113Ab2AXPlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 10:41:55 -0500
+Message-ID: <4F1ED12D.3090001@RedHat.com>
+Date: Tue, 24 Jan 2012 10:41:33 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C2D8B860-6B9F-4187-B9DE-9BF52C8398B0@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, Neil Horman <nhorman@redhat.com>
+Subject: Re: [PATCH v2] SUNRPC: Add trace events to the sunrpc subsystem
+References: <1327090364-6549-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1327090364-6549-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 25, 2012 at 04:55:54PM -0500, Chuck Lever wrote:
-> 
-> On Jan 25, 2012, at 4:54 PM, J. Bruce Fields wrote:
-> 
-> > On Wed, Jan 25, 2012 at 04:29:02PM -0500, Chuck Lever wrote:
-> >> 
-> >> On Jan 25, 2012, at 4:25 PM, J. Bruce Fields wrote:
-> >> 
-> >>> On Wed, Jan 25, 2012 at 03:23:56PM -0500, Jeff Layton wrote:
-> >>>> I suggest that we only allow the reclaim of locks
-> >>>> on the original address against which they were established.
-> >>> 
-> >>> I'm not sure what that means.
-> >>> 
-> >>> If a server stops responding, the v4.0 client has two choices: it can
-> >>> either wait for the server to come back, and reclaim when it does.  Or
-> >>> if it supports failover it can go find another server and perform
-> >>> reclaims over there.
-> >> 
-> >> Honestly, I don't think that's possible in NFSv4.0.
-> > 
-> > Well, it was *supposed* to be possible, wasn't it?  I thought fixing up
-> > 3530 to make that work was part of what the discussion around
-> > http://datatracker.ietf.org/doc/draft-dnoveck-nfsv4-migration-issues/
-> > was about?  (OK, I should actually read that.)
-> 
-> No, that's just for migration.  Failover is different, though it uses some of the same mechanisms.
+Hey Trond
 
-Hm, I would've thought once you've worked out the clientid, then
-failover would look pretty similar in 4.0 and 4.1.
+On 01/20/2012 03:12 PM, Trond Myklebust wrote:
+> Add declarations to allow tracing of RPC call creation, running, sleeping,
+> and destruction.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  include/linux/sunrpc/sched.h  |    2 +-
+>  include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
+>  net/sunrpc/sched.c            |   12 ++++
+>  3 files changed, 137 insertions(+), 1 deletions(-)
+>  create mode 100644 include/trace/events/sunrpc.h
+> 
+> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+> index bd337f9..f7b2df5 100644
+> --- a/include/linux/sunrpc/sched.h
+> +++ b/include/linux/sunrpc/sched.h
+> @@ -271,7 +271,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
+>  }
+>  
+>  #ifdef RPC_DEBUG
+> -static inline const char * rpc_qname(struct rpc_wait_queue *q)
+> +static inline const char * rpc_qname(const struct rpc_wait_queue *q)
+>  {
+>  	return ((q && q->name) ? q->name : "unknown");
+>  }
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> new file mode 100644
+> index 0000000..51cc949
+> --- /dev/null
+> +++ b/include/trace/events/sunrpc.h
+> @@ -0,0 +1,124 @@
+> +#undef TRACE_SYSTEM
+> +#define TRACE_SYSTEM sunrpc
+> +
+> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
+> +#define _TRACE_SUNRPC_H
+> +
+> +#include <linux/sunrpc/sched.h>
+> +#include <linux/sunrpc/clnt.h>
+> +#include <linux/tracepoint.h>
+> +
+> +DECLARE_EVENT_CLASS(rpc_task_running,
+> +
+> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
+> +
+> +	TP_ARGS(clnt, task, action),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(const struct rpc_clnt *, clnt)
+> +		__field(const struct rpc_task *, task)
+> +		__field(const void *, action)
+> +		__field(unsigned long, runstate)
+> +		__field(int, status)
+> +		__field(unsigned short, flags)
+> +		),
+> +
+> +	TP_fast_assign(
+> +		__entry->clnt = clnt;
+> +		__entry->task = task;
+> +		__entry->action = action;
+> +		__entry->runstate = task->tk_runstate;
+> +		__entry->status = task->tk_status;
+> +		__entry->flags = task->tk_flags;
+> +		),
+> +
+> +	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
+> +		__entry->task,
+> +		__entry->clnt,
+> +		__entry->flags,
+> +		__entry->runstate,
+> +		__entry->status,
+> +		__entry->action
+> +		)
+> +);
+> +
+> +DEFINE_EVENT(rpc_task_running, rpc_task_begin,
+> +
+> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
+> +
+> +	TP_ARGS(clnt, task, action)
+> +
+> +);
+> +
+> +DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
+> +
+> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
+> +
+> +	TP_ARGS(clnt, task, action)
+> +
+> +);
+> +
+> +DEFINE_EVENT(rpc_task_running, rpc_task_complete,
+> +
+> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
+> +
+> +	TP_ARGS(clnt, task, action)
+> +
+> +);
+> +
+> +DECLARE_EVENT_CLASS(rpc_task_queued,
+> +
+> +	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
+> +
+> +	TP_ARGS(clnt, task, q),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(const struct rpc_clnt *, clnt)
+> +		__field(const struct rpc_task *, task)
+> +		__field(const struct rpc_wait_queue *, queue)
+> +		__field(unsigned long, timeout)
+> +		__field(unsigned long, runstate)
+> +		__field(int, status)
+> +		__field(unsigned short, flags)
+> +		),
+> +
+> +	TP_fast_assign(
+> +		__entry->clnt = clnt;
+> +		__entry->task = task;
+> +		__entry->queue = q;
+> +		__entry->timeout = task->tk_timeout;
+> +		__entry->runstate = task->tk_runstate;
+> +		__entry->status = task->tk_status;
+> +		__entry->flags = task->tk_flags;
+> +		),
+> +
+> +	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
+> +		__entry->task,
+> +		__entry->clnt,
+> +		__entry->flags,
+> +		__entry->runstate,
+> +		__entry->status,
+> +		__entry->timeout,
+> +		rpc_qname(__entry->queue)
+> +		)
+> +);
+It turns out using rpc_qname() is not quite right... 
+Neil Horman, from our internal review,  points out:
 
-And I don't think the richer locations info helps e.g. with the server
-trying to track client-reclaimability across reboots and failovers.
+"IIRC we do the TP_fast_assign and TP_printk separately
+because we don't serialize the printk on the code path that generates it.  I.e.
+the data that __entry->queue points to may be freed by the time the printk
+dereferences it.  I think what you need is to declare in the __entry:
+__string(	qname, rpc_qname(q))
 
---b.
+in TP_fast_assign replace the queue assignment with  something like
+__entry->qname = __assign_str(rpc_qname(q));
 
-> >> The richer information provided by fs_locations_info can allow the client to determine whether two servers share more than simply data.  That information does not exist in NFSv4.0, so there's no way a client can expect that two servers lists in fs_locations results will always have the same NFSv4 state.
-> >> 
-> >> Thus I believe that NFSv4.0 replication is limited to read-only data.  But I have to go back and read that chapter of 3530 again.
-> >> 
-> >>> I'm a little unclear how it does that, but I suppose it first tests
-> >>> somehow to see whether its existing state is supported, and if not, it
-> >>> establishes a new clientid with SETCLIENTID/SETCILENTID_CONFIRM using
-> >>> its old name, and then attempts to reclaim.
-> >>> 
-> >>> You're now requiring it *not* to do that if it happens that the servers
-> >>> all rebooted in the meantime.  How does it know that that's what
-> >>> happened?
-> >>> 
-> >>> Or maybe that's not what you want to require, I'm not sure.
-> >>> 
-> >>> --b.
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >> 
-> >> -- 
-> >> Chuck Lever
-> >> chuck[dot]lever[at]oracle[dot]com
-> >> 
-> >> 
-> >> 
-> >> 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+And then in the printk:
+__get_str(qname);"
+
+Which basically translate into the following (untested):
+DECLARE_EVENT_CLASS(rpc_task_queued,
+
+    TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
+
+    TP_ARGS(clnt, task, q),
+
+    TP_STRUCT__entry(
+        __field(const struct rpc_clnt *, clnt)
+        __field(const struct rpc_task *, task)
+        __string(qname, rpc_qname(q))
+        __field(unsigned long, timeout)
+        __field(unsigned long, runstate)
+        __field(int, status)
+        __field(unsigned short, flags)
+        ),
+
+    TP_fast_assign(
+        __entry->clnt = clnt;
+        __entry->task = task;
+        __entry->qname = __assign_str(rpc_qname(q));
+        __entry->timeout = task->tk_timeout;
+        __entry->runstate = task->tk_runstate;
+        __entry->status = task->tk_status;
+        __entry->flags = task->tk_flags;
+        ),
+
+    TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
+        __entry->task,
+        __entry->clnt,
+        __entry->flags,
+        __entry->runstate,
+        __entry->status,
+        __entry->timeout,
+        __get_str(__entry->qname)
+        )
+);
+
+There are a number of examples of this in include/trace/events.
+
+steved.
