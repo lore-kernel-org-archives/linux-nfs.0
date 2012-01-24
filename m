@@ -1,107 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:35610 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753116Ab2ARWAJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2012 17:00:09 -0500
-Message-ID: <4F1740D9.8090707@panasas.com>
-Date: Wed, 18 Jan 2012 23:59:53 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: <stable@vger.kernel.org>
-CC: Greg KH <greg@kroah.com>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] pnfs-obj: Must return layout on IO error (linux-3.1.y)
-References: <20120111154700.5A847262B@git.kroah.org> <20120112231449.GB20151@kroah.com> <4F174005.9080403@panasas.com>
-In-Reply-To: <4F174005.9080403@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:22834 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755582Ab2AXUB5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 15:01:57 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0OK1vlk008319
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 15:01:57 -0500
+Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q0OK1unw023893
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 15:01:57 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/2] SUNRPC: Add trace events to the sunrpc subsystem
+Date: Tue, 24 Jan 2012 15:51:46 -0500
+Message-Id: <1327438307-2910-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1327438307-2910-1-git-send-email-steved@redhat.com>
+References: <1327438307-2910-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-As mandated by the standard. In case of an IO error, a pNFS
-objects layout driver must return it's layout. This is because
-all device errors are reported to the server as part of the
-layout return buffer.
+Add declarations to allow tracing of RPC call creation, running,
+sleeping, and destruction.
 
-This is implemented the same way PNFS_LAYOUTRET_ON_SETATTR
-is done, through a bit flag on the pnfs_layoutdriver_type->flags
-member. The flag is set by the layout driver that wants a
-layout_return preformed at pnfs_ld_{write,read}_done in case
-of an error.
-(Though I have not defined a wrapper like pnfs_ld_layoutret_on_setattr
- because this code is never called outside of pnfs.c and pnfs IO
- paths)
-
-Without this patch 3.[0-2] Kernels leak memory and have an annoying
-WARN_ON after every IO error utilizing the pnfs-obj driver.
-
-[This is the linux-3.1.y version of mainline [fe0fe83] patch]
-CC: Stable Tree <stable@kernel.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/objlayout/objio_osd.c |    3 ++-
- fs/nfs/pnfs.c                |   12 ++++++++++++
- fs/nfs/pnfs.h                |    1 +
- 3 files changed, 15 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/sched.h  |    2 +-
+ include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c            |   12 ++++
+ 3 files changed, 137 insertions(+), 1 deletions(-)
+ create mode 100644 include/trace/events/sunrpc.h
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index d0cda12..bd80718 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -1015,7 +1015,8 @@ static const struct nfs_pageio_ops objio_pg_write_ops = {
- static struct pnfs_layoutdriver_type objlayout_type = {
- 	.id = LAYOUT_OSD2_OBJECTS,
- 	.name = "LAYOUT_OSD2_OBJECTS",
--	.flags                   = PNFS_LAYOUTRET_ON_SETATTR,
-+	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
-+				   PNFS_LAYOUTRET_ON_ERROR,
- 
- 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
- 	.free_layout_hdr         = objlayout_free_layout_hdr,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ee73d9a..6f6d43a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1177,6 +1177,15 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
- 		put_lseg(data->lseg);
- 		data->lseg = NULL;
- 		dprintk("pnfs write error = %d\n", data->pnfs_error);
-+		if (NFS_SERVER(data->inode)->pnfs_curr_ld->flags &
-+						PNFS_LAYOUTRET_ON_ERROR) {
-+			/* Don't lo_commit on error, Server will needs to
-+			 * preform a file recovery.
-+			 */
-+			clear_bit(NFS_INO_LAYOUTCOMMIT,
-+				  &NFS_I(data->inode)->flags);
-+			pnfs_return_layout(data->inode);
-+		}
- 	}
- 	data->mds_ops->rpc_release(data);
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index fe2d8e6..855cb43 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -263,7 +263,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
  }
-@@ -1271,6 +1280,9 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
- 		put_lseg(data->lseg);
- 		data->lseg = NULL;
- 		dprintk("pnfs write error = %d\n", data->pnfs_error);
-+		if (NFS_SERVER(data->inode)->pnfs_curr_ld->flags &
-+						PNFS_LAYOUTRET_ON_ERROR)
-+			pnfs_return_layout(data->inode);
- 	}
- 	data->mds_ops->rpc_release(data);
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1509530..53d593a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -68,6 +68,7 @@ enum {
- enum layoutdriver_policy_flags {
- 	/* Should the pNFS client commit and return the layout upon a setattr */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
-+	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
- };
  
- struct nfs4_deviceid_node;
+ #ifdef RPC_DEBUG
+-static inline const char * rpc_qname(struct rpc_wait_queue *q)
++static inline const char * rpc_qname(const struct rpc_wait_queue *q)
+ {
+ 	return ((q && q->name) ? q->name : "unknown");
+ }
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+new file mode 100644
+index 0000000..2f82de9
+--- /dev/null
++++ b/include/trace/events/sunrpc.h
+@@ -0,0 +1,124 @@
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sunrpc
++
++#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SUNRPC_H
++
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/tracepoint.h>
++
++DECLARE_EVENT_CLASS(rpc_task_running,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__field(const void *, action)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__entry->action = action;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->action
++		)
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_begin,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_complete,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DECLARE_EVENT_CLASS(rpc_task_queued,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__string(    qname, rpc_qname(q))
++		__field(unsigned long, timeout)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__assign_str(qname, rpc_qname(q));
++		__entry->timeout = task->tk_timeout;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->timeout,
++		__get_str(qname)
++		)
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++#endif /* _TRACE_SUNRPC_H */
++
++#include <trace/define_trace.h>
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index ec94a55..d77c41a 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -27,6 +27,9 @@
+ #define RPCDBG_FACILITY		RPCDBG_SCHED
+ #endif
+ 
++#define CREATE_TRACE_POINTS
++#include <trace/events/sunrpc.h>
++
+ /*
+  * RPC slabs and memory pools
+  */
+@@ -246,6 +249,8 @@ static inline void rpc_task_set_debuginfo(struct rpc_task *task)
+ 
+ static void rpc_set_active(struct rpc_task *task)
+ {
++	trace_rpc_task_begin(task->tk_client, task, NULL);
++
+ 	rpc_task_set_debuginfo(task);
+ 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+ }
+@@ -262,6 +267,8 @@ static int rpc_complete_task(struct rpc_task *task)
+ 	unsigned long flags;
+ 	int ret;
+ 
++	trace_rpc_task_complete(task->tk_client, task, NULL);
++
+ 	spin_lock_irqsave(&wq->lock, flags);
+ 	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+ 	ret = atomic_dec_and_test(&task->tk_count);
+@@ -317,6 +324,8 @@ static void __rpc_sleep_on(struct rpc_wait_queue *q, struct rpc_task *task,
+ 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
+ 			task->tk_pid, rpc_qname(q), jiffies);
+ 
++	trace_rpc_task_sleep(task->tk_client, task, q);
++
+ 	__rpc_add_wait_queue(q, task);
+ 
+ 	BUG_ON(task->tk_callback != NULL);
+@@ -357,6 +366,8 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
+ 		return;
+ 	}
+ 
++	trace_rpc_task_wakeup(task->tk_client, task, queue);
++
+ 	__rpc_remove_wait_queue(queue, task);
+ 
+ 	rpc_make_runnable(task);
+@@ -634,6 +645,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 			if (do_action == NULL)
+ 				break;
+ 		}
++		trace_rpc_task_run_action(task->tk_client, task, task->tk_action);
+ 		do_action(task);
+ 
+ 		/*
 -- 
-1.7.2.3
-
+1.7.1
 
