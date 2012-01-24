@@ -1,78 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f53.google.com ([209.85.216.53]:57475 "EHLO
-	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753803Ab2AWUCT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:19 -0500
-Received: by qabg24 with SMTP id g24so1996566qab.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:18 -0800 (PST)
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:18337 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755505Ab2AXQcr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jan 2012 11:32:47 -0500
+Date: Tue, 24 Jan 2012 11:32:34 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 00/11] nfsdcld: add a daemon to track NFSv4 client names on stable storage
-Date: Mon, 23 Jan 2012 15:02:00 -0500
-Message-Id: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Stanislaw Gruszka <sgruszka@redhat.com>,
+        Stephen Boyd <sboyd@codeaurora.org>, <linux-kernel@vger.kernel.org>,
+        <bfields@redhat.com>, <linux-nfs@vger.kernel.org>,
+        Thomas Gleixner <tglx@linutronix.de>, Tejun Heo <tj@kernel.org>
+Subject: Re: WARNING: at lib/debugobjects.c:262
+ debug_print_object+0x8c/0xb0()
+Message-ID: <20120124113234.26c47969@tlielax.poochiereds.net>
+In-Reply-To: <4F1EC7C9.2020001@panasas.com>
+References: <20120120135646.2fc4fa61@tlielax.poochiereds.net>
+	<4F1BCCD6.4020603@codeaurora.org>
+	<20120123102311.4378b8c1@tlielax.poochiereds.net>
+	<20120124074516.GC2420@redhat.com>
+	<4F1E7F3F.3060703@panasas.com>
+	<20120124073626.552bc31c@tlielax.poochiereds.net>
+	<4F1EC7C9.2020001@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the userspace portion of the knfsd client name tracking
-overhaul. See this patch series for an explanation:
+On Tue, 24 Jan 2012 17:01:29 +0200
+Boaz Harrosh <bharrosh@panasas.com> wrote:
 
-    nfsd: overhaul the client name tracking code
+> On 01/24/2012 02:36 PM, Jeff Layton wrote:
+> > 
+> > No, I don't think the state would be undefined after
+> > cancel_delayed_work_sync. In principle you could requeue that work
+> > again if you like without needing to reinitialize it.
+> > 
+> > I think this is a problem in the debugobjects code. It doesn't have
+> > any way to know that when the object is recycled out of the slab that
+> > the work is already initialized.
+> > 
+> 
+> The only difference between your above example of requeue after
+> cancel_delayed_work_sync, and this here is the visit back to the
+> slab. Does the slab (Maybe in debug mode) stumps over some of the
+> record memory?
+> 
+> If the memory is constant what is then the difference between the two
+> cases?
+> 
+> > Certainly it's simple enough to reinitialize the work every time we
+> > allocate an inode here, but I don't think this is really a rpc_pipefs
+> > bug per-se. 
+> 
+> That depends on the API intention. If an init is intended after
+> SLAB free then yes if not then not. We should ask for the intention
+> of this API.
+> 
+> > I can send a patch that works around this problem, but
+> > if there are plans to fix this in the debugobjects code, I won't
+> > bother...
+> > 
+> 
+> You mean other fix then calling INIT_DELAYED_WORK? is that so
+> bad that we need more code to avoid it?
+> 
 
-The main changes from the last set are:
+I'm not opposed to a patch that sidesteps this problem, but I want to
+make sure we understand it so that we don't get bitten by it in other
+places. That's a good point. I hadn't considered whether memory
+poisoning is a factor. In the kernel I was testing:
 
-- the daemon will now reopen the pipe if it's deleted and recreated. This
-  can happen if knfsd is restarted.
+CONFIG_SLUB=y
+CONFIG_SLUB_DEBUG_ON=y
 
-- The daemon now implements an "init" upcall. When knfsd starts, it will
-  upcall to userspace to ask for a "boot_generation" value. nfsdcld will
-  fetch that value out of the DB, increment it and reinsert it (atomically).
-  That guarantees uniqueness of the boot generation value even when multiple
-  machines are sharing the same nfsdcld db.
+...just to be sure:
 
-- the "create" and "check" upcalls now send the rowid of the record in the
-  downcall. Eventually the kernel will use this to track some info about
-  lockowners in some situations. For now the kernel ignores this value,
-  but the daemon passes it anyway.
+# cat /sys/kernel/slab/rpc_inode_cache/poison 
+1
 
-- "remove" functionality has been removed from the daemon. The upcall that
-  previously requested that has been removed, so we have no need for that
-  functionality in the daemon. Client records are now only removed when
-  the grace period ends.
+Looking at the code...
 
-Jeff Layton (11):
-  nfsdcld: add client tracking daemon stub
-  nfsdcld: add autoconf goop for sqlite
-  nfsdcld: add routines for a sqlite backend database
-  nfsdcld: add check/update functionality
-  nfsdcld: add function to remove unreclaimed client records
-  nfsdcld: have daemon pass client row index back to kernel
-  nfsdcld: implement an init upcall
-  nfsdcld: allow daemon to wait for pipe to show up
-  nfsdcld: reopen pipe if it's deleted and recreated
-  nfsdcld: add a manpage for nfsdcld
-  nfsdcld: update the README
+It looks like SLAB will call the ctor on every object when it's
+allocated, even if it was recycled from an existing slab. SLUB doesn't
+do that however -- as best I can tell it avoids poisoning objects when
+there is a ctor function, so they don't get reinitialized like they
+would with SLAB.
 
- README                    |   25 +++-
- aclocal/libsqlite3.m4     |   33 +++
- configure.ac              |   21 ++
- utils/Makefile.am         |    4 +
- utils/nfsdcld/Makefile.am |   14 ++
- utils/nfsdcld/nfsdcld.c   |  478 +++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/nfsdcld.man |  180 +++++++++++++++++
- utils/nfsdcld/nfsdcld.pod |   67 +++++++
- utils/nfsdcld/sqlite.c    |  461 +++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h    |   31 +++
- 10 files changed, 1312 insertions(+), 2 deletions(-)
- create mode 100644 aclocal/libsqlite3.m4
- create mode 100644 utils/nfsdcld/Makefile.am
- create mode 100644 utils/nfsdcld/nfsdcld.c
- create mode 100644 utils/nfsdcld/nfsdcld.man
- create mode 100644 utils/nfsdcld/nfsdcld.pod
- create mode 100644 utils/nfsdcld/sqlite.c
- create mode 100644 utils/nfsdcld/sqlite.h
+Probably the best solution here is to eliminate the ctor function and
+just initialize the objects whenever they're allocated. Since these
+objects aren't frequently recycled then there's little benefit to
+keeping that around, IMO. I'll spin up a patch for that soon.
+
+Still, I wonder if there are other problems like this around. The slab
+allocators seem to call debug_check_no_obj_freed() on kmem_cache_free,
+but parts of the objects themselves (like the timer in the work object
+here) get initialized in other places and aren't necessarily
+reinitialized when they're recycled out of the slab...
 
 -- 
-1.7.7.5
-
+Jeff Layton <jlayton@redhat.com>
