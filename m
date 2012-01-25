@@ -1,74 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:43510 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751788Ab2AZXVq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 18:21:46 -0500
-Message-ID: <1327620104.6151.23.camel@dabdike.int.hansenpartnership.com>
-Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        lsf-pc@lists.linux-foundation.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
-Date: Thu, 26 Jan 2012 17:21:44 -0600
-In-Reply-To: <4F217F0C.6030105@itwm.fraunhofer.de>
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-	 <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
-	 <4F217F0C.6030105@itwm.fraunhofer.de>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:39573 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750873Ab2AYWLw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 17:11:52 -0500
+Date: Wed, 25 Jan 2012 17:11:49 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120125221149.GC22216@fieldses.org>
+References: <20120125083820.637c8362@tlielax.poochiereds.net>
+ <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com>
+ <20120125171401.GI17873@fieldses.org>
+ <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
+ <20120125185529.GJ17873@fieldses.org>
+ <20120125152356.10bdd772@tlielax.poochiereds.net>
+ <20120125212553.GA22216@fieldses.org>
+ <A8128BCD-0914-4D2B-81BF-A4A4EF0F2561@oracle.com>
+ <20120125215415.GB22216@fieldses.org>
+ <C2D8B860-6B9F-4187-B9DE-9BF52C8398B0@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C2D8B860-6B9F-4187-B9DE-9BF52C8398B0@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-01-26 at 17:27 +0100, Bernd Schubert wrote:
-> On 01/26/2012 03:53 PM, Martin K. Petersen wrote:
-> >>>>>> "Bernd" == Bernd Schubert<bernd.schubert@itwm.fraunhofer.de>  writes:
-> >
-> > Bernd>  We from the Fraunhofer FhGFS team would like to also see the T10
-> > Bernd>  DIF/DIX API exposed to user space, so that we could make use of
-> > Bernd>  it for our FhGFS file system.  And I think this feature is not
-> > Bernd>  only useful for file systems, but in general, scientific
-> > Bernd>  applications, databases, etc also would benefit from insurance of
-> > Bernd>  data integrity.
-> >
-> > I'm attending a SNIA meeting today to discuss a (cross-OS) data
-> > integrity aware API. We'll see what comes out of that.
-> >
-> > With the Linux hat on I'm still mainly interested in pursuing the
-> > sys_dio interface Joel and I proposed last year. We have good experience
-> > with that I/O model and it suits applications that want to interact with
-> > the protection information well. libaio is also on my list.
-> >
-> > But obviously any help and input is appreciated...
-> >
+On Wed, Jan 25, 2012 at 04:55:54PM -0500, Chuck Lever wrote:
 > 
-> I guess you are referring to the interface described here
+> On Jan 25, 2012, at 4:54 PM, J. Bruce Fields wrote:
 > 
-> http://www.spinics.net/lists/linux-mm/msg14512.html
+> > On Wed, Jan 25, 2012 at 04:29:02PM -0500, Chuck Lever wrote:
+> >> 
+> >> On Jan 25, 2012, at 4:25 PM, J. Bruce Fields wrote:
+> >> 
+> >>> On Wed, Jan 25, 2012 at 03:23:56PM -0500, Jeff Layton wrote:
+> >>>> I suggest that we only allow the reclaim of locks
+> >>>> on the original address against which they were established.
+> >>> 
+> >>> I'm not sure what that means.
+> >>> 
+> >>> If a server stops responding, the v4.0 client has two choices: it can
+> >>> either wait for the server to come back, and reclaim when it does.  Or
+> >>> if it supports failover it can go find another server and perform
+> >>> reclaims over there.
+> >> 
+> >> Honestly, I don't think that's possible in NFSv4.0.
+> > 
+> > Well, it was *supposed* to be possible, wasn't it?  I thought fixing up
+> > 3530 to make that work was part of what the discussion around
+> > http://datatracker.ietf.org/doc/draft-dnoveck-nfsv4-migration-issues/
+> > was about?  (OK, I should actually read that.)
 > 
-> Hmm, direct IO would mean we could not use the page cache. As we are 
-> using it, that would not really suit us. libaio then might be another 
-> option then.
+> No, that's just for migration.  Failover is different, though it uses some of the same mechanisms.
 
-Are you really sure you want protection information and the page cache?
-The reason for using DIO is that no-one could really think of a valid
-page cache based use case.  What most applications using protection
-information want is to say: This is my data and this is the integrity
-verification, send it down and assure me you wrote it correctly.  If you
-go via the page cache, we have all sorts of problems, like our
-granularity is a page (not a block) so you'd have to guarantee to write
-a page at a time (a mechanism for combining subpage units of protection
-information sounds like a nightmare).  The write becomes mark page dirty
-and wait for the system to flush it, and we can update the page in the
-meantime.  How do we update the page and its protection information
-atomically.  What happens if the page gets updated but no protection
-information is supplied and so on ...  The can of worms just gets more
-squirmy.  Doing DIO only avoids all of this.
+Hm, I would've thought once you've worked out the clientid, then
+failover would look pretty similar in 4.0 and 4.1.
 
-James
+And I don't think the richer locations info helps e.g. with the server
+trying to track client-reclaimability across reboots and failovers.
 
+--b.
 
+> >> The richer information provided by fs_locations_info can allow the client to determine whether two servers share more than simply data.  That information does not exist in NFSv4.0, so there's no way a client can expect that two servers lists in fs_locations results will always have the same NFSv4 state.
+> >> 
+> >> Thus I believe that NFSv4.0 replication is limited to read-only data.  But I have to go back and read that chapter of 3530 again.
+> >> 
+> >>> I'm a little unclear how it does that, but I suppose it first tests
+> >>> somehow to see whether its existing state is supported, and if not, it
+> >>> establishes a new clientid with SETCLIENTID/SETCILENTID_CONFIRM using
+> >>> its old name, and then attempts to reclaim.
+> >>> 
+> >>> You're now requiring it *not* to do that if it happens that the servers
+> >>> all rebooted in the meantime.  How does it know that that's what
+> >>> happened?
+> >>> 
+> >>> Or maybe that's not what you want to require, I'm not sure.
+> >>> 
+> >>> --b.
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> -- 
+> >> Chuck Lever
+> >> chuck[dot]lever[at]oracle[dot]com
+> >> 
+> >> 
+> >> 
+> >> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
