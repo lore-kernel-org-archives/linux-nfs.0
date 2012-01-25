@@ -1,65 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61447 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933750Ab2AKSgT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 13:36:19 -0500
-Message-ID: <1326306977.20284.4.camel@lade.trondhjem.org>
-Subject: Re: [PATCH v2 4/5] NFS: remove RPC PipeFS mount point reference
- from blocklayout routines
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 11 Jan 2012 13:36:17 -0500
-In-Reply-To: <1326306793.20284.3.camel@lade.trondhjem.org>
-References: <20120110130323.1672.97025.stgit@localhost6.localdomain6>
-	 <20120110130440.1672.43785.stgit@localhost6.localdomain6>
-	 <1326306793.20284.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx.scalarmail.ca ([98.158.95.75]:59403 "EHLO
+	ironport-01.sms.scalar.ca" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755138Ab2AYBDa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jan 2012 20:03:30 -0500
+Date: Tue, 24 Jan 2012 20:03:24 -0500
+From: Nick Bowler <nbowler@elliptictech.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: NFS auth_rpcgss client crash in 3.3-rc1+ (regression)
+Message-ID: <20120125010323.GA11366@elliptictech.com>
+References: <20120124041251.GA16952@elliptictech.com>
+ <20120124164144.GA19315@elliptictech.com>
+ <20120124182903.GA10964@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120124182903.GA10964@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-01-11 at 13:33 -0500, Trond Myklebust wrote: 
-> On Tue, 2012-01-10 at 17:04 +0400, Stanislav Kinsbursky wrote: 
-> > This is a cleanup patch. We don't need this reference anymore, because
-> > blocklayout pipes dentries now creates and destroys in per-net operations and
-> > on PipeFS mount/umount notification.
-> > Note that nfs4blocklayout_register_net() now returns 0 instead of -ENOENT in
-> > case of PipeFS superblock absence. This is ok, because blocklayout pipe dentry
-> > will be created on PipeFS mount event.
+On 2012-01-24 13:29 -0500, J. Bruce Fields wrote:
+> On Tue, Jan 24, 2012 at 11:41:44AM -0500, Nick Bowler wrote:
+> > On 2012-01-23 23:12 -0500, Nick Bowler wrote:
+> > > I'm seeing crashes similar to the following with latest Linus' git on an
+> > > NFSv4 client machine.  User home directories are NFS mounted with
+> > > sec=krb5, and the crash often occurs immediately or shortly after the
+> > > first successful login.  However, it does not always crash: it happens
+> > > maybe 50% of the time.  Most of the time the box is dead as a result.
+> > > 
+> > > I see this in Linux 3.3-rc1 as well, but I've not had a chance to bisect
+> > > it yet (might be tricky since it's not 100% reliable).  The server is
+> > > running Linux 3.2.1.
 > > 
-> > Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> > 
-> > ---
-> >  fs/nfs/blocklayout/blocklayout.c |    9 +--------
-> >  1 files changed, 1 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> > index 322d920..2c70202 100644
-> > --- a/fs/nfs/blocklayout/blocklayout.c
-> > +++ b/fs/nfs/blocklayout/blocklayout.c
-> > @@ -1034,7 +1034,7 @@ static struct dentry *nfs4blocklayout_register_net(struct net *net,
-> >  
-> >  	pipefs_sb = rpc_get_sb_net(net);
-> >  	if (!pipefs_sb)
-> > -		return ERR_PTR(-ENOENT);
-> > +		return 0;
+> > I forgot to mention that this is a regression from 3.2 on the client.
 > 
-> This looks like a typo of some sort. The caller in
-> nfs4blocklayout_net_init() checks for IS_ERR(), not NULL. I'll just
-> remove this hunk...
+> Might be the same as this?:
+> 
+> 	http://marc.info/?l=linux-nfs&m=132734162715894&w=2
 
-Never mind. I see what's going on now... It should be NULL, and not 0
-for coding style reasons, though...
+Could be.  I just built a kernel with that patch applied and it's
+survived several reboots/logins so far.
 
+Thanks,
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
 
