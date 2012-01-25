@@ -1,383 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:60023 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753803Ab2AWUCU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:02:20 -0500
-Received: by qadc10 with SMTP id c10so2031574qad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:02:19 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:10439 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754612Ab2AYQCW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 11:02:22 -0500
+Message-ID: <4F20277B.40901@parallels.com>
+Date: Wed, 25 Jan 2012 20:02:03 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 01/11] nfsdcld: add client tracking daemon stub
-Date: Mon, 23 Jan 2012 15:02:01 -0500
-Message-Id: <1327348931-785-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1327348931-785-1-git-send-email-jlayton@redhat.com>
-References: <1327348931-785-1-git-send-email-jlayton@redhat.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
+ named one
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com> <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com> <4EFCA668.6040107@parallels.com> <4F1FE3A8.5020002@parallels.com> <20120125144131.GC17873@fieldses.org>
+In-Reply-To: <20120125144131.GC17873@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This program opens and "listens" on the new nfsd/cld rpc_pipefs pipe.
-The code here doesn't actually do anything on stable storage yet. That
-will be added in a later patch.
+25.01.2012 18:41, bfields@fieldses.org пишет:
+> On Wed, Jan 25, 2012 at 03:12:40PM +0400, Stanislav Kinsbursky wrote:
+>> Chuck, Bruce, have you seen this patch I'm replying to?
+>> I would appreciate for any comments with this problem.
+>> Also, probably we can instead just perform local transports socket
+>> connection in sync mode? This should solve our problem.
+>> What do you think?
+>
+> I'm hoping Chuck will answer....
+>
+> (I'd recommend just resending the patch, though; it's more likely to get
+> a response than if readers need to go dig the original out of mail
+> archives.)
+>
 
-The patch also adds a autoconf enable switch for the new daemon that
-defaults to "no", and a test for the upcall description header file.
+Thanks, but I really don't like the patch idea. I'd prefer to connect in sync 
+mode for unix sockets instead. At least it is local (NFS) change.
+But this code isn't familiar to me and I'm afraid of possible pitfalls.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- configure.ac              |   14 +++
- utils/Makefile.am         |    4 +
- utils/nfsdcld/Makefile.am |   14 +++
- utils/nfsdcld/nfsdcld.c   |  264 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 296 insertions(+), 0 deletions(-)
- create mode 100644 utils/nfsdcld/Makefile.am
- create mode 100644 utils/nfsdcld/nfsdcld.c
-
-diff --git a/configure.ac b/configure.ac
-index 920e8da..d50e54e 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -185,6 +185,12 @@ else
- 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
- fi
- 
-+AC_ARG_ENABLE(nfsdcld,
-+	[AC_HELP_STRING([--enable-nfsdcld],
-+			[Create nfsdcld NFSv4 clientid tracking daemon. <:@default=no@:>@])],
-+	enable_nfsdcld=$enableval,
-+	enable_nfsdcld="no")
-+
- dnl Check for TI-RPC library and headers
- AC_LIBTIRPC
- 
-@@ -260,6 +266,13 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for the keyutils libraries and headers
-   AC_KEYUTILS
- 
-+  if test "$enable_nfsdcld" = "yes"; then
-+    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
-+		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
-+  fi
-+
-+  AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
-+
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-@@ -460,6 +473,7 @@ AC_CONFIG_FILES([
- 	tools/nfs-iostat/Makefile
- 	utils/Makefile
- 	utils/blkmapd/Makefile
-+	utils/nfsdcld/Makefile
- 	utils/exportfs/Makefile
- 	utils/gssd/Makefile
- 	utils/idmapd/Makefile
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index d074b85..5df7ca7 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -21,6 +21,10 @@ if CONFIG_MOUNT
- OPTDIRS += mount
- endif
- 
-+if CONFIG_NFSDCLD
-+OPTDIRS += nfsdcld
-+endif
-+
- SUBDIRS = \
- 	exportfs \
- 	mountd \
-diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
-new file mode 100644
-index 0000000..ed7ed42
---- /dev/null
-+++ b/utils/nfsdcld/Makefile.am
-@@ -0,0 +1,14 @@
-+## Process this file with automake to produce Makefile.in
-+
-+#man8_MANS	= nfsdcld.man
-+#EXTRA_DIST = $(man8_MANS)
-+
-+AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
-+sbin_PROGRAMS	= nfsdcld
-+
-+nfsdcld_SOURCES = nfsdcld.c
-+
-+nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
-+
-+MAINTAINERCLEANFILES = Makefile.in
-+
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-new file mode 100644
-index 0000000..fab35ae
---- /dev/null
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -0,0 +1,264 @@
-+/*
-+ * nfsdcld.c -- NFSv4 client name tracking daemon
-+ *
-+ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif /* HAVE_CONFIG_H */
-+
-+#include <errno.h>
-+#include <event.h>
-+#include <stdbool.h>
-+#include <getopt.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <linux/nfsd/cld.h>
-+
-+#include "xlog.h"
-+#include "nfslib.h"
-+
-+#ifndef PIPEFS_DIR
-+#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
-+#endif
-+
-+#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
-+
-+#define UPCALL_VERSION		1
-+
-+/* private data structures */
-+struct cld_client {
-+	int			cl_fd;
-+	struct event		cl_event;
-+	struct cld_msg	cl_msg;
-+};
-+
-+/* global variables */
-+static char *pipepath = DEFAULT_CLD_PATH;
-+
-+static struct option longopts[] =
-+{
-+	{ "help", 0, NULL, 'h' },
-+	{ "foreground", 0, NULL, 'F' },
-+	{ "debug", 0, NULL, 'd' },
-+	{ "pipe", 1, NULL, 'p' },
-+	{ NULL, 0, 0, 0 },
-+};
-+
-+/* forward declarations */
-+static void cldcb(int UNUSED(fd), short which, void *data);
-+
-+static void
-+usage(char *progname)
-+{
-+	printf("Usage:\n");
-+	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
-+}
-+
-+static int
-+cld_pipe_open(struct cld_client *clnt)
-+{
-+	clnt->cl_fd = open(pipepath, O_RDWR, 0);
-+	if (clnt->cl_fd < 0) {
-+		xlog(L_ERROR, "%s: unable to open %s: %m", __func__, pipepath);
-+		return clnt->cl_fd;
-+	}
-+
-+	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
-+	event_add(&clnt->cl_event, NULL);
-+
-+	return clnt->cl_fd;
-+}
-+
-+static void
-+cld_pipe_reopen(struct cld_client *clnt)
-+{
-+	int fd;
-+
-+	fd = open(pipepath, O_RDWR, 0);
-+	if (fd < 0) {
-+		xlog_warn("%s: Re-opening of %s failed: %m",
-+				__func__, pipepath);
-+		return;
-+	}
-+
-+	if (clnt->cl_event.ev_flags & EVLIST_INIT)
-+		event_del(&clnt->cl_event);
-+	if (clnt->cl_fd > 0)
-+		close(clnt->cl_fd);
-+
-+	clnt->cl_fd = fd;
-+	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
-+	/* event_add is done by the caller */
-+}
-+
-+static void
-+cld_create(struct cld_client *clnt)
-+{
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
-+
-+	xlog(D_GENERAL, "%s: create client record", __func__);
-+
-+	/* FIXME: create client record on storage here */
-+
-+	/* set up reply */
-+	cmsg->cm_status = 0;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+		cld_pipe_reopen(clnt);
-+	}
-+}
-+
-+static void
-+cld_not_implemented(struct cld_client *clnt)
-+{
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
-+
-+	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
-+
-+	/* set up reply */
-+	cmsg->cm_status = -EOPNOTSUPP;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize)
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+
-+	/* reopen pipe, just to be sure */
-+	cld_pipe_reopen(clnt);
-+}
-+
-+static void
-+cldcb(int UNUSED(fd), short which, void *data)
-+{
-+	ssize_t len;
-+	struct cld_client *clnt = data;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
-+
-+	if (which != EV_READ)
-+		goto out;
-+
-+	len = atomicio(read, clnt->cl_fd, cmsg, sizeof(*cmsg));
-+	if (len <= 0) {
-+		xlog_warn("%s: pipe read failed: %m", __func__);
-+		cld_pipe_reopen(clnt);
-+		goto out;
-+	}
-+
-+	if (cmsg->cm_vers != UPCALL_VERSION) {
-+		xlog_warn("%s: unsupported upcall version: %hu", cmsg->cm_vers);
-+		cld_pipe_reopen(clnt);
-+		goto out;
-+	}
-+
-+	switch(cmsg->cm_cmd) {
-+	case Cld_Create:
-+		cld_create(clnt);
-+		break;
-+	default:
-+		xlog_warn("%s: command %u is not yet implemented", __func__,
-+			  cmsg->cm_cmd);
-+		cld_not_implemented(clnt);
-+	}
-+out:
-+	event_add(&clnt->cl_event, NULL);
-+}
-+
-+int
-+main(int argc, char **argv)
-+{
-+	char arg;
-+	int rc = 0, fd;
-+	bool foreground = false;
-+	char *progname;
-+	struct cld_client clnt;
-+
-+	memset(&clnt, 0, sizeof(clnt));
-+
-+	progname = strdup(basename(argv[0]));
-+	if (!progname) {
-+		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
-+		return 1;
-+	}
-+
-+	event_init();
-+	xlog_syslog(0);
-+	xlog_stderr(1);
-+
-+	/* process command-line options */
-+	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
-+				  NULL)) != EOF) {
-+		switch (arg) {
-+		case 'd':
-+			xlog_config(D_ALL, 1);
-+			break;
-+		case 'F':
-+			foreground = true;
-+			break;
-+		case 'p':
-+			pipepath = optarg;
-+			break;
-+		default:
-+			usage(progname);
-+			return 0;
-+		}
-+	}
-+
-+
-+	xlog_open(progname);
-+	if (!foreground) {
-+		xlog_syslog(1);
-+		xlog_stderr(0);
-+		rc = daemon(0, 0);
-+		if (rc) {
-+			xlog(L_ERROR, "Unable to daemonize: %m");
-+			goto out;
-+		}
-+	}
-+
-+	/* set up storage db */
-+
-+	/* set up event handler */
-+	fd = cld_pipe_open(&clnt);
-+	if (fd < 0) {
-+		rc = fd;
-+		goto out;
-+	}
-+
-+	rc = event_dispatch();
-+	if (rc < 0)
-+		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
-+
-+	close(clnt.cl_fd);
-+out:
-+	free(progname);
-+	return rc;
-+}
 -- 
-1.7.7.5
-
+Best regards,
+Stanislav Kinsbursky
