@@ -1,268 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38178 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258Ab2AZNJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 08:09:29 -0500
-Date: Thu, 26 Jan 2012 15:11:36 +0200
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: Ian Campbell <ian.campbell@citrix.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-        Neil Brown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 6/6] sunrpc: use SKB fragment destructors to delay
- completion until page is released by network stack.
-Message-ID: <20120126131136.GA16400@redhat.com>
-References: <1327494389.24561.316.camel@zakaz.uk.xensource.com>
- <1327494434-21566-6-git-send-email-ian.campbell@citrix.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1327494434-21566-6-git-send-email-ian.campbell@citrix.com>
+Received: from eu1sys200aog109.obsmtp.com ([207.126.144.127]:38613 "EHLO
+	eu1sys200aog109.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752347Ab2AYO57 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 09:57:59 -0500
+From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
+To: linux-nfs@vger.kernel.org
+Cc: akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
+        stuart.menefy@st.com
+Subject: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root mount.
+Date: Wed, 25 Jan 2012 14:50:03 +0000
+Message-Id: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 25, 2012 at 12:27:14PM +0000, Ian Campbell wrote:
-> This prevents an issue where an ACK is delayed, a retransmit is queued (either
-> at the RPC or TCP level) and the ACK arrives before the retransmission hits the
-> wire. If this happens to an NFS WRITE RPC then the write() system call
-> completes and the userspace process can continue, potentially modifying data
-> referenced by the retransmission before the retransmission occurs.
-> 
-> Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
-> Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> Cc: netdev@vger.kernel.org
+From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
 
-This doesn't include either of the two options you proposed to address
-the sender blocked forever by receiver issue with bridged septups and
-endpoints such a tap device or a socket on the same box,
-does it?
+This patch adds mountretry kernel parameter for nfs root mount.
+mount retry indicates the number of times nfs root mount attempts to be
+made before giving up. If this option is not specified, the default
+value of 3 retries is used.
 
-I mean this discussion:
-http://article.gmane.org/gmane.linux.nfs/44846/match=use+skb+fragment+destructors
+One noticable change for us from moving from 2.6.32 to 3.x kernel was
+nfs root mount was failing all the time, because we use external PHY.
+PHY takes about 2-4 seconds get into a Link ready state after ipconfig.
+However as nfsroot mount is attempted in this halfway, which finally
+fails.
+Important thing to notice here is in 2.6.32 nfs mount usally spent more
+than 4 seconds Looking up port of RPC, hence we got lucky to get
+nfsroot mount working all the time.
 
-It would be nice to have this addressed in some way.
+Without this patch a rootdelay has to be added to kernel boot
+parameters.
 
-How about patching __skb_queue_tail to do a deep copy?
-That would seem to handle both tap and socket cases -
-any other ones left?
+Signed-off-by: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+---
+Hello All,
 
-If we do this, I think it would be beneficial to pass a flag
-to the destructor indicating that a deep copy was done:
-this would allow senders to detect that and adapt.
+Recently we have upgraded kernel from 2.6.32 to 3.x, and One noticable change 
+in this process was nfs-root was failing all the time on our boards.
+The reason being we are using external PHY, which takes about 2-4 seconds to 
+get into Link UP state. In the mean time nfsroot mount attempted by kernel fails 
+and results in Kernel panic "VFS: Unable to mount root fs via NFS, trying floppy."
+
+In 2.6.32 nfs mount usally spent more than 4 seconds Looking up port of RPC, 
+hence we got lucky.
+
+To get nfs-root working on 3.x kernel we have to add rootdelay to the 
+kernel parameters. If the kernel had attempted an other try to mount 
+nfs root, it would have succeded.
+
+This will be a common problem across all the boards with external phy's, so 
+I was thinking of solving the problem with nfs mount retries option.
+
+I would like to seek your inputs on this patch, and are there any other 
+methods of solving this issue without rootdelay option?
+
+Comments?
+
+Thanks,
+srini
 
 
-> ---
->  include/linux/sunrpc/xdr.h  |    2 ++
->  include/linux/sunrpc/xprt.h |    5 ++++-
->  net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
->  net/sunrpc/svcsock.c        |    3 ++-
->  net/sunrpc/xprt.c           |   12 ++++++++++++
->  net/sunrpc/xprtsock.c       |    3 ++-
->  6 files changed, 44 insertions(+), 8 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-> index a20970e..172f81e 100644
-> --- a/include/linux/sunrpc/xdr.h
-> +++ b/include/linux/sunrpc/xdr.h
-> @@ -16,6 +16,7 @@
->  #include <asm/byteorder.h>
->  #include <asm/unaligned.h>
->  #include <linux/scatterlist.h>
-> +#include <linux/skbuff.h>
->  
->  /*
->   * Buffer adjustment
-> @@ -57,6 +58,7 @@ struct xdr_buf {
->  			tail[1];	/* Appended after page data */
->  
->  	struct page **	pages;		/* Array of contiguous pages */
-> +	struct skb_frag_destructor *destructor;
->  	unsigned int	page_base,	/* Start of page data */
->  			page_len,	/* Length of page data */
->  			flags;		/* Flags for data disposition */
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 15518a1..75131eb 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -92,7 +92,10 @@ struct rpc_rqst {
->  						/* A cookie used to track the
->  						   state of the transport
->  						   connection */
-> -	
-> +	struct skb_frag_destructor destructor;	/* SKB paged fragment
-> +						 * destructor for
-> +						 * transmitted pages*/
-> +
->  	/*
->  	 * Partial send handling
->  	 */
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index f0268ea..06f363f 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
->  static void	call_reserveresult(struct rpc_task *task);
->  static void	call_allocate(struct rpc_task *task);
->  static void	call_decode(struct rpc_task *task);
-> +static void	call_complete(struct rpc_task *task);
->  static void	call_bind(struct rpc_task *task);
->  static void	call_bind_status(struct rpc_task *task);
->  static void	call_transmit(struct rpc_task *task);
-> @@ -1115,6 +1116,8 @@ rpc_xdr_encode(struct rpc_task *task)
->  			 (char *)req->rq_buffer + req->rq_callsize,
->  			 req->rq_rcvsize);
->  
-> +	req->rq_snd_buf.destructor = &req->destructor;
-> +
->  	p = rpc_encode_header(task);
->  	if (p == NULL) {
->  		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
-> @@ -1278,6 +1281,7 @@ call_connect_status(struct rpc_task *task)
->  static void
->  call_transmit(struct rpc_task *task)
->  {
-> +	struct rpc_rqst *req = task->tk_rqstp;
->  	dprint_status(task);
->  
->  	task->tk_action = call_status;
-> @@ -1311,8 +1315,8 @@ call_transmit(struct rpc_task *task)
->  	call_transmit_status(task);
->  	if (rpc_reply_expected(task))
->  		return;
-> -	task->tk_action = rpc_exit_task;
-> -	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
-> +	task->tk_action = call_complete;
-> +	skb_frag_destructor_unref(&req->destructor);
->  }
->  
->  /*
-> @@ -1385,7 +1389,8 @@ call_bc_transmit(struct rpc_task *task)
->  		return;
->  	}
->  
-> -	task->tk_action = rpc_exit_task;
-> +	task->tk_action = call_complete;
-> +	skb_frag_destructor_unref(&req->destructor);
->  	if (task->tk_status < 0) {
->  		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
->  			"error: %d\n", task->tk_status);
-> @@ -1425,7 +1430,6 @@ call_bc_transmit(struct rpc_task *task)
->  			"error: %d\n", task->tk_status);
->  		break;
->  	}
-> -	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
->  }
->  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
->  
-> @@ -1591,12 +1595,14 @@ call_decode(struct rpc_task *task)
->  		return;
->  	}
->  
-> -	task->tk_action = rpc_exit_task;
-> +	task->tk_action = call_complete;
->  
->  	if (decode) {
->  		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
->  						      task->tk_msg.rpc_resp);
->  	}
-> +	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
-> +	skb_frag_destructor_unref(&req->destructor);
->  	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
->  			task->tk_status);
->  	return;
-> @@ -1611,6 +1617,17 @@ out_retry:
->  	}
->  }
->  
-> +/*
-> + * 8.	Wait for pages to be released by the network stack.
-> + */
-> +static void
-> +call_complete(struct rpc_task *task)
-> +{
-> +	dprintk("RPC: %5u call_complete result %d\n",
-> +		task->tk_pid, task->tk_status);
-> +	task->tk_action = rpc_exit_task;
-> +}
-> +
->  static __be32 *
->  rpc_encode_header(struct rpc_task *task)
->  {
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 0e6b919..aa7f108 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
->  	while (pglen > 0) {
->  		if (slen == size)
->  			flags = 0;
-> -		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
-> +		result = kernel_sendpage(sock, *ppage, xdr->destructor,
-> +					 base, size, flags);
->  		if (result > 0)
->  			len += result;
->  		if (result != size)
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index c64c0ef..2137eb6 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -1101,6 +1101,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
->  	xprt->xid = net_random();
->  }
->  
-> +static int xprt_complete_skb_pages(struct skb_frag_destructor *destroy)
-> +{
-> +	struct rpc_rqst	*req =
-> +		container_of(destroy, struct rpc_rqst, destructor);
-> +
-> +	dprintk("RPC: %5u completing skb pages\n", req->rq_task->tk_pid);
-> +	rpc_wake_up_queued_task(&req->rq_xprt->pending, req->rq_task);
+ Documentation/kernel-parameters.txt |    4 ++++
+ init/do_mounts.c                    |   25 +++++++++++++++++++++----
+ 2 files changed, 25 insertions(+), 4 deletions(-)
 
-It seems that at the sunrpc module can get unloaded
-at this point. The code for 'return 0' can then get
-overwritten. Right?
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index e00ec14..20a876e 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -1824,6 +1824,10 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			This can be set from sysctl after boot.
+ 			See Documentation/sysctl/vm.txt for details.
+ 
++	mountretry=   	Is the number of times nfs root mount retries attempts
++			are made before giving up. If this option is not
++			specified, the default value of 3 is used.
++
+ 	ohci1394_dma=early	[HW] enable debugging via the ohci1394 driver.
+ 			See Documentation/debugging-via-ohci1394.txt for more
+ 			info.
+diff --git a/init/do_mounts.c b/init/do_mounts.c
+index c0851a8..03b8c05 100644
+--- a/init/do_mounts.c
++++ b/init/do_mounts.c
+@@ -258,6 +258,19 @@ __setup("rootflags=", root_data_setup);
+ __setup("rootfstype=", fs_names_setup);
+ __setup("rootdelay=", root_delay_setup);
+ 
++
++#ifdef CONFIG_ROOT_NFS
++#define DEF_NFS_MOUNT_RETRIES		3
++static unsigned int __initdata mount_retry = DEF_NFS_MOUNT_RETRIES;
++static int __init mount_retry_setup(char *str)
++{
++	mount_retry = kstrtoul(str, 0, NULL);
++	return 1;
++}
++
++__setup("mountretry=", mount_retry_setup);
++#endif
++
+ static void __init get_fs_names(char *page)
+ {
+ 	char *s = page;
+@@ -363,12 +376,16 @@ out:
+ static int __init mount_nfs_root(void)
+ {
+ 	char *root_dev, *root_data;
+-
++	unsigned int retries = mount_retry;
+ 	if (nfs_root_data(&root_dev, &root_data) != 0)
+ 		return 0;
+-	if (do_mount_root(root_dev, "nfs", root_mountflags, root_data) != 0)
+-		return 0;
+-	return 1;
++
++	while (retries--) {
++		if (do_mount_root(root_dev,
++				"nfs", root_mountflags, root_data) == 0)
++			return 1;
++	}
++	return 0;
+ }
+ #endif
+ 
+-- 
+1.6.3.3
 
-Not sure how important making module unloading robust
-is - if we wanted to fix this we'd need to move
-the callback code into core (hopefully generalizing
-it somewhat).
-
-> +	return 0;
-> +}
-> +
->  static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
->  {
->  	struct rpc_rqst	*req = task->tk_rqstp;
-> @@ -1113,6 +1123,8 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
->  	req->rq_xid     = xprt_alloc_xid(xprt);
->  	req->rq_release_snd_buf = NULL;
->  	xprt_reset_majortimeo(req);
-> +	atomic_set(&req->destructor.ref, 1);
-> +	req->destructor.destroy = &xprt_complete_skb_pages;
->  	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
->  			req, ntohl(req->rq_xid));
->  }
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 38b2fec..5406977 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
->  		remainder -= len;
->  		if (remainder != 0 || more)
->  			flags |= MSG_MORE;
-> -		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
-> +		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
-> +					  base, len, flags);
->  		if (remainder == 0 || err != len)
->  			break;
->  		sent += err;
-> -- 
-> 1.7.2.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
