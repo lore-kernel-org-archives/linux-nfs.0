@@ -1,66 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:4547 "EHLO relay.sw.ru"
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:50158 "EHLO e1.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757123Ab2AMJJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 04:09:28 -0500
-Subject: [PATCH v2 1/4] SUNRPC: parametrize rpc_parse_scope_id() by network
- context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 13:09:03 +0400
-Message-ID: <20120113090903.1598.30645.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
-References: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+	id S1752687Ab2AYVoa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 16:44:30 -0500
+Received: from /spool/local
+	by e1.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Wed, 25 Jan 2012 16:44:28 -0500
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 559316E804D
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 16:43:12 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0PLhAOD3428554
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 16:43:11 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0PLhAtB006784
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 19:43:10 -0200
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0PLh9lD006738
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 19:43:09 -0200
+In-Reply-To: <OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
+References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com> <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com> <OFA87AD733.E4260468-ON8825797B.00708512-8825797B.0070B0A1@us.ibm.com> <OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: Linux pNFS status meeting 01/26/12     -  NO MEETING THIS WEEK
+Message-ID: <OF745497AB.CC7F0558-ON88257990.00771E12-88257990.00774CA4@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 25 Jan 2012 13:43:07 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Parametrize rpc_parse_scope_id() by network context and thus force it's caller
-to pass in network context instead of using hard-coded "init_net".
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
----
- net/sunrpc/addr.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index ee77742..cc83de1 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -156,8 +156,9 @@ static size_t rpc_pton4(const char *buf, const size_t buflen,
- }
- 
- #if IS_ENABLED(CONFIG_IPV6)
--static int rpc_parse_scope_id(const char *buf, const size_t buflen,
--			      const char *delim, struct sockaddr_in6 *sin6)
-+static int rpc_parse_scope_id(struct net *net, const char *buf,
-+			      const size_t buflen, const char *delim,
-+			      struct sockaddr_in6 *sin6)
- {
- 	char *p;
- 	size_t len;
-@@ -177,7 +178,7 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
- 		unsigned long scope_id = 0;
- 		struct net_device *dev;
- 
--		dev = dev_get_by_name(&init_net, p);
-+		dev = dev_get_by_name(net, p);
- 		if (dev != NULL) {
- 			scope_id = dev->ifindex;
- 			dev_put(dev);
-@@ -213,7 +214,7 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
- 	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
- 		return 0;
- 
--	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
-+	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
- 		return 0;
- 
- 	sin6->sin6_family = AF_INET6;
 
