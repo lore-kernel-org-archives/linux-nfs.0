@@ -1,41 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:39350 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932153Ab2AIQCw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jan 2012 11:02:52 -0500
-Received: by ggdk6 with SMTP id k6so1614395ggd.19
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jan 2012 08:02:52 -0800 (PST)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, mdw@umich.edu, honey@citi.umich.edu
-Subject: [PATCH 0/9] pnfsblock: patches for 3.3
-Date: Tue, 10 Jan 2012 00:02:10 +0800
-Message-Id: <1326124939-2152-1-git-send-email-bergwolf@gmail.com>
+Received: from natasha.panasas.com ([67.152.220.90]:35795 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752731Ab2AYMoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 07:44:23 -0500
+Message-ID: <4F1FF91B.3010708@panasas.com>
+Date: Wed, 25 Jan 2012 14:44:11 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: <tigran.mkrtchyan@desy.de>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: blacklisted DS with pnfs
+References: <CAGue13ozQQ=qn-TqpLF093HbbnZdKAshrhHZ97OSj7u0SDVxng@mail.gmail.com>
+In-Reply-To: <CAGue13ozQQ=qn-TqpLF093HbbnZdKAshrhHZ97OSj7u0SDVxng@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On 01/25/2012 11:56 AM, Tigran Mkrtchyan wrote:
+> Hi,
+> 
+> we have observed that in some situations ( probably network glitches )
+> the pnfs client blacklisted one of the data servers:
+> 
+> NFS: data server 83a95099 connection error -12. Deviceid [22000000000]
+> marked out of use.
+> 
+> As a result, data server can't be used by this client anymore.
+> 
+> Is there a way to let client to forget about data server?
+> Some magic in /proc ?
+> 
+> This is SL6.2 (RHEL 6.2):
+> # uname -a
+> Linux p3-wgs13 2.6.32-220.2.1.el6.x86_64 #1 SMP Thu Dec 22 11:15:52
+> CST 2011 x86_64 x86_64 x86_64 GNU/Linux
+> #
+> 
 
-These are blocklayout patches for 3.3. All have been sent to list before and merged by Benny.
+Look in the source code, I think there is a RECALL that the server
+can do to trash the all device cache. or one of the devices.
 
-Patches can also be found at http://github.com/bergwolf/linux.git for-trond-3.3
+What happens is that the device is marked with error but is in 
+cache so is not re-fetched.
 
-Thanks,
-Tao
+wait let me look ....
 
-Peng Tao (9):
-  pnfsblock: cleanup bl_mark_sectors_init
-  pnfsblock: acquire im_lock in _preload_range
-  pnfsblock: move find lock page logic out of bl_write_pagelist
-  pnfsblock: set read/write tk_status to pnfs_error
-  pnfsblock: remove rpc_call_ops from struct parallel_io
-  pnfsblock: clean up _add_entry
-  pnfsblock: alloc short extent before submit bio
-  pnfsblock: don't spinlock when freeing block_dev
-  pnfsblock: limit bio page count
+I found it! The server sends a NOTIFY_DEVICEID4_CHANGE. The
+client will remove the deviceid from cache and unmount if needed.
+Next layout with that deviceid will re-establish the connection and
+will put a new clean entry in the dev cache.
 
- fs/nfs/blocklayout/blocklayout.c |  202 ++++++++++++++++++++++++-------------
- fs/nfs/blocklayout/blocklayout.h |   12 ++-
- fs/nfs/blocklayout/extents.c     |  176 ++++++++++++++-------------------
- 3 files changed, 215 insertions(+), 175 deletions(-)
+[If you decide to enhance pynfs to send a NOTIFY_DEVICEID4_CHANGE as an admin
+ tool. That would be interesting]
 
+> Regards,
+>    Tigran.
+
+Cheers
+Boaz
