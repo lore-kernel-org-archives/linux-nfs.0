@@ -1,54 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-out-1.desy.de ([131.169.56.84]:45893 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751451Ab2AOTDA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 14:03:00 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 67E8F176A
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:59 +0100 (MET)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 0218F13E83
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 20:02:58 +0100 (MET)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH 4/5] client: test current stateid processing with OPEN and SETATTR
-Date: Sun, 15 Jan 2012 20:05:27 +0100
-Message-Id: <1326654328-20557-5-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326654328-20557-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mailhub.sw.ru ([195.214.232.25]:17502 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755807Ab2AYNrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 08:47:52 -0500
+Subject: [PATCH 4/4] SUNRPC: service shutdown function in network namespace
+ context introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 25 Jan 2012 17:47:34 +0400
+Message-ID: <20120125134734.13662.40246.stgit@localhost6.localdomain6>
+In-Reply-To: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
+References: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This function is enough for releasing resources, allocated for network
+namespace context, in case of sharing service between them.
+IOW, each service "user" (LockD, NFSd, etc), which wants to share service
+between network namespaces, have to release related resources by the function,
+introduced in this patch, instead of performing service shutdown (of course in
+case the service is shared already to the moment of release).
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- nfs4.1/server41tests/st_current_stateid.py |   15 +++++++++++++++
- 1 files changed, 15 insertions(+), 0 deletions(-)
+ net/sunrpc/svc.c |   33 ++++++++++++++++++++-------------
+ 1 files changed, 20 insertions(+), 13 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41tests/st_current_stateid.py
-index 788c095..3732907 100644
---- a/nfs4.1/server41tests/st_current_stateid.py
-+++ b/nfs4.1/server41tests/st_current_stateid.py
-@@ -131,3 +131,18 @@ def testOpenLayoutGet(t, env):
-                         0, 8192, 8192, current_stateid, 0xffff)])
-     check(res, NFS4_OK)
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 279bbd8..3adfd26 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -510,6 +510,24 @@ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+ }
+ EXPORT_SYMBOL_GPL(svc_create_pooled);
  
-+def testOpenSetattr(t, env):
-+    """test current state id processing by having OPEN and SETATTR
-+       in a single compound
++void svc_shutdown_net(struct svc_serv *serv, struct net *net)
++{
++	/*
++	 * The set of xprts (contained in the sv_tempsocks and
++	 * sv_permsocks lists) is now constant, since it is modified
++	 * only by accepting new sockets (done by service threads in
++	 * svc_recv) or aging old ones (done by sv_temptimer), or
++	 * configuration changes (excluded by whatever locking the
++	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
++	 * safe to traverse those lists and shut everything down:
++	 */
++	svc_close_net(serv, net);
 +
-+    FLAGS: currentstateid all
-+    CODE: CSID8
-+    """
-+    size = 8
-+    sess = env.c1.new_client_session(env.testname(t),
-+                                        flags=EXCHGID4_FLAG_USE_PNFS_MDS)
++	if (serv->sv_shutdown)
++		serv->sv_shutdown(serv, net);
++}
++EXPORT_SYMBOL_GPL(svc_shutdown_net);
 +
-+    open_op = open_create_file_op(sess, env.testname(t), open_create=OPEN4_CREATE)
-+    res = sess.compound( open_op + 
-+           [ op.setattr(current_stateid, {FATTR4_SIZE: size})])
-+    check(res, NFS4_OK)
--- 
-1.7.7.5
+ /*
+  * Destroy an RPC service. Should be called with appropriate locking to
+  * protect the sv_nrthreads, sv_permsocks and sv_tempsocks.
+@@ -532,23 +550,12 @@ svc_destroy(struct svc_serv *serv)
+ 		printk("svc_destroy: no threads for serv=%p!\n", serv);
+ 
+ 	del_timer_sync(&serv->sv_temptimer);
+-	/*
+-	 * The set of xprts (contained in the sv_tempsocks and
+-	 * sv_permsocks lists) is now constant, since it is modified
+-	 * only by accepting new sockets (done by service threads in
+-	 * svc_recv) or aging old ones (done by sv_temptimer), or
+-	 * configuration changes (excluded by whatever locking the
+-	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
+-	 * safe to traverse those lists and shut everything down:
+-	 */
+-	svc_close_net(serv, net);
++
++	svc_shutdown_net(serv, net);
+ 
+ 	BUG_ON(!list_empty(&serv->sv_permsocks));
+ 	BUG_ON(!list_empty(&serv->sv_tempsocks));
+ 
+-	if (serv->sv_shutdown)
+-		serv->sv_shutdown(serv, net);
+-
+ 	cache_clean_deferred(serv);
+ 
+ 	if (svc_serv_is_pooled(serv))
 
