@@ -1,65 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47870 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42097 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751101Ab2AEVne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jan 2012 16:43:34 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q05LhY35026679
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Jan 2012 16:43:34 -0500
-Message-ID: <4F061985.2040102@RedHat.com>
-Date: Thu, 05 Jan 2012 16:43:33 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] autoconf: fix up libevent autoconf test
-References: <1324669625-2948-1-git-send-email-jlayton@redhat.com> <1324669625-2948-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1324669625-2948-2-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1750833Ab2AYLmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 06:42:06 -0500
+Date: Wed, 25 Jan 2012 06:41:58 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120125064158.4551a012@tlielax.poochiereds.net>
+In-Reply-To: <20120124230855.GE12426@fieldses.org>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+	<20120124230855.GE12426@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 24 Jan 2012 18:08:55 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-
-On 12/23/2011 02:47 PM, Jeff Layton wrote:
-> Have it set LIBEVENT to -levent and use that in the Makefiles instead
-> of hardcoding it.
+> On Mon, Jan 23, 2012 at 03:01:01PM -0500, Jeff Layton wrote:
+> > This is the fourth iteration of this patchset. I had originally asked
+> > Bruce to take the last one for 3.3, but decided at the last minute to
+> > wait on it a bit. I knew there would be some changes needed in the
+> > upcall, so by waiting we can avoid needing to deal with those in code
+> > that has already shipped. I would like to see this patchset considered
+> > for 3.4 however.
+> > 
+> > The previous patchset can be viewed here. That set also contains a
+> > more comprehensive description of the rationale for this:
+> > 
+> >     http://www.spinics.net/lists/linux-nfs/msg26324.html
+> > 
+> > There have been a number of significant changes since the last set:
+> > 
+> > - the remove/expire upcall is now gone. In a clustered environment, the
+> > records would need to be refcounted in order to handle that properly. That
+> > becomes a sticky problem when you could have nodes rebooting. We don't
+> > really need to remove these records individually however. Cleaning them
+> > out only when the grace period ends should be sufficient.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed...
-
-steved.
-> ---
->  aclocal/libevent.m4      |    3 ++-
->  utils/idmapd/Makefile.am |    2 +-
->  2 files changed, 3 insertions(+), 2 deletions(-)
+> I don't think so:
 > 
-> diff --git a/aclocal/libevent.m4 b/aclocal/libevent.m4
-> index 3c962b3..b5ac00f 100644
-> --- a/aclocal/libevent.m4
-> +++ b/aclocal/libevent.m4
-> @@ -2,8 +2,9 @@ dnl Checks for libevent
->  AC_DEFUN([AC_LIBEVENT], [
->  
->    dnl Check for libevent, but do not add -levent to LIBS
-> -  AC_CHECK_LIB([event], [event_dispatch], [libevent=1],
-> +  AC_CHECK_LIB([event], [event_dispatch], [LIBEVENT=-levent],
->                 [AC_MSG_ERROR([libevent not found.])])
-> +  AC_SUBST(LIBEVENT)
->  
->    AC_CHECK_HEADERS([event.h], ,
->                     [AC_MSG_ERROR([libevent headers not found.])])
-> diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-> index 4328e41..f8578b0 100644
-> --- a/utils/idmapd/Makefile.am
-> +++ b/utils/idmapd/Makefile.am
-> @@ -16,7 +16,7 @@ idmapd_SOURCES = \
->  	nfs_idmap.h \
->  	queue.h
->  
-> -idmapd_LDADD = -levent -lnfsidmap ../../support/nfs/libnfs.a
-> +idmapd_LDADD = $(LIBEVENT) -lnfsidmap ../../support/nfs/libnfs.a
->  
->  MAINTAINERCLEANFILES = Makefile.in
->  
+> 	1. Client establishes state with server.
+> 	2. Network goes down.
+> 	3. A lease period passes without the client being able to renew.
+> 	   The server expires the client and grants conflicting locks to
+> 	   other clients.
+> 	3. Server reboots.
+> 	4. Network comes back up.
+> 
+> At this point, the client sees that the server has rebooted and is in
+> its grace period, and reclaims.  Ooops.
+> 
+> The server needs to be able to tell the client "nope, you're not allowed
+> to reclaim any more" at this point.
+> 
+> So we need some sort of remove/expire upcall.
+> 
+
+Doh! I don't know what I was thinking -- you're correct and we do need
+that.
+
+Ok, I'll see about putting it back and will resend. That does make it
+rather nasty to handle clients mounting from multiple nodes in the same
+cluster though. We'll need to come up with a data model that allows for
+that as well.
+
+> 
+> If you'd like to make that patch #1, I could apply it now.
+> 
+
+That's already patch #1, but I might need to change some of the
+operations to take an additional arg with the server's address. For
+now, let's hold off on applying anything until I'm clear on what these
+ops need to look like. We still have some runway until the 3.4 merge
+window...
+
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
