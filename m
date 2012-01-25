@@ -1,130 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog109.obsmtp.com ([207.126.144.127]:38613 "EHLO
-	eu1sys200aog109.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752347Ab2AYO57 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 09:57:59 -0500
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-To: linux-nfs@vger.kernel.org
-Cc: akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
-        stuart.menefy@st.com
-Subject: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root mount.
-Date: Wed, 25 Jan 2012 14:50:03 +0000
-Message-Id: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6861 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750771Ab2AYTbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 14:31:11 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0PJVATE002193
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jan 2012 14:31:11 -0500
+Message-ID: <4F20587E.9070209@RedHat.com>
+Date: Wed, 25 Jan 2012 14:31:10 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and recreated
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>	<1327348931-785-10-git-send-email-jlayton@redhat.com>	<4F2046F8.80609@RedHat.com> <20120125140954.5312a80f@tlielax.poochiereds.net>
+In-Reply-To: <20120125140954.5312a80f@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
-
-This patch adds mountretry kernel parameter for nfs root mount.
-mount retry indicates the number of times nfs root mount attempts to be
-made before giving up. If this option is not specified, the default
-value of 3 retries is used.
-
-One noticable change for us from moving from 2.6.32 to 3.x kernel was
-nfs root mount was failing all the time, because we use external PHY.
-PHY takes about 2-4 seconds get into a Link ready state after ipconfig.
-However as nfsroot mount is attempted in this halfway, which finally
-fails.
-Important thing to notice here is in 2.6.32 nfs mount usally spent more
-than 4 seconds Looking up port of RPC, hence we got lucky to get
-nfsroot mount working all the time.
-
-Without this patch a rootdelay has to be added to kernel boot
-parameters.
-
-Signed-off-by: Srinivas Kandagatla <srinivas.kandagatla@st.com>
----
-Hello All,
-
-Recently we have upgraded kernel from 2.6.32 to 3.x, and One noticable change 
-in this process was nfs-root was failing all the time on our boards.
-The reason being we are using external PHY, which takes about 2-4 seconds to 
-get into Link UP state. In the mean time nfsroot mount attempted by kernel fails 
-and results in Kernel panic "VFS: Unable to mount root fs via NFS, trying floppy."
-
-In 2.6.32 nfs mount usally spent more than 4 seconds Looking up port of RPC, 
-hence we got lucky.
-
-To get nfs-root working on 3.x kernel we have to add rootdelay to the 
-kernel parameters. If the kernel had attempted an other try to mount 
-nfs root, it would have succeded.
-
-This will be a common problem across all the boards with external phy's, so 
-I was thinking of solving the problem with nfs mount retries option.
-
-I would like to seek your inputs on this patch, and are there any other 
-methods of solving this issue without rootdelay option?
-
-Comments?
-
-Thanks,
-srini
 
 
- Documentation/kernel-parameters.txt |    4 ++++
- init/do_mounts.c                    |   25 +++++++++++++++++++++----
- 2 files changed, 25 insertions(+), 4 deletions(-)
+On 01/25/2012 02:09 PM, Jeff Layton wrote:
+> On Wed, 25 Jan 2012 13:16:24 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>> Hey Jeff,
+>>
+>> Commit inline... 
+>>
+>> On 01/23/2012 03:02 PM, Jeff Layton wrote:
+>>> This can happen if nfsd is shut down and restarted. If that occurs,
+>>> then reopen the pipe so we're not waiting for data on the defunct
+>>> pipe.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
+>>>  1 files changed, 74 insertions(+), 10 deletions(-)
+>>>
+>>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+>>> index b0c08e2..0dc5b37 100644
+>>> --- a/utils/nfsdcld/nfsdcld.c
+>>> +++ b/utils/nfsdcld/nfsdcld.c
+>>> @@ -57,6 +57,8 @@ struct cld_client {
+>>>  
+>>>  /* global variables */
+>>>  static char *pipepath = DEFAULT_CLD_PATH;
+>>> +static int 		inotify_fd = -1;
+>>> +static struct event	pipedir_event;
+>>>  
+>>>  static struct option longopts[] =
+>>>  {
+>>> @@ -68,8 +70,10 @@ static struct option longopts[] =
+>>>  	{ NULL, 0, 0, 0 },
+>>>  };
+>>>  
+>>> +
+>>>  /* forward declarations */
+>>>  static void cldcb(int UNUSED(fd), short which, void *data);
+>>> +static void cld_pipe_reopen(struct cld_client *clnt);
+>>>  
+>>>  static void
+>>>  usage(char *progname)
+>>> @@ -80,10 +84,62 @@ usage(char *progname)
+>>>  
+>>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
+>>>  
+>>> +static void
+>>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
+>>> +{
+>>> +	int ret, oldfd;
+>>> +	char evbuf[INOTIFY_EVENT_MAX];
+>>> +	char *dirc = NULL, *pname;
+>>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
+>>> +	struct cld_client *clnt = data;
+>>> +
+>>> +	if (which != EV_READ)
+>>> +		return;
+>>> +
+>>> +	dirc = strndup(pipepath, PATH_MAX);
+>>> +	if (!dirc) {
+>>> +		xlog_err("%s: unable to allocate memory", __func__);
+>>> +		goto out;
+>>> +	}
+>>> +
+>>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
+>>> +	if (ret < 0) {
+>>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
+>>> +		goto out;
+>>> +	}
+>>> +
+>>> +	/* check to see if we have a filename in the evbuf */
+>>> +	if (!event->len)
+>>> +		goto out;
+>>> +
+>>> +	pname = basename(dirc);
+>>> +
+>>> +	/* does the filename match our pipe? */
+>>> +	if (strncmp(pname, event->name, event->len))
+>>> +		goto out;
+>>> +
+>>> +	/*
+>>> +	 * reopen the pipe. The old fd is not closed until the new one is
+>>> +	 * opened, so we know they should be different if the reopen is
+>>> +	 * successful.
+>>> +	 */
+>>> +	oldfd = clnt->cl_fd;
+>>> +	do {
+>>> +		cld_pipe_reopen(clnt);
+>>> +	} while (oldfd == clnt->cl_fd);
+>> Doesn't this have a potential for an infinite loop? 
+>>
+>> steved.  
+> 
+> 
+> Yes. If reopening the new pipe continually fails then it will loop
+> forever.
+Would it be more accurate to say it would be spinning forever? 
+Since there is no sleep or delay in cld_pipe_reopen, what's
+going to stop the daemon from spinning in a CPU bound loop?
 
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index e00ec14..20a876e 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1824,6 +1824,10 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			This can be set from sysctl after boot.
- 			See Documentation/sysctl/vm.txt for details.
- 
-+	mountretry=   	Is the number of times nfs root mount retries attempts
-+			are made before giving up. If this option is not
-+			specified, the default value of 3 is used.
-+
- 	ohci1394_dma=early	[HW] enable debugging via the ohci1394 driver.
- 			See Documentation/debugging-via-ohci1394.txt for more
- 			info.
-diff --git a/init/do_mounts.c b/init/do_mounts.c
-index c0851a8..03b8c05 100644
---- a/init/do_mounts.c
-+++ b/init/do_mounts.c
-@@ -258,6 +258,19 @@ __setup("rootflags=", root_data_setup);
- __setup("rootfstype=", fs_names_setup);
- __setup("rootdelay=", root_delay_setup);
- 
-+
-+#ifdef CONFIG_ROOT_NFS
-+#define DEF_NFS_MOUNT_RETRIES		3
-+static unsigned int __initdata mount_retry = DEF_NFS_MOUNT_RETRIES;
-+static int __init mount_retry_setup(char *str)
-+{
-+	mount_retry = kstrtoul(str, 0, NULL);
-+	return 1;
-+}
-+
-+__setup("mountretry=", mount_retry_setup);
-+#endif
-+
- static void __init get_fs_names(char *page)
- {
- 	char *s = page;
-@@ -363,12 +376,16 @@ out:
- static int __init mount_nfs_root(void)
- {
- 	char *root_dev, *root_data;
--
-+	unsigned int retries = mount_retry;
- 	if (nfs_root_data(&root_dev, &root_data) != 0)
- 		return 0;
--	if (do_mount_root(root_dev, "nfs", root_mountflags, root_data) != 0)
--		return 0;
--	return 1;
-+
-+	while (retries--) {
-+		if (do_mount_root(root_dev,
-+				"nfs", root_mountflags, root_data) == 0)
-+			return 1;
-+	}
-+	return 0;
- }
- #endif
- 
--- 
-1.6.3.3
-
+steved.
+> 
+>>> +
+>>> +	/* readd the event for the cl_event pipe */
+>>> +	event_add(&clnt->cl_event, NULL);
+>>> +
+>>> +out:
+>>> +	event_add(&pipedir_event, NULL);
+>>> +	free(dirc);
+>>> +}
+>>> +
+>>>  static int
+>>>  cld_pipe_open(struct cld_client *clnt)
+>>>  {
+>>> -	int ifd, wat;
+>>> +	int wat;
+>>>  	ssize_t ret;
+>>>  	char *dirc, *dname;
+>>>  	char event[INOTIFY_EVENT_MAX];
+>>> @@ -97,16 +153,16 @@ cld_pipe_open(struct cld_client *clnt)
+>>>  
+>>>  	dname = dirname(dirc);
+>>>  
+>>> -	ifd = inotify_init();
+>>> -	if (ifd < 0) {
+>>> +	inotify_fd = inotify_init();
+>>> +	if (inotify_fd < 0) {
+>>>  		xlog_err("%s: inotify_init failed: %m", __func__);
+>>>  		goto out_free;
+>>>  	}
+>>>  
+>>> -	wat = inotify_add_watch(ifd, dname, IN_CREATE);
+>>> +	wat = inotify_add_watch(inotify_fd, dname, IN_CREATE);
+>>>  	if (wat < 0) {
+>>>  		xlog_err("%s: inotify_add_watch failed: %m", __func__);
+>>> -		goto out;
+>>> +		goto out_err;
+>>>  	}
+>>>  
+>>>  	for (;;) {
+>>> @@ -117,24 +173,31 @@ cld_pipe_open(struct cld_client *clnt)
+>>>  		else if (errno != ENOENT) {
+>>>  			xlog_err("%s: unable to open %s: %m", __func__,
+>>>  					pipepath);
+>>> -			goto out;
+>>> +			goto out_err;
+>>>  		}
+>>> -		ret = read(ifd, event, INOTIFY_EVENT_MAX);
+>>> +		ret = read(inotify_fd, event, INOTIFY_EVENT_MAX);
+>>>  		if (ret < 0) {
+>>>  			xlog_err("%s: read from inotify fd failed: %m",
+>>>  					__func__);
+>>> -			goto out;
+>>> +			goto out_err;
+>>>  		}
+>>>  	}
+>>>  
+>>> +	/* set event for the pipe reads */
+>>>  	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
+>>>  	event_add(&clnt->cl_event, NULL);
+>>>  
+>>> -out:
+>>> -	close(ifd);
+>>> +	/* another event for inotify read */
+>>> +	event_set(&pipedir_event, inotify_fd, EV_READ, cld_inotify_cb, clnt);
+>>> +	event_add(&pipedir_event, NULL);
+>>> +
+>>>  out_free:
+>>>  	free(dirc);
+>>>  	return clnt->cl_fd;
+>>> +
+>>> +out_err:
+>>> +	close(inotify_fd);
+>>> +	goto out_free;
+>>>  }
+>>>  
+>>>  static void
+>>> @@ -142,6 +205,7 @@ cld_pipe_reopen(struct cld_client *clnt)
+>>>  {
+>>>  	int fd;
+>>>  
+>>> +	xlog(D_GENERAL, "%s: reopening pipe", __func__);
+>>>  	fd = open(pipepath, O_RDWR, 0);
+>>>  	if (fd < 0) {
+>>>  		xlog_warn("%s: Re-opening of %s failed: %m",
+>>> -- 1.7.7.5
+> 
+> 
