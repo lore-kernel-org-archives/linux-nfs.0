@@ -1,175 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41779 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44265 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932709Ab2AMULP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:15 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 08/44] NFS: Created custom init_aclclient() functions
-Date: Fri, 13 Jan 2012 15:10:17 -0500
-Message-Id: <1326485453-1350-9-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+	id S1752019Ab2AYUxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 15:53:42 -0500
+Date: Wed, 25 Jan 2012 15:53:40 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120125205340.GA21335@fieldses.org>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+ <20120124230855.GE12426@fieldses.org>
+ <20120125064158.4551a012@tlielax.poochiereds.net>
+ <20120125131116.GA17873@fieldses.org>
+ <20120125083820.637c8362@tlielax.poochiereds.net>
+ <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com>
+ <20120125171401.GI17873@fieldses.org>
+ <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
+ <20120125185529.GJ17873@fieldses.org>
+ <7D6EA28C-26F1-46A3-B1C5-6BC6F6AE713D@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <7D6EA28C-26F1-46A3-B1C5-6BC6F6AE713D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Wed, Jan 25, 2012 at 03:29:34PM -0500, Chuck Lever wrote:
+> 
+> On Jan 25, 2012, at 1:55 PM, J. Bruce Fields wrote:
+> 
+> > On Wed, Jan 25, 2012 at 12:41:27PM -0500, Chuck Lever wrote:
+> >> If SETCLIENTID returns a unique clientid4 that a client hasn't seen from other servers, the client knows that's a unique server instance which must be recovered separately after a reboot.
+> > 
+> > Hm, but does it have to do the recovery with that server?
+> 
+> If a client has a lease and open state on that server, it should do recovery if the server reboots.
 
-This should be filled in by the v2, v3 and v4 nfs_subversion structures
-for creating an aclclient.  Right now, v2 and v4 clear the flags while
-v3 does some extra setup.
+Yes, but does it have to do it against *that* server, or could it
+recover against another?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c      |   17 ++++++++++++-----
- fs/nfs/nfs.h         |    1 +
- fs/nfs/nfs2/Makefile |    2 +-
- fs/nfs/nfs2/client.c |   12 ++++++++++++
- fs/nfs/nfs2/module.c |    1 +
- fs/nfs/nfs2/nfs2.h   |    2 ++
- 6 files changed, 29 insertions(+), 6 deletions(-)
- create mode 100644 fs/nfs/nfs2/client.c
+Again, as long as failover is allowed, I think the latter is too.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 20d1708..3f36e6e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -53,6 +53,8 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
-+static void nfs_init_server_aclclient(struct nfs_server *server);
-+
- static DEFINE_SPINLOCK(nfs_client_lock);
- static DEFINE_SPINLOCK(nfs_version_lock);
- static LIST_HEAD(nfs_versions);
-@@ -132,8 +134,10 @@ static struct nfs_subversion nfs_v3_mod = {
- 	.version  = 3,
- 	.rpc_vers = &nfs_version3,
- 	.rpc_ops  = &nfs_v3_clientops,
-+
- 	.reference = nfs_module_null_function,
- 	.unreference = nfs_module_null_function,
-+	.init_aclclient = nfs_init_server_aclclient,
- };
- #endif /* CONFIG_NFS_V3 */
- 
-@@ -142,8 +146,10 @@ static struct nfs_subversion nfs_v4_mod = {
- 	.version  = 4,
- 	.rpc_vers = &nfs_version4,
- 	.rpc_ops  = &nfs_v4_clientops,
-+
- 	.reference = nfs_module_null_function,
- 	.unreference = nfs_module_null_function,
-+	.init_aclclient = nfs_init_server_aclclient,
- };
- #endif /* CONFIG_NFS_V4 */
- 
-@@ -830,8 +836,6 @@ static int nfs_start_lockd(struct nfs_server *server)
- #ifdef CONFIG_NFS_V3_ACL
- static void nfs_init_server_aclclient(struct nfs_server *server)
- {
--	if (server->nfs_client->rpc_ops->version != 3)
--		goto out_noacl;
- 	if (server->flags & NFS_MOUNT_NOACL)
- 		goto out_noacl;
- 
-@@ -1001,7 +1005,7 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	server->namelen  = data->namlen;
- 	/* Create a client RPC handle for the NFSv3 ACL management interface */
--	nfs_init_server_aclclient(server);
-+	nfs_mod->init_aclclient(server);
- 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
- 	return 0;
- 
-@@ -1814,6 +1818,7 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
- {
- 	struct nfs_server *server;
- 	struct nfs_fattr *fattr_fsinfo;
-+	struct nfs_subversion *nfs_mod;
- 	int error;
- 
- 	dprintk("--> nfs_clone_server(,%llx:%llx,)\n",
-@@ -1842,8 +1847,10 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
- 			source->client->cl_auth->au_flavor);
- 	if (error < 0)
- 		goto out_free_server;
--	if (!IS_ERR(source->client_acl))
--		nfs_init_server_aclclient(server);
-+	if (!IS_ERR(source->client_acl)) {
-+		nfs_mod = get_nfs_server_version(server);
-+		nfs_mod->init_aclclient(server);
-+	}
- 
- 	/* probe the filesystem info for this server filesystem */
- 	error = nfs_probe_fsinfo(server, fh, fattr_fsinfo);
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index b1fe653..6b746d7 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -19,6 +19,7 @@ struct nfs_subversion {
- 
- 	void (*reference)(void);	/* For reference counting */
- 	void (*unreference)(void);	/* Also for reference counting */
-+	void (*init_aclclient)(struct nfs_server *);
- };
- 
- void nfs_register_versions(void);
-diff --git a/fs/nfs/nfs2/Makefile b/fs/nfs/nfs2/Makefile
-index 0ca3b59..d5de35f 100644
---- a/fs/nfs/nfs2/Makefile
-+++ b/fs/nfs/nfs2/Makefile
-@@ -2,4 +2,4 @@
- # Makefile for NFS v2
- #
- obj-$(CONFIG_NFS_V2) += nfs2.o
--nfs2-y := module.o dir.o file.o proc.o xdr.o
-+nfs2-y := module.o client.o dir.o file.o proc.o xdr.o
-diff --git a/fs/nfs/nfs2/client.c b/fs/nfs/nfs2/client.c
-new file mode 100644
-index 0000000..1150704
---- /dev/null
-+++ b/fs/nfs/nfs2/client.c
-@@ -0,0 +1,12 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/sunrpc/sched.h>
-+#include <linux/nfs_fs_sb.h>
-+#include <linux/nfs_mount.h>
-+
-+void nfs2_init_aclclient(struct nfs_server *server)
-+{
-+	server->flags &= ~NFS_MOUNT_NOACL;
-+	server->caps &= ~NFS_CAP_ACLS;
-+}
-diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
-index 04d415a..60302c7 100644
---- a/fs/nfs/nfs2/module.c
-+++ b/fs/nfs/nfs2/module.c
-@@ -26,6 +26,7 @@ struct nfs_subversion nfs_v2 = {
- 
- 	.reference = nfs2_reference,
- 	.unreference = nfs2_unreference,
-+	.init_aclclient = nfs2_init_aclclient,
- };
- 
- static int __init init_nfs_v2(void)
-diff --git a/fs/nfs/nfs2/nfs2.h b/fs/nfs/nfs2/nfs2.h
-index 6274821..76e62bf 100644
---- a/fs/nfs/nfs2/nfs2.h
-+++ b/fs/nfs/nfs2/nfs2.h
-@@ -7,6 +7,8 @@
- extern struct rpc_version nfs_version2;
- extern const struct nfs_rpc_ops nfs_v2_clientops;
- 
-+void nfs2_init_aclclient(struct nfs_server *);
-+
- extern const struct inode_operations nfs_file_inode_operations;
- extern const struct file_operations nfs_file_operations;
- 
--- 
-1.7.8.3
+> > And if so, then how does that fit with failover?
+> 
+> We were supposed to discuss that with Bill and Piyush.  Maybe we can bring it up again at Connectathon.  But my assumption is that fail over is supposed to look like a server reboot.
 
+That's what I assume too: but that means, if I'm a client, and I fail
+over from server A to server B, and server B gives me a STALE error: I
+don't know if that's just because I failed over, or if in fact A and/or
+B did just reboot.
+
+And from the point of view of the servers: they don't know if the state
+I'm trying to reclaim is state I previously held from server A, or if
+it's some other state that I previously held on server C (but then lost,
+unbeknownst to me, due to a network partition that lost my RENEWs to C).
+
+So I guess the servers would be stuck trying to track all that state
+across reboots?
+
+> The question is what clients does the server allow to recover, and which does it force to start fresh?  Shouldn't it be enough for a server to remember nfs_client_id4 strings?
+> 
+> > I mean, suppose the whole cluster is rebooted.  From the client's point
+> > of view, its server becomes unresponsive.  So it should probably start
+> > pinging the replicas to see if another one's up.  The first server it
+> > gets a response from won't necessarily be the one it was using before.
+> > What happens next?
+> 
+> Again, it depends on whether your clustering implementation shares state among all servers in the cluster.
+
+Assume for now it doesn't.
+
+--b.
