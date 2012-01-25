@@ -1,73 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:1136 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751638Ab2AJK22 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 05:28:28 -0500
-Message-ID: <4F0C1285.10002@parallels.com>
-Date: Tue, 10 Jan 2012 14:27:17 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 6/6] NFS: idmap PipeFS notifier introduced
-References: <20111128132805.4251.15252.stgit@localhost6.localdomain6>	 <20111128133410.4251.656.stgit@localhost6.localdomain6> <1325285643.10984.3.camel@lade.trondhjem.org>
-In-Reply-To: <1325285643.10984.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from acsinet15.oracle.com ([141.146.126.227]:23852 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750771Ab2AYSxE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 13:53:04 -0500
+Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root mount.
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120125183200.GA26907@umich.edu>
+Date: Wed, 25 Jan 2012 13:52:47 -0500
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        Srinivas KANDAGATLA <srinivas.kandagatla@st.com>,
+        linux-nfs@vger.kernel.org, akpm@linux-foundation.org, mingo@redhat.com,
+        neilb@suse.de, stuart.menefy@st.com
+Message-Id: <F96642BB-3C49-4E70-BFE9-E7549CDEDB55@oracle.com>
+References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <4F202BD4.5020400@panasas.com> <20120125183200.GA26907@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-31.12.2011 02:54, Trond Myklebust пишет:
-> On Mon, 2011-11-28 at 17:34 +0300, Stanislav Kinsbursky wrote:
->> This patch subscribes NFS clients to RPC pipefs notifications. Idmap notifier
->> is registering on NFS module load. This notifier callback is responsible for
->> creation/destruction of PipeFS idmap pipe dentry for NFS4 clients.
->>
->> Since ipdmap pipe is created in rpc client pipefs directory, we have make sure,
->> that this directory has been created already. IOW RPC client notifier callback
->> has been called already. To achive this, PipeFS notifier priorities has been
->> introduced (RPC clients notifier priority is greater than NFS idmap one).
->> But this approach gives another problem: unlink for RPC client directory will
->> be called before NFS idmap pipe unlink on UMOUNT event and will fail, because
->> directory is not empty.
->> The solution, introduced in this patch, is to try to remove client directory
->> once again after idmap pipe was unlinked. This looks like ugly hack, so
->> probably it should be replaced in some more elegant way.
->>
->> Note that no locking required in notifier callback because PipeFS superblock
->> pointer is passed as an argument from it's creation or destruction routine and
->> thus we can be sure about it's validity.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->
-> This patch gives me:
->
-> Kernel: arch/x86/boot/bzImage is ready  (#3)
->    Building modules, stage 2.
->    MODPOST 921 modules
-> ERROR: "nfs_idmap_init" [fs/nfs/nfs.ko] undefined!
-> ERROR: "nfs_idmap_quit" [fs/nfs/nfs.ko] undefined!
-> make[2]: *** [__modpost] Error 1
-> make[1]: *** [modules] Error 2
-> make: *** [sub-make] Error 2
->
-> if CONFIG_NFS_V4 is not defined.
->
 
-Sorry.
-Will resend soon.
+On Jan 25, 2012, at 1:32 PM, Jim Rees wrote:
 
-> Cheers
->    Trond
->
+> Boaz Harrosh wrote:
+> 
+>  On 01/25/2012 04:50 PM, Srinivas KANDAGATLA wrote:
+>> From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+>> 
+>> This patch adds mountretry kernel parameter for nfs root mount.
+>> mount retry indicates the number of times nfs root mount attempts to be
+>> made before giving up. If this option is not specified, the default
+>> value of 3 retries is used.
 
+Is there a reason 3 is not an adequate fixed setting?  For some reason I don't seem to have this patch in my inbox.
+
+>  If the system is set to have root on NFS. And the root is not found
+>  what does it do? does it Just bums out with a recovery console?
+
+No.  It tries the next root file system type.
+
+>  So what better options does it have other then retry for ever. die?
+
+If no root file systems are available, then yes, the kernel panics.  This has been the case for a very very long time.
+
+>  I always thought that was inconsistent. With an hard mount NFS
+>  will never give up and will retry for ever freezing all IOers until
+>  the server came back. Only with root-mount it gives up.
+
+Not true, user space mount can also give up.  See nfs(5), the retry= option.  This is not NFS I/O we're talking about here, there is no risk of data corruption.  So "hard" versus "soft" does not apply.
+
+>  Please explain what is the benefits of giving up at all. Can a machine
+>  be at all usable without it's root? 
+
+There are several different root file system options built into the kernel.  NFSROOT is but one.  Each is tried in succession.  If NFSROOT never gives up, then the others that follow it are never tried.
+
+> Doesn't grub have some fallback logic in case the given kernel/root fails?
+> Also, don't you want some indication that it's not working other than just a
+> blank screen?
+
+The kernel is running at this point, grub is well out of the picture.
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
