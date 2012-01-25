@@ -1,96 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30819 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756511Ab2AJRrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 12:47:46 -0500
+Received: from www.linutronix.de ([62.245.132.108]:59975 "EHLO
+	Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755445Ab2AYOFK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 09:05:10 -0500
+Date: Wed, 25 Jan 2012 15:05:03 +0100 (CET)
+From: Thomas Gleixner <tglx@linutronix.de>
+To: Jeff Layton <jlayton@redhat.com>
+cc: Boaz Harrosh <bharrosh@panasas.com>,
+        Stanislaw Gruszka <sgruszka@redhat.com>,
+        Stephen Boyd <sboyd@codeaurora.org>, linux-kernel@vger.kernel.org,
+        bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Tejun Heo <tj@kernel.org>
+Subject: Re: WARNING: at lib/debugobjects.c:262
+ debug_print_object+0x8c/0xb0()
+In-Reply-To: <20120124124353.7148b827@tlielax.poochiereds.net>
+Message-ID: <alpine.LFD.2.02.1201251502210.2716@ionos>
+References: <20120120135646.2fc4fa61@tlielax.poochiereds.net> <4F1BCCD6.4020603@codeaurora.org> <20120123102311.4378b8c1@tlielax.poochiereds.net> <20120124074516.GC2420@redhat.com> <4F1E7F3F.3060703@panasas.com> <20120124073626.552bc31c@tlielax.poochiereds.net>
+ <4F1EC7C9.2020001@panasas.com> <20120124113234.26c47969@tlielax.poochiereds.net> <20120124124353.7148b827@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
-Subject: RE: [GIT PULL] Please pull NFS client bugfixes and cleanups
-Date: Tue, 10 Jan 2012 09:47:42 -0800
-Message-ID: <2E1EB2CF9ED1CB4AA966F0EB76EAB4430CCB0A22@SACMVEXC2-PRD.hq.netapp.com>
-In-Reply-To: <201201101822.21157.wolfgang.walter@stwm.de>
-References: <1326142671.9041.1.camel@lade.trondhjem.org> <201201101153.51438.wolfgang.walter@stwm.de> <1326202733.2477.32.camel@lade.trondhjem.org> <201201101822.21157.wolfgang.walter@stwm.de>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Wolfgang Walter" <wolfgang.walter@stwm.de>
-Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogV29sZmdhbmcgV2FsdGVy
-IFttYWlsdG86d29sZmdhbmcud2FsdGVyQHN0d20uZGVdDQo+IFNlbnQ6IFR1ZXNkYXksIEphbnVh
-cnkgMTAsIDIwMTIgMTI6MjIgUE0NCj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gQ2M6IExpbnVz
-IFRvcnZhbGRzOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5r
-ZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBbR0lUIFBVTExdIFBsZWFzZSBwdWxsIE5GUyBjbGll
-bnQgYnVnZml4ZXMgYW5kIGNsZWFudXBzDQo+IA0KPiBBbSBEaWVuc3RhZywgMTAuIEphbnVhciAy
-MDEyIHNjaHJpZWIgVHJvbmQgTXlrbGVidXN0Og0KPiA+IE9uIFR1ZSwgMjAxMi0wMS0xMCBhdCAx
-MTo1MyArMDEwMCwgV29sZmdhbmcgV2FsdGVyIHdyb3RlOg0KPiA+ID4gQW0gRGllbnN0YWcsIDEw
-LiBKYW51YXIgMjAxMiBzY2hyaWViIFRyb25kIE15a2xlYnVzdDoNCj4gPiA+ID4gT24gVHVlLCAy
-MDEyLTAxLTEwIGF0IDAxOjQ5ICswMTAwLCBXb2xmZ2FuZyBXYWx0ZXIgd3JvdGU6DQo+ID4gPiA+
-ID4gT24gTW9uZGF5IDA5IEphbnVhcnkgMjAxMiwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+
-ID4gPiA+ID4gT24gTW9uLCAyMDEyLTAxLTA5IGF0IDE0OjI4IC0wODAwLCBNeWtsZWJ1c3QsIFRy
-b25kIHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+
-ID4gPiA+ID4gPiA+DQo+ID4gPiA+ID4gPiA+IFBsZWFzZSByZWFkIHRoZSBjaGFuZ2Vsb2cgYW5k
-IGRvY3VtZW50YXRpb246DQo+ID4gPiA+ID4gPiA+DQo+ID4gPiA+ID4gPiA+IElmIHlvdXIgc2Vy
-dmVyIGRvZXNu4oCZdCBzdXBwb3J0IG51bWVyaWMgdWlkcy9naWRzLCB0aGVuIHlvdQ0KPiA+ID4g
-PiA+ID4gPiB3aWxsIHNlZSBfbm9fIGNoYW5nZSBpbiBiZWhhdmlvdXIuDQo+ID4gPiA+ID4NCj4g
-PiA+ID4gPiBIbW0sIHdoYXQgZG9lcyB0aGF0IG1lYW4gZXhhY3RseT8gRG9lcyBhIGxpbnV4IG5m
-czQtc2VydmVyDQo+ID4gPiA+ID4gc3VwcG9ydCBudW1lcmljIHVpZHMvZ2lkcz8gSWYgeWVzLCBi
-eSBkZWZhdWx0IG9yIGRvIEkgbmVlZCBkbyBzZXQgYW4NCj4gb3B0aW9uPw0KPiA+ID4gPg0KPiA+
-ID4gPiBUaGUgcGF0Y2ggcmVxdWlyZXMgbm8gY2hhbmdlcyB0byBhIGNvbmZpZ3VyYXRpb24gdGhh
-dCBpcyBhbHJlYWR5DQo+ID4gPiA+IHdvcmtpbmcuIFRoYXQncyB0aGUgd2hvbGUgcG9pbnQgSSd2
-ZSBiZWVuIHRyeWluZyB0byBnZXQgYWNyb3NzLg0KPiA+ID4NCj4gPiA+IFNvIGlmIHVzZXIgZm9v
-IGhhcyB1aWQgNTAwIG9uIHRoZSBzZXJ2ZXIgYW5kIHVpZCA2MDAgb24gdGhlIGNsaWVudA0KPiA+
-ID4gdGhhdCB3aWxsIHN0aWxsIHdvcmsgd2l0aCBBVVRIX1NZUzoNCj4gPiA+DQo+ID4gPiBjbGll
-bnQ6IHVpZCA1MDAgPT4gZm9vQFJFQUxNDQo+ID4gPiBzZXJ2ZXI6IGZvb0BSRUFMTSA9PiB1aWQg
-NjAwDQo+ID4NCj4gPiBOby4gSW4gdGhlIHNjZW5hcmlvIHlvdSBkZXNjcmliZSBhYm92ZSwgaXQg
-d2lsbCBiZQ0KPiANCj4gU29ycnkuIE9mIGNvdXJzZS4NCj4gDQo+ID4NCj4gPiBjbGllbnQ6IHVp
-ZCA2MDAgPD0+IGZvb0BSRUFMTQ0KPiA+IHNlcnZlcjogZm9vQFJFQUxNIDw9PiB1aWQgNTAwDQo+
-ID4NCj4gPiA+IGFuZCB2aWNlLXZlcnNhPw0KPiA+DQo+ID4gVGhlIGFib3ZlIF9ub3RfIHdvcmsg
-cHJvcGVybHkgaW4gdGhlIGV4aXN0aW5nIGNvZGUuLi4gVGhpcyBraW5kIG9mDQo+ID4gc2l0dWF0
-aW9uIGlzIHRoZSB3aG9sZSByZWFzb24gZm9yIHdhbnRpbmcgdG8gY2hhbmdlIHRoZSBleGlzdGlu
-ZyBjb2RlLg0KPiA+DQo+ID4gV2l0aCB0aGUgZXhpc3RpbmcgY29kZSwgdGhlIGNsaWVudCB3aWxs
-IHNlbmQgbnVtZXJpYyB1aWQgNjAwIGFzIHBhcnQNCj4gPiBvZiB0aGUgcnBjLWxldmVsIEFVVEhf
-U1lTIGF1dGhlbnRpY2F0aW9uLCBhbmQgc28gdGhlIHNlcnZlciB3aWxsDQo+ID4gY3JlYXRlIGZp
-bGVzIHdpdGggdWlkIDYwMCBpcnJlc3BlY3RpdmUgb2YgdGhlIGZvb0BSRUFMTSBpZG1hcHBpbmcg
-YXQNCj4gPiB0aGUgTkZTdjQgbGV2ZWwuDQo+ID4gV2hlbiB0aGUgY2xpZW50IGxhdGVyIGF0dGVt
-cHRzIHRvIGRvIGEgR0VUQVRUUiBvbiB0aGF0IGZpbGUsIHRoZQ0KPiA+IHNlcnZlciB3aWxsIHRo
-ZW4gdHJhbnNsYXRlIHRoYXQgdWlkIDYwMCB1c2luZyB0aGUgaWRtYXBwZXINCj4gPg0KPiA+IHNl
-cnZlciAgdWlkIDYwMCA9PiBiYXJAUkVBTE0NCj4gPiBjbGllbnQgIGJhckBSRUFMTSA9PiB1aWQg
-MjEzNDEyDQo+ID4NCj4gPiBJT1c6IFRoaXMgaXMgZXhhY3RseSB0aGUgc2l0dWF0aW9uIHdoZXJl
-IHdlIHdhbnQgdG8gdXNlIG51bWVyaWMgdWlkcw0KPiA+IGV2ZXJ5d2hlcmUsIHNvIHRoYXQgdGhl
-IHNlcnZlciByZXR1cm5zIGEgbnVtZXJpYyB1aWQgNjAwIGluIHRoZSBHRVRBVFRSLg0KPiA+IElu
-IGFkZGl0aW9uLCBpZiB0aGUgY2xpZW50IGRvZXMgYSAnY2hvd24gZm9vJywgaXQgc2hvdWxkIHNl
-bmQgdWlkIDYwMA0KPiA+IGluIHRoZSBTRVRBVFRSIHJlcXVlc3QsIHdoaWNoIG1hdGNoZXMgdGhl
-IHVpZCA2MDAgaW4gdGhlIEFVVEhfU1lTDQo+ID4gYXV0aGVudGljYXRpb24uDQo+IA0KPiBXZSBh
-cmUgdXNpbmcgQVVUSF9TWVMgZm9yIGV4cG9ydGluZyByZWFkLW9ubHkuDQo+IA0KPiBUaGUgdWlk
-IChhbmQgZ2lkcykgb2YgdGhlIHVzZXJzIGFjY2Vzc2luZyB0aGUgZmlsZXN5c3RlbSAodGhhdCBp
-cyBvdXIgaWRlbml0aXRpZXMNCj4gdXNlZCB3aXRoIFNZU19BVVRIKSBhcmUgc3luY2VkLiBCdXQg
-dGhlcmUgYXJlIG90aGVyIGlkZW50aXRpZXMgd2hpY2ggYXJlDQo+IG5vdC4gRGViaWFuIGkuZS4g
-YWxsb2NhdGVzIHNvbWUgc3lzdGVtIHVpZHMgYW5kIGdpZHMgZHluYW1pY2FsbHkuDQo+IA0KPiBX
-aXRoIHRoaXMgY2hhbmdlIGFjY2VzcyB0byBmaWxlcyBhbmQgZGlyZWN0b3JpZXMgd2lsbCBub3Qg
-YnJlYWsgYnV0IGkuZS4gaWYgeW91DQo+IHVzZSBjcCBhcyByb290IGNwIHdpbGwgYmVoYXZlIGRp
-ZmZlcmVudGx5LiBJLmUuIGFzIHBhcnQgb2Ygb3VyIGluc3RhbGxhdGlvbg0KPiBwcm9jZXNzIHdl
-IG9uY2UgbW91bnRlZCBhIGZpbGVzeXN0ZW0gcm8gYW5kIGNsb25lZCBpdCB3aXRoIGNwIC1hIC4u
-Li4gVGhpcw0KPiB3b3VsZCBicmVhay4NCg0KWW91IHdpbGwgZ2V0IGFuIGV4YWN0IHJlcGxpY2Eg
-b2YgdGhlIHNlcnZlciBmaWxlc3lzdGVtLCBqdXN0IGFzIGlmIHlvdSBoYWQgdXNlZCBORlN2My4N
-Cg0KPiA+IE9yIGFnYWluOiBJZiBJJ20gdXNpbmcgQVVUSF9TWVMsIHRoZW4gSSdtIHRyYW5zbWl0
-dGluZyBudW1lcmljDQo+ID4gdWlkcy9naWRzIGFzIG15IGF1dGhlbnRpY2F0aW9uIHRva2VuLCBh
-bmQgc28gSSB3YW50IHRvIHVzZSB0aGUgc2FtZQ0KPiA+IG51bWVyaWMgdWlkcy9naWRzIHRvIGxh
-YmVsIG15IGZpbGUgb3duZXJzaGlwLiBUaGUgaWRtYXBwZXIgZG9lc24ndA0KPiA+IGFmZmVjdCB0
-aGUgQVVUSF9TWVMgYXV0aGVudGljYXRpb24gdG9rZW4sIGFuZCBzbyBtYXBwaW5nIHRoZSBORlMN
-Cj4gPiBvd25lcnNoaXAgdG8gdHJvbmRAUkVBTE0gaXMgbm90IHVzZWZ1bCBhbmQgbWF5IGluc3Rl
-YWQgcmVzdWx0IGluIHdyb25nDQo+ID4gYmVoYXZpb3VyIHN1Y2ggYXMgaW4gdGhlIHNpdHVhdGlv
-biBkZXNjcmliZWQgYWJvdmUuDQo+IA0KPiBTbyB0aGlzIGJhc2ljYWxseSBzYXlzIHRoYXQgaWRt
-YXBwZXIgd2lsbCBub3QgYmUgdXNlZCBmb3IgQVVUSF9TWVMgYW55IG1vcmUNCj4gYW5kIGJlaGF2
-ZXMgZXhhY3RseSBhcyBORlN2Mz8NCg0KWWVzDQotICBORlN2MyBnb3QgdGhlIGJlaGF2aW91ciB3
-aXRoIEFVVEhfU1lTIHJpZ2h0LCBidXQgUlBDU0VDX0dTUyBpcyBicm9rZW4uDQotIFRoZSBvcmln
-aW5hbCBORlN2NCBwcm90b2NvbCB0ZXh0IGdvdCB0aGUgYmVoYXZpb3VyIHdpdGggUlBDU0VDX0dT
-UyByaWdodCwgYnV0IEFVVEhfU1lTIGlzIGJyb2tlbi4NCg0KVGhpcyBjaGFuZ2UgbWVhbnMgdGhh
-dCBORlN2NCBmaW5hbGx5IGdldHMgYm90aCBBVVRIX1NZUyBfYW5kXyBSUENTRUNfR1NTIHJpZ2h0
-LiBJdCBtYWtlIHRoZSBORlMgcHJvdG9jb2wgdXNlIHByaW5jaXBhbC1saWtlIG5hbWVzIHdoZW4g
-cHJpbmNpcGFscyBhcmUgdXNlZCBhcyB0aGUgYmFzaXMgZm9yIGF1dGhlbnRpY2F0aW9uLCBhbmQg
-bnVtZXJpYyB1aWQvZ2lkcyB3aGVuIHRob3NlIGFyZSB1c2VkIGFzIHRoZSBiYXNpcyBmb3IgYXV0
-aGVudGljYXRpb24uIEl0IGVuc3VyZXMgdGhhdCBhY2xzIGFuZCBtb2RlIGJpdC1iYXNlZCBwZXJt
-aXNzaW9ucyBhbHdheXMgd29yayBhcyBleHBlY3RlZC4uLg0KDQpUcm9uZA0K
+On Tue, 24 Jan 2012, Jeff Layton wrote:
+> > Still, I wonder if there are other problems like this around. The slab
+> > allocators seem to call debug_check_no_obj_freed() on kmem_cache_free,
+> > but parts of the objects themselves (like the timer in the work object
+> > here) get initialized in other places and aren't necessarily
+> > reinitialized when they're recycled out of the slab...
+> > 
+> 
+> On second thought...getting rid of the ctor function here might be
+> problematic. We have to call inode_init_once, etc...
+> 
+> Almost all of the inode slabs have one, so I've settled for just moving
+> the INIT_DELAYED_WORK call out of init_once and into rpc_alloc_inode. I
+> sent a patch to Trond and linux-nfs to do that. That will fix this
+> case, but I do wonder if there are other places in the kernel that have
+> similar problems with debugobject initialization.
+
+The problem is that debugobject requires that a newly allocated object
+is reinitialized and made available to the debugobjects code again
+simply because we remove it from the debugobjects core on
+kmem_cache_free(). 
+
+The real question is why the heck kmem_cache_alloc() does not call the
+ctor on each allocation and just expects the previously used and freed
+object to be in a consistent initialiazed state.
+
+Thanks,
+
+	tglx
