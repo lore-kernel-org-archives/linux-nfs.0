@@ -1,111 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:45223 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757822Ab2AKRT0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 12:19:26 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust\@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>,
-        "neilb\@suse.de" <neilb@suse.de>,
-        "netdev\@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>,
-        "davem\@davemloft.net" <davem@davemloft.net>,
-        "devel\@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>
-	<20111214104449.3991.61989.stgit@localhost6.localdomain6>
-	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>
-	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>
-	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com>
-	<m1vcotigyb.fsf@fess.ebiederm.org> <4F0C150F.1020007@parallels.com>
-	<m1ehv76v2v.fsf@fess.ebiederm.org> <4F0D5A9E.5030501@parallels.com>
-Date: Wed, 11 Jan 2012 09:21:43 -0800
-In-Reply-To: <4F0D5A9E.5030501@parallels.com> (Stanislav Kinsbursky's message
-	of "Wed, 11 Jan 2012 13:47:10 +0400")
-Message-ID: <m1sjjm40k8.fsf@fess.ebiederm.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from rcsinet15.oracle.com ([148.87.113.117]:31545 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752602Ab2AYV3M convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 16:29:12 -0500
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120125212553.GA22216@fieldses.org>
+Date: Wed, 25 Jan 2012 16:29:02 -0500
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <A8128BCD-0914-4D2B-81BF-A4A4EF0F2561@oracle.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com> <20120124230855.GE12426@fieldses.org> <20120125064158.4551a012@tlielax.poochiereds.net> <20120125131116.GA17873@fieldses.org> <20120125083820.637c8362@tlielax.poochiereds.net> <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com> <20120125171401.GI17873@fieldses.org> <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com> <20120125185529.GJ17873@fieldses.org> <20120125152356.10bdd772@tlielax.poochiereds.net> <20120125212553.GA22216@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stanislav Kinsbursky <skinsbursky@parallels.com> writes:
 
-> 11.01.2012 02:39, Eric W. Biederman пишет:
->> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->>
->>> 03.01.2012 07:49, Eric W. Biederman пишет:
->>>> Stanislav Kinsbursky<skinsbursky@parallels.com>   writes:
->>>>
->>>>> 19.12.2011 20:37, Eric W. Biederman пишет:
->>>>>> Stanislav Kinsbursky<skinsbursky@parallels.com>    writes:
->>>>>>
->>>>>> Doing that independently of the rest of the sysctls is pretty horrible
->>>>>> and confusing to users.   What I am planning might suit your needs and
->>>>>> if not we need to talk some more about how to get the vfs to do
->>>>>> something reasonable.
->>>>>>
->>>>>
->>>>> Ok, Eric. Would be glad to discuss your sysctls plans.
->>>>> But actually you already know my needs: I would like to make sysctls work in the
->>>>> way like sysfs does: i.e. content of files depends on mount maker -
->>>>> not viewer.
->>>>
->>>> What drives the desire to have sysctls depend on the mount maker?
->>>
->>> Because we can (will, actually) have nested fs root's for containers. IOW,
->>> container's root will be accessible from it's creator context. And I want to
->>> tune container's fs from creators context.
->>
->> Tuning the child context from the parent context is an entirely
->> reasonable thing to do.  To affect a namespace that is not yours
->> the requirement is simply that we don't use current to lookup the
->> sysctl.  So what I am proposing should work for your case.
->>
->
-> Could you explain, what are you proposing?
-> I still don't know any details about it.
+On Jan 25, 2012, at 4:25 PM, J. Bruce Fields wrote:
 
-I am proposing treating /proc/sys like /proc/net is currently treated.
-See below.
+> On Wed, Jan 25, 2012 at 03:23:56PM -0500, Jeff Layton wrote:
+>> I suggest that we only allow the reclaim of locks
+>> on the original address against which they were established.
+> 
+> I'm not sure what that means.
+> 
+> If a server stops responding, the v4.0 client has two choices: it can
+> either wait for the server to come back, and reclaim when it does.  Or
+> if it supports failover it can go find another server and perform
+> reclaims over there.
 
->>>> Especially what drives that desire not to have it have a /proc/<pid>/sys
->>>> directory that reflects the sysctls for a given process.
->>>>
->>>
->>> This is not so important for me, where to access sysctl's. But I'm worrying
->>> about backward compatibility. IOW, I'm afraid of changing path
->>> "/proc/sys/sunprc/*" to "/proc/<pid>/sys/sunrpc". This would break a lot of
->>> user-space programs.
->>
->> The part that keeps it all working is by adding a symlink from /proc/sys
->> to /proc/self/sys.  That technique has worked well for /proc/net, and I
->> don't expect there will be any problems with /proc/sys either.  It is
->> possible but is very rare for the introduction of a symlink in a path
->> to cause problems.
->>
->
-> Probably I don't understand you, but as I see it now, symlink to "/proc/self/"
-> is unacceptable because of the following:
-> 1) will be used current context (any) instead of desired one
-(Using the current context is the desirable outcome for existing tools).
-> 1) if CT has other pid namespace - then we just have broken link.
+Honestly, I don't think that's possible in NFSv4.0.
 
-Assuming the process in question is not in the pid namespace available
-to proc then yes you will indeed have a broken link.  But a broken
-link is only a problem for new applications that are doing something strange.
+The richer information provided by fs_locations_info can allow the client to determine whether two servers share more than simply data.  That information does not exist in NFSv4.0, so there's no way a client can expect that two servers lists in fs_locations results will always have the same NFSv4 state.
 
-I am proposing treating /proc/sys like /proc/net has already been
-treated.  Aka move have the version of /proc/sys that relative to a
-process be visible at: /proc/<pid>/sys, and with a compat symlink 
-from /proc/sys -> /proc/self/sys.
+Thus I believe that NFSv4.0 replication is limited to read-only data.  But I have to go back and read that chapter of 3530 again.
 
-Just like has already been done with /proc/net.
+> I'm a little unclear how it does that, but I suppose it first tests
+> somehow to see whether its existing state is supported, and if not, it
+> establishes a new clientid with SETCLIENTID/SETCILENTID_CONFIRM using
+> its old name, and then attempts to reclaim.
+> 
+> You're now requiring it *not* to do that if it happens that the servers
+> all rebooted in the meantime.  How does it know that that's what
+> happened?
+> 
+> Or maybe that's not what you want to require, I'm not sure.
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Semantically this should be easy to understand, and about as backwards
-compatible as it gets.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Eric
+
+
+
