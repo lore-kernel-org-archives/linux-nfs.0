@@ -1,216 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39404 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:26568 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755299Ab2ATRt6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jan 2012 12:49:58 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Add trace events to the sunrpc subsystem
-Date: Fri, 20 Jan 2012 12:49:51 -0500
-Message-Id: <1327081791-27455-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751030Ab2AYOqd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 09:46:33 -0500
+Date: Wed, 25 Jan 2012 09:46:16 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Thomas Gleixner <tglx@linutronix.de>
+Cc: Boaz Harrosh <bharrosh@panasas.com>,
+        Stanislaw Gruszka <sgruszka@redhat.com>,
+        Stephen Boyd <sboyd@codeaurora.org>, linux-kernel@vger.kernel.org,
+        bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Tejun Heo <tj@kernel.org>
+Subject: Re: WARNING: at lib/debugobjects.c:262
+ debug_print_object+0x8c/0xb0()
+Message-ID: <20120125094616.6e90d113@tlielax.poochiereds.net>
+In-Reply-To: <alpine.LFD.2.02.1201251502210.2716@ionos>
+References: <20120120135646.2fc4fa61@tlielax.poochiereds.net>
+	<4F1BCCD6.4020603@codeaurora.org>
+	<20120123102311.4378b8c1@tlielax.poochiereds.net>
+	<20120124074516.GC2420@redhat.com>
+	<4F1E7F3F.3060703@panasas.com>
+	<20120124073626.552bc31c@tlielax.poochiereds.net>
+	<4F1EC7C9.2020001@panasas.com>
+	<20120124113234.26c47969@tlielax.poochiereds.net>
+	<20120124124353.7148b827@tlielax.poochiereds.net>
+	<alpine.LFD.2.02.1201251502210.2716@ionos>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add declarations to allow tracing of RPC call creation, running, sleeping,
-and destruction.
+On Wed, 25 Jan 2012 15:05:03 +0100 (CET)
+Thomas Gleixner <tglx@linutronix.de> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/sched.c            |   13 ++++
- 2 files changed, 137 insertions(+), 0 deletions(-)
- create mode 100644 include/trace/events/sunrpc.h
+> On Tue, 24 Jan 2012, Jeff Layton wrote:
+> > > Still, I wonder if there are other problems like this around. The slab
+> > > allocators seem to call debug_check_no_obj_freed() on kmem_cache_free,
+> > > but parts of the objects themselves (like the timer in the work object
+> > > here) get initialized in other places and aren't necessarily
+> > > reinitialized when they're recycled out of the slab...
+> > > 
+> > 
+> > On second thought...getting rid of the ctor function here might be
+> > problematic. We have to call inode_init_once, etc...
+> > 
+> > Almost all of the inode slabs have one, so I've settled for just moving
+> > the INIT_DELAYED_WORK call out of init_once and into rpc_alloc_inode. I
+> > sent a patch to Trond and linux-nfs to do that. That will fix this
+> > case, but I do wonder if there are other places in the kernel that have
+> > similar problems with debugobject initialization.
+> 
+> The problem is that debugobject requires that a newly allocated object
+> is reinitialized and made available to the debugobjects code again
+> simply because we remove it from the debugobjects core on
+> kmem_cache_free(). 
+> 
+> The real question is why the heck kmem_cache_alloc() does not call the
+> ctor on each allocation and just expects the previously used and freed
+> object to be in a consistent initialiazed state.
+> 
+> Thanks,
+> 
+> 	tglx
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-new file mode 100644
-index 0000000..1852f11
---- /dev/null
-+++ b/include/trace/events/sunrpc.h
-@@ -0,0 +1,124 @@
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM sunrpc
-+
-+#if !defined(_TRACE_SUNRPC_H)
-+#define _TRACE_SUNRPC_H
-+
-+#include <linux/sunrpc/sched.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/tracepoint.h>
-+
-+DECLARE_EVENT_CLASS(rpc_task_running,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(const struct rpc_task *, task)
-+		__field(const void *, action)
-+		__field(unsigned long, runstate)
-+		__field(int, status)
-+		__field(unsigned short, flags)
-+		),
-+
-+	TP_fast_assign(
-+		__entry->clnt = clnt;
-+		__entry->task = task;
-+		__entry->action = action;
-+		__entry->runstate = task->tk_runstate;
-+		__entry->status = task->tk_status;
-+		__entry->flags = task->tk_flags;
-+		),
-+
-+	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
-+		__entry->task,
-+		__entry->clnt,
-+		__entry->flags,
-+		__entry->runstate,
-+		__entry->status,
-+		__entry->action
-+		)
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_begin,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_complete,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DECLARE_EVENT_CLASS(rpc_task_queued,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(const struct rpc_task *, task)
-+		__field(const struct rpc_wait_queue *, queue)
-+		__field(unsigned long, timeout)
-+		__field(unsigned long, runstate)
-+		__field(int, status)
-+		__field(unsigned short, flags)
-+		),
-+
-+	TP_fast_assign(
-+		__entry->clnt = clnt;
-+		__entry->task = task;
-+		__entry->queue = q;
-+		__entry->timeout = task->tk_timeout;
-+		__entry->runstate = task->tk_runstate;
-+		__entry->status = task->tk_status;
-+		__entry->flags = task->tk_flags;
-+		),
-+
-+	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-+		__entry->task,
-+		__entry->clnt,
-+		__entry->flags,
-+		__entry->runstate,
-+		__entry->status,
-+		__entry->timeout,
-+		rpc_qname(__entry->q)
-+		)
-+);
-+
-+DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q)
-+
-+);
-+
-+#endif /* _TRACE_SUNRPC_H */
-+
-+#include <trace/define_trace.h>
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index f982dfe..03f452a 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -28,6 +28,9 @@
- #define RPCDBG_FACILITY		RPCDBG_SCHED
- #endif
- 
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/sunrpc.h>
-+
- /*
-  * RPC slabs and memory pools
-  */
-@@ -251,6 +254,8 @@ static inline void rpc_task_set_debuginfo(struct rpc_task *task)
- 
- static void rpc_set_active(struct rpc_task *task)
- {
-+	trace_rpc_task_begin(task->tk_client, task, NULL);
-+
- 	rpc_task_set_debuginfo(task);
- 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
- }
-@@ -267,7 +272,10 @@ static int rpc_complete_task(struct rpc_task *task)
- 	unsigned long flags;
- 	int ret;
- 
-+	trace_rpc_task_complete(task->tk_client, task, NULL);
-+
- 	spin_lock_irqsave(&wq->lock, flags);
-+
- 	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
- 	ret = atomic_dec_and_test(&task->tk_count);
- 	if (waitqueue_active(wq))
-@@ -324,6 +332,8 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
- 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
- 			task->tk_pid, rpc_qname(q), jiffies);
- 
-+	trace_rpc_task_sleep(task->tk_client, task, q);
-+
- 	__rpc_add_wait_queue(q, task, queue_priority);
- 
- 	BUG_ON(task->tk_callback != NULL);
-@@ -378,6 +388,8 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
- 		return;
- 	}
- 
-+	trace_rpc_task_wakeup(task->tk_client, task, queue);
-+
- 	__rpc_remove_wait_queue(queue, task);
- 
- 	rpc_make_runnable(task);
-@@ -701,6 +713,7 @@ static void __rpc_execute(struct rpc_task *task)
- 			if (do_action == NULL)
- 				break;
- 		}
-+		trace_rpc_task_run_action(task->tk_client, task, task->tk_action);
- 		do_action(task);
- 
- 		/*
+
+I believe that's by design. The comments at the top of slab.c say:
+
+ * This means, that your constructor is used only for newly allocated
+ * slabs and you must pass objects with the same initializations to
+ * kmem_cache_free.
+
+I assume that it was done that way for efficiency, but not passing
+"clean" objects to kmem_cache_free has been the source of bugs in the
+past.
+
+Rerunning the ctor should be safe. SLAB already does that when memory
+poisoning is enabled. Perhaps we could make sure all the allocators do
+that when debug objects are enabled?
+
+OTOH, doing that might paper over bugs in some cases...
+
 -- 
-1.7.7.5
-
+Jeff Layton <jlayton@redhat.com>
