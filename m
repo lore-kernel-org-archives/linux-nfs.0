@@ -1,121 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eu1sys200aog104.obsmtp.com ([207.126.144.117]:56604 "EHLO
-	eu1sys200aog104.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751431Ab2AZOzY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 09:55:24 -0500
-From: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-To: linux-nfs@vger.kernel.org
-Cc: akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
-        stuart.menefy@st.com, chuck.lever@oracle.com, bharrosh@panasas.com,
-        rees@umich.edu
-Subject: [PATCH 3.3.0-rc1 2/2] do_mounts: Add mount retry option for nfs root mount retry.
-Date: Thu, 26 Jan 2012 14:47:55 +0000
-Message-Id: <1327589275-16948-1-git-send-email-srinivas.kandagatla@st.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:36771 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755379Ab2AYNrt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 08:47:49 -0500
+Subject: [PATCH 1/4] SUNRPC: clear svc pools lists helper introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Wed, 25 Jan 2012 17:47:09 +0400
+Message-ID: <20120125134709.13662.58449.stgit@localhost6.localdomain6>
+In-Reply-To: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
+References: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+This patch moves removing of service transport from it's pools ready lists to
+separated function. Also this clear is now done with list_for_each_entry_safe()
+helper.
+This is a precursor patch, which would be usefull with service shutdown in
+network namespace context, introduced later in the series.
 
-This patch adds mountretry kernel parameter for nfs root mount.
-mount retry indicates the number of times nfs root mount attempts to be
-made before giving up. If this option is not specified, the default
-value of 5 retries is used.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-User should be allowed to configure nfs mount retries, because if he
-either want to timeout quickly and try the succession root-mounts or If
-he wish to keep kernel trying very harder till nfs-root mount is
-successful.
-
-Without this patch kernel has to wait for a constant big delay before
-attempting to mount succession root-mount. And this patch also gives
-user more flexibility with nfs-root mount retries.
-
-Signed-off-by: Srinivas Kandagatla <srinivas.kandagatla@st.com>
 ---
-Hello All, 
+ net/sunrpc/svc_xprt.c |   19 +++++++++++++------
+ 1 files changed, 13 insertions(+), 6 deletions(-)
 
-With hardcoded nfs-mount retry value(NFSROOT_RETRY_MAX), user and kernel 
-have very little choice other than waiting for kernel to finish all the 
-retries before attempting to make succession root-mounts.
-So my patch makes mount retry an kernel parameter.
-This gives user more flexibility to  decide to either nfs-timeout quickly 
-and try succession root-mounts or  try more harder and wait forever to get 
-the network up.
-
-Comments?
-
-Thanks,
-srini
-
- Documentation/kernel-parameters.txt |    6 ++++++
- init/do_mounts.c                    |   19 +++++++++++++++----
- 2 files changed, 21 insertions(+), 4 deletions(-)
-
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index e00ec14..999c3ae 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1824,6 +1824,12 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			This can be set from sysctl after boot.
- 			See Documentation/sysctl/vm.txt for details.
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index de1e1a8..50bf7c1 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -932,26 +932,33 @@ static void svc_close_list(struct list_head *xprt_list)
+ 	}
+ }
  
-+	mountretry=	Is the number of times nfs root mount retries attempts
-+			are made before giving up. If this option is not
-+			specified, the default value of 5 is used. Each retry
-+			is attempted with a (1<<current_retry - 1) seconds
-+			delay with a max of 31 seconds delay.
-+
- 	ohci1394_dma=early	[HW] enable debugging via the ohci1394 driver.
- 			See Documentation/debugging-via-ohci1394.txt for more
- 			info.
-diff --git a/init/do_mounts.c b/init/do_mounts.c
-index b8214ce..5c43715 100644
---- a/init/do_mounts.c
-+++ b/init/do_mounts.c
-@@ -258,6 +258,19 @@ __setup("rootflags=", root_data_setup);
- __setup("rootfstype=", fs_names_setup);
- __setup("rootdelay=", root_delay_setup);
+-void svc_close_all(struct svc_serv *serv)
++static void svc_clear_pools(struct svc_serv *serv)
+ {
+ 	struct svc_pool *pool;
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *tmp;
+ 	int i;
  
-+#ifdef CONFIG_ROOT_NFS
-+#define NFSROOT_DEF_RETRY		5
-+
-+static unsigned int __initdata mount_retry = NFSROOT_DEF_RETRY;
-+static int __init mount_retry_setup(char *str)
-+{
-+	mount_retry = kstrtoul(str, 0, NULL);
-+	return 1;
+-	svc_close_list(&serv->sv_tempsocks);
+-	svc_close_list(&serv->sv_permsocks);
+-
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+ 		pool = &serv->sv_pools[i];
+ 
+ 		spin_lock_bh(&pool->sp_lock);
+-		while (!list_empty(&pool->sp_sockets)) {
+-			xprt = list_first_entry(&pool->sp_sockets, struct svc_xprt, xpt_ready);
++		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
+ 			list_del_init(&xprt->xpt_ready);
+ 		}
+ 		spin_unlock_bh(&pool->sp_lock);
+ 	}
 +}
 +
-+__setup("mountretry=", mount_retry_setup);
-+#endif
++void svc_close_all(struct svc_serv *serv)
++{
++	struct svc_xprt *xprt;
++	struct svc_xprt *tmp;
 +
- static void __init get_fs_names(char *page)
- {
- 	char *s = page;
-@@ -363,7 +376,6 @@ out:
- 
- #define NFSROOT_TIMEOUT_MIN	1
- #define NFSROOT_TIMEOUT_MAX	32
--#define NFSROOT_RETRY_MAX	5
- 
- static int __init mount_nfs_root(void)
- {
-@@ -381,13 +393,12 @@ static int __init mount_nfs_root(void)
- 	 * to fall back to other boot methods.
- 	 */
- 	timeout = NFSROOT_TIMEOUT_MIN;
--	for (try = 1; ; try++) {
-+	try = mount_retry;
-+	while (try--) {
- 		err = do_mount_root(root_dev, "nfs",
- 					root_mountflags, root_data);
- 		if (err == 0)
- 			return 1;
--		if (try > NFSROOT_RETRY_MAX)
--			break;
- 
- 		/* Wait, in case the server refused us immediately */
- 		ssleep(timeout - 1);
--- 
-1.6.3.3
++	svc_close_list(&serv->sv_tempsocks);
++	svc_close_list(&serv->sv_permsocks);
++
++	svc_clear_pools(serv);
+ 	/*
+ 	 * At this point the sp_sockets lists will stay empty, since
+ 	 * svc_enqueue will not add new entries without taking the
 
