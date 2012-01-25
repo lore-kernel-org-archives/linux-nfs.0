@@ -1,182 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41779 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932487Ab2AMULV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:21 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 20/44] NFS: Give versions a custom return_delegation() function
-Date: Fri, 13 Jan 2012 15:10:29 -0500
-Message-Id: <1326485453-1350-21-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:37754 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751829Ab2AYOsM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 09:48:12 -0500
+Message-ID: <4F20160F.4020808@panasas.com>
+Date: Wed, 25 Jan 2012 16:47:43 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Thomas Gleixner <tglx@linutronix.de>
+CC: Jeff Layton <jlayton@redhat.com>, Stanislaw Gruszka <sgruszka@redhat.com>,
+        Stephen Boyd <sboyd@codeaurora.org>, <linux-kernel@vger.kernel.org>,
+        <bfields@redhat.com>, <linux-nfs@vger.kernel.org>,
+        Tejun Heo <tj@kernel.org>
+Subject: Re: WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
+References: <20120120135646.2fc4fa61@tlielax.poochiereds.net> <4F1BCCD6.4020603@codeaurora.org> <20120123102311.4378b8c1@tlielax.poochiereds.net> <20120124074516.GC2420@redhat.com> <4F1E7F3F.3060703@panasas.com> <20120124073626.552bc31c@tlielax.poochiereds.net> <4F1EC7C9.2020001@panasas.com> <20120124113234.26c47969@tlielax.poochiereds.net> <20120124124353.7148b827@tlielax.poochiereds.net> <alpine.LFD.2.02.1201251502210.2716@ionos>
+In-Reply-To: <alpine.LFD.2.02.1201251502210.2716@ionos>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 01/25/2012 04:05 PM, Thomas Gleixner wrote:
+> On Tue, 24 Jan 2012, Jeff Layton wrote:
+>>> Still, I wonder if there are other problems like this around. The slab
+>>> allocators seem to call debug_check_no_obj_freed() on kmem_cache_free,
+>>> but parts of the objects themselves (like the timer in the work object
+>>> here) get initialized in other places and aren't necessarily
+>>> reinitialized when they're recycled out of the slab...
+>>>
+>>
+>> On second thought...getting rid of the ctor function here might be
+>> problematic. We have to call inode_init_once, etc...
+>>
+>> Almost all of the inode slabs have one, so I've settled for just moving
+>> the INIT_DELAYED_WORK call out of init_once and into rpc_alloc_inode. I
+>> sent a patch to Trond and linux-nfs to do that. That will fix this
+>> case, but I do wonder if there are other places in the kernel that have
+>> similar problems with debugobject initialization.
+> 
+> The problem is that debugobject requires that a newly allocated object
+> is reinitialized and made available to the debugobjects code again
+> simply because we remove it from the debugobjects core on
+> kmem_cache_free(). 
+> 
+> The real question is why the heck kmem_cache_alloc() does not call the
+> ctor on each allocation and just expects the previously used and freed
+> object to be in a consistent initialiazed state.
+> 
 
-This is called by the generic NFS client to return a v4 delegation.  v2
-and v3 don't have delegations, so they don't need to do anything.
+Perhaps it's some flags that is to do with the RCU delete thing.
+You know for the lockless walks and stuff
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c          |    1 +
- fs/nfs/inode.c           |    6 ++++++
- fs/nfs/nfs.h             |    2 ++
- fs/nfs/nfs2/module.c     |    1 +
- fs/nfs/nfs3/module.c     |    1 +
- fs/nfs/nfs4/delegation.c |    2 +-
- fs/nfs/nfs4/delegation.h |    8 +-------
- fs/nfs/nfs4/proc.c       |    4 ++--
- fs/nfs/unlink.c          |    1 +
- 9 files changed, 16 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 368aa7e..ca6ebe5 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -139,6 +139,7 @@ static struct nfs_subversion nfs_v4_mod = {
- 	.init_aclclient = nfs4_init_aclclient,
- 	.have_delegation = nfs4_have_delegation,
- 	.have_delegated_attributes = nfs4_have_delegated_attributes,
-+	.return_delegation = nfs4_inode_return_delegation,
- 	.do_submount = nfs4_do_submount,
- 	.do_clone_mount = nfs4_do_clone_mount,
- };
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5328b68..1bea5b7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -136,6 +136,12 @@ int nfs_have_delegated_attributes(struct inode *inode)
- 	return nfs_mod->have_delegated_attributes(inode);
- }
- 
-+int nfs_inode_return_delegation(struct inode *inode)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
-+	return nfs_mod->return_delegation(inode);
-+}
-+
- /**
-  * nfs_sync_mapping - helper to flush all mmapped dirty data to disk
-  */
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 08950a2..c3dfb7d 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -24,6 +24,7 @@ struct nfs_subversion {
- 	void (*init_aclclient)(struct nfs_server *);
- 	int (*have_delegation)(struct inode *, fmode_t);
- 	int (*have_delegated_attributes)(struct inode *);
-+	int (*return_delegation)(struct inode *);
- 	struct vfsmount *(*do_submount)(struct dentry *, struct nfs_fh *,
- 					struct nfs_fattr *, rpc_authflavor_t);
- 	struct vfsmount *(*do_clone_mount)(struct nfs_server *, const char *,
-@@ -77,6 +78,7 @@ int nfs_setattr(struct dentry *, struct iattr *);
- int nfs_getattr(struct vfsmount *, struct dentry *, struct kstat *);
- int nfs_have_delegation(struct inode *, fmode_t);
- int nfs_have_delegated_attributes(struct inode *);
-+int nfs_inode_return_delegation(struct inode *);
- 
- /* Exported in namespace.c */
- struct vfsmount *nfs_d_automount(struct path *);
-diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
-index ef6dbb4..618ce83 100644
---- a/fs/nfs/nfs2/module.c
-+++ b/fs/nfs/nfs2/module.c
-@@ -39,6 +39,7 @@ struct nfs_subversion nfs_v2 = {
- 	.init_aclclient = nfs2_init_aclclient,
- 	.have_delegation = nfs2_no_delegation,
- 	.have_delegated_attributes = nfs2_no_delegation2,
-+	.return_delegation = nfs2_no_delegation2,
- 	.do_submount = nfs_do_submount,
- 	.do_clone_mount = nfs_do_clone_mount,
- };
-diff --git a/fs/nfs/nfs3/module.c b/fs/nfs/nfs3/module.c
-index bdd2e33..a999b2f 100644
---- a/fs/nfs/nfs3/module.c
-+++ b/fs/nfs/nfs3/module.c
-@@ -39,6 +39,7 @@ struct nfs_subversion nfs_v3 = {
- 	.init_aclclient = nfs3_init_aclclient,
- 	.have_delegation = nfs3_no_delegation,
- 	.have_delegated_attributes = nfs3_no_delegation2,
-+	.return_delegation = nfs3_no_delegation2,
- 	.do_submount = nfs_do_submount,
- 	.do_clone_mount = nfs_do_clone_mount,
- };
-diff --git a/fs/nfs/nfs4/delegation.c b/fs/nfs/nfs4/delegation.c
-index 272e735..e8aa4b6 100644
---- a/fs/nfs/nfs4/delegation.c
-+++ b/fs/nfs/nfs4/delegation.c
-@@ -387,7 +387,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
-  *
-  * Returns zero on success, or a negative errno value.
-  */
--int nfs_inode_return_delegation(struct inode *inode)
-+int nfs4_inode_return_delegation(struct inode *inode)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-diff --git a/fs/nfs/nfs4/delegation.h b/fs/nfs/nfs4/delegation.h
-index 2c45cb6..40bd6c2 100644
---- a/fs/nfs/nfs4/delegation.h
-+++ b/fs/nfs/nfs4/delegation.h
-@@ -33,7 +33,7 @@ enum {
- 
- int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
- void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
--int nfs_inode_return_delegation(struct inode *inode);
-+int nfs4_inode_return_delegation(struct inode *inode);
- int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
- void nfs_inode_return_delegation_noreclaim(struct inode *inode);
- 
-@@ -58,11 +58,5 @@ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
- void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
- int nfs4_have_delegation(struct inode *inode, fmode_t flags);
- 
--#else
--static inline int nfs_inode_return_delegation(struct inode *inode)
--{
--	return 0;
--}
- #endif
--
- #endif
-diff --git a/fs/nfs/nfs4/proc.c b/fs/nfs/nfs4/proc.c
-index c86c351..1161e70 100644
---- a/fs/nfs/nfs4/proc.c
-+++ b/fs/nfs/nfs4/proc.c
-@@ -1017,7 +1017,7 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
- 		return;
- 	}
- 	rcu_read_unlock();
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- }
- 
- static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
-@@ -3671,7 +3671,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
- 	if (i < 0)
- 		return i;
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 
- 	/*
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 1dbe14a..9f04700 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -19,6 +19,7 @@
- #include "nfs4/nfs4_fs.h"
- #include "iostat.h"
- #include "nfs4/delegation.h"
-+#include "nfs.h"
- 
- struct nfs_unlinkdata {
- 	struct hlist_node list;
--- 
-1.7.8.3
+> Thanks,
+> 
+> 	tglx
 
