@@ -1,134 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44816 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751370Ab2ADQOZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 11:14:25 -0500
-Message-ID: <1325693647.18462.15.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 2/2] NFS: Cache state owners after files are closed
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 04 Jan 2012 11:14:07 -0500
-In-Reply-To: <CBB27FEB-BA9A-408E-85A7-A3F63F7B280B@oracle.com>
-References: <20111206210723.5969.85159.stgit@degas.1015granger.net>
-	 <20111206211348.5969.61933.stgit@degas.1015granger.net>
-	 <1325692415.18462.6.camel@lade.trondhjem.org>
-	 <1325692758.18462.10.camel@lade.trondhjem.org>
-	 <CBB27FEB-BA9A-408E-85A7-A3F63F7B280B@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:22293 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756429Ab2AYRli convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jan 2012 12:41:38 -0500
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120125171401.GI17873@fieldses.org>
+Date: Wed, 25 Jan 2012 12:41:27 -0500
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com> <20120124230855.GE12426@fieldses.org> <20120125064158.4551a012@tlielax.poochiereds.net> <20120125131116.GA17873@fieldses.org> <20120125083820.637c8362@tlielax.poochiereds.net> <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com> <20120125171401.GI17873@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-01-04 at 11:08 -0500, Chuck Lever wrote: 
-> On Jan 4, 2012, at 10:59 AM, Trond Myklebust wrote:
+Hi-
+
+On Jan 25, 2012, at 12:14 PM, J. Bruce Fields wrote:
+
+> On Wed, Jan 25, 2012 at 11:47:41AM -0500, Chuck Lever wrote:
+>> I'm having a hard time following the discussion, I must be lacking some context.  But the problem is how NFSv4.0 clients detect server identity.  The only way they can do it is by performing a SETCLIENTID_CONFIRM with a particular clientid4 against every server a client knows about.  If the clientid4 is recognized by multiple server IPs, the client knows these IPs are the same server.
+>> 
+>> Thus if you are preserving clientid4's on stable storage, it seems to me that you need to preserve the relationship between a clientid4 and which servers recognize it.
 > 
-> > On Wed, 2012-01-04 at 10:53 -0500, Trond Myklebust wrote: 
-> >> On Tue, 2011-12-06 at 16:13 -0500, Chuck Lever wrote: 
-> >>> Servers have a finite amount of memory to store NFSv4 open and lock
-> >>> owners.  Moreover, servers may have a difficult time determining when
-> >>> they can reap their state owner table, thanks to gray areas in the
-> >>> NFSv4 protocol specification.  Thus clients should be careful to reuse
-> >>> state owners when possible.
-> >>> 
-> >>> Currently Linux is not too careful.  When a user has closed all her
-> >>> files on one mount point, the state owner's reference count goes to
-> >>> zero, and it is released.  The next OPEN allocates a new one.  A
-> >>> workload that serially opens and closes files can run through a large
-> >>> number of open owners this way.
-> >>> 
-> >>> When a state owner's reference count goes to zero, slap it onto a free
-> >>> list for that nfs_server, with an expiry time.  Garbage collect before
-> >>> looking for a state owner.  This makes state owners for active users
-> >>> available for re-use.
-> >>> 
-> >>> Now that there can be unused state owners remaining at umount time,
-> >>> purge the state owner free list when a server is destroyed.  Also be
-> >>> sure not to reclaim unused state owners during state recovery.
-> >>> 
-> >>> This change has benefits for the client as well.  For some workloads,
-> >>> this approach drops the number of OPEN_CONFIRM calls from the same as
-> >>> the number of OPEN calls, down to just one.  This reduces wire traffic
-> >>> and thus open(2) latency.  Before this patch, untarring a kernel
-> >>> source tarball shows the OPEN_CONFIRM call counter steadily increasing
-> >>> through the test.  With the patch, the OPEN_CONFIRM count remains at 1
-> >>> throughout the entire untar.
-> >>> 
-> >>> As long as the expiry time is kept short, I don't think garbage
-> >>> collection should be terribly expensive, although it does bounce the
-> >>> clp->cl_lock around a bit.
-> >>> 
-> >>> [ At some point we should rationalize the use of the nfs_server
-> >>> ->destroy method. ]
-> >>> 
-> >>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >>> ---
-> >> <snip> 
-> >>> +
-> >>> +static void nfs4_gc_state_owners(struct nfs_server *server)
-> >>> +{
-> >>> +	struct nfs_client *clp = server->nfs_client;
-> >>> +	struct nfs4_state_owner *sp, *tmp;
-> >>> +	unsigned long now = jiffies;
-> >>> +	LIST_HEAD(doomed);
-> >>> +
-> >>> +	spin_lock(&clp->cl_lock);
-> >>> +	list_for_each_entry_safe(sp, tmp, &server->state_owners_lru, so_lru) {
-> >>> +		/* NB: LRU is sorted so that oldest is at the head */
-> >>> +		if (time_in_range(now, sp->so_expires,
-> >>> +				sp->so_expires + clp->cl_lease_time))
-> >>> +			break;
-> >>> +		list_move(&sp->so_lru, &doomed);
-> >>> +	}
-> >>> +	spin_unlock(&clp->cl_lock);
-> >> 
-> >> There is a race here: the state owner is still visible in the rb-tree,
-> >> and so a second thread that calls nfs4_get_state_owner() may still pick
-> >> up one of these open owners that are now on your 'doomed' list.
-> >> 
-> >> I think you rather need to do the equivalent of an
-> >> 'nfs4_drop_state_owner' in your loop above in order to be 100% safe.
-> >> 
-> >>> +	list_for_each_entry_safe(sp, tmp, &doomed, so_lru) {
-> >>> +		list_del_init(&sp->so_lru);
-> >>> +		nfs4_release_state_owner(sp);
-> >>> +	}
-> >>> +}
-> >>> +
-> >>> /**
-> >>>  * nfs4_get_state_owner - Look up a state owner given a credential
-> >>>  * @server: nfs_server to search
-> >>> @@ -483,11 +521,13 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
-> >>> 	struct nfs_client *clp = server->nfs_client;
-> >>> 	struct nfs4_state_owner *sp, *new;
-> >>> 
-> >>> +	nfs4_gc_state_owners(server);
-> >>> +
-> > 
-> > One more thing: doesn't it make more sense to do the garbage collection
-> > after you've looked up the state owner? Even if the open owner has been
-> > expired on the server, you will still gain by avoiding the extra
-> > allocation.
+> The part I'm having trouble thinking about:
 > 
-> I think "GC first" is more fair.  If you really want to make sure an idle open owner is not re-used passed the sell-by, we have to do GC first.  Otherwise an open owner can languish for days if there's no other activity, and will get re-used on the next open.
+> Suppose your cluster nodes all advertise each other as replicas using
+> v4 (fs_locations or fs_locations_info).
+> 
+> Suppose your clients support (v4-based) failover, either transparent or
+> not.
+> 
+> Now suppose your cluster reboots.
+> 
+> Must the client necessarily reclaim its locks against the same server
+> that it last acquired them from?  And if not, how do we decide whether a
+> given reclaim is allowed or not?
 
-Why do we care about fairness here? The only use for the garbage
-collector is to ensure that state owners that refer to credentials that
-are no longer in use get kicked out. I don't see why we should throw out
-an open owner that matches our search criteria.
+This is just my opinion, but...
 
-> It seems to me that on-the-wire behavior would be inconsistent if some open owners were re-used after a long idle, some were not, and the precise re-use behavior depended on workload.  "GC first" gives nicely predictable behavior.
+One might define an NFSv4 server as an entity that passes out and recognizes clientid4's.
 
-Inconsistent how? An open owner is just a label and a counter. The
-server isn't going to be using it for anything other than figuring out
-ordering semantics (minor version 0 only) and share lock semantics.
+Suppose a client is talking to NFSv4 servers at IP addresses A and B.  If the client gets a clientid4 from IP address A and performs a failing SETCLIENTID_CONFIRM with that clientid4 on IP address B, then one can say that A and B are IP addresses for distinct servers.
 
+If the SETCLIENTID_CONFIRM succeeds, however, then the client must try other tests to confirm that A and B represent the same server.  For example, can the client use the same state tokens when sending NFsv4 operations to A and B?
+
+> I think there may be scenarios involving server reboots and the client
+> losing contact with some but not all servers, where we could get
+> confused about which (if any) state the client is allowed to reclaim.
+
+If SETCLIENTID returns a unique clientid4 that a client hasn't seen from other servers, the client knows that's a unique server instance which must be recovered separately after a reboot.
+
+Conversely, if all the servers in your cluster recognize a particular clientid4, then there must be some kind of state sharing relationship amongst them.  Reclaiming against one should be sufficient.  Not all clustering works that way, though.
+
+fs_locations can pass out information for entirely separate server instances.  fs_locations does not in any way indicate a relationship of state or data consistency between the servers in the lists it returns.  fs_locations_info, in fact, returns much richer information that allows clients some visibility of state and data consistency amongst the listed servers.  But the mere presence of a server in one of these lists is not enough for a wayward client to draw any conclusions about the need to reclaim state after a server reboot.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
 
