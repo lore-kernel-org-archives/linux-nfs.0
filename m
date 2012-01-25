@@ -1,57 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:57618 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751255Ab2AOQRh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Jan 2012 11:17:37 -0500
-Received: by mail-ee0-f46.google.com with SMTP id d4so1626268eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Jan 2012 08:17:37 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v6 7/9] nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-Date: Sun, 15 Jan 2012 17:20:08 +0100
-Message-Id: <1326644410-7482-8-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1326644410-7482-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from fieldses.org ([174.143.236.118]:49194 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751357Ab2AYNLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 08:11:18 -0500
+Date: Wed, 25 Jan 2012 08:11:17 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120125131116.GA17873@fieldses.org>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+ <20120124230855.GE12426@fieldses.org>
+ <20120125064158.4551a012@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120125064158.4551a012@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Wed, Jan 25, 2012 at 06:41:58AM -0500, Jeff Layton wrote:
+> On Tue, 24 Jan 2012 18:08:55 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Jan 23, 2012 at 03:01:01PM -0500, Jeff Layton wrote:
+> > > This is the fourth iteration of this patchset. I had originally asked
+> > > Bruce to take the last one for 3.3, but decided at the last minute to
+> > > wait on it a bit. I knew there would be some changes needed in the
+> > > upcall, so by waiting we can avoid needing to deal with those in code
+> > > that has already shipped. I would like to see this patchset considered
+> > > for 3.4 however.
+> > > 
+> > > The previous patchset can be viewed here. That set also contains a
+> > > more comprehensive description of the rationale for this:
+> > > 
+> > >     http://www.spinics.net/lists/linux-nfs/msg26324.html
+> > > 
+> > > There have been a number of significant changes since the last set:
+> > > 
+> > > - the remove/expire upcall is now gone. In a clustered environment, the
+> > > records would need to be refcounted in order to handle that properly. That
+> > > becomes a sticky problem when you could have nodes rebooting. We don't
+> > > really need to remove these records individually however. Cleaning them
+> > > out only when the grace period ends should be sufficient.
+> > 
+> > I don't think so:
+> > 
+> > 	1. Client establishes state with server.
+> > 	2. Network goes down.
+> > 	3. A lease period passes without the client being able to renew.
+> > 	   The server expires the client and grants conflicting locks to
+> > 	   other clients.
+> > 	3. Server reboots.
+> > 	4. Network comes back up.
+> > 
+> > At this point, the client sees that the server has rebooted and is in
+> > its grace period, and reclaims.  Ooops.
+> > 
+> > The server needs to be able to tell the client "nope, you're not allowed
+> > to reclaim any more" at this point.
+> > 
+> > So we need some sort of remove/expire upcall.
+> > 
+> 
+> Doh! I don't know what I was thinking -- you're correct and we do need
+> that.
+> 
+> Ok, I'll see about putting it back and will resend. That does make it
+> rather nasty to handle clients mounting from multiple nodes in the same
+> cluster though. We'll need to come up with a data model that allows for
+> that as well.
 
+Honestly, in the v4-based migration case if one client can hold state on
+mulitple nodes, and could (could it?) after reboot decide to reclaim
+state on a different node from the one it previously held the same state
+on--I'm not even clear what *should* happen, or if the protocol is
+really adequate for that case.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 59d9b4b..620abcc 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1445,7 +1445,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_CREATE] = {
- 		.op_func = (nfsd4op_func)nfsd4_create,
--		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME | OP_CLEAR_STATEID,
- 		.op_name = "OP_CREATE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_create_rsize,
- 	},
-@@ -1491,12 +1491,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUP",
- 	},
- 	[OP_LOOKUPP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookupp,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUPP",
- 	},
- 	[OP_NVERIFY] = {
--- 
-1.7.7.5
-
+--b.
