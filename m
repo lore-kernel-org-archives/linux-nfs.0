@@ -1,71 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:65054 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753803Ab2AWUBi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jan 2012 15:01:38 -0500
-Received: by qadc10 with SMTP id c10so2031128qad.19
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jan 2012 12:01:38 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:32765 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751025Ab2AYUYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 15:24:02 -0500
+Date: Wed, 25 Jan 2012 15:23:56 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
-Date: Mon, 23 Jan 2012 15:01:01 -0500
-Message-Id: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120125152356.10bdd772@tlielax.poochiereds.net>
+In-Reply-To: <20120125185529.GJ17873@fieldses.org>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+	<20120124230855.GE12426@fieldses.org>
+	<20120125064158.4551a012@tlielax.poochiereds.net>
+	<20120125131116.GA17873@fieldses.org>
+	<20120125083820.637c8362@tlielax.poochiereds.net>
+	<F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com>
+	<20120125171401.GI17873@fieldses.org>
+	<D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
+	<20120125185529.GJ17873@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the fourth iteration of this patchset. I had originally asked
-Bruce to take the last one for 3.3, but decided at the last minute to
-wait on it a bit. I knew there would be some changes needed in the
-upcall, so by waiting we can avoid needing to deal with those in code
-that has already shipped. I would like to see this patchset considered
-for 3.4 however.
+On Wed, 25 Jan 2012 13:55:29 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-The previous patchset can be viewed here. That set also contains a
-more comprehensive description of the rationale for this:
+> On Wed, Jan 25, 2012 at 12:41:27PM -0500, Chuck Lever wrote:
+> > If SETCLIENTID returns a unique clientid4 that a client hasn't seen from other servers, the client knows that's a unique server instance which must be recovered separately after a reboot.
+> 
+> Hm, but does it have to do the recovery with that server?
+> 
+> And if so, then how does that fit with failover?
+> 
+> I mean, suppose the whole cluster is rebooted.  From the client's point
+> of view, its server becomes unresponsive.  So it should probably start
+> pinging the replicas to see if another one's up.  The first server it
+> gets a response from won't necessarily be the one it was using before.
+> What happens next?
+> 
+> --b.
 
-    http://www.spinics.net/lists/linux-nfs/msg26324.html
+Perhaps this will articulate the problem better:
 
-There have been a number of significant changes since the last set:
+Suppose we have a cluster of two machines (node1 and node2) and they
+both serve out two exports (/exp1 and /exp2). A client mounts /exp1
+from node1 and /exp2 from node2. Furthermore, let's assume that the
+client sends the same name string to both hosts in the SETCLIENTID call.
 
-- the remove/expire upcall is now gone. In a clustered environment, the
-records would need to be refcounted in order to handle that properly. That
-becomes a sticky problem when you could have nodes rebooting. We don't
-really need to remove these records individually however. Cleaning them
-out only when the grace period ends should be sufficient.
+Now, there's a network partition such that the client cannot talk to
+node2 anymore, but can talk to node1. node2 expires the client and
+tries to remove its record from stable storage...but we can't allow the
+record to be purged since we need to keep the record around for node1.
+So, we need to ensure that both nodes have their own record.
 
-- an "init" upcall has been added. When knfsd starts, it will upcall to
-userspace for a boot_generation value. This will replace the boot time
-in the scheme that generates clientid4's. By doing this, we eliminate
-a potential problem with clientid4 collisions in clustered setups.
+Fine, so let's assume that we tie that record to a "nodeid" or
+something specific to the physical host. Now, let's suppose there's a
+cluster-wide reboot and the network partition is repaired. The client
+decides on its own to migrate all of its mounts to node1. But, we
+can't allow it to reclaim the locks /exp2. So maybe we need to track
+the nfs_client_id4 on a per-node+per_fs basis...
 
-- a "client index" has been added to the create and check upcalls. The
-kernel ignores this value for now, but eventually we'll need to use it
-to help establish what clients own which locks in a clustered setup.
+Don't worry, it gets worse...suppose we end up with the mounting
+subdirectories of the same mount from different hosts (say,
+node1:/exp2/dir1 node2:/exp2/dir2 -- it's pathological, but there's no
+reason you couldn't do that). Now, it's not even sufficient to track
+this info on a per-node + per-fs basis...
 
-- a number of the client_tracking functions have been changed to void
-return functions. Since the callers all ignore the return codes of those
-functions, there was little benefit in passing them back.
+So, while it's all well and good to talk about keeping this flexible, I
+think the only way to bring in sanity here is to put some artificial
+constraints in place. I suggest that we only allow the reclaim of locks
+on the original address against which they were established. It's less
+than ideal, and we can try to loosen that later somehow, but doing
+anything else on the first pass is going to be really ugly.
 
-Comments and suggestions are welcome...
-
-Jeff Layton (6):
-  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-  sunrpc: create nfsd dir in rpc_pipefs
-  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
-  nfsd: add a header describing upcall to nfsdcld
-  nfsd: add the infrastructure to handle the cld upcall
-  nfsd: get boot generation number from upcall instead of boot_time
-
- fs/nfsd/nfs4callback.c   |   12 +-
- fs/nfsd/nfs4recover.c    |  480 +++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4state.c      |   63 +++----
- fs/nfsd/state.h          |   22 ++-
- include/linux/nfsd/cld.h |   58 ++++++
- net/sunrpc/rpc_pipe.c    |    5 +
- 6 files changed, 581 insertions(+), 59 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
-
+Thoughts?
 -- 
-1.7.7.5
-
+Jeff Layton <jlayton@redhat.com>
