@@ -1,98 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55578 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36646 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754433Ab2A3Wms (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jan 2012 17:42:48 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
-Date: Mon, 30 Jan 2012 17:42:44 -0500
-Message-Id: <1327963365-2921-1-git-send-email-bfields@redhat.com>
+	id S1750873Ab2AYOle (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 09:41:34 -0500
+Date: Wed, 25 Jan 2012 09:41:31 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
+ named one
+Message-ID: <20120125144131.GC17873@fieldses.org>
+References: <4EFB330A.7070908@parallels.com>
+ <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com>
+ <4EFB521B.7060004@parallels.com>
+ <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com>
+ <4EFC5391.7000601@parallels.com>
+ <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com>
+ <4EFC9189.5040605@parallels.com>
+ <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com>
+ <4EFCA668.6040107@parallels.com>
+ <4F1FE3A8.5020002@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F1FE3A8.5020002@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Jan 25, 2012 at 03:12:40PM +0400, Stanislav Kinsbursky wrote:
+> Chuck, Bruce, have you seen this patch I'm replying to?
+> I would appreciate for any comments with this problem.
+> Also, probably we can instead just perform local transports socket
+> connection in sync mode? This should solve our problem.
+> What do you think?
 
-Move calculation of the default into a helper function.
+I'm hoping Chuck will answer....
 
-Get rid of an unused variable "err" while we're there.
+(I'd recommend just resending the patch, though; it's more likely to get
+a response than if readers need to go dig the original out of mail
+archives.)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
- 1 files changed, 24 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index eda7d7e..2ad5ffe 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -307,33 +307,37 @@ static void set_max_drc(void)
- 	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
- }
- 
--int nfsd_create_serv(void)
-+static int nfsd_get_default_max_blksize(void)
- {
--	int err = 0;
-+	struct sysinfo i;
-+	unsigned long target;
-+	unsigned long bytes;
-+
-+	si_meminfo(&i);
-+	target = i.totalram << PAGE_SHIFT;
-+	/*
-+	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
-+	 * machines, but only uses 32K on 128M machines.  Bottom out at
-+	 * 8K on 32M and smaller.  Of course, this is only a default.
-+	 */
-+	target <<= 12;
-+
-+	bytes = NFSSVC_MAXBLKSIZE;
-+	while (bytes > target && bytes >= 8*1024*2)
-+		bytes /= 2;
-+	return bytes;
-+}
- 
-+int nfsd_create_serv(void)
-+{
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
- 		svc_get(nfsd_serv);
- 		return 0;
- 	}
--	if (nfsd_max_blksize == 0) {
--		/* choose a suitable default */
--		struct sysinfo i;
--		si_meminfo(&i);
--		/* Aim for 1/4096 of memory per thread
--		 * This gives 1MB on 4Gig machines
--		 * But only uses 32K on 128M machines.
--		 * Bottom out at 8K on 32M and smaller.
--		 * Of course, this is only a default.
--		 */
--		nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
--		i.totalram <<= PAGE_SHIFT - 12;
--		while (nfsd_max_blksize > i.totalram &&
--		       nfsd_max_blksize >= 8*1024*2)
--			nfsd_max_blksize /= 2;
--	}
-+	if (nfsd_max_blksize == 0)
-+		nfsd_max_blksize = nfsd_get_default_max_blksize();
- 	nfsd_reset_versions();
--
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
- 	if (nfsd_serv == NULL)
-@@ -341,7 +345,7 @@ int nfsd_create_serv(void)
- 
- 	set_max_drc();
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
--	return err;
-+	return 0;
- }
- 
- int nfsd_nrpools(void)
--- 
-1.7.5.4
-
+--b.
