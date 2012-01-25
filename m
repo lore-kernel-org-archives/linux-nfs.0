@@ -1,35 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:60841 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751386Ab2AZLJE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 06:09:04 -0500
-Message-ID: <4F213437.5020802@panasas.com>
-Date: Thu, 26 Jan 2012 13:08:39 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:43802 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751180Ab2AYLNA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 06:13:00 -0500
+Message-ID: <4F1FE3A8.5020002@parallels.com>
+Date: Wed, 25 Jan 2012 15:12:40 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: <srinivas.kandagatla@st.com>
-CC: Jim Rees <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
-        <akpm@linux-foundation.org>, <mingo@redhat.com>, <neilb@suse.de>,
-        <stuart.menefy@st.com>
-Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
- mount.
-References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <20120125154539.GA20734@umich.edu> <4F21071B.4070000@st.com> <4F2110DA.7060603@panasas.com> <4F2113FF.9080407@st.com>
-In-Reply-To: <4F2113FF.9080407@st.com>
-Content-Type: text/plain; charset="UTF-8"
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
+ named one
+References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com> <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com> <4EFCA668.6040107@parallels.com>
+In-Reply-To: <4EFCA668.6040107@parallels.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/26/2012 10:51 AM, Srinivas KANDAGATLA wrote:
-> An nfs root mount attempt timeouts in about 3 sec's and in commit
-> 43717c7d, "NFS: Retry mounting NFSROOT" each retry has additional sleep
-> which gives sufficient delay between retries.
+Chuck, Bruce, have you seen this patch I'm replying to?
+I would appreciate for any comments with this problem.
+Also, probably we can instead just perform local transports socket connection in 
+sync mode? This should solve our problem.
+What do you think?
 
-Grate thanks. Make perfect sense
-
->>> Thanks,
->>> srini
->>>     
->>
-
-Thanks
-Boaz
+-- 
+Best regards,
+Stanislav Kinsbursky
