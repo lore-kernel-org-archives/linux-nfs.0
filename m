@@ -1,159 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49122 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755462Ab2ADQIW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jan 2012 11:08:22 -0500
-Subject: Re: [PATCH 2/2] NFS: Cache state owners after files are closed
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1325692758.18462.10.camel@lade.trondhjem.org>
-Date: Wed, 4 Jan 2012 11:08:17 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <CBB27FEB-BA9A-408E-85A7-A3F63F7B280B@oracle.com>
-References: <20111206210723.5969.85159.stgit@degas.1015granger.net> <20111206211348.5969.61933.stgit@degas.1015granger.net> <1325692415.18462.6.camel@lade.trondhjem.org> <1325692758.18462.10.camel@lade.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63200 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755740Ab2AYQsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jan 2012 11:48:32 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH] NFSD: Clean up the test_stateid function
+Date: Wed, 25 Jan 2012 11:48:15 -0500
+Message-Id: <1327510095-26125-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Jan 4, 2012, at 10:59 AM, Trond Myklebust wrote:
+When I initially wrote it, I didn't understand how lists worked so I
+wrote something that didn't use them.  I think making a list of stateids
+to test is a more straightforward implementation, especially compared to
+especially compared to decoding stateids while simultaneously encoding
+a reply to the client.
 
-> On Wed, 2012-01-04 at 10:53 -0500, Trond Myklebust wrote: 
->> On Tue, 2011-12-06 at 16:13 -0500, Chuck Lever wrote: 
->>> Servers have a finite amount of memory to store NFSv4 open and lock
->>> owners.  Moreover, servers may have a difficult time determining when
->>> they can reap their state owner table, thanks to gray areas in the
->>> NFSv4 protocol specification.  Thus clients should be careful to reuse
->>> state owners when possible.
->>> 
->>> Currently Linux is not too careful.  When a user has closed all her
->>> files on one mount point, the state owner's reference count goes to
->>> zero, and it is released.  The next OPEN allocates a new one.  A
->>> workload that serially opens and closes files can run through a large
->>> number of open owners this way.
->>> 
->>> When a state owner's reference count goes to zero, slap it onto a free
->>> list for that nfs_server, with an expiry time.  Garbage collect before
->>> looking for a state owner.  This makes state owners for active users
->>> available for re-use.
->>> 
->>> Now that there can be unused state owners remaining at umount time,
->>> purge the state owner free list when a server is destroyed.  Also be
->>> sure not to reclaim unused state owners during state recovery.
->>> 
->>> This change has benefits for the client as well.  For some workloads,
->>> this approach drops the number of OPEN_CONFIRM calls from the same as
->>> the number of OPEN calls, down to just one.  This reduces wire traffic
->>> and thus open(2) latency.  Before this patch, untarring a kernel
->>> source tarball shows the OPEN_CONFIRM call counter steadily increasing
->>> through the test.  With the patch, the OPEN_CONFIRM count remains at 1
->>> throughout the entire untar.
->>> 
->>> As long as the expiry time is kept short, I don't think garbage
->>> collection should be terribly expensive, although it does bounce the
->>> clp->cl_lock around a bit.
->>> 
->>> [ At some point we should rationalize the use of the nfs_server
->>> ->destroy method. ]
->>> 
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->> <snip> 
->>> +
->>> +static void nfs4_gc_state_owners(struct nfs_server *server)
->>> +{
->>> +	struct nfs_client *clp = server->nfs_client;
->>> +	struct nfs4_state_owner *sp, *tmp;
->>> +	unsigned long now = jiffies;
->>> +	LIST_HEAD(doomed);
->>> +
->>> +	spin_lock(&clp->cl_lock);
->>> +	list_for_each_entry_safe(sp, tmp, &server->state_owners_lru, so_lru) {
->>> +		/* NB: LRU is sorted so that oldest is at the head */
->>> +		if (time_in_range(now, sp->so_expires,
->>> +				sp->so_expires + clp->cl_lease_time))
->>> +			break;
->>> +		list_move(&sp->so_lru, &doomed);
->>> +	}
->>> +	spin_unlock(&clp->cl_lock);
->> 
->> There is a race here: the state owner is still visible in the rb-tree,
->> and so a second thread that calls nfs4_get_state_owner() may still pick
->> up one of these open owners that are now on your 'doomed' list.
->> 
->> I think you rather need to do the equivalent of an
->> 'nfs4_drop_state_owner' in your loop above in order to be 100% safe.
->> 
->>> +	list_for_each_entry_safe(sp, tmp, &doomed, so_lru) {
->>> +		list_del_init(&sp->so_lru);
->>> +		nfs4_release_state_owner(sp);
->>> +	}
->>> +}
->>> +
->>> /**
->>>  * nfs4_get_state_owner - Look up a state owner given a credential
->>>  * @server: nfs_server to search
->>> @@ -483,11 +521,13 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
->>> 	struct nfs_client *clp = server->nfs_client;
->>> 	struct nfs4_state_owner *sp, *new;
->>> 
->>> +	nfs4_gc_state_owners(server);
->>> +
-> 
-> One more thing: doesn't it make more sense to do the garbage collection
-> after you've looked up the state owner? Even if the open owner has been
-> expired on the server, you will still gain by avoiding the extra
-> allocation.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c |    9 ++++++-
+ fs/nfsd/nfs4xdr.c   |   70 +++++++++++++++++---------------------------------
+ fs/nfsd/xdr4.h      |    9 +++++-
+ 3 files changed, 39 insertions(+), 49 deletions(-)
 
-I think "GC first" is more fair.  If you really want to make sure an idle open owner is not re-used passed the sell-by, we have to do GC first.  Otherwise an open owner can languish for days if there's no other activity, and will get re-used on the next open.
-
-It seems to me that on-the-wire behavior would be inconsistent if some open owners were re-used after a long idle, some were not, and the precise re-use behavior depended on workload.  "GC first" gives nicely predictable behavior.
-
-> 
->>> 	spin_lock(&clp->cl_lock);
->>> 	sp = nfs4_find_state_owner_locked(server, cred);
->>> 	spin_unlock(&clp->cl_lock);
->>> 	if (sp != NULL)
->>> -		return sp;
->>> +		goto out;
->>> 	new = nfs4_alloc_state_owner();
->>> 	if (new == NULL)
->>> 		return NULL;
->>> @@ -502,26 +542,56 @@ struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *server,
->>> 		rpc_destroy_wait_queue(&new->so_sequence.wait);
->>> 		kfree(new);
->>> 	}
->>> +out:
->>> +	list_del_init(&sp->so_lru);
->> 
->> Ehem... List corruption due to no spin lock. Doesn't it make more sense
->> to do the above inside nfs4_find/insert_state_owner_locked?
->> 
->>> 	return sp;
->>> }
->>> 
->> 
->> Otherwise it looks OK...
->> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..c59a3f6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3400,7 +3400,14 @@ __be32
+ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		   struct nfsd4_test_stateid *test_stateid)
+ {
+-	/* real work is done during encoding */
++	struct nfsd4_test_stateid_id *stateid;
++	struct nfs4_client *cl = cstate->session->se_client;
++
++	nfs4_lock_state();
++	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
++		stateid->ts_id_status = nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
++	nfs4_unlock_state();
++
+ 	return nfs_ok;
+ }
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0ec5a1b..67fe3d7 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -133,22 +133,6 @@ xdr_error:					\
+ 	}					\
+ } while (0)
+ 
+-static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+-{
+-	savep->p        = argp->p;
+-	savep->end      = argp->end;
+-	savep->pagelen  = argp->pagelen;
+-	savep->pagelist = argp->pagelist;
+-}
+-
+-static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+-{
+-	argp->p        = savep->p;
+-	argp->end      = savep->end;
+-	argp->pagelen  = savep->pagelen;
+-	argp->pagelist = savep->pagelist;
+-}
+-
+ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ {
+ 	/* We want more bytes than seem to be available.
+@@ -1385,31 +1369,36 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ static __be32
+ nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
+ {
+-	unsigned int nbytes;
+-	stateid_t si;
+ 	int i;
+-	__be32 *p;
+-	__be32 status;
++	__be32 *p, status;
++	struct nfsd4_test_stateid_id *stateid;
+ 
+ 	READ_BUF(4);
+ 	test_stateid->ts_num_ids = ntohl(*p++);
+ 
+-	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
+-	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
+-		goto xdr_error;
+-
+-	test_stateid->ts_saved_args = argp;
+-	save_buf(argp, &test_stateid->ts_savedp);
++	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
+ 
+ 	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+-		status = nfsd4_decode_stateid(argp, &si);
++		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
++		if (!stateid)
++			goto out_free_stateids;
++
++		INIT_LIST_HEAD(&stateid->ts_id_list);
++		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
++
++		status = nfsd4_decode_stateid(argp, &stateid->ts_id_stateid);
+ 		if (status)
+-			return status;
++			goto out_free_stateids;
+ 	}
+ 
+ 	status = 0;
+ out:
+ 	return status;
++out_free_stateids:
++	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list) {
++		list_del(&stateid->ts_id_list);
++		kfree(stateid);
++	}
+ xdr_error:
+ 	dprintk("NFSD: xdr error (%s:%d)\n", __FILE__, __LINE__);
+ 	status = nfserr_bad_xdr;
+@@ -3391,30 +3380,19 @@ __be32
+ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
+ 			  struct nfsd4_test_stateid *test_stateid)
+ {
+-	struct nfsd4_compoundargs *argp;
+-	struct nfs4_client *cl = resp->cstate.session->se_client;
+-	stateid_t si;
++	struct nfsd4_test_stateid_id *stateid, *next;
+ 	__be32 *p;
+-	int i;
+-	int valid;
+ 
+-	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
+-	argp = test_stateid->ts_saved_args;
+-
+-	RESERVE_SPACE(4);
++	RESERVE_SPACE(4 + (4 * test_stateid->ts_num_ids));
+ 	*p++ = htonl(test_stateid->ts_num_ids);
+-	resp->p = p;
+ 
+-	nfs4_lock_state();
+-	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+-		nfsd4_decode_stateid(argp, &si);
+-		valid = nfs4_validate_stateid(cl, &si);
+-		RESERVE_SPACE(4);
+-		*p++ = htonl(valid);
+-		resp->p = p;
++	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
++		*p++ = htonl(stateid->ts_id_status);
++		list_del(&stateid->ts_id_list);
++		kfree(stateid);
+ 	}
+-	nfs4_unlock_state();
+ 
++	ADJUST_ARGS();
+ 	return nfserr;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2364747..0a667e9 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -343,10 +343,15 @@ struct nfsd4_saved_compoundargs {
+ 	struct page **pagelist;
+ };
+ 
++struct nfsd4_test_stateid_id {
++	__be32			ts_id_status;
++	stateid_t		ts_id_stateid;
++	struct list_head	ts_id_list;
++};
++
+ struct nfsd4_test_stateid {
+ 	__be32		ts_num_ids;
+-	struct nfsd4_compoundargs *ts_saved_args;
+-	struct nfsd4_saved_compoundargs ts_savedp;
++	struct list_head ts_stateid_list;
+ };
+ 
+ struct nfsd4_free_stateid {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.8.4
 
