@@ -1,102 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54480 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50872 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752926Ab2ALTWQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Jan 2012 14:22:16 -0500
-Message-ID: <1326396135.6198.9.camel@lade.trondhjem.org>
-Subject: Re: [PATCH] nfsidmap: Purge the keyring when its full.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Thu, 12 Jan 2012 14:22:15 -0500
-In-Reply-To: <1326383899-4358-1-git-send-email-steved@redhat.com>
-References: <1326383899-4358-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752561Ab2AZUHj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 15:07:39 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0QK7drx030646
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 15:07:39 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q0QK7c7m024830
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 15:07:38 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not needed.
+Date: Thu, 26 Jan 2012 15:07:41 -0500
+Message-Id: <1327608461-15305-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-01-12 at 10:58 -0500, Steve Dickson wrote: 
-> When a key can not be added to a keyring because
-> the keyring is full, keyctl_instantiate() will fail
-> with the errno being set to -EDQUOT. To recover,
-> purge the keyring of all its keys and then try to
-> add the new key.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/nfsidmap/nfsidmap.c |   14 ++++++++++++--
->  1 files changed, 12 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-> index ce8cf3e..470f9d4 100644
-> --- a/utils/nfsidmap/nfsidmap.c
-> +++ b/utils/nfsidmap/nfsidmap.c
-> @@ -3,6 +3,7 @@
->  #include <stdio.h>
->  #include <stdlib.h>
->  #include <string.h>
-> +#include <errno.h>
->  
->  #include <pwd.h>
->  #include <grp.h>
-> @@ -25,6 +26,7 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
->  #define DEFAULT_KEYRING "id_resolver"
->  #endif
->  
-> +static int keyring_clear(char *keyring);
->  
->  #define UIDKEYS 0x1
->  #define GIDKEYS 0x2
-> @@ -52,6 +54,14 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
->  
->  	if (rc == 0) {
->  		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-> +		if (rc < 0 && errno == -EDQUOT) {
+rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
+libgssglue libraries which is not needed since libgssglue
+will dynamically load the gssapi interface defined in the
+/etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
 
-Shouldn't the above be a test for -ENFILE (or perhaps for both)?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ aclocal/kerberos5.m4 |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> +			/*
-> +			 * The keyring is full. Clear the keyring and try again
-> +			 */
-> +			rc = keyring_clear(DEFAULT_KEYRING);
-> +			if (rc == 0)
-> +				rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-> +		}
->  		if (rc < 0)
->  			xlog_err("id_lookup: keyctl_instantiate failed: %m");
->  	}
-> @@ -105,7 +115,6 @@ static int keyring_clear(char *keyring)
->  	char buf[BUFSIZ];
->  	key_serial_t key;
->  
-> -	xlog_syslog(0);
->  	if (keyring == NULL)
->  		keyring = DEFAULT_KEYRING;
->  
-> @@ -172,7 +181,7 @@ static int key_revoke(char *keystr, int keymask)
->  		if ((keymask & mask) == 0)
->  			continue;
->  
-> -		if (strncmp(ptr+4, keystr, strlen(keystr)) != NULL)
-> +		if (strncmp(ptr+4, keystr, strlen(keystr)) != 0)
->  			continue;
->  
->  		if (verbose) {
-> @@ -255,6 +264,7 @@ int main(int argc, char **argv)
->  		return rc;		
->  	}
->  	if (clearing) {
-> +		xlog_syslog(0);
->  		rc = keyring_clear(DEFAULT_KEYRING);
->  		return rc;		
->  	}
-
+diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+index dfa5738..7574e2d 100644
+--- a/aclocal/kerberos5.m4
++++ b/aclocal/kerberos5.m4
+@@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
+     fi
+     if test "$K5CONFIG" != ""; then
+       KRBCFLAGS=`$K5CONFIG --cflags`
+-      KRBLIBS=`$K5CONFIG --libs gssapi`
++      KRBLIBS=`$K5CONFIG --libs`
+       K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
+       AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
+       if test -f $dir/include/gssapi/gssapi_krb5.h -a \
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.7.5
 
