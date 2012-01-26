@@ -1,69 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp5-g21.free.fr ([212.27.42.5]:34613 "EHLO smtp5-g21.free.fr"
+Received: from fieldses.org ([174.143.236.118]:38609 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752469Ab2ABP4C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jan 2012 10:56:02 -0500
-Received: from mx.meyering.net (unknown [88.168.87.75])
-	by smtp5-g21.free.fr (Postfix) with ESMTP id 4B62AD48290
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Jan 2012 16:55:56 +0100 (CET)
-Received: from rho.meyering.net (localhost.localdomain [127.0.0.1])
-	by rho.meyering.net (Acme Bit-Twister) with ESMTP id 131E3600E3
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Jan 2012 16:55:55 +0100 (CET)
-From: Jim Meyering <jim@meyering.net>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] gssd: avoid double-free upon write failure
-Date: Mon, 02 Jan 2012 16:55:54 +0100
-Message-ID: <87lipqumid.fsf@rho.meyering.net>
+	id S1751835Ab2AZUSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 15:18:22 -0500
+Date: Thu, 26 Jan 2012 15:18:21 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and
+ recreated
+Message-ID: <20120126201821.GC31531@fieldses.org>
+References: <20120125152814.391ae064@tlielax.poochiereds.net>
+ <4F207C7C.4090207@RedHat.com>
+ <20120125183206.5efcd845@corrin.poochiereds.net>
+ <4F214B77.8050300@RedHat.com>
+ <20120126082830.23324255@corrin.poochiereds.net>
+ <20120126093059.5c732d75@corrin.poochiereds.net>
+ <4F2171B5.2030103@RedHat.com>
+ <20120126104157.671a10c2@corrin.poochiereds.net>
+ <20120126185859.GA31531@fieldses.org>
+ <20120126143659.74a9de30@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120126143659.74a9de30@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jan 26, 2012 at 02:36:59PM -0500, Jeff Layton wrote:
+> On Thu, 26 Jan 2012 13:58:59 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Thu, Jan 26, 2012 at 10:41:57AM -0500, Jeff Layton wrote:
+> > > Correct. When knfsd starts back up, a new pipe will be created. At that
+> > > point, the daemon will try to open the new one and will then close the
+> > > old if the open succeeds. It will only loop here if that open fails for
+> > > some reason.
+> > 
+> > I'm a little confused--how could this happen?
+> > 
+> 
+> Bugs?
 
-* utils/gssd/context_lucid.c (prepare_krb5_rfc1964_buffer): Free just-
-calloc'd enc_key.data from one place, unconditionally, after calling
-write_lucid_keyblock, rather than from three places.  Before, upon
-failed write, we would free it, then goto out_err, where we would
-free it again, if it happened to be non-NULL.
-Coverity spotted the possible double free.
----
- utils/gssd/context_lucid.c |    9 ++++-----
- 1 files changed, 4 insertions(+), 5 deletions(-)
+If that's really the only case then "crash and log an error" might
+really be more robust in the long term than spinning.
 
-diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
-index 3e695ab..64146d7 100644
---- a/utils/gssd/context_lucid.c
-+++ b/utils/gssd/context_lucid.c
-@@ -80,6 +80,7 @@ prepare_krb5_rfc1964_buffer(gss_krb5_lucid_context_v1_t *lctx,
- 	uint32_t i;
- 	char *skd, *dkd;
- 	gss_buffer_desc fakeoid;
-+	int err;
-
- 	/*
- 	 * The new Kerberos interface to get the gss context
-@@ -138,11 +139,10 @@ prepare_krb5_rfc1964_buffer(gss_krb5_lucid_context_v1_t *lctx,
- 	dkd = (char *) enc_key.data;
- 	for (i = 0; i < enc_key.length; i++)
- 		dkd[i] = skd[i] ^ 0xf0;
--	if (write_lucid_keyblock(&p, end, &enc_key)) {
--		free(enc_key.data);
--		goto out_err;
--	}
-+	err = write_lucid_keyblock(&p, end, &enc_key);
- 	free(enc_key.data);
-+	if (err)
-+		goto out_err;
-
- 	if (write_lucid_keyblock(&p, end, &lctx->rfc1964_kd.ctx_key))
- 		goto out_err;
-@@ -153,7 +153,6 @@ out_err:
- 	printerr(0, "ERROR: failed serializing krb5 context for kernel\n");
- 	if (buf->value) free(buf->value);
- 	buf->length = 0;
--	if (enc_key.data) free(enc_key.data);
- 	return -1;
- }
-
---
-1.7.8.1.391.g2c2ad
+--b.
