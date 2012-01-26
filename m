@@ -1,179 +1,252 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42081 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932754Ab2AMULY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:24 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 25/44] NFS: Create a custom validate_mount_data() function
-Date: Fri, 13 Jan 2012 15:10:34 -0500
-Message-Id: <1326485453-1350-26-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+	id S1751879Ab2AZV4R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 16:56:17 -0500
+Date: Thu, 26 Jan 2012 16:56:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
+ fails
+Message-ID: <20120126215615.GF700@fieldses.org>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+I'm assuming you meant to send this to Trond, not me?
 
-This gives v4 the opportunity to validate its own options while v2 and
-v3 share the same validation function.
+--b.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c      |    1 +
- fs/nfs/nfs.h         |    7 +++++++
- fs/nfs/nfs2/module.c |    1 +
- fs/nfs/nfs3/module.c |    1 +
- fs/nfs/nfs4/nfs4.h   |    2 ++
- fs/nfs/super.c       |   28 +++++++++++-----------------
- 6 files changed, 23 insertions(+), 17 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 60d0f57..998c3be 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -136,6 +136,7 @@ static struct nfs_subversion nfs_v4_mod = {
- 
- 	.reference = nfs_module_null_function,
- 	.unreference = nfs_module_null_function,
-+	.validate_mount_data = nfs4_validate_text_mount_data,
- 	.init_aclclient = nfs4_init_aclclient,
- 	.try_mount = nfs4_try_mount,
- 	.shutdown_client = nfs4_shutdown_client,
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 847f593..3aa900d 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -22,6 +22,10 @@ struct nfs_subversion {
- 
- 	void (*reference)(void);	/* For reference counting */
- 	void (*unreference)(void);	/* Also for reference counting */
-+	int (*validate_mount_data)(void *,
-+				   struct nfs_parsed_mount_data *,
-+				   struct nfs_fh *,
-+				   const char *);
- 	void (*init_aclclient)(struct nfs_server *);
- 	struct dentry *(*try_mount)(struct file_system_type *, int,
- 				    const char *, struct nfs_fh *,
-@@ -96,4 +100,7 @@ struct vfsmount *nfs_do_clone_mount(struct nfs_server *, const char *,
- struct dentry *generic_nfs_fs_mount(struct file_system_type *, int,
- 				    const char *, struct nfs_fh *,
- 				    struct nfs_parsed_mount_data *);
-+int nfs_validate_text_mount_data(void *, struct nfs_parsed_mount_data *,
-+				 struct nfs_fh *, const char *);
-+
- #endif /* __LINUX_INTERNAL_NFS_H */
-diff --git a/fs/nfs/nfs2/module.c b/fs/nfs/nfs2/module.c
-index 9bc06ab..5efe3d8 100644
---- a/fs/nfs/nfs2/module.c
-+++ b/fs/nfs/nfs2/module.c
-@@ -40,6 +40,7 @@ struct nfs_subversion nfs_v2 = {
- 
- 	.reference = nfs2_reference,
- 	.unreference = nfs2_unreference,
-+	.validate_mount_data = nfs_validate_text_mount_data,
- 	.init_aclclient = nfs2_init_aclclient,
- 	.try_mount = generic_nfs_fs_mount,
- 	.shutdown_client = nfs2_shutdown_client,
-diff --git a/fs/nfs/nfs3/module.c b/fs/nfs/nfs3/module.c
-index 3ca0066..f9c979f 100644
---- a/fs/nfs/nfs3/module.c
-+++ b/fs/nfs/nfs3/module.c
-@@ -40,6 +40,7 @@ struct nfs_subversion nfs_v3 = {
- 
- 	.reference = nfs3_reference,
- 	.unreference = nfs3_unreference,
-+	.validate_mount_data = nfs_validate_text_mount_data,
- 	.init_aclclient = nfs3_init_aclclient,
- 	.try_mount = generic_nfs_fs_mount,
- 	.shutdown_client = nfs3_shutdown_client,
-diff --git a/fs/nfs/nfs4/nfs4.h b/fs/nfs/nfs4/nfs4.h
-index 2428896..6ff094f 100644
---- a/fs/nfs/nfs4/nfs4.h
-+++ b/fs/nfs/nfs4/nfs4.h
-@@ -12,5 +12,7 @@ struct vfsmount *nfs4_do_clone_mount(struct nfs_server *, const char *,
- int nfs4_have_delegated_attributes(struct inode *);
- struct dentry *nfs4_try_mount(struct file_system_type *, int, const char *,
- 			      struct nfs_fh *, struct nfs_parsed_mount_data *);
-+int nfs4_validate_text_mount_data(void *, struct nfs_parsed_mount_data *,
-+				  struct nfs_fh *, const char *);
- 
- #endif /* __LINUX_FS_NFS_NFS4_H */
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b5ffc6a..e1ea351 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -309,8 +309,6 @@ static const struct super_operations nfs_sops = {
- };
- 
- #ifdef CONFIG_NFS_V4
--static int nfs4_validate_text_mount_data(void *options,
--	struct nfs_parsed_mount_data *args, const char *dev_name);
- static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
-@@ -1767,6 +1765,7 @@ int nfs_validate_text_mount_data(void *options,
- 
- 	return status;
- }
-+EXPORT_SYMBOL_GPL(nfs_validate_text_mount_data);
- 
- /*
-  * Validate the NFS2/NFS3 mount data
-@@ -1791,6 +1790,7 @@ static int nfs_validate_mount_data(void *options,
- {
- 	struct nfs_mount_data *data = (struct nfs_mount_data *)options;
- 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
-+	struct nfs_subversion *nfs_mod;
- 
- 	if (data == NULL)
- 		goto out_no_data;
-@@ -1899,17 +1899,10 @@ static int nfs_validate_mount_data(void *options,
- 		if (!nfs_verify_server_address(sap))
- 			goto out_no_address;
- 
--		if (args->version == 4)
--#ifdef CONFIG_NFS_V4
--			return nfs4_validate_text_mount_data(options,
--							     args, dev_name);
--#else
--			goto out_v4_not_compiled;
--#endif
--		else
--			return nfs_validate_text_mount_data(options, args, mntfh, dev_name);
--
--		break;
-+		nfs_mod = get_nfs_version(args->version);
-+		if (IS_ERR(nfs_mod))
-+			return PTR_ERR(nfs_mod);
-+		return nfs_mod->validate_mount_data(options, args, mntfh, dev_name);
- 		}
- 	}
- 
-@@ -2504,9 +2497,10 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- 			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
- }
- 
--static int nfs4_validate_text_mount_data(void *options,
--					 struct nfs_parsed_mount_data *args,
--					 const char *dev_name)
-+int nfs4_validate_text_mount_data(void *options,
-+				  struct nfs_parsed_mount_data *args,
-+				  struct nfs_fh *mntfh,
-+				  const char *dev_name)
- {
- 	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
- 
-@@ -2617,7 +2611,7 @@ static int nfs4_validate_mount_data(void *options,
- 		if (!nfs_verify_server_address(sap))
- 			return -EINVAL;
- 
--		return nfs4_validate_text_mount_data(options, args, dev_name);
-+		return nfs4_validate_text_mount_data(options, args, NULL, dev_name);
- 	}
- 
- 	return 0;
--- 
-1.7.8.3
-
+On Thu, Jan 26, 2012 at 04:54:23PM -0500, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> This patch removes the CONFIG_NFS_USE_NEW_IDMAPPER compile option.
+> First, the idmapper will attempt to map the id using /sbin/request-key
+> and nfsidmap.  If this fails (if /etc/request-key.conf is not configured
+> properly) then the idmapper will call the legacy code to perform the
+> mapping.  I left a comment stating where the legacy code begins to make
+> it easier for somebody to remove in the future.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+> I tested this on both Archlinux with nfs-utils 1.2.5 and on Fedora with
+> nfs-utils 1.2.6-rc6.  It did what was expected in both cases.
+> 
+>  fs/nfs/Kconfig            |   11 ------
+>  fs/nfs/idmap.c            |   76 +++++++++++++++------------------------------
+>  fs/nfs/sysctl.c           |    2 -
+>  include/linux/nfs_idmap.h |   25 ---------------
+>  4 files changed, 25 insertions(+), 89 deletions(-)
+> 
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index dbcd821..021d2cf 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -132,14 +132,3 @@ config NFS_USE_KERNEL_DNS
+>  	select DNS_RESOLVER
+>  	select KEYS
+>  	default y
+> -
+> -config NFS_USE_NEW_IDMAPPER
+> -	bool "Use the new idmapper upcall routine"
+> -	depends on NFS_V4 && KEYS
+> -	help
+> -	  Say Y here if you want NFS to use the new idmapper upcall functions.
+> -	  You will need /sbin/request-key (usually provided by the keyutils
+> -	  package).  For details, read
+> -	  <file:Documentation/filesystems/nfs/idmapper.txt>.
+> -
+> -	  If you are unsure, say N.
+> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+> index 2c05f19..56b1104 100644
+> --- a/fs/nfs/idmap.c
+> +++ b/fs/nfs/idmap.c
+> @@ -142,8 +142,6 @@ static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
+>  	return snprintf(buf, buflen, "%u", id);
+>  }
+>  
+> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+> -
+>  #include <linux/cred.h>
+>  #include <linux/sunrpc/sched.h>
+>  #include <linux/nfs4.h>
+> @@ -327,43 +325,7 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+>  	return ret;
+>  }
+>  
+> -int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+> -{
+> -	if (nfs_map_string_to_numeric(name, namelen, uid))
+> -		return 0;
+> -	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
+> -}
+> -
+> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
+> -{
+> -	if (nfs_map_string_to_numeric(name, namelen, gid))
+> -		return 0;
+> -	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
+> -}
+> -
+> -int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+> -{
+> -	int ret = -EINVAL;
+> -
+> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+> -		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
+> -	if (ret < 0)
+> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+> -	return ret;
+> -}
+> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
+> -{
+> -	int ret = -EINVAL;
+> -
+> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+> -		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
+> -	if (ret < 0)
+> -		ret = nfs_map_numeric_to_string(gid, buf, buflen);
+> -	return ret;
+> -}
+> -
+> -#else  /* CONFIG_NFS_USE_NEW_IDMAPPER not defined */
+> -
+> +/* idmap classic begins here */
+>  #include <linux/module.h>
+>  #include <linux/mutex.h>
+>  #include <linux/init.h>
+> @@ -795,19 +757,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
+>  int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+>  {
+>  	struct idmap *idmap = server->nfs_client->cl_idmap;
+> +	int ret = -EINVAL;
+>  
+>  	if (nfs_map_string_to_numeric(name, namelen, uid))
+>  		return 0;
+> -	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+> +	ret = nfs_idmap_lookup_id(name, namelen, "uid", uid);
+> +	if (ret < 0)
+> +		ret = nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+> +	return ret;
+>  }
+>  
+> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+> +int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
+>  {
+>  	struct idmap *idmap = server->nfs_client->cl_idmap;
+> +	int ret = -EINVAL;
+>  
+> -	if (nfs_map_string_to_numeric(name, namelen, uid))
+> +	if (nfs_map_string_to_numeric(name, namelen, gid))
+>  		return 0;
+> -	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
+> +	ret = nfs_idmap_lookup_id(name, namelen, "gid", gid);
+> +	if (ret < 0)
+> +		ret = nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, gid);
+> +	return ret;
+>  }
+>  
+>  int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+> @@ -815,22 +785,26 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
+>  	struct idmap *idmap = server->nfs_client->cl_idmap;
+>  	int ret = -EINVAL;
+>  
+> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+> -		ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
+> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
+> +		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
+> +		if (ret < 0)
+> +			ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
+> +	}
+>  	if (ret < 0)
+>  		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+>  	return ret;
+>  }
+> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+> +int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
+>  {
+>  	struct idmap *idmap = server->nfs_client->cl_idmap;
+>  	int ret = -EINVAL;
+>  
+> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+> -		ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
+> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
+> +		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
+> +		if (ret < 0)
+> +			ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, gid, buf);
+> +	}
+>  	if (ret < 0)
+> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+> +		ret = nfs_map_numeric_to_string(gid, buf, buflen);
+>  	return ret;
+>  }
+> -
+> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+> diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+> index 978aaeb..ad4d2e7 100644
+> --- a/fs/nfs/sysctl.c
+> +++ b/fs/nfs/sysctl.c
+> @@ -32,7 +32,6 @@ static ctl_table nfs_cb_sysctls[] = {
+>  		.extra1 = (int *)&nfs_set_port_min,
+>  		.extra2 = (int *)&nfs_set_port_max,
+>  	},
+> -#ifndef CONFIG_NFS_USE_NEW_IDMAPPER
+>  	{
+>  		.procname = "idmap_cache_timeout",
+>  		.data = &nfs_idmap_cache_timeout,
+> @@ -40,7 +39,6 @@ static ctl_table nfs_cb_sysctls[] = {
+>  		.mode = 0644,
+>  		.proc_handler = proc_dointvec_jiffies,
+>  	},
+> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+>  #endif
+>  	{
+>  		.procname	= "nfs_mountpoint_timeout",
+> diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
+> index 308c188..717fa50 100644
+> --- a/include/linux/nfs_idmap.h
+> +++ b/include/linux/nfs_idmap.h
+> @@ -69,36 +69,11 @@ struct nfs_server;
+>  struct nfs_fattr;
+>  struct nfs4_string;
+>  
+> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+> -
+>  int nfs_idmap_init(void);
+>  void nfs_idmap_quit(void);
+> -
+> -static inline int nfs_idmap_new(struct nfs_client *clp)
+> -{
+> -	return 0;
+> -}
+> -
+> -static inline void nfs_idmap_delete(struct nfs_client *clp)
+> -{
+> -}
+> -
+> -#else /* CONFIG_NFS_USE_NEW_IDMAPPER not set */
+> -
+> -static inline int nfs_idmap_init(void)
+> -{
+> -	return 0;
+> -}
+> -
+> -static inline void nfs_idmap_quit(void)
+> -{
+> -}
+> -
+>  int nfs_idmap_new(struct nfs_client *);
+>  void nfs_idmap_delete(struct nfs_client *);
+>  
+> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+> -
+>  void nfs_fattr_init_names(struct nfs_fattr *fattr,
+>  		struct nfs4_string *owner_name,
+>  		struct nfs4_string *group_name);
+> -- 
+> 1.7.8.4
+> 
