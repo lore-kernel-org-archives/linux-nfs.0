@@ -1,102 +1,63 @@
-From: Chris Dunlop <chris@onthe.net.au>
-Subject: Re: [PATCH 1/1] fix d_revalidate oopsen on NFS
-	exports
-Date: Thu, 1 Dec 2011 14:33:47 +1100
-Message-ID: <20111201033346.GA1049@onthe.net.au>
-References: <20111130071319.GA16711@onthe.net.au>
-	<1321861008-20611-1-git-send-email-chris@onthe.net.au>
-	<20111129082501.GA569@onthe.net.au>
-	<2E1EB2CF9ED1CB4AA966F0EB76EAB4430C3CBC20@SACMVEXC2-PRD.hq.netapp.com>
-	<24960.1322643283@redhat.com> <20111201004709.GA26085@onthe.net.au>
-	<4ED6E4EF.7050101@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Latchesar Ionkov <lucho@ionkov.net>, Jan Harkes <jaharkes@cs.cmu.edu>,
-	jfs-discussion@lists.sourceforge.net, Dave Kleikamp <shaggy@kernel.org>,
-	Eric Van Hensbergen <ericvh@gmail.com>, codalist@TELEMANN.coda.cs.cmu.edu,
-	Greg Kroah-Hartman <gregkh@suse.de>, "Myklebust,
-	Trond" <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-	David Howells <dhowells@redhat.com>,
-	CODA FILE SYSTEM <coda@cs.cmu.edu>, maintainer@onthe.net.au,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-	v9fs-developer@lists.sourceforge.net,
-	linux-fsdevel@vger.kernel.org, Ron Minnich <rminnich@sandia.gov>,
-	Petr Vandrovec <petr@vandrovec.name>, linux-afs@lists.infradead.org
-To: Dave Kleikamp <dave.kleikamp@oracle.com>
-Return-path: <jfs-discussion-bounces@lists.sourceforge.net>
-In-Reply-To: <4ED6E4EF.7050101@oracle.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=jfs-discussion>
-List-Post: <mailto:jfs-discussion@lists.sourceforge.net>
-List-Help: <mailto:jfs-discussion-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/jfs-discussion>,
-	<mailto:jfs-discussion-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: jfs-discussion-bounces@lists.sourceforge.net
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from fieldses.org ([174.143.236.118]:44171 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751443Ab2AZUaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 15:30:06 -0500
+Date: Thu, 26 Jan 2012 15:30:06 -0500
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not
+ needed.
+Message-ID: <20120126203006.GD31531@fieldses.org>
+References: <1327608461-15305-1-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1327608461-15305-1-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 30, 2011 at 08:22:39PM -0600, Dave Kleikamp wrote:
-> On 11/30/2011 06:47 PM, Chris Dunlop wrote:
->>> It's also worth printing a message - this *is* a kernel bug of some description
->>> if it happens.
->> 
->> Like the below?  This covers the d_revalidate for 9p, afs, coda,
->> hfs, ncpfs, proc, sysfs.
->> 
->> Note:  jfs isn't susceptible to this problem, but the resolution
->> doesn't look like the other file systems, and from the comment
->> I'm not sure if the problem was really understood and if it's
->> doing the right thing:
+On Thu, Jan 26, 2012 at 03:07:41PM -0500, Steve Dickson wrote:
+> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
+> libgssglue libraries which is not needed since libgssglue
+> will dynamically load the gssapi interface defined in the
+> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
 > 
-> This code, as well as the comments, were copied from vfat. It seems
-> reasonable for case-insensitive but case-preserving behavior (not jfs's
-> default). The safe thing is to drop the negative dentry if we don't know
-> the operation.
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  aclocal/kerberos5.m4 |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+> index dfa5738..7574e2d 100644
+> --- a/aclocal/kerberos5.m4
+> +++ b/aclocal/kerberos5.m4
+> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
+>      fi
+>      if test "$K5CONFIG" != ""; then
+>        KRBCFLAGS=`$K5CONFIG --cflags`
+> -      KRBLIBS=`$K5CONFIG --libs gssapi`
+> +      KRBLIBS=`$K5CONFIG --libs`
 
-In that case, it looks like the thing to do might be to add the
-"protection" to the start of jfs_ci_revaliate(), per how the
-original has been changed in vfat:
+OK, so that's gathering krb5-config output which gives us the list of -l
+switches we need to link in kerberos libraries, and removing the
+"gssapi" argument has the effect of removing "-lgssapi_krb5" from the
+output.
 
-fs/fat/namei_vfat.c:
-static int vfat_revalidate_ci(struct dentry *dentry, struct nameidata *nd)
-{
-        if (nd && nd->flags & LOOKUP_RCU)
-                return -ECHILD;
-        ...
-}
+Ack, I guess, except: I'm a little confused why we want to link with
+*any* kerberos libraries, if rpc.gssd and rpc.svcgssd are supposed to
+themselves be completely mechanism-independent and are supposed to
+dlopen() aything they need for kerberos.
 
-E.g.:
+--b.
 
-----------------------------------------------------------------------
-Don't oops when abused by broken layered file systems
-
-Signed-off-by: Chris Dunlop <chris@onthe.net.au>
----
- fs/jfs/namei.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
-index e17545e..5504f6e 100644
---- a/fs/jfs/namei.c
-+++ b/fs/jfs/namei.c
-@@ -1585,6 +1585,9 @@ out:
- 
- static int jfs_ci_revalidate(struct dentry *dentry, struct nameidata *nd)
- {
-+	if (nd && nd->flags & LOOKUP_RCU)
-+		return -ECHILD;
-+
- 	/*
- 	 * This is not negative dentry. Always valid.
- 	 *
--- 
-1.7.0.4
-
-----------------------------------------------------------------------
-
-------------------------------------------------------------------------------
-All the data continuously generated in your IT infrastructure 
-contains a definitive record of customers, application performance, 
-security threats, fraudulent activity, and more. Splunk takes this 
-data and makes sense of it. IT sense. And common sense.
-http://p.sf.net/sfu/splunk-novd2d
+>        K5VERS=`$K5CONFIG --version | head -n 1 | awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }'`
+>        AC_DEFINE_UNQUOTED(KRB5_VERSION, $K5VERS, [Define this as the Kerberos version number])
+>        if test -f $dir/include/gssapi/gssapi_krb5.h -a \
+> -- 
+> 1.7.7.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
