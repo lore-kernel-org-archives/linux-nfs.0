@@ -1,191 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10299 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932757Ab2AMULk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:40 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 40/44] NFS: Export functions from client.c
-Date: Fri, 13 Jan 2012 15:10:49 -0500
-Message-Id: <1326485453-1350-41-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-tul01m020-f174.google.com ([209.85.214.174]:34973 "EHLO
+	mail-tul01m020-f174.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753425Ab2AZWiY convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 17:38:24 -0500
+Received: by obcva7 with SMTP id va7so1067168obc.19
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 14:38:23 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <4F21CA97.3020906@RedHat.com>
+References: <1327608461-15305-1-git-send-email-steved@redhat.com>
+	<20120126203006.GD31531@fieldses.org>
+	<4F21CA97.3020906@RedHat.com>
+Date: Thu, 26 Jan 2012 17:38:23 -0500
+Message-ID: <CAKnQG+cQpGwJng22cB8BQ8x_j9VhwDE94xj=1xezjvpp6MsVEg@mail.gmail.com>
+Subject: Re: [PATCH] rpc.gssd: Links directly with libgssapi_krb5 which not needed.
+From: Kevin Coffman <kwc@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Jan 26, 2012 at 4:50 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>
+>
+> On 01/26/2012 03:30 PM, J. Bruce Fields wrote:
+>> On Thu, Jan 26, 2012 at 03:07:41PM -0500, Steve Dickson wrote:
+>>> rpc.gssd and rpc.svcgssd both link with the libgssapi_krb5 and
+>>> libgssglue libraries which is not needed since libgssglue
+>>> will dynamically load the gssapi interface defined in the
+>>> /etc/gssapi_mech.conf. Most likely the libgssapi_krb5 library.
+>>>
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>>  aclocal/kerberos5.m4 |    2 +-
+>>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
+>>> index dfa5738..7574e2d 100644
+>>> --- a/aclocal/kerberos5.m4
+>>> +++ b/aclocal/kerberos5.m4
+>>> @@ -31,7 +31,7 @@ AC_DEFUN([AC_KERBEROS_V5],[
+>>>      fi
+>>>      if test "$K5CONFIG" != ""; then
+>>>        KRBCFLAGS=`$K5CONFIG --cflags`
+>>> -      KRBLIBS=`$K5CONFIG --libs gssapi`
+>>> +      KRBLIBS=`$K5CONFIG --libs`
+>>
+>> OK, so that's gathering krb5-config output which gives us the list of -l
+>> switches we need to link in kerberos libraries, and removing the
+>> "gssapi" argument has the effect of removing "-lgssapi_krb5" from the
+>> output.
+> Right...
+>
+>>
+>> Ack, I guess, except: I'm a little confused why we want to link with
+>> *any* kerberos libraries, if rpc.gssd and rpc.svcgssd are supposed to
+>> themselves be completely mechanism-independent and are supposed to
+>> dlopen() aything they need for kerberos.
+> Well when they are not liked with any kerberos libs the following
+> are undefined http://fpaste.org/rWOR/
+>
+> I'm treading on a thin ice here but I'm thinking those undefines are
+> not part the gssapi. Only the gssapi routines are dynamically linked.
+>
+> Thanks for the time!
 
-I am about to move over nfs v4-only code from client.c to nfs4/client.c.
-These functions will be needed by that code, so they cannot be declared
-static.
+Most of those functions are dealing with finding credentials caches
+and keytabs and examining them.  (Trying to pick the right credential
+cache to use, and trying to find the right keytab entry to use...)  As
+Steve said, those are strictly Kerberos functions, not GSSAPI.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/client.c |   34 +++++++++++++++++++++-------------
- fs/nfs/nfs.h    |   11 +++++++++++
- 2 files changed, 32 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 56da3b6..8e053a4 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -402,8 +402,8 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
-  * Test if two socket addresses represent the same actual socket,
-  * by comparing (only) relevant fields, excluding the port number.
-  */
--static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
--				     const struct sockaddr *sa2)
-+int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
-+			      const struct sockaddr *sa2)
- {
- 	if (sa1->sa_family != sa2->sa_family)
- 		return 0;
-@@ -416,6 +416,7 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
- 	}
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs_sockaddr_match_ipaddr);
- 
- /*
-  * Test if two socket addresses represent the same actual socket,
-@@ -498,7 +499,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
-  * Look up a client by IP address and protocol version
-  * - creates a new record if one doesn't yet exist
-  */
--static struct nfs_client *
-+struct nfs_client *
- nfs_get_client(const struct nfs_client_initdata *cl_init,
- 	       const struct rpc_timeout *timeparms,
- 	       const char *ip_addr,
-@@ -571,6 +572,7 @@ found_client:
- 	dprintk("--> nfs_get_client() = %p [share]\n", clp);
- 	return clp;
- }
-+EXPORT_SYMBOL_GPL(nfs_get_client);
- 
- /*
-  * Mark a server as ready or failed
-@@ -580,6 +582,7 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
- 	clp->cl_cons_state = state;
- 	wake_up_all(&nfs_client_active_wq);
- }
-+EXPORT_SYMBOL_GPL(nfs_mark_client_ready);
- 
- /*
-  * With sessions, the client is not marked ready until after a
-@@ -600,8 +603,8 @@ int nfs4_check_client_ready(struct nfs_client *clp)
- /*
-  * Initialise the timeout values for a connection
-  */
--static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
--				    unsigned int timeo, unsigned int retrans)
-+void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
-+			     unsigned int timeo, unsigned int retrans)
- {
- 	to->to_initval = timeo * HZ / 10;
- 	to->to_retries = retrans;
-@@ -637,14 +640,15 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 		BUG();
- 	}
- }
-+EXPORT_SYMBOL_GPL(nfs_init_timeout_values);
- 
- /*
-  * Create an RPC client handle
-  */
--static int nfs_create_rpc_client(struct nfs_client *clp,
--				 const struct rpc_timeout *timeparms,
--				 rpc_authflavor_t flavor,
--				 int discrtry, int noresvport)
-+int nfs_create_rpc_client(struct nfs_client *clp,
-+			  const struct rpc_timeout *timeparms,
-+			  rpc_authflavor_t flavor,
-+			  int discrtry, int noresvport)
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
-@@ -677,6 +681,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- 	clp->cl_rpcclient = clnt;
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs_create_rpc_client);
- 
- /*
-  * Version 2 or 3 client destruction
-@@ -730,7 +735,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- /*
-  * Create a general RPC client
-  */
--static int nfs_init_server_rpcclient(struct nfs_server *server,
-+int nfs_init_server_rpcclient(struct nfs_server *server,
- 		const struct rpc_timeout *timeo,
- 		rpc_authflavor_t pseudoflavour)
- {
-@@ -762,6 +767,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
- 
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs_init_server_rpcclient);
- 
- /*
-  * Initialise an NFS2 or NFS3 client
-@@ -947,7 +953,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- /*
-  * Probe filesystem information, including the FSID on v2/v3
-  */
--static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
-+int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
- {
- 	struct nfs_fsinfo fsinfo;
- 	struct nfs_client *clp = server->nfs_client;
-@@ -987,11 +993,12 @@ out_error:
- 	dprintk("nfs_probe_fsinfo: error = %d\n", -error);
- 	return error;
- }
-+EXPORT_SYMBOL_GPL(nfs_probe_fsinfo);
- 
- /*
-  * Copy useful information when duplicating a server record
-  */
--static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
-+void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_server *source)
- {
- 	target->flags = source->flags;
- 	target->rsize = source->rsize;
-@@ -1003,8 +1010,9 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
- 	target->caps = source->caps;
- 	target->options = source->options;
- }
-+EXPORT_SYMBOL_GPL(nfs_server_copy_userdata);
- 
--static void nfs_server_insert_lists(struct nfs_server *server)
-+void nfs_server_insert_lists(struct nfs_server *server)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 5f2d632..464c64a 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -68,6 +68,17 @@ struct nfs_server *do_nfs_clone_server(struct nfs_server *, struct nfs_server *,
- 				       struct nfs_fh *, struct nfs_fattr *);
- struct list_head *nfs_client_list_start(void);
- void nfs_client_list_end(void);
-+int nfs_sockaddr_match_ipaddr(const struct sockaddr *, const struct sockaddr *);
-+int nfs_create_rpc_client(struct nfs_client *, const struct rpc_timeout *,
-+			  rpc_authflavor_t, int, int);
-+struct nfs_client *nfs_get_client(const struct nfs_client_initdata *,
-+				  const struct rpc_timeout *, const char *,
-+				  rpc_authflavor_t, int);
-+int nfs_probe_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
-+void nfs_server_insert_lists(struct nfs_server *);
-+void nfs_init_timeout_values(struct rpc_timeout *, int, unsigned int, unsigned int);
-+int nfs_init_server_rpcclient(struct nfs_server *, const struct rpc_timeout *, rpc_authflavor_t);
-+void nfs_server_copy_userdata(struct nfs_server *, struct nfs_server *);
- 
- /* Exported in dir.c */
- int nfs_lookup_revalidate(struct dentry *, struct nameidata *);
--- 
-1.7.8.3
-
+K.C.
