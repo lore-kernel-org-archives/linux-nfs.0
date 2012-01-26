@@ -1,62 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:41052 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:61212 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756334Ab2AMIw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 03:52:56 -0500
-Subject: [PATCH v5 4/6] SUNRPC: create rpcbind client in passed network
- namespace context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 12:52:35 +0400
-Message-ID: <20120113085234.31750.46126.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-References: <20120113084545.31750.83655.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751879Ab2AZVy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 16:54:29 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 3/3] NFS: Update idmapper documentation
+Date: Thu, 26 Jan 2012 16:54:25 -0500
+Message-Id: <1327614865-29322-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rpcbind clients are per network namespace.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/rpcb_clnt.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
+ Documentation/filesystems/nfs/idmapper.txt |   20 ++++++++++++++------
+ 1 files changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 371d229..0d76c0f 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -344,11 +344,12 @@ out:
- 	return result;
- }
+diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
+index 120fd3c..fe03d10 100644
+--- a/Documentation/filesystems/nfs/idmapper.txt
++++ b/Documentation/filesystems/nfs/idmapper.txt
+@@ -4,13 +4,21 @@ ID Mapper
+ =========
+ Id mapper is used by NFS to translate user and group ids into names, and to
+ translate user and group names into ids.  Part of this translation involves
+-performing an upcall to userspace to request the information.  Id mapper will
+-user request-key to perform this upcall and cache the result.  The program
+-/usr/sbin/nfs.idmap should be called by request-key, and will perform the
+-translation and initialize a key with the resulting information.
++performing an upcall to userspace to request the information.  There are two
++ways NFS could obtain this information: placing a call to /sbin/request-key
++or by placing a call to the rpc.idmap daemon.
++
++NFS will attempt to call /sbin/request-key first.  If this succeeds, the
++result will be cached using the generic request-key cache.  This call should
++only fail if /etc/request-key.conf is not configured for the id_resolver key
++type, see the "Configuring" section below if you wish to use the request-key
++method.
++
++If the call to /sbin/request-key fails (if /etc/request-key.conf is not
++configured with the id_resolver key type), then the idmapper will ask the
++legacy rpc.idmap daemon for the id mapping.  This result will be stored
++in a custom NFS idmap cache.
  
--static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
--				    size_t salen, int proto, u32 version)
-+static struct rpc_clnt *rpcb_create(struct net *net, char *hostname,
-+				    struct sockaddr *srvaddr, size_t salen,
-+				    int proto, u32 version)
- {
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= net,
- 		.protocol	= proto,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
-@@ -708,8 +709,8 @@ void rpcb_getport_async(struct rpc_task *task)
- 	dprintk("RPC: %5u %s: trying rpcbind version %u\n",
- 		task->tk_pid, __func__, bind_version);
+- NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
+- feature.
  
--	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
--				bind_version);
-+	rpcb_clnt = rpcb_create(xprt->xprt_net, clnt->cl_server, sap, salen,
-+				xprt->prot, bind_version);
- 	if (IS_ERR(rpcb_clnt)) {
- 		status = PTR_ERR(rpcb_clnt);
- 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+ ===========
+ Configuring
+-- 
+1.7.8.4
 
