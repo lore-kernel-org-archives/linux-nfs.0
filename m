@@ -1,43 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:10439 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:8292 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754612Ab2AYQCW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 11:02:22 -0500
-Message-ID: <4F20277B.40901@parallels.com>
-Date: Wed, 25 Jan 2012 20:02:03 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] RPCBIND: add anonymous listening socket in addition to
- named one
-References: <4EFB330A.7070908@parallels.com> <2221B6F7-574A-4CEF-B19F-600932024DEE@oracle.com> <4EFB521B.7060004@parallels.com> <406C7E87-0CCB-4034-8FD8-1602F7DCDBD6@oracle.com> <4EFC5391.7000601@parallels.com> <5E291DB3-7FB3-4108-B254-B59780C64346@oracle.com> <4EFC9189.5040605@parallels.com> <56767BFA-62B8-4E10-B9B3-4FD9EF278969@oracle.com> <4EFCA668.6040107@parallels.com> <4F1FE3A8.5020002@parallels.com> <20120125144131.GC17873@fieldses.org>
-In-Reply-To: <20120125144131.GC17873@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1751925Ab2AZScg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 13:32:36 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/2] NFS: printks in fs/nfs/ should start with NFS:
+Date: Thu, 26 Jan 2012 13:32:22 -0500
+Message-Id: <1327602743-1152-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1327602743-1152-1-git-send-email-dros@netapp.com>
+References: <1327602743-1152-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-25.01.2012 18:41, bfields@fieldses.org пишет:
-> On Wed, Jan 25, 2012 at 03:12:40PM +0400, Stanislav Kinsbursky wrote:
->> Chuck, Bruce, have you seen this patch I'm replying to?
->> I would appreciate for any comments with this problem.
->> Also, probably we can instead just perform local transports socket
->> connection in sync mode? This should solve our problem.
->> What do you think?
->
-> I'm hoping Chuck will answer....
->
-> (I'd recommend just resending the patch, though; it's more likely to get
-> a response than if readers need to go dig the original out of mail
-> archives.)
->
+Messages like "Got error -10052 from the server on DESTROY_SESSION. Session
+has been destroyed regardless" can be confusing to users who aren't very
+familiar with NFS.
 
-Thanks, but I really don't like the patch idea. I'd prefer to connect in sync 
-mode for unix sockets instead. At least it is local (NFS) change.
-But this code isn't familiar to me and I'm afraid of possible pitfalls.
+NOTE: This patch ignores any printks() that start by printing __func__ - that
+will be in a separate patch.
 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/idmap.c          |    3 ++-
+ fs/nfs/nfs4filelayout.c |    2 +-
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4state.c      |    2 +-
+ fs/nfs/nfs4xdr.c        |    2 +-
+ 5 files changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index ff084d2..91b1e2a 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -175,7 +175,8 @@ int nfs_idmap_init(void)
+ 	struct key *keyring;
+ 	int ret = 0;
+ 
+-	printk(KERN_NOTICE "Registering the %s key type\n", key_type_id_resolver.name);
++	printk(KERN_NOTICE "NFS: Registering the %s key type\n",
++		key_type_id_resolver.name);
+ 
+ 	cred = prepare_kernel_cred(NULL);
+ 	if (!cred)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b4f8f96..9a058b8 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -575,7 +575,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 			goto out_err_free;
+ 		fl->fh_array[i]->size = be32_to_cpup(p++);
+ 		if (sizeof(struct nfs_fh) < fl->fh_array[i]->size) {
+-			printk(KERN_ERR "Too big fh %d received %d\n",
++			printk(KERN_ERR "NFS: Too big fh %d received %d\n",
+ 			       i, fl->fh_array[i]->size);
+ 			goto out_err_free;
+ 		}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 05dbba6..0773bbb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5371,7 +5371,7 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+ 
+ 	if (status)
+ 		printk(KERN_WARNING
+-			"Got error %d from the server on DESTROY_SESSION. "
++			"NFS: Got error %d from the server on DESTROY_SESSION. "
+ 			"Session has been destroyed regardless...\n", status);
+ 
+ 	dprintk("<-- nfs4_proc_destroy_session\n");
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 7d09860..b43a65d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1764,7 +1764,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 	} while (atomic_read(&clp->cl_count) > 1);
+ 	return;
+ out_error:
+-	printk(KERN_WARNING "Error: state manager failed on NFSv4 server %s"
++	printk(KERN_WARNING "NFS: state manager failed on NFSv4 server %s"
+ 			" with error %d\n", clp->cl_hostname, -status);
+ 	nfs4_end_drain_session(clp);
+ 	nfs4_clear_state_manager_bit(clp);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4633d40..0f24f14 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1023,7 +1023,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * Now we backfill the bitmap and the attribute buffer length.
+ 	 */
+ 	if (len != ((char *)p - (char *)q) + 4) {
+-		printk(KERN_ERR "nfs: Attr length error, %u != %Zu\n",
++		printk(KERN_ERR "NFS: Attr length error, %u != %Zu\n",
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.4.4
+
