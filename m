@@ -1,147 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59860 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755176Ab2AXUB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 15:01:58 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0OK1wZL004374
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 15:01:58 -0500
-Received: from fathat.boston.devel.redhat.com (fathat.boston.devel.redhat.com [10.16.60.125])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q0OK1unx023893
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Jan 2012 15:01:57 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 2/2] SUNRPC: Adding status trace points
-Date: Tue, 24 Jan 2012 15:51:47 -0500
-Message-Id: <1327438307-2910-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1327438307-2910-1-git-send-email-steved@redhat.com>
-References: <1327438307-2910-1-git-send-email-steved@redhat.com>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:48225 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751131Ab2AZMcA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 07:32:00 -0500
+Message-ID: <4F2147BA.6030607@itwm.fraunhofer.de>
+Date: Thu, 26 Jan 2012 13:31:54 +0100
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: lsf-pc@lists.linux-foundation.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
+Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
+In-Reply-To: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds three trace points to the status routines
-in the sunrpc state machine.
+On 01/17/2012 09:15 PM, Chuck Lever wrote:
+> Hi-
+>
+> I know there is some work on ext4 regarding metadata corruption
+> detection; btrfs also has some corruption detection facilities.  The
+> IETF NFS working group is considering the addition of corruption
+> detection to the next NFSv4 minor version.  T10 has introduced
+> DIF/DIX.
+>
+> I'm probably ignorant of the current state of implementation in
+> Linux, but I'm interested in understanding common ground among local
+> file systems, block storage, and network file systems.  Example
+> questions include:  Do we need standardized APIs for block device
+> corruption detection?  How much of T10 DIF/DIX should NFS support?
+> What are the drivers for this feature (broad use cases)?
+>
 
-The goal of these trace points is to give an Admin
-the ability to check on binding status or connection
-status to see if there is a potential problem.
+Other network file systems such as Lustre already use their own network 
+data checksums. As far as I know Lustre plans (planned?) to use 
+underlying ZFS checksums also for network transfers, so real 
+client-to-disk (end-to-end) checksums. Using T10 DIF/DIX might be on 
+their todo list.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- include/trace/events/sunrpc.h |   53 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/clnt.c             |    6 ++++-
- 2 files changed, 58 insertions(+), 1 deletions(-)
+We from the Fraunhofer FhGFS team would like to also see the T10 DIF/DIX 
+API exposed to user space, so that we could make use of it for our FhGFS 
+file system.
+And I think this feature is not only useful for file systems, but in 
+general, scientific applications, databases, etc also would benefit from 
+insurance of data integrity.
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 2f82de9..abcf45d 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -8,6 +8,59 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/tracepoint.h>
- 
-+DECLARE_EVENT_CLASS(rpc_task_status,
-+
-+	TP_PROTO(struct rpc_task *task),
-+
-+	TP_ARGS(task),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_task *, task)
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task = task;
-+		__entry->clnt = task->tk_client;
-+		__entry->status = task->tk_status;
-+	),
-+
-+	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_call_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_bind_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+TRACE_EVENT(rpc_connect_status,
-+	TP_PROTO(struct rpc_task *task, int status),
-+
-+	TP_ARGS(task, status),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_task *, task)
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task = task;
-+		__entry->clnt = task->tk_client;
-+		__entry->status = status;
-+	),
-+
-+	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+);
-+
- DECLARE_EVENT_CLASS(rpc_task_running,
- 
- 	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index b783f2f..89ea1f9 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -38,6 +38,8 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/metrics.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <trace/events/sunrpc.h>
-+
- 
- #include "sunrpc.h"
- 
-@@ -57,7 +59,6 @@ static DEFINE_SPINLOCK(rpc_client_lock);
- 
- static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
- 
--
- static void	call_start(struct rpc_task *task);
- static void	call_reserve(struct rpc_task *task);
- static void	call_reserveresult(struct rpc_task *task);
-@@ -1159,6 +1160,7 @@ call_bind_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_bind_status(task);
- 	switch (task->tk_status) {
- 	case -ENOMEM:
- 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-@@ -1258,6 +1260,7 @@ call_connect_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_connect_status(task, status);
- 	switch (status) {
- 		/* if soft mounted, test if we've timed out */
- 	case -ETIMEDOUT:
-@@ -1446,6 +1449,7 @@ call_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_call_status(task);
- 	task->tk_status = 0;
- 	switch(status) {
- 	case -EHOSTDOWN:
--- 
-1.7.1
 
+Cheers,
+Bernd
+
+
+--
+Bernd Schubert
+Fraunhofer ITWM
