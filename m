@@ -1,70 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39190 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:3140 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755323Ab2AMJJe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 04:09:34 -0500
-Subject: [PATCH v2 2/4] SUNRPC: parametrize rpc_pton6() by network context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Fri, 13 Jan 2012 13:09:11 +0400
-Message-ID: <20120113090911.1598.7934.stgit@localhost6.localdomain6>
-In-Reply-To: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
-References: <20120113090520.1598.73772.stgit@localhost6.localdomain6>
+	id S1751389Ab2AZPQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 10:16:30 -0500
+Message-ID: <4F216E4C.7030907@netapp.com>
+Date: Thu, 26 Jan 2012 10:16:28 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Belisko Marek <marek.belisko@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: fanotify - fschange filesystem notification on nfs mounted directory
+References: <CAAfyv35wM-G0_sFbpZ-829_Lrwz7FNT8hyPeT7XnMzF64YZ6bQ@mail.gmail.com>
+In-Reply-To: <CAAfyv35wM-G0_sFbpZ-829_Lrwz7FNT8hyPeT7XnMzF64YZ6bQ@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Parametrize rpc_pton6() by network context and thus force it's caller
-to pass in network context instead of using hard-coded "init_net".
+On Thu Jan 26 03:00:26 2012, Belisko Marek wrote:
+> Hi,
+>
+> I'm working on fschange
+> (http://stefan.buettcher.org/cs/fschange/index.html) on which fanotify
+> is based also.
+>
+> It is reporting changes (when file or dir is created, changed, deleted
+> ...) working fine over "normal filesystems".
+> Our intention is to used to report changes on directory which is
+> mounted over nfs. This case doesn't work at all
+> (we got some events about rename only). Is there anything what should
+> be setup in nfs options or this case basically
+> didn't work at all? I'm only nfs user and don't understand details.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+You didn't set up anything wrong, the case just doesn't work for 
+finding changes on the server.  Files created locally should trigger 
+inotify events through the VFS, but tracking changes made on the server 
+is more difficult.  Notifications are part of the NFS v4.1 protocol, 
+but I don't think anything has been implemented right now.
 
----
- net/sunrpc/addr.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+Maybe something in userland like gamin could help?  
+http://people.gnome.org/~veillard/gamin/
 
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index cc83de1..18c40a2 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -198,7 +198,7 @@ static int rpc_parse_scope_id(struct net *net, const char *buf,
- 	return 0;
- }
- 
--static size_t rpc_pton6(const char *buf, const size_t buflen,
-+static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- 			struct sockaddr *sap, const size_t salen)
- {
- 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-@@ -214,14 +214,14 @@ static size_t rpc_pton6(const char *buf, const size_t buflen,
- 	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
- 		return 0;
- 
--	if (!rpc_parse_scope_id(&init_net, buf, buflen, delim, sin6))
-+	if (!rpc_parse_scope_id(net, buf, buflen, delim, sin6))
- 		return 0;
- 
- 	sin6->sin6_family = AF_INET6;
- 	return sizeof(struct sockaddr_in6);
- }
- #else
--static size_t rpc_pton6(const char *buf, const size_t buflen,
-+static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- 			struct sockaddr *sap, const size_t salen)
- {
- 	return 0;
-@@ -249,7 +249,7 @@ size_t rpc_pton(const char *buf, const size_t buflen,
- 
- 	for (i = 0; i < buflen; i++)
- 		if (buf[i] == ':')
--			return rpc_pton6(buf, buflen, sap, salen);
-+			return rpc_pton6(&init_net, buf, buflen, sap, salen);
- 	return rpc_pton4(buf, buflen, sap, salen);
- }
- EXPORT_SYMBOL_GPL(rpc_pton);
+- Bryan
+
+>
+> Thanks in advance,
+>
+> marek
+>
+
 
