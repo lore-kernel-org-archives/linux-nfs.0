@@ -1,148 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50560 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7548 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754969Ab2AQQAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 11:00:32 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 4/6] locks: break delegations on rename
-Date: Tue, 17 Jan 2012 11:00:27 -0500
-Message-Id: <1326816029-13913-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
-References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
+	id S1751722Ab2AZMrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 07:47:53 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q0QClr8r007254
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Jan 2012 07:47:53 -0500
+Message-ID: <4F214B77.8050300@RedHat.com>
+Date: Thu, 26 Jan 2012 07:47:51 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and recreated
+References: <1327348931-785-1-git-send-email-jlayton@redhat.com>	<1327348931-785-10-git-send-email-jlayton@redhat.com>	<4F2046F8.80609@RedHat.com>	<20120125140954.5312a80f@tlielax.poochiereds.net>	<4F20587E.9070209@RedHat.com>	<20120125152814.391ae064@tlielax.poochiereds.net>	<4F207C7C.4090207@RedHat.com> <20120125183206.5efcd845@corrin.poochiereds.net>
+In-Reply-To: <20120125183206.5efcd845@corrin.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-To rely on the i_mutex for exclusion between setlease and rename, we
-need rename to take the i_mutex on the source as well as on any possible
-target.
 
-Also fix up lockdep and the Documentation/filesystems/directory-locking
-documentation.  (I need to review the latter one more time to make sure
-I've got it right.)
+On 01/25/2012 06:32 PM, Jeff Layton wrote:
+> On Wed, 25 Jan 2012 17:04:44 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 01/25/2012 03:28 PM, Jeff Layton wrote:
+>>> On Wed, 25 Jan 2012 14:31:10 -0500
+>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 01/25/2012 02:09 PM, Jeff Layton wrote:
+>>>>> On Wed, 25 Jan 2012 13:16:24 -0500
+>>>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>
+>>>>>> Hey Jeff,
+>>>>>>
+>>>>>> Commit inline... 
+>>>>>>
+>>>>>> On 01/23/2012 03:02 PM, Jeff Layton wrote:
+>>>>>>> This can happen if nfsd is shut down and restarted. If that occurs,
+>>>>>>> then reopen the pipe so we're not waiting for data on the defunct
+>>>>>>> pipe.
+>>>>>>>
+>>>>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>>>>>> ---
+>>>>>>>  utils/nfsdcld/nfsdcld.c |   84 +++++++++++++++++++++++++++++++++++++++++-----
+>>>>>>>  1 files changed, 74 insertions(+), 10 deletions(-)
+>>>>>>>
+>>>>>>> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+>>>>>>> index b0c08e2..0dc5b37 100644
+>>>>>>> --- a/utils/nfsdcld/nfsdcld.c
+>>>>>>> +++ b/utils/nfsdcld/nfsdcld.c
+>>>>>>> @@ -57,6 +57,8 @@ struct cld_client {
+>>>>>>>  
+>>>>>>>  /* global variables */
+>>>>>>>  static char *pipepath = DEFAULT_CLD_PATH;
+>>>>>>> +static int 		inotify_fd = -1;
+>>>>>>> +static struct event	pipedir_event;
+>>>>>>>  
+>>>>>>>  static struct option longopts[] =
+>>>>>>>  {
+>>>>>>> @@ -68,8 +70,10 @@ static struct option longopts[] =
+>>>>>>>  	{ NULL, 0, 0, 0 },
+>>>>>>>  };
+>>>>>>>  
+>>>>>>> +
+>>>>>>>  /* forward declarations */
+>>>>>>>  static void cldcb(int UNUSED(fd), short which, void *data);
+>>>>>>> +static void cld_pipe_reopen(struct cld_client *clnt);
+>>>>>>>  
+>>>>>>>  static void
+>>>>>>>  usage(char *progname)
+>>>>>>> @@ -80,10 +84,62 @@ usage(char *progname)
+>>>>>>>  
+>>>>>>>  #define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
+>>>>>>>  
+>>>>>>> +static void
+>>>>>>> +cld_inotify_cb(int UNUSED(fd), short which, void *data)
+>>>>>>> +{
+>>>>>>> +	int ret, oldfd;
+>>>>>>> +	char evbuf[INOTIFY_EVENT_MAX];
+>>>>>>> +	char *dirc = NULL, *pname;
+>>>>>>> +	struct inotify_event *event = (struct inotify_event *)evbuf;
+>>>>>>> +	struct cld_client *clnt = data;
+>>>>>>> +
+>>>>>>> +	if (which != EV_READ)
+>>>>>>> +		return;
+>>>>>>> +
+>>>>>>> +	dirc = strndup(pipepath, PATH_MAX);
+>>>>>>> +	if (!dirc) {
+>>>>>>> +		xlog_err("%s: unable to allocate memory", __func__);
+>>>>>>> +		goto out;
+>>>>>>> +	}
+>>>>>>> +
+>>>>>>> +	ret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
+>>>>>>> +	if (ret < 0) {
+>>>>>>> +		xlog_err("%s: read from inotify fd failed: %m", __func__);
+>>>>>>> +		goto out;
+>>>>>>> +	}
+>>>>>>> +
+>>>>>>> +	/* check to see if we have a filename in the evbuf */
+>>>>>>> +	if (!event->len)
+>>>>>>> +		goto out;
+>>>>>>> +
+>>>>>>> +	pname = basename(dirc);
+>>>>>>> +
+>>>>>>> +	/* does the filename match our pipe? */
+>>>>>>> +	if (strncmp(pname, event->name, event->len))
+>>>>>>> +		goto out;
+>>>>>>> +
+>>>>>>> +	/*
+>>>>>>> +	 * reopen the pipe. The old fd is not closed until the new one is
+>>>>>>> +	 * opened, so we know they should be different if the reopen is
+>>>>>>> +	 * successful.
+>>>>>>> +	 */
+>>>>>>> +	oldfd = clnt->cl_fd;
+>>>>>>> +	do {
+>>>>>>> +		cld_pipe_reopen(clnt);
+>>>>>>> +	} while (oldfd == clnt->cl_fd);
+>>>>>> Doesn't this have a potential for an infinite loop? 
+>>>>>>
+>>>>>> steved.  
+>>>>>
+>>>>>
+>>>>> Yes. If reopening the new pipe continually fails then it will loop
+>>>>> forever.
+>>>> Would it be more accurate to say it would be spinning forever? 
+>>>> Since there is no sleep or delay in cld_pipe_reopen, what's
+>>>> going to stop the daemon from spinning in a CPU bound loop?
+>>>>
+>>>
+>>> Well, not spinning in a userspace loop...it'll continually be cycling on
+>>> an open() call that's not working for whatever reason. We sort of have
+>>> to loop on that though. I think the best we can do is add a sleep(1) in
+>>> there or something. Would that be sufficient?
+>>>
+>> I still think it going to needlessly suck up CPU cycles... 
+>>
+>> The way I handled this in the rpc.idmapd daemon was to do the
+>> reopen on a SIGHUP signal. Then in NFS server initscript 
+>> I did the following:
+>>     /usr/bin/pkill -HUP rpc.idmapd
+>>
+>> Thoughts?
+>>
+> 
+> Ugh, that requires manual intervention if the pipe is removed and
+> recreated. If someone restarts nfsd and doesn't send the signal, then
+> they won't get the upcalls. I'd prefer something that "just works".
+I have not seen any bz open saying rpc.idmapd doesn't just work... 
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/directory-locking |   11 ++++++-----
- fs/namei.c                                  |   17 +++++++++++++++--
- include/linux/fs.h                          |    9 ++++++---
- 3 files changed, 27 insertions(+), 10 deletions(-)
+> 
+> Seriously, is it that big a deal to just loop here? One open(2) call
+> every second doesn't seem that bad, and honestly if a new pipe pops up
+> and the daemon can't open it then a few CPU cycles is the least of your
+> worries.
+> 
+Put the daemon in that loop and then run the top command in another 
+window.. If the daemon is at the top of the list then it is a big
+deal because that daemon will on the top forever for no reason, in
+the cast of the NFS server not coming back. 
 
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..c51cbed 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -12,8 +12,8 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent, finds source and target, locks source, also locks target if
-+it already exists, and then calls the method.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,6 +30,7 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
-+	* lock source if it is not a directory.
- 	* if target exists - lock it.
- 	* call the method.
- 
-@@ -56,9 +57,9 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after taking locks
-+    on their parents (which remain their parents by (1) and (2)).
-+    (Proof: see descriptions of operations).
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-diff --git a/fs/namei.c b/fs/namei.c
-index 7182209..facf295 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3075,6 +3075,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3082,13 +3083,23 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	dget(new_dentry);
--	if (target)
-+	mutex_lock_nested(&source->i_mutex, I_MUTEX_RENAME_SOURCE);
-+	error = break_lease(source, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
-+	if (error)
-+		goto out_unlock_source;
-+	if (target) {
- 		mutex_lock(&target->i_mutex);
--
-+		error = break_lease(target, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
-+		if (error)
-+			goto out;
-+	}
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = break_lease(old_dentry->d_inode, BREAK_ONLY_DELEGS|BREAK_ALL_LEASES);
-+	if (error)
-+		goto out;
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
-@@ -3100,6 +3111,8 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- out:
- 	if (target)
- 		mutex_unlock(&target->i_mutex);
-+out_unlock_source:
-+	mutex_unlock(&source->i_mutex);
- 	dput(new_dentry);
- 	return error;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 939cb3b..dccec8c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -848,10 +848,12 @@ static inline int inode_unhashed(struct inode *inode)
-  * 0: the object of the current VFS operation
-  * 1: parent
-  * 2: child/target
-- * 3: quota file
-+ * 3: xattr
-+ * 4: quota file
-+ * 5: the file being renamed (used only in rename of a non-directory)
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> rename_source -> normal -> xattr -> quota
-  */
- enum inode_i_mutex_lock_class
- {
-@@ -859,7 +861,8 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_QUOTA,
-+	I_MUTEX_RENAME_SOURCE
- };
- 
- /*
--- 
-1.7.5.4
+tia,
+
+steved.
 
