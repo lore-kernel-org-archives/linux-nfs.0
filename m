@@ -1,188 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63200 "EHLO mx2.netapp.com"
+Received: from mail.mera.ru ([195.98.57.161]:52681 "EHLO mail.mera.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755740Ab2AYQsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jan 2012 11:48:32 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFSD: Clean up the test_stateid function
-Date: Wed, 25 Jan 2012 11:48:15 -0500
-Message-Id: <1327510095-26125-1-git-send-email-bjschuma@netapp.com>
+	id S1751430Ab2AZMOY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 07:14:24 -0500
+From: "Vlasov, Vladimir" <vvlasov@mera.ru>
+To: NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Re-init lockd and kstatd in runtime.
+Date: Thu, 26 Jan 2012 12:14:22 +0000
+Message-ID: <06EFEBD57610DE4FBCA0449DDF4E102B0876B9@tecas.te.mera.ru>
+References: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
+ <20120126224042.63cdd70e@notabene.brown>
+In-Reply-To: <20120126224042.63cdd70e@notabene.brown>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Yes, it is SLES10 SP3 and I'm a customer.
+I'm not sure that Novell can help me, I expect the same proposal from them - "just make sure that /var/lib/nfs is available on startup".
+I'm not satisfied with this because I have some kind of high availability system built with two Linux hosts.
 
-When I initially wrote it, I didn't understand how lists worked so I
-wrote something that didn't use them.  I think making a list of stateids
-to test is a more straightforward implementation, especially compared to
-especially compared to decoding stateids while simultaneously encoding
-a reply to the client.
+Hosts share DRBD partition and one acting as primary exports, for instance /some/path.
+As soon as primary host fails, another one becomes primary and exports /some/path.
+There are more hosts on the network, they mount:
+server:/some/path
+where "server" is resolved to the IP of current primary host which currently exports path.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c |    9 ++++++-
- fs/nfsd/nfs4xdr.c   |   70 +++++++++++++++++---------------------------------
- fs/nfsd/xdr4.h      |    9 +++++-
- 3 files changed, 39 insertions(+), 49 deletions(-)
+So, in order to keep and overtake data about clients, /var/lib/nfs is replaced with link and points to /some/path/var/lib/nfs.
+If You don't familiar with DRBD then the most important thing You should know is that it is available for R/W on primary host only.
+So, on primary host DRBD is R/W, /var/lib/nfs is available and kstatd starts.
+On another host DRBD is NOT R/W, /var/lib/nfs is empry and kstatd doesn't start.
+This is why I'm looking for how do I re-init it at any time.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e8c98f0..c59a3f6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3400,7 +3400,14 @@ __be32
- nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		   struct nfsd4_test_stateid *test_stateid)
- {
--	/* real work is done during encoding */
-+	struct nfsd4_test_stateid_id *stateid;
-+	struct nfs4_client *cl = cstate->session->se_client;
-+
-+	nfs4_lock_state();
-+	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
-+		stateid->ts_id_status = nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
-+	nfs4_unlock_state();
-+
- 	return nfs_ok;
- }
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0ec5a1b..67fe3d7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -133,22 +133,6 @@ xdr_error:					\
- 	}					\
- } while (0)
- 
--static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
--{
--	savep->p        = argp->p;
--	savep->end      = argp->end;
--	savep->pagelen  = argp->pagelen;
--	savep->pagelist = argp->pagelist;
--}
--
--static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
--{
--	argp->p        = savep->p;
--	argp->end      = savep->end;
--	argp->pagelen  = savep->pagelen;
--	argp->pagelist = savep->pagelist;
--}
--
- static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- {
- 	/* We want more bytes than seem to be available.
-@@ -1385,31 +1369,36 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
- static __be32
- nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
- {
--	unsigned int nbytes;
--	stateid_t si;
- 	int i;
--	__be32 *p;
--	__be32 status;
-+	__be32 *p, status;
-+	struct nfsd4_test_stateid_id *stateid;
- 
- 	READ_BUF(4);
- 	test_stateid->ts_num_ids = ntohl(*p++);
- 
--	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
--	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
--		goto xdr_error;
--
--	test_stateid->ts_saved_args = argp;
--	save_buf(argp, &test_stateid->ts_savedp);
-+	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
- 
- 	for (i = 0; i < test_stateid->ts_num_ids; i++) {
--		status = nfsd4_decode_stateid(argp, &si);
-+		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
-+		if (!stateid)
-+			goto out_free_stateids;
-+
-+		INIT_LIST_HEAD(&stateid->ts_id_list);
-+		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
-+
-+		status = nfsd4_decode_stateid(argp, &stateid->ts_id_stateid);
- 		if (status)
--			return status;
-+			goto out_free_stateids;
- 	}
- 
- 	status = 0;
- out:
- 	return status;
-+out_free_stateids:
-+	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list) {
-+		list_del(&stateid->ts_id_list);
-+		kfree(stateid);
-+	}
- xdr_error:
- 	dprintk("NFSD: xdr error (%s:%d)\n", __FILE__, __LINE__);
- 	status = nfserr_bad_xdr;
-@@ -3391,30 +3380,19 @@ __be32
- nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
- 			  struct nfsd4_test_stateid *test_stateid)
- {
--	struct nfsd4_compoundargs *argp;
--	struct nfs4_client *cl = resp->cstate.session->se_client;
--	stateid_t si;
-+	struct nfsd4_test_stateid_id *stateid, *next;
- 	__be32 *p;
--	int i;
--	int valid;
- 
--	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
--	argp = test_stateid->ts_saved_args;
--
--	RESERVE_SPACE(4);
-+	RESERVE_SPACE(4 + (4 * test_stateid->ts_num_ids));
- 	*p++ = htonl(test_stateid->ts_num_ids);
--	resp->p = p;
- 
--	nfs4_lock_state();
--	for (i = 0; i < test_stateid->ts_num_ids; i++) {
--		nfsd4_decode_stateid(argp, &si);
--		valid = nfs4_validate_stateid(cl, &si);
--		RESERVE_SPACE(4);
--		*p++ = htonl(valid);
--		resp->p = p;
-+	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
-+		*p++ = htonl(stateid->ts_id_status);
-+		list_del(&stateid->ts_id_list);
-+		kfree(stateid);
- 	}
--	nfs4_unlock_state();
- 
-+	ADJUST_ARGS();
- 	return nfserr;
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..0a667e9 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -343,10 +343,15 @@ struct nfsd4_saved_compoundargs {
- 	struct page **pagelist;
- };
- 
-+struct nfsd4_test_stateid_id {
-+	__be32			ts_id_status;
-+	stateid_t		ts_id_stateid;
-+	struct list_head	ts_id_list;
-+};
-+
- struct nfsd4_test_stateid {
- 	__be32		ts_num_ids;
--	struct nfsd4_compoundargs *ts_saved_args;
--	struct nfsd4_saved_compoundargs ts_savedp;
-+	struct list_head ts_stateid_list;
- };
- 
- struct nfsd4_free_stateid {
--- 
-1.7.8.4
+I was looking for guidelines of using NFS in clusters but didn't found anything useful.
+
+Best regards
+Vladimir Vlasov
+
+-----Original Message-----
+From: NeilBrown [mailto:neilb@suse.de] 
+Sent: Thursday, January 26, 2012 3:41 PM
+To: Vlasov, Vladimir
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Re-init lockd and kstatd in runtime.
+
+On Thu, 26 Jan 2012 11:15:02 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> wrote:
+
+> Hi.
+> 
+> I'm wondering if there is any way to re-init lockd and kstatd after startup?
+> 
+> Look, in svc.c static variable nsm_use_kstatd is set to 1.
+> Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set to 0.
+> And we end up without kstatd.
+> 
+> Lockd will exit as soon as last NFS mount is unmounted and on next mount attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 already and kstatd init will be skipped.
+> 
+> So, looks like if /var/lib/nfs/state is missed on host startup, there is no way to recover and tell kernel init kstatd later on demand. Or?
+
+This would be SLES10 - correct?
+
+I suggest you simply make sure /var/lib/nfs/state is not missing at startup.
+
+The issue sounds vaguely familiar ... maybe it is fixed in SLES10-SP4...
+
+What release are you running?  Are you a SLES customer?  If you are, you would be better off logging a support request on the SUSE bugzilla (bugzilla.novell.com).
+
+NeilBrown
 
