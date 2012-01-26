@@ -1,50 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:65535 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751982Ab2AVSnQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Jan 2012 13:43:16 -0500
-Received: by eaac13 with SMTP id c13so10528eaa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Jan 2012 10:43:14 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v7 01/10] nfsd4: initialize current stateid at compile time
-Date: Sun, 22 Jan 2012 19:46:00 +0100
-Message-Id: <1327257968-14522-2-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1327257968-14522-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from fieldses.org ([174.143.236.118]:46978 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751301Ab2AZVZz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 16:25:55 -0500
+Date: Thu, 26 Jan 2012 16:25:54 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Clean up the test_stateid function
+Message-ID: <20120126212554.GE700@fieldses.org>
+References: <1327510095-26125-1-git-send-email-bjschuma@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1327510095-26125-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On Wed, Jan 25, 2012 at 11:48:15AM -0500, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> When I initially wrote it, I didn't understand how lists worked so I
+> wrote something that didn't use them.  I think making a list of stateids
+> to test is a more straightforward implementation, especially compared to
+> especially compared to decoding stateids while simultaneously encoding
+> a reply to the client.
 
+Thanks, yes, I'll be much happier with something like this.  The only
+thing I'm worried about:
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4state.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+>  static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+>  {
+>  	/* We want more bytes than seem to be available.
+> @@ -1385,31 +1369,36 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+>  static __be32
+>  nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
+>  {
+> -	unsigned int nbytes;
+> -	stateid_t si;
+>  	int i;
+> -	__be32 *p;
+> -	__be32 status;
+> +	__be32 *p, status;
+> +	struct nfsd4_test_stateid_id *stateid;
+>  
+>  	READ_BUF(4);
+>  	test_stateid->ts_num_ids = ntohl(*p++);
+>  
+> -	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
+> -	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
+> -		goto xdr_error;
+> -
+> -	test_stateid->ts_saved_args = argp;
+> -	save_buf(argp, &test_stateid->ts_savedp);
+> +	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
+>  
+>  	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+> -		status = nfsd4_decode_stateid(argp, &si);
+> +		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7355fe4..8ca5ed1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -58,11 +58,15 @@ static const stateid_t one_stateid = {
- static const stateid_t zero_stateid = {
- 	/* all fields zero */
- };
--
-+static const stateid_t currentstateid = {
-+	.si_generation = 1,
-+};
-+ 
- static u64 current_sessionid = 1;
- 
- #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
- #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
-+#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
- 
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
--- 
-1.7.7.5
+Hm, are you sure this will always get freed in all cases?
 
+Off the top of my head: the compound gets decode in one fell swoop.  The
+we process and encode each op one at a time.  So, for example, if we
+fail later in the decoding, or if processing fails on an earlier op than
+this one, then we're not going to hit the free in the encoder:
+
+>  nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
+>  			  struct nfsd4_test_stateid *test_stateid)
+>  {
+...
+> +	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
+> +		*p++ = htonl(stateid->ts_id_status);
+> +		list_del(&stateid->ts_id_list);
+> +		kfree(stateid);
+
+Hence the defer_free/release_compoundargs stuff.  If you grep through
+nfs4xdr.c for defer_free I think you'll see how it works.
+
+--b.
