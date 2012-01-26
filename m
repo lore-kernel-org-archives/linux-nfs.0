@@ -1,72 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41657 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751465Ab2ANBiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 20:38:54 -0500
-Date: Fri, 13 Jan 2012 20:38:34 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, NeilBrown <neilb@suse.de>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Christoph Hellwig <hch@infradead.org>,
-        Matthew Treinish <treinish@linux.vnet.ibm.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20120114013834.GA20464@fieldses.org>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321056809.8733.2.camel@lade.trondhjem.org>
- <20111112144953.GA3740@infradead.org>
- <20111113145400.6c7a9be3@notabene.brown>
- <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
- <20111113163632.GA28574@fieldses.org>
- <20111114080745.57083bfe@notabene.brown>
- <1321338825.8267.2.camel@lade.trondhjem.org>
- <20120113170914.GA31414@us.ibm.com>
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:47470 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752731Ab2AZPfs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 10:35:48 -0500
+Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min max delays.
+Mime-Version: 1.0 (Apple Message framework v1251.1)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120113170914.GA31414@us.ibm.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
+Date: Thu, 26 Jan 2012 10:35:31 -0500
+Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org, mingo@redhat.com,
+        neilb@suse.de, stuart.menefy@st.com, bharrosh@panasas.com,
+        rees@umich.edu
+Message-Id: <EBFEB6A8-4943-4D9E-9139-73D14ACB32DD@oracle.com>
+References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
+To: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 13, 2012 at 11:09:14AM -0600, Malahal Naineni wrote:
-> Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> > On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
-> > 
-> > > If a server has objects that are never renamed, it can easily use volatile
-> > > file handles.
-> > > If a server has objects which can be renamed and wants to use volatile file
-> > > handles, then if such an object is open and is about to be renamed, it must
-> > > first log to stable storage some mapping to allow it to access the file from
-> > > the old volatile file handle.  And of course it cannot allow renames during
-> > > the grace period, but I think we already have that.
-> > > Also, if the VFH is such that it will be  lost on a reboot, the server must
-> > > log it to stable storage before allowing an open.
-> > 
-> > BTW: If the namespace is stable, then the server can easily implement
-> > permanent filehandles. Use a hash of the pathname as the filehandle, and
-> > set up a hidden directory ('/.filehandles') containing symlinks that map
-> > said hash back to the correct pathname. No need for volatile
-> > filehandles.
-> 
-> Neil and Trond, one of our use cases is for a read only file system. The
-> name space is stable and Volatile File Handle support should not have
-> any issues under those conditions, correct?
 
-Dumb question: remind me which filesystem your exporting that can't
-already generate stable filehandles?
+On Jan 26, 2012, at 9:42 AM, Srinivas KANDAGATLA wrote:
 
---b.
+> From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+> 
+> This patch attempts to minimize the delay in nfs root mount, which
+> happens as side effect of nfs-root mount retry by changing the
+> NFSROOT_TIMEOUT_MIN and NFSROOT_TIMEOUT_MAX values.
+> 
+> Current strategy is, if do_mount_root fails, sleep for 5 seconds for the
+> second attempt followed by a 5<<1 seconds delay for each loop with a
+> maximum of 30 seconds delay.
+> For 5 retries it would take.
+> 
+> 	5 + 10 + 20 + 30 + 30 = 95 Seconds
+> with
+> 	each do_mount_root timeout @ 3-4 seconds x 5 = 15 seconds.
+> 
+> Which means Kernel can only attempt the succession root-mounts or panic
+> after 110 seconds.
+> 
+> So changing min and max timeouts will have the below delays.
+> 	0  + 1 + 3 + 7 + 15	= 26 Seconds.
+> and with
+> 	each do_mount_root timeout @ 3-4 seconds x 5 = 15 seconds.
+> Which means Kernel can only attempt the succession root-mounts or panic
+> after 41 seconds
+> 
+> As, do_mount_root timesout in 3-4 seconds which should be sufficient
+> delay to start of the second nfs mount attempt and increasing delay
+> after that makes more sense.
+> 
+> I clearly see an advantange in changing these values because, Without
+> this patch my board mounts nfs in 9-10 seconds, however with this patch
+> can mount nfs in 4-5 seconds.
 
+This feels like tuning the default settings for a very specific set up.  In the original thread for this work, 41 seconds would probably not be long enough for the network switch to enable the port.
+
+I don't have a better solution at this time, but I think the current defaults will work (possibly with added delay) on most systems, whereas the proposed settings will probably result in more panics.  I prefer to keep the current settings until we have a solution that doesn't break other systems.
+
+> Signed-off-by: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+> ---
+> Hello All,
+> With latest kernel I can see that my nfs-root mounts with big delay
+> of 5 seconds when compared to 2.6.32. It took 9-10 seconds, where as in 2.6.32 it took 4-5 seconds.
 > 
-> Trond, trying to understand how we can make file handles permanent at
-> the servers with your ideas. We do use linux NFS server. Looks like the
-> server needs a new config parameter to hide '/.filehandles' and use it
-> for storing permanent file handles. Also, the solution needs a tool
-> that generates/populates './filehandles' directory. I don't know how
-> best we should handle hash collisions at this point (shouldn't be an
-> issue once we agree to a method though). Anything else I am missing?
+> However with modifications to NFSROOT_TIMEOUT_MIN and NFSROOT_TIMEOUT_MAX,  nfs root mounts as it used to do it in 2.6.32.
+> As first nfs mount timeout itself introduces sufficient delay to start the second retry.
+> I think changing the min-max values will help people to nfs boot there boards faster than it is in 3.3 kernel.
 > 
-> Any thoughts from linux NFS server community? Is this approach
-> acceptable?
+> Comments ?
 > 
-> Regards, Malahal.
+> Thanks.
+> srini
 > 
+> 
+> 
+> init/do_mounts.c |    6 +++---
+> 1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/init/do_mounts.c b/init/do_mounts.c
+> index ef6478f..b8214ce 100644
+> --- a/init/do_mounts.c
+> +++ b/init/do_mounts.c
+> @@ -361,8 +361,8 @@ out:
+> 
+> #ifdef CONFIG_ROOT_NFS
+> 
+> -#define NFSROOT_TIMEOUT_MIN	5
+> -#define NFSROOT_TIMEOUT_MAX	30
+> +#define NFSROOT_TIMEOUT_MIN	1
+> +#define NFSROOT_TIMEOUT_MAX	32
+> #define NFSROOT_RETRY_MAX	5
+> 
+> static int __init mount_nfs_root(void)
+> @@ -390,7 +390,7 @@ static int __init mount_nfs_root(void)
+> 			break;
+> 
+> 		/* Wait, in case the server refused us immediately */
+> -		ssleep(timeout);
+> +		ssleep(timeout - 1);
+> 		timeout <<= 1;
+> 		if (timeout > NFSROOT_TIMEOUT_MAX)
+> 			timeout = NFSROOT_TIMEOUT_MAX;
+> -- 
+> 1.6.3.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
