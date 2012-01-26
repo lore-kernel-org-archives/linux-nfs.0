@@ -1,47 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38609 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:3691 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751835Ab2AZUSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 15:18:22 -0500
-Date: Thu, 26 Jan 2012 15:18:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 09/11] nfsdcld: reopen pipe if it's deleted and
- recreated
-Message-ID: <20120126201821.GC31531@fieldses.org>
-References: <20120125152814.391ae064@tlielax.poochiereds.net>
- <4F207C7C.4090207@RedHat.com>
- <20120125183206.5efcd845@corrin.poochiereds.net>
- <4F214B77.8050300@RedHat.com>
- <20120126082830.23324255@corrin.poochiereds.net>
- <20120126093059.5c732d75@corrin.poochiereds.net>
- <4F2171B5.2030103@RedHat.com>
- <20120126104157.671a10c2@corrin.poochiereds.net>
- <20120126185859.GA31531@fieldses.org>
- <20120126143659.74a9de30@tlielax.poochiereds.net>
+	id S1752716Ab2AZLM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Jan 2012 06:12:27 -0500
+Subject: [PATCH 5/5] NFS: pass transport net to rpc_pton() while parse server
+ name
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Thu, 26 Jan 2012 15:12:05 +0400
+Message-ID: <20120126111205.8386.64056.stgit@localhost6.localdomain6>
+In-Reply-To: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
+References: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120126143659.74a9de30@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 26, 2012 at 02:36:59PM -0500, Jeff Layton wrote:
-> On Thu, 26 Jan 2012 13:58:59 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Jan 26, 2012 at 10:41:57AM -0500, Jeff Layton wrote:
-> > > Correct. When knfsd starts back up, a new pipe will be created. At that
-> > > point, the daemon will try to open the new one and will then close the
-> > > old if the open succeeds. It will only loop here if that open fails for
-> > > some reason.
-> > 
-> > I'm a little confused--how could this happen?
-> > 
-> 
-> Bugs?
 
-If that's really the only case then "crash and log an error" might
-really be more robust in the long term than spinning.
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfs/nfs4namespace.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 48a9acd..667ea74 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -97,11 +97,11 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 		struct sockaddr *sa, size_t salen, struct nfs_server *server)
+ {
+ 	ssize_t ret;
++	struct net *net = server->client->cl_xprt->xprt_net;
+ 
+-	ret = rpc_pton(&init_net, string, len, sa, salen);
++	ret = rpc_pton(net, string, len, sa, salen);
+ 	if (ret == 0) {
+-		ret = nfs_dns_resolve_name(server->client->cl_xprt->xprt_net,
+-					   string, len, sa, salen);
++		ret = nfs_dns_resolve_name(net, string, len, sa, salen);
+ 		if (ret < 0)
+ 			ret = 0;
+ 	}
+
