@@ -1,38 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:24531 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932113Ab2AQXrl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jan 2012 18:47:41 -0500
-Message-ID: <4F160894.7000901@Oracle.com>
-Date: Tue, 17 Jan 2012 17:47:32 -0600
-From: Bill Baker <Bill.Baker@Oracle.com>
+Received: from natasha.panasas.com ([67.152.220.90]:59381 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751154Ab2AZIiU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jan 2012 03:38:20 -0500
+Message-ID: <4F2110DA.7060603@panasas.com>
+Date: Thu, 26 Jan 2012 10:37:46 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: nfsv4@ietf.org, linux-nfs@vger.kernel.org
-Subject: Registration is OPEN for Connectathon 2012
-References: <4EDBDC4B.7040900@oracle.com>
-In-Reply-To: <4EDBDC4B.7040900@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: <srinivas.kandagatla@st.com>
+CC: Jim Rees <rees@umich.edu>, <linux-nfs@vger.kernel.org>,
+        <akpm@linux-foundation.org>, <mingo@redhat.com>, <neilb@suse.de>,
+        <stuart.menefy@st.com>
+Subject: Re: [RFC:PATCH 3.1.0] do_mount: Add mount retry option for nfs root
+ mount.
+References: <1327503003-21722-1-git-send-email-srinivas.kandagatla@st.com> <20120125154539.GA20734@umich.edu> <4F21071B.4070000@st.com>
+In-Reply-To: <4F21071B.4070000@st.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 01/26/2012 09:56 AM, Srinivas KANDAGATLA wrote:
+> Jim Rees wrote:
+>> Srinivas KANDAGATLA wrote:
+>>
+>>   From: Srinivas Kandagatla <srinivas.kandagatla@st.com>
+>>   
+>>   This patch adds mountretry kernel parameter for nfs root mount.
+>>   mount retry indicates the number of times nfs root mount attempts to be
+>>   made before giving up. If this option is not specified, the default
+>>   value of 3 retries is used.
+>>
+>> This has already been fixed in commit 43717c7d, "NFS: Retry mounting
+>> NFSROOT".  The retry count is fixed at 5.  Is there some reason you think
+>> the retry count should be configurable?
+>>   
+> Thanks for pointing to the fixed commit. I did realize soon after
+> sending this patch to mailing list.
+> 
+> Only reason I can think of having retry count configurable is, an
+> arbitrary number(3 or 5 or n) of retry count may not be enough to
+> address all the use cases.
+> So, I think the user should be given a chance to configure the retry
+> count if he wish to, either timeout quickly and try the succession
+> root-mount or If he wish to keep kernel trying very harder till he gets
+> the NFS root mount successful.
+> 
 
-Greetings, all,
+I agree. Specially if there is no "succession root-mount" setup then user
+can specify a very large count.
 
-Registration is OPEN for Connectathon 2012.  You'll
-find the registration form on our details website:
+Is there some delay between retries. So not to burn 100% power?
 
-http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon-details
+> Thanks,
+> srini
 
-We kept the fees the same as last year, $750 per company
-up to a maximum of 10 people.
+Thanks
+Boaz
 
-If you have a proposal for a talk, please send me a
-brief abstract.  Depending on the number of requests,
-we'll hold talks upstairs on Tuesday and Wednesday
-afternoon, as we did last year.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Please forward this message to other interested parties.
-
-Regards,
--- 
-Bill Baker, Oracle Solaris NFS development
