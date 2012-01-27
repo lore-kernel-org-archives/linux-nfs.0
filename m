@@ -1,163 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:34339 "EHLO relay.sw.ru"
+Received: from mail.mera.ru ([195.98.57.161]:8256 "EHLO mail.mera.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980Ab2AaKJd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 05:09:33 -0500
-Subject: [PATCH v2 3/4] SUNRPC: service destruction in network namespace
- context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 14:09:17 +0400
-Message-ID: <20120131100917.4342.17047.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
-References: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
+	id S1751041Ab2A0Ibh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jan 2012 03:31:37 -0500
+From: "Vlasov, Vladimir" <vvlasov@mera.ru>
+To: NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Re-init lockd and kstatd in runtime.
+Date: Fri, 27 Jan 2012 08:31:34 +0000
+Message-ID: <06EFEBD57610DE4FBCA0449DDF4E102B0878A3@tecas.te.mera.ru>
+References: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
+ <20120126224042.63cdd70e@notabene.brown>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: Added comment to BUG_ON's in svc_destroy() to make code looks clearer.
+Finally I have found notes on HA NFS on SLES9 - http://www.gatsby.ucl.ac.uk/~johnp/compute/ha-nfs-sles9.html
+There are more info on this topic, for instance http://linux-ha.org/DRBD/NFS
+Suddenly I realized that previous designer was following these guidelines :-)
 
-This patch introduces network namespace filter for service destruction
-function.
-Nothing special here - just do exactly the same operations, but only for
-tranports in passed networks namespace context.
-BTW, BUG_ON() checks for empty service transports lists were returned into
-svc_destroy() function. This is because of swithing generic svc_close_all() to
-networks namespace dependable svc_close_net().
+I have found that all documents suggest to have both primary and standby hosts configured as NFS server only and start/stop server processes when role is changed.
+This way /var/lib/nfs, even relocating on DRBD partition, is always available on NFS server startup.
+So, it is OK to have /var/lib/nfs as link to the folder on DRBD partition.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+What I have different is that my system breaks rule of acting as NFS servers only: standby host acts as NFS client until it becomes primary, then it should act as server.
 
----
- include/linux/sunrpc/svcsock.h |    2 +-
- net/sunrpc/svc.c               |   13 +++++++++++--
- net/sunrpc/svc_xprt.c          |   27 +++++++++++++++++----------
- 3 files changed, 29 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index c84e974..cb4ac69 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -34,7 +34,7 @@ struct svc_sock {
- /*
-  * Function prototypes.
-  */
--void		svc_close_all(struct svc_serv *);
-+void		svc_close_net(struct svc_serv *, struct net *);
- int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a8b49a0..6cc0ea3 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -517,6 +517,8 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
- void
- svc_destroy(struct svc_serv *serv)
- {
-+	struct net *net = current->nsproxy->net_ns;
-+
- 	dprintk("svc: svc_destroy(%s, %d)\n",
- 				serv->sv_program->pg_name,
- 				serv->sv_nrthreads);
-@@ -539,10 +541,17 @@ svc_destroy(struct svc_serv *serv)
- 	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
- 	 * safe to traverse those lists and shut everything down:
- 	 */
--	svc_close_all(serv);
-+	svc_close_net(serv, net);
-+
-+	/*
-+	 * The last user is gone and thus all sockets have to be destroyed to
-+	 * the point. Check this.
-+	 */
-+	BUG_ON(!list_empty(&serv->sv_permsocks));
-+	BUG_ON(!list_empty(&serv->sv_tempsocks));
- 
- 	if (serv->sv_shutdown)
--		serv->sv_shutdown(serv, current->nsproxy->net_ns);
-+		serv->sv_shutdown(serv, net);
- 
- 	cache_clean_deferred(serv);
- 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 493e70b..4bda09d 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -922,17 +922,19 @@ void svc_close_xprt(struct svc_xprt *xprt)
- }
- EXPORT_SYMBOL_GPL(svc_close_xprt);
- 
--static void svc_close_list(struct list_head *xprt_list)
-+static void svc_close_list(struct list_head *xprt_list, struct net *net)
- {
- 	struct svc_xprt *xprt;
- 
- 	list_for_each_entry(xprt, xprt_list, xpt_list) {
-+		if (xprt->xpt_net != net)
-+			continue;
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
- 		set_bit(XPT_BUSY, &xprt->xpt_flags);
- 	}
- }
- 
--static void svc_clear_pools(struct svc_serv *serv)
-+static void svc_clear_pools(struct svc_serv *serv, struct net *net)
- {
- 	struct svc_pool *pool;
- 	struct svc_xprt *xprt;
-@@ -944,36 +946,41 @@ static void svc_clear_pools(struct svc_serv *serv)
- 
- 		spin_lock_bh(&pool->sp_lock);
- 		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
-+			if (xprt->xpt_net != net)
-+				continue;
- 			list_del_init(&xprt->xpt_ready);
- 		}
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
- }
- 
--static void svc_clear_list(struct list_head *xprt_list)
-+static void svc_clear_list(struct list_head *xprt_list, struct net *net)
- {
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *tmp;
- 
- 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
-+		if (xprt->xpt_net != net)
-+			continue;
- 		svc_delete_xprt(xprt);
- 	}
--	BUG_ON(!list_empty(xprt_list));
-+	list_for_each_entry(xprt, xprt_list, xpt_list)
-+		BUG_ON(xprt->xpt_net == net);
- }
- 
--void svc_close_all(struct svc_serv *serv)
-+void svc_close_net(struct svc_serv *serv, struct net *net)
- {
--	svc_close_list(&serv->sv_tempsocks);
--	svc_close_list(&serv->sv_permsocks);
-+	svc_close_list(&serv->sv_tempsocks, net);
-+	svc_close_list(&serv->sv_permsocks, net);
- 
--	svc_clear_pools(serv);
-+	svc_clear_pools(serv, net);
- 	/*
- 	 * At this point the sp_sockets lists will stay empty, since
- 	 * svc_enqueue will not add new entries without taking the
- 	 * sp_lock and checking XPT_BUSY.
- 	 */
--	svc_clear_list(&serv->sv_tempsocks);
--	svc_clear_list(&serv->sv_permsocks);
-+	svc_clear_list(&serv->sv_tempsocks, net);
-+	svc_clear_list(&serv->sv_permsocks, net);
- }
- 
- /*
+I'll summarize info here:
+"server" is DNS record, resolved into IP of the primary host.
+
+HOST1, primary:
+/dev/drbd is mounted as /storage
+/storage is exported
+server:/storage is mounted as /some/path
+/var/lib/nfs is link to the /some/path/var/lib/nfs and is available
+
+HOST2:
+/dev/drbd is not mounted, /storage is empty
+server:/storage is mounted as /some/path
+/var/lib/nfs is link to the /some/path/var/lib/nfs and is empty
+
+So, due to this /some/path mount existing on both hosts I have problem with initialization of the kstatd on the standby host, where /var/lib/nfs looks like empty folder.
+I have requirement for having /some/path on both hosts, so I can't fallback to guidelines advices.
+I need to do NFS client became NFS server somehow. There should be some runtime re-initialization. This is what I'm looking for.
+
+Could someone comment on this?
+Is there any way to do so?
+Or any better solution?
+
+By the way, browsing sources I have found that one can set nsm_use_kstatd to 1 on lockd exit, then initialization will be successful on next mount or export attempts.
+I think someone can find it useful so created patch. Unfortunately I don't have neither time nor enough code knowledge.
+In my case this proposal has drawback - lockd exits when all mounts are unmounted only, so I have to umount /some/path first and then mount it back.
+It can be painful as soon as some files can be opened by local user and umount will complain with it's usual "device is busy".
+
+Also I was thinking about having /var/lin/nfs locally, separate for each host, so kstatd will be initialized always, but how do I share vital info about clients then?
+I have found it to be dead-end.
+
+
+Best regards
+Vladimir Vlasov
+
+-----Original Message-----
+From: Vlasov, Vladimir 
+Sent: Thursday, January 26, 2012 4:14 PM
+To: 'NeilBrown'
+Cc: linux-nfs@vger.kernel.org
+Subject: RE: Re-init lockd and kstatd in runtime.
+
+Yes, it is SLES10 SP3 and I'm a customer.
+I'm not sure that Novell can help me, I expect the same proposal from them - "just make sure that /var/lib/nfs is available on startup".
+I'm not satisfied with this because I have some kind of high availability system built with two Linux hosts.
+
+Hosts share DRBD partition and one acting as primary exports, for instance /some/path.
+As soon as primary host fails, another one becomes primary and exports /some/path.
+There are more hosts on the network, they mount:
+server:/some/path
+where "server" is resolved to the IP of current primary host which currently exports path.
+
+So, in order to keep and overtake data about clients, /var/lib/nfs is replaced with link and points to /some/path/var/lib/nfs.
+If You don't familiar with DRBD then the most important thing You should know is that it is available for R/W on primary host only.
+So, on primary host DRBD is R/W, /var/lib/nfs is available and kstatd starts.
+On another host DRBD is NOT R/W, /var/lib/nfs is empry and kstatd doesn't start.
+This is why I'm looking for how do I re-init it at any time.
+
+I was looking for guidelines of using NFS in clusters but didn't found anything useful.
+
+Best regards
+Vladimir Vlasov
+
+-----Original Message-----
+From: NeilBrown [mailto:neilb@suse.de] 
+Sent: Thursday, January 26, 2012 3:41 PM
+To: Vlasov, Vladimir
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Re-init lockd and kstatd in runtime.
+
+On Thu, 26 Jan 2012 11:15:02 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> wrote:
+
+> Hi.
+> 
+> I'm wondering if there is any way to re-init lockd and kstatd after startup?
+> 
+> Look, in svc.c static variable nsm_use_kstatd is set to 1.
+> Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set to 0.
+> And we end up without kstatd.
+> 
+> Lockd will exit as soon as last NFS mount is unmounted and on next mount attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 already and kstatd init will be skipped.
+> 
+> So, looks like if /var/lib/nfs/state is missed on host startup, there is no way to recover and tell kernel init kstatd later on demand. Or?
+
+This would be SLES10 - correct?
+
+I suggest you simply make sure /var/lib/nfs/state is not missing at startup.
+
+The issue sounds vaguely familiar ... maybe it is fixed in SLES10-SP4...
+
+What release are you running?  Are you a SLES customer?  If you are, you would be better off logging a support request on the SUSE bugzilla (bugzilla.novell.com).
+
+NeilBrown
 
