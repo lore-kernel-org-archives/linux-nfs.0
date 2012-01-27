@@ -1,67 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38775 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21661 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758967Ab2AFS0q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 13:26:46 -0500
-Message-ID: <1325874404.32470.6.camel@lade.trondhjem.org>
-Subject: Re: Boot regression caused by commit 6829a048
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: chuck.lever@oracle.com, linux@razik.name,
-        Pekka Enberg <penberg@kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Date: Fri, 06 Jan 2012 13:26:44 -0500
-In-Reply-To: <1325871176.4629.35.camel@lappy>
-References: <1325871176.4629.35.camel@lappy>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752628Ab2A0PXH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Jan 2012 10:23:07 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2] NFSD: Clean up the test_stateid function
+Date: Fri, 27 Jan 2012 10:22:49 -0500
+Message-Id: <1327677769-7554-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2012-01-06 at 19:32 +0200, Sasha Levin wrote: 
-> Hi all,
-> 
-> I've noticed a boot regression caused by commit 6829a048 ("NFS: Retry
-> mounting NFSROOT") which has increased boot time by 95 seconds.
-> 
-> The scenario is as follows:
->  - A virtual guest running under the KVM tool.
->  - Guest is using kernel automatic IP DHCP configuration ("ip=dhcp").
->  - Guest is booting from a 9p device (which is not detected as block,
-> and gets mounted after NFS tries to do its mounts).
->  - No NFS server at all, no NFS parameters passed to the guest kernel.
-> 
-> Under this scenario, theres an additional 95 second delay before NFS
-> fails and tries to boot using 9p:
-> 
-> [...]
-> [    6.505269] md: autorun ...
-> [    6.506954] md: ... autorun DONE.
-> [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
-> [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
-> [...]
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Can't you avoid the whole NFS root mount attempt by setting "root=2:0"
-directly instead of relying on 'mount_root' to do it for you?
+When I initially wrote it, I didn't understand how lists worked so I
+wrote something that didn't use them.  I think making a list of stateids
+to test is a more straightforward implementation, especially compared to
+especially compared to decoding stateids while simultaneously encoding
+a reply to the client.
 
-> This probably happens since the NFS server isn't configured, so the
-> bootserver is automatically assumed to be the DHCP server, and with the
-> commit above we won't simply fail immediately when the NFS code fails
-> connecting to it.
-> 
-> I'm not quite sure about the correct solution for this. While I can
-> forcefully disable NFS, is it really the right solution? Should we be
-> retrying a NFS server even if one wasn't specifically set?
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+v2: Use defer_free() to free kmalloc()ed memory.
 
-One option might be to check the 'root_wait' flag. We could also add
-nfsroot support for the 'retry=' mount option.
+ fs/nfsd/nfs4state.c |    9 ++++++-
+ fs/nfsd/nfs4xdr.c   |   66 +++++++++++++++-----------------------------------
+ fs/nfsd/xdr4.h      |    9 +++++-
+ 3 files changed, 35 insertions(+), 49 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..c59a3f6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3400,7 +3400,14 @@ __be32
+ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		   struct nfsd4_test_stateid *test_stateid)
+ {
+-	/* real work is done during encoding */
++	struct nfsd4_test_stateid_id *stateid;
++	struct nfs4_client *cl = cstate->session->se_client;
++
++	nfs4_lock_state();
++	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
++		stateid->ts_id_status = nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
++	nfs4_unlock_state();
++
+ 	return nfs_ok;
+ }
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0ec5a1b..5785a98 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -133,22 +133,6 @@ xdr_error:					\
+ 	}					\
+ } while (0)
+ 
+-static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+-{
+-	savep->p        = argp->p;
+-	savep->end      = argp->end;
+-	savep->pagelen  = argp->pagelen;
+-	savep->pagelist = argp->pagelist;
+-}
+-
+-static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+-{
+-	argp->p        = savep->p;
+-	argp->end      = savep->end;
+-	argp->pagelen  = savep->pagelen;
+-	argp->pagelist = savep->pagelist;
+-}
+-
+ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+ {
+ 	/* We want more bytes than seem to be available.
+@@ -1385,26 +1369,29 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ static __be32
+ nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
+ {
+-	unsigned int nbytes;
+-	stateid_t si;
+ 	int i;
+-	__be32 *p;
+-	__be32 status;
++	__be32 *p, status;
++	struct nfsd4_test_stateid_id *stateid;
+ 
+ 	READ_BUF(4);
+ 	test_stateid->ts_num_ids = ntohl(*p++);
+ 
+-	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
+-	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
+-		goto xdr_error;
+-
+-	test_stateid->ts_saved_args = argp;
+-	save_buf(argp, &test_stateid->ts_savedp);
++	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
+ 
+ 	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+-		status = nfsd4_decode_stateid(argp, &si);
++		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
++		if (!stateid) {
++			status = PTR_ERR(stateid);
++			goto out;
++		}
++
++		defer_free(argp, kfree, stateid);
++		INIT_LIST_HEAD(&stateid->ts_id_list);
++		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
++
++		status = nfsd4_decode_stateid(argp, &stateid->ts_id_stateid);
+ 		if (status)
+-			return status;
++			goto out;
+ 	}
+ 
+ 	status = 0;
+@@ -3391,30 +3378,17 @@ __be32
+ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
+ 			  struct nfsd4_test_stateid *test_stateid)
+ {
+-	struct nfsd4_compoundargs *argp;
+-	struct nfs4_client *cl = resp->cstate.session->se_client;
+-	stateid_t si;
++	struct nfsd4_test_stateid_id *stateid, *next;
+ 	__be32 *p;
+-	int i;
+-	int valid;
+ 
+-	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
+-	argp = test_stateid->ts_saved_args;
+-
+-	RESERVE_SPACE(4);
++	RESERVE_SPACE(4 + (4 * test_stateid->ts_num_ids));
+ 	*p++ = htonl(test_stateid->ts_num_ids);
+-	resp->p = p;
+ 
+-	nfs4_lock_state();
+-	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+-		nfsd4_decode_stateid(argp, &si);
+-		valid = nfs4_validate_stateid(cl, &si);
+-		RESERVE_SPACE(4);
+-		*p++ = htonl(valid);
+-		resp->p = p;
++	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
++		*p++ = htonl(stateid->ts_id_status);
+ 	}
+-	nfs4_unlock_state();
+ 
++	ADJUST_ARGS();
+ 	return nfserr;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2364747..0a667e9 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -343,10 +343,15 @@ struct nfsd4_saved_compoundargs {
+ 	struct page **pagelist;
+ };
+ 
++struct nfsd4_test_stateid_id {
++	__be32			ts_id_status;
++	stateid_t		ts_id_stateid;
++	struct list_head	ts_id_list;
++};
++
+ struct nfsd4_test_stateid {
+ 	__be32		ts_num_ids;
+-	struct nfsd4_compoundargs *ts_saved_args;
+-	struct nfsd4_saved_compoundargs ts_savedp;
++	struct list_head ts_stateid_list;
+ };
+ 
+ struct nfsd4_free_stateid {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.8.4
 
