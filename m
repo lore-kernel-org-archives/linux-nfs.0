@@ -1,82 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:38379 "EHLO e4.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3491 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754778Ab2APR7u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jan 2012 12:59:50 -0500
-Received: from /spool/local
-	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 16 Jan 2012 12:59:50 -0500
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 3DB4C38C9927
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 11:52:35 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q0GGqUTa2269358
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 11:52:31 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q0GGqTHs013217
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 14:52:29 -0200
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q0GGqTbv013183
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jan 2012 14:52:29 -0200
-Date: Mon, 16 Jan 2012 10:52:28 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/7] Volatile Filehandle Client-side Support
-Message-ID: <20120116165228.GA4990@us.ibm.com>
-References: <1321052673-22171-1-git-send-email-treinish@linux.vnet.ibm.com>
- <1321056809.8733.2.camel@lade.trondhjem.org>
- <20111112144953.GA3740@infradead.org>
- <20111113145400.6c7a9be3@notabene.brown>
- <CAGue13r5BhjWOUF3L8Jd4_T0RmOwL7D=ktwHT_7paug5qEvKmA@mail.gmail.com>
- <20111113163632.GA28574@fieldses.org>
- <20111114080745.57083bfe@notabene.brown>
- <1321338825.8267.2.camel@lade.trondhjem.org>
- <20120113170914.GA31414@us.ibm.com>
- <20120114013834.GA20464@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120114013834.GA20464@fieldses.org>
+	id S1755872Ab2A0PnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 27 Jan 2012 10:43:06 -0500
+Date: Fri, 27 Jan 2012 10:43:00 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 0/6] nfsd: overhaul the client name tracking code
+Message-ID: <20120127104300.6159ec82@tlielax.poochiereds.net>
+In-Reply-To: <20120125212553.GA22216@fieldses.org>
+References: <1327348867-699-1-git-send-email-jlayton@redhat.com>
+ <20120124230855.GE12426@fieldses.org>
+ <20120125064158.4551a012@tlielax.poochiereds.net>
+ <20120125131116.GA17873@fieldses.org>
+ <20120125083820.637c8362@tlielax.poochiereds.net>
+ <F6C58345-828B-493E-9D0E-8BBC60E348CF@oracle.com>
+ <20120125171401.GI17873@fieldses.org>
+ <D13C2C6D-7731-4EE6-BC3D-2A9D1D1F0581@oracle.com>
+ <20120125185529.GJ17873@fieldses.org>
+ <20120125152356.10bdd772@tlielax.poochiereds.net>
+ <20120125212553.GA22216@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields [bfields@fieldses.org] wrote:
-> On Fri, Jan 13, 2012 at 11:09:14AM -0600, Malahal Naineni wrote:
-> > Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> > > On Mon, 2011-11-14 at 08:07 +1100, NeilBrown wrote:
-> > > 
-> > > > If a server has objects that are never renamed, it can easily use volatile
-> > > > file handles.
-> > > > If a server has objects which can be renamed and wants to use volatile file
-> > > > handles, then if such an object is open and is about to be renamed, it must
-> > > > first log to stable storage some mapping to allow it to access the file from
-> > > > the old volatile file handle.  And of course it cannot allow renames during
-> > > > the grace period, but I think we already have that.
-> > > > Also, if the VFH is such that it will be  lost on a reboot, the server must
-> > > > log it to stable storage before allowing an open.
-> > > 
-> > > BTW: If the namespace is stable, then the server can easily implement
-> > > permanent filehandles. Use a hash of the pathname as the filehandle, and
-> > > set up a hidden directory ('/.filehandles') containing symlinks that map
-> > > said hash back to the correct pathname. No need for volatile
-> > > filehandles.
-> > 
-> > Neil and Trond, one of our use cases is for a read only file system. The
-> > name space is stable and Volatile File Handle support should not have
-> > any issues under those conditions, correct?
+On Wed, 25 Jan 2012 16:25:53 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Jan 25, 2012 at 03:23:56PM -0500, Jeff Layton wrote:
+> > I suggest that we only allow the reclaim of locks
+> > on the original address against which they were established.
 > 
-> Dumb question: remind me which filesystem your exporting that can't
-> already generate stable filehandles?
+> I'm not sure what that means.
+> 
+> If a server stops responding, the v4.0 client has two choices: it can
+> either wait for the server to come back, and reclaim when it does.  Or
+> if it supports failover it can go find another server and perform
+> reclaims over there.
+> 
+> I'm a little unclear how it does that, but I suppose it first tests
+> somehow to see whether its existing state is supported, and if not, it
+> establishes a new clientid with SETCLIENTID/SETCILENTID_CONFIRM using
+> its old name, and then attempts to reclaim.
+> 
+> You're now requiring it *not* to do that if it happens that the servers
+> all rebooted in the meantime.  How does it know that that's what
+> happened?
+> 
+> Or maybe that's not what you want to require, I'm not sure.
+> 
 
-Only answers can be dumb! Bruce, we have ext3/ext4 file systems on two
-separate servers. The file systems are mirrored using rsync as and when
-needed. We would like to use the servers as replicas.
+Sorry I didn't respond sooner. I spent some time yesterday poring
+over Dave's whitepaper and the RFCs to see if I could figure out a
+better way to do this. Short answer: I don't think we can...
 
-Since the file systems are mirrored using "rsync", the NFS file handles
-each server exports would be different. We would like to use volatile
-file handles feature of NFSv4 for this.
+By the above, I meant that we can't reasonably allow a client to
+acquire a lock on address A and then reclaim that lock on address B
+after a reboot. But now I'm not even certain that's sufficient to
+prevent all possible problems after a cold-start of the cluster.
 
-Hope that helps.
+In particular, I'm concerned about this one (from my earlier email):
 
-Regards, Malahal.
+> Don't worry, it gets worse...suppose we end up with the mounting
+> subdirectories of the same mount from different hosts (say,
+> node1:/exp2/dir1 node2:/exp2/dir2 -- it's pathological, but there's no
+> reason you couldn't do that). Now, it's not even sufficient to track
+> this info on a per-node + per-fs basis...
 
+We have no way to prevent someone from doing the above, or even to
+reliably detect whether this has been done. The only way that I can see
+that we could handle the above situation would be to track each
+individual lock on stable storage along with enough information to know
+which client owns it at a particular time. That's something I really
+don't want to implement at this point in time...
+
+I'm going to continue researching this and seeing if I can come up with
+a way to handle the clustered configuration sanely. What I'll probably
+plan to do in the interim is to fix the patchsets that I have so far to
+at least work properly in the single-node case. I'll also try to
+"future-proof" the upcall format such that a clustered configuration
+hopefully won't require much in the way of changes.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
