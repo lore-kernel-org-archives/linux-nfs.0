@@ -1,56 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:48604 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752842Ab2AFRdB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2012 12:33:01 -0500
-Message-ID: <1325871176.4629.35.camel@lappy>
-Subject: Boot regression caused by commit 6829a048
-From: Sasha Levin <levinsasha928@gmail.com>
-To: chuck.lever@oracle.com
-Cc: linux@razik.name, Trond.Myklebust@netapp.com,
-        Pekka Enberg <penberg@kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Date: Fri, 06 Jan 2012 19:32:56 +0200
-Content-Type: text/plain; charset="us-ascii"
-Mime-Version: 1.0
+Received: from c2beaomr07.btconnect.com ([213.123.26.185]:10264 "EHLO
+	mail.btconnect.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751454Ab2A1S3b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jan 2012 13:29:31 -0500
+From: luxInteg <lux-integ@btconnect.com>
+To: linux-nfs@vger.kernel.org
+Subject: heimdal-1.5.2,ibrpcsecgss,nfs-utils-1.2.5,
+Date: Sat, 28 Jan 2012 18:28:41 +0000
+MIME-Version: 1.0
+Content-Type: text/plain;
+  charset="us-ascii"
+Message-Id: <201201281828.41620.lux-integ@btconnect.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+Greetings,
 
-I've noticed a boot regression caused by commit 6829a048 ("NFS: Retry
-mounting NFSROOT") which has increased boot time by 95 seconds.
+I am new to this list. I am trying to compile nfs-utils-1.2.5 to work with 
+heimdal-1.5.2.   My computer has these:-
+--cpu: amd64 2 cores
+--OS cblfs (linux) pure 64 bit gcc-4.5.2 kernel-3.2.1, heimdal-1.5.2
 
-The scenario is as follows:
- - A virtual guest running under the KVM tool.
- - Guest is using kernel automatic IP DHCP configuration ("ip=dhcp").
- - Guest is booting from a 9p device (which is not detected as block,
-and gets mounted after NFS tries to do its mounts).
- - No NFS server at all, no NFS parameters passed to the guest kernel.
+My list of programs/and build sequence is as follows:-
 
-Under this scenario, theres an additional 95 second delay before NFS
-fails and tries to boot using 9p:
+ --1--heimdal-1.5.2
+ --2--libevent2
+ --3--libnfsidmap
+ --4--libgssapi  (skipped )
+ --5--libgssglue (skipped )
+ --6--librpcsecgss
+ --7--nfs-utils-1.2.5
 
-[...]
-[    6.505269] md: autorun ...
-[    6.506954] md: ... autorun DONE.
-[  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
-[  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
-[...]
 
-This probably happens since the NFS server isn't configured, so the
-bootserver is automatically assumed to be the DHCP server, and with the
-commit above we won't simply fail immediately when the NFS code fails
-connecting to it.
+I have done this before for MITKerberos where those labelled skipped are used
+I  compiled --6-- ( librpcsecgss-0.19 ) with
+GSSGLUE_CFLAGS="-I/path/to/heimdal/include/gssapi" \
+GSSGLUE_LIBS="lgssapi" \
 
-I'm not quite sure about the correct solution for this. While I can
-forcefully disable NFS, is it really the right solution? Should we be
-retrying a NFS server even if one wasn't specifically set?
+And it compiles without complaints.
 
-Thanks.
 
--- 
 
-Sasha.
 
+I then passed the same envars GSSGLUE_CFLAGS and GSSGLUE_LIBS to the configure 
+script of 
+nfs-utils-1.2.5.  However the configure scripts ends with this:-
+--------------
+checking for nfs4_set_debug in -lnfsidmap... (cached) yes
+checking for nfs4_owner_to_uid in -lnfsidmap... (cached) yes
+checking spkm3.h usability... no
+checking spkm3.h presence... no
+checking for spkm3.h... no
+configure: WARNING: Could not locate SPKM3 header; will not have SPKM3 support
+checking for Kerberos v5... /usr/local
+The current KRBDIR is /usr/local
+checking for gss_krb5_export_lucid_sec_context in -lgssapi... yes
+checking for gss_krb5_set_allowable_enctypes in -lgssapi... yes
+checking for gss_krb5_ccache_name in -lgssapi... yes
+checking for krb5_get_error_message in -lgssapi... yes
+checking for krb5_get_init_creds_opt_set_addressless in -lgssapi... yes
+checking for authgss_create_default in -lrpcsecgss... no
+configure: error: librpcsecgss not found.
+-------------------
+
+I do not know what 'authgss_create_default'  is nor  what file/nor files are 
+used to create it. I looked  through the source archive  of  librpcsecgss-0.19 
+and I do not see any 'obvious' single file that produces   
+"authgss_create_default".   The file-list is below:-  
+
+source files:-
+
+        librpcsecgss-0.19/src/auth_gss.c
+        librpcsecgss-0.19/src/authgss_prot.c
+        librpcsecgss-0.19/src/clnt_generic.c
+        librpcsecgss-0.19/src/clnt_perror.c
+        librpcsecgss-0.19/src/clnt_raw.c
+        librpcsecgss-0.19/src/clnt_simple.c
+        librpcsecgss-0.19/src/clnt_tcp.c
+        librpcsecgss-0.19/src/clnt_udp.c
+        librpcsecgss-0.19/src/rpc_commondata.c
+        librpcsecgss-0.19/src/svc.c
+        librpcsecgss-0.19/src/svc_auth.c
+        librpcsecgss-0.19/src/svc_auth_gss.c
+        librpcsecgss-0.19/src/svc_auth_none.c
+        librpcsecgss-0.19/src/svc_auth_unix.c
+        librpcsecgss-0.19/src/svc_raw.c
+        librpcsecgss-0.19/src/svc_run.c
+        librpcsecgss-0.19/src/svc_simple.c
+        librpcsecgss-0.19/src/svc_tcp.c
+        librpcsecgss-0.19/src/svc_udp.c
+
+
+headers
+
+
+        librpcsecgss-0.19/include/rpcsecgss/rpc/auth.h
+        librpcsecgss-0.19/include/rpcsecgss/rpc/auth_gss.h
+        librpcsecgss-0.19/include/rpcsecgss/rpc/rpc.h
+        librpcsecgss-0.19/include/rpcsecgss/rpc/rpcsecgss_rename.h
+        librpcsecgss-0.19/include/rpcsecgss/rpc/svc.h
+        librpcsecgss-0.19/include/rpcsecgss/rpc/svc_auth.h
+
+----------
+
+Accordingly I would be grateful if someone on  list could let me know how to 
+compile librpcsecgss-0.19 on top of heimdal-1.5.2  so that the library 
+'librpcsecgss.{so,a}'  has the   "authgss_create_default"  utility
+thus enabling the compilation of nfs-utils-1.2.5  thereafter.
+
+yours sincerely
+luxInteg
