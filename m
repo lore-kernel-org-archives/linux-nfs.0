@@ -1,44 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:45878 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752794Ab2AZLMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 06:12:15 -0500
-Subject: [PATCH 0/5] NFS: various small fixes and updates for conteinerization
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 26 Jan 2012 15:11:24 +0400
-Message-ID: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
+Received: from partagas.dragonet.es ([217.70.240.130]:36123 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752723Ab2A1VPt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jan 2012 16:15:49 -0500
+Received: from [192.168.1.3] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
+	(authenticated bits=0)
+	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q0SL2QgW008105
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Jan 2012 22:02:33 +0100
+Message-ID: <4F24624C.7050107@steve-ss.com>
+Date: Sat, 28 Jan 2012 22:02:04 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: nfs4 gss/krb5 read only mount problem
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Build fix and "init_net" replacements.
+Hi
+This is my first post here so hi everyone.
+My problem is that if I export an nfs4 share 'conventionally', the 
+mounted share is mounted rw. If I mount using gss/krb5 it is read only. 
+I think I can explain this best using examples of what I've tried:
 
-The following series consists of:
+openSUSE 12.1
 
----
+/etc/fstab:
+/home    /export/home   none    rw,bind  0  0
 
-Stanislav Kinsbursky (5):
-      NFS: pass proper net rpc_pton() in nfs_dns_resolve_name()
-      NFS: build fixed in case of NFS_USE_NEW_IDMAPPER is undefined
-      NFS: search for client session id in proper network namespace
-      NFS: pass current net to rpc_pton() while parsing mount options
-      NFS: pass transport net to rpc_pton() while parse server name
+1. kerberized /etc/exports
+/export             gss/krb5(rw,fsid=0,insecure,no_subtree_check,async)
+/export/home    gss/krb5(rw,nohide,insecure,no_subtree_check,async)
+then:
+mount -t nfs4 hh3:/home /mnt -o sec=krb5
+no write access
 
+2. conventional /etc/exports
+/export             *(rw,fsid=0,insecure,no_subtree_check,async)
+/export/home    *(rw,nohide,insecure,no_subtree_check,async)
+then:
+mount -t nfs4 hh3:/home /mnt
+write access OK
 
- fs/nfs/callback.h      |    1 +
- fs/nfs/callback_proc.c |    2 +-
- fs/nfs/callback_xdr.c  |    1 +
- fs/nfs/client.c        |    4 ++--
- fs/nfs/dns_resolve.c   |    2 +-
- fs/nfs/idmap.c         |    1 +
- fs/nfs/internal.h      |    3 ++-
- fs/nfs/nfs4namespace.c |    6 +++---
- fs/nfs/super.c         |    4 ++--
- 9 files changed, 14 insertions(+), 10 deletions(-)
+3. kerberized variation on /etc/exports
+/export   *(rw,fsid=0,crossmnt,insecure,no_subtree_check,async,sec=krb5)
+/export/home    *(rw,insecure,no_subtree_check,async,sec=krb5)
+then:
+mount -t nfs4 hh3:/home /mnt -o sec=krb5
+no write access
+
+I have tried all combos of crossmnt and nohide
+
+idmapd seems to be mapping correctly and id<user>  gives what getent
+gives
+
+Any ideas? Why does the kerberized mount not allow rw access? Could this 
+be a nfs4 problem or a Kerberos problem?
+Thanks,
+Steve
 
