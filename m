@@ -1,54 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34357 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:23669 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755016Ab2ALT21 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jan 2012 14:28:27 -0500
-Date: Thu, 12 Jan 2012 14:28:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Dan Carpenter <dan.carpenter@oracle.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [patch] svcrdma: endian bug in send_write_chunks()
-Message-ID: <20120112192821.GA9592@fieldses.org>
-References: <20120112064722.GB2408@elgon.mountain>
- <20120112162141.GC6563@fieldses.org>
- <1326395759.6198.7.camel@lade.trondhjem.org>
+	id S1751031Ab2A2WPF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Jan 2012 17:15:05 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull 1 bugfix for the NFS client
+Date: Sun, 29 Jan 2012 22:14:58 +0000
+Message-ID: <1327875297.6246.1.camel@lade.trondhjem.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="=-x7voXplEQHfTeGV9L5fl"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1326395759.6198.7.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 12, 2012 at 02:15:59PM -0500, Trond Myklebust wrote:
-> On Thu, 2012-01-12 at 11:21 -0500, J. Bruce Fields wrote: 
-> > On Thu, Jan 12, 2012 at 09:47:22AM +0300, Dan Carpenter wrote:
-> > > Sparse complains because arg_ch->rs_length is declared as network
-> > > endian but we're treating it as CPU endian.
-> > 
-> > This looks like it would actually change behavior on a little endian
-> > architecture, so how did this work before?
-> > 
-> > >From some quick grepping, I see assignments both of the form
-> > 
-> > 	...rs_length = ntohl(...)
-> > 
-> > and
-> > 
-> > 	...rs_length = htonl(...)
-> > 
-> > but only see one declaration for a field named rs_length.
-> > 
-> > So my best guess would be that the code is ugly but working as is, and
-> > needs cleanup by someone who knows how this field was intended to be
-> > used.
-> 
-> It looks to me as if rs_handle and rs_offset are being similarly abused.
-> Basically, we need a serious clean up in svc_rdma_marshall.c to separate
-> out those variables that are in XDR-encoded form and those that are not.
+--=-x7voXplEQHfTeGV9L5fl
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-(Here everybody takes one step back and pretends to be engrossed in some
-other thread.)
+Hi Linus,
 
---b.
+Please pull from the signed tag "nfs-for-3.3-3" in the repository at
+
+   git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tag nfs-=
+for-3.3-3
+
+This will update the following files through the appended changesets.
+
+  Cheers,
+    Trond
+
+----
+ net/sunrpc/auth_generic.c |   17 ++++++++++++++++-
+ 1 files changed, 16 insertions(+), 1 deletions(-)
+
+commit 875ad3f8e7dff6bc1d053e5bfe73d8e8d2e6ae67
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Jan 23 12:49:36 2012 -0500
+
+    SUNRPC: Fix machine creds in generic_create_cred and generic_match
+   =20
+    - generic_create_cred needs to copy the '.principal' field.
+    - generic_match needs to ignore the groups and match on the '.principal=
+'
+      field.
+   =20
+    This fixes an Oops that was introduced by commit 68c9715 (SUNRPC:
+    Clean up the RPCSEC_GSS service ticket requests)
+   =20
+    Reported-by: J. Bruce Fields <bfields@redhat.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Tested-by: J. Bruce Fields <bfields@redhat.com>
+
+
+--=20
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+
+--=-x7voXplEQHfTeGV9L5fl
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.11 (GNU/Linux)
+
+iQIcBAABAgAGBQJPJcThAAoJEGcL54qWCgDyigIP/iJkRkVvzJ6uaLpxiCvHRrY7
+GJeHmcl1NqpJ+lkxITxqelYacXMIedRXtPwwbsMkqE6WGIAo9QWmjoPR8fHjt/3w
+R0nhtwnmWgkW47apE3RI0RmZCIKLxtCJ1Vx+AlSnd4fNkih+M6h5uvVGOnhIjyl9
+JliaNNPi54Tqfop5aqoapxUYeCpg0mqR2MSuFXG9M3tSglyVPhEul6ymPBHX+iu1
+8ztVqEuuy8F+cxKEB77S8ZXODWx2E6+m5wlrasPk0lR/vpF+cwZcTCoryFMGrlh/
+/Wm18N1v2WwxH31p3rCL5ktm/+xI31tHcLMVIlKLqcZW8WmI0QXxTOF1hEPrKk5S
+3GQGgtrmV3B3mJidlBZTiyinJ5fE7D0xa7jYNhQH1tZ/XwMWEP/gw2q8I16s7Nm1
+xl7Dz0rlZ5/d86o+sbm1gXyAoE8MEmvmFuH/djlCqnRwXYWXXSRe2/qjWWS+zvgT
+leQUta1IvlmnXmO072ajsCr4iLT/q6LYwMZD6tHFugNZSeRhYtHLr4k0XNRkMnVa
+DIv5FvX+d8+fa9/T2qp3HzWOj1l9jY0qwmhWA+NiLcEwCgkO2DkA4tTKo+DWJxR2
+90gJFCSoz8Be5fOyk7SaLMgFz6Ebhd9IMP44S8rDhCkixX79OTUR2dpbwrUvJjdU
+5gzewCTDuaqcANY98eGS
+=b+9N
+-----END PGP SIGNATURE-----
+
+--=-x7voXplEQHfTeGV9L5fl--
