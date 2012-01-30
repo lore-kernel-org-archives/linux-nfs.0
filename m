@@ -1,89 +1,289 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:4671 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753990Ab2AaLIj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 06:08:39 -0500
-Subject: [PATCH 5/6] LockD: make NSM network namespace aware
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 15:08:21 +0400
-Message-ID: <20120131110821.14364.57585.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
-References: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
+Received: from smtp.eu.citrix.com ([62.200.22.115]:14864 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753888Ab2A3Pvz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 10:51:55 -0500
+Subject: Re: [PATCH v3 6/6] sunrpc: use SKB fragment destructors to delay
+ completion until page is released by network stack.
+From: Ian Campbell <Ian.Campbell@citrix.com>
+To: "Michael S. Tsirkin" <mst@redhat.com>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "David S. Miller" <davem@davemloft.net>, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Mon, 30 Jan 2012 15:51:53 +0000
+In-Reply-To: <20120126131136.GA16400@redhat.com>
+References: <1327494389.24561.316.camel@zakaz.uk.xensource.com>
+	 <1327494434-21566-6-git-send-email-ian.campbell@citrix.com>
+	 <20120126131136.GA16400@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1327938713.26983.248.camel@zakaz.uk.xensource.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NLM host is network namespace aware now.
-So NSM have to take it into account.
+On Thu, 2012-01-26 at 13:11 +0000, Michael S. Tsirkin wrote:
+> On Wed, Jan 25, 2012 at 12:27:14PM +0000, Ian Campbell wrote:
+> > This prevents an issue where an ACK is delayed, a retransmit is queued (either
+> > at the RPC or TCP level) and the ACK arrives before the retransmission hits the
+> > wire. If this happens to an NFS WRITE RPC then the write() system call
+> > completes and the userspace process can continue, potentially modifying data
+> > referenced by the retransmission before the retransmission occurs.
+> > 
+> > Signed-off-by: Ian Campbell <ian.campbell@citrix.com>
+> > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Cc: "David S. Miller" <davem@davemloft.net>
+> > Cc: Neil Brown <neilb@suse.de>
+> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > Cc: linux-nfs@vger.kernel.org
+> > Cc: netdev@vger.kernel.org
+> 
+> This doesn't include either of the two options you proposed to address
+> the sender blocked forever by receiver issue with bridged septups and
+> endpoints such a tap device or a socket on the same box,
+> does it?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+There was never any response to Bruce's question:
+http://thread.gmane.org/gmane.linux.network/210873/focus=44849
 
----
- fs/lockd/mon.c |   13 +++++++------
- 1 files changed, 7 insertions(+), 6 deletions(-)
+        Stupid question: Is it a requirement that you be safe against DOS by a
+        rogue process with a tap device?  (And if so, does current code satisfy
+        that requirement?)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index c196030..7ef14b3 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -62,14 +62,14 @@ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
- 	return (struct sockaddr *)&nsm->sm_addr;
- }
- 
--static struct rpc_clnt *nsm_create(void)
-+static struct rpc_clnt *nsm_create(struct net *net)
- {
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
- 	};
- 	struct rpc_create_args args = {
--		.net			= &init_net,
-+		.net			= net,
- 		.protocol		= XPRT_TRANSPORT_UDP,
- 		.address		= (struct sockaddr *)&sin,
- 		.addrsize		= sizeof(sin),
-@@ -83,7 +83,8 @@ static struct rpc_clnt *nsm_create(void)
- 	return rpc_create(&args);
- }
- 
--static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-+static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
-+			 struct net *net)
- {
- 	struct rpc_clnt	*clnt;
- 	int		status;
-@@ -99,7 +100,7 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 		.rpc_resp	= res,
- 	};
- 
--	clnt = nsm_create();
-+	clnt = nsm_create(net);
- 	if (IS_ERR(clnt)) {
- 		status = PTR_ERR(clnt);
- 		dprintk("lockd: failed to create NSM upcall transport, "
-@@ -149,7 +150,7 @@ int nsm_monitor(const struct nlm_host *host)
- 	 */
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
- 
--	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->net);
- 	if (unlikely(res.status != 0))
- 		status = -EIO;
- 	if (unlikely(status < 0)) {
-@@ -183,7 +184,7 @@ void nsm_unmonitor(const struct nlm_host *host)
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
- 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
- 
--		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, host->net);
- 		if (res.status != 0)
- 			status = -EIO;
- 		if (status < 0)
+IMHO the answer to both questions is no, there are plenty of ways a
+rogue process with a tap device can wreak havoc.
+
+> How about patching __skb_queue_tail to do a deep copy?
+> That would seem to handle both tap and socket cases -
+> any other ones left?
+
+Wouldn't that mean we were frequently (almost always) copying for lots
+of other cases too? That would rather defeat the purpose of being able
+to hand pages off to the network stack in a zero copy fashion.
+
+> If we do this, I think it would be beneficial to pass a flag
+> to the destructor indicating that a deep copy was done:
+> this would allow senders to detect that and adapt.
+
+If you were doing a deep copy anyway you might as well create a
+completely new skb and release the old one, thereby causing the
+destructors to fire in the normal way for it SKB. The copy wouldn't have
+destructors because the pages would no longer be owned by the sender.
+
+Ian.
+
+> 
+> > ---
+> >  include/linux/sunrpc/xdr.h  |    2 ++
+> >  include/linux/sunrpc/xprt.h |    5 ++++-
+> >  net/sunrpc/clnt.c           |   27 ++++++++++++++++++++++-----
+> >  net/sunrpc/svcsock.c        |    3 ++-
+> >  net/sunrpc/xprt.c           |   12 ++++++++++++
+> >  net/sunrpc/xprtsock.c       |    3 ++-
+> >  6 files changed, 44 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> > index a20970e..172f81e 100644
+> > --- a/include/linux/sunrpc/xdr.h
+> > +++ b/include/linux/sunrpc/xdr.h
+> > @@ -16,6 +16,7 @@
+> >  #include <asm/byteorder.h>
+> >  #include <asm/unaligned.h>
+> >  #include <linux/scatterlist.h>
+> > +#include <linux/skbuff.h>
+> >  
+> >  /*
+> >   * Buffer adjustment
+> > @@ -57,6 +58,7 @@ struct xdr_buf {
+> >  			tail[1];	/* Appended after page data */
+> >  
+> >  	struct page **	pages;		/* Array of contiguous pages */
+> > +	struct skb_frag_destructor *destructor;
+> >  	unsigned int	page_base,	/* Start of page data */
+> >  			page_len,	/* Length of page data */
+> >  			flags;		/* Flags for data disposition */
+> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> > index 15518a1..75131eb 100644
+> > --- a/include/linux/sunrpc/xprt.h
+> > +++ b/include/linux/sunrpc/xprt.h
+> > @@ -92,7 +92,10 @@ struct rpc_rqst {
+> >  						/* A cookie used to track the
+> >  						   state of the transport
+> >  						   connection */
+> > -	
+> > +	struct skb_frag_destructor destructor;	/* SKB paged fragment
+> > +						 * destructor for
+> > +						 * transmitted pages*/
+> > +
+> >  	/*
+> >  	 * Partial send handling
+> >  	 */
+> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > index f0268ea..06f363f 100644
+> > --- a/net/sunrpc/clnt.c
+> > +++ b/net/sunrpc/clnt.c
+> > @@ -61,6 +61,7 @@ static void	call_reserve(struct rpc_task *task);
+> >  static void	call_reserveresult(struct rpc_task *task);
+> >  static void	call_allocate(struct rpc_task *task);
+> >  static void	call_decode(struct rpc_task *task);
+> > +static void	call_complete(struct rpc_task *task);
+> >  static void	call_bind(struct rpc_task *task);
+> >  static void	call_bind_status(struct rpc_task *task);
+> >  static void	call_transmit(struct rpc_task *task);
+> > @@ -1115,6 +1116,8 @@ rpc_xdr_encode(struct rpc_task *task)
+> >  			 (char *)req->rq_buffer + req->rq_callsize,
+> >  			 req->rq_rcvsize);
+> >  
+> > +	req->rq_snd_buf.destructor = &req->destructor;
+> > +
+> >  	p = rpc_encode_header(task);
+> >  	if (p == NULL) {
+> >  		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+> > @@ -1278,6 +1281,7 @@ call_connect_status(struct rpc_task *task)
+> >  static void
+> >  call_transmit(struct rpc_task *task)
+> >  {
+> > +	struct rpc_rqst *req = task->tk_rqstp;
+> >  	dprint_status(task);
+> >  
+> >  	task->tk_action = call_status;
+> > @@ -1311,8 +1315,8 @@ call_transmit(struct rpc_task *task)
+> >  	call_transmit_status(task);
+> >  	if (rpc_reply_expected(task))
+> >  		return;
+> > -	task->tk_action = rpc_exit_task;
+> > -	rpc_wake_up_queued_task(&task->tk_xprt->pending, task);
+> > +	task->tk_action = call_complete;
+> > +	skb_frag_destructor_unref(&req->destructor);
+> >  }
+> >  
+> >  /*
+> > @@ -1385,7 +1389,8 @@ call_bc_transmit(struct rpc_task *task)
+> >  		return;
+> >  	}
+> >  
+> > -	task->tk_action = rpc_exit_task;
+> > +	task->tk_action = call_complete;
+> > +	skb_frag_destructor_unref(&req->destructor);
+> >  	if (task->tk_status < 0) {
+> >  		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+> >  			"error: %d\n", task->tk_status);
+> > @@ -1425,7 +1430,6 @@ call_bc_transmit(struct rpc_task *task)
+> >  			"error: %d\n", task->tk_status);
+> >  		break;
+> >  	}
+> > -	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+> >  }
+> >  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+> >  
+> > @@ -1591,12 +1595,14 @@ call_decode(struct rpc_task *task)
+> >  		return;
+> >  	}
+> >  
+> > -	task->tk_action = rpc_exit_task;
+> > +	task->tk_action = call_complete;
+> >  
+> >  	if (decode) {
+> >  		task->tk_status = rpcauth_unwrap_resp(task, decode, req, p,
+> >  						      task->tk_msg.rpc_resp);
+> >  	}
+> > +	rpc_sleep_on(&req->rq_xprt->pending, task, NULL);
+> > +	skb_frag_destructor_unref(&req->destructor);
+> >  	dprintk("RPC: %5u call_decode result %d\n", task->tk_pid,
+> >  			task->tk_status);
+> >  	return;
+> > @@ -1611,6 +1617,17 @@ out_retry:
+> >  	}
+> >  }
+> >  
+> > +/*
+> > + * 8.	Wait for pages to be released by the network stack.
+> > + */
+> > +static void
+> > +call_complete(struct rpc_task *task)
+> > +{
+> > +	dprintk("RPC: %5u call_complete result %d\n",
+> > +		task->tk_pid, task->tk_status);
+> > +	task->tk_action = rpc_exit_task;
+> > +}
+> > +
+> >  static __be32 *
+> >  rpc_encode_header(struct rpc_task *task)
+> >  {
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 0e6b919..aa7f108 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -198,7 +198,8 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+> >  	while (pglen > 0) {
+> >  		if (slen == size)
+> >  			flags = 0;
+> > -		result = kernel_sendpage(sock, *ppage, NULL, base, size, flags);
+> > +		result = kernel_sendpage(sock, *ppage, xdr->destructor,
+> > +					 base, size, flags);
+> >  		if (result > 0)
+> >  			len += result;
+> >  		if (result != size)
+> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > index c64c0ef..2137eb6 100644
+> > --- a/net/sunrpc/xprt.c
+> > +++ b/net/sunrpc/xprt.c
+> > @@ -1101,6 +1101,16 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+> >  	xprt->xid = net_random();
+> >  }
+> >  
+> > +static int xprt_complete_skb_pages(struct skb_frag_destructor *destroy)
+> > +{
+> > +	struct rpc_rqst	*req =
+> > +		container_of(destroy, struct rpc_rqst, destructor);
+> > +
+> > +	dprintk("RPC: %5u completing skb pages\n", req->rq_task->tk_pid);
+> > +	rpc_wake_up_queued_task(&req->rq_xprt->pending, req->rq_task);
+> 
+> It seems that at the sunrpc module can get unloaded
+> at this point. The code for 'return 0' can then get
+> overwritten. Right?
+> 
+> Not sure how important making module unloading robust
+> is - if we wanted to fix this we'd need to move
+> the callback code into core (hopefully generalizing
+> it somewhat).
+> 
+> > +	return 0;
+> > +}
+> > +
+> >  static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+> >  {
+> >  	struct rpc_rqst	*req = task->tk_rqstp;
+> > @@ -1113,6 +1123,8 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+> >  	req->rq_xid     = xprt_alloc_xid(xprt);
+> >  	req->rq_release_snd_buf = NULL;
+> >  	xprt_reset_majortimeo(req);
+> > +	atomic_set(&req->destructor.ref, 1);
+> > +	req->destructor.destroy = &xprt_complete_skb_pages;
+> >  	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+> >  			req, ntohl(req->rq_xid));
+> >  }
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 38b2fec..5406977 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -408,7 +408,8 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+> >  		remainder -= len;
+> >  		if (remainder != 0 || more)
+> >  			flags |= MSG_MORE;
+> > -		err = sock->ops->sendpage(sock, *ppage, NULL, base, len, flags);
+> > +		err = sock->ops->sendpage(sock, *ppage, xdr->destructor,
+> > +					  base, len, flags);
+> >  		if (remainder == 0 || err != len)
+> >  			break;
+> >  		sent += err;
+> > -- 
+> > 1.7.2.5
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe netdev" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
