@@ -1,258 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22391 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47468 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752712Ab2AZV5l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:57:41 -0500
-Message-ID: <4F21CC52.4080800@netapp.com>
-Date: Thu, 26 Jan 2012 16:57:38 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key() fails
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com> <20120126215615.GF700@fieldses.org>
-In-Reply-To: <20120126215615.GF700@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1752843Ab2A3X6E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jan 2012 18:58:04 -0500
+Date: Mon, 30 Jan 2012 18:57:53 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Thomas Gleixner <tglx@linutronix.de>
+Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
+ allocation
+Message-ID: <20120130185753.50280816@tlielax.poochiereds.net>
+In-Reply-To: <1327957652.4090.32.camel@lade.trondhjem.org>
+References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
+	<4F2700E2.9020803@RedHat.com>
+	<1327957652.4090.32.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu Jan 26 16:56:15 2012, J. Bruce Fields wrote:
-> I'm assuming you meant to send this to Trond, not me?
+On Mon, 30 Jan 2012 21:07:37 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Oops, that was supposed to go to Trond.  I have two scripts:  
-git-submit-nfs and git-submit-nfsd.  My fingers must have been working 
-faster than my brain...
->
-> --b.
->
-> On Thu, Jan 26, 2012 at 04:54:23PM -0500, bjschuma@netapp.com wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> This patch removes the CONFIG_NFS_USE_NEW_IDMAPPER compile option.
->> First, the idmapper will attempt to map the id using /sbin/request-key
->> and nfsidmap.  If this fails (if /etc/request-key.conf is not configured
->> properly) then the idmapper will call the legacy code to perform the
->> mapping.  I left a comment stating where the legacy code begins to make
->> it easier for somebody to remove in the future.
->>
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->> I tested this on both Archlinux with nfs-utils 1.2.5 and on Fedora with
->> nfs-utils 1.2.6-rc6.  It did what was expected in both cases.
->>
->>  fs/nfs/Kconfig            |   11 ------
->>  fs/nfs/idmap.c            |   76 +++++++++++++++------------------------------
->>  fs/nfs/sysctl.c           |    2 -
->>  include/linux/nfs_idmap.h |   25 ---------------
->>  4 files changed, 25 insertions(+), 89 deletions(-)
->>
->> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->> index dbcd821..021d2cf 100644
->> --- a/fs/nfs/Kconfig
->> +++ b/fs/nfs/Kconfig
->> @@ -132,14 +132,3 @@ config NFS_USE_KERNEL_DNS
->>  	select DNS_RESOLVER
->>  	select KEYS
->>  	default y
->> -
->> -config NFS_USE_NEW_IDMAPPER
->> -	bool "Use the new idmapper upcall routine"
->> -	depends on NFS_V4 && KEYS
->> -	help
->> -	  Say Y here if you want NFS to use the new idmapper upcall functions.
->> -	  You will need /sbin/request-key (usually provided by the keyutils
->> -	  package).  For details, read
->> -	  <file:Documentation/filesystems/nfs/idmapper.txt>.
->> -
->> -	  If you are unsure, say N.
->> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
->> index 2c05f19..56b1104 100644
->> --- a/fs/nfs/idmap.c
->> +++ b/fs/nfs/idmap.c
->> @@ -142,8 +142,6 @@ static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
->>  	return snprintf(buf, buflen, "%u", id);
->>  }
->>  
->> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
->> -
->>  #include <linux/cred.h>
->>  #include <linux/sunrpc/sched.h>
->>  #include <linux/nfs4.h>
->> @@ -327,43 +325,7 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
->>  	return ret;
->>  }
->>  
->> -int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
->> -{
->> -	if (nfs_map_string_to_numeric(name, namelen, uid))
->> -		return 0;
->> -	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
->> -}
->> -
->> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
->> -{
->> -	if (nfs_map_string_to_numeric(name, namelen, gid))
->> -		return 0;
->> -	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
->> -}
->> -
->> -int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
->> -{
->> -	int ret = -EINVAL;
->> -
->> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
->> -		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
->> -	if (ret < 0)
->> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
->> -	return ret;
->> -}
->> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
->> -{
->> -	int ret = -EINVAL;
->> -
->> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
->> -		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
->> -	if (ret < 0)
->> -		ret = nfs_map_numeric_to_string(gid, buf, buflen);
->> -	return ret;
->> -}
->> -
->> -#else  /* CONFIG_NFS_USE_NEW_IDMAPPER not defined */
->> -
->> +/* idmap classic begins here */
->>  #include <linux/module.h>
->>  #include <linux/mutex.h>
->>  #include <linux/init.h>
->> @@ -795,19 +757,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
->>  int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
->>  {
->>  	struct idmap *idmap = server->nfs_client->cl_idmap;
->> +	int ret = -EINVAL;
->>  
->>  	if (nfs_map_string_to_numeric(name, namelen, uid))
->>  		return 0;
->> -	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
->> +	ret = nfs_idmap_lookup_id(name, namelen, "uid", uid);
->> +	if (ret < 0)
->> +		ret = nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
->> +	return ret;
->>  }
->>  
->> -int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
->> +int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
->>  {
->>  	struct idmap *idmap = server->nfs_client->cl_idmap;
->> +	int ret = -EINVAL;
->>  
->> -	if (nfs_map_string_to_numeric(name, namelen, uid))
->> +	if (nfs_map_string_to_numeric(name, namelen, gid))
->>  		return 0;
->> -	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
->> +	ret = nfs_idmap_lookup_id(name, namelen, "gid", gid);
->> +	if (ret < 0)
->> +		ret = nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, gid);
->> +	return ret;
->>  }
->>  
->>  int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
->> @@ -815,22 +785,26 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
->>  	struct idmap *idmap = server->nfs_client->cl_idmap;
->>  	int ret = -EINVAL;
->>  
->> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
->> -		ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
->> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
->> +		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
->> +		if (ret < 0)
->> +			ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
->> +	}
->>  	if (ret < 0)
->>  		ret = nfs_map_numeric_to_string(uid, buf, buflen);
->>  	return ret;
->>  }
->> -int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
->> +int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
->>  {
->>  	struct idmap *idmap = server->nfs_client->cl_idmap;
->>  	int ret = -EINVAL;
->>  
->> -	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
->> -		ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
->> +	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
->> +		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
->> +		if (ret < 0)
->> +			ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, gid, buf);
->> +	}
->>  	if (ret < 0)
->> -		ret = nfs_map_numeric_to_string(uid, buf, buflen);
->> +		ret = nfs_map_numeric_to_string(gid, buf, buflen);
->>  	return ret;
->>  }
->> -
->> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
->> diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
->> index 978aaeb..ad4d2e7 100644
->> --- a/fs/nfs/sysctl.c
->> +++ b/fs/nfs/sysctl.c
->> @@ -32,7 +32,6 @@ static ctl_table nfs_cb_sysctls[] = {
->>  		.extra1 = (int *)&nfs_set_port_min,
->>  		.extra2 = (int *)&nfs_set_port_max,
->>  	},
->> -#ifndef CONFIG_NFS_USE_NEW_IDMAPPER
->>  	{
->>  		.procname = "idmap_cache_timeout",
->>  		.data = &nfs_idmap_cache_timeout,
->> @@ -40,7 +39,6 @@ static ctl_table nfs_cb_sysctls[] = {
->>  		.mode = 0644,
->>  		.proc_handler = proc_dointvec_jiffies,
->>  	},
->> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
->>  #endif
->>  	{
->>  		.procname	= "nfs_mountpoint_timeout",
->> diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
->> index 308c188..717fa50 100644
->> --- a/include/linux/nfs_idmap.h
->> +++ b/include/linux/nfs_idmap.h
->> @@ -69,36 +69,11 @@ struct nfs_server;
->>  struct nfs_fattr;
->>  struct nfs4_string;
->>  
->> -#ifdef CONFIG_NFS_USE_NEW_IDMAPPER
->> -
->>  int nfs_idmap_init(void);
->>  void nfs_idmap_quit(void);
->> -
->> -static inline int nfs_idmap_new(struct nfs_client *clp)
->> -{
->> -	return 0;
->> -}
->> -
->> -static inline void nfs_idmap_delete(struct nfs_client *clp)
->> -{
->> -}
->> -
->> -#else /* CONFIG_NFS_USE_NEW_IDMAPPER not set */
->> -
->> -static inline int nfs_idmap_init(void)
->> -{
->> -	return 0;
->> -}
->> -
->> -static inline void nfs_idmap_quit(void)
->> -{
->> -}
->> -
->>  int nfs_idmap_new(struct nfs_client *);
->>  void nfs_idmap_delete(struct nfs_client *);
->>  
->> -#endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
->> -
->>  void nfs_fattr_init_names(struct nfs_fattr *fattr,
->>  		struct nfs4_string *owner_name,
->>  		struct nfs4_string *group_name);
->> -- 
->> 1.7.8.4
->>
+> On Mon, 2012-01-30 at 15:43 -0500, Steve Dickson wrote:
+> > 
+> > On 01/24/2012 12:40 PM, Jeff Layton wrote:
+> > > The debugobjects code will sometimes pop a warning like this when the
+> > > queue_timeout job is queued to a workqueue:
+> > > 
+> > > [ 5157.128514] WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
+> > > [ 5157.128742] Hardware name: Bochs
+> > > [ 5157.128742] ODEBUG: activate not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
+> > > [ 5157.128742] Modules linked in: nfsd(O) nfs_acl auth_rpcgss lockd sunrpc floppy virtio_net i2c_piix4 i2c_core virtio_balloon joydev pcspkr virtio_blk [last unloaded: nfsd]
+> > > [ 5157.128742] Pid: 1312, comm: rpc.nfsd Tainted: G        W  O 3.3.0-rc1+ #1
+> > > [ 5157.128742] Call Trace:
+> > > [ 5157.128742]  [<ffffffff8106135f>] warn_slowpath_common+0x7f/0xc0
+> > > [ 5157.128742]  [<ffffffff81061456>] warn_slowpath_fmt+0x46/0x50
+> > > [ 5157.128742]  [<ffffffff8132ba2c>] debug_print_object+0x8c/0xb0
+> > > [ 5157.128742]  [<ffffffff81070db0>] ? timer_debug_hint+0x10/0x10
+> > > [ 5157.128742]  [<ffffffff8132c02b>] debug_object_activate+0xfb/0x190
+> > > [ 5157.128742]  [<ffffffff81072728>] ? lock_timer_base.isra.24+0x38/0x70
+> > > [ 5157.128742]  [<ffffffff81074676>] mod_timer+0xf6/0x450
+> > > [ 5157.128742]  [<ffffffff810749e8>] add_timer+0x18/0x20
+> > > [ 5157.128742]  [<ffffffff8108168e>] queue_delayed_work_on+0xbe/0x140
+> > > [ 5157.128742]  [<ffffffff81084441>] queue_delayed_work+0x21/0x40
+> > > [ 5157.128742]  [<ffffffffa006e568>] rpc_queue_upcall+0xe8/0x100 [sunrpc]
+> > > [ 5157.128742]  [<ffffffffa012a121>] __cld_pipe_upcall+0x61/0xc0 [nfsd]
+> > > [ 5157.128742]  [<ffffffffa012ad98>] nfsd4_cld_init+0x48/0x140 [nfsd]
+> > > [ 5157.128742]  [<ffffffffa012b22a>] nfsd4_client_tracking_init+0x2a/0xc0 [nfsd]
+> > > [ 5157.128742]  [<ffffffff8169797e>] ? mutex_unlock+0xe/0x10
+> > > [ 5157.128742]  [<ffffffffa01266fa>] nfs4_state_start+0x1a/0x100 [nfsd]
+> > > [ 5157.128742]  [<ffffffffa01028c5>] nfsd_svc+0x135/0x200 [nfsd]
+> > > [ 5157.128742]  [<ffffffffa0103df0>] ? write_maxblksize+0x130/0x130 [nfsd]
+> > > [ 5157.128742]  [<ffffffffa0103e6d>] write_threads+0x7d/0xd0 [nfsd]
+> > > [ 5157.128742]  [<ffffffff811dd16a>] ? simple_transaction_get+0xca/0xe0
+> > > [ 5157.128742]  [<ffffffffa0102ee7>] nfsctl_transaction_write+0x57/0x90 [nfsd]
+> > > [ 5157.128742]  [<ffffffff811b4c9f>] vfs_write+0xaf/0x190
+> > > [ 5157.128742]  [<ffffffff811b4fdd>] sys_write+0x4d/0x90
+> > > [ 5157.128742]  [<ffffffff816a3469>] system_call_fastpath+0x16/0x1b
+> > > 
+> > > This occurs when an rpc_inode object is recycled. The slab constructor
+> > > routine doesn't necessarily get called on it again, so the debugobjects
+> > > code isn't aware that it's already initialized.
+> > > 
+> > > Work around this problem by initializing the delayed work every time
+> > > an inode is allocated out of the slab, not just when a new slab is.
+> > > 
+> > > Cc: Boaz Harrosh <bharrosh@panasas.com>
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > I was seeing this warning as well and this patch did remove that warning...
+> > 
+> > Tested-by: Steve Dickson <steved@redhat.com>
+> 
+> OK, but why are we seeing the warning in the first place? Why is a timer
+> that was initialised suddenly finding itself in a non-initialised state?
+> 
 
+(cc'ing Thomas)
 
+It's not uninitialized, but the debugobjects code doesn't realize that.
+
+IIUC, the debugobjects code creates some tracking objects for the timer
+when it's first initialized and then frees them on kmem_cache_free. The
+problem here is that we're just initializing the timer once when the
+slab is first added to the cache (via the slabcache ctor). When the object
+is recycled, the timer isn't being reinitialized so debugobjects has no
+longer has a record of it.
+
+This really looks like a bug (design flaw?) in the debugobjects code,
+but I'm not sure if or when Thomas is planning to fix it. There was a
+bit of discussion recently in this thread:
+
+    WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
+
+For now, this patch is really just papering over that problem, but it
+should be "mostly harmless". That said, I'm ok with dropping it if
+Thomas is planning to fix this in the debugobjects code however.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
