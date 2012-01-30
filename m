@@ -1,50 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:42390 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753060Ab2AaCXB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 21:23:01 -0500
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "lsf-pc\@lists.linux-foundation.org"
-	<lsf-pc@lists.linux-foundation.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-scsi\@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>
-Subject: Re: [LSF/MM TOPIC] end-to-end data and metadata corruption detection
-From: "Martin K. Petersen" <martin.petersen@oracle.com>
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-	<4F2147BA.6030607@itwm.fraunhofer.de>
-	<yq1k44e1pn6.fsf@sermon.lab.mkp.net>
-	<DE0353DF-83EA-480E-9C42-1EE760D6EE41@dilger.ca>
-Date: Mon, 30 Jan 2012 21:22:49 -0500
-In-Reply-To: <DE0353DF-83EA-480E-9C42-1EE760D6EE41@dilger.ca> (Andreas
-	Dilger's message of "Thu, 26 Jan 2012 09:34:44 -0700")
-Message-ID: <yq1ty3cvcee.fsf@sermon.lab.mkp.net>
+Received: from mx2.netapp.com ([216.240.18.37]:54666 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752307Ab2A3VHr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jan 2012 16:07:47 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
+ allocation
+Date: Mon, 30 Jan 2012 21:07:37 +0000
+Message-ID: <1327957652.4090.32.camel@lade.trondhjem.org>
+References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
+	 <4F2700E2.9020803@RedHat.com>
+In-Reply-To: <4F2700E2.9020803@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>>>> "Andreas" == Andreas Dilger <adilger@dilger.ca> writes:
-
-Andreas> Is there a description of sys_dio() somewhere?
-
-This was the original draft:
-
-	http://www.spinics.net/lists/linux-mm/msg14512.html
-
-
-Andreas> In particular, I'm interested to know whether it allows full
-Andreas> scatter-gather IO submission, unlike pwrite() which only allows
-Andreas> multiple input buffers, and not multiple file offsets.
-
-Each request descriptor contains buffer, target file, and offset. So
-it's a single entry per descriptor. But many descriptors can be
-submitted (and reaped) in a single syscall. So you don't have the single
-file offset limitation of pwritev().
-
--- 
-Martin K. Petersen	Oracle Linux Engineering
+T24gTW9uLCAyMDEyLTAxLTMwIGF0IDE1OjQzIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDEvMjQvMjAxMiAxMjo0MCBQTSwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gVGhl
+IGRlYnVnb2JqZWN0cyBjb2RlIHdpbGwgc29tZXRpbWVzIHBvcCBhIHdhcm5pbmcgbGlrZSB0aGlz
+IHdoZW4gdGhlDQo+ID4gcXVldWVfdGltZW91dCBqb2IgaXMgcXVldWVkIHRvIGEgd29ya3F1ZXVl
+Og0KPiA+IA0KPiA+IFsgNTE1Ny4xMjg1MTRdIFdBUk5JTkc6IGF0IGxpYi9kZWJ1Z29iamVjdHMu
+YzoyNjIgZGVidWdfcHJpbnRfb2JqZWN0KzB4OGMvMHhiMCgpDQo+ID4gWyA1MTU3LjEyODc0Ml0g
+SGFyZHdhcmUgbmFtZTogQm9jaHMNCj4gPiBbIDUxNTcuMTI4NzQyXSBPREVCVUc6IGFjdGl2YXRl
+IG5vdCBhdmFpbGFibGUgKGFjdGl2ZSBzdGF0ZSAwKSBvYmplY3QgdHlwZTogdGltZXJfbGlzdCBo
+aW50OiBzdHViX3RpbWVyKzB4MC8weDIwDQo+ID4gWyA1MTU3LjEyODc0Ml0gTW9kdWxlcyBsaW5r
+ZWQgaW46IG5mc2QoTykgbmZzX2FjbCBhdXRoX3JwY2dzcyBsb2NrZCBzdW5ycGMgZmxvcHB5IHZp
+cnRpb19uZXQgaTJjX3BpaXg0IGkyY19jb3JlIHZpcnRpb19iYWxsb29uIGpveWRldiBwY3Nwa3Ig
+dmlydGlvX2JsayBbbGFzdCB1bmxvYWRlZDogbmZzZF0NCj4gPiBbIDUxNTcuMTI4NzQyXSBQaWQ6
+IDEzMTIsIGNvbW06IHJwYy5uZnNkIFRhaW50ZWQ6IEcgICAgICAgIFcgIE8gMy4zLjAtcmMxKyAj
+MQ0KPiA+IFsgNTE1Ny4xMjg3NDJdIENhbGwgVHJhY2U6DQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
+ZmZmZmZmZmY4MTA2MTM1Zj5dIHdhcm5fc2xvd3BhdGhfY29tbW9uKzB4N2YvMHhjMA0KPiA+IFsg
+NTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODEwNjE0NTY+XSB3YXJuX3Nsb3dwYXRoX2ZtdCsweDQ2
+LzB4NTANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMzJiYTJjPl0gZGVidWdfcHJp
+bnRfb2JqZWN0KzB4OGMvMHhiMA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODEwNzBk
+YjA+XSA/IHRpbWVyX2RlYnVnX2hpbnQrMHgxMC8weDEwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
+ZmZmZmZmZmY4MTMyYzAyYj5dIGRlYnVnX29iamVjdF9hY3RpdmF0ZSsweGZiLzB4MTkwDQo+ID4g
+WyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3MjcyOD5dID8gbG9ja190aW1lcl9iYXNlLmlz
+cmEuMjQrMHgzOC8weDcwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3NDY3Nj5d
+IG1vZF90aW1lcisweGY2LzB4NDUwDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTA3
+NDllOD5dIGFkZF90aW1lcisweDE4LzB4MjANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZm
+ZjgxMDgxNjhlPl0gcXVldWVfZGVsYXllZF93b3JrX29uKzB4YmUvMHgxNDANCj4gPiBbIDUxNTcu
+MTI4NzQyXSAgWzxmZmZmZmZmZjgxMDg0NDQxPl0gcXVldWVfZGVsYXllZF93b3JrKzB4MjEvMHg0
+MA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmYTAwNmU1Njg+XSBycGNfcXVldWVfdXBj
+YWxsKzB4ZTgvMHgxMDAgW3N1bnJwY10NCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEw
+MTJhMTIxPl0gX19jbGRfcGlwZV91cGNhbGwrMHg2MS8weGMwIFtuZnNkXQ0KPiA+IFsgNTE1Ny4x
+Mjg3NDJdICBbPGZmZmZmZmZmYTAxMmFkOTg+XSBuZnNkNF9jbGRfaW5pdCsweDQ4LzB4MTQwIFtu
+ZnNkXQ0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmYTAxMmIyMmE+XSBuZnNkNF9jbGll
+bnRfdHJhY2tpbmdfaW5pdCsweDJhLzB4YzAgW25mc2RdDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8
+ZmZmZmZmZmY4MTY5Nzk3ZT5dID8gbXV0ZXhfdW5sb2NrKzB4ZS8weDEwDQo+ID4gWyA1MTU3LjEy
+ODc0Ml0gIFs8ZmZmZmZmZmZhMDEyNjZmYT5dIG5mczRfc3RhdGVfc3RhcnQrMHgxYS8weDEwMCBb
+bmZzZF0NCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEwMTAyOGM1Pl0gbmZzZF9zdmMr
+MHgxMzUvMHgyMDAgW25mc2RdDQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmZhMDEwM2Rm
+MD5dID8gd3JpdGVfbWF4Ymxrc2l6ZSsweDEzMC8weDEzMCBbbmZzZF0NCj4gPiBbIDUxNTcuMTI4
+NzQyXSAgWzxmZmZmZmZmZmEwMTAzZTZkPl0gd3JpdGVfdGhyZWFkcysweDdkLzB4ZDAgW25mc2Rd
+DQo+ID4gWyA1MTU3LjEyODc0Ml0gIFs8ZmZmZmZmZmY4MTFkZDE2YT5dID8gc2ltcGxlX3RyYW5z
+YWN0aW9uX2dldCsweGNhLzB4ZTANCj4gPiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZmEwMTAy
+ZWU3Pl0gbmZzY3RsX3RyYW5zYWN0aW9uX3dyaXRlKzB4NTcvMHg5MCBbbmZzZF0NCj4gPiBbIDUx
+NTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMWI0YzlmPl0gdmZzX3dyaXRlKzB4YWYvMHgxOTANCj4g
+PiBbIDUxNTcuMTI4NzQyXSAgWzxmZmZmZmZmZjgxMWI0ZmRkPl0gc3lzX3dyaXRlKzB4NGQvMHg5
+MA0KPiA+IFsgNTE1Ny4xMjg3NDJdICBbPGZmZmZmZmZmODE2YTM0Njk+XSBzeXN0ZW1fY2FsbF9m
+YXN0cGF0aCsweDE2LzB4MWINCj4gPiANCj4gPiBUaGlzIG9jY3VycyB3aGVuIGFuIHJwY19pbm9k
+ZSBvYmplY3QgaXMgcmVjeWNsZWQuIFRoZSBzbGFiIGNvbnN0cnVjdG9yDQo+ID4gcm91dGluZSBk
+b2Vzbid0IG5lY2Vzc2FyaWx5IGdldCBjYWxsZWQgb24gaXQgYWdhaW4sIHNvIHRoZSBkZWJ1Z29i
+amVjdHMNCj4gPiBjb2RlIGlzbid0IGF3YXJlIHRoYXQgaXQncyBhbHJlYWR5IGluaXRpYWxpemVk
+Lg0KPiA+IA0KPiA+IFdvcmsgYXJvdW5kIHRoaXMgcHJvYmxlbSBieSBpbml0aWFsaXppbmcgdGhl
+IGRlbGF5ZWQgd29yayBldmVyeSB0aW1lDQo+ID4gYW4gaW5vZGUgaXMgYWxsb2NhdGVkIG91dCBv
+ZiB0aGUgc2xhYiwgbm90IGp1c3Qgd2hlbiBhIG5ldyBzbGFiIGlzLg0KPiA+IA0KPiA+IENjOiBC
+b2F6IEhhcnJvc2ggPGJoYXJyb3NoQHBhbmFzYXMuY29tPg0KPiA+IFNpZ25lZC1vZmYtYnk6IEpl
+ZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+DQo+IEkgd2FzIHNlZWluZyB0aGlzIHdhcm5p
+bmcgYXMgd2VsbCBhbmQgdGhpcyBwYXRjaCBkaWQgcmVtb3ZlIHRoYXQgd2FybmluZy4uLg0KPiAN
+Cj4gVGVzdGVkLWJ5OiBTdGV2ZSBEaWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCg0KT0ssIGJ1
+dCB3aHkgYXJlIHdlIHNlZWluZyB0aGUgd2FybmluZyBpbiB0aGUgZmlyc3QgcGxhY2U/IFdoeSBp
+cyBhIHRpbWVyDQp0aGF0IHdhcyBpbml0aWFsaXNlZCBzdWRkZW5seSBmaW5kaW5nIGl0c2VsZiBp
+biBhIG5vbi1pbml0aWFsaXNlZCBzdGF0ZT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
