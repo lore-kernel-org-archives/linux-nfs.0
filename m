@@ -1,176 +1,247 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56484 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36907 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751544Ab2AZVOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 26 Jan 2012 16:14:53 -0500
-Date: Thu, 26 Jan 2012 16:14:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, xemul@parallels.com,
-        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, davem@davemloft.net, devel@openvz.org
-Subject: Re: [PATCH 3/4] SUNRPC: service destruction in network namespace
- context
-Message-ID: <20120126211450.GD700@fieldses.org>
-References: <20120125134132.13662.83447.stgit@localhost6.localdomain6>
- <20120125134726.13662.97179.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120125134726.13662.97179.stgit@localhost6.localdomain6>
+	id S1753348Ab2A3Uxn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jan 2012 15:53:43 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] [RFC] NFS - filelayout DS rpc mountstats support
+Date: Mon, 30 Jan 2012 15:53:40 -0500
+Message-Id: <1327956820-2772-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 25, 2012 at 05:47:26PM +0400, Stanislav Kinsbursky wrote:
-> This patch introduces network namespace filter for service destruction
-> function.
-> Nothing special here - just do exactly the same operations, but only for
-> tranports in passed networks namespace context.
-> BTW, BUG_ON() checks for empty service transports lists were returned into
-> svc_destroy() function. This is because of swithing generic svc_close_all() to
-> networks namespace dependable svc_close_net().
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> 
-> ---
->  include/linux/sunrpc/svcsock.h |    2 +-
->  net/sunrpc/svc.c               |    9 +++++++--
->  net/sunrpc/svc_xprt.c          |   27 +++++++++++++++++----------
->  3 files changed, 25 insertions(+), 13 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index c84e974..cb4ac69 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -34,7 +34,7 @@ struct svc_sock {
->  /*
->   * Function prototypes.
->   */
-> -void		svc_close_all(struct svc_serv *);
-> +void		svc_close_net(struct svc_serv *, struct net *);
->  int		svc_recv(struct svc_rqst *, long);
->  int		svc_send(struct svc_rqst *);
->  void		svc_drop(struct svc_rqst *);
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index a8b49a0..279bbd8 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -517,6 +517,8 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
->  void
->  svc_destroy(struct svc_serv *serv)
->  {
-> +	struct net *net = current->nsproxy->net_ns;
-> +
->  	dprintk("svc: svc_destroy(%s, %d)\n",
->  				serv->sv_program->pg_name,
->  				serv->sv_nrthreads);
-> @@ -539,10 +541,13 @@ svc_destroy(struct svc_serv *serv)
->  	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
->  	 * safe to traverse those lists and shut everything down:
->  	 */
-> -	svc_close_all(serv);
-> +	svc_close_net(serv, net);
-> +
-> +	BUG_ON(!list_empty(&serv->sv_permsocks));
-> +	BUG_ON(!list_empty(&serv->sv_tempsocks));
+The RPC stats displayed in /self/proc/mountstats are collected in the sunrpc
+layer and are collected per rpc_client.  This has worked for NFS thus far
+since only one nfs_client (and it's associated rpc_client) was ever associated
+with a mountpoint.
 
-I'm confused--what guarantees this is true, at this point?
+Now with NFS4.1+PNFS+filelayout, NFS can have more than one nfs_client
+associated with a mountpoint!  Note that the rpc stats are hung off of the
+rpc_client - so even if two connections share the same transport, they will
+not use the same stats structure (ie when MDS == DS).
 
-There are two ways I could imagine containerizing svc_serv: either we
-create a new one for each namespace, or we share a single global one
-between them.
+This patch -- admittedly ugly -- poles holes through the PNFS layout driver
+to print the stats for rpc_client structures for the dataserver connections
+with the filelayout driver.
 
-If the former, then something that takes a "serv" argument shouldn't
-also need a "net" argument--the serv should already know which namespace
-it belongs to.
+I took the approach of keeping them separate in the /proc/self/mountstats
+output to avoid doing too much in the kernel.  If we agree this is the way to
+go, I'll update mountstats(1) to combine them for the default output (much in
+the same way that averaging is done in userland instead of kernel here).
+The alternative is to poke holes in the sunrpc layer to allow combining stats.
 
-If the latter, then these lists could have sockets from multiple
-namespaces, and they aren't guaranteed to be empty here.
+Again, I don't love this solution - it seems like a hack.  The other option
+I can see is changing the rpc layer to have support for linking several
+rpc_client structures to use the same stat struct, but this would likely look
+like a huge hack too.
 
-?
+Thoughts?
+---
+ fs/nfs/nfs4filelayout.c    |   19 +++++++++++++++++++
+ fs/nfs/nfs4filelayout.h    |    2 ++
+ fs/nfs/nfs4filelayoutdev.c |   19 +++++++++++++++++++
+ fs/nfs/pnfs.h              |   17 +++++++++++++++++
+ fs/nfs/pnfs_dev.c          |   36 ++++++++++++++++++++++++++++++++++++
+ fs/nfs/super.c             |    1 +
+ 6 files changed, 94 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b4f8f96..ce20ac3 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -916,6 +916,24 @@ filelayout_free_deveiceid_node(struct nfs4_deviceid_node *d)
+ 	nfs4_fl_free_deviceid(container_of(d, struct nfs4_file_layout_dsaddr, id_node));
+ }
+ 
++static void
++_rpc_print_iostats_cb(struct nfs4_deviceid_node *d, void *ctx)
++{
++	struct seq_file *m;
++	struct nfs4_file_layout_dsaddr *dsaddr;
++
++	m = (struct seq_file *)ctx;
++	dsaddr = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
++	nfs4_fl_rpc_print_iostats(m, dsaddr);
++}
++
++static void
++filelayout_rpc_print_iostats(struct seq_file *m, const struct nfs_server *nfss)
++{
++	nfs4_foreach_deviceid(nfss->pnfs_curr_ld, nfss->nfs_client,
++			      _rpc_print_iostats_cb, m);
++}
++
+ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.id			= LAYOUT_NFSV4_1_FILES,
+ 	.name			= "LAYOUT_NFSV4_1_FILES",
+@@ -930,6 +948,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.read_pagelist		= filelayout_read_pagelist,
+ 	.write_pagelist		= filelayout_write_pagelist,
+ 	.free_deviceid_node	= filelayout_free_deveiceid_node,
++	.rpc_print_iostats	= filelayout_rpc_print_iostats,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 2e42284..6942992 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -110,6 +110,8 @@ u32 nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset);
+ u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
+ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
+ 					u32 ds_idx);
++void nfs4_fl_rpc_print_iostats(struct seq_file *,
++			       struct nfs4_file_layout_dsaddr *);
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 6eb59b0..1a03a14 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -31,6 +31,8 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/vmalloc.h>
+ 
++#include <linux/sunrpc/metrics.h>
++
+ #include "internal.h"
+ #include "nfs4filelayout.h"
+ 
+@@ -829,6 +831,23 @@ filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+ 	spin_unlock(&nfs4_ds_cache_lock);
+ }
+ 
++void
++nfs4_fl_rpc_print_iostats(struct seq_file *m,
++			  struct nfs4_file_layout_dsaddr *dsaddr)
++{
++	struct nfs4_pnfs_ds *ds;
++	u32 i;
++
++	for (i = 0; i < dsaddr->ds_num; i++) {
++		ds = dsaddr->ds_list[i];
++
++		if (ds && ds->ds_clp) {
++			seq_printf(m, "PNFS Dataserver %s\n", ds->ds_remotestr);
++			rpc_print_iostats(m, ds->ds_clp->cl_rpcclient);
++		}
++	}
++}
++
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 53d593a..86433d8 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -119,6 +119,9 @@ struct pnfs_layoutdriver_type {
+ 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
++
++	void (*rpc_print_iostats) (struct seq_file *m,
++				   const struct nfs_server *nfss);
+ };
+ 
+ struct pnfs_layout_hdr {
+@@ -231,6 +234,7 @@ struct nfs4_deviceid_node {
+ 
+ void nfs4_print_deviceid(const struct nfs4_deviceid *dev_id);
+ struct nfs4_deviceid_node *nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
++void nfs4_foreach_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, void (*callback)(struct nfs4_deviceid_node *, void *), void *);
+ void nfs4_delete_deviceid(const struct pnfs_layoutdriver_type *, const struct nfs_client *, const struct nfs4_deviceid *);
+ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
+ 			     const struct pnfs_layoutdriver_type *,
+@@ -328,6 +332,13 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
+ }
+ 
++static inline void
++pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
++{
++	if (pnfs_enabled_sb(nfss) && nfss->pnfs_curr_ld->rpc_print_iostats)
++		nfss->pnfs_curr_ld->rpc_print_iostats(m, nfss);
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -429,6 +440,12 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
+ {
+ }
++
++static inline void
++pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 4f359d2..5a65668 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -115,6 +115,42 @@ nfs4_find_get_deviceid(const struct pnfs_layoutdriver_type *ld,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+ 
++
++/*
++ * Apply callback function to each entry in the cache that matches
++ * the specified layout driver and nfs_client (of the MDS)
++ */
++void
++_nfs4_foreach_deviceid(const struct pnfs_layoutdriver_type *ld,
++		       const struct nfs_client *clp,
++		       void (*callback)(struct nfs4_deviceid_node *, void *),
++		       void *ctx)
++{
++	struct nfs4_deviceid_node *d;
++	struct hlist_node *n;
++	long hash;
++
++	for (hash = 0; hash < NFS4_DEVICE_ID_HASH_SIZE; hash++) {
++		hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[hash], node)
++			if (d->ld == ld && d->nfs_client == clp) {
++				if (atomic_read(&d->ref))
++					callback(d, ctx);
++			}
++	}
++}
++
++void
++nfs4_foreach_deviceid(const struct pnfs_layoutdriver_type *ld,
++		      const struct nfs_client *clp,
++		      void (*callback)(struct nfs4_deviceid_node *, void *),
++		      void *ctx)
++{
++	rcu_read_lock();
++	_nfs4_foreach_deviceid(ld, clp, callback, ctx);
++	rcu_read_unlock();
++}
++EXPORT_SYMBOL_GPL(nfs4_foreach_deviceid);
++
+ /*
+  * Remove a deviceid from cache
+  *
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b79f2a1..5d8e00b 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -869,6 +869,7 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 	seq_printf(m, "\n");
+ 
+ 	rpc_print_iostats(m, nfss->client);
++	pnfs_rpc_print_iostats(m, nfss);
+ 
+ 	return 0;
+ }
+-- 
+1.7.4.4
 
->  
->  	if (serv->sv_shutdown)
-> -		serv->sv_shutdown(serv, current->nsproxy->net_ns);
-> +		serv->sv_shutdown(serv, net);
->  
->  	cache_clean_deferred(serv);
->  
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 493e70b..4bda09d 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -922,17 +922,19 @@ void svc_close_xprt(struct svc_xprt *xprt)
->  }
->  EXPORT_SYMBOL_GPL(svc_close_xprt);
->  
-> -static void svc_close_list(struct list_head *xprt_list)
-> +static void svc_close_list(struct list_head *xprt_list, struct net *net)
->  {
->  	struct svc_xprt *xprt;
->  
->  	list_for_each_entry(xprt, xprt_list, xpt_list) {
-> +		if (xprt->xpt_net != net)
-> +			continue;
->  		set_bit(XPT_CLOSE, &xprt->xpt_flags);
->  		set_bit(XPT_BUSY, &xprt->xpt_flags);
->  	}
->  }
->  
-> -static void svc_clear_pools(struct svc_serv *serv)
-> +static void svc_clear_pools(struct svc_serv *serv, struct net *net)
->  {
->  	struct svc_pool *pool;
->  	struct svc_xprt *xprt;
-> @@ -944,36 +946,41 @@ static void svc_clear_pools(struct svc_serv *serv)
->  
->  		spin_lock_bh(&pool->sp_lock);
->  		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
-> +			if (xprt->xpt_net != net)
-> +				continue;
->  			list_del_init(&xprt->xpt_ready);
->  		}
->  		spin_unlock_bh(&pool->sp_lock);
->  	}
->  }
->  
-> -static void svc_clear_list(struct list_head *xprt_list)
-> +static void svc_clear_list(struct list_head *xprt_list, struct net *net)
->  {
->  	struct svc_xprt *xprt;
->  	struct svc_xprt *tmp;
->  
->  	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
-> +		if (xprt->xpt_net != net)
-> +			continue;
->  		svc_delete_xprt(xprt);
->  	}
-> -	BUG_ON(!list_empty(xprt_list));
-> +	list_for_each_entry(xprt, xprt_list, xpt_list)
-> +		BUG_ON(xprt->xpt_net == net);
->  }
->  
-> -void svc_close_all(struct svc_serv *serv)
-> +void svc_close_net(struct svc_serv *serv, struct net *net)
->  {
-> -	svc_close_list(&serv->sv_tempsocks);
-> -	svc_close_list(&serv->sv_permsocks);
-> +	svc_close_list(&serv->sv_tempsocks, net);
-> +	svc_close_list(&serv->sv_permsocks, net);
->  
-> -	svc_clear_pools(serv);
-> +	svc_clear_pools(serv, net);
->  	/*
->  	 * At this point the sp_sockets lists will stay empty, since
->  	 * svc_enqueue will not add new entries without taking the
->  	 * sp_lock and checking XPT_BUSY.
->  	 */
-> -	svc_clear_list(&serv->sv_tempsocks);
-> -	svc_clear_list(&serv->sv_permsocks);
-> +	svc_clear_list(&serv->sv_tempsocks, net);
-> +	svc_clear_list(&serv->sv_permsocks, net);
->  }
->  
->  /*
-> 
