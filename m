@@ -1,150 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:37336 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:60805 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754200Ab2AaLI2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Jan 2012 06:08:28 -0500
-Subject: [PATCH 2/6] Lockd: pernet usage counter introduced
+	id S1754712Ab2AaPjt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jan 2012 10:39:49 -0500
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Tue, 31 Jan 2012 15:07:57 +0400
-Message-ID: <20120131110757.14364.80893.stgit@localhost6.localdomain6>
-In-Reply-To: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
-References: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFS: Pass a stateid to test_stateid() and free_stateid()
+Date: Tue, 31 Jan 2012 10:39:29 -0500
+Message-Id: <1328024370-20347-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Lockd is going to be shared between network namespaces - i.e. going to be able
-to handle lock requests from different network namespaces. This means, that
-network namespace related resources have to be allocated not once (like now),
-but for every network namespace context, from which service is requested to
-operate.
-This patch implements Lockd per-net users accounting. New per-net counter is
-used to determine, when per-net resources have to be freed.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+This takes the guesswork out of what stateid to use.  The caller is
+expected to figure this out and pass in the correct one.
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/lockd/netns.h |   12 ++++++++++++
- fs/lockd/svc.c   |   45 ++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 54 insertions(+), 3 deletions(-)
- create mode 100644 fs/lockd/netns.h
+v2: Rebase against latest nfs-for-next branch
 
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-new file mode 100644
-index 0000000..ce227e0
---- /dev/null
-+++ b/fs/lockd/netns.h
-@@ -0,0 +1,12 @@
-+#ifndef __LOCKD_NETNS_H__
-+#define __LOCKD_NETNS_H__
-+
-+#include <net/netns/generic.h>
-+
-+struct lockd_net {
-+	unsigned int nlmsvc_users;
-+};
-+
-+extern int lockd_net_id;
-+
-+#endif
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 26d8b78..b461733 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -35,6 +35,8 @@
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
+ fs/nfs/nfs4proc.c |   37 ++++++++++++++++++++++---------------
+ fs/nfs/nfs4xdr.c  |    3 ++-
+ 2 files changed, 24 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7672620..09e3341 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -82,8 +82,8 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+ 			    struct nfs4_state *state);
+ #ifdef CONFIG_NFS_V4_1
+-static int nfs41_test_stateid(struct nfs_server *, struct nfs4_state *);
+-static int nfs41_free_stateid(struct nfs_server *, struct nfs4_state *);
++static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *);
++static int nfs41_free_stateid(struct nfs_server *, nfs4_stateid *);
+ #endif
+ /* Prevent leaks of NFSv4 errors into userland */
+ static int nfs4_map_errors(int err)
+@@ -1730,10 +1730,10 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
+ 	int status;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
  
-+#include "netns.h"
-+
- #define NLMDBG_FACILITY		NLMDBG_SVC
- #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
- #define ALLOWED_SIGS		(sigmask(SIGKILL))
-@@ -50,6 +52,8 @@ static struct task_struct	*nlmsvc_task;
- static struct svc_rqst		*nlmsvc_rqst;
- unsigned long			nlmsvc_timeout;
+-	status = nfs41_test_stateid(server, state);
++	status = nfs41_test_stateid(server, &state->stateid);
+ 	if (status == NFS_OK)
+ 		return 0;
+-	nfs41_free_stateid(server, state);
++	nfs41_free_stateid(server, &state->stateid);
+ 	return nfs4_open_expired(sp, state);
+ }
+ #endif
+@@ -4510,10 +4510,10 @@ static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *reques
+ 	int status;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
  
-+int lockd_net_id;
-+
- /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
-@@ -315,8 +319,12 @@ int lockd_up(void)
- destroy_and_out:
- 	svc_destroy(serv);
+-	status = nfs41_test_stateid(server, state);
++	status = nfs41_test_stateid(server, &state->stateid);
+ 	if (status == NFS_OK)
+ 		return 0;
+-	nfs41_free_stateid(server, state);
++	nfs41_free_stateid(server, &state->stateid);
+ 	return nfs4_lock_expired(state, request);
+ }
+ #endif
+@@ -6143,10 +6143,12 @@ out_freepage:
  out:
--	if (!error)
-+	if (!error) {
-+		struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+		ln->nlmsvc_users++;
- 		nlmsvc_users++;
-+	}
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
+ 	return err;
  }
-@@ -499,24 +507,55 @@ module_param_call(nlm_tcpport, param_set_port, param_get_int,
- module_param(nsm_use_hostnames, bool, 0644);
- module_param(nlm_max_connections, uint, 0644);
- 
-+static int lockd_init_net(struct net *net)
-+{
-+	return 0;
-+}
+-static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
 +
-+static void lockd_exit_net(struct net *net)
-+{
-+}
-+
-+static struct pernet_operations lockd_net_ops = {
-+	.init = lockd_init_net,
-+	.exit = lockd_exit_net,
-+	.id = &lockd_net_id,
-+	.size = sizeof(struct lockd_net),
-+};
-+
-+
- /*
-  * Initialising and terminating the module.
-  */
- 
- static int __init init_nlm(void)
++static int _nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
  {
-+	int err;
++	int status;
+ 	struct nfs41_test_stateid_args args = {
+-		.stateid = &state->stateid,
++		.stateid = stateid,
+ 	};
+ 	struct nfs41_test_stateid_res res;
+ 	struct rpc_message msg = {
+@@ -6154,26 +6156,31 @@ static int _nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *sta
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
 +
- #ifdef CONFIG_SYSCTL
-+	err = -ENOMEM;
- 	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
--	return nlm_sysctl_table ? 0 : -ENOMEM;
--#else
-+	if (nlm_sysctl_table == NULL)
-+		goto err_sysctl;
-+#endif
-+	err = register_pernet_subsys(&lockd_net_ops);
-+	if (err)
-+		goto err_pernet;
- 	return 0;
+ 	nfs41_init_sequence(&args.seq_args, &res.seq_res, 0);
+-	return nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
++	status = nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
 +
-+err_pernet:
-+#ifdef CONFIG_SYSCTL
-+	unregister_sysctl_table(nlm_sysctl_table);
- #endif
-+err_sysctl:
-+	return err;
++	if (status == NFS_OK)
++		return res.status;
++	return status;
  }
  
- static void __exit exit_nlm(void)
+-static int nfs41_test_stateid(struct nfs_server *server, struct nfs4_state *state)
++static int nfs41_test_stateid(struct nfs_server *server, nfs4_stateid *stateid)
  {
- 	/* FIXME: delete all NLM clients */
- 	nlm_shutdown_hosts();
-+	unregister_pernet_subsys(&lockd_net_ops);
- #ifdef CONFIG_SYSCTL
- 	unregister_sysctl_table(nlm_sysctl_table);
- #endif
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(server,
+-				_nfs41_test_stateid(server, state),
++				_nfs41_test_stateid(server, stateid),
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+ }
+ 
+-static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *state)
++static int _nfs4_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs41_free_stateid_args args = {
+-		.stateid = &state->stateid,
++		.stateid = stateid,
+ 	};
+ 	struct nfs41_free_stateid_res res;
+ 	struct rpc_message msg = {
+@@ -6186,13 +6193,13 @@ static int _nfs4_free_stateid(struct nfs_server *server, struct nfs4_state *stat
+ 	return nfs4_call_sync_sequence(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+ }
+ 
+-static int nfs41_free_stateid(struct nfs_server *server, struct nfs4_state *state)
++static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ {
+ 	struct nfs4_exception exception = { };
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(server,
+-				_nfs4_free_stateid(server, state),
++				_nfs4_free_stateid(server, stateid),
+ 				&exception);
+ 	} while (exception.retry);
+ 	return err;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ca288d1..5d1caac 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5671,7 +5671,8 @@ static int decode_test_stateid(struct xdr_stream *xdr,
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+ 	res->status = be32_to_cpup(p++);
+-	return res->status;
++
++	return status;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ out:
+-- 
+1.7.8.4
 
