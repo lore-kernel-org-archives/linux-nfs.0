@@ -1,48 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21401 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:34339 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932709Ab2AMULM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jan 2012 15:11:12 -0500
-From: bjschuma@netapp.com
+	id S1753980Ab2AaKJd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jan 2012 05:09:33 -0500
+Subject: [PATCH v2 3/4] SUNRPC: service destruction in network namespace
+ context
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 01/44] NFS: ifndef guard internal.h
-Date: Fri, 13 Jan 2012 15:10:10 -0500
-Message-Id: <1326485453-1350-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
-References: <1326485453-1350-1-git-send-email-bjschuma@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 31 Jan 2012 14:09:17 +0400
+Message-ID: <20120131100917.4342.17047.stgit@localhost6.localdomain6>
+In-Reply-To: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
+References: <20120131100625.4342.34539.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+v2: Added comment to BUG_ON's in svc_destroy() to make code looks clearer.
 
-I ended up with multiple files including this file, so to prevent
-compiler errors later on I add ifndef guards now.
+This patch introduces network namespace filter for service destruction
+function.
+Nothing special here - just do exactly the same operations, but only for
+tranports in passed networks namespace context.
+BTW, BUG_ON() checks for empty service transports lists were returned into
+svc_destroy() function. This is because of swithing generic svc_close_all() to
+networks namespace dependable svc_close_net().
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/nfs/internal.h |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svcsock.h |    2 +-
+ net/sunrpc/svc.c               |   13 +++++++++++--
+ net/sunrpc/svc_xprt.c          |   27 +++++++++++++++++----------
+ 3 files changed, 29 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 5ee9253..1dd22dc 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -2,6 +2,9 @@
-  * NFS internal definitions
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index c84e974..cb4ac69 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -34,7 +34,7 @@ struct svc_sock {
+ /*
+  * Function prototypes.
   */
- 
-+#ifndef __LINUX_NFS_INTERNAL_H
-+#define __LINUX_NFS_INTERNAL_H
+-void		svc_close_all(struct svc_serv *);
++void		svc_close_net(struct svc_serv *, struct net *);
+ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a8b49a0..6cc0ea3 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -517,6 +517,8 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
+ void
+ svc_destroy(struct svc_serv *serv)
+ {
++	struct net *net = current->nsproxy->net_ns;
 +
- #include "nfs4_fs.h"
- #include <linux/mount.h>
- #include <linux/security.h>
-@@ -461,3 +464,4 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	dprintk("svc: svc_destroy(%s, %d)\n",
+ 				serv->sv_program->pg_name,
+ 				serv->sv_nrthreads);
+@@ -539,10 +541,17 @@ svc_destroy(struct svc_serv *serv)
+ 	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
+ 	 * safe to traverse those lists and shut everything down:
+ 	 */
+-	svc_close_all(serv);
++	svc_close_net(serv, net);
++
++	/*
++	 * The last user is gone and thus all sockets have to be destroyed to
++	 * the point. Check this.
++	 */
++	BUG_ON(!list_empty(&serv->sv_permsocks));
++	BUG_ON(!list_empty(&serv->sv_tempsocks));
+ 
+ 	if (serv->sv_shutdown)
+-		serv->sv_shutdown(serv, current->nsproxy->net_ns);
++		serv->sv_shutdown(serv, net);
+ 
+ 	cache_clean_deferred(serv);
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 493e70b..4bda09d 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -922,17 +922,19 @@ void svc_close_xprt(struct svc_xprt *xprt)
+ }
+ EXPORT_SYMBOL_GPL(svc_close_xprt);
+ 
+-static void svc_close_list(struct list_head *xprt_list)
++static void svc_close_list(struct list_head *xprt_list, struct net *net)
+ {
+ 	struct svc_xprt *xprt;
+ 
+ 	list_for_each_entry(xprt, xprt_list, xpt_list) {
++		if (xprt->xpt_net != net)
++			continue;
+ 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+ 		set_bit(XPT_BUSY, &xprt->xpt_flags);
+ 	}
  }
  
-+#endif /* __LINUX_NFS_INTERNAL_H */
--- 
-1.7.8.3
+-static void svc_clear_pools(struct svc_serv *serv)
++static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+ {
+ 	struct svc_pool *pool;
+ 	struct svc_xprt *xprt;
+@@ -944,36 +946,41 @@ static void svc_clear_pools(struct svc_serv *serv)
+ 
+ 		spin_lock_bh(&pool->sp_lock);
+ 		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
++			if (xprt->xpt_net != net)
++				continue;
+ 			list_del_init(&xprt->xpt_ready);
+ 		}
+ 		spin_unlock_bh(&pool->sp_lock);
+ 	}
+ }
+ 
+-static void svc_clear_list(struct list_head *xprt_list)
++static void svc_clear_list(struct list_head *xprt_list, struct net *net)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *tmp;
+ 
+ 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
++		if (xprt->xpt_net != net)
++			continue;
+ 		svc_delete_xprt(xprt);
+ 	}
+-	BUG_ON(!list_empty(xprt_list));
++	list_for_each_entry(xprt, xprt_list, xpt_list)
++		BUG_ON(xprt->xpt_net == net);
+ }
+ 
+-void svc_close_all(struct svc_serv *serv)
++void svc_close_net(struct svc_serv *serv, struct net *net)
+ {
+-	svc_close_list(&serv->sv_tempsocks);
+-	svc_close_list(&serv->sv_permsocks);
++	svc_close_list(&serv->sv_tempsocks, net);
++	svc_close_list(&serv->sv_permsocks, net);
+ 
+-	svc_clear_pools(serv);
++	svc_clear_pools(serv, net);
+ 	/*
+ 	 * At this point the sp_sockets lists will stay empty, since
+ 	 * svc_enqueue will not add new entries without taking the
+ 	 * sp_lock and checking XPT_BUSY.
+ 	 */
+-	svc_clear_list(&serv->sv_tempsocks);
+-	svc_clear_list(&serv->sv_permsocks);
++	svc_clear_list(&serv->sv_tempsocks, net);
++	svc_clear_list(&serv->sv_permsocks, net);
+ }
+ 
+ /*
 
