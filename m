@@ -1,61 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33178 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752900Ab2AJKio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jan 2012 05:38:44 -0500
-Message-ID: <4F0C150F.1020007@parallels.com>
-Date: Tue, 10 Jan 2012 14:38:07 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:55929 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752346Ab2AaBPT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2012 20:15:19 -0500
+Message-ID: <4F273FD4.3020005@cn.fujitsu.com>
+Date: Tue, 31 Jan 2012 09:11:48 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 MIME-Version: 1.0
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 01/11] SYSCTL: export root and set handling routines
-References: <20111214103602.3991.20990.stgit@localhost6.localdomain6>	<20111214104449.3991.61989.stgit@localhost6.localdomain6>	<m1bor6rg39.fsf@fess.ebiederm.org> <4EEEFC54.10700@parallels.com>	<m18vm8g951.fsf@fess.ebiederm.org> <4EEF2C9A.8000403@parallels.com>	<m1pqfkecw0.fsf@fess.ebiederm.org> <4EEF7364.8000407@parallels.com> <m1vcotigyb.fsf@fess.ebiederm.org>
-In-Reply-To: <m1vcotigyb.fsf@fess.ebiederm.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
+References: <1327963365-2921-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <1327963365-2921-1-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-03.01.2012 07:49, Eric W. Biederman пишет:
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  writes:
->
->> 19.12.2011 20:37, Eric W. Biederman пишет:
->>> Stanislav Kinsbursky<skinsbursky@parallels.com>   writes:
->>>
->>> Doing that independently of the rest of the sysctls is pretty horrible
->>> and confusing to users.   What I am planning might suit your needs and
->>> if not we need to talk some more about how to get the vfs to do
->>> something reasonable.
->>>
->>
->> Ok, Eric. Would be glad to discuss your sysctls plans.
->> But actually you already know my needs: I would like to make sysctls work in the
->> way like sysfs does: i.e. content of files depends on mount maker -
->> not viewer.
->
-> What drives the desire to have sysctls depend on the mount maker?
 
-Because we can (will, actually) have nested fs root's for containers. IOW, 
-container's root will be accessible from it's creator context. And I want to 
-tune container's fs from creators context.
 
-> Especially what drives that desire not to have it have a /proc/<pid>/sys
-> directory that reflects the sysctls for a given process.
->
+J. Bruce Fields �ʓ�:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Move calculation of the default into a helper function.
+> 
+> Get rid of an unused variable "err" while we're there.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
+>  1 files changed, 24 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index eda7d7e..2ad5ffe 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -307,33 +307,37 @@ static void set_max_drc(void)
+>  	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
+>  }
+>  
+> -int nfsd_create_serv(void)
+> +static int nfsd_get_default_max_blksize(void)
+>  {
+> -	int err = 0;
+> +	struct sysinfo i;
+> +	unsigned long target;
+> +	unsigned long bytes;
+> +
+> +	si_meminfo(&i);
+> +	target = i.totalram << PAGE_SHIFT;
+> +	/*
+> +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
+> +	 * machines, but only uses 32K on 128M machines.  Bottom out at
+> +	 * 8K on 32M and smaller.  Of course, this is only a default.
+> +	 */
+> +	target <<= 12;
 
-This is not so important for me, where to access sysctl's. But I'm worrying 
-about backward compatibility. IOW, I'm afraid of changing path
-"/proc/sys/sunprc/*" to "/proc/<pid>/sys/sunrpc". This would break a lot of 
-user-space programs.
+  Should use target = i.totalram << (PAGE_SHIFT - 12);
 
--- 
-Best regards,
-Stanislav Kinsbursky
+  target = i.totalram << PAGE_SHIFT; and 
+  target <<= 12;
+  means target = i.totalram << (PAGE_SHIFT + 12);
+
+thanks,
+Mi Jinlong
+
+> +
+> +	bytes = NFSSVC_MAXBLKSIZE;
+> +	while (bytes > target && bytes >= 8*1024*2)
+> +		bytes /= 2;
+> +	return bytes;
+> +}
+>  
+> +int nfsd_create_serv(void)
+> +{
+>  	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+>  	if (nfsd_serv) {
+>  		svc_get(nfsd_serv);
+>  		return 0;
+>  	}
+> -	if (nfsd_max_blksize == 0) {
+> -		/* choose a suitable default */
+> -		struct sysinfo i;
+> -		si_meminfo(&i);
+> -		/* Aim for 1/4096 of memory per thread
+> -		 * This gives 1MB on 4Gig machines
+> -		 * But only uses 32K on 128M machines.
+> -		 * Bottom out at 8K on 32M and smaller.
+> -		 * Of course, this is only a default.
+> -		 */
+> -		nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
+> -		i.totalram <<= PAGE_SHIFT - 12;
+> -		while (nfsd_max_blksize > i.totalram &&
+> -		       nfsd_max_blksize >= 8*1024*2)
+> -			nfsd_max_blksize /= 2;
+> -	}
+> +	if (nfsd_max_blksize == 0)
+> +		nfsd_max_blksize = nfsd_get_default_max_blksize();
+>  	nfsd_reset_versions();
+> -
+>  	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+>  				      nfsd_last_thread, nfsd, THIS_MODULE);
+>  	if (nfsd_serv == NULL)
+> @@ -341,7 +345,7 @@ int nfsd_create_serv(void)
+>  
+>  	set_max_drc();
+>  	do_gettimeofday(&nfssvc_boot);		/* record boot time */
+> -	return err;
+> +	return 0;
+>  }
+>  
+>  int nfsd_nrpools(void)
+
