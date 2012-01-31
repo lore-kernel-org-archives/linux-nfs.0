@@ -1,70 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40866 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:60805 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753763Ab2AQPJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jan 2012 10:09:03 -0500
-Date: Tue, 17 Jan 2012 10:09:01 -0500
-To: Bertrand Jacquin <bjacquin@exosec.fr>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: I/O Wait on exportfs
-Message-ID: <20120117150901.GA12274@fieldses.org>
-References: <20120117142945.GA19990@lady-voodoo.exosec.local>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120117142945.GA19990@lady-voodoo.exosec.local>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753237Ab2AaPjt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jan 2012 10:39:49 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/2] NFS: Call test_stateid() and free_stateid() with correct stateids
+Date: Tue, 31 Jan 2012 10:39:30 -0500
+Message-Id: <1328024370-20347-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328024370-20347-1-git-send-email-bjschuma@netapp.com>
+References: <1328024370-20347-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 03:29:45PM +0100, Bertrand Jacquin wrote:
-> For a specific case I have /etc/exports with 1281 entries as I need
-> mount --bind to be exported to NFS Clients too.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Could you explain what you mean by that?
+I noticed that test_stateid() was always using the same stateid for open
+and lock recovery.  After poking around a bit, I discovered that it was
+always testing with a delegation stateid (even if there was no
+delegation present).  I figured this wasn't correct, so now delegation
+and open stateids are tested during open_expired() and lock stateids are
+tested during lock_expired().
 
-> Since I have ~1100 entries, reexporting /etc/exports have some bad
-> effects to connected clients, load rise to ~500 for 4/5 minutes, this is
-> always reproducible.
-> 
-> This was using 'exportfs -ra'. I did try with 'exportfs
-> 192.168.0.1:/srv/mail/1234' to avoid reexport every directories, and
-> the sync process but the result is the same.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   58 ++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 47 insertions(+), 11 deletions(-)
 
-Does a -t option (see rpc.mountd(8)) help?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 09e3341..c02ebe4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1725,15 +1725,32 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+-static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++static int nfs41_check_expired_stateid(struct nfs4_state *state, nfs4_stateid *stateid, unsigned int flags)
+ {
+-	int status;
++	int status = NFS_OK;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+-	status = nfs41_test_stateid(server, &state->stateid);
+-	if (status == NFS_OK)
+-		return 0;
+-	nfs41_free_stateid(server, &state->stateid);
++	if (state->flags & flags) {
++		status = nfs41_test_stateid(server, stateid);
++		if (status != NFS_OK) {
++			nfs41_free_stateid(server, stateid);
++			state->flags &= ~flags;
++		}
++	}
++	return status;
++}
++
++static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++{
++	int deleg_status, open_status;
++	int deleg_flags = 1 << NFS_DELEGATED_STATE;
++	int open_flags = (1 << NFS_O_RDONLY_STATE) | (1 << NFS_O_WRONLY_STATE) | (1 << NFS_O_RDWR_STATE);
++
++	deleg_status = nfs41_check_expired_stateid(state, &state->stateid, deleg_flags);
++	open_status = nfs41_check_expired_stateid(state,  &state->open_stateid, open_flags);
++
++	if ((deleg_status == NFS_OK) && (open_status == NFS_OK))
++		return NFS_OK;
+ 	return nfs4_open_expired(sp, state);
+ }
+ #endif
+@@ -4505,15 +4522,34 @@ out:
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+-static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
++static int nfs41_check_expired_locks(struct nfs4_state *state)
+ {
+-	int status;
++	int status, ret = NFS_OK;
++	struct nfs4_lock_state *lsp;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 
+-	status = nfs41_test_stateid(server, &state->stateid);
++	list_for_each_entry(lsp, &state->lock_states, ls_locks) {
++		if (lsp->ls_flags & NFS_LOCK_INITIALIZED) {
++			status = nfs41_test_stateid(server, &lsp->ls_stateid);
++			if (status != NFS_OK) {
++				nfs41_free_stateid(server, &lsp->ls_stateid);
++				lsp->ls_flags &= ~NFS_LOCK_INITIALIZED;
++				ret = status;
++			}
++		}
++	};
++
++	return ret;
++}
++
++static int nfs41_lock_expired(struct nfs4_state *state, struct file_lock *request)
++{
++	int status = NFS_OK;
++
++	if (test_bit(LK_STATE_IN_USE, &state->flags))
++		status = nfs41_check_expired_locks(state);
+ 	if (status == NFS_OK)
+-		return 0;
+-	nfs41_free_stateid(server, &state->stateid);
++		return status;
+ 	return nfs4_lock_expired(state, request);
+ }
+ #endif
+-- 
+1.7.8.4
 
-> /etc/exports options look like :
-> 
-> /srv/mail      192.168.0.0/24(rw,async,no_wdelay,secure,no_root_squash,insecure_locks,no_subtree_check,nohide,crossmnt)
-> /srv/mail/1234 192.168.0.0/24(rw,async,no_wdelay,no_root_squash,insecure_locks,no_subtree_check,nohide,crossmnt)
-
-Why do you need to export both?
-
---b.
-
-> 
-> NFS is mounted like this on client :
-> 
->  192.168.0.1:/srv/mail on /var/mail type nfs (rw,nosuid,sync,remount,noatime,nodiratime,nfsvers=3,rsize=8192,wsize=8192,hard,intr,proto=udp,nolock,actimeo=3)
-> 
-> Server versions:
->  Kernel: 2.6.32-bpo.5-amd64 (debian)
->  nfs-utils: 1.1.2
-> 
-> Client versions:
->  Kernel: 2.6.26-2-amd64 (debian)
->  nfs-utils: 1.1.2
-> 
-> Am I in a huge case not really intended or a configuration mistake ?
-> 
-> Thanks,
-> Bertrand
-> 
-> -- 
-> Bertrand Jacquin, EXOSEC (http://www.exosec.fr/)
-> ZAC des Metz - 3 Rue du petit robinson - 78350 JOUY EN JOSAS
-> Tel: +33 1 30 67 60 65  -  Fax: +33 1 75 43 40 70
-> GSM: +33 6 71 01 70 30  -  mailto:bjacquin@exosec.fr
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
