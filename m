@@ -1,115 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39900 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:5689 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757167Ab2AXRoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jan 2012 12:44:09 -0500
-Date: Tue, 24 Jan 2012 12:43:53 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Stanislaw Gruszka <sgruszka@redhat.com>,
-        Stephen Boyd <sboyd@codeaurora.org>, <linux-kernel@vger.kernel.org>,
-        <bfields@redhat.com>, <linux-nfs@vger.kernel.org>,
-        Thomas Gleixner <tglx@linutronix.de>, Tejun Heo <tj@kernel.org>
-Subject: Re: WARNING: at lib/debugobjects.c:262
- debug_print_object+0x8c/0xb0()
-Message-ID: <20120124124353.7148b827@tlielax.poochiereds.net>
-In-Reply-To: <20120124113234.26c47969@tlielax.poochiereds.net>
-References: <20120120135646.2fc4fa61@tlielax.poochiereds.net>
-	<4F1BCCD6.4020603@codeaurora.org>
-	<20120123102311.4378b8c1@tlielax.poochiereds.net>
-	<20120124074516.GC2420@redhat.com>
-	<4F1E7F3F.3060703@panasas.com>
-	<20120124073626.552bc31c@tlielax.poochiereds.net>
-	<4F1EC7C9.2020001@panasas.com>
-	<20120124113234.26c47969@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753908Ab2AaLIU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jan 2012 06:08:20 -0500
+Subject: [PATCH 1/6] Lockd: create permanent lockd sockets in current network
+ namespace
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 31 Jan 2012 15:07:48 +0400
+Message-ID: <20120131110748.14364.28906.stgit@localhost6.localdomain6>
+In-Reply-To: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
+References: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 24 Jan 2012 11:32:34 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+This patch parametrizes Lockd permanent sockets creation routine by network
+namespace context.
+It also replaces hard-coded init_net with current network namespace context in
+Lockd sockets creation routines.
+This approach looks safe, because Lockd is created during NFS mount (or NFS
+server start) and thus socket is required exactly in current network namespace
+context. But in the same time it means, that Lockd sockets inherits first Lockd
+requester network namespace. This issue will be fixed in further patches of the
+series.
 
-> On Tue, 24 Jan 2012 17:01:29 +0200
-> Boaz Harrosh <bharrosh@panasas.com> wrote:
-> 
-> > On 01/24/2012 02:36 PM, Jeff Layton wrote:
-> > > 
-> > > No, I don't think the state would be undefined after
-> > > cancel_delayed_work_sync. In principle you could requeue that work
-> > > again if you like without needing to reinitialize it.
-> > > 
-> > > I think this is a problem in the debugobjects code. It doesn't have
-> > > any way to know that when the object is recycled out of the slab that
-> > > the work is already initialized.
-> > > 
-> > 
-> > The only difference between your above example of requeue after
-> > cancel_delayed_work_sync, and this here is the visit back to the
-> > slab. Does the slab (Maybe in debug mode) stumps over some of the
-> > record memory?
-> > 
-> > If the memory is constant what is then the difference between the two
-> > cases?
-> > 
-> > > Certainly it's simple enough to reinitialize the work every time we
-> > > allocate an inode here, but I don't think this is really a rpc_pipefs
-> > > bug per-se. 
-> > 
-> > That depends on the API intention. If an init is intended after
-> > SLAB free then yes if not then not. We should ask for the intention
-> > of this API.
-> > 
-> > > I can send a patch that works around this problem, but
-> > > if there are plans to fix this in the debugobjects code, I won't
-> > > bother...
-> > > 
-> > 
-> > You mean other fix then calling INIT_DELAYED_WORK? is that so
-> > bad that we need more code to avoid it?
-> > 
-> 
-> I'm not opposed to a patch that sidesteps this problem, but I want to
-> make sure we understand it so that we don't get bitten by it in other
-> places. That's a good point. I hadn't considered whether memory
-> poisoning is a factor. In the kernel I was testing:
-> 
-> CONFIG_SLUB=y
-> CONFIG_SLUB_DEBUG_ON=y
-> 
-> ...just to be sure:
-> 
-> # cat /sys/kernel/slab/rpc_inode_cache/poison 
-> 1
-> 
-> Looking at the code...
-> 
-> It looks like SLAB will call the ctor on every object when it's
-> allocated, even if it was recycled from an existing slab. SLUB doesn't
-> do that however -- as best I can tell it avoids poisoning objects when
-> there is a ctor function, so they don't get reinitialized like they
-> would with SLAB.
-> 
-> Probably the best solution here is to eliminate the ctor function and
-> just initialize the objects whenever they're allocated. Since these
-> objects aren't frequently recycled then there's little benefit to
-> keeping that around, IMO. I'll spin up a patch for that soon.
-> 
-> Still, I wonder if there are other problems like this around. The slab
-> allocators seem to call debug_check_no_obj_freed() on kmem_cache_free,
-> but parts of the objects themselves (like the timer in the work object
-> here) get initialized in other places and aren't necessarily
-> reinitialized when they're recycled out of the slab...
-> 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On second thought...getting rid of the ctor function here might be
-problematic. We have to call inode_init_once, etc...
+---
+ fs/lockd/svc.c |   23 +++++++++++++----------
+ 1 files changed, 13 insertions(+), 10 deletions(-)
 
-Almost all of the inode slabs have one, so I've settled for just moving
-the INIT_DELAYED_WORK call out of init_once and into rpc_alloc_inode. I
-sent a patch to Trond and linux-nfs to do that. That will fix this
-case, but I do wonder if there are other places in the kernel that have
-similar problems with debugobject initialization.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 55fea92..26d8b78 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -189,27 +189,29 @@ lockd(void *vrqstp)
+ }
+ 
+ static int create_lockd_listener(struct svc_serv *serv, const char *name,
+-				 const int family, const unsigned short port)
++				 struct net *net, const int family,
++				 const unsigned short port)
+ {
+ 	struct svc_xprt *xprt;
+ 
+-	xprt = svc_find_xprt(serv, name, &init_net, family, 0);
++	xprt = svc_find_xprt(serv, name, net, family, 0);
+ 	if (xprt == NULL)
+-		return svc_create_xprt(serv, name, &init_net, family, port,
++		return svc_create_xprt(serv, name, net, family, port,
+ 						SVC_SOCK_DEFAULTS);
+ 	svc_xprt_put(xprt);
+ 	return 0;
+ }
+ 
+-static int create_lockd_family(struct svc_serv *serv, const int family)
++static int create_lockd_family(struct svc_serv *serv, struct net *net,
++			       const int family)
+ {
+ 	int err;
+ 
+-	err = create_lockd_listener(serv, "udp", family, nlm_udpport);
++	err = create_lockd_listener(serv, "udp", net, family, nlm_udpport);
+ 	if (err < 0)
+ 		return err;
+ 
+-	return create_lockd_listener(serv, "tcp", family, nlm_tcpport);
++	return create_lockd_listener(serv, "tcp", net, family, nlm_tcpport);
+ }
+ 
+ /*
+@@ -222,16 +224,16 @@ static int create_lockd_family(struct svc_serv *serv, const int family)
+  * Returns zero if all listeners are available; otherwise a
+  * negative errno value is returned.
+  */
+-static int make_socks(struct svc_serv *serv)
++static int make_socks(struct svc_serv *serv, struct net *net)
+ {
+ 	static int warned;
+ 	int err;
+ 
+-	err = create_lockd_family(serv, PF_INET);
++	err = create_lockd_family(serv, net, PF_INET);
+ 	if (err < 0)
+ 		goto out_err;
+ 
+-	err = create_lockd_family(serv, PF_INET6);
++	err = create_lockd_family(serv, net, PF_INET6);
+ 	if (err < 0 && err != -EAFNOSUPPORT)
+ 		goto out_err;
+ 
+@@ -252,6 +254,7 @@ int lockd_up(void)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
++	struct net *net = current->nsproxy->net_ns;
+ 
+ 	mutex_lock(&nlmsvc_mutex);
+ 	/*
+@@ -275,7 +278,7 @@ int lockd_up(void)
+ 		goto out;
+ 	}
+ 
+-	error = make_socks(serv);
++	error = make_socks(serv, net);
+ 	if (error < 0)
+ 		goto destroy_and_out;
+ 
 
--- 
-Jeff Layton <jlayton@redhat.com>
