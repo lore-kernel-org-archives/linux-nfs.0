@@ -1,58 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57727 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:37848 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932120Ab2AKRqH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jan 2012 12:46:07 -0500
-Message-ID: <1326303963.19024.1.camel@lade.trondhjem.org>
-Subject: Re: [PATCH 0/5] NFS: create blocklayout pipe per network namesapce
- context
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Date: Wed, 11 Jan 2012 12:46:03 -0500
-In-Reply-To: <4F0DC582.6030805@parallels.com>
-References: <20111129090754.20730.64567.stgit@localhost6.localdomain6>
-			 <1325285705.10984.4.camel@lade.trondhjem.org>
-		 <1325797111.11084.22.camel@lade.trondhjem.org>
-		 <4F0C35F3.7060508@parallels.com>
-	 <1326299003.17212.7.camel@lade.trondhjem.org>
-	 <4F0DC582.6030805@parallels.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752695Ab2AaLH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Jan 2012 06:07:58 -0500
+Subject: [PATCH 0/6] Lockd: make it network namespace aware
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Tue, 31 Jan 2012 15:07:38 +0400
+Message-ID: <20120131105712.14364.88911.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-01-11 at 21:23 +0400, Stanislav Kinsbursky wrote: 
-> I've sent rebased "v2" of the patch set, contains updated patch "SUNRPC: handle 
-> RPC client pipefs dentries by network namespace aware routine", which, I 
-> believe, fixes oops, spotted by Bryan (it was caused by excessive call of 
-> rpc_put_mount() on PipeFS dentries unlink).
-> So, if I'm not mistaken here, there's no need in implementing of dummy versions 
-> of rpc_pipefs_notifier_(un)register() or any other dummy stuff.
+With this patch set Lockd will be able to handle lock requests from different
+network namespaces separately.
 
-OK. Fair enough. We'll give it some testing to make sure that we don't
-hit it again...
+Main ideas of the patch set are:
 
-> BTW, it looks like that in last 2 days I've sent all updates to the issues you 
-> pointed out. If not, please, ping me once more.
+1) per-net Lockd users counter and resources.
 
-I'm in the process of reviewing it right now.
+2) nlmsvc_users counter become global one (equal to sum of all per-net
+counters).
 
-Cheers
-  Trond
+3) On lockd_up() call:
+a) if nlmsvc_users if equal to 0, then lockd thread is started.
+b) if current per-net counter equal to 0, then per-net resources are allocated
+(lockd_up_net() function).
+c) global and current net users counters are increased by one.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+4) On lockd_down() call:
+a) global and current net users counters are decreased by one.
+b) if current per-net counter become equal to 0, then per-net resources are
+allocated (lockd_down_net() function).
+c) if nlmsvc_users become equal to 0, then lockd thread is stopped.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+The following series consists of:
+
+---
+
+Stanislav Kinsbursky (6):
+      Lockd: create permanent lockd sockets in current network namespace
+      Lockd: pernet usage counter introduced
+      Lockd: per-net up and down routines introduced
+      LockD: make nlm hosts network namespace aware
+      LockD: make NSM network namespace aware
+      Lockd: shutdown NLM hosts in network namespace context
+
+
+ fs/lockd/clntlock.c         |    3 +
+ fs/lockd/host.c             |   42 ++++++++++++---
+ fs/lockd/mon.c              |   13 +++--
+ fs/lockd/netns.h            |   12 ++++
+ fs/lockd/svc.c              |  117 +++++++++++++++++++++++++++++++++++++------
+ fs/nfs/client.c             |    1 
+ include/linux/lockd/bind.h  |    1 
+ include/linux/lockd/lockd.h |    5 +-
+ include/linux/sunrpc/svc.h  |    2 +
+ net/sunrpc/svc.c            |    3 +
+ 10 files changed, 166 insertions(+), 33 deletions(-)
+ create mode 100644 fs/lockd/netns.h
 
