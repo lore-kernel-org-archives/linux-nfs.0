@@ -1,39 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37251 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756613Ab2BAT7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 14:59:43 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: add mount option 'v4.1'
-Date: Wed, 1 Feb 2012 19:59:35 +0000
-Message-ID: <1328126374.3789.111.camel@lade.trondhjem.org>
-References: <1328122817-661-1-git-send-email-dros@netapp.com>
-	 <1328122817-661-2-git-send-email-dros@netapp.com>
-	 <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com>
-	 <1328125568.3789.103.camel@lade.trondhjem.org>
-	 <58E70AA6-71A7-4C5F-8423-523769D5B2C6@oracle.com>
-In-Reply-To: <58E70AA6-71A7-4C5F-8423-523769D5B2C6@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:58104 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753179Ab2BAQw6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 11:52:58 -0500
+Message-ID: <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Chris Mason <chris.mason@oracle.com>
+Cc: Gregory Farnum <gregory.farnum@dreamhost.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lsf-pc@lists.linux-foundation.org
+Date: Wed, 01 Feb 2012 10:52:55 -0600
+In-Reply-To: <20120201164521.GY16796@shiny>
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
+	 <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
+	 <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
+	 <4F283F7A.4020905@itwm.fraunhofer.de>
+	 <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
+	 <20120201164521.GY16796@shiny>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTAxIGF0IDE0OjQ4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gRmViIDEsIDIwMTIsIGF0IDI6NDYgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
-PiA+IE9uIFdlZCwgMjAxMi0wMi0wMSBhdCAxNDoxNyAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4+IEhpLQ0KPiA+PiANCj4gPj4gSSB0aGluayB3ZSBzaG91bGQgY28tb3JkaW5hdGUgd2l0
-aCBTb2xhcmlzIG9uIHRoaXMgYWRtaW5pc3RyYXRpdmUgaW50ZXJmYWNlLiAgQ2FuIHdlIGRpc2N1
-c3MgaW4gU2FudGEgQ2xhcmE/DQo+ID4gDQo+ID4gVW5sZXNzIHRoZXkgaGF2ZSBhIHN0cm9uZyBh
-cmd1bWVudCBmb3Igd2h5IHRoaXMgaXMgYSBiYWQgaWRlYSwgSSBwbGFuIG9uDQo+ID4ganVzdCBh
-ZGRpbmcgdGhpcyB0byAzLjQuIFRoZXJlIGlzIG5vIHBvaW50IGluIGZvb3QtZHJhZ2dpbmcgb24g
-dGhpcyBhbnkNCj4gPiBtb3JlLg0KPiANCj4gTm8gZm9vdCBkcmFnZ2luZy4gIFdlIGp1c3QgYXNr
-IGF0IHRoZSBuZXh0IGNvbnZlbmllbnQgb3Bwb3J0dW5pdHkuICBJIHRoaW5rIHRoZXkgd2FudCB0
-byBnbyB3aXRoIHZlcnM9NDEuDQoNCiI0LjEiIGFsbG93cyBmb3IgZWFzaWVyIHZpc3VhbCBhbmQg
-YXV0b21hdGVkIHBhcnNpbmcgb2YgbWFqb3IgdnMgbWlub3INCnZlcnNpb24uIEluIDggeWVhcnMg
-ZnJvbSBub3csIEknZCBwcmVmZXIgdG8gc2VlICd2ZXJzPTQuMTAnIHJhdGhlciB0aGFuDQondmVy
-cz00MTAnDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
+> On Tue, Jan 31, 2012 at 11:28:26AM -0800, Gregory Farnum wrote:
+> > On Tue, Jan 31, 2012 at 11:22 AM, Bernd Schubert
+> > <bernd.schubert@itwm.fraunhofer.de> wrote:
+> > > I guess we should talk to developers of other parallel file systems and see
+> > > what they think about it. I think cephfs already uses data integrity
+> > > provided by btrfs, although I'm not entirely sure and need to check the
+> > > code. As I said before, Lustre does network checksums already and *might* be
+> > > interested.
+> > 
+> > Actually, right now Ceph doesn't check btrfs' data integrity
+> > information, but since Ceph doesn't have any data-at-rest integrity
+> > verification it relies on btrfs if you want that. Integrating
+> > integrity verification throughout the system is on our long-term to-do
+> > list.
+> > We too will be said if using a kernel-level integrity system requires
+> > using DIO, although we could probably work out a way to do
+> > "translation" between our own integrity checksums and the
+> > btrfs-generated ones if we have to (thanks to replication).
+> 
+> DIO isn't really required, but doing this without synchronous writes
+> will get painful in a hurry.  There's nothing wrong with letting the
+> data sit in the page cache after the IO is done though.
+
+I broadly agree with this, but even if you do sync writes and cache read
+only copies, we still have the problem of how we do the read side
+verification of DIX.  In theory, when you read, you could either get the
+cached copy or an actual read (which will supply protection
+information), so for the cached copy we need to return cached protection
+information implying that we need some way of actually caching it.
+
+James
+
+
