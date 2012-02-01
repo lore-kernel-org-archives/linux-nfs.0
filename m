@@ -1,192 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25736 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753354Ab2B0Ntn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 08:49:43 -0500
-Subject: [PATCH 4/4] SUNRPC: move waitq from RPC pipe to RPC inode
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 27 Feb 2012 17:49:16 +0400
-Message-ID: <20120227134916.13371.79606.stgit@localhost6.localdomain6>
-In-Reply-To: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
-References: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:58423 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754789Ab2BASQI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 13:16:08 -0500
+Message-ID: <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Cc: Chris Mason <chris.mason@oracle.com>,
+        Gregory Farnum <gregory.farnum@dreamhost.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lsf-pc@lists.linux-foundation.org
+Date: Wed, 01 Feb 2012 12:16:05 -0600
+In-Reply-To: <4F297D90.1010509@fastmail.fm>
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
+	 <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
+	 <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
+	 <4F283F7A.4020905@itwm.fraunhofer.de>
+	 <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
+	 <20120201164521.GY16796@shiny>
+	 <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
+	 <20120201174131.GD16796@shiny> <4F297D90.1010509@fastmail.fm>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, wait queue, used for polling of RPC pipe changes from user-space,
-is a part of RPC pipe. But the pipe data itself can be released on NFS umount
-prior to dentry-inode pair, connected to it (is case of this pair is open by
-some process).
-This is not a problem for almost all pipe users, because all PipeFS file
-operations checks pipe reference prior to using it.
-Except evenfd. This thing registers itself with "poll" file operation and thus
-has a reference to pipe wait queue. This leads to oopses on destroying eventfd
-after NFS umount (like rpc_idmapd do) since not pipe data left to the point
-already.
-The solution is to wait queue from pipe data to internal RPC inode data. This
-looks more logical, because this wiat queue used only for user-space processes,
-which already holds inode reference.
+On Wed, 2012-02-01 at 18:59 +0100, Bernd Schubert wrote:
+> On 02/01/2012 06:41 PM, Chris Mason wrote:
+> > On Wed, Feb 01, 2012 at 10:52:55AM -0600, James Bottomley wrote:
+> >> On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
+[...]
+> >>> DIO isn't really required, but doing this without synchronous writes
+> >>> will get painful in a hurry.  There's nothing wrong with letting the
+> >>> data sit in the page cache after the IO is done though.
+> >>
+> >> I broadly agree with this, but even if you do sync writes and cache read
+> >> only copies, we still have the problem of how we do the read side
+> >> verification of DIX.  In theory, when you read, you could either get the
+> >> cached copy or an actual read (which will supply protection
+> >> information), so for the cached copy we need to return cached protection
+> >> information implying that we need some way of actually caching it.
+> >
+> > Good point, reading from the cached copy is a lower level of protection
+> > because in theory bugs in your scsi drivers could corrupt the pages
+> > later on.
+> 
+> But that only matters if the application is going to verify if data are 
+> really on disk. For example (client server scenario)
 
-Note: upcalls have to get pipe->dentry prior to dereferecing wait queue to make
-sure, that mount point won't disappear from underneath us.
+Um, well, then why do you want DIX?  If you don't care about having the
+client verify the data, that means you trust the integrity of the page
+cache and then you just use the automated DIF within the driver layer
+and SCSI will verify the data all the way up until block places it in
+the page cache.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+The whole point of supplying protection information to user space is
+that the application can verify the data didn't get corrupted after it
+left the DIF protected block stack.
 
----
- include/linux/sunrpc/rpc_pipe_fs.h |    2 +-
- net/sunrpc/rpc_pipe.c              |   39 ++++++++++++++++++++++++------------
- 2 files changed, 27 insertions(+), 14 deletions(-)
+> 1) client-A writes a page
+> 2) client-B reads this page
+> 
+> client-B is simply not interested here where it gets the page from, as 
+> long as it gets correct data.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 426ce6e..a7b422b 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -28,7 +28,6 @@ struct rpc_pipe {
- 	int pipelen;
- 	int nreaders;
- 	int nwriters;
--	wait_queue_head_t waitq;
- #define RPC_PIPE_WAIT_FOR_OPEN	1
- 	int flags;
- 	struct delayed_work queue_timeout;
-@@ -41,6 +40,7 @@ struct rpc_inode {
- 	struct inode vfs_inode;
- 	void *private;
- 	struct rpc_pipe *pipe;
-+	wait_queue_head_t waitq;
- };
- 
- static inline struct rpc_inode *
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b67b2ae..ac9ee15 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -57,7 +57,7 @@ void rpc_pipefs_notifier_unregister(struct notifier_block *nb)
- }
- EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_unregister);
- 
--static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
-+static void rpc_purge_list(wait_queue_head_t *waitq, struct list_head *head,
- 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
- {
- 	struct rpc_pipe_msg *msg;
-@@ -70,7 +70,7 @@ static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
- 		msg->errno = err;
- 		destroy_msg(msg);
- 	} while (!list_empty(head));
--	wake_up(&pipe->waitq);
-+	wake_up(waitq);
- }
- 
- static void
-@@ -80,6 +80,7 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 	struct rpc_pipe *pipe =
- 		container_of(work, struct rpc_pipe, queue_timeout.work);
- 	void (*destroy_msg)(struct rpc_pipe_msg *);
-+	struct dentry *dentry;
- 
- 	spin_lock(&pipe->lock);
- 	destroy_msg = pipe->ops->destroy_msg;
-@@ -87,8 +88,13 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 		list_splice_init(&pipe->pipe, &free_list);
- 		pipe->pipelen = 0;
- 	}
-+	dentry = dget(pipe->dentry);
- 	spin_unlock(&pipe->lock);
--	rpc_purge_list(pipe, &free_list, destroy_msg, -ETIMEDOUT);
-+	if (dentry) {
-+		rpc_purge_list(&RPC_I(dentry->d_inode)->waitq,
-+			       &free_list, destroy_msg, -ETIMEDOUT);
-+		dput(dentry);
-+	}
- }
- 
- ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
-@@ -125,6 +131,7 @@ int
- rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- {
- 	int res = -EPIPE;
-+	struct dentry *dentry;
- 
- 	spin_lock(&pipe->lock);
- 	if (pipe->nreaders) {
-@@ -140,8 +147,12 @@ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- 		pipe->pipelen += msg->len;
- 		res = 0;
- 	}
-+	dentry = dget(pipe->dentry);
- 	spin_unlock(&pipe->lock);
--	wake_up(&pipe->waitq);
-+	if (dentry) {
-+		wake_up(&RPC_I(dentry->d_inode)->waitq);
-+		dput(dentry);
-+	}
- 	return res;
- }
- EXPORT_SYMBOL_GPL(rpc_queue_upcall);
-@@ -168,7 +179,7 @@ rpc_close_pipes(struct inode *inode)
- 	pipe->pipelen = 0;
- 	pipe->dentry = NULL;
- 	spin_unlock(&pipe->lock);
--	rpc_purge_list(pipe, &free_list, pipe->ops->destroy_msg, -EPIPE);
-+	rpc_purge_list(&RPC_I(inode)->waitq, &free_list, pipe->ops->destroy_msg, -EPIPE);
- 	pipe->nwriters = 0;
- 	if (need_release && pipe->ops->release_pipe)
- 		pipe->ops->release_pipe(inode);
-@@ -257,7 +268,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
- 			list_splice_init(&pipe->pipe, &free_list);
- 			pipe->pipelen = 0;
- 			spin_unlock(&pipe->lock);
--			rpc_purge_list(pipe, &free_list,
-+			rpc_purge_list(&RPC_I(inode)->waitq, &free_list,
- 					pipe->ops->destroy_msg, -EAGAIN);
- 		}
- 	}
-@@ -330,16 +341,18 @@ rpc_pipe_write(struct file *filp, const char __user *buf, size_t len, loff_t *of
- static unsigned int
- rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
- {
--	struct rpc_pipe *pipe = RPC_I(filp->f_path.dentry->d_inode)->pipe;
--	unsigned int mask = 0;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct rpc_inode *rpci = RPC_I(inode);
-+	unsigned int mask = POLLOUT | POLLWRNORM;
- 
--	poll_wait(filp, &pipe->waitq, wait);
-+	poll_wait(filp, &rpci->waitq, wait);
- 
--	mask = POLLOUT | POLLWRNORM;
--	if (pipe->dentry == NULL)
-+	mutex_lock(&inode->i_mutex);
-+	if (rpci->pipe == NULL)
- 		mask |= POLLERR | POLLHUP;
--	if (filp->private_data || !list_empty(&pipe->pipe))
-+	else if (filp->private_data || !list_empty(&rpci->pipe->pipe))
- 		mask |= POLLIN | POLLRDNORM;
-+	mutex_unlock(&inode->i_mutex);
- 	return mask;
- }
- 
-@@ -543,7 +556,6 @@ init_pipe(struct rpc_pipe *pipe)
- 	INIT_LIST_HEAD(&pipe->in_downcall);
- 	INIT_LIST_HEAD(&pipe->pipe);
- 	pipe->pipelen = 0;
--	init_waitqueue_head(&pipe->waitq);
- 	INIT_DELAYED_WORK(&pipe->queue_timeout,
- 			    rpc_timeout_upcall_queue);
- 	pipe->ops = NULL;
-@@ -1165,6 +1177,7 @@ init_once(void *foo)
- 	inode_init_once(&rpci->vfs_inode);
- 	rpci->private = NULL;
- 	rpci->pipe = NULL;
-+	init_waitqueue_head(&rpci->waitq);
- }
- 
- int register_rpc_pipefs(void)
+How does it know it got correct data if it doesn't verify?  Something
+might have corrupted the page between the time the block layer placed
+the DIF verified data there and the client reads it.
+
+>  The network files system in between also 
+> will just be happy existing in-cache crcs for network verification.
+> Only if the page is later on dropped from the cache and read again, 
+> on-disk crcs matter. If those are bad, one of the layers is going to 
+> complain or correct those data.
+> 
+> If the application wants to check data on disk it can either use DIO or 
+> alternatively something like fadvsise(DONTNEED_LOCAL_AND_REMOTE) 
+> (something I wanted to propose for some time already, at least I'm not 
+> happy that posix_fadvise(POSIX_FADV_DONTNEED) is not passed to the file 
+> system at all).
+
+supplying protection information to user space isn't about the
+application checking what's on disk .. there's automatic verification in
+the chain to do that (both the HBA and the disk will check the
+protection information on entry/exit and transfer).  Supplying
+protection information to userspace is about checking nothing went wrong
+in the handoff between the end of the DIF stack and the application.
+
+James
+
 
