@@ -1,60 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43676 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755409Ab2BBTAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Feb 2012 14:00:44 -0500
-Message-ID: <4F2ADD58.9080000@netapp.com>
-Date: Thu, 02 Feb 2012 14:00:40 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:52504 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755000Ab2BARlp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 12:41:45 -0500
+Date: Wed, 1 Feb 2012 12:41:31 -0500
+From: Chris Mason <chris.mason@oracle.com>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: Gregory Farnum <gregory.farnum@dreamhost.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lsf-pc@lists.linux-foundation.org
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+Message-ID: <20120201174131.GD16796@shiny>
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
+ <4F2147BA.6030607@itwm.fraunhofer.de>
+ <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
+ <4F217F0C.6030105@itwm.fraunhofer.de>
+ <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
+ <4F283F7A.4020905@itwm.fraunhofer.de>
+ <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
+ <20120201164521.GY16796@shiny>
+ <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
 MIME-Version: 1.0
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: dont allow minorversion= opt when vers != 4
-References: <1328123201-894-1-git-send-email-dros@netapp.com> <4F29C04B.8020703@panasas.com> <BD47F92C-6031-4F3F-A715-8275C7399717@netapp.com> <4F2A94FA.30603@netapp.com> <F797D932-12F4-4063-B46D-0410385A911F@netapp.com>
-In-Reply-To: <F797D932-12F4-4063-B46D-0410385A911F@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/02/12 12:03, Adamson, Dros wrote:
-
+On Wed, Feb 01, 2012 at 10:52:55AM -0600, James Bottomley wrote:
+> On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
+> > On Tue, Jan 31, 2012 at 11:28:26AM -0800, Gregory Farnum wrote:
+> > > On Tue, Jan 31, 2012 at 11:22 AM, Bernd Schubert
+> > > <bernd.schubert@itwm.fraunhofer.de> wrote:
+> > > > I guess we should talk to developers of other parallel file systems and see
+> > > > what they think about it. I think cephfs already uses data integrity
+> > > > provided by btrfs, although I'm not entirely sure and need to check the
+> > > > code. As I said before, Lustre does network checksums already and *might* be
+> > > > interested.
+> > > 
+> > > Actually, right now Ceph doesn't check btrfs' data integrity
+> > > information, but since Ceph doesn't have any data-at-rest integrity
+> > > verification it relies on btrfs if you want that. Integrating
+> > > integrity verification throughout the system is on our long-term to-do
+> > > list.
+> > > We too will be said if using a kernel-level integrity system requires
+> > > using DIO, although we could probably work out a way to do
+> > > "translation" between our own integrity checksums and the
+> > > btrfs-generated ones if we have to (thanks to replication).
+> > 
+> > DIO isn't really required, but doing this without synchronous writes
+> > will get painful in a hurry.  There's nothing wrong with letting the
+> > data sit in the page cache after the IO is done though.
 > 
-> On Feb 2, 2012, at 8:51 AM, Bryan Schumaker wrote:
-> 
->> On 02/01/12 18:07, Adamson, Dros wrote:
->>
->>> On Feb 1, 2012, at 5:44 PM, Boaz Harrosh wrote:
->>>
->>>> On 02/01/2012 09:06 PM, Weston Andros Adamson wrote:
->>>>> Don't allow invalid 'vers' and 'minorversion' combinations in mount options,
->>>>> such as "vers=3,minorversion=1".
->>>>>
->>>>
->>>> Just my $0.017 I don't see the point in this. 
->>>>
->>>> If vers==3 then minorversion is ignored, just like today.
->>>> What kind  of extra protection does it buy us?
->>>
->>> No, minorversion is not ignored when vers=3.  
->>
->>
->> But after mounting, does setting vers=3, minorversion=1 cause any change in NFS v3 behavior?
->>
-> 
-> No it doesn't.  Past the parsing of options, minorversion is ignored for versions other than 4.
-> 
-> I just don't understand how anyone can have problem with this patch.  Why would we want to validate minorversion in some cases, but not all cases?  How would this patch be a bad thing?
-> 
+> I broadly agree with this, but even if you do sync writes and cache read
+> only copies, we still have the problem of how we do the read side
+> verification of DIX.  In theory, when you read, you could either get the
+> cached copy or an actual read (which will supply protection
+> information), so for the cached copy we need to return cached protection
+> information implying that we need some way of actually caching it.
 
-I don't have a problem with the patch, it makes sense that we shouldn't confuse developers or users.  I was just curious if there was a spot where we had "if minor_version == 1: do_something()" without checking for major_version == 4.
+Good point, reading from the cached copy is a lower level of protection
+because in theory bugs in your scsi drivers could corrupt the pages
+later on.
 
-- Bryan
+But I think even without keeping the crcs attached to the page, there is
+value in keeping  the cached copy in lots of workloads.  The database is
+going to O_DIRECT read (with crcs checked) and then stuff it into a
+database buffer cache for long term use.  Stuffing it into a page cache
+on the kernel side is about the same.
 
-> It's about usability -- if this can confuse NFS developers, how are end users going to handle it?
-> 
-> -dros
-
-
+-chris
