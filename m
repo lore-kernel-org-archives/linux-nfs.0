@@ -1,62 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:62309 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577Ab2BMVw1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:27 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so2011166eek.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:26 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 06/10] nfsd41: save and restore current stateid with current fh
-Date: Mon, 13 Feb 2012 22:55:28 +0100
-Message-Id: <1329170132-7081-7-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:62774 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756603Ab2BAPoZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:44:25 -0500
+Received: by qcqw6 with SMTP id w6so739876qcq.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:44:24 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 4/5] nfsd: add a header describing upcall to nfsdcld
+Date: Wed,  1 Feb 2012 10:44:11 -0500
+Message-Id: <1328111052-28389-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+The daemon takes a versioned binary struct. Hopefully this should allow
+us to revise the struct later if it becomes necessary.
 
-
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4proc.c |    2 ++
- fs/nfsd/xdr4.h     |    1 +
- 2 files changed, 3 insertions(+), 0 deletions(-)
+ include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 56 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 66bd005..59d9b4b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -453,6 +453,7 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_restorefh;
- 
- 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
-+	cstate->current_stateid = cstate->save_stateid;
- 	return nfs_ok;
- }
- 
-@@ -464,6 +465,7 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_nofilehandle;
- 
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
-+	cstate->save_stateid = cstate->current_stateid;
- 	return nfs_ok;
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c1fe8ba..2ae378e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
- 	u32			minorversion;
- 	u32			status;
- 	const stateid_t	*current_stateid;
-+	const stateid_t	*save_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+new file mode 100644
+index 0000000..c478642
+--- /dev/null
++++ b/include/linux/nfsd/cld.h
+@@ -0,0 +1,56 @@
++/*
++ * Upcall description for nfsdcld communication
++ *
++ * Copyright (c) 2011 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef _NFSD_CLD_H
++#define _NFSD_CLD_H
++
++/* latest upcall version available */
++#define CLD_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++enum cld_command {
++	Cld_Create,		/* create a record for this cm_id */
++	Cld_Remove,		/* remove record of this cm_id */
++	Cld_Check,		/* is this cm_id allowed? */
++	Cld_GraceDone,		/* grace period is complete */
++};
++
++/* representation of long-form NFSv4 client ID */
++struct cld_name {
++	uint16_t	cn_len;				/* length of cm_id */
++	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
++} __attribute__((packed));
++
++/* message struct for communication with userspace */
++struct cld_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		struct cld_name	cm_name;
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLD_H */
 -- 
 1.7.7.6
 
