@@ -1,66 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:64472 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751346Ab2BWSfb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 13:35:31 -0500
-Received: by yhoo21 with SMTP id o21so761972yho.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 10:35:30 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfsd: add support for per-file layout_types attribute
-Date: Thu, 23 Feb 2012 10:35:25 -0800
-Message-Id: <1330022125-15809-1-git-send-email-bhalevy@tonian.com>
+Received: from natasha.panasas.com ([67.152.220.90]:53425 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752843Ab2BAXD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 18:03:29 -0500
+Message-ID: <4F29C4A4.8020005@panasas.com>
+Date: Thu, 2 Feb 2012 01:03:00 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Martin K. Petersen" <martin.petersen@oracle.com>
+CC: James Bottomley <James.Bottomley@HansenPartnership.com>,
+        Chris Mason <chris.mason@oracle.com>,
+        Gregory Farnum <gregory.farnum@dreamhost.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        <linux-scsi@vger.kernel.org>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        <lsf-pc@lists.linux-foundation.org>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com> <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net> <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net> <4F283F7A.4020905@itwm.fraunhofer.de> <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com> <20120201164521.GY16796@shiny> <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com> <yq1d39ys9n1.fsf@sermon.lab.mkp.net>
+In-Reply-To: <yq1d39ys9n1.fsf@sermon.lab.mkp.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, just return the same per-fs layout types
+On 02/01/2012 08:15 PM, Martin K. Petersen wrote:
+>>>>>> "James" == James Bottomley <James.Bottomley@HansenPartnership.com> writes:
+> 
+> IOW, the filesystem should only ever act as a conduit. The only real
+> challenge as far as I can tell is how to handle concurrent protected and
+> unprotected updates to a page. If a non-PI-aware app updates a cached
+> page which is subsequently read by an app requesting PI that means we
+> may have to force a write-out followed by a read to get valid PI. We
+> could synthesize it to avoid the I/O but I think that would be violating
+> the premise of protected transfer. Another option is to have an
+> exclusive write access mechanism that only permits either protected or
+> unprotected access to a page.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4xdr.c    |    3 ++-
- fs/nfsd/nfsd.h       |    2 +-
- include/linux/nfs4.h |    1 +
- 3 files changed, 4 insertions(+), 2 deletions(-)
+Yes. a protected write implies a byte-range locking on the file.
+(And can be implemented with one)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f2e4ec3..38a957b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2560,7 +2560,8 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
- 		WRITE64(stat.ino);
- 	}
- #if defined(CONFIG_PNFSD)
--	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-+	if ((bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) ||
-+	    (bmval2 & FATTR4_WORD2_LAYOUT_TYPES)) {
- 		struct super_block *sb = dentry->d_inode->i_sb;
- 		int type = 0;
- 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 5d4b0e6..c262762 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -326,7 +326,7 @@ static inline void nfs4_reset_lease(time_t leasetime) { }
- #if defined(CONFIG_PNFSD)
- #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT | \
--	 FATTR4_WORD2_LAYOUT_BLKSIZE)
-+	 FATTR4_WORD2_LAYOUT_TYPES | FATTR4_WORD2_LAYOUT_BLKSIZE)
- #else /* CONFIG_PNFSD */
- #define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 97605bc..0ad26b5 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -542,6 +542,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-+#define FATTR4_WORD2_LAYOUT_TYPES       (1UL << 0)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- 
- #define NFSPROC4_NULL 0
--- 
-1.7.6.5
+Also the open() call demands an O_PROTECT option. Protection is
+then a file attribute as well.
 
+> 
+
+Boaz
