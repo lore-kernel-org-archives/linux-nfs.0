@@ -1,154 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27851 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751050Ab2BQUUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 15:20:41 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
-Date: Fri, 17 Feb 2012 15:20:24 -0500
-Message-Id: <1329510026-30403-1-git-send-email-dros@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:32479 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756983Ab2BAWDz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 17:03:55 -0500
+Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120201214536.GL18571@tango.0pointer.de>
+Date: Wed, 1 Feb 2012 17:03:38 -0500
+Cc: Tom Gundersen <teg@jklm.no>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Michal Schmidt <mschmidt@redhat.com>,
+        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
+        libtirpc <libtirpc-devel@lists.sourceforge.net>
+Message-Id: <5748CC59-354A-4D97-AF0C-224975BCA253@oracle.com>
+References: <1324602327-1789-1-git-send-email-teg@jklm.no> <1328096830-1383-1-git-send-email-teg@jklm.no> <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com> <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com> <20120201214536.GL18571@tango.0pointer.de>
+To: Lennart Poettering <lennart@poettering.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send the nfs implementation id in EXCHANGE_ID requests unless the module
-parameter nfs.send_implementation_id is 0.
 
-This adds a CONFIG variable for the nii_domain that defaults to "kernel.org".
+On Feb 1, 2012, at 4:45 PM, Lennart Poettering wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Update: Applied Trond's comments
+> On Wed, 01.02.12 17:37, Tom Gundersen (teg@jklm.no) wrote:
+> 
+>>>> +     /* Try to find if one of the systemd sockets we were given match
+>>>> +      * our netconfig structure. */
+>>>> +
+>>>> +     for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
+>>>> +             struct __rpc_sockinfo si_other;
+>>>> +             union {
+>>>> +                     struct sockaddr sa;
+>>>> +                     struct sockaddr_un un;
+>>>> +                     struct sockaddr_in in4;
+>>>> +                     struct sockaddr_in6 in6;
+>>>> +                     struct sockaddr_storage storage;
+>>>> +             } sa;
+>>> 
+>>> Why is sockaddr_storage included in this union?
+>> 
+>> This is from Lennart's original patch. Lennart, care to comment?
+> 
+> Well, simply because sockaddr_storage is the actual struct one should
+> normally use for this kind of thing (where you try to determine a
+> sockaddr from a socket you don't know at all). With one exception
+> however, sockaddr_un is actually longer than sockaddr_storage, which is
+> documented borkedness in the socket API.
 
- Documentation/kernel-parameters.txt |    9 +++++++
- fs/nfs/Kconfig                      |   12 ++++++++++
- fs/nfs/nfs4xdr.c                    |   41 +++++++++++++++++++++++++++++++++-
- 3 files changed, 60 insertions(+), 2 deletions(-)
+You don't reference any of the fields inside this union, except for sa.  It seems unnecessary to include all of these members, and then not use most of them.
 
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index 1d369c6..7bae0fd 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1678,6 +1678,15 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			back to using the idmapper.
- 			To turn off this behaviour, set the value to '0'.
- 
-+	nfs.send_implementation_id =
-+			[NFSv4.1] Send client implementation identification
-+			information in exchange_id requests.
-+			If zero, no implementation identification information
-+			will be sent.
-+			The default is to send the implementation identification
-+			information.
-+
-+
- 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
- 			when a NMI is triggered.
- 			Format: [state][,regs][,debounce][,die]
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index ee86cfc..7bce64c 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -99,6 +99,18 @@ config PNFS_OBJLAYOUT
- 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
- 	default m
- 
-+config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
-+	string "NFSv4.1 Implementation ID Domain"
-+	depends on NFS_V4_1
-+	default "kernel.org"
-+	help
-+	  This option defines the domain portion of the implementation ID that
-+	  may be sent in the NFS exchange_id operation.  The value must be in
-+	  the format of a DNS domain name and should be set to the DNS domain
-+	  name of the distribution.
-+	  If the NFS client is unchanged from the upstream kernel, this
-+	  option should be set to the default "kernel.org".
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ae78343..d824aed 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -44,6 +44,8 @@
- #include <linux/pagemap.h>
- #include <linux/proc_fs.h>
- #include <linux/kdev_t.h>
-+#include <linux/module.h>
-+#include <linux/utsname.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/gss_api.h>
-@@ -271,7 +273,12 @@ static int nfs4_stat_to_errno(int);
- 				1 /* flags */ + \
- 				1 /* spa_how */ + \
- 				0 /* SP4_NONE (for now) */ + \
--				1 /* zero implemetation id array */)
-+				1 /* implementation id array of size 1 */ + \
-+				1 /* nii_domain */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				1 /* nii_name */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				3 /* nii_date */)
- #define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
- 				2 /* eir_clientid */ + \
- 				1 /* eir_sequenceid */ + \
-@@ -838,6 +845,12 @@ const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
- 				    XDR_UNIT);
- #endif /* CONFIG_NFS_V4_1 */
- 
-+static unsigned short send_implementation_id = 1;
-+
-+module_param(send_implementation_id, ushort, 0644);
-+MODULE_PARM_DESC(send_implementation_id,
-+		"Send implementation ID with NFSv4.1 exchange_id");
-+
- static const umode_t nfs_type2fmt[] = {
- 	[NF4BAD] = 0,
- 	[NF4REG] = S_IFREG,
-@@ -1766,6 +1779,8 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 			       struct compound_hdr *hdr)
- {
- 	__be32 *p;
-+	char impl_name[NFS4_OPAQUE_LIMIT];
-+	int len = 0;
- 
- 	p = reserve_space(xdr, 4 + sizeof(args->verifier->data));
- 	*p++ = cpu_to_be32(OP_EXCHANGE_ID);
-@@ -1776,7 +1791,29 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 	p = reserve_space(xdr, 12);
- 	*p++ = cpu_to_be32(args->flags);
- 	*p++ = cpu_to_be32(0);	/* zero length state_protect4_a */
--	*p = cpu_to_be32(0);	/* zero length implementation id array */
-+
-+	if (send_implementation_id &&
-+	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) > 1 &&
-+	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN)
-+		<= NFS4_OPAQUE_LIMIT + 1)
-+		len = snprintf(impl_name, sizeof(impl_name), "%s %s %s %s",
-+			       utsname()->sysname, utsname()->release,
-+			       utsname()->version, utsname()->machine);
-+
-+	if (len > 0) {
-+		*p = cpu_to_be32(1);	/* implementation id array length=1 */
-+
-+		encode_string(xdr,
-+			sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) - 1,
-+			CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN);
-+		encode_string(xdr, len, impl_name);
-+		/* just send zeros for nii_date - the date is in nii_name */
-+		p = reserve_space(xdr, 12);
-+		p = xdr_encode_hyper(p, 0);
-+		*p = cpu_to_be32(0);
-+	} else
-+		*p = cpu_to_be32(0);	/* implementation id array length=0 */
-+
- 	hdr->nops++;
- 	hdr->replen += decode_exchange_id_maxsz;
- }
+The biggest address you're ever going to get out of libtirpc is a sockaddr_storage.  If we must stick with a union to prevent pointer aliasing, can we have just two members: sockaddr and sockaddr_storage?
+
+Otherwise, there's no need for this kind of generality here:  TI-RPC handles only IPv4, IPv6, and AF_LOCAL.
+
 -- 
-1.7.4.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
