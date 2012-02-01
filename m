@@ -1,46 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36187 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750907Ab2BOQQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 11:16:32 -0500
-Date: Wed, 15 Feb 2012 11:16:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Tom Tucker <tom@ogc.us>, trond.myklebust@netapp.com,
-        dan.carpenter@oracle.com, linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH] svcrdma: Cleanup sparse warnings in the svcrdma module
-Message-ID: <20120215161625.GC12490@fieldses.org>
-References: <1329260485-16994-1-git-send-email-tom@ogc.us>
- <20120214232342.GB23916@ZenIV.linux.org.uk>
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:35474 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755674Ab2BATRq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 14:17:46 -0500
+Subject: Re: [PATCH 2/2] NFS: add mount option 'v4.1'
+Mime-Version: 1.0 (Apple Message framework v1251.1)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120214232342.GB23916@ZenIV.linux.org.uk>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1328122817-661-2-git-send-email-dros@netapp.com>
+Date: Wed, 1 Feb 2012 14:17:41 -0500
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com>
+References: <1328122817-661-1-git-send-email-dros@netapp.com> <1328122817-661-2-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK, Tom could you fix up these small things and repost?
+Hi-
 
---b.
+I think we should co-ordinate with Solaris on this administrative interface.  Can we discuss in Santa Clara?
 
-On Tue, Feb 14, 2012 at 11:23:42PM +0000, Al Viro wrote:
-> On Tue, Feb 14, 2012 at 05:01:25PM -0600, Tom Tucker wrote:
+On Feb 1, 2012, at 2:00 PM, Weston Andros Adamson wrote:
+
 > 
-> > -	if (ch->rc_discrim == 0)
-> > +	if (ch->rc_discrim == xdr_zero)
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> I was already messing around with mountoptions and figured "why not".
+> It's been joked (?) that 4.1 really should have been NFSv5! 
 > 
-> Mostly, ACK, modulo this and similar sillyness.  sparse is just fine with
-> use of constant 0 in bitwise contexts; it's also just fine with use of
-> bitwise in logical ones.
+> fs/nfs/super.c |    8 +++++++-
+> 1 files changed, 7 insertions(+), 1 deletions(-)
 > 
-> > +	nchunks = ntohl(ary->wc_nchunks);
-> >  	if (((unsigned long)&ary->wc_array[0] +
-> > -	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
-> > +	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 50baca1..801b060 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -80,7 +80,7 @@ enum {
+> 	Opt_cto, Opt_nocto,
+> 	Opt_ac, Opt_noac,
+> 	Opt_lock, Opt_nolock,
+> -	Opt_v2, Opt_v3, Opt_v4,
+> +	Opt_v2, Opt_v3, Opt_v4, Opt_v4_1,
+> 	Opt_udp, Opt_tcp, Opt_rdma,
+> 	Opt_acl, Opt_noacl,
+> 	Opt_rdirplus, Opt_nordirplus,
+> @@ -136,6 +136,7 @@ static const match_table_t nfs_mount_option_tokens = {
+> 	{ Opt_v2, "v2" },
+> 	{ Opt_v3, "v3" },
+> 	{ Opt_v4, "v4" },
+> +	{ Opt_v4_1, "v4.1" },
+> 	{ Opt_udp, "udp" },
+> 	{ Opt_tcp, "tcp" },
+> 	{ Opt_rdma, "rdma" },
+> @@ -1172,6 +1173,11 @@ static int nfs_parse_mount_options(char *raw,
+> 			mnt->flags &= ~NFS_MOUNT_VER3;
+> 			mnt->version = 4;
+> 			break;
+> +		case Opt_v4_1:
+> +			mnt->flags &= ~NFS_MOUNT_VER3;
+> +			mnt->version = 4;
+> +			mnt->minorversion = 1;
+> +			break;
+> 		case Opt_udp:
+> 			mnt->flags &= ~NFS_MOUNT_TCP;
+> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+> -- 
+> 1.7.4.4
 > 
-> BTW, this still can overflow.  With less painful consequences than before that
-> patch, but...
-> 
-> > -			BUG_ON(0 == virt_to_page(vec[i].iov_base));
-> > +			BUG_ON(NULL == virt_to_page(vec[i].iov_base));
-> 
-> Egads...  What, "!virt_to_page(...)" would have been too pedestrian?
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
