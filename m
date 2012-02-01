@@ -1,50 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33820 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753371Ab2BHHnv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 02:43:51 -0500
-Message-ID: <1328687026.8981.25.camel@serendib>
-Subject: Re: NFS Mount Option 'nofsc'
-From: Harshula <harshula@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Derek McEachern <derekm@ti.com>,
+Received: from acsinet15.oracle.com ([141.146.126.227]:58020 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753444Ab2BAUF4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 15:05:56 -0500
+Subject: Re: [PATCH 2/2] NFS: add mount option 'v4.1'
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1328126374.3789.111.camel@lade.trondhjem.org>
+Date: Wed, 1 Feb 2012 15:05:51 -0500
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 08 Feb 2012 18:43:46 +1100
-In-Reply-To: <1328676860.2954.9.camel@lade.trondhjem.org>
-References: <4F31E1CA.8060105@ti.com>
-	 <1328676860.2954.9.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Message-Id: <BD18F976-317D-4651-9674-8C564B13E8E3@oracle.com>
+References: <1328122817-661-1-git-send-email-dros@netapp.com> <1328122817-661-2-git-send-email-dros@netapp.com> <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com> <1328125568.3789.103.camel@lade.trondhjem.org> <58E70AA6-71A7-4C5F-8423-523769D5B2C6@oracle.com> <1328126374.3789.111.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
 
-On Wed, 2012-02-08 at 04:55 +0000, Myklebust, Trond wrote:
+On Feb 1, 2012, at 2:59 PM, Myklebust, Trond wrote:
 
-> Applications that need to use uncached i/o are required to use the
-> O_DIRECT open() mode instead, since pretty much all of them need to be
-> rewritten to deal with the subtleties involved anyway.
+> On Wed, 2012-02-01 at 14:48 -0500, Chuck Lever wrote:
+>> On Feb 1, 2012, at 2:46 PM, Myklebust, Trond wrote:
+>> 
+>>> On Wed, 2012-02-01 at 14:17 -0500, Chuck Lever wrote:
+>>>> Hi-
+>>>> 
+>>>> I think we should co-ordinate with Solaris on this administrative interface.  Can we discuss in Santa Clara?
+>>> 
+>>> Unless they have a strong argument for why this is a bad idea, I plan on
+>>> just adding this to 3.4. There is no point in foot-dragging on this any
+>>> more.
+>> 
+>> No foot dragging.  We just ask at the next convenient opportunity.  I think they want to go with vers=41.
+> 
+> "4.1" allows for easier visual and automated parsing of major vs minor
+> version. In 8 years from now, I'd prefer to see 'vers=4.10' rather than
+> 'vers=410'
 
-Could you please expand on the subtleties involved that require an
-application to be rewritten if forcedirectio mount option was available?
+Fair enough, and I've made similar points to them in the past.  But you should be having this conversation with the Solaris guys, not me.  Can we have this discussion at Connectathon, when all interested parties will be in the room?  That should still be enough time to allow you to submit this change for 3.4.
 
-A scenario where forcedirectio would be useful is when an application
-reads nearly a TB of data from local disks, processes that data and then
-dumps it to an NFS mount. All that happens while other processes are
-reading/writing to the local disks. The application does not have an
-O_DIRECT option nor is the source code available.
+(And by the way, you will probably need some adjustment to mount.nfs's string parsing logic as well).
 
-With paged I/O the problem we see is that the NFS client system reaches
-dirty_bytes/dirty_ratio threshold and then blocks/forces all the
-processes to flush dirty pages. This effectively 'locks' up the NFS
-client system while the NFS dirty pages are pushed slowly over the wire
-to the NFS server. Some of the processes that have nothing to do with
-writing to the NFS mount are badly impacted. A forcedirectio mount
-option would be very helpful in this scenario. Do you have any advice on
-alleviating such problems on the NFS client by only using existing
-tunables?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks,
-#
+
+
 
