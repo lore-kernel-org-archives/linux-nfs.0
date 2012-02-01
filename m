@@ -1,85 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:60653 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752110Ab2BRIRN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2012 03:17:13 -0500
-Received: by mail-ww0-f44.google.com with SMTP id dt10so3337209wgb.1
-        for <linux-nfs@vger.kernel.org>; Sat, 18 Feb 2012 00:17:13 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfsd41: refactor nfsd4_deleg_xgrade_none_ext logic out of nfsd4_process_open2
-Date: Sat, 18 Feb 2012 10:17:08 +0200
-Message-Id: <1329553028-2836-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4F3F5B30.3000501@tonian.com>
-References: <4F3F5B30.3000501@tonian.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:33375 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932285Ab2BATsw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 14:48:52 -0500
+Subject: Re: [PATCH 2/2] NFS: add mount option 'v4.1'
+Mime-Version: 1.0 (Apple Message framework v1251.1)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1328125568.3789.103.camel@lade.trondhjem.org>
+Date: Wed, 1 Feb 2012 14:48:47 -0500
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <58E70AA6-71A7-4C5F-8423-523769D5B2C6@oracle.com>
+References: <1328122817-661-1-git-send-email-dros@netapp.com> <1328122817-661-2-git-send-email-dros@netapp.com> <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com> <1328125568.3789.103.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Handle the case where the nfsv4.1 client asked to uprade or downgrade
-its delegations and server returns no delegation.
 
-In this case, op_delegate_type is set to NFS4_OPEN_DELEGATE_NONE_EXT
-and op_why_no_deleg is set respectively to WND4_NOT_SUPP_{UP,DOWN}GRADE
+On Feb 1, 2012, at 2:46 PM, Myklebust, Trond wrote:
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4state.c |   35 ++++++++++++++++++++---------------
- 1 files changed, 20 insertions(+), 15 deletions(-)
+> On Wed, 2012-02-01 at 14:17 -0500, Chuck Lever wrote:
+>> Hi-
+>> 
+>> I think we should co-ordinate with Solaris on this administrative interface.  Can we discuss in Santa Clara?
+> 
+> Unless they have a strong argument for why this is a bad idea, I plan on
+> just adding this to 3.4. There is no point in foot-dragging on this any
+> more.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 94daab4..5bfc846 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2942,6 +2942,24 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
- 	goto out;
- }
- 
-+static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
-+					struct nfs4_delegation *dp)
-+{
-+	if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
-+	    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+		open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+		open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
-+	} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
-+		   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+		open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+		open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
-+	}
-+	/* Otherwise the client must be confused wanting a delegation
-+	 * it already has, therefore we don't return
-+	 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
-+	 */
-+}
-+
- /*
-  * called with nfs4_lock_state() held.
-  */
-@@ -3026,21 +3044,8 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
- out:
- 	/* 4.1 client trying to upgrade/downgrade delegation? */
- 	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
--	    open->op_deleg_want) {
--		if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
--		    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
--			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
--			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
--		} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
--			   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
--			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
--			open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
--		}
--		/* Otherwise the client must be confused wanting a delegation
--		 * it already has, therefore we don't return
--		 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
--		 */
--	}
-+	    open->op_deleg_want)
-+		nfsd4_deleg_xgrade_none_ext(open, dp);
- 
- 	if (fp)
- 		put_nfs4_file(fp);
+No foot dragging.  We just ask at the next convenient opportunity.  I think they want to go with vers=41.
+
+> 
+> Trond
+> 
+>> On Feb 1, 2012, at 2:00 PM, Weston Andros Adamson wrote:
+>> 
+>>> 
+>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>> ---
+>>> I was already messing around with mountoptions and figured "why not".
+>>> It's been joked (?) that 4.1 really should have been NFSv5! 
+>>> 
+>>> fs/nfs/super.c |    8 +++++++-
+>>> 1 files changed, 7 insertions(+), 1 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index 50baca1..801b060 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -80,7 +80,7 @@ enum {
+>>> 	Opt_cto, Opt_nocto,
+>>> 	Opt_ac, Opt_noac,
+>>> 	Opt_lock, Opt_nolock,
+>>> -	Opt_v2, Opt_v3, Opt_v4,
+>>> +	Opt_v2, Opt_v3, Opt_v4, Opt_v4_1,
+>>> 	Opt_udp, Opt_tcp, Opt_rdma,
+>>> 	Opt_acl, Opt_noacl,
+>>> 	Opt_rdirplus, Opt_nordirplus,
+>>> @@ -136,6 +136,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>>> 	{ Opt_v2, "v2" },
+>>> 	{ Opt_v3, "v3" },
+>>> 	{ Opt_v4, "v4" },
+>>> +	{ Opt_v4_1, "v4.1" },
+>>> 	{ Opt_udp, "udp" },
+>>> 	{ Opt_tcp, "tcp" },
+>>> 	{ Opt_rdma, "rdma" },
+>>> @@ -1172,6 +1173,11 @@ static int nfs_parse_mount_options(char *raw,
+>>> 			mnt->flags &= ~NFS_MOUNT_VER3;
+>>> 			mnt->version = 4;
+>>> 			break;
+>>> +		case Opt_v4_1:
+>>> +			mnt->flags &= ~NFS_MOUNT_VER3;
+>>> +			mnt->version = 4;
+>>> +			mnt->minorversion = 1;
+>>> +			break;
+>>> 		case Opt_udp:
+>>> 			mnt->flags &= ~NFS_MOUNT_TCP;
+>>> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+>>> -- 
+>>> 1.7.4.4
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
 -- 
-1.7.6.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
