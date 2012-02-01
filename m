@@ -1,52 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41837 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:52945 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758630Ab2BIXDb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2012 18:03:31 -0500
-From: "Bhamare, Sachin" <sbhamare@panasas.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Jim Rees <rees@umich.edu>, Steve Dickson <SteveD@redhat.com>,
-        "Harrosh, Boaz" <bharrosh@panasas.com>,
-        Benny Halevy <bhalevy@tonian.com>,
-        "osd-dev@open-osd.org" <osd-dev@open-osd.org>
-Subject: nfs-utils: userspace support for autologin feature in object layout
- driver
-Date: Thu, 9 Feb 2012 23:02:51 +0000
-Message-ID: <CB5990C9.679A%sbhamare@panasas.com>
-Content-Type: text/plain; charset="us-ascii"
+	with ESMTP id S1754208Ab2BAWok (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 17:44:40 -0500
+Message-ID: <4F29C04B.8020703@panasas.com>
+Date: Thu, 2 Feb 2012 00:44:27 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Weston Andros Adamson <dros@netapp.com>
+CC: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: dont allow minorversion= opt when vers != 4
+References: <1328123201-894-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1328123201-894-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, 
-   I have been working on implementing autologin support for objectlayout
-driver in pNFS client. This feature would allow pNFS object clients to
-receive an URI (e.g. iscsi://<IP>:<PORT>) of a target OSD via
-GETDEVICEINFO rpc from the server. Object layout driver would then pass
-this information to an user space daemon which would perform the login
-task 
-depending on the protocol involved (e.g. Iscsi login using iscsiadm).
+On 02/01/2012 09:06 PM, Weston Andros Adamson wrote:
+> Don't allow invalid 'vers' and 'minorversion' combinations in mount options,
+> such as "vers=3,minorversion=1".
+> 
 
-For userspace daemon, we have 2 implementation choices.
+Just my $0.017 I don't see the point in this. 
 
-1. Add new daemon (say, osdlogind) to nfs-utils which would process the
-upcalls from object layout driver via rpc_pipefs (very similar to the way
-blkmapd works)
-2. Modify blkmapd in nfs-utils package to be able to process upcalls from
-the object layout driver and add new functionality to process these
-messages.
+If vers==3 then minorversion is ignored, just like today.
+What kind  of extra protection does it buy us?
 
-I think, (1) above is the simplest and cleanest way to go about
-implementing this. (2) adds an indirect dependency between block layout
-driver and object layout driver if they were to share the same rpc pipe to
-communicate with user space.
+But maybe it's just me
 
-Currently I have a simple implementation of 'osdlogind' coded up which
-borrows its design heavily from 'blkmapd' code. Please let me know what
-would be the preferred way to go about this. Thanks in advance for your
-inputs. 
+Thanks
+Boaz
 
-Sachin Bhamare 
-Panasas Inc.
-
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> %d -> %u for printing mnt->version.
+> 
+>  fs/nfs/super.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 8e210b2..b88e023 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1519,6 +1519,9 @@ static int nfs_parse_mount_options(char *raw,
+>  	if (!sloppy && invalid_option)
+>  		return 0;
+>  
+> +	if (mnt->minorversion && mnt->version != 4)
+> +		goto out_minorversion_mismatch;
+> +
+>  	/*
+>  	 * verify that any proto=/mountproto= options match the address
+>  	 * familiies in the addr=/mountaddr= options.
+> @@ -1552,6 +1555,10 @@ out_invalid_address:
+>  out_invalid_value:
+>  	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
+>  	return 0;
+> +out_minorversion_mismatch:
+> +	printk(KERN_INFO "NFS: mount option vers=%u does not support "
+> +			 "minorversion=%u\n", mnt->version, mnt->minorversion);
+> +	return 0;
+>  out_nomem:
+>  	printk(KERN_INFO "NFS: not enough memory to parse option\n");
+>  	return 0;
 
