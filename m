@@ -1,76 +1,306 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:47460 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965614Ab2B1Pub convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Feb 2012 10:50:31 -0500
-Subject: Re: "Using NFS over UDP on high-speed links such as Gigabit can cause silent data corruption."
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>
-Date: Tue, 28 Feb 2012 10:50:19 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, Jim Rees <rees@umich.edu>,
-        Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7C4B183F-8357-4D08-B30A-73196954A5D4@oracle.com>
-References: <1330406521.9157.16.camel@serendib> <20120228065218.7e110936@tlielax.poochiereds.net> <20120228124646.GA2528@umich.edu> <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>
-To: Harshula Jayasuriya <harshula@redhat.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756490Ab2BAPpM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:12 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:12 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 8/9] nfsdcld: add a manpage for nfsdcld
+Date: Wed,  1 Feb 2012 10:44:55 -0500
+Message-Id: <1328111096-28430-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+...for now I'm including the POD source for the manpage. We can drop
+from the repo if desired though.
 
-On Feb 28, 2012, at 9:35 AM, Chuck Lever wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/Makefile.am |    4 +-
+ utils/nfsdcld/nfsdcld.man |  180 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/nfsdcld.pod |   67 +++++++++++++++++
+ 3 files changed, 249 insertions(+), 2 deletions(-)
+ create mode 100644 utils/nfsdcld/nfsdcld.man
+ create mode 100644 utils/nfsdcld/nfsdcld.pod
 
-> 
-> On Feb 28, 2012, at 7:46 AM, Jim Rees wrote:
-> 
->> Jeff Layton wrote:
->> 
->> On Tue, 28 Feb 2012 16:22:01 +1100
->> Harshula <harshula@redhat.com> wrote:
->> 
->>> Hi Steve,
->>> 
->>> The following openSUSE nfs-utils patch, warn-nfs-udp.patch, is not
->>> included upstream:
->>> 
->>> https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
->>> 
->>> Please consider including it.
->>> 
->>> Thanks,
->>> #
->>> 
->> 
->> I think that patch looks reasonable and clearly documenting the
->> problems with UDP is a wonderful thing.
->> 
->> It may be best to send it formally to steved and the list as a real
->> [PATCH] with a real description and SoB line.
->> 
->> This feels like the wrong place to document this, since it affects anything
->> that uses udp, not just nfs.
-> 
-> NFS has a particular sensitivity to unreliable datagram transports, and that is a well-known problem.  NetApp's retired TR-3183 and many Oracle meta documents mention the problems with NFS over UDP.  Most other uses of UDP do not involve such large datagrams.
-> 
-> My comment is that if the text in the TRANSPORT METHODS section in nfs(5) about UDP reassembly is not adequate it should be updated.  I would rather see the meat of the proposed text merged into that section; otherwise we have two disparate sections discussing the same topic.  That section is where this kind of discussion belongs.
-
-A few more comments.
-
-Any file, including a /proc file, called out in new text should be added to the FILES section, IMO.
-
-If we can't resolve the provenance issue, someone could rewrite the patch from scratch so that it addresses the review comments.
-
-I don't agree with adding in-code warnings.  Mount works silently unless it fails, and this is not a mount failure.  Would such warnings ever be seen for NFS mounts added to /etc/fstab, or performed by automounter?  I think by and large most people type "mount -t nfs" without options and will get our current default transport setting, which is TCP, or UDP if the server does not support TCP.  Isn't that adequate?
-
-We also know that the risk of using UDP is mitigated by using jumbo frames, specifying a small r/wsize, or by reducing the fragment reassembly timeout.  If an admin does those things, she still gets the warning.
-
-It seems needlessly alarmist, and useless for our most common use cases.
-
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+index 8e4f2ab..f320dff 100644
+--- a/utils/nfsdcld/Makefile.am
++++ b/utils/nfsdcld/Makefile.am
+@@ -1,7 +1,7 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-#man8_MANS	= nfsdcld.man
+-#EXTRA_DIST = $(man8_MANS)
++man8_MANS	= nfsdcld.man
++EXTRA_DIST	= $(man8_MANS)
+ 
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+ sbin_PROGRAMS	= nfsdcld
+diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+new file mode 100644
+index 0000000..bad5f34
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.man
+@@ -0,0 +1,180 @@
++.\" Automatically generated by Pod::Man 2.22 (Pod::Simple 3.13)
++.\"
++.\" Standard preamble:
++.\" ========================================================================
++.de Sp \" Vertical space (when we can't use .PP)
++.if t .sp .5v
++.if n .sp
++..
++.de Vb \" Begin verbatim text
++.ft CW
++.nf
++.ne \\$1
++..
++.de Ve \" End verbatim text
++.ft R
++.fi
++..
++.\" Set up some character translations and predefined strings.  \*(-- will
++.\" give an unbreakable dash, \*(PI will give pi, \*(L" will give a left
++.\" double quote, and \*(R" will give a right double quote.  \*(C+ will
++.\" give a nicer C++.  Capital omega is used to do unbreakable dashes and
++.\" therefore won't be available.  \*(C` and \*(C' expand to `' in nroff,
++.\" nothing in troff, for use with C<>.
++.tr \(*W-
++.ds C+ C\v'-.1v'\h'-1p'\s-2+\h'-1p'+\s0\v'.1v'\h'-1p'
++.ie n \{\
++.    ds -- \(*W-
++.    ds PI pi
++.    if (\n(.H=4u)&(1m=24u) .ds -- \(*W\h'-12u'\(*W\h'-12u'-\" diablo 10 pitch
++.    if (\n(.H=4u)&(1m=20u) .ds -- \(*W\h'-12u'\(*W\h'-8u'-\"  diablo 12 pitch
++.    ds L" ""
++.    ds R" ""
++.    ds C` ""
++.    ds C' ""
++'br\}
++.el\{\
++.    ds -- \|\(em\|
++.    ds PI \(*p
++.    ds L" ``
++.    ds R" ''
++'br\}
++.\"
++.\" Escape single quotes in literal strings from groff's Unicode transform.
++.ie \n(.g .ds Aq \(aq
++.el       .ds Aq '
++.\"
++.\" If the F register is turned on, we'll generate index entries on stderr for
++.\" titles (.TH), headers (.SH), subsections (.SS), items (.Ip), and index
++.\" entries marked with X<> in POD.  Of course, you'll have to process the
++.\" output yourself in some meaningful fashion.
++.ie \nF \{\
++.    de IX
++.    tm Index:\\$1\t\\n%\t"\\$2"
++..
++.    nr % 0
++.    rr F
++.\}
++.el \{\
++.    de IX
++..
++.\}
++.\"
++.\" Accent mark definitions (@(#)ms.acc 1.5 88/02/08 SMI; from UCB 4.2).
++.\" Fear.  Run.  Save yourself.  No user-serviceable parts.
++.    \" fudge factors for nroff and troff
++.if n \{\
++.    ds #H 0
++.    ds #V .8m
++.    ds #F .3m
++.    ds #[ \f1
++.    ds #] \fP
++.\}
++.if t \{\
++.    ds #H ((1u-(\\\\n(.fu%2u))*.13m)
++.    ds #V .6m
++.    ds #F 0
++.    ds #[ \&
++.    ds #] \&
++.\}
++.    \" simple accents for nroff and troff
++.if n \{\
++.    ds ' \&
++.    ds ` \&
++.    ds ^ \&
++.    ds , \&
++.    ds ~ ~
++.    ds /
++.\}
++.if t \{\
++.    ds ' \\k:\h'-(\\n(.wu*8/10-\*(#H)'\'\h"|\\n:u"
++.    ds ` \\k:\h'-(\\n(.wu*8/10-\*(#H)'\`\h'|\\n:u'
++.    ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'^\h'|\\n:u'
++.    ds , \\k:\h'-(\\n(.wu*8/10)',\h'|\\n:u'
++.    ds ~ \\k:\h'-(\\n(.wu-\*(#H-.1m)'~\h'|\\n:u'
++.    ds / \\k:\h'-(\\n(.wu*8/10-\*(#H)'\z\(sl\h'|\\n:u'
++.\}
++.    \" troff and (daisy-wheel) nroff accents
++.ds : \\k:\h'-(\\n(.wu*8/10-\*(#H+.1m+\*(#F)'\v'-\*(#V'\z.\h'.2m+\*(#F'.\h'|\\n:u'\v'\*(#V'
++.ds 8 \h'\*(#H'\(*b\h'-\*(#H'
++.ds o \\k:\h'-(\\n(.wu+\w'\(de'u-\*(#H)/2u'\v'-.3n'\*(#[\z\(de\v'.3n'\h'|\\n:u'\*(#]
++.ds d- \h'\*(#H'\(pd\h'-\w'~'u'\v'-.25m'\f2\(hy\fP\v'.25m'\h'-\*(#H'
++.ds D- D\\k:\h'-\w'D'u'\v'-.11m'\z\(hy\v'.11m'\h'|\\n:u'
++.ds th \*(#[\v'.3m'\s+1I\s-1\v'-.3m'\h'-(\w'I'u*2/3)'\s-1o\s+1\*(#]
++.ds Th \*(#[\s+2I\s-2\h'-\w'I'u*3/5'\v'-.3m'o\v'.3m'\*(#]
++.ds ae a\h'-(\w'a'u*4/10)'e
++.ds Ae A\h'-(\w'A'u*4/10)'E
++.    \" corrections for vroff
++.if v .ds ~ \\k:\h'-(\\n(.wu*9/10-\*(#H)'\s-2\u~\d\s+2\h'|\\n:u'
++.if v .ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'\v'-.4m'^\v'.4m'\h'|\\n:u'
++.    \" for low resolution devices (crt and lpr)
++.if \n(.H>23 .if \n(.V>19 \
++\{\
++.    ds : e
++.    ds 8 ss
++.    ds o a
++.    ds d- d\h'-1'\(ga
++.    ds D- D\h'-1'\(hy
++.    ds th \o'bp'
++.    ds Th \o'LP'
++.    ds ae ae
++.    ds Ae AE
++.\}
++.rm #[ #] #H #V #F C
++.\" ========================================================================
++.\"
++.IX Title "NFSDCLD 8"
++.TH NFSDCLD 8 "2011-12-21" "" ""
++.\" For nroff, turn off justification.  Always turn off hyphenation; it makes
++.\" way too many mistakes in technical documents.
++.if n .ad l
++.nh
++.SH "NAME"
++nfsdcld \- NFSv4 Client Tracking Daemon
++.SH "SYNOPSIS"
++.IX Header "SYNOPSIS"
++nfsdcld [\-d] [\-F] [\-p path] [\-s stable storage dir]
++.SH "DESCRIPTION"
++.IX Header "DESCRIPTION"
++nfsdcld is the NFSv4 client tracking daemon. It is not necessary to run
++this daemon on machines that are not acting as NFSv4 servers.
++.PP
++When a network partition is combined with a server reboot, there are
++edge conditions that can cause the server to grant lock reclaims when
++other clients have taken conflicting locks in the interim. A more detailed
++explanation of this issue is described in \s-1RFC\s0 3530, section 8.6.3.
++.PP
++In order to prevent these problems, the server must track a small amount
++of per-client information on stable storage. This daemon provides the
++userspace piece of that functionality.
++.SH "OPTIONS"
++.IX Header "OPTIONS"
++.IP "\fB\-d\fR, \fB\-\-debug\fR" 4
++.IX Item "-d, --debug"
++Enable debug level logging.
++.IP "\fB\-F\fR, \fB\-\-foreground\fR" 4
++.IX Item "-F, --foreground"
++Runs the daemon in the foreground and prints all output to stderr
++.IP "\fB\-p\fR \fIpipe\fR, \fB\-\-pipe\fR=\fIpipe\fR" 4
++.IX Item "-p pipe, --pipe=pipe"
++Location of the \*(L"cld\*(R" upcall pipe. The default value is
++\&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
++daemon starts then it will wait for it to be created.
++.IP "\fB\-s\fR \fIstoragedir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
++.IX Item "-s storagedir, --storagedir=storage_dir"
++Directory where stable storage information should be kept. The default
++value is \fI/var/lib/nfs/nfsdcld\fR.
++.SH "NOTES"
++.IX Header "NOTES"
++The Linux kernel NFSv4 server has historically tracked this information
++on stable storage by manipulating information on the filesystem
++directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
++points.
++.PP
++This daemon requires a kernel that supports the nfsdcld upcall. If the
++kernel does not support the new upcall, or is using the legacy client
++name tracking code then it will not create the pipe that nfsdcld uses to
++talk to the kernel.
++.SH "AUTHORS"
++.IX Header "AUTHORS"
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
+diff --git a/utils/nfsdcld/nfsdcld.pod b/utils/nfsdcld/nfsdcld.pod
+new file mode 100644
+index 0000000..2ff1d3d
+--- /dev/null
++++ b/utils/nfsdcld/nfsdcld.pod
+@@ -0,0 +1,67 @@
++# turn into a manpage with the following command:
++#
++# pod2man -s 8 -c '' -r '' --stderr nfsdcld.pod > nfsdcld.man
++#
++
++=head1 NAME
++
++nfsdcld - NFSv4 Client Tracking Daemon
++
++=head1 SYNOPSIS
++
++nfsdcld [-d] [-F] [-p path] [-s stable storage dir]
++
++=head1 DESCRIPTION
++
++nfsdcld is the NFSv4 client tracking daemon. It is not necessary to run
++this daemon on machines that are not acting as NFSv4 servers.
++
++When a network partition is combined with a server reboot, there are
++edge conditions that can cause the server to grant lock reclaims when
++other clients have taken conflicting locks in the interim. A more detailed
++explanation of this issue is described in RFC 3530, section 8.6.3.
++
++In order to prevent these problems, the server must track a small amount
++of per-client information on stable storage. This daemon provides the
++userspace piece of that functionality.
++
++=head1 OPTIONS
++
++=over
++
++=item B<-d>, B<--debug>
++
++Enable debug level logging.
++
++=item B<-F>, B<--foreground>
++
++Runs the daemon in the foreground and prints all output to stderr
++
++=item B<-p> I<pipe>, B<--pipe>=I<pipe>
++
++Location of the "cld" upcall pipe. The default value is
++I</var/lib/nfs/rpc_pipefs/nfsd/cld>. If the pipe does not exist when the
++daemon starts then it will wait for it to be created.
++
++=item B<-s> I<storagedir>, B<--storagedir>=I<storage_dir>
++
++Directory where stable storage information should be kept. The default
++value is I</var/lib/nfs/nfsdcld>.
++
++=back
++
++=head1 NOTES
++
++The Linux kernel NFSv4 server has historically tracked this information
++on stable storage by manipulating information on the filesystem
++directly, in the directory to which I</proc/fs/nfsd/nfsv4recoverydir>
++points.
++
++This daemon requires a kernel that supports the nfsdcld upcall. If the
++kernel does not support the new upcall, or is using the legacy client
++name tracking code then it will not create the pipe that nfsdcld uses to
++talk to the kernel.
++
++=head1 AUTHORS
++
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
