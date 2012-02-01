@@ -1,102 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:35238 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751804Ab2BQSxh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2012 13:53:37 -0500
-Received: by wics10 with SMTP id s10so1739564wic.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 10:53:36 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <91D161E5-801B-44C3-A110-9CFD21C7D0B1@oracle.com>
-References: <1329426646-2074-1-git-send-email-andros@netapp.com>
-	<1329427752.19793.30.camel@lade.trondhjem.org>
-	<18B83A3A-12E1-42D8-AE93-9BC2C5FDB136@netapp.com>
-	<B2C8E6B1-523D-4890-B433-64B2BCB5B9AD@netapp.com>
-	<CAHVgHyVGoJNfh-cQ7KsNCyUJhegYpKaJAdsAa5D-QACf-krA_g@mail.gmail.com>
-	<91D161E5-801B-44C3-A110-9CFD21C7D0B1@oracle.com>
-Date: Fri, 17 Feb 2012 13:53:36 -0500
-Message-ID: <CAHVgHyUgqOSPWz3p1nxaKDrtfRyboQhKrrvxnN0z8RpeO6UVkg@mail.gmail.com>
-Subject: Re: [PATCH Version 2 1/1] NFSv4.1 set the cl_hostname for data servers
-From: Andy Adamson <androsadamson@gmail.com>
+Received: from tango.0pointer.de ([85.214.72.216]:57510 "EHLO
+	tango.0pointer.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753705Ab2BAWab (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 17:30:31 -0500
+Date: Wed, 1 Feb 2012 23:30:27 +0100
+From: Lennart Poettering <lennart@poettering.net>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Dros Adamson <Weston.Adamson@netapp.com>,
-        Andy Adamson <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Tom Gundersen <teg@jklm.no>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Michal Schmidt <mschmidt@redhat.com>,
+        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
+        libtirpc <libtirpc-devel@lists.sourceforge.net>
+Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
+Message-ID: <20120201223027.GA29681@tango.0pointer.de>
+References: <1324602327-1789-1-git-send-email-teg@jklm.no>
+ <1328096830-1383-1-git-send-email-teg@jklm.no>
+ <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com>
+ <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
+ <20120201214536.GL18571@tango.0pointer.de>
+ <5748CC59-354A-4D97-AF0C-224975BCA253@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5748CC59-354A-4D97-AF0C-224975BCA253@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 17, 2012 at 1:46 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> I've got a patch that already does this, which Trond wrote a year ago.  I can submit this for 3.4.
+On Wed, 01.02.12 17:03, Chuck Lever (chuck.lever@oracle.com) wrote:
 
-OK. That solves the /proc/fs/nfsfs/servers HOSTNAME is null issue for
-filelayout data servers.
+> >>> Why is sockaddr_storage included in this union?
+> >> 
+> >> This is from Lennart's original patch. Lennart, care to comment?
+> > 
+> > Well, simply because sockaddr_storage is the actual struct one should
+> > normally use for this kind of thing (where you try to determine a
+> > sockaddr from a socket you don't know at all). With one exception
+> > however, sockaddr_un is actually longer than sockaddr_storage, which is
+> > documented borkedness in the socket API.
+> 
+> You don't reference any of the fields inside this union, except for sa.  It seems unnecessary to include all of these members, and then not use most of them.
+> 
+> The biggest address you're ever going to get out of libtirpc is a sockaddr_storage.  If we must stick with a union to prevent pointer aliasing, can we have just two members: sockaddr and sockaddr_storage?
+> 
+> Otherwise, there's no need for this kind of generality here:  TI-RPC handles only IPv4, IPv6, and AF_LOCAL.
 
--->Andy
->
-> On Feb 17, 2012, at 1:40 PM, Andy Adamson wrote:
->
->> Isn't the clp->cl_rpcclient->cl_server always the same as
->> clp->cl_hostname? Can we just get rid of the cl_hostname and use the
->> cl_server?
->>
->> -->Andy
->>
->> On Thu, Feb 16, 2012 at 5:08 PM, Adamson, Dros
->> <Weston.Adamson@netapp.com> wrote:
->>>
->>> On Feb 16, 2012, at 5:00 PM, Adamson, Dros wrote:
->>>
->>>>
->>>> On Feb 16, 2012, at 4:29 PM, Myklebust, Trond wrote:
->>>>
->>>>> On Thu, 2012-02-16 at 16:10 -0500, andros@netapp.com wrote:
->>>>>> From: Andy Adamson <andros@netapp.com>
->>>>>>
->>>>>> Used by /proc/fs/nfsfs/servers
->>>>>>
->>>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>>>> ---
->>>>>> fs/nfs/client.c            |    3 ++-
->>>>>> fs/nfs/internal.h          |    3 ++-
->>>>>> fs/nfs/nfs4filelayoutdev.c |   11 ++++++++++-
->>>>>> 3 files changed, 14 insertions(+), 3 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>>>>> index d0f850f..c625284 100644
->>>>>> --- a/fs/nfs/client.c
->>>>>> +++ b/fs/nfs/client.c
->>>>>> @@ -1443,7 +1443,7 @@ error:
->>>>>> */
->>>>>> struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
->>>>>>             const struct sockaddr *ds_addr,
->>>>>> -           int ds_addrlen, int ds_proto)
->>>>>> +           int ds_addrlen, int ds_proto, char *ds_hostname)
->>>>>
->>>>> Can you make this (and the other instances below) 'const char *', so
->>>>> that we avoid any confusion? Otherwise it looks more or less OK...
->>>>>
->>>>> Note that we should consider splitting da->da_remotestr into a
->>>>> hostname/port part at some point so that we avoid the copy below.
->>>>
->>>> da_remotestr (and ds_remotestr) were meant to be for display only (and iirc they can actually be NULL).
->>>
->>> ^^ dprintk() display, that is.
->>>
->>>>
->>>> The right way to do this is from the actual sin_addr (da_addr).
->>>>
->>>> -dros
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
+Well, as said, sockaddr_un is actually larger than sockaddr_storage, and
+hence you definitely do need sockaddr_un in the union. The IP cases are
+covered by sockaddr_storage however, and hence can be left out of the
+union.
+
+I mean, it's completely up to you what is used here, I just figured the
+point of the whole library was to be an exercise in keeping things
+independent from the used socket family.
+
+Lennart
+
+-- 
+Lennart Poettering - Red Hat, Inc.
