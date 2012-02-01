@@ -1,105 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22334 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45815 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753981Ab2BIUXg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 15:23:36 -0500
+	id S1753825Ab2BAXHh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Feb 2012 18:07:37 -0500
 From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 9 Feb 2012 20:23:28 +0000
-Message-ID: <F13A10AE-EECE-4CB9-B31B-D9163E3B48D0@netapp.com>
-References: <1328805686-19559-1-git-send-email-dros@netapp.com>
- <1328811417.13180.51.camel@lade.trondhjem.org>
- <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
- <1328815664.13180.60.camel@lade.trondhjem.org>
- <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
- <1328817534.13180.65.camel@lade.trondhjem.org>
-In-Reply-To: <1328817534.13180.65.camel@lade.trondhjem.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: dont allow minorversion= opt when vers != 4
+Date: Wed, 1 Feb 2012 23:07:16 +0000
+Message-ID: <BD47F92C-6031-4F3F-A715-8275C7399717@netapp.com>
+References: <1328123201-894-1-git-send-email-dros@netapp.com>
+ <4F29C04B.8020703@panasas.com>
+In-Reply-To: <4F29C04B.8020703@panasas.com>
 Content-Type: multipart/signed;
-	boundary="Apple-Mail=_679D7BED-39D4-4239-96AC-3EF743498049";
+	boundary="Apple-Mail=_DE3ADC2C-E728-4E49-89E8-81FDD390C1A2";
 	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_679D7BED-39D4-4239-96AC-3EF743498049
+--Apple-Mail=_DE3ADC2C-E728-4E49-89E8-81FDD390C1A2
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
+On Feb 1, 2012, at 5:44 PM, Boaz Harrosh wrote:
 
-On Feb 9, 2012, at 2:58 PM, Myklebust, Trond wrote:
-
-> On Thu, 2012-02-09 at 19:48 +0000, Adamson, Dros wrote:
->>>=20
->>>> I do have an implementation that doesn't need to walk the deviceid =
-list by allowing a shared rpc_iostats struct between multiple =
-rpc_clients (in addition to the current rpc_iostats structure), but that =
-required adding locking and reference counting -- all for printing stats =
-(obviously not what we want).
->>>=20
->>> This might be more in line with what we want. Note that it should be
->>> easy to clone an rpc_client and then replace its rpc_iostats struct. =
-I
->>> don't think that needs any extra locking. We're already ignoring =
-locking
->>> here between different rpc_tasks, so throwing in different =
-rpc_clients
->>> to the mix will make no difference.
+> On 02/01/2012 09:06 PM, Weston Andros Adamson wrote:
+>> Don't allow invalid 'vers' and 'minorversion' combinations in mount =
+options,
+>> such as "vers=3D3,minorversion=3D1".
 >>=20
->> Yeah, that's easy enough and i guess we could ignore locking, but we =
-are still left with the same problem: how is this supposed to account =
-for different mount points using the same nfs_client?  nfs_client only =
-has one rpc_client member.  I doubt we want to make a hash lookup on =
-nfs_server to get the right rpc_client (which could all use the same =
-underlying xprt).
->>=20
->> Maybe it's time to move these stats into fs/nfs/ where they really =
-belong?  We could get rid of the hack that overloads procnum with opnum =
-from inside the compound for v4+ and finally only show a specific =
-mount's RPC stats.
 >=20
-> Actually, how about just adding a callback into struct rpc_call_ops
-> that, if it is defined, would be called instead of =
-rpc_count_iostats().=20
-> If you then modify rpc_count_iostats() to take the 'stats' variable as =
-a
-> parameter, you can simply have the new callback call rpc_count_iostats
-> with the right arguments.
+> Just my $0.017 I don't see the point in this.=20
+>=20
+> If vers=3D=3D3 then minorversion is ignored, just like today.
+> What kind  of extra protection does it buy us?
 
-Yeah, that could work!  On my walk home from the cafe (they always seem =
-to help) I came up with a slightly different strategy:
+No, minorversion is not ignored when vers=3D3. =20
 
-- remove the cl_metrics (struct rpc_iostats) member from rpc_clnt
-- add an *optional* rpc_iostats pointer to rpc_task (ignored if NULL)
-- allocate one rpc_iostats structure (really array of structs, but you =
-know what I mean) per nfs_server structure
-- when setting up rpc_tasks in nfs-land, pass the correct rpc_iostats
+Try an invalid (v4) minorversion:
 
-with this strategy we don't accumulate stats when they aren't ever used =
-(like an rpc_client used for mount protocol).  again, only NFS uses the =
-rpc stats interface.
+$ sudo mount -t nfs -o vers=3D3,minorversion=3D2 server:/export /mnt=20
+mount.nfs: an incorrect mount option was specified
+$ dmesg | tail -1
+[ 1734.758101] NFS: bad mount option value specified: minorversion=3D2
 
-I kind of like this better than a callback, but either way is fine with =
-me.  Which way would you prefer?
+I can understand why this was never a priority, but I find it quite =
+confusing when version=3D3,minorversion=3D1 succeeds -- I've =
+fat-fingered that more than a few times, started running tests and only =
+later realized my mistake.
+
+>=20
+> But maybe it's just me
+>=20
+
+I know it's not just me who's been confused by this in the past :)
 
 -dros
 
+> Thanks
+> Boaz
 >=20
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer
->=20
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> %d -> %u for printing mnt->version.
+>>=20
+>> fs/nfs/super.c |    7 +++++++
+>> 1 files changed, 7 insertions(+), 0 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index 8e210b2..b88e023 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -1519,6 +1519,9 @@ static int nfs_parse_mount_options(char *raw,
+>> 	if (!sloppy && invalid_option)
+>> 		return 0;
+>>=20
+>> +	if (mnt->minorversion && mnt->version !=3D 4)
+>> +		goto out_minorversion_mismatch;
+>> +
+>> 	/*
+>> 	 * verify that any proto=3D/mountproto=3D options match the =
+address
+>> 	 * familiies in the addr=3D/mountaddr=3D options.
+>> @@ -1552,6 +1555,10 @@ out_invalid_address:
+>> out_invalid_value:
+>> 	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", =
+p);
+>> 	return 0;
+>> +out_minorversion_mismatch:
+>> +	printk(KERN_INFO "NFS: mount option vers=3D%u does not support "
+>> +			 "minorversion=3D%u\n", mnt->version, =
+mnt->minorversion);
+>> +	return 0;
+>> out_nomem:
+>> 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
+>> 	return 0;
 >=20
 
 
---Apple-Mail=_679D7BED-39D4-4239-96AC-3EF743498049
+--Apple-Mail=_DE3ADC2C-E728-4E49-89E8-81FDD390C1A2
 Content-Disposition: attachment; filename="smime.p7s"
 Content-Type: application/pkcs7-signature; name="smime.p7s"
 Content-Transfer-Encoding: base64
@@ -122,12 +124,12 @@ F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
 ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
 MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
 ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAyMDkyMDIzMjdaMCMGCSqGSIb3DQEJBDEWBBShCFl0/ZLrNKQ2
-utcjn4UhC7woUTANBgkqhkiG9w0BAQEFAASCAQBIMQStuqHD0JRaCl3blnajfhU5TlSFZKJk+ieG
-ETd8N65cd2YAOUxRfQRRecpQfdFr2eMObvRZDZISLggRpZk9k2BH5/9Xpy/WE9S3ItlxtL7/NZvj
-j2L2ku9+GRyVfIfu8Q7P9pWDHSIN6HwdnTCfnaJhqfQTWx7OxGCk30L83w7MQZMkPoZ7x1aT8EjP
-NNxRAhdLTRMm/YPoMZiVgPJd25SsJ79uylXqwz5ow9Q4B6+QKdpRfw8jbC4lTkbI/BEUxjIGRtht
-7UHJh+uyfcI3nJ4J8YQcyYSfDuJk/ML6WuuFam/ApxiMZs8M3WDUznbtAYAYsIByqauV12rdveUd
+MBwGCSqGSIb3DQEJBTEPFw0xMjAyMDEyMzA3MTdaMCMGCSqGSIb3DQEJBDEWBBQb2V2egGzBt26V
+oU/1gBSlEWCX5zANBgkqhkiG9w0BAQEFAASCAQCCQyFvWfl/rbR0nTBd36sYwxgrShgYWU0M1TvH
+AymFRoIJu6dAQFDY9a4B7hgE0jCm0f7bH8W2Of2wBMNkGnw4laraCiX/cdY5CTF78sUBYPipwlzJ
+pwUUcr3PQQSNnxw9UdDQAkzuuHAfZRbk4OEEL2Z+JjP08bgLcrLRBbzEYVshBQKDPsC0hkg765L9
+251Gl71zKXdi3h/kqYCYdDpa3ctfdpXouoRpbSqig14BsKWX/0Mk3EHyzg1306sWCIMZpbEeHEr9
+UGg/yY33k50VRXOFa/WMJu3//8CNfsih1kcZ11wHjX7djJWLsZ98QjK6flfd9z1w62XTI5zwpzLA
 AAAAAAAA
 
---Apple-Mail=_679D7BED-39D4-4239-96AC-3EF743498049--
+--Apple-Mail=_DE3ADC2C-E728-4E49-89E8-81FDD390C1A2--
