@@ -1,45 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59870 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4157 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752902Ab2BPTzF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 14:55:05 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
-Date: Thu, 16 Feb 2012 19:54:58 +0000
-Message-ID: <1329422098.4279.24.camel@lade.trondhjem.org>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-	 <20120215213508.3254.64687.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213508.3254.64687.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1754008Ab2BATPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Feb 2012 14:15:55 -0500
+Date: Wed, 1 Feb 2012 19:30:54 +0100
+From: Andrea Arcangeli <aarcange@redhat.com>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Gregory Farnum <gregory.farnum@dreamhost.com>,
+        lsf-pc@lists.linux-foundation.org,
+        Chris Mason <chris.mason@oracle.com>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+Message-ID: <20120201183054.GM31817@redhat.com>
+References: <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
+ <4F217F0C.6030105@itwm.fraunhofer.de>
+ <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
+ <4F283F7A.4020905@itwm.fraunhofer.de>
+ <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
+ <20120201164521.GY16796@shiny>
+ <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
+ <20120201174131.GD16796@shiny>
+ <4F297D90.1010509@fastmail.fm>
+ <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T3VyIGRwcmludGsoKSBkZWJ1Z2dpbmcgZmFjaWxpdHkgZG9lc24ndCBzcGVjaWZ5IGFueSB2ZXJi
-b3NpdHkgbGV2ZWwNCj4gZm9yIGl0J3MgcHJpbnRrKCkgY2FsbHMsIGJ1dCBpdCBzaG91bGQuDQo+
-IA0KPiBUaGUgZGVmYXVsdCB2ZXJib3NpdHkgZm9yIHByaW50aydzIGlzIEtFUk5fREVGQVVMVC4g
-IFlvdSBtaWdodCBhcmd1ZQ0KPiB0aGF0IHRoZXNlIGFyZSBkZWJ1Z2dpbmcgcHJpbnRrJ3MgYW5k
-IHRodXMgdGhlIHZlcmJvc2l0eSBzaG91bGQgYmUNCj4gS0VSTl9ERUJVRy4gIFRoYXQgd291bGQg
-bWVhbiB0aGF0IHRvIHNlZSBORlMgYW5kIFNVTlJQQyBkZWJ1Z2dpbmcNCj4gb3V0cHV0IGFuIGFk
-bWluIHdvdWxkIGFsc28gaGF2ZSB0byBib29zdCB0aGUgc3lzbG9nIHZlcmJvc2l0eSwgd2hpY2gN
-Cj4gd291bGQgYmUgaW5zdWZmZXJhYmx5IG5vaXN5Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1
-Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0KPiANCj4gIGluY2x1ZGUv
-bGludXgvc3VucnBjL2RlYnVnLmggfCAgICA2ICsrKysrLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCA1
-IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVk
-ZS9saW51eC9zdW5ycGMvZGVidWcuaCBiL2luY2x1ZGUvbGludXgvc3VucnBjL2RlYnVnLmgNCj4g
-aW5kZXggYzI3ODZmMi4uZTA5MjdjMiAxMDA2NDQNCj4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5y
-cGMvZGVidWcuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9kZWJ1Zy5oDQo+IEBAIC01
-MSw3ICs1MSwxMSBAQCBleHRlcm4gdW5zaWduZWQgaW50CQlubG1fZGVidWc7DQo+ICAjdW5kZWYg
-aWZkZWJ1Zw0KPiAgI2lmZGVmIFJQQ19ERUJVRwkJCQ0KPiAgIyBkZWZpbmUgaWZkZWJ1ZyhmYWMp
-CQlpZiAodW5saWtlbHkocnBjX2RlYnVnICYgUlBDREJHXyMjZmFjKSkNCj4gLSMgZGVmaW5lIGRm
-cHJpbnRrKGZhYywgYXJncy4uLikJZG8geyBpZmRlYnVnKGZhYykgcHJpbnRrKGFyZ3MpOyB9IHdo
-aWxlKDApDQo+ICsjIGRlZmluZSBkZnByaW50ayhmYWMsIGFyZ3MuLi4pCVwNCj4gKwlkbyB7IFwN
-Cj4gKwkJaWZkZWJ1ZyhmYWMpIFwNCj4gKwkJCXByaW50ayhLRVJOX0RFRkFVTFQgYXJncyk7IFwN
-Cj4gKwl9IHdoaWxlICgwKQ0KPiAgIyBkZWZpbmUgUlBDX0lGREVCVUcoeCkJCXgNCj4gICNlbHNl
-DQo+ICAjIGRlZmluZSBpZmRlYnVnKGZhYykJCWlmICgwKQ0KPiANCg0KTG9va3MgZ29vZC4gQXBw
-bGllZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+On Wed, Feb 01, 2012 at 12:16:05PM -0600, James Bottomley wrote:
+> supplying protection information to user space isn't about the
+> application checking what's on disk .. there's automatic verification in
+> the chain to do that (both the HBA and the disk will check the
+> protection information on entry/exit and transfer).  Supplying
+> protection information to userspace is about checking nothing went wrong
+> in the handoff between the end of the DIF stack and the application.
+
+Not sure if I got this right, but keeping protection information for
+in-ram pagecache and exposing it to userland somehow, to me sounds a
+bit of overkill as a concept. Then you should want that for anonymous
+memory too. If you copy the pagecache to a malloc()ed buffer and
+verify pagecache was consistent, but then the buffer is corrupt by
+hardware bitflip or software bug, then what's the point. Besides if
+this is getting exposed to userland and it's not hidden in the kernel
+(FS/Storage layers), userland could code its own verification logic
+without much added complexity. With CRC in hardware on the CPU it
+doesn't sound like a big cost to do it fully in userland and then you
+could run it on anonymous memory too if you need and not be dependent
+on hardware or filesystem details (well other than a a cpuid check at
+startup).
