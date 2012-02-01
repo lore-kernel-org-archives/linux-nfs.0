@@ -1,188 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:43314 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754236Ab2BMVv3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:29 -0500
-Received: by eekc14 with SMTP id c14so2010863eek.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:28 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 02/10] nfsd41: handle current stateid in open and close
-Date: Mon, 13 Feb 2012 22:54:36 +0100
-Message-Id: <1329170084-7032-3-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:58844 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752907Ab2BAR7v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 12:59:51 -0500
+Message-ID: <4F297D90.1010509@fastmail.fm>
+Date: Wed, 01 Feb 2012 18:59:44 +0100
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
+MIME-Version: 1.0
+To: Chris Mason <chris.mason@oracle.com>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>,
+        Gregory Farnum <gregory.farnum@dreamhost.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lsf-pc@lists.linux-foundation.org
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com> <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net> <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net> <4F283F7A.4020905@itwm.fraunhofer.de> <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com> <20120201164521.GY16796@shiny> <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com> <20120201174131.GD16796@shiny>
+In-Reply-To: <20120201174131.GD16796@shiny>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 02/01/2012 06:41 PM, Chris Mason wrote:
+> On Wed, Feb 01, 2012 at 10:52:55AM -0600, James Bottomley wrote:
+>> On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
+>>> On Tue, Jan 31, 2012 at 11:28:26AM -0800, Gregory Farnum wrote:
+>>>> On Tue, Jan 31, 2012 at 11:22 AM, Bernd Schubert
+>>>> <bernd.schubert@itwm.fraunhofer.de>  wrote:
+>>>>> I guess we should talk to developers of other parallel file systems and see
+>>>>> what they think about it. I think cephfs already uses data integrity
+>>>>> provided by btrfs, although I'm not entirely sure and need to check the
+>>>>> code. As I said before, Lustre does network checksums already and *might* be
+>>>>> interested.
+>>>>
+>>>> Actually, right now Ceph doesn't check btrfs' data integrity
+>>>> information, but since Ceph doesn't have any data-at-rest integrity
+>>>> verification it relies on btrfs if you want that. Integrating
+>>>> integrity verification throughout the system is on our long-term to-do
+>>>> list.
+>>>> We too will be said if using a kernel-level integrity system requires
+>>>> using DIO, although we could probably work out a way to do
+>>>> "translation" between our own integrity checksums and the
+>>>> btrfs-generated ones if we have to (thanks to replication).
+>>>
+>>> DIO isn't really required, but doing this without synchronous writes
+>>> will get painful in a hurry.  There's nothing wrong with letting the
+>>> data sit in the page cache after the IO is done though.
+>>
+>> I broadly agree with this, but even if you do sync writes and cache read
+>> only copies, we still have the problem of how we do the read side
+>> verification of DIX.  In theory, when you read, you could either get the
+>> cached copy or an actual read (which will supply protection
+>> information), so for the cached copy we need to return cached protection
+>> information implying that we need some way of actually caching it.
+>
+> Good point, reading from the cached copy is a lower level of protection
+> because in theory bugs in your scsi drivers could corrupt the pages
+> later on.
+
+But that only matters if the application is going to verify if data are 
+really on disk. For example (client server scenario)
+
+1) client-A writes a page
+2) client-B reads this page
+
+client-B is simply not interested here where it gets the page from, as 
+long as it gets correct data. The network files system in between also 
+will just be happy existing in-cache crcs for network verification.
+Only if the page is later on dropped from the cache and read again, 
+on-disk crcs matter. If those are bad, one of the layers is going to 
+complain or correct those data.
+
+If the application wants to check data on disk it can either use DIO or 
+alternatively something like fadvsise(DONTNEED_LOCAL_AND_REMOTE) 
+(something I wanted to propose for some time already, at least I'm not 
+happy that posix_fadvise(POSIX_FADV_DONTNEED) is not passed to the file 
+system at all).
 
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |   11 +++++++++++
- fs/nfsd/nfs4proc.c        |   30 ++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c       |   32 ++++++++++++++++++++++++++++++++
- fs/nfsd/xdr4.h            |    1 +
- 4 files changed, 70 insertions(+), 4 deletions(-)
- create mode 100644 fs/nfsd/current_stateid.h
-
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-new file mode 100644
-index 0000000..a83dd50
---- /dev/null
-+++ b/fs/nfsd/current_stateid.h
-@@ -0,0 +1,11 @@
-+#ifndef _NFSD4_CURRENT_STATE_H
-+#define _NFSD4_CURRENT_STATE_H
-+
-+#include "state.h"
-+#include "xdr4.h"
-+
-+extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+
-+#endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9415bc4..a457551 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -39,6 +39,7 @@
- #include "cache.h"
- #include "xdr4.h"
- #include "vfs.h"
-+#include "current_stateid.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_PROC
- 
-@@ -1000,6 +1001,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
- 			      void *);
- typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-+typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-+typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
- 
- enum nfsd4_op_flags {
- 	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-@@ -1025,6 +1028,10 @@ enum nfsd4_op_flags {
- 	 * the v4.0 case).
- 	 */
- 	OP_CACHEME = 1 << 6,
-+	/*
-+	 * These are ops which clear current state id.
-+	 */
-+	OP_CLEAR_STATEID = 1 << 7,
- };
- 
- struct nfsd4_operation {
-@@ -1033,6 +1040,8 @@ struct nfsd4_operation {
- 	char *op_name;
- 	/* Try to get response size before operation */
- 	nfsd4op_rsize op_rsize_bop;
-+	stateid_setter op_get_currentstateid;
-+	stateid_getter op_set_currentstateid;
- };
- 
- static struct nfsd4_operation nfsd4_ops[];
-@@ -1215,13 +1224,23 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		if (op->status)
- 			goto encode_op;
- 
--		if (opdesc->op_func)
-+		if (opdesc->op_func) {
-+			if (opdesc->op_get_currentstateid)
-+				opdesc->op_get_currentstateid(cstate, &op->u);
- 			op->status = opdesc->op_func(rqstp, cstate, &op->u);
--		else
-+		} else
- 			BUG_ON(op->status == nfs_ok);
- 
--		if (!op->status && need_wrongsec_check(rqstp))
--			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-+		if (!op->status) {
-+			if (opdesc->op_set_currentstateid)
-+				opdesc->op_set_currentstateid(cstate, &op->u);
-+
-+			if (opdesc->op_flags & OP_CLEAR_STATEID)
-+				cstate->current_stateid = NULL;
-+
-+			if (need_wrongsec_check(rqstp))
-+				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-+		}
- 
- encode_op:
- 		/* Only from SEQUENCE */
-@@ -1413,6 +1432,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_CLOSE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
- 	},
- 	[OP_COMMIT] = {
- 		.op_func = (nfsd4op_func)nfsd4_commit,
-@@ -1483,6 +1504,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_OPEN",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
- 	},
- 	[OP_OPEN_CONFIRM] = {
- 		.op_func = (nfsd4op_func)nfsd4_open_confirm,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8ca5ed1..6322a59 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4695,3 +4695,35 @@ nfs4_state_shutdown(void)
- 	nfs4_unlock_state();
- 	nfsd4_destroy_callback_queue();
- }
-+
-+static void
-+get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-+{
-+	if (cstate->current_stateid && CURRENT_STATEID(stateid))
-+		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
-+}
-+
-+static void
-+put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-+{
-+	if (cstate->minorversion)
-+		cstate->current_stateid = stateid;
-+}
-+
-+void
-+nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
-+{
-+	put_stateid(cstate, &open->op_stateid);
-+}
-+
-+void
-+nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	get_stateid(cstate, &close->cl_stateid);
-+}
-+
-+void
-+nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	get_stateid(cstate, &close->cl_stateid);
-+}
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..c1fe8ba 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -54,6 +54,7 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
-+	const stateid_t	*current_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
--- 
-1.7.7.6
-
+Cheers,
+Bernd
