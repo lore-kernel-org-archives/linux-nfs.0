@@ -1,192 +1,442 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18081 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754019Ab2B0Pvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 10:51:47 -0500
-Subject: [PATCH v2 4/4] SUNRPC: move waitq from RPC pipe to RPC inode
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 27 Feb 2012 19:51:20 +0400
-Message-ID: <20120227155120.7941.7583.stgit@localhost6.localdomain6>
-In-Reply-To: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
-References: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754641Ab2BAPpF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:05 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:05 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 3/9] nfsdcld: add routines for a sqlite backend database
+Date: Wed,  1 Feb 2012 10:44:50 -0500
+Message-Id: <1328111096-28430-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, wait queue, used for polling of RPC pipe changes from user-space,
-is a part of RPC pipe. But the pipe data itself can be released on NFS umount
-prior to dentry-inode pair, connected to it (is case of this pair is open by
-some process).
-This is not a problem for almost all pipe users, because all PipeFS file
-operations checks pipe reference prior to using it.
-Except evenfd. This thing registers itself with "poll" file operation and thus
-has a reference to pipe wait queue. This leads to oopses on destroying eventfd
-after NFS umount (like rpc_idmapd do) since not pipe data left to the point
-already.
-The solution is to wait queue from pipe data to internal RPC inode data. This
-looks more logical, because this wiat queue used only for user-space processes,
-which already holds inode reference.
+Rather than roll our own "storage engine", use sqlite instead. It fits
+the bill nicely as it does:
 
-Note: upcalls have to get pipe->dentry prior to dereferecing wait queue to make
-sure, that mount point won't disappear from underneath us.
+- durable on-disk storage
+- the ability to constrain record uniqueness
+- a facility for collating and searching the host records
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+...it does add a build dependency to nfs-utils, but almost all modern
+distros provide those packages.
 
+The current incarnation of this code dynamically links against a
+provided sqlite library, but we could also consider including their
+single-file "amalgamation" to reduce dependencies (though with all
+the caveats that that entails).
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    2 +-
- net/sunrpc/rpc_pipe.c              |   39 ++++++++++++++++++++++++------------
- 2 files changed, 27 insertions(+), 14 deletions(-)
+ utils/nfsdcld/Makefile.am |    4 +-
+ utils/nfsdcld/nfsdcld.c   |   24 +++-
+ utils/nfsdcld/sqlite.c    |  253 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h    |   26 +++++
+ 4 files changed, 299 insertions(+), 8 deletions(-)
+ create mode 100644 utils/nfsdcld/sqlite.c
+ create mode 100644 utils/nfsdcld/sqlite.h
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 426ce6e..a7b422b 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -28,7 +28,6 @@ struct rpc_pipe {
- 	int pipelen;
- 	int nreaders;
- 	int nwriters;
--	wait_queue_head_t waitq;
- #define RPC_PIPE_WAIT_FOR_OPEN	1
- 	int flags;
- 	struct delayed_work queue_timeout;
-@@ -41,6 +40,7 @@ struct rpc_inode {
- 	struct inode vfs_inode;
- 	void *private;
- 	struct rpc_pipe *pipe;
-+	wait_queue_head_t waitq;
+diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
+index ed7ed42..8e4f2ab 100644
+--- a/utils/nfsdcld/Makefile.am
++++ b/utils/nfsdcld/Makefile.am
+@@ -6,9 +6,9 @@
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+ sbin_PROGRAMS	= nfsdcld
+ 
+-nfsdcld_SOURCES = nfsdcld.c
++nfsdcld_SOURCES = nfsdcld.c sqlite.c
+ 
+-nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
++nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 7a83fbe..15746e6 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -36,6 +36,7 @@
+ 
+ #include "xlog.h"
+ #include "nfslib.h"
++#include "sqlite.h"
+ 
+ #ifndef PIPEFS_DIR
+ #define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
+@@ -61,6 +62,7 @@ static struct option longopts[] =
+ 	{ "foreground", 0, NULL, 'F' },
+ 	{ "debug", 0, NULL, 'd' },
+ 	{ "pipe", 1, NULL, 'p' },
++	{ "storagedir", 1, NULL, 's' },
+ 	{ NULL, 0, 0, 0 },
  };
  
- static inline struct rpc_inode *
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b67b2ae..ac9ee15 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -57,7 +57,7 @@ void rpc_pipefs_notifier_unregister(struct notifier_block *nb)
- }
- EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_unregister);
- 
--static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
-+static void rpc_purge_list(wait_queue_head_t *waitq, struct list_head *head,
- 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
+@@ -71,7 +73,7 @@ static void
+ usage(char *progname)
  {
- 	struct rpc_pipe_msg *msg;
-@@ -70,7 +70,7 @@ static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
- 		msg->errno = err;
- 		destroy_msg(msg);
- 	} while (!list_empty(head));
--	wake_up(&pipe->waitq);
-+	wake_up(waitq);
+ 	printf("Usage:\n");
+-	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
++	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
  }
  
- static void
-@@ -80,6 +80,7 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 	struct rpc_pipe *pipe =
- 		container_of(work, struct rpc_pipe, queue_timeout.work);
- 	void (*destroy_msg)(struct rpc_pipe_msg *);
-+	struct dentry *dentry;
+ static int
+@@ -145,15 +147,16 @@ cld_create(struct cld_client *clnt)
+ 	ssize_t bsize, wsize;
+ 	struct cld_msg *cmsg = &clnt->cl_msg;
  
- 	spin_lock(&pipe->lock);
- 	destroy_msg = pipe->ops->destroy_msg;
-@@ -87,8 +88,13 @@ rpc_timeout_upcall_queue(struct work_struct *work)
- 		list_splice_init(&pipe->pipe, &free_list);
- 		pipe->pipelen = 0;
+-	xlog(D_GENERAL, "%s: create client record", __func__);
++	xlog(D_GENERAL, "%s: create client record.", __func__);
+ 
+-	/* FIXME: create client record on storage here */
++	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
++				   cmsg->cm_u.cm_name.cn_len);
+ 
+-	/* set up reply */
+-	cmsg->cm_status = 0;
++	cmsg->cm_status = ret ? -EREMOTEIO : ret;
+ 
+ 	bsize = sizeof(*cmsg);
+ 
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
+ 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+ 	if (wsize != bsize) {
+ 		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+@@ -211,6 +214,7 @@ main(int argc, char **argv)
+ 	int rc = 0;
+ 	bool foreground = false;
+ 	char *progname;
++	char *storagedir = NULL;
+ 	struct cld_client clnt;
+ 
+ 	memset(&clnt, 0, sizeof(clnt));
+@@ -226,7 +230,7 @@ main(int argc, char **argv)
+ 	xlog_stderr(1);
+ 
+ 	/* process command-line options */
+-	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
++	while ((arg = getopt_long(argc, argv, "hdFp:s:", longopts,
+ 				  NULL)) != EOF) {
+ 		switch (arg) {
+ 		case 'd':
+@@ -238,6 +242,9 @@ main(int argc, char **argv)
+ 		case 'p':
+ 			pipepath = optarg;
+ 			break;
++		case 's':
++			storagedir = optarg;
++			break;
+ 		default:
+ 			usage(progname);
+ 			return 0;
+@@ -257,6 +264,11 @@ main(int argc, char **argv)
  	}
-+	dentry = dget(pipe->dentry);
- 	spin_unlock(&pipe->lock);
--	rpc_purge_list(pipe, &free_list, destroy_msg, -ETIMEDOUT);
-+	if (dentry) {
-+		rpc_purge_list(&RPC_I(dentry->d_inode)->waitq,
-+			       &free_list, destroy_msg, -ETIMEDOUT);
-+		dput(dentry);
+ 
+ 	/* set up storage db */
++	rc = sqlite_maindb_init(storagedir);
++	if (rc) {
++		xlog(L_ERROR, "Failed to open main database: %d", rc);
++		goto out;
 +	}
- }
  
- ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
-@@ -125,6 +131,7 @@ int
- rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- {
- 	int res = -EPIPE;
-+	struct dentry *dentry;
- 
- 	spin_lock(&pipe->lock);
- 	if (pipe->nreaders) {
-@@ -140,8 +147,12 @@ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
- 		pipe->pipelen += msg->len;
- 		res = 0;
- 	}
-+	dentry = dget(pipe->dentry);
- 	spin_unlock(&pipe->lock);
--	wake_up(&pipe->waitq);
-+	if (dentry) {
-+		wake_up(&RPC_I(dentry->d_inode)->waitq);
-+		dput(dentry);
+ 	/* set up event handler */
+ 	rc = cld_pipe_init(&clnt);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+new file mode 100644
+index 0000000..f70568e
+--- /dev/null
++++ b/utils/nfsdcld/sqlite.c
+@@ -0,0 +1,253 @@
++/*
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++/*
++ * Explanation:
++ *
++ * This file contains the code to manage the sqlite backend database for the
++ * clstated upcall daemon.
++ *
++ * The main database is called main.sqlite and contains the following tables:
++ *
++ * parameters: simple key/value pairs for storing database info
++ *
++ * clients: one column containing a BLOB with the as sent by the client
++ * 	    and a timestamp (in epoch seconds) of when the record was
++ * 	    established
++ *
++ * FIXME: should we also record the fsid being accessed?
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <errno.h>
++#include <event.h>
++#include <stdbool.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sqlite3.h>
++#include <linux/limits.h>
++
++#include "xlog.h"
++
++#define CLD_SQLITE_SCHEMA_VERSION 1
++
++#ifndef CLD_SQLITE_TOPDIR
++#define CLD_SQLITE_TOPDIR NFS_STATEDIR "/nfsdcld"
++#endif
++
++/* in milliseconds */
++#define CLD_SQLITE_BUSY_TIMEOUT 10000
++
++/* private data structures */
++
++/* global variables */
++
++/* top level DB directory */
++static char *sqlite_topdir;
++
++/* reusable pathname and sql command buffer */
++static char buf[PATH_MAX];
++
++/* global database handle */
++static sqlite3 *dbh;
++
++/* forward declarations */
++
++/* make a directory, ignoring EEXIST errors unless it's not a directory */
++static int
++mkdir_if_not_exist(char *dirname)
++{
++	int ret;
++	struct stat statbuf;
++
++	ret = mkdir(dirname, S_IRWXU);
++	if (ret && errno != EEXIST)
++		return -errno;
++
++	ret = stat(dirname, &statbuf);
++	if (ret)
++		return -errno;
++
++	if (!S_ISDIR(statbuf.st_mode))
++		ret = -ENOTDIR;
++
++	return ret;
++}
++
++/*
++ * Open the "main" database, and attempt to initialize it by creating the
++ * parameters table and inserting the schema version into it. Ignore any errors
++ * from that, and then attempt to select the version out of it again. If the
++ * version appears wrong, then assume that the DB is corrupt or has been
++ * upgraded, and return an error. If all of that works, then attempt to create
++ * the "clients" table.
++ */
++int
++sqlite_maindb_init(char *topdir)
++{
++	int ret;
++	char *err = NULL;
++	sqlite3_stmt *stmt = NULL;
++
++	sqlite_topdir = topdir ? topdir : CLD_SQLITE_TOPDIR;
++
++	ret = mkdir_if_not_exist(sqlite_topdir);
++	if (ret)
++		return ret;
++
++	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", sqlite_topdir);
++	if (ret < 0)
++		return ret;
++
++	buf[PATH_MAX - 1] = '\0';
++
++	ret = sqlite3_open(buf, &dbh);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to open main database: %d", ret);
++		return ret;
 +	}
- 	return res;
- }
- EXPORT_SYMBOL_GPL(rpc_queue_upcall);
-@@ -168,7 +179,7 @@ rpc_close_pipes(struct inode *inode)
- 	pipe->pipelen = 0;
- 	pipe->dentry = NULL;
- 	spin_unlock(&pipe->lock);
--	rpc_purge_list(pipe, &free_list, pipe->ops->destroy_msg, -EPIPE);
-+	rpc_purge_list(&RPC_I(inode)->waitq, &free_list, pipe->ops->destroy_msg, -EPIPE);
- 	pipe->nwriters = 0;
- 	if (need_release && pipe->ops->release_pipe)
- 		pipe->ops->release_pipe(inode);
-@@ -257,7 +268,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
- 			list_splice_init(&pipe->pipe, &free_list);
- 			pipe->pipelen = 0;
- 			spin_unlock(&pipe->lock);
--			rpc_purge_list(pipe, &free_list,
-+			rpc_purge_list(&RPC_I(inode)->waitq, &free_list,
- 					pipe->ops->destroy_msg, -EAGAIN);
- 		}
- 	}
-@@ -330,16 +341,18 @@ rpc_pipe_write(struct file *filp, const char __user *buf, size_t len, loff_t *of
- static unsigned int
- rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
- {
--	struct rpc_pipe *pipe = RPC_I(filp->f_path.dentry->d_inode)->pipe;
--	unsigned int mask = 0;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct rpc_inode *rpci = RPC_I(inode);
-+	unsigned int mask = POLLOUT | POLLWRNORM;
- 
--	poll_wait(filp, &pipe->waitq, wait);
-+	poll_wait(filp, &rpci->waitq, wait);
- 
--	mask = POLLOUT | POLLWRNORM;
--	if (pipe->dentry == NULL)
-+	mutex_lock(&inode->i_mutex);
-+	if (rpci->pipe == NULL)
- 		mask |= POLLERR | POLLHUP;
--	if (filp->private_data || !list_empty(&pipe->pipe))
-+	else if (filp->private_data || !list_empty(&rpci->pipe->pipe))
- 		mask |= POLLIN | POLLRDNORM;
-+	mutex_unlock(&inode->i_mutex);
- 	return mask;
- }
- 
-@@ -543,7 +556,6 @@ init_pipe(struct rpc_pipe *pipe)
- 	INIT_LIST_HEAD(&pipe->in_downcall);
- 	INIT_LIST_HEAD(&pipe->pipe);
- 	pipe->pipelen = 0;
--	init_waitqueue_head(&pipe->waitq);
- 	INIT_DELAYED_WORK(&pipe->queue_timeout,
- 			    rpc_timeout_upcall_queue);
- 	pipe->ops = NULL;
-@@ -1165,6 +1177,7 @@ init_once(void *foo)
- 	inode_init_once(&rpci->vfs_inode);
- 	rpci->private = NULL;
- 	rpci->pipe = NULL;
-+	init_waitqueue_head(&rpci->waitq);
- }
- 
- int register_rpc_pipefs(void)
++
++	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
++		goto out_err;
++	}
++
++	/* Try to create table */
++	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
++				"(key TEXT PRIMARY KEY, value TEXT);",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to create parameter table: %d", ret);
++		goto out_err;
++	}
++
++	/* insert version into table -- ignore error if it fails */
++	ret = snprintf(buf, sizeof(buf),
++		       "INSERT OR IGNORE INTO parameters values (\"version\", "
++		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
++	if (ret < 0) {
++		goto out_err;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		goto out_err;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to insert into parameter table: %d",
++				ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_prepare_v2(dbh,
++		"SELECT value FROM parameters WHERE key == \"version\";",
++		 -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to prepare select statement: %d", ret);
++		goto out_err;
++	}
++
++	/* check schema version */
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "Select statement execution failed: %s",
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	/* process SELECT result */
++	ret = sqlite3_column_int(stmt, 0);
++	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
++		xlog(L_ERROR, "Unsupported database schema version! "
++			"Expected %d, got %d.",
++			CLD_SQLITE_SCHEMA_VERSION, ret);
++		ret = -EINVAL;
++		goto out_err;
++	}
++
++	/* now create the "clients" table */
++	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS clients "
++				"(id BLOB PRIMARY KEY, time INTEGER);",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to create clients table: %s", err);
++		goto out_err;
++	}
++
++	sqlite3_free(err);
++	sqlite3_finalize(stmt);
++	return 0;
++
++out_err:
++	if (err) {
++		xlog(L_ERROR, "sqlite error: %s", err);
++		sqlite3_free(err);
++	}
++	sqlite3_finalize(stmt);
++	sqlite3_close(dbh);
++	return ret;
++}
++
++/*
++ * Create a client record
++ *
++ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
++ */
++int
++sqlite_insert_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
++				      "(?, strftime('%s', 'now'));", -1,
++					&stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
++			__func__, sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
++				__func__, sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+new file mode 100644
+index 0000000..ba4c213
+--- /dev/null
++++ b/utils/nfsdcld/sqlite.h
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifndef _SQLITE_H_
++#define _SQLITE_H_
++
++int sqlite_maindb_init(char *topdir);
++int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
++
++#endif /* _SQLITE_H */
+-- 
+1.7.7.6
 
