@@ -1,77 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:48859 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751937Ab2BQSky convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2012 13:40:54 -0500
-Received: by werb13 with SMTP id b13so2027191wer.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 10:40:53 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <B2C8E6B1-523D-4890-B433-64B2BCB5B9AD@netapp.com>
-References: <1329426646-2074-1-git-send-email-andros@netapp.com>
-	<1329427752.19793.30.camel@lade.trondhjem.org>
-	<18B83A3A-12E1-42D8-AE93-9BC2C5FDB136@netapp.com>
-	<B2C8E6B1-523D-4890-B433-64B2BCB5B9AD@netapp.com>
-Date: Fri, 17 Feb 2012 13:40:53 -0500
-Message-ID: <CAHVgHyVGoJNfh-cQ7KsNCyUJhegYpKaJAdsAa5D-QACf-krA_g@mail.gmail.com>
-Subject: Re: [PATCH Version 2 1/1] NFSv4.1 set the cl_hostname for data servers
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756585Ab2BAPpN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:13 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:13 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 9/9] nfsdcld: update the README
+Date: Wed,  1 Feb 2012 10:44:56 -0500
+Message-Id: <1328111096-28430-10-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Isn't the clp->cl_rpcclient->cl_server always the same as
-clp->cl_hostname? Can we just get rid of the cl_hostname and use the
-cl_server?
+Add info to the README about when this daemon should be started, and
+its build and runtime requirements.
 
--->Andy
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ README |   25 +++++++++++++++++++++++--
+ 1 files changed, 23 insertions(+), 2 deletions(-)
 
-On Thu, Feb 16, 2012 at 5:08 PM, Adamson, Dros
-<Weston.Adamson@netapp.com> wrote:
->
-> On Feb 16, 2012, at 5:00 PM, Adamson, Dros wrote:
->
->>
->> On Feb 16, 2012, at 4:29 PM, Myklebust, Trond wrote:
->>
->>> On Thu, 2012-02-16 at 16:10 -0500, andros@netapp.com wrote:
->>>> From: Andy Adamson <andros@netapp.com>
->>>>
->>>> Used by /proc/fs/nfsfs/servers
->>>>
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>> fs/nfs/client.c            |    3 ++-
->>>> fs/nfs/internal.h          |    3 ++-
->>>> fs/nfs/nfs4filelayoutdev.c |   11 ++++++++++-
->>>> 3 files changed, 14 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>>> index d0f850f..c625284 100644
->>>> --- a/fs/nfs/client.c
->>>> +++ b/fs/nfs/client.c
->>>> @@ -1443,7 +1443,7 @@ error:
->>>> */
->>>> struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
->>>>             const struct sockaddr *ds_addr,
->>>> -           int ds_addrlen, int ds_proto)
->>>> +           int ds_addrlen, int ds_proto, char *ds_hostname)
->>>
->>> Can you make this (and the other instances below) 'const char *', so
->>> that we avoid any confusion? Otherwise it looks more or less OK...
->>>
->>> Note that we should consider splitting da->da_remotestr into a
->>> hostname/port part at some point so that we avoid the copy below.
->>
->> da_remotestr (and ds_remotestr) were meant to be for display only (and iirc they can actually be NULL).
->
-> ^^ dprintk() display, that is.
->
->>
->> The right way to do this is from the actual sin_addr (da_addr).
->>
->> -dros
->
+diff --git a/README b/README
+index e7588cf..cb1d2f5 100644
+--- a/README
++++ b/README
+@@ -15,6 +15,8 @@ libraries.  They are available from
+    http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/
+ Otherwise use --disable-nfsv4
+ 
++To use the nfsdcld tracking daemon, nfsv4 support must be enabled,
++and the libsqlite3 development libraries must be installed.
+ 
+ 1. COMPILING
+ 
+@@ -106,12 +108,31 @@ scripts can be written to work correctly.
+        the lock.
+        rpc.statd is only needed for NFSv2 and NFSv3 support.
+ 
+-   E/ rpc.nfsd
++   E/ nfsdcld
++       This daemon is only needed on kernels that support the nfsdcld
++       upcall, and only if the legacy client ID tracking isn't used. It
++       is also not needed if the server does not support NFSv4.
++
++       To determine whether you need this or not, do the following:
++
++           # cat /proc/fs/nfsd/versions
++
++       That should yield a list of NFS versions that this kernel supports,
++       if "4" or later is not in that list, or they are prefixed with a "-"
++       then you don't need to run this daemon. Next:
++
++           # cat /proc/fs/nfsd/nfsv4recoverydir
++
++       If that file is not present, or the directory that the above command
++       outputs is not present, then this daemon is required in order to
++       support lock recovery by the clients when the server reboots.
++
++   F/ rpc.nfsd
+        Starting nfsd will automatically start lockd.  The nfs server
+        will now be fully active and respond to any requests from
+        clients.
+        
+-   F/ sm-notify
++   G/ sm-notify
+        This will notify any client which might have locks from before
+        a reboot to try to reclaim their locks.  This should start
+        immediately after rpc.nfsd is started so that clients have a
+-- 
+1.7.7.6
+
