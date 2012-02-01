@@ -1,42 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24489 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751525Ab2BPTs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 14:48:28 -0500
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GJmSWc012134
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 11:48:28 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 16 Feb 2012 19:48:20 +0000
-Message-ID: <1329421700.4279.21.camel@lade.trondhjem.org>
-References: <1329171728-3980-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1329171728-3980-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:61993 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756584Ab2BAPoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:44:23 -0500
+Received: by mail-qw0-f46.google.com with SMTP id c10so3561743qad.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:44:23 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 3/5] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+Date: Wed,  1 Feb 2012 10:44:10 -0500
+Message-Id: <1328111052-28389-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAyLTEzIGF0IDE3OjIyIC0wNTAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBy
-dC5jDQo+IGluZGV4IGVmZTU0OTUuLmFiN2EyOGYgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMv
-eHBydC5jDQo+ICsrKyBiL25ldC9zdW5ycGMveHBydC5jDQo+IEBAIC0xMTMyLDcgKzExMzIsMTAg
-QEAgdm9pZCB4cHJ0X3JlbGVhc2Uoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCQlyZXR1cm47
-DQo+ICANCj4gIAl4cHJ0ID0gcmVxLT5ycV94cHJ0Ow0KPiAtCXJwY19jb3VudF9pb3N0YXRzKHRh
-c2spOw0KPiArCWlmICh0YXNrLT50a19jbGllbnQpDQo+ICsJCXJwY19jb3VudF9pb3N0YXRzKHRh
-c2ssIHRhc2stPnRrX2NsaWVudC0+Y2xfbWV0cmljcyk7DQo+ICsJaWYgKHRhc2stPnRrX29wcy0+
-cnBjX2NvdW50X3N0YXRzICE9IE5VTEwpDQo+ICsJCXRhc2stPnRrX29wcy0+cnBjX2NvdW50X3N0
-YXRzKHRhc2ssIHRhc2stPnRrX2NhbGxkYXRhKTsNCj4gIAlzcGluX2xvY2tfYmgoJnhwcnQtPnRy
-YW5zcG9ydF9sb2NrKTsNCj4gIAl4cHJ0LT5vcHMtPnJlbGVhc2VfeHBydCh4cHJ0LCB0YXNrKTsN
-Cj4gIAlpZiAoeHBydC0+b3BzLT5yZWxlYXNlX3JlcXVlc3QpDQoNCjIgbml0czoNCg0KICAgICAx
-LiBBcmVuJ3Qgd2UgZ3VhcmFudGVlZCB0aGF0IHRhc2stPnRrX2NsaWVudCAhPSBOVUxMIGluDQog
-ICAgICAgIHhwcnRfcmVsZWFzZSgpPw0KICAgICAyLiBTaG91bGRuJ3Qgd2UgYmUgY2FsbGluZyBf
-ZWl0aGVyXyBycGNfY291bnRfaW9zdGF0cygpLCBfb3JfDQogICAgICAgIHRhc2stPnRrX29wcy0+
-cnBjX2NvdW50X3N0YXRzKCk/IEFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZQ0KICAgICAgICBuZnNz
-dGF0IG91dHB1dCB3aWxsIG5vdyBiZSBkb3VibGUtY291bnRpbmcgYW5kIHBORlMgcmVhZHMsDQog
-ICAgICAgIHdyaXRlcyBhbmQgY29tbWl0cyB0aGF0IGFyZSBzZW50IHRvIHRoZSBEUy4NCg0KQ2hl
-ZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+We'll need a way to flag the nfs4_client as already being recorded on
+stable storage so that we don't continually upcall.
+
+The cl_cb_flags field is only using 2 bits right now, so repurpose that
+to a generic flags field. Rename NFSD4_CLIENT_KILL to
+NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
+flags. Add a mask that we can use for existing checks that look to see
+whether any flags are set, so that the new STABLE flag doesn't
+interfere.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |   12 ++++++------
+ fs/nfsd/state.h        |    8 +++++---
+ 2 files changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 6f3ebb4..730e2cc 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -756,7 +756,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+ 	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+-	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	do_probe_callback(clp);
+ }
+ 
+@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
+ /* must be called under the state lock */
+ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ {
+-	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
+ 	/*
+ 	 * Note this won't actually result in a null callback;
+ 	 * instead, nfsd4_do_callback_rpc() will detect the killed
+@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 		clp->cl_cb_conn.cb_xprt = NULL;
+ 	}
+-	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
++	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
+ 		return;
+ 	spin_lock(&clp->cl_lock);
+ 	/*
+ 	 * Only serialized callback code is allowed to clear these
+ 	 * flags; main nfsd code can only set them:
+ 	 */
+-	BUG_ON(!clp->cl_cb_flags);
+-	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
++	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
+ 	c = __nfsd4_find_backchannel(clp);
+ 	if (c) {
+@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+-	if (clp->cl_cb_flags)
++	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+ 		nfsd4_process_cb_update(cb);
+ 
+ 	clnt = clp->cl_cb_client;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 8f539ee..0f9a0ac 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -250,9 +250,11 @@ struct nfs4_client {
+ 
+ 	/* for v4.0 and v4.1 callbacks: */
+ 	struct nfs4_cb_conn	cl_cb_conn;
+-#define NFSD4_CLIENT_CB_UPDATE	1
+-#define NFSD4_CLIENT_KILL	2
+-	unsigned long		cl_cb_flags;
++#define NFSD4_CLIENT_STABLE		(0)	/* client on stable storage */
++#define NFSD4_CLIENT_CB_UPDATE		(1)
++#define NFSD4_CLIENT_CB_KILL		(2)
++#define NFSD4_CLIENT_CB_FLAG_MASK	(0x6)
++	unsigned long		cl_flags;
+ 	struct rpc_clnt		*cl_cb_client;
+ 	u32			cl_cb_ident;
+ #define NFSD4_CB_UP		0
+-- 
+1.7.7.6
+
