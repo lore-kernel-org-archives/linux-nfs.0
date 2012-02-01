@@ -1,62 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51905 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39818 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752049Ab2BPQRY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 11:17:24 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/3] NFSv4: fix server_scope memory leak
-Date: Thu, 16 Feb 2012 11:17:05 -0500
-Message-Id: <1329409026-20466-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1329409026-20466-1-git-send-email-dros@netapp.com>
-References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+	id S1753980Ab2BAVq6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Feb 2012 16:46:58 -0500
+Date: Wed, 1 Feb 2012 16:46:56 -0500
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
+Message-ID: <20120201214656.GA19075@fieldses.org>
+References: <1327963365-2921-1-git-send-email-bfields@redhat.com>
+ <4F273FD4.3020005@cn.fujitsu.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F273FD4.3020005@cn.fujitsu.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-server_scope would never be freed if nfs4_check_cl_exchange_flags() returned
-non-zero
+On Tue, Jan 31, 2012 at 09:11:48AM +0800, Mi Jinlong wrote:
+> 
+> 
+> J. Bruce Fields 写道:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > Move calculation of the default into a helper function.
+> > 
+> > Get rid of an unused variable "err" while we're there.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
+> >  1 files changed, 24 insertions(+), 20 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index eda7d7e..2ad5ffe 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -307,33 +307,37 @@ static void set_max_drc(void)
+> >  	dprintk("%s nfsd_drc_max_mem %u ¥n", __func__, nfsd_drc_max_mem);
+> >  }
+> >  
+> > -int nfsd_create_serv(void)
+> > +static int nfsd_get_default_max_blksize(void)
+> >  {
+> > -	int err = 0;
+> > +	struct sysinfo i;
+> > +	unsigned long target;
+> > +	unsigned long bytes;
+> > +
+> > +	si_meminfo(&i);
+> > +	target = i.totalram << PAGE_SHIFT;
+> > +	/*
+> > +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
+> > +	 * machines, but only uses 32K on 128M machines.  Bottom out at
+> > +	 * 8K on 32M and smaller.  Of course, this is only a default.
+> > +	 */
+> > +	target <<= 12;
+> 
+>   Should use target = i.totalram << (PAGE_SHIFT - 12);
+> 
+>   target = i.totalram << PAGE_SHIFT; and 
+>   target <<= 12;
+>   means target = i.totalram << (PAGE_SHIFT + 12);
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c |   15 +++++++++------
- 1 files changed, 9 insertions(+), 6 deletions(-)
+Yes, thanks for catching that.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 87c584d..20c3bb0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4945,8 +4945,10 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 				clp->cl_rpcclient->cl_auth->au_flavor);
- 
- 	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
--	if (unlikely(!res.server_scope))
--		return -ENOMEM;
-+	if (unlikely(!res.server_scope)) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
- 
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
-@@ -4963,12 +4965,13 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			clp->server_scope = NULL;
- 		}
- 
--		if (!clp->server_scope)
-+		if (!clp->server_scope) {
- 			clp->server_scope = res.server_scope;
--		else
--			kfree(res.server_scope);
-+			goto out;
-+		}
- 	}
--
-+	kfree(res.server_scope);
-+out:
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
--- 
-1.7.4.4
+Also, splitting up the calculation as I did above risks overflow at the
+first step.
 
+I'll fix that....
+
+--b.
