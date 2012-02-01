@@ -1,54 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31279 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753276Ab2B0PnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 10:43:24 -0500
-Message-ID: <4F4BA479.60907@parallels.com>
-Date: Mon, 27 Feb 2012 19:42:49 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 2/4] NFS: replace per-net client lock by mutex
-References: <20120227134623.13371.61185.stgit@localhost6.localdomain6>	 <20120227134900.13371.96849.stgit@localhost6.localdomain6> <1330354815.5541.24.camel@lade.trondhjem.org>
-In-Reply-To: <1330354815.5541.24.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754641Ab2BAPpI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:08 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:08 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v5 5/9] nfsdcld: add check/update functionality
+Date: Wed,  1 Feb 2012 10:44:52 -0500
+Message-Id: <1328111096-28430-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-27.02.2012 19:00, Myklebust, Trond пишет:
-> On Mon, 2012-02-27 at 17:49 +0400, Stanislav Kinsbursky wrote:
->> Lockdep is sad otherwise, because inode mutex is taken on PipeFS dentry
->> creation, which can be called on mount notification, where this per-net client
->> lock is taken on clients list walk.
->>
->> Note: I used simple mutex instead of rw semaphore because of
->> nfs_put_client->atomic_dec_and_mutex_lock() call. Probably, there is a better
->> solution here.
->>
->> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>
->
-> This is overkill... We end up blocking NFSv4 callbacks while the
-> rpc_pipefs notifier runs through the nfs_clients creating or destroying
-> idmapper dentries.
->
-> Surely the rpc_pipefs_event() can take a reference to the nfs_client and
-> then drop the spin_lock if it sees that it needs to create or destroy a
-> dentry?
->
+Add functions to check whether a client is allowed to reclaim, and
+update its timestamp in the DB if so. If either the query or update
+fails, then the host is not allowed to reclaim state.
 
-Sure, thanks for notice.
-Looks like this logic also works to SUNRPC clients.
-I'll send updated version soon.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c |   35 ++++++++++++++++++++++
+ utils/nfsdcld/sqlite.c  |   73 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/nfsdcld/sqlite.h  |    1 +
+ 3 files changed, 109 insertions(+), 0 deletions(-)
 
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index ce8355a..eb01d23 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -202,6 +202,38 @@ cld_remove(struct cld_client *clnt)
+ }
+ 
+ static void
++cld_check(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_msg;
++
++	xlog(D_GENERAL, "%s: check client record", __func__);
++
++	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
++				  cmsg->cm_u.cm_name.cn_len);
++
++	/* set up reply */
++	cmsg->cm_status = ret ? -EACCES : ret;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
++			cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		ret = cld_pipe_open(clnt);
++		if (ret) {
++			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
++					__func__, ret);
++			exit(ret);
++		}
++	}
++}
++
++static void
+ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+@@ -232,6 +264,9 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_Remove:
+ 		cld_remove(clnt);
+ 		break;
++	case Cld_Check:
++		cld_check(clnt);
++		break;
+ 	default:
+ 		xlog(L_WARNING, "%s: command %u is not yet implemented",
+ 				__func__, cmsg->cm_cmd);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index a198c34..01bba1a 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -287,3 +287,76 @@ out_err:
+ 	sqlite3_finalize(stmt);
+ 	return ret;
+ }
++
++/*
++ * Is the given clname in the clients table? If so, then update its timestamp
++ * and return success. If the record isn't present, or the update fails, then
++ * return an error.
++ */
++int
++sqlite_check_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "id==?", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "%s: unexpected return code from select: %d",
++				__func__, ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	xlog(D_GENERAL, "%s: select returned %d rows", ret);
++	if (ret != 1) {
++		ret = -EACCES;
++		goto out_err;
++	}
++
++	sqlite3_finalize(stmt);
++	stmt = NULL;
++	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
++				      "time=strftime('%s', 'now') WHERE id==?",
++				 -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(L_ERROR, "%s: unexpected return code from update: %s",
++				__func__, sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 425f5ba..59ebd72 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -23,5 +23,6 @@
+ int sqlite_maindb_init(char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
++int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+ 
+ #endif /* _SQLITE_H */
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.6
+
