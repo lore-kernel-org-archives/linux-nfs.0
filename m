@@ -1,121 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751555Ab2BOVf1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:27 -0500
-Received: by mail-iy0-f174.google.com with SMTP id b35so1972889iac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:27 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/13] NFS: Clean up debugging in decode_pathname()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:35:25 -0500
-Message-ID: <20120215213525.3254.55844.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from mail.mera.ru ([195.98.57.161]:7574 "EHLO mail.mera.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752420Ab2BBEuJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 23:50:09 -0500
+From: "Vlasov, Vladimir" <vvlasov@mera.ru>
+To: "Vlasov, Vladimir" <vvlasov@mera.ru>, NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Re-init lockd and kstatd in runtime.
+Date: Thu, 2 Feb 2012 04:50:06 +0000
+Message-ID: <06EFEBD57610DE4FBCA0449DDF4E102B088BD0@tecas.te.mera.ru>
+References: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
+ <20120126224042.63cdd70e@notabene.brown>
+  <06EFEBD57610DE4FBCA0449DDF4E102B0878A3@tecas.te.mera.ru>
+In-Reply-To: <06EFEBD57610DE4FBCA0449DDF4E102B0878A3@tecas.te.mera.ru>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I noticed recently that decode_attr_fs_locations() is not generating
-very pretty debugging output.  The pathname components each appear on
-a separate line of output, though that does not appear to be the
-intended display behavior.  The preferred way to generate continued
-lines of output on the console is to use pr_cont().
+Well, nobody deal with HA Linux clusters?
 
-Note that incoming pathname4 components contain a string that is not
-necessarily NUL-terminated.  I did actually see some trailing garbage
-on the console.  In addition to correcting the line continuation
-problem, add a string precision format specifier to ensure that each
-component string is displayed properly, and that vsnprintf() does
-not Oops.
+Best regards
+Vladimir Vlasov
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Vlasov, Vladimir
+Sent: Friday, January 27, 2012 12:32 PM
+To: NeilBrown
+Cc: linux-nfs@vger.kernel.org
+Subject: RE: Re-init lockd and kstatd in runtime.
 
-Someone pointed out that allowing incoming network data to possibly
-generate a console line of unbounded length may not be such a good
-idea.  Since this output will rarely be enabled, and there is a hard
-upper bound (NFS4_PATHNAME_MAXCOMPONENTS) in our implementation, this
-is probably not a major concern.
+Finally I have found notes on HA NFS on SLES9 - http://www.gatsby.ucl.ac.uk/~johnp/compute/ha-nfs-sles9.html
+There are more info on this topic, for instance http://linux-ha.org/DRBD/NFS Suddenly I realized that previous designer was following these guidelines :-)
 
-It might be useful to additionally sanity-check the length of each
-incoming component, however.  RFC 3530bis15 does not suggest a maximum
-number of UTF-8 characters per component for either the pathname4 or
-component4 types.  However, we could invent one that is appropriate
-for our implementation.
+I have found that all documents suggest to have both primary and standby hosts configured as NFS server only and start/stop server processes when role is changed.
+This way /var/lib/nfs, even relocating on DRBD partition, is always available on NFS server startup.
+So, it is OK to have /var/lib/nfs as link to the folder on DRBD partition.
 
-Another possibility is to scrap all of this and print these pathnames
-in upper layers after a reasonable amount of sanity checking in the
-XDR layer.  This would give us an opportunity to allocate a full
-buffer so that the whole pathname would be output via a single
-dprintk.
+What I have different is that my system breaks rule of acting as NFS servers only: standby host acts as NFS client until it becomes primary, then it should act as server.
 
-Introduced by commit 7aaa0b3b: "NFSv4: convert fs-locations-components
-to conform to RFC3530," (June 9, 2006).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I'll summarize info here:
+"server" is DNS record, resolved into IP of the primary host.
 
- fs/nfs/nfs4xdr.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+HOST1, primary:
+/dev/drbd is mounted as /storage
+/storage is exported
+server:/storage is mounted as /some/path /var/lib/nfs is link to the /some/path/var/lib/nfs and is available
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 51ef966..606852a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3512,16 +3512,17 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
- 	n = be32_to_cpup(p);
- 	if (n == 0)
- 		goto root_path;
--	dprintk("path ");
-+	dprintk("pathname4: ");
- 	path->ncomponents = 0;
- 	while (path->ncomponents < n) {
- 		struct nfs4_string *component = &path->components[path->ncomponents];
- 		status = decode_opaque_inline(xdr, &component->len, &component->data);
- 		if (unlikely(status != 0))
- 			goto out_eio;
--		if (path->ncomponents != n)
--			dprintk("/");
--		dprintk("%s", component->data);
-+		if (unlikely(nfs_debug & NFSDBG_XDR))
-+			pr_cont("%s%.*s ",
-+				(path->ncomponents != n ? "/ " : ""),
-+				component->len, component->data);
- 		if (path->ncomponents < NFS4_PATHNAME_MAXCOMPONENTS)
- 			path->ncomponents++;
- 		else {
-@@ -3530,14 +3531,13 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
- 		}
- 	}
- out:
--	dprintk("\n");
- 	return status;
- root_path:
- /* a root pathname is sent as a zero component4 */
- 	path->ncomponents = 1;
- 	path->components[0].len=0;
- 	path->components[0].data=NULL;
--	dprintk("path /\n");
-+	dprintk("pathname4: /\n");
- 	goto out;
- out_eio:
- 	dprintk(" status %d", status);
-@@ -3559,7 +3559,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 	status = 0;
- 	if (unlikely(!(bitmap[0] & FATTR4_WORD0_FS_LOCATIONS)))
- 		goto out;
--	dprintk("%s: fsroot ", __func__);
-+	dprintk("%s: fsroot:\n", __func__);
- 	status = decode_pathname(xdr, &res->fs_path);
- 	if (unlikely(status != 0))
- 		goto out;
-@@ -3580,7 +3580,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 		m = be32_to_cpup(p);
- 
- 		loc->nservers = 0;
--		dprintk("%s: servers ", __func__);
-+		dprintk("%s: servers:\n", __func__);
- 		while (loc->nservers < m) {
- 			struct nfs4_string *server = &loc->servers[loc->nservers];
- 			status = decode_opaque_inline(xdr, &server->len, &server->data);
+HOST2:
+/dev/drbd is not mounted, /storage is empty server:/storage is mounted as /some/path /var/lib/nfs is link to the /some/path/var/lib/nfs and is empty
 
+So, due to this /some/path mount existing on both hosts I have problem with initialization of the kstatd on the standby host, where /var/lib/nfs looks like empty folder.
+I have requirement for having /some/path on both hosts, so I can't fallback to guidelines advices.
+I need to do NFS client became NFS server somehow. There should be some runtime re-initialization. This is what I'm looking for.
+
+Could someone comment on this?
+Is there any way to do so?
+Or any better solution?
+
+By the way, browsing sources I have found that one can set nsm_use_kstatd to 1 on lockd exit, then initialization will be successful on next mount or export attempts.
+I think someone can find it useful so created patch. Unfortunately I don't have neither time nor enough code knowledge.
+In my case this proposal has drawback - lockd exits when all mounts are unmounted only, so I have to umount /some/path first and then mount it back.
+It can be painful as soon as some files can be opened by local user and umount will complain with it's usual "device is busy".
+
+Also I was thinking about having /var/lin/nfs locally, separate for each host, so kstatd will be initialized always, but how do I share vital info about clients then?
+I have found it to be dead-end.
+
+
+Best regards
+Vladimir Vlasov
+
+-----Original Message-----
+From: Vlasov, Vladimir
+Sent: Thursday, January 26, 2012 4:14 PM
+To: 'NeilBrown'
+Cc: linux-nfs@vger.kernel.org
+Subject: RE: Re-init lockd and kstatd in runtime.
+
+Yes, it is SLES10 SP3 and I'm a customer.
+I'm not sure that Novell can help me, I expect the same proposal from them - "just make sure that /var/lib/nfs is available on startup".
+I'm not satisfied with this because I have some kind of high availability system built with two Linux hosts.
+
+Hosts share DRBD partition and one acting as primary exports, for instance /some/path.
+As soon as primary host fails, another one becomes primary and exports /some/path.
+There are more hosts on the network, they mount:
+server:/some/path
+where "server" is resolved to the IP of current primary host which currently exports path.
+
+So, in order to keep and overtake data about clients, /var/lib/nfs is replaced with link and points to /some/path/var/lib/nfs.
+If You don't familiar with DRBD then the most important thing You should know is that it is available for R/W on primary host only.
+So, on primary host DRBD is R/W, /var/lib/nfs is available and kstatd starts.
+On another host DRBD is NOT R/W, /var/lib/nfs is empry and kstatd doesn't start.
+This is why I'm looking for how do I re-init it at any time.
+
+I was looking for guidelines of using NFS in clusters but didn't found anything useful.
+
+Best regards
+Vladimir Vlasov
+
+-----Original Message-----
+From: NeilBrown [mailto:neilb@suse.de]
+Sent: Thursday, January 26, 2012 3:41 PM
+To: Vlasov, Vladimir
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Re-init lockd and kstatd in runtime.
+
+On Thu, 26 Jan 2012 11:15:02 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> wrote:
+
+> Hi.
+> 
+> I'm wondering if there is any way to re-init lockd and kstatd after startup?
+> 
+> Look, in svc.c static variable nsm_use_kstatd is set to 1.
+> Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set to 0.
+> And we end up without kstatd.
+> 
+> Lockd will exit as soon as last NFS mount is unmounted and on next mount attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 already and kstatd init will be skipped.
+> 
+> So, looks like if /var/lib/nfs/state is missed on host startup, there is no way to recover and tell kernel init kstatd later on demand. Or?
+
+This would be SLES10 - correct?
+
+I suggest you simply make sure /var/lib/nfs/state is not missing at startup.
+
+The issue sounds vaguely familiar ... maybe it is fixed in SLES10-SP4...
+
+What release are you running?  Are you a SLES customer?  If you are, you would be better off logging a support request on the SUSE bugzilla (bugzilla.novell.com).
+
+NeilBrown
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
