@@ -1,42 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63351 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754563Ab2BGSsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 13:48:19 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
-Date: Tue, 7 Feb 2012 18:48:03 +0000
-Message-ID: <1328640482.4124.29.camel@lade.trondhjem.org>
-References: <1328633351-1741-1-git-send-email-dros@netapp.com>
-	 <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com>
-	 <4F316BC4.4030504@panasas.com>
-	 <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
-	 <1328640084.4124.26.camel@lade.trondhjem.org>
-In-Reply-To: <1328640084.4124.26.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:37067 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754830Ab2BBK6I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 05:58:08 -0500
+Received: by werb13 with SMTP id b13so1700756wer.19
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2012 02:58:06 -0800 (PST)
 MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4F2A2F9E.6030908@steve-ss.com>
+References: <4F2A2F9E.6030908@steve-ss.com>
+Date: Thu, 2 Feb 2012 11:58:06 +0100
+Message-ID: <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com>
+Subject: Re: where can I ask user qns about nfs4?
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: steve <steve@steve-ss.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTA3IGF0IDEzOjQxIC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IFRoYXQgc2FpZCwgSSBzZWUgdGhlICd2ZXJzPTQnIGJlaW5nIHJlc2VydmVkIGZvciBhdXRv
-LW5lZ290aWF0aW9uIG9mDQo+IG1pbm9yIHZlcnNpb24sIGFuZCB0aGUgJ3ZlcnM9NC54JyBhcyBy
-ZXF1aXJpbmcgYSBzcGVjaWZpYyBtaW5vciB2ZXJzaW9uDQo+IG51bWJlci4NCj4gVGhlIHdheSBh
-dXRvLW5lZ290aWF0aW9uIGlzIHN1cHBvc2VkIHRvIHdvcmsgaXMgbGFpZCBvdXQgaW4NCj4gUkZD
-MzUzMCgtYmlzKTogdGhlIGNsaWVudCBhdHRlbXB0cyB0aGUgbGFyZ2VzdCBtaW5vciB2ZXJzaW9u
-IHRoYXQgaXQNCj4gc3VwcG9ydHMsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhbiBPSywg
-b3IgYSBNSU5PUl9WRVJTSU9OX01JU01BVENIDQo+IGRlcGVuZGluZyBvbiB3aGV0aGVyIGl0IHN1
-cHBvcnRzIHRoYXQgbWlub3IgdmVyc2lvbiBvciBub3QuIElmIG5vdCwgdGhlDQo+IGNsaWVudCBy
-ZXRyaWVzIHdpdGggdGhlIG5leHQgbGFyZ2VzdCBtaW5vciB2ZXJzaW9uLCAuLi4uIHJpbmNlLCBy
-ZXBlYXQNCj4gdW50aWwgc3VjY2Vzc2Z1bC4uLg0KDQpCVFc6IFRoZXJlIGlzIG5vIHJlYXNvbiB3
-aHkgd2Ugc2hvdWxkIG5lZWQgdG8gZG8gdGhpcyBhdXRvLW5lZ290aWF0aW9uDQppbiBrZXJuZWwg
-c3BhY2UuIEFzIHdlJ3ZlIGxlYXJuZWQgd2l0aCBtYWpvciB2ZXJzaW9uIG5lZ290aWF0aW9uLCBp
-dCBjYW4NCmJlIG1vcmUgZmxleGlibGUgdG8ganVzdCB0ZWFjaCB0aGUgJ21vdW50JyBjb21tYW5k
-IHRvIGRvIHRoZSBhY3R1YWwNCnByb2JpbmcsIHNpbmNlIHRoYXQgYWxsb3dzIHRoZSB1c2VyIGJl
-dHRlciBjb250cm9sIG92ZXIgdGhlIHByb2Nlc3MgdmlhDQpnbG9iYWwgY29uZmlndXJhdGlvbiBm
-aWxlcy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQoNCg==
+Hi Steve,
+
+On Thu, Feb 2, 2012 at 7:39 AM, steve <steve@steve-ss.com> wrote:
+> I want to ask a question about nfs4 keytabs and Samba 4. I've tried asking
+> here, on the Samba 4 list and on the openSUSE list (which is my Linux
+> distribution) but they refer me to an nfs list. I see that this list is only
+> for nfs devs.
+>
+> I don't want to waste your time here but my question is just this:
+>
+> My nfs4 server has a service principal nfs/server.domain.name
+>
+> I already use nfs4 to serve my Linux clients. I'm going to kerberize it. My
+> clients already have machine and host principals. What else do they need?
+>
+> 1. nfs/client.domain.name
+> 2. nfs/server.domain/name
+> 3. neither
+> 4. both
+>
+
+We run kerberized NFS.
+
+our keytab contains:
+
+on server;
+  nfs/server.domain
+
+on client:
+  nfs/client.domain
+
+and, of course, you need a consistent  idmap configuration.
+
+Tigran.
+
+> The Google doco is contradictory and confusing to say the least. If you
+> can't help, could you point me in the right direction?
+>
+> Thanks so much fr your time,
+> Steve
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
