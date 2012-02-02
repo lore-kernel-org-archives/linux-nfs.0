@@ -1,48 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:61931 "EHLO
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:36967 "EHLO
 	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932287Ab2BATs0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 14:48:26 -0500
-Received: by wgbdt10 with SMTP id dt10so1700155wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 11:48:25 -0800 (PST)
+	with ESMTP id S1753014Ab2BBNFT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 08:05:19 -0500
+Received: by wgbdt10 with SMTP id dt10so2539088wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2012 05:05:18 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <558BFA3B-5519-4224-83F3-6DEAB35310C0@oracle.com>
-References: <1324602327-1789-1-git-send-email-teg@jklm.no> <1328096830-1383-1-git-send-email-teg@jklm.no>
- <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com> <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
- <558BFA3B-5519-4224-83F3-6DEAB35310C0@oracle.com>
-From: Tom Gundersen <teg@jklm.no>
-Date: Wed, 1 Feb 2012 20:48:05 +0100
-Message-ID: <CAG-2HqUcTn9UEDFY8_Rum2Z48GVD5wWV94KcZY6R+UVAWR_R6w@mail.gmail.com>
-Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Lennart Poettering <lennart@poettering.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Michal Schmidt <mschmidt@redhat.com>,
-        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
-        libtirpc <libtirpc-devel@lists.sourceforge.net>
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4F2A74A7.4060905@steve-ss.com>
+References: <4F2A2F9E.6030908@steve-ss.com>
+	<CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com>
+	<4F2A74A7.4060905@steve-ss.com>
+Date: Thu, 2 Feb 2012 14:05:18 +0100
+Message-ID: <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com>
+Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: steve <steve@steve-ss.com>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 1, 2012 at 7:16 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Submit the patch you have below, then white space fixes become subsequent clean up patches.  Not only is review easier now, but if we come back to these changes in a year to fix bugs, it's easier for us to re-learn what it does.
+On Thu, Feb 2, 2012 at 12:33 PM, steve <steve@steve-ss.com> wrote:
+> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
+>>
+>> Hi Steve,
+>>
+>>>
+>>> I already use nfs4 to serve my Linux clients. I'm going to kerberize it.
+>>> My
+>>> clients already have machine and host principals. What else do they need?
+>>>
+>>> 1. nfs/client.domain.name
+>>> 2. nfs/server.domain/name
+>>> 3. neither
+>>> 4. both
+>>>
+>>
+>> We run kerberized NFS.
+>>
+>> our keytab contains:
+>>
+>> on server;
+>>   nfs/server.domain
+>>
+>> on client:
+>>   nfs/client.domain
+>>
+>> and, of course, you need a consistent  idmap configuration.
+>>
+>> Tigran.
+>>
+> Hi Tigran
+>
+> That's what we have on our test lan at the moment. I can understand that the
+> server would need the service principal:
+>   nfs/server.domain
+> but not the client, as it's not offering any kerberized service.
 
-I'll resubmit as two patches (one only doing indentation). Though,
-I'll wait a ittle while in case there is more feedback.
+The mount step happens on behalf of host as there are no user requests yet.
+Client host credentials are used at that time.
 
-> I'll state the question differently: When the SYSTEMD macro is defined, what kind of tests should we run? In general, how do we confirm this is working as expected?  (There may be no good answer at the moment).
+>
+> As an experiment, I removed the nfs/client.domain from a client keytab,
+> rebooted and remounted the share. We could still access the kerberized nfs
+> share. Maybe there were still some tickets left somewhere? That has me
+> really confused.
 
-In general the patch is meant to achieve two things:
+Huh! did you enforce kerberos in /etc/exports?
 
-1) If not using systemd, everything should work as before, even if the
-SYSTEMD macro is defined.
-
-2) When using systemd, enabling rpcbind.socket should cause rpcbind to
-start on demand and act as if it was running all along. Anything that
-used to be "After=rpcbind.service" should simply be
-"After=rpcbind.socket" (or more generally: "After=rpcbind.target",
-which in turn is "After=rpcbind.socket").
-
-Cheers,
-
-Tom
+Tigran.
+>
+> And yes, we found out very early on that idmapd had to be running at both
+> ends.
+>
+> Thanks for the reply. You've got me thinking.
+> Steve
