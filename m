@@ -1,148 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48360 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:47502 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756126Ab2BFW4q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 17:56:46 -0500
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 03/11] mm: Methods for teaching filesystems about PG_swapcache pages
-Date: Mon,  6 Feb 2012 22:56:33 +0000
-Message-Id: <1328569001-17599-4-git-send-email-mgorman@suse.de>
-In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
-References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+	id S1751232Ab2BBWpm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Feb 2012 17:45:42 -0500
+Date: Thu, 2 Feb 2012 17:45:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 1/5] nfsd: add nfsd4_client_tracking_ops struct and
+ a way to set it
+Message-ID: <20120202224541.GA28291@fieldses.org>
+References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+ <1328111052-28389-2-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1328111052-28389-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to teach filesystems to handle swap cache pages, three new
-page functions are introduced:
+Just nits:
 
-  pgoff_t page_file_index(struct page *);
-  loff_t page_file_offset(struct page *);
-  struct address_space *page_file_mapping(struct page *);
+On Wed, Feb 01, 2012 at 10:44:08AM -0500, Jeff Layton wrote:
+> +static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+> +	.init		= nfsd4_load_reboot_recovery_data,
+> +	.exit		= nfsd4_shutdown_recdir,
+> +	.create		= nfsd4_create_clid_dir,
+> +	.remove		= nfsd4_remove_clid_dir,
+> +	.check		= nfsd4_check_legacy_client,
+> +	.grace_done	= nfsd4_recdir_purge_old,
+> +};
+> +
+> +int
+> +nfsd4_client_tracking_init(void)
+> +{
+> +	int status;
+> +
+> +	client_tracking_ops = &nfsd4_legacy_tracking_ops;
+> +
+> +	if (!client_tracking_ops->init)
+> +		return 0;
 
-page_file_index() - gives the offset of this page in the file in
-PAGE_CACHE_SIZE blocks. Like page->index is for mapped pages, this
-function also gives the correct index for PG_swapcache pages.
+Is that check necessary?
 
-page_file_offset() - uses page_file_index(), so that it will give
-the expected result, even for PG_swapcache pages.
+> +
+> +	status = client_tracking_ops->init();
+> +	if (status) {
+> +		printk(KERN_WARNING "NFSD: Unable to initialize client "
+> +				    "recovery tracking! (%d)\n", status);
+> +		client_tracking_ops = NULL;
+> +	}
+> +	return status;
+> +}
+> +
+> +void
+> +nfsd4_client_tracking_exit(void)
+> +{
+> +	if (client_tracking_ops && client_tracking_ops->exit)
 
-page_file_mapping() - gives the mapping backing the actual page;
-that is for swap cache pages it will give swap_file->f_mapping.
+In general I don't see the point of handling the case where one of the
+ops is NULL.  If there was some implementation that really wanted that
+we could get the same effect by defining a default no-op implementation
+they could use, but I don't think there actually is?
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/mm.h      |   25 +++++++++++++++++++++++++
- include/linux/pagemap.h |    5 +++++
- mm/swapfile.c           |   20 ++++++++++++++++++++
- 3 files changed, 50 insertions(+), 0 deletions(-)
+> +int
+> +nfsd4_client_record_check(struct nfs4_client *clp)
+> +{
+> +	if (client_tracking_ops && client_tracking_ops->check)
+> +		return client_tracking_ops->check(clp);
+> +
+> +	return -EOPNOTSUPP;
+> +}
+> +
+> +void
+> +nfsd4_grace_done(time_t boot_time)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 17b27cd..ac90729 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -802,6 +802,17 @@ static inline void *page_rmapping(struct page *page)
- 	return (void *)((unsigned long)page->mapping & ~PAGE_MAPPING_FLAGS);
- }
- 
-+extern struct address_space *__page_file_mapping(struct page *);
-+
-+static inline
-+struct address_space *page_file_mapping(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_mapping(page);
-+
-+	return page->mapping;
-+}
-+
- static inline int PageAnon(struct page *page)
- {
- 	return ((unsigned long)page->mapping & PAGE_MAPPING_ANON) != 0;
-@@ -818,6 +829,20 @@ static inline pgoff_t page_index(struct page *page)
- 	return page->index;
- }
- 
-+extern pgoff_t __page_file_index(struct page *page);
-+
-+/*
-+ * Return the file index of the page. Regular pagecache pages use ->index
-+ * whereas swapcache pages use swp_offset(->private)
-+ */
-+static inline pgoff_t page_file_index(struct page *page)
-+{
-+	if (unlikely(PageSwapCache(page)))
-+		return __page_file_index(page);
-+
-+	return page->index;
-+}
-+
- /*
-  * Return true if this page is mapped into pagetables.
-  */
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index cfaaa69..d4d4bda 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -286,6 +286,11 @@ static inline loff_t page_offset(struct page *page)
- 	return ((loff_t)page->index) << PAGE_CACHE_SHIFT;
- }
- 
-+static inline loff_t page_file_offset(struct page *page)
-+{
-+	return ((loff_t)page_file_index(page)) << PAGE_CACHE_SHIFT;
-+}
-+
- extern pgoff_t linear_hugepage_index(struct vm_area_struct *vma,
- 				     unsigned long address);
- 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index d999f09..5e00875 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -31,6 +31,7 @@
- #include <linux/memcontrol.h>
- #include <linux/poll.h>
- #include <linux/oom.h>
-+#include <linux/export.h>
- 
- #include <asm/pgtable.h>
- #include <asm/tlbflush.h>
-@@ -2290,6 +2291,25 @@ int swapcache_prepare(swp_entry_t entry)
- }
- 
- /*
-+ * out-of-line __page_file_ methods to avoid include hell.
-+ */
-+
-+struct address_space *__page_file_mapping(struct page *page)
-+{
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return page_swap_info(page)->swap_file->f_mapping;
-+}
-+EXPORT_SYMBOL_GPL(__page_file_mapping);
-+
-+pgoff_t __page_file_index(struct page *page)
-+{
-+	swp_entry_t swap = { .val = page_private(page) };
-+	VM_BUG_ON(!PageSwapCache(page));
-+	return swp_offset(swap);
-+}
-+EXPORT_SYMBOL_GPL(__page_file_index);
-+
-+/*
-  * swap_lock prevents swap_map being freed. Don't grab an extra
-  * reference on the swaphandle, it doesn't matter if it becomes unused.
-  */
--- 
-1.7.3.4
+That name's a bit generic--but I don't have a better suggestion.
+(nfsd4_record_grace_done()?)
 
+Looks basically fine, though.
+
+--b.
