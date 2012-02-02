@@ -1,65 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:36350 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754374Ab2BJXUe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 18:20:34 -0500
-Message-ID: <4F35A630.4000205@steve-ss.com>
-Date: Sat, 11 Feb 2012 00:20:16 +0100
-From: steve <steve@steve-ss.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Don Riden <don@riden.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: where can I ask user qns about nfs4?
-References: <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2D9A0E.6010503@leicester.ac.uk> <4F2E4B50.5040701@steve-ss.com> <20120205141611.GA12826@umich.edu> <4F2EB471.9060508@leicester.ac.uk> <alpine.LNX.2.00.1202091707390.25543@localhost.localdomain> <4F341FA6.9080101@steve-ss.com> <4F34D31A.6050604@steve-ss.com> <20120210184012.GA5781@fieldses.org> <4F356C4C.2010306@steve-ss.com> <20120210191448.GD5781@fieldses.org>
-In-Reply-To: <20120210191448.GD5781@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from umail.ceopen.cn ([202.10.79.61]:55398 "HELO ceopen.cn"
+	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+	id S1753509Ab2BBCS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Feb 2012 21:18:27 -0500
+Date: Thu, 2 Feb 2012 10:18:24 +0800
+From: "wangjing" <wangjing@300.cn>
+To: "linux-nfs" <linux-nfs@vger.kernel.org>,
+        "linux-kernel" <linux-kernel@vger.kernel.org>
+Cc: "wjk302" <wjk302@gmail.com>
+Subject: could modify sillyrename to put files in /tmp
+Message-ID: <201202021018234324363@300.cn>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="gb2312"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/10/2012 08:14 PM, J. Bruce Fields wrote:
-> On Fri, Feb 10, 2012 at 08:13:16PM +0100, steve wrote:
->> On 02/10/2012 07:40 PM, J. Bruce Fields wrote:
->>> On Fri, Feb 10, 2012 at 09:19:38AM +0100, steve wrote:
->>>>>> I'm happy to provide more details of the domain joining process
->>>>>> offlist or summarise in another
->>>>>> email if there is interest.
->>>>>>
->>>>>>
->>>>>>
->>>>>> I'm surprised by the lack of documentation available on using
->>>>>> Kerberised NFS with AD. I would have thought that it would be a
->>>>>> fairly common configuration?
->>>> Hi
->>>> This stuff really does need documenting. I've put together a rough
->>>> guide of most of the common misunderstandings here:
->>>> http://linuxcostablanca.blogspot.com/2012/02/nfsv4-myths-and-legends.html
->>> Could you get some of this material into the linux-nfs wiki?
->>>
->>> The NFS w/ AD stuff, for example, would probably be worth a page of its
->>> own and a top-level link under "Documentation" (and the link to Mike
->>> Eisler's blog entry could be moved to the page, if it still looks like
->>> it's current).
->>>
->>> --b.
->> Unfortunately, I am unable to write technical English in the style
->> that is required by the wiki.
-> Just say it however it makes sense to you, ping me, and I can do any
-> wordsmithing if it seems necessary.
->
-> --b.
->
->> I am however happy for the link to be
->> placed there. As there is no user nfs mailing list I'm also happy
->> for folk to sign up to the article and use _it_ as a mailing list.
-OK. I've requested a login. Linux has never been too good with 
-documentation. At nfs level, unless you are capable of reading the code, 
-you are stuck with misinformation. What I feel is that admins are stuck 
-in the middle. It's a dilemma. You don't want to want to have to burden 
-the devs with what to them is trivia. As admin, you have your own 
-trivia: 'I saved it in My Documents but now only Sharon can open it'. 
-You also need to be able to move forward without guessing: 'What's the 
-official syntax for /etc/exports with krb5'. Your users get their 
-answers. From you. Where are we expected to get our answers from!
-Cheers,
-Steve
+SW4gbmZzIHYzICxpZiBtdWxpdHkgcHJvY2VzcyB2aXNpdCBuZnMgbW91bnQgbmZzIGRpciAsdGhl
+cmUgc29tZXRpbWVzIG9jY291ciAubmZzWFhYIGNhbid0IGRlbGV0ZSAuDQoNCklmIG1vZGlmeSBz
+aWxseXJlbmFtZSB0byBwdXQgZmlsZXMgaW4gL3RtcCAsaXQgd2lsbCBiZSBtb3JlIGZyaWVuZGx5
+IHRvIG5mcyB1c2VyLg0KDQoNCnRoZSBiYWNrZ3JvdW5kDQogICAxoaJMaW51eCBmcyBoYXMgICAv
+bmZzbW50L3dvcmtfcHViL3dlYiBhbmQgL25mc21udC93b3JrX2lud29yay93ZWIgo6x0aGV5IHVz
+ZSBORlMgVjMgbW91bnQNCiAgIDKhonRoZXJlIGlzIG1hbnkgcHJvY2VzcyB3aWxsIHJlYWQgYW5k
+IHdyaXRlIGZpbGVzIGluIHRoZSBkaXIgL25mc21udC93b3JrX3B1Yi93ZWIgDQogICAzoaJjcm9u
+IHdpbGwgZGVsICBhbGwgZmlsZXMgaW4gZGlyICAvbmZzbW50L3dvcmtfcHViL3dlYiBpbiBwZXJp
+b2SjrGFuZCB3aWxsIGNvcHkgYWxsIHRoZSBmaWxlcyB3aGljaCBpbiB0aGUgZGlyIC9uZnNtbnQv
+d29ya19pbndvcmsvd2ViIA0KDQppbiBzb21lIHRpbWVzIGRlbGV0ZSBhbGwgZmlsZXMgaW4gIC9u
+ZnNtbnQvd29ya19wdWIvd2ViIHdpbGwgZmFpbGQgLGJlY2F1c2UgdGhlcmUgaXMgc29tZSAubmZz
+WFhYWA0KDQoNCg0KTXkgcXVlc3Rpb24gaXMgOmNhbiBpIG1vZGlmeSBuZnNfc2lsbHlyZW5hbWUg
+ZnVubmNpb24gIGluIHRoZSBmcy9uZnMvZGlyLmMgLCBnZW5lcmFsIGFsbCAubmZzWFhYIGluIC90
+bXAsYW5kIG1ha2Uga2VybmVsID8NCg0KDQoNCg0KMjAxMi0wMi0wMiANCndhbmdqaW5nDQo=
+
