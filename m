@@ -1,96 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40454 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752710Ab2BCXpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 18:45:36 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "koen@chillheid.nl" <koen@chillheid.nl>, Neil Brown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>
-Subject: Re: oops when copying a file from a nfs mount
-Date: Fri, 3 Feb 2012 23:45:12 +0000
-Message-ID: <1328312712.5335.17.camel@lade.trondhjem.org>
-References: <20120203223604.98C91405DC@mail.chillheid.nl>
-	 <20120203230811.GH2999@fieldses.org>
-In-Reply-To: <20120203230811.GH2999@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from out4-smtp.messagingengine.com ([66.111.4.28]:57878 "EHLO
+	out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753973Ab2BBWwr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 17:52:47 -0500
+Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 84051214EC
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2012 17:52:46 -0500 (EST)
+Message-ID: <4F2B13BA.1080804@itwm.fraunhofer.de>
+Date: Thu, 02 Feb 2012 23:52:42 +0100
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
+To: Andrea Arcangeli <aarcange@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-scsi@vger.kernel.org,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Bernd Schubert <bernd.schubert@fastmail.fm>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>,
+        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Gregory Farnum <gregory.farnum@dreamhost.com>,
+        lsf-pc@lists.linux-foundation.org,
+        Chris Mason <chris.mason@oracle.com>
+Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
+ detection
+References: <yq1y5sovcyw.fsf@sermon.lab.mkp.net> <4F283F7A.4020905@itwm.fraunhofer.de> <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com> <20120201164521.GY16796@shiny> <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com> <20120201174131.GD16796@shiny> <4F297D90.1010509@fastmail.fm> <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com> <20120201183054.GM31817@redhat.com> <4F2A51BB.4050409@itwm.fraunhofer.de> <20120202192643.GC5873@redhat.com>
+In-Reply-To: <20120202192643.GC5873@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAyLTAzIGF0IDE4OjA4IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgRmViIDAzLCAyMDEyIGF0IDExOjM2OjA0UE0gKzAxMDAsIGtvZW5AY2hpbGxo
-ZWlkLm5sIHdyb3RlOg0KPiA+IEhpLA0KPiA+IA0KPiA+IFNpbmNlIHVwZGF0aW5nIGZyb20ga2Vy
-bmVsIDMuMi4xIHRvIDMuMi4yLCBjb3B5aW5nIGEgZmlsZSBmcm9tIGEgbmZzIG1vdW50DQo+ID4g
-dXNpbmcgYGNwYCByZXN1bHRzIGluIGEga2VybmVsIG9vcHMuIENvcHlpbmcgdGhlIHNhbWUgZmls
-ZSB3aXRoIGBjYXQNCj4gPiAvbmZzbW91bnQvZmlsZSA+IC9sb2NhbC9maWxlYCBnaXZlcyBubyBw
-cm9ibGVtcy4NCj4gDQo+IEhtLCB0aGUgb29wcyBpcyBpbiBnZXRhdHRyIGVuY29kaW5nLCBhbmQg
-ZG9pbmcgYQ0KPiANCj4gCWdpdGsgdjMuMi4xLi52My4yLjIgZnMvbmZzIG5ldC9zdW5ycGMNCj4g
-DQo+IHR1cm5zIHVwIG9uZSBjb21taXQgdGhhdCBtb2RpZmllcyB0aGF0IGNvZGU6DQo+IA0KPiAJ
-NjI4ZmMxOTJhZGJhYWUwYzYxNzhiOTAxNWZiOTE2Y2U2MWQ3MmIzNiAiTkZTdjQ6IGluY2x1ZGUg
-Yml0bWFwDQo+IAlpbiBuZnN2NCBnZXQgYWNsIGRhdGEiDQo+IA0KPiBJIGhhdmVuJ3QgbG9va2Vk
-IGF0IHRoYXQsIGJ1dCBtYXliZSB0aGUgcHJvYmxlbSB3aWxsIGJlIG9idmlvdXMgdG8NCj4gQW5k
-eS4uLi4NCg0KSXQgaXMgb2J2aW91czogZmlyc3RseSBhY2xfc2NyYXRjaCBpcyBvbmx5IG5lZWRl
-ZCAoYW5kIGFsbG9jYXRlZCkgaWYgdGhlDQpucGFnZXMgPiAxLiBTZWNvbmRseSwgdGhlIGNhbGwg
-dG8geGRyX3NldF9zY3JhdGNoX2J1ZmZlcigpIG5lZWRzIHRvIGJlDQpkb25lIGluIHRoZSBkZWNv
-ZGVyLCBub3QgdGhlIGVuY29kZXIuLi4NCg0KVGhlIGZvbGxvd2luZyBwYXRjaCBzaG91bGQgZml4
-IGl0Lg0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDA3NGQ4NTdkZWQ3ZGYx
-MDliYTY5Njg1OTk2NGM4ZDU4NTIxNzVkYWQgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9t
-OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogRnJp
-LCAzIEZlYiAyMDEyIDE4OjMwOjUzIC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXgg
-YW4gT29wcyBpbiB0aGUgTkZTdjQgZ2V0YWNsIGNvZGUNCg0KQ29tbWl0IGJmMTE4YTM0MmYxMGRh
-ZmU0NGIxNDQ1MWExMzkyYzMyNTQ2MjlhMWYgKE5GU3Y0OiBpbmNsdWRlIGJpdG1hcA0KaW4gbmZz
-djQgZ2V0IGFjbCBkYXRhKSBpbnRyb2R1Y2VzIHRoZSAnYWNsX3NjcmF0Y2gnIHBhZ2UgZm9yIHRo
-ZSBjYXNlDQp3aGVyZSB3ZSBtYXkgbmVlZCB0byBkZWNvZGUgbXVsdGktcGFnZSBkYXRhLiBIb3dl
-dmVyIGl0IGZhaWxzIHRvIHRha2UNCmludG8gYWNjb3VudCB0aGUgZmFjdCB0aGF0IHRoZSB2YXJp
-YWJsZSBtYXkgYmUgTlVMTCAoZm9yIHRoZSBjYXNlIHdoZXJlDQp3ZSdyZSBub3QgZG9pbmcgbXVs
-dGktcGFnZSBkZWNvZGUpLCBhbmQgaXQgYWxzbyBhdHRhY2hlcyBpdCB0byB0aGUNCmVuY29kaW5n
-IHhkcl9zdHJlYW0gcmF0aGVyIHRoYW4gdGhlIGRlY29kaW5nIG9uZS4NCg0KVGhlIGltbWVkaWF0
-ZSByZXN1bHQgaXMgYW4gT29wcyBpbiBuZnM0X3hkcl9lbmNfZ2V0YWNsIGR1ZSB0byB0aGUNCmNh
-bGwgdG8gcGFnZV9hZGRyZXNzKCkgd2l0aCBhIE5VTEwgcGFnZSBwb2ludGVyLg0KDQpTaWduZWQt
-b2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KQ2M6
-IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQpDYzogc3RhYmxlQHZnZXIua2VybmVs
-Lm9yZw0KLS0tDQogZnMvbmZzL25mczRwcm9jLmMgICAgICAgfCAgICA4ICsrKystLS0tDQogZnMv
-bmZzL25mczR4ZHIuYyAgICAgICAgfCAgICAzICsrLQ0KIGluY2x1ZGUvbGludXgvbmZzX3hkci5o
-IHwgICAgMiArLQ0KIDMgZmlsZXMgY2hhbmdlZCwgNyBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9u
-cygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2Mu
-Yw0KaW5kZXggZjBjODQ5Yy4uZDIwMmUwNCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0cHJvYy5j
-DQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTM1NzUsOCArMzU3NSw4IEBAIHN0YXRpYyBz
-c2l6ZV90IF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHZvaWQg
-KmJ1Ziwgc2l6ZV90IGJ1DQogCX0NCiAJaWYgKG5wYWdlcyA+IDEpIHsNCiAJCS8qIGZvciBkZWNv
-ZGluZyBhY3Jvc3MgcGFnZXMgKi8NCi0JCWFyZ3MuYWNsX3NjcmF0Y2ggPSBhbGxvY19wYWdlKEdG
-UF9LRVJORUwpOw0KLQkJaWYgKCFhcmdzLmFjbF9zY3JhdGNoKQ0KKwkJcmVzLmFjbF9zY3JhdGNo
-ID0gYWxsb2NfcGFnZShHRlBfS0VSTkVMKTsNCisJCWlmICghcmVzLmFjbF9zY3JhdGNoKQ0KIAkJ
-CWdvdG8gb3V0X2ZyZWU7DQogCX0NCiAJYXJncy5hY2xfbGVuID0gbnBhZ2VzICogUEFHRV9TSVpF
-Ow0KQEAgLTM2MTIsOCArMzYxMiw4IEBAIG91dF9mcmVlOg0KIAlmb3IgKGkgPSAwOyBpIDwgbnBh
-Z2VzOyBpKyspDQogCQlpZiAocGFnZXNbaV0pDQogCQkJX19mcmVlX3BhZ2UocGFnZXNbaV0pOw0K
-LQlpZiAoYXJncy5hY2xfc2NyYXRjaCkNCi0JCV9fZnJlZV9wYWdlKGFyZ3MuYWNsX3NjcmF0Y2gp
-Ow0KKwlpZiAocmVzLmFjbF9zY3JhdGNoKQ0KKwkJX19mcmVlX3BhZ2UocmVzLmFjbF9zY3JhdGNo
-KTsNCiAJcmV0dXJuIHJldDsNCiB9DQogDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBi
-L2ZzL25mcy9uZnM0eGRyLmMNCmluZGV4IDk1ZTkyZTQuLmMwNDdiZWMgMTAwNjQ0DQotLS0gYS9m
-cy9uZnMvbmZzNHhkci5jDQorKysgYi9mcy9uZnMvbmZzNHhkci5jDQpAQCAtMjUyMiw3ICsyNTIy
-LDYgQEAgc3RhdGljIHZvaWQgbmZzNF94ZHJfZW5jX2dldGFjbChzdHJ1Y3QgcnBjX3Jxc3QgKnJl
-cSwgc3RydWN0IHhkcl9zdHJlYW0gKnhkciwNCiANCiAJeGRyX2lubGluZV9wYWdlcygmcmVxLT5y
-cV9yY3ZfYnVmLCByZXBsZW4gPDwgMiwNCiAJCWFyZ3MtPmFjbF9wYWdlcywgYXJncy0+YWNsX3Bn
-YmFzZSwgYXJncy0+YWNsX2xlbik7DQotCXhkcl9zZXRfc2NyYXRjaF9idWZmZXIoeGRyLCBwYWdl
-X2FkZHJlc3MoYXJncy0+YWNsX3NjcmF0Y2gpLCBQQUdFX1NJWkUpOw0KIA0KIAllbmNvZGVfbm9w
-cygmaGRyKTsNCiB9DQpAQCAtNjA0MSw2ICs2MDQwLDggQEAgbmZzNF94ZHJfZGVjX2dldGFjbChz
-dHJ1Y3QgcnBjX3Jxc3QgKnJxc3RwLCBzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KIAlzdGF0dXMg
-PSBkZWNvZGVfcHV0ZmgoeGRyKTsNCiAJaWYgKHN0YXR1cykNCiAJCWdvdG8gb3V0Ow0KKwlpZiAo
-cmVzLT5hY2xfc2NyYXRjaCAhPSBOVUxMKQ0KKwkJeGRyX3NldF9zY3JhdGNoX2J1ZmZlcih4ZHIs
-IHBhZ2VfYWRkcmVzcyhyZXMtPmFjbF9zY3JhdGNoKSwgUEFHRV9TSVpFKTsNCiAJc3RhdHVzID0g
-ZGVjb2RlX2dldGFjbCh4ZHIsIHJxc3RwLCByZXMpOw0KIA0KIG91dDoNCmRpZmYgLS1naXQgYS9p
-bmNsdWRlL2xpbnV4L25mc194ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQppbmRleCBh
-NzY0Y2VmLi5kNmJhOWExIDEwMDY0NA0KLS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCisr
-KyBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQpAQCAtNjE0LDcgKzYxNCw2IEBAIHN0cnVjdCBu
-ZnNfZ2V0YWNsYXJncyB7DQogCXNpemVfdAkJCQlhY2xfbGVuOw0KIAl1bnNpZ25lZCBpbnQJCQlh
-Y2xfcGdiYXNlOw0KIAlzdHJ1Y3QgcGFnZSAqKgkJCWFjbF9wYWdlczsNCi0Jc3RydWN0IHBhZ2Ug
-KgkJCWFjbF9zY3JhdGNoOw0KIAlzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9hcmdzIAlzZXFfYXJnczsN
-CiB9Ow0KIA0KQEAgLTYyNCw2ICs2MjMsNyBAQCBzdHJ1Y3QgbmZzX2dldGFjbHJlcyB7DQogCXNp
-emVfdAkJCQlhY2xfbGVuOw0KIAlzaXplX3QJCQkJYWNsX2RhdGFfb2Zmc2V0Ow0KIAlpbnQJCQkJ
-YWNsX2ZsYWdzOw0KKwlzdHJ1Y3QgcGFnZSAqCQkJYWNsX3NjcmF0Y2g7DQogCXN0cnVjdCBuZnM0
-X3NlcXVlbmNlX3JlcwlzZXFfcmVzOw0KIH07DQogDQotLSANCjEuNy43LjYNCg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On 02/02/2012 08:26 PM, Andrea Arcangeli wrote:
+> On Thu, Feb 02, 2012 at 10:04:59AM +0100, Bernd Schubert wrote:
+>> I think the point for network file systems is that they can reuse the
+>> disk-checksum for network verification. So instead of calculating a
+>> checksum for network and disk, just use one for both. The checksum also
+>> is supposed to be cached in memory, as that avoids re-calculation for
+>> other clients.
+>>
+>> 1)
+>> client-1: sends data and checksum
+>>
+>> server: Receives those data and verifies the checksum ->  network
+>> transfer was ok, sends data and checksum to disk
+>>
+>> 2)
+>> client-2 ... client-N: Ask for those data
+>>
+>> server:  send cached data and cached checksum
+>>
+>> client-2 ... client-N: Receive data and verify checksum
+>>
+>>
+>> So the hole point of caching checksums is to avoid the server needs to
+>> recalculate those for dozens of clients. Recalculating checksums simply
+>> does not scale with an increasing number of clients, which want to read
+>> data processed by another client.
+>
+> This makes sense indeed. My argument was only about the exposure of
+> the storage hw format cksum to userland (through some new ioctl for
+> further userland verification of the pagecache data in the client
+> pagecache, done by whatever program is reading from the cache). The
+> network fs client lives in kernel, the network fs server lives in
+> kernel, so no need to expose the cksum to userland to do what you
+> described above.
+>
+> I meant if we can't trust the pagecache to be correct (after the
+> network fs client code already checked the cksum cached by the server
+> and sent to the client along the server cached data), I don't see much
+> value added through a further verification by the userland program
+> running on the client and accessing pagecache in the client. If we
+> can't trust client pagecache to be safe against memory bitflips or
+> software bugs, we can hardly trust the anonymous memory too.
+
+Well, now it gets a bit troublesome - not all file systems are in kernel 
+space. FhGFS uses kernel clients, but has user space daemons. I think 
+Ceph does it similarly. And although I'm not sure about the roadmap of 
+Gluster and if data verification is planned at all, but if it would like 
+to do that, even the clients would need get access to the checksums in 
+user space.
+
+Now lets assume we ignore user space clients for now, what about using 
+the splice interface to also send checksums? So as basic concept file 
+systems servers are not interested at all about the real data, but only 
+do the management between disk and network. So a possible solution to 
+not expose checksums to user space daemons is to simply not expose data 
+to the servers at all. However, in that case the server side kernel 
+would need to do the checksum verification, so even for user space daemons.
+Remaining issue with splice is that splice does not work with 
+inifiniband-ibverbs due to the missing socket fd.
+
+Another solution that also might work is to expose checksums only 
+read-only to user space.
+
+
+
+Cheers,
+Bernd
