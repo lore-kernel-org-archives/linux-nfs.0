@@ -1,61 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:34617 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755244Ab2BMVvd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:33 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933722eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:32 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 05/10] nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-Date: Mon, 13 Feb 2012 22:54:39 +0100
-Message-Id: <1329170084-7032-6-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from partagas.dragonet.es ([217.70.240.130]:50829 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753809Ab2BBNaA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 08:30:00 -0500
+Message-ID: <4F2A8FBC.1010101@steve-ss.com>
+Date: Thu, 02 Feb 2012 14:29:32 +0100
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
+References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2A74A7.4060905@steve-ss.com> <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com>
+In-Reply-To: <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 02/02/2012 02:05 PM, Tigran Mkrtchyan wrote:
+> On Thu, Feb 2, 2012 at 12:33 PM, steve<steve@steve-ss.com>  wrote:
+>> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
+>>> Hi Steve,
+>>>
+>>>> I already use nfs4 to serve my Linux clients. I'm going to kerberize it.
+>>>> My
+>>>> clients already have machine and host principals. What else do they need?
+>>>>
+>>>> 1. nfs/client.domain.name
+>>>> 2. nfs/server.domain/name
+>>>> 3. neither
+>>>> 4. both
+>>>>
+>>> We run kerberized NFS.
+>>>
+>>> our keytab contains:
+>>>
+>>> on server;
+>>>    nfs/server.domain
+>>>
+>>> on client:
+>>>    nfs/client.domain
+>>>
+>>> and, of course, you need a consistent  idmap configuration.
+>>>
+>>> Tigran.
+>>>
+>> Hi Tigran
+>>
+>> That's what we have on our test lan at the moment. I can understand that the
+>> server would need the service principal:
+>>    nfs/server.domain
+>> but not the client, as it's not offering any kerberized service.
+> The mount step happens on behalf of host as there are no user requests yet.
+> Client host credentials are used at that time.
+>
+>> As an experiment, I removed the nfs/client.domain from a client keytab,
+>> rebooted and remounted the share. We could still access the kerberized nfs
+>> share. Maybe there were still some tickets left somewhere? That has me
+>> really confused.
+> Huh! did you enforce kerberos in /etc/exports?
+>
+Yes. /etc/exports exports as gss/krb5
+I made a screenshot:
+
+http://3.bp.blogspot.com/-g40b11Ys_DA/TypYtlO-ixI/AAAAAAAAAIc/cZdeRhnVuY4/s1600/s4all.png
+
+That's why I'm confused.
+Steve
 
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9a61bbf..66bd005 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1523,21 +1523,24 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTPUBFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTPUBFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTROOTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTROOTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
--- 
-1.7.7.6
 
