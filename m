@@ -1,64 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:38950 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755321Ab2BPULz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 15:11:55 -0500
-Subject: Re: [PATCH 07/13] NFS: Reduce debugging noise from encode_compound_hdr
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1329422653.4279.26.camel@lade.trondhjem.org>
-Date: Thu, 16 Feb 2012 15:11:50 -0500
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <AD538E04-3BB7-4A75-A9E4-E2A791696FA9@oracle.com>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net> <20120215213542.3254.50291.stgit@ellison.1015granger.net> <1329422653.4279.26.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:50238 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752900Ab2BBS5C convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 13:57:02 -0500
+Received: by werb13 with SMTP id b13so2103125wer.19
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2012 10:57:00 -0800 (PST)
+MIME-Version: 1.0
+Reply-To: tigran.mkrtchyan@desy.de
+In-Reply-To: <4F2AA430.2040109@steve-ss.com>
+References: <4F2A2F9E.6030908@steve-ss.com>
+	<CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com>
+	<4F2A74A7.4060905@steve-ss.com>
+	<CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com>
+	<4F2A8FBC.1010101@steve-ss.com>
+	<4F2AA430.2040109@steve-ss.com>
+Date: Thu, 2 Feb 2012 19:57:00 +0100
+Message-ID: <CAGue13q97uFopDfUpTGNQYbJJi7QeJrgh1ArZfvx-9KBogLwZA@mail.gmail.com>
+Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: steve <steve@steve-ss.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Feb 2, 2012 at 3:56 PM, steve <steve@steve-ss.com> wrote:
+> On 02/02/12 14:29, steve wrote:
+>>
+>> On 02/02/2012 02:05 PM, Tigran Mkrtchyan wrote:
+>>>
+>>> On Thu, Feb 2, 2012 at 12:33 PM, steve<steve@steve-ss.com>  wrote:
+>>>>
+>>>> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
+>>>>>
+>>>>> Hi Steve,
+>>>>>
+>>>>>> I already use nfs4 to serve my Linux clients. I'm going to kerberize
+>>>>>> it.
+>>>>>> My
+>>>>>> clients already have machine and host principals. What else do they
+>>>>>> need?
+>>>>>>
+>>>>>> 1. nfs/client.domain.name
+>>>>>> 2. nfs/server.domain/name
+>>>>>> 3. neither
+>>>>>> 4. both
+>>>>>>
+>>>>> We run kerberized NFS.
+>>>>>
+>>>>> our keytab contains:
+>>>>>
+>>>>> on server;
+>>>>>   nfs/server.domain
+>>>>>
+>>>>> on client:
+>>>>>   nfs/client.domain
+>>>>>
+>>>>> and, of course, you need a consistent  idmap configuration.
+>>>>>
+>>>>> Tigran.
+>>>>>
+>>>> Hi Tigran
+>>>>
+>>>> That's what we have on our test lan at the moment. I can understand that
+>>>> the
+>>>> server would need the service principal:
+>>>>   nfs/server.domain
+>>>> but not the client, as it's not offering any kerberized service.
+>>>
+>>> The mount step happens on behalf of host as there are no user requests
+>>> yet.
+>>> Client host credentials are used at that time.
+>>>
+>>>> As an experiment, I removed the nfs/client.domain from a client keytab,
+>>>> rebooted and remounted the share. We could still access the kerberized
+>>>> nfs
+>>>> share. Maybe there were still some tickets left somewhere? That has me
+>>>> really confused.
+>>>
+>>> Huh! did you enforce kerberos in /etc/exports?
+>>>
+>> Yes. /etc/exports exports as gss/krb5
+>> I made a screenshot:
+>>
+>>
+>> http://3.bp.blogspot.com/-g40b11Ys_DA/TypYtlO-ixI/AAAAAAAAAIc/cZdeRhnVuY4/s1600/s4all.png
+>>
+>> That's why I'm confused.
+>> Steve
+>
+>
+> Digging a bit further, here is the output of mount on the client:
+> http://dl.dropbox.com/u/45150875/krb5testnfs.png
+>
+> And this appears immediately after the mount:
+> http://dl.dropbox.com/u/45150875/krb5nfstmp.png
+>
+> Most of the documentation tells you to stick nfs into the client keytab as
+> well as the server keytab, but here, I only have the principal on the
+> server.
+>
+> What am I missing?
 
-On Feb 16, 2012, at 3:04 PM, Myklebust, Trond wrote:
+I think client simply falls back to 'host' if nfs entry is not available.
 
-> On Wed, 2012-02-15 at 16:35 -0500, Chuck Lever wrote:
->> When NFSDBG_XDR debugging is enabled, I see a lot of
->> 
->>  encode_compound: tag=
->> 
->> on the console.  This is noise if the tag is empty.  Some might argue
->> that it is noise even if the tag isn't empty...
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> fs/nfs/nfs4xdr.c |    4 +++-
->> 1 files changed, 3 insertions(+), 1 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index 606852a..2fb129d 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -889,7 +889,9 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
->> 	 * but this is not required as a MUST for the server to do so. */
->> 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
->> 
->> -	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
->> +	if (unlikely(hdr->taglen != 0))
->> +		dprintk("%s: tag=%.*s\n", __func__,
->> +				(int)hdr->taglen, hdr->tag);
->> 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
->> 	p = reserve_space(xdr, 4 + hdr->taglen + 8);
->> 	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
->> 
-> 
-> Let's just comment out the tag dprintk for now. We don't use the tag
-> field at all...
-
-OK.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Tigran.
+> Thanks,
+> Steve
+>
