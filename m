@@ -1,407 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35711 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41564 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755631Ab2BMR6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Feb 2012 12:58:50 -0500
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] RFC: NFS - filelayout DS rpc mountstats support
-Date: Mon, 13 Feb 2012 17:58:43 +0000
-Message-ID: <AD23749C-B7A0-4144-AE9E-BD0C720B3916@netapp.com>
-References: <1328721042-9335-1-git-send-email-dros@netapp.com>
- <1CFC0549-DFAC-4530-A3A5-876DDAE8C5DE@oracle.com>
- <B22F73F9-8343-4543-922E-26F48AA78A90@netapp.com>
- <4F38C443.2060307@tonian.com>
-In-Reply-To: <4F38C443.2060307@tonian.com>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_4885EB55-0246-4875-B497-22F9B3DA8E38";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1754740Ab2BCXIP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 18:08:15 -0500
+Date: Fri, 3 Feb 2012 18:08:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: koen@chillheid.nl
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: Re: oops when copying a file from a nfs mount
+Message-ID: <20120203230811.GH2999@fieldses.org>
+References: <20120203223604.98C91405DC@mail.chillheid.nl>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120203223604.98C91405DC@mail.chillheid.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_4885EB55-0246-4875-B497-22F9B3DA8E38
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
+On Fri, Feb 03, 2012 at 11:36:04PM +0100, koen@chillheid.nl wrote:
+> Hi,
+> 
+> Since updating from kernel 3.2.1 to 3.2.2, copying a file from a nfs mount
+> using `cp` results in a kernel oops. Copying the same file with `cat
+> /nfsmount/file > /local/file` gives no problems.
 
+Hm, the oops is in getattr encoding, and doing a
 
-On Feb 13, 2012, at 3:05 AM, Benny Halevy wrote:
+	gitk v3.2.1..v3.2.2 fs/nfs net/sunrpc
 
-> Sorry for the late response.
->=20
-> On 2012-02-08 23:04, Adamson, Dros wrote:
->>=20
->> On Feb 8, 2012, at 12:26 PM, Chuck Lever wrote:
->>=20
->>> Hi-
->>>=20
->>> On Feb 8, 2012, at 12:10 PM, Weston Andros Adamson wrote:
->>>=20
->>>> The per-op stats displayed in /self/proc/mountstats are collected =
-in the sunrpc
->>>=20
->>> You mean /proc/self/mountstats here.
->>=20
->> oops!
->>=20
->>>=20
->>>> layer and are collected per rpc_client.  This has worked for nfs =
-thus far
->>>> since only one nfs_client was ever associated with a mountpoint, =
-but with
->>>> NFS4.1+PNFS+filelayout an nfs mount can have more than one =
-nfs_client.
->>>>=20
->>>> This can be seen with a pnfs mount where no data server is the same =
-as the MDS -
->>>> all reads, writes and commits will never make it into the current =
-mountstats
->>>> output.
->>>>=20
->>>> I took the approach of keeping the stats from the MDS and DSs =
-separate in the
->>>> /proc/self/mountstats output to avoid doing too much in the kernel, =
-and to
->>>> expose the fact that these stats are from separate connections =
-(maybe for later
->>>> use).
->>>>=20
->>>> This method has issues:
->>>>=20
->>>> 1) even changing the "statvers" of mountstats doesn't stop the =
-userland
->>>>  mountstats(8) from trying to parse this output -- and it does so
->>>>  incorrectly.
->>>=20
->>> User land is broken then.  :-)
->>=20
->> Agreed!
->>=20
->>>=20
->>>> 2) when using DS multipath this method fails to count operations =
-that happened
->>>>  on a different path to the same DS (after a failure).
->>=20
->> I should have noted that this isn't a problem yet because I haven't =
-submitted the multipath failover patches :)
->>=20
->>>>=20
->>>> 3) currently this will display stats twice when DS =3D=3D MDS.
->>>=20
->>> Why is this case hard to detect in the kernel or in mountstats?
->>=20
->> Not hard, just an issue with the current patch.
->>=20
->>>=20
->>>>=20
->>>> So... What should I do here?
->>>>=20
->>>> A different approach is to add support in net/sunrpc to specify a =
-"parent"
->>>> stat structure so that operations on DS nfs_clients bump stats on
->>>> the main nfs_server->nfs_client->rpc_client.  This would take care =
-of all the
->>>> issues with the current patch, but seems like a hack.
->>>=20
->>> Is this the same as displaying all data in one set of stats?
->>=20
->> Yes
->>=20
->>>=20
->>> Seems like that might be the best next step, then we can split up =
-the MDS and DS stats at some later point.
->=20
-> Splitting up the MDS/DS stats is important to tell when DS I/O is =
-being
-> done and how effective it is.
->=20
-> Benny
->=20
+turns up one commit that modifies that code:
 
-Agreed!  It just can't go into mountstats right away (due to statsvers=3D =
-not being interpreted in mountstats(8)).  I'll make a second patch on =
-top of my mountstats changes to add per-DS stats in /proc/fs/nfsfs/ and =
-we can figure out if we want to add it to mountstats later.
+	628fc192adbaae0c6178b9015fb916ce61d72b36 "NFSv4: include bitmap
+	in nfsv4 get acl data"
 
-Does this sound OK?
+I haven't looked at that, but maybe the problem will be obvious to
+Andy....
 
--dros
+> 
+> I can reliably trigger the oops with a simple:
+> 
+>     cp /nfsmount/file /local/dir
+> 
+> System information:
+> 
+>     % cat /proc/version
+>     Linux version 3.2.2-1-vanilla (koen@pino) (gcc version 4.6.2 20120120 (prerelease) (GCC) ) #1 SMP PREEMPT Fri Feb 3 01:51:55 CET 2012
+> 
+>     % zgrep '^CONFIG_NFS' /proc/config.gz
+>     CONFIG_NFS_FS=m
+>     CONFIG_NFS_V3=y
+>     CONFIG_NFS_V3_ACL=y
+>     CONFIG_NFS_V4=y
+>     CONFIG_NFS_FSCACHE=y
+>     CONFIG_NFS_USE_KERNEL_DNS=y
+>     CONFIG_NFSD=m
+>     CONFIG_NFSD_V2_ACL=y
+>     CONFIG_NFSD_V3=y
+>     CONFIG_NFSD_V3_ACL=y
+>     CONFIG_NFSD_V4=y
+>     CONFIG_NFS_ACL_SUPPORT=m
+>     CONFIG_NFS_COMMON=y
+> 
+>     % ./ver_linux
+>     Linux pino 3.2.2-1-vanilla #1 SMP PREEMPT Fri Feb 3 01:51:55 CET 2012 i686 Intel(R) Celeron(R) CPU E1200 @ 1.60GHz GenuineIntel GNU/Linux
+>      
+>     Gnu C                  4.6.2
+>     Gnu make               3.82
+>     binutils               2.22.0.20111227
+>     util-linux             2.20.1
+>     mount                  support
+>     module-init-tools      4
+>     e2fsprogs              1.42
+>     jfsutils               1.1.15
+>     reiserfsprogs          3.6.21
+>     xfsprogs               3.1.7
+>     pcmciautils            018
+>     PPP                    2.4.5
+>     Linux C Library        2.15
+>     Dynamic linker (ldd)   2.15
+>     Linux C++ Library      6.0.16
+>     Procps                 3.2.8
+>     Net-tools              1.60
+>     Kbd                    1.15.3
+>     Sh-utils               8.15
+>     Modules Loaded         ipv6 ext3 jbd joydev snd_usb_audio snd_usbmidi_lib snd_rawmidi snd_seq_device usbhid hid wacom snd_hda_codec_hdmi btusb bluetooth rfkill ppdev evdev snd_hda_codec_realtek radeon snd_hda_intel snd_hda_codec drm_kms_helper snd_pcm atl1 iTCO_wdt iTCO_vendor_support pcspkr ttm i2c_i801 serio_raw snd_page_alloc snd_hwdep snd_timer snd drm soundcore mii i2c_algo_bit i2c_core intel_agp intel_gtt agpgart floppy parport_pc parport asus_atk0110 nfs button nfs_acl lockd auth_rpcgss sunrpc fscache cpufreq_ondemand acpi_cpufreq mperf processor freq_table ext4 crc16 jbd2 mbcache dm_mod sd_mod pata_acpi ata_piix libata uhci_hcd scsi_mod ehci_hcd usbcore usb_common
+> 
+>     % grep nfs /proc/mounts
+>     servername:/data /data nfs4 rw,nosuid,nodev,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=172.16.1.84,minorversion=0,local_lock=none,addr=172.16.1.1 0 0
+> 
+> Trace:
+> 
 
->>=20
->> Ok, I'll try to do that.
->>=20
->> Any advice on how to handle the "xprt: =85" line?  Obviously the =
-different underlying rpc_clients will have different values.  I'd have =
-to look at mountstats(8) some more, but I *think* we could just make it =
-a comma separated list.
->>=20
->> For the 'next step', we can use this patch - we just need to figure =
-out where it should go.  Do we keep it in /proc/self/mountstats?  I =
-think because of problem #2 we might want to move them out to somewhere =
-in /proc/fs/nfsfs/ along with other per-DS statistics.
->>=20
->>>=20
->>>> One task that seems like a good thing to do is to fix mountstats(8) =
-to respect
->>>> the "statsvers" value.
->>>=20
->>> Agree.
->>=20
->> I'll do this first.
->>=20
->> Thanks Chuck!
->>=20
->> -dros
->>=20
->>>=20
->>>>=20
->>>> Thoughts?
->>>> ---
->>>>=20
->>>> I cleaned up this patch, but I still have reservations (noted in =
-commit message)
->>>>=20
->>>> fs/nfs/nfs4filelayout.c    |   23 +++++++++++++++++++++++
->>>> fs/nfs/pnfs.h              |   20 ++++++++++++++++++++
->>>> fs/nfs/pnfs_dev.c          |   25 +++++++++++++++++++++++++
->>>> fs/nfs/super.c             |    1 +
->>>> include/linux/nfs_iostat.h |    2 +-
->>>> 5 files changed, 70 insertions(+), 1 deletions(-)
->>>>=20
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 79be7ac..9410fd0 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -33,6 +33,8 @@
->>>> #include <linux/nfs_page.h>
->>>> #include <linux/module.h>
->>>>=20
->>>> +#include <linux/sunrpc/metrics.h>
->>>> +
->>>> #include "internal.h"
->>>> #include "nfs4filelayout.h"
->>>>=20
->>>> @@ -918,6 +920,26 @@ filelayout_free_deveiceid_node(struct =
-nfs4_deviceid_node *d)
->>>> 	nfs4_fl_free_deviceid(container_of(d, struct =
-nfs4_file_layout_dsaddr, id_node));
->>>> }
->>>>=20
->>>> +static void
->>>> +filelayout_rpc_print_iostats(struct seq_file *m, struct =
-nfs4_deviceid_node *d)
->>>> +{
->>>> +	struct nfs4_file_layout_dsaddr *dsaddr;
->>>> +	struct nfs4_pnfs_ds *ds;
->>>> +	u32 i;
->>>> +
->>>> +	dsaddr =3D container_of(d, struct nfs4_file_layout_dsaddr, =
-id_node);
->>>> +
->>>> +	for (i =3D 0; i < dsaddr->ds_num; i++) {
->>>> +		ds =3D dsaddr->ds_list[i];
->>>> +
->>>> +		if (ds && ds->ds_clp) {
->>>> +			seq_printf(m, "  pnfs dataserver %s\n",
->>>> +				   ds->ds_remotestr);
->>>> +			rpc_print_iostats(m, ds->ds_clp->cl_rpcclient);
->>>> +		}
->>>> +	}
->>>> +}
->>>> +
->>>> static struct pnfs_layoutdriver_type filelayout_type =3D {
->>>> 	.id			=3D LAYOUT_NFSV4_1_FILES,
->>>> 	.name			=3D "LAYOUT_NFSV4_1_FILES",
->>>> @@ -932,6 +954,7 @@ static struct pnfs_layoutdriver_type =
-filelayout_type =3D {
->>>> 	.read_pagelist		=3D filelayout_read_pagelist,
->>>> 	.write_pagelist		=3D filelayout_write_pagelist,
->>>> 	.free_deviceid_node	=3D filelayout_free_deveiceid_node,
->>>> +	.ds_rpc_print_iostats	=3D filelayout_rpc_print_iostats,
->>>> };
->>>>=20
->>>> static int __init nfs4filelayout_init(void)
->>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>>> index 53d593a..0a5e020 100644
->>>> --- a/fs/nfs/pnfs.h
->>>> +++ b/fs/nfs/pnfs.h
->>>> @@ -119,6 +119,9 @@ struct pnfs_layoutdriver_type {
->>>> 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
->>>> 				     struct xdr_stream *xdr,
->>>> 				     const struct nfs4_layoutcommit_args =
-*args);
->>>> +
->>>> +	void (*ds_rpc_print_iostats) (struct seq_file *,
->>>> +				      struct nfs4_deviceid_node *);
->>>> };
->>>>=20
->>>> struct pnfs_layout_hdr {
->>>> @@ -239,6 +242,10 @@ void nfs4_init_deviceid_node(struct =
-nfs4_deviceid_node *,
->>>> struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct =
-nfs4_deviceid_node *);
->>>> bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
->>>> void nfs4_deviceid_purge_client(const struct nfs_client *);
->>>> +void nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
->>>> +				     const struct nfs_client *clp,
->>>> +				     const struct pnfs_layoutdriver_type =
-*ld);
->>>> +
->>>>=20
->>>> static inline int lo_fail_bit(u32 iomode)
->>>> {
->>>> @@ -328,6 +335,14 @@ static inline int pnfs_return_layout(struct =
-inode *ino)
->>>> 	return 0;
->>>> }
->>>>=20
->>>> +static inline void
->>>> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server =
-*nfss)
->>>> +{
->>>> +	if (!pnfs_enabled_sb(nfss))
->>>> +		return;
->>>> +	nfs4_deviceid_rpc_print_iostats(m, nfss->nfs_client,
->>>> +					nfss->pnfs_curr_ld);
->>>> +}
->>>> #else  /* CONFIG_NFS_V4_1 */
->>>>=20
->>>> static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
->>>> @@ -429,6 +444,11 @@ static inline int =
-pnfs_layoutcommit_inode(struct inode *inode, bool sync)
->>>> static inline void nfs4_deviceid_purge_client(struct nfs_client =
-*ncl)
->>>> {
->>>> }
->>>> +
->>>> +static inline void
->>>> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server =
-*nfss)
->>>> +{
->>>> +}
->>>> #endif /* CONFIG_NFS_V4_1 */
->>>>=20
->>>> #endif /* FS_NFS_PNFS_H */
->>>> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
->>>> index 4f359d2..277de87 100644
->>>> --- a/fs/nfs/pnfs_dev.c
->>>> +++ b/fs/nfs/pnfs_dev.c
->>>> @@ -115,6 +115,31 @@ nfs4_find_get_deviceid(const struct =
-pnfs_layoutdriver_type *ld,
->>>> }
->>>> EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
->>>>=20
->>>> +
->>>> +void
->>>> +nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
->>>> +				const struct nfs_client *clp,
->>>> +				const struct pnfs_layoutdriver_type *ld)
->>>> +{
->>>> +	struct nfs4_deviceid_node *d;
->>>> +	struct hlist_node *n;
->>>> +	long h;
->>>> +
->>>> +	if (!ld->ds_rpc_print_iostats)
->>>> +		return;
->>>> +
->>>> +	rcu_read_lock();
->>>> +	for (h =3D 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++) {
->>>> +		hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[h], =
-node)
->>>> +			if (d->ld =3D=3D ld && d->nfs_client =3D=3D clp) =
-{
->>>> +				if (atomic_read(&d->ref))
->>>> +					ld->ds_rpc_print_iostats(seq, =
-d);
->>>> +			}
->>>> +	}
->>>> +	rcu_read_unlock();
->>>> +}
->>>> +EXPORT_SYMBOL_GPL(nfs4_deviceid_rpc_print_iostats);
->>>> +
->>>> /*
->>>> * Remove a deviceid from cache
->>>> *
->>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>>> index d18a90b..453e496 100644
->>>> --- a/fs/nfs/super.c
->>>> +++ b/fs/nfs/super.c
->>>> @@ -871,6 +871,7 @@ static int nfs_show_stats(struct seq_file *m, =
-struct dentry *root)
->>>> 	seq_printf(m, "\n");
->>>>=20
->>>> 	rpc_print_iostats(m, nfss->client);
->>>> +	pnfs_rpc_print_iostats(m, nfss);
->>>>=20
->>>> 	return 0;
->>>> }
->>>> diff --git a/include/linux/nfs_iostat.h =
-b/include/linux/nfs_iostat.h
->>>> index 8866bb3..7fe4605 100644
->>>> --- a/include/linux/nfs_iostat.h
->>>> +++ b/include/linux/nfs_iostat.h
->>>> @@ -21,7 +21,7 @@
->>>> #ifndef _LINUX_NFS_IOSTAT
->>>> #define _LINUX_NFS_IOSTAT
->>>>=20
->>>> -#define NFS_IOSTAT_VERS		"1.0"
->>>> +#define NFS_IOSTAT_VERS		"2.0"
->>>>=20
->>>> /*
->>>> * NFS byte counters
->>>> --=20
->>>> 1.7.4.4
->>>>=20
->>>=20
->>> --=20
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>>=20
->>>=20
->>>=20
->>>=20
->>=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Is this really the start of the trace, or were there any lines before?
 
+>     Feb  3 03:45:23 pino kernel: [ 2931.910546] *pde = 00000000 
+>     Feb  3 03:45:23 pino kernel: [ 2931.910626] Modules linked in: ipv6 ext3 jbd joydev snd_usb_audio snd_usbmidi_lib usbhid snd_rawmidi snd_seq_device hid wacom btusb bluetooth rfkill snd_hda_codec_hdmi ppdev radeon evdev snd_hda_codec_realtek drm_kms_helper ttm snd_hda_intel iTCO_wdt iTCO_vendor_support drm pcspkr snd_hda_codec serio_raw i2c_i801 snd_pcm snd_page_alloc snd_hwdep i2c_algo_bit i2c_core snd_timer intel_agp atl1 intel_gtt snd agpgart mii soundcore floppy parport_pc parport asus_atk0110 button nfs nfs_acl lockd auth_rpcgss sunrpc fscache cpufreq_ondemand acpi_cpufreq mperf processor freq_table ext4 crc16 jbd2 mbcache dm_mod sd_mod pata_acpi ata_piix libata scsi_mod uhci_hcd ehci_hcd usbcore usb_common
+>     Feb  3 03:45:23 pino kernel: [ 2931.911382] 
+>     Feb  3 03:45:23 pino kernel: [ 2931.911400] Pid: 2003, comm: cp Not tainted 3.2.2-1-vanilla #1 System manufacturer System Product Name/P5B-MX
+>     Feb  3 03:45:23 pino kernel: [ 2931.911500] EIP: 0060:[<c01f3c00>] EFLAGS: 00010282 CPU: 1
+>     Feb  3 03:45:23 pino kernel: [ 2931.911552] EIP is at page_address+0x10/0xe0
+>     Feb  3 03:45:23 pino kernel: [ 2931.911592] EAX: 00000000 EBX: c6699dd8 ECX: f2c6b1e4 EDX: 00000038
+>     Feb  3 03:45:23 pino kernel: [ 2931.911648] ESI: 00000000 EDI: 00000000 EBP: c6699c18 ESP: c6699c08
+>     Feb  3 03:45:23 pino kernel: [ 2931.911704]  DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+>     Feb  3 03:45:23 pino kernel: [ 2931.911839]  00001000 c6699dd8 00000000 c6699c78 c6699c54 f8666b45 00000000 00001000
+>     Feb  3 03:45:23 pino kernel: [ 2931.911934]  0000000e 00000000 00000002 f2c6b084 00000000 00000000 0000006e 00000000
+>     Feb  3 03:45:23 pino kernel: [ 2931.912028]  f584c700 f59cde00 f8666ab0 c6699ca0 f855c4a5 f2c6b020 c6699c7c f855ca07
+>     Feb  3 03:45:23 pino kernel: [ 2931.912161]  [<f8666b45>] nfs4_xdr_enc_getacl+0x95/0xc0 [nfs]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912224]  [<f8666ab0>] ? nfs4_xdr_enc_fs_locations+0xf0/0xf0 [nfs]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912292]  [<f855c4a5>] rpcauth_wrap_req+0x75/0xc0 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912351]  [<f855ca07>] ? unx_marshal+0x47/0xc0 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912404]  [<c01d9513>] ? mempool_alloc_slab+0x13/0x20
+>     Feb  3 03:45:23 pino kernel: [ 2931.912460]  [<f8553b6e>] call_transmit+0x14e/0x250 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912513]  [<c01d978b>] ? mempool_alloc+0x3b/0xf0
+>     Feb  3 03:45:23 pino kernel: [ 2931.912565]  [<f855ad12>] __rpc_execute+0x52/0x2a0 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912618]  [<c0167c23>] ? wake_up_bit+0x23/0x30
+>     Feb  3 03:45:23 pino kernel: [ 2931.912668]  [<f855b3b8>] rpc_execute+0x38/0x40 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912724]  [<f8553fe9>] rpc_run_task+0x59/0x70 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912778]  [<f85540fc>] rpc_call_sync+0x3c/0x60 [sunrpc]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912840]  [<f865e283>] _nfs4_call_sync+0x23/0x30 [nfs]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912899]  [<f865d0a6>] __nfs4_get_acl_uncached+0x186/0x290 [nfs]
+>     Feb  3 03:45:23 pino kernel: [ 2931.912968]  [<f865f6e4>] nfs4_xattr_get_nfs4_acl+0xe4/0x150 [nfs]
+>     Feb  3 03:45:23 pino kernel: [ 2931.913028]  [<c0240f96>] generic_getxattr+0x46/0x60
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c0240f50>] ? xattr_resolve_name+0x80/0x80
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c02414f0>] vfs_getxattr+0x80/0xb0
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c02415ac>] getxattr+0x8c/0x110
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c0230cda>] ? path_openat+0xca/0x350
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c01f7a01>] ? handle_pte_fault+0xe1/0x8e0
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c0231071>] ? do_filp_open+0x31/0x80
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c022d39b>] ? putname+0x2b/0x40
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c022d39b>] ? putname+0x2b/0x40
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c022d39b>] ? putname+0x2b/0x40
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c0222531>] ? do_sys_open+0x161/0x1b0
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c02416fb>] ? listxattr+0x5b/0xb0
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c0241e76>] sys_fgetxattr+0x46/0x70
+>     Feb  3 03:45:23 pino kernel: [ 2931.913057]  [<c047c39f>] sysenter_do_call+0x12/0x28
+>     Feb  3 03:45:23 pino kernel: [ 2931.932919] ---[ end trace 2749b252593ffc7f ]---
+> 
+> Please let me know if you need any other information, or if I can do anything else to help (I'm not a programmer).
 
---Apple-Mail=_4885EB55-0246-4875-B497-22F9B3DA8E38
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
+But I take it you're comfortable building a kernel from source?  If so,
+getting a stable git repo, then:
 
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAyMTMxNzU4NDNaMCMGCSqGSIb3DQEJBDEWBBT3qQm7D71kkKvb
-936wmUHdXSzJ7TANBgkqhkiG9w0BAQEFAASCAQAbUgVXK1sXa847jznh3T0gUipVGFi5qCBzzYHx
-kmYRikbPIpEIxD6OD0AC39ETQoN37AOaZ92rWJg8HGlTM1HtJq6mm+ULHP0dFNhZ1oauq1uNu8Kv
-NnUdfUSEdLuMvbGXZWB18uqkSnbq59l1ZgTHpuRtfqdTW6/u1fFnBWdGOlumO3zH+euqitt3XdsV
-8NnoTzD0SXPAl2K+xfiaxdCn01D2sV5a7Qhd8/eymmhwuSAsoAWL/jBhpXu4mOJpH3E6tFIupllN
-N4fs+tDFD7e7CQ6KvsrLI1+PlODVoSSiPQXjnPpmhuuW5AwVf+XhWlEtvQ3BbMirqPixbgZPoREV
-AAAAAAAA
+	git checkout v3.2.2
+	git revert 628fc192adbaae0c6178b9015fb916ce61d72b36
 
---Apple-Mail=_4885EB55-0246-4875-B497-22F9B3DA8E38--
+and then testing the resulting kernel--it'd be interesting to know if
+the bug goes away.
+
+--b.
