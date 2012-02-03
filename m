@@ -1,78 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:36967 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753014Ab2BBNFT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 08:05:19 -0500
-Received: by wgbdt10 with SMTP id dt10so2539088wgb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Feb 2012 05:05:18 -0800 (PST)
-MIME-Version: 1.0
-Reply-To: tigran.mkrtchyan@desy.de
-In-Reply-To: <4F2A74A7.4060905@steve-ss.com>
-References: <4F2A2F9E.6030908@steve-ss.com>
-	<CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com>
-	<4F2A74A7.4060905@steve-ss.com>
-Date: Thu, 2 Feb 2012 14:05:18 +0100
-Message-ID: <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com>
-Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: steve <steve@steve-ss.com>
-Cc: linux-nfs@vger.kernel.org
+Received: from plane.gmane.org ([80.91.229.3]:40163 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753852Ab2BCAKF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Feb 2012 19:10:05 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Rt6j5-00064c-6G
+	for linux-nfs@vger.kernel.org; Fri, 03 Feb 2012 01:10:03 +0100
+Received: from 78-60-211-195.static.zebra.lt ([78.60.211.195])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Feb 2012 01:10:03 +0100
+Received: from grawity by 78-60-211-195.static.zebra.lt with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Feb 2012 01:10:03 +0100
+To: linux-nfs@vger.kernel.org
+From: Mantas <grawity@gmail.com>
+Subject: Re: could modify sillyrename to put files in /tmp
+Date: Fri, 03 Feb 2012 02:07:25 +0200
+Message-ID: <jgf8ft$rg5$1@dough.gmane.org>
+References: <201202021018234324363@300.cn>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <201202021018234324363@300.cn>
+Cc: linux-kernel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 2, 2012 at 12:33 PM, steve <steve@steve-ss.com> wrote:
-> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
->>
->> Hi Steve,
->>
->>>
->>> I already use nfs4 to serve my Linux clients. I'm going to kerberize it.
->>> My
->>> clients already have machine and host principals. What else do they need?
->>>
->>> 1. nfs/client.domain.name
->>> 2. nfs/server.domain/name
->>> 3. neither
->>> 4. both
->>>
->>
->> We run kerberized NFS.
->>
->> our keytab contains:
->>
->> on server;
->>   nfs/server.domain
->>
->> on client:
->>   nfs/client.domain
->>
->> and, of course, you need a consistent  idmap configuration.
->>
->> Tigran.
->>
-> Hi Tigran
->
-> That's what we have on our test lan at the moment. I can understand that the
-> server would need the service principal:
->   nfs/server.domain
-> but not the client, as it's not offering any kerberized service.
+On 2012-02-02 04:18, wangjing wrote:
+> In nfs v3 ,if mulity process visit nfs mount nfs dir ,there sometimes occour .nfsXXX can't delete .
+> 
+> If modify sillyrename to put files in /tmp ,it will be more friendly to nfs user.
 
-The mount step happens on behalf of host as there are no user requests yet.
-Client host credentials are used at that time.
+What would then happen if /tmp was on a separate filesystem than the
+original file?
 
->
-> As an experiment, I removed the nfs/client.domain from a client keytab,
-> rebooted and remounted the share. We could still access the kerberized nfs
-> share. Maybe there were still some tickets left somewhere? That has me
-> really confused.
+> the background
+>    1、Linux fs has   /nfsmnt/work_pub/web and /nfsmnt/work_inwork/web ，they use NFS V3 mount
+>    2、there is many process will read and write files in the dir /nfsmnt/work_pub/web 
+>    3、cron will del  all files in dir  /nfsmnt/work_pub/web in period，and will copy all the files which in the dir /nfsmnt/work_inwork/web 
+> 
+> in some times delete all files in  /nfsmnt/work_pub/web will faild ,because there is some .nfsXXXX
 
-Huh! did you enforce kerberos in /etc/exports?
+Then modify the cron job to ignore ".nfs*" files.
 
-Tigran.
->
-> And yes, we found out very early on that idmapd had to be running at both
-> ends.
->
-> Thanks for the reply. You've got me thinking.
-> Steve
+-- 
+Mantas M.
+
