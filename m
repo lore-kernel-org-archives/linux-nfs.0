@@ -1,53 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59553 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47665 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756522Ab2BGTor (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 14:44:47 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
- fails
-Date: Tue, 7 Feb 2012 19:44:28 +0000
-Message-ID: <1328643867.4124.42.camel@lade.trondhjem.org>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-	  <20120207141254.2948e735@tlielax.poochiereds.net>
-	 <1328642485.4124.40.camel@lade.trondhjem.org> <4F317BA1.4050102@netapp.com>
-In-Reply-To: <4F317BA1.4050102@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754678Ab2BCMQj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 07:16:39 -0500
+Date: Fri, 3 Feb 2012 23:16:23 +1100
+From: NeilBrown <neilb@suse.de>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Malahal Naineni <malahal@us.ibm.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Check for beginning '/' in the mount path
+Message-ID: <20120203231623.442fefde@notabene.brown>
+In-Reply-To: <4F2BC1C0.8070900@panasas.com>
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
+	<4F2BC1C0.8070900@panasas.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/MElIXeycWSCDrtDblJ7EDaO"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTA3IGF0IDE0OjI5IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDAyLzA3LzEyIDE0OjIxLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiANCj4gPiBP
-biBUdWUsIDIwMTItMDItMDcgYXQgMTQ6MTIgLTA1MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+
-PiBPbiBhIDMyLWJpdCBib3ggd2hlbiB5b3UgdHJ5IHRvIG1vdW50IGFuZCBsb3cgbWVtb3J5IGlz
-IGhlYXZpbHkNCj4gPj4gZnJhZ21lbnRlZCwgeW91IGNhbiBnZXQgYSBOVUxMIHBvaW50ZXIgYmFj
-ayBvbiB0aGF0IGt6YWxsb2Mgd2l0aCBhDQo+ID4+IG5pY2Ugc3RhY2sgdHJhY2UgaGVhZGVkIGJ5
-IGEgbWVzc2FnZSBsaWtlIHRoaXM6DQo+ID4+DQo+ID4+ICAgICBtb3VudC5uZnM6IHBhZ2UgYWxs
-b2NhdGlvbiBmYWlsdXJlLiBvcmRlcjo0LCBtb2RlOjB4YzBkMA0KPiA+Pg0KPiA+PiBIZXJlJ3Mg
-YSBSSEJaIGFnYWluc3QgUkhFTDYgaWYgeW91J3JlIGludGVyZXN0ZWQgaW4gZ29yeSBkZXRhaWxz
-Og0KPiA+Pg0KPiA+PiAgICAgaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3dfYnVnLmNn
-aT9pZD03MzAwNDUNCj4gPj4NCj4gPj4gSW4gYW55IGNhc2UsIHRoaXMgcHJvYmxlbSB3YXMgb25l
-IG9mIHRoZSByZWFzb25zIGZvciBwdXNoaW5nIHRoZSBuZXcNCj4gPj4gaWRtYXBwZXIuIEEgbnVt
-YmVyIG9mIHBlb3BsZSBoYXZlIGNvbXBsYWluZWQgYWJvdXQgdGhpcyBwcm9ibGVtIGluIHRoZQ0K
-PiA+PiBwYXN0IGFuZCB3ZSB0b2xkIHRoZW0gInVzZSB0aGUgbmV3IGlkbWFwcGVyIi4gTm93LCB3
-aXRoIHRoaXMgcGF0Y2hzZXQsDQo+ID4+IHRoYXQgd29uJ3QgaGVscC4NCj4gPiANCj4gPiBXYWl0
-LiBIb3cgaXMgdGhhdCB0cnVlPyBUaGUgd2hvbGUgcG9pbnQgb2YgdGhpcyBwYXRjaHNldCBpcyB0
-aGF0IGl0DQo+ID4gYWxsb3dzIHlvdSB0byBjb21waWxlIGluIHN1cHBvcnQgZm9yIF9ib3RoXyBp
-ZG1hcHBlcnMsIHdpdGggdGhlIG5ldw0KPiA+IGtleXJpbmctYmFzZWQgaWRtYXBwZXIgYmVpbmcg
-dHJpZWQgZmlyc3QuIFRoZSBjbGllbnQgdGhlbiBmYWxscyBiYWNrIHRvDQo+ID4gdXNpbmcgdGhl
-IG9sZCBpZG1hcHBlciBpZiBhbmQgb25seSBpZiB0aGUgdXNlciBoYXMgZmFpbGVkIHRvIHNldCB1
-cCB0aGUNCj4gPiBuZXcgaWRtYXBwZXIgY29ycmVjdGx5Lg0KPiANCj4gDQo+IEJlY2F1c2UgaXQg
-c3RpbGwgYWxsb2NhdGVzIHRoZSBzdHJ1Y3R1cmVzLCB0aGV5IGp1c3QgZ28gdW51c2VkIGlmIHRo
-ZSBuZXcgaWRtYXBwZXIgd29ya3MuICBUaGlzIHNlZW1zIGtpbmQgb2Ygd2FzdGVmdWwgbm93IHRo
-YXQgSSBrbm93IGFib3V0IGl0Li4uDQoNCk9uZSB3YXkgdG8gZWFzaWx5IHNocmluayB0aGUgc2l6
-ZSBvZiB0aGF0IGFsbG9jYXRpb24gaXMgdG8gY29udmVydCB0aGUNCmloX25hbWUgc3RyaW5nIGlu
-dG8gYSBwb2ludGVyLCBhbmQgaGF2ZSB0aGUgZG93bmNhbGwgYWxsb2NhdGUgdGhlDQpzdG9yYWdl
-IGZvciB0aGF0IHN0cmluZyBkeW5hbWljYWxseS4uLg0KDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+--Sig_/MElIXeycWSCDrtDblJ7EDaO
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, 3 Feb 2012 13:15:12 +0200 Boaz Harrosh <bharrosh@panasas.com> wrote:
+
+> On 02/03/2012 03:42 AM, Malahal Naineni wrote:
+> > NFSv4 gladly accepts and mounts "hostname:path" instead of
+> > "hostname:/path". This causes mount entry mistmatch between /etc/mtab
+> > and /proc/mounts files. The former will have "hostname:path" but the
+> > latter will have "hostname:/path". This causes umount not work at all.
+> >=20
+>=20
+> NACK
+>=20
+> like it or not you are changing ABI. Bunch of systems will not work now.
+>=20
+> Also some other NFS servers/clients support it fine. Actually some servers
+> make it a special case. (It's called mount by tag)
+>=20
+> The bug is else where fix it there. Either add the preceding '/' to
+> /etc/mtab or remove it from /proc/mounts (I prefer the later). Or
+                                            ^^^^^^^^^^^^^^^^^^
+> fix umount to work with that case.
+
+Agreed.  And while we are at it we should remove the trailing '/' too.
+If you
+  mount host:/path /somewhere
+/proc/mounts will show
+    host:/path/
+
+which also confused mount.
+
+NeilBrown
+
+
+--Sig_/MElIXeycWSCDrtDblJ7EDaO
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBTyvQFznsnt1WYoG5AQI/WRAAqKbnQYoh6WnhfZyz2dDNWlaKvoDDLGtX
+9cVenAW+CM88TFbQmEmjv6ojx7nmfJA3fMzUHzvgMmwzdmuhRptBuTPByNF2P3JJ
+l5mF6BhYr2xw2aSAWs7o/1qIgSoReCNT33B+5+ILpjy52ZnvVMfLoEm2FEbrsIio
+0EmPv8hsfUdB1zMOrIVVmkpm4gwfQKIGfSWGI/fq3DrHmc090Kx7KvN4ITA6eADN
+NOWIiGIK3YuiLANUablBSIXXKPPlOLiQWMDpGzMnESnNQpCH1ubOF7UPoB15gFBy
+1Q4fgdosWH8wWiG6ZlIBTdTJ1yAonypdssWGCsu431tJjvckwJAOVhheoRktV+bp
+BjsCFZ48NJSDul+APxDxYCetR4lzCDVK2NHgViVr7FjP2GB5Q3aNW11y7bfXhm7W
+mXQ9Kcz4s65m8JJ+KUFOh7SjJybCj0jncyeqU9J3c4gCTWXRku5czAbbqIMOISpN
+hfn0nPAPR7ZXY0XF/021pTb9T+545yP6GXzkp0nXIsT+h8/XmQMhJ4ZyM1BXGhGv
+pbiVVDDLM7o+s/L1/k1eFUQ17yvXwss7EhB4vmHpHCxpNEV5TdcrpYuE4RbbZ9S5
+i7XpKzQYrOc4FCl72EFvz+LpbKZCyUdxDtwitXU89eq+F4okbc9cOCPZiDIZDAHY
+KSitzQUbmmw=
+=2D+J
+-----END PGP SIGNATURE-----
+
+--Sig_/MElIXeycWSCDrtDblJ7EDaO--
