@@ -1,65 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45547 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754353Ab2B2WcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 17:32:18 -0500
-Date: Wed, 29 Feb 2012 17:32:17 -0500
-To: steve <steve@steve-ss.com>
-Cc: linux-nfs@vger.kernel.org, Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Subject: Re: NFSv4 client restriction
-Message-ID: <20120229223216.GB6506@fieldses.org>
-References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com>
- <20120223010111.GA19432@fieldses.org>
- <4F45E63B.9090608@steve-ss.com>
- <4F464A4A.10403@fifthhorseman.net>
- <4F465E76.4000201@steve-ss.com>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:46076 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756164Ab2BCNQo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 08:16:44 -0500
+Date: Fri, 3 Feb 2012 08:16:36 -0500
+From: Jim Rees <rees@umich.edu>
+To: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
+        stuart.menefy@st.com, bharrosh@panasas.com, linux@razik.name
+Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min
+ max delays.
+Message-ID: <20120203131636.GA8220@umich.edu>
+References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
+ <EBFEB6A8-4943-4D9E-9139-73D14ACB32DD@oracle.com>
+ <4F225BED.7000005@st.com>
+ <4F2BB2C0.9060207@st.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F465E76.4000201@steve-ss.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4F2BB2C0.9060207@st.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 23, 2012 at 04:42:46PM +0100, steve wrote:
-> On 02/23/2012 03:16 PM, Daniel Kahn Gillmor wrote:
-> >On 02/23/2012 02:09 AM, steve wrote:
-> >>It is not recommended to use the pseudoroot fsid=0 stuff for Linux.
-> >>
-> >>See the nfs wiki: 'The linux implementation allows you to designate a
-> >>real filesystem as the pseudofilesystem, identifying that export with
-> >>the fsid=0 option; we no longer recommend this. Instead, on any recent
-> >>linux distribution, just list exports in /etc/exports exactly as you
-> >>would for NFSv2 or NFSv3.'
-> >I believe the last time this came up, i asked for a rationale or
-> >explanation.  The only reason given [0] was from J. Bruce Fields:
-> I've never got to the bottom of this one either. I only know that it works.
-> >>>The main problem with the fsid=0 trick is that your v3 and v4 clients
-> >>>end up with different paths.
-> But if say, you're exporting /home and have /home bind mounted to
-> your pseudoroot, then the paths are exactly the same. You still
-> mount -t nfsx server:/home /client/somewhere for x=3 or x=4. No?
-
-I suppose that'll work, though it's a little messy: if someone looks at
-your exports e.g.  with shomwount it'll look like:
-
-	# showmount -e myserver
-	export list for myserver:
-	/home *
-	/path/to/pseudoroot/home *
-
-And v4 clients who try to mount the latter will get an error.
-
---b.
-
-> >So, if you have no v3 clients, i don't think there is any reason to
-> >avoid fsid=0 if it makes things cleaner for you.  And removing fsid=0
-> >will require you to change /etc/fstab (or your automounter config) in
-> >all of your clients.
-> Please accept my apologies for butting in on this. I'm simply trying
-> to get some facts together.
-> Cheers,
-> Steve
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It seems confusing to change the meaning of NFSROOT_TIMEOUT_MIN.  It used to
+be the timeout minimum, as the name implies, but now it's the timeout
+minimum plus one.  I understand that the actual timeout includes the time
+spent in mount, but I would expect NFSROOT_TIMEOUT_MIN to just be the
+initial loop sleep time.  Maybe this just needs a comment.
