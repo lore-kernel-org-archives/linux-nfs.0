@@ -1,88 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754022Ab2BOVff (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:35 -0500
-Received: by mail-gy0-f174.google.com with SMTP id r11so965647ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:35 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/13] NFS: Add debugging messages to NFSv4's CLOSE procedure
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:35:33 -0500
-Message-ID: <20120215213533.3254.51446.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from partagas.dragonet.es ([217.70.240.130]:58403 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753592Ab2BCRXU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 12:23:20 -0500
+Message-ID: <4F2C17F0.3090703@steve-ss.com>
+Date: Fri, 03 Feb 2012 18:22:56 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
+References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2A74A7.4060905@steve-ss.com> <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com> <4F2A8FBC.1010101@steve-ss.com> <4F2AA430.2040109@steve-ss.com> <CAGue13q97uFopDfUpTGNQYbJJi7QeJrgh1ArZfvx-9KBogLwZA@mail.gmail.com>
+In-Reply-To: <CAGue13q97uFopDfUpTGNQYbJJi7QeJrgh1ArZfvx-9KBogLwZA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CLOSE is new with NFSv4.  Sometimes it's important to know the timing
-of this operation compared to things like lease renewal.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5ff9c5a..5629858 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1947,6 +1947,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	struct nfs4_state *state = calldata->state;
- 	struct nfs_server *server = NFS_SERVER(calldata->inode);
- 
-+	dprintk("%s: begin!\n", __func__);
- 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
- 		return;
-         /* hmm. we are done with the inode, and in the process of freeing
-@@ -1974,6 +1975,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 	}
- 	nfs_release_seqid(calldata->arg.seqid);
- 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
-+	dprintk("%s: done, ret = %d!\n", __func__, task->tk_status);
- }
- 
- static void nfs4_close_prepare(struct rpc_task *task, void *data)
-@@ -1982,6 +1984,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	struct nfs4_state *state = calldata->state;
- 	int call_close = 0;
- 
-+	dprintk("%s: begin!\n", __func__);
- 	if (nfs_wait_on_sequence(calldata->arg.seqid, task) != 0)
- 		return;
- 
-@@ -2006,7 +2009,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (!call_close) {
- 		/* Note: exit _without_ calling nfs4_close_done */
- 		task->tk_action = NULL;
--		return;
-+		goto out;
- 	}
- 
- 	if (calldata->arg.fmode == 0) {
-@@ -2015,7 +2018,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
- 			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
- 				     task, NULL);
--			return;
-+			goto out;
- 		}
- 	}
- 
-@@ -2024,8 +2027,10 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
- 				&calldata->arg.seq_args, &calldata->res.seq_res,
- 				1, task))
--		return;
-+		goto out;
- 	rpc_call_start(task);
-+out:
-+	dprintk("%s: done!\n", __func__);
- }
- 
- static const struct rpc_call_ops nfs4_close_ops = {
+On 02/02/2012 07:57 PM, Tigran Mkrtchyan wrote:
+> On Thu, Feb 2, 2012 at 3:56 PM, steve<steve@steve-ss.com>  wrote:
+>> On 02/02/12 14:29, steve wrote:
+>>> On 02/02/2012 02:05 PM, Tigran Mkrtchyan wrote:
+>>>> On Thu, Feb 2, 2012 at 12:33 PM, steve<steve@steve-ss.com>    wrote:
+>>>>> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
+>>>>>> Hi Steve,
+>>>>>>
+>>>>>>> I already use nfs4 to serve my Linux clients. I'm going to kerberize
+>>>>>>> it.
+>>>>>>> My
+>>>>>>> clients already have machine and host principals. What else do they
+>>>>>>> need?
+>>>>>>>
+>>>>>>> 1. nfs/client.domain.name
+>>>>>>> 2. nfs/server.domain/name
+>>>>>>> 3. neither
+>>>>>>> 4. both
+>>>>>>>
+>>>>>> We run kerberized NFS.
+>>>>>>
+>>>>>> our keytab contains:
+>>>>>>
+>>>>>> on server;
+>>>>>>    nfs/server.domain
+>>>>>>
+>>>>>> on client:
+>>>>>>    nfs/client.domain
+>>>>>>
+>>>>>> and, of course, you need a consistent  idmap configuration.
+>>>>>>
+>>>>>> Tigran.
+>>>>>>
+>>>>> Hi Tigran
+>>>>>
+>>>>> That's what we have on our test lan at the moment. I can understand that
+>>>>> the
+>>>>> server would need the service principal:
+>>>>>    nfs/server.domain
+>>>>> but not the client, as it's not offering any kerberized service.
+>>>> The mount step happens on behalf of host as there are no user requests
+>>>> yet.
+>>>> Client host credentials are used at that time.
+>>>>
+>>>>> As an experiment, I removed the nfs/client.domain from a client keytab,
+>>>>> rebooted and remounted the share. We could still access the kerberized
+>>>>> nfs
+>>>>> share. Maybe there were still some tickets left somewhere? That has me
+>>>>> really confused.
+>>>> Huh! did you enforce kerberos in /etc/exports?
+>>>>
+>>> Yes. /etc/exports exports as gss/krb5
+>>> I made a screenshot:
+>>>
+>>>
+>>> http://3.bp.blogspot.com/-g40b11Ys_DA/TypYtlO-ixI/AAAAAAAAAIc/cZdeRhnVuY4/s1600/s4all.png
+>>>
+>>> That's why I'm confused.
+>>> Steve
+>>
+>> Digging a bit further, here is the output of mount on the client:
+>> http://dl.dropbox.com/u/45150875/krb5testnfs.png
+>>
+>> And this appears immediately after the mount:
+>> http://dl.dropbox.com/u/45150875/krb5nfstmp.png
+>>
+>> Most of the documentation tells you to stick nfs into the client keytab as
+>> well as the server keytab, but here, I only have the principal on the
+>> server.
+>>
+>> What am I missing?
+> I think client simply falls back to 'host' if nfs entry is not available.
+>
+> Tigran.
+I completely cleared /tmp and stuck nfs/client back in the client keytab 
+to see if it made any difference. It still wasn't used. I got exactly 
+the same tickets as above. It looks as though this is a recent change to 
+nfs-utils. I think this post explains why I see nfs being authenticated 
+not by the /nfs/client nor /host/client but by the client$ principal.
+https://fedorahosted.org/pipermail/sssd-devel/2010-August/004332.html
+I'm new to all this so nothing is certain for me the moment!
+Does this make sense?
+Cheers,
+Steve
 
