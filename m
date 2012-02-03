@@ -1,57 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64342 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51021 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754009Ab2BFXuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 18:50:07 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] SUNRPC: Change the default limit to the number of TCP slots
-Date: Mon,  6 Feb 2012 18:49:45 -0500
-Message-Id: <1328572185-2568-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757690Ab2BCVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 16:10:01 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Provide vfs support for NFSv4 delegations
+Date: Fri,  3 Feb 2012 16:09:51 -0500
+Message-Id: <1328303397-3872-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120203205818.GE2999@fieldses.org>
+References: <20120203205818.GE2999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since the scheme of limiting the number of TCP slots to whatever will
-fit in the current TCP window seems to be working well (Andy reports
-getting within 20% of the 'iperf' send performance on a 10GigE link)
-we should just let that be the default mode of operation.
+The following patches provide vfs support for NFSv4 delegations.
 
-Users may still set their own limits using the tcp_max_slot_table_entries
-parameter if they need to.
+If they look sane then I'd like to get some version of them merged into
+3.4.  I'm assuming Al would be the one to do that.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/nfs_fs_sb.h   |    2 +-
- include/linux/sunrpc/xprt.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+Currently nfsd implements delegations as leases.  However, leases don't
+have quite the same semantics, which means that delegations are
+currently enforced correctly only for conflicts between NFSv4 clients.
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index c234693..9e101c1 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -190,7 +190,7 @@ struct nfs_server {
- 
- 
- /* maximum number of slots to use */
--#define NFS4_MAX_SLOT_TABLE RPC_MAX_SLOT_TABLE
-+#define NFS4_MAX_SLOT_TABLE (128U)
- 
- #if defined(CONFIG_NFS_V4)
- 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 15518a1..b033f36 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -21,8 +21,8 @@
- 
- #define RPC_MIN_SLOT_TABLE	(2U)
- #define RPC_DEF_SLOT_TABLE	(16U)
--#define RPC_MAX_SLOT_TABLE	(128U)
- #define RPC_MAX_SLOT_TABLE_LIMIT	(65536U)
-+#define RPC_MAX_SLOT_TABLE	RPC_MAX_SLOT_TABLE_LIMIT
- 
- /*
-  * This describes a timeout strategy
--- 
-1.7.7.6
+So, I define a new FL_DELEG flag to mark NFSv4 delegations.  In most
+respects delegations behave just like leases, but they need to be broken
+on more operations.
+
+Delegations aren't exposed to userspace; nfsd is the only user.
+
+In theory this code allows both read and write delegations, but I'm only
+using read delegations for now--write delegations are a project for
+another day.  (At which point write leases will probably need some
+fixing too, while we're at it.)
+
+--b.
 
