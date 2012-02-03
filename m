@@ -1,117 +1,301 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mexforward.lss.emc.com ([128.222.32.20]:40318 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752265Ab2BWIeO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 03:34:14 -0500
-From: <tao.peng@emc.com>
-To: <steve@steve-ss.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Thu, 23 Feb 2012 03:33:35 -0500
-Subject: RE: POSIX acls over nfs4
-Message-ID: <F19688880B763E40B28B2B462677FBF805EA5FFC82@MX09A.corp.emc.com>
-References: <4F40053A.3090301@steve-ss.com> <4F412E2F.9070200@steve-ss.com>
- <4F45E78E.8050501@steve-ss.com>
-In-Reply-To: <4F45E78E.8050501@steve-ss.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:50044 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754054Ab2BCREC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 12:04:02 -0500
+Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
+Date: Fri, 3 Feb 2012 12:03:33 -0500
+Cc: Lennart Poettering <lennart@poettering.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Michal Schmidt <mschmidt@redhat.com>,
+        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
+        libtirpc <libtirpc-devel@lists.sourceforge.net>
+Message-Id: <59177373-E0FD-4565-94C5-E079C6BE6ED5@oracle.com>
+References: <1324602327-1789-1-git-send-email-teg@jklm.no> <1328096830-1383-1-git-send-email-teg@jklm.no> <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com> <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
+To: Tom Gundersen <teg@jklm.no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIHN0ZXZlDQo+IFNlbnQ6IFRodXJzZGF5LCBGZWJydWFyeSAyMywgMjAxMiAzOjE1
-IFBNDQo+IFRvOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBQT1NJ
-WCBhY2xzIG92ZXIgbmZzNA0KPiANCj4gSGkgZXZlcnlvbmUNCj4gSSdtIHNvcnJ5IHRvIGJ1bXAg
-dGhpcyBidXQgSSd2ZSB0cmllZCB0aGUgb3BlbnN1c2UsIHVidW50dSBhbmQgc2FtYmENCj4gbGlz
-dHMgd2l0aG91dCBhbnkgbHVjay4NCk5vdCByZWFkaW5nIHRoZSBkZXRhaWxzIGluIHlvdXIgc2V0
-dXAsIGJ1dCBtYXliZSBmb2xsb3dpbmcgc3VtbWFyeSBjYW4gaGVscCB5b3UgYSBiaXQuDQpodHRw
-Oi8vd3d3LnN1c2UuZGUvfmFncnVlbi9hY2wvbGludXgtYWNscy9vbmxpbmUvDQoNCkNoZWVycywN
-ClRhbw0KPiANCj4gVGhlIGFjbHMgSSBoYXZlIGNyZWF0ZWQgYXJlIG5vdCBpbmhlcml0ZWQgd2hl
-biBleHBvcnRpbmcgdmlhIG5mczQuIENhbg0KPiBhbnlvbmUgaGVscCBtZSB3aXRoIHRoaXM/IFRl
-bGwgbWUgaXQgY2FuL2Nhbid0IGJlIGRvbmU/IFZlcnNpb25zIG9mIG5mcw0KPiB0byB1c2U/IERl
-dGFpbHMgYmVsb3cuDQo+IFRoYW5rcywNCj4gU3RldmUNCj4gDQo+IA0KPiBPbiAwMi8xOS8yMDEy
-IDA2OjE1IFBNLCBzdGV2ZSB3cm90ZToNCj4gPiBPbiAxOC8wMi8xMiAyMTowOCwgc3RldmUgd3Jv
-dGU6DQo+ID4+IEhpDQo+ID4+IElzIGl0IHBvc3NpYmxlIGZvciBuZnM0IHRvIHJlc3BlY3QgdGhl
-IGFjbHMgSSBoYXZlIHNldHVwIG9uIGFuIGV4dDQNCj4gPj4gZXhwb3J0Pw0KPiA+PiBUaGFua3Ms
-DQo+ID4+IFN0ZXZlDQo+ID4+DQo+ID4+IG9wZW5TVVNFIDEyLjENCj4gPj4gLS0NCj4gPj4gVG8g
-dW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxp
-bnV4LW5mcyIgaW4NCj4gPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
-Lmtlcm5lbC5vcmcNCj4gPj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
-bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4gU29ycnksIHRoaXMgaXMgd2hhdCBJJ3Zl
-IHRyaWVkIHNvIGZhcjoNCj4gPiAgY2F0IC9ldGMvZXhwb3J0cw0KPiA+IC9ob21lDQo+ID4gKihy
-dyxub19yb290X3NxdWFzaCxzZWM9bm9uZTpzeXM6a3JiNTprcmI1aTprcmI1cCxub19zdWJ0cmVl
-X2NoZWNrLGluc2VjdXJlKQ0KPiA+DQo+ID4gMS4gTWFrZSBhIGZvbGRlciB0byBzaGFyZToNCj4g
-PiBoaDM6L2hvbWUvQ0FDVFVTICMgbWtkaXIgLW0gNzcwIGRyb3Bib3gNCj4gPiBoaDM6L2hvbWUv
-Q0FDVFVTICMgY2hvd24gcm9vdDpzdXNldXNlcnMgZHJvcGJveA0KPiA+DQo+ID4gMi4gTW91bnQg
-dGhlIHNoYXJlOg0KPiA+IGhoMzovaG9tZS9DQUNUVVMgIyBtb3VudCAtdCBuZnM0IGhoMzovaG9t
-ZSAvbW50DQo+ID4NCj4gPiAzLiBMb29rIGF0IHRoZSBhY2xzOg0KPiA+IG5mczRfZ2V0ZmFjbCAv
-bW50L0NBQ1RVUy9kcm9wYm94DQo+ID4gQTo6T1dORVJAOnJ3YUR4dFRjQ3kNCj4gPiBBOjpHUk9V
-UEA6cndhRHh0Y3kNCj4gPiBBOjpFVkVSWU9ORUA6dGN5DQo+ID4NCj4gPiBTZXQgYW4gYWNsIHNv
-IHRoYXQgbWVtYmVycyBvZiBzdXNldXNlcnMgaGF2ZSBydyBvbiB0aGUgc2hhcmU6DQo+ID4gaGgz
-Oi9ob21lL0NBQ1RVUyAjIG5mczRfc2V0ZmFjbCAtYSBBOmc6c3VzZXVzZXJzQGhoMy5zaXRlOlJX
-DQo+ID4gL21udC9DQUNUVVMvZHJvcGJveA0KPiA+DQo+ID4gaGgzOi9ob21lL0NBQ1RVUyAjIG5m
-czRfZ2V0ZmFjbCAvbW50L0NBQ1RVUy9kcm9wYm94Lw0KPiA+IEE6Ok9XTkVSQDpyd2FEeHRUY0N5
-DQo+ID4gQTo6R1JPVVBAOnJ3YUR4dGN5DQo+ID4gQTpnOnN1c2V1c2Vyc0BoaDMuc2l0ZTpyd2FE
-dGN5DQo+ID4gQTo6RVZFUllPTkVAOnRjeQ0KPiA+DQo+ID4gNC4gWWVzLiBCYWNrIGluIHRoZSB1
-bm1vdW50ZWQgZGlyZWN0b3J5LCB0aGUgYWNsICsgaGFzIGFwcGVhcmVkOg0KPiA+IGhoMzovaG9t
-ZS9DQUNUVVMgIyBscyAtbGEgZHJvcGJveC8NCj4gPiB0b3RhbCA4DQo+ID4gZHJ3eHJ3eC0tLSsg
-MiByb290IHN1c2V1c2VycyA0MDk2IEZlYiAxOSAxMDo1NSAuDQo+ID4gZHJ3eHIteHIteCAgOSBy
-b290IHJvb3QgICAgICA0MDk2IEZlYiAxOSAxMDo1NSAuLg0KPiA+DQo+ID4gNS4gT24gdGhlIG1v
-dW50ZWQgc2hhcmUsIHRoZSBhY2wgaXMgbm90IHZpc2libGUuIHN0ZXZlNiBjYW4gY3JlYXRlIGEN
-Cj4gPiBmaWxlIGJ1dCBpdCBpcyBfbm90XyBncm91cCBydzoNCj4gPiBzdGV2ZTZAaGgzOn4+IGNk
-IC9tbnQvQ0FDVFVTL2Ryb3Bib3gvDQo+ID4gc3RldmU2QGhoMzovbW50L0NBQ1RVUy9kcm9wYm94
-PiB0b3VjaCBob2xhLnR4dA0KPiA+IHN0ZXZlNkBoaDM6L21udC9DQUNUVVMvZHJvcGJveD4gbHMg
-LWxhDQo+ID4gdG90YWwgOA0KPiA+IGRyd3hyd3gtLS0gMiByb290ICAgc3VzZXVzZXJzIDQwOTYg
-RmViIDE5IDExOjAyIC4NCj4gPiBkcnd4ci14ci14IDkgcm9vdCAgIHJvb3QgICAgICA0MDk2IEZl
-YiAxOSAxMDo1NSAuLg0KPiA+IC1ydy1yLS1yLS0gMSBzdGV2ZTYgc3VzZXVzZXJzICAgIDAgRmVi
-IDE5IDExOjAyIGhvbGEudHh0DQo+ID4NCj4gPiA2LiBSZWNyZWF0ZSB0aGUgc2hhcmUgYnV0IHRo
-aXMgdGltZSB3aXRoIGEgcG9zaXggYWNsOg0KPiA+IHNldGZhY2wgLWQgLW0gZzo6cncgL2hvbWUv
-Q0FDVFVTL2Ryb3Bib3gNCj4gPiBzdGV2ZTZAaGgzOi9ob21lL0NBQ1RVUz4gdG91Y2ggZHJvcGJv
-eC9oDQo+ID4gc3RldmU2QGhoMzovaG9tZS9DQUNUVVM+IGxzIC1sYSBkcm9wYm94Lw0KPiA+IHRv
-dGFsIDgNCj4gPiBkcnd4cndzLS0tKyAyIHJvb3QgICBzdXNldXNlcnMgNDA5NiBGZWIgMTkgMTE6
-MTMgLg0KPiA+IGRyd3hyLXhyLXggIDkgcm9vdCAgIHJvb3QgICAgICA0MDk2IEZlYiAxOSAxMTox
-MSAuLg0KPiA+IC1ydy1ydy0tLS0gIDEgc3RldmU2IHN1c2V1c2VycyAgICAwIEZlYiAxOSAxMTox
-MyBoDQo+ID4NCj4gPiBZZXMuIE5vdyB3aGVuIHN0ZXZlNiBjcmVhdGVzIGEgZmlsZSBpdCBfaXNf
-IGdyb3VwIHJ3LiA9IHBvc2l4IGFjbCBpcw0KPiA+IHdvcmtpbmcuDQo+ID4NCj4gPiA3LiBNb3Vu
-dCB0aGUgbmV3IHBvc2l4IHNoYXJlIGFuZCB0ZXN0IGFnYWluOg0KPiA+IGhoMzovaG9tZS9DQUNU
-VVMgI2NobW9kIGcrcyAvaG9tZS9DQUNUVVMvZHJvcGJveA0KPiA+IGhoMzovaG9tZS9DQUNUVVMg
-IyBtb3VudCAtdCBuZnM0IGhoMzovaG9tZSAvbW50DQo+ID4gaGgzOi9ob21lL0NBQ1RVUyAjIG5m
-czRfZ2V0ZmFjbCAvbW50L0NBQ1RVUy9kcm9wYm94Lw0KPiA+IEE6Ok9XTkVSQDpyd2FEeHRUY0N5
-DQo+ID4gQTo6R1JPVVBAOnJ3YUR4dGN5DQo+ID4gQTo6RVZFUllPTkVAOnRjeQ0KPiA+IEE6ZmRp
-Ok9XTkVSQDpyd2FEeHRUY0N5DQo+ID4gQTpmZGk6R1JPVVBAOnJ3YUR0Y3kNCj4gPiBBOmZkaTpF
-VkVSWU9ORUA6dGN5DQo+ID4NCj4gPiBzdGV2ZTZAaGgzOi9tbnQvQ0FDVFVTL2Ryb3Bib3g+IHRv
-dWNoIGgyDQo+ID4gc3RldmU2QGhoMzovbW50L0NBQ1RVUy9kcm9wYm94PiBscyAtbGENCj4gPiB0
-b3RhbCA4DQo+ID4gZHJ3eHJ3cy0tLSAyIHJvb3QgICBzdXNldXNlcnMgNDA5NiBGZWIgMTkgMTE6
-MTkgLg0KPiA+IGRyd3hyLXhyLXggOSByb290ICAgcm9vdCAgICAgIDQwOTYgRmViIDE5IDExOjEx
-IC4uDQo+ID4gLXJ3LXJ3LS0tLSAxIHN0ZXZlNiBzdXNldXNlcnMgICAgMCBGZWIgMTkgMTE6MTMg
-aA0KPiA+IC1ydy1yLS0tLS0gMSBzdGV2ZTYgc3VzZXVzZXJzICAgIDAgRmViIDE5IDExOjE5IGgy
-DQo+ID4gaGgzOi9ob21lL0NBQ1RVUyAjIG5mczRfZ2V0ZmFjbCAvbW50L0NBQ1RVUy9kcm9wYm94
-Lw0KPiA+IEE6Ok9XTkVSQDpyd2FEeHRUY0N5DQo+ID4gQTo6R1JPVVBAOnJ3YUR4dGN5DQo+ID4g
-QTo6RVZFUllPTkVAOnRjeQ0KPiA+IEE6ZmRpOk9XTkVSQDpyd2FEeHRUY0N5DQo+ID4gQTpmZGk6
-R1JPVVBAOnJ3YUR0Y3kNCj4gPiBBOmZkaTpFVkVSWU9ORUA6dGN5DQo+ID4gaGgzOi9ob21lL0NB
-Q1RVUyAjIG5mczRfc2V0ZmFjbCAtYSBBOmZkaTpHUk9VUEA6UldYDQo+ID4gL21udC9DQUNUVVMv
-ZHJvcGJveGhoMzovaG9tZS9DQUNUVVMgIyBuZnM0X2dldGZhY2wgL21udC9DQUNUVVMvZHJvcGJv
-eC8NCj4gPiBBOjpPV05FUkA6cndhRHh0VGNDeQ0KPiA+IEE6OkdST1VQQDpyd2FEeHRjeQ0KPiA+
-IEE6OkVWRVJZT05FQDp0Y3kNCj4gPiBBOmZkaTpPV05FUkA6cndhRHh0VGNDeQ0KPiA+IEE6ZmRp
-OkdST1VQQDpyd2FEeHRjeQ0KPiA+IEE6ZmRpOkVWRVJZT05FQDp0Y3kNCj4gPg0KPiA+IHN0ZXZl
-NkBoaDM6L21udC9DQUNUVVMvZHJvcGJveD4gdG91Y2ggaDMNCj4gPiBzdGV2ZTZAaGgzOi9tbnQv
-Q0FDVFVTL2Ryb3Bib3g+IGxzIC1sYQ0KPiA+IHRvdGFsIDgNCj4gPiBkcnd4cndzLS0tIDIgcm9v
-dCAgIHN1c2V1c2VycyA0MDk2IEZlYiAxOSAxMToyMSAuDQo+ID4gZHJ3eHIteHIteCA5IHJvb3Qg
-ICByb290ICAgICAgNDA5NiBGZWIgMTkgMTE6MTEgLi4NCj4gPiAtcnctcnctLS0tIDEgc3RldmU2
-IHN1c2V1c2VycyAgICAwIEZlYiAxOSAxMToxMyBoDQo+ID4gLXJ3LXItLS0tLSAxIHN0ZXZlNiBz
-dXNldXNlcnMgICAgMCBGZWIgMTkgMTE6MTkgaDINCj4gPiAtcnctci0tLS0tIDEgc3RldmU2IHN1
-c2V1c2VycyAgICAwIEZlYiAxOSAxMToyMSBoMw0KPiA+DQo+ID4gU3RpbGwgbm8gZ3JvdXAgcncg
-b24gY3JlYXRlZCBmaWxlcy4gPSBuZnM0IGFjbCBpcyBub3Qgd29ya2luZyBhcw0KPiA+IGV4cGVj
-dGVkLg0KPiA+DQo+ID4gV29ya2Fyb3VuZC4gR2V0IHRoZSBvdXQgdGhlIGJpZyBoYW1tZXI6DQo+
-ID4gIyEvYmluL3NoDQo+ID4gd2hpbGUgdHJ1ZTsgZG8gJChjaG1vZCAtUiBnK3cgL2hvbWUvQ0FD
-VFVTL2Ryb3Bib3gpOyBzbGVlcCAyOyBkb25lDQo+ID4NCj4gPiBRdWVzdGlvbjoNCj4gPiBXaGF0
-IGFtIEkgbWlzc2luZz8gSG93IGRvIEkgc2V0IGZpbGVzIGNyZWF0ZWQgb24gYW4gbmZzNCBzaGFy
-ZSB0byB0YWtlDQo+ID4gZ3JvdXAgcnc/DQo+ID4NCj4gPiBUaGFua3MsDQo+ID4gU3RldmUNCj4g
-Pg0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxp
-bmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
-dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQg
-IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiANCj4gLS0NCj4g
-VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
-IGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
-Lmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
-Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCg==
+Hi-
+
+On Feb 1, 2012, at 11:37 AM, Tom Gundersen wrote:
+
+> Hi Chuck,
+> 
+> Thanks for the feedback.
+> 
+> On Wed, Feb 1, 2012 at 4:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> Typically this is done by breaking the proposed change into smaller atomic patches.  Is that not possible in this case?
+> 
+> Not entirely sure what you have in mind, I don't immediately see how
+> to split this up. Any suggestions welcome.
+> 
+>>> Added Michal to cc as this patch should go a long way to sort out
+>>> <https://bugzilla.redhat.com/show_bug.cgi?id=747363>.
+>> 
+>> Wouldn't comment 3 also work around problems long enough to give us an opportunity to adequately vet the proposed changes?
+> 
+> Sure, that's another option.
+> 
+>> What additions to our test matrix are needed?
+> 
+> I could not find any tests in the rpcbind git repo. Could you point me
+> at your test matrix?
+> 
+>>> +     /* Try to find if one of the systemd sockets we were given match
+>>> +      * our netconfig structure. */
+>>> +
+>>> +     for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
+>>> +             struct __rpc_sockinfo si_other;
+>>> +             union {
+>>> +                     struct sockaddr sa;
+>>> +                     struct sockaddr_un un;
+>>> +                     struct sockaddr_in in4;
+>>> +                     struct sockaddr_in6 in6;
+>>> +                     struct sockaddr_storage storage;
+>>> +             } sa;
+>> 
+>> Why is sockaddr_storage included in this union?
+> 
+> This is from Lennart's original patch. Lennart, care to comment?
+> 
+> For what it's worth, here is the patch with whitespace ignored, which
+> should make it simpler to review:
+> 
+> 
+> diff --git a/Makefile.am b/Makefile.am
+> index 9fa608e..194b467 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -38,6 +38,21 @@ rpcbind_SOURCES = \
+> 	src/warmstart.c
+> rpcbind_LDADD = $(TIRPC_LIBS)
+> 
+> +if SYSTEMD
+> +AM_CPPFLAGS += $(SYSTEMD_CFLAGS) -DSYSTEMD
+> +
+> +rpcbind_LDADD += $(SYSTEMD_LIBS)
+> +
+> +systemd/rpcbind.service: systemd/rpcbind.service.in Makefile
+> +	sed -e 's,@bindir\@,$(bindir),g' \
+> +		< $< > $@ || rm $@
+> +
+> +systemdsystemunit_DATA = \
+> +	systemd/rpcbind.service \
+> +	systemd/rpcbind.socket
+> +
+> +endif
+> +
+> rpcinfo_SOURCES =       src/rpcinfo.c
+> rpcinfo_LDADD   =       $(TIRPC_LIBS)
+> 
+> diff --git a/configure.in b/configure.in
+> index 2b67720..397d52d 100644
+> --- a/configure.in
+> +++ b/configure.in
+> @@ -29,6 +29,17 @@ AC_SUBST([rpcuser], [$with_rpcuser])
+> 
+> PKG_CHECK_MODULES([TIRPC], [libtirpc])
+> 
+> +PKG_PROG_PKG_CONFIG
+> +AC_ARG_WITH([systemdsystemunitdir],
+> +  AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for
+> systemd service files]),
+> +  [], [with_systemdsystemunitdir=$($PKG_CONFIG
+> --variable=systemdsystemunitdir systemd)])
+> +  if test "x$with_systemdsystemunitdir" != xno; then
+> +    AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+> +    PKG_CHECK_MODULES([SYSTEMD], [libsystemd-daemon])
+> +  fi
+> +AM_CONDITIONAL(SYSTEMD, [test -n "$with_systemdsystemunitdir" -a
+> "x$with_systemdsystemunitdir" != xno ])
+> +
+> +
+> AS_IF([test x$enable_libwrap = xyes], [
+> 	AC_CHECK_LIB([wrap], [hosts_access], ,
+> 		AC_MSG_ERROR([libwrap support requested but unable to find libwrap]))
+
+It's not clear to me how this works on a system that does not have libsystemd-daemon installed.  It appears to require "--with-systemdsystemunitdir=no" which a) is not documented that I can see, b) is awkward ("no" is not a directory name), and c) violates the principal of least surprise.
+
+Our usual practice is to add features so they are enabled when they find all of the dependencies already on the build system, and they are disabled otherwise.  configure options are used to force the situation, but out of the shrink wrap, configure should just work.
+
+This way, typically applying a patch does not require any changes to RPMs or other automated build infrastructure except in rare circumstances.
+
+Did I miss something?
+
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 24e069b..a87ce05 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -56,6 +56,9 @@
+> #include <netinet/in.h>
+> #endif
+> #include <arpa/inet.h>
+> +#ifdef SYSTEMD
+> +#include <systemd/sd-daemon.h>
+> +#endif
+> #include <fcntl.h>
+> #include <netdb.h>
+> #include <stdio.h>
+> @@ -281,6 +284,7 @@ init_transport(struct netconfig *nconf)
+> 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
+> 	struct sockaddr_un sun;
+> 	mode_t oldmask;
+> +	int n = 0;
+>         res = NULL;
+> 
+> 	if ((nconf->nc_semantics != NC_TPI_CLTS) &&
+> @@ -300,6 +304,76 @@ init_transport(struct netconfig *nconf)
+> 	}
+> #endif
+> 
+> +	if (!__rpc_nconf2sockinfo(nconf, &si)) {
+> +		syslog(LOG_ERR, "cannot get information for %s",
+> +		    nconf->nc_netid);
+> +		return (1);
+> +	}
+> +
+> +#ifdef SYSTEMD
+> +	n = sd_listen_fds(0);
+> +	if (n < 0) {
+> +		syslog(LOG_ERR, "failed to acquire systemd scokets: %s", strerror(-n));
+> +		return 1;
+> +	}
+> +
+> +	/* Try to find if one of the systemd sockets we were given match
+> +	 * our netconfig structure. */
+> +
+> +	for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
+> +		struct __rpc_sockinfo si_other;
+> +		union {
+> +			struct sockaddr sa;
+> +			struct sockaddr_un un;
+> +			struct sockaddr_in in4;
+> +			struct sockaddr_in6 in6;
+> +			struct sockaddr_storage storage;
+> +		} sa;
+> +		socklen_t addrlen = sizeof(sa);
+> +
+> +		if (!__rpc_fd2sockinfo(fd, &si_other)) {
+> +			syslog(LOG_ERR, "cannot get information for fd %i", fd);
+> +			return 1;
+> +		}
+> +
+> +		if (si.si_af != si_other.si_af ||
+> +                    si.si_socktype != si_other.si_socktype ||
+> +                    si.si_proto != si_other.si_proto)
+> +			continue;
+> +
+> +		if (getsockname(fd, &sa.sa, &addrlen) < 0) {
+> +			syslog(LOG_ERR, "failed to query socket name: %s",
+> +                               strerror(errno));
+> +			goto error;
+> +		}
+> +
+> +		/* Copy the address */
+> +		taddr.addr.maxlen = taddr.addr.len = addrlen;
+> +		taddr.addr.buf = malloc(addrlen);
+> +		if (taddr.addr.buf == NULL) {
+> +			syslog(LOG_ERR,
+> +                               "cannot allocate memory for %s address",
+> +                               nconf->nc_netid);
+> +			goto error;
+> +		}
+> +		memcpy(taddr.addr.buf, &sa, addrlen);
+> +
+> +		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
+> +                          RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+> +		if (my_xprt == (SVCXPRT *)NULL) {
+> +			syslog(LOG_ERR, "%s: could not create service",
+> +                               nconf->nc_netid);
+> +			goto error;
+> +		}
+> +	}
+> +
+> +	/* if none of the systemd sockets matched, we set up the socket in
+> +	 * the normal way:
+> +	 */
+> +#endif
+> +
+> +	if(my_xprt == (SVCXPRT *)NULL) {
+> +
+> 	/*
+> 	 * XXX - using RPC library internal functions. For NC_TPI_CLTS
+> 	 * we call this later, for each socket we like to bind.
+> @@ -312,12 +386,6 @@ init_transport(struct netconfig *nconf)
+> 		}
+> 	}
+> 
+> -	if (!__rpc_nconf2sockinfo(nconf, &si)) {
+> -		syslog(LOG_ERR, "cannot get information for %s",
+> -		    nconf->nc_netid);
+> -		return (1);
+> -	}
+> -
+> 	if ((strcmp(nconf->nc_netid, "local") == 0) ||
+> 	    (strcmp(nconf->nc_netid, "unix") == 0)) {
+> 		memset(&sun, 0, sizeof sun);
+> @@ -554,6 +622,7 @@ init_transport(struct netconfig *nconf)
+> 			goto error;
+> 		}
+> 	}
+> +	}
+> 
+> #ifdef PORTMAP
+> 	/*
+> diff --git a/systemd/.gitignore b/systemd/.gitignore
+> new file mode 100644
+> index 0000000..b7b4561
+> --- /dev/null
+> +++ b/systemd/.gitignore
+> @@ -0,0 +1 @@
+> +rpcbind.service
+> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
+> new file mode 100644
+> index 0000000..58ae5de
+> --- /dev/null
+> +++ b/systemd/rpcbind.service.in
+> @@ -0,0 +1,9 @@
+> +[Unit]
+> +Description=RPC Bind
+> +
+> +[Service]
+> +ExecStart=@bindir@/rpcbind -w -f
+> +
+> +[Install]
+> +WantedBy=multi-user.target
+> +Also=rpcbind.socket
+> diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
+> new file mode 100644
+> index 0000000..ad5fd62
+> --- /dev/null
+> +++ b/systemd/rpcbind.socket
+> @@ -0,0 +1,12 @@
+> +[Unit]
+> +Description=RPCbind Server Activation Socket
+> +Wants=rpcbind.target
+> +Before=rpcbind.target
+> +
+> +[Socket]
+> +ListenStream=/var/run/rpcbind.sock
+> +ListenStream=111
+> +ListenDatagram=111
+> +
+> +[Install]
+> +WantedBy=sockets.target
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
