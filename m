@@ -1,115 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24582 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756396Ab2BHM3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 07:29:30 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service
- unavailable"
-To: jmorris@namei.org
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Date: Wed, 08 Feb 2012 12:29:05 +0000
-Message-ID: <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from e33.co.us.ibm.com ([32.97.110.151]:43675 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754923Ab2BCBmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 20:42:43 -0500
+Received: from /spool/local
+	by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Thu, 2 Feb 2012 18:42:43 -0700
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id E52433E40049
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Feb 2012 18:42:16 -0700 (MST)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q131gGVN131298
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Feb 2012 18:42:16 -0700
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q131gGS7010867
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Feb 2012 18:42:16 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q131gGkd010859
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Feb 2012 18:42:16 -0700
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Check for beginning '/' in the mount path
+Date: Thu,  2 Feb 2012 19:42:12 -0600
+Message-Id: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As the kernel has or will have filesystems (and possibly other services) that
-want to obtain authentication tokens and/or encryption data on demand (via
-GSSAPI for example), it would seem useful to provide an additional error code
-to indicate a problem with the lookup, rather than overloading some other error
-code.
+NFSv4 gladly accepts and mounts "hostname:path" instead of
+"hostname:/path". This causes mount entry mistmatch between /etc/mtab
+and /proc/mounts files. The former will have "hostname:path" but the
+latter will have "hostname:/path". This causes umount not work at all.
 
-We already have EKEYREJECTED, EKEYREVOKED and EKEYEXPIRED to indicate problems
-with a token that we already have, but what if the authentication server just
-isn't available?
-
-Define ENOAUTHSERVICE to indicate "Authentication service unavailable".  This
-can be used to indicate, for example, that an attempt was made by request_key()
-to retrieve a key, but the authentication server (e.g. a KDC) it is supposed to
-contact didn't answer or that it couldn't determine the location of a suitable
-server.
-
-One way this can be used is that the user of a network filesystem can get a TGT
-from the KDC and stash it in their session keyring, then the filesystem can
-attempt to automatically get a ticket for accessing the filesystem - but if the
-server is uncontactable then the ticket can be negatively instantiated with
-KEYCTL_REJECT, giving the error to be handed to future requests as
-ENOAUTHSERVICE and a small timeout so that the key will expire from the cache
-and allow a retry after a short while to prevent thrashing.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
 ---
+ utils/mount/stropts.c |   22 ++++++++++++++++++++++
+ 1 files changed, 22 insertions(+), 0 deletions(-)
 
- arch/alpha/include/asm/errno.h  |    1 +
- arch/mips/include/asm/errno.h   |    1 +
- arch/parisc/include/asm/errno.h |    1 +
- arch/sparc/include/asm/errno.h  |    1 +
- include/asm-generic/errno.h     |    1 +
- 5 files changed, 5 insertions(+), 0 deletions(-)
-
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index e5f29ca..5edc21e 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -121,6 +121,7 @@
- #define	ENOTRECOVERABLE	137	/* State not recoverable */
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index d52e21a..559114d 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -571,6 +571,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ {
+ 	char *options = NULL;
+ 	int result;
++	char *dirname;
  
- #define	ERFKILL		138	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	139	/* Authentication service not available */
+ 	if (mi->fake)
+ 		return 1;
+@@ -580,6 +581,27 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ 		return 0;
+ 	}
  
- #define EHWPOISON	139	/* Memory page has hardware error */
- 
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index 6dcd358..9e0b83f 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -120,6 +120,7 @@
- #define	ENOTRECOVERABLE	166	/* State not recoverable */
- 
- #define	ERFKILL		167	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	168	/* Authentication service not available */
- 
- #define EHWPOISON	168	/* Memory page has hardware error */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 135ad60..c4598b6 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -121,6 +121,7 @@
- #define ENOTRECOVERABLE	255	/* State not recoverable */
- 
- #define	ERFKILL		256	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	257	/* Authentication service not available */
- 
- #define EHWPOISON	257	/* Memory page has hardware error */
- 
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index c351aba..ab4f9f5 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -111,6 +111,7 @@
- #define	ENOTRECOVERABLE	133	/* State not recoverable */
- 
- #define	ERFKILL		134	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	135	/* Authentication service not available */
- 
- #define EHWPOISON	135	/* Memory page has hardware error */
- 
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index a1331ce..52325ca 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -107,6 +107,7 @@
- #define	ENOTRECOVERABLE	131	/* State not recoverable */
- 
- #define ERFKILL		132	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	133	/* Authentication service not available */
- 
- #define EHWPOISON	133	/* Memory page has hardware error */
- 
++	/*
++	 * Make sure that dirname in the spec starts with '/'. The mount
++	 * works fine in NFSv4 without the '/', but then /etc/mtab and
++	 * /proc/mounts disagree on the actual mount entry causing later
++	 * umount to fail! There is no reason to allow any dirname not
++	 * starting with '/', so fail it here.
++	 *
++	 * Note that for NFSv2 and NFSv3, the mount call itself fails if
++	 * dirname doesn't start with '/'. So this check is only useful
++	 * for NFSv4.
++	 */
++	dirname = strchr(mi->spec, ']');	/* IPv6 address check */
++	if (dirname)
++		dirname = strchr(dirname+1, ':');
++	else
++		dirname = strchr(mi->spec, ':');
++	if (!dirname || *(dirname+1) != '/') {
++		errno = EINVAL;
++		return 0;
++	}
++
+ 	result = mount(mi->spec, mi->node, mi->type,
+ 			mi->flags & ~(MS_USER|MS_USERS), options);
+ 	free(options);
+-- 
+1.7.8.3
 
