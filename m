@@ -1,144 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577Ab2BMVwd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:33 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933968eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:32 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 10/10] nfsd41: use current stateid by value
-Date: Mon, 13 Feb 2012 22:55:32 +0100
-Message-Id: <1329170132-7081-11-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from natasha.panasas.com ([67.152.220.90]:34722 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756037Ab2BCLPi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 06:15:38 -0500
+Message-ID: <4F2BC1C0.8070900@panasas.com>
+Date: Fri, 3 Feb 2012 13:15:12 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Malahal Naineni <malahal@us.ibm.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Check for beginning '/' in the mount path
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
+In-Reply-To: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 02/03/2012 03:42 AM, Malahal Naineni wrote:
+> NFSv4 gladly accepts and mounts "hostname:path" instead of
+> "hostname:/path". This causes mount entry mistmatch between /etc/mtab
+> and /proc/mounts files. The former will have "hostname:path" but the
+> latter will have "hostname:/path". This causes umount not work at all.
+> 
 
+NACK
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |    1 +
- fs/nfsd/nfs4proc.c        |   12 +++++++++---
- fs/nfsd/nfs4state.c       |   16 ++++++++++++----
- fs/nfsd/xdr4.h            |   13 +++++++++++--
- 4 files changed, 33 insertions(+), 9 deletions(-)
+like it or not you are changing ABI. Bunch of systems will not work now.
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index d8c9992..4123551 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -4,6 +4,7 @@
- #include "state.h"
- #include "xdr4.h"
- 
-+extern void clear_current_stateid(struct nfsd4_compound_state *cstate);
- /*
-  * functions to set current state id
-  */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index dffc9bd..c45ad2f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -453,7 +453,10 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_restorefh;
- 
- 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
--	cstate->current_stateid = cstate->save_stateid;
-+	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
-+		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
-+		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+	}
- 	return nfs_ok;
- }
- 
-@@ -465,7 +468,10 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_nofilehandle;
- 
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
--	cstate->save_stateid = cstate->current_stateid;
-+	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
-+		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
-+		SET_STATE_ID(cstate, SAVED_STATE_ID_FLAG);
-+	}
- 	return nfs_ok;
- }
- 
-@@ -1238,7 +1244,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 				opdesc->op_set_currentstateid(cstate, &op->u);
- 
- 			if (opdesc->op_flags & OP_CLEAR_STATEID)
--				cstate->current_stateid = NULL;
-+				clear_current_stateid(cstate);
- 
- 			if (need_wrongsec_check(rqstp))
- 				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9c5a239..8c49a89 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4699,15 +4699,23 @@ nfs4_state_shutdown(void)
- static void
- get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
--	if (cstate->current_stateid && CURRENT_STATEID(stateid))
--		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
-+	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG) && CURRENT_STATEID(stateid))
-+		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
- }
- 
- static void
- put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
--	if (cstate->minorversion)
--		cstate->current_stateid = stateid;
-+	if (cstate->minorversion) {
-+		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
-+		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+	}
-+}
-+
-+void
-+clear_current_stateid(struct nfsd4_compound_state *cstate)
-+{
-+	CLEAR_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
- }
- 
- /*
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2ae378e..347c80d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -43,6 +43,13 @@
- #define NFSD4_MAX_TAGLEN	128
- #define XDR_LEN(n)                     (((n) + 3) & ~3)
- 
-+#define CURRENT_STATE_ID_FLAG (1<<0)
-+#define SAVED_STATE_ID_FLAG (1<<1)
-+
-+#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
-+#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
-+#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
-+
- struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
- 	struct svc_fh		save_fh;
-@@ -54,8 +61,10 @@ struct nfsd4_compound_state {
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
--	const stateid_t	*current_stateid;
--	const stateid_t	*save_stateid;
-+	stateid_t	current_stateid;
-+	stateid_t	save_stateid;
-+	/* to indicate current and saved state id presents */
-+	u32		sid_flags;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
--- 
-1.7.7.6
+Also some other NFS servers/clients support it fine. Actually some servers
+make it a special case. (It's called mount by tag)
+
+The bug is else where fix it there. Either add the preceding '/' to
+/etc/mtab or remove it from /proc/mounts (I prefer the later). Or
+fix umount to work with that case.
+
+It's just a bug please fix it.
+
+Boaz
+
+> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> ---
+>  utils/mount/stropts.c |   22 ++++++++++++++++++++++
+>  1 files changed, 22 insertions(+), 0 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index d52e21a..559114d 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -571,6 +571,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+>  {
+>  	char *options = NULL;
+>  	int result;
+> +	char *dirname;
+>  
+>  	if (mi->fake)
+>  		return 1;
+> @@ -580,6 +581,27 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+>  		return 0;
+>  	}
+>  
+> +	/*
+> +	 * Make sure that dirname in the spec starts with '/'. The mount
+> +	 * works fine in NFSv4 without the '/', but then /etc/mtab and
+> +	 * /proc/mounts disagree on the actual mount entry causing later
+> +	 * umount to fail! There is no reason to allow any dirname not
+> +	 * starting with '/', so fail it here.
+> +	 *
+> +	 * Note that for NFSv2 and NFSv3, the mount call itself fails if
+> +	 * dirname doesn't start with '/'. So this check is only useful
+> +	 * for NFSv4.
+> +	 */
+> +	dirname = strchr(mi->spec, ']');	/* IPv6 address check */
+> +	if (dirname)
+> +		dirname = strchr(dirname+1, ':');
+> +	else
+> +		dirname = strchr(mi->spec, ':');
+> +	if (!dirname || *(dirname+1) != '/') {
+> +		errno = EINVAL;
+> +		return 0;
+> +	}
+> +
+>  	result = mount(mi->spec, mi->node, mi->type,
+>  			mi->flags & ~(MS_USER|MS_USERS), options);
+>  	free(options);
 
