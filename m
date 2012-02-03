@@ -1,44 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62015 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52744 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751738Ab2B0PBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 10:01:14 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "xemul@parallels.com" <xemul@parallels.com>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jbottomley@parallels.com" <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 2/4] NFS: replace per-net client lock by mutex
-Date: Mon, 27 Feb 2012 15:00:18 +0000
-Message-ID: <1330354815.5541.24.camel@lade.trondhjem.org>
-References: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
-	 <20120227134900.13371.96849.stgit@localhost6.localdomain6>
-In-Reply-To: <20120227134900.13371.96849.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
+	id S1753003Ab2BCVej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 16:34:39 -0500
+Message-ID: <4F2C52EC.8050405@netapp.com>
+Date: Fri, 03 Feb 2012 16:34:36 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
+To: Weston Andros Adamson <dros@netapp.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix comparison between DS address lists
+References: <1328301940-478-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1328301940-478-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAyLTI3IGF0IDE3OjQ5ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gTG9ja2RlcCBpcyBzYWQgb3RoZXJ3aXNlLCBiZWNhdXNlIGlub2RlIG11dGV4IGlz
-IHRha2VuIG9uIFBpcGVGUyBkZW50cnkNCj4gY3JlYXRpb24sIHdoaWNoIGNhbiBiZSBjYWxsZWQg
-b24gbW91bnQgbm90aWZpY2F0aW9uLCB3aGVyZSB0aGlzIHBlci1uZXQgY2xpZW50DQo+IGxvY2sg
-aXMgdGFrZW4gb24gY2xpZW50cyBsaXN0IHdhbGsuDQo+IA0KPiBOb3RlOiBJIHVzZWQgc2ltcGxl
-IG11dGV4IGluc3RlYWQgb2Ygcncgc2VtYXBob3JlIGJlY2F1c2Ugb2YNCj4gbmZzX3B1dF9jbGll
-bnQtPmF0b21pY19kZWNfYW5kX211dGV4X2xvY2soKSBjYWxsLiBQcm9iYWJseSwgdGhlcmUgaXMg
-YSBiZXR0ZXINCj4gc29sdXRpb24gaGVyZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xh
-diBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KPiANCg0KVGhpcyBpcyBv
-dmVya2lsbC4uLiBXZSBlbmQgdXAgYmxvY2tpbmcgTkZTdjQgY2FsbGJhY2tzIHdoaWxlIHRoZQ0K
-cnBjX3BpcGVmcyBub3RpZmllciBydW5zIHRocm91Z2ggdGhlIG5mc19jbGllbnRzIGNyZWF0aW5n
-IG9yIGRlc3Ryb3lpbmcNCmlkbWFwcGVyIGRlbnRyaWVzLg0KDQpTdXJlbHkgdGhlIHJwY19waXBl
-ZnNfZXZlbnQoKSBjYW4gdGFrZSBhIHJlZmVyZW5jZSB0byB0aGUgbmZzX2NsaWVudCBhbmQNCnRo
-ZW4gZHJvcCB0aGUgc3Bpbl9sb2NrIGlmIGl0IHNlZXMgdGhhdCBpdCBuZWVkcyB0byBjcmVhdGUg
-b3IgZGVzdHJveSBhDQpkZW50cnk/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg0K
+On 02/03/12 15:45, Weston Andros Adamson wrote:
+
+> data_server_cache entries should only be treated as the same if the address
+> list hasn't changed.
+> 
+> A new entry will be made when an MDS changes an address list (as seen by
+> GETDEVINFO). The old entry will be freed once all references are gone.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+>  fs/nfs/nfs4filelayoutdev.c |   71 +++++++++++++++-----------------------------
+>  1 files changed, 24 insertions(+), 47 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index 6eb59b0..420e748 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -108,58 +108,40 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
+>  	return false;
+>  }
+>  
+> -/*
+> - * Lookup DS by addresses.  The first matching address returns true.
+> - * nfs4_ds_cache_lock is held
+> - */
+> -static struct nfs4_pnfs_ds *
+> -_data_server_lookup_locked(struct list_head *dsaddrs)
+> +bool
+> +_same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+> +			       const struct list_head *dsaddrs2)
+>  {
+> -	struct nfs4_pnfs_ds *ds;
+>  	struct nfs4_pnfs_ds_addr *da1, *da2;
+>  
+> -	list_for_each_entry(da1, dsaddrs, da_node) {
+> -		list_for_each_entry(ds, &nfs4_data_server_cache, ds_node) {
+> -			list_for_each_entry(da2, &ds->ds_addrs, da_node) {
+> -				if (same_sockaddr(
+> -					(struct sockaddr *)&da1->da_addr,
+> -					(struct sockaddr *)&da2->da_addr))
+> -					return ds;
+> -			}
+> -		}
+> +	/* step through both lists, comparing as we go */
+> +	for (da1 = list_first_entry(dsaddrs1, typeof(*da1), da_node),
+> +	     da2 = list_first_entry(dsaddrs2, typeof(*da2), da_node);
+> +	     da1 != NULL && da2 != NULL;
+> +	     da1 = list_entry(da1->da_node.next, typeof(*da1), da_node),
+> +	     da2 = list_entry(da2->da_node.next, typeof(*da2), da_node)) {
+> +		if (!same_sockaddr((struct sockaddr *)&da1->da_addr,
+> +				   (struct sockaddr *)&da2->da_addr))
+> +			return false;
+>  	}
+
+
+Does anybody else in the kernel ever need to walk two lists at the same time?  Would this be better as a helper function in list.h?
+
+> -	return NULL;
+> +	if (da1 == NULL && da2 == NULL)
+> +		return true;
+> +
+> +	return false;
+>  }
+>  
+>  /*
+> - * Compare two lists of addresses.
+> + * Lookup DS by addresses.  nfs4_ds_cache_lock is held
+>   */
+> -static bool
+> -_data_server_match_all_addrs_locked(struct list_head *dsaddrs1,
+> -				    struct list_head *dsaddrs2)
+> +static struct nfs4_pnfs_ds *
+> +_data_server_lookup_locked(const struct list_head *dsaddrs)
+>  {
+> -	struct nfs4_pnfs_ds_addr *da1, *da2;
+> -	size_t count1 = 0,
+> -	       count2 = 0;
+> -
+> -	list_for_each_entry(da1, dsaddrs1, da_node)
+> -		count1++;
+> -
+> -	list_for_each_entry(da2, dsaddrs2, da_node) {
+> -		bool found = false;
+> -		count2++;
+> -		list_for_each_entry(da1, dsaddrs1, da_node) {
+> -			if (same_sockaddr((struct sockaddr *)&da1->da_addr,
+> -				(struct sockaddr *)&da2->da_addr)) {
+> -				found = true;
+> -				break;
+> -			}
+> -		}
+> -		if (!found)
+> -			return false;
+> -	}
+> +	struct nfs4_pnfs_ds *ds;
+>  
+> -	return (count1 == count2);
+> +	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
+> +		if (_same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
+> +			return ds;
+> +	return NULL;
+>  }
+>  
+>  /*
+> @@ -356,11 +338,6 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
+>  		dprintk("%s add new data server %s\n", __func__,
+>  			ds->ds_remotestr);
+>  	} else {
+> -		if (!_data_server_match_all_addrs_locked(&tmp_ds->ds_addrs,
+> -							 dsaddrs)) {
+> -			dprintk("%s:  multipath address mismatch: %s != %s",
+> -				__func__, tmp_ds->ds_remotestr, remotestr);
+> -		}
+>  		kfree(remotestr);
+>  		kfree(ds);
+>  		atomic_inc(&tmp_ds->ds_count);
+
+
