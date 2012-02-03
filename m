@@ -1,53 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47318 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51014 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756424Ab2BGSlc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 13:41:32 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
-Date: Tue, 7 Feb 2012 18:41:25 +0000
-Message-ID: <1328640084.4124.26.camel@lade.trondhjem.org>
-References: <1328633351-1741-1-git-send-email-dros@netapp.com>
-	 <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com>
-	 <4F316BC4.4030504@panasas.com>
-	 <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
-In-Reply-To: <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752422Ab2BCVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 16:10:01 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/6] locks: introduce new FL_DELEG lock flag.
+Date: Fri,  3 Feb 2012 16:09:52 -0500
+Message-Id: <1328303397-3872-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120203205818.GE2999@fieldses.org>
+References: <20120203205818.GE2999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTA3IGF0IDE4OjMwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBGZWIgNywgMjAxMiwgYXQgMToyMSBQTSwgQm9heiBIYXJyb3NoIHdyb3RlOg0KPiANCj4g
-PiBPbiAwMi8wNy8yMDEyIDA2OjU5IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gSGktDQo+
-ID4+IA0KPiA+PiBPbiBGZWIgNywgMjAxMiwgYXQgMTE6NDkgQU0sIFdlc3RvbiBBbmRyb3MgQWRh
-bXNvbiB3cm90ZToNCj4gPj4+IA0KPiA+Pj4gTkZTOiBhZGQgbW91bnQgb3B0aW9ucyAndjQuMCcg
-YW5kICd2NC4xJw0KPiA+IA0KPiA+IEdvb2QgZ29kIHRoYW5rcywgdGhhdCdsbCBiZSBuaWNlLg0K
-PiA+IA0KPiA+IFdoeSBkaWQgd2UgaGF2ZSB0byBzdWZmZXIgZm9yIDUgeWVhcnMgd2l0aG91dCBp
-dD8gOy0pDQo+ID4gDQo+ID4+PiBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-PGRyb3NAbmV0YXBwLmNvbT4NCj4gPj4+IC0tLQ0KPiA+Pj4gVXBkYXRlZCB0byBhZGQgJ3Y0LjAn
-IGFzIHRyb25kIHJlcXVlc3RlZC4NCj4gPj4+IA0KPiA+Pj4gV2UnbGwgdGFsayBhYm91dCB0aGlz
-IGNoYW5nZSBhdCBjb25uZWN0YXRob24uDQo+ID4+PiANCj4gPj4+IFRoaXMgJ2p1c3Qgd29ya3Mn
-IHdpdGggbW91bnQubmZzKDgpIC0tIHYuKiBvcHRpb25zIGFyZSBwYXNzZWQgdG8gdGhlIA0KPiA+
-Pj4ga2VybmVsIHdpdGggbm8gbW9kaWZpY2F0aW9ucyBuZWVkZWQuDQo+ID4+IA0KPiA+PiBJJ20g
-bW9yZSBjb25jZXJuZWQgYWJvdXQgdmVyc2lvbiBhdXRvLW5lZ290YXRpb24uDQo+ID4+IA0KPiA+
-IA0KPiA+IElmIHdlIGFyZSBhdCBpdCBjYW4gd2UgYWxzbyBoYXZlIGEgInRoaXMtdmVyc2lvbi1v
-bmx5IiBvcHRpb24gd2hpY2gNCj4gPiBkaXNhYmxlcyAiYXV0by1uZWdvdGF0aW9uIg0KPiANCj4g
-VHJvbmQgc2VlbXMgdG8gaGF2ZSBhIHBsYW4gZm9yIHRoaXMuICBJJ2xsIGRlZmVyIHRvIGhpbS4N
-Cg0KVGhhdCdzIGEgbG9uZ2VyIHRlcm0gZWZmb3J0LiBJIGRvbid0IHRoaW5rIHdlIG5lZWQgdG8g
-Y2FyZSB1bnRpbCB3ZSdyZQ0KcmVhZHkgdG8gdGFrZSBORlN2NC4xIG91dCBvZiBFWFBFUklNRU5U
-QUwgc3RhdHVzLg0KDQpUaGF0IHNhaWQsIEkgc2VlIHRoZSAndmVycz00JyBiZWluZyByZXNlcnZl
-ZCBmb3IgYXV0by1uZWdvdGlhdGlvbiBvZg0KbWlub3IgdmVyc2lvbiwgYW5kIHRoZSAndmVycz00
-LngnIGFzIHJlcXVpcmluZyBhIHNwZWNpZmljIG1pbm9yIHZlcnNpb24NCm51bWJlci4NClRoZSB3
-YXkgYXV0by1uZWdvdGlhdGlvbiBpcyBzdXBwb3NlZCB0byB3b3JrIGlzIGxhaWQgb3V0IGluDQpS
-RkMzNTMwKC1iaXMpOiB0aGUgY2xpZW50IGF0dGVtcHRzIHRoZSBsYXJnZXN0IG1pbm9yIHZlcnNp
-b24gdGhhdCBpdA0Kc3VwcG9ydHMsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhbiBPSywg
-b3IgYSBNSU5PUl9WRVJTSU9OX01JU01BVENIDQpkZXBlbmRpbmcgb24gd2hldGhlciBpdCBzdXBw
-b3J0cyB0aGF0IG1pbm9yIHZlcnNpb24gb3Igbm90LiBJZiBub3QsIHRoZQ0KY2xpZW50IHJldHJp
-ZXMgd2l0aCB0aGUgbmV4dCBsYXJnZXN0IG1pbm9yIHZlcnNpb24sIC4uLi4gcmluY2UsIHJlcGVh
-dA0KdW50aWwgc3VjY2Vzc2Z1bC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
+change behavior.
+
+Next we'll modify break_lease to treat FL_DELEG leases differently, to
+account for the fact that NFSv4 delegations should be broken in more
+situations than Windows oplocks.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c          |    2 +-
+ fs/nfsd/nfs4state.c |    2 +-
+ include/linux/fs.h  |    1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 637694b..ea07a98 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -131,7 +131,7 @@
+ 
+ #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+ #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+-#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
++#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+ 
+ static bool lease_breaking(struct file_lock *fl)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..ad82255 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2804,7 +2804,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 		return NULL;
+ 	locks_init_lock(fl);
+ 	fl->fl_lmops = &nfsd_lease_mng_ops;
+-	fl->fl_flags = FL_LEASE;
++	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+ 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 386da09..234b086 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1082,6 +1082,7 @@ static inline int file_check_writeable(struct file *filp)
+ 
+ #define FL_POSIX	1
+ #define FL_FLOCK	2
++#define FL_DELEG	4	/* NFSv4 delegation */
+ #define FL_ACCESS	8	/* not trying to lock, just looking */
+ #define FL_EXISTS	16	/* when unlocking, test for existence */
+ #define FL_LEASE	32	/* lease held on this file */
+-- 
+1.7.5.4
+
