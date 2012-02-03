@@ -1,35 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.mentorg.com ([192.94.38.131]:64152 "EHLO
-	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753535Ab2BHQPZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 11:15:25 -0500
-Date: Wed, 8 Feb 2012 15:48:51 +0000 (UTC)
-From: "Joseph S. Myers" <joseph@codesourcery.com>
-To: David Howells <dhowells@redhat.com>
-cc: jmorris@namei.org, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication
- service unavailable"
-In-Reply-To: <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
-Message-ID: <Pine.LNX.4.64.1202081546240.8820@digraph.polyomino.org.uk>
-References: <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
+Received: from fieldses.org ([174.143.236.118]:47474 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755604Ab2BCTff (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 14:35:35 -0500
+Date: Fri, 3 Feb 2012 14:35:33 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 3/5] nfsd: convert nfs4_client->cl_cb_flags to a
+ generic flags field
+Message-ID: <20120203193533.GA2999@fieldses.org>
+References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+ <1328111052-28389-4-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1328111052-28389-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 8 Feb 2012, David Howells wrote:
+On Wed, Feb 01, 2012 at 10:44:10AM -0500, Jeff Layton wrote:
+> We'll need a way to flag the nfs4_client as already being recorded on
+> stable storage so that we don't continually upcall.
 
->  #define ERFKILL		132	/* Operation not possible due to RF-kill */
-> +#define	ENOAUTHSERVICE	133	/* Authentication service not available */
+Looks like the code currently uses cl_firststate for that purpose.
+
+I'm perfectly open to the argument that using a u32 to store a boolean
+is rather silly, and can't see any problem with doing it this way
+instead, but then let's remove cl_firstate while we're at it.
+
+--b.
+
+> 
+> The cl_cb_flags field is only using 2 bits right now, so repurpose that
+> to a generic flags field. Rename NFSD4_CLIENT_KILL to
+> NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
+> flags. Add a mask that we can use for existing checks that look to see
+> whether any flags are set, so that the new STABLE flag doesn't
+> interfere.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4callback.c |   12 ++++++------
+>  fs/nfsd/state.h        |    8 +++++---
+>  2 files changed, 11 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 6f3ebb4..730e2cc 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -756,7 +756,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
+>  {
+>  	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
+>  	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+> -	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
+> +	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+>  	do_probe_callback(clp);
+>  }
 >  
->  #define EHWPOISON	133	/* Memory page has hardware error */
-
-Defining the new error to have the same value as EHWPOISON seems rather 
-odd....
-
--- 
-Joseph S. Myers
-joseph@codesourcery.com
+> @@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
+>  /* must be called under the state lock */
+>  void nfsd4_shutdown_callback(struct nfs4_client *clp)
+>  {
+> -	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
+> +	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
+>  	/*
+>  	 * Note this won't actually result in a null callback;
+>  	 * instead, nfsd4_do_callback_rpc() will detect the killed
+> @@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+>  		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+>  		clp->cl_cb_conn.cb_xprt = NULL;
+>  	}
+> -	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
+> +	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
+>  		return;
+>  	spin_lock(&clp->cl_lock);
+>  	/*
+>  	 * Only serialized callback code is allowed to clear these
+>  	 * flags; main nfsd code can only set them:
+>  	 */
+> -	BUG_ON(!clp->cl_cb_flags);
+> -	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
+> +	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
+> +	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+>  	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
+>  	c = __nfsd4_find_backchannel(clp);
+>  	if (c) {
+> @@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+>  	struct nfs4_client *clp = cb->cb_clp;
+>  	struct rpc_clnt *clnt;
+>  
+> -	if (clp->cl_cb_flags)
+> +	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+>  		nfsd4_process_cb_update(cb);
+>  
+>  	clnt = clp->cl_cb_client;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 8f539ee..0f9a0ac 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -250,9 +250,11 @@ struct nfs4_client {
+>  
+>  	/* for v4.0 and v4.1 callbacks: */
+>  	struct nfs4_cb_conn	cl_cb_conn;
+> -#define NFSD4_CLIENT_CB_UPDATE	1
+> -#define NFSD4_CLIENT_KILL	2
+> -	unsigned long		cl_cb_flags;
+> +#define NFSD4_CLIENT_STABLE		(0)	/* client on stable storage */
+> +#define NFSD4_CLIENT_CB_UPDATE		(1)
+> +#define NFSD4_CLIENT_CB_KILL		(2)
+> +#define NFSD4_CLIENT_CB_FLAG_MASK	(0x6)
+> +	unsigned long		cl_flags;
+>  	struct rpc_clnt		*cl_cb_client;
+>  	u32			cl_cb_ident;
+>  #define NFSD4_CB_UP		0
+> -- 
+> 1.7.7.6
+> 
