@@ -1,60 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lennier.cc.vt.edu ([198.82.162.213]:42788 "EHLO
-	lennier.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757796Ab2BHXyM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 18:54:12 -0500
-To: David Howells <dhowells@redhat.com>
-Cc: jmorris@namei.org, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Subject: Re: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service unavailable"
-In-Reply-To: Your message of "Wed, 08 Feb 2012 12:29:05 GMT."
-             <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
-From: Valdis.Kletnieks@vt.edu
-References: <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1328745230_2846P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
-Date: Wed, 08 Feb 2012 18:53:50 -0500
-Message-ID: <22934.1328745230@turing-police.cc.vt.edu>
+Received: from mail.chillheid.nl ([195.189.117.195]:13395 "EHLO
+	mail.chillheid.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753312Ab2BCXY2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 18:24:28 -0500
+From: Koen Wilde <koen@chillheid.nl>
+Subject: Re: oops when copying a file from a nfs mount
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+In-Reply-To: <20120203230811.GH2999@fieldses.org>
+References: <20120203223604.98C91405DC@mail.chillheid.nl> <20120203230811.GH2999@fieldses.org>
+Date: Sat, 04 Feb 2012 00:24:27 +0100
+Message-Id: <20120203232427.20B21405DC@mail.chillheid.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---==_Exmh_1328745230_2846P
-Content-Type: text/plain; charset=us-ascii
+On Fri, 3 Feb 2012 18:08:11 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> Is this really the start of the trace, or were there any lines before?
+> 
 
-On Wed, 08 Feb 2012 12:29:05 GMT, David Howells said:
+This is really the start of the trace as it appears in syslog's logs. On
+the physical screen it had some extra lines on top though (I'm typing this
+over from a photo):
 
-> +#define	ENOAUTHSERVICE	139	/* Authentication service not available */
->
->  #define EHWPOISON	139	/* Memory page has hardware error */
+    BUG: unable to handle kernel NULL pointer dereference at   (null)
+    IP: [<c01f3c00>] page_address+0x10/0xe0
+    << continuing from here with the *pde line >>
 
-Was this an intentional overload of 139 (and so on for other archs)?
-Just checking - I'm sure if it goes in like this, we'll see a patch to "fix" the
-collision for 3.16.0 or so... ;)
+> But I take it you're comfortable building a kernel from source?  If so,
+> getting a stable git repo, then:
+> 
+> 	git checkout v3.2.2
+> 	git revert 628fc192adbaae0c6178b9015fb916ce61d72b36
+> 
+> and then testing the resulting kernel--it'd be interesting to know if
+> the bug goes away.
 
---==_Exmh_1328745230_2846P
-Content-Type: application/pgp-signature
+Sure, I can build a kernel from source:) I'll get back to you with the
+results.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iQIVAwUBTzMLDgdmEQWDXROgAQLo8w/9GSAkuhd+TKRP7GBY/vtnzb8/kyvEnJ5M
-kXAsV/k12ZKsyRo+qat0scVkIIVR+siFVQMBMAOE4r4Y14CGYMInhrpsNLa0vhqK
-GdS5+GNIAbHj8PBJSYxxHffiQisePTTbAppzW68to/jRe3eYcWQdlJgcjdOMYSKJ
-TxLJi7R36FNZAMW5C6VjrEZcWym+LOizeSuX0a4hGMkWbo1D6YO/bsqI0703fhh3
-+q3n6KLZahVNZQ4zNDtIuznUgm/SEWnz5kyZF+Lj0pCxCC/00Qtl0d47YGQ8Bfcr
-6v+v2loI96oHJypLbPOoovwqpPV5YUoiaLS+aKFyEcMb+Soa8kSpPSkb+lkQZ/eK
-FTkdLuRFQ4cK9Dk1mqFa94x7XsVv6FfXt4NUKuWSm2cqEzUbdEbmXsdwT69oMcYV
-aYd//3xYcjtcwDi+lovc7THYIj2UJYtZVxIeZpitxISMdAJ+gZEYzmgDKF+O4IDj
-DYdnO8PVMfdosULrhP5GpYtjYJ0vL/HSNXSkGtJ/OWIlBIBFl2yXtOpzkjqndtBE
-WBmmfQHvSNjYU5Ab/udNYNoT4+rEKkkBLTtbWwFvgNPiiE5PLYLrUrdyqz4Y6KAb
-B9OkVk4AWq0UlCeNCl2onHKdsT61rfImD8wygJyJ2oau7TWw4itQE2LV/pLQY68T
-HrD/BwmIDcY=
-=h9rq
------END PGP SIGNATURE-----
-
---==_Exmh_1328745230_2846P--
-
+-- Koen
