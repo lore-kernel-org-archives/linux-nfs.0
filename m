@@ -1,234 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27851 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40454 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751494Ab2BQUUm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 15:20:42 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/3] NFSv4: parse and display server implementation ids
-Date: Fri, 17 Feb 2012 15:20:26 -0500
-Message-Id: <1329510026-30403-3-git-send-email-dros@netapp.com>
-In-Reply-To: <1329510026-30403-1-git-send-email-dros@netapp.com>
-References: <1329510026-30403-1-git-send-email-dros@netapp.com>
+	id S1752710Ab2BCXpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 18:45:36 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "koen@chillheid.nl" <koen@chillheid.nl>, Neil Brown <neilb@suse.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+Subject: Re: oops when copying a file from a nfs mount
+Date: Fri, 3 Feb 2012 23:45:12 +0000
+Message-ID: <1328312712.5335.17.camel@lade.trondhjem.org>
+References: <20120203223604.98C91405DC@mail.chillheid.nl>
+	 <20120203230811.GH2999@fieldses.org>
+In-Reply-To: <20120203230811.GH2999@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Shows the implementation ids in /proc/self/mountstats.  This doesn't break
-the nfs-utils mountstats tool.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4proc.c         |   21 +++++++++++++++++++++
- fs/nfs/nfs4xdr.c          |   42 +++++++++++++++++++++++++++++++++++++-----
- fs/nfs/super.c            |    8 ++++++++
- include/linux/nfs_fs_sb.h |    2 ++
- include/linux/nfs_xdr.h   |   15 +++++++--------
- 6 files changed, 76 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d0f850f..3fd9a47 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -302,6 +302,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 
- 	kfree(clp->cl_hostname);
- 	kfree(clp->server_scope);
-+	kfree(clp->impl_id);
- 	kfree(clp);
- 
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 20c3bb0..90a17cc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4950,11 +4950,24 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 		goto out;
- 	}
- 
-+	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_KERNEL);
-+	if (unlikely(!res.impl_id)) {
-+		status = -ENOMEM;
-+		goto out_server_scope;
-+	}
-+
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
- 
- 	if (!status) {
-+		/* use the most recent implementation id */
-+		kfree(clp->impl_id);
-+		clp->impl_id = res.impl_id;
-+	} else
-+		kfree(res.impl_id);
-+
-+	if (!status) {
- 		if (clp->server_scope &&
- 		    !nfs41_same_server_scope(clp->server_scope,
- 					     res.server_scope)) {
-@@ -4970,8 +4983,16 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			goto out;
- 		}
- 	}
-+
-+out_server_scope:
- 	kfree(res.server_scope);
- out:
-+	if (clp->impl_id)
-+		dprintk("%s: Server Implementation ID: "
-+			"domain: %s, name: %s, date: %llu,%u\n",
-+			__func__, clp->impl_id->domain, clp->impl_id->name,
-+			clp->impl_id->date.seconds,
-+			clp->impl_id->date.nseconds);
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d824aed..b7c0433 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -291,7 +291,11 @@ static int nfs4_stat_to_errno(int);
- 				/* eir_server_scope<> */ \
- 				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 + \
- 				1 /* eir_server_impl_id array length */ + \
--				0 /* ignored eir_server_impl_id contents */)
-+				1 /* nii_domain */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				1 /* nii_name */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				3 /* nii_date */)
- #define encode_channel_attrs_maxsz  (6 + 1 /* ca_rdma_ird.len (0) */)
- #define decode_channel_attrs_maxsz  (6 + \
- 				     1 /* ca_rdma_ird.len */ + \
-@@ -5256,6 +5260,7 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	char *dummy_str;
- 	int status;
- 	struct nfs_client *clp = res->client;
-+	uint32_t impl_id_count;
- 
- 	status = decode_op_hdr(xdr, OP_EXCHANGE_ID);
- 	if (status)
-@@ -5297,11 +5302,38 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	memcpy(res->server_scope->server_scope, dummy_str, dummy);
- 	res->server_scope->server_scope_sz = dummy;
- 
--	/* Throw away Implementation id array */
--	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
--	if (unlikely(status))
--		return status;
-+	/* Implementation Id */
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	impl_id_count = be32_to_cpup(p++);
- 
-+	if (impl_id_count) {
-+		/* nii_domain */
-+		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
-+		if (unlikely(status))
-+			return status;
-+		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+			return -EIO;
-+		memcpy(res->impl_id->domain, dummy_str, dummy);
-+
-+		/* nii_name */
-+		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
-+		if (unlikely(status))
-+			return status;
-+		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+			return -EIO;
-+		memcpy(res->impl_id->name, dummy_str, dummy);
-+
-+		/* nii_date */
-+		p = xdr_inline_decode(xdr, 12);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		p = xdr_decode_hyper(p, &res->impl_id->date.seconds);
-+		res->impl_id->date.nseconds = be32_to_cpup(p);
-+
-+		/* if there's more than one entry, ignore the rest */
-+	}
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d05024a..5462225 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -809,6 +809,14 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 
- 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
- 
-+	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
-+		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-+		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
-+			   "date='%llu,%u'",
-+			   impl_id->name, impl_id->domain,
-+			   impl_id->date.seconds, impl_id->date.nseconds);
-+	}
-+
- 	seq_printf(m, "\n\tcaps:\t");
- 	seq_printf(m, "caps=0x%x", nfss->caps);
- 	seq_printf(m, ",wtmult=%u", nfss->wtmult);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3bf4766..03d0b91 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -18,6 +18,7 @@ struct nfs4_sequence_res;
- struct nfs_server;
- struct nfs4_minor_version_ops;
- struct server_scope;
-+struct nfs41_impl_id;
- 
- /*
-  * The nfs_client identifies our client state to the server.
-@@ -86,6 +87,7 @@ struct nfs_client {
- #endif
- 
- 	struct server_scope	*server_scope;	/* from exchange_id */
-+	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
- 	struct net		*net;
- };
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index adbc84a..046c1bf 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1054,14 +1054,6 @@ struct nfstime4 {
- };
- 
- #ifdef CONFIG_NFS_V4_1
--struct nfs_impl_id4 {
--	u32		domain_len;
--	char		*domain;
--	u32		name_len;
--	char		*name;
--	struct nfstime4	date;
--};
--
- #define NFS4_EXCHANGE_ID_LEN	(48)
- struct nfs41_exchange_id_args {
- 	struct nfs_client		*client;
-@@ -1082,10 +1074,17 @@ struct server_scope {
- 	char 				server_scope[NFS4_OPAQUE_LIMIT];
- };
- 
-+struct nfs41_impl_id {
-+	char				domain[NFS4_OPAQUE_LIMIT + 1];
-+	char				name[NFS4_OPAQUE_LIMIT + 1];
-+	struct nfstime4			date;
-+};
-+
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
- 	struct server_scope		*server_scope;
-+	struct nfs41_impl_id		*impl_id;
- };
- 
- struct nfs41_create_session_args {
--- 
-1.7.4.4
-
+T24gRnJpLCAyMDEyLTAyLTAzIGF0IDE4OjA4IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgRmViIDAzLCAyMDEyIGF0IDExOjM2OjA0UE0gKzAxMDAsIGtvZW5AY2hpbGxo
+ZWlkLm5sIHdyb3RlOg0KPiA+IEhpLA0KPiA+IA0KPiA+IFNpbmNlIHVwZGF0aW5nIGZyb20ga2Vy
+bmVsIDMuMi4xIHRvIDMuMi4yLCBjb3B5aW5nIGEgZmlsZSBmcm9tIGEgbmZzIG1vdW50DQo+ID4g
+dXNpbmcgYGNwYCByZXN1bHRzIGluIGEga2VybmVsIG9vcHMuIENvcHlpbmcgdGhlIHNhbWUgZmls
+ZSB3aXRoIGBjYXQNCj4gPiAvbmZzbW91bnQvZmlsZSA+IC9sb2NhbC9maWxlYCBnaXZlcyBubyBw
+cm9ibGVtcy4NCj4gDQo+IEhtLCB0aGUgb29wcyBpcyBpbiBnZXRhdHRyIGVuY29kaW5nLCBhbmQg
+ZG9pbmcgYQ0KPiANCj4gCWdpdGsgdjMuMi4xLi52My4yLjIgZnMvbmZzIG5ldC9zdW5ycGMNCj4g
+DQo+IHR1cm5zIHVwIG9uZSBjb21taXQgdGhhdCBtb2RpZmllcyB0aGF0IGNvZGU6DQo+IA0KPiAJ
+NjI4ZmMxOTJhZGJhYWUwYzYxNzhiOTAxNWZiOTE2Y2U2MWQ3MmIzNiAiTkZTdjQ6IGluY2x1ZGUg
+Yml0bWFwDQo+IAlpbiBuZnN2NCBnZXQgYWNsIGRhdGEiDQo+IA0KPiBJIGhhdmVuJ3QgbG9va2Vk
+IGF0IHRoYXQsIGJ1dCBtYXliZSB0aGUgcHJvYmxlbSB3aWxsIGJlIG9idmlvdXMgdG8NCj4gQW5k
+eS4uLi4NCg0KSXQgaXMgb2J2aW91czogZmlyc3RseSBhY2xfc2NyYXRjaCBpcyBvbmx5IG5lZWRl
+ZCAoYW5kIGFsbG9jYXRlZCkgaWYgdGhlDQpucGFnZXMgPiAxLiBTZWNvbmRseSwgdGhlIGNhbGwg
+dG8geGRyX3NldF9zY3JhdGNoX2J1ZmZlcigpIG5lZWRzIHRvIGJlDQpkb25lIGluIHRoZSBkZWNv
+ZGVyLCBub3QgdGhlIGVuY29kZXIuLi4NCg0KVGhlIGZvbGxvd2luZyBwYXRjaCBzaG91bGQgZml4
+IGl0Lg0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDA3NGQ4NTdkZWQ3ZGYx
+MDliYTY5Njg1OTk2NGM4ZDU4NTIxNzVkYWQgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9t
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogRnJp
+LCAzIEZlYiAyMDEyIDE4OjMwOjUzIC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXgg
+YW4gT29wcyBpbiB0aGUgTkZTdjQgZ2V0YWNsIGNvZGUNCg0KQ29tbWl0IGJmMTE4YTM0MmYxMGRh
+ZmU0NGIxNDQ1MWExMzkyYzMyNTQ2MjlhMWYgKE5GU3Y0OiBpbmNsdWRlIGJpdG1hcA0KaW4gbmZz
+djQgZ2V0IGFjbCBkYXRhKSBpbnRyb2R1Y2VzIHRoZSAnYWNsX3NjcmF0Y2gnIHBhZ2UgZm9yIHRo
+ZSBjYXNlDQp3aGVyZSB3ZSBtYXkgbmVlZCB0byBkZWNvZGUgbXVsdGktcGFnZSBkYXRhLiBIb3dl
+dmVyIGl0IGZhaWxzIHRvIHRha2UNCmludG8gYWNjb3VudCB0aGUgZmFjdCB0aGF0IHRoZSB2YXJp
+YWJsZSBtYXkgYmUgTlVMTCAoZm9yIHRoZSBjYXNlIHdoZXJlDQp3ZSdyZSBub3QgZG9pbmcgbXVs
+dGktcGFnZSBkZWNvZGUpLCBhbmQgaXQgYWxzbyBhdHRhY2hlcyBpdCB0byB0aGUNCmVuY29kaW5n
+IHhkcl9zdHJlYW0gcmF0aGVyIHRoYW4gdGhlIGRlY29kaW5nIG9uZS4NCg0KVGhlIGltbWVkaWF0
+ZSByZXN1bHQgaXMgYW4gT29wcyBpbiBuZnM0X3hkcl9lbmNfZ2V0YWNsIGR1ZSB0byB0aGUNCmNh
+bGwgdG8gcGFnZV9hZGRyZXNzKCkgd2l0aCBhIE5VTEwgcGFnZSBwb2ludGVyLg0KDQpTaWduZWQt
+b2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KQ2M6
+IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQpDYzogc3RhYmxlQHZnZXIua2VybmVs
+Lm9yZw0KLS0tDQogZnMvbmZzL25mczRwcm9jLmMgICAgICAgfCAgICA4ICsrKystLS0tDQogZnMv
+bmZzL25mczR4ZHIuYyAgICAgICAgfCAgICAzICsrLQ0KIGluY2x1ZGUvbGludXgvbmZzX3hkci5o
+IHwgICAgMiArLQ0KIDMgZmlsZXMgY2hhbmdlZCwgNyBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9u
+cygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2Mu
+Yw0KaW5kZXggZjBjODQ5Yy4uZDIwMmUwNCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0cHJvYy5j
+DQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTM1NzUsOCArMzU3NSw4IEBAIHN0YXRpYyBz
+c2l6ZV90IF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHZvaWQg
+KmJ1Ziwgc2l6ZV90IGJ1DQogCX0NCiAJaWYgKG5wYWdlcyA+IDEpIHsNCiAJCS8qIGZvciBkZWNv
+ZGluZyBhY3Jvc3MgcGFnZXMgKi8NCi0JCWFyZ3MuYWNsX3NjcmF0Y2ggPSBhbGxvY19wYWdlKEdG
+UF9LRVJORUwpOw0KLQkJaWYgKCFhcmdzLmFjbF9zY3JhdGNoKQ0KKwkJcmVzLmFjbF9zY3JhdGNo
+ID0gYWxsb2NfcGFnZShHRlBfS0VSTkVMKTsNCisJCWlmICghcmVzLmFjbF9zY3JhdGNoKQ0KIAkJ
+CWdvdG8gb3V0X2ZyZWU7DQogCX0NCiAJYXJncy5hY2xfbGVuID0gbnBhZ2VzICogUEFHRV9TSVpF
+Ow0KQEAgLTM2MTIsOCArMzYxMiw4IEBAIG91dF9mcmVlOg0KIAlmb3IgKGkgPSAwOyBpIDwgbnBh
+Z2VzOyBpKyspDQogCQlpZiAocGFnZXNbaV0pDQogCQkJX19mcmVlX3BhZ2UocGFnZXNbaV0pOw0K
+LQlpZiAoYXJncy5hY2xfc2NyYXRjaCkNCi0JCV9fZnJlZV9wYWdlKGFyZ3MuYWNsX3NjcmF0Y2gp
+Ow0KKwlpZiAocmVzLmFjbF9zY3JhdGNoKQ0KKwkJX19mcmVlX3BhZ2UocmVzLmFjbF9zY3JhdGNo
+KTsNCiAJcmV0dXJuIHJldDsNCiB9DQogDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBi
+L2ZzL25mcy9uZnM0eGRyLmMNCmluZGV4IDk1ZTkyZTQuLmMwNDdiZWMgMTAwNjQ0DQotLS0gYS9m
+cy9uZnMvbmZzNHhkci5jDQorKysgYi9mcy9uZnMvbmZzNHhkci5jDQpAQCAtMjUyMiw3ICsyNTIy
+LDYgQEAgc3RhdGljIHZvaWQgbmZzNF94ZHJfZW5jX2dldGFjbChzdHJ1Y3QgcnBjX3Jxc3QgKnJl
+cSwgc3RydWN0IHhkcl9zdHJlYW0gKnhkciwNCiANCiAJeGRyX2lubGluZV9wYWdlcygmcmVxLT5y
+cV9yY3ZfYnVmLCByZXBsZW4gPDwgMiwNCiAJCWFyZ3MtPmFjbF9wYWdlcywgYXJncy0+YWNsX3Bn
+YmFzZSwgYXJncy0+YWNsX2xlbik7DQotCXhkcl9zZXRfc2NyYXRjaF9idWZmZXIoeGRyLCBwYWdl
+X2FkZHJlc3MoYXJncy0+YWNsX3NjcmF0Y2gpLCBQQUdFX1NJWkUpOw0KIA0KIAllbmNvZGVfbm9w
+cygmaGRyKTsNCiB9DQpAQCAtNjA0MSw2ICs2MDQwLDggQEAgbmZzNF94ZHJfZGVjX2dldGFjbChz
+dHJ1Y3QgcnBjX3Jxc3QgKnJxc3RwLCBzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KIAlzdGF0dXMg
+PSBkZWNvZGVfcHV0ZmgoeGRyKTsNCiAJaWYgKHN0YXR1cykNCiAJCWdvdG8gb3V0Ow0KKwlpZiAo
+cmVzLT5hY2xfc2NyYXRjaCAhPSBOVUxMKQ0KKwkJeGRyX3NldF9zY3JhdGNoX2J1ZmZlcih4ZHIs
+IHBhZ2VfYWRkcmVzcyhyZXMtPmFjbF9zY3JhdGNoKSwgUEFHRV9TSVpFKTsNCiAJc3RhdHVzID0g
+ZGVjb2RlX2dldGFjbCh4ZHIsIHJxc3RwLCByZXMpOw0KIA0KIG91dDoNCmRpZmYgLS1naXQgYS9p
+bmNsdWRlL2xpbnV4L25mc194ZHIuaCBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQppbmRleCBh
+NzY0Y2VmLi5kNmJhOWExIDEwMDY0NA0KLS0tIGEvaW5jbHVkZS9saW51eC9uZnNfeGRyLmgNCisr
+KyBiL2luY2x1ZGUvbGludXgvbmZzX3hkci5oDQpAQCAtNjE0LDcgKzYxNCw2IEBAIHN0cnVjdCBu
+ZnNfZ2V0YWNsYXJncyB7DQogCXNpemVfdAkJCQlhY2xfbGVuOw0KIAl1bnNpZ25lZCBpbnQJCQlh
+Y2xfcGdiYXNlOw0KIAlzdHJ1Y3QgcGFnZSAqKgkJCWFjbF9wYWdlczsNCi0Jc3RydWN0IHBhZ2Ug
+KgkJCWFjbF9zY3JhdGNoOw0KIAlzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9hcmdzIAlzZXFfYXJnczsN
+CiB9Ow0KIA0KQEAgLTYyNCw2ICs2MjMsNyBAQCBzdHJ1Y3QgbmZzX2dldGFjbHJlcyB7DQogCXNp
+emVfdAkJCQlhY2xfbGVuOw0KIAlzaXplX3QJCQkJYWNsX2RhdGFfb2Zmc2V0Ow0KIAlpbnQJCQkJ
+YWNsX2ZsYWdzOw0KKwlzdHJ1Y3QgcGFnZSAqCQkJYWNsX3NjcmF0Y2g7DQogCXN0cnVjdCBuZnM0
+X3NlcXVlbmNlX3JlcwlzZXFfcmVzOw0KIH07DQogDQotLSANCjEuNy43LjYNCg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
