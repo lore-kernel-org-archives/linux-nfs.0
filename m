@@ -1,98 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from team-mail.eftel.com.au ([203.24.100.66]:47712 "EHLO
-	team-mail.eftel.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756449Ab2CAAwK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 19:52:10 -0500
-Received: from exchange.corporate.eftel.com (exchange.corporate.eftel.com [10.16.0.85])
-	by team-mail.eftel.com.au (Postfix) with ESMTPS id 22F2B20C0A
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Mar 2012 08:52:06 +0800 (WST)
-From: Steven Wilton <steven.wilton@team.eftel.com.au>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 1 Mar 2012 08:52:05 +0800
-Subject: NFS client (3.0.0-3.2.8) high system CPU
-Message-ID: <33F3252F24B63C42BA48F5636E0C821001FA434BBCA3@exchange.corporate.eftel.com>
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:51012 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751979Ab2BCVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 16:10:01 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/6] locks: give break_lease its own flags
+Date: Fri,  3 Feb 2012 16:09:53 -0500
+Message-Id: <1328303397-3872-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120203205818.GE2999@fieldses.org>
+References: <20120203205818.GE2999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I've been trying to track down an issue we've started seeing on a bunch of NFS clients where the percentage of CPU time spent by the system has increased for the past month (it was previously using roughly equal system/user time, while now the system time is around 3x the user time).  The information that I have is as follows:
+Instead of passing O_* flags to break_lease, give it its own set of
+constants to use.  We'll want more bits here soon.
 
-- After rebooting the server, the user/system CPU times look good (roughly equal)
-- After 24 hours of heavy activity the system CPU time increases to around 3-4x the user CPU time
-- If I run "echo 2 > /proc/sys/vm/drop_caches" the system CPU time drops back down to roughly the same as user
+Be careful to continue treating these bits the same way for now, so
+there isn't a "flag day" for break_lease callers.  We'll probably change
+the constants eventually, though.
 
-The main difference that I can see in slabtop between a system running at high load and "normal" load is the number of nfs_inode_cache objects (as shown below).  I tried to increase the ihash_entries and dhash_entries kernel parameters, but this did not fix the problem.  I have not found any other suggestions on how to resolve issues caused by large nfs inode caches.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c         |   10 +++++-----
+ fs/nfsd/vfs.c      |    6 +++---
+ fs/open.c          |    4 ++--
+ include/linux/fs.h |   27 +++++++++++++++++++++++++++
+ 4 files changed, 37 insertions(+), 10 deletions(-)
 
-I have tried various kernels between 3.0.0 and 3.2.4, and the machines are currently running a 3.0.22 kernel.  The machines have 8GB RAM, and have 3 NFSv4 mounts and one NFSv3 mount (with the majority of the files that they access being on one of the NFSv4 mount points, being a maildir style mail spool).
-
-I have increased /proc/sys/vm/vfs_cache_pressure to 10000, which has resolved the problem for now, however I believe that the reason we started seeing the issue is that we added a lot of extra users onto the system, resulting in access to a larger number of files for each of the clients.  I am not confident that future growth will stay below whatever threshold we had exceeded to cause the excessive system CPU load, since the problem seemed to appear at around 1,000,000 nfs_inode_cache entries in slabtop, and the NFS clients are floating between 500,000 and 900,000 inode_cache entries.
-
-Help please :), and please let me know if I can provide any more information to assist in debugging.
-
-Regards
-
-Steven
-
-Running slabtop on a system with high load looks like this:
-  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
-2266249 1645904  72%    0.06K  38411       59    153644K size-64
-1236390 1218245  98%    1.02K 412130        3   1648520K nfs_inode_cache
-569180 569180 100%    0.19K  28459       20    113836K dentry
-190512 184467  96%    0.03K   1701      112      6804K size-32
-159026  83040  52%    0.10K   4298       37     17192K buffer_head
-95520  76484  80%    0.12K   3184       30     12736K size-128
-78001  63551  81%    0.55K  11143        7     44572K radix_tree_node
-76956  62898  81%    0.17K   3498       22     13992K vm_area_struct
-74690  58327  78%    0.05K    970       77      3880K anon_vma_chain
-45680  36644  80%    0.19K   2284       20      9136K size-192
-33571  27043  80%    0.06K    569       59      2276K anon_vma
-15980  11500  71%    0.19K    799       20      3196K filp
-12048  12046  99%    0.08K    251       48      1004K sysfs_dir_cache
-12024   7628  63%    0.64K   2004        6      8016K proc_inode_cache
-11856   6964  58%    0.30K    912       13      3648K nf_conntrack_ffffffff817fdd80
-  5745   5293  92%    0.79K   1149        5      4596K ext3_inode_cache
-  5385   3334  61%    0.25K    359       15      1436K tw_sock_TCP
-  5250   4540  86%    0.25K    350       15      1400K ip_dst_cache
-  4956   2259  45%    0.06K     84       59       336K tcp_bind_bucket
-  4180   3637  87%    0.19K    209       20       836K inet_peer_cache
-  3975   3909  98%    0.07K     75       53       300K Acpi-Operand
-  2852   2808  98%    0.04K     31       92       124K Acpi-Namespace
-  2600   1969  75%    0.19K    130       20       520K cred_jar
-  2385   1844  77%    0.07K     45       53       180K eventpoll_pwq
-  2370   1847  77%    0.12K     79       30       316K eventpoll_epi
-  1980   1562  78%    1.00K    495        4      1980K size-1024
-
-Running slabtop on a system after dropping the caches looks like this:
-  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
-298953  80291  26%    0.06K   5067       59     20268K size-64
-134976 101836  75%    0.10K   3648       37     14592K buffer_head
-77418  61207  79%    0.17K   3519       22     14076K vm_area_struct
-74382  57858  77%    0.05K    966       77      3864K anon_vma_chain
-69690  24347  34%    0.12K   2323       30      9292K size-128
-50624  14700  29%    0.03K    452      112      1808K size-32
-47800  47800 100%    0.19K   2390       20      9560K dentry
-36834  36834 100%    1.02K  12278        3     49112K nfs_inode_cache
-33394  26657  79%    0.06K    566       59      2264K anon_vma
-21665   7895  36%    0.55K   3095        7     12380K radix_tree_node
-19820  11786  59%    0.19K    991       20      3964K size-192
-15040  10977  72%    0.19K    752       20      3008K filp
-12883   7901  61%    0.30K    991       13      3964K nf_conntrack_ffffffff817fdd80
-12096  12052  99%    0.08K    252       48      1008K sysfs_dir_cache
-  5250   4043  77%    0.25K    350       15      1400K ip_dst_cache
-  5115   3150  61%    0.25K    341       15      1364K tw_sock_TCP
-  4130   2219  53%    0.06K     70       59       280K tcp_bind_bucket
-  4120   3481  84%    0.19K    206       20       824K inet_peer_cache
-  3990   3987  99%    0.79K    798        5      3192K ext3_inode_cache
-  3975   3909  98%    0.07K     75       53       300K Acpi-Operand
-  2852   2808  98%    0.04K     31       92       124K Acpi-Namespace
-  2740   1849  67%    0.19K    137       20       548K cred_jar
-  2332   1784  76%    0.07K     44       53       176K eventpoll_pwq
-  2310   1765  76%    0.12K     77       30       308K eventpoll_epi
-  2055   1181  57%    0.25K    137       15       548K skbuff_head_cache
-  1986   1899  95%    0.64K    331        6      1324K proc_inode_cache
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index ea07a98..5f9ae63 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1188,12 +1188,12 @@ static void time_out_leases(struct inode *inode)
+ /**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+- *	@mode: the open mode (read or write)
++ *	@mode: the type of leases to break
+  *
+  *	break_lease (inlined for speed) has checked there already is at least
+- *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+- *	a call to open() or truncate().  This function can sleep unless you
+- *	specified %O_NONBLOCK to your open().
++ *	some kind of lock (maybe a lease) on this file.
++ *	This function will wait for the lease to be broken unless you include
++ *	BREAK_NONBLOCK in the mode.
+  */
+ int __break_lease(struct inode *inode, unsigned int mode)
+ {
+@@ -1202,7 +1202,7 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	struct file_lock *fl;
+ 	unsigned long break_time;
+ 	int i_have_this_lease = 0;
+-	int want_write = (mode & O_ACCMODE) != O_RDONLY;
++	int want_write = (mode & BREAK_RW_MASK) != BREAK_W_LEASES;
+ 
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index edf6d3e..4ef03536 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -276,7 +276,7 @@ static int nfsd_break_lease(struct inode *inode)
+ {
+ 	if (!S_ISREG(inode->i_mode))
+ 		return 0;
+-	return break_lease(inode, O_WRONLY | O_NONBLOCK);
++	return break_lease(inode, BREAK_R_AND_W_LEASES | BREAK_NONBLOCK);
+ }
+ 
+ /*
+@@ -731,8 +731,8 @@ static int nfsd_open_break_lease(struct inode *inode, int access)
+ 
+ 	if (access & NFSD_MAY_NOT_BREAK_LEASE)
+ 		return 0;
+-	mode = (access & NFSD_MAY_WRITE) ? O_WRONLY : O_RDONLY;
+-	return break_lease(inode, mode | O_NONBLOCK);
++	mode = (access & NFSD_MAY_WRITE) ? BREAK_R_AND_W_LEASES : BREAK_W_LEASES;
++	return break_lease(inode, mode | BREAK_NONBLOCK);
+ }
+ 
+ /*
+diff --git a/fs/open.c b/fs/open.c
+index 77becc0..9e45cd5 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -105,7 +105,7 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 	 * Make sure that there are no leases.  get_write_access() protects
+ 	 * against the truncate racing with a lease-granting setlease().
+ 	 */
+-	error = break_lease(inode, O_WRONLY);
++	error = break_lease(inode, BREAK_R_AND_W_LEASES);
+ 	if (error)
+ 		goto put_write_and_out;
+ 
+@@ -685,7 +685,7 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
+ 	if (error)
+ 		goto cleanup_all;
+ 
+-	error = break_lease(inode, f->f_flags);
++	error = open_break_lease(inode, f->f_flags);
+ 	if (error)
+ 		goto cleanup_all;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 234b086..89c8481 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1091,6 +1091,22 @@ static inline int file_check_writeable(struct file *filp)
+ #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
+ #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+ 
++/* break-lease flags */
++/*
++ * These agree with O_RDONLY, O_WRONLY, O_ACCMODE, and O_NONBLOCK as a
++ * (possibly temporary) courtesy to developers of any out-of-tree
++ * code that calls break_lease:
++ */
++#define BREAK_W_LEASES		00000000
++#define BREAK_R_AND_W_LEASES	00000001
++#define BREAK_RW_MASK		00000003
++#define BREAK_NONBLOCK		00004000
++/*
++ * Read delegations are also broken on operations that modify file
++ * metadata or the set of links that point to a file:
++ */
++#define BREAK_ONLY_DELEGS	00000010
++
+ /*
+  * Special return value from posix_lock_file() and vfs_lock_file() for
+  * asynchronous locking.
+@@ -1972,6 +1988,13 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 		return __break_lease(inode, mode);
+ 	return 0;
+ }
++
++static inline int open_break_lease(struct inode *inode, unsigned int mode)
++{
++	unsigned int type = (mode & O_ACCMODE) == O_RDONLY ?
++			BREAK_W_LEASES : BREAK_R_AND_W_LEASES;
++	return __break_lease(inode, type);
++}
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2011,6 +2034,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int open_break_lease(struct inode *inode, unsigned int mode)
++{
++	return 0;
++}
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
+-- 
+1.7.5.4
 
