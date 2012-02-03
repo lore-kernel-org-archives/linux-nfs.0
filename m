@@ -1,59 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33958 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51023 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751597Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 17:45:22 -0500
+	id S1757766Ab2BCVKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 16:10:02 -0500
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/5] 4.0 server tests: remove RD12 (incorrect test)
-Date: Wed, 15 Feb 2012 17:45:20 -0500
-Message-Id: <1329345920-16608-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
-References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/6] locks: break delegations on link
+Date: Fri,  3 Feb 2012 16:09:57 -0500
+Message-Id: <1328303397-3872-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120203205818.GE2999@fieldses.org>
+References: <20120203205818.GE2999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
->From 3530 section 8.1.4:
-
-	In the case of WRITE-type operations (i.e., WRITEs and SETATTRs
-	which set size), the server must verify that the access mode
-	allows writing and return an NFS4ERR_OPENMODE error if it does
-	not.  In the case, of READ, the server may perform the
-	corresponding check on the access mode, or it may choose to
-	allow READ on opens for WRITE only, to accommodate clients whose
-	write implementation may unavoidably do reads (e.g., due to
-	buffer cache constraints).
-
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- nfs4.0/servertests/st_read.py |   14 --------------
- 1 files changed, 0 insertions(+), 14 deletions(-)
+ fs/namei.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.0/servertests/st_read.py b/nfs4.0/servertests/st_read.py
-index 639b436..cce9a03 100644
---- a/nfs4.0/servertests/st_read.py
-+++ b/nfs4.0/servertests/st_read.py
-@@ -219,17 +219,3 @@ def testOldStateid(t, env):
-     fh, stateid = c.confirm(t.code, res)
-     res = c.read_file(fh, stateid=oldstateid)
-     check(res, NFS4ERR_OLD_STATEID, "READ with old stateid")
--
--def testOpenMode(t, env):
--    """READ with file opened in WRITE mode should return NFS4_OK or NFS4ERR_OPENMODE
--
--    FLAGS: read all
--    DEPEND: MKFILE
--    CODE: RD12
--    """
--    c = env.c1
--    c.init_connection()
--    fh, stateid = c.create_confirm(t.code, access=OPEN4_SHARE_ACCESS_WRITE)
--    res = c.read_file(fh, stateid=stateid)
--    check(res, NFS4ERR_OPENMODE, "READ with file opened in WRITE mode",
--          [NFS4_OK])
+diff --git a/fs/namei.c b/fs/namei.c
+index 1e0c383..b8f3cbd 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2920,8 +2920,11 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
+ 	/* Make sure we don't allow creating hardlink to an unlinked file */
+ 	if (inode->i_nlink == 0)
+ 		error =  -ENOENT;
+-	else
+-		error = dir->i_op->link(old_dentry, dir, new_dentry);
++	else {
++		error = break_lease(inode, BREAK_ONLY_DELEGS|BREAK_R_AND_W_LEASES);
++		if (!error)
++			error = dir->i_op->link(old_dentry, dir, new_dentry);
++	}
+ 	mutex_unlock(&inode->i_mutex);
+ 	if (!error)
+ 		fsnotify_link(dir, inode, new_dentry);
 -- 
 1.7.5.4
 
