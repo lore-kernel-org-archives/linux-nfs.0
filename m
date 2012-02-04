@@ -1,122 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10118 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754574Ab2BPUoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:44:25 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKiLCl025757
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:44:21 -0800 (PST)
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFSv4: fix server_scope memory leak
-Date: Thu, 16 Feb 2012 20:44:15 +0000
-Message-ID: <901DD1C3-FEE4-437C-B7E8-C0568B96D949@netapp.com>
-References: <1329409026-20466-1-git-send-email-dros@netapp.com>
- <1329409026-20466-2-git-send-email-dros@netapp.com>
- <1329424993.19793.12.camel@lade.trondhjem.org>
-In-Reply-To: <1329424993.19793.12.camel@lade.trondhjem.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_E674A939-EC1E-42BB-AE8A-2959EDCA5051";
-	protocol="application/pkcs7-signature"; micalg=sha1
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:36258 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751596Ab2BDMOW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2012 07:14:22 -0500
+Received: by dadp15 with SMTP id p15so3458650dad.19
+        for <linux-nfs@vger.kernel.org>; Sat, 04 Feb 2012 04:14:21 -0800 (PST)
+Message-ID: <4F2D210F.6090505@gmail.com>
+Date: Sat, 04 Feb 2012 20:14:07 +0800
+From: Mi Jinlong <kinglongmee@gmail.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
+References: <1327963365-2921-1-git-send-email-bfields@redhat.com> <4F273FD4.3020005@cn.fujitsu.com> <20120201214656.GA19075@fieldses.org> <20120203204931.GC2999@fieldses.org> <4F2C0A3F.6020002@gmail.com> <20120204021637.GA6446@fieldses.org>
+In-Reply-To: <20120204021637.GA6446@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_E674A939-EC1E-42BB-AE8A-2959EDCA5051
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+于 2012-2-4 10:16, J. Bruce Fields 写道:
+> On Sat, Feb 04, 2012 at 12:24:31AM +0800, Mi Jinlong wrote:
+>> 于 2012-2-4 4:49, J. Bruce Fields 写道:
+>>> On Wed, Feb 01, 2012 at 04:46:56PM -0500, bfields wrote:
+>>>> On Tue, Jan 31, 2012 at 09:11:48AM +0800, Mi Jinlong wrote:
+>>>>>    Should use target = i.totalram<<   (PAGE_SHIFT - 12);
+>>>>>
+>>>>>    target = i.totalram<<   PAGE_SHIFT; and
+>>>>>    target<<= 12;
+>>>>>    means target = i.totalram<<   (PAGE_SHIFT + 12);
+>>>>
+>>>> Yes, thanks for catching that.
+>>>>
+>>>> Also, splitting up the calculation as I did above risks overflow at the
+>>>> first step.
+>>>>
+>>>> I'll fix that....
+>>>
+>>> Here are the fixed patches.--b.
+>>>
+>>> > From 87b0fc7deb5feccf93b022f6a976e8441152dbb2 Mon Sep 17 00:00:00 2001
+>>> From: "J. Bruce Fields"<bfields@redhat.com>
+>>> Date: Mon, 30 Jan 2012 16:18:35 -0500
+>>> Subject: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
+>>>
+>>> Move calculation of the default into a helper function.
+>>>
+>>> Get rid of an unused variable "err" while we're there.
+>>>
+>>> Thanks to Mi Jinlong for catching an arithmetic error in a previous
+>>> version.
+>>>
+>>> Cc: Mi Jinlong<mijinlong@cn.fujitsu.com>
+>>> Signed-off-by: J. Bruce Fields<bfields@redhat.com>
+>>> ---
+>>>   fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
+>>>   1 files changed, 24 insertions(+), 20 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+>>> index eda7d7e..e9eb408 100644
+>>> --- a/fs/nfsd/nfssvc.c
+>>> +++ b/fs/nfsd/nfssvc.c
+>>> @@ -307,33 +307,37 @@ static void set_max_drc(void)
+>>>   	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
+>>>   }
+>>>
+>>> -int nfsd_create_serv(void)
+>>> +static int nfsd_get_default_max_blksize(void)
+>>>   {
+>>> -	int err = 0;
+>>> +	struct sysinfo i;
+>>> +	unsigned long long target;
+>>> +	unsigned long ret;
+>>> +
+>>> +	si_meminfo(&i);
+>>> +	target = i.totalram<<   PAGE_SHIFT;
+>>> +	/*
+>>> +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
+>>> +	 * machines, but only uses 32K on 128M machines.  Bottom out at
+>>> +	 * 8K on 32M and smaller.  Of course, this is only a default.
+>>> +	 */
+>>> +	target>>= 12;
+>>
+>>     Why don't using target = i.totalram<<  (PAGE_SHIFT - 12) as before?
+>
+> Dividing the calculation into two steps (first convert from pages to
+> bytes, then divide by 4096) makes it more obvious, and allows me to
+> stick the comment before the part of the calculation it explains.
+>
+> So the result seems easier to read.
 
-On Feb 16, 2012, at 3:43 PM, Myklebust, Trond wrote:
+   Yes,
 
-> On Thu, 2012-02-16 at 11:17 -0500, Weston Andros Adamson wrote:
->> server_scope would never be freed if nfs4_check_cl_exchange_flags() =
-returned
->> non-zero
->>=20
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c |   15 +++++++++------
->> 1 files changed, 9 insertions(+), 6 deletions(-)
->>=20
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 87c584d..20c3bb0 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -4945,8 +4945,10 @@ int nfs4_proc_exchange_id(struct nfs_client =
-*clp, struct rpc_cred *cred)
->> 				clp->cl_rpcclient->cl_auth->au_flavor);
->>=20
->> 	res.server_scope =3D kzalloc(sizeof(struct server_scope), =
-GFP_KERNEL);
->> -	if (unlikely(!res.server_scope))
->> -		return -ENOMEM;
->> +	if (unlikely(!res.server_scope)) {
->> +		status =3D -ENOMEM;
->> +		goto out;
->> +	}
->>=20
->> 	status =3D rpc_call_sync(clp->cl_rpcclient, &msg, =
-RPC_TASK_TIMEOUT);
->> 	if (!status)
->> @@ -4963,12 +4965,13 @@ int nfs4_proc_exchange_id(struct nfs_client =
-*clp, struct rpc_cred *cred)
->> 			clp->server_scope =3D NULL;
->> 		}
->>=20
->> -		if (!clp->server_scope)
->> +		if (!clp->server_scope) {
->> 			clp->server_scope =3D res.server_scope;
->> -		else
->> -			kfree(res.server_scope);
->> +			goto out;
->> +		}
->> 	}
->> -
->> +	kfree(res.server_scope);
->> +out:
->> 	dprintk("<-- %s status=3D %d\n", __func__, status);
->> 	return status;
->> }
->=20
-> This looks like it is a bug in existing kernels. Should I queue it up
-> for stable@vger.kernel.org?
+>
+>>     The result of the two forms is more likely different.
+>
+> The result is the same as long as there's no overflow at the first step
+> (which would require a machine with an exabyte of ram).
+>
+> Seem reasonable?
 
-Yes, I should have mentioned that!
+   Yes, that is my only concern.
 
--dros
+thanks,
+Mi Jinlong
 
---Apple-Mail=_E674A939-EC1E-42BB-AE8A-2959EDCA5051
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAyMTYyMDQ0MTZaMCMGCSqGSIb3DQEJBDEWBBQ2k/haEAZ4uIEt
-QgK6v1DlV7zD9zANBgkqhkiG9w0BAQEFAASCAQBxWR5QRyxsLzeMI6POIldKvOQn/OZTiUbEyNoh
-NNocOXhr+8ilEj7aZSZiKNNMtOq5z4WyP2vwQFMnFz+ftd5CP233FXWDJ4bo5azXhgV7DwAggpeH
-u/se0aLt02mJq2RW+N/a3cXQUB1uVVI9A79VairqFlKS6poLdoKVmVw/VNf+ZfCGJGVrNP36fwWb
-Gv9QgE6H2OZtqOfct5wBcwDwdDbDFMhC2iIuTXO8Da2L7hnhslxPaX3wU6bCFRIQ/1wisMJZIalt
-SFa1nRhGuaKTmGXjApm8q1AC8OHzIW/WoN1CEUYfN5iV3lNxLQpF3MHezQNXOwhdvpQqC/d2xL41
-AAAAAAAA
-
---Apple-Mail=_E674A939-EC1E-42BB-AE8A-2959EDCA5051--
