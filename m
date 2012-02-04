@@ -1,87 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45442 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:44986 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750721Ab2BXFBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Feb 2012 00:01:04 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/5] 4.1 server tests: rename tests incorrectly using root dir
-Date: Fri, 24 Feb 2012 00:00:56 -0500
-Message-Id: <1330059660-2053-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1330059660-2053-1-git-send-email-bfields@redhat.com>
-References: <1330059660-2053-1-git-send-email-bfields@redhat.com>
+	id S1754116Ab2BDALP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Feb 2012 19:11:15 -0500
+Date: Fri, 3 Feb 2012 19:11:13 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Koen Wilde <koen@chillheid.nl>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: Re: oops when copying a file from a nfs mount
+Message-ID: <20120204001113.GA5320@fieldses.org>
+References: <20120203223604.98C91405DC@mail.chillheid.nl>
+ <20120203230811.GH2999@fieldses.org>
+ <20120203232427.20B21405DC@mail.chillheid.nl>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120203232427.20B21405DC@mail.chillheid.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Sat, Feb 04, 2012 at 12:24:27AM +0100, Koen Wilde wrote:
+> On Fri, 3 Feb 2012 18:08:11 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > Is this really the start of the trace, or were there any lines before?
+> > 
+> 
+> This is really the start of the trace as it appears in syslog's logs. On
+> the physical screen it had some extra lines on top though (I'm typing this
+> over from a photo):
+> 
+>     BUG: unable to handle kernel NULL pointer dereference at   (null)
+>     IP: [<c01f3c00>] page_address+0x10/0xe0
+>     << continuing from here with the *pde line >>
+> 
+> > But I take it you're comfortable building a kernel from source?  If so,
+> > getting a stable git repo, then:
+> > 
+> > 	git checkout v3.2.2
+> > 	git revert 628fc192adbaae0c6178b9015fb916ce61d72b36
+> > 
+> > and then testing the resulting kernel--it'd be interesting to know if
+> > the bug goes away.
+> 
+> Sure, I can build a kernel from source:) I'll get back to you with the
+> results.
 
-Several of the rename tests were incorrectly creating objects in the
-export root.
+OK, but--probably ignore my suggestion and try applying Trond's patch
+instead....
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- nfs4.1/server41tests/st_rename.py |   12 ++++++------
- 1 files changed, 6 insertions(+), 6 deletions(-)
+(Also, I assume mainline needs it as well as v3.2.2 ?)
 
-diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_rename.py
-index ed5dbb5..f706a1c 100644
---- a/nfs4.1/server41tests/st_rename.py
-+++ b/nfs4.1/server41tests/st_rename.py
-@@ -185,7 +185,7 @@ def testCfhFile(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usefile + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
-@@ -198,7 +198,7 @@ def testCfhLink(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.uselink + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
-@@ -211,7 +211,7 @@ def testCfhBlock(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.useblock + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
-@@ -224,7 +224,7 @@ def testCfhChar(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usechar + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
-@@ -237,7 +237,7 @@ def testCfhFifo(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usefifo + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
-@@ -250,7 +250,7 @@ def testCfhSocket(t, env):
-     """
-     name = env.testname(t)
-     sess = env.c1.new_client_session(name)
--    res = create_obj(sess, [name])
-+    res = create_obj(sess, env.c1.homedir + [name])
-     check(res)
-     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usesocket + [name])
-     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
--- 
-1.7.7.6
-
+--b.
