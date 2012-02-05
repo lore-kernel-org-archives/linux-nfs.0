@@ -1,95 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5287 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754023Ab2BGA5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 19:57:25 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 2/2] NFSv4.1: Add a module parameter to set the number of session slots
-Date: Mon,  6 Feb 2012 19:57:17 -0500
-Message-Id: <1328576237-7362-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:49290 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754605Ab2BERFC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:05:02 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c14so1892522eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:05:02 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v8 09/10] nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+Date: Sun,  5 Feb 2012 18:07:58 +0100
+Message-Id: <1328461679-4108-10-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add the module parameter 'max_session_slots' to set the initial number
-of slots that the NFSv4.1 client will attempt to negotiate with the
-server.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- Documentation/kernel-parameters.txt |    8 ++++++++
- fs/nfs/nfs4proc.c                   |    8 +++++++-
- include/linux/nfs_fs_sb.h           |    3 ++-
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ fs/nfsd/current_stateid.h |    3 +++
+ fs/nfsd/nfs4proc.c        |    3 +++
+ fs/nfsd/nfs4state.c       |   18 ++++++++++++++++++
+ 3 files changed, 24 insertions(+), 0 deletions(-)
 
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index 033d4e6..1d369c6 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1657,6 +1657,14 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			of returning the full 64-bit number.
- 			The default is to return 64-bit inode numbers.
- 
-+	nfs.max_session_slots=
-+			[NFSv4.1] Sets the maximum number of session slots
-+			the client will attempt to negotiate with the server.
-+			This limits the number of simultaneous RPC requests
-+			that the client can send to the NFSv4.1 server.
-+			Note that there is little point in setting this
-+			value higher than the max_tcp_slot_table_limit.
-+
- 	nfs.nfs4_disable_idmapping=
- 			[NFSv4] When set to the default of '1', this option
- 			ensures that both the RPC level authentication
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0dc5dfb..da985c3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -72,6 +72,8 @@
- 
- #define NFS4_MAX_LOOP_ON_RECOVER (10)
- 
-+static unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
-+
- struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
-@@ -5246,7 +5248,7 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
- 	args->fc_attrs.max_rqst_sz = mxrqst_sz;
- 	args->fc_attrs.max_resp_sz = mxresp_sz;
- 	args->fc_attrs.max_ops = NFS4_MAX_OPS;
--	args->fc_attrs.max_reqs = session->clp->cl_rpcclient->cl_xprt->max_reqs;
-+	args->fc_attrs.max_reqs = max_session_slots;
- 
- 	dprintk("%s: Fore Channel : max_rqst_sz=%u max_resp_sz=%u "
- 		"max_ops=%u max_reqs=%u\n",
-@@ -6391,6 +6393,10 @@ const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	NULL
- };
- 
-+module_param(max_session_slots, ushort, 0644);
-+MODULE_PARM_DESC(max_session_slots, "Maximum number of outstanding NFSv4.1 "
-+		"requests the client will negotiate");
-+
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index e1ae950..d8c9992 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -7,6 +7,7 @@
  /*
-  * Local variables:
-  *  c-basic-offset: 8
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 2ae57f2..ba1e08d 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -190,7 +190,8 @@ struct nfs_server {
+  * functions to set current state id
+  */
++extern void nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
+ extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
+ extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
+ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+@@ -14,6 +15,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+ /*
+  * functions to consume current state id
+  */
++extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
++extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *, struct nfsd4_delegreturn *);
+ extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
+ extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 124934a..dffc9bd 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1454,6 +1454,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_DELEGRETURN",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_delegreturnstateid,
+ 	},
+ 	[OP_GETATTR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_getattr,
+@@ -1521,6 +1522,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_OPEN_DOWNGRADE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_opendowngradestateid,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_opendowngradestateid,
+ 	},
+ 	[OP_PUTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putfh,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8214c0f..9c5a239 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4714,6 +4714,12 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+  * functions to set current state id
+  */
+ void
++nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
++{
++	put_stateid(cstate, &odp->od_stateid);
++}
++
++void
+ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+ {
+ 	put_stateid(cstate, &open->op_stateid);
+@@ -4736,6 +4742,18 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
+  */
  
- 
- /* maximum number of slots to use */
--#define NFS4_MAX_SLOT_TABLE (128U)
-+#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
-+#define NFS4_MAX_SLOT_TABLE (255U)
- #define NFS4_NO_SLOT ((u32)-1)
- 
- #if defined(CONFIG_NFS_V4)
+ void
++nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
++{
++	get_stateid(cstate, &odp->od_stateid);
++}
++
++void
++nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate, struct nfsd4_delegreturn *drp)
++{
++	get_stateid(cstate, &drp->dr_stateid);
++}
++
++void
+ nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
+ {
+ 	get_stateid(cstate, &fsp->fr_stateid);
 -- 
 1.7.7.6
 
