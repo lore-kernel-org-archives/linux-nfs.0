@@ -1,109 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754778Ab2BOVg1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:36:27 -0500
-Received: by mail-gy0-f174.google.com with SMTP id r11so965647ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:36:27 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/13] NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:36:25 -0500
-Message-ID: <20120215213625.3254.16192.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from natasha.panasas.com ([67.152.220.90]:46852 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754762Ab2BELEN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 06:04:13 -0500
+Message-ID: <4F2E620F.5090100@panasas.com>
+Date: Sun, 5 Feb 2012 13:03:43 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: NeilBrown <neilb@suse.de>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Check for beginning '/' in the mount path
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com> <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown> <20120203142945.GA31805@us.ibm.com>
+In-Reply-To: <20120203142945.GA31805@us.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Linux NFS client must distinguish between referral events (which
-it currently supports) and migration events (which it does not yet
-support).
+On 02/03/2012 04:29 PM, Malahal Naineni wrote:
+> NeilBrown [neilb@suse.de] wrote:
+>> On Fri, 3 Feb 2012 13:15:12 +0200 Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>
+>>> On 02/03/2012 03:42 AM, Malahal Naineni wrote:
+>>>> NFSv4 gladly accepts and mounts "hostname:path" instead of
+>>>> "hostname:/path". This causes mount entry mistmatch between /etc/mtab
+>>>> and /proc/mounts files. The former will have "hostname:path" but the
+>>>> latter will have "hostname:/path". This causes umount not work at all.
+>>>>
+>>>
+>>> NACK
+>>>
+>>> like it or not you are changing ABI. Bunch of systems will not work now.
+>>>
+>>> Also some other NFS servers/clients support it fine. Actually some servers
+>>> make it a special case. (It's called mount by tag)
+>>>
+>>> The bug is else where fix it there. Either add the preceding '/' to
+>>> /etc/mtab or remove it from /proc/mounts (I prefer the later). Or
+>>                                             ^^^^^^^^^^^^^^^^^^
+>>> fix umount to work with that case.
+>>
+>> Agreed.  And while we are at it we should remove the trailing '/' too.
+>> If you
+>>   mount host:/path /somewhere
+>> /proc/mounts will show
+>>     host:/path/
+>>
+>> which also confused mount.
+> 
+> Thank you Neil and Boaz. Since there is already a fix in umount to take
+> care of trailing slash, I will post a patch to take care of leading
+> slash.
+> 
+> Any reason(s) why trailing slash is fixed in umount rather than in
+> /proc/mounts?
+> 
 
-In both types of events, an fs_locations array is returned.  But upper
-layers, not the XDR layer, should make the distinction between a
-referral and a migration.  There really isn't a way for an XDR decoder
-function to distinguish the two, in general.
+Thank you Malahal.
 
-Slightly adjust the FATTR flags returned by decode_fs_locations()
-to set NFS_ATTR_FATTR_V4_LOCATIONS only if a non-empty locations
-array was returned from the server.  Then have logic in nfs4proc.c
-distinguish whether the locations array is for a referral or
-something else.
+I think that both fixes to umount are important for future/backward compatibility
+with Kernel, And general code resilience. 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+But some kind sole should fix both breakages in /proc/mounts, for sure.
+Would you know how to fix it?
 
- fs/nfs/nfs4proc.c       |    6 +++---
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |    7 ++++---
- 3 files changed, 8 insertions(+), 7 deletions(-)
+> Thanks, Malahal.
+> 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5629858..aa0d2cd 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -75,6 +75,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
-+static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -2301,7 +2302,6 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return nfs4_map_errors(status);
- }
- 
--static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- /*
-  * Get locations and (maybe) other attributes of a referral.
-  * Note that we'll actually follow the referral later when
-@@ -4707,11 +4707,11 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	if (!(((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) ||
- 	       (fattr->valid & NFS_ATTR_FATTR_FILEID)) &&
- 	      (fattr->valid & NFS_ATTR_FATTR_FSID) &&
--	      (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
-+	      (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
- 		return;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
--		NFS_ATTR_FATTR_NLINK;
-+		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_V4_REFERRAL;
- 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
- 	fattr->nlink = 2;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 16ee1cf..6b1052a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3614,7 +3614,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 			res->nlocations++;
- 	}
- 	if (res->nlocations != 0)
--		status = NFS_ATTR_FATTR_V4_REFERRAL;
-+		status = NFS_ATTR_FATTR_V4_LOCATIONS;
- out:
- 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
- 	return status;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d409f1c..d609631 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -89,9 +89,10 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_PRECTIME		(1U << 16)
- #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
- #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
--#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
--#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
--#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID		(1U << 21)
-+#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 19)
-+#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 20)	/* NFSv4 referral */
-+#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 21) /* Treat as mountpoint */
-+#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-
+Thanks
+Boaz
