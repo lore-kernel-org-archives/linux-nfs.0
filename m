@@ -1,59 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22816 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752614Ab2BPVB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 16:01:26 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GL1PQP024132
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 13:01:26 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 16 Feb 2012 21:01:11 +0000
-Message-ID: <1329426071.19793.21.camel@lade.trondhjem.org>
-References: <1329171728-3980-1-git-send-email-dros@netapp.com>
-	 <1329421700.4279.21.camel@lade.trondhjem.org>
-	 <0A71914B-99D6-49C4-A2CE-18CBFF9384F7@netapp.com>
-In-Reply-To: <0A71914B-99D6-49C4-A2CE-18CBFF9384F7@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from icebox.esperi.org.uk ([81.187.191.129]:37367 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750858Ab2BEUZD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 15:25:03 -0500
+From: Nick Alcock <nix@esperi.org.uk>
+To: linux-nfs@vger.kernel.org
+Cc: Nick Alcock <nick.alcock@oracle.com>
+Subject: [PATCH 2/4] Make svc_auth_none always available.
+Date: Sun,  5 Feb 2012 20:02:16 +0000
+Message-Id: <1328472138-25750-2-git-send-email-nix@esperi.org.uk>
+In-Reply-To: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
+References: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTE2IGF0IDIwOjQ0ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBGZWIgMTYsIDIwMTIsIGF0IDI6NDggUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-ID4gICAgIDIuIFNob3VsZG4ndCB3ZSBiZSBjYWxsaW5nIF9laXRoZXJfIHJwY19jb3VudF9pb3N0
-YXRzKCksIF9vcl8NCj4gPiAgICAgICAgdGFzay0+dGtfb3BzLT5ycGNfY291bnRfc3RhdHMoKT8g
-QXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhlDQo+ID4gICAgICAgIG5mc3N0YXQgb3V0cHV0IHdpbGwg
-bm93IGJlIGRvdWJsZS1jb3VudGluZyBhbmQgcE5GUyByZWFkcywNCj4gPiAgICAgICAgd3JpdGVz
-IGFuZCBjb21taXRzIHRoYXQgYXJlIHNlbnQgdG8gdGhlIERTLg0KPiANCj4gDQo+IE5vLCB0aGlz
-IGRvZXNuJ3QgZG91YmxlIGNvdW50IHdpdGggbmZzc3RhdHMuICBuZnNzdGF0cyB1c2VzIHJwY19j
-bG50OjpjbF9zdGF0cyAoYW5kIG5vdCBycGNfY2xudDo6Y2xfbWV0cmljcykuDQo+IA0KPiBJIHBy
-b2JhYmx5IHNob3VsZCBoYXZlIGRvbmUgYW4gaWYvZWxzZSBmb3IgdGhpcyBwYXRjaCAtLSB3aXRo
-IHRoZSBjdXJyZW50IGNvZGUsIHRoZSBEU3MnIHJwY19jbG50OmNsX21ldHJpY3Mgd2lsbCBuZXZl
-ciBiZSB1c2VkLg0KPiBJIGxlZnQgaXQgYWNjdW11bGF0aW5nIGhlcmUgYmVjYXVzZSB3ZSB3YW50
-IHRvIGhhdmUgcGVyLURTIHN0YXRzIGV2ZW50dWFsbHkgYW5kIG15IHBsYW4gd2FzIHRvIHByaW50
-IG91dCBzdGF0cyBpbiAvcHJvYy9mcy9uZnNmcyBwZXIgKmNsaWVudCogKHNvIG5vdCBzZXBhcmF0
-ZWQgYnkgbW91bnRwb2ludCkuDQo+IA0KPiBJIGNhbiByZXBvc3Qgd2l0aCBpZi9lbHNlLCBidXQg
-bG9va2luZyBhdCB0aGlzIHNvbWUgbW9yZSBtYWRlIG1lIHJlYWxpemUgdGhhdCB3ZSBhcmUgKnN0
-aWxsKiBkb2luZyB0aGlzIHdyb25nIDopDQo+IA0KPiBUaGUgY2FsbGJhY2sgbWV0aG9kIGluIHRo
-aXMgcGF0Y2ggZmFpbHMgdG8gYWNjdW11bGF0ZSBzdGF0cyBmb3Igb3BlcmF0aW9ucyB0byB0aGUg
-RFMgb3RoZXIgdGhhbiByZWFkL3dyaXRlL2NvbW1pdCAtLSB0aGF0IHNlZW1zIHJpZ2h0LCBidXQg
-d2hhdCBhYm91dCBudWxsLCBleGNoYW5nZV9pZCwgc2Vzc2lvbiBoZWFydGJlYXRzLCBldGM/DQo+
-IA0KPiBJbiBvcmRlciB0byBwcm9wZXJseSBhY2N1bXVsYXRlIHRob3NlIHdlIGFyZSBiYWNrIHRv
-IHR3byBvYnZpb3VzIGNob2ljZXM6DQo+ICAgMSkgYWRkIGEgY291bnRfaW9zdGF0cyBjYWxsYmFj
-ayB0byB0aGUgfjI1IG90aGVyIHJwY19jYWxsX29wcyBpbiBuZnMtbGFuZCAoeXVjaykNCj4gICAy
-KSBhZGQgYW4gJ2FkZGl0aW9uYWwgc3RhdHMnIHBvaW50ZXIgdG8gdGhlIHJwY190YXNrIHN0cnVj
-dHVyZSAodHJvbmQgYWxyZWFkeSBzYWlkIHlvdSBkb24ndCB3YW50IHRvIGFkZCB0byB0YXNrIHN0
-cnVjdCkNCj4gDQo+IE9yIGRvIHdlIGp1c3Qgbm90IGNhcmUgYWJvdXQgZGlzcGxheWluZyB0aG9z
-ZSBvcGVyYXRpb25zPyAgRm9yIG15IHB1cnBvc2VzIChuZnNvbWV0ZXIgcGVyZiB0ZXN0aW5nKSwg
-aXQnZCBiZSBuaWNlIHRvIGhhdmUgKmFsbCogb2YgdGhlIG9wZXJhdGlvbnMuDQoNCkFzIGZhciBh
-cyBJJ20gY29uY2VybmVkLCB0aGUgYWRtaW5pc3RyYXRpdmUgdHJhZmZpYyB0byB0aGUgRFMgc2hv
-dWxkIG5vdA0KYmUgYWNjb3VudGVkIGZvciBpbiB0aGUgbW91bnRzdGF0czogdGhhdCB3b3VsZCBi
-ZSB3cm9uZyBzaW5jZSBEU2VzIGNhbg0KYmUgc2hhcmVkIG5vdCBvbmx5IGJ5IGRpZmZlcmVudCBm
-aWxlc3lzdGVtcyBidXQgZXZlbiBieSBkaWZmZXJlbnQgTURTZXMuDQoNClNvIHRoZSBwZXJmb3Jt
-YW5jZSBvdmVyaGVhZCBvZiBsZWFzZSBhbmQgc2Vzc2lvbiBzZXR1cCB0byB0aGUgRFNlcyBuZWVk
-cw0KdG8gYmUgYWNjb3VudGVkIGZvciBieSBzb21lIG90aGVyIG1lY2hhbmlzbS4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Nick Alcock <nick.alcock@oracle.com>
+
+svc_auth_none is only included in the build when GSS is compiled in, but is used
+by svc_auth_unix, which is unconditionally included.
+
+Include svc_auth_none unconditionally as well.
+
+Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+---
+ src/Makefile.am |    7 +++----
+ 1 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 6731ff9..509cf61 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -48,8 +48,8 @@ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c cln
+         getrpcport.c mt_misc.c pmap_clnt.c pmap_getmaps.c pmap_getport.c \
+         pmap_prot.c pmap_prot2.c pmap_rmt.c rpc_prot.c rpc_commondata.c \
+         rpc_callmsg.c rpc_generic.c rpc_soc.c rpcb_clnt.c rpcb_prot.c \
+-        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_generic.c \
+-        svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
++        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_auth_none.c \
++        svc_generic.c svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
+         auth_time.c auth_des.c authdes_prot.c
+ 
+ ## XDR
+@@ -57,8 +57,7 @@ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_ref
+ 
+ ## Secure-RPC
+ if GSS
+-    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c \
+-		svc_auth_none.c
++    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c
+     libtirpc_la_LDFLAGS += $(GSSGLUE_LIBS)
+     libtirpc_la_CFLAGS = -DHAVE_RPCSEC_GSS $(GSSGLUE_CFLAGS)
+ endif
+-- 
+1.7.8.3.146.gfe6a0
+
