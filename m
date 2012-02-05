@@ -1,189 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33956 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753103Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 17:45:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] 4.1 server tests: don't run utf8 tests by default
-Date: Wed, 15 Feb 2012 17:45:19 -0500
-Message-Id: <1329345920-16608-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
-References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:51531 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799Ab2BEREw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:52 -0500
+Received: by eekc14 with SMTP id c14so1892528eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:51 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v8 02/10] nfsd41: handle current stateid in open and close
+Date: Sun,  5 Feb 2012 18:07:51 +0100
+Message-Id: <1328461679-4108-3-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-The server doesn't pass the utf8 tests and probably never will, and I'm
-tired of people reporting those failures to me.
 
-It's unclear to me whether those tests are even completely correct given
-the latest internationalization language in the spec.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- nfs4.0/servertests/st_compound.py   |    2 +-
- nfs4.0/servertests/st_link.py       |    2 +-
- nfs4.0/servertests/st_lookup.py     |    2 +-
- nfs4.0/servertests/st_open.py       |    2 +-
- nfs4.0/servertests/st_remove.py     |    2 +-
- nfs4.0/servertests/st_rename.py     |    4 ++--
- nfs4.0/servertests/st_secinfo.py    |    2 +-
- nfs4.0/servertests/st_setattr.py    |    2 +-
- nfs4.1/server41tests/st_compound.py |    2 +-
- nfs4.1/server41tests/st_rename.py   |    4 ++--
- 10 files changed, 12 insertions(+), 12 deletions(-)
+ fs/nfsd/current_stateid.h |   11 +++++++++++
+ fs/nfsd/nfs4proc.c        |   30 ++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c       |   32 ++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h            |    1 +
+ 4 files changed, 70 insertions(+), 4 deletions(-)
+ create mode 100644 fs/nfsd/current_stateid.h
 
-diff --git a/nfs4.0/servertests/st_compound.py b/nfs4.0/servertests/st_compound.py
-index 98be3a8..d2af73b 100644
---- a/nfs4.0/servertests/st_compound.py
-+++ b/nfs4.0/servertests/st_compound.py
-@@ -31,7 +31,7 @@ def testGoodTag(t, env):
- def testBadTags(t, env):
-     """COMPOUND with invalid utf8 tags
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+new file mode 100644
+index 0000000..a83dd50
+--- /dev/null
++++ b/fs/nfsd/current_stateid.h
+@@ -0,0 +1,11 @@
++#ifndef _NFSD4_CURRENT_STATE_H
++#define _NFSD4_CURRENT_STATE_H
++
++#include "state.h"
++#include "xdr4.h"
++
++extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
++extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++
++#endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9415bc4..a457551 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -39,6 +39,7 @@
+ #include "cache.h"
+ #include "xdr4.h"
+ #include "vfs.h"
++#include "current_stateid.h"
  
--    FLAGS: compound utf8 all
-+    FLAGS: compound utf8
-     CODE: COMP3
-     """
-     c = env.c1
-diff --git a/nfs4.0/servertests/st_link.py b/nfs4.0/servertests/st_link.py
-index 10d7197..e20ea77 100644
---- a/nfs4.0/servertests/st_link.py
-+++ b/nfs4.0/servertests/st_link.py
-@@ -212,7 +212,7 @@ def testLongName(t, env):
- def testInvalidUtf8(t, env):
-     """LINK with bad UTF-8 name strings should return NFS4ERR_INVAL
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
  
--    FLAGS: link utf8 all
-+    FLAGS: link utf8
-     DEPEND: LINKS LOOKFILE MKDIR
-     CODE: LINK8
-     """
-diff --git a/nfs4.0/servertests/st_lookup.py b/nfs4.0/servertests/st_lookup.py
-index 40c5983..456fed2 100644
---- a/nfs4.0/servertests/st_lookup.py
-+++ b/nfs4.0/servertests/st_lookup.py
-@@ -221,7 +221,7 @@ def testNonAccessable(t, env):
- def testInvalidUtf8(t, env):
-     """LOOKUP with bad UTF-8 name strings should return NFS4ERR_INVAL
+@@ -1000,6 +1001,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+ 			      void *);
+ typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
++typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
++typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
  
--    FLAGS: lookup utf8 all
-+    FLAGS: lookup utf8
-     DEPEND:
-     CODE: LOOK7
-     """
-diff --git a/nfs4.0/servertests/st_open.py b/nfs4.0/servertests/st_open.py
-index 8176ad5..992e5e3 100644
---- a/nfs4.0/servertests/st_open.py
-+++ b/nfs4.0/servertests/st_open.py
-@@ -247,7 +247,7 @@ def testNotDir(t, env):
- def testInvalidUtf8(t, env):
-     """OPEN with bad UTF-8 name strings should return NFS4ERR_INVAL
+ enum nfsd4_op_flags {
+ 	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
+@@ -1025,6 +1028,10 @@ enum nfsd4_op_flags {
+ 	 * the v4.0 case).
+ 	 */
+ 	OP_CACHEME = 1 << 6,
++	/*
++	 * These are ops which clear current state id.
++	 */
++	OP_CLEAR_STATEID = 1 << 7,
+ };
  
--    FLAGS: open utf8 all
-+    FLAGS: open utf8
-     DEPEND: MKDIR
-     CODE: OPEN13
-     """
-diff --git a/nfs4.0/servertests/st_remove.py b/nfs4.0/servertests/st_remove.py
-index 76a7037..d475185 100644
---- a/nfs4.0/servertests/st_remove.py
-+++ b/nfs4.0/servertests/st_remove.py
-@@ -195,7 +195,7 @@ def testZeroLengthTarget(t, env):
- def testNonUTF8(t, env):
-     """REMOVE with non-UTF8 components should return NFS4ERR_INVAL
+ struct nfsd4_operation {
+@@ -1033,6 +1040,8 @@ struct nfsd4_operation {
+ 	char *op_name;
+ 	/* Try to get response size before operation */
+ 	nfsd4op_rsize op_rsize_bop;
++	stateid_setter op_get_currentstateid;
++	stateid_getter op_set_currentstateid;
+ };
  
--    FLAGS: remove utf8 all
-+    FLAGS: remove utf8
-     DEPEND: MKDIR
-     CODE: RM5
-     """
-diff --git a/nfs4.0/servertests/st_rename.py b/nfs4.0/servertests/st_rename.py
-index fe6339b..16e4ce5 100644
---- a/nfs4.0/servertests/st_rename.py
-+++ b/nfs4.0/servertests/st_rename.py
-@@ -311,7 +311,7 @@ def testZeroLengthNewname(t, env):
- def testBadutf8Oldname(t, env):
-     """RENAME with non-UTF8 oldname should return NFS4ERR_INVAL
+ static struct nfsd4_operation nfsd4_ops[];
+@@ -1215,13 +1224,23 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 		if (op->status)
+ 			goto encode_op;
  
--    FLAGS: rename utf8 all
-+    FLAGS: rename utf8
-     DEPEND: MKDIR
-     CODE: RNM8
-     """
-@@ -327,7 +327,7 @@ def testBadutf8Oldname(t, env):
- def testBadutf8Newname(t, env):
-     """RENAME with non-UTF8 newname should return NFS4ERR_INVAL
+-		if (opdesc->op_func)
++		if (opdesc->op_func) {
++			if (opdesc->op_get_currentstateid)
++				opdesc->op_get_currentstateid(cstate, &op->u);
+ 			op->status = opdesc->op_func(rqstp, cstate, &op->u);
+-		else
++		} else
+ 			BUG_ON(op->status == nfs_ok);
  
--    FLAGS: rename utf8 all
-+    FLAGS: rename utf8
-     DEPEND: MKDIR
-     CODE: RNM9
-     """
-diff --git a/nfs4.0/servertests/st_secinfo.py b/nfs4.0/servertests/st_secinfo.py
-index 793fdfd..83f713b 100644
---- a/nfs4.0/servertests/st_secinfo.py
-+++ b/nfs4.0/servertests/st_secinfo.py
-@@ -80,7 +80,7 @@ def testZeroLenName(t, env):
- def testInvalidUtf8(t, env):
-     """SECINFO with bad UTF-8 name strings should return NFS4ERR_INVAL
+-		if (!op->status && need_wrongsec_check(rqstp))
+-			op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
++		if (!op->status) {
++			if (opdesc->op_set_currentstateid)
++				opdesc->op_set_currentstateid(cstate, &op->u);
++
++			if (opdesc->op_flags & OP_CLEAR_STATEID)
++				cstate->current_stateid = NULL;
++
++			if (need_wrongsec_check(rqstp))
++				op->status = check_nfsd_access(cstate->current_fh.fh_export, rqstp);
++		}
  
--    FLAGS: secinfo utf8 all
-+    FLAGS: secinfo utf8
-     DEPEND: SEC1
-     CODE: SEC6
-     """
-diff --git a/nfs4.0/servertests/st_setattr.py b/nfs4.0/servertests/st_setattr.py
-index 686ce87..936778f 100644
---- a/nfs4.0/servertests/st_setattr.py
-+++ b/nfs4.0/servertests/st_setattr.py
-@@ -412,7 +412,7 @@ def testNonUTF8(t, env):
-     OWNER and GROUP are subject to too many restrictions to use.
-     Similarly for ACL.
+ encode_op:
+ 		/* Only from SEQUENCE */
+@@ -1413,6 +1432,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_CLOSE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_closestateid,
+ 	},
+ 	[OP_COMMIT] = {
+ 		.op_func = (nfsd4op_func)nfsd4_commit,
+@@ -1483,6 +1504,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_HANDLES_WRONGSEC | OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_OPEN",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_open_rsize,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_openstateid,
+ 	},
+ 	[OP_OPEN_CONFIRM] = {
+ 		.op_func = (nfsd4op_func)nfsd4_open_confirm,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8ca5ed1..6322a59 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4695,3 +4695,35 @@ nfs4_state_shutdown(void)
+ 	nfs4_unlock_state();
+ 	nfsd4_destroy_callback_queue();
+ }
++
++static void
++get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
++{
++	if (cstate->current_stateid && CURRENT_STATEID(stateid))
++		memcpy(stateid, cstate->current_stateid, sizeof(stateid_t));
++}
++
++static void
++put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
++{
++	if (cstate->minorversion)
++		cstate->current_stateid = stateid;
++}
++
++void
++nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
++{
++	put_stateid(cstate, &open->op_stateid);
++}
++
++void
++nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++{
++	get_stateid(cstate, &close->cl_stateid);
++}
++
++void
++nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++{
++	get_stateid(cstate, &close->cl_stateid);
++}
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2364747..c1fe8ba 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -54,6 +54,7 @@ struct nfsd4_compound_state {
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
++	const stateid_t	*current_stateid;
+ };
  
--    FLAGS: setattr utf8 all
-+    FLAGS: setattr utf8
-     DEPEND: MKFILE
-     CODE: SATT9
-     """
-diff --git a/nfs4.1/server41tests/st_compound.py b/nfs4.1/server41tests/st_compound.py
-index 4dedca8..d38f621 100644
---- a/nfs4.1/server41tests/st_compound.py
-+++ b/nfs4.1/server41tests/st_compound.py
-@@ -39,7 +39,7 @@ def testGoodTag(t, env):
- def testBadTags(t, env):
-     """COMPOUND with invalid utf8 tags
- 
--    FLAGS: compound utf8 all
-+    FLAGS: compound utf8
-     CODE: COMP3
-     """
-     c = env.c1
-diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_rename.py
-index bddcb35..ed5dbb5 100644
---- a/nfs4.1/server41tests/st_rename.py
-+++ b/nfs4.1/server41tests/st_rename.py
-@@ -314,7 +314,7 @@ def testZeroLengthNewname(t, env):
- def testBadutf8Oldname(t, env):
-     """RENAME with non-UTF8 oldname should return NFS4ERR_INVAL
- 
--    FLAGS: rename utf8 all
-+    FLAGS: rename utf8
-     CODE: RNM8
-     """
-     name = env.testname(t)
-@@ -330,7 +330,7 @@ def testBadutf8Oldname(t, env):
- def testBadutf8Newname(t, env):
-     """RENAME with non-UTF8 newname should return NFS4ERR_INVAL
- 
--    FLAGS: rename utf8 all
-+    FLAGS: rename utf8
-     CODE: RNM9
-     """
-     name = env.testname(t)
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
 -- 
-1.7.5.4
+1.7.7.6
 
