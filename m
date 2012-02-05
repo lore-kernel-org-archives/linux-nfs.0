@@ -1,18 +1,18 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:49022 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577Ab2BMVwb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:31 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so2011170eek.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:30 -0800 (PST)
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:58266 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799Ab2BEREy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:54 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so2181895eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:53 -0800 (PST)
 From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
 Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 09/10] nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
-Date: Mon, 13 Feb 2012 22:55:31 +0100
-Message-Id: <1329170132-7081-10-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Subject: [PATH v8 03/10] nfsd41: handle current stateid on lock and locku
+Date: Sun,  5 Feb 2012 18:07:52 +0100
+Message-Id: <1328461679-4108-4-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -21,89 +21,99 @@ From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- fs/nfsd/current_stateid.h |    3 +++
- fs/nfsd/nfs4proc.c        |    3 +++
- fs/nfsd/nfs4state.c       |   18 ++++++++++++++++++
- 3 files changed, 24 insertions(+), 0 deletions(-)
+ fs/nfsd/current_stateid.h |   11 ++++++++++-
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   22 ++++++++++++++++++++--
+ 3 files changed, 32 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index e1ae950..d8c9992 100644
+index a83dd50..21550b6 100644
 --- a/fs/nfsd/current_stateid.h
 +++ b/fs/nfsd/current_stateid.h
-@@ -7,6 +7,7 @@
- /*
-  * functions to set current state id
-  */
-+extern void nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
+@@ -4,8 +4,17 @@
+ #include "state.h"
+ #include "xdr4.h"
+ 
++/*
++ * functions to set current state id
++ */
  extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
- extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
+-extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
  extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-@@ -14,6 +15,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
- /*
-  * functions to consume current state id
-  */
-+extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
-+extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *, struct nfsd4_delegreturn *);
- extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
- extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ 
++/*
++ * functions to consume current state id
++ */
++extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++
+ #endif   /* _NFSD4_CURRENT_STATE_H */
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 124934a..dffc9bd 100644
+index a457551..f66a8b2 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1454,6 +1454,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+@@ -1474,6 +1474,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
  		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_DELEGRETURN",
- 		.op_rsize_bop = nfsd4_only_status_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_delegreturnstateid,
+ 		.op_name = "OP_LOCK",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lock_rsize,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_lockstateid,
  	},
- 	[OP_GETATTR] = {
- 		.op_func = (nfsd4op_func)nfsd4_getattr,
-@@ -1521,6 +1522,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_LOCKT] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lockt,
+@@ -1484,6 +1485,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
  		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_OPEN_DOWNGRADE",
+ 		.op_name = "OP_LOCKU",
  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_opendowngradestateid,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_opendowngradestateid,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
  	},
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
+ 	[OP_LOOKUP] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lookup,
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8214c0f..9c5a239 100644
+index 6322a59..5665061 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4714,6 +4714,12 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-  * functions to set current state id
-  */
+@@ -4710,6 +4710,9 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ 		cstate->current_stateid = stateid;
+ }
+ 
++/*
++ * functions to set current state id
++ */
  void
-+nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
-+{
-+	put_stateid(cstate, &odp->od_stateid);
-+}
-+
-+void
  nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
  {
- 	put_stateid(cstate, &open->op_stateid);
-@@ -4736,6 +4742,18 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
-  */
+@@ -4717,13 +4720,28 @@ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *op
+ }
  
  void
-+nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
++nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
 +{
-+	get_stateid(cstate, &odp->od_stateid);
++	put_stateid(cstate, &close->cl_stateid);
 +}
 +
 +void
-+nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate, struct nfsd4_delegreturn *drp)
++nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lock)
 +{
-+	get_stateid(cstate, &drp->dr_stateid);
++	put_stateid(cstate, &lock->lk_resp_stateid);
 +}
 +
++/*
++ * functions to consume current state id
++ */
 +void
- nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
+ nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
  {
- 	get_stateid(cstate, &fsp->fr_stateid);
+ 	get_stateid(cstate, &close->cl_stateid);
+ }
+ 
+ void
+-nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
+ {
+-	get_stateid(cstate, &close->cl_stateid);
++	get_stateid(cstate, &locku->lu_stateid);
+ }
 -- 
 1.7.7.6
 
