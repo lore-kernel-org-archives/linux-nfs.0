@@ -1,95 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:54065 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753981Ab2BJRRo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 12:17:44 -0500
-Message-ID: <4F35512A.9050500@steve-ss.com>
-Date: Fri, 10 Feb 2012 18:17:30 +0100
-From: steve <steve@steve-ss.com>
+Received: from bontebok.le.ac.uk ([143.210.16.36]:46702 "EHLO
+	bontebok.le.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753703Ab2BEQzO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 11:55:14 -0500
+Received: from 87-194-172-193.bethere.co.uk ([87.194.172.193]:56819 helo=[192.168.1.3])
+	by bontebok.le.ac.uk with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.69)
+	(envelope-from <liam.gretton@leicester.ac.uk>)
+	id 1Ru5Mu-00019S-0i
+	for linux-nfs@vger.kernel.org; Sun, 05 Feb 2012 16:55:12 +0000
+Message-ID: <4F2EB471.9060508@leicester.ac.uk>
+Date: Sun, 05 Feb 2012 16:55:13 +0000
+From: Liam Gretton <liam.gretton@leicester.ac.uk>
 MIME-Version: 1.0
-To: whats_up@gmx.net
-CC: linux-nfs@vger.kernel.org
-Subject: Re: mount hangs in NFS4+Kerberos setup
-References: <20120210154526.7b504146@little-poseidon>
-In-Reply-To: <20120210154526.7b504146@little-poseidon>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: where can I ask user qns about nfs4?
+References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2D9A0E.6010503@leicester.ac.uk> <4F2E4B50.5040701@steve-ss.com> <20120205141611.GA12826@umich.edu>
+In-Reply-To: <20120205141611.GA12826@umich.edu>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/10/2012 03:45 PM, whats_up@gmx.net wrote:
-> Hi,
+On 05/02/2012 14:16, Jim Rees wrote:
+> There is a a NFS wiki, and it does have kerberos setup instructions:
+> http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
 >
-> I want to setup a file server with NFS4+Kerberos and Debian squeeze for
-> clients running Ubuntu 11.10.
->
-> What is already working:
-> 1) Mount NFS4 on client without krb5 option works. Users are able to
-> access files and uids/gids are correct. 2) KDC works. Access from
-> client, get tickets, user authentication/change password through pam is
-> ok.
->
-> Now I want to mount with sec=krb5 but this time the command hangs and
-> does not return to shell. See also logs below.
->
-> Any hints to fix the issue or to get more helpful debug information are
-> welcome.
->
-> regards
->    knut
->
->
->
->
-> === server status ===
->
-> Debian Linux squeeze
->
-> # uname -a
-> Linux tm 2.6.32-5-686 #1 SMP Mon Jan 16 16:04:25 UTC 2012 i686 GNU/Linux
-Ubuntu 11.10
-uname -r
-3.0.0-15-generic
+> The wiki has mostly been used by developers for developer info but it might
+> be a good thing to use it for more general info too.
 
-Some older kernels do not support strong keys. Try adding:
-allow_weak_crypto = true
-to the
-  [libdefaults]
-in /etc/krb5.conf
+Thanks, the problem isn't getting NFS with Kerberos to work in general, 
+it's with AD as the KDC. It seems that NFS still only accepts DES 
+encrypted Kerberos tickets, and these are specifically disabled in 
+Windows Server 2008 R2.
 
-Here it is using the machine principal with arcfour:
-
-Kerberos: AS-REQ nfs/hh3.hh3.site@HH3.SITE from ipv4:192.168.1.3:49650 
-for krbtgt/HH3.SITE@HH3.SITE
-Kerberos: UNKNOWN -- nfs/hh3.hh3.site@HH3.SITE: no such entry found in hdb
-Kerberos: AS-REQ HH3$@HH3.SITE from ipv4:192.168.1.3:43041 for 
-krbtgt/HH3.SITE@HH3.SITE
-Kerberos: Client sent patypes: 149
-Kerberos: Looking for PKINIT pa-data -- HH3$@HH3.SITE
-Kerberos: Looking for ENC-TS pa-data -- HH3$@HH3.SITE
-Kerberos: No preauth found, returning PREAUTH-REQUIRED -- HH3$@HH3.SITE
-Kerberos: AS-REQ HH3$@HH3.SITE from ipv4:192.168.1.3:32850 for 
-krbtgt/HH3.SITE@HH3.SITE
-Kerberos: Client sent patypes: encrypted-timestamp, 149
-Kerberos: Looking for PKINIT pa-data -- HH3$@HH3.SITE
-Kerberos: Looking for ENC-TS pa-data -- HH3$@HH3.SITE
-Kerberos: ENC-TS Pre-authentication succeeded -- HH3$@HH3.SITE using 
-arcfour-hmac-md5
-Kerberos: AS-REQ authtime: 2012-02-10T18:00:16 starttime: unset endtime: 
-2012-02-11T04:00:16 renew till: 2012-02-11T18:00:15
-Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96, 
-aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, using 
-arcfour-hmac-md5/arcfour-hmac-md5
-Kerberos: Requested flags: renewable-ok
-Kerberos: TGS-REQ HH3$@HH3.SITE from ipv4:192.168.1.3:41288 for 
-nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
-Kerberos: TGS-REQ authtime: 2012-02-10T18:00:16 starttime: 
-2012-02-10T18:00:16 endtime: 2012-02-11T04:00:16 renew till: 
-2012-02-11T18:00:15
-
-Also it's not recommended to use the pseudo-root fsid=0 method for nfs 
-exports under Linux:
-  http://wiki.linux-nfs.org/wiki/index.php/Nfsv4_configuration
-
-HTH,
-Steve
-
+-- 
+Liam Gretton                                    liam.gretton@le.ac.uk
+HPC Architect                                http://www.le.ac.uk/its/
+IT Services                                   Tel: +44 (0)116 2522254
+University Of Leicester, University Road
+Leicestershire LE1 7RH, United Kingdom
