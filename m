@@ -1,58 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:39469 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751619Ab2BMIZN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 03:25:13 -0500
-Received: by eaah12 with SMTP id h12so1700255eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 00:25:12 -0800 (PST)
-Message-ID: <4F38C8E4.6080901@tonian.com>
-Date: Mon, 13 Feb 2012 10:25:08 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: Tigran Mkrtchyan <kofemann@googlemail.com>
-CC: linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: Re: [PATH v8 10/10] nfsd41: use current stateid by value
-References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de> <1328461679-4108-11-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1328461679-4108-11-git-send-email-tigran.mkrtchyan@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:49290 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799Ab2BEREv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:51 -0500
+Received: by eekc14 with SMTP id c14so1892522eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:50 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v8 01/10] nfsd4: initialize current stateid at compile time
+Date: Sun,  5 Feb 2012 18:07:50 +0100
+Message-Id: <1328461679-4108-2-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the late response...
-If not committed yet, please fix the macros below.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Otherwise
 
-Benny
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/nfs4state.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-On 2012-02-05 19:07, Tigran Mkrtchyan wrote:
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 2ae378e..4ee102a 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -43,6 +43,13 @@
->  #define NFSD4_MAX_TAGLEN	128
->  #define XDR_LEN(n)                     (((n) + 3) & ~3)
->  
-> +#define CURRENT_STATE_ID_FLAG 1
-> +#define SAVED_STATE_ID_FLAG 2
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7355fe4..8ca5ed1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -58,11 +58,15 @@ static const stateid_t one_stateid = {
+ static const stateid_t zero_stateid = {
+ 	/* all fields zero */
+ };
+-
++static const stateid_t currentstateid = {
++	.si_generation = 1,
++};
++ 
+ static u64 current_sessionid = 1;
+ 
+ #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
+ #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
++#define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+ 
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+-- 
+1.7.7.6
 
-while at it, I'd rather define the flags as (1 << 0), (1 << 1)
-to stress the fact they are bit values.
-
-> +
-> +#define SET_STATE_ID(c, f) (c->sid_flags |= f)
-> +#define HAS_STATE_ID(c, f) (c->sid_flags & f)
-> +#define CLEAR_STATE_ID(c, f) (c->sid_flags &=  ~f)
-
-parenthesis must be used when using the macro arguments
-(important mainly for the last one, using the unary operator on the arg)
-
-+#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
-+#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
-+#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
-
-or just use the set_bit() test_bit() clear_bit() interface :)
-
-Benny
