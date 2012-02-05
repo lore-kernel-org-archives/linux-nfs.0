@@ -1,107 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:36258 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751596Ab2BDMOW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Feb 2012 07:14:22 -0500
-Received: by dadp15 with SMTP id p15so3458650dad.19
-        for <linux-nfs@vger.kernel.org>; Sat, 04 Feb 2012 04:14:21 -0800 (PST)
-Message-ID: <4F2D210F.6090505@gmail.com>
-Date: Sat, 04 Feb 2012 20:14:07 +0800
-From: Mi Jinlong <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
-References: <1327963365-2921-1-git-send-email-bfields@redhat.com> <4F273FD4.3020005@cn.fujitsu.com> <20120201214656.GA19075@fieldses.org> <20120203204931.GC2999@fieldses.org> <4F2C0A3F.6020002@gmail.com> <20120204021637.GA6446@fieldses.org>
-In-Reply-To: <20120204021637.GA6446@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:49290 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799Ab2BERE6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:58 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c14so1892522eek.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:57 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v8 06/10] nfsd41: save and restore current stateid with current fh
+Date: Sun,  5 Feb 2012 18:07:55 +0100
+Message-Id: <1328461679-4108-7-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-于 2012-2-4 10:16, J. Bruce Fields 写道:
-> On Sat, Feb 04, 2012 at 12:24:31AM +0800, Mi Jinlong wrote:
->> 于 2012-2-4 4:49, J. Bruce Fields 写道:
->>> On Wed, Feb 01, 2012 at 04:46:56PM -0500, bfields wrote:
->>>> On Tue, Jan 31, 2012 at 09:11:48AM +0800, Mi Jinlong wrote:
->>>>>    Should use target = i.totalram<<   (PAGE_SHIFT - 12);
->>>>>
->>>>>    target = i.totalram<<   PAGE_SHIFT; and
->>>>>    target<<= 12;
->>>>>    means target = i.totalram<<   (PAGE_SHIFT + 12);
->>>>
->>>> Yes, thanks for catching that.
->>>>
->>>> Also, splitting up the calculation as I did above risks overflow at the
->>>> first step.
->>>>
->>>> I'll fix that....
->>>
->>> Here are the fixed patches.--b.
->>>
->>> > From 87b0fc7deb5feccf93b022f6a976e8441152dbb2 Mon Sep 17 00:00:00 2001
->>> From: "J. Bruce Fields"<bfields@redhat.com>
->>> Date: Mon, 30 Jan 2012 16:18:35 -0500
->>> Subject: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
->>>
->>> Move calculation of the default into a helper function.
->>>
->>> Get rid of an unused variable "err" while we're there.
->>>
->>> Thanks to Mi Jinlong for catching an arithmetic error in a previous
->>> version.
->>>
->>> Cc: Mi Jinlong<mijinlong@cn.fujitsu.com>
->>> Signed-off-by: J. Bruce Fields<bfields@redhat.com>
->>> ---
->>>   fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
->>>   1 files changed, 24 insertions(+), 20 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->>> index eda7d7e..e9eb408 100644
->>> --- a/fs/nfsd/nfssvc.c
->>> +++ b/fs/nfsd/nfssvc.c
->>> @@ -307,33 +307,37 @@ static void set_max_drc(void)
->>>   	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
->>>   }
->>>
->>> -int nfsd_create_serv(void)
->>> +static int nfsd_get_default_max_blksize(void)
->>>   {
->>> -	int err = 0;
->>> +	struct sysinfo i;
->>> +	unsigned long long target;
->>> +	unsigned long ret;
->>> +
->>> +	si_meminfo(&i);
->>> +	target = i.totalram<<   PAGE_SHIFT;
->>> +	/*
->>> +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
->>> +	 * machines, but only uses 32K on 128M machines.  Bottom out at
->>> +	 * 8K on 32M and smaller.  Of course, this is only a default.
->>> +	 */
->>> +	target>>= 12;
->>
->>     Why don't using target = i.totalram<<  (PAGE_SHIFT - 12) as before?
->
-> Dividing the calculation into two steps (first convert from pages to
-> bytes, then divide by 4096) makes it more obvious, and allows me to
-> stick the comment before the part of the calculation it explains.
->
-> So the result seems easier to read.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-   Yes,
 
->
->>     The result of the two forms is more likely different.
->
-> The result is the same as long as there's no overflow at the first step
-> (which would require a machine with an exabyte of ram).
->
-> Seem reasonable?
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/nfs4proc.c |    2 ++
+ fs/nfsd/xdr4.h     |    1 +
+ 2 files changed, 3 insertions(+), 0 deletions(-)
 
-   Yes, that is my only concern.
-
-thanks,
-Mi Jinlong
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 66bd005..59d9b4b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -453,6 +453,7 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_restorefh;
+ 
+ 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
++	cstate->current_stateid = cstate->save_stateid;
+ 	return nfs_ok;
+ }
+ 
+@@ -464,6 +465,7 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_nofilehandle;
+ 
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
++	cstate->save_stateid = cstate->current_stateid;
+ 	return nfs_ok;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index c1fe8ba..2ae378e 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
+ 	u32			minorversion;
+ 	u32			status;
+ 	const stateid_t	*current_stateid;
++	const stateid_t	*save_stateid;
+ };
+ 
+ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+-- 
+1.7.7.6
 
