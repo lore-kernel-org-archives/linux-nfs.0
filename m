@@ -1,123 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:32825 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751818Ab2BGSh6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2012 13:37:58 -0500
-Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4F316BC4.4030504@panasas.com>
-Date: Tue, 7 Feb 2012 13:37:51 -0500
-Cc: Weston Andros Adamson <dros@netapp.com>, <Trond.Myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-Message-Id: <38718BB0-83D0-42FF-8E86-E88299B54267@oracle.com>
-References: <1328633351-1741-1-git-send-email-dros@netapp.com> <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com> <4F316BC4.4030504@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:58266 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799Ab2BERFB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:05:01 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so2181895eaa.19
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:05:00 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v8 08/10] nfsd41: handle current stateid in SETATTR and FREE_STATEID
+Date: Sun,  5 Feb 2012 18:07:57 +0100
+Message-Id: <1328461679-4108-9-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-On Feb 7, 2012, at 1:21 PM, Boaz Harrosh wrote:
 
-> On 02/07/2012 06:59 PM, Chuck Lever wrote:
->> Hi-
->> 
->> On Feb 7, 2012, at 11:49 AM, Weston Andros Adamson wrote:
->>> 
->>> NFS: add mount options 'v4.0' and 'v4.1'
-> 
-> Good god thanks, that'll be nice.
-> 
-> Why did we have to suffer for 5 years without it? ;-)
-> 
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> Updated to add 'v4.0' as trond requested.
->>> 
->>> We'll talk about this change at connectathon.
->>> 
->>> This 'just works' with mount.nfs(8) -- v.* options are passed to the 
->>> kernel with no modifications needed.
->> 
->> I'm more concerned about version auto-negotation.
->> 
-> 
-> If we are at it can we also have a "this-version-only" option which
-> disables "auto-negotation"
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    1 +
+ fs/nfsd/nfs4state.c       |   13 +++++++++++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
-That's what "vers=" already does.  If "vers=" is specified, the mount point uses that version, or the mount operation fails if the server or client doesn't support the requested version.  There is no version negotiation when "vers=" is specified.
-
-What did you have in mind?
-
-> I know that's an hard one
-> 
-> OK we'll talk at CON12.
-> 
-> Thanks Andy
-> Boaz
-> 
->>> 
->>> fs/nfs/super.c |   14 +++++++++++++-
->>> 1 files changed, 13 insertions(+), 1 deletions(-)
->>> 
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index b88e023..d89cee2 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -80,7 +80,7 @@ enum {
->>> 	Opt_cto, Opt_nocto,
->>> 	Opt_ac, Opt_noac,
->>> 	Opt_lock, Opt_nolock,
->>> -	Opt_v2, Opt_v3, Opt_v4,
->>> +	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
->>> 	Opt_udp, Opt_tcp, Opt_rdma,
->>> 	Opt_acl, Opt_noacl,
->>> 	Opt_rdirplus, Opt_nordirplus,
->>> @@ -136,6 +136,8 @@ static const match_table_t nfs_mount_option_tokens = {
->>> 	{ Opt_v2, "v2" },
->>> 	{ Opt_v3, "v3" },
->>> 	{ Opt_v4, "v4" },
->>> +	{ Opt_v4_0, "v4.0" },
->>> +	{ Opt_v4_1, "v4.1" },
->>> 	{ Opt_udp, "udp" },
->>> 	{ Opt_tcp, "tcp" },
->>> 	{ Opt_rdma, "rdma" },
->>> @@ -1172,6 +1174,16 @@ static int nfs_parse_mount_options(char *raw,
->>> 			mnt->flags &= ~NFS_MOUNT_VER3;
->>> 			mnt->version = 4;
->>> 			break;
->>> +		case Opt_v4_0:
->>> +			mnt->flags &= ~NFS_MOUNT_VER3;
->>> +			mnt->version = 4;
->>> +			mnt->minorversion = 0;
->>> +			break;
->>> +		case Opt_v4_1:
->>> +			mnt->flags &= ~NFS_MOUNT_VER3;
->>> +			mnt->version = 4;
->>> +			mnt->minorversion = 1;
->>> +			break;
->>> 		case Opt_udp:
->>> 			mnt->flags &= ~NFS_MOUNT_TCP;
->>> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
->>> -- 
->>> 1.7.4.4
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 6e54d19..e1ae950 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -14,6 +14,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+ /*
+  * functions to consume current state id
+  */
++extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
++extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
+ extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 620abcc..124934a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1606,6 +1606,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_SETATTR",
+ 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setattr_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_setattrstateid,
+ 	},
+ 	[OP_SETCLIENTID] = {
+ 		.op_func = (nfsd4op_func)nfsd4_setclientid,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1c97912..8214c0f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4734,6 +4734,19 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
+ /*
+  * functions to consume current state id
+  */
++
++void
++nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
++{
++	get_stateid(cstate, &fsp->fr_stateid);
++}
++
++void
++nfsd4_get_setattrstateid(struct nfsd4_compound_state *cstate, struct nfsd4_setattr *setattr)
++{
++	get_stateid(cstate, &setattr->sa_stateid);
++}
++
+ void
+ nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
+ {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
