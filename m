@@ -1,44 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13816 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753998Ab2BPRgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 12:36:25 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
-Date: Thu, 16 Feb 2012 17:36:05 +0000
-Message-ID: <1329413764.4279.12.camel@lade.trondhjem.org>
-References: <1329409026-20466-1-git-send-email-dros@netapp.com>
-	 <20120216173022.GA29158@umich.edu>
-In-Reply-To: <20120216173022.GA29158@umich.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from partagas.dragonet.es ([217.70.240.130]:55243 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755825Ab2BFSzY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 13:55:24 -0500
+Message-ID: <4F3021F2.6090607@steve-ss.com>
+Date: Mon, 06 Feb 2012 19:54:42 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jim Rees <rees@umich.edu>, Liam Gretton <liam.gretton@leicester.ac.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: where can I ask user qns about nfs4?
+References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2D9A0E.6010503@leicester.ac.uk> <4F2E4B50.5040701@steve-ss.com> <20120205141611.GA12826@umich.edu> <4F2EB471.9060508@leicester.ac.uk> <20120205173728.GA13418@umich.edu> <20120206163945.GA29579@fieldses.org>
+In-Reply-To: <20120206163945.GA29579@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTE2IGF0IDEyOjMwIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gV2Vz
-dG9uIEFuZHJvcyBBZGFtc29uIHdyb3RlOg0KPiANCj4gICBTZW5kIHRoZSBuZnMgaW1wbGVtZW50
-YXRpb24gaWQgaW4gRVhDSEFOR0VfSUQgcmVxdWVzdHMgdW5sZXNzIHRoZSBtb2R1bGUNCj4gICBw
-YXJhbWV0ZXIgbmZzLnNlbmRfaW1wbGVtZW50YXRpb25faWQgaXMgMC4NCj4gICANCj4gICBUaGlz
-IGFkZHMgYSBDT05GSUcgdmFyaWFibGUgZm9yIHRoZSBuaWlfZG9tYWluIHRoYXQgZGVmYXVsdHMg
-dG8gImtlcm5lbC5vcmciLg0KPiAgIA0KPiAgIFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3Mg
-QWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiANCj4gICBAQCAtMjcxLDcgKzI3MywxMiBAQCBz
-dGF0aWMgaW50IG5mczRfc3RhdF90b19lcnJubyhpbnQpOw0KPiAgICAJCQkJMSAvKiBmbGFncyAq
-LyArIFwNCj4gICAgCQkJCTEgLyogc3BhX2hvdyAqLyArIFwNCj4gICAgCQkJCTAgLyogU1A0X05P
-TkUgKGZvciBub3cpICovICsgXA0KPiAgIC0JCQkJMSAvKiB6ZXJvIGltcGxlbWV0YXRpb24gaWQg
-YXJyYXkgKi8pDQo+ICAgKwkJCQkxIC8qIGltcGxlbWV0YXRpb24gaWQgYXJyYXkgb2Ygc2l6ZSAx
-ICovICsgXA0KPiANCj4gaW1wbGVtZXRhdGlvbiAtPiBpbXBsZW1lbnRhdGlvbg0KPiBNaWdodCBh
-cyB3ZWxsIGZpeCB0aGlzIHR5cG8gd2hpbGUgeW91J3JlIGF0IGl0Lg0KPiANCj4gR2VuZXJhbCBj
-b21tZW50Li4uIElmIHRoaXMgaXMgZ29pbmcgdG8gYmUgY29uZmlndXJhYmxlLCBJJ2QgcmF0aGVy
-IG1ha2UgaXQgYQ0KPiBzeXNjdGwsIGFuZCBiZSBhYmxlIHRvIHNldCB0aGUgaWQgdG8gd2hhdGV2
-ZXIgSSB3YW50IGF0IHJ1biB0aW1lLiAgQnV0DQo+IHRoYXQncyBiZWNhdXNlIEkgbGlrZSB0byBi
-ZSBhYmxlIHRvIGJyZWFrIHRoaW5ncy4gIEkgc3VzcGVjdCBUcm9uZCB3aWxsDQo+IGRpc2FncmVl
-Lg0KDQpJIGRvLiBXZSBkb24ndCBtYWtlIHRoZSAndW5hbWUnIGNvbmZpZ3VyYWJsZSBhcyBhIHN5
-c2N0bC4gSG93IGlzIHRoaXMNCmFueSBkaWZmZXJlbnQ/IFdoeSB3b3VsZCB5b3Ugd2FudCB0byBk
-ZWxpYmVyYXRlbHkgbWlzcmVwcmVzZW50IHdoaWNoIE5GUw0KY2xpZW50IHRoaXMgaXMgdG8gdGhl
-IHNlcnZlcj8gVGhlIGltcGxlbWVudGF0aW9uIGlkIGlzIHRoZXJlIGZvciBlcnJvcg0KbG9nZ2lu
-ZyBwdXJwb3Nlcywgbm90aGluZyBlbHNlLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On 06/02/12 17:39, J. Bruce Fields wrote:
+> On Sun, Feb 05, 2012 at 12:37:28PM -0500, Jim Rees wrote:
+>> Liam Gretton wrote:
+>>
+>>    On 05/02/2012 14:16, Jim Rees wrote:
+>>    >There is a a NFS wiki, and it does have kerberos setup instructions:
+>>    >http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
+>>    >
+>>    >The wiki has mostly been used by developers for developer info but it might
+>>    >be a good thing to use it for more general info too.
+>>
+>>    Thanks, the problem isn't getting NFS with Kerberos to work in
+>>    general, it's with AD as the KDC. It seems that NFS still only
+>>    accepts DES encrypted Kerberos tickets, and these are specifically
+>>    disabled in Windows Server 2008 R2.
+>>
+>> Wasn't that fixed recently?
+> Yes, it supports some AES-based enctypes now, for example.  I wouldn't
+> know a better source of the details than
+>
+> 	git log net/sunrpc/auth_gss/gss_krb5_*
+>
+> If someone wanted to summarize the situation for the wiki, go for it.
+Hi
+nfs with arcfour seems OK here with Samba 4. I don't think it's the 
+default for AD but your windows admins may be happier with it. I think 
+his is the relevant bit:
+
+Kerberos: ENC-TS Pre-authentication succeeded -- HH3$@HH3.SITE using 
+arcfour-hmac-md5
+Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime: 
+2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
+Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96, 
+aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc, 
+des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
+Kerberos: Requested flags: renewable-ok
+Kerberos: TGS-REQ HH3$@HH3.SITE from ipv4:192.168.1.3:45421 for 
+nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
+Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime: 
+2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
+
+HTH
+Steve
