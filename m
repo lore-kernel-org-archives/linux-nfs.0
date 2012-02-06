@@ -1,66 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:36997 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751898Ab2BOPjV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 10:39:21 -0500
-Received: by bkcjm19 with SMTP id jm19so1052711bkc.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 07:39:20 -0800 (PST)
-From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
-To: trond.myklebust@netapp.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-Subject: [PATCH] nfs41: Verify channel's attributes accordingly to RFC v2
-Date: Wed, 15 Feb 2012 19:38:25 +0400
-Message-Id: <1329320305-16111-1-git-send-email-gusev.vitaliy@nexenta.com>
-In-Reply-To: <1329315756.3364.4.camel@lade.trondhjem.org>
-References: <1329315756.3364.4.camel@lade.trondhjem.org>
+Received: from cantor2.suse.de ([195.135.220.15]:48420 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756286Ab2BFW4z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 17:56:55 -0500
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 11/11] Avoid dereferencing bd_disk during swap_entry_free for network storage
+Date: Mon,  6 Feb 2012 22:56:41 +0000
+Message-Id: <1328569001-17599-12-git-send-email-mgorman@suse.de>
+In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From RFC5661, 18.36.3:
+Commit [b3a27d: swap: Add swap slot free callback to
+block_device_operations] dereferences p->bdev->bd_disk but this is a
+NULL dereference if using swap-over-NFS. This patch checks SWP_BLKDEV
+on the swap_info_struct before dereferencing.
 
- ca_maxoperations:
+With reference to this callback, Christoph Hellwig stated "Please
+just remove the callback entirely.  It has no user outside the staging
+tree and was added clearly against the rules for that staging tree".
+This would also be my preference but there was not an obvious way of
+keeping zram in staging/ happy.
 
-      For the backchannel, the server MUST
-      NOT change the value the client offers.  For the fore channel,
-      the server MAY change the requested value.
-
-  ca_maxrequests:
-
-       For the backchannel, the server MUST NOT change the
-       value the client offers.  For the fore channel, the server MAY
-       change the requested value.
-
-Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Signed-off-by: Xiaotian Feng <dfeng@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@suse.de>
 ---
- fs/nfs/nfs4proc.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ mm/swapfile.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5da5355..233ed26 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5199,6 +5199,8 @@ static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args
- 		return -EINVAL;
- 	if (rcvd->max_reqs == 0)
- 		return -EINVAL;
-+	if (rcvd->max_reqs > NFS4_MAX_SLOT_TABLE)
-+		rcvd->max_reqs = NFS4_MAX_SLOT_TABLE;
- 	return 0;
- }
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index e1bac6c..c549945 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -547,7 +547,6 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
  
-@@ -5214,9 +5216,9 @@ static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args
- 	if (rcvd->max_resp_sz_cached > sent->max_resp_sz_cached)
- 		return -EINVAL;
- 	/* These would render the backchannel useless: */
--	if (rcvd->max_ops  == 0)
-+	if (rcvd->max_ops != sent->max_ops)
- 		return -EINVAL;
--	if (rcvd->max_reqs == 0)
-+	if (rcvd->max_reqs != sent->max_reqs)
- 		return -EINVAL;
- 	return 0;
- }
+ 	/* free if no reference */
+ 	if (!usage) {
+-		struct gendisk *disk = p->bdev->bd_disk;
+ 		if (offset < p->lowest_bit)
+ 			p->lowest_bit = offset;
+ 		if (offset > p->highest_bit)
+@@ -557,9 +556,11 @@ static unsigned char swap_entry_free(struct swap_info_struct *p,
+ 			swap_list.next = p->type;
+ 		nr_swap_pages++;
+ 		p->inuse_pages--;
+-		if ((p->flags & SWP_BLKDEV) &&
+-				disk->fops->swap_slot_free_notify)
+-			disk->fops->swap_slot_free_notify(p->bdev, offset);
++		if (p->flags & SWP_BLKDEV) {
++			struct gendisk *disk = p->bdev->bd_disk;
++			if (disk->fops->swap_slot_free_notify)
++				disk->fops->swap_slot_free_notify(p->bdev, offset);
++		}
+ 	}
+ 
+ 	return usage;
 -- 
-1.7.5.4
+1.7.3.4
 
