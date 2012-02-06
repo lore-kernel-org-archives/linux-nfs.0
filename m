@@ -1,34 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65342 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13601 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755170Ab2BPUvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:51:03 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKp27Z017901
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:51:02 -0800 (PST)
+	id S1756091Ab2BFXGF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 18:06:05 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 nfs-for-next 1/1] NFSv4.1 add a session
- statistics file to /proc/fs/nfsfs
-Date: Thu, 16 Feb 2012 20:50:45 +0000
-Message-ID: <1329425444.19793.16.camel@lade.trondhjem.org>
-References: <1329346205-2316-1-git-send-email-andros@netapp.com>
-	 <1329346205-2316-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1329346205-2316-2-git-send-email-andros@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Keep idmapper include files in one place
+Date: Mon, 6 Feb 2012 23:05:59 +0000
+Message-ID: <1328569559.23323.6.camel@lade.trondhjem.org>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+	 <1327614865-29322-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1327614865-29322-2-git-send-email-bjschuma@netapp.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE3OjUwIC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNlc3Np
-b24gc3RhdGlzdGljcyBhcmUgbmVlZGVkIGZvciBwZXJmb3JtYW5jZSBjaGFyYWN0ZXJpc2F0aW9u
-IGFuZCBkZWJ1Z2dpbmcNCj4gcmVjb3ZlcnkgYW5kIG1pZ3JhdGlvbi4NCj4gDQo+IE9ubHkgZ2F0
-aGVyIGZvcmVjaGFubmVsIHN0YXRpc3RpY3MgYXMgdGhlIGJhY2tjaGFubmVsIGhhcyBvbmUgc2Vz
-c2lvbiBzbG90Lg0KPiANCg0KQ291bGQgdGhpcyBiZSBkb25lIGJldHRlciB1c2luZyB0cmFjZXBv
-aW50cz8gSSdtIG5vdCBzdXJlIHRoYXQgSSBzZWUgaG93DQphIHR5cGljYWwgc3lzdGVtIGFkbWlu
-IHdvdWxkIHVzZSB0aGlzIGtpbmQgb2YgZmlsZSwgc28gaXQgbG9va3MgbW9yZQ0KbGlrZSBhIGRl
-YnVnZ2luZyBhaWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+T24gVGh1LCAyMDEyLTAxLTI2IGF0IDE2OjU0IC0wNTAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
+b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
+PiBTaWduZWQtb2ZmLWJ5OiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+
+IC0tLQ0KPiAgZnMvbmZzL2lkbWFwLmMgfCAgIDY0ICsrKysrKysrKysrKysrKysrKysrKysrKysr
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwgMzAgaW5z
+ZXJ0aW9ucygrKSwgMzQgZGVsZXRpb25zKC0pDQoNClNhbWUgcHJvYmxlbS4uLiBQbGVhc2UgY2hl
+Y2sgdGhlIGZpeGVkIHVwIHZlcnNpb24gaW4gdGhlICdkZXZlbCcgYnJhbmNoLg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
