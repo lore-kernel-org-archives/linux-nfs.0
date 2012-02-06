@@ -1,74 +1,234 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:54471 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752198Ab2B0HAf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2012 02:00:35 -0500
-Message-ID: <4F4B224C.8030101@cn.fujitsu.com>
-Date: Mon, 27 Feb 2012 14:27:24 +0800
-From: Fu Liankun <fuliankun@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: spnfs write performance issue
-References: <4F44C071.8010104@cn.fujitsu.com> <20120222172510.GA12708@fieldses.org>
-In-Reply-To: <20120222172510.GA12708@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:34223 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755092Ab2BFPIX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 10:08:23 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/2] SUNRPC: Add trace events to the sunrpc subsystem
+Date: Mon,  6 Feb 2012 10:08:07 -0500
+Message-Id: <1328540888-30109-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1328540888-30109-1-git-send-email-steved@redhat.com>
+References: <1328540888-30109-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields 写道:
-> On Wed, Feb 22, 2012 at 06:16:17PM +0800, Fu Liankun wrote:
->> When copy a big file(about 500MB) to nfs server using pnfs, it cost
->> obvious longer time as compared with NFSv3 or NFSv4 protocol.
->>
->> PNFS cost about 300-550s
->> NFSv3 cost about 49s
->> NFSv4 cost about 49s
->>
->> My test environment as following:
->>
->> MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
->> DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
->> DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
->> client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
-> 
-> What kind of server are you using?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Sorry for late response.
+Add declarations to allow tracing of RPC call creation, running,
+sleeping, and destruction.
 
-Fedora14 + 3.1.0-rc8-pnfs
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ include/linux/sunrpc/sched.h  |    2 +-
+ include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c            |   12 ++++
+ 3 files changed, 137 insertions(+), 1 deletions(-)
+ create mode 100644 include/trace/events/sunrpc.h
 
---b
-
-> 
-> --b.
-> 
->> ipaddr2:192.168.1.19
->>
->> 192.168.1.100 <-------- NFS4.1 connection --------->192.168.1.101
->> 192.168.0.100 <-------- NFS4.1 connection --------->192.168.0.102
->> 192.168.0.19  <-------- NFS4.1 connection --------->192.168.0.100
->>
->> Dunring the write process, the client output the message:
->> FS-Cache: Loaded
->> FS-Cache: Netfs 'nfs' registered for caching
->> nfs4filelayout_init: NFSv4 File Layout Driver Registering...
->> nfs: server 192.168.1.101 not responding, timed out
->>
->> The message "nfs: server 192.168.1.101 not responding, timed out" was
->> output during the COMMIT request.
->>
->> Who can tell me the reason why pnfs cost so long time.
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index e775689..c600035 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -267,7 +267,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
+ }
+ 
+ #ifdef RPC_DEBUG
+-static inline const char * rpc_qname(struct rpc_wait_queue *q)
++static inline const char * rpc_qname(const struct rpc_wait_queue *q)
+ {
+ 	return ((q && q->name) ? q->name : "unknown");
+ }
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+new file mode 100644
+index 0000000..2f82de9
+--- /dev/null
++++ b/include/trace/events/sunrpc.h
+@@ -0,0 +1,124 @@
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sunrpc
++
++#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SUNRPC_H
++
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/clnt.h>
++#include <linux/tracepoint.h>
++
++DECLARE_EVENT_CLASS(rpc_task_running,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__field(const void *, action)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__entry->action = action;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->action
++		)
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_begin,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DEFINE_EVENT(rpc_task_running, rpc_task_complete,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
++
++	TP_ARGS(clnt, task, action)
++
++);
++
++DECLARE_EVENT_CLASS(rpc_task_queued,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q),
++
++	TP_STRUCT__entry(
++		__field(const struct rpc_clnt *, clnt)
++		__field(const struct rpc_task *, task)
++		__string(    qname, rpc_qname(q))
++		__field(unsigned long, timeout)
++		__field(unsigned long, runstate)
++		__field(int, status)
++		__field(unsigned short, flags)
++		),
++
++	TP_fast_assign(
++		__entry->clnt = clnt;
++		__entry->task = task;
++		__assign_str(qname, rpc_qname(q));
++		__entry->timeout = task->tk_timeout;
++		__entry->runstate = task->tk_runstate;
++		__entry->status = task->tk_status;
++		__entry->flags = task->tk_flags;
++		),
++
++	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
++		__entry->task,
++		__entry->clnt,
++		__entry->flags,
++		__entry->runstate,
++		__entry->status,
++		__entry->timeout,
++		__get_str(qname)
++		)
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
++
++	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
++
++	TP_ARGS(clnt, task, q)
++
++);
++
++#endif /* _TRACE_SUNRPC_H */
++
++#include <trace/define_trace.h>
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 3341d89..2ba5739 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -28,6 +28,9 @@
+ #define RPCDBG_FACILITY		RPCDBG_SCHED
+ #endif
+ 
++#define CREATE_TRACE_POINTS
++#include <trace/events/sunrpc.h>
++
+ /*
+  * RPC slabs and memory pools
+  */
+@@ -251,6 +254,8 @@ static inline void rpc_task_set_debuginfo(struct rpc_task *task)
+ 
+ static void rpc_set_active(struct rpc_task *task)
+ {
++	trace_rpc_task_begin(task->tk_client, task, NULL);
++
+ 	rpc_task_set_debuginfo(task);
+ 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+ }
+@@ -267,6 +272,8 @@ static int rpc_complete_task(struct rpc_task *task)
+ 	unsigned long flags;
+ 	int ret;
+ 
++	trace_rpc_task_complete(task->tk_client, task, NULL);
++
+ 	spin_lock_irqsave(&wq->lock, flags);
+ 	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+ 	ret = atomic_dec_and_test(&task->tk_count);
+@@ -324,6 +331,8 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
+ 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
+ 			task->tk_pid, rpc_qname(q), jiffies);
+ 
++	trace_rpc_task_sleep(task->tk_client, task, q);
++
+ 	__rpc_add_wait_queue(q, task, queue_priority);
+ 
+ 	BUG_ON(task->tk_callback != NULL);
+@@ -378,6 +387,8 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
+ 		return;
+ 	}
+ 
++	trace_rpc_task_wakeup(task->tk_client, task, queue);
++
+ 	__rpc_remove_wait_queue(queue, task);
+ 
+ 	rpc_make_runnable(task);
+@@ -677,6 +688,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 			if (do_action == NULL)
+ 				break;
+ 		}
++		trace_rpc_task_run_action(task->tk_client, task, task->tk_action);
+ 		do_action(task);
+ 
+ 		/*
+-- 
+1.7.7.5
 
