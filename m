@@ -1,43 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bear.ext.ti.com ([192.94.94.41]:53167 "EHLO bear.ext.ti.com"
+Received: from mx2.netapp.com ([216.240.18.37]:49398 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757304Ab2BHCpd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 21:45:33 -0500
-Received: from dlep26.itg.ti.com ([157.170.170.121])
-	by bear.ext.ti.com (8.13.7/8.13.7) with ESMTP id q182jWCM002406
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Feb 2012 20:45:32 -0600
-Received: from DLEE74.ent.ti.com (localhost [127.0.0.1])
-	by dlep26.itg.ti.com (8.13.8/8.13.8) with ESMTP id q182jWok009621
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Feb 2012 20:45:32 -0600 (CST)
-Received: from [172.24.113.225] (h113-225.vpn.ti.com [172.24.113.225])	by
- dlelxv22.itg.ti.com (8.13.8/8.13.8) with ESMTP id q182jVDT029209	for
- <linux-nfs@vger.kernel.org>; Tue, 7 Feb 2012 20:45:32 -0600
-Message-ID: <4F31E1CA.8060105@ti.com>
-Date: Tue, 7 Feb 2012 20:45:30 -0600
-From: Derek McEachern <derekm@ti.com>
+	id S1755300Ab2BFPjx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 10:39:53 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 2/2] SUNRPC: Adding status trace points
+Date: Mon, 6 Feb 2012 15:39:31 +0000
+Message-ID: <1328542771.5687.1.camel@lade.trondhjem.org>
+References: <1328540888-30109-1-git-send-email-steved@redhat.com>
+	 <1328540888-30109-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1328540888-30109-3-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: <linux-nfs@vger.kernel.org>
-Subject: NFS Mount Option 'nofsc'
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I joined the mailing list shortly after Neil sent out a request for 
-volunteer to update the nfs man page documenting the 'fsc'/'nofsc' 
-options. I suspect this may stem from a ticket we opened with Suse 
-inquiring about these options.
-
-Coming from a Solaris background we typically use the 'forcedirectio' 
-option for certain mounts and I was looking for the same thing in Linux. 
-The typically advice seems to be use 'noac' but the description in the 
-man page doesn't seem to match what I would expect from 'forcedirectio', 
-namely no buffering on the client.
-
-Poking around the kernel I found the 'fsc'/'nofsc' options and my 
-question is does 'nofsc' provide 'forcedirectio' functionality?
-
-Thanks,
-Derek
-
-
-
+T24gTW9uLCAyMDEyLTAyLTA2IGF0IDEwOjA4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiBUaGlzIHBhdGNoIGFkZHMgdGhyZWUgdHJhY2UgcG9pbnRzIHRvIHRoZSBzdGF0dXMgcm91dGlu
+ZXMNCj4gaW4gdGhlIHN1bnJwYyBzdGF0ZSBtYWNoaW5lLg0KPiANCj4gVGhlIGdvYWwgb2YgdGhl
+c2UgdHJhY2UgcG9pbnRzIGlzIHRvIGdpdmUgYW4gQWRtaW4NCj4gdGhlIGFiaWxpdHkgdG8gY2hl
+Y2sgb24gYmluZGluZyBzdGF0dXMgb3IgY29ubmVjdGlvbg0KPiBzdGF0dXMgdG8gc2VlIGlmIHRo
+ZXJlIGlzIGEgcG90ZW50aWFsIHByb2JsZW0uDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTdGV2ZSBE
+aWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBpbmNsdWRlL3RyYWNlL2V2ZW50
+cy9zdW5ycGMuaCB8ICAgNTMgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysNCj4gIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAgIHwgICAgNiArKysrLQ0KPiAgMiBm
+aWxlcyBjaGFuZ2VkLCA1OCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlm
+ZiAtLWdpdCBhL2luY2x1ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oIGIvaW5jbHVkZS90cmFjZS9l
+dmVudHMvc3VucnBjLmgNCj4gaW5kZXggMmY4MmRlOS4uYWJjZjQ1ZCAxMDA2NDQNCj4gLS0tIGEv
+aW5jbHVkZS90cmFjZS9ldmVudHMvc3VucnBjLmgNCj4gKysrIGIvaW5jbHVkZS90cmFjZS9ldmVu
+dHMvc3VucnBjLmgNCj4gQEAgLTgsNiArOCw1OSBAQA0KPiAgI2luY2x1ZGUgPGxpbnV4L3N1bnJw
+Yy9jbG50Lmg+DQo+ICAjaW5jbHVkZSA8bGludXgvdHJhY2Vwb2ludC5oPg0KPiAgDQo+ICtERUNM
+QVJFX0VWRU5UX0NMQVNTKHJwY190YXNrX3N0YXR1cywNCj4gKw0KPiArCVRQX1BST1RPKHN0cnVj
+dCBycGNfdGFzayAqdGFzayksDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spLA0KPiArDQo+ICsJVFBf
+U1RSVUNUX19lbnRyeSgNCj4gKwkJX19maWVsZChjb25zdCBzdHJ1Y3QgcnBjX3Rhc2sgKiwgdGFz
+aykNCj4gKwkJX19maWVsZChjb25zdCBzdHJ1Y3QgcnBjX2NsbnQgKiwgY2xudCkNCj4gKwkJX19m
+aWVsZChpbnQsIHN0YXR1cykNCj4gKwkpLA0KPiArDQo+ICsJVFBfZmFzdF9hc3NpZ24oDQo+ICsJ
+CV9fZW50cnktPnRhc2sgPSB0YXNrOw0KPiArCQlfX2VudHJ5LT5jbG50ID0gdGFzay0+dGtfY2xp
+ZW50Ow0KPiArCQlfX2VudHJ5LT5zdGF0dXMgPSB0YXNrLT50a19zdGF0dXM7DQo+ICsJKSwNCj4g
+Kw0KPiArCVRQX3ByaW50aygidGFzazolcEAlcCwgc3RhdHVzICVkIixfX2VudHJ5LT50YXNrLCBf
+X2VudHJ5LT5jbG50LCBfX2VudHJ5LT5zdGF0dXMpDQo+ICspOw0KPiArDQo+ICtERUZJTkVfRVZF
+TlQocnBjX3Rhc2tfc3RhdHVzLCBycGNfY2FsbF9zdGF0dXMsDQo+ICsJVFBfUFJPVE8oc3RydWN0
+IHJwY190YXNrICp0YXNrKSwgDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spDQo+ICspOw0KPiArDQo+
+ICtERUZJTkVfRVZFTlQocnBjX3Rhc2tfc3RhdHVzLCBycGNfYmluZF9zdGF0dXMsDQo+ICsJVFBf
+UFJPVE8oc3RydWN0IHJwY190YXNrICp0YXNrKSwgDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spDQo+
+ICspOw0KPiArDQo+ICtUUkFDRV9FVkVOVChycGNfY29ubmVjdF9zdGF0dXMsDQo+ICsJVFBfUFJP
+VE8oc3RydWN0IHJwY190YXNrICp0YXNrLCBpbnQgc3RhdHVzKSwNCj4gKw0KPiArCVRQX0FSR1Mo
+dGFzaywgc3RhdHVzKSwNCj4gKw0KPiArCVRQX1NUUlVDVF9fZW50cnkoDQo+ICsJCV9fZmllbGQo
+Y29uc3Qgc3RydWN0IHJwY190YXNrICosIHRhc2spDQo+ICsJCV9fZmllbGQoY29uc3Qgc3RydWN0
+IHJwY19jbG50ICosIGNsbnQpDQo+ICsJCV9fZmllbGQoaW50LCBzdGF0dXMpDQo+ICsJKSwNCj4g
+Kw0KPiArCVRQX2Zhc3RfYXNzaWduKA0KPiArCQlfX2VudHJ5LT50YXNrID0gdGFzazsNCj4gKwkJ
+X19lbnRyeS0+Y2xudCA9IHRhc2stPnRrX2NsaWVudDsNCj4gKwkJX19lbnRyeS0+c3RhdHVzID0g
+c3RhdHVzOw0KPiArCSksDQo+ICsNCj4gKwlUUF9wcmludGsoInRhc2s6JXBAJXAsIHN0YXR1cyAl
+ZCIsX19lbnRyeS0+dGFzaywgX19lbnRyeS0+Y2xudCwgX19lbnRyeS0+c3RhdHVzKQ0KPiArKTsN
+Cj4gKw0KPiAgREVDTEFSRV9FVkVOVF9DTEFTUyhycGNfdGFza19ydW5uaW5nLA0KPiAgDQoNCg0K
+VGhpcyBodW5rIGRpZCBjb250YWluIGEgY291cGxlIG9mIHRyYWlsaW5nIHdoaXRlc3BhY2UgZXJy
+b3JzLCBidXQgSSd2ZQ0KZml4ZWQgdGhlbSB1cCBhbmQgYXBwbGllZC4NCg==
