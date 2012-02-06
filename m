@@ -1,44 +1,309 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e31.co.us.ibm.com ([32.97.110.149]:36415 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751115Ab2BAFkL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 00:40:11 -0500
-Received: from /spool/local
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Tue, 31 Jan 2012 22:40:11 -0700
-Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id E0261C9004E
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Feb 2012 00:40:08 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q115e8Od3321902
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Feb 2012 00:40:08 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q115e7Ij014196
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Feb 2012 03:40:07 -0200
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q115e771014193
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Feb 2012 03:40:07 -0200
-In-Reply-To: <OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
-References: <OFE0602883.B0093AA8-ON88257958.0000B5E2-88257958.0000CF3D@us.ibm.com> <OF15FDC3E5.F1F70667-ON88257967.00025B25-88257967.00028FB4@us.ibm.com> <OFA87AD733.E4260468-ON8825797B.00708512-8825797B.0070B0A1@us.ibm.com> <OFE582D1B7.74FA9649-ON88257989.00734810-88257989.007366D5@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-MIME-Version: 1.0
-Subject: Linux pNFS status meeting 02/02/12
-Message-ID: <OF15389D3A.375CCBD3-ON88257997.001EE311-88257997.001F21C2@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Tue, 31 Jan 2012 21:40:19 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Received: from cantor2.suse.de ([195.135.220.15]:48377 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756185Ab2BFW4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 17:56:49 -0500
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 05/11] mm: swap: Implement generic handler for swap_activate
+Date: Mon,  6 Feb 2012 22:56:35 +0000
+Message-Id: <1328569001-17599-6-git-send-email-mgorman@suse.de>
+In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 02/02/12 at 9:30 AM PST (12:30 PM EST)
+The version of swap_activate introduced is sufficient for swap-over-NFS
+but would not provide enough information to implement a generic handler.
+This patch shuffles things slightly to ensure the same information is
+available for aops->swap_activate() as is available to the core.
 
+No functionality change.
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/fs.h   |    7 +++-
+ include/linux/swap.h |    5 +++
+ mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/swapfile.c        |   91 +++----------------------------------------------
+ 4 files changed, 107 insertions(+), 88 deletions(-)
 
-Israel Toll-Free: 1-809-417-783
-
-Participant Code: 8792872
-
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5224246..5031625 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -582,6 +582,8 @@ typedef struct {
+ typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
+ 		unsigned long, unsigned long);
+ 
++struct swap_info_struct;
++
+ struct address_space_operations {
+ 	int (*writepage)(struct page *page, struct writeback_control *wbc);
+ 	int (*readpage)(struct file *, struct page *);
+@@ -623,8 +625,9 @@ struct address_space_operations {
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+ 
+ 	/* swapfile support */
+-	int (*swap_activate)(struct file *file);
+-	int (*swap_deactivate)(struct file *file);
++	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
++				sector_t *span);
++	void (*swap_deactivate)(struct file *file);
+ };
+ 
+ extern const struct address_space_operations empty_aops;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index b5bb3a9..a06b7cd 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -309,6 +309,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
+ extern int swap_set_page_dirty(struct page *page);
+ extern void end_swap_bio_read(struct bio *bio, int err);
+ 
++int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
++		unsigned long nr_pages, sector_t start_block);
++int generic_swapfile_activate(struct swap_info_struct *, struct file *,
++		sector_t *);
++
+ /* linux/mm/swap_state.c */
+ extern struct address_space swapper_space;
+ #define total_swapcache_pages  swapper_space.nrpages
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 2a7a4c1..0a7492c 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -86,6 +86,98 @@ void end_swap_bio_read(struct bio *bio, int err)
+ 	bio_put(bio);
+ }
+ 
++int generic_swapfile_activate(struct swap_info_struct *sis,
++				struct file *swap_file,
++				sector_t *span)
++{
++	struct address_space *mapping = swap_file->f_mapping;
++	struct inode *inode = mapping->host;
++	unsigned blocks_per_page;
++	unsigned long page_no;
++	unsigned blkbits;
++	sector_t probe_block;
++	sector_t last_block;
++	sector_t lowest_block = -1;
++	sector_t highest_block = 0;
++	int nr_extents = 0;
++	int ret;
++
++	blkbits = inode->i_blkbits;
++	blocks_per_page = PAGE_SIZE >> blkbits;
++
++	/*
++	 * Map all the blocks into the extent list.  This code doesn't try
++	 * to be very smart.
++	 */
++	probe_block = 0;
++	page_no = 0;
++	last_block = i_size_read(inode) >> blkbits;
++	while ((probe_block + blocks_per_page) <= last_block &&
++			page_no < sis->max) {
++		unsigned block_in_page;
++		sector_t first_block;
++
++		first_block = bmap(inode, probe_block);
++		if (first_block == 0)
++			goto bad_bmap;
++
++		/*
++		 * It must be PAGE_SIZE aligned on-disk
++		 */
++		if (first_block & (blocks_per_page - 1)) {
++			probe_block++;
++			goto reprobe;
++		}
++
++		for (block_in_page = 1; block_in_page < blocks_per_page;
++					block_in_page++) {
++			sector_t block;
++
++			block = bmap(inode, probe_block + block_in_page);
++			if (block == 0)
++				goto bad_bmap;
++			if (block != first_block + block_in_page) {
++				/* Discontiguity */
++				probe_block++;
++				goto reprobe;
++			}
++		}
++
++		first_block >>= (PAGE_SHIFT - blkbits);
++		if (page_no) {	/* exclude the header page */
++			if (first_block < lowest_block)
++				lowest_block = first_block;
++			if (first_block > highest_block)
++				highest_block = first_block;
++		}
++
++		/*
++		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
++		 */
++		ret = add_swap_extent(sis, page_no, 1, first_block);
++		if (ret < 0)
++			goto out;
++		nr_extents += ret;
++		page_no++;
++		probe_block += blocks_per_page;
++reprobe:
++		continue;
++	}
++	ret = nr_extents;
++	*span = 1 + highest_block - lowest_block;
++	if (page_no == 0)
++		page_no = 1;	/* force Empty message */
++	sis->max = page_no;
++	sis->pages = page_no - 1;
++	sis->highest_bit = page_no - 1;
++out:
++	return ret;
++bad_bmap:
++	printk(KERN_ERR "swapon: swapfile has holes\n");
++	ret = -EINVAL;
++	goto out;
++}
++
+ /*
+  * We may have stale swap cache pages in memory: notice
+  * them here and get rid of the unnecessary final write.
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 85e7a95..e1bac6c 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -1360,7 +1360,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
+  *
+  * This function rather assumes that it is called in ascending page order.
+  */
+-static int
++int
+ add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
+ 		unsigned long nr_pages, sector_t start_block)
+ {
+@@ -1436,106 +1436,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ 	struct file *swap_file = sis->swap_file;
+ 	struct address_space *mapping = swap_file->f_mapping;
+ 	struct inode *inode = mapping->host;
+-	unsigned blocks_per_page;
+-	unsigned long page_no;
+-	unsigned blkbits;
+-	sector_t probe_block;
+-	sector_t last_block;
+-	sector_t lowest_block = -1;
+-	sector_t highest_block = 0;
+-	int nr_extents = 0;
+ 	int ret;
+ 
+ 	if (S_ISBLK(inode->i_mode)) {
+ 		ret = add_swap_extent(sis, 0, sis->max, 0);
+ 		*span = sis->pages;
+-		goto out;
++		return ret;
+ 	}
+ 
+ 	if (mapping->a_ops->swap_activate) {
+-		ret = mapping->a_ops->swap_activate(swap_file);
++		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
+ 		if (!ret) {
+ 			sis->flags |= SWP_FILE;
+ 			ret = add_swap_extent(sis, 0, sis->max, 0);
+ 			*span = sis->pages;
+ 		}
+-		goto out;
++		return ret;
+ 	}
+ 
+-	blkbits = inode->i_blkbits;
+-	blocks_per_page = PAGE_SIZE >> blkbits;
+-
+-	/*
+-	 * Map all the blocks into the extent list.  This code doesn't try
+-	 * to be very smart.
+-	 */
+-	probe_block = 0;
+-	page_no = 0;
+-	last_block = i_size_read(inode) >> blkbits;
+-	while ((probe_block + blocks_per_page) <= last_block &&
+-			page_no < sis->max) {
+-		unsigned block_in_page;
+-		sector_t first_block;
+-
+-		first_block = bmap(inode, probe_block);
+-		if (first_block == 0)
+-			goto bad_bmap;
+-
+-		/*
+-		 * It must be PAGE_SIZE aligned on-disk
+-		 */
+-		if (first_block & (blocks_per_page - 1)) {
+-			probe_block++;
+-			goto reprobe;
+-		}
+-
+-		for (block_in_page = 1; block_in_page < blocks_per_page;
+-					block_in_page++) {
+-			sector_t block;
+-
+-			block = bmap(inode, probe_block + block_in_page);
+-			if (block == 0)
+-				goto bad_bmap;
+-			if (block != first_block + block_in_page) {
+-				/* Discontiguity */
+-				probe_block++;
+-				goto reprobe;
+-			}
+-		}
+-
+-		first_block >>= (PAGE_SHIFT - blkbits);
+-		if (page_no) {	/* exclude the header page */
+-			if (first_block < lowest_block)
+-				lowest_block = first_block;
+-			if (first_block > highest_block)
+-				highest_block = first_block;
+-		}
+-
+-		/*
+-		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
+-		 */
+-		ret = add_swap_extent(sis, page_no, 1, first_block);
+-		if (ret < 0)
+-			goto out;
+-		nr_extents += ret;
+-		page_no++;
+-		probe_block += blocks_per_page;
+-reprobe:
+-		continue;
+-	}
+-	ret = nr_extents;
+-	*span = 1 + highest_block - lowest_block;
+-	if (page_no == 0)
+-		page_no = 1;	/* force Empty message */
+-	sis->max = page_no;
+-	sis->pages = page_no - 1;
+-	sis->highest_bit = page_no - 1;
+-out:
+-	return ret;
+-bad_bmap:
+-	printk(KERN_ERR "swapon: swapfile has holes\n");
+-	ret = -EINVAL;
+-	goto out;
++	return generic_swapfile_activate(sis, swap_file, span);
+ }
+ 
+ static void enable_swap_info(struct swap_info_struct *p, int prio,
+-- 
+1.7.3.4
 
