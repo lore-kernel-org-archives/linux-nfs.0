@@ -1,65 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15452 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18051 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759259Ab2BJQtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 11:49:04 -0500
+	id S1754563Ab2BFSV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 13:21:57 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Harshula <harshula@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Derek McEachern <derekm@ti.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Mount Option 'nofsc'
-Date: Fri, 10 Feb 2012 16:48:47 +0000
-Message-ID: <1328892525.13180.102.camel@lade.trondhjem.org>
-References: <4F31E1CA.8060105@ti.com>
-	 <1328676860.2954.9.camel@lade.trondhjem.org>
-	 <1328687026.8981.25.camel@serendib>
-	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
-	 <1328759776.8981.75.camel@serendib>
-	 <1328760721.3234.86.camel@lade.trondhjem.org>
-	 <1328766702.8981.106.camel@serendib>
-	 <1328801489.13180.41.camel@lade.trondhjem.org>
-	 <1328861244.8981.139.camel@serendib>
-In-Reply-To: <1328861244.8981.139.camel@serendib>
+To: Christoph Hellwig <hch@infradead.org>
+CC: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/2] SUNRPC: Add trace events to the sunrpc subsystem
+Date: Mon, 6 Feb 2012 18:21:45 +0000
+Message-ID: <1328552505.5687.5.camel@lade.trondhjem.org>
+References: <1328540888-30109-1-git-send-email-steved@redhat.com>
+	 <1328540888-30109-2-git-send-email-steved@redhat.com>
+	 <20120206174742.GA10427@infradead.org>
+In-Reply-To: <20120206174742.GA10427@infradead.org>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAyLTEwIGF0IDE5OjA3ICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gT24g
-VGh1LCAyMDEyLTAyLTA5IGF0IDE1OjMxICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
-PiBUaGFua3MuIFdvdWxkIGl0IGJlIGFjY3VyYXRlIHRvIHNheSB0aGF0IGlmIHRoZXJlIHdlcmUg
-b25seSBlaXRoZXINCj4gc3RyZWFtaW5nIHdyaXRlcyBvciAoeG9yKSBzdHJlYW1pbmcgcmVhZHMg
-dG8gYW55IGdpdmVuIGZpbGUgb24gdGhlIE5GUw0KPiBtb3VudCwgdGhlIGFwcGxpY2F0aW9uIHdv
-dWxkIG5vdCBuZWVkIHRvIGJlIHJld3JpdHRlbj8gDQoNClRoYXQgc2hvdWxkIG5vcm1hbGx5IHdv
-cmsuDQoNCj4gRG8geW91IHNlZSBmb3JjZWRpcmVjdGlvIGFzIGEgc2hhcnAgb2JqZWN0IHRoYXQg
-c29tZW9uZSBjb3VsZCBzdGFiDQo+IHRoZW1zZWx2ZXMgd2l0aD8NCg0KWWVzLiBJdCBkb2VzIGxl
-YWQgdG8gc29tZSB2ZXJ5IHN1YnRsZSBQT1NJWCB2aW9sYXRpb25zLg0KDQo+ID4gPiBUaGVyZSdz
-IGFub3RoZXIgc2NlbmFyaW8sIHdoaWNoIHdlIHRhbGtlZCBhYm91dCBhIHdoaWxlIGJhY2ssIHdo
-ZXJlIHRoZQ0KPiA+ID4gY2FjaGVkIGFzeW5jIHJlYWRzIG9mIGEgc2xvd2x5IGdyb3dpbmcgZmls
-ZSAodGFpbCkgd2FzIHNwaXR0aW5nIG91dA0KPiA+ID4gbm9uLWV4aXN0IE5VTExzIHRvIHVzZXIg
-c3BhY2UuIFRoZSBmb3JjZWRpcmVjdGlvIG1vdW50IG9wdGlvbiBzaG91bGQNCj4gPiA+IHByZXZl
-bnQgdGhhdC4gRnVydGhlcm1vcmUsIHRoZSAic3luYyIgbW91bnQgb3B0aW9uIHdpbGwgbm90IGhl
-bHAgYW55bW9yZQ0KPiA+ID4gYmVjYXVzZSB5b3UgcmVtb3ZlZCBuZnNfcmVhZHBhZ2Vfc3luYygp
-Lg0KPiA+IA0KPiA+IE5vLiBTZWUgdGhlIHBvaW50cyBhYm91dCBPX0FQUEVORCBhbmQgc2VyaWFs
-aXNhdGlvbiBvZiByZWFkKCkgYW5kDQo+ID4gd3JpdGUoKSBhYm92ZS4gWW91IG1heSBzdGlsbCBl
-bmQgdXAgc2VlaW5nIE5VTCBjaGFyYWN0ZXJzIChhbmQgaW5kZWVkDQo+ID4gd29yc2UgZm9ybXMg
-b2YgY29ycnVwdGlvbikuDQo+IA0KPiBJZiB0aGUgTkZTIGNsaWVudCBvbmx5IGRvZXMgY2FjaGVk
-IGFzeW5jIHJlYWRzIG9mIGEgc2xvd2x5IGdyb3dpbmcgZmlsZQ0KPiAodGFpbCksIHdoYXQncyB0
-aGUgcHJvYmxlbT8gSXMgbmZzX3JlYWRwYWdlX3N5bmMoKSBnb25lIGZvcmV2ZXIsIG9yDQo+IGNv
-dWxkIGl0IGJlIHJldml2ZWQ/DQoNCkl0IHdvdWxkbid0IGhlbHAgYXQgYWxsLiBUaGUgcHJvYmxl
-bSBpcyB0aGUgVk0ncyBoYW5kbGluZyBvZiBwYWdlcyB2cw0KdGhlIE5GUyBoYW5kbGluZyBvZiBm
-aWxlIHNpemUuDQoNClRoZSBWTSBiYXNpY2FsbHkgdXNlcyB0aGUgZmlsZSBzaXplIGluIG9yZGVy
-IHRvIGRldGVybWluZSBob3cgbXVjaCBkYXRhDQphIHBhZ2UgY29udGFpbnMuIElmIHRoYXQgZmls
-ZSBzaXplIGNoYW5nZWQgYmV0d2VlbiB0aGUgaW5zdGFuY2Ugd2UNCmZpbmlzaGVkIHRoZSBSRUFE
-IFJQQyBjYWxsLCBhbmQgdGhlIGluc3RhbmNlIHRoZSBWTSBnZXRzIHJvdW5kIHRvDQpsb2NraW5n
-IHRoZSBwYWdlIGFnYWluLCByZWFkaW5nIHRoZSBkYXRhIGFuZCB0aGVuIGNoZWNraW5nIHRoZSBm
-aWxlDQpzaXplLCB0aGVuIHRoZSBWTSBtYXkgZW5kIHVwIGNvcHlpbmcgZGF0YSBiZXlvbmQgdGhl
-IGVuZCBvZiB0aGF0DQpyZXRyaWV2ZWQgYnkgdGhlIFJQQyBjYWxsLg0KDQo+IC1vc3luYyBhbHNv
-IGltcGFjdHMgdGhlIHBlcmZvcm1hbmNlIG9mIHRoZSBlbnRpcmUgTkZTIG1vdW50LiBXaXRoDQo+
-IGFmb3JlbWVudGlvbmVkIGhhY2ssIHlvdSBjYW4gaXNvbGF0ZSB0aGUgc3BlY2lmaWMgZmlsZShz
-KSB0aGF0IG5lZWQNCj4gdGhlaXIgZGlydHkgcGFnZXMgdG8gYmUgZmx1c2hlZCBmcmVxdWVudGx5
-IHRvIGF2b2lkIGhpdHRpbmcgZ2xvYmFsIGRpcnR5DQo+IHBhZ2UgbGltaXQuDQoNClNvIGRvZXMg
-Zm9yY2VkaXJlY3Rpby4gLi4uYW5kIGl0IGFsc28gaW1wYWN0cyB0aGUgcGVyZm9ybWFuY2Ugb2Yg
-cmVhZHMNCmZvciB0aGUgZW50aXJlIE5GUyBtb3VudC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+T24gTW9uLCAyMDEyLTAyLTA2IGF0IDEyOjQ3IC0wNTAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gPiArCVRQX1NUUlVDVF9fZW50cnkoDQo+ID4gKwkJX19maWVsZChjb25zdCBzdHJ1Y3Qg
+cnBjX2NsbnQgKiwgY2xudCkNCj4gPiArCQlfX2ZpZWxkKGNvbnN0IHN0cnVjdCBycGNfdGFzayAq
+LCB0YXNrKQ0KPiA+ICsJCV9fZmllbGQoY29uc3Qgdm9pZCAqLCBhY3Rpb24pDQo+ID4gKwkJX19m
+aWVsZCh1bnNpZ25lZCBsb25nLCBydW5zdGF0ZSkNCj4gPiArCQlfX2ZpZWxkKGludCwgc3RhdHVz
+KQ0KPiA+ICsJCV9fZmllbGQodW5zaWduZWQgc2hvcnQsIGZsYWdzKQ0KPiANCj4gU3RvcmluZyBw
+b2ludGVycyBpbiB0aGUgdHJhY2UgYnVmZmVyIGlzIG5vdCBzYWZlIGZvciByZXVzZSBsYXRlciwN
+Cj4gYW5kIGp1c3QgcHJpbnRpbmcgdGhlIHBvaW50ZXIgdmFsdWVzIGlzbid0IG92ZXJseSB1c2Vm
+dWwgZWl0aGVyLiAgUGxlYXNlDQo+IHJlZGVzaWduIHRoZXNlIHRyYWNlcG9pbnQgdG8gYmUgYSBi
+aXQgbW9yZSB1c2VmdWwuDQoNClRoZSBwb2ludGVyIHZhbHVlcyBhcmUganVzdCB1c2VkIGFzIGxh
+YmVscyB0byBpZGVudGlmeSB0aGUgcnBjX3Rhc2sgYW5kDQpycGNfY2xudCB0aGF0IGlzIGJlaW5n
+IHRyYWNrZWQuIFRoZSBtYWluIGluZm9ybWF0aW9uIGlzIGNhcnJpZWQgaW4gdGhlDQpydW5zdGF0
+ZSwgc3RhdHVzIGFuZCBmbGFncywgd2hpY2ggYXJlIHN0b3JlZCBhcy1pcy4NCg0KDQo=
