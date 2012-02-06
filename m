@@ -1,68 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out5-smtp.messagingengine.com ([66.111.4.29]:39047 "EHLO
-	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753145Ab2BFTiq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 14:38:46 -0500
-Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
-	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id D008E21068
-	for <linux-nfs@vger.kernel.org>; Mon,  6 Feb 2012 14:38:44 -0500 (EST)
-Date: Mon, 6 Feb 2012 11:38:36 -0800
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Possible fixes for 2.6.32 stable
-Message-ID: <20120206193836.GA16746@kroah.com>
-References: <8FB4CAA9-65A1-498F-BA0B-96AA520EBBA2@oracle.com>
+Received: from partagas.dragonet.es ([217.70.240.130]:43120 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753420Ab2BFNbk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 08:31:40 -0500
+Message-ID: <4F2FD61A.9010106@steve-ss.com>
+Date: Mon, 06 Feb 2012 14:31:06 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8FB4CAA9-65A1-498F-BA0B-96AA520EBBA2@oracle.com>
+To: tigran.mkrtchyan@desy.de
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs4 keytabs [was:Re: where can I ask user qns about nfs4]?
+References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2A74A7.4060905@steve-ss.com> <CAGue13p5pQyo7Ny2KPSw3zndF9Rh__W-v0XWKo3DaS2dM6Tn0g@mail.gmail.com> <4F2A8FBC.1010101@steve-ss.com> <4F2AA430.2040109@steve-ss.com> <CAGue13q97uFopDfUpTGNQYbJJi7QeJrgh1ArZfvx-9KBogLwZA@mail.gmail.com> <4F2C17F0.3090703@steve-ss.com>
+In-Reply-To: <4F2C17F0.3090703@steve-ss.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 06, 2012 at 02:11:37PM -0500, Chuck Lever wrote:
-> Hi-
-> 
-> Oracle's UEK kernel is within a few dozen commits of 2.6.32 stable.
-> We recently discovered two critical problems with the NFS client in
-> UEK that have upstream fixes that can be back ported.  I'm notifying
-> you as a courtesy because these problems were reproduced in
-> 2.6.32-stable, and the fixes are simple back ports you may wish to
-> apply.
-> 
-> 
-> The first issue: The 2.6.32 NFS client fails to perform NFSv4 state
-> recovery after a server reboot if an NFS server returns
-> NFS4ERR_NO_GRACE, and then blocks state recovery because its grace
-> period has not expired.  Because the client fails to perform state
-> recovery, it continues to use stale NFSv4 state tokens, which causes,
-> among other symptoms, an infinite loop with the server.  The fixes for
-> this are:
-> 
-> From 2.6.33: e345e88a, 4f7cdf18, c8b7ae3d, a9ed2e25
-> 
-> From 2.6.36: b0ed9dbc
-> 
-> These cleanly apply in that order to 2.6.32.  With these commits
-> applied, our UEK NFS clients are able to perform NFSv4 state recovery
-> correctly when an NFS server returns NFS4ERR_NO_GRACE.
+On 02/03/2012 06:22 PM, steve wrote:
+> On 02/02/2012 07:57 PM, Tigran Mkrtchyan wrote:
+>> On Thu, Feb 2, 2012 at 3:56 PM, steve<steve@steve-ss.com>  wrote:
+>>> On 02/02/12 14:29, steve wrote:
+>>>> On 02/02/2012 02:05 PM, Tigran Mkrtchyan wrote:
+>>>>> On Thu, Feb 2, 2012 at 12:33 PM, steve<steve@steve-ss.com>    wrote:
+>>>>>> On 02/02/12 11:58, Tigran Mkrtchyan wrote:
+>>>>>>> Hi Steve,
+>>>>>>>
+>>>>>>>> I already use nfs4 to serve my Linux clients. I'm going to 
+>>>>>>>> kerberize
+>>>>>>>> it.
+>>>>>>>> My
+>>>>>>>> clients already have machine and host principals. What else do 
+>>>>>>>> they
+>>>>>>>> need?
+>>>>>>>>
+>>>>>>>> 1. nfs/client.domain.name
+>>>>>>>> 2. nfs/server.domain/name
+>>>>>>>> 3. neither
+>>>>>>>> 4. both
+>>>>>>>>
+>>>>>>> We run kerberized NFS.
+>>>>>>>
+>>>>>>> our keytab contains:
+>>>>>>>
+>>>>>>> on server;
+>>>>>>>    nfs/server.domain
+>>>>>>>
+>>>>>>> on client:
+>>>>>>>    nfs/client.domain
+>>>>>>>
+>>>>>>> and, of course, you need a consistent  idmap configuration.
+>>>>>>>
+>>>>>>> Tigran.
+>>>>>>>
+>>>>>> Hi Tigran
+>>>>>>
+>>>>>> That's what we have on our test lan at the moment. I can 
+>>>>>> understand that
+>>>>>> the
+>>>>>> server would need the service principal:
+>>>>>>    nfs/server.domain
+>>>>>> but not the client, as it's not offering any kerberized service.
+>>>>> The mount step happens on behalf of host as there are no user 
+>>>>> requests
+>>>>> yet.
+>>>>> Client host credentials are used at that time.
+>>>>>
+>>>>>> As an experiment, I removed the nfs/client.domain from a client 
+>>>>>> keytab,
+>>>>>> rebooted and remounted the share. We could still access the 
+>>>>>> kerberized
+>>>>>> nfs
+>>>>>> share. Maybe there were still some tickets left somewhere? That 
+>>>>>> has me
+>>>>>> really confused.
+>>>>> Huh! did you enforce kerberos in /etc/exports?
+>>>>>
+>>>> Yes. /etc/exports exports as gss/krb5
+>>>> I made a screenshot:
+>>>>
+>>>>
+>>>> http://3.bp.blogspot.com/-g40b11Ys_DA/TypYtlO-ixI/AAAAAAAAAIc/cZdeRhnVuY4/s1600/s4all.png 
+>>>>
+>>>>
+>>>> That's why I'm confused.
+>>>> Steve
+>>>
+>>> Digging a bit further, here is the output of mount on the client:
+>>> http://dl.dropbox.com/u/45150875/krb5testnfs.png
+>>>
+>>> And this appears immediately after the mount:
+>>> http://dl.dropbox.com/u/45150875/krb5nfstmp.png
+>>>
+>>> Most of the documentation tells you to stick nfs into the client 
+>>> keytab as
+>>> well as the server keytab, but here, I only have the principal on the
+>>> server.
+>>>
+>>> What am I missing?
+>> I think client simply falls back to 'host' if nfs entry is not 
+>> available.
+>>
+>> Tigran.
+>
+Yep. You're right. And not just host. They changed it to look for other 
+keys too:
+http://linux.die.net/man/8/rpc.gssd
+So in my case that's why I see HOSTNAME$@REALM during the nfs mount.
 
-These all look sane, I've queued them up now.
+Thanks so much for your time.
+Steve
 
-> The second issue: After a RPC over TCP connection is dropped, the
-> 2.6.32 RPC client reconnects then immediately drops a new TCP
-> connection, in a loop.  The client's NFS mount point becomes unusable.
-> The fixes for this are:
-> 
-> From 2.6.34: 5fe46e9d
 
-This applied fine.
 
-> From 2.6.36: 669502ff
-
-This one was contained in 2.6.32.40 (May 2011), so you you are still
-needing it, please let me know what is wrong with the existing tree.
-
-thanks,
-
-greg k-h
