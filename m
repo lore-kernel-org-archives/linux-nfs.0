@@ -1,138 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:38097 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754155Ab2BDAYi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 19:24:38 -0500
-Received: by iacb35 with SMTP id b35so5452641iac.19
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Feb 2012 16:24:37 -0800 (PST)
-Message-ID: <4F2C0A3F.6020002@gmail.com>
-Date: Sat, 04 Feb 2012 00:24:31 +0800
-From: Mi Jinlong <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
-References: <1327963365-2921-1-git-send-email-bfields@redhat.com> <4F273FD4.3020005@cn.fujitsu.com> <20120201214656.GA19075@fieldses.org> <20120203204931.GC2999@fieldses.org>
-In-Reply-To: <20120203204931.GC2999@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:48386 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756256Ab2BFW4u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 17:56:50 -0500
+From: Mel Gorman <mgorman@suse.de>
+To: Linux-MM <linux-mm@kvack.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        David Miller <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
+Subject: [PATCH 06/11] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
+Date: Mon,  6 Feb 2012 22:56:36 +0000
+Message-Id: <1328569001-17599-7-git-send-email-mgorman@suse.de>
+In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-于 2012-2-4 4:49, J. Bruce Fields 写道:
-> On Wed, Feb 01, 2012 at 04:46:56PM -0500, bfields wrote:
->> On Tue, Jan 31, 2012 at 09:11:48AM +0800, Mi Jinlong wrote:
->>>    Should use target = i.totalram<<  (PAGE_SHIFT - 12);
->>>
->>>    target = i.totalram<<  PAGE_SHIFT; and
->>>    target<<= 12;
->>>    means target = i.totalram<<  (PAGE_SHIFT + 12);
->>
->> Yes, thanks for catching that.
->>
->> Also, splitting up the calculation as I did above risks overflow at the
->> first step.
->>
->> I'll fix that....
->
-> Here are the fixed patches.--b.
->
->> From 87b0fc7deb5feccf93b022f6a976e8441152dbb2 Mon Sep 17 00:00:00 2001
-> From: "J. Bruce Fields"<bfields@redhat.com>
-> Date: Mon, 30 Jan 2012 16:18:35 -0500
-> Subject: [PATCH 1/2] nfsd: cleanup setting of default max_block_size
->
-> Move calculation of the default into a helper function.
->
-> Get rid of an unused variable "err" while we're there.
->
-> Thanks to Mi Jinlong for catching an arithmetic error in a previous
-> version.
->
-> Cc: Mi Jinlong<mijinlong@cn.fujitsu.com>
-> Signed-off-by: J. Bruce Fields<bfields@redhat.com>
-> ---
->   fs/nfsd/nfssvc.c |   44 ++++++++++++++++++++++++--------------------
->   1 files changed, 24 insertions(+), 20 deletions(-)
->
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index eda7d7e..e9eb408 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -307,33 +307,37 @@ static void set_max_drc(void)
->   	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
->   }
->
-> -int nfsd_create_serv(void)
-> +static int nfsd_get_default_max_blksize(void)
->   {
-> -	int err = 0;
-> +	struct sysinfo i;
-> +	unsigned long long target;
-> +	unsigned long ret;
-> +
-> +	si_meminfo(&i);
-> +	target = i.totalram<<  PAGE_SHIFT;
-> +	/*
-> +	 * Aim for 1/4096 of memory per thread This gives 1MB on 4Gig
-> +	 * machines, but only uses 32K on 128M machines.  Bottom out at
-> +	 * 8K on 32M and smaller.  Of course, this is only a default.
-> +	 */
-> +	target>>= 12;
+This patch adds two new APIs get_kernel_pages() and get_kernel_page()
+that may be used to pin a vector of kernel addresses for IO. The initial
+user is expected to be NFS for allowing pages to be written to swap
+using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
+to pin one page for IO but it makes sense to express the API in terms
+of a vector and add a helper for pinning single pages.
 
-    Why don't using target = i.totalram << (PAGE_SHIFT - 12) as before?
-    The result of the two forms is more likely different.
+Signed-off-by: Mel Gorman <mgorman@suse.de>
+---
+ include/linux/blk_types.h |    2 +
+ include/linux/fs.h        |    2 +
+ include/linux/mm.h        |    4 +++
+ mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 61 insertions(+), 0 deletions(-)
 
-    Is there some other reason ?
-
-thanks,
-Mi Jinlong
-
-
-> +
-> +	ret = NFSSVC_MAXBLKSIZE;
-> +	while (ret>  target&&  ret>= 8*1024*2)
-> +		ret /= 2;
-> +	return ret;
-> +}
->
-> +int nfsd_create_serv(void)
-> +{
->   	WARN_ON(!mutex_is_locked(&nfsd_mutex));
->   	if (nfsd_serv) {
->   		svc_get(nfsd_serv);
->   		return 0;
->   	}
-> -	if (nfsd_max_blksize == 0) {
-> -		/* choose a suitable default */
-> -		struct sysinfo i;
-> -		si_meminfo(&i);
-> -		/* Aim for 1/4096 of memory per thread
-> -		 * This gives 1MB on 4Gig machines
-> -		 * But only uses 32K on 128M machines.
-> -		 * Bottom out at 8K on 32M and smaller.
-> -		 * Of course, this is only a default.
-> -		 */
-> -		nfsd_max_blksize = NFSSVC_MAXBLKSIZE;
-> -		i.totalram<<= PAGE_SHIFT - 12;
-> -		while (nfsd_max_blksize>  i.totalram&&
-> -		       nfsd_max_blksize>= 8*1024*2)
-> -			nfsd_max_blksize /= 2;
-> -	}
-> +	if (nfsd_max_blksize == 0)
-> +		nfsd_max_blksize = nfsd_get_default_max_blksize();
->   	nfsd_reset_versions();
-> -
->   	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
->   				      nfsd_last_thread, nfsd, THIS_MODULE);
->   	if (nfsd_serv == NULL)
-> @@ -341,7 +345,7 @@ int nfsd_create_serv(void)
->
->   	set_max_drc();
->   	do_gettimeofday(&nfssvc_boot);		/* record boot time */
-> -	return err;
-> +	return 0;
->   }
->
->   int nfsd_nrpools(void)
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 4053cbd..1e62642 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -150,6 +150,7 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
++	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -191,5 +192,6 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
++#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5031625..4888f18 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -161,6 +161,8 @@ struct inodes_stat_t {
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
++#define KERNEL_READ		(READ|REQ_KERNEL)
++#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index ac90729..250fe61 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1022,6 +1022,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+ 			struct page **pages, struct vm_area_struct **vmas);
+ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 			struct page **pages);
++struct kvec;
++int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
++			struct page **pages);
++int get_kernel_page(unsigned long start, int write, struct page **pages);
+ struct page *get_dump_page(unsigned long addr);
+ 
+ extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
+diff --git a/mm/memory.c b/mm/memory.c
+index fa2f04e..ff60ade 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1825,6 +1825,59 @@ next_page:
+ EXPORT_SYMBOL(__get_user_pages);
+ 
+ /*
++ * get_kernel_pages() - pin kernel pages in memory
++ * @kiov:	An array of struct kvec structures
++ * @nr_segs:	number of segments to pin
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointers to the pages pinned.
++ *		Should be at least nr_segs long.
++ *
++ * Returns number of pages pinned. This may be fewer than the number
++ * requested. If nr_pages is 0 or negative, returns 0. If no pages
++ * were pinned, returns -errno. Each page returned must be released
++ * with a put_page() call when it is finished with.
++ */
++int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
++		struct page **pages)
++{
++	int seg;
++
++	for (seg = 0; seg < nr_segs; seg++) {
++		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
++			return seg;
++
++		/* virt_to_page sanity checks the PFN */
++		pages[seg] = virt_to_page(kiov[seg].iov_base);
++		page_cache_get(pages[seg]);
++	}
++
++	return seg;
++}
++EXPORT_SYMBOL_GPL(get_kernel_pages);
++
++/*
++ * get_kernel_page() - pin a kernel page in memory
++ * @start:	starting kernel address
++ * @write:	pinning for read/write, currently ignored
++ * @pages:	array that receives pointer to the page pinned.
++ *		Must be at least nr_segs long.
++ *
++ * Returns 1 if page is pinned. If the page was not pinned, returns
++ * -errno. The page returned must be released with a put_page() call
++ * when it is finished with.
++ */
++int get_kernel_page(unsigned long start, int write, struct page **pages)
++{
++	const struct kvec kiov = {
++		.iov_base = (void *)start,
++		.iov_len = PAGE_SIZE
++	};
++
++	return get_kernel_pages(&kiov, 1, write, pages);
++}
++EXPORT_SYMBOL_GPL(get_kernel_page);
++
++/*
+  * fixup_user_fault() - manually resolve a user page fault
+  * @tsk:	the task_struct to use for page fault accounting, or
+  *		NULL if faults are not to be recorded.
+-- 
+1.7.3.4
 
