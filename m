@@ -1,53 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:63373 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754613Ab2BVKRr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Feb 2012 05:17:47 -0500
-Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
-	by song.cn.fujitsu.com (Postfix) with ESMTP id 41E6917013C
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2012 18:17:46 +0800 (CST)
-Received: from mailserver.fnst.cn.fujitsu.com (tang.cn.fujitsu.com [127.0.0.1])
-	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id q1MAHjAI001726
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2012 18:17:45 +0800
-Message-ID: <4F44C071.8010104@cn.fujitsu.com>
-Date: Wed, 22 Feb 2012 18:16:17 +0800
-From: Fu Liankun <fuliankun@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:50380 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754865Ab2BFQjt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 11:39:49 -0500
+Date: Mon, 6 Feb 2012 11:39:46 -0500
+To: Jim Rees <rees@umich.edu>
+Cc: Liam Gretton <liam.gretton@leicester.ac.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: where can I ask user qns about nfs4?
+Message-ID: <20120206163945.GA29579@fieldses.org>
+References: <4F2A2F9E.6030908@steve-ss.com>
+ <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com>
+ <4F2D9A0E.6010503@leicester.ac.uk>
+ <4F2E4B50.5040701@steve-ss.com>
+ <20120205141611.GA12826@umich.edu>
+ <4F2EB471.9060508@leicester.ac.uk>
+ <20120205173728.GA13418@umich.edu>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: spnfs write performance issue
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120205173728.GA13418@umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When copy a big file(about 500MB) to nfs server using pnfs, it cost
-obvious longer time as compared with NFSv3 or NFSv4 protocol.
+On Sun, Feb 05, 2012 at 12:37:28PM -0500, Jim Rees wrote:
+> Liam Gretton wrote:
+> 
+>   On 05/02/2012 14:16, Jim Rees wrote:
+>   >There is a a NFS wiki, and it does have kerberos setup instructions:
+>   >http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
+>   >
+>   >The wiki has mostly been used by developers for developer info but it might
+>   >be a good thing to use it for more general info too.
+>   
+>   Thanks, the problem isn't getting NFS with Kerberos to work in
+>   general, it's with AD as the KDC. It seems that NFS still only
+>   accepts DES encrypted Kerberos tickets, and these are specifically
+>   disabled in Windows Server 2008 R2.
+> 
+> Wasn't that fixed recently?
 
-PNFS cost about 300-550s
-NFSv3 cost about 49s
-NFSv4 cost about 49s
+Yes, it supports some AES-based enctypes now, for example.  I wouldn't
+know a better source of the details than
 
-My test environment as following:
+	git log net/sunrpc/auth_gss/gss_krb5_*
 
-MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
-DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
-DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
-client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
-ipaddr2:192.168.1.19
+If someone wanted to summarize the situation for the wiki, go for it.
 
-192.168.1.100 <-------- NFS4.1 connection --------->192.168.1.101
-192.168.0.100 <-------- NFS4.1 connection --------->192.168.0.102
-192.168.0.19  <-------- NFS4.1 connection --------->192.168.0.100
-
-Dunring the write process, the client output the message:
-FS-Cache: Loaded
-FS-Cache: Netfs 'nfs' registered for caching
-nfs4filelayout_init: NFSv4 File Layout Driver Registering...
-nfs: server 192.168.1.101 not responding, timed out
-
-The message "nfs: server 192.168.1.101 not responding, timed out" was
-output during the COMMIT request.
-
-Who can tell me the reason why pnfs cost so long time.
-
-
-
+--b.
