@@ -1,43 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:39103 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:21934 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753243Ab2B0Nt2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 08:49:28 -0500
-Subject: [PATCH 0/4] SUNRPC: several fixes around PipeFS objects
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 27 Feb 2012 17:48:43 +0400
-Message-ID: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1756102Ab2BGNCQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 08:02:16 -0500
+From: Steve Dickson <steved@redhat.com>
+To: James Morris <jmorris@namei.org>
+Cc: Linux Keyring Mailing list <keyrings@linux-nfs.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: Make keys writable on the idmap keyring.
+Date: Tue,  7 Feb 2012 08:02:13 -0500
+Message-Id: <1328619733-30859-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-First two pathes fixes lockdep warnings and next two - dereferencing of
-released pipe data on eventfd close.
+To take advantage of the "Allow special keyrings to be
+cleared" keyring patch the NFS keyring has to be writeable.
 
-The following series consists of:
-
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
+ fs/nfs/idmap.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Stanislav Kinsbursky (4):
-      SUNRPC: replace per-net client lock by rw mutex
-      NFS: replace per-net client lock by mutex
-      SUNRPC: check RPC inode's pipe reference before dereferencing
-      SUNRPC: move waitq from RPC pipe to RPC inode
-
-
- fs/nfs/client.c                    |   36 +++++++++---------
- fs/nfs/idmap.c                     |    4 +-
- fs/nfs/netns.h                     |    2 +
- include/linux/sunrpc/rpc_pipe_fs.h |    2 +
- net/sunrpc/clnt.c                  |   16 ++++----
- net/sunrpc/netns.h                 |    2 +
- net/sunrpc/rpc_pipe.c              |   71 +++++++++++++++++++++++-------------
- net/sunrpc/sunrpc_syms.c           |    2 +
- 8 files changed, 77 insertions(+), 58 deletions(-)
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index a1bbf77..1d88cdb 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -269,7 +269,7 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
+ 	}
+ 
+ 	rcu_read_lock();
+-	rkey->perm |= KEY_USR_VIEW;
++	rkey->perm |= KEY_USR_VIEW|KEY_USR_WRITE;
+ 
+ 	ret = key_validate(rkey);
+ 	if (ret < 0)
+-- 
+1.7.7.5
 
