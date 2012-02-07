@@ -1,68 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752167Ab2BMVwT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:19 -0500
-Received: by eaah12 with SMTP id h12so1933968eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:18 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 00/10] handle curruent stateid
-Date: Mon, 13 Feb 2012 22:55:22 +0100
-Message-Id: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:31443 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751287Ab2BGPol (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 10:44:41 -0500
+Message-ID: <4F3146E0.4040704@netapp.com>
+Date: Tue, 07 Feb 2012 10:44:32 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 1/4] NFS: make nfs_client_list per net ns
+References: <20120123172605.29637.15682.stgit@localhost6.localdomain6>  <4F3143F4.3010502@netapp.com> <1328628888.4124.16.camel@lade.trondhjem.org>
+In-Reply-To: <1328628888.4124.16.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 02/07/12 10:34, Myklebust, Trond wrote:
 
-With Benny's comments.
+> On Tue, 2012-02-07 at 10:32 -0500, Bryan Schumaker wrote:
+>> I fixed up my bisect and identified this patch instead.  The problem I'm seeing is:
+>>
+>>   CC [M]  fs/nfs/delegation.o
+>>   CC [M]  fs/nfs/idmap.o
+>> fs/nfs/idmap.c: In function 'rpc_pipefs_event':
+>> fs/nfs/idmap.c:535:9: error: implicit declaration of function 'net_generic' [-Werror=implicit-function-declaration]
+>> fs/nfs/idmap.c:535:50: error: 'nfs_net_id' undeclared (first use in this function)
+>> fs/nfs/idmap.c:535:50: note: each undeclared identifier is reported only once for each function it appears in
+>> fs/nfs/idmap.c:540:82: error: dereferencing pointer to incomplete type
+>> fs/nfs/idmap.c:540:224: error: dereferencing pointer to incomplete type
+>> cc1: some warnings being treated as errors
+>>
+>> make[2]: *** [fs/nfs/idmap.o] Error 1
+>> make[1]: *** [fs/nfs] Error 2
+>> make: *** [fs] Error 2
+>>
+>> I think you need to add: #include "netns.h" to idmap.c.
+>>
+>> - Bryan
+> 
+> That should already be there in the 'devel' branch. See commit
+> 17347d03c008e2f504c33bb4905cdad0abc01319.
+> 
 
-This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
 
-Implemented for:
+Yes, but once I fixed this I was able to find the initial problem I was searching for (I have no idea how git led me to the wrong patch on my first attempt).
 
- OPEN
- OPENDOWNGRADE
- CLOSE
- LOCK
- LOCKU
- DELEGRETURN
- FREE_STATEID
- SETATTR
- READ
- WRITE
- SAVEFH
- RESTOREFH
- PUTFH
- PUTROOTFH
- PUTPUBFH
- LOOKUP
- CREATE
-
-
-Coresponding pynfs test already submited.
-
-Tigran.
-Tigran Mkrtchyan (10):
-  nfsd4: initialize current stateid at compile time
-  nfsd41: handle current stateid in open and close
-  nfsd41: handle current stateid on lock and locku
-  nfsd41: consume current stateid on read and write
-  nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-  nfsd41: save and restore current stateid with current fh
-  nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-  nfsd41: handle current stateid in SETATTR and FREE_STATEID
-  nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
-  nfsd41: use current stateid by value
-
- fs/nfsd/current_stateid.h |   28 ++++++++++++
- fs/nfsd/nfs4proc.c        |   61 +++++++++++++++++++++----
- fs/nfsd/nfs4state.c       |  107 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/xdr4.h            |   11 +++++
- 4 files changed, 196 insertions(+), 11 deletions(-)
- create mode 100644 fs/nfsd/current_stateid.h
-
--- 
-1.7.7.6
+- Bryan
 
