@@ -1,155 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13094 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60369 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756130Ab2BHLDD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 06:03:03 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/9] KEYS: Allow special keyrings to be cleared
-To: steved@redhat.com, jmorris@namei.org
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 08 Feb 2012 11:02:55 +0000
-Message-ID: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+	id S1753884Ab2BGCB4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 21:01:56 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Fwd: NFS related crash in net-next (3.3.0-rc1) and hacked
+ 3.3.0-rc2
+Date: Tue, 7 Feb 2012 02:01:30 +0000
+Message-ID: <1328580090.23323.16.camel@lade.trondhjem.org>
+References: <4F305BB4.6020401@candelatech.com>
+	 <4F306160.8030901@candelatech.com>
+In-Reply-To: <4F306160.8030901@candelatech.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel contains some special internal keyrings, for instance the DNS
-resolver keyring :
-
-2a93faf1 I-----     1 perm 1f030000     0     0 keyring   .dns_resolver: empty
-
-It would occasionally be useful to allow the contents of such keyrings to be
-flushed by root (cache invalidation).
-
-Allow a flag to be set on a keyring to mark that someone possessing the
-sysadmin capability can clear the keyring, even without normal write access to
-the keyring.
-
-Set this flag on the special keyrings created by the DNS resolver, the NFS
-identity mapper and the CIFS identity mapper.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: Steve Dickson <steved@redhat.com>
----
-
- Documentation/networking/dns_resolver.txt |    4 ++++
- Documentation/security/keys.txt           |    4 ++++
- fs/cifs/cifsacl.c                         |    1 +
- fs/nfs/idmap.c                            |    1 +
- include/linux/key.h                       |    1 +
- net/dns_resolver/dns_key.c                |    1 +
- security/keys/keyctl.c                    |   15 ++++++++++++++-
- 7 files changed, 26 insertions(+), 1 deletions(-)
-
-diff --git a/Documentation/networking/dns_resolver.txt b/Documentation/networking/dns_resolver.txt
-index 7f531ad..d86adcd 100644
---- a/Documentation/networking/dns_resolver.txt
-+++ b/Documentation/networking/dns_resolver.txt
-@@ -102,6 +102,10 @@ implemented in the module can be called after doing:
-      If _expiry is non-NULL, the expiry time (TTL) of the result will be
-      returned also.
- 
-+The kernel maintains an internal keyring in which it caches looked up keys.
-+This can be cleared by any process that has the CAP_SYS_ADMIN capability by
-+the use of KEYCTL_KEYRING_CLEAR on the keyring ID.
-+
- 
- ===============================
- READING DNS KEYS FROM USERSPACE
-diff --git a/Documentation/security/keys.txt b/Documentation/security/keys.txt
-index 4d75931..713ec23 100644
---- a/Documentation/security/keys.txt
-+++ b/Documentation/security/keys.txt
-@@ -554,6 +554,10 @@ The keyctl syscall functions are:
-      process must have write permission on the keyring, and it must be a
-      keyring (or else error ENOTDIR will result).
- 
-+     This function can also be used to clear special kernel keyrings if they
-+     are appropriately marked if the user has CAP_SYS_ADMIN capability.  The
-+     DNS resolver cache keyring is an example of this.
-+
- 
-  (*) Link a key into a keyring:
- 
-diff --git a/fs/cifs/cifsacl.c b/fs/cifs/cifsacl.c
-index c1b2544..3cc1b25 100644
---- a/fs/cifs/cifsacl.c
-+++ b/fs/cifs/cifsacl.c
-@@ -556,6 +556,7 @@ init_cifs_idmap(void)
- 
- 	/* instruct request_key() to use this special keyring as a cache for
- 	 * the results it looks up */
-+	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
- 	cred->thread_keyring = keyring;
- 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
- 	root_cred = cred;
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 2c05f19..a1bbf77 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -198,6 +198,7 @@ int nfs_idmap_init(void)
- 	if (ret < 0)
- 		goto failed_put_key;
- 
-+	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
- 	cred->thread_keyring = keyring;
- 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
- 	id_resolver_cache = cred;
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 5253471..1600ebf 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -155,6 +155,7 @@ struct key {
- #define KEY_FLAG_IN_QUOTA	3	/* set if key consumes quota */
- #define KEY_FLAG_USER_CONSTRUCT	4	/* set if key is being constructed in userspace */
- #define KEY_FLAG_NEGATIVE	5	/* set if key is negative */
-+#define KEY_FLAG_ROOT_CAN_CLEAR	6	/* set if key can be cleared by root without permission */
- 
- 	/* the description string
- 	 * - this is used to match a key against search criteria
-diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
-index fa000d2..c73bba3 100644
---- a/net/dns_resolver/dns_key.c
-+++ b/net/dns_resolver/dns_key.c
-@@ -281,6 +281,7 @@ static int __init init_dns_resolver(void)
- 
- 	/* instruct request_key() to use this special keyring as a cache for
- 	 * the results it looks up */
-+	set_bit(KEY_FLAG_ROOT_CAN_CLEAR, &keyring->flags);
- 	cred->thread_keyring = keyring;
- 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
- 	dns_resolver_cache = cred;
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index 0b3f5d7..6523599 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -388,11 +388,24 @@ long keyctl_keyring_clear(key_serial_t ringid)
- 	keyring_ref = lookup_user_key(ringid, KEY_LOOKUP_CREATE, KEY_WRITE);
- 	if (IS_ERR(keyring_ref)) {
- 		ret = PTR_ERR(keyring_ref);
-+
-+		/* Root is permitted to invalidate certain special keyrings */
-+		if (capable(CAP_SYS_ADMIN)) {
-+			keyring_ref = lookup_user_key(ringid, 0, 0);
-+			if (IS_ERR(keyring_ref))
-+				goto error;
-+			if (test_bit(KEY_FLAG_ROOT_CAN_CLEAR,
-+				     &key_ref_to_ptr(keyring_ref)->flags))
-+				goto clear;
-+			goto error_put;
-+		}
-+
- 		goto error;
- 	}
- 
-+clear:
- 	ret = keyring_clear(key_ref_to_ptr(keyring_ref));
--
-+error_put:
- 	key_ref_put(keyring_ref);
- error:
- 	return ret;
-
+T24gTW9uLCAyMDEyLTAyLTA2IGF0IDE1OjI1IC0wODAwLCBCZW4gR3JlZWFyIHdyb3RlOg0KPiBG
+b3Jnb3QgdG8gQ0MgbGludXgtbmZzIG1haWxpbmcgbGlzdC4uLg0KPiANCj4gDQo+IC0tLS0tLS0t
+IE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0tLS0NCj4gU3ViamVjdDogTkZTIHJlbGF0ZWQgY3Jhc2gg
+aW4gbmV0LW5leHQgKDMuMy4wLXJjMSkgYW5kIGhhY2tlZCAzLjMuMC1yYzINCj4gRGF0ZTogTW9u
+LCAwNiBGZWIgMjAxMiAxNTowMTowOCAtMDgwMA0KPiBGcm9tOiBCZW4gR3JlZWFyIDxncmVlYXJi
+QGNhbmRlbGF0ZWNoLmNvbT4NCj4gT3JnYW5pemF0aW9uOiBDYW5kZWxhIFRlY2hub2xvZ2llcw0K
+PiBUbzogbmV0ZGV2IDxuZXRkZXZAdmdlci5rZXJuZWwub3JnPg0KPiANCj4gSSBzZWUgdGhpcyBv
+biB1bi1tb2RpZmllZCBuZXQtbmV4dCAoMy4zLjAtcmMxKykgZnJvbSB0b2RheS4NCj4gDQo+IEEg
+cGF0Y2hlZC1ieS1tZSB2ZXJzaW9uIG9mIDMuMy4wLXJjMisgKHN5bmNlZCB3aXRoIHVwc3RyZWFt
+IGZyb20NCj4gYSBmZXcgZGF5cyBhZ28gaGFkIHNpbWlsYXIgaXNzdWUpLg0KPiANCj4gVGhlIHRl
+c3QgY2FzZSBpcyBqdXN0IHRvIGNvcHkgYSBidW5jaCBvZiBmaWxlcyBvdmVyIE5GUywgaW5jbHVk
+aW5nDQo+IGEgZmV3IGRpcmVjdG9yaWVzIHJlY3Vyc2l2ZWx5LiAgVGFrZXMgYXJvdW5kIDEwIHNl
+Y29uZHMgd2hlbiBpdCdzIHdvcmtpbmcNCj4gY29ycmVjdGx5LCBzbyBpdCdzIG5vdCBhIGh1Z2Ug
+bnVtYmVyIG9mIGZpbGVzL2RhdGEuDQo+IA0KPiBUaGlzIGlzIDEwMCUgcmVwcm9kdWNpYmxlIGZv
+ciBtZS4NCj4gDQo+IFRoYW5rcywNCj4gQmVuDQoNCktub3duIGlzc3VlLiBQbGVhc2Ugc2VlDQoN
+CiAgIGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGludXgtbmZzL21zZzI3MjUwLmh0bWwN
+Cg0KSSdtIGp1c3Qgd2FpdGluZyBmb3IgQW5keSB0byByZXR1cm4gZnJvbSB2YWNhdGlvbiBzbyB0
+aGF0IGhlIGNhbiByZXZpZXcNCmFuZCBhY2sgdGhlIHBhdGNoLi4uDQoNCkNoZWVycw0KICBUcm9u
+ZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
