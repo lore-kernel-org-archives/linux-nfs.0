@@ -1,221 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:39849 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755060Ab2BOTmo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 14:42:44 -0500
-Received: by mail-iy0-f174.google.com with SMTP id b35so1851170iac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 11:42:44 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/13] SUNRPC: Add API to acquire source address
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 14:42:42 -0500
-Message-ID: <20120215194242.2925.55977.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
-References: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
+Received: from mx2.netapp.com ([216.240.18.37]:5716 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750825Ab2BGOfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 09:35:21 -0500
+Message-ID: <4F313694.8000008@netapp.com>
+Date: Tue, 07 Feb 2012 09:35:00 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 4/4] NFS: make nfs_client_lock per net ns
+References: <20120123172631.29637.17188.stgit@localhost6.localdomain6>  <1328622659.4124.3.camel@lade.trondhjem.org>  <4F31308B.1090002@parallels.com> <1328623906.4124.10.camel@lade.trondhjem.org> <4F313595.7090004@netapp.com>
+In-Reply-To: <4F313595.7090004@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4.0 clients must send endpoint information for their callback
-service to NFSv4.0 servers during their first contact with a server.
-Traditionally on Linux, user space provides the callback endpoint IP
-address via the "clientaddr=" mount option.
+On 02/07/12 09:30, Bryan Schumaker wrote:
 
-During an NFSv4 migration event, it is possible that an FSID may be
-migrated to a destination server that is accessible via a different
-source IP address than the source server was.  The client must update
-callback endpoint information on the destination server so that it can
-maintain leases and allow delegation.
+> On 02/07/12 09:11, Myklebust, Trond wrote:
+> 
+>> On Tue, 2012-02-07 at 18:09 +0400, Stanislav Kinsbursky wrote:
+>>> 07.02.2012 17:51, Myklebust, Trond пишет:
+>>>> 8<-------------------------------------------------------------------------
+>>>>  From 5a489156da4fd15dd143f2b21dd9657b97dcef88 Mon Sep 17 00:00:00 2001
+>>>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>>> Date: Tue, 7 Feb 2012 00:05:11 -0500
+>>>> Subject: [PATCH] NFS: Initialise the nfs_net->nfs_client_lock
+>>>>
+>>>> Ensure that we initialise the nfs_net->nfs_client_lock spinlock.
+>>>> Also ensure that nfs_server_remove_lists() doesn't try to
+>>>> dereference server->nfs_client before that is initialised.
+>>>>
+>>>
+>>> Sorry.
+>>> Patch looks nice. Except one notice below.
+>>>
+>>>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>>> Cc: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>> ---
+>>>>   fs/nfs/client.c |    6 +++++-
+>>>>   1 files changed, 5 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>>> index 1a5cd49..f0dacad 100644
+>>>> --- a/fs/nfs/client.c
+>>>> +++ b/fs/nfs/client.c
+>>>> @@ -1055,8 +1055,11 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+>>>>   static void nfs_server_remove_lists(struct nfs_server *server)
+>>>>   {
+>>>>   	struct nfs_client *clp = server->nfs_client;
+>>>> -	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
+>>>> +	struct nfs_net *nn;
+>>>>
+>>>> +	if (clp == NULL)
+>>>> +		return;
+>>>> +	nn = net_generic(clp->net, nfs_net_id);
+>>>>   	spin_lock(&nn->nfs_client_lock);
+>>>>   	list_del_rcu(&server->client_link);
+>>>>   	if (clp&&  list_empty(&clp->cl_superblocks))
+>>>
+>>> This check for clp != NULL can be removed.
+>>>
+>>
+>> Yep... I'll add that in...
+> 
+> 
+> 
+> When I compile Trond's devel branch I get this:
+> 
+> make[1]: Nothing to be done for `all'.
+>   CHK     include/linux/version.h
+>   CHK     include/generated/utsrelease.h
+>   CALL    scripts/checksyscalls.sh
+>   CHK     include/generated/compile.h
+>   CHK     kernel/config_data.h
+>   CC [M]  fs/nfs/idmap.o
+> fs/nfs/idmap.c: In function 'rpc_pipefs_event':
+> fs/nfs/idmap.c:535:9: error: implicit declaration of function 'net_generic' [-Werror=implicit-function-declaration]
+> fs/nfs/idmap.c:535:50: error: 'nfs_net_id' undeclared (first use in this function)
+> fs/nfs/idmap.c:535:50: note: each undeclared identifier is reported only once for each function it appears in
+> fs/nfs/idmap.c:540:82: error: dereferencing pointer to incomplete type
+> fs/nfs/idmap.c:540:224: error: dereferencing pointer to incomplete type
+> cc1: some warnings being treated as errors
+> 
+> make[2]: *** [fs/nfs/idmap.o] Error 1
+> make[1]: *** [fs/nfs] Error 2
+> make: *** [fs] Error 2
+> 
+> I bisected it to this patch, probably a missing #include?
 
-Without a new "clientaddr=" option from user space, however, the
-kernel itself must construct an appropriate IP address for the
-callback update.  Provide an API in the RPC client for upper layer
-RPC consumers to acquire a source address for a remote.
 
-The mechanism used by the mount.nfs command is copied: set up a
-connected UDP socket to the designated remote, then scrape the source
-address off the socket.  We are careful to select the correct network
-namespace when setting up the temporary UDP socket.
+Ignore that, I was in the middle of bisecting something else and got confused.  This was still something I kept seeing during the bisect, though.  I'll figure out which patch causes it in a few minutes...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> 
+> - Bryan
+> 
+>>
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
- include/linux/sunrpc/clnt.h |    1 
- net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+), 0 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 3d8f9c4..6a869b4 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -160,6 +160,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
-+int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
- 
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
- size_t		rpc_pton(const char *, const size_t,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f0268ea..ebd2192 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -806,6 +806,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
- 
-+static const struct sockaddr_in rpc_inaddr_loopback = {
-+	.sin_family		= AF_INET,
-+	.sin_addr.s_addr	= htonl(INADDR_ANY),
-+};
-+
-+static const struct sockaddr_in6 rpc_in6addr_loopback = {
-+	.sin6_family		= AF_INET6,
-+	.sin6_addr		= IN6ADDR_ANY_INIT,
-+};
-+
-+/*
-+ * Try a getsockname() on a connected datagram socket.  Using a
-+ * connected datagram socket prevents leaving a socket in TIME_WAIT.
-+ * This conserves the ephemeral port number space.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
-+			struct sockaddr *buf, int buflen)
-+{
-+	struct socket *sock;
-+	int err;
-+
-+	err = __sock_create(net, sap->sa_family,
-+				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
-+	if (err < 0) {
-+		dprintk("RPC:       can't create UDP socket (%d)\n", err);
-+		goto out;
-+	}
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+		break;
-+	default:
-+		err = -EAFNOSUPPORT;
-+		goto out;
-+	}
-+	if (err < 0) {
-+		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_connect(sock, sap, salen, 0);
-+	if (err < 0) {
-+		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_getsockname(sock, buf, &buflen);
-+	if (err < 0) {
-+		dprintk("RPC:       getsockname failed (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = 0;
-+	if (buf->sa_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
-+		sin6->sin6_scope_id = 0;
-+	}
-+	dprintk("RPC:       %s succeeded\n", __func__);
-+
-+out_release:
-+	sock_release(sock);
-+out:
-+	return err;
-+}
-+
-+/*
-+ * Scraping a connected socket failed, so we don't have a useable
-+ * local address.  Fallback: generate an address that will prevent
-+ * the server from calling us back.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
-+{
-+	switch (family) {
-+	case AF_INET:
-+		if (buflen < sizeof(rpc_inaddr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		if (buflen < sizeof(rpc_in6addr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+	default:
-+		dprintk("RPC:       %s: address family not supported\n",
-+			__func__);
-+		return -EAFNOSUPPORT;
-+	}
-+	dprintk("RPC:       %s: succeeded\n", __func__);
-+	return 0;
-+}
-+
-+/**
-+ * rpc_localaddr - discover local endpoint address for an RPC client
-+ * @clnt: RPC client structure
-+ * @buf: target buffer
-+ * @buflen: size of target buffer, in bytes
-+ *
-+ * Returns zero and fills in "buf" and "buflen" if successful;
-+ * otherwise, a negative errno is returned.
-+ *
-+ * This works even if the underlying transport is not currently connected,
-+ * or if the upper layer never previously provided a source address.
-+ *
-+ * The result of this function call is transient: multiple calls in
-+ * succession may give different results, depending on how local
-+ * networking configuration changes over time.
-+ */
-+int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
-+{
-+	struct sockaddr_storage address;
-+	struct sockaddr *sap = (struct sockaddr *)&address;
-+	struct rpc_xprt *xprt;
-+	struct net *net;
-+	size_t salen;
-+	int err;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
-+	salen = xprt->addrlen;
-+	memcpy(sap, &xprt->addr, salen);
-+	net = get_net(xprt->xprt_net);
-+	rcu_read_unlock();
-+
-+	rpc_set_port(sap, 0);
-+	err = rpc_sockname(net, sap, salen, buf, buflen);
-+	put_net(net);
-+	if (err != 0)
-+		/* Couldn't discover local address, return ANYADDR */
-+		return rpc_anyaddr(sap->sa_family, buf, buflen);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(rpc_localaddr);
-+
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
- {
 
