@@ -1,47 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:51331 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751395Ab2BTSoS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2012 13:44:18 -0500
-Message-ID: <4F429450.5080502@candelatech.com>
-Date: Mon, 20 Feb 2012 10:43:28 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Jim Rees <rees@umich.edu>, Chris Rankin <rankincj@yahoo.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [OOPS] NFS dereferenced NULL pointer with 3.2.6 kernel.
-References: <4F4194C4.40104@yahoo.com>  <1329760844.2834.1.camel@lade.trondhjem.org>  <20120220182709.GA22899@umich.edu> <1329762949.5151.8.camel@lade.trondhjem.org>
-In-Reply-To: <1329762949.5151.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:53113 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754671Ab2BGTNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 14:13:02 -0500
+Date: Tue, 7 Feb 2012 14:12:54 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: bjschuma@netapp.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
+ fails
+Message-ID: <20120207141254.2948e735@tlielax.poochiereds.net>
+In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/20/2012 10:35 AM, Myklebust, Trond wrote:
-> On Mon, 2012-02-20 at 13:27 -0500, Jim Rees wrote:
->> Myklebust, Trond wrote:
->>
->>    It's a known bug. There is a fix at
->>
->>    http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=commit;h=331818f1c468a24e581aedcbe52af799366a9dfe
->>
->> Shouldn't this be in stable by now?  You sent it Feb 3, and there have been
->> two stable releases since then.
->
-> I've been waiting for Andy to get back from vacation. We've already sent
-> one buggy patch to stable...
->
+On Thu, 26 Jan 2012 16:54:23 -0500
+bjschuma@netapp.com wrote:
 
-It's still not in 3.3-rc either, at least put it there so others
-can test it?
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> This patch removes the CONFIG_NFS_USE_NEW_IDMAPPER compile option.
+> First, the idmapper will attempt to map the id using /sbin/request-key
+> and nfsidmap.  If this fails (if /etc/request-key.conf is not configured
+> properly) then the idmapper will call the legacy code to perform the
+> mapping.  I left a comment stating where the legacy code begins to make
+> it easier for somebody to remove in the future.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
 
-I've been testing with the patch applied to 3.3 and it fixes
-the crashes for me....
 
-Thanks,
-Ben
+I think this patch is the right approach and will make the transition
+easier. But there is still a bit of a problem here...
+
+One of the main complaints about the old idmapper was that it did a
+rather large allocation on every time a new nfs_client is created:
+
+-----------------------[snip]----------------------
+
+int
+nfs_idmap_new(struct nfs_client *clp)
+{
+        struct idmap *idmap;
+        struct rpc_pipe *pipe;
+        int error;
+
+        BUG_ON(clp->cl_idmap != NULL);
+
+        idmap = kzalloc(sizeof(*idmap), GFP_KERNEL);
+        if (idmap == NULL)
+                return -ENOMEM;
+
+-----------------------[snip]----------------------
+
+On a 32-bit box when you try to mount and low memory is heavily
+fragmented, you can get a NULL pointer back on that kzalloc with a
+nice stack trace headed by a message like this:
+
+    mount.nfs: page allocation failure. order:4, mode:0xc0d0
+
+Here's a RHBZ against RHEL6 if you're interested in gory details:
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=730045
+
+In any case, this problem was one of the reasons for pushing the new
+idmapper. A number of people have complained about this problem in the
+past and we told them "use the new idmapper". Now, with this patchset,
+that won't help.
+
+I think the right solution is to probably look at breaking up the idmap
+structure in the legacy idmapper into multiple allocations. It's more
+complicated to deal with and will mean restructuring the code a bit,
+but it will allow for a relatively graceful transition to the new
+idmapper.
+
+Thoughts?
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Jeff Layton <jlayton@redhat.com>
