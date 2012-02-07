@@ -1,124 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33954 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:18979 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751589Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 17:45:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] 4.1 server tests: don't run pnfs tests by default
-Date: Wed, 15 Feb 2012 17:45:18 -0500
-Message-Id: <1329345920-16608-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
-References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+	id S1755661Ab2BGUGR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 15:06:17 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
+ fails
+Date: Tue, 7 Feb 2012 20:05:55 +0000
+Message-ID: <1328645155.4124.44.camel@lade.trondhjem.org>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+	 <20120207141254.2948e735@tlielax.poochiereds.net>
+	 <1328642485.4124.40.camel@lade.trondhjem.org> <4F317BA1.4050102@netapp.com>
+	 <1328643867.4124.42.camel@lade.trondhjem.org>
+In-Reply-To: <1328643867.4124.42.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-I'd rather the pynfs tests have clean results by default against a
-correct 4.1 server.  And it's correct for such a server not to implement
-optional features.  So leave pnfs tests off by default; you can still
-get them by asking for "pnfs" tests.
-
-Also, flags for individual pnfs operations seemed mild overkill for now,
-given how few tests we have.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- nfs4.1/server41tests/st_current_stateid.py |    2 +-
- nfs4.1/server41tests/st_getdevicelist.py   |   16 ++++++++--------
- 2 files changed, 9 insertions(+), 9 deletions(-)
-
-diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41tests/st_current_stateid.py
-index aeaa8b1..7804900 100644
---- a/nfs4.1/server41tests/st_current_stateid.py
-+++ b/nfs4.1/server41tests/st_current_stateid.py
-@@ -119,7 +119,7 @@ def testOpenLayoutGet(t, env):
-     """test current state id processing by having OPEN and LAYOUTGET
-        in a single compound
- 
--    FLAGS: currentstateid all
-+    FLAGS: currentstateid pnfs
-     CODE: CSID7
-     """
-     sess = env.c1.new_client_session(env.testname(t),
-diff --git a/nfs4.1/server41tests/st_getdevicelist.py b/nfs4.1/server41tests/st_getdevicelist.py
-index 8d53633..7a10c6c 100644
---- a/nfs4.1/server41tests/st_getdevicelist.py
-+++ b/nfs4.1/server41tests/st_getdevicelist.py
-@@ -10,7 +10,7 @@ from nfs4lib import state00
- def testGetDevList(t, env):
-     """Check devlist
- 
--    FLAGS: getdevicelist all
-+    FLAGS: pnfs
-     CODE: GETDLIST1
-     """
-     # Make sure E_ID returns MDS capabilities
-@@ -36,7 +36,7 @@ def testGetDevList(t, env):
- def testGetDevInfo(t, env):
-     """Check devlist
- 
--    FLAGS: getdevicelist all
-+    FLAGS: pnfs
-     DEPEND: GETDLIST1
-     CODE: GETDINFO1
-     """
-@@ -73,7 +73,7 @@ def testGetDevInfo(t, env):
- ## def xxxtestLayout(t, env):
- ##     """Verify layout handling
- 
--##     FLAGS: layout all
-+##     FLAGS: pnfs
- ##     CODE: GETLAYOUT1
- ##     """
- ##     # Make sure E_ID returns MDS capabilities
-@@ -105,7 +105,7 @@ def testGetDevInfo(t, env):
- def testGetLayout(t, env):
-     """Verify layout handling
- 
--    FLAGS: getlayout all
-+    FLAGS: pnfs
-     CODE: GETLAYOUT1
-     """
-     # Make sure E_ID returns MDS capabilities
-@@ -187,7 +187,7 @@ def testLayoutReturnFile(t, env):
-     """
-     Return a file's layout
-     
--    FLAGS: layoutreturn all
-+    FLAGS: pnfs
-     DEPEND: GETLAYOUT1
-     CODE: LAYOUTRET1
-     """
-@@ -220,7 +220,7 @@ def testLayoutReturnFsid(t, env):
-     """
-     Return all of a filesystem's layouts
-     
--    FLAGS: layoutreturn all
-+    FLAGS: pnfs
-     DEPEND: GETLAYOUT1
-     CODE: LAYOUTRET2
-     """
-@@ -252,7 +252,7 @@ def testLayoutReturnAll(t, env):
-     """
-     Return all of a client's layouts
-     
--    FLAGS: layoutreturn all
-+    FLAGS: pnfs
-     DEPEND: GETLAYOUT1
-     CODE: LAYOUTRET3
-     """
-@@ -283,7 +283,7 @@ def testLayoutCommit(t, env):
-     """
-     Do some commits
- 
--    FLAGS: layoutcommit all
-+    FLAGS: pnfs
-     CODE: LAYOUTCOMMIT1
-     """
-     # Make sure E_ID returns MDS capabilities
--- 
-1.7.5.4
-
+T24gVHVlLCAyMDEyLTAyLTA3IGF0IDE0OjQ0IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQoNCj4gT25lIHdheSB0byBlYXNpbHkgc2hyaW5rIHRoZSBzaXplIG9mIHRoYXQgYWxsb2NhdGlv
+biBpcyB0byBjb252ZXJ0IHRoZQ0KPiBpaF9uYW1lIHN0cmluZyBpbnRvIGEgcG9pbnRlciwgYW5k
+IGhhdmUgdGhlIGRvd25jYWxsIGFsbG9jYXRlIHRoZQ0KPiBzdG9yYWdlIGZvciB0aGF0IHN0cmlu
+ZyBkeW5hbWljYWxseS4uLg0KDQpMaWtlIHNvLi4uLg0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9t
+IDUyMjFjODQxNTk1NzYwNDUwN2NkNzQwOGE2OTUyNDEwOTZiY2IzYWQgTW9uIFNlcCAxNyAwMDow
+MDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tPg0KRGF0ZTogVHVlLCA3IEZlYiAyMDEyIDE0OjU5OjA1IC0wNTAwDQpTdWJqZWN0OiBbUEFU
+Q0hdIE5GU3Y0OiBSZWR1Y2UgdGhlIGZvb3RwcmludCBvZiB0aGUgaWRtYXBwZXINCg0KSW5zdGVh
+ZCBvZiBwcmUtYWxsb2NhdGluZyB0aGUgc3RvcmFnZSBmb3IgYWxsIHRoZSBzdHJpbmdzLCB3ZSBj
+YW4NCnNpZ25pZmljYW50bHkgcmVkdWNlIHRoZSBzaXplIG9mIHRoYXQgdGFibGUgYnkgZG9pbmcg
+dGhlIGFsbG9jYXRpb24NCndoZW4gd2UgZG8gdGhlIGRvd25jYWxsLg0KDQpTaWduZWQtb2ZmLWJ5
+OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMv
+bmZzL2lkbWFwLmMgfCAgIDE2ICsrKysrKysrKysrKystLS0NCiAxIGZpbGVzIGNoYW5nZWQsIDEz
+IGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvaWRt
+YXAuYyBiL2ZzL25mcy9pZG1hcC5jDQppbmRleCA1YTU1NjZmLi5mZmY3OTQ4IDEwMDY0NA0KLS0t
+IGEvZnMvbmZzL2lkbWFwLmMNCisrKyBiL2ZzL25mcy9pZG1hcC5jDQpAQCAtMzYyLDcgKzM2Miw3
+IEBAIHN0cnVjdCBpZG1hcF9oYXNoZW50IHsNCiAJdW5zaWduZWQgbG9uZwkJaWhfZXhwaXJlczsN
+CiAJX191MzIJCQlpaF9pZDsNCiAJc2l6ZV90CQkJaWhfbmFtZWxlbjsNCi0JY2hhcgkJCWloX25h
+bWVbSURNQVBfTkFNRVNaXTsNCisJY29uc3QgY2hhcgkJKmloX25hbWU7DQogfTsNCiANCiBzdHJ1
+Y3QgaWRtYXBfaGFzaHRhYmxlIHsNCkBAIC00ODIsMTIgKzQ4MiwxNyBAQCB2b2lkDQogbmZzX2lk
+bWFwX2RlbGV0ZShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKQ0KIHsNCiAJc3RydWN0IGlkbWFwICpp
+ZG1hcCA9IGNscC0+Y2xfaWRtYXA7DQorCWludCBpOw0KIA0KIAlpZiAoIWlkbWFwKQ0KIAkJcmV0
+dXJuOw0KIAluZnNfaWRtYXBfdW5yZWdpc3RlcihjbHAsIGlkbWFwLT5pZG1hcF9waXBlKTsNCiAJ
+cnBjX2Rlc3Ryb3lfcGlwZV9kYXRhKGlkbWFwLT5pZG1hcF9waXBlKTsNCiAJY2xwLT5jbF9pZG1h
+cCA9IE5VTEw7DQorCWZvciAoaSA9IDA7IGkgPCBBUlJBWV9TSVpFKGlkbWFwLT5pZG1hcF91c2Vy
+X2hhc2guaF9lbnRyaWVzKTsgaSsrKQ0KKwkJa2ZyZWUoaWRtYXAtPmlkbWFwX3VzZXJfaGFzaC5o
+X2VudHJpZXNbaV0uaWhfbmFtZSk7DQorCWZvciAoaSA9IDA7IGkgPCBBUlJBWV9TSVpFKGlkbWFw
+LT5pZG1hcF9ncm91cF9oYXNoLmhfZW50cmllcyk7IGkrKykNCisJCWtmcmVlKGlkbWFwLT5pZG1h
+cF9ncm91cF9oYXNoLmhfZW50cmllc1tpXS5paF9uYW1lKTsNCiAJa2ZyZWUoaWRtYXApOw0KIH0N
+CiANCkBAIC02MzQsOSArNjM5LDE0IEBAIHN0YXRpYyB2b2lkDQogaWRtYXBfdXBkYXRlX2VudHJ5
+KHN0cnVjdCBpZG1hcF9oYXNoZW50ICpoZSwgY29uc3QgY2hhciAqbmFtZSwNCiAJCXNpemVfdCBu
+YW1lbGVuLCBfX3UzMiBpZCkNCiB7DQorCWNoYXIgKnN0ciA9IGttYWxsb2MobmFtZWxlbiArIDEs
+IEdGUF9LRVJORUwpOw0KKwlpZiAoc3RyID09IE5VTEwpDQorCQlyZXR1cm47DQorCWtmcmVlKGhl
+LT5paF9uYW1lKTsNCiAJaGUtPmloX2lkID0gaWQ7DQotCW1lbWNweShoZS0+aWhfbmFtZSwgbmFt
+ZSwgbmFtZWxlbik7DQotCWhlLT5paF9uYW1lW25hbWVsZW5dID0gJ1wwJzsNCisJbWVtY3B5KHN0
+ciwgbmFtZSwgbmFtZWxlbik7DQorCXN0cltuYW1lbGVuXSA9ICdcMCc7DQorCWhlLT5paF9uYW1l
+ID0gc3RyOw0KIAloZS0+aWhfbmFtZWxlbiA9IG5hbWVsZW47DQogCWhlLT5paF9leHBpcmVzID0g
+amlmZmllcyArIG5mc19pZG1hcF9jYWNoZV90aW1lb3V0Ow0KIH0NCi0tIA0KMS43LjcuNg0KDQoN
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
