@@ -1,53 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:53237 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965711Ab2B2RQE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 12:16:04 -0500
-Received: by yhmm54 with SMTP id m54so1709862yhm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 09:16:04 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:56616 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750825Ab2BGOat (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 09:30:49 -0500
+Message-ID: <4F313595.7090004@netapp.com>
+Date: Tue, 07 Feb 2012 09:30:45 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v7 2/5] sunrpc: create nfsd dir in rpc_pipefs
-Date: Wed, 29 Feb 2012 12:15:54 -0500
-Message-Id: <1330535757-24925-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
-References: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 4/4] NFS: make nfs_client_lock per net ns
+References: <20120123172631.29637.17188.stgit@localhost6.localdomain6>  <1328622659.4124.3.camel@lade.trondhjem.org>  <4F31308B.1090002@parallels.com> <1328623906.4124.10.camel@lade.trondhjem.org>
+In-Reply-To: <1328623906.4124.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-upcall.
+On 02/07/12 09:11, Myklebust, Trond wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+> On Tue, 2012-02-07 at 18:09 +0400, Stanislav Kinsbursky wrote:
+>> 07.02.2012 17:51, Myklebust, Trond пишет:
+>>> 8<-------------------------------------------------------------------------
+>>>  From 5a489156da4fd15dd143f2b21dd9657b97dcef88 Mon Sep 17 00:00:00 2001
+>>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>> Date: Tue, 7 Feb 2012 00:05:11 -0500
+>>> Subject: [PATCH] NFS: Initialise the nfs_net->nfs_client_lock
+>>>
+>>> Ensure that we initialise the nfs_net->nfs_client_lock spinlock.
+>>> Also ensure that nfs_server_remove_lists() doesn't try to
+>>> dereference server->nfs_client before that is initialised.
+>>>
+>>
+>> Sorry.
+>> Patch looks nice. Except one notice below.
+>>
+>>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+>>> Cc: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>> ---
+>>>   fs/nfs/client.c |    6 +++++-
+>>>   1 files changed, 5 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>> index 1a5cd49..f0dacad 100644
+>>> --- a/fs/nfs/client.c
+>>> +++ b/fs/nfs/client.c
+>>> @@ -1055,8 +1055,11 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+>>>   static void nfs_server_remove_lists(struct nfs_server *server)
+>>>   {
+>>>   	struct nfs_client *clp = server->nfs_client;
+>>> -	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
+>>> +	struct nfs_net *nn;
+>>>
+>>> +	if (clp == NULL)
+>>> +		return;
+>>> +	nn = net_generic(clp->net, nfs_net_id);
+>>>   	spin_lock(&nn->nfs_client_lock);
+>>>   	list_del_rcu(&server->client_link);
+>>>   	if (clp&&  list_empty(&clp->cl_superblocks))
+>>
+>> This check for clp != NULL can be removed.
+>>
+> 
+> Yep... I'll add that in...
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 6873c9b..c81915d 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -992,6 +992,7 @@ enum {
- 	RPCAUTH_statd,
- 	RPCAUTH_nfsd4_cb,
- 	RPCAUTH_cache,
-+	RPCAUTH_nfsd,
- 	RPCAUTH_RootEOF
- };
- 
-@@ -1024,6 +1025,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "cache",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_nfsd] = {
-+		.name = "nfsd",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- };
- 
- /*
--- 
-1.7.7.6
+
+
+When I compile Trond's devel branch I get this:
+
+make[1]: Nothing to be done for `all'.
+  CHK     include/linux/version.h
+  CHK     include/generated/utsrelease.h
+  CALL    scripts/checksyscalls.sh
+  CHK     include/generated/compile.h
+  CHK     kernel/config_data.h
+  CC [M]  fs/nfs/idmap.o
+fs/nfs/idmap.c: In function 'rpc_pipefs_event':
+fs/nfs/idmap.c:535:9: error: implicit declaration of function 'net_generic' [-Werror=implicit-function-declaration]
+fs/nfs/idmap.c:535:50: error: 'nfs_net_id' undeclared (first use in this function)
+fs/nfs/idmap.c:535:50: note: each undeclared identifier is reported only once for each function it appears in
+fs/nfs/idmap.c:540:82: error: dereferencing pointer to incomplete type
+fs/nfs/idmap.c:540:224: error: dereferencing pointer to incomplete type
+cc1: some warnings being treated as errors
+
+make[2]: *** [fs/nfs/idmap.o] Error 1
+make[1]: *** [fs/nfs] Error 2
+make: *** [fs] Error 2
+
+I bisected it to this patch, probably a missing #include?
+
+- Bryan
+
+> 
+
 
