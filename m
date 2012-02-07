@@ -1,58 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40257 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751792Ab2BOPwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 10:52:50 -0500
-Date: Wed, 15 Feb 2012 10:52:47 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at
- nfs4_init_slot_table()
-Message-ID: <20120215155247.GB12490@fieldses.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
- <1329259606.11759.15.camel@lade.trondhjem.org>
- <4F3AFD84.3020709@nexenta.com>
- <1329266587.28837.4.camel@lade.trondhjem.org>
- <20120215005315.GA9018@fieldses.org>
- <1329270628.28837.15.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1329270628.28837.15.camel@lade.trondhjem.org>
+	id S1753820Ab2BGA5Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 19:57:24 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
+Date: Mon,  6 Feb 2012 19:57:16 -0500
+Message-Id: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 01:50:28AM +0000, Myklebust, Trond wrote:
-> On Tue, 2012-02-14 at 19:53 -0500, J. Bruce Fields wrote:
-> > On Wed, Feb 15, 2012 at 12:43:08AM +0000, Myklebust, Trond wrote:
-> > > Then we have a problem. The zero initialisation is already in use out
-> > > there in both commercial and non-commercial versions of Linux. It is too
-> > > late to change that now.
-> > > 
-> > > Furthermore, since none of the servers we've tested against in earlier
-> > > Bakeathons and Connectathons have complained, I suggest that we rather
-> > > change the spec with an errata.
-> > 
-> > Argh.
-> > 
-> > I just noticed that the server was crashing intermittently and traced it
-> > to incorrect handling of the case where the client sends a one-op
-> > SEQUENCE compound with seqid 0.  I'm not sure why it started popping up
-> > just in 3.3--perhaps some change in the way the client uses slots made
-> > that more likely.
-> > 
-> > The server code actually looks like it did assume initial seqid 1, but
-> > accepted initial seqid 0 (except in this one case) basically by mistake.
-> > 
-> > In any case, I think it should be easy enough to teach it just to accept
-> > any seqid on a previously unused slot, so I'll do that....
-> 
-> Hang on... Looking at 3.2, I think you're correct. We used to initialise
-> to 1, and now we're initialising to 0.
+It is perfectly legal to negotiate up to 2^32-1 slots in the protocol,
+and with 10GigE, we are already seeing that 255 slots is far too limiting.
 
-OK.  I'll continue with my current fix, in that case, so using initial
-sequenceid 0 will result in a MISORDERED error.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback.h         |    2 +-
+ fs/nfs/callback_xdr.c     |    6 +++---
+ fs/nfs/nfs4proc.c         |   21 ++++++++++-----------
+ include/linux/nfs_fs_sb.h |    7 ++++---
+ include/linux/nfs_xdr.h   |    2 +-
+ 5 files changed, 19 insertions(+), 19 deletions(-)
 
---b.
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 197e0d3..a5527c9 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -38,7 +38,7 @@ enum nfs4_callback_opnum {
+ struct cb_process_state {
+ 	__be32			drc_status;
+ 	struct nfs_client	*clp;
+-	int			slotid;
++	u32			slotid;
+ 	struct net		*net;
+ };
+ 
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 2e37224..5466829 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -759,14 +759,14 @@ static void nfs4_callback_free_slot(struct nfs4_session *session)
+ 	 * Let the state manager know callback processing done.
+ 	 * A single slot, so highest used slotid is either 0 or -1
+ 	 */
+-	tbl->highest_used_slotid = -1;
++	tbl->highest_used_slotid = NFS4_NO_SLOT;
+ 	nfs4_check_drain_bc_complete(session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ }
+ 
+ static void nfs4_cb_free_slot(struct cb_process_state *cps)
+ {
+-	if (cps->slotid != -1)
++	if (cps->slotid != NFS4_NO_SLOT)
+ 		nfs4_callback_free_slot(cps->clp->cl_session);
+ }
+ 
+@@ -860,7 +860,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 	struct cb_process_state cps = {
+ 		.drc_status = 0,
+ 		.clp = NULL,
+-		.slotid = -1,
++		.slotid = NFS4_NO_SLOT,
+ 		.net = rqstp->rq_xprt->xpt_net,
+ 	};
+ 	unsigned int nops = 0;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 482ed97..0dc5dfb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -402,7 +402,7 @@ static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
+ 		return;
+ 	}
+ 
+-	if (ses->fc_slot_table.highest_used_slotid != -1)
++	if (ses->fc_slot_table.highest_used_slotid != NFS4_NO_SLOT)
+ 		return;
+ 
+ 	dprintk("%s COMPLETE: Session Fore Channel Drained\n", __func__);
+@@ -415,7 +415,7 @@ static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
+ void nfs4_check_drain_bc_complete(struct nfs4_session *ses)
+ {
+ 	if (!test_bit(NFS4_SESSION_DRAINING, &ses->session_state) ||
+-	    ses->bc_slot_table.highest_used_slotid != -1)
++	    ses->bc_slot_table.highest_used_slotid != NFS4_NO_SLOT)
+ 		return;
+ 	dprintk("%s COMPLETE: Session Back Channel Drained\n", __func__);
+ 	complete(&ses->bc_slot_table.complete);
+@@ -514,14 +514,13 @@ static int nfs4_sequence_done(struct rpc_task *task,
+  *
+  * Note: must be called with under the slot_tbl_lock.
+  */
+-static u8
++static u32
+ nfs4_find_slot(struct nfs4_slot_table *tbl)
+ {
+-	int slotid;
+-	u8 ret_id = NFS4_MAX_SLOT_TABLE;
+-	BUILD_BUG_ON((u8)NFS4_MAX_SLOT_TABLE != (int)NFS4_MAX_SLOT_TABLE);
++	u32 slotid;
++	u32 ret_id = NFS4_NO_SLOT;
+ 
+-	dprintk("--> %s used_slots=%04lx highest_used=%d max_slots=%d\n",
++	dprintk("--> %s used_slots=%04lx highest_used=%u max_slots=%u\n",
+ 		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
+ 		tbl->max_slots);
+ 	slotid = find_first_zero_bit(tbl->used_slots, tbl->max_slots);
+@@ -555,7 +554,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ {
+ 	struct nfs4_slot *slot;
+ 	struct nfs4_slot_table *tbl;
+-	u8 slotid;
++	u32 slotid;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	/* slot already allocated? */
+@@ -5144,7 +5143,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+ 	spin_lock(&tbl->slot_tbl_lock);
+ 	tbl->max_slots = max_slots;
+ 	tbl->slots = slot;
+-	tbl->highest_used_slotid = -1;  /* no slot is currently used */
++	tbl->highest_used_slotid = NFS4_NO_SLOT;  /* no slot is currently used */
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+ 		tbl, tbl->slots, tbl->max_slots);
+@@ -5196,13 +5195,13 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+ 		return NULL;
+ 
+ 	tbl = &session->fc_slot_table;
+-	tbl->highest_used_slotid = -1;
++	tbl->highest_used_slotid = NFS4_NO_SLOT;
+ 	spin_lock_init(&tbl->slot_tbl_lock);
+ 	rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq, "ForeChannel Slot table");
+ 	init_completion(&tbl->complete);
+ 
+ 	tbl = &session->bc_slot_table;
+-	tbl->highest_used_slotid = -1;
++	tbl->highest_used_slotid = NFS4_NO_SLOT;
+ 	spin_lock_init(&tbl->slot_tbl_lock);
+ 	rpc_init_wait_queue(&tbl->slot_tbl_waitq, "BackChannel Slot table");
+ 	init_completion(&tbl->complete);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 9e101c1..2ae57f2 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -191,6 +191,7 @@ struct nfs_server {
+ 
+ /* maximum number of slots to use */
+ #define NFS4_MAX_SLOT_TABLE (128U)
++#define NFS4_NO_SLOT ((u32)-1)
+ 
+ #if defined(CONFIG_NFS_V4)
+ 
+@@ -201,10 +202,10 @@ struct nfs4_slot_table {
+ 	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
+ 	spinlock_t	slot_tbl_lock;
+ 	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
+-	int		max_slots;		/* # slots in table */
+-	int		highest_used_slotid;	/* sent to server on each SEQ.
++	u32		max_slots;		/* # slots in table */
++	u32		highest_used_slotid;	/* sent to server on each SEQ.
+ 						 * op for dynamic resizing */
+-	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
++	u32		target_max_slots;	/* Set by CB_RECALL_SLOT as
+ 						 * the new max_slots */
+ 	struct completion complete;
+ };
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 144419a..adbc84a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -181,7 +181,7 @@ struct nfs4_slot {
+ 
+ struct nfs4_sequence_args {
+ 	struct nfs4_session	*sa_session;
+-	u8			sa_slotid;
++	u32			sa_slotid;
+ 	u8			sa_cache_this;
+ };
+ 
+-- 
+1.7.7.6
+
