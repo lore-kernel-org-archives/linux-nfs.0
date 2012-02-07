@@ -1,370 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12556 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24114 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754329Ab2BHVFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:05:05 -0500
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] RFC: NFS - filelayout DS rpc mountstats support
-Date: Wed, 8 Feb 2012 21:04:58 +0000
-Message-ID: <B22F73F9-8343-4543-922E-26F48AA78A90@netapp.com>
-References: <1328721042-9335-1-git-send-email-dros@netapp.com>
- <1CFC0549-DFAC-4530-A3A5-876DDAE8C5DE@oracle.com>
-In-Reply-To: <1CFC0549-DFAC-4530-A3A5-876DDAE8C5DE@oracle.com>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_585BF81B-EBB0-4F96-B0AC-730CD68B959E";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1755260Ab2BGRs7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 12:48:59 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 3/5] NFS: search for client session id in proper network
+ namespace
+Date: Tue, 7 Feb 2012 17:48:52 +0000
+Message-ID: <1328636931.4124.17.camel@lade.trondhjem.org>
+References: <20120126110955.8386.34551.stgit@localhost6.localdomain6>
+	 <20120126111149.8386.51043.stgit@localhost6.localdomain6>
+	 <4F314688.5050406@netapp.com>
+In-Reply-To: <4F314688.5050406@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_585BF81B-EBB0-4F96-B0AC-730CD68B959E
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=windows-1252
-
-
-On Feb 8, 2012, at 12:26 PM, Chuck Lever wrote:
-
-> Hi-
->=20
-> On Feb 8, 2012, at 12:10 PM, Weston Andros Adamson wrote:
->=20
->> The per-op stats displayed in /self/proc/mountstats are collected in =
-the sunrpc
->=20
-> You mean /proc/self/mountstats here.
-
-oops!
-
->=20
->> layer and are collected per rpc_client.  This has worked for nfs thus =
-far
->> since only one nfs_client was ever associated with a mountpoint, but =
-with
->> NFS4.1+PNFS+filelayout an nfs mount can have more than one =
-nfs_client.
->>=20
->> This can be seen with a pnfs mount where no data server is the same =
-as the MDS -
->> all reads, writes and commits will never make it into the current =
-mountstats
->> output.
->>=20
->> I took the approach of keeping the stats from the MDS and DSs =
-separate in the
->> /proc/self/mountstats output to avoid doing too much in the kernel, =
-and to
->> expose the fact that these stats are from separate connections (maybe =
-for later
->> use).
->>=20
->> This method has issues:
->>=20
->> 1) even changing the "statvers" of mountstats doesn't stop the =
-userland
->>   mountstats(8) from trying to parse this output -- and it does so
->>   incorrectly.
->=20
-> User land is broken then.  :-)
-
-Agreed!
-
->=20
->> 2) when using DS multipath this method fails to count operations that =
-happened
->>   on a different path to the same DS (after a failure).
-
-I should have noted that this isn't a problem yet because I haven't =
-submitted the multipath failover patches :)
-
->>=20
->> 3) currently this will display stats twice when DS =3D=3D MDS.
->=20
-> Why is this case hard to detect in the kernel or in mountstats?
-
-Not hard, just an issue with the current patch.
-
->=20
->>=20
->> So... What should I do here?
->>=20
->> A different approach is to add support in net/sunrpc to specify a =
-"parent"
->> stat structure so that operations on DS nfs_clients bump stats on
->> the main nfs_server->nfs_client->rpc_client.  This would take care of =
-all the
->> issues with the current patch, but seems like a hack.
->=20
-> Is this the same as displaying all data in one set of stats?
-
-Yes
-
->=20
-> Seems like that might be the best next step, then we can split up the =
-MDS and DS stats at some later point.
-
-Ok, I'll try to do that.
-
-Any advice on how to handle the "xprt: =85" line?  Obviously the =
-different underlying rpc_clients will have different values.  I'd have =
-to look at mountstats(8) some more, but I *think* we could just make it =
-a comma separated list.
-
-For the 'next step', we can use this patch - we just need to figure out =
-where it should go.  Do we keep it in /proc/self/mountstats?  I think =
-because of problem #2 we might want to move them out to somewhere in =
-/proc/fs/nfsfs/ along with other per-DS statistics.
-
->=20
->> One task that seems like a good thing to do is to fix mountstats(8) =
-to respect
->> the "statsvers" value.
->=20
-> Agree.
-
-I'll do this first.
-
-Thanks Chuck!
-
--dros
-
->=20
->>=20
->> Thoughts?
->> ---
->>=20
->> I cleaned up this patch, but I still have reservations (noted in =
-commit message)
->>=20
->> fs/nfs/nfs4filelayout.c    |   23 +++++++++++++++++++++++
->> fs/nfs/pnfs.h              |   20 ++++++++++++++++++++
->> fs/nfs/pnfs_dev.c          |   25 +++++++++++++++++++++++++
->> fs/nfs/super.c             |    1 +
->> include/linux/nfs_iostat.h |    2 +-
->> 5 files changed, 70 insertions(+), 1 deletions(-)
->>=20
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 79be7ac..9410fd0 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -33,6 +33,8 @@
->> #include <linux/nfs_page.h>
->> #include <linux/module.h>
->>=20
->> +#include <linux/sunrpc/metrics.h>
->> +
->> #include "internal.h"
->> #include "nfs4filelayout.h"
->>=20
->> @@ -918,6 +920,26 @@ filelayout_free_deveiceid_node(struct =
-nfs4_deviceid_node *d)
->> 	nfs4_fl_free_deviceid(container_of(d, struct =
-nfs4_file_layout_dsaddr, id_node));
->> }
->>=20
->> +static void
->> +filelayout_rpc_print_iostats(struct seq_file *m, struct =
-nfs4_deviceid_node *d)
->> +{
->> +	struct nfs4_file_layout_dsaddr *dsaddr;
->> +	struct nfs4_pnfs_ds *ds;
->> +	u32 i;
->> +
->> +	dsaddr =3D container_of(d, struct nfs4_file_layout_dsaddr, =
-id_node);
->> +
->> +	for (i =3D 0; i < dsaddr->ds_num; i++) {
->> +		ds =3D dsaddr->ds_list[i];
->> +
->> +		if (ds && ds->ds_clp) {
->> +			seq_printf(m, "  pnfs dataserver %s\n",
->> +				   ds->ds_remotestr);
->> +			rpc_print_iostats(m, ds->ds_clp->cl_rpcclient);
->> +		}
->> +	}
->> +}
->> +
->> static struct pnfs_layoutdriver_type filelayout_type =3D {
->> 	.id			=3D LAYOUT_NFSV4_1_FILES,
->> 	.name			=3D "LAYOUT_NFSV4_1_FILES",
->> @@ -932,6 +954,7 @@ static struct pnfs_layoutdriver_type =
-filelayout_type =3D {
->> 	.read_pagelist		=3D filelayout_read_pagelist,
->> 	.write_pagelist		=3D filelayout_write_pagelist,
->> 	.free_deviceid_node	=3D filelayout_free_deveiceid_node,
->> +	.ds_rpc_print_iostats	=3D filelayout_rpc_print_iostats,
->> };
->>=20
->> static int __init nfs4filelayout_init(void)
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 53d593a..0a5e020 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -119,6 +119,9 @@ struct pnfs_layoutdriver_type {
->> 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
->> 				     struct xdr_stream *xdr,
->> 				     const struct nfs4_layoutcommit_args =
-*args);
->> +
->> +	void (*ds_rpc_print_iostats) (struct seq_file *,
->> +				      struct nfs4_deviceid_node *);
->> };
->>=20
->> struct pnfs_layout_hdr {
->> @@ -239,6 +242,10 @@ void nfs4_init_deviceid_node(struct =
-nfs4_deviceid_node *,
->> struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct =
-nfs4_deviceid_node *);
->> bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
->> void nfs4_deviceid_purge_client(const struct nfs_client *);
->> +void nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
->> +				     const struct nfs_client *clp,
->> +				     const struct pnfs_layoutdriver_type =
-*ld);
->> +
->>=20
->> static inline int lo_fail_bit(u32 iomode)
->> {
->> @@ -328,6 +335,14 @@ static inline int pnfs_return_layout(struct =
-inode *ino)
->> 	return 0;
->> }
->>=20
->> +static inline void
->> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
->> +{
->> +	if (!pnfs_enabled_sb(nfss))
->> +		return;
->> +	nfs4_deviceid_rpc_print_iostats(m, nfss->nfs_client,
->> +					nfss->pnfs_curr_ld);
->> +}
->> #else  /* CONFIG_NFS_V4_1 */
->>=20
->> static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
->> @@ -429,6 +444,11 @@ static inline int pnfs_layoutcommit_inode(struct =
-inode *inode, bool sync)
->> static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
->> {
->> }
->> +
->> +static inline void
->> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
->> +{
->> +}
->> #endif /* CONFIG_NFS_V4_1 */
->>=20
->> #endif /* FS_NFS_PNFS_H */
->> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
->> index 4f359d2..277de87 100644
->> --- a/fs/nfs/pnfs_dev.c
->> +++ b/fs/nfs/pnfs_dev.c
->> @@ -115,6 +115,31 @@ nfs4_find_get_deviceid(const struct =
-pnfs_layoutdriver_type *ld,
->> }
->> EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
->>=20
->> +
->> +void
->> +nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
->> +				const struct nfs_client *clp,
->> +				const struct pnfs_layoutdriver_type *ld)
->> +{
->> +	struct nfs4_deviceid_node *d;
->> +	struct hlist_node *n;
->> +	long h;
->> +
->> +	if (!ld->ds_rpc_print_iostats)
->> +		return;
->> +
->> +	rcu_read_lock();
->> +	for (h =3D 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++) {
->> +		hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[h], =
-node)
->> +			if (d->ld =3D=3D ld && d->nfs_client =3D=3D clp) =
-{
->> +				if (atomic_read(&d->ref))
->> +					ld->ds_rpc_print_iostats(seq, =
-d);
->> +			}
->> +	}
->> +	rcu_read_unlock();
->> +}
->> +EXPORT_SYMBOL_GPL(nfs4_deviceid_rpc_print_iostats);
->> +
->> /*
->> * Remove a deviceid from cache
->> *
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index d18a90b..453e496 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -871,6 +871,7 @@ static int nfs_show_stats(struct seq_file *m, =
-struct dentry *root)
->> 	seq_printf(m, "\n");
->>=20
->> 	rpc_print_iostats(m, nfss->client);
->> +	pnfs_rpc_print_iostats(m, nfss);
->>=20
->> 	return 0;
->> }
->> diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
->> index 8866bb3..7fe4605 100644
->> --- a/include/linux/nfs_iostat.h
->> +++ b/include/linux/nfs_iostat.h
->> @@ -21,7 +21,7 @@
->> #ifndef _LINUX_NFS_IOSTAT
->> #define _LINUX_NFS_IOSTAT
->>=20
->> -#define NFS_IOSTAT_VERS		"1.0"
->> +#define NFS_IOSTAT_VERS		"2.0"
->>=20
->> /*
->> * NFS byte counters
->> --=20
->> 1.7.4.4
->>=20
->=20
-> --=20
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->=20
->=20
->=20
->=20
-
-
---Apple-Mail=_585BF81B-EBB0-4F96-B0AC-730CD68B959E
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAyMDgyMTA0NThaMCMGCSqGSIb3DQEJBDEWBBQEgUm1A/H5X9Ze
-rWF0xaXrqaY9czANBgkqhkiG9w0BAQEFAASCAQCLhYxSZjw+FPw3yJs7wLCF/MJV+EvAUB8HfBZm
-ZGQAWFJLZHnI7EpMzTwk9Mm80ERjYwfAY0P9a+QhqVSCtrOwBBqquQ2kH0znE8TeDe8feI1iZ9Mc
-QTbr/hfUjrTw1kAw1StUH6Kljb6oUDucl4l36SFsM2lKDOd+VpuXH+em/H6Z5sZmsMy0lULY/7Ry
-z97la6U53mHKmYalC4ojJl4VJHHHxGONuYdTKz+8J5SS0k3bpXcn0NShwBjfYdkayb8B4SF442Be
-lYaKkLB6o5+fiYub9BQDvi4A7i0K82oOC7W6y47F1y5/LdbOFjemQGUQBP2MpolJhN7vIC11ZhqY
-AAAAAAAA
-
---Apple-Mail=_585BF81B-EBB0-4F96-B0AC-730CD68B959E--
+T24gVHVlLCAyMDEyLTAyLTA3IGF0IDEwOjQzIC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDAxLzI2LzEyIDA2OjExLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gDQo+
+ID4gTmV0d29yayBuYW1lc3BhY2UgaXMgdGFrZW4gZnJvbSByZXF1ZXN0IHRyYW5zcG9ydCBhbmQg
+cGFzc2VkIGFzIGEgcGFydCBvZg0KPiA+IGNiX3Byb2Nlc3Nfc3RhdGUgc3RydWN0dXJlLg0KPiA+
+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xhdiBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBw
+YXJhbGxlbHMuY29tPg0KPiA+IA0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvY2FsbGJhY2suaCAgICAg
+IHwgICAgMSArDQo+ID4gIGZzL25mcy9jYWxsYmFja19wcm9jLmMgfCAgICAyICstDQo+ID4gIGZz
+L25mcy9jYWxsYmFja194ZHIuYyAgfCAgICAxICsNCj4gPiAgZnMvbmZzL2NsaWVudC5jICAgICAg
+ICB8ICAgIDQgKystLQ0KPiA+ICBmcy9uZnMvaW50ZXJuYWwuaCAgICAgIHwgICAgMyArKy0NCj4g
+PiAgNSBmaWxlcyBjaGFuZ2VkLCA3IGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0pDQo+ID4g
+DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jYWxsYmFjay5oIGIvZnMvbmZzL2NhbGxiYWNrLmgN
+Cj4gPiBpbmRleCBjODlkM2I5Li4xOTdlMGQzIDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9jYWxs
+YmFjay5oDQo+ID4gKysrIGIvZnMvbmZzL2NhbGxiYWNrLmgNCj4gPiBAQCAtMzksNiArMzksNyBA
+QCBzdHJ1Y3QgY2JfcHJvY2Vzc19zdGF0ZSB7DQo+ID4gIAlfX2JlMzIJCQlkcmNfc3RhdHVzOw0K
+PiA+ICAJc3RydWN0IG5mc19jbGllbnQJKmNscDsNCj4gPiAgCWludAkJCXNsb3RpZDsNCj4gPiAr
+CXN0cnVjdCBuZXQJCSpuZXQ7DQo+ID4gIH07DQo+ID4gIA0KPiA+ICBzdHJ1Y3QgY2JfY29tcG91
+bmRfaGRyX2FyZyB7DQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jYWxsYmFja19wcm9jLmMgYi9m
+cy9uZnMvY2FsbGJhY2tfcHJvYy5jDQo+ID4gaW5kZXggMGU2ZTYzZi4uZjcxOTc4ZCAxMDA2NDQN
+Cj4gPiAtLS0gYS9mcy9uZnMvY2FsbGJhY2tfcHJvYy5jDQo+ID4gKysrIGIvZnMvbmZzL2NhbGxi
+YWNrX3Byb2MuYw0KPiA+IEBAIC00NjEsNyArNDYxLDcgQEAgX19iZTMyIG5mczRfY2FsbGJhY2tf
+c2VxdWVuY2Uoc3RydWN0IGNiX3NlcXVlbmNlYXJncyAqYXJncywNCj4gPiAgCWludCBpOw0KPiA+
+ICAJX19iZTMyIHN0YXR1cyA9IGh0b25sKE5GUzRFUlJfQkFEU0VTU0lPTik7DQo+ID4gIA0KPiA+
+IC0JY2xwID0gbmZzNF9maW5kX2NsaWVudF9zZXNzaW9uaWQoYXJncy0+Y3NhX2FkZHIsICZhcmdz
+LT5jc2Ffc2Vzc2lvbmlkKTsNCj4gPiArCWNscCA9IG5mczRfZmluZF9jbGllbnRfc2Vzc2lvbmlk
+KGNwcy0+bmV0LCBhcmdzLT5jc2FfYWRkciwgJmFyZ3MtPmNzYV9zZXNzaW9uaWQpOw0KPiA+ICAJ
+aWYgKGNscCA9PSBOVUxMKQ0KPiA+ICAJCWdvdG8gb3V0Ow0KPiA+ICANCj4gPiBkaWZmIC0tZ2l0
+IGEvZnMvbmZzL2NhbGxiYWNrX3hkci5jIGIvZnMvbmZzL2NhbGxiYWNrX3hkci5jDQo+ID4gaW5k
+ZXggZjJiZTNlMWUuLjhjMmE5NjkgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL2NhbGxiYWNrX3hk
+ci5jDQo+ID4gKysrIGIvZnMvbmZzL2NhbGxiYWNrX3hkci5jDQo+ID4gQEAgLTg2MSw2ICs4NjEs
+NyBAQCBzdGF0aWMgX19iZTMyIG5mczRfY2FsbGJhY2tfY29tcG91bmQoc3RydWN0IHN2Y19ycXN0
+ICpycXN0cCwgdm9pZCAqYXJncCwgdm9pZCAqcg0KPiA+ICAJCS5kcmNfc3RhdHVzID0gMCwNCj4g
+PiAgCQkuY2xwID0gTlVMTCwNCj4gPiAgCQkuc2xvdGlkID0gLTEsDQo+ID4gKwkJLm5ldCA9IHJx
+c3RwLT5ycV94cHJ0LT54cHRfbmV0LA0KPiA+ICAJfTsNCj4gPiAgCXVuc2lnbmVkIGludCBub3Bz
+ID0gMDsNCj4gPiAgDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9j
+bGllbnQuYw0KPiA+IGluZGV4IDllMTFkMjkuLjIzMjhkY2IgMTAwNjQ0DQo+ID4gLS0tIGEvZnMv
+bmZzL2NsaWVudC5jDQo+ID4gKysrIGIvZnMvbmZzL2NsaWVudC5jDQo+ID4gQEAgLTEyMzIsMTEg
+KzEyMzIsMTEgQEAgbmZzNF9maW5kX2NsaWVudF9pZGVudChzdHJ1Y3QgbmV0ICpuZXQsIGludCBj
+Yl9pZGVudCkNCj4gPiAgICogUmV0dXJucyBOVUxMIGlmIG5vIHN1Y2ggY2xpZW50DQo+ID4gICAq
+Lw0KPiA+ICBzdHJ1Y3QgbmZzX2NsaWVudCAqDQo+ID4gLW5mczRfZmluZF9jbGllbnRfc2Vzc2lv
+bmlkKGNvbnN0IHN0cnVjdCBzb2NrYWRkciAqYWRkciwNCj4gPiArbmZzNF9maW5kX2NsaWVudF9z
+ZXNzaW9uaWQoc3RydWN0IG5ldCAqbmV0LCBjb25zdCBzdHJ1Y3Qgc29ja2FkZHIgKmFkZHIsDQo+
+ID4gIAkJCSAgIHN0cnVjdCBuZnM0X3Nlc3Npb25pZCAqc2lkKQ0KPiA+ICB7DQo+ID4gIAlzdHJ1
+Y3QgbmZzX2NsaWVudCAqY2xwOw0KPiA+IC0Jc3RydWN0IG5mc19uZXQgKm5uID0gbmV0X2dlbmVy
+aWMoJmluaXRfbmV0LCBuZnNfbmV0X2lkKTsNCj4gPiArCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5l
+dF9nZW5lcmljKG5ldCwgbmZzX25ldF9pZCk7DQo+IA0KPiANCj4gSGksDQo+IA0KPiBZb3UgY2hh
+bmdlZCB0aGlzIGZ1bmN0aW9uIGZvciB0aGUgdjQuMSBjYXNlLCBidXQgbm90IGZvciB2NC4wICh0
+aGlzIGlzIHdoYXQgSSB3YXMgdHJ5aW5nIHRvIGJpc2VjdCBlYXJsaWVyKS4gIFdpdGhvdXQgQ09O
+RklHX05GU19WNF8xIHNldCwgSSBnZXQgdGhpczoNCj4gDQo+ICBtYWtlWzFdOiBOb3RoaW5nIHRv
+IGJlIGRvbmUgZm9yIGBhbGwnLg0KPiAgIENISyAgICAgaW5jbHVkZS9saW51eC92ZXJzaW9uLmgN
+Cj4gICBDSEsgICAgIGluY2x1ZGUvZ2VuZXJhdGVkL3V0c3JlbGVhc2UuaA0KPiAgIENBTEwgICAg
+c2NyaXB0cy9jaGVja3N5c2NhbGxzLnNoDQo+ICAgQ0hLICAgICBpbmNsdWRlL2dlbmVyYXRlZC9j
+b21waWxlLmgNCj4gICBDSEsgICAgIGtlcm5lbC9jb25maWdfZGF0YS5oDQo+ICAgQ0MgW01dICBm
+cy9uZnMvY2xpZW50Lm8NCj4gZnMvbmZzL2NsaWVudC5jOjEyNjU6MTogZXJyb3I6IGNvbmZsaWN0
+aW5nIHR5cGVzIGZvciAnbmZzNF9maW5kX2NsaWVudF9zZXNzaW9uaWQnDQo+IGZzL25mcy9pbnRl
+cm5hbC5oOjE1NToxOiBub3RlOiBwcmV2aW91cyBkZWNsYXJhdGlvbiBvZiAnbmZzNF9maW5kX2Ns
+aWVudF9zZXNzaW9uaWQnIHdhcyBoZXJlDQo+IG1ha2VbMl06ICoqKiBbZnMvbmZzL2NsaWVudC5v
+XSBFcnJvciAxDQo+IG1ha2VbMV06ICoqKiBbZnMvbmZzXSBFcnJvciAyDQo+IG1ha2U6ICoqKiBb
+ZnNdIEVycm9yIDINCg0KVGhhbmtzIGZvciB0cmFja2luZyB0aGlzIGRvd24gQnJ5YW4hDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
+DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
