@@ -1,39 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from che.mayfirst.org ([209.234.253.108]:43156 "EHLO
-	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755798Ab2BMSzZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 13:55:25 -0500
-Message-ID: <4F395C90.8030009@fifthhorseman.net>
-Date: Mon, 13 Feb 2012 13:55:12 -0500
-From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Reply-To: "debian-backports@lists.debian.org"
-	  <debian-backports@lists.debian.org>
-MIME-Version: 1.0
-To: whats_up@gmx.net
-CC: linux-nfs@vger.kernel.org,
-        "debian-backports@lists.debian.org"
-	<debian-backports@lists.debian.org>
-Subject: Re: mount hangs in NFS4+Kerberos setup
-References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon> <jhaq04$pev$1@ultimate100.geggus.net> <20120213195053.0db35dd9@little-poseidon>
-In-Reply-To: <20120213195053.0db35dd9@little-poseidon>
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor2.suse.de ([195.135.220.15]:56090 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753820Ab2BGBVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Feb 2012 20:21:42 -0500
+Date: Tue, 7 Feb 2012 12:21:26 +1100
+From: NeilBrown <neilb@suse.de>
+To: David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Man page update for 'fsc' and 'nofsc'.
+Message-ID: <20120207122126.32db1c5f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/wnIK24sZKr_Q6Pj0zA63=vv"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/13/2012 01:50 PM, whats_up@gmx.net wrote:
-> 
-> - include squeeze-backports and upgrade nfs-common, nfs-kernel-server
->   to version 1.2.4 and Linux kernel to 3.2
-> - replace portmap by rpcbind
-> - install version 0.2.2 of libtirpc from unstable (forced new libc6)
+--Sig_/wnIK24sZKr_Q6Pj0zA63=vv
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-It sounds like you'd like to request a backport of libtirpc to
-squeeze-backports.  is that right?  that is best done on the debian
-backports mailing list (cc'ed here)
 
-I've set reply-to debian-backports@lists.debian.org, so please follow up
-there if you'd like to see this package backported.
+Hi,
+ I note that Linux NFS accepts 'fsc' and 'nofsc' mount options, but the
+  nfs.man
+ in nfs-utils doesn't mention them.
 
-Regards,
+ Is someone able/willing to write an update for the man page??
 
-	--dkg
+Thanks,
+NeilBrown
+
+--Sig_/wnIK24sZKr_Q6Pj0zA63=vv
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBTzB8ljnsnt1WYoG5AQI8Tw/8DI+ktF42xDtPvrFWTluiI1TQ85x/SHH9
+xkVcsvYbhI1zdlk9DBi/mJg/x7WIWI+XfikLffiX0XBsP//9yVjvJqyFkSTsqEYt
+aMPzDRJkBiy5Q1bwnj9BtUOUkPb1zdKwIYUbXxEwl4PMyFIyTK43GpgVdfft/ix6
+skrSHHYeiF3cK/wva72dbQf9Y8kstpe2+whaqlUDGxcSmIRA0fwuFGNbTCtb6iom
+xw5CaeV2pCothJYOJv4dmZ0zZuX1Qk4S18DlUOCXqqCx+bU/G2had2FAEOgNGamY
+NN3vBQemhyB0Kj9BdqT4n61neYGsyM9Q+SyXjVb6kWVhLAJNKnqCGX8c1zSqLpcC
+DXiW2FVhzo/z2sBXs4ok1cSv6IlDhIMQlbXqKsWgh2eyL9txASREbF93kIKX41ui
+ia7toH3y6b6WkXJ30R0EppJ06EfGrqA54yBbx60aIh9EczBc1hGnj81ffzxim/JL
+iLGo56nR4vPGb0YzI/tTmcEBz2mMIz/vDDGzzWumb4Qcpf8q95Wa3Zin40pqr4T0
+xV04QvR4MwL3pMYSX+nZ2ng0ijiuN8Gf16+A321LF0mhCkk39K/BHYDpg+xYdQTs
+lzg4pqVrRNZFvVZ2/vg+wpihUGyWkQl9r1nTshjnGcy5wAmb7HEVr3ijq0FL6LDc
+2WCLZ7dZgjE=
+=iaPz
+-----END PGP SIGNATURE-----
+
+--Sig_/wnIK24sZKr_Q6Pj0zA63=vv--
