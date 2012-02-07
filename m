@@ -1,127 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37882 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63351 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755987Ab2BCUpp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 15:45:45 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: Fix comparison between DS address lists
-Date: Fri,  3 Feb 2012 15:45:40 -0500
-Message-Id: <1328301940-478-1-git-send-email-dros@netapp.com>
+	id S1754563Ab2BGSsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 13:48:19 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
+Date: Tue, 7 Feb 2012 18:48:03 +0000
+Message-ID: <1328640482.4124.29.camel@lade.trondhjem.org>
+References: <1328633351-1741-1-git-send-email-dros@netapp.com>
+	 <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com>
+	 <4F316BC4.4030504@panasas.com>
+	 <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
+	 <1328640084.4124.26.camel@lade.trondhjem.org>
+In-Reply-To: <1328640084.4124.26.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-data_server_cache entries should only be treated as the same if the address
-list hasn't changed.
-
-A new entry will be made when an MDS changes an address list (as seen by
-GETDEVINFO). The old entry will be freed once all references are gone.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |   71 +++++++++++++++-----------------------------
- 1 files changed, 24 insertions(+), 47 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 6eb59b0..420e748 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -108,58 +108,40 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
- 	return false;
- }
- 
--/*
-- * Lookup DS by addresses.  The first matching address returns true.
-- * nfs4_ds_cache_lock is held
-- */
--static struct nfs4_pnfs_ds *
--_data_server_lookup_locked(struct list_head *dsaddrs)
-+bool
-+_same_data_server_addrs_locked(const struct list_head *dsaddrs1,
-+			       const struct list_head *dsaddrs2)
- {
--	struct nfs4_pnfs_ds *ds;
- 	struct nfs4_pnfs_ds_addr *da1, *da2;
- 
--	list_for_each_entry(da1, dsaddrs, da_node) {
--		list_for_each_entry(ds, &nfs4_data_server_cache, ds_node) {
--			list_for_each_entry(da2, &ds->ds_addrs, da_node) {
--				if (same_sockaddr(
--					(struct sockaddr *)&da1->da_addr,
--					(struct sockaddr *)&da2->da_addr))
--					return ds;
--			}
--		}
-+	/* step through both lists, comparing as we go */
-+	for (da1 = list_first_entry(dsaddrs1, typeof(*da1), da_node),
-+	     da2 = list_first_entry(dsaddrs2, typeof(*da2), da_node);
-+	     da1 != NULL && da2 != NULL;
-+	     da1 = list_entry(da1->da_node.next, typeof(*da1), da_node),
-+	     da2 = list_entry(da2->da_node.next, typeof(*da2), da_node)) {
-+		if (!same_sockaddr((struct sockaddr *)&da1->da_addr,
-+				   (struct sockaddr *)&da2->da_addr))
-+			return false;
- 	}
--	return NULL;
-+	if (da1 == NULL && da2 == NULL)
-+		return true;
-+
-+	return false;
- }
- 
- /*
-- * Compare two lists of addresses.
-+ * Lookup DS by addresses.  nfs4_ds_cache_lock is held
-  */
--static bool
--_data_server_match_all_addrs_locked(struct list_head *dsaddrs1,
--				    struct list_head *dsaddrs2)
-+static struct nfs4_pnfs_ds *
-+_data_server_lookup_locked(const struct list_head *dsaddrs)
- {
--	struct nfs4_pnfs_ds_addr *da1, *da2;
--	size_t count1 = 0,
--	       count2 = 0;
--
--	list_for_each_entry(da1, dsaddrs1, da_node)
--		count1++;
--
--	list_for_each_entry(da2, dsaddrs2, da_node) {
--		bool found = false;
--		count2++;
--		list_for_each_entry(da1, dsaddrs1, da_node) {
--			if (same_sockaddr((struct sockaddr *)&da1->da_addr,
--				(struct sockaddr *)&da2->da_addr)) {
--				found = true;
--				break;
--			}
--		}
--		if (!found)
--			return false;
--	}
-+	struct nfs4_pnfs_ds *ds;
- 
--	return (count1 == count2);
-+	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
-+		if (_same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
-+			return ds;
-+	return NULL;
- }
- 
- /*
-@@ -356,11 +338,6 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
- 		dprintk("%s add new data server %s\n", __func__,
- 			ds->ds_remotestr);
- 	} else {
--		if (!_data_server_match_all_addrs_locked(&tmp_ds->ds_addrs,
--							 dsaddrs)) {
--			dprintk("%s:  multipath address mismatch: %s != %s",
--				__func__, tmp_ds->ds_remotestr, remotestr);
--		}
- 		kfree(remotestr);
- 		kfree(ds);
- 		atomic_inc(&tmp_ds->ds_count);
--- 
-1.7.4.4
-
+T24gVHVlLCAyMDEyLTAyLTA3IGF0IDEzOjQxIC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IFRoYXQgc2FpZCwgSSBzZWUgdGhlICd2ZXJzPTQnIGJlaW5nIHJlc2VydmVkIGZvciBhdXRv
+LW5lZ290aWF0aW9uIG9mDQo+IG1pbm9yIHZlcnNpb24sIGFuZCB0aGUgJ3ZlcnM9NC54JyBhcyBy
+ZXF1aXJpbmcgYSBzcGVjaWZpYyBtaW5vciB2ZXJzaW9uDQo+IG51bWJlci4NCj4gVGhlIHdheSBh
+dXRvLW5lZ290aWF0aW9uIGlzIHN1cHBvc2VkIHRvIHdvcmsgaXMgbGFpZCBvdXQgaW4NCj4gUkZD
+MzUzMCgtYmlzKTogdGhlIGNsaWVudCBhdHRlbXB0cyB0aGUgbGFyZ2VzdCBtaW5vciB2ZXJzaW9u
+IHRoYXQgaXQNCj4gc3VwcG9ydHMsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhbiBPSywg
+b3IgYSBNSU5PUl9WRVJTSU9OX01JU01BVENIDQo+IGRlcGVuZGluZyBvbiB3aGV0aGVyIGl0IHN1
+cHBvcnRzIHRoYXQgbWlub3IgdmVyc2lvbiBvciBub3QuIElmIG5vdCwgdGhlDQo+IGNsaWVudCBy
+ZXRyaWVzIHdpdGggdGhlIG5leHQgbGFyZ2VzdCBtaW5vciB2ZXJzaW9uLCAuLi4uIHJpbmNlLCBy
+ZXBlYXQNCj4gdW50aWwgc3VjY2Vzc2Z1bC4uLg0KDQpCVFc6IFRoZXJlIGlzIG5vIHJlYXNvbiB3
+aHkgd2Ugc2hvdWxkIG5lZWQgdG8gZG8gdGhpcyBhdXRvLW5lZ290aWF0aW9uDQppbiBrZXJuZWwg
+c3BhY2UuIEFzIHdlJ3ZlIGxlYXJuZWQgd2l0aCBtYWpvciB2ZXJzaW9uIG5lZ290aWF0aW9uLCBp
+dCBjYW4NCmJlIG1vcmUgZmxleGlibGUgdG8ganVzdCB0ZWFjaCB0aGUgJ21vdW50JyBjb21tYW5k
+IHRvIGRvIHRoZSBhY3R1YWwNCnByb2JpbmcsIHNpbmNlIHRoYXQgYWxsb3dzIHRoZSB1c2VyIGJl
+dHRlciBjb250cm9sIG92ZXIgdGhlIHByb2Nlc3MgdmlhDQpnbG9iYWwgY29uZmlndXJhdGlvbiBm
+aWxlcy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
+DQoNCg==
