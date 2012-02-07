@@ -1,56 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:54811 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754116Ab2BPSRo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:17:44 -0500
-Received: by eekc14 with SMTP id c14so993057eek.19
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:17:42 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 5/5] 4.1 server tests: test NFS4_SHARE_WANT_NO_DELEG
-Date: Thu, 16 Feb 2012 20:17:39 +0200
-Message-Id: <1329416259-21263-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4F3D47B3.1090708@tonian.com>
-References: <4F3D47B3.1090708@tonian.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:32825 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751818Ab2BGSh6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2012 13:37:58 -0500
+Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F316BC4.4030504@panasas.com>
+Date: Tue, 7 Feb 2012 13:37:51 -0500
+Cc: Weston Andros Adamson <dros@netapp.com>, <Trond.Myklebust@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+Message-Id: <38718BB0-83D0-42FF-8E86-E88299B54267@oracle.com>
+References: <1328633351-1741-1-git-send-email-dros@netapp.com> <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com> <4F316BC4.4030504@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- nfs4.1/server41tests/st_delegation.py |   22 ++++++++++++++++++++++
- 1 files changed, 22 insertions(+), 0 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
-index 3b32c74..ac425dc 100644
---- a/nfs4.1/server41tests/st_delegation.py
-+++ b/nfs4.1/server41tests/st_delegation.py
-@@ -142,3 +142,25 @@ def testAnyDeleg(t, env):
-     # Now get OPEN reply
-     res = sess2.listen(slot)
-     checklist(res, [NFS4_OK, NFS4ERR_DELAY])
-+
-+def testNoDeleg(t, env):
-+    """Test no delgation handout
-+
-+    FLAGS: open deleg all
-+    CODE: DELEG4
-+    """
-+    c1 = env.c1.new_client("%s_1" % env.testname(t))
-+    sess1 = c1.create_session()
-+    sess1.compound([op.reclaim_complete(FALSE)])
-+    res = create_file(sess1, env.testname(t),
-+                      access=OPEN4_SHARE_ACCESS_READ |
-+                      OPEN4_SHARE_ACCESS_WANT_NO_DELEG)
-+    check(res)
-+    fh = res.resarray[-1].object
-+    deleg = res.resarray[-2].delegation
-+    if deleg.delegation_type == OPEN_DELEGATE_NONE:
-+        fail("Got no delegation, expected OPEN_DELEGATE_NONE_EXT")
-+    if deleg.delegation_type != OPEN_DELEGATE_NONE_EXT:
-+        fail("Got a delegation (type "+str(deleg.delegation_type)+") despite asking for none")
-+    if deleg.ond_why != WND4_NOT_WANTED:
-+        fail("Wrong reason ("+str(deleg.ond_why)+") for giving no delegation")
+On Feb 7, 2012, at 1:21 PM, Boaz Harrosh wrote:
+
+> On 02/07/2012 06:59 PM, Chuck Lever wrote:
+>> Hi-
+>> 
+>> On Feb 7, 2012, at 11:49 AM, Weston Andros Adamson wrote:
+>>> 
+>>> NFS: add mount options 'v4.0' and 'v4.1'
+> 
+> Good god thanks, that'll be nice.
+> 
+> Why did we have to suffer for 5 years without it? ;-)
+> 
+>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>> ---
+>>> Updated to add 'v4.0' as trond requested.
+>>> 
+>>> We'll talk about this change at connectathon.
+>>> 
+>>> This 'just works' with mount.nfs(8) -- v.* options are passed to the 
+>>> kernel with no modifications needed.
+>> 
+>> I'm more concerned about version auto-negotation.
+>> 
+> 
+> If we are at it can we also have a "this-version-only" option which
+> disables "auto-negotation"
+
+That's what "vers=" already does.  If "vers=" is specified, the mount point uses that version, or the mount operation fails if the server or client doesn't support the requested version.  There is no version negotiation when "vers=" is specified.
+
+What did you have in mind?
+
+> I know that's an hard one
+> 
+> OK we'll talk at CON12.
+> 
+> Thanks Andy
+> Boaz
+> 
+>>> 
+>>> fs/nfs/super.c |   14 +++++++++++++-
+>>> 1 files changed, 13 insertions(+), 1 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index b88e023..d89cee2 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -80,7 +80,7 @@ enum {
+>>> 	Opt_cto, Opt_nocto,
+>>> 	Opt_ac, Opt_noac,
+>>> 	Opt_lock, Opt_nolock,
+>>> -	Opt_v2, Opt_v3, Opt_v4,
+>>> +	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
+>>> 	Opt_udp, Opt_tcp, Opt_rdma,
+>>> 	Opt_acl, Opt_noacl,
+>>> 	Opt_rdirplus, Opt_nordirplus,
+>>> @@ -136,6 +136,8 @@ static const match_table_t nfs_mount_option_tokens = {
+>>> 	{ Opt_v2, "v2" },
+>>> 	{ Opt_v3, "v3" },
+>>> 	{ Opt_v4, "v4" },
+>>> +	{ Opt_v4_0, "v4.0" },
+>>> +	{ Opt_v4_1, "v4.1" },
+>>> 	{ Opt_udp, "udp" },
+>>> 	{ Opt_tcp, "tcp" },
+>>> 	{ Opt_rdma, "rdma" },
+>>> @@ -1172,6 +1174,16 @@ static int nfs_parse_mount_options(char *raw,
+>>> 			mnt->flags &= ~NFS_MOUNT_VER3;
+>>> 			mnt->version = 4;
+>>> 			break;
+>>> +		case Opt_v4_0:
+>>> +			mnt->flags &= ~NFS_MOUNT_VER3;
+>>> +			mnt->version = 4;
+>>> +			mnt->minorversion = 0;
+>>> +			break;
+>>> +		case Opt_v4_1:
+>>> +			mnt->flags &= ~NFS_MOUNT_VER3;
+>>> +			mnt->version = 4;
+>>> +			mnt->minorversion = 1;
+>>> +			break;
+>>> 		case Opt_udp:
+>>> 			mnt->flags &= ~NFS_MOUNT_TCP;
+>>> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+>>> -- 
+>>> 1.7.4.4
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.6.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
