@@ -1,49 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25629 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25714 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753355Ab2BGPe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 10:34:57 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "xemul@parallels.com" <xemul@parallels.com>,
-        "neilb@suse.de" <neilb@suse.de>,
+	id S1756570Ab2BGOJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 09:09:45 -0500
+Message-ID: <4F31308B.1090002@parallels.com>
+Date: Tue, 07 Feb 2012 18:09:15 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
         "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        James Bottomley <jbottomley@parallels.com>,
         "bfields@fieldses.org" <bfields@fieldses.org>,
         "davem@davemloft.net" <davem@davemloft.net>,
         "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 1/4] NFS: make nfs_client_list per net ns
-Date: Tue, 7 Feb 2012 15:34:48 +0000
-Message-ID: <1328628888.4124.16.camel@lade.trondhjem.org>
-References: <20120123172605.29637.15682.stgit@localhost6.localdomain6>
-	 <4F3143F4.3010502@netapp.com>
-In-Reply-To: <4F3143F4.3010502@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Subject: Re: [PATCH 4/4] NFS: make nfs_client_lock per net ns
+References: <20120123172631.29637.17188.stgit@localhost6.localdomain6> <1328622659.4124.3.camel@lade.trondhjem.org>
+In-Reply-To: <1328622659.4124.3.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTA3IGF0IDEwOjMyIC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEkgZml4ZWQgdXAgbXkgYmlzZWN0IGFuZCBpZGVudGlmaWVkIHRoaXMgcGF0Y2ggaW5zdGVh
-ZC4gIFRoZSBwcm9ibGVtIEknbSBzZWVpbmcgaXM6DQo+IA0KPiAgIENDIFtNXSAgZnMvbmZzL2Rl
-bGVnYXRpb24ubw0KPiAgIENDIFtNXSAgZnMvbmZzL2lkbWFwLm8NCj4gZnMvbmZzL2lkbWFwLmM6
-IEluIGZ1bmN0aW9uICdycGNfcGlwZWZzX2V2ZW50JzoNCj4gZnMvbmZzL2lkbWFwLmM6NTM1Ojk6
-IGVycm9yOiBpbXBsaWNpdCBkZWNsYXJhdGlvbiBvZiBmdW5jdGlvbiAnbmV0X2dlbmVyaWMnIFst
-V2Vycm9yPWltcGxpY2l0LWZ1bmN0aW9uLWRlY2xhcmF0aW9uXQ0KPiBmcy9uZnMvaWRtYXAuYzo1
-MzU6NTA6IGVycm9yOiAnbmZzX25ldF9pZCcgdW5kZWNsYXJlZCAoZmlyc3QgdXNlIGluIHRoaXMg
-ZnVuY3Rpb24pDQo+IGZzL25mcy9pZG1hcC5jOjUzNTo1MDogbm90ZTogZWFjaCB1bmRlY2xhcmVk
-IGlkZW50aWZpZXIgaXMgcmVwb3J0ZWQgb25seSBvbmNlIGZvciBlYWNoIGZ1bmN0aW9uIGl0IGFw
-cGVhcnMgaW4NCj4gZnMvbmZzL2lkbWFwLmM6NTQwOjgyOiBlcnJvcjogZGVyZWZlcmVuY2luZyBw
-b2ludGVyIHRvIGluY29tcGxldGUgdHlwZQ0KPiBmcy9uZnMvaWRtYXAuYzo1NDA6MjI0OiBlcnJv
-cjogZGVyZWZlcmVuY2luZyBwb2ludGVyIHRvIGluY29tcGxldGUgdHlwZQ0KPiBjYzE6IHNvbWUg
-d2FybmluZ3MgYmVpbmcgdHJlYXRlZCBhcyBlcnJvcnMNCj4gDQo+IG1ha2VbMl06ICoqKiBbZnMv
-bmZzL2lkbWFwLm9dIEVycm9yIDENCj4gbWFrZVsxXTogKioqIFtmcy9uZnNdIEVycm9yIDINCj4g
-bWFrZTogKioqIFtmc10gRXJyb3IgMg0KPiANCj4gSSB0aGluayB5b3UgbmVlZCB0byBhZGQ6ICNp
-bmNsdWRlICJuZXRucy5oIiB0byBpZG1hcC5jLg0KPiANCj4gLSBCcnlhbg0KDQpUaGF0IHNob3Vs
-ZCBhbHJlYWR5IGJlIHRoZXJlIGluIHRoZSAnZGV2ZWwnIGJyYW5jaC4gU2VlIGNvbW1pdA0KMTcz
-NDdkMDNjMDA4ZTJmNTA0YzMzYmI0OTA1Y2RhZDBhYmMwMTMxOS4NCg0KLS0gDQpUcm9uZCBNeWts
-ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+07.02.2012 17:51, Myklebust, Trond пишет:
+> 8<-------------------------------------------------------------------------
+>  From 5a489156da4fd15dd143f2b21dd9657b97dcef88 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust<Trond.Myklebust@netapp.com>
+> Date: Tue, 7 Feb 2012 00:05:11 -0500
+> Subject: [PATCH] NFS: Initialise the nfs_net->nfs_client_lock
+>
+> Ensure that we initialise the nfs_net->nfs_client_lock spinlock.
+> Also ensure that nfs_server_remove_lists() doesn't try to
+> dereference server->nfs_client before that is initialised.
+>
+
+Sorry.
+Patch looks nice. Except one notice below.
+
+> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
+> Cc: Stanislav Kinsbursky<skinsbursky@parallels.com>
+> ---
+>   fs/nfs/client.c |    6 +++++-
+>   1 files changed, 5 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 1a5cd49..f0dacad 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -1055,8 +1055,11 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+>   static void nfs_server_remove_lists(struct nfs_server *server)
+>   {
+>   	struct nfs_client *clp = server->nfs_client;
+> -	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
+> +	struct nfs_net *nn;
+>
+> +	if (clp == NULL)
+> +		return;
+> +	nn = net_generic(clp->net, nfs_net_id);
+>   	spin_lock(&nn->nfs_client_lock);
+>   	list_del_rcu(&server->client_link);
+>   	if (clp&&  list_empty(&clp->cl_superblocks))
+
+This check for clp != NULL can be removed.
+
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
