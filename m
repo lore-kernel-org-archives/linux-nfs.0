@@ -1,61 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:51531 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799Ab2BERE4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:56 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so1892528eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:56 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v8 05/10] nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-Date: Sun,  5 Feb 2012 18:07:54 +0100
-Message-Id: <1328461679-4108-6-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:53946 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753791Ab2BGQt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 11:49:27 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
+Date: Tue,  7 Feb 2012 11:49:11 -0500
+Message-Id: <1328633351-1741-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
-
-
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+Updated to add 'v4.0' as trond requested.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9a61bbf..66bd005 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1523,21 +1523,24 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTPUBFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTPUBFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTROOTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
-+				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-+				| OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTROOTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
+We'll talk about this change at connectathon.
+
+This 'just works' with mount.nfs(8) -- v.* options are passed to the 
+kernel with no modifications needed.
+
+ fs/nfs/super.c |   14 +++++++++++++-
+ 1 files changed, 13 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b88e023..d89cee2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -80,7 +80,7 @@ enum {
+ 	Opt_cto, Opt_nocto,
+ 	Opt_ac, Opt_noac,
+ 	Opt_lock, Opt_nolock,
+-	Opt_v2, Opt_v3, Opt_v4,
++	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
+ 	Opt_udp, Opt_tcp, Opt_rdma,
+ 	Opt_acl, Opt_noacl,
+ 	Opt_rdirplus, Opt_nordirplus,
+@@ -136,6 +136,8 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_v2, "v2" },
+ 	{ Opt_v3, "v3" },
+ 	{ Opt_v4, "v4" },
++	{ Opt_v4_0, "v4.0" },
++	{ Opt_v4_1, "v4.1" },
+ 	{ Opt_udp, "udp" },
+ 	{ Opt_tcp, "tcp" },
+ 	{ Opt_rdma, "rdma" },
+@@ -1172,6 +1174,16 @@ static int nfs_parse_mount_options(char *raw,
+ 			mnt->flags &= ~NFS_MOUNT_VER3;
+ 			mnt->version = 4;
+ 			break;
++		case Opt_v4_0:
++			mnt->flags &= ~NFS_MOUNT_VER3;
++			mnt->version = 4;
++			mnt->minorversion = 0;
++			break;
++		case Opt_v4_1:
++			mnt->flags &= ~NFS_MOUNT_VER3;
++			mnt->version = 4;
++			mnt->minorversion = 1;
++			break;
+ 		case Opt_udp:
+ 			mnt->flags &= ~NFS_MOUNT_TCP;
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
 -- 
-1.7.7.6
+1.7.4.4
 
