@@ -1,44 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:33656 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750956Ab2BHUbp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 15:31:45 -0500
-Date: Wed, 8 Feb 2012 15:31:40 -0500
-From: Jim Rees <rees@umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
-Message-ID: <20120208203140.GA29238@umich.edu>
-References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120208162322.GA13315@fieldses.org>
- <1328722042.3234.13.camel@lade.trondhjem.org>
- <20120208174901.GA28564@umich.edu>
- <20120208183151.GA14316@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:47318 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756424Ab2BGSlc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 13:41:32 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: Boaz Harrosh <bharrosh@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
+Date: Tue, 7 Feb 2012 18:41:25 +0000
+Message-ID: <1328640084.4124.26.camel@lade.trondhjem.org>
+References: <1328633351-1741-1-git-send-email-dros@netapp.com>
+	 <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com>
+	 <4F316BC4.4030504@panasas.com>
+	 <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
+In-Reply-To: <904F47FA-7497-49DA-B1DF-C113ACB26059@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120208183151.GA14316@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-
-  On Wed, Feb 08, 2012 at 12:49:01PM -0500, Jim Rees wrote:
-  > Myklebust, Trond wrote:
-  > 
-  >   10GigE + high latencies is exactly where we're seeing the value. Andy
-  >   has been working with the high energy physics community doing NFS
-  >   traffic between the US and CERN...
-  > 
-  > CITI to CERN is just over 120ms.  I don't know what it would be from Andy's
-  > house.  Does he have 10G at home yet?
-  
-  That still seems short of what you'd need to get a 255MB bandwidth-delay
-  product.
-  
-  I'm just curious what the experiment is here and whether there's a
-  possibility the real problem is elsewhere.
-
-In my opinion, any fix that involves allocating multiple parallel data
-streams (rpc slots, tcp connections) is masking the real problem.  But it's
-an effective fix.
+T24gVHVlLCAyMDEyLTAyLTA3IGF0IDE4OjMwICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBGZWIgNywgMjAxMiwgYXQgMToyMSBQTSwgQm9heiBIYXJyb3NoIHdyb3RlOg0KPiANCj4g
+PiBPbiAwMi8wNy8yMDEyIDA2OjU5IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gSGktDQo+
+ID4+IA0KPiA+PiBPbiBGZWIgNywgMjAxMiwgYXQgMTE6NDkgQU0sIFdlc3RvbiBBbmRyb3MgQWRh
+bXNvbiB3cm90ZToNCj4gPj4+IA0KPiA+Pj4gTkZTOiBhZGQgbW91bnQgb3B0aW9ucyAndjQuMCcg
+YW5kICd2NC4xJw0KPiA+IA0KPiA+IEdvb2QgZ29kIHRoYW5rcywgdGhhdCdsbCBiZSBuaWNlLg0K
+PiA+IA0KPiA+IFdoeSBkaWQgd2UgaGF2ZSB0byBzdWZmZXIgZm9yIDUgeWVhcnMgd2l0aG91dCBp
+dD8gOy0pDQo+ID4gDQo+ID4+PiBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+PGRyb3NAbmV0YXBwLmNvbT4NCj4gPj4+IC0tLQ0KPiA+Pj4gVXBkYXRlZCB0byBhZGQgJ3Y0LjAn
+IGFzIHRyb25kIHJlcXVlc3RlZC4NCj4gPj4+IA0KPiA+Pj4gV2UnbGwgdGFsayBhYm91dCB0aGlz
+IGNoYW5nZSBhdCBjb25uZWN0YXRob24uDQo+ID4+PiANCj4gPj4+IFRoaXMgJ2p1c3Qgd29ya3Mn
+IHdpdGggbW91bnQubmZzKDgpIC0tIHYuKiBvcHRpb25zIGFyZSBwYXNzZWQgdG8gdGhlIA0KPiA+
+Pj4ga2VybmVsIHdpdGggbm8gbW9kaWZpY2F0aW9ucyBuZWVkZWQuDQo+ID4+IA0KPiA+PiBJJ20g
+bW9yZSBjb25jZXJuZWQgYWJvdXQgdmVyc2lvbiBhdXRvLW5lZ290YXRpb24uDQo+ID4+IA0KPiA+
+IA0KPiA+IElmIHdlIGFyZSBhdCBpdCBjYW4gd2UgYWxzbyBoYXZlIGEgInRoaXMtdmVyc2lvbi1v
+bmx5IiBvcHRpb24gd2hpY2gNCj4gPiBkaXNhYmxlcyAiYXV0by1uZWdvdGF0aW9uIg0KPiANCj4g
+VHJvbmQgc2VlbXMgdG8gaGF2ZSBhIHBsYW4gZm9yIHRoaXMuICBJJ2xsIGRlZmVyIHRvIGhpbS4N
+Cg0KVGhhdCdzIGEgbG9uZ2VyIHRlcm0gZWZmb3J0LiBJIGRvbid0IHRoaW5rIHdlIG5lZWQgdG8g
+Y2FyZSB1bnRpbCB3ZSdyZQ0KcmVhZHkgdG8gdGFrZSBORlN2NC4xIG91dCBvZiBFWFBFUklNRU5U
+QUwgc3RhdHVzLg0KDQpUaGF0IHNhaWQsIEkgc2VlIHRoZSAndmVycz00JyBiZWluZyByZXNlcnZl
+ZCBmb3IgYXV0by1uZWdvdGlhdGlvbiBvZg0KbWlub3IgdmVyc2lvbiwgYW5kIHRoZSAndmVycz00
+LngnIGFzIHJlcXVpcmluZyBhIHNwZWNpZmljIG1pbm9yIHZlcnNpb24NCm51bWJlci4NClRoZSB3
+YXkgYXV0by1uZWdvdGlhdGlvbiBpcyBzdXBwb3NlZCB0byB3b3JrIGlzIGxhaWQgb3V0IGluDQpS
+RkMzNTMwKC1iaXMpOiB0aGUgY2xpZW50IGF0dGVtcHRzIHRoZSBsYXJnZXN0IG1pbm9yIHZlcnNp
+b24gdGhhdCBpdA0Kc3VwcG9ydHMsIGFuZCB0aGUgc2VydmVyIHJlcGxpZXMgd2l0aCBhbiBPSywg
+b3IgYSBNSU5PUl9WRVJTSU9OX01JU01BVENIDQpkZXBlbmRpbmcgb24gd2hldGhlciBpdCBzdXBw
+b3J0cyB0aGF0IG1pbm9yIHZlcnNpb24gb3Igbm90LiBJZiBub3QsIHRoZQ0KY2xpZW50IHJldHJp
+ZXMgd2l0aCB0aGUgbmV4dCBsYXJnZXN0IG1pbm9yIHZlcnNpb24sIC4uLi4gcmluY2UsIHJlcGVh
+dA0KdW50aWwgc3VjY2Vzc2Z1bC4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
