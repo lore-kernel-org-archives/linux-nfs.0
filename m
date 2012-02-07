@@ -1,48 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:62135 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754086Ab2BPSDg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:03:36 -0500
-Received: by eekc14 with SMTP id c14so981791eek.19
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:03:35 -0800 (PST)
-Message-ID: <4F3D44F3.4000903@tonian.com>
-Date: Thu, 16 Feb 2012 20:03:31 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from tundra.namei.org ([65.99.196.166]:41653 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755533Ab2BGX3p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 18:29:45 -0500
+Date: Wed, 8 Feb 2012 10:29:39 +1100 (EST)
+From: James Morris <jmorris@namei.org>
+To: Steve Dickson <steved@redhat.com>
+cc: Linux Keyring Mailing list <keyrings@linux-nfs.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Make keys writable on the idmap keyring.
+In-Reply-To: <1328619733-30859-1-git-send-email-steved@redhat.com>
+Message-ID: <alpine.LRH.2.02.1202081029000.777@tundra.namei.org>
+References: <1328619733-30859-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: wireshark decoding of nfsv4.1
-References: <4F3D333A.1000108@tonian.com> <20120216170019.GC6749@pad.fieldses.org>
-In-Reply-To: <20120216170019.GC6749@pad.fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-02-16 19:00, J. Bruce Fields wrote:
-> On Thu, Feb 16, 2012 at 06:47:54PM +0200, Benny Halevy wrote:
->> I stumbled upon a bug in wireshark decoding of NFSv4.1 open res
->> when delegation_type==OPEN_DELEGATE_NONE_EXT where od_whynone
->> seems to be ignored.
->>
->> Who owns that code nowadays?
-> 
-> I don't know, I see a lot of 4.1 problems, and I don't know if it's the
-> wireshark version in my distro or if the problems are in upstream.  I
-> haven't had time to fool with it in a few years.
-> 
->> There seems to be a bug in pynfs in this area as well
->> which I'm trying to debug.
-> 
-> That doesn't sound familiar to me.
+Should this go in via the NFS tree?  I can put it into the security tree 
+otherwise.
 
-Apparently the bug was in my server xdr encoding code.
-I just submitted a patch to fix that.
 
-Benny
+On Tue, 7 Feb 2012, Steve Dickson wrote:
 
+> To take advantage of the "Allow special keyrings to be
+> cleared" keyring patch the NFS keyring has to be writeable.
 > 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/idmap.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+> index a1bbf77..1d88cdb 100644
+> --- a/fs/nfs/idmap.c
+> +++ b/fs/nfs/idmap.c
+> @@ -269,7 +269,7 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
+>  	}
+>  
+>  	rcu_read_lock();
+> -	rkey->perm |= KEY_USR_VIEW;
+> +	rkey->perm |= KEY_USR_VIEW|KEY_USR_WRITE;
+>  
+>  	ret = key_validate(rkey);
+>  	if (ret < 0)
+> -- 
+> 1.7.7.5
+> 
+
+-- 
+James Morris
+<jmorris@namei.org>
