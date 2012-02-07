@@ -1,42 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33950 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:54127 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 17:45:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] 4.0 tests: remove 1-second wait on client creation
-Date: Wed, 15 Feb 2012 17:45:17 -0500
-Message-Id: <1329345920-16608-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
-References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+	id S1755655Ab2BGNvI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 08:51:08 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH 4/4] NFS: make nfs_client_lock per net ns
+Date: Tue, 7 Feb 2012 13:51:00 +0000
+Message-ID: <1328622659.4124.3.camel@lade.trondhjem.org>
+References: <20120123172631.29637.17188.stgit@localhost6.localdomain6>
+In-Reply-To: <20120123172631.29637.17188.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-I can't figure out why this wait is necessary, and it slows things down.
-(Noticed while trying to write a race-condition reproducer requiring
-more precise timing.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- nfs4.0/nfs4lib.py |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index c6d6781..7185057 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -293,7 +293,6 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
-         self.cb_control = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-         while 1:
-             try:
--                time.sleep(1)
-                 self.cb_control.connect(('127.0.0.1', self.cb_server.port))
-                 break
-             except socket.error:
--- 
-1.7.5.4
-
+T24gTW9uLCAyMDEyLTAxLTIzIGF0IDE3OjI2ICswMDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gVGhpcyBwYXRjaCBtYWtlcyBuZnNfY2xpZW50c19sb2NrIGFsbG9jYXRlZCBwZXIg
+bmV0d29yayBuYW1lc3BhY2UuIEFsbCBpdGVtcyBpdA0KPiBwcm90ZWN0cyBhcmUgYWxyZWFkeSBu
+ZXR3b3JrIG5hbWVzcGFjZSBhd2FyZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xhdiBL
+aW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KPiANCj4gLS0tDQo+ICBmcy9u
+ZnMvY2xpZW50LmMgICB8ICAgNTEgKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tDQo+ICBmcy9uZnMvaWRtYXAuYyAgICB8ICAgIDQgKystLQ0KPiAgZnMv
+bmZzL2ludGVybmFsLmggfCAgICAzIC0tLQ0KPiAgZnMvbmZzL25ldG5zLmggICAgfCAgICAxICsN
+Cj4gIDQgZmlsZXMgY2hhbmdlZCwgMzIgaW5zZXJ0aW9ucygrKSwgMjcgZGVsZXRpb25zKC0pDQo+
+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2NsaWVudC5jIGIvZnMvbmZzL2NsaWVudC5jDQo+IGlu
+ZGV4IGY1MWIyNzkuLjllMTFkMjkgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9jbGllbnQuYw0KPiAr
+KysgYi9mcy9uZnMvY2xpZW50LmMNCj4gQEAgLTU1MSw3ICs1NTMsNyBAQCBpbnN0YWxsX2NsaWVu
+dDoNCj4gIAkgKiAtIG1ha2Ugc3VyZSBpdCdzIHJlYWR5IGJlZm9yZSByZXR1cm5pbmcNCj4gIAkg
+Ki8NCj4gIGZvdW5kX2NsaWVudDoNCj4gLQlzcGluX3VubG9jaygmbmZzX2NsaWVudF9sb2NrKTsN
+Cj4gKwlzcGluX3VubG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQo+ICANCj4gIAlpZiAobmV3
+KQ0KPiAgCQluZnNfZnJlZV9jbGllbnQobmV3KTsNCj4gQEAgLTEwNDEsMjQgKzEwNDMsMjUgQEAg
+c3RhdGljIHZvaWQgbmZzX3NlcnZlcl9pbnNlcnRfbGlzdHMoc3RydWN0IG5mc19zZXJ2ZXIgKnNl
+cnZlcikNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0K
+PiAgCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9nZW5lcmljKGNscC0+bmV0LCBuZnNfbmV0X2lk
+KTsNCj4gIA0KPiAtCXNwaW5fbG9jaygmbmZzX2NsaWVudF9sb2NrKTsNCj4gKwlzcGluX2xvY2so
+Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiAgCWxpc3RfYWRkX3RhaWxfcmN1KCZzZXJ2ZXItPmNs
+aWVudF9saW5rLCAmY2xwLT5jbF9zdXBlcmJsb2Nrcyk7DQo+ICAJbGlzdF9hZGRfdGFpbCgmc2Vy
+dmVyLT5tYXN0ZXJfbGluaywgJm5uLT5uZnNfdm9sdW1lX2xpc3QpOw0KPiAgCWNsZWFyX2JpdChO
+RlNfQ1NfU1RPUF9SRU5FVywgJmNscC0+Y2xfcmVzX3N0YXRlKTsNCj4gLQlzcGluX3VubG9jaygm
+bmZzX2NsaWVudF9sb2NrKTsNCj4gKwlzcGluX3VubG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7
+DQo+ICANCj4gIH0NCj4gIA0KPiAgc3RhdGljIHZvaWQgbmZzX3NlcnZlcl9yZW1vdmVfbGlzdHMo
+c3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVudCAq
+Y2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0KPiArCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9n
+ZW5lcmljKGNscC0+bmV0LCBuZnNfbmV0X2lkKTsNCj4gIA0KPiAtCXNwaW5fbG9jaygmbmZzX2Ns
+aWVudF9sb2NrKTsNCj4gKwlzcGluX2xvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiAgCWxp
+c3RfZGVsX3JjdSgmc2VydmVyLT5jbGllbnRfbGluayk7DQo+ICAJaWYgKGNscCAmJiBsaXN0X2Vt
+cHR5KCZjbHAtPmNsX3N1cGVyYmxvY2tzKSkNCj4gIAkJc2V0X2JpdChORlNfQ1NfU1RPUF9SRU5F
+VywgJmNscC0+Y2xfcmVzX3N0YXRlKTsNCj4gIAlsaXN0X2RlbCgmc2VydmVyLT5tYXN0ZXJfbGlu
+ayk7DQo+IC0Jc3Bpbl91bmxvY2soJm5mc19jbGllbnRfbG9jayk7DQo+ICsJc3Bpbl91bmxvY2so
+Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiAgDQo+ICAJc3luY2hyb25pemVfcmN1KCk7DQo+ICB9
+DQoNClRoaXMgaHVuayBjYXVzZXMgYW4gT29wcyB3aGVuIG5mc19zZXJ2ZXJfcmVtb3ZlX2xpc3Rz
+IGdldHMgY2FsbGVkIGZyb20NCm5mczRfY3JlYXRlX3NlcnZlcigpLiBJJ3ZlIGFwcGxpZWQgdGhl
+IGZvbGxvd2luZyBwYXRjaCB0byBmaXggaXQgdXAuDQoNCkNoZWVycw0KICBUcm9uZA0KODwtLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tDQpGcm9tIDVhNDg5MTU2ZGE0ZmQxNWRkMTQzZjJiMjFkZDk2NTdiOTdkY2Vm
+ODggTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogVHVlLCA3IEZlYiAyMDEyIDAwOjA1OjExIC0w
+NTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GUzogSW5pdGlhbGlzZSB0aGUgbmZzX25ldC0+bmZzX2Ns
+aWVudF9sb2NrDQoNCkVuc3VyZSB0aGF0IHdlIGluaXRpYWxpc2UgdGhlIG5mc19uZXQtPm5mc19j
+bGllbnRfbG9jayBzcGlubG9jay4NCkFsc28gZW5zdXJlIHRoYXQgbmZzX3NlcnZlcl9yZW1vdmVf
+bGlzdHMoKSBkb2Vzbid0IHRyeSB0bw0KZGVyZWZlcmVuY2Ugc2VydmVyLT5uZnNfY2xpZW50IGJl
+Zm9yZSB0aGF0IGlzIGluaXRpYWxpc2VkLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1
+c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KQ2M6IFN0YW5pc2xhdiBLaW5zYnVyc2t5
+IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KLS0tDQogZnMvbmZzL2NsaWVudC5jIHwgICAg
+NiArKysrKy0NCiAxIGZpbGVzIGNoYW5nZWQsIDUgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMo
+LSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KaW5k
+ZXggMWE1Y2Q0OS4uZjBkYWNhZCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9jbGllbnQuYw0KKysrIGIv
+ZnMvbmZzL2NsaWVudC5jDQpAQCAtMTA1NSw4ICsxMDU1LDExIEBAIHN0YXRpYyB2b2lkIG5mc19z
+ZXJ2ZXJfaW5zZXJ0X2xpc3RzKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIpDQogc3RhdGljIHZv
+aWQgbmZzX3NlcnZlcl9yZW1vdmVfbGlzdHMoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCiB7
+DQogCXN0cnVjdCBuZnNfY2xpZW50ICpjbHAgPSBzZXJ2ZXItPm5mc19jbGllbnQ7DQotCXN0cnVj
+dCBuZnNfbmV0ICpubiA9IG5ldF9nZW5lcmljKGNscC0+bmV0LCBuZnNfbmV0X2lkKTsNCisJc3Ry
+dWN0IG5mc19uZXQgKm5uOw0KIA0KKwlpZiAoY2xwID09IE5VTEwpDQorCQlyZXR1cm47DQorCW5u
+ID0gbmV0X2dlbmVyaWMoY2xwLT5uZXQsIG5mc19uZXRfaWQpOw0KIAlzcGluX2xvY2soJm5uLT5u
+ZnNfY2xpZW50X2xvY2spOw0KIAlsaXN0X2RlbF9yY3UoJnNlcnZlci0+Y2xpZW50X2xpbmspOw0K
+IAlpZiAoY2xwICYmIGxpc3RfZW1wdHkoJmNscC0+Y2xfc3VwZXJibG9ja3MpKQ0KQEAgLTE3Nzcs
+NiArMTc4MCw3IEBAIHZvaWQgbmZzX2NsaWVudHNfaW5pdChzdHJ1Y3QgbmV0ICpuZXQpDQogI2lm
+ZGVmIENPTkZJR19ORlNfVjQNCiAJaWRyX2luaXQoJm5uLT5jYl9pZGVudF9pZHIpOw0KICNlbmRp
+Zg0KKwlzcGluX2xvY2tfaW5pdCgmbm4tPm5mc19jbGllbnRfbG9jayk7DQogfQ0KIA0KICNpZmRl
+ZiBDT05GSUdfUFJPQ19GUw0KLS0gDQoxLjcuNy42DQoNCg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
