@@ -1,87 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw1.uni-kl.de ([131.246.120.220]:58844 "EHLO
-	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752907Ab2BAR7v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 12:59:51 -0500
-Message-ID: <4F297D90.1010509@fastmail.fm>
-Date: Wed, 01 Feb 2012 18:59:44 +0100
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
-MIME-Version: 1.0
-To: Chris Mason <chris.mason@oracle.com>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Gregory Farnum <gregory.farnum@dreamhost.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        lsf-pc@lists.linux-foundation.org
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
- detection
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com> <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net> <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net> <4F283F7A.4020905@itwm.fraunhofer.de> <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com> <20120201164521.GY16796@shiny> <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com> <20120201174131.GD16796@shiny>
-In-Reply-To: <20120201174131.GD16796@shiny>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from acsinet15.oracle.com ([141.146.126.227]:59485 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752090Ab2BGQ7Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Feb 2012 11:59:16 -0500
+Subject: Re: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1328633351-1741-1-git-send-email-dros@netapp.com>
+Date: Tue, 7 Feb 2012 11:59:11 -0500
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <A5356E85-1E22-4C4C-A30C-58A912AE3C9F@oracle.com>
+References: <1328633351-1741-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/01/2012 06:41 PM, Chris Mason wrote:
-> On Wed, Feb 01, 2012 at 10:52:55AM -0600, James Bottomley wrote:
->> On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
->>> On Tue, Jan 31, 2012 at 11:28:26AM -0800, Gregory Farnum wrote:
->>>> On Tue, Jan 31, 2012 at 11:22 AM, Bernd Schubert
->>>> <bernd.schubert@itwm.fraunhofer.de>  wrote:
->>>>> I guess we should talk to developers of other parallel file systems and see
->>>>> what they think about it. I think cephfs already uses data integrity
->>>>> provided by btrfs, although I'm not entirely sure and need to check the
->>>>> code. As I said before, Lustre does network checksums already and *might* be
->>>>> interested.
->>>>
->>>> Actually, right now Ceph doesn't check btrfs' data integrity
->>>> information, but since Ceph doesn't have any data-at-rest integrity
->>>> verification it relies on btrfs if you want that. Integrating
->>>> integrity verification throughout the system is on our long-term to-do
->>>> list.
->>>> We too will be said if using a kernel-level integrity system requires
->>>> using DIO, although we could probably work out a way to do
->>>> "translation" between our own integrity checksums and the
->>>> btrfs-generated ones if we have to (thanks to replication).
->>>
->>> DIO isn't really required, but doing this without synchronous writes
->>> will get painful in a hurry.  There's nothing wrong with letting the
->>> data sit in the page cache after the IO is done though.
->>
->> I broadly agree with this, but even if you do sync writes and cache read
->> only copies, we still have the problem of how we do the read side
->> verification of DIX.  In theory, when you read, you could either get the
->> cached copy or an actual read (which will supply protection
->> information), so for the cached copy we need to return cached protection
->> information implying that we need some way of actually caching it.
->
-> Good point, reading from the cached copy is a lower level of protection
-> because in theory bugs in your scsi drivers could corrupt the pages
-> later on.
+Hi-
 
-But that only matters if the application is going to verify if data are 
-really on disk. For example (client server scenario)
+On Feb 7, 2012, at 11:49 AM, Weston Andros Adamson wrote:
 
-1) client-A writes a page
-2) client-B reads this page
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> Updated to add 'v4.0' as trond requested.
+> 
+> We'll talk about this change at connectathon.
+> 
+> This 'just works' with mount.nfs(8) -- v.* options are passed to the 
+> kernel with no modifications needed.
 
-client-B is simply not interested here where it gets the page from, as 
-long as it gets correct data. The network files system in between also 
-will just be happy existing in-cache crcs for network verification.
-Only if the page is later on dropped from the cache and read again, 
-on-disk crcs matter. If those are bad, one of the layers is going to 
-complain or correct those data.
+I'm more concerned about version auto-negotation.
 
-If the application wants to check data on disk it can either use DIO or 
-alternatively something like fadvsise(DONTNEED_LOCAL_AND_REMOTE) 
-(something I wanted to propose for some time already, at least I'm not 
-happy that posix_fadvise(POSIX_FADV_DONTNEED) is not passed to the file 
-system at all).
+> 
+> fs/nfs/super.c |   14 +++++++++++++-
+> 1 files changed, 13 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index b88e023..d89cee2 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -80,7 +80,7 @@ enum {
+> 	Opt_cto, Opt_nocto,
+> 	Opt_ac, Opt_noac,
+> 	Opt_lock, Opt_nolock,
+> -	Opt_v2, Opt_v3, Opt_v4,
+> +	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
+> 	Opt_udp, Opt_tcp, Opt_rdma,
+> 	Opt_acl, Opt_noacl,
+> 	Opt_rdirplus, Opt_nordirplus,
+> @@ -136,6 +136,8 @@ static const match_table_t nfs_mount_option_tokens = {
+> 	{ Opt_v2, "v2" },
+> 	{ Opt_v3, "v3" },
+> 	{ Opt_v4, "v4" },
+> +	{ Opt_v4_0, "v4.0" },
+> +	{ Opt_v4_1, "v4.1" },
+> 	{ Opt_udp, "udp" },
+> 	{ Opt_tcp, "tcp" },
+> 	{ Opt_rdma, "rdma" },
+> @@ -1172,6 +1174,16 @@ static int nfs_parse_mount_options(char *raw,
+> 			mnt->flags &= ~NFS_MOUNT_VER3;
+> 			mnt->version = 4;
+> 			break;
+> +		case Opt_v4_0:
+> +			mnt->flags &= ~NFS_MOUNT_VER3;
+> +			mnt->version = 4;
+> +			mnt->minorversion = 0;
+> +			break;
+> +		case Opt_v4_1:
+> +			mnt->flags &= ~NFS_MOUNT_VER3;
+> +			mnt->version = 4;
+> +			mnt->minorversion = 1;
+> +			break;
+> 		case Opt_udp:
+> 			mnt->flags &= ~NFS_MOUNT_TCP;
+> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+> -- 
+> 1.7.4.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-Cheers,
-Bernd
+
+
