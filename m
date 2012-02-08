@@ -1,54 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41822 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21654 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754594Ab2BPUfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:35:08 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
-Date: Thu, 16 Feb 2012 20:34:46 +0000
-Message-ID: <1329424486.19793.8.camel@lade.trondhjem.org>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-	 <20120215213451.3254.78502.stgit@ellison.1015granger.net>
-	 <1329421931.4279.22.camel@lade.trondhjem.org>
-	 <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com>
-In-Reply-To: <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1756163Ab2BHVSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:18:44 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 11/17] CacheFiles: Add missing retrieval completions
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:18:33 +0000
+Message-ID: <20120208211833.15607.67455.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTE2IGF0IDE1OjA5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gRmViIDE2LCAyMDEyLCBhdCAyOjUyIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
-Cj4gPiBPbiBXZWQsIDIwMTItMDItMTUgYXQgMTY6MzQgLTA1MDAsIENodWNrIExldmVyIHdyb3Rl
-Og0KPiA+PiBFbGltaW5hdGUgYSBudW1iZXIgb2YgaW1wbGljaXQgdHlwZSBjYXN0cyBpbiBjb21w
-YXJpc29ucywgYW5kIHRoZXNlDQo+ID4+IGNvbXBpbGVyIHdhcm5pbmdzOg0KPiA+PiANCj4gPj4g
-ZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDigJhuZnNfcmVhZGRpcl9jbGVhcl9hcnJheeKAmToN
-Cj4gPj4gZnMvbmZzL2Rpci5jOjI2NDoxNjogd2FybmluZzogY29tcGFyaXNvbiBiZXR3ZWVuIHNp
-Z25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4cHJlc3Npb25zIFstV3NpZ24tY29t
-cGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDigJhuZnNfcmVhZGRpcl9zZWFy
-Y2hfZm9yX2Nvb2tpZeKAmToNCj4gPj4gZnMvbmZzL2Rpci5jOjM1MjoxNjogd2FybmluZzogY29t
-cGFyaXNvbiBiZXR3ZWVuIHNpZ25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4cHJl
-c3Npb25zIFstV3NpZ24tY29tcGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDi
-gJhuZnNfZG9fZmlsbGRpcuKAmToNCj4gPj4gZnMvbmZzL2Rpci5jOjc2OTozODogd2FybmluZzog
-Y29tcGFyaXNvbiBiZXR3ZWVuIHNpZ25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4
-cHJlc3Npb25zIFstV3NpZ24tY29tcGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOjc4MDo5OiB3YXJu
-aW5nOiBjb21wYXJpc29uIGJldHdlZW4gc2lnbmVkIGFuZCB1bnNpZ25lZA0KPiA+PiAJCWludGVn
-ZXIgZXhwcmVzc2lvbnMgWy1Xc2lnbi1jb21wYXJlXQ0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1i
-eTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0tLQ0KPiA+PiAN
-Cj4gPj4gZnMvbmZzL2Rpci5jIHwgICAgMiArLQ0KPiA+PiAxIGZpbGVzIGNoYW5nZWQsIDEgaW5z
-ZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gPj4gaW5kZXggYWMyODk5MC4uODY2MWUxMyAxMDA2
-NDQNCj4gPj4gLS0tIGEvZnMvbmZzL2Rpci5jDQo+ID4+ICsrKyBiL2ZzL25mcy9kaXIuYw0KPiA+
-PiBAQCAtMjA3LDcgKzIwNyw3IEBAIHN0cnVjdCBuZnNfY2FjaGVfYXJyYXlfZW50cnkgew0KPiA+
-PiB9Ow0KPiA+PiANCj4gPj4gc3RydWN0IG5mc19jYWNoZV9hcnJheSB7DQo+ID4+IC0JdW5zaWdu
-ZWQgaW50IHNpemU7DQo+ID4+ICsJaW50IHNpemU7DQo+ID4+IAlpbnQgZW9mX2luZGV4Ow0KPiA+
-PiAJdTY0IGxhc3RfY29va2llOw0KPiA+PiAJc3RydWN0IG5mc19jYWNoZV9hcnJheV9lbnRyeSBh
-cnJheVswXTsNCj4gPj4gDQo+ID4gDQo+ID4gTm9wZS4gVGhhdCdzIGEgY29wLW91dDogYXJyYXkg
-c2l6ZXMgY2Fubm90IGJlIG5lZ2F0aXZlLg0KPiANCj4gVGhhdCdzIHR5cGljYWxseSB0cnVlLCBi
-dXQgSUlSQyB0aGUgYXJyYXkgc2l6ZSBoZXJlIGNhbiBob2xkIGEgIi0xIiBhcyBhIHNwZWNpYWwg
-dmFsdWUuDQoNCg0KV2hlcmUgZG8geW91IHNlZSB0aGF0PyBJJ20gbm90IGZpbmRpbmcgdGhhdCBp
-biB0aGUgdXBzdHJlYW0ga2VybmVsLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+CacheFiles is missing some calls to fscache_retrieval_complete() in the error
+handling/collision paths of its reader functions.
+
+This can be seen by the following assertion tripping in fscache_put_operation()
+whereby the operation being destroyed is still in the in-progress state and has
+not been cancelled or completed:
+
+FS-Cache: Assertion failed
+3 == 5 is false
+------------[ cut here ]------------
+kernel BUG at fs/fscache/operation.c:408!
+invalid opcode: 0000 [#1] SMP
+CPU 2
+Modules linked in: xfs ioatdma dca loop joydev evdev
+psmouse dcdbas pcspkr serio_raw i5000_edac edac_core i5k_amb shpchp
+pci_hotplug sg sr_mod]
+
+Pid: 8062, comm: httpd Not tainted 3.1.0-rc8 #1 Dell Inc. PowerEdge 1950/0DT097
+RIP: 0010:[<ffffffff81197b24>]  [<ffffffff81197b24>] fscache_put_operation+0x304/0x330
+RSP: 0018:ffff880062f739d8  EFLAGS: 00010296
+RAX: 0000000000000025 RBX: ffff8800c5122e84 RCX: ffffffff81ddf040
+RDX: 00000000ffffffff RSI: 0000000000000082 RDI: ffffffff81ddef30
+RBP: ffff880062f739f8 R08: 0000000000000005 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000003 R12: ffff8800c5122e40
+R13: ffff880037a2cd20 R14: ffff880087c7a058 R15: ffff880087c7a000
+FS:  00007f63dcf636e0(0000) GS:ffff88022fc80000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f0c0a91f000 CR3: 0000000062ec2000 CR4: 00000000000006e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process httpd (pid: 8062, threadinfo ffff880062f72000, task ffff880087e58000)
+Stack:
+ ffff880062f73bf8 0000000000000000 ffff880062f73bf8 ffff880037a2cd20
+ ffff880062f73a68 ffffffff8119aa7e ffff88006540e000 ffff880062f73ad4
+ ffff88008e9a4308 ffff880037a2cd20 ffff880062f73a48 ffff8800c5122e40
+Call Trace:
+ [<ffffffff8119aa7e>] __fscache_read_or_alloc_pages+0x1fe/0x530
+ [<ffffffff81250780>] __nfs_readpages_from_fscache+0x70/0x1c0
+ [<ffffffff8123142a>] nfs_readpages+0xca/0x1e0
+ [<ffffffff815f3c06>] ? rpc_do_put_task+0x36/0x50
+ [<ffffffff8122755b>] ? alloc_nfs_open_context+0x4b/0x110
+ [<ffffffff815ecd1a>] ? rpc_call_sync+0x5a/0x70
+ [<ffffffff810e7e9a>] __do_page_cache_readahead+0x1ca/0x270
+ [<ffffffff810e7f61>] ra_submit+0x21/0x30
+ [<ffffffff810e818d>] ondemand_readahead+0x11d/0x250
+ [<ffffffff810e83b6>] page_cache_sync_readahead+0x36/0x60
+ [<ffffffff810dffa4>] generic_file_aio_read+0x454/0x770
+ [<ffffffff81224ce1>] nfs_file_read+0xe1/0x130
+ [<ffffffff81121bd9>] do_sync_read+0xd9/0x120
+ [<ffffffff8114088f>] ? mntput+0x1f/0x40
+ [<ffffffff811238cb>] ? fput+0x1cb/0x260
+ [<ffffffff81122938>] vfs_read+0xc8/0x180
+ [<ffffffff81122af5>] sys_read+0x55/0x90
+
+Reported-by: Mark Moseley <moseleymark@gmail.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/cachefiles/rdwr.c |   14 ++++++++++----
+ fs/fscache/page.c    |    2 ++
+ 2 files changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
+index f437e97..e6d35e9 100644
+--- a/fs/cachefiles/rdwr.c
++++ b/fs/cachefiles/rdwr.c
+@@ -361,8 +361,10 @@ out:
+ 
+ read_error:
+ 	_debug("read error %d", ret);
+-	if (ret == -ENOMEM)
++	if (ret == -ENOMEM) {
++		fscache_retrieval_complete(op, 1);
+ 		goto out;
++	}
+ io_error:
+ 	cachefiles_io_error_obj(object, "Page read error on backing file");
+ 	fscache_retrieval_complete(op, 1);
+@@ -551,6 +553,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
+ 		if (ret < 0) {
+ 			if (ret == -EEXIST) {
+ 				page_cache_release(netpage);
++				fscache_retrieval_complete(op, 1);
+ 				continue;
+ 			}
+ 			goto nomem;
+@@ -627,6 +630,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
+ 		if (ret < 0) {
+ 			if (ret == -EEXIST) {
+ 				page_cache_release(netpage);
++				fscache_retrieval_complete(op, 1);
+ 				continue;
+ 			}
+ 			goto nomem;
+@@ -645,9 +649,9 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
+ 
+ 		/* the netpage is unlocked and marked up to date here */
+ 		fscache_end_io(op, netpage, 0);
+-		fscache_retrieval_complete(op, 1);
+ 		page_cache_release(netpage);
+ 		netpage = NULL;
++		fscache_retrieval_complete(op, 1);
+ 		continue;
+ 	}
+ 
+@@ -682,15 +686,17 @@ out:
+ nomem:
+ 	_debug("nomem");
+ 	ret = -ENOMEM;
+-	goto out;
++	goto record_page_complete;
+ 
+ read_error:
+ 	_debug("read error %d", ret);
+ 	if (ret == -ENOMEM)
+-		goto out;
++		goto record_page_complete;
+ io_error:
+ 	cachefiles_io_error_obj(object, "Page read error on backing file");
+ 	ret = -ENOBUFS;
++record_page_complete:
++	fscache_retrieval_complete(op, 1);
+ 	goto out;
+ }
+ 
+diff --git a/fs/fscache/page.c b/fs/fscache/page.c
+index 7bf9d25..4dbbca1 100644
+--- a/fs/fscache/page.c
++++ b/fs/fscache/page.c
+@@ -329,6 +329,8 @@ check_if_dead:
+ 		return -ENOBUFS;
+ 	}
+ 	if (unlikely(fscache_object_is_dead(object))) {
++		pr_err("%s() = -ENOBUFS [obj dead %d]", __func__, op->op.state);
++		fscache_cancel_op(&op->op);
+ 		fscache_stat(stat_object_dead);
+ 		return -ENOBUFS;
+ 	}
+
