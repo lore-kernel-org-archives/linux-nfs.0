@@ -1,93 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51091 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26682 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757646Ab2BID4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 22:56:23 -0500
-Message-ID: <1328759776.8981.75.camel@serendib>
-Subject: Re: NFS Mount Option 'nofsc'
-From: Harshula <harshula@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Derek McEachern <derekm@ti.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 09 Feb 2012 14:56:16 +1100
-In-Reply-To: <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
-References: <4F31E1CA.8060105@ti.com>
-	 <1328676860.2954.9.camel@lade.trondhjem.org>
-	 <1328687026.8981.25.camel@serendib>
-	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1753859Ab2BHPdt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 10:33:49 -0500
+Message-ID: <4F3295CC.7020503@netapp.com>
+Date: Wed, 08 Feb 2012 10:33:32 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS4: ID-mapping Problem with Linux Client and NetApp Server
+References: <20120208144923.GA16606@geggus.net>
+In-Reply-To: <20120208144923.GA16606@geggus.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+On 02/08/12 09:49, Sven Geggus wrote:
 
-On Wed, 2012-02-08 at 10:40 -0500, Chuck Lever wrote:
-> On Feb 8, 2012, at 2:43 AM, Harshula wrote:
-
-> > Could you please expand on the subtleties involved that require an
-> > application to be rewritten if forcedirectio mount option was available?
-> > 
-> > A scenario where forcedirectio would be useful is when an application
-> > reads nearly a TB of data from local disks, processes that data and then
-> > dumps it to an NFS mount. All that happens while other processes are
-> > reading/writing to the local disks. The application does not have an
-> > O_DIRECT option nor is the source code available.
-> > 
-> > With paged I/O the problem we see is that the NFS client system reaches
-> > dirty_bytes/dirty_ratio threshold and then blocks/forces all the
-> > processes to flush dirty pages. This effectively 'locks' up the NFS
-> > client system while the NFS dirty pages are pushed slowly over the wire
-> > to the NFS server. Some of the processes that have nothing to do with
-> > writing to the NFS mount are badly impacted. A forcedirectio mount
-> > option would be very helpful in this scenario. Do you have any advice on
-> > alleviating such problems on the NFS client by only using existing
-> > tunables?
+> Hello,
 > 
-> Using direct I/O would be a work-around.  The fundamental problem is
-> the architecture of the VM system, and over time we have been making
-> improvements there.
+> I'm trying to set up a couple of Active-directory integrated Linux machines
+> using NFS4 volumes on a NetApp Server as storage media.
 > 
-> Instead of a mount option, you can fix your application to use direct
-> I/O.  Or you can change it to provide the kernel with (better) hints
-> about the disposition of the data it is generating (madvise and
-> fadvise system calls).  (On Linux we assume you have source code and
-> can make such changes.  I realize this is not true for proprietary
-> applications).
+> So far, I'm nearly there, but the final step seems to be missing:
 > 
-> You could try using the "sync" mount option to cause the NFS client to
-> push writes to the server immediately rather than delaying them.  This
-> would also slow down applications that aggressively dirties pages on
-> the client.
+> My client (Debian GNU/Linux with nfs-utils 1.2.5) can mount the NetApp
+> Emulator and Users are managed completely by AD Objects using nslcd.
 > 
-> Meanwhile, you can dial down the dirty_ratio and especially the
-> dirty_background_ratio settings to trigger earlier writeback.  We've
-> also found increasing min_free_bytes has positive effects.  The exact
-> settings depend on how much memory your client has.  Experimenting
-> yourself is pretty harmless, so I won't give exact settings here.
+> Now I try to mount the NetApp Emulator vis NFS4 as root:
+> 
+> mount  -t nfs4 -o sec=krb5 dataontap-801.<fqdn>:/vol/v_testhome1/testhome1 /mnt/
+> 
+> This also works, however the NetApp is printing some strange warning:
+> 
+> [nfsd.rpc.request.bad:warning]: Client 10.1.7.174 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
+> [nfsd.auth.status.bad:warning]: Client 10.1.7.174 has an authentication error 2
 
-Thanks for the reply. Unfortunately, not all vendors provide the source
-code, so using O_DIRECT or fsync is not always an option. 
 
-Lowering dirty_bytes/dirty_ratio and
-dirty_background_bytes/dirty_background_ratio did help as it smoothed
-out the data transfer over the wire by pushing data out to the NFS
-server sooner. Otherwise, I was seeing the data transfer over the wire
-having idle periods while >10GiB of pages were being dirtied by the
-processes, then congestion as soon as the dirty_ratio was reached and
-the frantic flushing of dirty pages to the NFS server. However,
-modifying dirty_* tunables has a system-wide impact, hence it was not
-accepted.
+This does look suspicious... using wireshark, can you look at a packet sent by the client to the server.  Under "Remote Procedure Call", check that check the "Credentials" have kerberos.  Also check the server configuration to make sure that krb5 is allowed and using the DES-CBC-CRC enctype.
 
-The "sync" option, depending on the NFS server, may impact the NFS
-server's performance when serving many NFS clients. But still worth a
-try.
+> 
+> This is probably harmless and caused by the local root which does not have a
+> valid AD account.
+> 
+> After the mount I can successfully browse the volume as user and my machine
+> is even able to read/write files to/from the server.
+> 
+> However the files are not owned by the correct users. Server is just sending
+> me invalid stuff.
+> 
+> Here is the owner string I get from the server looking into the packets using
+> wireshark:
+> 
+> ...
+> recc_attr: FATTR4_OWNER (36)
+>     fattr4_owner: root@<fqdn>
+>         length: 19
+>         contents: root@<fqdn>
+>         fill bytes: opaque data
+> recc_attr: FATTR4_OWNER_GROUP (37)
+>     fattr4_owner_group: nobody
+>         length: 6
+>         contents: nobody
+>         fill bytes: opaque data
 
-The other hack that seems to work is periodically triggering an
-nfs_getattr(), via ls -l, to force the dirty pages to be flushed to the
-NFS server. Not exactly elegant ...
 
-Thanks,
-#
+The idmapper usually maps users to "nobody" when they don't exist.  My best guess is that your problem has something to do with your kerberos configuration.  Is the client in the keytab?  I don't know how much of this blog post still applies, but at once point what you're trying to do was possible: http://nfsworld.blogspot.com/2005/06/using-active-directory-as-your-kdc-for.html.  It was written about Fedora-based machines, so some of the commands may be different on debian.
+
+> 
+> However checking with Windows and SMB these files are not owned by root but
+> rather by the user which is trying to access the server.
+> 
+> On a Linux machine I would now try to run the server side rpc.idmapd with
+> verbose options, but unfortunately with NetApp I don't know exactly what to do.
+> 
+> So, any hint what I am missing here?
+> 
+> Client side userid mapping seems to work fine, as I can seen something like
+> this wehen running rpc.idmapd in verbose mode:
+> 
+> rpc.idmapd: Client 11: (user) name "root@<fqdn>" -> id "0"
+> rpc.idmapd: Client 11: (group) name "nobody" -> id "65534"
+> 
+> Regards
+> 
+> Sven
+> 
+
 
