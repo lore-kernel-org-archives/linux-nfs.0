@@ -1,55 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:64213 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4898 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964989Ab2B2Xeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 18:34:37 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4.1: Get rid of redundant NFS4CLNT_LAYOUTRECALL tests
-Date: Wed, 29 Feb 2012 18:34:04 -0500
-Message-Id: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754513Ab2BHEzQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Feb 2012 23:55:16 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Derek McEachern <derekm@ti.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Mount Option 'nofsc'
+Date: Wed, 8 Feb 2012 04:55:04 +0000
+Message-ID: <1328676860.2954.9.camel@lade.trondhjem.org>
+References: <4F31E1CA.8060105@ti.com>
+In-Reply-To: <4F31E1CA.8060105@ti.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFS4CLNT_LAYOUTRECALL tests in pnfs_layout_process and
-pnfs_update_layout are redundant.
-
-In the case of a bulk layout recall, we're always testing for
-the NFS_LAYOUT_BULK_RECALL flay anyway.
-In the case of a file or segment recall, the call to
-pnfs_set_layout_stateid() updates the layout_header 'barrier'
-sequence id, which triggers the test in pnfs_layoutgets_blocked()
-and is less race-prone than NFS4CLNT_LAYOUTRECALL anyway.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a534216..9c19f92 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -966,8 +966,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 
- 	/* Do we even need to bother with this? */
--	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
--	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
-+	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
- 		dprintk("%s matches recall, use MDS\n", __func__);
- 		goto out_unlock;
- 	}
-@@ -1048,8 +1047,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 
- 	spin_lock(&ino->i_lock);
--	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
--	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
-+	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
- 		dprintk("%s forget reply due to recall\n", __func__);
- 		goto out_forget_reply;
- 	}
--- 
-1.7.7.6
-
+T24gVHVlLCAyMDEyLTAyLTA3IGF0IDIwOjQ1IC0wNjAwLCBEZXJlayBNY0VhY2hlcm4gd3JvdGU6
+DQo+IEkgam9pbmVkIHRoZSBtYWlsaW5nIGxpc3Qgc2hvcnRseSBhZnRlciBOZWlsIHNlbnQgb3V0
+IGEgcmVxdWVzdCBmb3IgDQo+IHZvbHVudGVlciB0byB1cGRhdGUgdGhlIG5mcyBtYW4gcGFnZSBk
+b2N1bWVudGluZyB0aGUgJ2ZzYycvJ25vZnNjJyANCj4gb3B0aW9ucy4gSSBzdXNwZWN0IHRoaXMg
+bWF5IHN0ZW0gZnJvbSBhIHRpY2tldCB3ZSBvcGVuZWQgd2l0aCBTdXNlIA0KPiBpbnF1aXJpbmcg
+YWJvdXQgdGhlc2Ugb3B0aW9ucy4NCj4gDQo+IENvbWluZyBmcm9tIGEgU29sYXJpcyBiYWNrZ3Jv
+dW5kIHdlIHR5cGljYWxseSB1c2UgdGhlICdmb3JjZWRpcmVjdGlvJyANCj4gb3B0aW9uIGZvciBj
+ZXJ0YWluIG1vdW50cyBhbmQgSSB3YXMgbG9va2luZyBmb3IgdGhlIHNhbWUgdGhpbmcgaW4gTGlu
+dXguIA0KPiBUaGUgdHlwaWNhbGx5IGFkdmljZSBzZWVtcyB0byBiZSB1c2UgJ25vYWMnIGJ1dCB0
+aGUgZGVzY3JpcHRpb24gaW4gdGhlIA0KPiBtYW4gcGFnZSBkb2Vzbid0IHNlZW0gdG8gbWF0Y2gg
+d2hhdCBJIHdvdWxkIGV4cGVjdCBmcm9tICdmb3JjZWRpcmVjdGlvJywgDQo+IG5hbWVseSBubyBi
+dWZmZXJpbmcgb24gdGhlIGNsaWVudC4NCj4gDQo+IFBva2luZyBhcm91bmQgdGhlIGtlcm5lbCBJ
+IGZvdW5kIHRoZSAnZnNjJy8nbm9mc2MnIG9wdGlvbnMgYW5kIG15IA0KPiBxdWVzdGlvbiBpcyBk
+b2VzICdub2ZzYycgcHJvdmlkZSAnZm9yY2VkaXJlY3RpbycgZnVuY3Rpb25hbGl0eT8NCg0KTm8u
+IFRoZXJlIGlzIG5vIGVxdWl2YWxlbnQgdG8gdGhlIFNvbGFyaXMgImZvcmNlZGlyZWN0aW8iIG1v
+dW50IG9wdGlvbg0KaW4gTGludXguDQpBcHBsaWNhdGlvbnMgdGhhdCBuZWVkIHRvIHVzZSB1bmNh
+Y2hlZCBpL28gYXJlIHJlcXVpcmVkIHRvIHVzZSB0aGUNCk9fRElSRUNUIG9wZW4oKSBtb2RlIGlu
+c3RlYWQsIHNpbmNlIHByZXR0eSBtdWNoIGFsbCBvZiB0aGVtIG5lZWQgdG8gYmUNCnJld3JpdHRl
+biB0byBkZWFsIHdpdGggdGhlIHN1YnRsZXRpZXMgaW52b2x2ZWQgYW55d2F5Lg0KDQpUcm9uZA0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
