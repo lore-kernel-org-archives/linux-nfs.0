@@ -1,145 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51905 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64694 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751720Ab2BPQRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 11:17:23 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
-Date: Thu, 16 Feb 2012 11:17:04 -0500
-Message-Id: <1329409026-20466-1-git-send-email-dros@netapp.com>
+	id S1756940Ab2BHLDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 06:03:45 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 5/9] KEYS: Announce key type (un)registration
+To: steved@redhat.com, jmorris@namei.org
+Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 08 Feb 2012 11:03:38 +0000
+Message-ID: <20120208110338.4050.92429.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
+References: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send the nfs implementation id in EXCHANGE_ID requests unless the module
-parameter nfs.send_implementation_id is 0.
+Announce the (un)registration of a key type in the core key code rather than
+in the callers.
 
-This adds a CONFIG variable for the nii_domain that defaults to "kernel.org".
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Mimi Zohar <zohar@us.ibm.com>
 ---
- Documentation/kernel-parameters.txt |    9 ++++++++
- fs/nfs/Kconfig                      |    8 +++++++
- fs/nfs/nfs4xdr.c                    |   38 +++++++++++++++++++++++++++++++++-
- 3 files changed, 53 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index 1d369c6..7bae0fd 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1678,6 +1678,15 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			back to using the idmapper.
- 			To turn off this behaviour, set the value to '0'.
+ net/dns_resolver/dns_key.c |    5 -----
+ security/keys/key.c        |    3 +++
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
+index c73bba3..14b2c3d 100644
+--- a/net/dns_resolver/dns_key.c
++++ b/net/dns_resolver/dns_key.c
+@@ -249,9 +249,6 @@ static int __init init_dns_resolver(void)
+ 	struct key *keyring;
+ 	int ret;
  
-+	nfs.send_implementation_id =
-+			[NFSv4.1] Send client implementation identification
-+			information in exchange_id requests.
-+			If zero, no implementation identification information
-+			will be sent.
-+			The default is to send the implementation identification
-+			information.
-+
-+
- 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
- 			when a NMI is triggered.
- 			Format: [state][,regs][,debounce][,die]
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index ee86cfc..09f9e38 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -99,6 +99,14 @@ config PNFS_OBJLAYOUT
- 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
- 	default m
- 
-+config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
-+	string "NFSv4.1 Implementation ID Domain"
-+	depends on NFS_V4_1
-+	default "kernel.org"
-+	help
-+	  This value will be used in EXCHANGE_ID compounds to help identify
-+	  the client implementation.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ae78343..70ded94 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -44,6 +44,8 @@
- #include <linux/pagemap.h>
- #include <linux/proc_fs.h>
- #include <linux/kdev_t.h>
-+#include <linux/module.h>
-+#include <linux/utsname.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/gss_api.h>
-@@ -271,7 +273,12 @@ static int nfs4_stat_to_errno(int);
- 				1 /* flags */ + \
- 				1 /* spa_how */ + \
- 				0 /* SP4_NONE (for now) */ + \
--				1 /* zero implemetation id array */)
-+				1 /* implemetation id array of size 1 */ + \
-+				1 /* nii_domain */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				1 /* nii_name */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				3 /* nii_date */)
- #define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
- 				2 /* eir_clientid */ + \
- 				1 /* eir_sequenceid */ + \
-@@ -838,6 +845,12 @@ const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
- 				    XDR_UNIT);
- #endif /* CONFIG_NFS_V4_1 */
- 
-+static unsigned short send_implementation_id = 1;
-+
-+module_param(send_implementation_id, ushort, 0644);
-+MODULE_PARM_DESC(send_implementation_id,
-+		"Send implementation ID with NFSv4.1 exchange_id");
-+
- static const umode_t nfs_type2fmt[] = {
- 	[NF4BAD] = 0,
- 	[NF4REG] = S_IFREG,
-@@ -1766,6 +1779,8 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 			       struct compound_hdr *hdr)
- {
- 	__be32 *p;
-+	char impl_name[260]; /* 4 strs max 64 each, spaces and null */
-+	int len = 0;
- 
- 	p = reserve_space(xdr, 4 + sizeof(args->verifier->data));
- 	*p++ = cpu_to_be32(OP_EXCHANGE_ID);
-@@ -1776,7 +1791,26 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 	p = reserve_space(xdr, 12);
- 	*p++ = cpu_to_be32(args->flags);
- 	*p++ = cpu_to_be32(0);	/* zero length state_protect4_a */
--	*p = cpu_to_be32(0);	/* zero length implementation id array */
-+
-+	if (send_implementation_id)
-+		len = snprintf(impl_name, sizeof(impl_name), "%s %s %s %s",
-+			       utsname()->sysname, utsname()->release,
-+			       utsname()->version, utsname()->machine);
-+
-+	if (len > 0) {
-+		*p = cpu_to_be32(1);	/* implementation id array length=1 */
-+
-+		encode_string(xdr,
-+			strlen(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN),
-+			CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN);
-+		encode_string(xdr, len, impl_name);
-+		/* just send zeros for nii_date - the date is in nii_name */
-+		p = reserve_space(xdr, 12);
-+		p = xdr_encode_hyper(p, 0);
-+		*p = cpu_to_be32(0);
-+	} else
-+		*p = cpu_to_be32(0);	/* implementation id array length=0 */
-+
- 	hdr->nops++;
- 	hdr->replen += decode_exchange_id_maxsz;
+-	printk(KERN_NOTICE "Registering the %s key type\n",
+-	       key_type_dns_resolver.name);
+-
+ 	/* create an override credential set with a special thread keyring in
+ 	 * which DNS requests are cached
+ 	 *
+@@ -301,8 +298,6 @@ static void __exit exit_dns_resolver(void)
+ 	key_revoke(dns_resolver_cache->thread_keyring);
+ 	unregister_key_type(&key_type_dns_resolver);
+ 	put_cred(dns_resolver_cache);
+-	printk(KERN_NOTICE "Unregistered %s key type\n",
+-	       key_type_dns_resolver.name);
  }
--- 
-1.7.4.4
+ 
+ module_init(init_dns_resolver)
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 7ada801..9173253 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -960,6 +960,8 @@ int register_key_type(struct key_type *ktype)
+ 
+ 	/* store the type */
+ 	list_add(&ktype->link, &key_types_list);
++
++	pr_notice("Key type %s registered\n", ktype->name);
+ 	ret = 0;
+ 
+ out:
+@@ -982,6 +984,7 @@ void unregister_key_type(struct key_type *ktype)
+ 	list_del_init(&ktype->link);
+ 	downgrade_write(&key_types_sem);
+ 	key_gc_keytype(ktype);
++	pr_notice("Key type %s unregistered\n", ktype->name);
+ 	up_read(&key_types_sem);
+ }
+ EXPORT_SYMBOL(unregister_key_type);
 
