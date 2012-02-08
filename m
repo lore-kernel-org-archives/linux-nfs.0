@@ -1,57 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:51531 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799Ab2BERE7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:04:59 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so1892528eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:04:59 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v8 07/10] nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-Date: Sun,  5 Feb 2012 18:07:56 +0100
-Message-Id: <1328461679-4108-8-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from smtp.mail.umich.edu ([141.211.14.81]:59687 "EHLO
+	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755399Ab2BHRtH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 12:49:07 -0500
+Date: Wed, 8 Feb 2012 12:49:01 -0500
+From: Jim Rees <rees@umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
+Message-ID: <20120208174901.GA28564@umich.edu>
+References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120208162322.GA13315@fieldses.org>
+ <1328722042.3234.13.camel@lade.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1328722042.3234.13.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+Myklebust, Trond wrote:
 
+  10GigE + high latencies is exactly where we're seeing the value. Andy
+  has been working with the high energy physics community doing NFS
+  traffic between the US and CERN...
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 59d9b4b..620abcc 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1445,7 +1445,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_CREATE] = {
- 		.op_func = (nfsd4op_func)nfsd4_create,
--		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME | OP_CLEAR_STATEID,
- 		.op_name = "OP_CREATE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_create_rsize,
- 	},
-@@ -1491,12 +1491,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUP",
- 	},
- 	[OP_LOOKUPP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookupp,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUPP",
- 	},
- 	[OP_NVERIFY] = {
--- 
-1.7.7.6
-
+CITI to CERN is just over 120ms.  I don't know what it would be from Andy's
+house.  Does he have 10G at home yet?
