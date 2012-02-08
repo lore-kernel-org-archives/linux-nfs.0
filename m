@@ -1,40 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:63766 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759266Ab2BON5H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 08:57:07 -0500
-Received: by eekc14 with SMTP id c14so365030eek.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 05:57:06 -0800 (PST)
-Message-ID: <4F3BB9AF.7090604@tonian.com>
-Date: Wed, 15 Feb 2012 15:57:03 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10324 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756936Ab2BHVRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:17:31 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 04/17] CacheFiles: Make some debugging statements conditional
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:17:21 +0000
+Message-ID: <20120208211721.15607.89229.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-To: Marc Eshel <eshel@almaden.ibm.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Linux pNFS status meeting 02/16/12  -- NO MEETING --
-References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
-In-Reply-To: <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See you in Connectathon?
+Downgrade some debugging statements to not unconditionally print stuff, but
+rather be conditional on the appropriate module parameter setting.
 
-Benny
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-On 2012-02-14 22:38, Marc Eshel wrote:
-> Meeting on Thursday 02/16/12 at 9:30 AM PST (12:30 PM EST)
-> 
-> 
-> USA Toll-Free: 888-426-6840
-> USA Caller Paid: 215-861-6239
-> 
-> Israel Toll-Free: 1-809-417-783
-> 
-> Participant Code: 8792872
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/cachefiles/rdwr.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
+index 26a6f52..885f1b2 100644
+--- a/fs/cachefiles/rdwr.c
++++ b/fs/cachefiles/rdwr.c
+@@ -77,25 +77,25 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 	struct page *backpage = monitor->back_page, *backpage2;
+ 	int ret;
+ 
+-	kenter("{ino=%lx},{%lx,%lx}",
++	_enter("{ino=%lx},{%lx,%lx}",
+ 	       object->backer->d_inode->i_ino,
+ 	       backpage->index, backpage->flags);
+ 
+ 	/* skip if the page was truncated away completely */
+ 	if (backpage->mapping != bmapping) {
+-		kleave(" = -ENODATA [mapping]");
++		_leave(" = -ENODATA [mapping]");
+ 		return -ENODATA;
+ 	}
+ 
+ 	backpage2 = find_get_page(bmapping, backpage->index);
+ 	if (!backpage2) {
+-		kleave(" = -ENODATA [gone]");
++		_leave(" = -ENODATA [gone]");
+ 		return -ENODATA;
+ 	}
+ 
+ 	if (backpage != backpage2) {
+ 		put_page(backpage2);
+-		kleave(" = -ENODATA [different]");
++		_leave(" = -ENODATA [different]");
+ 		return -ENODATA;
+ 	}
+ 
+@@ -114,7 +114,7 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 		if (PageUptodate(backpage))
+ 			goto unlock_discard;
+ 
+-		kdebug("reissue read");
++		_debug("reissue read");
+ 		ret = bmapping->a_ops->readpage(NULL, backpage);
+ 		if (ret < 0)
+ 			goto unlock_discard;
+@@ -129,7 +129,7 @@ static int cachefiles_read_reissue(struct cachefiles_object *object,
+ 	}
+ 
+ 	/* it'll reappear on the todo list */
+-	kleave(" = -EINPROGRESS");
++	_leave(" = -EINPROGRESS");
+ 	return -EINPROGRESS;
+ 
+ unlock_discard:
+@@ -137,7 +137,7 @@ unlock_discard:
+ 	spin_lock_irq(&object->work_lock);
+ 	list_del(&monitor->op_link);
+ 	spin_unlock_irq(&object->work_lock);
+-	kleave(" = %d", ret);
++	_leave(" = %d", ret);
+ 	return ret;
+ }
+ 
+
