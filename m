@@ -1,192 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48529 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16208 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753006Ab2BMWWM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Feb 2012 17:22:12 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Mon, 13 Feb 2012 17:22:08 -0500
-Message-Id: <1329171728-3980-1-git-send-email-dros@netapp.com>
+	id S1756092Ab2BHVSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:18:12 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 08/17] VFS: Make more complete truncate operation available to
+ CacheFiles
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:18:03 +0000
+Message-ID: <20120208211802.15607.46621.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Include RPC statistics from all data servers in /proc/self/mountstats for pNFS
-filelayout mounts.
+Make a more complete truncate operation available to CacheFiles (including
+security checks and suchlike) so that it can use this to clear invalidated
+cache files.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
-Cleaned up version after comments from Trond.  This patch accumulates 
-reads, writes and commits (the only DS operations) on the rpc_iostats of 
-the nfs_server associated with the mount.
 
-I was confused last week about where we breaking counting stats only for a 
-mountpoint -- What I was seeing was two mounts sharing stats if they were the
-same server AND the same filesystem on the server.  This patch does not address
-that issue.
+ fs/open.c          |   50 +++++++++++++++++++++++++++-----------------------
+ include/linux/fs.h |    1 +
+ 2 files changed, 28 insertions(+), 23 deletions(-)
 
-This patch still counts DS operations on the DS::nfs_client::rpc_clnt's stats
-structures.  Assuming this patch is OK, I plan on submitting a patch that will 
-show MDS-only and individual DS stats somewhere in /proc/fs/nfsfs/.
-
- fs/nfs/nfs4filelayout.c        |   19 +++++++++++++++++++
- include/linux/sunrpc/metrics.h |    6 ++++--
- include/linux/sunrpc/sched.h   |    1 +
- net/sunrpc/stats.c             |    8 ++++----
- net/sunrpc/xprt.c              |    5 ++++-
- 5 files changed, 32 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 79be7ac..47e8f34 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -33,6 +33,8 @@
- #include <linux/nfs_page.h>
- #include <linux/module.h>
- 
-+#include <linux/sunrpc/metrics.h>
-+
- #include "internal.h"
- #include "nfs4filelayout.h"
- 
-@@ -189,6 +191,13 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- 	rdata->mds_ops->rpc_call_done(task, data);
+diff --git a/fs/open.c b/fs/open.c
+index 77becc0..7535620 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -61,33 +61,22 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+ 	return ret;
  }
  
-+static void filelayout_read_count_stats(struct rpc_task *task, void *data)
+-static long do_sys_truncate(const char __user *pathname, loff_t length)
++long vfs_truncate(struct path *path, loff_t length)
+ {
+-	struct path path;
+ 	struct inode *inode;
+-	int error;
+-
+-	error = -EINVAL;
+-	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++	long error;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	inode = path->dentry->d_inode;
+ 
+ 	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+ 	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
+-
+-	error = -EINVAL;
++		return -EISDIR;
+ 	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		return -EINVAL;
+ 
+-	error = mnt_want_write(path.mnt);
++	error = mnt_want_write(path->mnt);
+ 	if (error)
+-		goto dput_and_out;
++		goto out;
+ 
+ 	error = inode_permission(inode, MAY_WRITE);
+ 	if (error)
+@@ -111,19 +100,34 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 
+ 	error = locks_verify_truncate(inode, NULL, length);
+ 	if (!error)
+-		error = security_path_truncate(&path);
++		error = security_path_truncate(path);
+ 	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		error = do_truncate(path->dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+ 	put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
+-dput_and_out:
+-	path_put(&path);
++	mnt_drop_write(path->mnt);
+ out:
+ 	return error;
+ }
++EXPORT_SYMBOL_GPL(vfs_truncate);
++
++static long do_sys_truncate(const char __user *pathname, loff_t length)
 +{
-+	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++	struct path path;
++	int error;
 +
-+	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
++	if (length < 0)	/* sorry, but loff_t says... */
++		return -EINVAL;
++
++	error = user_path(pathname, &path);
++	if (!error) {
++		error = vfs_truncate(&path, length);
++		path_put(&path);
++	}
++	return error;
 +}
-+
- static void filelayout_read_release(void *data)
+ 
+ SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
  {
- 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-@@ -268,6 +277,13 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
- 	wdata->mds_ops->rpc_call_done(task, data);
- }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 386da09..79449e4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2014,6 +2014,7 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
  
-+static void filelayout_write_count_stats(struct rpc_task *task, void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
-+}
-+
- static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-@@ -288,18 +304,21 @@ static void filelayout_commit_release(void *data)
- struct rpc_call_ops filelayout_read_call_ops = {
- 	.rpc_call_prepare = filelayout_read_prepare,
- 	.rpc_call_done = filelayout_read_call_done,
-+	.rpc_count_stats = filelayout_read_count_stats,
- 	.rpc_release = filelayout_read_release,
- };
+ /* fs/open.c */
  
- struct rpc_call_ops filelayout_write_call_ops = {
- 	.rpc_call_prepare = filelayout_write_prepare,
- 	.rpc_call_done = filelayout_write_call_done,
-+	.rpc_count_stats = filelayout_write_count_stats,
- 	.rpc_release = filelayout_write_release,
- };
- 
- struct rpc_call_ops filelayout_commit_call_ops = {
- 	.rpc_call_prepare = filelayout_write_prepare,
- 	.rpc_call_done = filelayout_write_call_done,
-+	.rpc_count_stats = filelayout_write_count_stats,
- 	.rpc_release = filelayout_commit_release,
- };
- 
-diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
-index b6edbc0..1565bbe 100644
---- a/include/linux/sunrpc/metrics.h
-+++ b/include/linux/sunrpc/metrics.h
-@@ -74,14 +74,16 @@ struct rpc_clnt;
- #ifdef CONFIG_PROC_FS
- 
- struct rpc_iostats *	rpc_alloc_iostats(struct rpc_clnt *);
--void			rpc_count_iostats(struct rpc_task *);
-+void			rpc_count_iostats(const struct rpc_task *,
-+					  struct rpc_iostats *);
- void			rpc_print_iostats(struct seq_file *, struct rpc_clnt *);
- void			rpc_free_iostats(struct rpc_iostats *);
- 
- #else  /*  CONFIG_PROC_FS  */
- 
- static inline struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt) { return NULL; }
--static inline void rpc_count_iostats(struct rpc_task *task) {}
-+static inline void rpc_count_iostats(const struct rpc_task *task,
-+				     struct rpc_iostats *stats) {}
- static inline void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt) {}
- static inline void rpc_free_iostats(struct rpc_iostats *stats) {}
- 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 22dfc24..dc0c3cc 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -103,6 +103,7 @@ typedef void			(*rpc_action)(struct rpc_task *);
- struct rpc_call_ops {
- 	void (*rpc_call_prepare)(struct rpc_task *, void *);
- 	void (*rpc_call_done)(struct rpc_task *, void *);
-+	void (*rpc_count_stats)(struct rpc_task *, void *);
- 	void (*rpc_release)(void *);
- };
- 
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 3c4f688..1eb3304 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -133,20 +133,19 @@ EXPORT_SYMBOL_GPL(rpc_free_iostats);
- /**
-  * rpc_count_iostats - tally up per-task stats
-  * @task: completed rpc_task
-+ * @stats: array of stat structures
-  *
-  * Relies on the caller for serialization.
-  */
--void rpc_count_iostats(struct rpc_task *task)
-+void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
--	struct rpc_iostats *stats;
- 	struct rpc_iostats *op_metrics;
- 	ktime_t delta;
- 
--	if (!task->tk_client || !task->tk_client->cl_metrics || !req)
-+	if (!stats || !req)
- 		return;
- 
--	stats = task->tk_client->cl_metrics;
- 	op_metrics = &stats[task->tk_msg.rpc_proc->p_statidx];
- 
- 	op_metrics->om_ops++;
-@@ -164,6 +163,7 @@ void rpc_count_iostats(struct rpc_task *task)
- 	delta = ktime_sub(ktime_get(), task->tk_start);
- 	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
- }
-+EXPORT_SYMBOL_GPL(rpc_count_iostats);
- 
- static void _print_name(struct seq_file *seq, unsigned int op,
- 			struct rpc_procinfo *procs)
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index efe5495..ab7a28f 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1132,7 +1132,10 @@ void xprt_release(struct rpc_task *task)
- 		return;
- 
- 	xprt = req->rq_xprt;
--	rpc_count_iostats(task);
-+	if (task->tk_client)
-+		rpc_count_iostats(task, task->tk_client->cl_metrics);
-+	if (task->tk_ops->rpc_count_stats != NULL)
-+		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
- 	spin_lock_bh(&xprt->transport_lock);
- 	xprt->ops->release_xprt(xprt, task);
- 	if (xprt->ops->release_request)
--- 
-1.7.4.4
++extern long vfs_truncate(struct path *, loff_t);
+ extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
+ 		       struct file *filp);
+ extern int do_fallocate(struct file *file, int mode, loff_t offset,
 
