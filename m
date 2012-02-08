@@ -1,79 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:16906 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753580Ab2BPUxE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 15:53:04 -0500
-Subject: Re: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=windows-1252
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1329424486.19793.8.camel@lade.trondhjem.org>
-Date: Thu, 16 Feb 2012 15:53:00 -0500
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <874E8386-DE76-4E53-8805-A82B09361E34@oracle.com>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net> <20120215213451.3254.78502.stgit@ellison.1015granger.net> <1329421931.4279.22.camel@lade.trondhjem.org> <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com> <1329424486.19793.8.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:57405 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757023Ab2BHVRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:17:21 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 03/17] FS-Cache: Check that there are no read ops when cookie
+ relinquished
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:17:11 +0000
+Message-ID: <20120208211711.15607.46274.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Check that the netfs isn't trying to relinquish a cookie that still has read
+operations in progress upon it.  If there are, then give log a warning and BUG.
 
-On Feb 16, 2012, at 3:34 PM, Myklebust, Trond wrote:
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-> On Thu, 2012-02-16 at 15:09 -0500, Chuck Lever wrote:
->> On Feb 16, 2012, at 2:52 PM, Myklebust, Trond wrote:
->> 
->>> On Wed, 2012-02-15 at 16:34 -0500, Chuck Lever wrote:
->>>> Eliminate a number of implicit type casts in comparisons, and these
->>>> compiler warnings:
->>>> 
->>>> fs/nfs/dir.c: In function ‘nfs_readdir_clear_array’:
->>>> fs/nfs/dir.c:264:16: warning: comparison between signed and unsigned
->>>> 		integer expressions [-Wsign-compare]
->>>> fs/nfs/dir.c: In function ‘nfs_readdir_search_for_cookie’:
->>>> fs/nfs/dir.c:352:16: warning: comparison between signed and unsigned
->>>> 		integer expressions [-Wsign-compare]
->>>> fs/nfs/dir.c: In function ‘nfs_do_filldir’:
->>>> fs/nfs/dir.c:769:38: warning: comparison between signed and unsigned
->>>> 		integer expressions [-Wsign-compare]
->>>> fs/nfs/dir.c:780:9: warning: comparison between signed and unsigned
->>>> 		integer expressions [-Wsign-compare]
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> 
->>>> fs/nfs/dir.c |    2 +-
->>>> 1 files changed, 1 insertions(+), 1 deletions(-)
->>>> 
->>>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->>>> index ac28990..8661e13 100644
->>>> --- a/fs/nfs/dir.c
->>>> +++ b/fs/nfs/dir.c
->>>> @@ -207,7 +207,7 @@ struct nfs_cache_array_entry {
->>>> };
->>>> 
->>>> struct nfs_cache_array {
->>>> -	unsigned int size;
->>>> +	int size;
->>>> 	int eof_index;
->>>> 	u64 last_cookie;
->>>> 	struct nfs_cache_array_entry array[0];
->>>> 
->>> 
->>> Nope. That's a cop-out: array sizes cannot be negative.
->> 
->> That's typically true, but IIRC the array size here can hold a "-1" as a special value.
-> 
-> 
-> Where do you see that? I'm not finding that in the upstream kernel.
+ fs/fscache/cookie.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-Paging this all back in... "eof_index" can be -1, thus it is an int.  "size" is compared with eof_index, with signed loop iterators, and with "current_index," which is a loff_t (also a signed type).  Therefore "size" should also be signed.  This kind of abuse is quite common in the network code.
-
-The other option is to leave these warnings.  The patch is a compromise at best, I agree, but mixed sign comparisons have practical implications, while keeping "size" unsigned because it represents a natural number does not have practical implications.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index 9905350..0666996 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -452,6 +452,14 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
+ 
+ 		_debug("RELEASE OBJ%x", object->debug_id);
+ 
++		if (atomic_read(&object->n_reads)) {
++			spin_unlock(&cookie->lock);
++			printk(KERN_ERR "FS-Cache:"
++			       " Cookie '%s' still has %d outstanding reads\n",
++			       cookie->def->name, atomic_read(&object->n_reads));
++			BUG();
++		}
++
+ 		/* detach each cache object from the object cookie */
+ 		spin_lock(&object->lock);
+ 		hlist_del_init(&object->cookie_link);
 
