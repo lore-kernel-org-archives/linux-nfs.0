@@ -1,60 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53560 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57779 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754094Ab2BVRZL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Feb 2012 12:25:11 -0500
-Date: Wed, 22 Feb 2012 12:25:10 -0500
-To: Fu Liankun <fuliankun@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: spnfs write performance issue
-Message-ID: <20120222172510.GA12708@fieldses.org>
-References: <4F44C071.8010104@cn.fujitsu.com>
+	id S1754336Ab2BHSby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 13:31:54 -0500
+Date: Wed, 8 Feb 2012 13:31:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jim Rees <rees@umich.edu>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
+Message-ID: <20120208183151.GA14316@fieldses.org>
+References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
+ <20120208162322.GA13315@fieldses.org>
+ <1328722042.3234.13.camel@lade.trondhjem.org>
+ <20120208174901.GA28564@umich.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F44C071.8010104@cn.fujitsu.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120208174901.GA28564@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 22, 2012 at 06:16:17PM +0800, Fu Liankun wrote:
-> When copy a big file(about 500MB) to nfs server using pnfs, it cost
-> obvious longer time as compared with NFSv3 or NFSv4 protocol.
+On Wed, Feb 08, 2012 at 12:49:01PM -0500, Jim Rees wrote:
+> Myklebust, Trond wrote:
 > 
-> PNFS cost about 300-550s
-> NFSv3 cost about 49s
-> NFSv4 cost about 49s
+>   10GigE + high latencies is exactly where we're seeing the value. Andy
+>   has been working with the high energy physics community doing NFS
+>   traffic between the US and CERN...
 > 
-> My test environment as following:
-> 
-> MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
-> DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
-> DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
-> client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
+> CITI to CERN is just over 120ms.  I don't know what it would be from Andy's
+> house.  Does he have 10G at home yet?
 
-What kind of server are you using?
+That still seems short of what you'd need to get a 255MB bandwidth-delay
+product.
+
+I'm just curious what the experiment is here and whether there's a
+possibility the real problem is elsewhere.
 
 --b.
-
-> ipaddr2:192.168.1.19
-> 
-> 192.168.1.100 <-------- NFS4.1 connection --------->192.168.1.101
-> 192.168.0.100 <-------- NFS4.1 connection --------->192.168.0.102
-> 192.168.0.19  <-------- NFS4.1 connection --------->192.168.0.100
-> 
-> Dunring the write process, the client output the message:
-> FS-Cache: Loaded
-> FS-Cache: Netfs 'nfs' registered for caching
-> nfs4filelayout_init: NFSv4 File Layout Driver Registering...
-> nfs: server 192.168.1.101 not responding, timed out
-> 
-> The message "nfs: server 192.168.1.101 not responding, timed out" was
-> output during the COMMIT request.
-> 
-> Who can tell me the reason why pnfs cost so long time.
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
