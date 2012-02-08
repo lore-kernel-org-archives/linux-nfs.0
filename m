@@ -1,183 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:32226 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757953Ab2BMXBg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 18:01:36 -0500
-Subject: Re: [PATCH 1/1] SUNRPC: add sending,pending queue and max slot to xprt stats
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1329126847-2197-1-git-send-email-andros@netapp.com>
-Date: Mon, 13 Feb 2012 18:01:30 -0500
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <22313268-E5C1-471C-9284-92423037B3BC@oracle.com>
-References: <1329126847-2197-1-git-send-email-andros@netapp.com>
-To: W Andros Adamson <andros@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:31824 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756913Ab2BHS4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 13:56:08 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
+ fails
+Date: Wed, 8 Feb 2012 18:56:01 +0000
+Message-ID: <1328727361.3234.27.camel@lade.trondhjem.org>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+	 <20120207141254.2948e735@tlielax.poochiereds.net>
+	 <1328642485.4124.40.camel@lade.trondhjem.org> <4F317BA1.4050102@netapp.com>
+	 <1328643867.4124.42.camel@lade.trondhjem.org>
+	 <1328645155.4124.44.camel@lade.trondhjem.org>
+	 <20120208070408.6f77544d@tlielax.poochiereds.net>
+	 <1328709051.3234.6.camel@lade.trondhjem.org>
+In-Reply-To: <1328709051.3234.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
-
-On Feb 13, 2012, at 4:54 AM, andros@netapp.com wrote:
-
-> From: Andy Adamson <andros@netapp.com>
-> 
-> With static RPC slots, the xprt backlog queue stats were useful in showing
-> when the transport (TCP) was starved by lack of RPC slots. The new dynamic
-> RPC slot code, commit d9ba131d8f58c0d2ff5029e7002ab43f913b36f9, always
-> provides an RPC slot and so only uses the xprt backlog queue when the
-> tcp_max_slot_table_entries value has been hit or when an allocation error
-> occurs. All requests are now placed on the xprt sending or pending queue which
-> need to be monitored for debugging.
-> 
-> The max_slot stat shows the maximum number of dynamic RPC slots reached which is
-> useful when debugging performance issues.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-
-OK, now I'm really confused.  The e-mail address says "W Andros Adamson" -- I thought that this is the son, Weston Andros Adamson, not the father.  But the sign-off is from andros@netapp.com.  Help?
-
-More below.
-
-> ---
-> include/linux/sunrpc/xprt.h |    7 +++++--
-> net/sunrpc/xprt.c           |    7 ++++++-
-> net/sunrpc/xprtsock.c       |   25 ++++++++++++++++++-------
-> 3 files changed, 29 insertions(+), 10 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 15518a1..344b6f2 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -219,10 +219,13 @@ struct rpc_xprt {
-> 					connect_time,	/* jiffies waiting for connect */
-> 					sends,		/* how many complete requests */
-> 					recvs,		/* how many complete requests */
-> -					bad_xids;	/* lookup_rqst didn't find XID */
-> +					bad_xids,	/* lookup_rqst didn't find XID */
-> +					max_slots;	/* max rpc_slots used */
-> 
-> 		unsigned long long	req_u,		/* average requests on the wire */
-> -					bklog_u;	/* backlog queue utilization */
-> +					bklog_u,	/* backlog queue utilization */
-> +					sending_u,	/* send q utilization */
-> +					pending_u;	/* pend q utilization */
-> 	} stat;
-> 
-> 	struct net		*xprt_net;
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index c64c0ef..fb95e25 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -884,7 +884,7 @@ void xprt_transmit(struct rpc_task *task)
-> {
-> 	struct rpc_rqst	*req = task->tk_rqstp;
-> 	struct rpc_xprt	*xprt = req->rq_xprt;
-> -	int status;
-> +	int status, numreqs;
-> 
-> 	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
-> 
-> @@ -921,9 +921,14 @@ void xprt_transmit(struct rpc_task *task)
-> 
-> 	xprt->ops->set_retrans_timeout(task);
-> 
-> +	numreqs = atomic_read(&xprt->num_reqs);
-> +	if (numreqs > xprt->stat.max_slots)
-> +		xprt->stat.max_slots = numreqs;
-> 	xprt->stat.sends++;
-> 	xprt->stat.req_u += xprt->stat.sends - xprt->stat.recvs;
-> 	xprt->stat.bklog_u += xprt->backlog.qlen;
-> +	xprt->stat.sending_u += xprt->sending.qlen;
-> +	xprt->stat.pending_u += xprt->pending.qlen;
-> 
-> 	/* Don't race with disconnect */
-> 	if (!xprt_connected(xprt))
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 55472c4..2a80817 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2226,8 +2226,8 @@ static void xs_local_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> 	if (xprt_connected(xprt))
-> 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
-> 
-> -	seq_printf(seq, "\txprt:\tlocal %lu %lu %lu %ld %lu %lu %lu "
-> -			"%llu %llu\n",
-> +	seq_printf(seq, "\txprt:\tlocal %lu %lu %lu %ld %lu %lu %lu %lu "
-> +			"%llu %llu %llu %llu\n",
-> 			xprt->stat.bind_count,
-> 			xprt->stat.connect_count,
-> 			xprt->stat.connect_time,
-> @@ -2235,8 +2235,11 @@ static void xs_local_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> 			xprt->stat.sends,
-> 			xprt->stat.recvs,
-> 			xprt->stat.bad_xids,
-> +			xprt->stat.max_slots,
-> 			xprt->stat.req_u,
-> -			xprt->stat.bklog_u);
-> +			xprt->stat.bklog_u,
-> +			xprt->stat.sending_u,
-> +			xprt->stat.pending_u);
-> }
-> 
-> /**
-
-This hunk changes the format and content of /proc/self/mountstats.  I don't see where you are bumping the statvers so mountstats can tell what is going on.  Since you are adding fields, mountstats may not complain about this, but it will probably display incorrect output since you are adding a field somewhere in the middle of the line.
-
-> @@ -2249,14 +2252,18 @@ static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> {
-> 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-> 
-> -	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
-> +	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %lu %llu %llu "
-> +			"%llu %llu\n",
-> 			transport->srcport,
-> 			xprt->stat.bind_count,
-> 			xprt->stat.sends,
-> 			xprt->stat.recvs,
-> 			xprt->stat.bad_xids,
-> +			xprt->stat.max_slots,
-> 			xprt->stat.req_u,
-> -			xprt->stat.bklog_u);
-> +			xprt->stat.bklog_u,
-> +			xprt->stat.sending_u,
-> +			xprt->stat.pending_u);
-> }
-> 
-> /**
-
-Likewise.
-
-> @@ -2273,7 +2280,8 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> 	if (xprt_connected(xprt))
-> 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
-> 
-> -	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
-> +	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %lu "
-> +			"%llu %llu %llu %llu\n",
-> 			transport->srcport,
-> 			xprt->stat.bind_count,
-> 			xprt->stat.connect_count,
-> @@ -2282,8 +2290,11 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-> 			xprt->stat.sends,
-> 			xprt->stat.recvs,
-> 			xprt->stat.bad_xids,
-> +			xprt->stat.max_slots,
-> 			xprt->stat.req_u,
-> -			xprt->stat.bklog_u);
-> +			xprt->stat.bklog_u,
-> +			xprt->stat.sending_u,
-> +			xprt->stat.pending_u);
-> }
-> 
-> /*
-
-And here too.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gV2VkLCAyMDEyLTAyLTA4IGF0IDA4OjUwIC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFdlZCwgMjAxMi0wMi0wOCBhdCAwNzowNCAtMDUwMCwgSmVmZiBMYXl0b24gd3JvdGU6
+DQo+ID4gT24gYSB4ODZfNjQgbWFjaGluZToNCj4gPiANCj4gPiBwcmUtcGF0Y2g6DQo+ID4gKGdk
+YikgcCBzaXplb2Yoc3RydWN0IGlkbWFwKQ0KPiA+ICQxID0gMzk1MDQNCj4gPiANCj4gPiBwb3N0
+LXBhdGNoOg0KPiA+IChnZGIpIHAgc2l6ZW9mKHN0cnVjdCBpZG1hcCkNCj4gPiAkMSA9IDg3ODQN
+Cj4gPiANCj4gPiBUaGF0IGNoYW5nZXMgdGhpcyBmcm9tIGFuIG9yZGVyIDQgdG8gYW4gb3JkZXIg
+MiBhbGxvY2F0aW9uLiBXb3VsZCBiZQ0KPiA+IGV2ZW4gbmljZXIgdG8gZ2V0IGl0IGRvd24gdG8g
+dW5kZXIgYSBwYWdlLCBidXQgdGhpcyB3aWxsIGhlbHANCj4gPiBjb25zaWRlcmFibHkuDQo+ID4g
+DQo+ID4gUmV2aWV3ZWQtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJlZGhhdC5jb20+DQo+IA0K
+PiBXZSBjb3VsZCBkbyB0aGF0IGJ5IGFsbG9jYXRpbmcgdGhlIHR3byBpZG1hcF9oYXNoZW50IGFy
+cmF5cyBzZXBhcmF0ZWx5Lg0KPiBJJ2xsIHNlZSBhYm91dCB0aGF0IGxhdGVyIHRvZGF5Lg0KDQpI
+ZXJlIHlvdSBnby4uLiBJdCBub3cgZW5zdXJlcyB0aGF0IHRoZSBhcnJheXMgZG9uJ3QgZXZlbiBn
+ZXQgYWxsb2NhdGVkDQphdCBhbGwgaWYgeW91IGFyZSB1c2luZyB0aGUgbmV3IGlkbWFwcGVyLi4u
+DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDg2NTBjOTYxMGY5YWVlYjUzNmE3MGZlYWNiNDg4
+ZGZiNjU4MzA5MGUgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1
+c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogV2VkLCA4IEZlYiAyMDEyIDEz
+OjM5OjE1IC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGdXJ0aGVyIHJlZHVjZSB0aGUg
+Zm9vdHByaW50IG9mIHRoZSBpZG1hcHBlcg0KDQpEb24ndCBhbGxvY2F0ZSB0aGUgbGVnYWN5IGlk
+bWFwcGVyIHRhYmxlcyB1bnRpbCB3ZSBhY3R1YWxseSBuZWVkDQp0aGVtLg0KDQpTaWduZWQtb2Zm
+LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQog
+ZnMvbmZzL2lkbWFwLmMgfCAgIDQyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+Ky0tLS0tLQ0KIDEgZmlsZXMgY2hhbmdlZCwgMzYgaW5zZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMo
+LSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9pZG1hcC5jIGIvZnMvbmZzL2lkbWFwLmMNCmluZGV4
+IGZmZjc5NDguLmI1YzZkOGUgMTAwNjQ0DQotLS0gYS9mcy9uZnMvaWRtYXAuYw0KKysrIGIvZnMv
+bmZzL2lkbWFwLmMNCkBAIC0zNjcsNyArMzY3LDcgQEAgc3RydWN0IGlkbWFwX2hhc2hlbnQgew0K
+IA0KIHN0cnVjdCBpZG1hcF9oYXNodGFibGUgew0KIAlfX3U4CQkJaF90eXBlOw0KLQlzdHJ1Y3Qg
+aWRtYXBfaGFzaGVudAloX2VudHJpZXNbSURNQVBfSEFTSF9TWl07DQorCXN0cnVjdCBpZG1hcF9o
+YXNoZW50CSpoX2VudHJpZXM7DQogfTsNCiANCiBzdHJ1Y3QgaWRtYXAgew0KQEAgLTQ3OCwyMSAr
+NDc4LDQwIEBAIG5mc19pZG1hcF9uZXcoc3RydWN0IG5mc19jbGllbnQgKmNscCkNCiAJcmV0dXJu
+IDA7DQogfQ0KIA0KK3N0YXRpYyB2b2lkDQoraWRtYXBfYWxsb2NfaGFzaHRhYmxlKHN0cnVjdCBp
+ZG1hcF9oYXNodGFibGUgKmgpDQorew0KKwlpZiAoaC0+aF9lbnRyaWVzICE9IE5VTEwpDQorCQly
+ZXR1cm47DQorCWgtPmhfZW50cmllcyA9IGtjYWxsb2MoSURNQVBfSEFTSF9TWiwNCisJCQlzaXpl
+b2YoKmgtPmhfZW50cmllcyksDQorCQkJR0ZQX0tFUk5FTCk7DQorfQ0KKw0KK3N0YXRpYyB2b2lk
+DQoraWRtYXBfZnJlZV9oYXNodGFibGUoc3RydWN0IGlkbWFwX2hhc2h0YWJsZSAqaCkNCit7DQor
+CWludCBpOw0KKw0KKwlpZiAoaC0+aF9lbnRyaWVzID09IE5VTEwpDQorCQlyZXR1cm47DQorCWZv
+ciAoaSA9IDA7IGkgPCBJRE1BUF9IQVNIX1NaOyBpKyspDQorCQlrZnJlZShoLT5oX2VudHJpZXNb
+aV0uaWhfbmFtZSk7DQorCWtmcmVlKGgtPmhfZW50cmllcyk7DQorfQ0KKw0KIHZvaWQNCiBuZnNf
+aWRtYXBfZGVsZXRlKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQogew0KIAlzdHJ1Y3QgaWRtYXAg
+KmlkbWFwID0gY2xwLT5jbF9pZG1hcDsNCi0JaW50IGk7DQogDQogCWlmICghaWRtYXApDQogCQly
+ZXR1cm47DQogCW5mc19pZG1hcF91bnJlZ2lzdGVyKGNscCwgaWRtYXAtPmlkbWFwX3BpcGUpOw0K
+IAlycGNfZGVzdHJveV9waXBlX2RhdGEoaWRtYXAtPmlkbWFwX3BpcGUpOw0KIAljbHAtPmNsX2lk
+bWFwID0gTlVMTDsNCi0JZm9yIChpID0gMDsgaSA8IEFSUkFZX1NJWkUoaWRtYXAtPmlkbWFwX3Vz
+ZXJfaGFzaC5oX2VudHJpZXMpOyBpKyspDQotCQlrZnJlZShpZG1hcC0+aWRtYXBfdXNlcl9oYXNo
+LmhfZW50cmllc1tpXS5paF9uYW1lKTsNCi0JZm9yIChpID0gMDsgaSA8IEFSUkFZX1NJWkUoaWRt
+YXAtPmlkbWFwX2dyb3VwX2hhc2guaF9lbnRyaWVzKTsgaSsrKQ0KLQkJa2ZyZWUoaWRtYXAtPmlk
+bWFwX2dyb3VwX2hhc2guaF9lbnRyaWVzW2ldLmloX25hbWUpOw0KKwlpZG1hcF9mcmVlX2hhc2h0
+YWJsZSgmaWRtYXAtPmlkbWFwX3VzZXJfaGFzaCk7DQorCWlkbWFwX2ZyZWVfaGFzaHRhYmxlKCZp
+ZG1hcC0+aWRtYXBfZ3JvdXBfaGFzaCk7DQogCWtmcmVlKGlkbWFwKTsNCiB9DQogDQpAQCAtNTg2
+LDYgKzYwNSw4IEBAIHZvaWQgbmZzX2lkbWFwX3F1aXQodm9pZCkNCiBzdGF0aWMgaW5saW5lIHN0
+cnVjdCBpZG1hcF9oYXNoZW50ICoNCiBpZG1hcF9uYW1lX2hhc2goc3RydWN0IGlkbWFwX2hhc2h0
+YWJsZSogaCwgY29uc3QgY2hhciAqbmFtZSwgc2l6ZV90IGxlbikNCiB7DQorCWlmIChoLT5oX2Vu
+dHJpZXMgPT0gTlVMTCkNCisJCXJldHVybiBOVUxMOw0KIAlyZXR1cm4gJmgtPmhfZW50cmllc1tm
+bnZoYXNoMzIobmFtZSwgbGVuKSAlIElETUFQX0hBU0hfU1pdOw0KIH0NCiANCkBAIC01OTQsNiAr
+NjE1LDggQEAgaWRtYXBfbG9va3VwX25hbWUoc3RydWN0IGlkbWFwX2hhc2h0YWJsZSAqaCwgY29u
+c3QgY2hhciAqbmFtZSwgc2l6ZV90IGxlbikNCiB7DQogCXN0cnVjdCBpZG1hcF9oYXNoZW50ICpo
+ZSA9IGlkbWFwX25hbWVfaGFzaChoLCBuYW1lLCBsZW4pOw0KIA0KKwlpZiAoaGUgPT0gTlVMTCkN
+CisJCXJldHVybiBOVUxMOw0KIAlpZiAoaGUtPmloX25hbWVsZW4gIT0gbGVuIHx8IG1lbWNtcCho
+ZS0+aWhfbmFtZSwgbmFtZSwgbGVuKSAhPSAwKQ0KIAkJcmV0dXJuIE5VTEw7DQogCWlmICh0aW1l
+X2FmdGVyKGppZmZpZXMsIGhlLT5paF9leHBpcmVzKSkNCkBAIC02MDQsNiArNjI3LDggQEAgaWRt
+YXBfbG9va3VwX25hbWUoc3RydWN0IGlkbWFwX2hhc2h0YWJsZSAqaCwgY29uc3QgY2hhciAqbmFt
+ZSwgc2l6ZV90IGxlbikNCiBzdGF0aWMgaW5saW5lIHN0cnVjdCBpZG1hcF9oYXNoZW50ICoNCiBp
+ZG1hcF9pZF9oYXNoKHN0cnVjdCBpZG1hcF9oYXNodGFibGUqIGgsIF9fdTMyIGlkKQ0KIHsNCisJ
+aWYgKGgtPmhfZW50cmllcyA9PSBOVUxMKQ0KKwkJcmV0dXJuIE5VTEw7DQogCXJldHVybiAmaC0+
+aF9lbnRyaWVzW2Zudmhhc2gzMigmaWQsIHNpemVvZihpZCkpICUgSURNQVBfSEFTSF9TWl07DQog
+fQ0KIA0KQEAgLTYxMSw2ICs2MzYsOSBAQCBzdGF0aWMgc3RydWN0IGlkbWFwX2hhc2hlbnQgKg0K
+IGlkbWFwX2xvb2t1cF9pZChzdHJ1Y3QgaWRtYXBfaGFzaHRhYmxlICpoLCBfX3UzMiBpZCkNCiB7
+DQogCXN0cnVjdCBpZG1hcF9oYXNoZW50ICpoZSA9IGlkbWFwX2lkX2hhc2goaCwgaWQpOw0KKw0K
+KwlpZiAoaGUgPT0gTlVMTCkNCisJCXJldHVybiBOVUxMOw0KIAlpZiAoaGUtPmloX2lkICE9IGlk
+IHx8IGhlLT5paF9uYW1lbGVuID09IDApDQogCQlyZXR1cm4gTlVMTDsNCiAJaWYgKHRpbWVfYWZ0
+ZXIoamlmZmllcywgaGUtPmloX2V4cGlyZXMpKQ0KQEAgLTYyNiwxMiArNjU0LDE0IEBAIGlkbWFw
+X2xvb2t1cF9pZChzdHJ1Y3QgaWRtYXBfaGFzaHRhYmxlICpoLCBfX3UzMiBpZCkNCiBzdGF0aWMg
+aW5saW5lIHN0cnVjdCBpZG1hcF9oYXNoZW50ICoNCiBpZG1hcF9hbGxvY19uYW1lKHN0cnVjdCBp
+ZG1hcF9oYXNodGFibGUgKmgsIGNoYXIgKm5hbWUsIHNpemVfdCBsZW4pDQogew0KKwlpZG1hcF9h
+bGxvY19oYXNodGFibGUoaCk7DQogCXJldHVybiBpZG1hcF9uYW1lX2hhc2goaCwgbmFtZSwgbGVu
+KTsNCiB9DQogDQogc3RhdGljIGlubGluZSBzdHJ1Y3QgaWRtYXBfaGFzaGVudCAqDQogaWRtYXBf
+YWxsb2NfaWQoc3RydWN0IGlkbWFwX2hhc2h0YWJsZSAqaCwgX191MzIgaWQpDQogew0KKwlpZG1h
+cF9hbGxvY19oYXNodGFibGUoaCk7DQogCXJldHVybiBpZG1hcF9pZF9oYXNoKGgsIGlkKTsNCiB9
+DQogDQotLSANCjEuNy43LjYNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
+dy5uZXRhcHAuY29tDQoNCg==
