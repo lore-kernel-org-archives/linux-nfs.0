@@ -1,46 +1,723 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from umail.ceopen.cn ([202.10.79.61]:35136 "HELO ceopen.cn"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1753509Ab2BBCOf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 21:14:35 -0500
-Date: Thu, 2 Feb 2012 10:14:30 +0800
-From: "=?utf-8?B?d2FuZ2ppbmc=?=" <wangjing@300.cn>
-To: "=?utf-8?B?SmltIFJlZXM=?=" <rees@umich.edu>
-Cc: "=?utf-8?B?bGludXgtbmZz?=" <linux-nfs@vger.kernel.org>
-References: <201202012212229514260@300.cn>,
- <201202020009007716206@300.cn>
-Subject: =?utf-8?B?UmU6UmU6IG1heSBpIGFzayBhIHF1ZXN0aW9uIGFib3V0IG5mcyBmcyA/IHRoYW5rcyBhIGxvdC4g?=
-Message-ID: <201202021014301817451@300.cn>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:34721 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756092Ab2BHVSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:18:02 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 07/17] FS-Cache: Provide proper invalidation
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:17:52 +0000
+Message-ID: <20120208211752.15607.35776.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-thanks for your help.
+Provide a proper invalidation method rather than relying on the netfs retiring
+the cookie it has and getting a new one.  The problem with this is that isn't
+easy for the netfs to make sure that it has completed/cancelled all its
+outstanding storage and retrieval operations on the cookie it is retiring.
 
-In nfs v3 ,if mulity process visit nfs mount nfs dir ,there sometimes occour .nfsXXX can't delete .
+Instead, have the cache provide an invalidation method that will cancel or wait
+for all currently outstanding operations before invalidating the cache, and
+will cause new operations to queue up behind that.  Whilst invalidation is in
+progress, some requests will be rejected until the cache can stack a barrier on
+the operation queue to cause new operations to be deferred behind it.
 
-if modify sillyrename to put files in /tmp ,it will be more friendly to nfs user.
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
+ Documentation/filesystems/caching/backend-api.txt |   12 ++++
+ Documentation/filesystems/caching/netfs-api.txt   |   46 +++++++++++--
+ Documentation/filesystems/caching/object.txt      |   23 ++++---
+ fs/fscache/cookie.c                               |   60 ++++++++++++++++++
+ fs/fscache/internal.h                             |   10 +++
+ fs/fscache/object.c                               |   72 +++++++++++++++++++++
+ fs/fscache/operation.c                            |   32 +++++++++
+ fs/fscache/page.c                                 |   51 +++++++++++++++
+ fs/fscache/stats.c                                |   11 +++
+ include/linux/fscache-cache.h                     |    8 ++
+ include/linux/fscache.h                           |   38 +++++++++++
+ 11 files changed, 345 insertions(+), 18 deletions(-)
 
-2012-02-02 
-wangjing 
-
-
-
-
- Re: may i ask a question about nfs fs ? thanks a lot. 
+diff --git a/Documentation/filesystems/caching/backend-api.txt b/Documentation/filesystems/caching/backend-api.txt
+index f4769b9..d78bab9 100644
+--- a/Documentation/filesystems/caching/backend-api.txt
++++ b/Documentation/filesystems/caching/backend-api.txt
+@@ -308,6 +308,18 @@ performed on the denizens of the cache.  These are held in a structure of type:
+      obtained by calling object->cookie->def->get_aux()/get_attr().
  
-wangjing wrote:
-  may i ask a question? thanks a lot.
-Not trying to be difficult, but you'll have better luck if you:
-1. Use a descriptive subject. Something like "modify sillyrename to put
-files in /tmp".
-2. Run your code through indent(1).  It's unreadable as-is.
-3. Use an international standard character set, like utf-8.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 
++ (*) Invalidate data object [mandatory]:
++
++	int (*invalidate_object)(struct fscache_operation *op)
++
++     This is called to invalidate a data object (as pointed to by op->object).
++     All the data stored for this object should be discarded and an
++     attr_changed operation should be performed.  The caller will follow up
++     with an object update operation.
++
++     fscache_op_complete() must be called on op before returning.
++
++
+  (*) Discard object [mandatory]:
+ 
+ 	void (*drop_object)(struct fscache_object *object)
+diff --git a/Documentation/filesystems/caching/netfs-api.txt b/Documentation/filesystems/caching/netfs-api.txt
+index 7cc6bf2..97e6c0e 100644
+--- a/Documentation/filesystems/caching/netfs-api.txt
++++ b/Documentation/filesystems/caching/netfs-api.txt
+@@ -35,8 +35,9 @@ This document contains the following sections:
+ 	(12) Index and data file update
+ 	(13) Miscellaneous cookie operations
+ 	(14) Cookie unregistration
+-	(15) Index and data file invalidation
+-	(16) FS-Cache specific page flags.
++	(15) Index invalidation
++	(16) Data file invalidation
++	(17) FS-Cache specific page flags.
+ 
+ 
+ =============================
+@@ -767,13 +768,42 @@ the cookies for "child" indices, objects and pages have been relinquished
+ first.
+ 
+ 
+-================================
+-INDEX AND DATA FILE INVALIDATION
+-================================
++==================
++INDEX INVALIDATION
++==================
++
++There is no direct way to invalidate an index subtree.  To do this, the caller
++should relinquish and retire the cookie they have, and then acquire a new one.
++
++
++======================
++DATA FILE INVALIDATION
++======================
++
++Sometimes it will be necessary to invalidate an object that contains data.
++Typically this will be necessary when the server tells the netfs of a foreign
++change - at which point the netfs has to throw away all the state it had for an
++inode and reload from the server.
++
++To indicate that a cache object should be invalidated, the following function
++can be called:
++
++	void fscache_invalidate(struct fscache_cookie *cookie);
++
++This can be called with spinlocks held as it defers the work to a thread pool.
++All extant storage, retrieval and attribute change ops at this point are
++cancelled and discarded.  Some future operations will be rejected until the
++cache has had a chance to insert a barrier in the operations queue.  After
++that, operations will be queued again behind the invalidation operation.
++
++The invalidation operation will perform an attribute change operation and an
++auxiliary data update operation as it is very likely these will have changed.
++
++Using the following function, the netfs can wait for the invalidation operation
++to have reached a point at which it can start submitting ordinary operations
++once again:
+ 
+-There is no direct way to invalidate an index subtree or a data file.  To do
+-this, the caller should relinquish and retire the cookie they have, and then
+-acquire a new one.
++	void fscache_wait_on_invalidate(struct fscache_cookie *cookie);
+ 
+ 
+ ===========================
+diff --git a/Documentation/filesystems/caching/object.txt b/Documentation/filesystems/caching/object.txt
+index 5831334..100ff41 100644
+--- a/Documentation/filesystems/caching/object.txt
++++ b/Documentation/filesystems/caching/object.txt
+@@ -216,7 +216,14 @@ servicing netfs requests:
+      The normal running state.  In this state, requests the netfs makes will be
+      passed on to the cache.
+ 
+- (6) State FSCACHE_OBJECT_UPDATING.
++ (6) State FSCACHE_OBJECT_INVALIDATING.
++
++     The object is undergoing invalidation.  When the state comes here, it
++     discards all pending read, write and attribute change operations as it is
++     going to clear out the cache entirely and reinitialise it.  It will then
++     continue to the FSCACHE_OBJECT_UPDATING state.
++
++ (7) State FSCACHE_OBJECT_UPDATING.
+ 
+      The state machine comes here to update the object in the cache from the
+      netfs's records.  This involves updating the auxiliary data that is used
+@@ -225,13 +232,13 @@ servicing netfs requests:
+ And there are terminal states in which an object cleans itself up, deallocates
+ memory and potentially deletes stuff from disk:
+ 
+- (7) State FSCACHE_OBJECT_LC_DYING.
++ (8) State FSCACHE_OBJECT_LC_DYING.
+ 
+      The object comes here if it is dying because of a lookup or creation
+      error.  This would be due to a disk error or system error of some sort.
+      Temporary data is cleaned up, and the parent is released.
+ 
+- (8) State FSCACHE_OBJECT_DYING.
++ (9) State FSCACHE_OBJECT_DYING.
+ 
+      The object comes here if it is dying due to an error, because its parent
+      cookie has been relinquished by the netfs or because the cache is being
+@@ -241,27 +248,27 @@ memory and potentially deletes stuff from disk:
+      can destroy themselves.  This object waits for all its children to go away
+      before advancing to the next state.
+ 
+- (9) State FSCACHE_OBJECT_ABORT_INIT.
++(10) State FSCACHE_OBJECT_ABORT_INIT.
+ 
+      The object comes to this state if it was waiting on its parent in
+      FSCACHE_OBJECT_INIT, but its parent died.  The object will destroy itself
+      so that the parent may proceed from the FSCACHE_OBJECT_DYING state.
+ 
+-(10) State FSCACHE_OBJECT_RELEASING.
+-(11) State FSCACHE_OBJECT_RECYCLING.
++(11) State FSCACHE_OBJECT_RELEASING.
++(12) State FSCACHE_OBJECT_RECYCLING.
+ 
+      The object comes to one of these two states when dying once it is rid of
+      all its children, if it is dying because the netfs relinquished its
+      cookie.  In the first state, the cached data is expected to persist, and
+      in the second it will be deleted.
+ 
+-(12) State FSCACHE_OBJECT_WITHDRAWING.
++(13) State FSCACHE_OBJECT_WITHDRAWING.
+ 
+      The object transits to this state if the cache decides it wants to
+      withdraw the object from service, perhaps to make space, but also due to
+      error or just because the whole cache is being withdrawn.
+ 
+-(13) State FSCACHE_OBJECT_DEAD.
++(14) State FSCACHE_OBJECT_DEAD.
+ 
+      The object transits to this state when the in-memory object record is
+      ready to be deleted.  The object processor shouldn't ever see an object in
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index 66be9ec..8dcb114 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -370,6 +370,66 @@ cant_attach_object:
+ }
+ 
+ /*
++ * Invalidate an object.  Callable with spinlocks held.
++ */
++void __fscache_invalidate(struct fscache_cookie *cookie)
++{
++	struct fscache_object *object;
++
++	_enter("{%s}", cookie->def->name);
++
++	fscache_stat(&fscache_n_invalidates);
++
++	/* Only permit invalidation of data files.  Invalidating an index will
++	 * require the caller to release all its attachments to the tree rooted
++	 * there, and if it's doing that, it may as well just retire the
++	 * cookie.
++	 */
++	ASSERTCMP(cookie->def->type, ==, FSCACHE_COOKIE_TYPE_DATAFILE);
++
++	/* We will be updating the cookie too. */
++	BUG_ON(!cookie->def->get_aux);
++
++	/* If there's an object, we tell the object state machine to handle the
++	 * invalidation on our behalf, otherwise there's nothing to do.
++	 */
++	if (!hlist_empty(&cookie->backing_objects)) {
++		spin_lock(&cookie->lock);
++
++		if (!hlist_empty(&cookie->backing_objects) &&
++		    !test_and_set_bit(FSCACHE_COOKIE_INVALIDATING,
++				      &cookie->flags)) {
++			object = hlist_entry(cookie->backing_objects.first,
++					     struct fscache_object,
++					     cookie_link);
++			if (object->state < FSCACHE_OBJECT_DYING)
++				fscache_raise_event(
++					object, FSCACHE_OBJECT_EV_INVALIDATE);
++		}
++
++		spin_unlock(&cookie->lock);
++	}
++
++	_leave("");
++}
++EXPORT_SYMBOL(__fscache_invalidate);
++
++/*
++ * Wait for object invalidation to complete.
++ */
++void __fscache_wait_on_invalidate(struct fscache_cookie *cookie)
++{
++	_enter("%p", cookie);
++
++	wait_on_bit(&cookie->flags, FSCACHE_COOKIE_INVALIDATING,
++		    fscache_wait_bit_interruptible,
++		    TASK_UNINTERRUPTIBLE);
++
++	_leave("");
++}
++EXPORT_SYMBOL(__fscache_wait_on_invalidate);
++
++/*
+  * update the index entries backing a cookie
+  */
+ void __fscache_update_cookie(struct fscache_cookie *cookie)
+diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
+index f6aad48..c811793 100644
+--- a/fs/fscache/internal.h
++++ b/fs/fscache/internal.h
+@@ -122,11 +122,17 @@ extern int fscache_submit_exclusive_op(struct fscache_object *,
+ extern int fscache_submit_op(struct fscache_object *,
+ 			     struct fscache_operation *);
+ extern int fscache_cancel_op(struct fscache_operation *);
++extern void fscache_cancel_all_ops(struct fscache_object *);
+ extern void fscache_abort_object(struct fscache_object *);
+ extern void fscache_start_operations(struct fscache_object *);
+ extern void fscache_operation_gc(struct work_struct *);
+ 
+ /*
++ * page.c
++ */
++extern void fscache_invalidate_writes(struct fscache_cookie *);
++
++/*
+  * proc.c
+  */
+ #ifdef CONFIG_PROC_FS
+@@ -205,6 +211,9 @@ extern atomic_t fscache_n_acquires_ok;
+ extern atomic_t fscache_n_acquires_nobufs;
+ extern atomic_t fscache_n_acquires_oom;
+ 
++extern atomic_t fscache_n_invalidates;
++extern atomic_t fscache_n_invalidates_run;
++
+ extern atomic_t fscache_n_updates;
+ extern atomic_t fscache_n_updates_null;
+ extern atomic_t fscache_n_updates_run;
+@@ -237,6 +246,7 @@ extern atomic_t fscache_n_cop_alloc_object;
+ extern atomic_t fscache_n_cop_lookup_object;
+ extern atomic_t fscache_n_cop_lookup_complete;
+ extern atomic_t fscache_n_cop_grab_object;
++extern atomic_t fscache_n_cop_invalidate_object;
+ extern atomic_t fscache_n_cop_update_object;
+ extern atomic_t fscache_n_cop_drop_object;
+ extern atomic_t fscache_n_cop_put_object;
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index 773bc79..80b5491 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -14,6 +14,7 @@
+ 
+ #define FSCACHE_DEBUG_LEVEL COOKIE
+ #include <linux/module.h>
++#include <linux/slab.h>
+ #include "internal.h"
+ 
+ const char *fscache_object_states[FSCACHE_OBJECT__NSTATES] = {
+@@ -22,6 +23,7 @@ const char *fscache_object_states[FSCACHE_OBJECT__NSTATES] = {
+ 	[FSCACHE_OBJECT_CREATING]	= "OBJECT_CREATING",
+ 	[FSCACHE_OBJECT_AVAILABLE]	= "OBJECT_AVAILABLE",
+ 	[FSCACHE_OBJECT_ACTIVE]		= "OBJECT_ACTIVE",
++	[FSCACHE_OBJECT_INVALIDATING]	= "OBJECT_INVALIDATING",
+ 	[FSCACHE_OBJECT_UPDATING]	= "OBJECT_UPDATING",
+ 	[FSCACHE_OBJECT_DYING]		= "OBJECT_DYING",
+ 	[FSCACHE_OBJECT_LC_DYING]	= "OBJECT_LC_DYING",
+@@ -39,6 +41,7 @@ const char fscache_object_states_short[FSCACHE_OBJECT__NSTATES][5] = {
+ 	[FSCACHE_OBJECT_CREATING]	= "CRTN",
+ 	[FSCACHE_OBJECT_AVAILABLE]	= "AVBL",
+ 	[FSCACHE_OBJECT_ACTIVE]		= "ACTV",
++	[FSCACHE_OBJECT_INVALIDATING]	= "INVL",
+ 	[FSCACHE_OBJECT_UPDATING]	= "UPDT",
+ 	[FSCACHE_OBJECT_DYING]		= "DYNG",
+ 	[FSCACHE_OBJECT_LC_DYING]	= "LCDY",
+@@ -54,6 +57,7 @@ static void fscache_put_object(struct fscache_object *);
+ static void fscache_initialise_object(struct fscache_object *);
+ static void fscache_lookup_object(struct fscache_object *);
+ static void fscache_object_available(struct fscache_object *);
++static void fscache_invalidate_object(struct fscache_object *);
+ static void fscache_release_object(struct fscache_object *);
+ static void fscache_withdraw_object(struct fscache_object *);
+ static void fscache_enqueue_dependents(struct fscache_object *);
+@@ -79,6 +83,15 @@ static inline void fscache_done_parent_op(struct fscache_object *object)
+ }
+ 
+ /*
++ * Notify netfs of invalidation completion.
++ */
++static inline void fscache_invalidation_complete(struct fscache_cookie *cookie)
++{
++	if (test_and_clear_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags))
++		wake_up_bit(&cookie->flags, FSCACHE_COOKIE_INVALIDATING);
++}
++
++/*
+  * process events that have been sent to an object's state machine
+  * - initiates parent lookup
+  * - does object lookup
+@@ -125,6 +138,16 @@ static void fscache_object_state_machine(struct fscache_object *object)
+ 	case FSCACHE_OBJECT_ACTIVE:
+ 		goto active_transit;
+ 
++		/* Invalidate an object on disk */
++	case FSCACHE_OBJECT_INVALIDATING:
++		clear_bit(FSCACHE_OBJECT_EV_INVALIDATE, &object->events);
++		fscache_stat(&fscache_n_invalidates_run);
++		fscache_stat(&fscache_n_cop_invalidate_object);
++		fscache_invalidate_object(object);
++		fscache_stat_d(&fscache_n_cop_invalidate_object);
++		fscache_raise_event(object, FSCACHE_OBJECT_EV_UPDATE);
++		goto active_transit;
++
+ 		/* update the object metadata on disk */
+ 	case FSCACHE_OBJECT_UPDATING:
+ 		clear_bit(FSCACHE_OBJECT_EV_UPDATE, &object->events);
+@@ -275,6 +298,9 @@ active_transit:
+ 	case FSCACHE_OBJECT_EV_ERROR:
+ 		new_state = FSCACHE_OBJECT_DYING;
+ 		goto change_state;
++	case FSCACHE_OBJECT_EV_INVALIDATE:
++		new_state = FSCACHE_OBJECT_INVALIDATING;
++		goto change_state;
+ 	case FSCACHE_OBJECT_EV_UPDATE:
+ 		new_state = FSCACHE_OBJECT_UPDATING;
+ 		goto change_state;
+@@ -679,6 +705,7 @@ static void fscache_withdraw_object(struct fscache_object *object)
+ 		if (object->cookie == cookie) {
+ 			hlist_del_init(&object->cookie_link);
+ 			object->cookie = NULL;
++			fscache_invalidation_complete(cookie);
+ 			detached = true;
+ 		}
+ 		spin_unlock(&cookie->lock);
+@@ -888,3 +915,48 @@ enum fscache_checkaux fscache_check_aux(struct fscache_object *object,
+ 	return result;
+ }
+ EXPORT_SYMBOL(fscache_check_aux);
++
++/*
++ * Asynchronously invalidate an object.
++ */
++static void fscache_invalidate_object(struct fscache_object *object)
++{
++	struct fscache_operation *op;
++	struct fscache_cookie *cookie = object->cookie;
++
++	_enter("{OBJ%x}", object->debug_id);
++
++	/* Reject any new read/write ops and abort any that are pending. */
++	fscache_invalidate_writes(cookie);
++	clear_bit(FSCACHE_OBJECT_PENDING_WRITE, &object->flags);
++	fscache_cancel_all_ops(object);
++
++	/* Now we have to wait for in-progress reads and writes */
++	op = kzalloc(sizeof(*op), GFP_KERNEL);
++	if (!op) {
++		fscache_raise_event(object, FSCACHE_OBJECT_EV_ERROR);
++		_leave(" [ENOMEM]");
++		return;
++	}
++
++	fscache_operation_init(op, object->cache->ops->invalidate_object, NULL);
++	op->flags = FSCACHE_OP_ASYNC | (1 << FSCACHE_OP_EXCLUSIVE);
++
++	spin_lock(&cookie->lock);
++	if (fscache_submit_exclusive_op(object, op) < 0)
++		BUG();
++	spin_unlock(&cookie->lock);
++	fscache_put_operation(op);
++
++	/* Once we've completed the invalidation, we know there will be no data
++	 * stored in the cache and thus we can reinstate the data-check-skip
++	 * optimisation.
++	 */
++	set_bit(FSCACHE_COOKIE_NO_DATA_YET, &cookie->flags);
++
++	/* We can allow read and write requests to come in once again.  They'll
++	 * queue up behind our exclusive invalidation operation.
++	 */
++	fscache_invalidation_complete(cookie);
++	_leave("");
++}
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index 748f955..c58dbe6 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -324,6 +324,38 @@ int fscache_cancel_op(struct fscache_operation *op)
+ }
+ 
+ /*
++ * Cancel all pending operations on an object
++ */
++void fscache_cancel_all_ops(struct fscache_object *object)
++{
++	struct fscache_operation *op;
++
++	_enter("OBJ%x", object->debug_id);
++
++	spin_lock(&object->lock);
++
++	while (!list_empty(&object->pending_ops)) {
++		op = list_entry(object->pending_ops.next,
++				struct fscache_operation, pend_link);
++		fscache_stat(&fscache_n_op_cancelled);
++		list_del_init(&op->pend_link);
++
++		ASSERTCMP(op->state, ==, FSCACHE_OP_ST_PENDING);
++		op->state = FSCACHE_OP_ST_CANCELLED;
++
++		if (test_bit(FSCACHE_OP_EXCLUSIVE, &op->flags))
++			object->n_exclusive--;
++		if (test_and_clear_bit(FSCACHE_OP_WAITING, &op->flags))
++			wake_up_bit(&op->flags, FSCACHE_OP_WAITING);
++		fscache_put_operation(op);
++		cond_resched_lock(&object->lock);
++	}
++
++	spin_unlock(&object->lock);
++	_leave("");
++}
++
++/*
+  * Record the completion of an in-progress operation.
+  */
+ void fscache_op_complete(struct fscache_operation *op)
+diff --git a/fs/fscache/page.c b/fs/fscache/page.c
+index b38b13d..7bf9d25 100644
+--- a/fs/fscache/page.c
++++ b/fs/fscache/page.c
+@@ -361,6 +361,11 @@ int __fscache_read_or_alloc_page(struct fscache_cookie *cookie,
+ 	if (hlist_empty(&cookie->backing_objects))
+ 		goto nobufs;
+ 
++	if (test_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags)) {
++		_leave(" = -ENOBUFS [invalidating]");
++		return -ENOBUFS;
++	}
++
+ 	ASSERTCMP(cookie->def->type, !=, FSCACHE_COOKIE_TYPE_INDEX);
+ 	ASSERTCMP(page, !=, NULL);
+ 
+@@ -483,6 +488,11 @@ int __fscache_read_or_alloc_pages(struct fscache_cookie *cookie,
+ 	if (hlist_empty(&cookie->backing_objects))
+ 		goto nobufs;
+ 
++	if (test_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags)) {
++		_leave(" = -ENOBUFS [invalidating]");
++		return -ENOBUFS;
++	}
++
+ 	ASSERTCMP(cookie->def->type, !=, FSCACHE_COOKIE_TYPE_INDEX);
+ 	ASSERTCMP(*nr_pages, >, 0);
+ 	ASSERT(!list_empty(pages));
+@@ -591,6 +601,11 @@ int __fscache_alloc_page(struct fscache_cookie *cookie,
+ 	ASSERTCMP(cookie->def->type, !=, FSCACHE_COOKIE_TYPE_INDEX);
+ 	ASSERTCMP(page, !=, NULL);
+ 
++	if (test_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags)) {
++		_leave(" = -ENOBUFS [invalidating]");
++		return -ENOBUFS;
++	}
++
+ 	if (fscache_wait_for_deferred_lookup(cookie) < 0)
+ 		return -ERESTARTSYS;
+ 
+@@ -731,6 +746,37 @@ superseded:
+ }
+ 
+ /*
++ * Clear the pages pending writing for invalidation
++ */
++void fscache_invalidate_writes(struct fscache_cookie *cookie)
++{
++	struct page *page;
++	void *results[16];
++	int n, i;
++
++	_enter("");
++
++	while (spin_lock(&cookie->stores_lock),
++	       n = radix_tree_gang_lookup_tag(&cookie->stores, results, 0,
++					      ARRAY_SIZE(results),
++					      FSCACHE_COOKIE_PENDING_TAG),
++	       n > 0) {
++		for (i = n - 1; i >= 0; i--) {
++			page = results[i];
++			radix_tree_delete(&cookie->stores, page->index);
++		}
++
++		spin_unlock(&cookie->stores_lock);
++
++		for (i = n - 1; i >= 0; i--)
++			page_cache_release(results[i]);
++	}
++
++	spin_unlock(&cookie->stores_lock);
++	_leave("");
++}
++
++/*
+  * request a page be stored in the cache
+  * - returns:
+  *   -ENOMEM	- out of memory, nothing done
+@@ -776,6 +822,11 @@ int __fscache_write_page(struct fscache_cookie *cookie,
+ 
+ 	fscache_stat(&fscache_n_stores);
+ 
++	if (test_bit(FSCACHE_COOKIE_INVALIDATING, &cookie->flags)) {
++		_leave(" = -ENOBUFS [invalidating]");
++		return -ENOBUFS;
++	}
++
+ 	op = kzalloc(sizeof(*op), GFP_NOIO | __GFP_NOMEMALLOC | __GFP_NORETRY);
+ 	if (!op)
+ 		goto nomem;
+diff --git a/fs/fscache/stats.c b/fs/fscache/stats.c
+index 4765190..51cdaee 100644
+--- a/fs/fscache/stats.c
++++ b/fs/fscache/stats.c
+@@ -80,6 +80,9 @@ atomic_t fscache_n_acquires_ok;
+ atomic_t fscache_n_acquires_nobufs;
+ atomic_t fscache_n_acquires_oom;
+ 
++atomic_t fscache_n_invalidates;
++atomic_t fscache_n_invalidates_run;
++
+ atomic_t fscache_n_updates;
+ atomic_t fscache_n_updates_null;
+ atomic_t fscache_n_updates_run;
+@@ -112,6 +115,7 @@ atomic_t fscache_n_cop_alloc_object;
+ atomic_t fscache_n_cop_lookup_object;
+ atomic_t fscache_n_cop_lookup_complete;
+ atomic_t fscache_n_cop_grab_object;
++atomic_t fscache_n_cop_invalidate_object;
+ atomic_t fscache_n_cop_update_object;
+ atomic_t fscache_n_cop_drop_object;
+ atomic_t fscache_n_cop_put_object;
+@@ -168,6 +172,10 @@ static int fscache_stats_show(struct seq_file *m, void *v)
+ 		   atomic_read(&fscache_n_object_created),
+ 		   atomic_read(&fscache_n_object_lookups_timed_out));
+ 
++	seq_printf(m, "Invals : n=%u run=%u\n",
++		   atomic_read(&fscache_n_invalidates),
++		   atomic_read(&fscache_n_invalidates_run));
++
+ 	seq_printf(m, "Updates: n=%u nul=%u run=%u\n",
+ 		   atomic_read(&fscache_n_updates),
+ 		   atomic_read(&fscache_n_updates_null),
+@@ -246,7 +254,8 @@ static int fscache_stats_show(struct seq_file *m, void *v)
+ 		   atomic_read(&fscache_n_cop_lookup_object),
+ 		   atomic_read(&fscache_n_cop_lookup_complete),
+ 		   atomic_read(&fscache_n_cop_grab_object));
+-	seq_printf(m, "CacheOp: upo=%d dro=%d pto=%d atc=%d syn=%d\n",
++	seq_printf(m, "CacheOp: inv=%d upo=%d dro=%d pto=%d atc=%d syn=%d\n",
++		   atomic_read(&fscache_n_cop_invalidate_object),
+ 		   atomic_read(&fscache_n_cop_update_object),
+ 		   atomic_read(&fscache_n_cop_drop_object),
+ 		   atomic_read(&fscache_n_cop_put_object),
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index f5facd1..1e454ad 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -254,6 +254,9 @@ struct fscache_cache_ops {
+ 	/* store the updated auxiliary data on an object */
+ 	void (*update_object)(struct fscache_object *object);
+ 
++	/* Invalidate an object */
++	void (*invalidate_object)(struct fscache_operation *op);
++
+ 	/* discard the resources pinned by an object and effect retirement if
+ 	 * necessary */
+ 	void (*drop_object)(struct fscache_object *object);
+@@ -329,6 +332,7 @@ struct fscache_cookie {
+ #define FSCACHE_COOKIE_FILLING		4	/* T if filling object incrementally */
+ #define FSCACHE_COOKIE_UNAVAILABLE	5	/* T if cookie is unavailable (error, etc) */
+ #define FSCACHE_COOKIE_WAITING_ON_READS	6	/* T if cookie is waiting on reads */
++#define FSCACHE_COOKIE_INVALIDATING	7	/* T if cookie is being invalidated */
+ };
+ 
+ extern struct fscache_cookie fscache_fsdef_index;
+@@ -345,6 +349,7 @@ struct fscache_object {
+ 		/* active states */
+ 		FSCACHE_OBJECT_AVAILABLE,	/* cleaning up object after creation */
+ 		FSCACHE_OBJECT_ACTIVE,		/* object is usable */
++		FSCACHE_OBJECT_INVALIDATING,	/* object is invalidating */
+ 		FSCACHE_OBJECT_UPDATING,	/* object is updating */
+ 
+ 		/* terminal states */
+@@ -378,7 +383,8 @@ struct fscache_object {
+ #define FSCACHE_OBJECT_EV_RELEASE	4	/* T if netfs requested object release */
+ #define FSCACHE_OBJECT_EV_RETIRE	5	/* T if netfs requested object retirement */
+ #define FSCACHE_OBJECT_EV_WITHDRAW	6	/* T if cache requested object withdrawal */
+-#define FSCACHE_OBJECT_EVENTS_MASK	0x7f	/* mask of all events*/
++#define FSCACHE_OBJECT_EV_INVALIDATE	7	/* T if cache requested object invalidation */
++#define FSCACHE_OBJECT_EVENTS_MASK	0xff	/* mask of all events*/
+ 
+ 	unsigned long		flags;
+ #define FSCACHE_OBJECT_LOCK		0	/* T if object is busy being processed */
+diff --git a/include/linux/fscache.h b/include/linux/fscache.h
+index f4b6353..7a08623 100644
+--- a/include/linux/fscache.h
++++ b/include/linux/fscache.h
+@@ -185,6 +185,8 @@ extern struct fscache_cookie *__fscache_acquire_cookie(
+ extern void __fscache_relinquish_cookie(struct fscache_cookie *, int);
+ extern void __fscache_update_cookie(struct fscache_cookie *);
+ extern int __fscache_attr_changed(struct fscache_cookie *);
++extern void __fscache_invalidate(struct fscache_cookie *);
++extern void __fscache_wait_on_invalidate(struct fscache_cookie *);
+ extern int __fscache_read_or_alloc_page(struct fscache_cookie *,
+ 					struct page *,
+ 					fscache_rw_complete_t,
+@@ -390,6 +392,42 @@ int fscache_attr_changed(struct fscache_cookie *cookie)
+ }
+ 
+ /**
++ * fscache_invalidate - Notify cache that an object needs invalidation
++ * @cookie: The cookie representing the cache object
++ *
++ * Notify the cache that an object is needs to be invalidated and that it
++ * should abort any retrievals or stores it is doing on the cache.  The object
++ * is then marked non-caching until such time as the invalidation is complete.
++ *
++ * This can be called with spinlocks held.
++ *
++ * See Documentation/filesystems/caching/netfs-api.txt for a complete
++ * description.
++ */
++static inline
++void fscache_invalidate(struct fscache_cookie *cookie)
++{
++	if (fscache_cookie_valid(cookie))
++		__fscache_invalidate(cookie);
++}
++
++/**
++ * fscache_wait_on_invalidate - Wait for invalidation to complete
++ * @cookie: The cookie representing the cache object
++ *
++ * Wait for the invalidation of an object to complete.
++ *
++ * See Documentation/filesystems/caching/netfs-api.txt for a complete
++ * description.
++ */
++static inline
++void fscache_wait_on_invalidate(struct fscache_cookie *cookie)
++{
++	if (fscache_cookie_valid(cookie))
++		__fscache_wait_on_invalidate(cookie);
++}
++
++/**
+  * fscache_reserve_space - Reserve data space for a cached object
+  * @cookie: The cookie representing the cache object
+  * @i_size: The amount of space to be reserved
 
