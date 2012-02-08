@@ -1,46 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:42758 "EHLO e8.ny.us.ibm.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47928 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752438Ab2BUTkt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Feb 2012 14:40:49 -0500
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Tue, 21 Feb 2012 14:40:48 -0500
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 153216E804F
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Feb 2012 14:40:45 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q1LJejGD228164
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Feb 2012 14:40:45 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q1LJejgL010703
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Feb 2012 14:40:45 -0500
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q1LJehJf010241
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Feb 2012 14:40:44 -0500
-In-Reply-To: <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
-References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
-To: linux-nfs@vger.kernel.org
+	id S1754076Ab2BHVTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:19:35 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 16/17] FS-Cache: Exclusive op submission can BUG if there's
+ been an I/O error
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:19:24 +0000
+Message-ID: <20120208211924.15607.96271.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Subject: Linux pNFS status meeting 02/23/12  -- NO MEETING --
-Message-ID: <OFC586D7D9.00F234CB-ON882579AB.006BF540-882579AB.006C1781@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Tue, 21 Feb 2012 11:40:39 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 02/23/12 at 9:30 AM PST (12:30 PM EST)
+The function to submit an exclusive op (fscache_submit_exclusive_op()) can BUG
+if there's been an I/O error because it may see the parent cache object in an
+unexpected state.  It should only BUG if there hasn't been an I/O error.
+
+In this case the problem was produced by remounting the cache partition to be
+R/O.  The EROFS state was detected and the cache was aborted, but not
+everything handled the aborting correctly.
+
+SysRq : Emergency Remount R/O
+EXT4-fs (sda6): re-mounted. Opts: (null)
+Emergency Remount complete
+CacheFiles: I/O Error: Failed to update xattr with error -30
+FS-Cache: Cache cachefiles stopped due to I/O error
+------------[ cut here ]------------
+kernel BUG at fs/fscache/operation.c:128!
+invalid opcode: 0000 [#1] SMP 
+CPU 0 
+Modules linked in: cachefiles nfs fscache auth_rpcgss nfs_acl lockd sunrpc
+
+Pid: 6612, comm: kworker/u:2 Not tainted 3.1.0-rc8-fsdevel+ #1093                  /DG965RY
+RIP: 0010:[<ffffffffa00739c0>]  [<ffffffffa00739c0>] fscache_submit_exclusive_op+0x2ad/0x2c2 [fscache]
+RSP: 0018:ffff880000853d40  EFLAGS: 00010206
+RAX: ffff880038ac72a8 RBX: ffff8800181f2260 RCX: ffffffff81f2b2b0
+RDX: 0000000000000001 RSI: ffffffff8179a478 RDI: ffff8800181f2280
+RBP: ffff880000853d60 R08: 0000000000000002 R09: 0000000000000000
+R10: 0000000000000001 R11: 0000000000000001 R12: ffff880038ac7268
+R13: ffff8800181f2280 R14: ffff88003a359190 R15: 000000010122b162
+FS:  0000000000000000(0000) GS:ffff88003bc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00000034cc4a77f0 CR3: 0000000010e96000 CR4: 00000000000006f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process kworker/u:2 (pid: 6612, threadinfo ffff880000852000, task ffff880014c3c040)
+Stack:
+ ffff8800181f2260 ffff8800181f2310 ffff880038ac7268 ffff8800181f2260
+ ffff880000853dc0 ffffffffa0072375 ffff880037ecfe00 ffff88003a359198
+ ffff880000853dc0 0000000000000246 0000000000000000 ffff88000a91d308
+Call Trace:
+ [<ffffffffa0072375>] fscache_object_work_func+0x792/0xe65 [fscache]
+ [<ffffffff81047e44>] process_one_work+0x1eb/0x37f
+ [<ffffffff81047de6>] ? process_one_work+0x18d/0x37f
+ [<ffffffffa0071be3>] ? fscache_enqueue_dependents+0xd8/0xd8 [fscache]
+ [<ffffffff810482e4>] worker_thread+0x15a/0x21a
+ [<ffffffff8104818a>] ? rescuer_thread+0x188/0x188
+ [<ffffffff8104bf96>] kthread+0x7f/0x87
+ [<ffffffff813ad6f4>] kernel_thread_helper+0x4/0x10
+ [<ffffffff81026b98>] ? finish_task_switch+0x45/0xc0
+ [<ffffffff813abd1d>] ? retint_restore_args+0xe/0xe
+ [<ffffffff8104bf17>] ? __init_kthread_worker+0x53/0x53
+ [<ffffffff813ad6f0>] ? gs_change+0xb/0xb
 
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-Israel Toll-Free: 1-809-417-783
+ fs/fscache/internal.h  |    1 +
+ fs/fscache/object.c    |   23 +++++++++++++++++------
+ fs/fscache/operation.c |   13 ++++++++++---
+ 3 files changed, 28 insertions(+), 9 deletions(-)
 
-Participant Code: 8792872
-
-
-
+diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
+index c811793..dcb3e1d 100644
+--- a/fs/fscache/internal.h
++++ b/fs/fscache/internal.h
+@@ -288,6 +288,7 @@ extern const struct file_operations fscache_stats_fops;
+ static inline void fscache_raise_event(struct fscache_object *object,
+ 				       unsigned event)
+ {
++	BUG_ON(event >= NR_FSCACHE_OBJECT_EVENTS);
+ 	if (!test_and_set_bit(event, &object->events) &&
+ 	    test_bit(event, &object->event_mask))
+ 		fscache_enqueue_object(object);
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index 2ef8a08..2c512cb 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -103,6 +103,7 @@ static void fscache_object_state_machine(struct fscache_object *object)
+ {
+ 	enum fscache_object_state new_state;
+ 	struct fscache_cookie *cookie;
++	int event;
+ 
+ 	ASSERT(object != NULL);
+ 
+@@ -275,7 +276,8 @@ static void fscache_object_state_machine(struct fscache_object *object)
+ 
+ 	/* determine the transition from a lookup state */
+ lookup_transit:
+-	switch (fls(object->events & object->event_mask) - 1) {
++	event = fls(object->events & object->event_mask) - 1;
++	switch (event) {
+ 	case FSCACHE_OBJECT_EV_WITHDRAW:
+ 	case FSCACHE_OBJECT_EV_RETIRE:
+ 	case FSCACHE_OBJECT_EV_RELEASE:
+@@ -292,7 +294,8 @@ lookup_transit:
+ 
+ 	/* determine the transition from an active state */
+ active_transit:
+-	switch (fls(object->events & object->event_mask) - 1) {
++	event = fls(object->events & object->event_mask) - 1;
++	switch (event) {
+ 	case FSCACHE_OBJECT_EV_WITHDRAW:
+ 	case FSCACHE_OBJECT_EV_RETIRE:
+ 	case FSCACHE_OBJECT_EV_RELEASE:
+@@ -314,7 +317,8 @@ active_transit:
+ 
+ 	/* determine the transition from a terminal state */
+ terminal_transit:
+-	switch (fls(object->events & object->event_mask) - 1) {
++	event = fls(object->events & object->event_mask) - 1;
++	switch (event) {
+ 	case FSCACHE_OBJECT_EV_WITHDRAW:
+ 		new_state = FSCACHE_OBJECT_WITHDRAWING;
+ 		goto change_state;
+@@ -347,8 +351,8 @@ done:
+ 
+ unsupported_event:
+ 	printk(KERN_ERR "FS-Cache:"
+-	       " Unsupported event %lx [mask %lx] in state %s\n",
+-	       object->events, object->event_mask,
++	       " Unsupported event %d [%lx/%lx] in state %s\n",
++	       event, object->events, object->event_mask,
+ 	       fscache_object_states[object->state]);
+ 	BUG();
+ }
+@@ -945,7 +949,7 @@ static void fscache_invalidate_object(struct fscache_object *object)
+ 
+ 	spin_lock(&cookie->lock);
+ 	if (fscache_submit_exclusive_op(object, op) < 0)
+-		BUG();
++		goto submit_op_failed;
+ 	spin_unlock(&cookie->lock);
+ 	fscache_put_operation(op);
+ 
+@@ -960,4 +964,11 @@ static void fscache_invalidate_object(struct fscache_object *object)
+ 	 */
+ 	fscache_invalidation_complete(cookie);
+ 	_leave("");
++	return;
++
++submit_op_failed:
++	spin_unlock(&cookie->lock);
++	kfree(op);
++	fscache_raise_event(object, FSCACHE_OBJECT_EV_ERROR);
++	_leave(" [EIO]");
+ }
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index c58dbe6..9e6b7d2 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -84,6 +84,8 @@ static void fscache_run_op(struct fscache_object *object,
+ int fscache_submit_exclusive_op(struct fscache_object *object,
+ 				struct fscache_operation *op)
+ {
++	int ret;
++
+ 	_enter("{OBJ%x OP%x},", object->debug_id, op->debug_id);
+ 
+ 	ASSERTCMP(op->state, ==, FSCACHE_OP_ST_INITIALISED);
+@@ -116,6 +118,7 @@ int fscache_submit_exclusive_op(struct fscache_object *object,
+ 
+ 		/* need to issue a new write op after this */
+ 		clear_bit(FSCACHE_OBJECT_PENDING_WRITE, &object->flags);
++		ret = 0;
+ 	} else if (object->state == FSCACHE_OBJECT_CREATING) {
+ 		op->object = object;
+ 		object->n_ops++;
+@@ -123,13 +126,17 @@ int fscache_submit_exclusive_op(struct fscache_object *object,
+ 		atomic_inc(&op->usage);
+ 		list_add_tail(&op->pend_link, &object->pending_ops);
+ 		fscache_stat(&fscache_n_op_pend);
++		ret = 0;
+ 	} else {
+-		/* not allowed to submit ops in any other state */
+-		BUG();
++		/* If we're in any other state, there must have been an I/O
++		 * error of some nature.
++		 */
++		ASSERT(test_bit(FSCACHE_IOERROR, &object->cache->flags));
++		ret = -EIO;
+ 	}
+ 
+ 	spin_unlock(&object->lock);
+-	return 0;
++	return ret;
+ }
+ 
+ /*
 
