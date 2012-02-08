@@ -1,56 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:37367 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750858Ab2BEUZD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 15:25:03 -0500
-From: Nick Alcock <nix@esperi.org.uk>
-To: linux-nfs@vger.kernel.org
-Cc: Nick Alcock <nick.alcock@oracle.com>
-Subject: [PATCH 2/4] Make svc_auth_none always available.
-Date: Sun,  5 Feb 2012 20:02:16 +0000
-Message-Id: <1328472138-25750-2-git-send-email-nix@esperi.org.uk>
-In-Reply-To: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
-References: <1328472138-25750-1-git-send-email-nix@esperi.org.uk>
+Received: from mx1.redhat.com ([209.132.183.28]:13261 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756936Ab2BHVRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:17:41 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 05/17] FS-Cache: Make cookie relinquishment wait for
+ outstanding reads
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:17:31 +0000
+Message-ID: <20120208211731.15607.87865.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Nick Alcock <nick.alcock@oracle.com>
+Make fscache_relinquish_cookie() log a warning and wait if there are any
+outstanding reads left on the cookie it was given.
 
-svc_auth_none is only included in the build when GSS is compiled in, but is used
-by svc_auth_unix, which is unconditionally included.
-
-Include svc_auth_none unconditionally as well.
-
-Signed-off-by: Nick Alcock <nick.alcock@oracle.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- src/Makefile.am |    7 +++----
- 1 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/src/Makefile.am b/src/Makefile.am
-index 6731ff9..509cf61 100644
---- a/src/Makefile.am
-+++ b/src/Makefile.am
-@@ -48,8 +48,8 @@ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c cln
-         getrpcport.c mt_misc.c pmap_clnt.c pmap_getmaps.c pmap_getport.c \
-         pmap_prot.c pmap_prot2.c pmap_rmt.c rpc_prot.c rpc_commondata.c \
-         rpc_callmsg.c rpc_generic.c rpc_soc.c rpcb_clnt.c rpcb_prot.c \
--        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_generic.c \
--        svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
-+        rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_auth_none.c \
-+        svc_generic.c svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
-         auth_time.c auth_des.c authdes_prot.c
+ fs/fscache/cookie.c           |   18 ++++++++++++++----
+ fs/fscache/operation.c        |   10 ++++++++--
+ include/linux/fscache-cache.h |    1 +
+ 3 files changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index 0666996..66be9ec 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -442,22 +442,32 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
  
- ## XDR
-@@ -57,8 +57,7 @@ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_ref
+ 	event = retire ? FSCACHE_OBJECT_EV_RETIRE : FSCACHE_OBJECT_EV_RELEASE;
  
- ## Secure-RPC
- if GSS
--    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c \
--		svc_auth_none.c
-+    libtirpc_la_SOURCES += auth_gss.c authgss_prot.c svc_auth_gss.c
-     libtirpc_la_LDFLAGS += $(GSSGLUE_LIBS)
-     libtirpc_la_CFLAGS = -DHAVE_RPCSEC_GSS $(GSSGLUE_CFLAGS)
- endif
--- 
-1.7.8.3.146.gfe6a0
++try_again:
+ 	spin_lock(&cookie->lock);
+ 
+ 	/* break links with all the active objects */
+ 	while (!hlist_empty(&cookie->backing_objects)) {
++		int n_reads;
+ 		object = hlist_entry(cookie->backing_objects.first,
+ 				     struct fscache_object,
+ 				     cookie_link);
+ 
+ 		_debug("RELEASE OBJ%x", object->debug_id);
+ 
+-		if (atomic_read(&object->n_reads)) {
++		set_bit(FSCACHE_COOKIE_WAITING_ON_READS, &cookie->flags);
++		n_reads = atomic_read(&object->n_reads);
++		if (n_reads) {
++			int n_ops = object->n_ops;
++			int n_in_progress = object->n_in_progress;
+ 			spin_unlock(&cookie->lock);
+ 			printk(KERN_ERR "FS-Cache:"
+-			       " Cookie '%s' still has %d outstanding reads\n",
+-			       cookie->def->name, atomic_read(&object->n_reads));
+-			BUG();
++			       " Cookie '%s' still has %d outstanding reads (%d,%d)\n",
++			       cookie->def->name,
++			       n_reads, n_ops, n_in_progress);
++			wait_on_bit(&cookie->flags, FSCACHE_COOKIE_WAITING_ON_READS,
++				    fscache_wait_bit, TASK_UNINTERRUPTIBLE);
++			printk("Wait finished\n");
++			goto try_again;
+ 		}
+ 
+ 		/* detach each cache object from the object cookie */
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index 30afdfa..c857ab8 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -340,8 +340,14 @@ void fscache_put_operation(struct fscache_operation *op)
+ 
+ 	object = op->object;
+ 
+-	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags))
+-		atomic_dec(&object->n_reads);
++	if (test_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags)) {
++		if (atomic_dec_and_test(&object->n_reads)) {
++			clear_bit(FSCACHE_COOKIE_WAITING_ON_READS,
++				  &object->cookie->flags);
++			wake_up_bit(&object->cookie->flags,
++				    FSCACHE_COOKIE_WAITING_ON_READS);
++		}
++	}
+ 
+ 	/* now... we may get called with the object spinlock held, so we
+ 	 * complete the cleanup here only if we can immediately acquire the
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 9879183..e3d6d93 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -301,6 +301,7 @@ struct fscache_cookie {
+ #define FSCACHE_COOKIE_PENDING_FILL	3	/* T if pending initial fill on object */
+ #define FSCACHE_COOKIE_FILLING		4	/* T if filling object incrementally */
+ #define FSCACHE_COOKIE_UNAVAILABLE	5	/* T if cookie is unavailable (error, etc) */
++#define FSCACHE_COOKIE_WAITING_ON_READS	6	/* T if cookie is waiting on reads */
+ };
+ 
+ extern struct fscache_cookie fscache_fsdef_index;
 
