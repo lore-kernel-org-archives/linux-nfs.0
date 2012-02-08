@@ -1,141 +1,194 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:34219 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755147Ab2BFPIX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 10:08:23 -0500
-From: Steve Dickson <steved@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:46157 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752130Ab2BHHeI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 02:34:08 -0500
+Received: by eaah12 with SMTP id h12so75126eaa.19
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Feb 2012 23:34:07 -0800 (PST)
+Message-ID: <4F32256C.9040009@tonian.com>
+Date: Wed, 08 Feb 2012 09:34:04 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 2/2] SUNRPC: Adding status trace points
-Date: Mon,  6 Feb 2012 10:08:08 -0500
-Message-Id: <1328540888-30109-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1328540888-30109-1-git-send-email-steved@redhat.com>
-References: <1328540888-30109-1-git-send-email-steved@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
+References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds three trace points to the status routines
-in the sunrpc state machine.
+I reviewed both patches and they look good to me.
 
-The goal of these trace points is to give an Admin
-the ability to check on binding status or connection
-status to see if there is a potential problem.
+Benny
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- include/trace/events/sunrpc.h |   53 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/clnt.c             |    6 ++++-
- 2 files changed, 58 insertions(+), 1 deletions(-)
-
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 2f82de9..abcf45d 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -8,6 +8,59 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/tracepoint.h>
- 
-+DECLARE_EVENT_CLASS(rpc_task_status,
-+
-+	TP_PROTO(struct rpc_task *task),
-+
-+	TP_ARGS(task),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_task *, task)
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task = task;
-+		__entry->clnt = task->tk_client;
-+		__entry->status = task->tk_status;
-+	),
-+
-+	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_call_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+DEFINE_EVENT(rpc_task_status, rpc_bind_status,
-+	TP_PROTO(struct rpc_task *task), 
-+
-+	TP_ARGS(task)
-+);
-+
-+TRACE_EVENT(rpc_connect_status,
-+	TP_PROTO(struct rpc_task *task, int status),
-+
-+	TP_ARGS(task, status),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_task *, task)
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(int, status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task = task;
-+		__entry->clnt = task->tk_client;
-+		__entry->status = status;
-+	),
-+
-+	TP_printk("task:%p@%p, status %d",__entry->task, __entry->clnt, __entry->status)
-+);
-+
- DECLARE_EVENT_CLASS(rpc_task_running,
- 
- 	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f0268ea..130809a 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -36,6 +36,8 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/metrics.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <trace/events/sunrpc.h>
-+
- 
- #include "sunrpc.h"
- 
-@@ -55,7 +57,6 @@ static DEFINE_SPINLOCK(rpc_client_lock);
- 
- static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
- 
--
- static void	call_start(struct rpc_task *task);
- static void	call_reserve(struct rpc_task *task);
- static void	call_reserveresult(struct rpc_task *task);
-@@ -1163,6 +1164,7 @@ call_bind_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_bind_status(task);
- 	switch (task->tk_status) {
- 	case -ENOMEM:
- 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-@@ -1262,6 +1264,7 @@ call_connect_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_connect_status(task, status);
- 	switch (status) {
- 		/* if soft mounted, test if we've timed out */
- 	case -ETIMEDOUT:
-@@ -1450,6 +1453,7 @@ call_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_call_status(task);
- 	task->tk_status = 0;
- 	switch(status) {
- 	case -EHOSTDOWN:
--- 
-1.7.7.5
-
+On 2012-02-07 02:57, Trond Myklebust wrote:
+> It is perfectly legal to negotiate up to 2^32-1 slots in the protocol,
+> and with 10GigE, we are already seeing that 255 slots is far too limiting.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/callback.h         |    2 +-
+>  fs/nfs/callback_xdr.c     |    6 +++---
+>  fs/nfs/nfs4proc.c         |   21 ++++++++++-----------
+>  include/linux/nfs_fs_sb.h |    7 ++++---
+>  include/linux/nfs_xdr.h   |    2 +-
+>  5 files changed, 19 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index 197e0d3..a5527c9 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -38,7 +38,7 @@ enum nfs4_callback_opnum {
+>  struct cb_process_state {
+>  	__be32			drc_status;
+>  	struct nfs_client	*clp;
+> -	int			slotid;
+> +	u32			slotid;
+>  	struct net		*net;
+>  };
+>  
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index 2e37224..5466829 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -759,14 +759,14 @@ static void nfs4_callback_free_slot(struct nfs4_session *session)
+>  	 * Let the state manager know callback processing done.
+>  	 * A single slot, so highest used slotid is either 0 or -1
+>  	 */
+> -	tbl->highest_used_slotid = -1;
+> +	tbl->highest_used_slotid = NFS4_NO_SLOT;
+>  	nfs4_check_drain_bc_complete(session);
+>  	spin_unlock(&tbl->slot_tbl_lock);
+>  }
+>  
+>  static void nfs4_cb_free_slot(struct cb_process_state *cps)
+>  {
+> -	if (cps->slotid != -1)
+> +	if (cps->slotid != NFS4_NO_SLOT)
+>  		nfs4_callback_free_slot(cps->clp->cl_session);
+>  }
+>  
+> @@ -860,7 +860,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+>  	struct cb_process_state cps = {
+>  		.drc_status = 0,
+>  		.clp = NULL,
+> -		.slotid = -1,
+> +		.slotid = NFS4_NO_SLOT,
+>  		.net = rqstp->rq_xprt->xpt_net,
+>  	};
+>  	unsigned int nops = 0;
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 482ed97..0dc5dfb 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -402,7 +402,7 @@ static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
+>  		return;
+>  	}
+>  
+> -	if (ses->fc_slot_table.highest_used_slotid != -1)
+> +	if (ses->fc_slot_table.highest_used_slotid != NFS4_NO_SLOT)
+>  		return;
+>  
+>  	dprintk("%s COMPLETE: Session Fore Channel Drained\n", __func__);
+> @@ -415,7 +415,7 @@ static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
+>  void nfs4_check_drain_bc_complete(struct nfs4_session *ses)
+>  {
+>  	if (!test_bit(NFS4_SESSION_DRAINING, &ses->session_state) ||
+> -	    ses->bc_slot_table.highest_used_slotid != -1)
+> +	    ses->bc_slot_table.highest_used_slotid != NFS4_NO_SLOT)
+>  		return;
+>  	dprintk("%s COMPLETE: Session Back Channel Drained\n", __func__);
+>  	complete(&ses->bc_slot_table.complete);
+> @@ -514,14 +514,13 @@ static int nfs4_sequence_done(struct rpc_task *task,
+>   *
+>   * Note: must be called with under the slot_tbl_lock.
+>   */
+> -static u8
+> +static u32
+>  nfs4_find_slot(struct nfs4_slot_table *tbl)
+>  {
+> -	int slotid;
+> -	u8 ret_id = NFS4_MAX_SLOT_TABLE;
+> -	BUILD_BUG_ON((u8)NFS4_MAX_SLOT_TABLE != (int)NFS4_MAX_SLOT_TABLE);
+> +	u32 slotid;
+> +	u32 ret_id = NFS4_NO_SLOT;
+>  
+> -	dprintk("--> %s used_slots=%04lx highest_used=%d max_slots=%d\n",
+> +	dprintk("--> %s used_slots=%04lx highest_used=%u max_slots=%u\n",
+>  		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
+>  		tbl->max_slots);
+>  	slotid = find_first_zero_bit(tbl->used_slots, tbl->max_slots);
+> @@ -555,7 +554,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+>  {
+>  	struct nfs4_slot *slot;
+>  	struct nfs4_slot_table *tbl;
+> -	u8 slotid;
+> +	u32 slotid;
+>  
+>  	dprintk("--> %s\n", __func__);
+>  	/* slot already allocated? */
+> @@ -5144,7 +5143,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+>  	spin_lock(&tbl->slot_tbl_lock);
+>  	tbl->max_slots = max_slots;
+>  	tbl->slots = slot;
+> -	tbl->highest_used_slotid = -1;  /* no slot is currently used */
+> +	tbl->highest_used_slotid = NFS4_NO_SLOT;  /* no slot is currently used */
+>  	spin_unlock(&tbl->slot_tbl_lock);
+>  	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+>  		tbl, tbl->slots, tbl->max_slots);
+> @@ -5196,13 +5195,13 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+>  		return NULL;
+>  
+>  	tbl = &session->fc_slot_table;
+> -	tbl->highest_used_slotid = -1;
+> +	tbl->highest_used_slotid = NFS4_NO_SLOT;
+>  	spin_lock_init(&tbl->slot_tbl_lock);
+>  	rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq, "ForeChannel Slot table");
+>  	init_completion(&tbl->complete);
+>  
+>  	tbl = &session->bc_slot_table;
+> -	tbl->highest_used_slotid = -1;
+> +	tbl->highest_used_slotid = NFS4_NO_SLOT;
+>  	spin_lock_init(&tbl->slot_tbl_lock);
+>  	rpc_init_wait_queue(&tbl->slot_tbl_waitq, "BackChannel Slot table");
+>  	init_completion(&tbl->complete);
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 9e101c1..2ae57f2 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -191,6 +191,7 @@ struct nfs_server {
+>  
+>  /* maximum number of slots to use */
+>  #define NFS4_MAX_SLOT_TABLE (128U)
+> +#define NFS4_NO_SLOT ((u32)-1)
+>  
+>  #if defined(CONFIG_NFS_V4)
+>  
+> @@ -201,10 +202,10 @@ struct nfs4_slot_table {
+>  	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
+>  	spinlock_t	slot_tbl_lock;
+>  	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
+> -	int		max_slots;		/* # slots in table */
+> -	int		highest_used_slotid;	/* sent to server on each SEQ.
+> +	u32		max_slots;		/* # slots in table */
+> +	u32		highest_used_slotid;	/* sent to server on each SEQ.
+>  						 * op for dynamic resizing */
+> -	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
+> +	u32		target_max_slots;	/* Set by CB_RECALL_SLOT as
+>  						 * the new max_slots */
+>  	struct completion complete;
+>  };
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 144419a..adbc84a 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -181,7 +181,7 @@ struct nfs4_slot {
+>  
+>  struct nfs4_sequence_args {
+>  	struct nfs4_session	*sa_session;
+> -	u8			sa_slotid;
+> +	u32			sa_slotid;
+>  	u8			sa_cache_this;
+>  };
+>  
