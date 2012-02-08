@@ -1,67 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:32980 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932085Ab2B1Ofz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Feb 2012 09:35:55 -0500
-Subject: Re: "Using NFS over UDP on high-speed links such as Gigabit can cause silent data corruption."
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120228124646.GA2528@umich.edu>
-Date: Tue, 28 Feb 2012 09:35:40 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, Harshula <harshula@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Message-Id: <BC3988C4-CC1A-4DFA-89AE-7046C674A873@oracle.com>
-References: <1330406521.9157.16.camel@serendib> <20120228065218.7e110936@tlielax.poochiereds.net> <20120228124646.GA2528@umich.edu>
-To: Jim Rees <rees@umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:57131 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750928Ab2BHNvO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 08:51:14 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
+ fails
+Date: Wed, 8 Feb 2012 13:50:51 +0000
+Message-ID: <1328709051.3234.6.camel@lade.trondhjem.org>
+References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
+	 <20120207141254.2948e735@tlielax.poochiereds.net>
+	 <1328642485.4124.40.camel@lade.trondhjem.org> <4F317BA1.4050102@netapp.com>
+	 <1328643867.4124.42.camel@lade.trondhjem.org>
+	 <1328645155.4124.44.camel@lade.trondhjem.org>
+	 <20120208070408.6f77544d@tlielax.poochiereds.net>
+In-Reply-To: <20120208070408.6f77544d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 28, 2012, at 7:46 AM, Jim Rees wrote:
-
-> Jeff Layton wrote:
-> 
->  On Tue, 28 Feb 2012 16:22:01 +1100
->  Harshula <harshula@redhat.com> wrote:
-> 
->> Hi Steve,
->> 
->> The following openSUSE nfs-utils patch, warn-nfs-udp.patch, is not
->> included upstream:
->> 
->> https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
->> 
->> Please consider including it.
->> 
->> Thanks,
->> #
->> 
-> 
->  I think that patch looks reasonable and clearly documenting the
->  problems with UDP is a wonderful thing.
-> 
->  It may be best to send it formally to steved and the list as a real
->  [PATCH] with a real description and SoB line.
-> 
-> This feels like the wrong place to document this, since it affects anything
-> that uses udp, not just nfs.
-
-NFS has a particular sensitivity to unreliable datagram transports, and that is a well-known problem.  NetApp's retired TR-3183 and many Oracle meta documents mention the problems with NFS over UDP.  Most other uses of UDP do not involve such large datagrams.
-
-My comment is that if the text in the TRANSPORT METHODS section in nfs(5) about UDP reassembly is not adequate it should be updated.  I would rather see the meat of the proposed text merged into that section; otherwise we have two disparate sections discussing the same topic.  That section is where this kind of discussion belongs.
-
-> It also seems like this should be solved in
-> the network layer with an adaptive frag time.  But I'm not volunteering to
-> do that.
-
-As above, most other uses of UDP do not involve large packets.  But I wonder if it is appropriate for us to suggest a change in the default setting. 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gV2VkLCAyMDEyLTAyLTA4IGF0IDA3OjA0IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVHVlLCA3IEZlYiAyMDEyIDIwOjA1OjU1ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUdWUsIDIwMTIt
+MDItMDcgYXQgMTQ6NDQgLTA1MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiANCj4gPiA+
+IE9uZSB3YXkgdG8gZWFzaWx5IHNocmluayB0aGUgc2l6ZSBvZiB0aGF0IGFsbG9jYXRpb24gaXMg
+dG8gY29udmVydCB0aGUNCj4gPiA+IGloX25hbWUgc3RyaW5nIGludG8gYSBwb2ludGVyLCBhbmQg
+aGF2ZSB0aGUgZG93bmNhbGwgYWxsb2NhdGUgdGhlDQo+ID4gPiBzdG9yYWdlIGZvciB0aGF0IHN0
+cmluZyBkeW5hbWljYWxseS4uLg0KPiA+IA0KPiA+IExpa2Ugc28uLi4uDQo+ID4gDQo+IA0KPiBO
+aWNlLiBJIGhhZCBzdGFydGVkIGxvb2tpbmcgYXQgdGhpcywgYnV0IHdhcyBzdGlsbCBzb3J0aW5n
+IG15IHdheQ0KPiB0aHJvdWdoIGhvdyBhbGwgb2YgdGhlIGhhc2h0YWJsZSBjYWNoZSBjb2RlIHdv
+cmtzLg0KPiANCj4gT25lIGNvbW1lbnQgaW5saW5lIGJlbG93Og0KPiANCj4gPiA4PC0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQo+ID4gRnJvbSA1MjIxYzg0MTU5NTc2MDQ1MDdjZDc0MDhhNjk1MjQxMDk2YmNiM2Fk
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiA+IEZyb206IFRyb25kIE15a2xlYnVzdCA8VHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gRGF0ZTogVHVlLCA3IEZlYiAyMDEyIDE0OjU5
+OjA1IC0wNTAwDQo+ID4gU3ViamVjdDogW1BBVENIXSBORlN2NDogUmVkdWNlIHRoZSBmb290cHJp
+bnQgb2YgdGhlIGlkbWFwcGVyDQo+ID4gDQo+ID4gSW5zdGVhZCBvZiBwcmUtYWxsb2NhdGluZyB0
+aGUgc3RvcmFnZSBmb3IgYWxsIHRoZSBzdHJpbmdzLCB3ZSBjYW4NCj4gPiBzaWduaWZpY2FudGx5
+IHJlZHVjZSB0aGUgc2l6ZSBvZiB0aGF0IHRhYmxlIGJ5IGRvaW5nIHRoZSBhbGxvY2F0aW9uDQo+
+ID4gd2hlbiB3ZSBkbyB0aGUgZG93bmNhbGwuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJv
+bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiAg
+ZnMvbmZzL2lkbWFwLmMgfCAgIDE2ICsrKysrKysrKysrKystLS0NCj4gPiAgMSBmaWxlcyBjaGFu
+Z2VkLCAxMyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1n
+aXQgYS9mcy9uZnMvaWRtYXAuYyBiL2ZzL25mcy9pZG1hcC5jDQo+ID4gaW5kZXggNWE1NTY2Zi4u
+ZmZmNzk0OCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvaWRtYXAuYw0KPiA+ICsrKyBiL2ZzL25m
+cy9pZG1hcC5jDQo+ID4gQEAgLTM2Miw3ICszNjIsNyBAQCBzdHJ1Y3QgaWRtYXBfaGFzaGVudCB7
+DQo+ID4gIAl1bnNpZ25lZCBsb25nCQlpaF9leHBpcmVzOw0KPiA+ICAJX191MzIJCQlpaF9pZDsN
+Cj4gPiAgCXNpemVfdAkJCWloX25hbWVsZW47DQo+ID4gLQljaGFyCQkJaWhfbmFtZVtJRE1BUF9O
+QU1FU1pdOw0KPiA+ICsJY29uc3QgY2hhcgkJKmloX25hbWU7DQo+ID4gIH07DQo+ID4gIA0KPiA+
+ICBzdHJ1Y3QgaWRtYXBfaGFzaHRhYmxlIHsNCj4gPiBAQCAtNDgyLDEyICs0ODIsMTcgQEAgdm9p
+ZA0KPiA+ICBuZnNfaWRtYXBfZGVsZXRlKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ID4gIHsN
+Cj4gPiAgCXN0cnVjdCBpZG1hcCAqaWRtYXAgPSBjbHAtPmNsX2lkbWFwOw0KPiA+ICsJaW50IGk7
+DQo+ID4gIA0KPiA+ICAJaWYgKCFpZG1hcCkNCj4gPiAgCQlyZXR1cm47DQo+ID4gIAluZnNfaWRt
+YXBfdW5yZWdpc3RlcihjbHAsIGlkbWFwLT5pZG1hcF9waXBlKTsNCj4gPiAgCXJwY19kZXN0cm95
+X3BpcGVfZGF0YShpZG1hcC0+aWRtYXBfcGlwZSk7DQo+ID4gIAljbHAtPmNsX2lkbWFwID0gTlVM
+TDsNCj4gPiArCWZvciAoaSA9IDA7IGkgPCBBUlJBWV9TSVpFKGlkbWFwLT5pZG1hcF91c2VyX2hh
+c2guaF9lbnRyaWVzKTsgaSsrKQ0KPiA+ICsJCWtmcmVlKGlkbWFwLT5pZG1hcF91c2VyX2hhc2gu
+aF9lbnRyaWVzW2ldLmloX25hbWUpOw0KPiA+ICsJZm9yIChpID0gMDsgaSA8IEFSUkFZX1NJWkUo
+aWRtYXAtPmlkbWFwX2dyb3VwX2hhc2guaF9lbnRyaWVzKTsgaSsrKQ0KPiA+ICsJCWtmcmVlKGlk
+bWFwLT5pZG1hcF9ncm91cF9oYXNoLmhfZW50cmllc1tpXS5paF9uYW1lKTsNCj4gPiAgCWtmcmVl
+KGlkbWFwKTsNCj4gPiAgfQ0KPiA+ICANCj4gPiBAQCAtNjM0LDkgKzYzOSwxNCBAQCBzdGF0aWMg
+dm9pZA0KPiA+ICBpZG1hcF91cGRhdGVfZW50cnkoc3RydWN0IGlkbWFwX2hhc2hlbnQgKmhlLCBj
+b25zdCBjaGFyICpuYW1lLA0KPiA+ICAJCXNpemVfdCBuYW1lbGVuLCBfX3UzMiBpZCkNCj4gPiAg
+ew0KPiA+ICsJY2hhciAqc3RyID0ga21hbGxvYyhuYW1lbGVuICsgMSwgR0ZQX0tFUk5FTCk7DQo+
+IA0KPiBEbyB3ZSBuZWVkIHRvIHdvcnJ5IGFib3V0IHJlY3Vyc2luZyBpbnRvIGRpcmVjdCByZWNs
+YWltIGhlcmU/DQoNCk5vLiBUaGUgd3JpdGUgcGF0aCBkb2Vzbid0IHVzZSB0aGUgaWRtYXBwZXIg
+YW55IG1vcmUuDQoNCj4gPiArCWlmIChzdHIgPT0gTlVMTCkNCj4gPiArCQlyZXR1cm47DQo+ID4g
+KwlrZnJlZShoZS0+aWhfbmFtZSk7DQo+ID4gIAloZS0+aWhfaWQgPSBpZDsNCj4gPiAtCW1lbWNw
+eShoZS0+aWhfbmFtZSwgbmFtZSwgbmFtZWxlbik7DQo+ID4gLQloZS0+aWhfbmFtZVtuYW1lbGVu
+XSA9ICdcMCc7DQo+ID4gKwltZW1jcHkoc3RyLCBuYW1lLCBuYW1lbGVuKTsNCj4gPiArCXN0cltu
+YW1lbGVuXSA9ICdcMCc7DQo+ID4gKwloZS0+aWhfbmFtZSA9IHN0cjsNCj4gPiAgCWhlLT5paF9u
+YW1lbGVuID0gbmFtZWxlbjsNCj4gPiAgCWhlLT5paF9leHBpcmVzID0gamlmZmllcyArIG5mc19p
+ZG1hcF9jYWNoZV90aW1lb3V0Ow0KPiA+ICB9DQo+IA0KPiAuLi5hbmQgdGhlIG5hbWVsZW4gY2hl
+Y2sgaW4gaWRtYXBfbG9va3VwX25hbWUgc2hvdWxkIGtlZXAgdGhlIG1lbWNtcA0KPiBmcm9tIHRy
+aXBwaW5nIG92ZXIgdGhlc2UgTlVMTCBwb2ludGVycy4gSSB0aGluayB0aGlzIGxvb2tzIGxpa2Ug
+YSBuaWNlDQo+IGludGVyaW0gZml4IGZvciBub3cgYW5kIHNob3VsZCBjdXQgZG93biBvbiB0aGUg
+bWVtb3J5IGNvbnN1bXB0aW9uIGZyb20NCj4gdGhpcyBjb2RlLg0KPiANCj4gT24gYSB4ODZfNjQg
+bWFjaGluZToNCj4gDQo+IHByZS1wYXRjaDoNCj4gKGdkYikgcCBzaXplb2Yoc3RydWN0IGlkbWFw
+KQ0KPiAkMSA9IDM5NTA0DQo+IA0KPiBwb3N0LXBhdGNoOg0KPiAoZ2RiKSBwIHNpemVvZihzdHJ1
+Y3QgaWRtYXApDQo+ICQxID0gODc4NA0KPiANCj4gVGhhdCBjaGFuZ2VzIHRoaXMgZnJvbSBhbiBv
+cmRlciA0IHRvIGFuIG9yZGVyIDIgYWxsb2NhdGlvbi4gV291bGQgYmUNCj4gZXZlbiBuaWNlciB0
+byBnZXQgaXQgZG93biB0byB1bmRlciBhIHBhZ2UsIGJ1dCB0aGlzIHdpbGwgaGVscA0KPiBjb25z
+aWRlcmFibHkuDQo+IA0KPiBSZXZpZXdlZC1ieTogSmVmZiBMYXl0b24gPGpsYXl0b25AcmVkaGF0
+LmNvbT4NCg0KV2UgY291bGQgZG8gdGhhdCBieSBhbGxvY2F0aW5nIHRoZSB0d28gaWRtYXBfaGFz
+aGVudCBhcnJheXMgc2VwYXJhdGVseS4NCkknbGwgc2VlIGFib3V0IHRoYXQgbGF0ZXIgdG9kYXku
+DQoNCkluIHRoZSBtZWFuIHRpbWUsIEkndmUgZ290IEJyeWFuIGNvbnRpbnVpbmcgdG8gbG9vayBp
+bnRvIHRoZSBwb3NzaWJpbGl0eQ0Kb2YgdXNpbmcgdGhlIGtleXJpbmdzIGZvciBib3RoIHR5cGVz
+IG9mIHVwY2FsbC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
+LmNvbQ0KDQo=
