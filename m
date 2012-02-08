@@ -1,86 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:34722 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756037Ab2BCLPi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 06:15:38 -0500
-Message-ID: <4F2BC1C0.8070900@panasas.com>
-Date: Fri, 3 Feb 2012 13:15:12 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:31495 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754658Ab2BHVTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 16:19:45 -0500
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 17/17] NFS: nfs_migrate_page() does not wait for FS-Cache to
+ finish with a page
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
+Date: Wed, 08 Feb 2012 21:19:35 +0000
+Message-ID: <20120208211935.15607.16821.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-To: Malahal Naineni <malahal@us.ibm.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Check for beginning '/' in the mount path
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
-In-Reply-To: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/03/2012 03:42 AM, Malahal Naineni wrote:
-> NFSv4 gladly accepts and mounts "hostname:path" instead of
-> "hostname:/path". This causes mount entry mistmatch between /etc/mtab
-> and /proc/mounts files. The former will have "hostname:path" but the
-> latter will have "hostname:/path". This causes umount not work at all.
-> 
+nfs_migrate_page() does not wait for FS-Cache to finish with a page, probably
+leading to the following bad-page-state:
 
-NACK
+ BUG: Bad page state in process python-bin  pfn:17d39b
+ page:ffffea00053649e8 flags:004000000000100c count:0 mapcount:0 mapping:(null)
+index:38686 (Tainted: G    B      ---------------- )
+ Pid: 31053, comm: python-bin Tainted: G    B      ----------------
+2.6.32-71.24.1.el6.x86_64 #1
+ Call Trace:
+ [<ffffffff8111bfe7>] bad_page+0x107/0x160
+ [<ffffffff8111ee69>] free_hot_cold_page+0x1c9/0x220
+ [<ffffffff8111ef19>] __pagevec_free+0x59/0xb0
+ [<ffffffff8104b988>] ? flush_tlb_others_ipi+0x128/0x130
+ [<ffffffff8112230c>] release_pages+0x21c/0x250
+ [<ffffffff8115b92a>] ? remove_migration_pte+0x28a/0x2b0
+ [<ffffffff8115f3f8>] ? mem_cgroup_get_reclaim_stat_from_page+0x18/0x70
+ [<ffffffff81122687>] ____pagevec_lru_add+0x167/0x180
+ [<ffffffff811226f8>] __lru_cache_add+0x58/0x70
+ [<ffffffff81122731>] lru_cache_add_lru+0x21/0x40
+ [<ffffffff81123f49>] putback_lru_page+0x69/0x100
+ [<ffffffff8115c0bd>] migrate_pages+0x13d/0x5d0
+ [<ffffffff81122687>] ? ____pagevec_lru_add+0x167/0x180
+ [<ffffffff81152ab0>] ? compaction_alloc+0x0/0x370
+ [<ffffffff8115255c>] compact_zone+0x4cc/0x600
+ [<ffffffff8111cfac>] ? get_page_from_freelist+0x15c/0x820
+ [<ffffffff810672f4>] ? check_preempt_wakeup+0x1c4/0x3c0
+ [<ffffffff8115290e>] compact_zone_order+0x7e/0xb0
+ [<ffffffff81152a49>] try_to_compact_pages+0x109/0x170
+ [<ffffffff8111e94d>] __alloc_pages_nodemask+0x5ed/0x850
+ [<ffffffff814c9136>] ? thread_return+0x4e/0x778
+ [<ffffffff81150d43>] alloc_pages_vma+0x93/0x150
+ [<ffffffff81167ea5>] do_huge_pmd_anonymous_page+0x135/0x340
+ [<ffffffff814cb6f6>] ? rwsem_down_read_failed+0x26/0x30
+ [<ffffffff81136755>] handle_mm_fault+0x245/0x2b0
+ [<ffffffff814ce383>] do_page_fault+0x123/0x3a0
+ [<ffffffff814cbdf5>] page_fault+0x25/0x30
 
-like it or not you are changing ABI. Bunch of systems will not work now.
+nfs_migrate_page() calls nfs_fscache_release_page() which doesn't actually wait
+- even if __GFP_WAIT is set.  The reason that doesn't wait is that
+fscache_maybe_release_page() might deadlock the allocator as the work threads
+writing to the cache may all end up sleeping on memory allocation.
 
-Also some other NFS servers/clients support it fine. Actually some servers
-make it a special case. (It's called mount by tag)
+However, I wonder if that is actually a problem.  There are a number of things
+I can do to deal with this:
 
-The bug is else where fix it there. Either add the preceding '/' to
-/etc/mtab or remove it from /proc/mounts (I prefer the later). Or
-fix umount to work with that case.
+ (1) Make nfs_migrate_page() wait.
 
-It's just a bug please fix it.
+ (2) Make fscache_maybe_release_page() honour the __GFP_WAIT flag.
 
-Boaz
+ (3) Set a timeout around the wait.
 
-> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
-> ---
->  utils/mount/stropts.c |   22 ++++++++++++++++++++++
->  1 files changed, 22 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d52e21a..559114d 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -571,6 +571,7 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
->  {
->  	char *options = NULL;
->  	int result;
-> +	char *dirname;
->  
->  	if (mi->fake)
->  		return 1;
-> @@ -580,6 +581,27 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
->  		return 0;
->  	}
->  
-> +	/*
-> +	 * Make sure that dirname in the spec starts with '/'. The mount
-> +	 * works fine in NFSv4 without the '/', but then /etc/mtab and
-> +	 * /proc/mounts disagree on the actual mount entry causing later
-> +	 * umount to fail! There is no reason to allow any dirname not
-> +	 * starting with '/', so fail it here.
-> +	 *
-> +	 * Note that for NFSv2 and NFSv3, the mount call itself fails if
-> +	 * dirname doesn't start with '/'. So this check is only useful
-> +	 * for NFSv4.
-> +	 */
-> +	dirname = strchr(mi->spec, ']');	/* IPv6 address check */
-> +	if (dirname)
-> +		dirname = strchr(dirname+1, ':');
-> +	else
-> +		dirname = strchr(mi->spec, ':');
-> +	if (!dirname || *(dirname+1) != '/') {
-> +		errno = EINVAL;
-> +		return 0;
-> +	}
-> +
->  	result = mount(mi->spec, mi->node, mi->type,
->  			mi->flags & ~(MS_USER|MS_USERS), options);
->  	free(options);
+ (4) Make nfs_migrate_page() return an error if the page is still busy.
+
+For the moment, I'll select (2) and (4).
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+---
+
+ fs/fscache/internal.h |    1 +
+ fs/fscache/page.c     |   19 ++++++++++++++-----
+ fs/fscache/stats.c    |    6 ++++--
+ fs/nfs/write.c        |    4 +++-
+ 4 files changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
+index dcb3e1d..88a48cc 100644
+--- a/fs/fscache/internal.h
++++ b/fs/fscache/internal.h
+@@ -200,6 +200,7 @@ extern atomic_t fscache_n_store_vmscan_not_storing;
+ extern atomic_t fscache_n_store_vmscan_gone;
+ extern atomic_t fscache_n_store_vmscan_busy;
+ extern atomic_t fscache_n_store_vmscan_cancelled;
++extern atomic_t fscache_n_store_vmscan_wait;
+ 
+ extern atomic_t fscache_n_marks;
+ extern atomic_t fscache_n_uncaches;
+diff --git a/fs/fscache/page.c b/fs/fscache/page.c
+index 4dbbca1..f9b2fb3 100644
+--- a/fs/fscache/page.c
++++ b/fs/fscache/page.c
+@@ -56,6 +56,7 @@ bool __fscache_maybe_release_page(struct fscache_cookie *cookie,
+ 
+ 	_enter("%p,%p,%x", cookie, page, gfp);
+ 
++try_again:
+ 	rcu_read_lock();
+ 	val = radix_tree_lookup(&cookie->stores, page->index);
+ 	if (!val) {
+@@ -104,11 +105,19 @@ bool __fscache_maybe_release_page(struct fscache_cookie *cookie,
+ 	return true;
+ 
+ page_busy:
+-	/* we might want to wait here, but that could deadlock the allocator as
+-	 * the work threads writing to the cache may all end up sleeping
+-	 * on memory allocation */
+-	fscache_stat(&fscache_n_store_vmscan_busy);
+-	return false;
++	/* We will wait here if we're allowed to, but that could deadlock the
++	 * allocator as the work threads writing to the cache may all end up
++	 * sleeping on memory allocation, so we may need to impose a timeout
++	 * too. */
++	if (!(gfp & __GFP_WAIT)) {
++		fscache_stat(&fscache_n_store_vmscan_busy);
++		return false;
++	}
++
++	fscache_stat(&fscache_n_store_vmscan_wait);
++	__fscache_wait_on_page_write(cookie, page);
++	gfp &= ~__GFP_WAIT;
++	goto try_again;
+ }
+ EXPORT_SYMBOL(__fscache_maybe_release_page);
+ 
+diff --git a/fs/fscache/stats.c b/fs/fscache/stats.c
+index 51cdaee..8179e8b 100644
+--- a/fs/fscache/stats.c
++++ b/fs/fscache/stats.c
+@@ -69,6 +69,7 @@ atomic_t fscache_n_store_vmscan_not_storing;
+ atomic_t fscache_n_store_vmscan_gone;
+ atomic_t fscache_n_store_vmscan_busy;
+ atomic_t fscache_n_store_vmscan_cancelled;
++atomic_t fscache_n_store_vmscan_wait;
+ 
+ atomic_t fscache_n_marks;
+ atomic_t fscache_n_uncaches;
+@@ -232,11 +233,12 @@ static int fscache_stats_show(struct seq_file *m, void *v)
+ 		   atomic_read(&fscache_n_store_radix_deletes),
+ 		   atomic_read(&fscache_n_store_pages_over_limit));
+ 
+-	seq_printf(m, "VmScan : nos=%u gon=%u bsy=%u can=%u\n",
++	seq_printf(m, "VmScan : nos=%u gon=%u bsy=%u can=%u wt=%u\n",
+ 		   atomic_read(&fscache_n_store_vmscan_not_storing),
+ 		   atomic_read(&fscache_n_store_vmscan_gone),
+ 		   atomic_read(&fscache_n_store_vmscan_busy),
+-		   atomic_read(&fscache_n_store_vmscan_cancelled));
++		   atomic_read(&fscache_n_store_vmscan_cancelled),
++		   atomic_read(&fscache_n_store_vmscan_wait));
+ 
+ 	seq_printf(m, "Ops    : pend=%u run=%u enq=%u can=%u rej=%u\n",
+ 		   atomic_read(&fscache_n_op_pend),
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 834f0fe..5fbee48 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1701,7 +1701,9 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
+ 	if (PagePrivate(page))
+ 		return -EBUSY;
+ 
+-	nfs_fscache_release_page(page, GFP_KERNEL);
++	ret = -EBUSY;
++	if (!nfs_fscache_release_page(page, GFP_KERNEL))
++		goto out;
+ 
+ 	return migrate_page(mapping, newpage, page, mode);
+ }
 
