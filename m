@@ -1,29 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:46076 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756164Ab2BCNQo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2012 08:16:44 -0500
-Date: Fri, 3 Feb 2012 08:16:36 -0500
-From: Jim Rees <rees@umich.edu>
-To: Srinivas KANDAGATLA <srinivas.kandagatla@st.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org, mingo@redhat.com, neilb@suse.de,
-        stuart.menefy@st.com, bharrosh@panasas.com, linux@razik.name
-Subject: Re: [PATCH 3.3.0-rc1 1/2] do_mounts: Change the nfs-mount retry min
- max delays.
-Message-ID: <20120203131636.GA8220@umich.edu>
-References: <1327588962-16441-1-git-send-email-srinivas.kandagatla@st.com>
- <EBFEB6A8-4943-4D9E-9139-73D14ACB32DD@oracle.com>
- <4F225BED.7000005@st.com>
- <4F2BB2C0.9060207@st.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F2BB2C0.9060207@st.com>
+Received: from lennier.cc.vt.edu ([198.82.162.213]:42788 "EHLO
+	lennier.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757796Ab2BHXyM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 18:54:12 -0500
+To: David Howells <dhowells@redhat.com>
+Cc: jmorris@namei.org, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service unavailable"
+In-Reply-To: Your message of "Wed, 08 Feb 2012 12:29:05 GMT."
+             <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
+From: Valdis.Kletnieks@vt.edu
+References: <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="==_Exmh_1328745230_2846P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Date: Wed, 08 Feb 2012 18:53:50 -0500
+Message-ID: <22934.1328745230@turing-police.cc.vt.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It seems confusing to change the meaning of NFSROOT_TIMEOUT_MIN.  It used to
-be the timeout minimum, as the name implies, but now it's the timeout
-minimum plus one.  I understand that the actual timeout includes the time
-spent in mount, but I would expect NFSROOT_TIMEOUT_MIN to just be the
-initial loop sleep time.  Maybe this just needs a comment.
+--==_Exmh_1328745230_2846P
+Content-Type: text/plain; charset=us-ascii
+
+On Wed, 08 Feb 2012 12:29:05 GMT, David Howells said:
+
+> +#define	ENOAUTHSERVICE	139	/* Authentication service not available */
+>
+>  #define EHWPOISON	139	/* Memory page has hardware error */
+
+Was this an intentional overload of 139 (and so on for other archs)?
+Just checking - I'm sure if it goes in like this, we'll see a patch to "fix" the
+collision for 3.16.0 or so... ;)
+
+--==_Exmh_1328745230_2846P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iQIVAwUBTzMLDgdmEQWDXROgAQLo8w/9GSAkuhd+TKRP7GBY/vtnzb8/kyvEnJ5M
+kXAsV/k12ZKsyRo+qat0scVkIIVR+siFVQMBMAOE4r4Y14CGYMInhrpsNLa0vhqK
+GdS5+GNIAbHj8PBJSYxxHffiQisePTTbAppzW68to/jRe3eYcWQdlJgcjdOMYSKJ
+TxLJi7R36FNZAMW5C6VjrEZcWym+LOizeSuX0a4hGMkWbo1D6YO/bsqI0703fhh3
++q3n6KLZahVNZQ4zNDtIuznUgm/SEWnz5kyZF+Lj0pCxCC/00Qtl0d47YGQ8Bfcr
+6v+v2loI96oHJypLbPOoovwqpPV5YUoiaLS+aKFyEcMb+Soa8kSpPSkb+lkQZ/eK
+FTkdLuRFQ4cK9Dk1mqFa94x7XsVv6FfXt4NUKuWSm2cqEzUbdEbmXsdwT69oMcYV
+aYd//3xYcjtcwDi+lovc7THYIj2UJYtZVxIeZpitxISMdAJ+gZEYzmgDKF+O4IDj
+DYdnO8PVMfdosULrhP5GpYtjYJ0vL/HSNXSkGtJ/OWIlBIBFl2yXtOpzkjqndtBE
+WBmmfQHvSNjYU5Ab/udNYNoT4+rEKkkBLTtbWwFvgNPiiE5PLYLrUrdyqz4Y6KAb
+B9OkVk4AWq0UlCeNCl2onHKdsT61rfImD8wygJyJ2oau7TWw4itQE2LV/pLQY68T
+HrD/BwmIDcY=
+=h9rq
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1328745230_2846P--
+
