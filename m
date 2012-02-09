@@ -1,75 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from trumpkin.cc.andrews.edu ([143.207.1.81]:50984 "EHLO
-	trumpkin.cc.andrews.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754163Ab2BISSK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2012 13:18:10 -0500
-Message-ID: <4F340DD9.7070402@andrews.edu>
-Date: Thu, 09 Feb 2012 13:18:01 -0500
-From: Todd Freeman <freeman@andrews.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:8604 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758024Ab2BIEMJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Feb 2012 23:12:09 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Harshula <harshula@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Derek McEachern <derekm@ti.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Mount Option 'nofsc'
+Date: Thu, 9 Feb 2012 04:12:02 +0000
+Message-ID: <1328760721.3234.86.camel@lade.trondhjem.org>
+References: <4F31E1CA.8060105@ti.com>
+	 <1328676860.2954.9.camel@lade.trondhjem.org>
+	 <1328687026.8981.25.camel@serendib>
+	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
+	 <1328759776.8981.75.camel@serendib>
+In-Reply-To: <1328759776.8981.75.camel@serendib>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfsd4_stateowners eating memory like candy... sometimes....
-References: <4F32F726.4060704@andrews.edu> <20120209180531.GA22168@fieldses.org>
-In-Reply-To: <20120209180531.GA22168@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks!  I'll try a kernel update and see what sticks :)
-
-
-
-On 02/09/2012 01:05 PM, J. Bruce Fields wrote:
-> On Wed, Feb 08, 2012 at 05:28:54PM -0500, Todd Freeman wrote:
->> Good day all!
->>
->> I have a nfs server handling the load for a shared file system for 5
->> web servers...  some relevant info:
->>    libnfsidmap2
->> 0.23-2
->>    nfs-common
->> 1:1.2.2-1ubuntu1.1
->>    nfs-kernel-server
->> 1:1.2.2-1ubuntu1.1
->>
->>    Linux webnfs 2.6.35-31-server #63-Ubuntu SMP Mon Nov 28 21:03:37
->> UTC 2011 x86_64 GNU/Linux
->>
->> On this server everything runs great for a couple weeks to a month
->> and then we start getting sluggish performance... and within a
->> couple days it seizes up (at least all nfs services stop... console
->> is still accessible)
->>
->> In trying to debug this we have been taking a snap shot every 5
->> minutes of the slabinfo...   we got a totally clean capture this
->> time and I see nfsd4_stateowners running away with memory. When we
->> start the server and for the first several days the most memory it
->> uses is 200MB or so...  over time though there come points were it
->> suddenly starts munching more...  sometimes slowly... other times
->> instantly. It finally kills the machine when it reaches the 1.7-1.8
->> GB level (just under the memory size of the machine). oom-killer is
->> killing everything left and right at the end and we end up with a
->> machine that is comatose NFS wise till we do a full reboot.
->>
->> You can see a graph of this usage pattern at: http://imgur.com/ecLPh
->>
->> I see mentions of a problem along this line back in the 2.6.16-18
->> types days... but supposedly it was fixed.
-> There have been a number of stateowner leaks fixed since 2.6.35.  I
-> think all the ones I know of were fixes as of 3.1 or so.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
--- 
-Todd Freeman  Ext 6103                   .^.    Don't fear the penguins!
-Programming Department                   /V\
-Andrews University                      // \\    http://www.linux.org/
-http://www.andrews.edu/~freeman/       /(   )\   http://www.debian.org/
-                                         ^^ ^^
-
+T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE0OjU2ICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gSGkg
+Q2h1Y2ssDQo+IA0KPiBPbiBXZWQsIDIwMTItMDItMDggYXQgMTA6NDAgLTA1MDAsIENodWNrIExl
+dmVyIHdyb3RlOg0KPiA+IE9uIEZlYiA4LCAyMDEyLCBhdCAyOjQzIEFNLCBIYXJzaHVsYSB3cm90
+ZToNCj4gDQo+ID4gPiBDb3VsZCB5b3UgcGxlYXNlIGV4cGFuZCBvbiB0aGUgc3VidGxldGllcyBp
+bnZvbHZlZCB0aGF0IHJlcXVpcmUgYW4NCj4gPiA+IGFwcGxpY2F0aW9uIHRvIGJlIHJld3JpdHRl
+biBpZiBmb3JjZWRpcmVjdGlvIG1vdW50IG9wdGlvbiB3YXMgYXZhaWxhYmxlPw0KPiA+ID4gDQo+
+ID4gPiBBIHNjZW5hcmlvIHdoZXJlIGZvcmNlZGlyZWN0aW8gd291bGQgYmUgdXNlZnVsIGlzIHdo
+ZW4gYW4gYXBwbGljYXRpb24NCj4gPiA+IHJlYWRzIG5lYXJseSBhIFRCIG9mIGRhdGEgZnJvbSBs
+b2NhbCBkaXNrcywgcHJvY2Vzc2VzIHRoYXQgZGF0YSBhbmQgdGhlbg0KPiA+ID4gZHVtcHMgaXQg
+dG8gYW4gTkZTIG1vdW50LiBBbGwgdGhhdCBoYXBwZW5zIHdoaWxlIG90aGVyIHByb2Nlc3NlcyBh
+cmUNCj4gPiA+IHJlYWRpbmcvd3JpdGluZyB0byB0aGUgbG9jYWwgZGlza3MuIFRoZSBhcHBsaWNh
+dGlvbiBkb2VzIG5vdCBoYXZlIGFuDQo+ID4gPiBPX0RJUkVDVCBvcHRpb24gbm9yIGlzIHRoZSBz
+b3VyY2UgY29kZSBhdmFpbGFibGUuDQoNCm1vdW50IC1vc3luYyB3b3JrcyBqdXN0IGFzIHdlbGwg
+YXMgZm9yY2VkaXJlY3RpbyBmb3IgdGhpcy4NCg0KPiA+ID4gV2l0aCBwYWdlZCBJL08gdGhlIHBy
+b2JsZW0gd2Ugc2VlIGlzIHRoYXQgdGhlIE5GUyBjbGllbnQgc3lzdGVtIHJlYWNoZXMNCj4gPiA+
+IGRpcnR5X2J5dGVzL2RpcnR5X3JhdGlvIHRocmVzaG9sZCBhbmQgdGhlbiBibG9ja3MvZm9yY2Vz
+IGFsbCB0aGUNCj4gPiA+IHByb2Nlc3NlcyB0byBmbHVzaCBkaXJ0eSBwYWdlcy4gVGhpcyBlZmZl
+Y3RpdmVseSAnbG9ja3MnIHVwIHRoZSBORlMNCj4gPiA+IGNsaWVudCBzeXN0ZW0gd2hpbGUgdGhl
+IE5GUyBkaXJ0eSBwYWdlcyBhcmUgcHVzaGVkIHNsb3dseSBvdmVyIHRoZSB3aXJlDQo+ID4gPiB0
+byB0aGUgTkZTIHNlcnZlci4gU29tZSBvZiB0aGUgcHJvY2Vzc2VzIHRoYXQgaGF2ZSBub3RoaW5n
+IHRvIGRvIHdpdGgNCj4gPiA+IHdyaXRpbmcgdG8gdGhlIE5GUyBtb3VudCBhcmUgYmFkbHkgaW1w
+YWN0ZWQuIEEgZm9yY2VkaXJlY3RpbyBtb3VudA0KPiA+ID4gb3B0aW9uIHdvdWxkIGJlIHZlcnkg
+aGVscGZ1bCBpbiB0aGlzIHNjZW5hcmlvLiBEbyB5b3UgaGF2ZSBhbnkgYWR2aWNlIG9uDQo+ID4g
+PiBhbGxldmlhdGluZyBzdWNoIHByb2JsZW1zIG9uIHRoZSBORlMgY2xpZW50IGJ5IG9ubHkgdXNp
+bmcgZXhpc3RpbmcNCj4gPiA+IHR1bmFibGVzPw0KPiA+IA0KPiA+IFVzaW5nIGRpcmVjdCBJL08g
+d291bGQgYmUgYSB3b3JrLWFyb3VuZC4gIFRoZSBmdW5kYW1lbnRhbCBwcm9ibGVtIGlzDQo+ID4g
+dGhlIGFyY2hpdGVjdHVyZSBvZiB0aGUgVk0gc3lzdGVtLCBhbmQgb3ZlciB0aW1lIHdlIGhhdmUg
+YmVlbiBtYWtpbmcNCj4gPiBpbXByb3ZlbWVudHMgdGhlcmUuDQoNClRoZSBhcmd1bWVudCBhYm92
+ZSBkb2Vzbid0IHByb3ZpZGVkIGFueSBtb3RpdmUgZm9yIHVzaW5nIGRpcmVjdGlvDQoodW5jYWNo
+ZWQgaS9vKSB2cyBzeW5jaHJvbm91cyBpL28uIEkgc2VlIG5vIHJlYXNvbiB3aHkgZm9yY2VkDQpz
+eW5jaHJvbm91cyBpL28gd291bGQgYmUgYSBwcm9ibGVtIGhlcmUuDQoNCj4gPiBJbnN0ZWFkIG9m
+IGEgbW91bnQgb3B0aW9uLCB5b3UgY2FuIGZpeCB5b3VyIGFwcGxpY2F0aW9uIHRvIHVzZSBkaXJl
+Y3QNCj4gPiBJL08uICBPciB5b3UgY2FuIGNoYW5nZSBpdCB0byBwcm92aWRlIHRoZSBrZXJuZWwg
+d2l0aCAoYmV0dGVyKSBoaW50cw0KPiA+IGFib3V0IHRoZSBkaXNwb3NpdGlvbiBvZiB0aGUgZGF0
+YSBpdCBpcyBnZW5lcmF0aW5nIChtYWR2aXNlIGFuZA0KPiA+IGZhZHZpc2Ugc3lzdGVtIGNhbGxz
+KS4gIChPbiBMaW51eCB3ZSBhc3N1bWUgeW91IGhhdmUgc291cmNlIGNvZGUgYW5kDQo+ID4gY2Fu
+IG1ha2Ugc3VjaCBjaGFuZ2VzLiAgSSByZWFsaXplIHRoaXMgaXMgbm90IHRydWUgZm9yIHByb3By
+aWV0YXJ5DQo+ID4gYXBwbGljYXRpb25zKS4NCj4gPiANCj4gPiBZb3UgY291bGQgdHJ5IHVzaW5n
+IHRoZSAic3luYyIgbW91bnQgb3B0aW9uIHRvIGNhdXNlIHRoZSBORlMgY2xpZW50IHRvDQo+ID4g
+cHVzaCB3cml0ZXMgdG8gdGhlIHNlcnZlciBpbW1lZGlhdGVseSByYXRoZXIgdGhhbiBkZWxheWlu
+ZyB0aGVtLiAgVGhpcw0KPiA+IHdvdWxkIGFsc28gc2xvdyBkb3duIGFwcGxpY2F0aW9ucyB0aGF0
+IGFnZ3Jlc3NpdmVseSBkaXJ0aWVzIHBhZ2VzIG9uDQo+ID4gdGhlIGNsaWVudC4NCj4gPiANCj4g
+PiBNZWFud2hpbGUsIHlvdSBjYW4gZGlhbCBkb3duIHRoZSBkaXJ0eV9yYXRpbyBhbmQgZXNwZWNp
+YWxseSB0aGUNCj4gPiBkaXJ0eV9iYWNrZ3JvdW5kX3JhdGlvIHNldHRpbmdzIHRvIHRyaWdnZXIg
+ZWFybGllciB3cml0ZWJhY2suICBXZSd2ZQ0KPiA+IGFsc28gZm91bmQgaW5jcmVhc2luZyBtaW5f
+ZnJlZV9ieXRlcyBoYXMgcG9zaXRpdmUgZWZmZWN0cy4gIFRoZSBleGFjdA0KPiA+IHNldHRpbmdz
+IGRlcGVuZCBvbiBob3cgbXVjaCBtZW1vcnkgeW91ciBjbGllbnQgaGFzLiAgRXhwZXJpbWVudGlu
+Zw0KPiA+IHlvdXJzZWxmIGlzIHByZXR0eSBoYXJtbGVzcywgc28gSSB3b24ndCBnaXZlIGV4YWN0
+IHNldHRpbmdzIGhlcmUuDQo+IA0KPiBUaGFua3MgZm9yIHRoZSByZXBseS4gVW5mb3J0dW5hdGVs
+eSwgbm90IGFsbCB2ZW5kb3JzIHByb3ZpZGUgdGhlIHNvdXJjZQ0KPiBjb2RlLCBzbyB1c2luZyBP
+X0RJUkVDVCBvciBmc3luYyBpcyBub3QgYWx3YXlzIGFuIG9wdGlvbi4gDQoNClRoaXMgaXMgd2hh
+dCB2ZW5kb3Igc3VwcG9ydCBpcyBmb3IuIFdpdGggY2xvc2VkIHNvdXJjZSBzb2Z0d2FyZSB5b3UN
+CmdlbmVyYWxseSBnZXRzIHdoYXQgeW91IHBheXMgZm9yLg0KDQo+IExvd2VyaW5nIGRpcnR5X2J5
+dGVzL2RpcnR5X3JhdGlvIGFuZA0KPiBkaXJ0eV9iYWNrZ3JvdW5kX2J5dGVzL2RpcnR5X2JhY2tn
+cm91bmRfcmF0aW8gZGlkIGhlbHAgYXMgaXQgc21vb3RoZWQNCj4gb3V0IHRoZSBkYXRhIHRyYW5z
+ZmVyIG92ZXIgdGhlIHdpcmUgYnkgcHVzaGluZyBkYXRhIG91dCB0byB0aGUgTkZTDQo+IHNlcnZl
+ciBzb29uZXIuIE90aGVyd2lzZSwgSSB3YXMgc2VlaW5nIHRoZSBkYXRhIHRyYW5zZmVyIG92ZXIg
+dGhlIHdpcmUNCj4gaGF2aW5nIGlkbGUgcGVyaW9kcyB3aGlsZSA+MTBHaUIgb2YgcGFnZXMgd2Vy
+ZSBiZWluZyBkaXJ0aWVkIGJ5IHRoZQ0KPiBwcm9jZXNzZXMsIHRoZW4gY29uZ2VzdGlvbiBhcyBz
+b29uIGFzIHRoZSBkaXJ0eV9yYXRpbyB3YXMgcmVhY2hlZCBhbmQNCj4gdGhlIGZyYW50aWMgZmx1
+c2hpbmcgb2YgZGlydHkgcGFnZXMgdG8gdGhlIE5GUyBzZXJ2ZXIuIEhvd2V2ZXIsDQo+IG1vZGlm
+eWluZyBkaXJ0eV8qIHR1bmFibGVzIGhhcyBhIHN5c3RlbS13aWRlIGltcGFjdCwgaGVuY2UgaXQg
+d2FzIG5vdA0KPiBhY2NlcHRlZC4NCj4gDQo+IFRoZSAic3luYyIgb3B0aW9uLCBkZXBlbmRpbmcg
+b24gdGhlIE5GUyBzZXJ2ZXIsIG1heSBpbXBhY3QgdGhlIE5GUw0KPiBzZXJ2ZXIncyBwZXJmb3Jt
+YW5jZSB3aGVuIHNlcnZpbmcgbWFueSBORlMgY2xpZW50cy4gQnV0IHN0aWxsIHdvcnRoIGENCj4g
+dHJ5Lg0KDQpXaGF0IG9uIGVhcnRoIG1ha2VzIHlvdSB0aGluayB0aGF0IGRpcmVjdGlvIHdvdWxk
+IGJlIGFueSBkaWZmZXJlbnQ/IElmDQp5b3VyIHBlcmZvcm1hbmNlIHJlcXVpcmVtZW50cyBjYW4n
+dCBjb3BlIHdpdGggJ3N5bmMnLCB0aGVuIHRoZXkgc3VyZSBhcw0KaGVsbCB3b24ndCBkZWFsIHdl
+bGwgd2l0aCAnZnNjJy4NCg0KRGlyZWN0aW8gaXMgX3N5bmNocm9ub3VzXyBqdXN0IGxpa2UgJ3N5
+bmMnLiBUaGUgYmlnIGRpZmZlcmVuY2UgaXMgdGhhdA0Kd2l0aCAnc3luYycgdGhlbiBhdCBsZWFz
+dCB0aG9zZSByZWFkcyBhcmUgc3RpbGwgY2FjaGVkLg0KDQo+IFRoZSBvdGhlciBoYWNrIHRoYXQg
+c2VlbXMgdG8gd29yayBpcyBwZXJpb2RpY2FsbHkgdHJpZ2dlcmluZyBhbg0KPiBuZnNfZ2V0YXR0
+cigpLCB2aWEgbHMgLWwsIHRvIGZvcmNlIHRoZSBkaXJ0eSBwYWdlcyB0byBiZSBmbHVzaGVkIHRv
+IHRoZQ0KPiBORlMgc2VydmVyLiBOb3QgZXhhY3RseSBlbGVnYW50IC4uLg0KDQo/Pz8/Pz8/Pz8/
+Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/PyANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0KDQo=
