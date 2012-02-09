@@ -1,50 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39591 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34819 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753072Ab2BSHu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 19 Feb 2012 02:50:27 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH 2/2] NFS: Ensure struct nfs_client holds a reference to the net namespace
-Date: Sun, 19 Feb 2012 08:50:21 +0100
-Message-Id: <1329637821-6986-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1329637821-6986-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1329637821-6986-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753816Ab2BIKFM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 05:05:12 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120208141552.GA3273@umich.edu>
+References: <20120208141552.GA3273@umich.edu> <20120208122905.8902.65762.stgit@warthog.procyon.org.uk> <20120208122917.8902.78395.stgit@warthog.procyon.org.uk>
+To: Jim Rees <rees@umich.edu>
+Cc: dhowells@redhat.com, jmorris@namei.org, keyrings@linux-nfs.org,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-api@vger.kernel.org, libc-alpha@sourceware.org
+Subject: Re: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate name service errors
+Date: Thu, 09 Feb 2012 10:04:49 +0000
+Message-ID: <17614.1328781889@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Otherwise we have no guarantee that the net namespace won't just
-disappear from underneath us once the task that created it
-is destroyed.
+Jim Rees <rees@umich.edu> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/client.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+>   Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
+>   indicate, for example, that an attempt was made by dns_query() to make a query,
+>   but the name server (e.g. a DNS server) replied indicating that it had no
+>   matching records.
+> 
+> Would this be the same as NXDOMAIN?  That is, does it mean the name server
+> couldn't find a record, or does it mean that the record doesn't exist?
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d0f850f..8563585 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -172,7 +172,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
--	clp->net = cl_init->net;
-+	clp->net = get_net(cl_init->net);
- 
- #ifdef CONFIG_NFS_V4
- 	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-@@ -300,6 +300,7 @@ static void nfs_free_client(struct nfs_client *clp)
- 
- 	nfs4_deviceid_purge_client(clp);
- 
-+	put_net(clp->net);
- 	kfree(clp->cl_hostname);
- 	kfree(clp->server_scope);
- 	kfree(clp);
--- 
-1.7.7.6
+Is there a way to tell the difference?  Can you store a negative record in the
+DNS?  Or is it that the DNS has records for the name, just not records of the
+type you're looking for (eg. NO_ADDRESS/NO_DATA from gethostbyname())?
 
+David
