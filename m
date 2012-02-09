@@ -1,140 +1,242 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36748 "EHLO fieldses.org"
+Received: from mail.gnuher.de ([78.47.12.54]:49168 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757340Ab2BOAmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 19:42:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1751429Ab2BIJLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 04:11:19 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1RvPis-0007MZ-9n
+	for linux-nfs@vger.kernel.org; Thu, 09 Feb 2012 09:51:22 +0100
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1RvPiq-0001wO-69
+	for linux-nfs@vger.kernel.org; Thu, 09 Feb 2012 09:51:20 +0100
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] nfsd4: rearrange struct nfsd4_slot
-Date: Tue, 14 Feb 2012 19:42:45 -0500
-Message-Id: <1329266566-8977-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1329266566-8977-1-git-send-email-bfields@redhat.com>
-References: <1329266566-8977-1-git-send-email-bfields@redhat.com>
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: NFS4: ID-mapping Problem with Linux Client and NetApp Server
+Date: Thu, 9 Feb 2012 08:51:20 +0000 (UTC)
+Message-ID: <jh01e8$6oh$1@ultimate100.geggus.net>
+References: <20120208144923.GA16606@geggus.net> <4F3295CC.7020503@netapp.com> <20120208161212.GA18284@geggus.net> <4F32B9BB.8030504@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-Combine two booleans into a single flag field, move the smaller fields
-to the end.
+> Any of the v4 compounds should work.  How about "78.524457   10.1.7.174 -> 10.1.1.14    NFS V4 COMPOUND Call <EMPTY> PUTFH;LOOKUP;GETFH;GETATTR"?
 
-(In practice this doesn't make the struct any smaller.  But we'll be
-adding another flag here soon.)
+OK, here is this one:
 
-Remove some debugging code that doesn't look useful, while we're in the
-neighborhood.
+I skipped IP and TCP headers, starting with RPC:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   13 ++++++-------
- fs/nfsd/nfs4xdr.c   |    5 ++---
- fs/nfsd/state.h     |    7 ++++---
- fs/nfsd/xdr4.h      |    3 ++-
- 4 files changed, 14 insertions(+), 14 deletions(-)
+Internet Protocol, Src: 10.1.7.174 (10.1.7.174), Dst: 10.1.1.14 (10.1.1.14)
+Transmission Control Protocol, Src Port: 793 (793), Dst Port: nfs (2049), Seq: 1629, Ack: 1657, Len: 196
+Remote Procedure Call, Type:Call XID:0x1496ad4c
+    Fragment header: Last fragment, 192 bytes
+        1... .... .... .... .... .... .... .... = Last Fragment: Yes
+        .000 0000 0000 0000 0000 0000 1100 0000 = Fragment Length: 192
+    XID: 0x1496ad4c (345419084)
+    Message Type: Call (0)
+    RPC Version: 2
+    Program: NFS (100003)
+    Program Version: 4
+    Procedure: COMPOUND (1)
+    Credentials
+        Flavor: RPCSEC_GSS (6)
+        Length: 32
+        GSS Version: 1
+        GSS Procedure: RPCSEC_GSS_DATA (0)
+        GSS Sequence Number: 10
+        GSS Service: rpcsec_gss_svc_none (1)
+        GSS Context: <DATA>
+            length: 12
+            contents: <DATA>
+    Verifier
+        Flavor: RPCSEC_GSS (6)
+        GSS Token: 00000025602306092A864886F71201020201011100FFFFFF...
+            GSS Token Length: 37
+            GSS-API Generic Security Service Application Program Interface
+                OID: 1.2.840.113554.1.2.2 (KRB5 - Kerberos 5)
+                krb5_blob: 01011100FFFFFFFFA4C9778A70A0DFF48E0AC0599AD935BE
+                    krb5_tok_id: KRB5_GSS_GetMIC (0x0101)
+                    krb5_sgn_alg: HMAC (0x0011)
+                    krb5_snd_seq: A4C9778A70A0DFF4
+                    krb5_sgn_cksum: 8E0AC0599AD935BE
+Network File System
+    [Program Version: 4]
+    [V4 Procedure: COMPOUND (1)]
+    Tag: <EMPTY>
+        length: 0
+        contents: <EMPTY>
+    minorversion: 0
+    Operations (count: 4)
+        Opcode: PUTFH (22)
+            filehandle
+                length: 28
+                [hash (CRC-32): 0x285d5ed2]
+                decode type as: unknown
+                filehandle:
+                2A04000001000000050000000000042A0100000002000000...
+        Opcode: LOOKUP (15)
+            Filename: vol
+                length: 3
+                contents: vol
+                fill bytes: opaque data
+        Opcode: GETFH (10)
+        Opcode: GETATTR (9)
+            GETATTR4args
+                attr_request
+                    bitmap[0] = 0x0010011a
+                        [5 attributes requested]
+                        mand_attr: FATTR4_TYPE (1)
+                        mand_attr: FATTR4_CHANGE (3)
+                        mand_attr: FATTR4_SIZE (4)
+                        mand_attr: FATTR4_FSID (8)
+                        recc_attr: FATTR4_FILEID (20)
+                    bitmap[1] = 0x0030a23a
+                        [9 attributes requested]
+                        recc_attr: FATTR4_MODE (33)
+                        recc_attr: FATTR4_NUMLINKS (35)
+                        recc_attr: FATTR4_OWNER (36)
+                        recc_attr: FATTR4_OWNER_GROUP (37)
+                        recc_attr: FATTR4_RAWDEV (41)
+                        recc_attr: FATTR4_SPACE_USED (45)
+                        recc_attr: FATTR4_TIME_ACCESS (47)
+                        recc_attr: FATTR4_TIME_METADATA (52)
+                        recc_attr: FATTR4_TIME_MODIFY (53)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2095dbb..e0e706f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1374,15 +1374,12 @@ nfsd4_enc_sequence_replay(struct nfsd4_compoundargs *args,
- 	struct nfsd4_op *op;
- 	struct nfsd4_slot *slot = resp->cstate.slot;
- 
--	dprintk("--> %s resp->opcnt %d cachethis %u \n", __func__,
--		resp->opcnt, resp->cstate.slot->sl_cachethis);
--
- 	/* Encode the replayed sequence operation */
- 	op = &args->ops[resp->opcnt - 1];
- 	nfsd4_encode_operation(resp, op);
- 
- 	/* Return nfserr_retry_uncached_rep in next operation. */
--	if (args->opcnt > 1 && slot->sl_cachethis == 0) {
-+	if (args->opcnt > 1 && !(slot->sl_flags & NFSD4_SLOT_CACHETHIS)) {
- 		op = &args->ops[resp->opcnt++];
- 		op->status = nfserr_retry_uncached_rep;
- 		nfsd4_encode_operation(resp, op);
-@@ -1916,7 +1913,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	 * sr_highest_slotid and the sr_target_slot id to maxslots */
- 	seq->maxslots = session->se_fchannel.maxreqs;
- 
--	status = check_slot_seqid(seq->seqid, slot->sl_seqid, slot->sl_inuse);
-+	status = check_slot_seqid(seq->seqid, slot->sl_seqid,
-+					slot->sl_flags & NFSD4_SLOT_INUSE);
- 	if (status == nfserr_replay_cache) {
- 		cstate->slot = slot;
- 		cstate->session = session;
-@@ -1933,9 +1931,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	conn = NULL;
- 
- 	/* Success! bump slot seqid */
--	slot->sl_inuse = true;
- 	slot->sl_seqid = seq->seqid;
--	slot->sl_cachethis = seq->cachethis;
-+	slot->sl_flags = NFSD4_SLOT_INUSE;
-+	if (seq->cachethis)
-+		slot->sl_flags |= NFSD4_SLOT_CACHETHIS;
- 
- 	cstate->slot = slot;
- 	cstate->session = session;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0ec5a1b..279a705 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3532,7 +3532,7 @@ int nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- 	if (length > session->se_fchannel.maxresp_sz)
- 		return nfserr_rep_too_big;
- 
--	if (slot->sl_cachethis == 1 &&
-+	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
- 	    length > session->se_fchannel.maxresp_cached)
- 		return nfserr_rep_too_big_to_cache;
- 
-@@ -3656,8 +3656,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	if (nfsd4_has_session(cs)) {
- 		if (cs->status != nfserr_replay_cache) {
- 			nfsd4_store_cache_entry(resp);
--			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
--			cs->slot->sl_inuse = false;
-+			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
- 		}
- 		/* Renew the clientid on success and on replay */
- 		release_session_client(cs->session);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ffb5df1..122217f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -128,12 +128,13 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
- 		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
- 
- struct nfsd4_slot {
--	bool	sl_inuse;
--	bool	sl_cachethis;
--	u16	sl_opcnt;
- 	u32	sl_seqid;
- 	__be32	sl_status;
- 	u32	sl_datalen;
-+	u16	sl_opcnt;
-+#define NFSD4_SLOT_INUSE	(1 << 0)
-+#define NFSD4_SLOT_CACHETHIS	(1 << 1)
-+	u8	sl_flags;
- 	char	sl_data[];
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..21dccdf 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -503,7 +503,8 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
- 
- static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
- {
--	return !resp->cstate.slot->sl_cachethis || nfsd4_is_solo_sequence(resp);
-+	return !(resp->cstate.slot->sl_flags & NFSD4_SLOT_CACHETHIS)
-+		|| nfsd4_is_solo_sequence(resp);
- }
- 
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+Answer:
+Internet Protocol, Src: 10.1.1.14 (10.1.1.14), Dst: 10.1.7.174 (10.1.7.174)
+Transmission Control Protocol, Src Port: nfs (2049), Dst Port: 793 (793), Seq: 1657, Ack: 1825, Len: 300
+Remote Procedure Call, Type:Reply XID:0x1496ad4c
+    Fragment header: Last fragment, 296 bytes
+        1... .... .... .... .... .... .... .... = Last Fragment: Yes
+        .000 0000 0000 0000 0000 0001 0010 1000 = Fragment Length: 296
+    XID: 0x1496ad4c (345419084)
+    Message Type: Reply (1)
+    [Program: NFS (100003)]
+    [Program Version: 4]
+    [Procedure: COMPOUND (1)]
+    Reply State: accepted (0)
+    [This is a reply to a request in frame 40]
+    [Time from request: 0.000489000 seconds]
+    Verifier
+        Flavor: RPCSEC_GSS (6)
+        GSS Token: 00000025602306092A864886F71201020201011100FFFFFF...
+            GSS Token Length: 37
+            GSS-API Generic Security Service Application Program Interface
+                OID: 1.2.840.113554.1.2.2 (KRB5 - Kerberos 5)
+                krb5_blob: 01011100FFFFFFFF4E710FD04090348728ADC573608BB721
+                    krb5_tok_id: KRB5_GSS_GetMIC (0x0101)
+                    krb5_sgn_alg: HMAC (0x0011)
+                    krb5_snd_seq: 4E710FD040903487
+                    krb5_sgn_cksum: 28ADC573608BB721
+    Accept State: RPC executed successfully (0)
+Network File System
+    [Program Version: 4]
+    [V4 Procedure: COMPOUND (1)]
+    Status: NFS4_OK (0)
+    Tag: <EMPTY>
+        length: 0
+        contents: <EMPTY>
+    Operations (count: 4)
+        Opcode: PUTFH (22)
+            Status: NFS4_OK (0)
+        Opcode: LOOKUP (15)
+            Status: NFS4_OK (0)
+        Opcode: GETFH (10)
+            Status: NFS4_OK (0)
+            Filehandle
+                length: 28
+                [hash (CRC-32): 0x4cc21d2f]
+                decode type as: unknown
+                filehandle:
+                2B04000001000000050000000000042B0100000002000000...
+        Opcode: GETATTR (9)
+            Status: NFS4_OK (0)
+            GETATTR4res
+                resok4
+                    obj_attributes
+                        attrmask
+                            bitmap[0] = 0x0010011a
+                                [5 attributes requested]
+                                mand_attr: FATTR4_TYPE (1)
+                                mand_attr: FATTR4_CHANGE (3)
+                                mand_attr: FATTR4_SIZE (4)
+                                mand_attr: FATTR4_FSID (8)
+                                recc_attr: FATTR4_FILEID (20)
+                            bitmap[1] = 0x0030a23a
+                                [9 attributes requested]
+                                recc_attr: FATTR4_MODE (33)
+                                recc_attr: FATTR4_NUMLINKS (35)
+                                recc_attr: FATTR4_OWNER (36)
+                                recc_attr: FATTR4_OWNER_GROUP (37)
+                                recc_attr: FATTR4_RAWDEV (41)
+                                recc_attr: FATTR4_SPACE_USED (45)
+                                recc_attr: FATTR4_TIME_ACCESS (47)
+                                recc_attr: FATTR4_TIME_METADATA (52)
+                                recc_attr: FATTR4_TIME_MODIFY (53)
+                        attr_vals
+                            mand_attr: FATTR4_TYPE (1)
+                                nfs_ftype4: NF4DIR (2)
+                            mand_attr: FATTR4_CHANGE (3)
+                                changeid: 1426762506587602944
+                            mand_attr: FATTR4_SIZE (4)
+                                size: 0
+                            mand_attr: FATTR4_FSID (8)
+                                fattr4_fsid
+                                    fsid4.major: 2
+                                    fsid4.minor: 0
+                            recc_attr: FATTR4_FILEID (20)
+                                fileid: 1067
+                            recc_attr: FATTR4_MODE (33)
+                                fattr4_mode: 00
+                                    000. .... .... .... = Unknown
+                                    .... 0... .... .... = not SUID
+                                    .... .0.. .... .... = not SGID
+                                    .... ..0. .... .... = not save swapped text
+                                    .... ...0 .... .... = no Read permission for owner
+                                    .... .... 0... .... = no Write permission for owner
+                                    .... .... .0.. .... = no Execute permission for owner
+                                    .... .... ..0. .... = no Read permission for group
+                                    .... .... ...0 .... = no Write permission for group
+                                    .... .... .... 0... = no Execute permission for group
+                                    .... .... .... .0.. = no Read permission for others
+                                    .... .... .... ...0 = no Execute permission for others
+                            recc_attr: FATTR4_NUMLINKS (35)
+                                numlinks: 1
+                            recc_attr: FATTR4_OWNER (36)
+                                fattr4_owner: root@<fqdn>
+                                    length: 19
+                                    contents: root@<fqdn>
+                                    fill bytes: opaque data
+                            recc_attr: FATTR4_OWNER_GROUP (37)
+                                fattr4_owner_group: nobody
+                                    length: 6
+                                    contents: nobody
+                                    fill bytes: opaque data
+                            recc_attr: FATTR4_RAWDEV (41)
+                                specdata1: 0
+                                specdata2: 0
+                            recc_attr: FATTR4_SPACE_USED (45)
+                                space_used: 0
+                            recc_attr: FATTR4_TIME_ACCESS (47)
+                                seconds: 1328776131
+                                nseconds: 359437000
+                            recc_attr: FATTR4_TIME_METADATA (52)
+                                seconds: 1328776131
+                                nseconds: 0
+                            recc_attr: FATTR4_TIME_MODIFY (53)
+                                seconds: 1328776131
+                                nseconds: 0
+
+Sven
+
 -- 
-1.7.5.4
-
+"A strategy for rewarding artists that regulates 'copies' makes as much sense
+in the digital age as a strategy for controlling greenhouse gases that
+regulates breathing." (Lawrence Lessig)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
