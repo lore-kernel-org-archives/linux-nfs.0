@@ -1,64 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27851 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751671Ab2BQUUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 15:20:41 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/3] NFSv4: fix server_scope memory leak
-Date: Fri, 17 Feb 2012 15:20:25 -0500
-Message-Id: <1329510026-30403-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1329510026-30403-1-git-send-email-dros@netapp.com>
-References: <1329510026-30403-1-git-send-email-dros@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:41837 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758630Ab2BIXDb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2012 18:03:31 -0500
+From: "Bhamare, Sachin" <sbhamare@panasas.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Jim Rees <rees@umich.edu>, Steve Dickson <SteveD@redhat.com>,
+        "Harrosh, Boaz" <bharrosh@panasas.com>,
+        Benny Halevy <bhalevy@tonian.com>,
+        "osd-dev@open-osd.org" <osd-dev@open-osd.org>
+Subject: nfs-utils: userspace support for autologin feature in object layout
+ driver
+Date: Thu, 9 Feb 2012 23:02:51 +0000
+Message-ID: <CB5990C9.679A%sbhamare@panasas.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-server_scope would never be freed if nfs4_check_cl_exchange_flags() returned
-non-zero
+Hi, 
+   I have been working on implementing autologin support for objectlayout
+driver in pNFS client. This feature would allow pNFS object clients to
+receive an URI (e.g. iscsi://<IP>:<PORT>) of a target OSD via
+GETDEVICEINFO rpc from the server. Object layout driver would then pass
+this information to an user space daemon which would perform the login
+task 
+depending on the protocol involved (e.g. Iscsi login using iscsiadm).
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-This should be pushed to stable@vger.kernel.org
+For userspace daemon, we have 2 implementation choices.
 
- fs/nfs/nfs4proc.c |   15 +++++++++------
- 1 files changed, 9 insertions(+), 6 deletions(-)
+1. Add new daemon (say, osdlogind) to nfs-utils which would process the
+upcalls from object layout driver via rpc_pipefs (very similar to the way
+blkmapd works)
+2. Modify blkmapd in nfs-utils package to be able to process upcalls from
+the object layout driver and add new functionality to process these
+messages.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 87c584d..20c3bb0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4945,8 +4945,10 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 				clp->cl_rpcclient->cl_auth->au_flavor);
- 
- 	res.server_scope = kzalloc(sizeof(struct server_scope), GFP_KERNEL);
--	if (unlikely(!res.server_scope))
--		return -ENOMEM;
-+	if (unlikely(!res.server_scope)) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
- 
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
-@@ -4963,12 +4965,13 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			clp->server_scope = NULL;
- 		}
- 
--		if (!clp->server_scope)
-+		if (!clp->server_scope) {
- 			clp->server_scope = res.server_scope;
--		else
--			kfree(res.server_scope);
-+			goto out;
-+		}
- 	}
--
-+	kfree(res.server_scope);
-+out:
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
--- 
-1.7.4.4
+I think, (1) above is the simplest and cleanest way to go about
+implementing this. (2) adds an indirect dependency between block layout
+driver and object layout driver if they were to share the same rpc pipe to
+communicate with user space.
+
+Currently I have a simple implementation of 'osdlogind' coded up which
+borrows its design heavily from 'blkmapd' code. Please let me know what
+would be the preferred way to go about this. Thanks in advance for your
+inputs. 
+
+Sachin Bhamare 
+Panasas Inc.
+
 
