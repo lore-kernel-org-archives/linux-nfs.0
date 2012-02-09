@@ -1,124 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9760 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52676 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753798Ab2BPSGh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 13:06:37 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/2] Created a function for setting timeouts on keys
-Date: Thu, 16 Feb 2012 13:06:32 -0500
-Message-Id: <1329415593-12270-1-git-send-email-bjschuma@netapp.com>
+	id S1752265Ab2BIT7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 14:59:02 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Thu, 9 Feb 2012 19:58:54 +0000
+Message-ID: <1328817534.13180.65.camel@lade.trondhjem.org>
+References: <1328805686-19559-1-git-send-email-dros@netapp.com>
+	 <1328811417.13180.51.camel@lade.trondhjem.org>
+	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
+	 <1328815664.13180.60.camel@lade.trondhjem.org>
+	 <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
+In-Reply-To: <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-The keyctl_set_timeout function isn't exported to other parts of the
-kernel, but I want to use it for the NFS idmapper.  I already have the
-key, but I wanted a generic way to set the timeout.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-David - Is there a better way to set the key rather than creating a new
-function?  Should I have created the set_key_timeout() function in a
-different place?
-
- include/linux/key.h    |    2 ++
- security/keys/key.c    |   20 ++++++++++++++++++++
- security/keys/keyctl.c |   18 ++----------------
- 3 files changed, 24 insertions(+), 16 deletions(-)
-
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 5253471..72c75a4 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -276,6 +276,8 @@ static inline key_serial_t key_serial(const struct key *key)
- 	return key ? key->serial : 0;
- }
- 
-+extern void set_key_timeout(struct key *, unsigned);
-+
- /**
-  * key_is_instantiated - Determine if a key has been positively instantiated
-  * @key: The key to check.
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 7ada801..5bf4c21 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -671,6 +671,26 @@ found_kernel_type:
- 	return ktype;
- }
- 
-+void set_key_timeout(struct key *key, unsigned timeout)
-+{
-+	struct timespec now;
-+	time_t expiry = 0;
-+
-+	/* make the changes with the locks held to prevent races */
-+	down_write(&key->sem);
-+
-+	if (timeout > 0) {
-+		now = current_kernel_time();
-+		expiry = now.tv_sec + timeout;
-+	}
-+
-+	key->expiry = expiry;
-+	key_schedule_gc(key->expiry + key_gc_delay);
-+
-+	up_write(&key->sem);
-+}
-+EXPORT_SYMBOL_GPL(set_key_timeout);
-+
- /*
-  * Unlock a key type locked by key_type_lookup().
-  */
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index 0b3f5d7..894b9a2 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -14,6 +14,7 @@
- #include <linux/sched.h>
- #include <linux/slab.h>
- #include <linux/syscalls.h>
-+#include <linux/key.h>
- #include <linux/keyctl.h>
- #include <linux/fs.h>
- #include <linux/capability.h>
-@@ -1244,10 +1245,8 @@ error:
-  */
- long keyctl_set_timeout(key_serial_t id, unsigned timeout)
- {
--	struct timespec now;
- 	struct key *key, *instkey;
- 	key_ref_t key_ref;
--	time_t expiry;
- 	long ret;
- 
- 	key_ref = lookup_user_key(id, KEY_LOOKUP_CREATE | KEY_LOOKUP_PARTIAL,
-@@ -1273,20 +1272,7 @@ long keyctl_set_timeout(key_serial_t id, unsigned timeout)
- 
- okay:
- 	key = key_ref_to_ptr(key_ref);
--
--	/* make the changes with the locks held to prevent races */
--	down_write(&key->sem);
--
--	expiry = 0;
--	if (timeout > 0) {
--		now = current_kernel_time();
--		expiry = now.tv_sec + timeout;
--	}
--
--	key->expiry = expiry;
--	key_schedule_gc(key->expiry + key_gc_delay);
--
--	up_write(&key->sem);
-+	set_key_timeout(key, timeout);
- 	key_put(key);
- 
- 	ret = 0;
--- 
-1.7.9
-
+T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiA+IA0KPiA+PiBJIGRvIGhhdmUgYW4gaW1wbGVtZW50YXRpb24gdGhhdCBkb2Vzbid0IG5lZWQg
+dG8gd2FsayB0aGUgZGV2aWNlaWQgbGlzdCBieSBhbGxvd2luZyBhIHNoYXJlZCBycGNfaW9zdGF0
+cyBzdHJ1Y3QgYmV0d2VlbiBtdWx0aXBsZSBycGNfY2xpZW50cyAoaW4gYWRkaXRpb24gdG8gdGhl
+IGN1cnJlbnQgcnBjX2lvc3RhdHMgc3RydWN0dXJlKSwgYnV0IHRoYXQgcmVxdWlyZWQgYWRkaW5n
+IGxvY2tpbmcgYW5kIHJlZmVyZW5jZSBjb3VudGluZyAtLSBhbGwgZm9yIHByaW50aW5nIHN0YXRz
+IChvYnZpb3VzbHkgbm90IHdoYXQgd2Ugd2FudCkuDQo+ID4gDQo+ID4gVGhpcyBtaWdodCBiZSBt
+b3JlIGluIGxpbmUgd2l0aCB3aGF0IHdlIHdhbnQuIE5vdGUgdGhhdCBpdCBzaG91bGQgYmUNCj4g
+PiBlYXN5IHRvIGNsb25lIGFuIHJwY19jbGllbnQgYW5kIHRoZW4gcmVwbGFjZSBpdHMgcnBjX2lv
+c3RhdHMgc3RydWN0LiBJDQo+ID4gZG9uJ3QgdGhpbmsgdGhhdCBuZWVkcyBhbnkgZXh0cmEgbG9j
+a2luZy4gV2UncmUgYWxyZWFkeSBpZ25vcmluZyBsb2NraW5nDQo+ID4gaGVyZSBiZXR3ZWVuIGRp
+ZmZlcmVudCBycGNfdGFza3MsIHNvIHRocm93aW5nIGluIGRpZmZlcmVudCBycGNfY2xpZW50cw0K
+PiA+IHRvIHRoZSBtaXggd2lsbCBtYWtlIG5vIGRpZmZlcmVuY2UuDQo+IA0KPiBZZWFoLCB0aGF0
+J3MgZWFzeSBlbm91Z2ggYW5kIGkgZ3Vlc3Mgd2UgY291bGQgaWdub3JlIGxvY2tpbmcsIGJ1dCB3
+ZSBhcmUgc3RpbGwgbGVmdCB3aXRoIHRoZSBzYW1lIHByb2JsZW06IGhvdyBpcyB0aGlzIHN1cHBv
+c2VkIHRvIGFjY291bnQgZm9yIGRpZmZlcmVudCBtb3VudCBwb2ludHMgdXNpbmcgdGhlIHNhbWUg
+bmZzX2NsaWVudD8gIG5mc19jbGllbnQgb25seSBoYXMgb25lIHJwY19jbGllbnQgbWVtYmVyLiAg
+SSBkb3VidCB3ZSB3YW50IHRvIG1ha2UgYSBoYXNoIGxvb2t1cCBvbiBuZnNfc2VydmVyIHRvIGdl
+dCB0aGUgcmlnaHQgcnBjX2NsaWVudCAod2hpY2ggY291bGQgYWxsIHVzZSB0aGUgc2FtZSB1bmRl
+cmx5aW5nIHhwcnQpLg0KPiANCj4gTWF5YmUgaXQncyB0aW1lIHRvIG1vdmUgdGhlc2Ugc3RhdHMg
+aW50byBmcy9uZnMvIHdoZXJlIHRoZXkgcmVhbGx5IGJlbG9uZz8gIFdlIGNvdWxkIGdldCByaWQg
+b2YgdGhlIGhhY2sgdGhhdCBvdmVybG9hZHMgcHJvY251bSB3aXRoIG9wbnVtIGZyb20gaW5zaWRl
+IHRoZSBjb21wb3VuZCBmb3IgdjQrIGFuZCBmaW5hbGx5IG9ubHkgc2hvdyBhIHNwZWNpZmljIG1v
+dW50J3MgUlBDIHN0YXRzLg0KDQpBY3R1YWxseSwgaG93IGFib3V0IGp1c3QgYWRkaW5nIGEgY2Fs
+bGJhY2sgaW50byBzdHJ1Y3QgcnBjX2NhbGxfb3BzDQp0aGF0LCBpZiBpdCBpcyBkZWZpbmVkLCB3
+b3VsZCBiZSBjYWxsZWQgaW5zdGVhZCBvZiBycGNfY291bnRfaW9zdGF0cygpLiANCklmIHlvdSB0
+aGVuIG1vZGlmeSBycGNfY291bnRfaW9zdGF0cygpIHRvIHRha2UgdGhlICdzdGF0cycgdmFyaWFi
+bGUgYXMgYQ0KcGFyYW1ldGVyLCB5b3UgY2FuIHNpbXBseSBoYXZlIHRoZSBuZXcgY2FsbGJhY2sg
+Y2FsbCBycGNfY291bnRfaW9zdGF0cw0Kd2l0aCB0aGUgcmlnaHQgYXJndW1lbnRzLg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
