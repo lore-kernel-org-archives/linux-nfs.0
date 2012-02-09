@@ -1,787 +1,475 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:14668 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19758 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753303Ab2BJWCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:13 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 03/21] NFS: Add version registering framework
-Date: Fri, 10 Feb 2012 17:01:47 -0500
-Message-Id: <1328911325-1566-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+	id S1757086Ab2BITNN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 14:13:13 -0500
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Thu, 9 Feb 2012 19:13:01 +0000
+Message-ID: <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
+References: <1328805686-19559-1-git-send-email-dros@netapp.com>
+ <1328811417.13180.51.camel@lade.trondhjem.org>
+In-Reply-To: <1328811417.13180.51.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_83235068-31FD-4165-AD1C-4266B774810F";
+	protocol="application/pkcs7-signature"; micalg=sha1
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Apple-Mail=_83235068-31FD-4165-AD1C-4266B774810F
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This patch adds in the code to track multiple versions of the NFS
-protocol.  I created default structures for v2, v3 and v4 so that each
-version can continue to work while I convert them into kernel modules.
-I also removed the const parameter from the rpc_version array so that I
-can change it at runtime.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/lockd/clnt4xdr.c         |    2 +-
- fs/lockd/clntxdr.c          |    6 +-
- fs/lockd/mon.c              |    4 +-
- fs/nfs/Makefile             |    6 +-
- fs/nfs/client.c             |  108 +++++++++++++++++++++++++++++++++---------
- fs/nfs/inode.c              |    2 +
- fs/nfs/mount_clnt.c         |    6 +-
- fs/nfs/nfs.h                |   35 ++++++++++++++
- fs/nfs/nfs2super.c          |   31 ++++++++++++
- fs/nfs/nfs2xdr.c            |    2 +-
- fs/nfs/nfs3super.c          |   31 ++++++++++++
- fs/nfs/nfs3xdr.c            |    4 +-
- fs/nfs/nfs4super.c          |   31 ++++++++++++
- fs/nfs/nfs4xdr.c            |    2 +-
- fs/nfs/super.c              |   48 ++++++++++++++-----
- fs/nfsd/nfs4callback.c      |    2 +-
- include/linux/lockd/xdr4.h  |    2 +-
- include/linux/nfs_xdr.h     |    8 ++--
- include/linux/sunrpc/clnt.h |    2 +-
- net/sunrpc/rpcb_clnt.c      |    8 ++--
- 20 files changed, 277 insertions(+), 63 deletions(-)
- create mode 100644 fs/nfs/nfs.h
- create mode 100644 fs/nfs/nfs2super.c
- create mode 100644 fs/nfs/nfs3super.c
- create mode 100644 fs/nfs/nfs4super.c
+On Feb 9, 2012, at 1:16 PM, Myklebust, Trond wrote:
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index 3ddcbb1..580dbe2 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -598,7 +598,7 @@ static struct rpc_procinfo	nlm4_procedures[] = {
- 	PROC(GRANTED_RES,	res,		norep),
- };
- 
--const struct rpc_version nlm_version4 = {
-+struct rpc_version nlm_version4 = {
- 	.number		= 4,
- 	.nrprocs	= ARRAY_SIZE(nlm4_procedures),
- 	.procs		= nlm4_procedures,
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 3d35e3e..78e80c4 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -596,19 +596,19 @@ static struct rpc_procinfo	nlm_procedures[] = {
- 	PROC(GRANTED_RES,	res,		norep),
- };
- 
--static const struct rpc_version	nlm_version1 = {
-+static struct rpc_version	nlm_version1 = {
- 		.number		= 1,
- 		.nrprocs	= ARRAY_SIZE(nlm_procedures),
- 		.procs		= nlm_procedures,
- };
- 
--static const struct rpc_version	nlm_version3 = {
-+static struct rpc_version	nlm_version3 = {
- 		.number		= 3,
- 		.nrprocs	= ARRAY_SIZE(nlm_procedures),
- 		.procs		= nlm_procedures,
- };
- 
--static const struct rpc_version	*nlm_versions[] = {
-+static struct rpc_version	*nlm_versions[] = {
- 	[1] = &nlm_version1,
- 	[3] = &nlm_version3,
- #ifdef CONFIG_LOCKD_V4
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index c196030..ff247f4 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -534,13 +534,13 @@ static struct rpc_procinfo	nsm_procedures[] = {
- 	},
- };
- 
--static const struct rpc_version nsm_version1 = {
-+static struct rpc_version nsm_version1 = {
- 		.number		= 1,
- 		.nrprocs	= ARRAY_SIZE(nsm_procedures),
- 		.procs		= nsm_procedures
- };
- 
--static const struct rpc_version *nsm_version[] = {
-+static struct rpc_version *nsm_version[] = {
- 	[1] = &nsm_version1,
- };
- 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 7ddd45d..c6e7844 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,11 +9,11 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
--nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
-+nfs-$(CONFIG_NFS_V2)	+= nfs2super.o proc.o nfs2xdr.o
-+nfs-$(CONFIG_NFS_V3)	+= nfs3super.o nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
--			   delegation.o idmap.o \
-+			   nfs4super.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 02a33d8..59bf964 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -49,10 +49,13 @@
- #include "internal.h"
- #include "fscache.h"
- #include "pnfs.h"
-+#include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- DEFINE_SPINLOCK(nfs_client_lock);
-+static DEFINE_SPINLOCK(nfs_version_lock);
-+static LIST_HEAD(nfs_versions);
- LIST_HEAD(nfs_client_list);
- static LIST_HEAD(nfs_volume_list);
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
-@@ -89,16 +92,10 @@ static bool nfs4_disable_idmapping = true;
- /*
-  * RPC cruft for NFS
-  */
--static const struct rpc_version *nfs_version[5] = {
--#ifdef CONFIG_NFS_V2
--	[2]			= &nfs_version2,
--#endif
--#ifdef CONFIG_NFS_V3
--	[3]			= &nfs_version3,
--#endif
--#ifdef CONFIG_NFS_V4
--	[4]			= &nfs_version4,
--#endif
-+static struct rpc_version *nfs_version[5] = {
-+	[2] = NULL,
-+	[3] = NULL,
-+	[4] = NULL,
- };
- 
- const struct rpc_program nfs_program = {
-@@ -114,10 +111,9 @@ struct rpc_stat nfs_rpcstat = {
- 	.program		= &nfs_program
- };
- 
--
- #ifdef CONFIG_NFS_V3_ACL
- static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
--static const struct rpc_version *nfsacl_version[] = {
-+static struct rpc_version *nfsacl_version[] = {
- 	[3]			= &nfsacl_version3,
- };
- 
-@@ -140,6 +136,78 @@ struct nfs_client_initdata {
- 	struct net *net;
- };
- 
-+struct nfs_subversion *get_nfs_version(unsigned int version)
-+{
-+	struct nfs_subversion *nfs;
-+
-+	spin_lock(&nfs_version_lock);
-+
-+	list_for_each_entry(nfs, &nfs_versions, list) {
-+		if (nfs->version == version) {
-+			/* Keep track of the most recently used version */
-+			list_move(&nfs->list, &nfs_versions);
-+			goto out;
-+		}
-+	};
-+
-+	nfs = ERR_PTR(-EPROTONOSUPPORT);
-+
-+out:
-+	spin_unlock(&nfs_version_lock);
-+	return nfs;
-+}
-+
-+inline struct nfs_subversion *get_nfs_client_version(struct nfs_client *clp)
-+{
-+	return get_nfs_version(clp->rpc_ops->version);
-+}
-+
-+inline struct nfs_subversion *get_nfs_server_version(struct nfs_server *srv)
-+{
-+	return get_nfs_client_version(srv->nfs_client);
-+}
-+
-+void register_nfs_version(struct nfs_subversion *nfs)
-+{
-+	spin_lock(&nfs_version_lock);
-+
-+	INIT_LIST_HEAD(&nfs->list);
-+	list_add(&nfs->list, &nfs_versions);
-+	nfs_version[nfs->version] = nfs->rpc_vers;
-+
-+	spin_unlock(&nfs_version_lock);
-+}
-+EXPORT_SYMBOL_GPL(register_nfs_version);
-+
-+void unregister_nfs_version(struct nfs_subversion *nfs)
-+{
-+	spin_lock(&nfs_version_lock);
-+
-+	nfs_version[nfs->version] = NULL;
-+	list_del(&nfs->list);
-+
-+	spin_unlock(&nfs_version_lock);
-+}
-+EXPORT_SYMBOL_GPL(unregister_nfs_version);
-+
-+/*
-+ * Preload all configured NFS versions during module init.
-+ * This function should be edited after each protocol is converted,
-+ * and eventually removed.
-+ */
-+void __init nfs_register_versions(void)
-+{
-+#ifdef CONFIG_NFS_V2
-+	init_nfs_v2();
-+#endif
-+#ifdef CONFIG_NFS_V3
-+	init_nfs_v3();
-+#endif
-+#ifdef CONFIG_NFS_V4
-+	init_nfs_v4();
-+#endif
-+}
-+
- /*
-  * Allocate a shared client record
-  *
-@@ -842,21 +910,15 @@ static int nfs_init_server(struct nfs_server *server,
- 	};
- 	struct rpc_timeout timeparms;
- 	struct nfs_client *clp;
-+	struct nfs_subversion *nfs_mod;
- 	int error;
- 
- 	dprintk("--> nfs_init_server()\n");
- 
--
--#ifdef CONFIG_NFS_V2
--	if (data->version == 2)
--		cl_init.rpc_ops = &nfs_v2_clientops;
--#endif
--#ifdef CONFIG_NFS_V3
--	if (data->version == 3)
--		cl_init.rpc_ops = &nfs_v3_clientops;
--#endif
--	if (cl_init.rpc_ops == NULL)
--		return -EPROTONOSUPPORT;
-+	nfs_mod = get_nfs_version(data->version);
-+	if (IS_ERR(nfs_mod))
-+		return PTR_ERR(nfs_mod);
-+	cl_init.rpc_ops = nfs_mod->rpc_ops;
- 
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d2c760e..e30d6d3 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -51,6 +51,7 @@
- #include "fscache.h"
- #include "dns_resolve.h"
- #include "pnfs.h"
-+#include "nfs.h"
- #include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
-@@ -1629,6 +1630,7 @@ static int __init init_nfs_fs(void)
- #endif
- 	if ((err = register_nfs_fs()) != 0)
- 		goto out;
-+	nfs_register_versions();
- 	return 0;
- out:
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index b37ca34..4d147a3 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -488,19 +488,19 @@ static struct rpc_procinfo mnt3_procedures[] = {
- };
- 
- 
--static const struct rpc_version mnt_version1 = {
-+static struct rpc_version mnt_version1 = {
- 	.number		= 1,
- 	.nrprocs	= ARRAY_SIZE(mnt_procedures),
- 	.procs		= mnt_procedures,
- };
- 
--static const struct rpc_version mnt_version3 = {
-+static struct rpc_version mnt_version3 = {
- 	.number		= 3,
- 	.nrprocs	= ARRAY_SIZE(mnt3_procedures),
- 	.procs		= mnt3_procedures,
- };
- 
--static const struct rpc_version *mnt_version[] = {
-+static struct rpc_version *mnt_version[] = {
- 	NULL,
- 	&mnt_version1,
- 	NULL,
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-new file mode 100644
-index 0000000..05f6849
---- /dev/null
-+++ b/fs/nfs/nfs.h
-@@ -0,0 +1,35 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ *
-+ * Function and structures exported by the NFS module
-+ * for use by NFS version-specific modules.
-+ */
-+#ifndef __LINUX_INTERNAL_NFS_H
-+#define __LINUX_INTERNAL_NFS_H
-+
-+#include <linux/fs.h>
-+#include <linux/sunrpc/sched.h>
-+#include <linux/nfs_xdr.h>
-+
-+struct nfs_subversion {
-+	unsigned int version;		/* Protocol number */
-+	struct rpc_version *rpc_vers;	/* NFS version information */
-+	const struct nfs_rpc_ops *rpc_ops;	/* NFS operations */
-+	struct list_head list;		/* List of NFS versions */
-+
-+	void (*reference)(void);	/* For reference counting */
-+	void (*unreference)(void);	/* Also for reference counting */
-+};
-+
-+void nfs_register_versions(void);
-+int init_nfs_v2(void);
-+int init_nfs_v3(void);
-+int init_nfs_v4(void);
-+
-+struct nfs_subversion *get_nfs_version(unsigned int);
-+struct nfs_subversion *get_nfs_client_version(struct nfs_client *);
-+struct nfs_subversion *get_nfs_server_version(struct nfs_server *);
-+void register_nfs_version(struct nfs_subversion *);
-+void unregister_nfs_version(struct nfs_subversion *);
-+
-+#endif /* __LINUX_INTERNAL_NFS_H */
-diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
-new file mode 100644
-index 0000000..12fa906
---- /dev/null
-+++ b/fs/nfs/nfs2super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs2_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs2_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v2 = {
-+	.version  = 2,
-+	.rpc_vers = &nfs_version2,
-+	.rpc_ops  = &nfs_v2_clientops,
-+
-+	.reference = nfs2_reference,
-+	.unreference = nfs2_unreference,
-+};
-+
-+int __init init_nfs_v2(void)
-+{
-+	register_nfs_version(&nfs_v2);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index a01084d..5d9ec8b 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -1086,7 +1086,7 @@ struct rpc_procinfo	nfs_procedures[] = {
- 	PROC(STATFS,	fhandle,	statfsres,	0),
- };
- 
--const struct rpc_version nfs_version2 = {
-+struct rpc_version nfs_version2 = {
- 	.number			= 2,
- 	.nrprocs		= ARRAY_SIZE(nfs_procedures),
- 	.procs			= nfs_procedures
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-new file mode 100644
-index 0000000..a02c815
---- /dev/null
-+++ b/fs/nfs/nfs3super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs3_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs3_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v3 = {
-+	.version  = 3,
-+	.rpc_vers = &nfs_version3,
-+	.rpc_ops  = &nfs_v3_clientops,
-+
-+	.reference = nfs3_reference,
-+	.unreference = nfs3_unreference,
-+};
-+
-+int __init init_nfs_v3(void)
-+{
-+	register_nfs_version(&nfs_v3);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index a77cc9a..5f9aabd 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -2461,7 +2461,7 @@ struct rpc_procinfo	nfs3_procedures[] = {
- 	PROC(COMMIT,		commit,		commit,		5),
- };
- 
--const struct rpc_version nfs_version3 = {
-+struct rpc_version nfs_version3 = {
- 	.number			= 3,
- 	.nrprocs		= ARRAY_SIZE(nfs3_procedures),
- 	.procs			= nfs3_procedures
-@@ -2489,7 +2489,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	},
- };
- 
--const struct rpc_version nfsacl_version3 = {
-+struct rpc_version nfsacl_version3 = {
- 	.number			= 3,
- 	.nrprocs		= sizeof(nfs3_acl_procedures)/
- 				  sizeof(nfs3_acl_procedures[0]),
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-new file mode 100644
-index 0000000..9b2a679
---- /dev/null
-+++ b/fs/nfs/nfs4super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs4_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs4_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v4 = {
-+	.version  = 4,
-+	.rpc_vers = &nfs_version4,
-+	.rpc_ops  = &nfs_v4_clientops,
-+
-+	.reference = nfs4_reference,
-+	.unreference = nfs4_unreference,
-+};
-+
-+int __init init_nfs_v4(void)
-+{
-+	register_nfs_version(&nfs_v4);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ca288d1..c091f73 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7114,7 +7114,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
--const struct rpc_version nfs_version4 = {
-+struct rpc_version nfs_version4 = {
- 	.number			= 4,
- 	.nrprocs		= ARRAY_SIZE(nfs4_procedures),
- 	.procs			= nfs4_procedures
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8e210b2..c5a2085 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -64,6 +64,7 @@
- #include "internal.h"
- #include "fscache.h"
- #include "pnfs.h"
-+#include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -2220,6 +2221,22 @@ static int nfs_bdi_register(struct nfs_server *server)
- 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
- }
- 
-+static int nfs_register(struct nfs_server *server)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
-+	int err = nfs_bdi_register(server);
-+	if (!err)
-+		nfs_mod->reference();
-+	return err;
-+}
-+
-+static void nfs_unregister(struct nfs_server *server)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
-+	bdi_unregister(&server->backing_dev_info);
-+	nfs_mod->unreference();
-+}
-+
- static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data)
- {
-@@ -2232,6 +2249,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	struct nfs_sb_mountdata sb_mntdata = {
- 		.mntflags = flags,
- 	};
-+	struct nfs_subversion *nfs_mod;
- 	int error;
- 
- 	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
-@@ -2246,6 +2264,12 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		goto out;
- 	}
- 
-+	nfs_mod = get_nfs_version(data->version);
-+	if (IS_ERR(nfs_mod)) {
-+		mntroot = (struct dentry *)nfs_mod;
-+		goto out;
-+	}
-+
- #ifdef CONFIG_NFS_V4
- 	if (data->version == 4) {
- 		mntroot = nfs4_try_mount(flags, dev_name, data);
-@@ -2279,7 +2303,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error) {
- 			mntroot = ERR_PTR(error);
- 			goto error_splat_bdi;
-@@ -2316,7 +2340,7 @@ error_splat_root:
- 	mntroot = ERR_PTR(error);
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	goto out;
-@@ -2328,9 +2352,7 @@ error_splat_bdi:
-  */
- static void nfs_put_super(struct super_block *s)
- {
--	struct nfs_server *server = NFS_SB(s);
--
--	bdi_unregister(&server->backing_dev_info);
-+	nfs_unregister(NFS_SB(s));
- }
- 
- /*
-@@ -2390,7 +2412,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -2428,7 +2450,7 @@ out_err_noserver:
- 
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
-@@ -2659,7 +2681,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -2697,7 +2719,7 @@ error_splat_root:
- 	dput(mntroot);
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	goto out;
-@@ -2919,7 +2941,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -2956,7 +2978,7 @@ out_err_noserver:
- 
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
-@@ -3010,7 +3032,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -3050,7 +3072,7 @@ out_err_nofh:
- 
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	nfs_free_fhandle(mntfh);
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 0e262f3..74d19d4 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -605,7 +605,7 @@ static struct rpc_version nfs_cb_version4 = {
- 	.procs			= nfs4_cb_procedures
- };
- 
--static const struct rpc_version *nfs_cb_version[] = {
-+static struct rpc_version *nfs_cb_version[] = {
- 	&nfs_cb_version4,
- };
- 
-diff --git a/include/linux/lockd/xdr4.h b/include/linux/lockd/xdr4.h
-index e58c88b..7353821 100644
---- a/include/linux/lockd/xdr4.h
-+++ b/include/linux/lockd/xdr4.h
-@@ -42,6 +42,6 @@ int	nlmclt_encode_lockargs(struct rpc_rqst *, u32 *, struct nlm_args *);
- int	nlmclt_encode_cancargs(struct rpc_rqst *, u32 *, struct nlm_args *);
- int	nlmclt_encode_unlockargs(struct rpc_rqst *, u32 *, struct nlm_args *);
-  */
--extern const struct rpc_version nlm_version4;
-+extern struct rpc_version nlm_version4;
- 
- #endif /* LOCKD_XDR4_H */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 144419a..9eaa8f7 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1274,11 +1274,11 @@ struct nfs_rpc_ops {
- extern const struct nfs_rpc_ops	nfs_v2_clientops;
- extern const struct nfs_rpc_ops	nfs_v3_clientops;
- extern const struct nfs_rpc_ops	nfs_v4_clientops;
--extern const struct rpc_version nfs_version2;
--extern const struct rpc_version nfs_version3;
--extern const struct rpc_version nfs_version4;
-+extern struct rpc_version nfs_version2;
-+extern struct rpc_version nfs_version3;
-+extern struct rpc_version nfs_version4;
- 
--extern const struct rpc_version nfsacl_version3;
-+extern struct rpc_version nfsacl_version3;
- extern const struct rpc_program nfsacl_program;
- 
- #endif
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index a4c62e9..0c0ee9e 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -73,7 +73,7 @@ struct rpc_program {
- 	const char *		name;		/* protocol name */
- 	u32			number;		/* program number */
- 	unsigned int		nrvers;		/* number of versions */
--	const struct rpc_version **	version;	/* version array */
-+	struct rpc_version **	version;	/* version array */
- 	struct rpc_stat *	stats;		/* statistics */
- 	const char *		pipe_dir_name;	/* path to rpc_pipefs dir */
- };
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index b1f08bd..bd3954f 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -1075,25 +1075,25 @@ static const struct rpcb_info rpcb_next_version6[] = {
- 	},
- };
- 
--static const struct rpc_version rpcb_version2 = {
-+static struct rpc_version rpcb_version2 = {
- 	.number		= RPCBVERS_2,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures2),
- 	.procs		= rpcb_procedures2
- };
- 
--static const struct rpc_version rpcb_version3 = {
-+static struct rpc_version rpcb_version3 = {
- 	.number		= RPCBVERS_3,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures3),
- 	.procs		= rpcb_procedures3
- };
- 
--static const struct rpc_version rpcb_version4 = {
-+static struct rpc_version rpcb_version4 = {
- 	.number		= RPCBVERS_4,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures4),
- 	.procs		= rpcb_procedures4
- };
- 
--static const struct rpc_version *rpcb_version[] = {
-+static struct rpc_version *rpcb_version[] = {
- 	NULL,
- 	NULL,
- 	&rpcb_version2,
--- 
-1.7.9
+> On Thu, 2012-02-09 at 11:41 -0500, Weston Andros Adamson wrote:
+>> Include RPC statistics from all data servers in /proc/self/mountstats =
+for pNFS
+>> filelayout mounts.
+>>=20
+>> The additional info printed on the "per-op statistics" line does not =
+break
+>> current mountstats(8) from nfs-utils.
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>>=20
+>> This is clearly a better approach than I was taking trying to keep DS =
+rpc stats
+>> separate in /proc/self/mountstats.
+>>=20
+>> FYI, there are no other callers of rpc_print_iostats().
+>>=20
+>> The new output of /proc/self/mountstats works fine with current =
+mountstats=20
+>> userland tool.  The additional data on the per-op statistics line =
+doesn't make
+>> it into the output, but I left it in /proc/self/mountstats because it =
+doesn't
+>> break anything and can be included in newer versions of mountstats.
+>>=20
+>> I plan on adding the per-DS stats (rpc and others) somewhere in =
+/proc/fs/nfsfs/
+>> soon.
+>>=20
+>> fs/nfs/nfs4filelayout.c        |   30 ++++++++++++++++++++++++++
+>> fs/nfs/pnfs.h                  |   23 ++++++++++++++++++++
+>> fs/nfs/pnfs_dev.c              |   45 =
+++++++++++++++++++++++++++++++++++++++++
+>> fs/nfs/super.c                 |    3 +-
+>> include/linux/sunrpc/metrics.h |   13 +++++++++-
+>> net/sunrpc/stats.c             |   38 =
+++++++++++++++++++++++++++++++++-
+>> 6 files changed, 147 insertions(+), 5 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 79be7ac..51c71e5 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -33,6 +33,8 @@
+>> #include <linux/nfs_page.h>
+>> #include <linux/module.h>
+>>=20
+>> +#include <linux/sunrpc/metrics.h>
+>> +
+>> #include "internal.h"
+>> #include "nfs4filelayout.h"
+>>=20
+>> @@ -918,6 +920,33 @@ filelayout_free_deveiceid_node(struct =
+nfs4_deviceid_node *d)
+>> 	nfs4_fl_free_deviceid(container_of(d, struct =
+nfs4_file_layout_dsaddr, id_node));
+>> }
+>>=20
+>> +static unsigned int
+>> +filelayout_rpc_add_iostats(struct rpc_iostats *total,
+>> +			   unsigned int maxproc,
+>> +			   struct nfs4_deviceid_node *d)
+>> +{
+>> +	struct nfs4_file_layout_dsaddr *dsaddr;
+>> +	struct nfs4_pnfs_ds *ds;
+>> +	unsigned int num_ds =3D 0;
+>> +	u32 i;
+>> +
+>> +	dsaddr =3D container_of(d, struct nfs4_file_layout_dsaddr, =
+id_node);
+>> +
+>> +	for (i =3D 0; i < dsaddr->ds_num; i++) {
+>> +		ds =3D dsaddr->ds_list[i];
+>> +
+>> +		/* only add iostats if nfs_client is different from MDS =
+*/
+>> +		if (ds && ds->ds_clp && d->nfs_client !=3D ds->ds_clp) {
+>> +			struct rpc_clnt *clnt =3D =
+ds->ds_clp->cl_rpcclient;
+>=20
+> Hmmm.... Shouldn't this rather be the NFS_CLIENT(inode)? Also, why not
+> do this in the read/write completion code? Why walk the deviceid list =
+at
+> all?
 
+I'm not really following you.  Note that these are rpc_iostats not =
+nfs_iostats. =20
+nfs_iostats have been properly counting operations to DSs for some time =
+now.
+rpc_iostats count operations, rtt, exectime, etc per rpc procedure (or =
+in the case of NFSv4.X there is a hack to use operations within =
+compounds).
+
+We have to walk the device list to get access to the underlying DS's =
+nfs_client->rpc_client -- I can't just put this in the read/write =
+completion because, unlike nfs_iostats, rpc_iostats count all operations =
+and not just read/write events/bytes (not to mention that the =
+accumulation is done at the rpc layer).
+
+I do have an implementation that doesn't need to walk the deviceid list =
+by allowing a shared rpc_iostats struct between multiple rpc_clients (in =
+addition to the current rpc_iostats structure), but that required adding =
+locking and reference counting -- all for printing stats (obviously not =
+what we want).
+
+Does that make sense?  If so, I'll repost with the fix from below.
+
+Also, it just occurred to me that you might want me to separate this =
+into two patches one for changes in net/sunrpc and one for fs/nfs...
+
+-dros
+
+>=20
+>> +			rpc_add_iostats(total, clnt->cl_metrics,
+>> +					min(maxproc, clnt->cl_maxproc));
+>> +			num_ds++;
+>> +		}
+>> +	}
+>> +
+>> +	return num_ds;
+>> +}
+>> +
+>> static struct pnfs_layoutdriver_type filelayout_type =3D {
+>> 	.id			=3D LAYOUT_NFSV4_1_FILES,
+>> 	.name			=3D "LAYOUT_NFSV4_1_FILES",
+>> @@ -932,6 +961,7 @@ static struct pnfs_layoutdriver_type =
+filelayout_type =3D {
+>> 	.read_pagelist		=3D filelayout_read_pagelist,
+>> 	.write_pagelist		=3D filelayout_write_pagelist,
+>> 	.free_deviceid_node	=3D filelayout_free_deveiceid_node,
+>> +	.ds_rpc_add_iostats	=3D filelayout_rpc_add_iostats,
+>> };
+>>=20
+>> static int __init nfs4filelayout_init(void)
+>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>> index 53d593a..d1b82eb 100644
+>> --- a/fs/nfs/pnfs.h
+>> +++ b/fs/nfs/pnfs.h
+>> @@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
+>> };
+>>=20
+>> struct nfs4_deviceid_node;
+>> +struct rpc_iostats;
+>>=20
+>> /* Per-layout driver specific registration structure */
+>> struct pnfs_layoutdriver_type {
+>> @@ -119,6 +120,9 @@ struct pnfs_layoutdriver_type {
+>> 	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
+>> 				     struct xdr_stream *xdr,
+>> 				     const struct nfs4_layoutcommit_args =
+*args);
+>> +
+>> +	unsigned int (*ds_rpc_add_iostats) (struct rpc_iostats *, =
+unsigned int,
+>> +					    struct nfs4_deviceid_node =
+*);
+>> };
+>>=20
+>> struct pnfs_layout_hdr {
+>> @@ -239,6 +243,10 @@ void nfs4_init_deviceid_node(struct =
+nfs4_deviceid_node *,
+>> struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct =
+nfs4_deviceid_node *);
+>> bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+>> void nfs4_deviceid_purge_client(const struct nfs_client *);
+>> +void nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
+>> +				     const struct nfs_client *clp,
+>> +				     const struct pnfs_layoutdriver_type =
+*ld);
+>> +
+>>=20
+>> static inline int lo_fail_bit(u32 iomode)
+>> {
+>> @@ -328,6 +336,15 @@ static inline int pnfs_return_layout(struct =
+inode *ino)
+>> 	return 0;
+>> }
+>>=20
+>> +static inline int
+>> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
+>> +{
+>> +	if (!pnfs_enabled_sb(nfss))
+>> +		return 0;
+>> +	nfs4_deviceid_rpc_print_iostats(m, nfss->nfs_client,
+>> +					nfss->pnfs_curr_ld);
+>> +	return 1;
+>> +}
+>> #else  /* CONFIG_NFS_V4_1 */
+>>=20
+>> static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+>> @@ -429,6 +446,12 @@ static inline int pnfs_layoutcommit_inode(struct =
+inode *inode, bool sync)
+>> static inline void nfs4_deviceid_purge_client(struct nfs_client *ncl)
+>> {
+>> }
+>> +
+>> +static inline void
+>> +pnfs_rpc_print_iostats(struct seq_file *m, struct nfs_server *nfss)
+>> +{
+>> +	return 0;
+>> +}
+>> #endif /* CONFIG_NFS_V4_1 */
+>>=20
+>> #endif /* FS_NFS_PNFS_H */
+>> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+>> index 4f359d2..aa5d102 100644
+>> --- a/fs/nfs/pnfs_dev.c
+>> +++ b/fs/nfs/pnfs_dev.c
+>> @@ -29,6 +29,9 @@
+>>  */
+>>=20
+>> #include <linux/export.h>
+>> +
+>> +#include <linux/sunrpc/metrics.h>
+>> +
+>> #include "pnfs.h"
+>>=20
+>> #define NFSDBG_FACILITY		NFSDBG_PNFS
+>> @@ -115,6 +118,48 @@ nfs4_find_get_deviceid(const struct =
+pnfs_layoutdriver_type *ld,
+>> }
+>> EXPORT_SYMBOL_GPL(nfs4_find_get_deviceid);
+>>=20
+>> +
+>> +void
+>> +nfs4_deviceid_rpc_print_iostats(struct seq_file *seq,
+>> +				const struct nfs_client *clp,
+>> +				const struct pnfs_layoutdriver_type *ld)
+>> +{
+>> +	struct nfs4_deviceid_node *d;
+>> +	struct hlist_node *n;
+>> +	struct rpc_iostats *totals;
+>> +	char msgbuf[64];
+>> +	unsigned int num_ds =3D 0;
+>> +	unsigned int maxproc;
+>> +	long h;
+>> +
+>> +	if (!ld->ds_rpc_add_iostats)
+>> +		return;
+>> +	totals =3D rpc_alloc_iostats(clp->cl_rpcclient);
+>> +	if (!totals)
+>> +		return;
+>> +	maxproc =3D clp->cl_rpcclient->cl_maxproc;
+>> +	rpc_add_iostats(totals, clp->cl_rpcclient->cl_metrics, maxproc);
+>> +
+>> +	rcu_read_lock();
+>> +	for (h =3D 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++) {
+>> +		hlist_for_each_entry_rcu(d, n, &nfs4_deviceid_cache[h], =
+node) {
+>> +			if (d->ld =3D=3D ld && d->nfs_client =3D=3D clp) =
+{
+>> +				if (atomic_read(&d->ref))
+>> +					num_ds +=3D =
+ld->ds_rpc_add_iostats(totals,
+>> +							maxproc, d);
+>> +			}
+>> +		}
+>> +	}
+>> +	rcu_read_unlock();
+>> +
+>> +	snprintf(msgbuf, sizeof(msgbuf),
+>> +		 " for the metadata server and %u data server%s", =
+num_ds,
+>> +		 (num_ds !=3D 1) ? "s" : "");
+>> +	rpc_print_iostats(seq, clp->cl_rpcclient, totals, msgbuf);
+>> +	rpc_free_iostats(totals);
+>> +}
+>> +EXPORT_SYMBOL_GPL(nfs4_deviceid_rpc_print_iostats);
+>=20
+> Is this needed? AFAICS it is used in fs/nfs/super.c, which is in the
+> same module (i.e. nfs.ko).
+
+oops!
+
+>=20
+>> /*
+>>  * Remove a deviceid from cache
+>>  *
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index d18a90b..76d0850 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -870,7 +870,8 @@ static int nfs_show_stats(struct seq_file *m, =
+struct dentry *root)
+>> #endif
+>> 	seq_printf(m, "\n");
+>>=20
+>> -	rpc_print_iostats(m, nfss->client);
+>> +	if (!pnfs_rpc_print_iostats(m, nfss))
+>> +		rpc_print_iostats(m, nfss->client, NULL, NULL);
+>>=20
+>> 	return 0;
+>> }
+>> diff --git a/include/linux/sunrpc/metrics.h =
+b/include/linux/sunrpc/metrics.h
+>> index b6edbc0..e6e04e4 100644
+>> --- a/include/linux/sunrpc/metrics.h
+>> +++ b/include/linux/sunrpc/metrics.h
+>> @@ -75,14 +75,23 @@ struct rpc_clnt;
+>>=20
+>> struct rpc_iostats *	rpc_alloc_iostats(struct rpc_clnt *);
+>> void			rpc_count_iostats(struct rpc_task *);
+>> -void			rpc_print_iostats(struct seq_file *, =
+struct rpc_clnt *);
+>> +void			rpc_print_iostats(struct seq_file *,
+>> +					  struct rpc_clnt *,
+>> +					  struct rpc_iostats *,
+>> +					  const char *);
+>> +void			rpc_add_iostats(struct rpc_iostats *,
+>> +					struct rpc_iostats *, unsigned =
+int);
+>> void			rpc_free_iostats(struct rpc_iostats *);
+>>=20
+>> #else  /*  CONFIG_PROC_FS  */
+>>=20
+>> static inline struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt =
+*clnt) { return NULL; }
+>> static inline void rpc_count_iostats(struct rpc_task *task) {}
+>> -static inline void rpc_print_iostats(struct seq_file *seq, struct =
+rpc_clnt *clnt) {}
+>> +static inline void rpc_print_iostats(struct seq_file *seq,
+>> +				     struct rpc_iostats *stat) {}
+>> +static inline void rpc_add_iostats(struct rpc_iostats *total,
+>> +				   struct rpc_iostats *new,
+>> +				   unsigned int maxproc) {}
+>> static inline void rpc_free_iostats(struct rpc_iostats *stats) {}
+>>=20
+>> #endif  /*  CONFIG_PROC_FS  */
+>> diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+>> index 3c4f688..342df57 100644
+>> --- a/net/sunrpc/stats.c
+>> +++ b/net/sunrpc/stats.c
+>> @@ -176,12 +176,16 @@ static void _print_name(struct seq_file *seq, =
+unsigned int op,
+>> 		seq_printf(seq, "\t%12u: ", op);
+>> }
+>>=20
+>> -void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
+>> +void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt,
+>> +		       struct rpc_iostats *altstats,
+>> +		       const char *altstats_msg)
+>> {
+>> 	struct rpc_iostats *stats =3D clnt->cl_metrics;
+>> 	struct rpc_xprt *xprt =3D clnt->cl_xprt;
+>> 	unsigned int op, maxproc =3D clnt->cl_maxproc;
+>>=20
+>> +	if (altstats)
+>> +		stats =3D altstats;
+>> 	if (!stats)
+>> 		return;
+>>=20
+>> @@ -192,7 +196,8 @@ void rpc_print_iostats(struct seq_file *seq, =
+struct rpc_clnt *clnt)
+>> 	if (xprt)
+>> 		xprt->ops->print_stats(xprt, seq);
+>>=20
+>> -	seq_printf(seq, "\tper-op statistics\n");
+>> +	seq_printf(seq, "\tper-op statistics%s\n",
+>> +		   (altstats && altstats_msg) ? altstats_msg : "");
+>> 	for (op =3D 0; op < maxproc; op++) {
+>> 		struct rpc_iostats *metrics =3D &stats[op];
+>> 		_print_name(seq, op, clnt->cl_procinfo);
+>> @@ -209,6 +214,35 @@ void rpc_print_iostats(struct seq_file *seq, =
+struct rpc_clnt *clnt)
+>> }
+>> EXPORT_SYMBOL_GPL(rpc_print_iostats);
+>>=20
+>> +void
+>> +rpc_add_iostats(struct rpc_iostats *totals, struct rpc_iostats *new,
+>> +		unsigned int maxproc)
+>> +{
+>> +	unsigned int op;
+>> +
+>> +	for (op =3D 0; op < maxproc; op++) {
+>> +		struct rpc_iostats *op_totals =3D &totals[op],
+>> +				   *op_new =3D &new[op];
+>> +
+>> +		op_totals->om_ops +=3D op_new->om_ops;
+>> +		op_totals->om_ntrans +=3D op_new->om_ntrans;
+>> +		op_totals->om_timeouts +=3D op_new->om_timeouts;
+>> +
+>> +		op_totals->om_bytes_sent +=3D op_new->om_bytes_sent;
+>> +		op_totals->om_bytes_recv +=3D op_new->om_bytes_recv;
+>> +
+>> +		op_totals->om_queue =3D ktime_add(op_totals->om_queue,
+>> +					       op_new->om_queue);
+>> +
+>> +		op_totals->om_rtt =3D ktime_add(op_totals->om_rtt,
+>> +					      op_new->om_rtt);
+>> +
+>> +		op_totals->om_execute =3D =
+ktime_add(op_totals->om_execute,
+>> +						 op_new->om_execute);
+>> +	}
+>> +}
+>> +EXPORT_SYMBOL_GPL(rpc_add_iostats);
+>> +
+>> /*
+>>  * Register/unregister RPC proc files
+>>  */
+>=20
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer
+>=20
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>=20
+
+
+--Apple-Mail=_83235068-31FD-4165-AD1C-4266B774810F
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjAyMDkxOTEzMDFaMCMGCSqGSIb3DQEJBDEWBBSqn5nVg5opPVz9
+WCpXJZD3DQRqoDANBgkqhkiG9w0BAQEFAASCAQBlv7gYfWZ7cc7dnCh1fcnuDR4/r2rM/+biexRN
+T61uHRi3frSSSdm/zQar6oF5qjCtWn4Aw3OF7w23ZeG5dEgrKHvnl8ukzYkT8DF3KRi5salarxVd
+jg+DL5R6keot8qpkavWqz9LwD+HQCWETz5tRec8+x7Gvn0lrVTsvS/fzi3d37Cy0K9gqiwZzwsRe
+7yIkwkG2bOflyIF21ZahhfCOQDbMnGrY2DXagEvIsqQnUhVY2IkPRQiEG6tVdPsUvaRB/9T1Pyq9
+zg8LdqUT/xncqL5+HnuM0YSYekxCOClZYrPRf8MFb2eGLvwO6+qgwjyHx2vH+M/crA8MtOvBtxf6
+AAAAAAAA
+
+--Apple-Mail=_83235068-31FD-4165-AD1C-4266B774810F--
