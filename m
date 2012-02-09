@@ -1,239 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756490Ab2BAPpL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:11 -0500
-Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:11 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 7/9] nfsdcld: make it watch for inotify events in the containing directory
-Date: Wed,  1 Feb 2012 10:44:54 -0500
-Message-Id: <1328111096-28430-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15627 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753776Ab2BIPbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 10:31:37 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Harshula <harshula@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Derek McEachern <derekm@ti.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Mount Option 'nofsc'
+Date: Thu, 9 Feb 2012 15:31:29 +0000
+Message-ID: <1328801489.13180.41.camel@lade.trondhjem.org>
+References: <4F31E1CA.8060105@ti.com>
+	 <1328676860.2954.9.camel@lade.trondhjem.org>
+	 <1328687026.8981.25.camel@serendib>
+	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
+	 <1328759776.8981.75.camel@serendib>
+	 <1328760721.3234.86.camel@lade.trondhjem.org>
+	 <1328766702.8981.106.camel@serendib>
+In-Reply-To: <1328766702.8981.106.camel@serendib>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before opening the pipe, set an inotify watch on the containing dir and
-then try to open the pipe. If it succeeds, then set up pipe and inotify
-events and return success. If it fails with -ENOENT, then just set up
-the inotify event and return success. If it fails with any other error
-then return the error and the caller can then abort the program.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- configure.ac            |    2 +-
- utils/nfsdcld/nfsdcld.c |  146 +++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 143 insertions(+), 5 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 134b609..191a72a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -270,7 +270,7 @@ if test "$enable_nfsv4" = yes; then
-   AC_SQLITE3_VERS
- 
-   if test "$enable_nfsdcld" = "yes"; then
--    AC_CHECK_HEADERS([linux/nfsd/cld.h], ,
-+    AC_CHECK_HEADERS([linux/nfsd/cld.h libgen.h sys/inotify.h], ,
- 		     AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
- 
-     if test "$libsqlite3_cv_is_recent" != "yes" ; then
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index d2a5f2c..9e7a9a5 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -32,6 +32,8 @@
- #include <sys/types.h>
- #include <fcntl.h>
- #include <unistd.h>
-+#include <libgen.h>
-+#include <sys/inotify.h>
- #include <linux/nfsd/cld.h>
- 
- #include "xlog.h"
-@@ -55,6 +57,8 @@ struct cld_client {
- 
- /* global variables */
- static char *pipepath = DEFAULT_CLD_PATH;
-+static int 		inotify_fd = -1;
-+static struct event	pipedir_event;
- 
- static struct option longopts[] =
- {
-@@ -76,6 +80,8 @@ usage(char *progname)
- 	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
- }
- 
-+#define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
-+
- static int
- cld_pipe_open(struct cld_client *clnt)
- {
-@@ -99,18 +105,149 @@ cld_pipe_open(struct cld_client *clnt)
- 	return 0;
- }
- 
-+static void
-+cld_inotify_cb(int UNUSED(fd), short which, void *data)
-+{
-+	int ret;
-+	size_t elen;
-+	ssize_t rret;
-+	char evbuf[INOTIFY_EVENT_MAX];
-+	char *dirc = NULL, *pname;
-+	struct inotify_event *event = (struct inotify_event *)evbuf;
-+	struct cld_client *clnt = data;
-+
-+	if (which != EV_READ)
-+		return;
-+
-+	xlog(D_GENERAL, "%s: called for EV_READ", __func__);
-+
-+	dirc = strndup(pipepath, PATH_MAX);
-+	if (!dirc) {
-+		xlog(L_ERROR, "%s: unable to allocate memory", __func__);
-+		goto out;
-+	}
-+
-+	rret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
-+	if (rret < 0) {
-+		xlog(L_ERROR, "%s: read from inotify fd failed: %m", __func__);
-+		goto out;
-+	}
-+
-+	/* check to see if we have a filename in the evbuf */
-+	if (!event->len) {
-+		xlog(D_GENERAL, "%s: no filename in inotify event", __func__);
-+		goto out;
-+	}
-+
-+	pname = basename(dirc);
-+	elen = strnlen(event->name, event->len);
-+
-+	/* does the filename match our pipe? */
-+	if (strlen(pname) != elen || memcmp(pname, event->name, elen)) {
-+		xlog(D_GENERAL, "%s: wrong filename (%s)", __func__,
-+				event->name);
-+		goto out;
-+	}
-+
-+	ret = cld_pipe_open(clnt);
-+	switch (ret) {
-+	case 0:
-+		/* readd the event for the cl_event pipe */
-+		event_add(&clnt->cl_event, NULL);
-+		break;
-+	case -ENOENT:
-+		/* pipe must have disappeared, wait for it to come back */
-+		goto out;
-+	default:
-+		/* anything else is fatal */
-+		xlog(L_FATAL, "%s: unable to open new pipe (%d). Aborting.",
-+			ret, __func__);
-+		exit(ret);
-+	}
-+
-+out:
-+	event_add(&pipedir_event, NULL);
-+	free(dirc);
-+}
-+
-+static int
-+cld_inotify_setup(void)
-+{
-+	int ret;
-+	char *dirc, *dname;
-+
-+	dirc = strndup(pipepath, PATH_MAX);
-+	if (!dirc) {
-+		xlog_err("%s: unable to allocate memory", __func__);
-+		ret = -ENOMEM;
-+		goto out_free;
-+	}
-+
-+	dname = dirname(dirc);
-+
-+	inotify_fd = inotify_init();
-+	if (inotify_fd < 0) {
-+		xlog_err("%s: inotify_init failed: %m", __func__);
-+		ret = -errno;
-+		goto out_free;
-+	}
-+
-+	ret = inotify_add_watch(inotify_fd, dname, IN_CREATE);
-+	if (ret < 0) {
-+		xlog_err("%s: inotify_add_watch failed: %m", __func__);
-+		ret = -errno;
-+		goto out_err;
-+	}
-+
-+out_free:
-+	free(dirc);
-+	return 0;
-+out_err:
-+	close(inotify_fd);
-+	goto out_free;
-+}
-+
-+/*
-+ * Set an inotify watch on the directory that should contain the pipe, and then
-+ * try to open it. If it fails with anything but -ENOENT, return the error
-+ * immediately.
-+ *
-+ * If it succeeds, then set up the pipe event handler. At that point, set up
-+ * the inotify event handler and go ahead and return success.
-+ */
- static int
- cld_pipe_init(struct cld_client *clnt)
- {
- 	int ret;
- 
-+	xlog(D_GENERAL, "%s: init pipe handlers", __func__);
-+
-+	ret = cld_inotify_setup();
-+	if (ret != 0)
-+		goto out;
-+
- 	clnt->cl_fd = -1;
- 	ret = cld_pipe_open(clnt);
--	if (ret)
--		return ret;
-+	switch (ret) {
-+	case 0:
-+		/* add the event and we're good to go */
-+		event_add(&clnt->cl_event, NULL);
-+		break;
-+	case -ENOENT:
-+		/* ignore this error -- cld_inotify_cb will handle it */
-+		ret = 0;
-+		break;
-+	default:
-+		/* anything else is fatal */
-+		close(inotify_fd);
-+		goto out;
-+	}
- 
--	event_add(&clnt->cl_event, NULL);
--	return 0;
-+	/* set event for inotify read */
-+	event_set(&pipedir_event, inotify_fd, EV_READ, cld_inotify_cb, clnt);
-+	event_add(&pipedir_event, NULL);
-+out:
-+	return ret;
- }
- 
- static void
-@@ -384,6 +521,7 @@ main(int argc, char **argv)
- 		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
- 
- 	close(clnt.cl_fd);
-+	close(inotify_fd);
- out:
- 	free(progname);
- 	return rc;
--- 
-1.7.7.6
-
+T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE2OjUxICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gSGkg
+VHJvbmQsDQo+IA0KPiBUaGFua3MgZm9yIHRoZSByZXBseS4gQ291bGQgeW91IHBsZWFzZSBlbGFi
+b3JhdGUgb24gdGhlIHN1YnRsZXRpZXMNCj4gaW52b2x2ZWQgdGhhdCByZXF1aXJlIGFuIGFwcGxp
+Y2F0aW9uIHRvIGJlIHJld3JpdHRlbiBpZiBmb3JjZWRpcmVjdGlvDQo+IG1vdW50IG9wdGlvbiB3
+YXMgYXZhaWxhYmxlPw0KDQpGaXJzdGx5LCB3ZSBkb24ndCBzdXBwb3J0IE9fRElSRUNUK09fQVBQ
+RU5EIChzaW5jZSB0aGUgTkZTIHByb3RvY29sDQppdHNlbGYgZG9lc24ndCBzdXBwb3J0IGF0b21p
+YyBhcHBlbmRzKSwgc28gdGhhdCB3b3VsZCBicmVhayBhIGJ1bmNoIG9mDQphcHBsaWNhdGlvbnMu
+DQoNClNlY29uZGx5LCB1bmNhY2hlZCBJL08gbWVhbnMgdGhhdCByZWFkKCkgYW5kIHdyaXRlKCkg
+cmVxdWVzdHMgbmVlZCB0byBiZQ0Kc2VyaWFsaXNlZCBieSB0aGUgYXBwbGljYXRpb24gaXRzZWxm
+LCBzaW5jZSB0aGVyZSBhcmUgbm8gYXRvbWljaXR5IG9yDQpvcmRlcmluZyBndWFyYW50ZWVzIGF0
+IHRoZSBWRlMsIE5GUyBvciBSUEMgY2FsbCBsZXZlbC4gTm9ybWFsbHksIHRoZQ0KcGFnZSBjYWNo
+ZSBzZXJ2aWNlcyByZWFkKCkgcmVxdWVzdHMgaWYgdGhlcmUgYXJlIG91dHN0YW5kaW5nIHdyaXRl
+cywgYW5kDQpzbyBwcm92aWRlcyB0aGUgYXRvbWljaXR5IGd1YXJhbnRlZXMgdGhhdCBQT1NJWCBy
+ZXF1aXJlcy4NCklPVzogaWYgYSB3cml0ZSgpIG9jY3VycyB3aGlsZSB5b3UgYXJlIHJlYWRpbmcs
+IHRoZSBhcHBsaWNhdGlvbiBtYXkgZW5kDQp1cCByZXRyaWV2aW5nIHBhcnQgb2YgdGhlIG9sZCBk
+YXRhLCBhbmQgcGFydCBvZiB0aGUgbmV3IGRhdGEgaW5zdGVhZCBvZg0KZWl0aGVyIG9uZSBvciB0
+aGUgb3RoZXIuDQoNCklPVzogeW91ciBhcHBsaWNhdGlvbiBzdGlsbCBuZWVkcyB0byBiZSBhd2Fy
+ZSBvZiB0aGUgZmFjdCB0aGF0IGl0IGlzDQp1c2luZyBPX0RJUkVDVCwgYW5kIHlvdSBhcmUgYmV0
+dGVyIG9mIGFkZGluZyBleHBsaWNpdCBzdXBwb3J0IGZvciBpdA0KcmF0aGVyIHRoYW4gaGFja3kg
+Y2x1Z2VzIHN1Y2ggYXMgYSBmb3JjZWRpcmVjdGlvIG9wdGlvbi4NCg0KPiBPbiBUaHUsIDIwMTIt
+MDItMDkgYXQgMDQ6MTIgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1
+LCAyMDEyLTAyLTA5IGF0IDE0OjU2ICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gPiA+DQo+ID4g
+PiBUaGUgInN5bmMiIG9wdGlvbiwgZGVwZW5kaW5nIG9uIHRoZSBORlMgc2VydmVyLCBtYXkgaW1w
+YWN0IHRoZSBORlMNCj4gPiA+IHNlcnZlcidzIHBlcmZvcm1hbmNlIHdoZW4gc2VydmluZyBtYW55
+IE5GUyBjbGllbnRzLiBCdXQgc3RpbGwgd29ydGggYQ0KPiA+ID4gdHJ5Lg0KPiA+IA0KPiA+IFdo
+YXQgb24gZWFydGggbWFrZXMgeW91IHRoaW5rIHRoYXQgZGlyZWN0aW8gd291bGQgYmUgYW55IGRp
+ZmZlcmVudD8NCj4gDQo+IExpa2UgSSBzYWlkLCBzeW5jIGlzIHN0aWxsIHdvcnRoIGEgdHJ5LiBJ
+IHdpbGwgZG8gT19ESVJFQ1QgVnMgc3luYyBtb3VudA0KPiBvcHRpb24gcnVucyBhbmQgc2VlIHdo
+YXQgdGhlIG51bWJlcnMgbG9vayBsaWtlLiBBIHdoaWxlIGJhY2sgdGhlIG51bWJlcnMNCj4gZm9y
+IGNhY2hlZCBWcyBkaXJlY3Qgc21hbGwgcmFuZG9tIHdyaXRlcyBzaG93ZWQgYXMgdGhlIG51bWJl
+ciBvZiB0aHJlYWRzDQo+IGluY3JlYXNlZCB0aGUgY2FjaGVkIHBlcmZvcm1hbmNlIGZlbGwgd2Vs
+bCBiZWxvdyBkaXJlY3QgcGVyZm9ybWFuY2UuIEluDQo+IHRoaXMgY2FzZSBJJ2xsIGJlIGxvb2tp
+bmcgYXQgbGFyZ2Ugc3RyZWFtaW5nIHdyaXRlcywgc28gY29tcGxldGVseQ0KPiBkaWZmZXJlbnQg
+c2NlbmFyaW8sIGJ1dCBJJ2QgbGlrZSB0byB2ZXJpZnkgdGhlIG51bWJlcnMgZmlyc3QuDQo+IA0K
+PiBKdXN0IHRvIGJlIGNsZWFyLCBJIGFtIG5vdCBkaXNhZ3JlZWluZyB3aXRoIHlvdS4gInN5bmMi
+IG1heWJlIHN1ZmZpY2llbnQNCj4gZm9yIHRoZSBzY2VuYXJpbyBJIGRlc2NyaWJlZCBlYXJsaWVy
+Lg0KPiANCj4gPiBJZg0KPiA+IHlvdXIgcGVyZm9ybWFuY2UgcmVxdWlyZW1lbnRzIGNhbid0IGNv
+cGUgd2l0aCAnc3luYycsIHRoZW4gdGhleSBzdXJlIGFzDQo+ID4gaGVsbCB3b24ndCBkZWFsIHdl
+bGwgd2l0aCAnZnNjJy4NCj4gDQo+ICJmc2MiPyANCj4gDQo+ID4gRGlyZWN0aW8gaXMgX3N5bmNo
+cm9ub3VzXyBqdXN0IGxpa2UgJ3N5bmMnLiBUaGUgYmlnIGRpZmZlcmVuY2UgaXMgdGhhdA0KPiA+
+IHdpdGggJ3N5bmMnIHRoZW4gYXQgbGVhc3QgdGhvc2UgcmVhZHMgYXJlIHN0aWxsIGNhY2hlZC4N
+Cj4gDQo+IFRoZXJlJ3MgYW5vdGhlciBzY2VuYXJpbywgd2hpY2ggd2UgdGFsa2VkIGFib3V0IGEg
+d2hpbGUgYmFjaywgd2hlcmUgdGhlDQo+IGNhY2hlZCBhc3luYyByZWFkcyBvZiBhIHNsb3dseSBn
+cm93aW5nIGZpbGUgKHRhaWwpIHdhcyBzcGl0dGluZyBvdXQNCj4gbm9uLWV4aXN0IE5VTExzIHRv
+IHVzZXIgc3BhY2UuIFRoZSBmb3JjZWRpcmVjdGlvIG1vdW50IG9wdGlvbiBzaG91bGQNCj4gcHJl
+dmVudCB0aGF0LiBGdXJ0aGVybW9yZSwgdGhlICJzeW5jIiBtb3VudCBvcHRpb24gd2lsbCBub3Qg
+aGVscCBhbnltb3JlDQo+IGJlY2F1c2UgeW91IHJlbW92ZWQgbmZzX3JlYWRwYWdlX3N5bmMoKS4N
+Cg0KTm8uIFNlZSB0aGUgcG9pbnRzIGFib3V0IE9fQVBQRU5EIGFuZCBzZXJpYWxpc2F0aW9uIG9m
+IHJlYWQoKSBhbmQNCndyaXRlKCkgYWJvdmUuIFlvdSBtYXkgc3RpbGwgZW5kIHVwIHNlZWluZyBO
+VUwgY2hhcmFjdGVycyAoYW5kIGluZGVlZA0Kd29yc2UgZm9ybXMgb2YgY29ycnVwdGlvbikuDQoN
+Cj4gPiA+IFRoZSBvdGhlciBoYWNrIHRoYXQgc2VlbXMgdG8gd29yayBpcyBwZXJpb2RpY2FsbHkg
+dHJpZ2dlcmluZyBhbg0KPiA+ID4gbmZzX2dldGF0dHIoKSwgdmlhIGxzIC1sLCB0byBmb3JjZSB0
+aGUgZGlydHkgcGFnZXMgdG8gYmUgZmx1c2hlZCB0byB0aGUNCj4gPiA+IE5GUyBzZXJ2ZXIuIE5v
+dCBleGFjdGx5IGVsZWdhbnQgLi4uDQo+ID4gDQo+ID4gPz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/
+Pz8/Pz8/Pz8gDQo+IA0KPiBpbnQgbmZzX2dldGF0dHIoc3RydWN0IHZmc21vdW50ICptbnQsIHN0
+cnVjdCBkZW50cnkgKmRlbnRyeSwgc3RydWN0IGtzdGF0ICpzdGF0KQ0KPiB7DQo+ICAgICAgICAg
+c3RydWN0IGlub2RlICppbm9kZSA9IGRlbnRyeS0+ZF9pbm9kZTsNCj4gICAgICAgICBpbnQgbmVl
+ZF9hdGltZSA9IE5GU19JKGlub2RlKS0+Y2FjaGVfdmFsaWRpdHkgJiBORlNfSU5PX0lOVkFMSURf
+QVRJTUU7DQo+ICAgICAgICAgaW50IGVycjsNCj4gDQo+ICAgICAgICAgLyogRmx1c2ggb3V0IHdy
+aXRlcyB0byB0aGUgc2VydmVyIGluIG9yZGVyIHRvIHVwZGF0ZSBjL210aW1lLiAgKi8NCj4gICAg
+ICAgICBpZiAoU19JU1JFRyhpbm9kZS0+aV9tb2RlKSkgew0KPiAgICAgICAgICAgICAgICAgZXJy
+ID0gZmlsZW1hcF93cml0ZV9hbmRfd2FpdChpbm9kZS0+aV9tYXBwaW5nKTsNCj4gICAgICAgICAg
+ICAgICAgIGlmIChlcnIpDQo+ICAgICAgICAgICAgICAgICAgICAgICAgIGdvdG8gb3V0Ow0KPiAg
+ICAgICAgIH0NCg0KSSdtIGF3YXJlIG9mIHRoYXQgY29kZS4gVGhlIHBvaW50IGlzIHRoYXQgJy1v
+c3luYycgZG9lcyB0aGF0IGZvciBmcmVlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
