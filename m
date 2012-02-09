@@ -1,53 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:30917 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752519Ab2BTJua (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2012 04:50:30 -0500
-Date: Mon, 20 Feb 2012 12:50:19 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Tom Tucker <tom@ogc.us>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: question about map_read_chunks()
-Message-ID: <20120220095019.GA21338@elgon.mountain>
+Received: from mx2.netapp.com ([216.240.18.37]:28353 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757982Ab2BIUhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 15:37:48 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Thu, 9 Feb 2012 20:37:42 +0000
+Message-ID: <1328819862.13180.72.camel@lade.trondhjem.org>
+References: <1328805686-19559-1-git-send-email-dros@netapp.com>
+	 <1328811417.13180.51.camel@lade.trondhjem.org>
+	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
+	 <1328815664.13180.60.camel@lade.trondhjem.org>
+	 <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
+	 <1328817534.13180.65.camel@lade.trondhjem.org>
+	 <F13A10AE-EECE-4CB9-B31B-D9163E3B48D0@netapp.com>
+In-Reply-To: <F13A10AE-EECE-4CB9-B31B-D9163E3B48D0@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I had a couple questions about some map_read_chunks().
-
-net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-
-   150          ch_bytes = ntohl(ch->rc_target.rs_length);
-                ^^^^^^^^
-It look like this is 32 bits from the network?
-
-   151          head->arg.head[0] = rqstp->rq_arg.head[0];
-   152          head->arg.tail[0] = rqstp->rq_arg.tail[0];
-   153          head->arg.pages = &head->pages[head->count];
-   154          head->hdr_count = head->count; /* save count of hdr pages */
-   155          head->arg.page_base = 0;
-   156          head->arg.page_len = ch_bytes;
-   157          head->arg.len = rqstp->rq_arg.len + ch_bytes;
-                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Can overflow.
-   158          head->arg.buflen = rqstp->rq_arg.buflen + ch_bytes;
-                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Same.  I didn't follow it through to see if an overflow matters.  Does
-it?
-
-   159          head->count++;
-   160          chl_map->ch[0].start = 0;
-   161          while (byte_count) {
-   162                  rpl_map->sge[sge_no].iov_base =
-   163                          page_address(rqstp->rq_arg.pages[page_no]) + page_off;
-   164                  sge_bytes = min_t(int, PAGE_SIZE-page_off, ch_bytes);
-                                          ^^^
-This is the wrong cast to use.  A large ch_bytes would be counted as a
-negative value and get around the cap here.
-
-   165                  rpl_map->sge[sge_no].iov_len = sge_bytes;
-
-regards,
-dan carpenter
+T24gVGh1LCAyMDEyLTAyLTA5IGF0IDIwOjIzICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBGZWIgOSwgMjAxMiwgYXQgMjo1OCBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+DQo+ID4gT24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdy
+b3RlOg0KPiA+Pj4gDQo+ID4+Pj4gSSBkbyBoYXZlIGFuIGltcGxlbWVudGF0aW9uIHRoYXQgZG9l
+c24ndCBuZWVkIHRvIHdhbGsgdGhlIGRldmljZWlkIGxpc3QgYnkgYWxsb3dpbmcgYSBzaGFyZWQg
+cnBjX2lvc3RhdHMgc3RydWN0IGJldHdlZW4gbXVsdGlwbGUgcnBjX2NsaWVudHMgKGluIGFkZGl0
+aW9uIHRvIHRoZSBjdXJyZW50IHJwY19pb3N0YXRzIHN0cnVjdHVyZSksIGJ1dCB0aGF0IHJlcXVp
+cmVkIGFkZGluZyBsb2NraW5nIGFuZCByZWZlcmVuY2UgY291bnRpbmcgLS0gYWxsIGZvciBwcmlu
+dGluZyBzdGF0cyAob2J2aW91c2x5IG5vdCB3aGF0IHdlIHdhbnQpLg0KPiA+Pj4gDQo+ID4+PiBU
+aGlzIG1pZ2h0IGJlIG1vcmUgaW4gbGluZSB3aXRoIHdoYXQgd2Ugd2FudC4gTm90ZSB0aGF0IGl0
+IHNob3VsZCBiZQ0KPiA+Pj4gZWFzeSB0byBjbG9uZSBhbiBycGNfY2xpZW50IGFuZCB0aGVuIHJl
+cGxhY2UgaXRzIHJwY19pb3N0YXRzIHN0cnVjdC4gSQ0KPiA+Pj4gZG9uJ3QgdGhpbmsgdGhhdCBu
+ZWVkcyBhbnkgZXh0cmEgbG9ja2luZy4gV2UncmUgYWxyZWFkeSBpZ25vcmluZyBsb2NraW5nDQo+
+ID4+PiBoZXJlIGJldHdlZW4gZGlmZmVyZW50IHJwY190YXNrcywgc28gdGhyb3dpbmcgaW4gZGlm
+ZmVyZW50IHJwY19jbGllbnRzDQo+ID4+PiB0byB0aGUgbWl4IHdpbGwgbWFrZSBubyBkaWZmZXJl
+bmNlLg0KPiA+PiANCj4gPj4gWWVhaCwgdGhhdCdzIGVhc3kgZW5vdWdoIGFuZCBpIGd1ZXNzIHdl
+IGNvdWxkIGlnbm9yZSBsb2NraW5nLCBidXQgd2UgYXJlIHN0aWxsIGxlZnQgd2l0aCB0aGUgc2Ft
+ZSBwcm9ibGVtOiBob3cgaXMgdGhpcyBzdXBwb3NlZCB0byBhY2NvdW50IGZvciBkaWZmZXJlbnQg
+bW91bnQgcG9pbnRzIHVzaW5nIHRoZSBzYW1lIG5mc19jbGllbnQ/ICBuZnNfY2xpZW50IG9ubHkg
+aGFzIG9uZSBycGNfY2xpZW50IG1lbWJlci4gIEkgZG91YnQgd2Ugd2FudCB0byBtYWtlIGEgaGFz
+aCBsb29rdXAgb24gbmZzX3NlcnZlciB0byBnZXQgdGhlIHJpZ2h0IHJwY19jbGllbnQgKHdoaWNo
+IGNvdWxkIGFsbCB1c2UgdGhlIHNhbWUgdW5kZXJseWluZyB4cHJ0KS4NCj4gPj4gDQo+ID4+IE1h
+eWJlIGl0J3MgdGltZSB0byBtb3ZlIHRoZXNlIHN0YXRzIGludG8gZnMvbmZzLyB3aGVyZSB0aGV5
+IHJlYWxseSBiZWxvbmc/ICBXZSBjb3VsZCBnZXQgcmlkIG9mIHRoZSBoYWNrIHRoYXQgb3Zlcmxv
+YWRzIHByb2NudW0gd2l0aCBvcG51bSBmcm9tIGluc2lkZSB0aGUgY29tcG91bmQgZm9yIHY0KyBh
+bmQgZmluYWxseSBvbmx5IHNob3cgYSBzcGVjaWZpYyBtb3VudCdzIFJQQyBzdGF0cy4NCj4gPiAN
+Cj4gPiBBY3R1YWxseSwgaG93IGFib3V0IGp1c3QgYWRkaW5nIGEgY2FsbGJhY2sgaW50byBzdHJ1
+Y3QgcnBjX2NhbGxfb3BzDQo+ID4gdGhhdCwgaWYgaXQgaXMgZGVmaW5lZCwgd291bGQgYmUgY2Fs
+bGVkIGluc3RlYWQgb2YgcnBjX2NvdW50X2lvc3RhdHMoKS4gDQo+ID4gSWYgeW91IHRoZW4gbW9k
+aWZ5IHJwY19jb3VudF9pb3N0YXRzKCkgdG8gdGFrZSB0aGUgJ3N0YXRzJyB2YXJpYWJsZSBhcyBh
+DQo+ID4gcGFyYW1ldGVyLCB5b3UgY2FuIHNpbXBseSBoYXZlIHRoZSBuZXcgY2FsbGJhY2sgY2Fs
+bCBycGNfY291bnRfaW9zdGF0cw0KPiA+IHdpdGggdGhlIHJpZ2h0IGFyZ3VtZW50cy4NCj4gDQo+
+IFllYWgsIHRoYXQgY291bGQgd29yayEgIE9uIG15IHdhbGsgaG9tZSBmcm9tIHRoZSBjYWZlICh0
+aGV5IGFsd2F5cyBzZWVtIHRvIGhlbHApIEkgY2FtZSB1cCB3aXRoIGEgc2xpZ2h0bHkgZGlmZmVy
+ZW50IHN0cmF0ZWd5Og0KPiANCj4gLSByZW1vdmUgdGhlIGNsX21ldHJpY3MgKHN0cnVjdCBycGNf
+aW9zdGF0cykgbWVtYmVyIGZyb20gcnBjX2NsbnQNCj4gLSBhZGQgYW4gKm9wdGlvbmFsKiBycGNf
+aW9zdGF0cyBwb2ludGVyIHRvIHJwY190YXNrIChpZ25vcmVkIGlmIE5VTEwpDQo+IC0gYWxsb2Nh
+dGUgb25lIHJwY19pb3N0YXRzIHN0cnVjdHVyZSAocmVhbGx5IGFycmF5IG9mIHN0cnVjdHMsIGJ1
+dCB5b3Uga25vdyB3aGF0IEkgbWVhbikgcGVyIG5mc19zZXJ2ZXIgc3RydWN0dXJlDQo+IC0gd2hl
+biBzZXR0aW5nIHVwIHJwY190YXNrcyBpbiBuZnMtbGFuZCwgcGFzcyB0aGUgY29ycmVjdCBycGNf
+aW9zdGF0cw0KPiANCj4gd2l0aCB0aGlzIHN0cmF0ZWd5IHdlIGRvbid0IGFjY3VtdWxhdGUgc3Rh
+dHMgd2hlbiB0aGV5IGFyZW4ndCBldmVyIHVzZWQgKGxpa2UgYW4gcnBjX2NsaWVudCB1c2VkIGZv
+ciBtb3VudCBwcm90b2NvbCkuICBhZ2Fpbiwgb25seSBORlMgdXNlcyB0aGUgcnBjIHN0YXRzIGlu
+dGVyZmFjZS4NCj4gDQo+IEkga2luZCBvZiBsaWtlIHRoaXMgYmV0dGVyIHRoYW4gYSBjYWxsYmFj
+aywgYnV0IGVpdGhlciB3YXkgaXMgZmluZSB3aXRoIG1lLiAgV2hpY2ggd2F5IHdvdWxkIHlvdSBw
+cmVmZXI/DQoNCkknZCBwcmVmZXIgbm90IHRvIGhhdmUgdG8gZ3JvdyB0aGUgc2l6ZSBvZiB0aGUg
+cnBjX3Rhc2sgdW5sZXNzIHdlIHJlYWxseQ0KbmVlZCB0by4gVGhhdCdzIHdoeSBJIHN1Z2dlc3Rl
+ZCB0aGUgY2FsbGJhY2sgaW5zdGVhZC4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
