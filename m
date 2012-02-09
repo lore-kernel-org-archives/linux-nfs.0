@@ -1,50 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:14668 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16069 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753303Ab2BJWCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:11 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 00/21] NFS: Create NFS Modules
-Date: Fri, 10 Feb 2012 17:01:45 -0500
-Message-Id: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+	id S1757903Ab2BIT1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 14:27:55 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Thu, 9 Feb 2012 19:27:46 +0000
+Message-ID: <1328815664.13180.60.camel@lade.trondhjem.org>
+References: <1328805686-19559-1-git-send-email-dros@netapp.com>
+	 <1328811417.13180.51.camel@lade.trondhjem.org>
+	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
+In-Reply-To: <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-This patch series turns NFS v2, v3 and v4 into loadable kernel modules that
-need to be loaded before using.  This should eventually help clean up all of
-the NFS code by giving us a chance to remove most of the ifdefs that check
-for CONFIG_NFS_V3 and CONFIG_NFS_V4.
-
-This time around, I tried to move as little code as possible while still
-getting everything to compile as their own module.  I still had to move a
-large chunk of v4 specific code from super.c, but most other files should be
-(mostly) untouched.  Rather than creating new subdirectories, I instead kept
-everything in fs/nfs/, significantly cutting down on the number of patches
-to modularize everything.
-
-These patches are about a week out-of-date with Trond's nfs-for-next tree,
-so I expect to spend some time addressing comments and updating them so they
-apply nicely.  I have also found some bugs that I'll fix up in the next
-version as well.
-
-Patch Map
----------
-- Patch 1 does basic preparations
-- Patches 2 - 4 make NFS v2 an optional kernel module
-- Patches 5 - 9 make NFS v3 an optional kernel module
-- Patches 10 - 20 make NFS v4 an optional kernel module
-- Patch 21 exports functions from nfs4.ko to nfs.ko to fix modpost errors
-
-Known bugs
-----------
-- Depmod detects a dependency loop when you try to install
-- #include errors when NFS v4 isn't enabled
-- I don't yet use request_module()
-
-Comments and suggestions are appreciated.  Thanks!
-
-- Bryan
+T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjEzICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBGZWIgOSwgMjAxMiwgYXQgMToxNiBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+DQo+ID4gT24gVGh1LCAyMDEyLTAyLTA5IGF0IDExOjQxIC0wNTAwLCBXZXN0b24gQW5kcm9zIEFk
+YW1zb24gd3JvdGU6DQo+ID4+IEluY2x1ZGUgUlBDIHN0YXRpc3RpY3MgZnJvbSBhbGwgZGF0YSBz
+ZXJ2ZXJzIGluIC9wcm9jL3NlbGYvbW91bnRzdGF0cyBmb3IgcE5GUw0KPiA+PiBmaWxlbGF5b3V0
+IG1vdW50cy4NCj4gPj4gDQo+ID4+IFRoZSBhZGRpdGlvbmFsIGluZm8gcHJpbnRlZCBvbiB0aGUg
+InBlci1vcCBzdGF0aXN0aWNzIiBsaW5lIGRvZXMgbm90IGJyZWFrDQo+ID4+IGN1cnJlbnQgbW91
+bnRzdGF0cyg4KSBmcm9tIG5mcy11dGlscy4NCj4gPj4gDQo+ID4+IFNpZ25lZC1vZmYtYnk6IFdl
+c3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiA+PiAtLS0NCj4gPj4gDQo+
+ID4+IFRoaXMgaXMgY2xlYXJseSBhIGJldHRlciBhcHByb2FjaCB0aGFuIEkgd2FzIHRha2luZyB0
+cnlpbmcgdG8ga2VlcCBEUyBycGMgc3RhdHMNCj4gPj4gc2VwYXJhdGUgaW4gL3Byb2Mvc2VsZi9t
+b3VudHN0YXRzLg0KPiA+PiANCj4gPj4gRllJLCB0aGVyZSBhcmUgbm8gb3RoZXIgY2FsbGVycyBv
+ZiBycGNfcHJpbnRfaW9zdGF0cygpLg0KPiA+PiANCj4gPj4gVGhlIG5ldyBvdXRwdXQgb2YgL3By
+b2Mvc2VsZi9tb3VudHN0YXRzIHdvcmtzIGZpbmUgd2l0aCBjdXJyZW50IG1vdW50c3RhdHMgDQo+
+ID4+IHVzZXJsYW5kIHRvb2wuICBUaGUgYWRkaXRpb25hbCBkYXRhIG9uIHRoZSBwZXItb3Agc3Rh
+dGlzdGljcyBsaW5lIGRvZXNuJ3QgbWFrZQ0KPiA+PiBpdCBpbnRvIHRoZSBvdXRwdXQsIGJ1dCBJ
+IGxlZnQgaXQgaW4gL3Byb2Mvc2VsZi9tb3VudHN0YXRzIGJlY2F1c2UgaXQgZG9lc24ndA0KPiA+
+PiBicmVhayBhbnl0aGluZyBhbmQgY2FuIGJlIGluY2x1ZGVkIGluIG5ld2VyIHZlcnNpb25zIG9m
+IG1vdW50c3RhdHMuDQo+ID4+IA0KPiA+PiBJIHBsYW4gb24gYWRkaW5nIHRoZSBwZXItRFMgc3Rh
+dHMgKHJwYyBhbmQgb3RoZXJzKSBzb21ld2hlcmUgaW4gL3Byb2MvZnMvbmZzZnMvDQo+ID4+IHNv
+b24uDQo+ID4+IA0KPiA+PiBmcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyAgICAgICAgfCAgIDMwICsr
+KysrKysrKysrKysrKysrKysrKysrKysrDQo+ID4+IGZzL25mcy9wbmZzLmggICAgICAgICAgICAg
+ICAgICB8ICAgMjMgKysrKysrKysrKysrKysrKysrKysNCj4gPj4gZnMvbmZzL3BuZnNfZGV2LmMg
+ICAgICAgICAgICAgIHwgICA0NSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrDQo+ID4+IGZzL25mcy9zdXBlci5jICAgICAgICAgICAgICAgICB8ICAgIDMgKy0NCj4gPj4g
+aW5jbHVkZS9saW51eC9zdW5ycGMvbWV0cmljcy5oIHwgICAxMyArKysrKysrKystDQo+ID4+IG5l
+dC9zdW5ycGMvc3RhdHMuYyAgICAgICAgICAgICB8ICAgMzggKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKystDQo+ID4+IDYgZmlsZXMgY2hhbmdlZCwgMTQ3IGluc2VydGlvbnMoKyksIDUg
+ZGVsZXRpb25zKC0pDQo+ID4+IA0KPiA+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5
+b3V0LmMgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiBpbmRleCA3OWJlN2FjLi41MWM3
+MWU1IDEwMDY0NA0KPiA+PiAtLS0gYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiArKysg
+Yi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiBAQCAtMzMsNiArMzMsOCBAQA0KPiA+PiAj
+aW5jbHVkZSA8bGludXgvbmZzX3BhZ2UuaD4NCj4gPj4gI2luY2x1ZGUgPGxpbnV4L21vZHVsZS5o
+Pg0KPiA+PiANCj4gPj4gKyNpbmNsdWRlIDxsaW51eC9zdW5ycGMvbWV0cmljcy5oPg0KPiA+PiAr
+DQo+ID4+ICNpbmNsdWRlICJpbnRlcm5hbC5oIg0KPiA+PiAjaW5jbHVkZSAibmZzNGZpbGVsYXlv
+dXQuaCINCj4gPj4gDQo+ID4+IEBAIC05MTgsNiArOTIwLDMzIEBAIGZpbGVsYXlvdXRfZnJlZV9k
+ZXZlaWNlaWRfbm9kZShzdHJ1Y3QgbmZzNF9kZXZpY2VpZF9ub2RlICpkKQ0KPiA+PiAJbmZzNF9m
+bF9mcmVlX2RldmljZWlkKGNvbnRhaW5lcl9vZihkLCBzdHJ1Y3QgbmZzNF9maWxlX2xheW91dF9k
+c2FkZHIsIGlkX25vZGUpKTsNCj4gPj4gfQ0KPiA+PiANCj4gPj4gK3N0YXRpYyB1bnNpZ25lZCBp
+bnQNCj4gPj4gK2ZpbGVsYXlvdXRfcnBjX2FkZF9pb3N0YXRzKHN0cnVjdCBycGNfaW9zdGF0cyAq
+dG90YWwsDQo+ID4+ICsJCQkgICB1bnNpZ25lZCBpbnQgbWF4cHJvYywNCj4gPj4gKwkJCSAgIHN0
+cnVjdCBuZnM0X2RldmljZWlkX25vZGUgKmQpDQo+ID4+ICt7DQo+ID4+ICsJc3RydWN0IG5mczRf
+ZmlsZV9sYXlvdXRfZHNhZGRyICpkc2FkZHI7DQo+ID4+ICsJc3RydWN0IG5mczRfcG5mc19kcyAq
+ZHM7DQo+ID4+ICsJdW5zaWduZWQgaW50IG51bV9kcyA9IDA7DQo+ID4+ICsJdTMyIGk7DQo+ID4+
+ICsNCj4gPj4gKwlkc2FkZHIgPSBjb250YWluZXJfb2YoZCwgc3RydWN0IG5mczRfZmlsZV9sYXlv
+dXRfZHNhZGRyLCBpZF9ub2RlKTsNCj4gPj4gKw0KPiA+PiArCWZvciAoaSA9IDA7IGkgPCBkc2Fk
+ZHItPmRzX251bTsgaSsrKSB7DQo+ID4+ICsJCWRzID0gZHNhZGRyLT5kc19saXN0W2ldOw0KPiA+
+PiArDQo+ID4+ICsJCS8qIG9ubHkgYWRkIGlvc3RhdHMgaWYgbmZzX2NsaWVudCBpcyBkaWZmZXJl
+bnQgZnJvbSBNRFMgKi8NCj4gPj4gKwkJaWYgKGRzICYmIGRzLT5kc19jbHAgJiYgZC0+bmZzX2Ns
+aWVudCAhPSBkcy0+ZHNfY2xwKSB7DQo+ID4+ICsJCQlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSBk
+cy0+ZHNfY2xwLT5jbF9ycGNjbGllbnQ7DQo+ID4gDQo+ID4gSG1tbS4uLi4gU2hvdWxkbid0IHRo
+aXMgcmF0aGVyIGJlIHRoZSBORlNfQ0xJRU5UKGlub2RlKT8gQWxzbywgd2h5IG5vdA0KPiA+IGRv
+IHRoaXMgaW4gdGhlIHJlYWQvd3JpdGUgY29tcGxldGlvbiBjb2RlPyBXaHkgd2FsayB0aGUgZGV2
+aWNlaWQgbGlzdCBhdA0KPiA+IGFsbD8NCj4gDQo+IEknbSBub3QgcmVhbGx5IGZvbGxvd2luZyB5
+b3UuICBOb3RlIHRoYXQgdGhlc2UgYXJlIHJwY19pb3N0YXRzIG5vdCBuZnNfaW9zdGF0cy4gIA0K
+PiBuZnNfaW9zdGF0cyBoYXZlIGJlZW4gcHJvcGVybHkgY291bnRpbmcgb3BlcmF0aW9ucyB0byBE
+U3MgZm9yIHNvbWUgdGltZSBub3cuDQo+IHJwY19pb3N0YXRzIGNvdW50IG9wZXJhdGlvbnMsIHJ0
+dCwgZXhlY3RpbWUsIGV0YyBwZXIgcnBjIHByb2NlZHVyZSAob3IgaW4gdGhlIGNhc2Ugb2YgTkZT
+djQuWCB0aGVyZSBpcyBhIGhhY2sgdG8gdXNlIG9wZXJhdGlvbnMgd2l0aGluIGNvbXBvdW5kcyku
+DQo+IA0KPiBXZSBoYXZlIHRvIHdhbGsgdGhlIGRldmljZSBsaXN0IHRvIGdldCBhY2Nlc3MgdG8g
+dGhlIHVuZGVybHlpbmcgRFMncyBuZnNfY2xpZW50LT5ycGNfY2xpZW50IC0tIEkgY2FuJ3QganVz
+dCBwdXQgdGhpcyBpbiB0aGUgcmVhZC93cml0ZSBjb21wbGV0aW9uIGJlY2F1c2UsIHVubGlrZSBu
+ZnNfaW9zdGF0cywgcnBjX2lvc3RhdHMgY291bnQgYWxsIG9wZXJhdGlvbnMgYW5kIG5vdCBqdXN0
+IHJlYWQvd3JpdGUgZXZlbnRzL2J5dGVzIChub3QgdG8gbWVudGlvbiB0aGF0IHRoZSBhY2N1bXVs
+YXRpb24gaXMgZG9uZSBhdCB0aGUgcnBjIGxheWVyKS4NCg0KSW4gZG9pbmcgdGhpcywgeW91IGFy
+ZSBhc3N1bWluZyB0aGF0IERTZXMgYXJlIG5vdCBzaGFyZWQgYW1vbmcgbXVsdGlwbGUNCmZpbGVz
+eXN0ZW1zIG9yIE1EU2VzIChpLmUuIHRoYXQgZWFjaCBEUyBpcyB1c2VkIGJ5IGEgc2luZ2xlIHN0
+cnVjdA0KbmZzX3NlcnZlcikuIEZvciBzb21ldGhpbmcgbGlrZSBhIE5ldEFwcCBmaWxlciBpbiBj
+LW1vZGUsIHRoYXQgaXMNCmNsZWFybHkgbm90IGEgdmFsaWQgYXNzdW1wdGlvbi4NCg0KPiBJIGRv
+IGhhdmUgYW4gaW1wbGVtZW50YXRpb24gdGhhdCBkb2Vzbid0IG5lZWQgdG8gd2FsayB0aGUgZGV2
+aWNlaWQgbGlzdCBieSBhbGxvd2luZyBhIHNoYXJlZCBycGNfaW9zdGF0cyBzdHJ1Y3QgYmV0d2Vl
+biBtdWx0aXBsZSBycGNfY2xpZW50cyAoaW4gYWRkaXRpb24gdG8gdGhlIGN1cnJlbnQgcnBjX2lv
+c3RhdHMgc3RydWN0dXJlKSwgYnV0IHRoYXQgcmVxdWlyZWQgYWRkaW5nIGxvY2tpbmcgYW5kIHJl
+ZmVyZW5jZSBjb3VudGluZyAtLSBhbGwgZm9yIHByaW50aW5nIHN0YXRzIChvYnZpb3VzbHkgbm90
+IHdoYXQgd2Ugd2FudCkuDQoNClRoaXMgbWlnaHQgYmUgbW9yZSBpbiBsaW5lIHdpdGggd2hhdCB3
+ZSB3YW50LiBOb3RlIHRoYXQgaXQgc2hvdWxkIGJlDQplYXN5IHRvIGNsb25lIGFuIHJwY19jbGll
+bnQgYW5kIHRoZW4gcmVwbGFjZSBpdHMgcnBjX2lvc3RhdHMgc3RydWN0LiBJDQpkb24ndCB0aGlu
+ayB0aGF0IG5lZWRzIGFueSBleHRyYSBsb2NraW5nLiBXZSdyZSBhbHJlYWR5IGlnbm9yaW5nIGxv
+Y2tpbmcNCmhlcmUgYmV0d2VlbiBkaWZmZXJlbnQgcnBjX3Rhc2tzLCBzbyB0aHJvd2luZyBpbiBk
+aWZmZXJlbnQgcnBjX2NsaWVudHMNCnRvIHRoZSBtaXggd2lsbCBtYWtlIG5vIGRpZmZlcmVuY2Uu
+DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
