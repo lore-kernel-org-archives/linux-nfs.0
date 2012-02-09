@@ -1,111 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41962 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46107 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757580Ab2BIKON (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 05:14:13 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service
- unavailable" [ver #2]
-To: jmorris@namei.org, joseph@codesourcery.com, Valdis.Kletnieks@vt.edu
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Date: Thu, 09 Feb 2012 10:13:40 +0000
-Message-ID: <20120209101340.18365.97513.stgit@warthog.procyon.org.uk>
+	id S1757894Ab2BISFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 13:05:32 -0500
+Date: Thu, 9 Feb 2012 13:05:32 -0500
+To: Todd Freeman <freeman@andrews.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_stateowners eating memory like candy... sometimes....
+Message-ID: <20120209180531.GA22168@fieldses.org>
+References: <4F32F726.4060704@andrews.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F32F726.4060704@andrews.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As the kernel has or will have filesystems (and possibly other services) that
-want to obtain authentication tokens and/or encryption data on demand (via
-GSSAPI for example), it would seem useful to provide an additional error code
-to indicate a problem with the lookup, rather than overloading some other error
-code.
+On Wed, Feb 08, 2012 at 05:28:54PM -0500, Todd Freeman wrote:
+> Good day all!
+> 
+> I have a nfs server handling the load for a shared file system for 5
+> web servers...  some relevant info:
+>   libnfsidmap2
+> 0.23-2
+>   nfs-common
+> 1:1.2.2-1ubuntu1.1
+>   nfs-kernel-server
+> 1:1.2.2-1ubuntu1.1
+> 
+>   Linux webnfs 2.6.35-31-server #63-Ubuntu SMP Mon Nov 28 21:03:37
+> UTC 2011 x86_64 GNU/Linux
+> 
+> On this server everything runs great for a couple weeks to a month
+> and then we start getting sluggish performance... and within a
+> couple days it seizes up (at least all nfs services stop... console
+> is still accessible)
+> 
+> In trying to debug this we have been taking a snap shot every 5
+> minutes of the slabinfo...   we got a totally clean capture this
+> time and I see nfsd4_stateowners running away with memory. When we
+> start the server and for the first several days the most memory it
+> uses is 200MB or so...  over time though there come points were it
+> suddenly starts munching more...  sometimes slowly... other times
+> instantly. It finally kills the machine when it reaches the 1.7-1.8
+> GB level (just under the memory size of the machine). oom-killer is
+> killing everything left and right at the end and we end up with a
+> machine that is comatose NFS wise till we do a full reboot.
+> 
+> You can see a graph of this usage pattern at: http://imgur.com/ecLPh
+> 
+> I see mentions of a problem along this line back in the 2.6.16-18
+> types days... but supposedly it was fixed.
 
-We already have EKEYREJECTED, EKEYREVOKED and EKEYEXPIRED to indicate problems
-with a token that we already have, but what if the authentication server just
-isn't available?
+There have been a number of stateowner leaks fixed since 2.6.35.  I
+think all the ones I know of were fixes as of 3.1 or so.
 
-Define ENOAUTHSERVICE to indicate "Authentication service unavailable".  This
-can be used to indicate, for example, that an attempt was made by request_key()
-to retrieve a key, but the authentication server (e.g. a KDC) it is supposed to
-contact didn't answer or that it couldn't determine the location of a suitable
-server.
-
-One way this can be used is that the user of a network filesystem can get a TGT
-from the KDC and stash it in their session keyring, then the filesystem can
-attempt to automatically get a ticket for accessing the filesystem - but if the
-server is uncontactable then the ticket can be negatively instantiated with
-KEYCTL_REJECT, giving the error to be handed to future requests as
-ENOAUTHSERVICE and a small timeout so that the key will expire from the cache
-and allow a retry after a short while to prevent thrashing.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- arch/alpha/include/asm/errno.h  |    2 ++
- arch/mips/include/asm/errno.h   |    1 +
- arch/parisc/include/asm/errno.h |    1 +
- arch/sparc/include/asm/errno.h  |    1 +
- include/asm-generic/errno.h     |    1 +
- 5 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index e5f29ca..dce5fc9 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -124,4 +124,6 @@
- 
- #define EHWPOISON	139	/* Memory page has hardware error */
- 
-+#define	ENOAUTHSERVICE	140	/* Authentication service not available */
-+
- #endif
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index 6dcd358..67c46bd 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -122,6 +122,7 @@
- #define	ERFKILL		167	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	168	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	169	/* Authentication service not available */
- 
- #define EDQUOT		1133	/* Quota exceeded */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 135ad60..3a6ffcd 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -123,5 +123,6 @@
- #define	ERFKILL		256	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	257	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	258	/* Authentication service not available */
- 
- #endif
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index c351aba..94a878f 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -113,5 +113,6 @@
- #define	ERFKILL		134	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	135	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	136	/* Authentication service not available */
- 
- #endif
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index a1331ce..5e2b296 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -109,5 +109,6 @@
- #define ERFKILL		132	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	133	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	134	/* Authentication service not available */
- 
- #endif
-
+--b.
