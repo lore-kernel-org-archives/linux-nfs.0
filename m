@@ -1,62 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:62957 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755244Ab2BMVvf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:35 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933716eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:34 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 06/10] nfsd41: save and restore current stateid with current fh
-Date: Mon, 13 Feb 2012 22:54:40 +0100
-Message-Id: <1329170084-7032-7-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from smtp.mail.umich.edu ([141.211.14.82]:55546 "EHLO
+	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754350Ab2BINoj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Feb 2012 08:44:39 -0500
+Date: Thu, 9 Feb 2012 08:44:29 -0500
+From: Jim Rees <rees@umich.edu>
+To: David Howells <dhowells@redhat.com>
+Cc: jmorris@namei.org, keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Subject: Re: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate
+ name service errors
+Message-ID: <20120209134429.GC6663@umich.edu>
+References: <20120208141552.GA3273@umich.edu>
+ <20120208122905.8902.65762.stgit@warthog.procyon.org.uk>
+ <20120208122917.8902.78395.stgit@warthog.procyon.org.uk>
+ <17614.1328781889@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <17614.1328781889@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+David Howells wrote:
 
+  Jim Rees <rees@umich.edu> wrote:
+  
+  >   Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
+  >   indicate, for example, that an attempt was made by dns_query() to make a query,
+  >   but the name server (e.g. a DNS server) replied indicating that it had no
+  >   matching records.
+  > 
+  > Would this be the same as NXDOMAIN?  That is, does it mean the name server
+  > couldn't find a record, or does it mean that the record doesn't exist?
+  
+  Is there a way to tell the difference?  Can you store a negative record in the
+  DNS?  Or is it that the DNS has records for the name, just not records of the
+  type you're looking for (eg. NO_ADDRESS/NO_DATA from gethostbyname())?
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c |    2 ++
- fs/nfsd/xdr4.h     |    1 +
- 2 files changed, 3 insertions(+), 0 deletions(-)
+It's an important distinction to the resolver if you want to avoid dns
+hijacking.  See rfc2308.  There doesn't seem to be a way to tell the
+difference from the gethostbyname call, which was designed before this was a
+problem.  The on-the-wire dns query protocol does make the distinction.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 66bd005..59d9b4b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -453,6 +453,7 @@ nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_restorefh;
- 
- 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
-+	cstate->current_stateid = cstate->save_stateid;
- 	return nfs_ok;
- }
- 
-@@ -464,6 +465,7 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_nofilehandle;
- 
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
-+	cstate->save_stateid = cstate->current_stateid;
- 	return nfs_ok;
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c1fe8ba..2ae378e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
- 	u32			minorversion;
- 	u32			status;
- 	const stateid_t	*current_stateid;
-+	const stateid_t	*save_stateid;
- };
- 
- static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
--- 
-1.7.7.6
-
+I suspect kernel dns clients won't need to know the difference, but I think
+it's useful if we decide on and document the meaning of the error codes.
+Maybe the answer is that ENAMEUNKNOWN means the same as a HOST_NOT_FOUND
+from gethostbyname().
