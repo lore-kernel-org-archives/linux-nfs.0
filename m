@@ -1,133 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22912 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20987 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750863Ab2BHVQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:16:50 -0500
+	id S1757421Ab2BIKOZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Feb 2012 05:14:25 -0500
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 00/17] Fix assorted FS-Cache problems
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:16:40 +0000
-Message-ID: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate name
+ service errors [ver #2]
+To: jmorris@namei.org, joseph@codesourcery.com, Valdis.Kletnieks@vt.edu
+Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
+        libc-alpha@sourceware.org
+Date: Thu, 09 Feb 2012 10:13:53 +0000
+Message-ID: <20120209101353.18365.87370.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20120209101340.18365.97513.stgit@warthog.procyon.org.uk>
+References: <20120209101340.18365.97513.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Now that the kernel has filesystems (and possibly other services) that want to
+look up internet addresses corresponding to arbitrary hostnames retrieved from
+the server, it would seem useful to provide a couple of error codes to indicate
+problems with the look up, rather than overloading some other error code.
 
+Define ENONAMESERVICE to indicate "Network name service unavailable".  This can
+be used to indicate, for example, that an attempt was made by dns_query() to
+make a query, but the name server (e.g. a DNS server) it is supposed to contact
+didn't answer or that it couldn't determine the location of a suitable server.
 
-Following the mail is a series of patches to fix a number of FS-Cache problems,
-including a number of oopses.  The patches can also be found at:
+Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
+indicate, for example, that an attempt was made by dns_query() to make a query,
+but the name server (e.g. a DNS server) replied indicating that it had no
+matching records.
 
-	http://git.kernel.org/?p=linux/kernel/git/dhowells/linux-fscache.git;a=shortlog;h=refs/heads/fixes
+The DNS query upcall program can report these to keyctl_reject() so that cached
+failed queries will respond with these errors until they expire.
 
-The patches are as follows:
-
- (*) A patch to correctly mark cached netfs pages.  This fixes an oops that
-     shows up in the page allocator with PG_private_2 still being set on pages.
-
- (*) A patch to downgrade memory allocation levels in the cache to not try so
-     hard and to be more willing to abort with ENOMEM.  It's a cache - it
-     doesn't matter if we can't store something.
-
- (*) A patch to check that there are no read operations outstanding on a
-     cookie when it is relinquished.
-
- (*) A patch to make conditional some debugging prints.
-
- (*) A patch to make cookie relinquishment log a warning and wait for any
-     outstanding reads.
-
- (*) A patch to fix up operation state handling and accounting.  This fixes a
-     BUG in __fscache_relinquish_cookie() that occurs when cache operation
-     completion gets out of sync with the netfs releasing a cookie back to
-     fscache.
-
- (*) Four patches to provide proper invalidation facilities so that the netfs
-     can request a cache object be invalidated rather than retiring the cookie
-     it has and then getting a new one.
-
-     The first patch provides the hooks and management in the FS-Cache module.
-
-     The second patch splits do_sys_truncate() to create a vfs_truncate() for
-     cachefiles's invalidation to call.
-
-     The third patch makes cachefiles honour invalidation requests.
-
-     The fourth patch makes NFS use the invalidation call.
-
-     These fix a BUG() in __fscache_read_or_alloc_pages() that occurs when an
-     object that has operations outstanding on it gets its cookie removed.
-
- (*) Add some missing calls to note completion of retrieval operations in
-     cachefiles.  These cause an assertion failure BUG in
-     fscache_put_operation() when it tries to destroy an operation that is
-     still live.
-
- (*) Three patches to clean up object event IDs in FS-Cache and to stop masking
-     off bits that needn't be masked off.
-
- (*) A patch to limit the number of I/O errors reported on a cache to 1.  This
-     prevents a lot of noise being generated from a busy cache when it is
-     aborted.
-
- (*) A patch to handle an unexpected state in exclusive op submission in
-     FS-Cache.  This fixes a BUG that occurs in fscache_submit_exclusive_op()
-     if it sees the cache in an aborted state due to an I/O error having
-     occurred.
-
- (*) A patch to make nfs_migrate_page() wait for FS-Cache to finish with a
-     page.  This fixes a bad page state BUG in the memory allocator due to NFS
-     trying to migrate a page that FS-Cache is doing stuff to.
-
-David
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
-David Howells (17):
-      NFS: nfs_migrate_page() does not wait for FS-Cache to finish with a page
-      FS-Cache: Exclusive op submission can BUG if there's been an I/O error
-      FS-Cache: Limit the number of I/O error reports for a cache
-      FS-Cache: Don't mask off the object event mask when printing it
-      FS-Cache: Initialise the object event mask with the calculated mask
-      FS-Cache: Convert the object event ID #defines into an enum
-      CacheFiles: Add missing retrieval completions
-      NFS: Use FS-Cache invalidation
-      CacheFiles: Implement invalidation
-      VFS: Make more complete truncate operation available to CacheFiles
-      FS-Cache: Provide proper invalidation
-      FS-Cache: Fix operation state management and accounting
-      FS-Cache: Make cookie relinquishment wait for outstanding reads
-      CacheFiles: Make some debugging statements conditional
-      FS-Cache: Check that there are no read ops when cookie relinquished
-      CacheFiles: Downgrade the requirements passed to the allocator
-      CacheFiles: Fix the marking of cached pages
 
+ arch/alpha/include/asm/errno.h  |    2 ++
+ arch/mips/include/asm/errno.h   |    2 ++
+ arch/parisc/include/asm/errno.h |    2 ++
+ arch/sparc/include/asm/errno.h  |    2 ++
+ include/asm-generic/errno.h     |    2 ++
+ 5 files changed, 10 insertions(+), 0 deletions(-)
 
- Documentation/filesystems/caching/backend-api.txt |   38 +++++
- Documentation/filesystems/caching/netfs-api.txt   |   46 +++++-
- Documentation/filesystems/caching/object.txt      |   23 ++-
- Documentation/filesystems/caching/operations.txt  |    2 
- fs/cachefiles/interface.c                         |   57 +++++++-
- fs/cachefiles/internal.h                          |    2 
- fs/cachefiles/key.c                               |    2 
- fs/cachefiles/namei.c                             |    3 
- fs/cachefiles/rdwr.c                              |  114 +++++++++------
- fs/cachefiles/xattr.c                             |    2 
- fs/fscache/cache.c                                |    8 +
- fs/fscache/cookie.c                               |   78 ++++++++++
- fs/fscache/internal.h                             |   12 ++
- fs/fscache/object-list.c                          |    2 
- fs/fscache/object.c                               |   98 ++++++++++++-
- fs/fscache/operation.c                            |  134 ++++++++++++++----
- fs/fscache/page.c                                 |  158 +++++++++++++++++----
- fs/fscache/stats.c                                |   17 ++
- fs/nfs/fscache.h                                  |   20 +++
- fs/nfs/inode.c                                    |   20 ++-
- fs/nfs/nfs4proc.c                                 |    2 
- fs/nfs/write.c                                    |    4 -
- fs/open.c                                         |   50 ++++---
- include/linux/fs.h                                |    1 
- include/linux/fscache-cache.h                     |   71 ++++++++-
- include/linux/fscache.h                           |   50 ++++++-
- 26 files changed, 813 insertions(+), 201 deletions(-)
+diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
+index dce5fc9..a4fc77e 100644
+--- a/arch/alpha/include/asm/errno.h
++++ b/arch/alpha/include/asm/errno.h
+@@ -125,5 +125,7 @@
+ #define EHWPOISON	139	/* Memory page has hardware error */
+ 
+ #define	ENOAUTHSERVICE	140	/* Authentication service not available */
++#define	ENONAMESERVICE	141	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	142	/* Network name unknown */
+ 
+ #endif
+diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
+index 67c46bd..ac95669 100644
+--- a/arch/mips/include/asm/errno.h
++++ b/arch/mips/include/asm/errno.h
+@@ -123,6 +123,8 @@
+ 
+ #define EHWPOISON	168	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	169	/* Authentication service not available */
++#define	ENONAMESERVICE	170	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	171	/* Network name unknown */
+ 
+ #define EDQUOT		1133	/* Quota exceeded */
+ 
+diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
+index 3a6ffcd..753cc5c 100644
+--- a/arch/parisc/include/asm/errno.h
++++ b/arch/parisc/include/asm/errno.h
+@@ -124,5 +124,7 @@
+ 
+ #define EHWPOISON	257	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	258	/* Authentication service not available */
++#define	ENONAMESERVICE	259	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	260	/* Network name unknown */
+ 
+ #endif
+diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
+index 94a878f..01c9769 100644
+--- a/arch/sparc/include/asm/errno.h
++++ b/arch/sparc/include/asm/errno.h
+@@ -114,5 +114,7 @@
+ 
+ #define EHWPOISON	135	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	136	/* Authentication service not available */
++#define	ENONAMESERVICE	137	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	138	/* Network name unknown */
+ 
+ #endif
+diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
+index 5e2b296..5d012c1 100644
+--- a/include/asm-generic/errno.h
++++ b/include/asm-generic/errno.h
+@@ -110,5 +110,7 @@
+ 
+ #define EHWPOISON	133	/* Memory page has hardware error */
+ #define	ENOAUTHSERVICE	134	/* Authentication service not available */
++#define	ENONAMESERVICE	135	/* Network name service unavailable */
++#define	ENAMEUNKNOWN	136	/* Network name unknown */
+ 
+ #endif
 
