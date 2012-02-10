@@ -1,93 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:45318 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754926Ab2BHPLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 10:11:19 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<lists@fuchsschwanzdomain.de>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1Rv8pq-0000wN-Rk
-	for linux-nfs@vger.kernel.org; Wed, 08 Feb 2012 15:49:27 +0100
-Received: from sven  by ultimate100.geggus.net (envelope-from
-	<lists@fuchsschwanzdomain.de>)
-	with local (Exim 4.72)
-	id 1Rv8po-0004T2-0H
-	for linux-nfs@vger.kernel.org; Wed, 08 Feb 2012 15:49:24 +0100
-Date: Wed, 8 Feb 2012 15:49:23 +0100
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-To: linux-nfs@vger.kernel.org
-Subject: NFS4: ID-mapping Problem with Linux Client and NetApp Server
-Message-ID: <20120208144923.GA16606@geggus.net>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:64305 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757498Ab2BJPg4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 10:36:56 -0500
+Received: by werb13 with SMTP id b13so2103164wer.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Feb 2012 07:36:55 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20120210154526.7b504146@little-poseidon>
+References: <20120210154526.7b504146@little-poseidon>
+Date: Fri, 10 Feb 2012 10:36:55 -0500
+Message-ID: <CAHVgHyUdxUhg3rBHNzf3EX049iqU-Mm2WiCtpAzz3v_yn1J7sQ@mail.gmail.com>
+Subject: Re: mount hangs in NFS4+Kerberos setup
+From: Andy Adamson <androsadamson@gmail.com>
+To: whats_up@gmx.net
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hi
 
-I'm trying to set up a couple of Active-directory integrated Linux machines
-using NFS4 volumes on a NetApp Server as storage media.
+It appears that the RPCSEC_GSS Kerberos calls were successful, but
+that the Kerberos principal to id mapping failed.
 
-So far, I'm nearly there, but the final step seems to be missing:
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: sname = root/<client-fqdn>@<MYREALM>
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: libnfsidmap: using (default) domain: cs.uni-potsdam.de
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: libnfsidmap: loaded plugin /usr/lib/libnfsidmap/nsswitch.so for method nsswitch
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: nss_gss_princ_to_ids: Local-Realm '<MYREALM>': NOT FOUND
 
-My client (Debian GNU/Linux with nfs-utils 1.2.5) can mount the NetApp
-Emulator and Users are managed completely by AD Objects using nslcd.
+What kernel is the server running?
+What nfs-utils version is the server using?
+What libnfsidmap version is the server using?
 
-Now I try to mount the NetApp Emulator vis NFS4 as root:
+Thanks
 
-mount  -t nfs4 -o sec=krb5 dataontap-801.<fqdn>:/vol/v_testhome1/testhome1 /mnt/
+-->Andy
 
-This also works, however the NetApp is printing some strange warning:
 
-[nfsd.rpc.request.bad:warning]: Client 10.1.7.174 is sending bad rpc requests with error: RPC version mismatch or authentication error(73)
-[nfsd.auth.status.bad:warning]: Client 10.1.7.174 has an authentication error 2
 
-This is probably harmless and caused by the local root which does not have a
-valid AD account.
 
-After the mount I can successfully browse the volume as user and my machine
-is even able to read/write files to/from the server.
-
-However the files are not owned by the correct users. Server is just sending
-me invalid stuff.
-
-Here is the owner string I get from the server looking into the packets using
-wireshark:
-
-...
-recc_attr: FATTR4_OWNER (36)
-    fattr4_owner: root@<fqdn>
-        length: 19
-        contents: root@<fqdn>
-        fill bytes: opaque data
-recc_attr: FATTR4_OWNER_GROUP (37)
-    fattr4_owner_group: nobody
-        length: 6
-        contents: nobody
-        fill bytes: opaque data
-
-However checking with Windows and SMB these files are not owned by root but
-rather by the user which is trying to access the server.
-
-On a Linux machine I would now try to run the server side rpc.idmapd with
-verbose options, but unfortunately with NetApp I don't know exactly what to do.
-
-So, any hint what I am missing here?
-
-Client side userid mapping seems to work fine, as I can seen something like
-this wehen running rpc.idmapd in verbose mode:
-
-rpc.idmapd: Client 11: (user) name "root@<fqdn>" -> id "0"
-rpc.idmapd: Client 11: (group) name "nobody" -> id "65534"
-
-Regards
-
-Sven
-
--- 
-"A strategy for rewarding artists that regulates 'copies' makes as much sense
-in the digital age as a strategy for controlling greenhouse gases that
-regulates breathing." (Lawrence Lessig)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+On Fri, Feb 10, 2012 at 9:45 AM,  <whats_up@gmx.net> wrote:
+>
+> Hi,
+>
+> I want to setup a file server with NFS4+Kerberos and Debian squeeze for
+> clients running Ubuntu 11.10.
+>
+> What is already working:
+> 1) Mount NFS4 on client without krb5 option works. Users are able to
+> access files and uids/gids are correct. 2) KDC works. Access from
+> client, get tickets, user authentication/change password through pam is
+> ok.
+>
+> Now I want to mount with sec=krb5 but this time the command hangs and
+> does not return to shell. See also logs below.
+>
+> Any hints to fix the issue or to get more helpful debug information are
+> welcome.
+>
+> regards
+>  knut
+>
+>
+>
+>
+> === server status ===
+>
+> Debian Linux squeeze
+>
+> # uname -a
+> Linux tm 2.6.32-5-686 #1 SMP Mon Jan 16 16:04:25 UTC 2012 i686 GNU/Linux
+>
+> # cat /etc/exports
+> /srv        *(rw,sync,no_subtree_check,fsid=0,crossmnt)
+> /srv/opt    *(sec=sys:krb5,rw,sync,no_subtree_check)
+>
+> # ps -ef|grep -e rpc -e portmap -e nfs
+> daemon    1019     1  0 10:26 ?        00:00:00 /sbin/portmap
+> root      1043     2  0 10:26 ?        00:00:00 [rpciod/0]
+> root      1044     2  0 10:26 ?        00:00:00 [rpciod/1]
+> root      1055     2  0 10:26 ?        00:00:00 [nfsiod]
+> root      1079     1  0 10:26 ?        00:00:00 /usr/sbin/rpc.idmapd -vvv
+> root      1083     1  0 10:26 ?        00:00:00 /usr/sbin/rpc.gssd -vvv
+> root      1309     2  0 10:26 ?        00:00:00 [nfsd4]
+> root      1310     2  0 10:26 ?        00:00:00 [nfsd]
+> ...
+> root      1336     1  0 10:26 ?        00:00:00 /usr/sbin/rpc.svcgssd -vvv
+> root      1338     1  0 10:26 ?        00:00:00 /usr/sbin/rpc.mountd --manage-gids
+>
+> # rpcdebug -m nfsd -s all
+>
+>
+> === client status ===
+>
+> Ubuntu Linux 10.11
+>
+> # uname -a
+> Linux orest 3.0.0-15-generic #26-Ubuntu SMP Fri Jan 20 15:59:53 UTC 2012 i686 i686 i386 GNU/Linux
+>
+> # ps -ef |grep rpc
+> root       702     1  0 13:16 ?        00:00:00 rpcbind -w
+> root       712     2  0 13:16 ?        00:00:00 [rpciod]
+> root       805     1  0 13:16 ?        00:00:00 rpc.gssd -vvv
+> root       890     1  0 13:16 ?        00:00:00 rpc.idmapd -vvv
+>
+>
+> === client log ===
+>
+> # mount -t nfs4 <server-fqdn>:/opt /opt
+> # umount /opt
+>
+> # mount -t nfs4 -osec=krb5 <server-fqdn>:/opt /opt
+> Feb 10 14:45:17 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7584c data 0xbfe758cc
+> Feb 10 14:45:17 orest rpc.idmapd[728]: New client: 0
+> Feb 10 14:45:17 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7102c data 0xbfe710ac
+> Feb 10 14:45:17 orest rpc.idmapd[728]: Opened /var/lib/nfs/rpc_pipefs/nfs/clnt0/idmap
+> Feb 10 14:45:17 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7102c data 0xbfe710ac
+> Feb 10 14:45:17 orest rpc.idmapd[728]: New client: 1
+> Feb 10 14:45:17 orest rpc.gssd[883]: handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt0)
+> Feb 10 14:45:17 orest rpc.gssd[883]: handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+> Feb 10 14:45:17 orest rpc.gssd[883]: handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt0)
+> Feb 10 14:45:17 orest rpc.gssd[883]: process_krb5_upcall: service is '<null>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: Full hostname for '<server-fqdn>' is '<server-fqdn>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: Full hostname for '<client-fqdn>' is '<client-fqdn>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: No key table entry found for <CLIENT-HOSTNAME>$@<MYREALM> while getting keytab entry for '<CLIENT-HOSTNAME>$@<MYREALM>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: Success getting keytab entry for 'root/<client-fqdn>@<MYREALM>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: Successfully obtained machine credentials for principal 'root/<client-fqdn>@<MYREALM>' stored in ccache 'FILE:/tmp/krb5cc_machine_<MYREALM>'
+> Feb 10 14:45:17 orest rpc.gssd[883]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_<MYREALM>' are good until 1328967917
+> Feb 10 14:45:17 orest rpc.gssd[883]: using FILE:/tmp/krb5cc_machine_<MYREALM> as credentials cache for machine creds
+> Feb 10 14:45:17 orest rpc.gssd[883]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_machine_<MYREALM>
+> Feb 10 14:45:17 orest rpc.gssd[883]: creating context using fsuid 0 (save_uid 0)
+> Feb 10 14:45:17 orest rpc.gssd[883]: creating tcp client for server <server-fqdn>
+> Feb 10 14:45:17 orest rpc.gssd[883]: DEBUG: port already set to 2049
+> Feb 10 14:45:17 orest rpc.gssd[883]: creating context with server nfs@<server-fqdn>
+> Feb 10 14:45:17 orest rpc.gssd[883]: DEBUG: serialize_krb5_ctx: lucid version!
+> Feb 10 14:45:17 orest rpc.gssd[883]: prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
+> Feb 10 14:45:17 orest rpc.gssd[883]: doing downcall
+>
+> (waiting...)
+>
+> Feb 10 14:48:17 orest kernel: [  249.312058] nfs: server <server-fqdn> not responding, still trying
+>
+> (press Ctrl-C, >10 min later)
+>
+> Feb 10 14:59:40 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7584c data 0xbfe758cc
+> Feb 10 14:59:40 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7584c data 0xbfe758cc
+> Feb 10 14:59:40 orest rpc.gssd[883]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt1
+> Feb 10 14:59:40 orest rpc.idmapd[728]: Stale client: 1
+> Feb 10 14:59:40 orest rpc.idmapd[728]: #011-> closed /var/lib/nfs/rpc_pipefs/nfs/clnt1/idmap
+> Feb 10 14:59:40 orest rpc.gssd[883]: dir_notify_handler: sig 37 si 0xbfe7584c data 0xbfe758cc
+> Feb 10 14:59:40  rpc.gssd[883]: last message repeated 4 times
+> Feb 10 14:59:40 orest rpc.idmapd[728]: Stale client: 0
+> Feb 10 14:59:40 orest rpc.idmapd[728]: #011-> closed /var/lib/nfs/rpc_pipefs/nfs/clnt0/idmap
+> Feb 10 14:59:40 orest rpc.gssd[883]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt0
+>
+>
+>
+> === server log ===
+>
+> The following messages appeared while initiating mount command on client:
+>
+> ==> auth.log <==
+> Feb 10 14:45:17 tm krb5kdc[1429]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) <client-IP>: NEEDED_PREAUTH: root/<client-fqdn>@<MYREALM> for krbtgt/<MYREALM>@<MYREALM>, Additional pre-authentication required
+> Feb 10 14:45:17 tm krb5kdc[1429]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) <client-IP>: ISSUE: authtime 1328881517, etypes {rep=1 tkt=18 ses=18}, root/<client-fqdn>@<MYREALM> for krbtgt/<MYREALM>@<MYREALM>
+> Feb 10 14:45:17 tm krb5kdc[1429]: TGS_REQ (7 etypes {18 17 16 23 1 3 2}) <client-IP>: ISSUE: authtime 1328881517, etypes {rep=18 tkt=1 ses=1}, root/<client-fqdn>@<MYREALM> for nfs/<server-fqdn>@<MYREALM>
+>
+> ==> syslog <==
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: leaving poll
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: handling null request
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: sname = root/<client-fqdn>@<MYREALM>
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: libnfsidmap: using (default) domain: cs.uni-potsdam.de
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: libnfsidmap: loaded plugin /usr/lib/libnfsidmap/nsswitch.so for method nsswitch
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: nss_gss_princ_to_ids: Local-Realm '<MYREALM>': NOT FOUND
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: DEBUG: serialize_krb5_ctx: lucid version!
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: doing downcall
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: mech: krb5, hndl len: 4, ctx len 85, timeout: 1328967917 (86400 from now), clnt: root@<client-fqdn>, uid: -1, gid: -1, num aux grps: 0:
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: sending null reply
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: writing message: \x \x..<lots of digits> 1328881577 0 0 \x01000000 \x607006092a864886f71201020202006f61305fa003020105a10302010fa2533051a003020101a24a0448d85b3308847004f703039fd5f315f81fcbb287c6a53821eb2ea8660169c687bbb0f1d7fbdecb9016284f3adf11b122949b98488862d956d352c6c14e6fd2beb565ba1de7afc99d1c
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: finished handling null request
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: entering poll
+>
+> (waiting...)
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
