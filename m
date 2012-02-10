@@ -1,177 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754641Ab2BAPpI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:08 -0500
-Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:08 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 5/9] nfsdcld: add check/update functionality
-Date: Wed,  1 Feb 2012 10:44:52 -0500
-Message-Id: <1328111096-28430-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:14668 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753303Ab2BJWCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:11 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 00/21] NFS: Create NFS Modules
+Date: Fri, 10 Feb 2012 17:01:45 -0500
+Message-Id: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add functions to check whether a client is allowed to reclaim, and
-update its timestamp in the DB if so. If either the query or update
-fails, then the host is not allowed to reclaim state.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcld/nfsdcld.c |   35 ++++++++++++++++++++++
- utils/nfsdcld/sqlite.c  |   73 +++++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h  |    1 +
- 3 files changed, 109 insertions(+), 0 deletions(-)
+This patch series turns NFS v2, v3 and v4 into loadable kernel modules that
+need to be loaded before using.  This should eventually help clean up all of
+the NFS code by giving us a chance to remove most of the ifdefs that check
+for CONFIG_NFS_V3 and CONFIG_NFS_V4.
 
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index ce8355a..eb01d23 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -202,6 +202,38 @@ cld_remove(struct cld_client *clnt)
- }
- 
- static void
-+cld_check(struct cld_client *clnt)
-+{
-+	int ret;
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_msg;
-+
-+	xlog(D_GENERAL, "%s: check client record", __func__);
-+
-+	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
-+				  cmsg->cm_u.cm_name.cn_len);
-+
-+	/* set up reply */
-+	cmsg->cm_status = ret ? -EACCES : ret;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
-+			cmsg->cm_status);
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+		ret = cld_pipe_open(clnt);
-+		if (ret) {
-+			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
-+					__func__, ret);
-+			exit(ret);
-+		}
-+	}
-+}
-+
-+static void
- cldcb(int UNUSED(fd), short which, void *data)
- {
- 	ssize_t len;
-@@ -232,6 +264,9 @@ cldcb(int UNUSED(fd), short which, void *data)
- 	case Cld_Remove:
- 		cld_remove(clnt);
- 		break;
-+	case Cld_Check:
-+		cld_check(clnt);
-+		break;
- 	default:
- 		xlog(L_WARNING, "%s: command %u is not yet implemented",
- 				__func__, cmsg->cm_cmd);
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index a198c34..01bba1a 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -287,3 +287,76 @@ out_err:
- 	sqlite3_finalize(stmt);
- 	return ret;
- }
-+
-+/*
-+ * Is the given clname in the clients table? If so, then update its timestamp
-+ * and return success. If the record isn't present, or the update fails, then
-+ * return an error.
-+ */
-+int
-+sqlite_check_client(const unsigned char *clname, const size_t namelen)
-+{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-+				      "id==?", -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind blob failed: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "%s: unexpected return code from select: %d",
-+				__func__, ret);
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_column_int(stmt, 0);
-+	xlog(D_GENERAL, "%s: select returned %d rows", ret);
-+	if (ret != 1) {
-+		ret = -EACCES;
-+		goto out_err;
-+	}
-+
-+	sqlite3_finalize(stmt);
-+	stmt = NULL;
-+	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
-+				      "time=strftime('%s', 'now') WHERE id==?",
-+				 -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind blob failed: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(L_ERROR, "%s: unexpected return code from update: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+
-+out_err:
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
-+	sqlite3_finalize(stmt);
-+	return ret;
-+}
-diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-index 425f5ba..59ebd72 100644
---- a/utils/nfsdcld/sqlite.h
-+++ b/utils/nfsdcld/sqlite.h
-@@ -23,5 +23,6 @@
- int sqlite_maindb_init(char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
-+int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- 
- #endif /* _SQLITE_H */
--- 
-1.7.7.6
+This time around, I tried to move as little code as possible while still
+getting everything to compile as their own module.  I still had to move a
+large chunk of v4 specific code from super.c, but most other files should be
+(mostly) untouched.  Rather than creating new subdirectories, I instead kept
+everything in fs/nfs/, significantly cutting down on the number of patches
+to modularize everything.
 
+These patches are about a week out-of-date with Trond's nfs-for-next tree,
+so I expect to spend some time addressing comments and updating them so they
+apply nicely.  I have also found some bugs that I'll fix up in the next
+version as well.
+
+Patch Map
+---------
+- Patch 1 does basic preparations
+- Patches 2 - 4 make NFS v2 an optional kernel module
+- Patches 5 - 9 make NFS v3 an optional kernel module
+- Patches 10 - 20 make NFS v4 an optional kernel module
+- Patch 21 exports functions from nfs4.ko to nfs.ko to fix modpost errors
+
+Known bugs
+----------
+- Depmod detects a dependency loop when you try to install
+- #include errors when NFS v4 isn't enabled
+- I don't yet use request_module()
+
+Comments and suggestions are appreciated.  Thanks!
+
+- Bryan
