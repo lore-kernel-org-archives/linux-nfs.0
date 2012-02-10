@@ -1,86 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:58193 "EHLO e5.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11202 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752863Ab2BTPGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Feb 2012 10:06:19 -0500
-Received: from /spool/local
-	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Mon, 20 Feb 2012 10:06:18 -0500
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 2F36738C805C
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 10:02:23 -0500 (EST)
-Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q1KF2LTH287910
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 10:02:21 -0500
-Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q1KF1iwO020641
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 08:01:45 -0700
-Date: Mon, 20 Feb 2012 10:01:20 -0500
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 13/13] NFS: Request fh_expire_type attribute in "server
- caps" operation
-Message-ID: <20120220150117.GA3954@Gelgoog.pok.ibm.com>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
- <20120215213634.3254.25758.stgit@ellison.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120215213634.3254.25758.stgit@ellison.1015granger.net>
+	id S1760264Ab2BJWCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:31 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 19/21] NFS: Convert v4 into a module
+Date: Fri, 10 Feb 2012 17:02:03 -0500
+Message-Id: <1328911325-1566-19-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 04:36:34PM -0500, Chuck Lever wrote:
-> The fh_expire_type file attribute is a filesystem wide attribute that
-> consists of flags that indicate what characteristics file handles
-> on this FSID have.
-> 
-> Our client won't support volatile file handles, but it should find
-> out at mount time whether the server is going to play shenanighans
-> with file handles during a migration.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/nfs4proc.c         |    1 +
->  fs/nfs/nfs4xdr.c          |   26 ++++++++++++++++++++++++++
->  include/linux/nfs_fs_sb.h |    3 +++
->  include/linux/nfs_xdr.h   |    1 +
->  4 files changed, 31 insertions(+), 0 deletions(-)
-> 
-<snip>
-> index 6532d7b..f07d966 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -144,6 +144,9 @@ struct nfs_server {
->  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
->  						   that are supported on this
->  						   filesystem */
-> +	u32			fh_expire_type;	/* V4 bitmask representing file
-> +						   handle volatility type for
-> +						   this filesystem */
->  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
->  	struct rpc_wait_queue	roc_rpcwaitq;
->  	void			*pnfs_ld_data;	/* per mount point data */
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index d609631..ff74d94 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -973,6 +973,7 @@ struct nfs4_server_caps_res {
->  	u32				acl_bitmask;
->  	u32				has_links;
->  	u32				has_symlinks;
-> +	u32				fh_expire_type;
->  	struct nfs4_sequence_res	seq_res;
->  };
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I had a similar patch in my volatile file handle tree, 
-(http://www.spinics.net/lists/linux-nfs/msg26069.html) but in my commit I used 
-fs_info instead of server caps. If I remember the spec correctly, it says that
-the attribute is set per file system, that's why I put it in fs_info. I'm just
-curious why you used server caps, not that it really makes a difference.
+The module will be created in the same directory as nfs.ko.  You need to
+run `modprobe nfs4` before you can use it.
 
--Matt Treinish
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Kconfig     |    2 +-
+ fs/nfs/Makefile    |   14 ++++++++------
+ fs/nfs/inode.c     |    6 ------
+ fs/nfs/nfs4super.c |    5 +++++
+ 4 files changed, 14 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 57c4b19..608b84a 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -70,7 +70,7 @@ config NFS_V3_ACL
+ 	  If unsure, say N.
+ 
+ config NFS_V4
+-	bool "NFS client support for NFS version 4"
++	tristate "NFS client support for NFS version 4"
+ 	depends on NFS_FS
+ 	select SUNRPC_GSS
+ 	help
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index e983eb0..c356cda 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -7,14 +7,10 @@ obj-$(CONFIG_NFS_FS) += nfs.o
+ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
+ 			   direct.o pagelist.o read.o symlink.o unlink.o \
+ 			   write.o namespace.o mount_clnt.o \
+-			   dns_resolve.o cache_lib.o
++			   cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+-nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+-			   nfs4super.o delegation.o idmap.o \
+-			   callback.o callback_xdr.o callback_proc.o \
+-			   nfs4namespace.o nfs4client.o nfs4getroot.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+-nfs-$(CONFIG_SYSCTL) += sysctl.o nfs4sysctl.o
++nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+ 
+ obj-$(CONFIG_NFS_V2) += nfs2.o
+@@ -24,6 +20,12 @@ obj-$(CONFIG_NFS_V3) += nfs3.o
+ nfs3-y += nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
+ nfs3-y += nfs3acl.o
+ 
++obj-$(CONFIG_NFS_V4) += nfs4.o
++nfs4-y = nfs4super.o nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
++	 delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
++	 nfs4namespace.o dns_resolve.o nfs4client.o nfs4getroot.o
++nfs4-$(CONFIG_SYSCTL) += nfs4sysctl.o
++
+ obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+ nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index cb645e3f..2ee6259 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1637,9 +1637,6 @@ static int __init init_nfs_fs(void)
+ #endif
+ 	if ((err = register_nfs_fs()) != 0)
+ 		goto out;
+-#if IS_ENABLED(CONFIG_NFS_V4)
+-	init_nfs_v4();
+-#endif
+ 	return 0;
+ out:
+ #ifdef CONFIG_PROC_FS
+@@ -1670,9 +1667,6 @@ out9:
+ 
+ static void __exit exit_nfs_fs(void)
+ {
+-#if IS_ENABLED(CONFIG_NFS_V4)
+-	exit_nfs_v4();
+-#endif
+ 	nfs_destroy_directcache();
+ 	nfs_destroy_writepagecache();
+ 	nfs_destroy_readpagecache();
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 2764c28..3e515db 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -669,3 +669,8 @@ void __exit exit_nfs_v4(void)
+ 	nfs4_unregister_sysctl();
+ 	nfs_idmap_quit();
+ }
++
++MODULE_LICENSE("GPL");
++
++module_init(init_nfs_v4);
++module_exit(exit_nfs_v4);
+-- 
+1.7.9
 
