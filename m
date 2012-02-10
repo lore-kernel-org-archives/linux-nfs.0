@@ -1,97 +1,282 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57131 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11202 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750928Ab2BHNvO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 08:51:14 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
- fails
-Date: Wed, 8 Feb 2012 13:50:51 +0000
-Message-ID: <1328709051.3234.6.camel@lade.trondhjem.org>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-	 <20120207141254.2948e735@tlielax.poochiereds.net>
-	 <1328642485.4124.40.camel@lade.trondhjem.org> <4F317BA1.4050102@netapp.com>
-	 <1328643867.4124.42.camel@lade.trondhjem.org>
-	 <1328645155.4124.44.camel@lade.trondhjem.org>
-	 <20120208070408.6f77544d@tlielax.poochiereds.net>
-In-Reply-To: <20120208070408.6f77544d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1760264Ab2BJWC2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:28 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 17/21] NFS: Deal with delegations
+Date: Fri, 10 Feb 2012 17:02:01 -0500
+Message-Id: <1328911325-1566-17-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTA4IGF0IDA3OjA0IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gVHVlLCA3IEZlYiAyMDEyIDIwOjA1OjU1ICswMDAwDQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBUdWUsIDIwMTIt
-MDItMDcgYXQgMTQ6NDQgLTA1MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiANCj4gPiA+
-IE9uZSB3YXkgdG8gZWFzaWx5IHNocmluayB0aGUgc2l6ZSBvZiB0aGF0IGFsbG9jYXRpb24gaXMg
-dG8gY29udmVydCB0aGUNCj4gPiA+IGloX25hbWUgc3RyaW5nIGludG8gYSBwb2ludGVyLCBhbmQg
-aGF2ZSB0aGUgZG93bmNhbGwgYWxsb2NhdGUgdGhlDQo+ID4gPiBzdG9yYWdlIGZvciB0aGF0IHN0
-cmluZyBkeW5hbWljYWxseS4uLg0KPiA+IA0KPiA+IExpa2Ugc28uLi4uDQo+ID4gDQo+IA0KPiBO
-aWNlLiBJIGhhZCBzdGFydGVkIGxvb2tpbmcgYXQgdGhpcywgYnV0IHdhcyBzdGlsbCBzb3J0aW5n
-IG15IHdheQ0KPiB0aHJvdWdoIGhvdyBhbGwgb2YgdGhlIGhhc2h0YWJsZSBjYWNoZSBjb2RlIHdv
-cmtzLg0KPiANCj4gT25lIGNvbW1lbnQgaW5saW5lIGJlbG93Og0KPiANCj4gPiA4PC0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tDQo+ID4gRnJvbSA1MjIxYzg0MTU5NTc2MDQ1MDdjZDc0MDhhNjk1MjQxMDk2YmNiM2Fk
-IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiA+IEZyb206IFRyb25kIE15a2xlYnVzdCA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gRGF0ZTogVHVlLCA3IEZlYiAyMDEyIDE0OjU5
-OjA1IC0wNTAwDQo+ID4gU3ViamVjdDogW1BBVENIXSBORlN2NDogUmVkdWNlIHRoZSBmb290cHJp
-bnQgb2YgdGhlIGlkbWFwcGVyDQo+ID4gDQo+ID4gSW5zdGVhZCBvZiBwcmUtYWxsb2NhdGluZyB0
-aGUgc3RvcmFnZSBmb3IgYWxsIHRoZSBzdHJpbmdzLCB3ZSBjYW4NCj4gPiBzaWduaWZpY2FudGx5
-IHJlZHVjZSB0aGUgc2l6ZSBvZiB0aGF0IHRhYmxlIGJ5IGRvaW5nIHRoZSBhbGxvY2F0aW9uDQo+
-ID4gd2hlbiB3ZSBkbyB0aGUgZG93bmNhbGwuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJv
-bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiAg
-ZnMvbmZzL2lkbWFwLmMgfCAgIDE2ICsrKysrKysrKysrKystLS0NCj4gPiAgMSBmaWxlcyBjaGFu
-Z2VkLCAxMyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvaWRtYXAuYyBiL2ZzL25mcy9pZG1hcC5jDQo+ID4gaW5kZXggNWE1NTY2Zi4u
-ZmZmNzk0OCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvaWRtYXAuYw0KPiA+ICsrKyBiL2ZzL25m
-cy9pZG1hcC5jDQo+ID4gQEAgLTM2Miw3ICszNjIsNyBAQCBzdHJ1Y3QgaWRtYXBfaGFzaGVudCB7
-DQo+ID4gIAl1bnNpZ25lZCBsb25nCQlpaF9leHBpcmVzOw0KPiA+ICAJX191MzIJCQlpaF9pZDsN
-Cj4gPiAgCXNpemVfdAkJCWloX25hbWVsZW47DQo+ID4gLQljaGFyCQkJaWhfbmFtZVtJRE1BUF9O
-QU1FU1pdOw0KPiA+ICsJY29uc3QgY2hhcgkJKmloX25hbWU7DQo+ID4gIH07DQo+ID4gIA0KPiA+
-ICBzdHJ1Y3QgaWRtYXBfaGFzaHRhYmxlIHsNCj4gPiBAQCAtNDgyLDEyICs0ODIsMTcgQEAgdm9p
-ZA0KPiA+ICBuZnNfaWRtYXBfZGVsZXRlKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ID4gIHsN
-Cj4gPiAgCXN0cnVjdCBpZG1hcCAqaWRtYXAgPSBjbHAtPmNsX2lkbWFwOw0KPiA+ICsJaW50IGk7
-DQo+ID4gIA0KPiA+ICAJaWYgKCFpZG1hcCkNCj4gPiAgCQlyZXR1cm47DQo+ID4gIAluZnNfaWRt
-YXBfdW5yZWdpc3RlcihjbHAsIGlkbWFwLT5pZG1hcF9waXBlKTsNCj4gPiAgCXJwY19kZXN0cm95
-X3BpcGVfZGF0YShpZG1hcC0+aWRtYXBfcGlwZSk7DQo+ID4gIAljbHAtPmNsX2lkbWFwID0gTlVM
-TDsNCj4gPiArCWZvciAoaSA9IDA7IGkgPCBBUlJBWV9TSVpFKGlkbWFwLT5pZG1hcF91c2VyX2hh
-c2guaF9lbnRyaWVzKTsgaSsrKQ0KPiA+ICsJCWtmcmVlKGlkbWFwLT5pZG1hcF91c2VyX2hhc2gu
-aF9lbnRyaWVzW2ldLmloX25hbWUpOw0KPiA+ICsJZm9yIChpID0gMDsgaSA8IEFSUkFZX1NJWkUo
-aWRtYXAtPmlkbWFwX2dyb3VwX2hhc2guaF9lbnRyaWVzKTsgaSsrKQ0KPiA+ICsJCWtmcmVlKGlk
-bWFwLT5pZG1hcF9ncm91cF9oYXNoLmhfZW50cmllc1tpXS5paF9uYW1lKTsNCj4gPiAgCWtmcmVl
-KGlkbWFwKTsNCj4gPiAgfQ0KPiA+ICANCj4gPiBAQCAtNjM0LDkgKzYzOSwxNCBAQCBzdGF0aWMg
-dm9pZA0KPiA+ICBpZG1hcF91cGRhdGVfZW50cnkoc3RydWN0IGlkbWFwX2hhc2hlbnQgKmhlLCBj
-b25zdCBjaGFyICpuYW1lLA0KPiA+ICAJCXNpemVfdCBuYW1lbGVuLCBfX3UzMiBpZCkNCj4gPiAg
-ew0KPiA+ICsJY2hhciAqc3RyID0ga21hbGxvYyhuYW1lbGVuICsgMSwgR0ZQX0tFUk5FTCk7DQo+
-IA0KPiBEbyB3ZSBuZWVkIHRvIHdvcnJ5IGFib3V0IHJlY3Vyc2luZyBpbnRvIGRpcmVjdCByZWNs
-YWltIGhlcmU/DQoNCk5vLiBUaGUgd3JpdGUgcGF0aCBkb2Vzbid0IHVzZSB0aGUgaWRtYXBwZXIg
-YW55IG1vcmUuDQoNCj4gPiArCWlmIChzdHIgPT0gTlVMTCkNCj4gPiArCQlyZXR1cm47DQo+ID4g
-KwlrZnJlZShoZS0+aWhfbmFtZSk7DQo+ID4gIAloZS0+aWhfaWQgPSBpZDsNCj4gPiAtCW1lbWNw
-eShoZS0+aWhfbmFtZSwgbmFtZSwgbmFtZWxlbik7DQo+ID4gLQloZS0+aWhfbmFtZVtuYW1lbGVu
-XSA9ICdcMCc7DQo+ID4gKwltZW1jcHkoc3RyLCBuYW1lLCBuYW1lbGVuKTsNCj4gPiArCXN0cltu
-YW1lbGVuXSA9ICdcMCc7DQo+ID4gKwloZS0+aWhfbmFtZSA9IHN0cjsNCj4gPiAgCWhlLT5paF9u
-YW1lbGVuID0gbmFtZWxlbjsNCj4gPiAgCWhlLT5paF9leHBpcmVzID0gamlmZmllcyArIG5mc19p
-ZG1hcF9jYWNoZV90aW1lb3V0Ow0KPiA+ICB9DQo+IA0KPiAuLi5hbmQgdGhlIG5hbWVsZW4gY2hl
-Y2sgaW4gaWRtYXBfbG9va3VwX25hbWUgc2hvdWxkIGtlZXAgdGhlIG1lbWNtcA0KPiBmcm9tIHRy
-aXBwaW5nIG92ZXIgdGhlc2UgTlVMTCBwb2ludGVycy4gSSB0aGluayB0aGlzIGxvb2tzIGxpa2Ug
-YSBuaWNlDQo+IGludGVyaW0gZml4IGZvciBub3cgYW5kIHNob3VsZCBjdXQgZG93biBvbiB0aGUg
-bWVtb3J5IGNvbnN1bXB0aW9uIGZyb20NCj4gdGhpcyBjb2RlLg0KPiANCj4gT24gYSB4ODZfNjQg
-bWFjaGluZToNCj4gDQo+IHByZS1wYXRjaDoNCj4gKGdkYikgcCBzaXplb2Yoc3RydWN0IGlkbWFw
-KQ0KPiAkMSA9IDM5NTA0DQo+IA0KPiBwb3N0LXBhdGNoOg0KPiAoZ2RiKSBwIHNpemVvZihzdHJ1
-Y3QgaWRtYXApDQo+ICQxID0gODc4NA0KPiANCj4gVGhhdCBjaGFuZ2VzIHRoaXMgZnJvbSBhbiBv
-cmRlciA0IHRvIGFuIG9yZGVyIDIgYWxsb2NhdGlvbi4gV291bGQgYmUNCj4gZXZlbiBuaWNlciB0
-byBnZXQgaXQgZG93biB0byB1bmRlciBhIHBhZ2UsIGJ1dCB0aGlzIHdpbGwgaGVscA0KPiBjb25z
-aWRlcmFibHkuDQo+IA0KPiBSZXZpZXdlZC1ieTogSmVmZiBMYXl0b24gPGpsYXl0b25AcmVkaGF0
-LmNvbT4NCg0KV2UgY291bGQgZG8gdGhhdCBieSBhbGxvY2F0aW5nIHRoZSB0d28gaWRtYXBfaGFz
-aGVudCBhcnJheXMgc2VwYXJhdGVseS4NCkknbGwgc2VlIGFib3V0IHRoYXQgbGF0ZXIgdG9kYXku
-DQoNCkluIHRoZSBtZWFuIHRpbWUsIEkndmUgZ290IEJyeWFuIGNvbnRpbnVpbmcgdG8gbG9vayBp
-bnRvIHRoZSBwb3NzaWJpbGl0eQ0Kb2YgdXNpbmcgdGhlIGtleXJpbmdzIGZvciBib3RoIHR5cGVz
-IG9mIHVwY2FsbC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0KDQo=
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+Modules can implement their own have_delegation and return_delegation
+functions.  If not, then a default value is returned.  I also moved over
+the nfs4_evict_inode() function so it can find the
+return_delegation_noreclaim function.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/delegation.c |    8 ++++----
+ fs/nfs/delegation.h |    9 +++++----
+ fs/nfs/inode.c      |   41 ++++++++++++++++++-----------------------
+ fs/nfs/internal.h   |    3 ---
+ fs/nfs/nfs.h        |    7 +++++++
+ fs/nfs/nfs4proc.c   |    4 ++--
+ fs/nfs/nfs4super.c  |   18 ++++++++++++++++++
+ 7 files changed, 54 insertions(+), 36 deletions(-)
+
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 7f26540..0430513 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -41,13 +41,13 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation)
+ }
+ 
+ /**
+- * nfs_have_delegation - check if inode has a delegation
++ * nfs4_have_delegation - check if inode has a delegation
+  * @inode: inode to check
+  * @flags: delegation types to check for
+  *
+  * Returns one if inode has the indicated delegation, otherwise zero.
+  */
+-int nfs_have_delegation(struct inode *inode, fmode_t flags)
++int nfs4_have_delegation(struct inode *inode, fmode_t flags)
+ {
+ 	struct nfs_delegation *delegation;
+ 	int ret = 0;
+@@ -376,12 +376,12 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
+ }
+ 
+ /**
+- * nfs_inode_return_delegation - synchronously return a delegation
++ * nfs4_inode_return_delegation - synchronously return a delegation
+  * @inode: inode to process
+  *
+  * Returns zero on success, or a negative errno value.
+  */
+-int nfs_inode_return_delegation(struct inode *inode)
++int nfs4_inode_return_delegation(struct inode *inode)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index d9322e4..0b388d7 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -9,6 +9,7 @@
+ #define FS_NFS_DELEGATION_H
+ 
+ #if defined(CONFIG_NFS_V4)
++#include "nfs.h"
+ /*
+  * NFSv4 delegation
+  */
+@@ -33,7 +34,7 @@ enum {
+ 
+ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
+ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
+-int nfs_inode_return_delegation(struct inode *inode);
++int nfs4_inode_return_delegation(struct inode *inode);
+ int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
+ void nfs_inode_return_delegation_noreclaim(struct inode *inode);
+ 
+@@ -56,15 +57,15 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
+ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+ 
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+-int nfs_have_delegation(struct inode *inode, fmode_t flags);
++int nfs4_have_delegation(struct inode *inode, fmode_t flags);
+ 
+ #else
+-static inline int nfs_have_delegation(struct inode *inode, fmode_t flags)
++static inline int nfs4_have_delegation(struct inode *inode, fmode_t flags)
+ {
+ 	return 0;
+ }
+ 
+-static inline int nfs_inode_return_delegation(struct inode *inode)
++static inline int nfs4_inode_return_delegation(struct inode *inode)
+ {
+ 	return 0;
+ }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 53bb916..2f48355 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -107,7 +107,7 @@ u64 nfs_compat_user_ino64(u64 fileid)
+ 	return ino;
+ }
+ 
+-static void nfs_clear_inode(struct inode *inode)
++void nfs_clear_inode(struct inode *inode)
+ {
+ 	/*
+ 	 * The following should never happen...
+@@ -118,6 +118,7 @@ static void nfs_clear_inode(struct inode *inode)
+ 	nfs_access_zap_cache(inode);
+ 	nfs_fscache_release_inode_cookie(inode);
+ }
++EXPORT_SYMBOL_GPL(nfs_clear_inode);
+ 
+ void nfs_evict_inode(struct inode *inode)
+ {
+@@ -207,6 +208,22 @@ static void nfs_invalidate_inode(struct inode *inode)
+ 	nfs_zap_caches_locked(inode);
+ }
+ 
++int nfs_have_delegation(struct inode *inode, fmode_t flags)
++{
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
++	if (!nfs_mod->have_delegation)
++		return 0;
++	return nfs_mod->have_delegation(inode, flags);
++}
++
++int nfs_inode_return_delegation(struct inode *inode)
++{
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
++	if (!nfs_mod->return_delegation)
++		return 0;
++	return nfs_mod->return_delegation(inode);
++}
++
+ struct nfs_find_desc {
+ 	struct nfs_fh		*fh;
+ 	struct nfs_fattr	*fattr;
+@@ -1440,28 +1457,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	goto out_err;
+ }
+ 
+-
+-#ifdef CONFIG_NFS_V4
+-
+-/*
+- * Clean out any remaining NFSv4 state that might be left over due
+- * to open() calls that passed nfs_atomic_lookup, but failed to call
+- * nfs_open().
+- */
+-void nfs4_evict_inode(struct inode *inode)
+-{
+-	truncate_inode_pages(&inode->i_data, 0);
+-	end_writeback(inode);
+-	pnfs_return_layout(inode);
+-	pnfs_destroy_layout(NFS_I(inode));
+-	/* If we are holding a delegation, return it! */
+-	nfs_inode_return_delegation_noreclaim(inode);
+-	/* First call standard NFS clear_inode() code */
+-	nfs_clear_inode(inode);
+-}
+-EXPORT_SYMBOL_GPL(nfs4_evict_inode);
+-#endif
+-
+ struct inode *nfs_alloc_inode(struct super_block *sb)
+ {
+ 	struct nfs_inode *nfsi;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index cdb121d..4ea1b93 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -258,9 +258,6 @@ extern struct inode *nfs_alloc_inode(struct super_block *sb);
+ extern void nfs_destroy_inode(struct inode *);
+ extern int nfs_write_inode(struct inode *, struct writeback_control *);
+ extern void nfs_evict_inode(struct inode *);
+-#ifdef CONFIG_NFS_V4
+-extern void nfs4_evict_inode(struct inode *);
+-#endif
+ void nfs_zap_acl_cache(struct inode *inode);
+ extern int nfs_wait_bit_killable(void *word);
+ 
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 0c05f14..a83e154 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -40,6 +40,8 @@ struct nfs_subversion {
+ 				   struct nfs_fh *, struct nfs_parsed_mount_data *);
+ 	struct dentry *(*xdev_mount)(int, const char *, struct nfs_clone_mount *);
+ 	struct vfsmount *(*submount)(struct dentry *, struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
++	int (*have_delegation)(struct inode *, fmode_t);
++	int (*return_delegation)(struct inode *);
+ };
+ 
+ struct nfs_sb_mountdata {
+@@ -88,6 +90,11 @@ int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *)
+ /* Exported in getroot.c */
+ int nfs_superblock_set_dummy_root(struct super_block *, struct inode *);
+ 
++/* inode.c */
++void nfs_clear_inode(struct inode *);
++int nfs_have_delegation(struct inode *, fmode_t);
++int nfs_inode_return_delegation(struct inode *);
++
+ /* Exported in namespace.c */
+ struct vfsmount *_nfs_do_submount(struct file_system_type *, struct dentry *,
+ 				  struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1bb0be3..3ae8485 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1028,7 +1028,7 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
+ 		return;
+ 	}
+ 	rcu_read_unlock();
+-	nfs_inode_return_delegation(inode);
++	nfs4_inode_return_delegation(inode);
+ }
+ 
+ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+@@ -3694,7 +3694,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+ 	if (i < 0)
+ 		return i;
+-	nfs_inode_return_delegation(inode);
++	nfs4_inode_return_delegation(inode);
+ 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 
+ 	/*
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index d874d2f..2764c28 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -10,6 +10,7 @@
+ #include "delegation.h"
+ #include "fscache.h"
+ #include "nfs4_fs.h"
++#include "pnfs.h"
+ #include "nfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+@@ -26,6 +27,23 @@ static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_typ
+ 	int flags, const char *dev_name, void *raw_data);
+ static void nfs4_kill_super(struct super_block *sb);
+ 
++/*
++ * Clean out any remaining NFSv4 state that might be left over due
++ * to open() calls that passed nfs_atomic_lookup, but failed to call
++ * nfs_open().
++ */
++void nfs4_evict_inode(struct inode *inode)
++{
++	truncate_inode_pages(&inode->i_data, 0);
++	end_writeback(inode);
++	pnfs_return_layout(inode);
++	pnfs_destroy_layout(NFS_I(inode));
++	/* If we are holding a delegation, return it! */
++	nfs_inode_return_delegation_noreclaim(inode);
++	/* First call standard NFS clear_inode() code */
++	nfs_clear_inode(inode);
++}
++
+ struct file_system_type nfs4_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+-- 
+1.7.9
+
