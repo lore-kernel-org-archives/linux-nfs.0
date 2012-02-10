@@ -1,221 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754438Ab2BOVfx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:53 -0500
-Received: by mail-iy0-f174.google.com with SMTP id b35so1972889iac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:53 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/13] SUNRPC: Add API to acquire source address
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:35:50 -0500
-Message-ID: <20120215213550.3254.1420.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:39696 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759954Ab2BJTN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 14:13:56 -0500
+Date: Fri, 10 Feb 2012 14:13:54 -0500
+To: steve <steve@steve-ss.com>
+Cc: Daniel Kahn Gillmor <dkg@fifthhorseman.net>, whats_up@gmx.net,
+        linux-nfs@vger.kernel.org
+Subject: Re: mount hangs in NFS4+Kerberos setup
+Message-ID: <20120210191354.GC5781@fieldses.org>
+References: <20120210154526.7b504146@little-poseidon>
+ <4F35512A.9050500@steve-ss.com>
+ <20120210184154.03fb6907@little-poseidon>
+ <4F355CD2.6040603@steve-ss.com>
+ <4F35603A.5050508@fifthhorseman.net>
+ <4F356AB7.7070408@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F356AB7.7070408@steve-ss.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4.0 clients must send endpoint information for their callback
-service to NFSv4.0 servers during their first contact with a server.
-Traditionally on Linux, user space provides the callback endpoint IP
-address via the "clientaddr=" mount option.
+On Fri, Feb 10, 2012 at 08:06:31PM +0100, steve wrote:
+> On 02/10/2012 07:21 PM, Daniel Kahn Gillmor wrote:
+> >On 02/10/2012 01:07 PM, steve wrote:
+> >>Officially, you should not export from a pseudo root. Please see the
+> >>last few lines in the link I sent.
+> >That link offers the same assertion but no explanation for it.  Can you
+> >explain why that's the recommendation?
+> Sorry, no. I can however explain why we changed: We were having
+> problems with idmapd uid:gid mappings from the bind mount and just
+> as an experiment we tried the old way. Problem solved.
 
-During an NFSv4 migration event, it is possible that an FSID may be
-migrated to a destination server that is accessible via a different
-source IP address than the source server was.  The client must update
-callback endpoint information on the destination server so that it can
-maintain leases and allow delegation.
+That almost had to be a coincidence--there's no connection between the
+two things.
 
-Without a new "clientaddr=" option from user space, however, the
-kernel itself must construct an appropriate IP address for the
-callback update.  Provide an API in the RPC client for upper layer
-RPC consumers to acquire a source address for a remote.
+--b.
 
-The mechanism used by the mount.nfs command is copied: set up a
-connected UDP socket to the designated remote, then scrape the source
-address off the socket.  We are careful to select the correct network
-namespace when setting up the temporary UDP socket.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- include/linux/sunrpc/clnt.h |    1 
- net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+), 0 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 3d8f9c4..6a869b4 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -160,6 +160,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
- void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
-+int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
- 
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
- size_t		rpc_pton(const char *, const size_t,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f0268ea..ebd2192 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -806,6 +806,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
- 
-+static const struct sockaddr_in rpc_inaddr_loopback = {
-+	.sin_family		= AF_INET,
-+	.sin_addr.s_addr	= htonl(INADDR_ANY),
-+};
-+
-+static const struct sockaddr_in6 rpc_in6addr_loopback = {
-+	.sin6_family		= AF_INET6,
-+	.sin6_addr		= IN6ADDR_ANY_INIT,
-+};
-+
-+/*
-+ * Try a getsockname() on a connected datagram socket.  Using a
-+ * connected datagram socket prevents leaving a socket in TIME_WAIT.
-+ * This conserves the ephemeral port number space.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
-+			struct sockaddr *buf, int buflen)
-+{
-+	struct socket *sock;
-+	int err;
-+
-+	err = __sock_create(net, sap->sa_family,
-+				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
-+	if (err < 0) {
-+		dprintk("RPC:       can't create UDP socket (%d)\n", err);
-+		goto out;
-+	}
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		err = kernel_bind(sock,
-+				(struct sockaddr *)&rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+		break;
-+	default:
-+		err = -EAFNOSUPPORT;
-+		goto out;
-+	}
-+	if (err < 0) {
-+		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_connect(sock, sap, salen, 0);
-+	if (err < 0) {
-+		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = kernel_getsockname(sock, buf, &buflen);
-+	if (err < 0) {
-+		dprintk("RPC:       getsockname failed (%d)\n", err);
-+		goto out_release;
-+	}
-+
-+	err = 0;
-+	if (buf->sa_family == AF_INET6) {
-+		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
-+		sin6->sin6_scope_id = 0;
-+	}
-+	dprintk("RPC:       %s succeeded\n", __func__);
-+
-+out_release:
-+	sock_release(sock);
-+out:
-+	return err;
-+}
-+
-+/*
-+ * Scraping a connected socket failed, so we don't have a useable
-+ * local address.  Fallback: generate an address that will prevent
-+ * the server from calling us back.
-+ *
-+ * Returns zero and fills in "buf" if successful; otherwise, a
-+ * negative errno is returned.
-+ */
-+static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
-+{
-+	switch (family) {
-+	case AF_INET:
-+		if (buflen < sizeof(rpc_inaddr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_inaddr_loopback,
-+				sizeof(rpc_inaddr_loopback));
-+		break;
-+	case AF_INET6:
-+		if (buflen < sizeof(rpc_in6addr_loopback))
-+			return -EINVAL;
-+		memcpy(buf, &rpc_in6addr_loopback,
-+				sizeof(rpc_in6addr_loopback));
-+	default:
-+		dprintk("RPC:       %s: address family not supported\n",
-+			__func__);
-+		return -EAFNOSUPPORT;
-+	}
-+	dprintk("RPC:       %s: succeeded\n", __func__);
-+	return 0;
-+}
-+
-+/**
-+ * rpc_localaddr - discover local endpoint address for an RPC client
-+ * @clnt: RPC client structure
-+ * @buf: target buffer
-+ * @buflen: size of target buffer, in bytes
-+ *
-+ * Returns zero and fills in "buf" and "buflen" if successful;
-+ * otherwise, a negative errno is returned.
-+ *
-+ * This works even if the underlying transport is not currently connected,
-+ * or if the upper layer never previously provided a source address.
-+ *
-+ * The result of this function call is transient: multiple calls in
-+ * succession may give different results, depending on how local
-+ * networking configuration changes over time.
-+ */
-+int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
-+{
-+	struct sockaddr_storage address;
-+	struct sockaddr *sap = (struct sockaddr *)&address;
-+	struct rpc_xprt *xprt;
-+	struct net *net;
-+	size_t salen;
-+	int err;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
-+	salen = xprt->addrlen;
-+	memcpy(sap, &xprt->addr, salen);
-+	net = get_net(xprt->xprt_net);
-+	rcu_read_unlock();
-+
-+	rpc_set_port(sap, 0);
-+	err = rpc_sockname(net, sap, salen, buf, buflen);
-+	put_net(net);
-+	if (err != 0)
-+		/* Couldn't discover local address, return ANYADDR */
-+		return rpc_anyaddr(sap->sa_family, buf, buflen);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(rpc_localaddr);
-+
- void
- rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
- {
-
+> >If an admin were to remove fsid=0 from their exports line, they'd also
+> >need to adjust the paths in all the connecting clients, right?
+> >
+> >	--dkg
+> No. If you are exporting /export fsid-0 and crossmnt-ing
+> /export/opt, you mount server:/opt client/somewhere. The only file
+> you change is /etc/exports on the server, to contain the old style
+> mount spec.
+> /opt yourIPs(rw,sec=none:sys:krb5. . .)
+> The client sees exactly he same path.
+> 
+> HTH
+> Steve
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
