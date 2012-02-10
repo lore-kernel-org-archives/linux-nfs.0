@@ -1,103 +1,456 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16069 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11202 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757903Ab2BIT1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 14:27:55 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 9 Feb 2012 19:27:46 +0000
-Message-ID: <1328815664.13180.60.camel@lade.trondhjem.org>
-References: <1328805686-19559-1-git-send-email-dros@netapp.com>
-	 <1328811417.13180.51.camel@lade.trondhjem.org>
-	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
-In-Reply-To: <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1760264Ab2BJWCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:32 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 20/21] Export symbols for v4 module
+Date: Fri, 10 Feb 2012 17:02:04 -0500
+Message-Id: <1328911325-1566-20-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjEzICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBGZWIgOSwgMjAxMiwgYXQgMToxNiBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-DQo+ID4gT24gVGh1LCAyMDEyLTAyLTA5IGF0IDExOjQxIC0wNTAwLCBXZXN0b24gQW5kcm9zIEFk
-YW1zb24gd3JvdGU6DQo+ID4+IEluY2x1ZGUgUlBDIHN0YXRpc3RpY3MgZnJvbSBhbGwgZGF0YSBz
-ZXJ2ZXJzIGluIC9wcm9jL3NlbGYvbW91bnRzdGF0cyBmb3IgcE5GUw0KPiA+PiBmaWxlbGF5b3V0
-IG1vdW50cy4NCj4gPj4gDQo+ID4+IFRoZSBhZGRpdGlvbmFsIGluZm8gcHJpbnRlZCBvbiB0aGUg
-InBlci1vcCBzdGF0aXN0aWNzIiBsaW5lIGRvZXMgbm90IGJyZWFrDQo+ID4+IGN1cnJlbnQgbW91
-bnRzdGF0cyg4KSBmcm9tIG5mcy11dGlscy4NCj4gPj4gDQo+ID4+IFNpZ25lZC1vZmYtYnk6IFdl
-c3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiA+PiAtLS0NCj4gPj4gDQo+
-ID4+IFRoaXMgaXMgY2xlYXJseSBhIGJldHRlciBhcHByb2FjaCB0aGFuIEkgd2FzIHRha2luZyB0
-cnlpbmcgdG8ga2VlcCBEUyBycGMgc3RhdHMNCj4gPj4gc2VwYXJhdGUgaW4gL3Byb2Mvc2VsZi9t
-b3VudHN0YXRzLg0KPiA+PiANCj4gPj4gRllJLCB0aGVyZSBhcmUgbm8gb3RoZXIgY2FsbGVycyBv
-ZiBycGNfcHJpbnRfaW9zdGF0cygpLg0KPiA+PiANCj4gPj4gVGhlIG5ldyBvdXRwdXQgb2YgL3By
-b2Mvc2VsZi9tb3VudHN0YXRzIHdvcmtzIGZpbmUgd2l0aCBjdXJyZW50IG1vdW50c3RhdHMgDQo+
-ID4+IHVzZXJsYW5kIHRvb2wuICBUaGUgYWRkaXRpb25hbCBkYXRhIG9uIHRoZSBwZXItb3Agc3Rh
-dGlzdGljcyBsaW5lIGRvZXNuJ3QgbWFrZQ0KPiA+PiBpdCBpbnRvIHRoZSBvdXRwdXQsIGJ1dCBJ
-IGxlZnQgaXQgaW4gL3Byb2Mvc2VsZi9tb3VudHN0YXRzIGJlY2F1c2UgaXQgZG9lc24ndA0KPiA+
-PiBicmVhayBhbnl0aGluZyBhbmQgY2FuIGJlIGluY2x1ZGVkIGluIG5ld2VyIHZlcnNpb25zIG9m
-IG1vdW50c3RhdHMuDQo+ID4+IA0KPiA+PiBJIHBsYW4gb24gYWRkaW5nIHRoZSBwZXItRFMgc3Rh
-dHMgKHJwYyBhbmQgb3RoZXJzKSBzb21ld2hlcmUgaW4gL3Byb2MvZnMvbmZzZnMvDQo+ID4+IHNv
-b24uDQo+ID4+IA0KPiA+PiBmcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyAgICAgICAgfCAgIDMwICsr
-KysrKysrKysrKysrKysrKysrKysrKysrDQo+ID4+IGZzL25mcy9wbmZzLmggICAgICAgICAgICAg
-ICAgICB8ICAgMjMgKysrKysrKysrKysrKysrKysrKysNCj4gPj4gZnMvbmZzL3BuZnNfZGV2LmMg
-ICAgICAgICAgICAgIHwgICA0NSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrDQo+ID4+IGZzL25mcy9zdXBlci5jICAgICAgICAgICAgICAgICB8ICAgIDMgKy0NCj4gPj4g
-aW5jbHVkZS9saW51eC9zdW5ycGMvbWV0cmljcy5oIHwgICAxMyArKysrKysrKystDQo+ID4+IG5l
-dC9zdW5ycGMvc3RhdHMuYyAgICAgICAgICAgICB8ICAgMzggKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKystDQo+ID4+IDYgZmlsZXMgY2hhbmdlZCwgMTQ3IGluc2VydGlvbnMoKyksIDUg
-ZGVsZXRpb25zKC0pDQo+ID4+IA0KPiA+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5
-b3V0LmMgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiBpbmRleCA3OWJlN2FjLi41MWM3
-MWU1IDEwMDY0NA0KPiA+PiAtLS0gYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiArKysg
-Yi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+PiBAQCAtMzMsNiArMzMsOCBAQA0KPiA+PiAj
-aW5jbHVkZSA8bGludXgvbmZzX3BhZ2UuaD4NCj4gPj4gI2luY2x1ZGUgPGxpbnV4L21vZHVsZS5o
-Pg0KPiA+PiANCj4gPj4gKyNpbmNsdWRlIDxsaW51eC9zdW5ycGMvbWV0cmljcy5oPg0KPiA+PiAr
-DQo+ID4+ICNpbmNsdWRlICJpbnRlcm5hbC5oIg0KPiA+PiAjaW5jbHVkZSAibmZzNGZpbGVsYXlv
-dXQuaCINCj4gPj4gDQo+ID4+IEBAIC05MTgsNiArOTIwLDMzIEBAIGZpbGVsYXlvdXRfZnJlZV9k
-ZXZlaWNlaWRfbm9kZShzdHJ1Y3QgbmZzNF9kZXZpY2VpZF9ub2RlICpkKQ0KPiA+PiAJbmZzNF9m
-bF9mcmVlX2RldmljZWlkKGNvbnRhaW5lcl9vZihkLCBzdHJ1Y3QgbmZzNF9maWxlX2xheW91dF9k
-c2FkZHIsIGlkX25vZGUpKTsNCj4gPj4gfQ0KPiA+PiANCj4gPj4gK3N0YXRpYyB1bnNpZ25lZCBp
-bnQNCj4gPj4gK2ZpbGVsYXlvdXRfcnBjX2FkZF9pb3N0YXRzKHN0cnVjdCBycGNfaW9zdGF0cyAq
-dG90YWwsDQo+ID4+ICsJCQkgICB1bnNpZ25lZCBpbnQgbWF4cHJvYywNCj4gPj4gKwkJCSAgIHN0
-cnVjdCBuZnM0X2RldmljZWlkX25vZGUgKmQpDQo+ID4+ICt7DQo+ID4+ICsJc3RydWN0IG5mczRf
-ZmlsZV9sYXlvdXRfZHNhZGRyICpkc2FkZHI7DQo+ID4+ICsJc3RydWN0IG5mczRfcG5mc19kcyAq
-ZHM7DQo+ID4+ICsJdW5zaWduZWQgaW50IG51bV9kcyA9IDA7DQo+ID4+ICsJdTMyIGk7DQo+ID4+
-ICsNCj4gPj4gKwlkc2FkZHIgPSBjb250YWluZXJfb2YoZCwgc3RydWN0IG5mczRfZmlsZV9sYXlv
-dXRfZHNhZGRyLCBpZF9ub2RlKTsNCj4gPj4gKw0KPiA+PiArCWZvciAoaSA9IDA7IGkgPCBkc2Fk
-ZHItPmRzX251bTsgaSsrKSB7DQo+ID4+ICsJCWRzID0gZHNhZGRyLT5kc19saXN0W2ldOw0KPiA+
-PiArDQo+ID4+ICsJCS8qIG9ubHkgYWRkIGlvc3RhdHMgaWYgbmZzX2NsaWVudCBpcyBkaWZmZXJl
-bnQgZnJvbSBNRFMgKi8NCj4gPj4gKwkJaWYgKGRzICYmIGRzLT5kc19jbHAgJiYgZC0+bmZzX2Ns
-aWVudCAhPSBkcy0+ZHNfY2xwKSB7DQo+ID4+ICsJCQlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSBk
-cy0+ZHNfY2xwLT5jbF9ycGNjbGllbnQ7DQo+ID4gDQo+ID4gSG1tbS4uLi4gU2hvdWxkbid0IHRo
-aXMgcmF0aGVyIGJlIHRoZSBORlNfQ0xJRU5UKGlub2RlKT8gQWxzbywgd2h5IG5vdA0KPiA+IGRv
-IHRoaXMgaW4gdGhlIHJlYWQvd3JpdGUgY29tcGxldGlvbiBjb2RlPyBXaHkgd2FsayB0aGUgZGV2
-aWNlaWQgbGlzdCBhdA0KPiA+IGFsbD8NCj4gDQo+IEknbSBub3QgcmVhbGx5IGZvbGxvd2luZyB5
-b3UuICBOb3RlIHRoYXQgdGhlc2UgYXJlIHJwY19pb3N0YXRzIG5vdCBuZnNfaW9zdGF0cy4gIA0K
-PiBuZnNfaW9zdGF0cyBoYXZlIGJlZW4gcHJvcGVybHkgY291bnRpbmcgb3BlcmF0aW9ucyB0byBE
-U3MgZm9yIHNvbWUgdGltZSBub3cuDQo+IHJwY19pb3N0YXRzIGNvdW50IG9wZXJhdGlvbnMsIHJ0
-dCwgZXhlY3RpbWUsIGV0YyBwZXIgcnBjIHByb2NlZHVyZSAob3IgaW4gdGhlIGNhc2Ugb2YgTkZT
-djQuWCB0aGVyZSBpcyBhIGhhY2sgdG8gdXNlIG9wZXJhdGlvbnMgd2l0aGluIGNvbXBvdW5kcyku
-DQo+IA0KPiBXZSBoYXZlIHRvIHdhbGsgdGhlIGRldmljZSBsaXN0IHRvIGdldCBhY2Nlc3MgdG8g
-dGhlIHVuZGVybHlpbmcgRFMncyBuZnNfY2xpZW50LT5ycGNfY2xpZW50IC0tIEkgY2FuJ3QganVz
-dCBwdXQgdGhpcyBpbiB0aGUgcmVhZC93cml0ZSBjb21wbGV0aW9uIGJlY2F1c2UsIHVubGlrZSBu
-ZnNfaW9zdGF0cywgcnBjX2lvc3RhdHMgY291bnQgYWxsIG9wZXJhdGlvbnMgYW5kIG5vdCBqdXN0
-IHJlYWQvd3JpdGUgZXZlbnRzL2J5dGVzIChub3QgdG8gbWVudGlvbiB0aGF0IHRoZSBhY2N1bXVs
-YXRpb24gaXMgZG9uZSBhdCB0aGUgcnBjIGxheWVyKS4NCg0KSW4gZG9pbmcgdGhpcywgeW91IGFy
-ZSBhc3N1bWluZyB0aGF0IERTZXMgYXJlIG5vdCBzaGFyZWQgYW1vbmcgbXVsdGlwbGUNCmZpbGVz
-eXN0ZW1zIG9yIE1EU2VzIChpLmUuIHRoYXQgZWFjaCBEUyBpcyB1c2VkIGJ5IGEgc2luZ2xlIHN0
-cnVjdA0KbmZzX3NlcnZlcikuIEZvciBzb21ldGhpbmcgbGlrZSBhIE5ldEFwcCBmaWxlciBpbiBj
-LW1vZGUsIHRoYXQgaXMNCmNsZWFybHkgbm90IGEgdmFsaWQgYXNzdW1wdGlvbi4NCg0KPiBJIGRv
-IGhhdmUgYW4gaW1wbGVtZW50YXRpb24gdGhhdCBkb2Vzbid0IG5lZWQgdG8gd2FsayB0aGUgZGV2
-aWNlaWQgbGlzdCBieSBhbGxvd2luZyBhIHNoYXJlZCBycGNfaW9zdGF0cyBzdHJ1Y3QgYmV0d2Vl
-biBtdWx0aXBsZSBycGNfY2xpZW50cyAoaW4gYWRkaXRpb24gdG8gdGhlIGN1cnJlbnQgcnBjX2lv
-c3RhdHMgc3RydWN0dXJlKSwgYnV0IHRoYXQgcmVxdWlyZWQgYWRkaW5nIGxvY2tpbmcgYW5kIHJl
-ZmVyZW5jZSBjb3VudGluZyAtLSBhbGwgZm9yIHByaW50aW5nIHN0YXRzIChvYnZpb3VzbHkgbm90
-IHdoYXQgd2Ugd2FudCkuDQoNClRoaXMgbWlnaHQgYmUgbW9yZSBpbiBsaW5lIHdpdGggd2hhdCB3
-ZSB3YW50LiBOb3RlIHRoYXQgaXQgc2hvdWxkIGJlDQplYXN5IHRvIGNsb25lIGFuIHJwY19jbGll
-bnQgYW5kIHRoZW4gcmVwbGFjZSBpdHMgcnBjX2lvc3RhdHMgc3RydWN0LiBJDQpkb24ndCB0aGlu
-ayB0aGF0IG5lZWRzIGFueSBleHRyYSBsb2NraW5nLiBXZSdyZSBhbHJlYWR5IGlnbm9yaW5nIGxv
-Y2tpbmcNCmhlcmUgYmV0d2VlbiBkaWZmZXJlbnQgcnBjX3Rhc2tzLCBzbyB0aHJvd2luZyBpbiBk
-aWZmZXJlbnQgcnBjX2NsaWVudHMNCnRvIHRoZSBtaXggd2lsbCBtYWtlIG5vIGRpZmZlcmVuY2Uu
-DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+This patch should be squashed with the previous one for everything to work.  I
+also need to double check that all of these are actually needed...
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c    |    6 ++++++
+ fs/nfs/dir.c       |    4 ++++
+ fs/nfs/file.c      |    1 +
+ fs/nfs/inode.c     |    5 +++++
+ fs/nfs/namespace.c |    2 ++
+ fs/nfs/pagelist.c  |    3 +++
+ fs/nfs/pnfs.c      |   15 +++++++++++++++
+ fs/nfs/pnfs_dev.c  |    1 +
+ fs/nfs/read.c      |    3 +++
+ fs/nfs/super.c     |    3 +++
+ fs/nfs/write.c     |    4 ++++
+ 11 files changed, 47 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 6743a28..abd7d86 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -57,6 +57,7 @@ EXPORT_SYMBOL_GPL(nfs_client_lock);
+ static DEFINE_SPINLOCK(nfs_version_lock);
+ static LIST_HEAD(nfs_versions);
+ LIST_HEAD(nfs_client_list);
++EXPORT_SYMBOL_GPL(nfs_client_list);
+ static LIST_HEAD(nfs_volume_list);
+ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+ #if IS_ENABLED(CONFIG_NFS_V4)
+@@ -558,6 +559,7 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ 	clp->cl_cons_state = state;
+ 	wake_up_all(&nfs_client_active_wq);
+ }
++EXPORT_SYMBOL_GPL(nfs_mark_client_ready);
+ 
+ /*
+  * With sessions, the client is not marked ready until after a
+@@ -574,6 +576,7 @@ int nfs4_check_client_ready(struct nfs_client *clp)
+ 		return -EPROTONOSUPPORT;
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs4_check_client_ready);
+ 
+ /*
+  * Initialise the timeout values for a connection
+@@ -1171,6 +1174,7 @@ nfs4_find_client_ident(int cb_ident)
+ 	spin_unlock(&nfs_client_lock);
+ 	return clp;
+ }
++EXPORT_SYMBOL_GPL(nfs4_find_client_ident);
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ /*
+@@ -1206,6 +1210,7 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
+ 	spin_unlock(&nfs_client_lock);
+ 	return NULL;
+ }
++EXPORT_SYMBOL_GPL(nfs4_find_client_sessionid);
+ 
+ #else /* CONFIG_NFS_V4_1 */
+ 
+@@ -1215,6 +1220,7 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
+ {
+ 	return NULL;
+ }
++EXPORT_SYMBOL_GPL(nfs4_find_client_sessionid);
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 840a811..39c71ed 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -103,6 +103,7 @@ const struct inode_operations nfs4_dir_inode_operations = {
+ 	.listxattr	= generic_listxattr,
+ 	.removexattr	= generic_removexattr,
+ };
++EXPORT_SYMBOL_GPL(nfs4_dir_inode_operations);
+ 
+ #endif /* CONFIG_NFS_V4 */
+ 
+@@ -958,6 +959,7 @@ void nfs_force_lookup_revalidate(struct inode *dir)
+ {
+ 	NFS_I(dir)->cache_change_attribute++;
+ }
++EXPORT_SYMBOL_GPL(nfs_force_lookup_revalidate);
+ 
+ /*
+  * A check for whether or not the parent directory has changed.
+@@ -1311,6 +1313,7 @@ const struct dentry_operations nfs4_dentry_operations = {
+ 	.d_automount	= nfs_d_automount,
+ 	.d_release	= nfs_d_release,
+ };
++EXPORT_SYMBOL_GPL(nfs4_dentry_operations);
+ 
+ /*
+  * Use intent information to determine whether we need to substitute
+@@ -2276,6 +2279,7 @@ int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags)
+ {
+ 	return nfs_do_access(inode, cred, nfs_open_permission_mask(openflags));
+ }
++EXPORT_SYMBOL_GPL(nfs_may_open);
+ 
+ int nfs_permission(struct inode *inode, int mask)
+ {
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 5158bd3..219bb22 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -889,4 +889,5 @@ const struct file_operations nfs4_file_operations = {
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= nfs_setlease,
+ };
++EXPORT_SYMBOL_GPL(nfs4_file_operations);
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 2ee6259..e2c372c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -83,6 +83,7 @@ int nfs_wait_bit_killable(void *word)
+ 	freezable_schedule();
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
+ 
+ /**
+  * nfs_compat_user_ino64 - returns the user-visible inode number
+@@ -421,6 +422,7 @@ out_no_inode:
+ 	dprintk("nfs_fhget: iget failed with error %ld\n", PTR_ERR(inode));
+ 	goto out;
+ }
++EXPORT_SYMBOL_GPL(nfs_fhget);
+ 
+ #define NFS_VALID_ATTRS (ATTR_MODE|ATTR_UID|ATTR_GID|ATTR_SIZE|ATTR_ATIME|ATTR_ATIME_SET|ATTR_MTIME|ATTR_MTIME_SET|ATTR_FILE|ATTR_OPEN)
+ 
+@@ -686,6 +688,7 @@ struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx)
+ 		atomic_inc(&ctx->lock_context.count);
+ 	return ctx;
+ }
++EXPORT_SYMBOL_GPL(get_nfs_open_context);
+ 
+ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ {
+@@ -712,6 +715,7 @@ void put_nfs_open_context(struct nfs_open_context *ctx)
+ {
+ 	__put_nfs_open_context(ctx, 0);
+ }
++EXPORT_SYMBOL_GPL(put_nfs_open_context);
+ 
+ /*
+  * Ensure that mmap has a recent RPC credential for use when writing out
+@@ -1536,6 +1540,7 @@ static void nfs_destroy_inodecache(void)
+ }
+ 
+ struct workqueue_struct *nfsiod_workqueue;
++EXPORT_SYMBOL_GPL(nfsiod_workqueue);
+ 
+ /*
+  * start up the nfsiod workqueue
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 289560d..69ec69b 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -119,6 +119,7 @@ Elong_unlock:
+ Elong:
+ 	return ERR_PTR(-ENAMETOOLONG);
+ }
++EXPORT_SYMBOL_GPL(nfs_path);
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+@@ -149,6 +150,7 @@ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+ 
+ 	return pseudoflavor;
+ }
++EXPORT_SYMBOL_GPL(nfs_find_best_sec);
+ 
+ static int nfs_negotiate_security(const struct dentry *parent,
+ 				  const struct dentry *dentry,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 77a184e..0864530 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -249,6 +249,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_init);
+ 
+ /**
+  * nfs_can_coalesce_requests - test two requests for compatibility
+@@ -390,6 +391,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	} while (ret);
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_add_request);
+ 
+ /**
+  * nfs_pageio_complete - Complete I/O on an nfs_pageio_descriptor
+@@ -405,6 +407,7 @@ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
+ 			break;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_complete);
+ 
+ /**
+  * nfs_pageio_cond_complete - Conditional I/O completion
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9292787..f7edc4a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -189,6 +189,7 @@ get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	atomic_inc(&lo->plh_refcount);
+ }
++EXPORT_SYMBOL_GPL(get_layout_hdr);
+ 
+ static struct pnfs_layout_hdr *
+ pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+@@ -232,6 +233,7 @@ put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		spin_unlock(&inode->i_lock);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(put_layout_hdr);
+ 
+ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+@@ -412,6 +414,7 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Return %i\n", __func__, invalid - removed);
+ 	return invalid - removed;
+ }
++EXPORT_SYMBOL_GPL(mark_matching_lsegs_invalid);
+ 
+ /* note free_me must contain lsegs from a single layout_hdr */
+ void
+@@ -439,6 +442,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
+ 		free_lseg(lseg);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(pnfs_free_lseg_list);
+ 
+ void
+ pnfs_destroy_layout(struct nfs_inode *nfsi)
+@@ -455,6 +459,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ }
++EXPORT_SYMBOL_GPL(pnfs_destroy_layout);
+ 
+ /*
+  * Called by the state manger to remove all layouts established under an
+@@ -488,6 +493,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ 		pnfs_destroy_layout(NFS_I(lo->plh_inode));
+ 	}
+ }
++EXPORT_SYMBOL_GPL(pnfs_destroy_all_layouts);
+ 
+ /* update lo->plh_stateid with new if is more recent */
+ void
+@@ -518,6 +524,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+ 		}
+ 	}
+ }
++EXPORT_SYMBOL_GPL(pnfs_set_layout_stateid);
+ 
+ /* lget is set to 1 if called from inside send_layoutget call chain */
+ static bool
+@@ -558,6 +565,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 	dprintk("<-- %s\n", __func__);
+ 	return status;
+ }
++EXPORT_SYMBOL_GPL(pnfs_choose_layoutget_stateid);
+ 
+ /*
+ * Get layout from server.
+@@ -693,6 +701,7 @@ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+ }
++EXPORT_SYMBOL_GPL(_pnfs_return_layout);
+ 
+ bool pnfs_roc(struct inode *ino)
+ {
+@@ -723,6 +732,7 @@ out_nolayout:
+ 	spin_unlock(&ino->i_lock);
+ 	return false;
+ }
++EXPORT_SYMBOL_GPL(pnfs_roc);
+ 
+ void pnfs_roc_release(struct inode *ino)
+ {
+@@ -734,6 +744,7 @@ void pnfs_roc_release(struct inode *ino)
+ 	put_layout_hdr_locked(lo);
+ 	spin_unlock(&ino->i_lock);
+ }
++EXPORT_SYMBOL_GPL(pnfs_roc_release);
+ 
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ {
+@@ -745,6 +756,7 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ 		lo->plh_barrier = barrier;
+ 	spin_unlock(&ino->i_lock);
+ }
++EXPORT_SYMBOL_GPL(pnfs_roc_set_barrier);
+ 
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
+ {
+@@ -770,6 +782,7 @@ bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
+ 	spin_unlock(&ino->i_lock);
+ 	return found;
+ }
++EXPORT_SYMBOL_GPL(pnfs_roc_drain);
+ 
+ /*
+  * Compare two layout segments for sorting into layout cache.
+@@ -1080,6 +1093,7 @@ out_forget_reply:
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	goto out;
+ }
++EXPORT_SYMBOL_GPL(pnfs_layout_process);
+ 
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+@@ -1473,6 +1487,7 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+ 	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
+ 		nfss->pnfs_curr_ld->cleanup_layoutcommit(data);
+ }
++EXPORT_SYMBOL_GPL(pnfs_cleanup_layoutcommit);
+ 
+ /*
+  * For the LAYOUT4_NFSV4_1_FILES layout type, NFS_DATA_SYNC WRITEs and
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 4f359d2..e0041f3 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -255,6 +255,7 @@ nfs4_deviceid_purge_client(const struct nfs_client *clp)
+ 	for (h = 0; h < NFS4_DEVICE_ID_HASH_SIZE; h++)
+ 		_deviceid_purge_client(clp, h);
+ }
++EXPORT_SYMBOL_GPL(nfs4_deviceid_purge_client);
+ 
+ /*
+  * Stop use of all deviceids associated with an nfs_client
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 3c2540d..cdeffdc 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -70,6 +70,7 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
+ 	put_nfs_open_context(rdata->args.context);
+ 	nfs_readdata_free(rdata);
+ }
++EXPORT_SYMBOL_GPL(nfs_readdata_release);
+ 
+ static
+ int nfs_return_empty_page(struct page *page)
+@@ -115,6 +116,7 @@ void nfs_pageio_init_read_mds(struct nfs_pageio_descriptor *pgio,
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops,
+ 			NFS_SERVER(inode)->rsize, 0);
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_init_read_mds);
+ 
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+@@ -368,6 +370,7 @@ int nfs_generic_pagein(struct nfs_pageio_descriptor *desc, struct list_head *hea
+ 		return nfs_pagein_multi(desc, head);
+ 	return nfs_pagein_one(desc, head);
+ }
++EXPORT_SYMBOL_GPL(nfs_generic_pagein);
+ 
+ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 427865f..ad5b528 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -358,6 +358,7 @@ void nfs_sb_active(struct super_block *sb)
+ 	if (atomic_inc_return(&server->active) == 1)
+ 		atomic_inc(&sb->s_active);
+ }
++EXPORT_SYMBOL_GPL(nfs_sb_active);
+ 
+ void nfs_sb_deactive(struct super_block *sb)
+ {
+@@ -366,6 +367,7 @@ void nfs_sb_deactive(struct super_block *sb)
+ 	if (atomic_dec_and_test(&server->active))
+ 		deactivate_super(sb);
+ }
++EXPORT_SYMBOL_GPL(nfs_sb_deactive);
+ 
+ /*
+  * Deliver file system statistics to userspace
+@@ -2439,5 +2441,6 @@ int nfs4_validate_text_mount_data(void *options,
+ 				   &args->nfs_server.export_path,
+ 				   NFS4_MAXPATHLEN);
+ }
++EXPORT_SYMBOL_GPL(nfs4_validate_text_mount_data);
+ 
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9788bee..87437e3 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -104,6 +104,7 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_writedata_free(wdata);
+ }
++EXPORT_SYMBOL_GPL(nfs_writedata_release);
+ 
+ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ {
+@@ -1034,6 +1035,7 @@ int nfs_generic_flush(struct nfs_pageio_descriptor *desc, struct list_head *head
+ 		return nfs_flush_multi(desc, head);
+ 	return nfs_flush_one(desc, head);
+ }
++EXPORT_SYMBOL_GPL(nfs_generic_flush);
+ 
+ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ {
+@@ -1058,6 +1060,7 @@ void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+ 	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops,
+ 				NFS_SERVER(inode)->wsize, ioflags);
+ }
++EXPORT_SYMBOL_GPL(nfs_pageio_init_write_mds);
+ 
+ void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
+ {
+@@ -1623,6 +1626,7 @@ int nfs_wb_all(struct inode *inode)
+ 
+ 	return sync_inode(inode, &wbc);
+ }
++EXPORT_SYMBOL_GPL(nfs_wb_all);
+ 
+ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+ {
+-- 
+1.7.9
+
