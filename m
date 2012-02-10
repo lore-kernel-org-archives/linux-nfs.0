@@ -1,55 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751540Ab2BOVex (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:34:53 -0500
-Received: by iacb35 with SMTP id b35so1972889iac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:34:53 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:34:52 -0500
-Message-ID: <20120215213451.3254.78502.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from partagas.dragonet.es ([217.70.240.130]:58153 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759727Ab2BJTG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 14:06:56 -0500
+Message-ID: <4F356AB7.7070408@steve-ss.com>
+Date: Fri, 10 Feb 2012 20:06:31 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+CC: whats_up@gmx.net, linux-nfs@vger.kernel.org
+Subject: Re: mount hangs in NFS4+Kerberos setup
+References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon> <4F355CD2.6040603@steve-ss.com> <4F35603A.5050508@fifthhorseman.net>
+In-Reply-To: <4F35603A.5050508@fifthhorseman.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eliminate a number of implicit type casts in comparisons, and these
-compiler warnings:
+On 02/10/2012 07:21 PM, Daniel Kahn Gillmor wrote:
+> On 02/10/2012 01:07 PM, steve wrote:
+>> Officially, you should not export from a pseudo root. Please see the
+>> last few lines in the link I sent.
+> That link offers the same assertion but no explanation for it.  Can you
+> explain why that's the recommendation?
+Sorry, no. I can however explain why we changed: We were having problems 
+with idmapd uid:gid mappings from the bind mount and just as an 
+experiment we tried the old way. Problem solved.
+>
+> If an admin were to remove fsid=0 from their exports line, they'd also
+> need to adjust the paths in all the connecting clients, right?
+>
+> 	--dkg
+No. If you are exporting /export fsid-0 and crossmnt-ing /export/opt, 
+you mount server:/opt client/somewhere. The only file you change is 
+/etc/exports on the server, to contain the old style mount spec.
+/opt yourIPs(rw,sec=none:sys:krb5. . .)
+The client sees exactly he same path.
 
-fs/nfs/dir.c: In function ‘nfs_readdir_clear_array’:
-fs/nfs/dir.c:264:16: warning: comparison between signed and unsigned
-		integer expressions [-Wsign-compare]
-fs/nfs/dir.c: In function ‘nfs_readdir_search_for_cookie’:
-fs/nfs/dir.c:352:16: warning: comparison between signed and unsigned
-		integer expressions [-Wsign-compare]
-fs/nfs/dir.c: In function ‘nfs_do_filldir’:
-fs/nfs/dir.c:769:38: warning: comparison between signed and unsigned
-		integer expressions [-Wsign-compare]
-fs/nfs/dir.c:780:9: warning: comparison between signed and unsigned
-		integer expressions [-Wsign-compare]
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/dir.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ac28990..8661e13 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -207,7 +207,7 @@ struct nfs_cache_array_entry {
- };
- 
- struct nfs_cache_array {
--	unsigned int size;
-+	int size;
- 	int eof_index;
- 	u64 last_cookie;
- 	struct nfs_cache_array_entry array[0];
-
+HTH
+Steve
