@@ -1,119 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577Ab2BMVwX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:23 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933968eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:22 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 03/10] nfsd41: handle current stateid on lock and locku
-Date: Mon, 13 Feb 2012 22:55:25 +0100
-Message-Id: <1329170132-7081-4-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:14668 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760244Ab2BJWCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:12 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 02/21] NFS: Make v2 configurable
+Date: Fri, 10 Feb 2012 17:01:46 -0500
+Message-Id: <1328911325-1566-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+With this patch NFS v2 will no longer be automatically compiled in.
+Instead, users will have to select NFS_V2 during Kconfig if they want to
+use v2.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/current_stateid.h |   11 ++++++++++-
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   22 ++++++++++++++++++++--
- 3 files changed, 32 insertions(+), 3 deletions(-)
+ fs/nfs/Kconfig  |    9 +++++++++
+ fs/nfs/Makefile |    5 +++--
+ fs/nfs/client.c |   11 ++++++++++-
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index a83dd50..21550b6 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -4,8 +4,17 @@
- #include "state.h"
- #include "xdr4.h"
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index dbcd821..5419166 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -29,6 +29,15 @@ config NFS_FS
  
-+/*
-+ * functions to set current state id
-+ */
- extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
--extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
- extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ 	  If unsure, say N.
  
-+/*
-+ * functions to consume current state id
-+ */
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++config NFS_V2
++	bool "NFS client support for NFS version 2"
++	depends on NFS_FS
++	help
++	  This option enables support for version 2 of the NFS protocol
++	  (RFC 1094) in the kernel's NFS client.
 +
- #endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a457551..f66a8b2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1474,6 +1474,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCK",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lock_rsize,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_lockstateid,
- 	},
- 	[OP_LOCKT] = {
- 		.op_func = (nfsd4op_func)nfsd4_lockt,
-@@ -1484,6 +1485,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCKU",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6322a59..5665061 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4710,6 +4710,9 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- 		cstate->current_stateid = stateid;
- }
- 
-+/*
-+ * functions to set current state id
-+ */
- void
- nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
- {
-@@ -4717,13 +4720,28 @@ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *op
- }
- 
- void
-+nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	put_stateid(cstate, &close->cl_stateid);
-+}
++	  If unsure, say Y.
 +
-+void
-+nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lock)
-+{
-+	put_stateid(cstate, &lock->lk_resp_stateid);
-+}
-+
-+/*
-+ * functions to consume current state id
-+ */
-+void
- nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
- {
- 	get_stateid(cstate, &close->cl_stateid);
- }
+ config NFS_V3
+ 	bool "NFS client support for NFS version 3"
+ 	depends on NFS_FS
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index b58613d..7ddd45d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -4,11 +4,12 @@
  
- void
--nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
- {
--	get_stateid(cstate, &close->cl_stateid);
-+	get_stateid(cstate, &locku->lu_stateid);
- }
+ obj-$(CONFIG_NFS_FS) += nfs.o
+ 
+-nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+-			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
++nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
++			   direct.o pagelist.o read.o symlink.o unlink.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
++nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 872521e..02a33d8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
+  * RPC cruft for NFS
+  */
+ static const struct rpc_version *nfs_version[5] = {
++#ifdef CONFIG_NFS_V2
+ 	[2]			= &nfs_version2,
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	[3]			= &nfs_version3,
+ #endif
+@@ -834,7 +836,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
+-		.rpc_ops = &nfs_v2_clientops,
++		.rpc_ops = NULL,
+ 		.proto = data->nfs_server.protocol,
+ 		.net = data->net,
+ 	};
+@@ -844,10 +846,17 @@ static int nfs_init_server(struct nfs_server *server,
+ 
+ 	dprintk("--> nfs_init_server()\n");
+ 
++
++#ifdef CONFIG_NFS_V2
++	if (data->version == 2)
++		cl_init.rpc_ops = &nfs_v2_clientops;
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	if (data->version == 3)
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
+ #endif
++	if (cl_init.rpc_ops == NULL)
++		return -EPROTONOSUPPORT;
+ 
+ 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+ 			data->timeo, data->retrans);
 -- 
-1.7.7.6
+1.7.9
 
