@@ -1,92 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:62774 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756603Ab2BAPoZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:44:25 -0500
-Received: by qcqw6 with SMTP id w6so739876qcq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:44:24 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 4/5] nfsd: add a header describing upcall to nfsdcld
-Date: Wed,  1 Feb 2012 10:44:11 -0500
-Message-Id: <1328111052-28389-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:14668 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753647Ab2BJWCP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:02:15 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [RFC 06/21] NFS: Create a single nfs_clone_super() function
+Date: Fri, 10 Feb 2012 17:01:50 -0500
+Message-Id: <1328911325-1566-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+v2 and v3 shared a function for this, but v4 implemented something
+different.  When I looked closer at the v4 implementation, I found it
+was basically doing the same thing as v3.  Might as well share the code
+whenever possible...
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 56 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+ fs/nfs/super.c |   33 +++++++--------------------------
+ 1 files changed, 7 insertions(+), 26 deletions(-)
 
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..c478642
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,56 @@
-+/*
-+ * Upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2011 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
-+
-+/* latest upcall version available */
-+#define CLD_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Remove,		/* remove record of this cm_id */
-+	Cld_Check,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index c1e8994..ea1d932 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2089,7 +2089,7 @@ static void nfs_fill_super(struct super_block *sb,
+ }
+ 
+ /*
+- * Finish setting up a cloned NFS2/3 superblock
++ * Finish setting up a cloned NFS2/3/4 superblock
+  */
+ static void nfs_clone_super(struct super_block *sb,
+ 			    const struct super_block *old_sb)
+@@ -2099,17 +2099,18 @@ static void nfs_clone_super(struct super_block *sb,
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+ 	sb->s_blocksize = old_sb->s_blocksize;
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
++	sb->s_xattr = old_sb->s_xattr;
++	sb->s_op = old_sb->s_op;
++	sb->s_time_gran = 1;
+ 
+-	if (server->nfs_client->rpc_ops->version == 3) {
++	if (server->nfs_client->rpc_ops->version != 2) {
+ 		/* The VFS shouldn't apply the umask to mode bits. We will do
+ 		 * so ourselves when necessary.
+ 		 */
+ 		sb->s_flags |= MS_POSIXACL;
+-		sb->s_time_gran = 1;
+ 	}
+ 
+-	sb->s_op = old_sb->s_op;
+- 	nfs_initialise_sb(sb);
++	nfs_initialise_sb(sb);
+ }
+ 
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+@@ -2462,26 +2463,6 @@ error_splat_bdi:
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+- * Finish setting up a cloned NFS4 superblock
+- */
+-static void nfs4_clone_super(struct super_block *sb,
+-			    const struct super_block *old_sb)
+-{
+-	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+-	sb->s_blocksize = old_sb->s_blocksize;
+-	sb->s_maxbytes = old_sb->s_maxbytes;
+-	sb->s_time_gran = 1;
+-	sb->s_op = old_sb->s_op;
+-	/*
+-	 * The VFS shouldn't apply the umask to mode bits. We will do
+-	 * so ourselves when necessary.
+-	 */
+-	sb->s_flags  |= MS_POSIXACL;
+-	sb->s_xattr  = old_sb->s_xattr;
+-	nfs_initialise_sb(sb);
+-}
+-
+-/*
+  * Set up an NFS4 superblock
+  */
+ static void nfs4_fill_super(struct super_block *sb)
+@@ -2950,7 +2931,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs4_clone_super(s, data->sb);
++		nfs_clone_super(s, data->sb);
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
+ 
 -- 
-1.7.7.6
+1.7.9
 
