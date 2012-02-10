@@ -1,39 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45444 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:33919 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750756Ab2BXFBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Feb 2012 00:01:04 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] 4.1 server tests: add citation for COMP4b
-Date: Fri, 24 Feb 2012 00:00:58 -0500
-Message-Id: <1330059660-2053-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1330059660-2053-1-git-send-email-bfields@redhat.com>
-References: <1330059660-2053-1-git-send-email-bfields@redhat.com>
+	id S932526Ab2BJFpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 00:45:55 -0500
+From: Cong Wang <amwang@redhat.com>
+To: linux-kernel@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, Cong Wang <amwang@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 39/60] nfs: remove the second argument of k[un]map_atomic()
+Date: Fri, 10 Feb 2012 13:40:00 +0800
+Message-Id: <1328852421-19678-40-git-send-email-amwang@redhat.com>
+In-Reply-To: <1328852421-19678-1-git-send-email-amwang@redhat.com>
+References: <1328852421-19678-1-git-send-email-amwang@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Cong Wang <amwang@redhat.com>
 ---
- nfs4.1/server41tests/st_compound.py |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/dir.c      |    8 ++++----
+ fs/nfs/nfs4proc.c |    4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_compound.py b/nfs4.1/server41tests/st_compound.py
-index d38f621..c6a5ea9 100644
---- a/nfs4.1/server41tests/st_compound.py
-+++ b/nfs4.1/server41tests/st_compound.py
-@@ -64,7 +64,7 @@ def testInvalidMinor(t, env):
- def testInvalidMinor2(t, env):
-     """COMPOUND with invalid minor version returns NFS4ERR_MINOR_VERS_MISMATCH
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index fd9a872..32aa691 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -260,10 +260,10 @@ void nfs_readdir_clear_array(struct page *page)
+ 	struct nfs_cache_array *array;
+ 	int i;
  
--    even if using illegal opcode
-+    even if using illegal opcode (rfc 5661 p. 399)
+-	array = kmap_atomic(page, KM_USER0);
++	array = kmap_atomic(page);
+ 	for (i = 0; i < array->size; i++)
+ 		kfree(array->array[i].string.name);
+-	kunmap_atomic(array, KM_USER0);
++	kunmap_atomic(array);
+ }
  
-     FLAGS: compound all
-     CODE: COMP4b
+ /*
+@@ -1870,11 +1870,11 @@ static int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *sym
+ 	if (!page)
+ 		return -ENOMEM;
+ 
+-	kaddr = kmap_atomic(page, KM_USER0);
++	kaddr = kmap_atomic(page);
+ 	memcpy(kaddr, symname, pathlen);
+ 	if (pathlen < PAGE_SIZE)
+ 		memset(kaddr + pathlen, 0, PAGE_SIZE - pathlen);
+-	kunmap_atomic(kaddr, KM_USER0);
++	kunmap_atomic(kaddr);
+ 
+ 	error = NFS_PROTO(dir)->symlink(dir, dentry, page, pathlen, &attr);
+ 	if (error != 0) {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f0c849c..3c58843 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -193,7 +193,7 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 	 * when talking to the server, we always send cookie 0
+ 	 * instead of 1 or 2.
+ 	 */
+-	start = p = kmap_atomic(*readdir->pages, KM_USER0);
++	start = p = kmap_atomic(*readdir->pages);
+ 	
+ 	if (cookie == 0) {
+ 		*p++ = xdr_one;                                  /* next */
+@@ -221,7 +221,7 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 
+ 	readdir->pgbase = (char *)p - (char *)start;
+ 	readdir->count -= readdir->pgbase;
+-	kunmap_atomic(start, KM_USER0);
++	kunmap_atomic(start);
+ }
+ 
+ static int nfs4_wait_clnt_recover(struct nfs_client *clp)
 -- 
 1.7.7.6
 
