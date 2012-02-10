@@ -1,50 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52532 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757764Ab2BCU6T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 15:58:19 -0500
-Date: Fri, 3 Feb 2012 15:58:18 -0500
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 0/6] Fix NFSv4 delegations
-Message-ID: <20120203205818.GE2999@fieldses.org>
-References: <1326816029-13913-1-git-send-email-bfields@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1326816029-13913-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mailout-de.gmx.net ([213.165.64.23]:36581 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751384Ab2BJRl5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 12:41:57 -0500
+Date: Fri, 10 Feb 2012 18:41:54 +0100
+From: <whats_up@gmx.net>
+To: steve <steve@steve-ss.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: mount hangs in NFS4+Kerberos setup
+Message-ID: <20120210184154.03fb6907@little-poseidon>
+In-Reply-To: <4F35512A.9050500@steve-ss.com>
+References: <20120210154526.7b504146@little-poseidon>
+	<4F35512A.9050500@steve-ss.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 17, 2012 at 11:00:23AM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> NFSv4 delegations are currently implemented as leases.  However, leases
-> don't have quite the same semantics, which means that delegations are
-> currently enforced correctly only for conflicts between NFSv4 clients.
-> 
-> I previously attempted to address this by "fixing" the existing lease
-> behavior, assuming it was a bug--but from further investigation it looks
-> like that would be the wrong thing to do for Samba.
-> 
-> So instead I'm defining a new FL_DELEG flag to mark NFSv4 delegations,
-> and varying behavior based on that.  Delegations aren't meant to be
-> available to userspace for now--nfsd is the only user.
-> 
-> In theory this code allows both read and write delegations, but I'm only
-> using read delegations for now--write delegations are a project for
-> another day.  (At which point write leases will probably need some
-> fixing while we're at it.)
-> 
-> Still to do: if OPEN(dirfd, name) returns a delegation to the client,
-> then the client should be guaranteed that the opened file is still
-> linked as (dirfd, name).  But the current nfsd code allows a rename or
-> unlink to intervene between the lookup and the request for a delegation.
 
-OK, I decided I could fix that in the nfsd4 open code by retrying the
-lookup after obtaining the delegation, and just dropping the delegation
-(they're always optional) if it turned out there'd been a race.
 
-I'll post revised vfs patches (without that extra nfsd stuff).
+> Some older kernels do not support strong keys. Try adding:
+> allow_weak_crypto = true
+> to the
+>   [libdefaults]
+> in /etc/krb5.conf
 
---b.
+yes. I painfully (mount only says access denied) found out this already
+and I use allow_weak_crypto to limit to DES. More encryption
+types have been introduced with kernel 2.6.39...
+
+I tried to use kernel 3.2 from squeeze-backports but this introduced new
+errors, thus I decided to try with 2.6 first.
+
+
+> Also it's not recommended to use the pseudo-root fsid=0 method for
+> nfs exports under Linux:
+>   http://wiki.linux-nfs.org/wiki/index.php/Nfsv4_configuration
+
+hmm, as far as I have understood I have to:
+- export the root folder /exports explicitly beside the "real"
+  exports p.ex. /exports/opt
+- use fsid=0 for the root folder to force version 4 of NFS
+
+What's your suggestion to improve/secure my configuration?
+
+regards
+  knut
