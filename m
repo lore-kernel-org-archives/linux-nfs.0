@@ -1,59 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4157 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754008Ab2BATPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 14:15:55 -0500
-Date: Wed, 1 Feb 2012 19:30:54 +0100
-From: Andrea Arcangeli <aarcange@redhat.com>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
-        Gregory Farnum <gregory.farnum@dreamhost.com>,
-        lsf-pc@lists.linux-foundation.org,
-        Chris Mason <chris.mason@oracle.com>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
- detection
-Message-ID: <20120201183054.GM31817@redhat.com>
-References: <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
- <4F217F0C.6030105@itwm.fraunhofer.de>
- <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
- <4F283F7A.4020905@itwm.fraunhofer.de>
- <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
- <20120201164521.GY16796@shiny>
- <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
- <20120201174131.GD16796@shiny>
- <4F297D90.1010509@fastmail.fm>
- <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:53467 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759617Ab2BJSTI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 13:19:08 -0500
+Received: by wics10 with SMTP id s10so2215612wic.19
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Feb 2012 10:19:07 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
+In-Reply-To: <20120210172554.5e89e364@little-poseidon>
+References: <20120210154526.7b504146@little-poseidon>
+	<CAHVgHyUdxUhg3rBHNzf3EX049iqU-Mm2WiCtpAzz3v_yn1J7sQ@mail.gmail.com>
+	<20120210172554.5e89e364@little-poseidon>
+Date: Fri, 10 Feb 2012 13:19:06 -0500
+Message-ID: <CAHVgHyWYpbuAZ9SFk+oiQmStQC4cnr+yGPvdjag3zT61Cj0KxA@mail.gmail.com>
+Subject: Re: mount hangs in NFS4+Kerberos setup
+From: Andy Adamson <androsadamson@gmail.com>
+To: whats_up@gmx.net
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 01, 2012 at 12:16:05PM -0600, James Bottomley wrote:
-> supplying protection information to user space isn't about the
-> application checking what's on disk .. there's automatic verification in
-> the chain to do that (both the HBA and the disk will check the
-> protection information on entry/exit and transfer).  Supplying
-> protection information to userspace is about checking nothing went wrong
-> in the handoff between the end of the DIF stack and the application.
+On Fri, Feb 10, 2012 at 11:25 AM,  <whats_up@gmx.net> wrote:
+>
+>> Hi
+>>
+>> It appears that the RPCSEC_GSS Kerberos calls were successful, but
+>> that the Kerberos principal to id mapping failed.
+>
+> Is this influenced by /etc/idmapd.conf?
 
-Not sure if I got this right, but keeping protection information for
-in-ram pagecache and exposing it to userland somehow, to me sounds a
-bit of overkill as a concept. Then you should want that for anonymous
-memory too. If you copy the pagecache to a malloc()ed buffer and
-verify pagecache was consistent, but then the buffer is corrupt by
-hardware bitflip or software bug, then what's the point. Besides if
-this is getting exposed to userland and it's not hidden in the kernel
-(FS/Storage layers), userland could code its own verification logic
-without much added complexity. With CRC in hardware on the CPU it
-doesn't sound like a big cost to do it fully in userland and then you
-could run it on anonymous memory too if you need and not be dependent
-on hardware or filesystem details (well other than a a cpuid check at
-startup).
+Yes. libnfsidmapd.023 nss_gss_princ_to_id checks the Kerberos REALM
+passed in the sname against the configured REALMS in /etc/idmapd.conf
+as explained:
+
+
+
+
+[General]
+#Verbosity = 0
+# The following should be set to the local NFSv4 domain name
+# The default is the host's DNS domain name.
+#Domain = local.domain.edu
+
+# The following is a comma-separated list of Kerberos realm
+# names that should be considered to be equivalent to the
+# local realm, such that <user>@REALM.A can be assumed to
+# be the same user as <user>@REALM.B
+# If not specified, the default local realm is the domain name,
+# which defaults to the host's DNS domain name,
+# translated to upper-case.
+# Note that if this value is specified, the local realm name
+# must be included in the list!
+#Local-Realms =
+
+
+I believe you have not set the Local-Realms, so libnfsidmapd.023 uses
+the default of the upper-case of the local domain-name. Thus the
+nss_gss_print_ids error message:
+
+> Feb 10 14:45:17 tm rpc.svcgssd[1335]: nss_gss_princ_to_ids: Local-Realm '<MYREALM>': NOT FOUND
+
+Try setting the Local-Realms =  in /etc/idmapd.conf.
+
+-->Andy
+
+
+>  I played with "Domain" and
+> "Local-Realm" but I didn't understand the exact meaning. Server and
+> client aren't in the same subdomain:
+> server:  hostname.subdomain.domain.tld
+> client:  hostname.subdomain.subdomain.domain.tld
+> Is this a problem?
+>
+>> What kernel is the server running?
+>> What nfs-utils version is the server using?
+>> What libnfsidmap version is the server using?
+>
+> I'm using Debian squeeze with updates.
+>
+> $ uname -a
+> Linux tm 2.6.32-5-686 #1 SMP Mon Jan 16 16:04:25 UTC 2012 i686 GNU/Linux
+>
+> $ dpkg -l nfs-\*
+> un  nfs-client                             <none>                                 (no description available)
+> ii  nfs-common                             1:1.2.2-4squeeze2                      NFS support files common to client and server
+> ii  nfs-kernel-server                      1:1.2.2-4squeeze2                      support for NFS kernel server
+> un  nfs-server                             <none>                                 (no description available)
+>
+> $ dpkg -l libnfsidmap\*
+> un  libnfsidmap1                           <none>                                 (no description available)
+> ii  libnfsidmap2                           0.23-2                                 An nfs idmapping library
+>
+>
+> regards
+>  knut
