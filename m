@@ -1,87 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59298 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754991Ab2B2UOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 15:14:03 -0500
-Date: Wed, 29 Feb 2012 15:14:01 -0500
-To: Simon Kirby <sim@netnation.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] Stale NFS file handle issue on subdirectory of NFSv3
- mount
-Message-ID: <20120229201401.GA5253@fieldses.org>
-References: <20120229010629.GC24948@hostway.ca>
- <1330477890.3053.93.camel@lade.trondhjem.org>
- <20120229195916.GB8092@hostway.ca>
+Received: from partagas.dragonet.es ([217.70.240.130]:55941 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750831Ab2BJSH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 13:07:26 -0500
+Message-ID: <4F355CD2.6040603@steve-ss.com>
+Date: Fri, 10 Feb 2012 19:07:14 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120229195916.GB8092@hostway.ca>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: whats_up@gmx.net
+CC: linux-nfs@vger.kernel.org
+Subject: Re: mount hangs in NFS4+Kerberos setup
+References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon>
+In-Reply-To: <20120210184154.03fb6907@little-poseidon>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 29, 2012 at 11:59:16AM -0800, Simon Kirby wrote:
-> On Wed, Feb 29, 2012 at 01:11:31AM +0000, Myklebust, Trond wrote:
-> 
-> > On Tue, 2012-02-28 at 17:06 -0800, Simon Kirby wrote:
-> > > Hi,
-> > > 
-> > > Since upgrading from 2.6.39-ish to 3.1-ish, and on 3.2.5, we are seeing a
-> > > lot of occurrences of Stale NFS file handle errors when accessing a mount
-> > > whose NFSv3 source is a subdirectory of another mount point. For example,
-> > > in this case:
-> > > 
-> > > # mount | grep /shared
-> > > 10.10.1.1:/storage/vg1/shared on /shared type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
-> > > 10.10.1.1:/storage/vg1/shared/fp on /usr/local/fp type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
-> > > 
-> > > When the issue occurs, the /shared mount point is fine as is /shared/fp,
-> > > but "df" or "ls" or anything on /usr/local/fp will ESTALE. This somehow
-> > > corrected itself while I was trying to gather information this time, but
-> > > usually the d_ino returned by getdents() on the parent directory shows a
-> > > different inode number than for /shared/fp.
-> > > 
-> > > When this happens, I am unable to umount -f or umount -l /usr/local/fp
-> > > (ESTALE), but I can actually umount /shared; umount /usr/local/fp; and
-> > > mount -a, which seems to "fix" it.
-> > > 
-> > > is this acting similar to a bind mount internally now and revalidation or
-> > > something is breaking in this case? This is happening fairly often, so I
-> > > will try to collect more info again next time.
-> > 
-> > ESTALE is a server side error, not a client side error. What server are
-> > you using here, and what do the export options look like?
-> 
-> An older 2.6.33 host running DRBD HA knfsd bits. We had problems with the
-> XFS inode reclaim changes causing crashes on newer kernels (actually on
-> 2.6.33, too, but not so much on this node with only locally-attached
-> disks), so these kernels haven't been upgraded for some time. It's likely
-> time to try again. The export is:
-> 
-> /storage/vg1 /10.10.1.0/24(rw,sync,no_root_squash,no_subtree_check,fsid=1)
-> 
-> I just found it weird to see the ESTALE when accessing /usr/local/fp,
-> while /shared/fp works fine at the same time, even though they're the
-> same path on the server.
+On 02/10/2012 06:41 PM, whats_up@gmx.net wrote:
+>
+>> Some older kernels do not support strong keys. Try adding:
+>> allow_weak_crypto = true
+>> to the
+>>    [libdefaults]
+>> in /etc/krb5.conf
+> yes. I painfully (mount only says access denied) found out this already
+> and I use allow_weak_crypto to limit to DES. More encryption
+> types have been introduced with kernel 2.6.39...
+>
+> I tried to use kernel 3.2 from squeeze-backports but this introduced new
+> errors, thus I decided to try with 2.6 first.
+>
+>
+>> Also it's not recommended to use the pseudo-root fsid=0 method for
+>> nfs exports under Linux:
+>>    http://wiki.linux-nfs.org/wiki/index.php/Nfsv4_configuration
+> hmm, as far as I have understood I have to:
+> - export the root folder /exports explicitly beside the "real"
+>    exports p.ex. /exports/opt
+> - use fsid=0 for the root folder to force version 4 of NFS
+>
+> What's your suggestion to improve/secure my configuration?
+>
+> regards
+>    knut
+Officially, you should not export from a pseudo root. Please see the 
+last few lines in the link I sent.
+man rpc.gssd(8) adds:
+<quote>
+Previous versions of
+rpc.gssd used only "nfs/*" keys found within the keytab. To be more 
+consistent with other implementations, we now look for specific keytab 
+entries. The search order for keytabs to be used for "machine 
+credentials" is now:
+<HOSTNAME>$@<REALM>
+root/<hostname>@<REALM>
 
-Is /storage/vg1/shared/fp on that server something that can ever be
-removed?  (Say to be replaced by something else?)
+nfs/<hostname>@<REALM>
 
-For normal directories that's not a problem, the client's used to
-dealing with the fact that directories may come and go.
+host/<hostname>@<REALM>
 
-For a directory that you've told the client to *mount*, that's dirty
-trick--it's really expecting that directory to be there as long as it's 
-mounted....
+root/<anyname>@<REALM>
 
---b.
+nfs/<anyname>@<REALM>
 
-> 
-> The plan was to upgrade this pair first anyway, so we can do that if
-> the problem is likely coming from the server side.
-> 
-> Simon-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+host/<anyname>@<REALM>
+</quote>
+
+I see your setup uses the root principal. If you still get access 
+denied, create another keytab with just the machine$ and host/fqdn keys. 
+I can remember having to fiddle with nfs-utils and keytabs on openSUSE 
+at some stage last year.
+
+If none of this works you can either stick with the old kernel and 
+accept he security, get an up to date nfs-utils and see if hat fixes it 
+with the DES keys or grab an up to date distro where all this stuff will 
+work out of the box.
+Cheers,
+Steve
+
