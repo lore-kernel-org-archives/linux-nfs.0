@@ -1,47 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16300 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966189Ab2B2BLc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Feb 2012 20:11:32 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Simon Kirby <sim@netnation.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] Stale NFS file handle issue on subdirectory of NFSv3
- mount
-Date: Wed, 29 Feb 2012 01:11:31 +0000
-Message-ID: <1330477890.3053.93.camel@lade.trondhjem.org>
-References: <20120229010629.GC24948@hostway.ca>
-In-Reply-To: <20120229010629.GC24948@hostway.ca>
-Content-Type: text/plain; charset="utf-8"
+Received: from partagas.dragonet.es ([217.70.240.130]:36350 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754374Ab2BJXUe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2012 18:20:34 -0500
+Message-ID: <4F35A630.4000205@steve-ss.com>
+Date: Sat, 11 Feb 2012 00:20:16 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Don Riden <don@riden.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: where can I ask user qns about nfs4?
+References: <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2D9A0E.6010503@leicester.ac.uk> <4F2E4B50.5040701@steve-ss.com> <20120205141611.GA12826@umich.edu> <4F2EB471.9060508@leicester.ac.uk> <alpine.LNX.2.00.1202091707390.25543@localhost.localdomain> <4F341FA6.9080101@steve-ss.com> <4F34D31A.6050604@steve-ss.com> <20120210184012.GA5781@fieldses.org> <4F356C4C.2010306@steve-ss.com> <20120210191448.GD5781@fieldses.org>
+In-Reply-To: <20120210191448.GD5781@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTI4IGF0IDE3OjA2IC0wODAwLCBTaW1vbiBLaXJieSB3cm90ZToNCj4g
-SGksDQo+IA0KPiBTaW5jZSB1cGdyYWRpbmcgZnJvbSAyLjYuMzktaXNoIHRvIDMuMS1pc2gsIGFu
-ZCBvbiAzLjIuNSwgd2UgYXJlIHNlZWluZyBhDQo+IGxvdCBvZiBvY2N1cnJlbmNlcyBvZiBTdGFs
-ZSBORlMgZmlsZSBoYW5kbGUgZXJyb3JzIHdoZW4gYWNjZXNzaW5nIGEgbW91bnQNCj4gd2hvc2Ug
-TkZTdjMgc291cmNlIGlzIGEgc3ViZGlyZWN0b3J5IG9mIGFub3RoZXIgbW91bnQgcG9pbnQuIEZv
-ciBleGFtcGxlLA0KPiBpbiB0aGlzIGNhc2U6DQo+IA0KPiAjIG1vdW50IHwgZ3JlcCAvc2hhcmVk
-DQo+IDEwLjEwLjEuMTovc3RvcmFnZS92ZzEvc2hhcmVkIG9uIC9zaGFyZWQgdHlwZSBuZnMgKHJ3
-LGhhcmQsaW50cix0Y3AsdGltZW89MzAwLHJldHJhbnM9Mix2ZXJzPTMsYWRkcj0xMC4xMC4xLjEp
-DQo+IDEwLjEwLjEuMTovc3RvcmFnZS92ZzEvc2hhcmVkL2ZwIG9uIC91c3IvbG9jYWwvZnAgdHlw
-ZSBuZnMgKHJ3LGhhcmQsaW50cix0Y3AsdGltZW89MzAwLHJldHJhbnM9Mix2ZXJzPTMsYWRkcj0x
-MC4xMC4xLjEpDQo+IA0KPiBXaGVuIHRoZSBpc3N1ZSBvY2N1cnMsIHRoZSAvc2hhcmVkIG1vdW50
-IHBvaW50IGlzIGZpbmUgYXMgaXMgL3NoYXJlZC9mcCwNCj4gYnV0ICJkZiIgb3IgImxzIiBvciBh
-bnl0aGluZyBvbiAvdXNyL2xvY2FsL2ZwIHdpbGwgRVNUQUxFLiBUaGlzIHNvbWVob3cNCj4gY29y
-cmVjdGVkIGl0c2VsZiB3aGlsZSBJIHdhcyB0cnlpbmcgdG8gZ2F0aGVyIGluZm9ybWF0aW9uIHRo
-aXMgdGltZSwgYnV0DQo+IHVzdWFsbHkgdGhlIGRfaW5vIHJldHVybmVkIGJ5IGdldGRlbnRzKCkg
-b24gdGhlIHBhcmVudCBkaXJlY3Rvcnkgc2hvd3MgYQ0KPiBkaWZmZXJlbnQgaW5vZGUgbnVtYmVy
-IHRoYW4gZm9yIC9zaGFyZWQvZnAuDQo+IA0KPiBXaGVuIHRoaXMgaGFwcGVucywgSSBhbSB1bmFi
-bGUgdG8gdW1vdW50IC1mIG9yIHVtb3VudCAtbCAvdXNyL2xvY2FsL2ZwDQo+IChFU1RBTEUpLCBi
-dXQgSSBjYW4gYWN0dWFsbHkgdW1vdW50IC9zaGFyZWQ7IHVtb3VudCAvdXNyL2xvY2FsL2ZwOyBh
-bmQNCj4gbW91bnQgLWEsIHdoaWNoIHNlZW1zIHRvICJmaXgiIGl0Lg0KPiANCj4gaXMgdGhpcyBh
-Y3Rpbmcgc2ltaWxhciB0byBhIGJpbmQgbW91bnQgaW50ZXJuYWxseSBub3cgYW5kIHJldmFsaWRh
-dGlvbiBvcg0KPiBzb21ldGhpbmcgaXMgYnJlYWtpbmcgaW4gdGhpcyBjYXNlPyBUaGlzIGlzIGhh
-cHBlbmluZyBmYWlybHkgb2Z0ZW4sIHNvIEkNCj4gd2lsbCB0cnkgdG8gY29sbGVjdCBtb3JlIGlu
-Zm8gYWdhaW4gbmV4dCB0aW1lLg0KDQpFU1RBTEUgaXMgYSBzZXJ2ZXIgc2lkZSBlcnJvciwgbm90
-IGEgY2xpZW50IHNpZGUgZXJyb3IuIFdoYXQgc2VydmVyIGFyZQ0KeW91IHVzaW5nIGhlcmUsIGFu
-ZCB3aGF0IGRvIHRoZSBleHBvcnQgb3B0aW9ucyBsb29rIGxpa2U/DQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On 02/10/2012 08:14 PM, J. Bruce Fields wrote:
+> On Fri, Feb 10, 2012 at 08:13:16PM +0100, steve wrote:
+>> On 02/10/2012 07:40 PM, J. Bruce Fields wrote:
+>>> On Fri, Feb 10, 2012 at 09:19:38AM +0100, steve wrote:
+>>>>>> I'm happy to provide more details of the domain joining process
+>>>>>> offlist or summarise in another
+>>>>>> email if there is interest.
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> I'm surprised by the lack of documentation available on using
+>>>>>> Kerberised NFS with AD. I would have thought that it would be a
+>>>>>> fairly common configuration?
+>>>> Hi
+>>>> This stuff really does need documenting. I've put together a rough
+>>>> guide of most of the common misunderstandings here:
+>>>> http://linuxcostablanca.blogspot.com/2012/02/nfsv4-myths-and-legends.html
+>>> Could you get some of this material into the linux-nfs wiki?
+>>>
+>>> The NFS w/ AD stuff, for example, would probably be worth a page of its
+>>> own and a top-level link under "Documentation" (and the link to Mike
+>>> Eisler's blog entry could be moved to the page, if it still looks like
+>>> it's current).
+>>>
+>>> --b.
+>> Unfortunately, I am unable to write technical English in the style
+>> that is required by the wiki.
+> Just say it however it makes sense to you, ping me, and I can do any
+> wordsmithing if it seems necessary.
+>
+> --b.
+>
+>> I am however happy for the link to be
+>> placed there. As there is no user nfs mailing list I'm also happy
+>> for folk to sign up to the article and use _it_ as a mailing list.
+OK. I've requested a login. Linux has never been too good with 
+documentation. At nfs level, unless you are capable of reading the code, 
+you are stuck with misinformation. What I feel is that admins are stuck 
+in the middle. It's a dilemma. You don't want to want to have to burden 
+the devs with what to them is trivia. As admin, you have your own 
+trivia: 'I saved it in My Documents but now only Sharon can open it'. 
+You also need to be able to move forward without guessing: 'What's the 
+official syntax for /etc/exports with krb5'. Your users get their 
+answers. From you. Where are we expected to get our answers from!
+Cheers,
+Steve
