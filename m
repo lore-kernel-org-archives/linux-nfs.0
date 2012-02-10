@@ -1,58 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:20125 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753871Ab2BPUNI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 15:13:08 -0500
-Subject: Re: [PATCH 08/13] SUNRPC: Add API to acquire source address
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1329422841.4279.28.camel@lade.trondhjem.org>
-Date: Thu, 16 Feb 2012 15:13:04 -0500
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <5CBB0314-7446-4113-8460-56E6633E5FE5@oracle.com>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net> <20120215213550.3254.1420.stgit@ellison.1015granger.net> <1329422841.4279.28.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15452 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759259Ab2BJQtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 11:49:04 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Harshula <harshula@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Derek McEachern <derekm@ti.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Mount Option 'nofsc'
+Date: Fri, 10 Feb 2012 16:48:47 +0000
+Message-ID: <1328892525.13180.102.camel@lade.trondhjem.org>
+References: <4F31E1CA.8060105@ti.com>
+	 <1328676860.2954.9.camel@lade.trondhjem.org>
+	 <1328687026.8981.25.camel@serendib>
+	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
+	 <1328759776.8981.75.camel@serendib>
+	 <1328760721.3234.86.camel@lade.trondhjem.org>
+	 <1328766702.8981.106.camel@serendib>
+	 <1328801489.13180.41.camel@lade.trondhjem.org>
+	 <1328861244.8981.139.camel@serendib>
+In-Reply-To: <1328861244.8981.139.camel@serendib>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 16, 2012, at 3:07 PM, Myklebust, Trond wrote:
-
-> On Wed, 2012-02-15 at 16:35 -0500, Chuck Lever wrote:
->> NFSv4.0 clients must send endpoint information for their callback
->> service to NFSv4.0 servers during their first contact with a server.
->> Traditionally on Linux, user space provides the callback endpoint IP
->> address via the "clientaddr=" mount option.
->> 
->> During an NFSv4 migration event, it is possible that an FSID may be
->> migrated to a destination server that is accessible via a different
->> source IP address than the source server was.  The client must update
->> callback endpoint information on the destination server so that it can
->> maintain leases and allow delegation.
->> 
->> Without a new "clientaddr=" option from user space, however, the
->> kernel itself must construct an appropriate IP address for the
->> callback update.  Provide an API in the RPC client for upper layer
->> RPC consumers to acquire a source address for a remote.
->> 
->> The mechanism used by the mount.nfs command is copied: set up a
->> connected UDP socket to the designated remote, then scrape the source
->> address off the socket.  We are careful to select the correct network
->> namespace when setting up the temporary UDP socket.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
-> 
-> This doesn't appear to apply (nor do several of the debugging patches).
-> Was it written against the nfs-for-next branch?
-
-No, against 3.2.  These were intended for review only, since I wasn't sure which branch to port them to.  Now I know.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gRnJpLCAyMDEyLTAyLTEwIGF0IDE5OjA3ICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gT24g
+VGh1LCAyMDEyLTAyLTA5IGF0IDE1OjMxICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
+PiBUaGFua3MuIFdvdWxkIGl0IGJlIGFjY3VyYXRlIHRvIHNheSB0aGF0IGlmIHRoZXJlIHdlcmUg
+b25seSBlaXRoZXINCj4gc3RyZWFtaW5nIHdyaXRlcyBvciAoeG9yKSBzdHJlYW1pbmcgcmVhZHMg
+dG8gYW55IGdpdmVuIGZpbGUgb24gdGhlIE5GUw0KPiBtb3VudCwgdGhlIGFwcGxpY2F0aW9uIHdv
+dWxkIG5vdCBuZWVkIHRvIGJlIHJld3JpdHRlbj8gDQoNClRoYXQgc2hvdWxkIG5vcm1hbGx5IHdv
+cmsuDQoNCj4gRG8geW91IHNlZSBmb3JjZWRpcmVjdGlvIGFzIGEgc2hhcnAgb2JqZWN0IHRoYXQg
+c29tZW9uZSBjb3VsZCBzdGFiDQo+IHRoZW1zZWx2ZXMgd2l0aD8NCg0KWWVzLiBJdCBkb2VzIGxl
+YWQgdG8gc29tZSB2ZXJ5IHN1YnRsZSBQT1NJWCB2aW9sYXRpb25zLg0KDQo+ID4gPiBUaGVyZSdz
+IGFub3RoZXIgc2NlbmFyaW8sIHdoaWNoIHdlIHRhbGtlZCBhYm91dCBhIHdoaWxlIGJhY2ssIHdo
+ZXJlIHRoZQ0KPiA+ID4gY2FjaGVkIGFzeW5jIHJlYWRzIG9mIGEgc2xvd2x5IGdyb3dpbmcgZmls
+ZSAodGFpbCkgd2FzIHNwaXR0aW5nIG91dA0KPiA+ID4gbm9uLWV4aXN0IE5VTExzIHRvIHVzZXIg
+c3BhY2UuIFRoZSBmb3JjZWRpcmVjdGlvIG1vdW50IG9wdGlvbiBzaG91bGQNCj4gPiA+IHByZXZl
+bnQgdGhhdC4gRnVydGhlcm1vcmUsIHRoZSAic3luYyIgbW91bnQgb3B0aW9uIHdpbGwgbm90IGhl
+bHAgYW55bW9yZQ0KPiA+ID4gYmVjYXVzZSB5b3UgcmVtb3ZlZCBuZnNfcmVhZHBhZ2Vfc3luYygp
+Lg0KPiA+IA0KPiA+IE5vLiBTZWUgdGhlIHBvaW50cyBhYm91dCBPX0FQUEVORCBhbmQgc2VyaWFs
+aXNhdGlvbiBvZiByZWFkKCkgYW5kDQo+ID4gd3JpdGUoKSBhYm92ZS4gWW91IG1heSBzdGlsbCBl
+bmQgdXAgc2VlaW5nIE5VTCBjaGFyYWN0ZXJzIChhbmQgaW5kZWVkDQo+ID4gd29yc2UgZm9ybXMg
+b2YgY29ycnVwdGlvbikuDQo+IA0KPiBJZiB0aGUgTkZTIGNsaWVudCBvbmx5IGRvZXMgY2FjaGVk
+IGFzeW5jIHJlYWRzIG9mIGEgc2xvd2x5IGdyb3dpbmcgZmlsZQ0KPiAodGFpbCksIHdoYXQncyB0
+aGUgcHJvYmxlbT8gSXMgbmZzX3JlYWRwYWdlX3N5bmMoKSBnb25lIGZvcmV2ZXIsIG9yDQo+IGNv
+dWxkIGl0IGJlIHJldml2ZWQ/DQoNCkl0IHdvdWxkbid0IGhlbHAgYXQgYWxsLiBUaGUgcHJvYmxl
+bSBpcyB0aGUgVk0ncyBoYW5kbGluZyBvZiBwYWdlcyB2cw0KdGhlIE5GUyBoYW5kbGluZyBvZiBm
+aWxlIHNpemUuDQoNClRoZSBWTSBiYXNpY2FsbHkgdXNlcyB0aGUgZmlsZSBzaXplIGluIG9yZGVy
+IHRvIGRldGVybWluZSBob3cgbXVjaCBkYXRhDQphIHBhZ2UgY29udGFpbnMuIElmIHRoYXQgZmls
+ZSBzaXplIGNoYW5nZWQgYmV0d2VlbiB0aGUgaW5zdGFuY2Ugd2UNCmZpbmlzaGVkIHRoZSBSRUFE
+IFJQQyBjYWxsLCBhbmQgdGhlIGluc3RhbmNlIHRoZSBWTSBnZXRzIHJvdW5kIHRvDQpsb2NraW5n
+IHRoZSBwYWdlIGFnYWluLCByZWFkaW5nIHRoZSBkYXRhIGFuZCB0aGVuIGNoZWNraW5nIHRoZSBm
+aWxlDQpzaXplLCB0aGVuIHRoZSBWTSBtYXkgZW5kIHVwIGNvcHlpbmcgZGF0YSBiZXlvbmQgdGhl
+IGVuZCBvZiB0aGF0DQpyZXRyaWV2ZWQgYnkgdGhlIFJQQyBjYWxsLg0KDQo+IC1vc3luYyBhbHNv
+IGltcGFjdHMgdGhlIHBlcmZvcm1hbmNlIG9mIHRoZSBlbnRpcmUgTkZTIG1vdW50LiBXaXRoDQo+
+IGFmb3JlbWVudGlvbmVkIGhhY2ssIHlvdSBjYW4gaXNvbGF0ZSB0aGUgc3BlY2lmaWMgZmlsZShz
+KSB0aGF0IG5lZWQNCj4gdGhlaXIgZGlydHkgcGFnZXMgdG8gYmUgZmx1c2hlZCBmcmVxdWVudGx5
+IHRvIGF2b2lkIGhpdHRpbmcgZ2xvYmFsIGRpcnR5DQo+IHBhZ2UgbGltaXQuDQoNClNvIGRvZXMg
+Zm9yY2VkaXJlY3Rpby4gLi4uYW5kIGl0IGFsc28gaW1wYWN0cyB0aGUgcGVyZm9ybWFuY2Ugb2Yg
+cmVhZHMNCmZvciB0aGUgZW50aXJlIE5GUyBtb3VudC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
