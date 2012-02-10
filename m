@@ -1,50 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:1685 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42986 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755012Ab2BATAh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 14:00:37 -0500
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1752120Ab2BJWE1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Feb 2012 17:04:27 -0500
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] NFS: dont allow minorversion= opt when vers != 4
-Date: Wed,  1 Feb 2012 14:00:16 -0500
-Message-Id: <1328122817-661-1-git-send-email-dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 01/21] NFS: Relocate the stat_to_errno() function
+Date: Fri, 10 Feb 2012 17:04:24 -0500
+Message-Id: <1328911464-2458-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't allow invalid 'vers' and 'minorversion' combinations in mount options,
-such as "vers=3,minorversion=1".
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+This was located in a file belonging to NFS v2, but it is also used by
+v3.  I moved it to a generic NFS client file to keep it from
+disappearing once v2 becomes a module.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/super.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/nfs/client.c  |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs2xdr.c |   64 ----------------------------------------------------
+ 2 files changed, 66 insertions(+), 64 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8e210b2..50baca1 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1519,6 +1519,9 @@ static int nfs_parse_mount_options(char *raw,
- 	if (!sloppy && invalid_option)
- 		return 0;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 98af1cb..872521e 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -2001,6 +2001,72 @@ void nfs_fs_proc_exit(void)
  
-+	if (mnt->minorversion && mnt->version != 4)
-+		goto out_minorversion_mismatch;
+ #endif /* CONFIG_PROC_FS */
+ 
++/* Mapping from NFS error code to "errno" error code. */
++#define errno_NFSERR_IO		EIO
 +
- 	/*
- 	 * verify that any proto=/mountproto= options match the address
- 	 * familiies in the addr=/mountaddr= options.
-@@ -1552,6 +1555,10 @@ out_invalid_address:
- out_invalid_value:
- 	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
- 	return 0;
-+out_minorversion_mismatch:
-+	printk(KERN_INFO "NFS: mount option vers=%d does not support "
-+			 "minorversion=%u\n", mnt->version, mnt->minorversion);
-+	return 0;
- out_nomem:
- 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
- 	return 0;
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++int nfs_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
+ module_param(nfs4_disable_idmapping, bool, 0644);
+ MODULE_PARM_DESC(nfs4_disable_idmapping,
+ 		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..a01084d 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -1057,70 +1057,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
+ 
+-
+-/*
+- * We need to translate between nfs status return values and
+- * the local errno values which may not be the same.
+- */
+-static const struct {
+-	int stat;
+-	int errno;
+-} nfs_errtbl[] = {
+-	{ NFS_OK,		0		},
+-	{ NFSERR_PERM,		-EPERM		},
+-	{ NFSERR_NOENT,		-ENOENT		},
+-	{ NFSERR_IO,		-errno_NFSERR_IO},
+-	{ NFSERR_NXIO,		-ENXIO		},
+-/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
+-	{ NFSERR_ACCES,		-EACCES		},
+-	{ NFSERR_EXIST,		-EEXIST		},
+-	{ NFSERR_XDEV,		-EXDEV		},
+-	{ NFSERR_NODEV,		-ENODEV		},
+-	{ NFSERR_NOTDIR,	-ENOTDIR	},
+-	{ NFSERR_ISDIR,		-EISDIR		},
+-	{ NFSERR_INVAL,		-EINVAL		},
+-	{ NFSERR_FBIG,		-EFBIG		},
+-	{ NFSERR_NOSPC,		-ENOSPC		},
+-	{ NFSERR_ROFS,		-EROFS		},
+-	{ NFSERR_MLINK,		-EMLINK		},
+-	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
+-	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
+-	{ NFSERR_DQUOT,		-EDQUOT		},
+-	{ NFSERR_STALE,		-ESTALE		},
+-	{ NFSERR_REMOTE,	-EREMOTE	},
+-#ifdef EWFLUSH
+-	{ NFSERR_WFLUSH,	-EWFLUSH	},
+-#endif
+-	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
+-	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
+-	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
+-	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
+-	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
+-	{ NFSERR_BADTYPE,	-EBADTYPE	},
+-	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
+-	{ -1,			-EIO		}
+-};
+-
+-/**
+- * nfs_stat_to_errno - convert an NFS status code to a local errno
+- * @status: NFS status code to convert
+- *
+- * Returns a local errno value, or -EIO if the NFS status code is
+- * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+- */
+-int nfs_stat_to_errno(enum nfs_stat status)
+-{
+-	int i;
+-
+-	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
+-		if (nfs_errtbl[i].stat == (int)status)
+-			return nfs_errtbl[i].errno;
+-	}
+-	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
+-	return nfs_errtbl[i].errno;
+-}
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
 -- 
-1.7.4.4
+1.7.9
 
