@@ -1,290 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:62874 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753450Ab2BASQr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 13:16:47 -0500
-Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
-Mime-Version: 1.0 (Apple Message framework v1251.1)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
-Date: Wed, 1 Feb 2012 13:16:23 -0500
-Cc: Lennart Poettering <lennart@poettering.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Michal Schmidt <mschmidt@redhat.com>,
-        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
-        libtirpc <libtirpc-devel@lists.sourceforge.net>
-Message-Id: <558BFA3B-5519-4224-83F3-6DEAB35310C0@oracle.com>
-References: <1324602327-1789-1-git-send-email-teg@jklm.no> <1328096830-1383-1-git-send-email-teg@jklm.no> <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com> <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
-To: Tom Gundersen <teg@jklm.no>
+Received: from natasha.panasas.com ([67.152.220.90]:40764 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755164Ab2BLXFk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Feb 2012 18:05:40 -0500
+Message-ID: <4F3845B5.6020402@panasas.com>
+Date: Mon, 13 Feb 2012 01:05:25 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 19/21] NFS: Convert v4 into a module
+References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>  <1328911325-1566-19-git-send-email-bjschuma@netapp.com>  <4F37FECD.9030500@panasas.com> <1329085229.2746.3.camel@lade.trondhjem.org>
+In-Reply-To: <1329085229.2746.3.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 02/13/2012 12:20 AM, Myklebust, Trond wrote:
+> On Sun, 2012-02-12 at 20:02 +0200, Boaz Harrosh wrote:
+>> On 02/11/2012 12:02 AM, bjschuma@netapp.com wrote:
+>>> The module will be created in the same directory as nfs.ko.  You need to
+>>> run `modprobe nfs4` before you can use it.
+>>>
+>>
+>> Can we do this mod_alias and autoloading magic like we do with 
+>> LD drivers, so if NFSv4 is requested it is automatically loaded
+>> by Kernel. 
+> 
+> You need to call request-module() from the nfs.ko module as soon as you
+> know which version the user is trying to load...
+> I don't see why you need mod_alias?
+> 
 
-On Feb 1, 2012, at 11:37 AM, Tom Gundersen wrote:
+That will work. I can now see that it's on the todo in the [00/21] mail
+Sorry for the noise
 
-> Hi Chuck,
-> 
-> Thanks for the feedback.
-> 
-> On Wed, Feb 1, 2012 at 4:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> Typically this is done by breaking the proposed change into smaller atomic patches.  Is that not possible in this case?
-> 
-> Not entirely sure what you have in mind, I don't immediately see how
-> to split this up. Any suggestions welcome.
-
-Submit the patch you have below, then white space fixes become subsequent clean up patches.  Not only is review easier now, but if we come back to these changes in a year to fix bugs, it's easier for us to re-learn what it does.
-
-> 
->>> Added Michal to cc as this patch should go a long way to sort out
->>> <https://bugzilla.redhat.com/show_bug.cgi?id=747363>.
->> 
->> Wouldn't comment 3 also work around problems long enough to give us an opportunity to adequately vet the proposed changes?
-> 
-> Sure, that's another option.
-> 
->> What additions to our test matrix are needed?
-> 
-> I could not find any tests in the rpcbind git repo. Could you point me
-> at your test matrix?
-
-I'll state the question differently: When the SYSTEMD macro is defined, what kind of tests should we run? In general, how do we confirm this is working as expected?  (There may be no good answer at the moment).
-
-> 
->>> +     /* Try to find if one of the systemd sockets we were given match
->>> +      * our netconfig structure. */
->>> +
->>> +     for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
->>> +             struct __rpc_sockinfo si_other;
->>> +             union {
->>> +                     struct sockaddr sa;
->>> +                     struct sockaddr_un un;
->>> +                     struct sockaddr_in in4;
->>> +                     struct sockaddr_in6 in6;
->>> +                     struct sockaddr_storage storage;
->>> +             } sa;
->> 
->> Why is sockaddr_storage included in this union?
-> 
-> This is from Lennart's original patch. Lennart, care to comment?
-> 
-> For what it's worth, here is the patch with whitespace ignored, which
-> should make it simpler to review:
-> 
-> 
-> diff --git a/Makefile.am b/Makefile.am
-> index 9fa608e..194b467 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -38,6 +38,21 @@ rpcbind_SOURCES = \
-> 	src/warmstart.c
-> rpcbind_LDADD = $(TIRPC_LIBS)
-> 
-> +if SYSTEMD
-> +AM_CPPFLAGS += $(SYSTEMD_CFLAGS) -DSYSTEMD
-> +
-> +rpcbind_LDADD += $(SYSTEMD_LIBS)
-> +
-> +systemd/rpcbind.service: systemd/rpcbind.service.in Makefile
-> +	sed -e 's,@bindir\@,$(bindir),g' \
-> +		< $< > $@ || rm $@
-> +
-> +systemdsystemunit_DATA = \
-> +	systemd/rpcbind.service \
-> +	systemd/rpcbind.socket
-> +
-> +endif
-> +
-> rpcinfo_SOURCES =       src/rpcinfo.c
-> rpcinfo_LDADD   =       $(TIRPC_LIBS)
-> 
-> diff --git a/configure.in b/configure.in
-> index 2b67720..397d52d 100644
-> --- a/configure.in
-> +++ b/configure.in
-> @@ -29,6 +29,17 @@ AC_SUBST([rpcuser], [$with_rpcuser])
-> 
-> PKG_CHECK_MODULES([TIRPC], [libtirpc])
-> 
-> +PKG_PROG_PKG_CONFIG
-> +AC_ARG_WITH([systemdsystemunitdir],
-> +  AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for
-> systemd service files]),
-> +  [], [with_systemdsystemunitdir=$($PKG_CONFIG
-> --variable=systemdsystemunitdir systemd)])
-> +  if test "x$with_systemdsystemunitdir" != xno; then
-> +    AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
-> +    PKG_CHECK_MODULES([SYSTEMD], [libsystemd-daemon])
-> +  fi
-> +AM_CONDITIONAL(SYSTEMD, [test -n "$with_systemdsystemunitdir" -a
-> "x$with_systemdsystemunitdir" != xno ])
-> +
-> +
-> AS_IF([test x$enable_libwrap = xyes], [
-> 	AC_CHECK_LIB([wrap], [hosts_access], ,
-> 		AC_MSG_ERROR([libwrap support requested but unable to find libwrap]))
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 24e069b..a87ce05 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -56,6 +56,9 @@
-> #include <netinet/in.h>
-> #endif
-> #include <arpa/inet.h>
-> +#ifdef SYSTEMD
-> +#include <systemd/sd-daemon.h>
-> +#endif
-> #include <fcntl.h>
-> #include <netdb.h>
-> #include <stdio.h>
-> @@ -281,6 +284,7 @@ init_transport(struct netconfig *nconf)
-> 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
-> 	struct sockaddr_un sun;
-> 	mode_t oldmask;
-> +	int n = 0;
->         res = NULL;
-> 
-> 	if ((nconf->nc_semantics != NC_TPI_CLTS) &&
-> @@ -300,6 +304,76 @@ init_transport(struct netconfig *nconf)
-> 	}
-> #endif
-> 
-> +	if (!__rpc_nconf2sockinfo(nconf, &si)) {
-> +		syslog(LOG_ERR, "cannot get information for %s",
-> +		    nconf->nc_netid);
-> +		return (1);
-> +	}
-> +
-> +#ifdef SYSTEMD
-> +	n = sd_listen_fds(0);
-> +	if (n < 0) {
-> +		syslog(LOG_ERR, "failed to acquire systemd scokets: %s", strerror(-n));
-> +		return 1;
-> +	}
-> +
-> +	/* Try to find if one of the systemd sockets we were given match
-> +	 * our netconfig structure. */
-> +
-> +	for (fd = SD_LISTEN_FDS_START; fd < SD_LISTEN_FDS_START + n; fd++) {
-> +		struct __rpc_sockinfo si_other;
-> +		union {
-> +			struct sockaddr sa;
-> +			struct sockaddr_un un;
-> +			struct sockaddr_in in4;
-> +			struct sockaddr_in6 in6;
-> +			struct sockaddr_storage storage;
-> +		} sa;
-> +		socklen_t addrlen = sizeof(sa);
-> +
-> +		if (!__rpc_fd2sockinfo(fd, &si_other)) {
-> +			syslog(LOG_ERR, "cannot get information for fd %i", fd);
-> +			return 1;
-> +		}
-> +
-> +		if (si.si_af != si_other.si_af ||
-> +                    si.si_socktype != si_other.si_socktype ||
-> +                    si.si_proto != si_other.si_proto)
-> +			continue;
-> +
-> +		if (getsockname(fd, &sa.sa, &addrlen) < 0) {
-> +			syslog(LOG_ERR, "failed to query socket name: %s",
-> +                               strerror(errno));
-> +			goto error;
-> +		}
-> +
-> +		/* Copy the address */
-> +		taddr.addr.maxlen = taddr.addr.len = addrlen;
-> +		taddr.addr.buf = malloc(addrlen);
-> +		if (taddr.addr.buf == NULL) {
-> +			syslog(LOG_ERR,
-> +                               "cannot allocate memory for %s address",
-> +                               nconf->nc_netid);
-> +			goto error;
-> +		}
-> +		memcpy(taddr.addr.buf, &sa, addrlen);
-> +
-> +		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
-> +                          RPC_MAXDATASIZE, RPC_MAXDATASIZE);
-> +		if (my_xprt == (SVCXPRT *)NULL) {
-> +			syslog(LOG_ERR, "%s: could not create service",
-> +                               nconf->nc_netid);
-> +			goto error;
-> +		}
-> +	}
-> +
-> +	/* if none of the systemd sockets matched, we set up the socket in
-> +	 * the normal way:
-> +	 */
-> +#endif
-> +
-> +	if(my_xprt == (SVCXPRT *)NULL) {
-> +
-> 	/*
-> 	 * XXX - using RPC library internal functions. For NC_TPI_CLTS
-> 	 * we call this later, for each socket we like to bind.
-> @@ -312,12 +386,6 @@ init_transport(struct netconfig *nconf)
-> 		}
-> 	}
-> 
-> -	if (!__rpc_nconf2sockinfo(nconf, &si)) {
-> -		syslog(LOG_ERR, "cannot get information for %s",
-> -		    nconf->nc_netid);
-> -		return (1);
-> -	}
-> -
-> 	if ((strcmp(nconf->nc_netid, "local") == 0) ||
-> 	    (strcmp(nconf->nc_netid, "unix") == 0)) {
-> 		memset(&sun, 0, sizeof sun);
-> @@ -554,6 +622,7 @@ init_transport(struct netconfig *nconf)
-> 			goto error;
-> 		}
-> 	}
-> +	}
-> 
-> #ifdef PORTMAP
-> 	/*
-> diff --git a/systemd/.gitignore b/systemd/.gitignore
-> new file mode 100644
-> index 0000000..b7b4561
-> --- /dev/null
-> +++ b/systemd/.gitignore
-> @@ -0,0 +1 @@
-> +rpcbind.service
-> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-> new file mode 100644
-> index 0000000..58ae5de
-> --- /dev/null
-> +++ b/systemd/rpcbind.service.in
-> @@ -0,0 +1,9 @@
-> +[Unit]
-> +Description=RPC Bind
-> +
-> +[Service]
-> +ExecStart=@bindir@/rpcbind -w -f
-> +
-> +[Install]
-> +WantedBy=multi-user.target
-> +Also=rpcbind.socket
-> diff --git a/systemd/rpcbind.socket b/systemd/rpcbind.socket
-> new file mode 100644
-> index 0000000..ad5fd62
-> --- /dev/null
-> +++ b/systemd/rpcbind.socket
-> @@ -0,0 +1,12 @@
-> +[Unit]
-> +Description=RPCbind Server Activation Socket
-> +Wants=rpcbind.target
-> +Before=rpcbind.target
-> +
-> +[Socket]
-> +ListenStream=/var/run/rpcbind.sock
-> +ListenStream=111
-> +ListenDatagram=111
-> +
-> +[Install]
-> +WantedBy=sockets.target
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+Thanks
+Boaz
