@@ -1,18 +1,19 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:61993 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753925Ab2BAPo0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:44:26 -0500
-Received: by mail-qw0-f46.google.com with SMTP id c10so3561743qad.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:44:26 -0800 (PST)
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:61147 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752013Ab2BMPP5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:57 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so2987323qcq.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:57 -0800 (PST)
+MIME-Version: 1.0
 From: Jeff Layton <jlayton@redhat.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 5/5] nfsd: add the infrastructure to handle the cld upcall
-Date: Wed,  1 Feb 2012 10:44:12 -0500
-Message-Id: <1328111052-28389-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH v6 5/5] nfsd: add the infrastructure to handle the cld upcall
+Date: Mon, 13 Feb 2012 10:15:45 -0500
+Message-Id: <1329146145-7602-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
+References: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -26,17 +27,17 @@ That pipe is used to talk to a daemon for handling the upcall.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4recover.c |  364 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 363 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4recover.c |  365 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 364 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 3fbf1f4..592fe3d 100644
+index ccd9b97..bb91ad6 100644
 --- a/fs/nfsd/nfs4recover.c
 +++ b/fs/nfsd/nfs4recover.c
 @@ -1,5 +1,6 @@
  /*
  *  Copyright (c) 2004 The Regents of the University of Michigan.
-+*  Copyright (c) 2011 Jeff Layton <jlayton@redhat.com>
++*  Copyright (c) 2012 Jeff Layton <jlayton@redhat.com>
  *  All rights reserved.
  *
  *  Andy Adamson <andros@citi.umich.edu>
@@ -51,7 +52,7 @@ index 3fbf1f4..592fe3d 100644
  
  #include "nfsd.h"
  #include "state.h"
-@@ -472,12 +477,369 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+@@ -478,12 +483,370 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
  	.grace_done	= nfsd4_recdir_purge_old,
  };
  
@@ -108,7 +109,7 @@ index 3fbf1f4..592fe3d 100644
 +	int ret;
 +
 +	/*
-+	 * -EAGAIN occurs when pipe is closed an reopened while there are
++	 * -EAGAIN occurs when pipe is closed and reopened while there are
 +	 *  upcalls queued.
 +	 */
 +	do {
@@ -336,6 +337,7 @@ index 3fbf1f4..592fe3d 100644
 +		printk(KERN_ERR "NFSD: Unable to remove client "
 +				"record from stable storage: %d\n", ret);
 +}
++
 +/* Check for presence of a record, and update its timestamp */
 +static int
 +nfsd4_cld_check(struct nfs4_client *clp)
@@ -420,8 +422,8 @@ index 3fbf1f4..592fe3d 100644
 +		}
 +	}
  
- 	if (!client_tracking_ops->init)
- 		return 0;
+ 	status = client_tracking_ops->init();
+ 	if (status) {
 -- 
 1.7.7.6
 
