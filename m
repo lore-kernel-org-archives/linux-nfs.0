@@ -1,442 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39996 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752904Ab2BCW5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 17:57:37 -0500
-Date: Fri, 3 Feb 2012 17:57:36 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mailout-de.gmx.net ([213.165.64.22]:58709 "HELO
+	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757425Ab2BMSu7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 13:50:59 -0500
+Date: Mon, 13 Feb 2012 19:50:53 +0100
+From: <whats_up@gmx.net>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 5/5] nfsd: add the infrastructure to handle the cld
- upcall
-Message-ID: <20120203225736.GG2999@fieldses.org>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
- <1328111052-28389-6-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1328111052-28389-6-git-send-email-jlayton@redhat.com>
+Subject: Re: mount hangs in NFS4+Kerberos setup
+Message-ID: <20120213195053.0db35dd9@little-poseidon>
+In-Reply-To: <jhaq04$pev$1@ultimate100.geggus.net>
+References: <20120210154526.7b504146@little-poseidon>
+	<4F35512A.9050500@steve-ss.com>
+	<20120210184154.03fb6907@little-poseidon>
+	<jhaq04$pev$1@ultimate100.geggus.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 01, 2012 at 10:44:12AM -0500, Jeff Layton wrote:
-> ...and add a mechanism for switching between the "legacy" tracker and
-> the new one. The decision is made by looking to see whether the
-> v4recoverydir exists. If it does, then the legacy client tracker is
-> used.
+
+> > What's your suggestion to improve/secure my configuration?
 > 
-> If it's not, then the kernel will create a "cld" pipe in rpc_pipefs.
-> That pipe is used to talk to a daemon for handling the upcall.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4recover.c |  364 ++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 files changed, 363 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index 3fbf1f4..592fe3d 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1,5 +1,6 @@
->  /*
->  *  Copyright (c) 2004 The Regents of the University of Michigan.
-> +*  Copyright (c) 2011 Jeff Layton <jlayton@redhat.com>
->  *  All rights reserved.
->  *
->  *  Andy Adamson <andros@citi.umich.edu>
-> @@ -36,6 +37,10 @@
->  #include <linux/namei.h>
->  #include <linux/crypto.h>
->  #include <linux/sched.h>
-> +#include <linux/fs.h>
-> +#include <linux/sunrpc/rpc_pipe_fs.h>
-> +#include <linux/sunrpc/clnt.h>
-> +#include <linux/nfsd/cld.h>
->  
->  #include "nfsd.h"
->  #include "state.h"
-> @@ -472,12 +477,369 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
->  	.grace_done	= nfsd4_recdir_purge_old,
->  };
->  
-> +/* Globals */
-> +#define NFSD_PIPE_DIR		"/nfsd"
-> +
-> +static struct dentry *cld_pipe;
-> +
-> +/* list of cld_msg's that are currently in use */
-> +static DEFINE_SPINLOCK(cld_lock);
-> +static LIST_HEAD(cld_list);
-> +static unsigned int cld_xid;
-> +
-> +struct cld_upcall {
-> +	struct list_head	cu_list;
-> +	struct task_struct	*cu_task;
-> +	struct cld_msg	cu_msg;
-> +};
-> +
-> +static int
-> +__cld_pipe_upcall(struct cld_msg *cmsg)
-> +{
-> +	int ret;
-> +	struct rpc_pipe_msg msg;
-> +	struct inode *inode = cld_pipe->d_inode;
-> +
-> +	memset(&msg, 0, sizeof(msg));
-> +	msg.data = cmsg;
-> +	msg.len = sizeof(*cmsg);
-> +
-> +	/*
-> +	 * Set task state before we queue the upcall. That prevents
-> +	 * wake_up_process in the downcall from racing with schedule.
-> +	 */
-> +	set_current_state(TASK_UNINTERRUPTIBLE);
+> I already told you that you need a backport of the latest version of
+> libtirpc. The Version included in squeeze is broken.
 
-Is there a risk of nfsd being left unkillable if the daemon dies or
-becomes unresponsive?
+You recommended to use backports. As you now say the lib is broken
+things are different and I finally solved my problem.
 
-> +	ret = rpc_queue_upcall(inode, &msg);
-> +	if (ret < 0) {
-> +		set_current_state(TASK_RUNNING);
-> +		goto out;
-> +	}
-> +
-> +	schedule();
-> +	set_current_state(TASK_RUNNING);
-> +
-> +	if (msg.errno < 0)
-> +		ret = msg.errno;
-> +out:
-> +	return ret;
-> +}
-> +
-> +static int
-> +cld_pipe_upcall(struct cld_msg *cmsg)
-> +{
-> +	int ret;
-> +
-> +	/*
-> +	 * -EAGAIN occurs when pipe is closed an reopened while there are
-> +	 *  upcalls queued.
-> +	 */
-> +	do {
-> +		ret = __cld_pipe_upcall(cmsg);
-> +	} while (ret == -EAGAIN);
-> +
-> +	return ret;
-> +}
-> +
-> +static ssize_t
-> +cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
-> +{
-> +	struct cld_upcall *tmp, *cup;
-> +	struct cld_msg *cmsg = (struct cld_msg *)src;
-> +	uint32_t xid;
-> +
-> +	if (mlen != sizeof(*cmsg)) {
-> +		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
-> +			sizeof(*cmsg));
-> +		return -EINVAL;
-> +	}
-> +
-> +	/* copy just the xid so we can try to find that */
-> +	if (copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) != 0) {
-> +		dprintk("%s: error when copying xid from userspace", __func__);
-> +		return -EFAULT;
-> +	}
-> +
-> +	/* walk the list and find corresponding xid */
-> +	cup = NULL;
-> +	spin_lock(&cld_lock);
-> +	list_for_each_entry(tmp, &cld_list, cu_list) {
-> +		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
-> +			cup = tmp;
-> +			list_del_init(&cup->cu_list);
-> +			break;
-> +		}
-> +	}
-> +	spin_unlock(&cld_lock);
-> +
-> +	/* couldn't find upcall? */
-> +	if (!cup) {
-> +		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__,
-> +			cup->cu_msg.cm_xid);
-> +		return -EINVAL;
-> +	}
-> +
-> +	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
-> +		return -EFAULT;
-> +
-> +	wake_up_process(cup->cu_task);
-> +	return mlen;
-> +}
-> +
-> +static void
-> +cld_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-> +{
-> +	struct cld_msg *cmsg = msg->data;
-> +	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall,
-> +						 cu_msg);
-> +
-> +	/* errno >= 0 means we got a downcall */
-> +	if (msg->errno >= 0)
-> +		return;
-> +
-> +	wake_up_process(cup->cu_task);
-> +}
-> +
-> +static const struct rpc_pipe_ops cld_upcall_ops = {
-> +	.upcall		= rpc_pipe_generic_upcall,
-> +	.downcall	= cld_pipe_downcall,
-> +	.destroy_msg	= cld_pipe_destroy_msg,
-> +};
-> +
-> +/* Initialize rpc_pipefs pipe for communication with client tracking daemon */
-> +static int
-> +nfsd4_init_cld_pipe(void)
-> +{
-> +	int ret;
-> +	struct path path;
-> +	struct vfsmount *mnt;
-> +
-> +	if (cld_pipe)
-> +		return 0;
-> +
-> +	mnt = rpc_get_mount();
-> +	if (IS_ERR(mnt))
-> +		return PTR_ERR(mnt);
-> +
-> +	ret = vfs_path_lookup(mnt->mnt_root, mnt, NFSD_PIPE_DIR, 0, &path);
-> +	if (ret)
-> +		goto err;
-> +
-> +	cld_pipe = rpc_mkpipe(path.dentry, "cld", NULL,
-> +				&cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
-> +	path_put(&path);
-> +	if (!IS_ERR(cld_pipe))
-> +		return 0;
-> +
-> +	ret = PTR_ERR(cld_pipe);
-> +err:
-> +	rpc_put_mount();
-> +	printk(KERN_ERR "NFSD: unable to create nfsdcld upcall pipe (%d)\n",
-> +			ret);
-> +	return ret;
-> +}
-> +
-> +static void
-> +nfsd4_remove_cld_pipe(void)
-> +{
-> +	int ret;
-> +
-> +	ret = rpc_unlink(cld_pipe);
-> +	if (ret)
-> +		printk(KERN_ERR "NFSD: error removing cld pipe: %d\n", ret);
-> +	cld_pipe = NULL;
-> +	rpc_put_mount();
-> +}
-> +
-> +static struct cld_upcall *
-> +alloc_cld_upcall(void)
-> +{
-> +	struct cld_upcall *new, *tmp;
-> +
-> +	new = kzalloc(sizeof(*new), GFP_KERNEL);
-> +	if (!new)
-> +		return new;
-> +
-> +	/* FIXME: hard cap on number in flight? */
-> +restart_search:
-> +	spin_lock(&cld_lock);
-> +	list_for_each_entry(tmp, &cld_list, cu_list) {
-> +		if (tmp->cu_msg.cm_xid == cld_xid) {
-> +			cld_xid++;
-> +			spin_unlock(&cld_lock);
-> +			goto restart_search;
-> +		}
-> +	}
-> +	new->cu_task = current;
-> +	new->cu_msg.cm_vers = CLD_UPCALL_VERSION;
-> +	put_unaligned(cld_xid++, &new->cu_msg.cm_xid);
-> +	list_add(&new->cu_list, &cld_list);
-> +	spin_unlock(&cld_lock);
-> +
-> +	dprintk("%s: allocated xid %u\n", __func__, new->cu_msg.cm_xid);
-> +
-> +	return new;
-> +}
-> +
-> +static void
-> +free_cld_upcall(struct cld_upcall *victim)
-> +{
-> +	spin_lock(&cld_lock);
-> +	list_del(&victim->cu_list);
-> +	spin_unlock(&cld_lock);
-> +	kfree(victim);
-> +}
-> +
-> +/* Ask daemon to create a new record */
-> +static void
-> +nfsd4_cld_create(struct nfs4_client *clp)
-> +{
-> +	int ret;
-> +	struct cld_upcall *cup;
-> +
-> +	/* Don't upcall if it's already stored */
-> +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> +		return;
-> +
-> +	cup = alloc_cld_upcall();
-> +	if (!cup) {
-> +		ret = -ENOMEM;
-> +		goto out_err;
-> +	}
-> +
-> +	cup->cu_msg.cm_cmd = Cld_Create;
-> +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> +			clp->cl_name.len);
-> +
-> +	ret = cld_pipe_upcall(&cup->cu_msg);
-> +	if (!ret) {
-> +		ret = cup->cu_msg.cm_status;
-> +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> +	}
-> +
-> +	free_cld_upcall(cup);
-> +out_err:
-> +	if (ret)
-> +		printk(KERN_ERR "NFSD: Unable to create client "
-> +				"record on stable storage: %d\n", ret);
-> +}
-> +
-> +/* Ask daemon to create a new record */
-> +static void
-> +nfsd4_cld_remove(struct nfs4_client *clp)
-> +{
-> +	int ret;
-> +	struct cld_upcall *cup;
-> +
-> +	/* Don't upcall if it's already removed */
-> +	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> +		return;
-> +
-> +	cup = alloc_cld_upcall();
-> +	if (!cup) {
-> +		ret = -ENOMEM;
-> +		goto out_err;
-> +	}
-> +
-> +	cup->cu_msg.cm_cmd = Cld_Remove;
-> +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> +			clp->cl_name.len);
-> +
-> +	ret = cld_pipe_upcall(&cup->cu_msg);
-> +	if (!ret) {
-> +		ret = cup->cu_msg.cm_status;
-> +		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> +	}
-> +
-> +	free_cld_upcall(cup);
-> +out_err:
-> +	if (ret)
-> +		printk(KERN_ERR "NFSD: Unable to remove client "
-> +				"record from stable storage: %d\n", ret);
-> +}
-> +/* Check for presence of a record, and update its timestamp */
-> +static int
-> +nfsd4_cld_check(struct nfs4_client *clp)
-> +{
-> +	int ret;
-> +	struct cld_upcall *cup;
-> +
-> +	/* Don't upcall if one was already stored during this grace pd */
-> +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> +		return 0;
-> +
-> +	cup = alloc_cld_upcall();
-> +	if (!cup) {
-> +		printk(KERN_ERR "NFSD: Unable to check client record on "
-> +				"stable storage: %d\n", -ENOMEM);
-> +		return -ENOMEM;
-> +	}
-> +
-> +	cup->cu_msg.cm_cmd = Cld_Check;
-> +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> +			clp->cl_name.len);
-> +
-> +	ret = cld_pipe_upcall(&cup->cu_msg);
-> +	if (!ret) {
-> +		ret = cup->cu_msg.cm_status;
-> +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> +	}
+For those who face similar issues I sum up my last steps:
 
-Most of this nfsd4_cld_*() code is *really* similar from one function to
-the next--would it make sense to share some more code?
+- include squeeze-backports and upgrade nfs-common, nfs-kernel-server
+  to version 1.2.4 and Linux kernel to 3.2
+- replace portmap by rpcbind
+- install version 0.2.2 of libtirpc from unstable (forced new libc6)
+- remove pseudo root from /etc/exports
+- use AES keys for Kerberos
 
-Anyway, this basically all looks reasonable to me....
+Thanks to all for your helpful hints! :)
 
---b.
+regards
+  knut
 
-> +
-> +	free_cld_upcall(cup);
-> +	return ret;
-> +}
-> +
-> +static void
-> +nfsd4_cld_grace_done(time_t boot_time)
-> +{
-> +	int ret;
-> +	struct cld_upcall *cup;
-> +
-> +	cup = alloc_cld_upcall();
-> +	if (!cup) {
-> +		ret = -ENOMEM;
-> +		goto out_err;
-> +	}
-> +
-> +	cup->cu_msg.cm_cmd = Cld_GraceDone;
-> +	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-> +	ret = cld_pipe_upcall(&cup->cu_msg);
-> +	if (!ret)
-> +		ret = cup->cu_msg.cm_status;
-> +
-> +	free_cld_upcall(cup);
-> +out_err:
-> +	if (ret)
-> +		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
-> +}
-> +
-> +static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
-> +	.init		= nfsd4_init_cld_pipe,
-> +	.exit		= nfsd4_remove_cld_pipe,
-> +	.create		= nfsd4_cld_create,
-> +	.remove		= nfsd4_cld_remove,
-> +	.check		= nfsd4_cld_check,
-> +	.grace_done	= nfsd4_cld_grace_done,
-> +};
-> +
->  int
->  nfsd4_client_tracking_init(void)
->  {
->  	int status;
-> +	struct path path;
->  
-> -	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-> +	if (!client_tracking_ops) {
-> +		client_tracking_ops = &nfsd4_cld_tracking_ops;
-> +		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-> +		if (!status) {
-> +			if (S_ISDIR(path.dentry->d_inode->i_mode))
-> +				client_tracking_ops =
-> +						&nfsd4_legacy_tracking_ops;
-> +			path_put(&path);
-> +		}
-> +	}
->  
->  	if (!client_tracking_ops->init)
->  		return 0;
-> -- 
-> 1.7.7.6
-> 
+
+------
+
+# dpkg -l ...
+ii  libnfsidmap2                                0.23-2                                      An nfs idmapping library
+ii  nfs-common                                  1:1.2.4-1~bpo60+1                           NFS support files common to client and server
+ii  nfs-kernel-server                           1:1.2.4-1~bpo60+1                           support for NFS kernel server
+
+ii  libgssrpc4                                  1.8.3+dfsg-4squeeze5                        MIT Kerberos runtime libraries - GSS enabled ONCRPC
+ii  librpcsecgss3                               0.19-2                                      allows secure rpc communication using the rpcsec_gss protocol
+ii  libtirpc1                                   0.2.2-5                                     transport-independent RPC library
+ii  rpcbind                                     0.2.0-4.1                                   converts RPC program numbers into universal addresses
+
+ii  linux-image-3.2.0-0.bpo.1-686-pae           3.2.4-1~bpo60+1                             Linux 3.2 for modern PCs
