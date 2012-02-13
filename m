@@ -1,53 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44986 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754116Ab2BDALP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 19:11:15 -0500
-Date: Fri, 3 Feb 2012 19:11:13 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Koen Wilde <koen@chillheid.nl>
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: Re: oops when copying a file from a nfs mount
-Message-ID: <20120204001113.GA5320@fieldses.org>
-References: <20120203223604.98C91405DC@mail.chillheid.nl>
- <20120203230811.GH2999@fieldses.org>
- <20120203232427.20B21405DC@mail.chillheid.nl>
+Received: from che.mayfirst.org ([209.234.253.108]:43156 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755798Ab2BMSzZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 13:55:25 -0500
+Message-ID: <4F395C90.8030009@fifthhorseman.net>
+Date: Mon, 13 Feb 2012 13:55:12 -0500
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Reply-To: "debian-backports@lists.debian.org"
+	  <debian-backports@lists.debian.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120203232427.20B21405DC@mail.chillheid.nl>
+To: whats_up@gmx.net
+CC: linux-nfs@vger.kernel.org,
+        "debian-backports@lists.debian.org"
+	<debian-backports@lists.debian.org>
+Subject: Re: mount hangs in NFS4+Kerberos setup
+References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon> <jhaq04$pev$1@ultimate100.geggus.net> <20120213195053.0db35dd9@little-poseidon>
+In-Reply-To: <20120213195053.0db35dd9@little-poseidon>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 04, 2012 at 12:24:27AM +0100, Koen Wilde wrote:
-> On Fri, 3 Feb 2012 18:08:11 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > Is this really the start of the trace, or were there any lines before?
-> > 
+On 02/13/2012 01:50 PM, whats_up@gmx.net wrote:
 > 
-> This is really the start of the trace as it appears in syslog's logs. On
-> the physical screen it had some extra lines on top though (I'm typing this
-> over from a photo):
-> 
->     BUG: unable to handle kernel NULL pointer dereference at   (null)
->     IP: [<c01f3c00>] page_address+0x10/0xe0
->     << continuing from here with the *pde line >>
-> 
-> > But I take it you're comfortable building a kernel from source?  If so,
-> > getting a stable git repo, then:
-> > 
-> > 	git checkout v3.2.2
-> > 	git revert 628fc192adbaae0c6178b9015fb916ce61d72b36
-> > 
-> > and then testing the resulting kernel--it'd be interesting to know if
-> > the bug goes away.
-> 
-> Sure, I can build a kernel from source:) I'll get back to you with the
-> results.
+> - include squeeze-backports and upgrade nfs-common, nfs-kernel-server
+>   to version 1.2.4 and Linux kernel to 3.2
+> - replace portmap by rpcbind
+> - install version 0.2.2 of libtirpc from unstable (forced new libc6)
 
-OK, but--probably ignore my suggestion and try applying Trond's patch
-instead....
+It sounds like you'd like to request a backport of libtirpc to
+squeeze-backports.  is that right?  that is best done on the debian
+backports mailing list (cc'ed here)
 
-(Also, I assume mainline needs it as well as v3.2.2 ?)
+I've set reply-to debian-backports@lists.debian.org, so please follow up
+there if you'd like to see this package backported.
 
---b.
+Regards,
+
+	--dkg
