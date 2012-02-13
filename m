@@ -1,90 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59856 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752045Ab2BPQIq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 11:08:46 -0500
-Date: Thu, 16 Feb 2012 11:08:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20120216160827.GB20762@fieldses.org>
-References: <20110118204509.GA10903@fieldses.org>
- <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
- <20110118220817.GF10903@fieldses.org>
- <20110308181320.GA15566@fieldses.org>
- <20110310105821.GE22723@ZenIV.linux.org.uk>
- <20110311150749.2fa2be66@notabene.brown>
- <20120214170300.GA4309@fieldses.org>
- <20120215165633.GE12490@fieldses.org>
- <20120216140603.08cb4900@notabene.brown>
- <20120216115133.GA20279@fieldses.org>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:63525 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757957Ab2BMXIh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 18:08:37 -0500
+Received: by wics10 with SMTP id s10so3800045wic.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 15:08:36 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120216115133.GA20279@fieldses.org>
+In-Reply-To: <22313268-E5C1-471C-9284-92423037B3BC@oracle.com>
+References: <1329126847-2197-1-git-send-email-andros@netapp.com>
+	<22313268-E5C1-471C-9284-92423037B3BC@oracle.com>
+Date: Mon, 13 Feb 2012 18:08:36 -0500
+Message-ID: <CAHVgHyVGKD1nPZRMfuWnkvqT9CcR=1yoJ3=f5skhsuCPswUoQg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] SUNRPC: add sending,pending queue and max slot to
+ xprt stats
+From: Andy Adamson <androsadamson@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 16, 2012 at 06:51:33AM -0500, J. Bruce Fields wrote:
-> I'm seeing something similar happening on an upstream kernel, so I'll
-> try to figure out where that's coming from now....
+On Mon, Feb 13, 2012 at 6:01 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Hi-
+>
+> On Feb 13, 2012, at 4:54 AM, andros@netapp.com wrote:
+>
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> With static RPC slots, the xprt backlog queue stats were useful in showing
+>> when the transport (TCP) was starved by lack of RPC slots. The new dynamic
+>> RPC slot code, commit d9ba131d8f58c0d2ff5029e7002ab43f913b36f9, always
+>> provides an RPC slot and so only uses the xprt backlog queue when the
+>> tcp_max_slot_table_entries value has been hit or when an allocation error
+>> occurs. All requests are now placed on the xprt sending or pending queue which
+>> need to be monitored for debugging.
+>>
+>> The max_slot stat shows the maximum number of dynamic RPC slots reached which is
+>> useful when debugging performance issues.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>
+> OK, now I'm really confused.  The e-mail address says "W Andros Adamson" -- I thought that this is the son, Weston Andros Adamson, not the father.  But the sign-off is from andros@netapp.com.  Help?
 
-After taking another look, actually this was something happening on
-proc, not on an exported filesystem.
+I don't see "W Andros Adamson" anywhere - but that is my name! I'm
+William Andros Adamson, Dros is Weston Andros Adamson which makes us
+both W. Andros Adamson.
 
-Running some tests on a kernel with this extra warning added to
-__d_instantiate whenever it gives a directory a second alias:
-
-Feb 15 14:43:07 pip1 kernel: __d_instantiate adding alias
-ffff880037bf51c0(8) to dir ffff880035eaf048(4026532190) with existing alias(es) ffff880034037180(88)
-
-The numbers after the dentry pointers are dentry flags in hex (8 ==
-DCACHE_OP_DELETE, 88 == DCACHE_RCUACCESS|DCACHE_OP_DELETE), and after
-the inode pointers is an inode number.
-
-I don't know if it's a bug or not, though it seems suspicous.
-
---b.
-
-Feb 15 14:43:07 pip1 kernel: ------------[ cut here ]------------
-Feb 15 14:43:07 pip1 kernel: WARNING: at fs/dcache.c:1320 __d_instantiate+0x185/0x1d0()
-Feb 15 14:43:07 pip1 kernel: Hardware name: Bochs
-Feb 15 14:43:07 pip1 kernel: Modules linked in: nfsd lockd nfs_acl auth_rpcgss sunrpc [last unloaded: scsi_wait_scan]
-Feb 15 14:43:07 pip1 kernel: Pid: 4810, comm: exportfs Not tainted 3.3.0-rc2-00517-g35ae270 #1070
-Feb 15 14:43:07 pip1 kernel: Call Trace:
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8104040f>] warn_slowpath_common+0x7f/0xc0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8104046a>] warn_slowpath_null+0x1a/0x20
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8113f885>] __d_instantiate+0x185/0x1d0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8113face>] d_instantiate+0x4e/0x90
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81192d7b>] proc_lookup_de+0xab/0x110
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81196a90>] ?  proc_sys_poll_notify+0x30/0x30
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81196c1f>] proc_tgid_net_lookup+0x3f/0x50
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81133f55>] d_alloc_and_lookup+0x45/0x90
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8113e455>] ? d_lookup+0x35/0x60
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8113453a>] do_lookup+0x28a/0x3b0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff814c792c>] ?  security_inode_permission+0x1c/0x30
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81135337>] link_path_walk+0x157/0x940
-Feb 15 14:43:07 pip1 kernel: [<ffffffff8113910c>] path_openat+0xbc/0x440
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81106243>] ?  might_fault+0x53/0xb0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81106243>] ?  might_fault+0x53/0xb0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81145aeb>] ? alloc_fd+0x3b/0x160
-Feb 15 14:43:07 pip1 kernel: [<ffffffff811395a9>] do_filp_open+0x49/0xa0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81145b5b>] ? alloc_fd+0xab/0x160
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81126328>] do_sys_open+0x108/0x1e0
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81126441>] sys_open+0x21/0x30
-Feb 15 14:43:07 pip1 kernel: [<ffffffff81973252>] system_call_fastpath+0x16/0x1b
-Feb 15 14:43:07 pip1 kernel: ---[ end trace 5714bb1463cb9b46 ]---
+heh heh.
 
 
+>
+> More below.
+>
+>> ---
+>> include/linux/sunrpc/xprt.h |    7 +++++--
+>> net/sunrpc/xprt.c           |    7 ++++++-
+>> net/sunrpc/xprtsock.c       |   25 ++++++++++++++++++-------
+>> 3 files changed, 29 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+>> index 15518a1..344b6f2 100644
+>> --- a/include/linux/sunrpc/xprt.h
+>> +++ b/include/linux/sunrpc/xprt.h
+>> @@ -219,10 +219,13 @@ struct rpc_xprt {
+>>                                       connect_time,   /* jiffies waiting for connect */
+>>                                       sends,          /* how many complete requests */
+>>                                       recvs,          /* how many complete requests */
+>> -                                     bad_xids;       /* lookup_rqst didn't find XID */
+>> +                                     bad_xids,       /* lookup_rqst didn't find XID */
+>> +                                     max_slots;      /* max rpc_slots used */
+>>
+>>               unsigned long long      req_u,          /* average requests on the wire */
+>> -                                     bklog_u;        /* backlog queue utilization */
+>> +                                     bklog_u,        /* backlog queue utilization */
+>> +                                     sending_u,      /* send q utilization */
+>> +                                     pending_u;      /* pend q utilization */
+>>       } stat;
+>>
+>>       struct net              *xprt_net;
+>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>> index c64c0ef..fb95e25 100644
+>> --- a/net/sunrpc/xprt.c
+>> +++ b/net/sunrpc/xprt.c
+>> @@ -884,7 +884,7 @@ void xprt_transmit(struct rpc_task *task)
+>> {
+>>       struct rpc_rqst *req = task->tk_rqstp;
+>>       struct rpc_xprt *xprt = req->rq_xprt;
+>> -     int status;
+>> +     int status, numreqs;
+>>
+>>       dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
+>>
+>> @@ -921,9 +921,14 @@ void xprt_transmit(struct rpc_task *task)
+>>
+>>       xprt->ops->set_retrans_timeout(task);
+>>
+>> +     numreqs = atomic_read(&xprt->num_reqs);
+>> +     if (numreqs > xprt->stat.max_slots)
+>> +             xprt->stat.max_slots = numreqs;
+>>       xprt->stat.sends++;
+>>       xprt->stat.req_u += xprt->stat.sends - xprt->stat.recvs;
+>>       xprt->stat.bklog_u += xprt->backlog.qlen;
+>> +     xprt->stat.sending_u += xprt->sending.qlen;
+>> +     xprt->stat.pending_u += xprt->pending.qlen;
+>>
+>>       /* Don't race with disconnect */
+>>       if (!xprt_connected(xprt))
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 55472c4..2a80817 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -2226,8 +2226,8 @@ static void xs_local_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>>       if (xprt_connected(xprt))
+>>               idle_time = (long)(jiffies - xprt->last_used) / HZ;
+>>
+>> -     seq_printf(seq, "\txprt:\tlocal %lu %lu %lu %ld %lu %lu %lu "
+>> -                     "%llu %llu\n",
+>> +     seq_printf(seq, "\txprt:\tlocal %lu %lu %lu %ld %lu %lu %lu %lu "
+>> +                     "%llu %llu %llu %llu\n",
+>>                       xprt->stat.bind_count,
+>>                       xprt->stat.connect_count,
+>>                       xprt->stat.connect_time,
+>> @@ -2235,8 +2235,11 @@ static void xs_local_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>>                       xprt->stat.sends,
+>>                       xprt->stat.recvs,
+>>                       xprt->stat.bad_xids,
+>> +                     xprt->stat.max_slots,
+>>                       xprt->stat.req_u,
+>> -                     xprt->stat.bklog_u);
+>> +                     xprt->stat.bklog_u,
+>> +                     xprt->stat.sending_u,
+>> +                     xprt->stat.pending_u);
+>> }
+>>
+>> /**
+>
+> This hunk changes the format and content of /proc/self/mountstats.  I don't see where you are bumping the statvers so mountstats can tell what is going on.  Since you are adding fields, mountstats may not complain about this, but it will probably display incorrect output since you are adding a field somewhere in the middle of the line.
 
-> 
-> > I think that using __d_find_any_alias would just be papering over the
-> > problem, and would trigger a BUG_ON when it returned a non-DISCONNECTED alias.
-> 
-> Right, I throw away that BUG_ON as well.  Tested on rhel5 only.
-> 
-> --b.
+Noted: I'll add a bump to the statvers.
+
+-->Andy
+
+>
+>> @@ -2249,14 +2252,18 @@ static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>> {
+>>       struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+>>
+>> -     seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
+>> +     seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %lu %llu %llu "
+>> +                     "%llu %llu\n",
+>>                       transport->srcport,
+>>                       xprt->stat.bind_count,
+>>                       xprt->stat.sends,
+>>                       xprt->stat.recvs,
+>>                       xprt->stat.bad_xids,
+>> +                     xprt->stat.max_slots,
+>>                       xprt->stat.req_u,
+>> -                     xprt->stat.bklog_u);
+>> +                     xprt->stat.bklog_u,
+>> +                     xprt->stat.sending_u,
+>> +                     xprt->stat.pending_u);
+>> }
+>>
+>> /**
+>
+> Likewise.
+>
+>> @@ -2273,7 +2280,8 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>>       if (xprt_connected(xprt))
+>>               idle_time = (long)(jiffies - xprt->last_used) / HZ;
+>>
+>> -     seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
+>> +     seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %lu "
+>> +                     "%llu %llu %llu %llu\n",
+>>                       transport->srcport,
+>>                       xprt->stat.bind_count,
+>>                       xprt->stat.connect_count,
+>> @@ -2282,8 +2290,11 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>>                       xprt->stat.sends,
+>>                       xprt->stat.recvs,
+>>                       xprt->stat.bad_xids,
+>> +                     xprt->stat.max_slots,
+>>                       xprt->stat.req_u,
+>> -                     xprt->stat.bklog_u);
+>> +                     xprt->stat.bklog_u,
+>> +                     xprt->stat.sending_u,
+>> +                     xprt->stat.pending_u);
+>> }
+>>
+>> /*
+>
+> And here too.
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
