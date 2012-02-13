@@ -1,116 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11202 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760264Ab2BJWCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:31 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 19/21] NFS: Convert v4 into a module
-Date: Fri, 10 Feb 2012 17:02:03 -0500
-Message-Id: <1328911325-1566-19-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:49022 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754577Ab2BMVwb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:31 -0500
+Received: by mail-ee0-f46.google.com with SMTP id c14so2011170eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:30 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v9 09/10] nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+Date: Mon, 13 Feb 2012 22:55:31 +0100
+Message-Id: <1329170132-7081-10-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-The module will be created in the same directory as nfs.ko.  You need to
-run `modprobe nfs4` before you can use it.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- fs/nfs/Kconfig     |    2 +-
- fs/nfs/Makefile    |   14 ++++++++------
- fs/nfs/inode.c     |    6 ------
- fs/nfs/nfs4super.c |    5 +++++
- 4 files changed, 14 insertions(+), 13 deletions(-)
+ fs/nfsd/current_stateid.h |    3 +++
+ fs/nfsd/nfs4proc.c        |    3 +++
+ fs/nfsd/nfs4state.c       |   18 ++++++++++++++++++
+ 3 files changed, 24 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 57c4b19..608b84a 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -70,7 +70,7 @@ config NFS_V3_ACL
- 	  If unsure, say N.
- 
- config NFS_V4
--	bool "NFS client support for NFS version 4"
-+	tristate "NFS client support for NFS version 4"
- 	depends on NFS_FS
- 	select SUNRPC_GSS
- 	help
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index e983eb0..c356cda 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -7,14 +7,10 @@ obj-$(CONFIG_NFS_FS) += nfs.o
- nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   direct.o pagelist.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
--			   dns_resolve.o cache_lib.o
-+			   cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
--			   nfs4super.o delegation.o idmap.o \
--			   callback.o callback_xdr.o callback_proc.o \
--			   nfs4namespace.o nfs4client.o nfs4getroot.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
--nfs-$(CONFIG_SYSCTL) += sysctl.o nfs4sysctl.o
-+nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
- 
- obj-$(CONFIG_NFS_V2) += nfs2.o
-@@ -24,6 +20,12 @@ obj-$(CONFIG_NFS_V3) += nfs3.o
- nfs3-y += nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
- nfs3-y += nfs3acl.o
- 
-+obj-$(CONFIG_NFS_V4) += nfs4.o
-+nfs4-y = nfs4super.o nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-+	 delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
-+	 nfs4namespace.o dns_resolve.o nfs4client.o nfs4getroot.o
-+nfs4-$(CONFIG_SYSCTL) += nfs4sysctl.o
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index e1ae950..d8c9992 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -7,6 +7,7 @@
+ /*
+  * functions to set current state id
+  */
++extern void nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
+ extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
+ extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
+ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+@@ -14,6 +15,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
+ /*
+  * functions to consume current state id
+  */
++extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
++extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *, struct nfsd4_delegreturn *);
+ extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
+ extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 124934a..dffc9bd 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1454,6 +1454,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_DELEGRETURN",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_delegreturnstateid,
+ 	},
+ 	[OP_GETATTR] = {
+ 		.op_func = (nfsd4op_func)nfsd4_getattr,
+@@ -1521,6 +1522,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_OPEN_DOWNGRADE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_opendowngradestateid,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_opendowngradestateid,
+ 	},
+ 	[OP_PUTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putfh,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8214c0f..9c5a239 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4714,6 +4714,12 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+  * functions to set current state id
+  */
+ void
++nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
++{
++	put_stateid(cstate, &odp->od_stateid);
++}
 +
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
- nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
- 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index cb645e3f..2ee6259 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1637,9 +1637,6 @@ static int __init init_nfs_fs(void)
- #endif
- 	if ((err = register_nfs_fs()) != 0)
- 		goto out;
--#if IS_ENABLED(CONFIG_NFS_V4)
--	init_nfs_v4();
--#endif
- 	return 0;
- out:
- #ifdef CONFIG_PROC_FS
-@@ -1670,9 +1667,6 @@ out9:
- 
- static void __exit exit_nfs_fs(void)
++void
+ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
  {
--#if IS_ENABLED(CONFIG_NFS_V4)
--	exit_nfs_v4();
--#endif
- 	nfs_destroy_directcache();
- 	nfs_destroy_writepagecache();
- 	nfs_destroy_readpagecache();
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 2764c28..3e515db 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -669,3 +669,8 @@ void __exit exit_nfs_v4(void)
- 	nfs4_unregister_sysctl();
- 	nfs_idmap_quit();
- }
+ 	put_stateid(cstate, &open->op_stateid);
+@@ -4736,6 +4742,18 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
+  */
+ 
+ void
++nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
++{
++	get_stateid(cstate, &odp->od_stateid);
++}
 +
-+MODULE_LICENSE("GPL");
++void
++nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate, struct nfsd4_delegreturn *drp)
++{
++	get_stateid(cstate, &drp->dr_stateid);
++}
 +
-+module_init(init_nfs_v4);
-+module_exit(exit_nfs_v4);
++void
+ nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
+ {
+ 	get_stateid(cstate, &fsp->fr_stateid);
 -- 
-1.7.9
+1.7.7.6
 
