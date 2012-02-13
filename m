@@ -1,48 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44431 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751664Ab2BDRcI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Feb 2012 12:32:08 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q14HW8VV015475
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sat, 4 Feb 2012 12:32:08 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-8-135.rdu.redhat.com [10.11.8.135])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q14HW7I5027829
-	for <linux-nfs@vger.kernel.org>; Sat, 4 Feb 2012 12:32:07 -0500
-Message-ID: <4F2D6B97.6050102@RedHat.com>
-Date: Sat, 04 Feb 2012 12:32:07 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: pNFS: Single Node pNFS Server
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:34617 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755244Ab2BMVvd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:33 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so1933722eaa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:32 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v9 05/10] nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+Date: Mon, 13 Feb 2012 22:54:39 +0100
+Message-Id: <1329170084-7032-6-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello all,
-
-To help with the testing of pNFS clients, I making 
-available a single node pNFS server (the  pnfsd-lexp 
-branch of Benny's git tree) in Fedora based kernel 
-and nfs-utils RPMs. This server only supports file layouts. 
-
-Your need to be running a Fedora 16 to use these RPMs.
-The RPMs are in a yum repository. Download this repo:
-
-   http://steved.fedorapeople.org/pnfs.repo
-and then do a yum update on a F16 machine.
-
-Or you can access the RPMs directly at 
-    http://steved.fedorapeople.org/repos/pnfs/devel/
-
-The patches used to create the RPMs ar at:
-    http://steved.fedorapeople.org/repos/pnfs/devel/pnfsd-3.3.0-0.rc2.git1.1.patch
-    http://steved.fedorapeople.org/repos/pnfs/devel/pnfs-export-1.2.5-11.patch
-
-Happy hunting! 
-
-steved.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
 
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+---
+ fs/nfsd/nfs4proc.c |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9a61bbf..66bd005 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1523,21 +1523,24 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_PUTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+ 	[OP_PUTPUBFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTPUBFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+ 	[OP_PUTROOTFH] = {
+ 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
+-				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING,
++				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
++				| OP_CLEAR_STATEID,
+ 		.op_name = "OP_PUTROOTFH",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
+-- 
+1.7.7.6
 
