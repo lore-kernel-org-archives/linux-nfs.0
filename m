@@ -1,52 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36744 "EHLO fieldses.org"
+Received: from mail.gnuher.de ([78.47.12.54]:33739 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754847Ab2BOAmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 19:42:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1751422Ab2BMKvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Feb 2012 05:51:53 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1RwtVe-0005ck-OF
+	for linux-nfs@vger.kernel.org; Mon, 13 Feb 2012 11:51:50 +0100
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1RwtVc-0006q5-DD
+	for linux-nfs@vger.kernel.org; Mon, 13 Feb 2012 11:51:48 +0100
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] nfsd4: fix sessions slotid wraparound logic
-Date: Tue, 14 Feb 2012 19:42:44 -0500
-Message-Id: <1329266566-8977-1-git-send-email-bfields@redhat.com>
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: mount hangs in NFS4+Kerberos setup
+Date: Mon, 13 Feb 2012 10:51:48 +0000 (UTC)
+Message-ID: <jhaq04$pev$1@ultimate100.geggus.net>
+References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+whats_up@gmx.net wrote:
 
->From RFC 5661 2.10.6.1: "If the previous sequence ID was 0xFFFFFFFF,
-then the next request for the slot MUST have the sequence ID set to
-zero."
+> What's your suggestion to improve/secure my configuration?
 
-While we're there, delete some redundant comments.
+I already told you that you need a backport of the latest version of
+libtirpc. The Version included in squeeze is broken.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    7 +------
- 1 files changed, 1 insertions(+), 6 deletions(-)
+Sven
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e8c98f0..2095dbb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1575,16 +1575,11 @@ check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
- 		else
- 			return nfserr_seq_misordered;
- 	}
--	/* Normal */
-+	/* Note unsigned 32-bit arithmetic handles wraparound: */
- 	if (likely(seqid == slot_seqid + 1))
- 		return nfs_ok;
--	/* Replay */
- 	if (seqid == slot_seqid)
- 		return nfserr_replay_cache;
--	/* Wraparound */
--	if (seqid == 1 && (slot_seqid + 1) == 0)
--		return nfs_ok;
--	/* Misordered replay or misordered new request */
- 	return nfserr_seq_misordered;
- }
- 
 -- 
-1.7.5.4
+If you can spend five minutes on the Internet and do not run Linux,
+you're a genius. (Dirk Hohndel)
 
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
