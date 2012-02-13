@@ -1,33 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:46868 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932732Ab2B2OEo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 09:04:44 -0500
-Message-ID: <4F4E306C.6030400@steve-ss.com>
-Date: Wed, 29 Feb 2012 15:04:28 +0100
-From: steve <steve@steve-ss.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:61147 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752013Ab2BMPPv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:51 -0500
+Received: by qcqw6 with SMTP id w6so2987323qcq.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:51 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-References: <4F45E78E.8050501@steve-ss.com> <20120223063913.5736a5b1@tlielax.poochiereds.net> <4F4628B8.90401@steve-ss.com> <20120223144053.GA25010@fieldses.org> <4F465C3A.9080802@steve-ss.com> <20120223154215.GA26706@fieldses.org> <4F466467.3030506@steve-ss.com> <4F489999.30909@steve-ss.com> <20120228200524.GE2723@fieldses.org> <4F4D61B6.5090304@steve-ss.com> <20120229124401.GA9160@fieldses.org>
-In-Reply-To: <20120229124401.GA9160@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v6 0/5] nfsd: overhaul the client name tracking code
+Date: Mon, 13 Feb 2012 10:15:40 -0500
+Message-Id: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 29/02/12 13:44, J. Bruce Fields wrote:
-> On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
->> We are authenticating against Samba4, so our domain user accounts
->> are under Kerberos.
->
-> Kerberos works fine with v3.
->
-> --b.
+This is the sixth iteration of this patchset. At this point, I've
+decided just to focus on what's needed to replace the upcall for the
+single-server case. It's possible that we'll need to revise the upcall
+format later to handle clustered configurations, but until we know
+specifically what we'll need, it's probably simpler not to worry about
+it.
 
-Hi
-Unfortunately, it doesn't seem to. We just tried it, and anyone (with or 
-without a ticket) gets access:-(
-Still hoping!
-Steve
+An earlier version of this patchset can be viewed here. That set also
+contains a more comprehensive description of the rationale for this:
+
+    http://www.spinics.net/lists/linux-nfs/msg26324.html
+
+The main changes since the last set shouldn't require any changes to
+the userspace code. Here are the highlights:
+
+- nfsd4_grace_done has been renamed to nfsd4_record_grace_done
+
+- most of the NULL pointer checks in the tracking ops wrappers have
+  been removed. It's expected that each set of tracking ops will be
+  complete.
+
+- the clp->cl_firststate field has been removed and replaced with the
+  NFSD4_CLIENT_STABLE and NFSD4_CLIENT_RECLAIM_COMPLETE cl_flags. This
+  also fixes an existing bug in the v4.1 recovery code where a
+  RECLAIM_COMPLETE call would return an error.
+
+I'd like to see this considered for inclusion in 3.4.
+
+Jeff Layton (5):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+  nfsd: add a header describing upcall to nfsdcld
+  nfsd: add the infrastructure to handle the cld upcall
+
+ fs/nfsd/nfs4callback.c   |   14 +-
+ fs/nfsd/nfs4proc.c       |    3 +-
+ fs/nfsd/nfs4recover.c    |  498 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/nfs4state.c      |   50 ++---
+ fs/nfsd/state.h          |   24 ++-
+ include/linux/nfsd/cld.h |   56 +++++
+ net/sunrpc/rpc_pipe.c    |    5 +
+ 7 files changed, 587 insertions(+), 63 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
+
+-- 
+1.7.7.6
 
