@@ -1,115 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754620Ab2BOVgB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:36:01 -0500
-Received: by mail-gy0-f174.google.com with SMTP id r11so965647ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:36:01 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/13] NFS: Add a client-side function to display NFS file
- handles
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:36:00 -0500
-Message-ID: <20120215213559.3254.94426.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754577Ab2BMVwa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:30 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so1933968eaa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:29 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v9 08/10] nfsd41: handle current stateid in SETATTR and FREE_STATEID
+Date: Mon, 13 Feb 2012 22:55:30 +0100
+Message-Id: <1329170132-7081-9-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For debugging, introduce a simplistic function to print NFS file
-handles on the system console.  The main function is hooked into the
-dprintk debugging facility, but you can directly call the helper,
-_nfs_display_fhandle(), if you want to print a handle unconditionally.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
+ fs/nfsd/current_stateid.h |    2 ++
+ fs/nfsd/nfs4proc.c        |    1 +
+ fs/nfsd/nfs4state.c       |   13 +++++++++++++
+ 3 files changed, 16 insertions(+), 0 deletions(-)
 
- fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h |   14 ++++++++++++++
- 2 files changed, 59 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5c9598f..d36c1cb 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1076,6 +1076,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
- }
- 
- /**
-+ * _nfs_display_fhandle - display an NFS file handle on the console
-+ *
-+ * @fh: file handle to display
-+ * @caption: display caption
-+ *
-+ * For debugging only.
-+ */
-+#ifdef RPC_DEBUG
-+void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
-+{
-+	unsigned short i;
-+
-+	if (fh->size == 0 || fh == NULL) {
-+		printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
-+		return;
-+	}
-+
-+	printk(KERN_DEFAULT "%s at %p is %u bytes:\n", caption, fh, fh->size);
-+	for (i = 0; i < fh->size; i += 16) {
-+		__be32 *pos = (__be32 *)&fh->data[i];
-+
-+		switch ((fh->size - i - 1) >> 2) {
-+		case 0:
-+			printk(KERN_DEFAULT " %08x\n",
-+				be32_to_cpup(pos));
-+			break;
-+		case 1:
-+			printk(KERN_DEFAULT " %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1));
-+			break;
-+		case 2:
-+			printk(KERN_DEFAULT " %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2));
-+			break;
-+		default:
-+			printk(KERN_DEFAULT " %08x %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
-+		}
-+	}
-+}
-+#endif
-+
-+/**
-  * nfs_inode_attrs_need_update - check if the inode attributes need updating
-  * @inode - pointer to inode
-  * @fattr - attributes
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 2e4601a..43b9062 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -399,6 +399,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
- 	kfree(fh);
- }
- 
-+#ifdef RPC_DEBUG
-+extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
-+#define nfs_display_fhandle(fh, caption)			\
-+	do {							\
-+		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
-+			_nfs_display_fhandle(fh, caption);	\
-+	} while (0)
-+#else
-+static inline void nfs_display_fhandle(const struct nfs_fh *fh,
-+				       const char *caption)
-+{
-+}
-+#endif
-+
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index 6e54d19..e1ae950 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -14,6 +14,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
  /*
-  * linux/fs/nfs/nfsroot.c
+  * functions to consume current state id
   */
++extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
++extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
+ extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
+ extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 620abcc..124934a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1606,6 +1606,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_SETATTR",
+ 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setattr_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_setattrstateid,
+ 	},
+ 	[OP_SETCLIENTID] = {
+ 		.op_func = (nfsd4op_func)nfsd4_setclientid,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1c97912..8214c0f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4734,6 +4734,19 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
+ /*
+  * functions to consume current state id
+  */
++
++void
++nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
++{
++	get_stateid(cstate, &fsp->fr_stateid);
++}
++
++void
++nfsd4_get_setattrstateid(struct nfsd4_compound_state *cstate, struct nfsd4_setattr *setattr)
++{
++	get_stateid(cstate, &setattr->sa_stateid);
++}
++
+ void
+ nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
+ {
+-- 
+1.7.7.6
 
