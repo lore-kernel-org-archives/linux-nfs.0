@@ -1,223 +1,400 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54229 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755369Ab2BBE6R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 23:58:17 -0500
-Date: Thu, 2 Feb 2012 15:58:03 +1100
-From: NeilBrown <neilb@suse.de>
-To: "Vlasov, Vladimir" <vvlasov@mera.ru>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Re-init lockd and kstatd in runtime.
-Message-ID: <20120202155803.15d0bb42@notabene.brown>
-In-Reply-To: <06EFEBD57610DE4FBCA0449DDF4E102B088BD0@tecas.te.mera.ru>
-References: <06EFEBD57610DE4FBCA0449DDF4E102B08765D@tecas.te.mera.ru>
-	<20120126224042.63cdd70e@notabene.brown>
-	<06EFEBD57610DE4FBCA0449DDF4E102B0878A3@tecas.te.mera.ru>
-	<06EFEBD57610DE4FBCA0449DDF4E102B088BD0@tecas.te.mera.ru>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/ysJ2_BTEJ30QD5s=G.ZZNpq"; protocol="application/pgp-signature"
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:61147 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752013Ab2BMPPw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:52 -0500
+Received: by mail-qy0-f174.google.com with SMTP id w6so2987323qcq.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:52 -0800 (PST)
+MIME-Version: 1.0
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v6 1/5] nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+Date: Mon, 13 Feb 2012 10:15:41 -0500
+Message-Id: <1329146145-7602-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
+References: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/ysJ2_BTEJ30QD5s=G.ZZNpq
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Abstract out the mechanism that we use to track clients into a set of
+client name tracking functions.
 
-On Thu, 2 Feb 2012 04:50:06 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> wrot=
-e:
+This gives us a mechanism to plug in a new set of client tracking
+functions without disturbing the callers. It also gives us a way to
+decide on what tracking scheme to use at runtime.
 
-> Well, nobody deal with HA Linux clusters?
+For now, this just looks like pointless abstraction, but later we'll
+add a new alternate scheme for tracking clients on stable storage.
 
-I certainly don't.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c |  121 +++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c   |   46 +++++++------------
+ fs/nfsd/state.h       |   14 +++---
+ 3 files changed, 136 insertions(+), 45 deletions(-)
 
-And like I said before - you are a SUSE customer and you are using a SUSE
-product so your best best it to ask SUSE for help.
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 0b3e875..1dda803 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -43,9 +43,20 @@
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
++/* Declarations */
++struct nfsd4_client_tracking_ops {
++	int (*init)(void);
++	void (*exit)(void);
++	void (*create)(struct nfs4_client *);
++	void (*remove)(struct nfs4_client *);
++	int (*check)(struct nfs4_client *);
++	void (*grace_done)(time_t);
++};
++
+ /* Globals */
+ static struct file *rec_file;
+ static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
++static struct nfsd4_client_tracking_ops *client_tracking_ops;
+ 
+ static int
+ nfs4_save_creds(const struct cred **original_creds)
+@@ -117,7 +128,8 @@ out_no_tfm:
+ 	return status;
+ }
+ 
+-void nfsd4_create_clid_dir(struct nfs4_client *clp)
++static void
++nfsd4_create_clid_dir(struct nfs4_client *clp)
+ {
+ 	const struct cred *original_cred;
+ 	char *dname = clp->cl_recdir;
+@@ -265,7 +277,7 @@ out_unlock:
+ 	return status;
+ }
+ 
+-void
++static void
+ nfsd4_remove_clid_dir(struct nfs4_client *clp)
+ {
+ 	const struct cred *original_cred;
+@@ -292,7 +304,6 @@ out:
+ 	if (status)
+ 		printk("NFSD: Failed to remove expired client state directory"
+ 				" %.*s\n", HEXDIR_LEN, clp->cl_recdir);
+-	return;
+ }
+ 
+ static int
+@@ -311,8 +322,8 @@ purge_old(struct dentry *parent, struct dentry *child)
+ 	return 0;
+ }
+ 
+-void
+-nfsd4_recdir_purge_old(void) {
++static void
++nfsd4_recdir_purge_old(time_t boot_time __attribute__ ((unused))) {
+ 	int status;
+ 
+ 	if (!rec_file)
+@@ -343,7 +354,7 @@ load_recdir(struct dentry *parent, struct dentry *child)
+ 	return 0;
+ }
+ 
+-int
++static int
+ nfsd4_recdir_load(void) {
+ 	int status;
+ 
+@@ -361,8 +372,8 @@ nfsd4_recdir_load(void) {
+  * Hold reference to the recovery directory.
+  */
+ 
+-void
+-nfsd4_init_recdir()
++static int
++nfsd4_init_recdir(void)
+ {
+ 	const struct cred *original_cred;
+ 	int status;
+@@ -377,20 +388,37 @@ nfsd4_init_recdir()
+ 		printk("NFSD: Unable to change credentials to find recovery"
+ 		       " directory: error %d\n",
+ 		       status);
+-		return;
++		return status;
+ 	}
+ 
+ 	rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
+ 	if (IS_ERR(rec_file)) {
+ 		printk("NFSD: unable to find recovery directory %s\n",
+ 				user_recovery_dirname);
++		status = PTR_ERR(rec_file);
+ 		rec_file = NULL;
+ 	}
+ 
+ 	nfs4_reset_creds(original_cred);
++	return status;
+ }
+ 
+-void
++static int
++nfsd4_load_reboot_recovery_data(void)
++{
++	int status;
++
++	nfs4_lock_state();
++	status = nfsd4_init_recdir();
++	if (!status)
++		status = nfsd4_recdir_load();
++	nfs4_unlock_state();
++	if (status)
++		printk(KERN_ERR "NFSD: Failure reading reboot recovery data\n");
++	return status;
++}
++
++static void
+ nfsd4_shutdown_recdir(void)
+ {
+ 	if (!rec_file)
+@@ -425,3 +453,76 @@ nfs4_recoverydir(void)
+ {
+ 	return user_recovery_dirname;
+ }
++
++static int
++nfsd4_check_legacy_client(struct nfs4_client *clp)
++{
++	if (nfsd4_find_reclaim_client(clp) != NULL)
++		return 0;
++	else
++		return -ENOENT;
++}
++
++static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
++	.init		= nfsd4_load_reboot_recovery_data,
++	.exit		= nfsd4_shutdown_recdir,
++	.create		= nfsd4_create_clid_dir,
++	.remove		= nfsd4_remove_clid_dir,
++	.check		= nfsd4_check_legacy_client,
++	.grace_done	= nfsd4_recdir_purge_old,
++};
++
++int
++nfsd4_client_tracking_init(void)
++{
++	int status;
++
++	client_tracking_ops = &nfsd4_legacy_tracking_ops;
++
++	status = client_tracking_ops->init();
++	if (status) {
++		printk(KERN_WARNING "NFSD: Unable to initialize client "
++				    "recovery tracking! (%d)\n", status);
++		client_tracking_ops = NULL;
++	}
++	return status;
++}
++
++void
++nfsd4_client_tracking_exit(void)
++{
++	if (client_tracking_ops) {
++		client_tracking_ops->exit();
++		client_tracking_ops = NULL;
++	}
++}
++
++void
++nfsd4_client_record_create(struct nfs4_client *clp)
++{
++	if (client_tracking_ops)
++		client_tracking_ops->create(clp);
++}
++
++void
++nfsd4_client_record_remove(struct nfs4_client *clp)
++{
++	if (client_tracking_ops)
++		client_tracking_ops->remove(clp);
++}
++
++int
++nfsd4_client_record_check(struct nfs4_client *clp)
++{
++	if (client_tracking_ops)
++		return client_tracking_ops->check(clp);
++
++	return -EOPNOTSUPP;
++}
++
++void
++nfsd4_record_grace_done(time_t boot_time)
++{
++	if (client_tracking_ops)
++		client_tracking_ops->grace_done(boot_time);
++}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..a5b2245 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2045,7 +2045,7 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		goto out;
+ 
+ 	status = nfs_ok;
+-	nfsd4_create_clid_dir(cstate->session->se_client);
++	nfsd4_client_record_create(cstate->session->se_client);
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -2240,7 +2240,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			conf = find_confirmed_client_by_str(unconf->cl_recdir,
+ 							    hash);
+ 			if (conf) {
+-				nfsd4_remove_clid_dir(conf);
++				nfsd4_client_record_remove(conf);
+ 				expire_client(conf);
+ 			}
+ 			move_to_confirmed(unconf);
+@@ -3066,7 +3066,7 @@ static void
+ nfsd4_end_grace(void)
+ {
+ 	dprintk("NFSD: end of grace period\n");
+-	nfsd4_recdir_purge_old();
++	nfsd4_record_grace_done(boot_time);
+ 	locks_end_grace(&nfsd4_manager);
+ 	/*
+ 	 * Now that every NFSv4 client has had the chance to recover and
+@@ -3115,7 +3115,7 @@ nfs4_laundromat(void)
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		dprintk("NFSD: purging unused client (clientid %08x)\n",
+ 			clp->cl_clientid.cl_id);
+-		nfsd4_remove_clid_dir(clp);
++		nfsd4_client_record_remove(clp);
+ 		expire_client(clp);
+ 	}
+ 	spin_lock(&recall_lock);
+@@ -3539,7 +3539,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	dprintk("NFSD: %s: success, seqid=%d stateid=" STATEID_FMT "\n",
+ 		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stid.sc_stateid));
+ 
+-	nfsd4_create_clid_dir(oo->oo_owner.so_client);
++	nfsd4_client_record_create(oo->oo_owner.so_client);
+ 	status = nfs_ok;
+ out:
+ 	if (!cstate->replay_owner)
+@@ -4397,19 +4397,13 @@ nfs4_release_reclaim(void)
+ 
+ /*
+  * called from OPEN, CLAIM_PREVIOUS with a new clientid. */
+-static struct nfs4_client_reclaim *
+-nfs4_find_reclaim_client(clientid_t *clid)
++struct nfs4_client_reclaim *
++nfsd4_find_reclaim_client(struct nfs4_client *clp)
+ {
+ 	unsigned int strhashval;
+-	struct nfs4_client *clp;
+ 	struct nfs4_client_reclaim *crp = NULL;
+ 
+ 
+-	/* find clientid in conf_id_hashtbl */
+-	clp = find_confirmed_client(clid);
+-	if (clp == NULL)
+-		return NULL;
+-
+ 	dprintk("NFSD: nfs4_find_reclaim_client for %.*s with recdir %s\n",
+ 		            clp->cl_name.len, clp->cl_name.data,
+ 			    clp->cl_recdir);
+@@ -4430,7 +4424,14 @@ nfs4_find_reclaim_client(clientid_t *clid)
+ __be32
+ nfs4_check_open_reclaim(clientid_t *clid)
+ {
+-	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
++	struct nfs4_client *clp;
++
++	/* find clientid in conf_id_hashtbl */
++	clp = find_confirmed_client(clid);
++	if (clp == NULL)
++		return nfserr_reclaim_bad;
++
++	return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+@@ -4577,19 +4578,6 @@ nfs4_state_init(void)
+ 	reclaim_str_hashtbl_size = 0;
+ }
+ 
+-static void
+-nfsd4_load_reboot_recovery_data(void)
+-{
+-	int status;
+-
+-	nfs4_lock_state();
+-	nfsd4_init_recdir();
+-	status = nfsd4_recdir_load();
+-	nfs4_unlock_state();
+-	if (status)
+-		printk("NFSD: Failure reading reboot recovery data\n");
+-}
+-
+ /*
+  * Since the lifetime of a delegation isn't limited to that of an open, a
+  * client may quite reasonably hang on to a delegation as long as it has
+@@ -4642,7 +4630,7 @@ out_free_laundry:
+ int
+ nfs4_state_start(void)
+ {
+-	nfsd4_load_reboot_recovery_data();
++	nfsd4_client_tracking_init();
+ 	return __nfs4_state_start();
+ }
+ 
+@@ -4676,7 +4664,7 @@ __nfs4_state_shutdown(void)
+ 		unhash_delegation(dp);
+ 	}
+ 
+-	nfsd4_shutdown_recdir();
++	nfsd4_client_tracking_exit();
+ }
+ 
+ void
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index ffb5df1..e22f90f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -463,6 +463,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ extern void nfs4_lock_state(void);
+ extern void nfs4_unlock_state(void);
+ extern int nfs4_in_grace(void);
++extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(struct nfs4_client *crp);
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
+ extern void nfs4_free_openowner(struct nfs4_openowner *);
+ extern void nfs4_free_lockowner(struct nfs4_lockowner *);
+@@ -477,16 +478,17 @@ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
+ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
+-extern void nfsd4_init_recdir(void);
+-extern int nfsd4_recdir_load(void);
+-extern void nfsd4_shutdown_recdir(void);
+ extern int nfs4_client_to_reclaim(const char *name);
+ extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
+-extern void nfsd4_recdir_purge_old(void);
+-extern void nfsd4_create_clid_dir(struct nfs4_client *clp);
+-extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+ extern void release_session_client(struct nfsd4_session *);
+ extern __be32 nfs4_validate_stateid(struct nfs4_client *, stateid_t *);
+ extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+ 
++/* nfs4recover operations */
++extern int nfsd4_client_tracking_init(void);
++extern void nfsd4_client_tracking_exit(void);
++extern void nfsd4_client_record_create(struct nfs4_client *clp);
++extern void nfsd4_client_record_remove(struct nfs4_client *clp);
++extern int nfsd4_client_record_check(struct nfs4_client *clp);
++extern void nfsd4_record_grace_done(time_t boot_time);
+ #endif   /* NFSD4_STATE_H */
+-- 
+1.7.7.6
 
-The in-kernel 'statd' which you are fighting with is a SUSE-specific
-innovation (which I thankfully got rid of in later products) so no-one here
-is going to be likely to help you with it.
-
-NeilBrown
-
-
->=20
-> Best regards
-> Vladimir Vlasov
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel=
-.org] On Behalf Of Vlasov, Vladimir
-> Sent: Friday, January 27, 2012 12:32 PM
-> To: NeilBrown
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: Re-init lockd and kstatd in runtime.
->=20
-> Finally I have found notes on HA NFS on SLES9 - http://www.gatsby.ucl.ac.=
-uk/~johnp/compute/ha-nfs-sles9.html
-> There are more info on this topic, for instance http://linux-ha.org/DRBD/=
-NFS Suddenly I realized that previous designer was following these guidelin=
-es :-)
->=20
-> I have found that all documents suggest to have both primary and standby =
-hosts configured as NFS server only and start/stop server processes when ro=
-le is changed.
-> This way /var/lib/nfs, even relocating on DRBD partition, is always avail=
-able on NFS server startup.
-> So, it is OK to have /var/lib/nfs as link to the folder on DRBD partition.
->=20
-> What I have different is that my system breaks rule of acting as NFS serv=
-ers only: standby host acts as NFS client until it becomes primary, then it=
- should act as server.
->=20
->=20
-> I'll summarize info here:
-> "server" is DNS record, resolved into IP of the primary host.
->=20
-> HOST1, primary:
-> /dev/drbd is mounted as /storage
-> /storage is exported
-> server:/storage is mounted as /some/path /var/lib/nfs is link to the /som=
-e/path/var/lib/nfs and is available
->=20
-> HOST2:
-> /dev/drbd is not mounted, /storage is empty server:/storage is mounted as=
- /some/path /var/lib/nfs is link to the /some/path/var/lib/nfs and is empty
->=20
-> So, due to this /some/path mount existing on both hosts I have problem wi=
-th initialization of the kstatd on the standby host, where /var/lib/nfs loo=
-ks like empty folder.
-> I have requirement for having /some/path on both hosts, so I can't fallba=
-ck to guidelines advices.
-> I need to do NFS client became NFS server somehow. There should be some r=
-untime re-initialization. This is what I'm looking for.
->=20
-> Could someone comment on this?
-> Is there any way to do so?
-> Or any better solution?
->=20
-> By the way, browsing sources I have found that one can set nsm_use_kstatd=
- to 1 on lockd exit, then initialization will be successful on next mount o=
-r export attempts.
-> I think someone can find it useful so created patch. Unfortunately I don'=
-t have neither time nor enough code knowledge.
-> In my case this proposal has drawback - lockd exits when all mounts are u=
-nmounted only, so I have to umount /some/path first and then mount it back.
-> It can be painful as soon as some files can be opened by local user and u=
-mount will complain with it's usual "device is busy".
->=20
-> Also I was thinking about having /var/lin/nfs locally, separate for each =
-host, so kstatd will be initialized always, but how do I share vital info a=
-bout clients then?
-> I have found it to be dead-end.
->=20
->=20
-> Best regards
-> Vladimir Vlasov
->=20
-> -----Original Message-----
-> From: Vlasov, Vladimir
-> Sent: Thursday, January 26, 2012 4:14 PM
-> To: 'NeilBrown'
-> Cc: linux-nfs@vger.kernel.org
-> Subject: RE: Re-init lockd and kstatd in runtime.
->=20
-> Yes, it is SLES10 SP3 and I'm a customer.
-> I'm not sure that Novell can help me, I expect the same proposal from the=
-m - "just make sure that /var/lib/nfs is available on startup".
-> I'm not satisfied with this because I have some kind of high availability=
- system built with two Linux hosts.
->=20
-> Hosts share DRBD partition and one acting as primary exports, for instanc=
-e /some/path.
-> As soon as primary host fails, another one becomes primary and exports /s=
-ome/path.
-> There are more hosts on the network, they mount:
-> server:/some/path
-> where "server" is resolved to the IP of current primary host which curren=
-tly exports path.
->=20
-> So, in order to keep and overtake data about clients, /var/lib/nfs is rep=
-laced with link and points to /some/path/var/lib/nfs.
-> If You don't familiar with DRBD then the most important thing You should =
-know is that it is available for R/W on primary host only.
-> So, on primary host DRBD is R/W, /var/lib/nfs is available and kstatd sta=
-rts.
-> On another host DRBD is NOT R/W, /var/lib/nfs is empry and kstatd doesn't=
- start.
-> This is why I'm looking for how do I re-init it at any time.
->=20
-> I was looking for guidelines of using NFS in clusters but didn't found an=
-ything useful.
->=20
-> Best regards
-> Vladimir Vlasov
->=20
-> -----Original Message-----
-> From: NeilBrown [mailto:neilb@suse.de]
-> Sent: Thursday, January 26, 2012 3:41 PM
-> To: Vlasov, Vladimir
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: Re-init lockd and kstatd in runtime.
->=20
-> On Thu, 26 Jan 2012 11:15:02 +0000 "Vlasov, Vladimir" <vvlasov@mera.ru> w=
-rote:
->=20
-> > Hi.
-> >=20
-> > I'm wondering if there is any way to re-init lockd and kstatd after sta=
-rtup?
-> >=20
-> > Look, in svc.c static variable nsm_use_kstatd is set to 1.
-> > Then, if nsm_kernel_statd_init() returns error, nsm_use_kstatd is set t=
-o 0.
-> > And we end up without kstatd.
-> >=20
-> > Lockd will exit as soon as last NFS mount is unmounted and on next moun=
-t attempt lockd() in svc.c will be called again, but nsm_use_kstatd is 0 al=
-ready and kstatd init will be skipped.
-> >=20
-> > So, looks like if /var/lib/nfs/state is missed on host startup, there i=
-s no way to recover and tell kernel init kstatd later on demand. Or?
->=20
-> This would be SLES10 - correct?
->=20
-> I suggest you simply make sure /var/lib/nfs/state is not missing at start=
-up.
->=20
-> The issue sounds vaguely familiar ... maybe it is fixed in SLES10-SP4...
->=20
-> What release are you running?  Are you a SLES customer?  If you are, you =
-would be better off logging a support request on the SUSE bugzilla (bugzill=
-a.novell.com).
->=20
-> NeilBrown
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in t=
-he body of a message to majordomo@vger.kernel.org More majordomo info at  h=
-ttp://vger.kernel.org/majordomo-info.html
-
-
---Sig_/ysJ2_BTEJ30QD5s=G.ZZNpq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBTyoX2znsnt1WYoG5AQJvfhAAmqX5rGEwacyZYYI69rR3m69IpK3JxDGT
-kmvYZSmpA28geDtaesPZJAwOG81yOrWIfJdMAIhvgfYTDml5O/T1rLWR0eAVUA7v
-M0FobxUd0vH11+z62TuJmffgIeWT0qGEWGyxFsJZ4Cpt17jQuyFZ+F5qCcxuE9ky
-OHeKc/S4iJDoCgJk5DhlFQgwSIOvrzmt6QwhGwBJmM1PCKC7bWu9zHahiOCIsMuv
-9DjM8925NuzKZkuCharqze2ns7q4NkTHsW67g04Gr1HNbUH16G3DunhVRrcSjGgr
-yF2pwoqQJy1qOeZjrxwjJepdEziTLMuXGP/rOjbHvxjXv5hZq5RtpzvmVvXvlS/5
-jg7XFU1amSLX/UxCaNKfFet4noE60aeMZXdiVVbSMprSaIyy8iR4kvmlG7eOkgXM
-loVIuMRz4xg1pfQMXbar2hmNwmFbIwtLwWKrlDDD7gwo4xt8eT9luoyCbYszMGXO
-Bvwy7UA/PL+73F1oQ+65oK9vxujR+b56+Nwihl6Z3j+zJBjS/wiP44rfuLQV0ORD
-9B+vJ9wOf0wkAlrtUwYH7mJ/KWjI+ERwe1yQ0NTK+n2AtR08haaSdAyLUMtafQdl
-NwNys7SFhach9ea9i5Xe3MdE7A19PalLCNWsL99gfkyawxyKJ+b6pgymogKA7fnm
-NaYJAlRtSbI=
-=tTGM
------END PGP SIGNATURE-----
-
---Sig_/ysJ2_BTEJ30QD5s=G.ZZNpq--
