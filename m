@@ -1,85 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48413 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756280Ab2BFW4z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 17:56:55 -0500
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 10/11] nfs: Prevent page allocator recursions with swap over NFS.
-Date: Mon,  6 Feb 2012 22:56:40 +0000
-Message-Id: <1328569001-17599-11-git-send-email-mgorman@suse.de>
-In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
-References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754577Ab2BMVwX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:23 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so1933968eaa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:22 -0800 (PST)
+From: Tigran Mkrtchyan <kofemann@googlemail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <kofemann@gmail.com>
+Subject: [PATH v9 03/10] nfsd41: handle current stateid on lock and locku
+Date: Mon, 13 Feb 2012 22:55:25 +0100
+Message-Id: <1329170132-7081-4-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-GFP_NOFS is _more_ permissive than GFP_NOIO in that it will initiate
-IO, just not of any filesystem data.
+From: Tigran Mkrtchyan <kofemann@gmail.com>
 
-The problem is that previously NOFS was correct because that avoids
-recursion into the NFS code. With swap-over-NFS, it is no longer
-correct as swap IO can lead to this recursion.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
 ---
- fs/nfs/pagelist.c |    2 +-
- fs/nfs/write.c    |    7 ++++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ fs/nfsd/current_stateid.h |   11 ++++++++++-
+ fs/nfsd/nfs4proc.c        |    2 ++
+ fs/nfsd/nfs4state.c       |   22 ++++++++++++++++++++--
+ 3 files changed, 32 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 5ab80e3..e3c1378 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -28,7 +28,7 @@ static struct kmem_cache *nfs_page_cachep;
- static inline struct nfs_page *
- nfs_page_alloc(void)
+diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
+index a83dd50..21550b6 100644
+--- a/fs/nfsd/current_stateid.h
++++ b/fs/nfsd/current_stateid.h
+@@ -4,8 +4,17 @@
+ #include "state.h"
+ #include "xdr4.h"
+ 
++/*
++ * functions to set current state id
++ */
+ extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
+-extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
+ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
+ 
++/*
++ * functions to consume current state id
++ */
++extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
++extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
++
+ #endif   /* _NFSD4_CURRENT_STATE_H */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a457551..f66a8b2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1474,6 +1474,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_LOCK",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lock_rsize,
++		.op_set_currentstateid = (stateid_setter)nfsd4_set_lockstateid,
+ 	},
+ 	[OP_LOCKT] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lockt,
+@@ -1484,6 +1485,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_LOCKU",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
++		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
+ 	},
+ 	[OP_LOOKUP] = {
+ 		.op_func = (nfsd4op_func)nfsd4_lookup,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6322a59..5665061 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4710,6 +4710,9 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ 		cstate->current_stateid = stateid;
+ }
+ 
++/*
++ * functions to set current state id
++ */
+ void
+ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
  {
--	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_KERNEL);
-+	struct nfs_page	*p = kmem_cache_zalloc(nfs_page_cachep, GFP_NOIO);
- 	if (p)
- 		INIT_LIST_HEAD(&p->wb_list);
- 	return p;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5c96ba3..2ae4f4b 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -52,7 +52,7 @@ static mempool_t *nfs_commit_mempool;
+@@ -4717,13 +4720,28 @@ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *op
+ }
  
- struct nfs_write_data *nfs_commitdata_alloc(void)
+ void
++nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++{
++	put_stateid(cstate, &close->cl_stateid);
++}
++
++void
++nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lock)
++{
++	put_stateid(cstate, &lock->lk_resp_stateid);
++}
++
++/*
++ * functions to consume current state id
++ */
++void
+ nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
  {
--	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
+ 	get_stateid(cstate, &close->cl_stateid);
+ }
  
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -72,7 +72,7 @@ EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
- struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ void
+-nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
++nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
  {
--	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOFS);
-+	struct nfs_write_data *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
-@@ -81,7 +81,8 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
--			p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_NOFS);
-+			p->pagevec = kcalloc(pagecount, sizeof(struct page *),
-+					GFP_NOIO);
- 			if (!p->pagevec) {
- 				mempool_free(p, nfs_wdata_mempool);
- 				p = NULL;
+-	get_stateid(cstate, &close->cl_stateid);
++	get_stateid(cstate, &locku->lu_stateid);
+ }
 -- 
-1.7.3.4
+1.7.7.6
 
