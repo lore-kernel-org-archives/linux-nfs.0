@@ -1,473 +1,219 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45880 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752488Ab2BDLtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Feb 2012 06:49:14 -0500
-Date: Sat, 4 Feb 2012 06:49:06 -0500
+Received: from mail-qw0-f53.google.com ([209.85.216.53]:44787 "EHLO
+	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752013Ab2BMPPz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:55 -0500
+Received: by qafk1 with SMTP id k1so3283230qaf.19
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:54 -0800 (PST)
+MIME-Version: 1.0
 From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 5/5] nfsd: add the infrastructure to handle the cld
- upcall
-Message-ID: <20120204064906.39a9f6f3@tlielax.poochiereds.net>
-In-Reply-To: <20120203225736.GG2999@fieldses.org>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
-	<1328111052-28389-6-git-send-email-jlayton@redhat.com>
-	<20120203225736.GG2999@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: [PATCH v6 3/5] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+Date: Mon, 13 Feb 2012 10:15:43 -0500
+Message-Id: <1329146145-7602-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
+References: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 3 Feb 2012 17:57:36 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+We'll need a way to flag the nfs4_client as already being recorded on
+stable storage so that we don't continually upcall. Currently, that's
+recorded in the cl_firststate field of the client struct. Using an
+entire u32 to store a flag is rather wasteful though.
 
-> On Wed, Feb 01, 2012 at 10:44:12AM -0500, Jeff Layton wrote:
-> > ...and add a mechanism for switching between the "legacy" tracker and
-> > the new one. The decision is made by looking to see whether the
-> > v4recoverydir exists. If it does, then the legacy client tracker is
-> > used.
-> > 
-> > If it's not, then the kernel will create a "cld" pipe in rpc_pipefs.
-> > That pipe is used to talk to a daemon for handling the upcall.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4recover.c |  364 ++++++++++++++++++++++++++++++++++++++++++++++++-
-> >  1 files changed, 363 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> > index 3fbf1f4..592fe3d 100644
-> > --- a/fs/nfsd/nfs4recover.c
-> > +++ b/fs/nfsd/nfs4recover.c
-> > @@ -1,5 +1,6 @@
-> >  /*
-> >  *  Copyright (c) 2004 The Regents of the University of Michigan.
-> > +*  Copyright (c) 2011 Jeff Layton <jlayton@redhat.com>
-> >  *  All rights reserved.
-> >  *
-> >  *  Andy Adamson <andros@citi.umich.edu>
-> > @@ -36,6 +37,10 @@
-> >  #include <linux/namei.h>
-> >  #include <linux/crypto.h>
-> >  #include <linux/sched.h>
-> > +#include <linux/fs.h>
-> > +#include <linux/sunrpc/rpc_pipe_fs.h>
-> > +#include <linux/sunrpc/clnt.h>
-> > +#include <linux/nfsd/cld.h>
-> >  
-> >  #include "nfsd.h"
-> >  #include "state.h"
-> > @@ -472,12 +477,369 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
-> >  	.grace_done	= nfsd4_recdir_purge_old,
-> >  };
-> >  
-> > +/* Globals */
-> > +#define NFSD_PIPE_DIR		"/nfsd"
-> > +
-> > +static struct dentry *cld_pipe;
-> > +
-> > +/* list of cld_msg's that are currently in use */
-> > +static DEFINE_SPINLOCK(cld_lock);
-> > +static LIST_HEAD(cld_list);
-> > +static unsigned int cld_xid;
-> > +
-> > +struct cld_upcall {
-> > +	struct list_head	cu_list;
-> > +	struct task_struct	*cu_task;
-> > +	struct cld_msg	cu_msg;
-> > +};
-> > +
-> > +static int
-> > +__cld_pipe_upcall(struct cld_msg *cmsg)
-> > +{
-> > +	int ret;
-> > +	struct rpc_pipe_msg msg;
-> > +	struct inode *inode = cld_pipe->d_inode;
-> > +
-> > +	memset(&msg, 0, sizeof(msg));
-> > +	msg.data = cmsg;
-> > +	msg.len = sizeof(*cmsg);
-> > +
-> > +	/*
-> > +	 * Set task state before we queue the upcall. That prevents
-> > +	 * wake_up_process in the downcall from racing with schedule.
-> > +	 */
-> > +	set_current_state(TASK_UNINTERRUPTIBLE);
-> 
-> Is there a risk of nfsd being left unkillable if the daemon dies or
-> becomes unresponsive?
-> 
+The cl_cb_flags field is only using 2 bits right now, so repurpose that
+to a generic flags field. Rename NFSD4_CLIENT_KILL to
+NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
+flags. Add a mask that we can use for existing checks that look to see
+whether any flags are set, so that the new flags don't interfere.
 
-If the daemon dies, then the pipe will be closed and this will get
-woken back up with msg.errno set to -EAGAIN. At that point, it'll
-get requeued and then will eventually time out via the
-RPC_PIPE_WAIT_FOR_OPEN workqueue job.
+Convert all references to cl_firstate to the NFSD4_CLIENT_STABLE flag,
+and add a new NFSD4_CLIENT_RECLAIM_COMPLETE flag. I believe there's an
+existing bug here too that this should fix:
 
-If the daemon is unresponsive but holds the pipe open then this will
-sleep indefinitely. I suppose we could use a schedule_timeout() below
-with a 30s timeout or so and then dequeue it if it does. I'll note
-though that none of the other rpc_pipefs upcalls do that.
+nfs4_set_claim_prev sets cl_firststate on the first CLAIM_PREV open.
+nfsd4_reclaim_complete looks for that flag though, and returns
+NFS4ERR_COMPLETE_ALREADY if it's set. The upshot here is that once a
+client does a CLAIM_PREV open, the RECLAIM_COMPLETE call will fail.
+Let's fix this by adding a new RECLAIM_COMPLETE flag on the client to
+indicate that that's already been done.
 
-Hmm...now that I look though, I think I see a bug in the rpc_pipefs
-code. When an upcall is read off the pipe, it moves to the in_upcall
-list. If there's never a downcall for it, then I think it'll just
-linger there forever until the pipe is removed. Even closing the pipe
-won't unwedge it. It seems like we should return an error for those as
-well. I'll see about spinning up a patch for that too...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |   14 +++++++-------
+ fs/nfsd/nfs4proc.c     |    3 ++-
+ fs/nfsd/nfs4recover.c  |   20 +++++++++++++-------
+ fs/nfsd/nfs4state.c    |    4 ++--
+ fs/nfsd/state.h        |   10 ++++++----
+ 5 files changed, 30 insertions(+), 21 deletions(-)
 
-> > +	ret = rpc_queue_upcall(inode, &msg);
-> > +	if (ret < 0) {
-> > +		set_current_state(TASK_RUNNING);
-> > +		goto out;
-> > +	}
-> > +
-> > +	schedule();
-> > +	set_current_state(TASK_RUNNING);
-> > +
-> > +	if (msg.errno < 0)
-> > +		ret = msg.errno;
-> > +out:
-> > +	return ret;
-> > +}
-> > +
-> > +static int
-> > +cld_pipe_upcall(struct cld_msg *cmsg)
-> > +{
-> > +	int ret;
-> > +
-> > +	/*
-> > +	 * -EAGAIN occurs when pipe is closed an reopened while there are
-> > +	 *  upcalls queued.
-> > +	 */
-> > +	do {
-> > +		ret = __cld_pipe_upcall(cmsg);
-> > +	} while (ret == -EAGAIN);
-> > +
-> > +	return ret;
-> > +}
-> > +
-> > +static ssize_t
-> > +cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
-> > +{
-> > +	struct cld_upcall *tmp, *cup;
-> > +	struct cld_msg *cmsg = (struct cld_msg *)src;
-> > +	uint32_t xid;
-> > +
-> > +	if (mlen != sizeof(*cmsg)) {
-> > +		dprintk("%s: got %lu bytes, expected %lu\n", __func__, mlen,
-> > +			sizeof(*cmsg));
-> > +		return -EINVAL;
-> > +	}
-> > +
-> > +	/* copy just the xid so we can try to find that */
-> > +	if (copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) != 0) {
-> > +		dprintk("%s: error when copying xid from userspace", __func__);
-> > +		return -EFAULT;
-> > +	}
-> > +
-> > +	/* walk the list and find corresponding xid */
-> > +	cup = NULL;
-> > +	spin_lock(&cld_lock);
-> > +	list_for_each_entry(tmp, &cld_list, cu_list) {
-> > +		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
-> > +			cup = tmp;
-> > +			list_del_init(&cup->cu_list);
-> > +			break;
-> > +		}
-> > +	}
-> > +	spin_unlock(&cld_lock);
-> > +
-> > +	/* couldn't find upcall? */
-> > +	if (!cup) {
-> > +		dprintk("%s: couldn't find upcall -- xid=%u\n", __func__,
-> > +			cup->cu_msg.cm_xid);
-> > +		return -EINVAL;
-> > +	}
-> > +
-> > +	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
-> > +		return -EFAULT;
-> > +
-> > +	wake_up_process(cup->cu_task);
-> > +	return mlen;
-> > +}
-> > +
-> > +static void
-> > +cld_pipe_destroy_msg(struct rpc_pipe_msg *msg)
-> > +{
-> > +	struct cld_msg *cmsg = msg->data;
-> > +	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall,
-> > +						 cu_msg);
-> > +
-> > +	/* errno >= 0 means we got a downcall */
-> > +	if (msg->errno >= 0)
-> > +		return;
-> > +
-> > +	wake_up_process(cup->cu_task);
-> > +}
-> > +
-> > +static const struct rpc_pipe_ops cld_upcall_ops = {
-> > +	.upcall		= rpc_pipe_generic_upcall,
-> > +	.downcall	= cld_pipe_downcall,
-> > +	.destroy_msg	= cld_pipe_destroy_msg,
-> > +};
-> > +
-> > +/* Initialize rpc_pipefs pipe for communication with client tracking daemon */
-> > +static int
-> > +nfsd4_init_cld_pipe(void)
-> > +{
-> > +	int ret;
-> > +	struct path path;
-> > +	struct vfsmount *mnt;
-> > +
-> > +	if (cld_pipe)
-> > +		return 0;
-> > +
-> > +	mnt = rpc_get_mount();
-> > +	if (IS_ERR(mnt))
-> > +		return PTR_ERR(mnt);
-> > +
-> > +	ret = vfs_path_lookup(mnt->mnt_root, mnt, NFSD_PIPE_DIR, 0, &path);
-> > +	if (ret)
-> > +		goto err;
-> > +
-> > +	cld_pipe = rpc_mkpipe(path.dentry, "cld", NULL,
-> > +				&cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
-> > +	path_put(&path);
-> > +	if (!IS_ERR(cld_pipe))
-> > +		return 0;
-> > +
-> > +	ret = PTR_ERR(cld_pipe);
-> > +err:
-> > +	rpc_put_mount();
-> > +	printk(KERN_ERR "NFSD: unable to create nfsdcld upcall pipe (%d)\n",
-> > +			ret);
-> > +	return ret;
-> > +}
-> > +
-> > +static void
-> > +nfsd4_remove_cld_pipe(void)
-> > +{
-> > +	int ret;
-> > +
-> > +	ret = rpc_unlink(cld_pipe);
-> > +	if (ret)
-> > +		printk(KERN_ERR "NFSD: error removing cld pipe: %d\n", ret);
-> > +	cld_pipe = NULL;
-> > +	rpc_put_mount();
-> > +}
-> > +
-> > +static struct cld_upcall *
-> > +alloc_cld_upcall(void)
-> > +{
-> > +	struct cld_upcall *new, *tmp;
-> > +
-> > +	new = kzalloc(sizeof(*new), GFP_KERNEL);
-> > +	if (!new)
-> > +		return new;
-> > +
-> > +	/* FIXME: hard cap on number in flight? */
-> > +restart_search:
-> > +	spin_lock(&cld_lock);
-> > +	list_for_each_entry(tmp, &cld_list, cu_list) {
-> > +		if (tmp->cu_msg.cm_xid == cld_xid) {
-> > +			cld_xid++;
-> > +			spin_unlock(&cld_lock);
-> > +			goto restart_search;
-> > +		}
-> > +	}
-> > +	new->cu_task = current;
-> > +	new->cu_msg.cm_vers = CLD_UPCALL_VERSION;
-> > +	put_unaligned(cld_xid++, &new->cu_msg.cm_xid);
-> > +	list_add(&new->cu_list, &cld_list);
-> > +	spin_unlock(&cld_lock);
-> > +
-> > +	dprintk("%s: allocated xid %u\n", __func__, new->cu_msg.cm_xid);
-> > +
-> > +	return new;
-> > +}
-> > +
-> > +static void
-> > +free_cld_upcall(struct cld_upcall *victim)
-> > +{
-> > +	spin_lock(&cld_lock);
-> > +	list_del(&victim->cu_list);
-> > +	spin_unlock(&cld_lock);
-> > +	kfree(victim);
-> > +}
-> > +
-> > +/* Ask daemon to create a new record */
-> > +static void
-> > +nfsd4_cld_create(struct nfs4_client *clp)
-> > +{
-> > +	int ret;
-> > +	struct cld_upcall *cup;
-> > +
-> > +	/* Don't upcall if it's already stored */
-> > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> > +		return;
-> > +
-> > +	cup = alloc_cld_upcall();
-> > +	if (!cup) {
-> > +		ret = -ENOMEM;
-> > +		goto out_err;
-> > +	}
-> > +
-> > +	cup->cu_msg.cm_cmd = Cld_Create;
-> > +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> > +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> > +			clp->cl_name.len);
-> > +
-> > +	ret = cld_pipe_upcall(&cup->cu_msg);
-> > +	if (!ret) {
-> > +		ret = cup->cu_msg.cm_status;
-> > +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> > +	}
-> > +
-> > +	free_cld_upcall(cup);
-> > +out_err:
-> > +	if (ret)
-> > +		printk(KERN_ERR "NFSD: Unable to create client "
-> > +				"record on stable storage: %d\n", ret);
-> > +}
-> > +
-> > +/* Ask daemon to create a new record */
-> > +static void
-> > +nfsd4_cld_remove(struct nfs4_client *clp)
-> > +{
-> > +	int ret;
-> > +	struct cld_upcall *cup;
-> > +
-> > +	/* Don't upcall if it's already removed */
-> > +	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> > +		return;
-> > +
-> > +	cup = alloc_cld_upcall();
-> > +	if (!cup) {
-> > +		ret = -ENOMEM;
-> > +		goto out_err;
-> > +	}
-> > +
-> > +	cup->cu_msg.cm_cmd = Cld_Remove;
-> > +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> > +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> > +			clp->cl_name.len);
-> > +
-> > +	ret = cld_pipe_upcall(&cup->cu_msg);
-> > +	if (!ret) {
-> > +		ret = cup->cu_msg.cm_status;
-> > +		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> > +	}
-> > +
-> > +	free_cld_upcall(cup);
-> > +out_err:
-> > +	if (ret)
-> > +		printk(KERN_ERR "NFSD: Unable to remove client "
-> > +				"record from stable storage: %d\n", ret);
-> > +}
-> > +/* Check for presence of a record, and update its timestamp */
-> > +static int
-> > +nfsd4_cld_check(struct nfs4_client *clp)
-> > +{
-> > +	int ret;
-> > +	struct cld_upcall *cup;
-> > +
-> > +	/* Don't upcall if one was already stored during this grace pd */
-> > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> > +		return 0;
-> > +
-> > +	cup = alloc_cld_upcall();
-> > +	if (!cup) {
-> > +		printk(KERN_ERR "NFSD: Unable to check client record on "
-> > +				"stable storage: %d\n", -ENOMEM);
-> > +		return -ENOMEM;
-> > +	}
-> > +
-> > +	cup->cu_msg.cm_cmd = Cld_Check;
-> > +	cup->cu_msg.cm_u.cm_name.cn_len = clp->cl_name.len;
-> > +	memcpy(cup->cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
-> > +			clp->cl_name.len);
-> > +
-> > +	ret = cld_pipe_upcall(&cup->cu_msg);
-> > +	if (!ret) {
-> > +		ret = cup->cu_msg.cm_status;
-> > +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> > +	}
-> 
-> Most of this nfsd4_cld_*() code is *really* similar from one function to
-> the next--would it make sense to share some more code?
-> 
-> Anyway, this basically all looks reasonable to me....
-> 
-> --b.
-> 
-
-It is very similar, but I think I'm sharing about all I can here. I'll
-see if I can consolidate it some more, but the upcalls are just
-different enough to make that difficult...
-
-> > +
-> > +	free_cld_upcall(cup);
-> > +	return ret;
-> > +}
-> > +
-> > +static void
-> > +nfsd4_cld_grace_done(time_t boot_time)
-> > +{
-> > +	int ret;
-> > +	struct cld_upcall *cup;
-> > +
-> > +	cup = alloc_cld_upcall();
-> > +	if (!cup) {
-> > +		ret = -ENOMEM;
-> > +		goto out_err;
-> > +	}
-> > +
-> > +	cup->cu_msg.cm_cmd = Cld_GraceDone;
-> > +	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-> > +	ret = cld_pipe_upcall(&cup->cu_msg);
-> > +	if (!ret)
-> > +		ret = cup->cu_msg.cm_status;
-> > +
-> > +	free_cld_upcall(cup);
-> > +out_err:
-> > +	if (ret)
-> > +		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
-> > +}
-> > +
-> > +static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
-> > +	.init		= nfsd4_init_cld_pipe,
-> > +	.exit		= nfsd4_remove_cld_pipe,
-> > +	.create		= nfsd4_cld_create,
-> > +	.remove		= nfsd4_cld_remove,
-> > +	.check		= nfsd4_cld_check,
-> > +	.grace_done	= nfsd4_cld_grace_done,
-> > +};
-> > +
-> >  int
-> >  nfsd4_client_tracking_init(void)
-> >  {
-> >  	int status;
-> > +	struct path path;
-> >  
-> > -	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-> > +	if (!client_tracking_ops) {
-> > +		client_tracking_ops = &nfsd4_cld_tracking_ops;
-> > +		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-> > +		if (!status) {
-> > +			if (S_ISDIR(path.dentry->d_inode->i_mode))
-> > +				client_tracking_ops =
-> > +						&nfsd4_legacy_tracking_ops;
-> > +			path_put(&path);
-> > +		}
-> > +	}
-> >  
-> >  	if (!client_tracking_ops->init)
-> >  		return 0;
-> > -- 
-> > 1.7.7.6
-> > 
-
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 6f3ebb4..8199eb6 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -754,9 +754,9 @@ static void do_probe_callback(struct nfs4_client *clp)
+  */
+ void nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+-	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
++	/* XXX: atomicity?  Also, should we be using cl_flags? */
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+-	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	do_probe_callback(clp);
+ }
+ 
+@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
+ /* must be called under the state lock */
+ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ {
+-	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
++	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
+ 	/*
+ 	 * Note this won't actually result in a null callback;
+ 	 * instead, nfsd4_do_callback_rpc() will detect the killed
+@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 		clp->cl_cb_conn.cb_xprt = NULL;
+ 	}
+-	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
++	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
+ 		return;
+ 	spin_lock(&clp->cl_lock);
+ 	/*
+ 	 * Only serialized callback code is allowed to clear these
+ 	 * flags; main nfsd code can only set them:
+ 	 */
+-	BUG_ON(!clp->cl_cb_flags);
+-	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
++	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
++	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+ 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
+ 	c = __nfsd4_find_backchannel(clp);
+ 	if (c) {
+@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+-	if (clp->cl_cb_flags)
++	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+ 		nfsd4_process_cb_update(cb);
+ 
+ 	clnt = clp->cl_cb_client;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 896da74..af2c3e8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -319,7 +319,8 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * Before RECLAIM_COMPLETE done, server should deny new lock
+ 	 */
+ 	if (nfsd4_has_session(cstate) &&
+-	    !cstate->session->se_client->cl_firststate &&
++	    !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
++		      &cstate->session->se_client->cl_flags) &&
+ 	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+ 		return nfserr_grace;
+ 
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 1dda803..ccd9b97 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -138,9 +138,8 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 
+ 	dprintk("NFSD: nfsd4_create_clid_dir for \"%s\"\n", dname);
+ 
+-	if (clp->cl_firststate)
++	if (test_and_set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+ 		return;
+-	clp->cl_firststate = 1;
+ 	if (!rec_file)
+ 		return;
+ 	status = nfs4_save_creds(&original_cred);
+@@ -283,13 +282,13 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
+ 	const struct cred *original_cred;
+ 	int status;
+ 
+-	if (!rec_file || !clp->cl_firststate)
++	if (!rec_file || !test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+ 		return;
+ 
+ 	status = mnt_want_write_file(rec_file);
+ 	if (status)
+ 		goto out;
+-	clp->cl_firststate = 0;
++	clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+ 
+ 	status = nfs4_save_creds(&original_cred);
+ 	if (status < 0)
+@@ -457,10 +456,17 @@ nfs4_recoverydir(void)
+ static int
+ nfsd4_check_legacy_client(struct nfs4_client *clp)
+ {
+-	if (nfsd4_find_reclaim_client(clp) != NULL)
++	/* did we already find that this client is stable? */
++	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+ 		return 0;
+-	else
+-		return -ENOENT;
++
++	/* look for it in the reclaim hashtable otherwise */
++	if (nfsd4_find_reclaim_client(clp)) {
++		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
++		return 0;
++	}
++
++	return -ENOENT;
+ }
+ 
+ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a5b2245..9b4cfa3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2030,7 +2030,8 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 
+ 	nfs4_lock_state();
+ 	status = nfserr_complete_already;
+-	if (cstate->session->se_client->cl_firststate)
++	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
++			     &cstate->session->se_client->cl_flags))
+ 		goto out;
+ 
+ 	status = nfserr_stale_clientid;
+@@ -2779,7 +2780,6 @@ static void
+ nfs4_set_claim_prev(struct nfsd4_open *open)
+ {
+ 	open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+-	open->op_openowner->oo_owner.so_client->cl_firststate = 1;
+ }
+ 
+ /* Should we give out recallable state?: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e22f90f..fac413b 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -245,14 +245,16 @@ struct nfs4_client {
+ 	struct svc_cred		cl_cred; 	/* setclientid principal */
+ 	clientid_t		cl_clientid;	/* generated by server */
+ 	nfs4_verifier		cl_confirm;	/* generated by server */
+-	u32			cl_firststate;	/* recovery dir creation */
+ 	u32			cl_minorversion;
+ 
+ 	/* for v4.0 and v4.1 callbacks: */
+ 	struct nfs4_cb_conn	cl_cb_conn;
+-#define NFSD4_CLIENT_CB_UPDATE	1
+-#define NFSD4_CLIENT_KILL	2
+-	unsigned long		cl_cb_flags;
++#define NFSD4_CLIENT_CB_UPDATE		(0)
++#define NFSD4_CLIENT_CB_KILL		(1)
++#define NFSD4_CLIENT_STABLE		(2)	/* client on stable storage */
++#define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
++#define NFSD4_CLIENT_CB_FLAG_MASK	(0x3)
++	unsigned long		cl_flags;
+ 	struct rpc_clnt		*cl_cb_client;
+ 	u32			cl_cb_ident;
+ #define NFSD4_CB_UP		0
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
