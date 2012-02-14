@@ -1,44 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42323 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030191Ab2B2OJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 09:09:05 -0500
-Date: Wed, 29 Feb 2012 09:09:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: steve <steve@steve-ss.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-Message-ID: <20120229140903.GA3007@fieldses.org>
-References: <4F4628B8.90401@steve-ss.com>
- <20120223144053.GA25010@fieldses.org>
- <4F465C3A.9080802@steve-ss.com>
- <20120223154215.GA26706@fieldses.org>
- <4F466467.3030506@steve-ss.com>
- <4F489999.30909@steve-ss.com>
- <20120228200524.GE2723@fieldses.org>
- <4F4D61B6.5090304@steve-ss.com>
- <20120229124401.GA9160@fieldses.org>
- <4F4E306C.6030400@steve-ss.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F4E306C.6030400@steve-ss.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:49337 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932581Ab2BNVsz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Feb 2012 16:48:55 -0500
+Received: by bkcjm19 with SMTP id jm19so424695bkc.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Feb 2012 13:48:54 -0800 (PST)
+From: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+To: trond.myklebust@netapp.com
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Subject: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+Date: Wed, 15 Feb 2012 01:48:28 +0400
+Message-Id: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 29, 2012 at 03:04:28PM +0100, steve wrote:
-> On 29/02/12 13:44, J. Bruce Fields wrote:
-> >On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
-> >>We are authenticating against Samba4, so our domain user accounts
-> >>are under Kerberos.
-> >
-> >Kerberos works fine with v3.
-> >
-> >--b.
-> 
-> Hi
-> Unfortunately, it doesn't seem to. We just tried it, and anyone
-> (with or without a ticket) gets access:-(
+Uninitialized seq_nr causes sending first SESSION request
+with sa_sequenceid = 0.
 
-Could you give any more detail about your test?
+Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+---
+ fs/nfs/nfs4proc.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f0c849c..711a812 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5067,6 +5067,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+ 		int max_slots, int ivalue)
+ {
+ 	struct nfs4_slot *slot;
++	int i;
+ 	int ret = -ENOMEM;
+ 
+ 	BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
+@@ -5082,6 +5083,8 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+ 	tbl->max_slots = max_slots;
+ 	tbl->slots = slot;
+ 	tbl->highest_used_slotid = -1;  /* no slot is currently used */
++	for (i = 0; i < tbl->max_slots; ++i)
++		tbl->slots[i].seq_nr = ivalue;
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+ 		tbl, tbl->slots, tbl->max_slots);
+-- 
+1.7.5.4
+
