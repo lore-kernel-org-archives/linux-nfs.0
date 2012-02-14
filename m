@@ -1,40 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:19440 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751277Ab2BPNmx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 08:42:53 -0500
-Subject: [PATCH] SUNRPC: init per-net rpcbind spinlock
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 16 Feb 2012 17:42:12 +0400
-Message-ID: <20120216134212.28924.20601.stgit@localhost6.localdomain6>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:32923 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757285Ab2BNXXv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Feb 2012 18:23:51 -0500
+Date: Tue, 14 Feb 2012 23:23:42 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Tom Tucker <tom@ogc.us>
+Cc: bfields@fieldses.org, trond.myklebust@netapp.com, dan.carpenter@oracle.com,
+        linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] svcrdma: Cleanup sparse warnings in the svcrdma module
+Message-ID: <20120214232342.GB23916@ZenIV.linux.org.uk>
+References: <1329260485-16994-1-git-send-email-tom@ogc.us>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1329260485-16994-1-git-send-email-tom@ogc.us>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Feb 14, 2012 at 05:01:25PM -0600, Tom Tucker wrote:
 
+> -	if (ch->rc_discrim == 0)
+> +	if (ch->rc_discrim == xdr_zero)
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Mostly, ACK, modulo this and similar sillyness.  sparse is just fine with
+use of constant 0 in bitwise contexts; it's also just fine with use of
+bitwise in logical ones.
 
----
- net/sunrpc/sunrpc_syms.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+> +	nchunks = ntohl(ary->wc_nchunks);
+>  	if (((unsigned long)&ary->wc_array[0] +
+> -	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
+> +	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
 
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index d16ac08..21d106e 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -50,6 +50,7 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	rpc_pipefs_init_net(net);
- 	INIT_LIST_HEAD(&sn->all_clients);
- 	spin_lock_init(&sn->rpc_client_lock);
-+	spin_lock_init(&sn->rpcb_clnt_lock);
- 	return 0;
- 
- err_unixgid:
+BTW, this still can overflow.  With less painful consequences than before that
+patch, but...
 
+> -			BUG_ON(0 == virt_to_page(vec[i].iov_base));
+> +			BUG_ON(NULL == virt_to_page(vec[i].iov_base));
+
+Egads...  What, "!virt_to_page(...)" would have been too pedestrian?
