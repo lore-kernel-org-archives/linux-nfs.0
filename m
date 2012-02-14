@@ -1,136 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:65509 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751456Ab2BOPpj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 10:45:39 -0500
-Received: by werb13 with SMTP id b13so705900wer.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 07:45:38 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1329319793.3364.9.camel@lade.trondhjem.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-	<1329259606.11759.15.camel@lade.trondhjem.org>
-	<4F3AFD84.3020709@nexenta.com>
-	<1329266587.28837.4.camel@lade.trondhjem.org>
-	<20120215005315.GA9018@fieldses.org>
-	<1329270628.28837.15.camel@lade.trondhjem.org>
-	<0C12B635-0094-4099-B96C-3637B914A814@netapp.com>
-	<1329319793.3364.9.camel@lade.trondhjem.org>
-Date: Wed, 15 Feb 2012 10:45:37 -0500
-Message-ID: <CAHVgHyW9CoPjZNvy4EdSknScM_K00QmwavG=RdsBTSmjVvT_3g@mail.gmail.com>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:58267 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760886Ab2BNVlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Feb 2012 16:41:13 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 add a session statistics file to /proc/fs/nfsfs
+Date: Tue, 14 Feb 2012 16:40:38 -0500
+Message-Id: <1329255638-2353-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 10:29 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2012-02-15 at 15:01 +0000, Adamson, Andy wrote:
->> On Feb 14, 2012, at 8:50 PM, Myklebust, Trond wrote:
->>
->> > On Tue, 2012-02-14 at 19:53 -0500, J. Bruce Fields wrote:
->> >> On Wed, Feb 15, 2012 at 12:43:08AM +0000, Myklebust, Trond wrote:
->> >>> Then we have a problem. The zero initialisation is already in use out
->> >>> there in both commercial and non-commercial versions of Linux. It is too
->> >>> late to change that now.
->> >>>
->> >>> Furthermore, since none of the servers we've tested against in earlier
->> >>> Bakeathons and Connectathons have complained, I suggest that we rather
->> >>> change the spec with an errata.
->> >>
->> >> Argh.
->> >>
->> >> I just noticed that the server was crashing intermittently and traced it
->> >> to incorrect handling of the case where the client sends a one-op
->> >> SEQUENCE compound with seqid 0.  I'm not sure why it started popping up
->> >> just in 3.3--perhaps some change in the way the client uses slots made
->> >> that more likely.
->> >>
->> >> The server code actually looks like it did assume initial seqid 1, but
->> >> accepted initial seqid 0 (except in this one case) basically by mistake.
->> >>
->> >> In any case, I think it should be easy enough to teach it just to accept
->> >> any seqid on a previously unused slot, so I'll do that....
->> >
->> > Hang on... Looking at 3.2, I think you're correct. We used to initialise
->> > to 1, and now we're initialising to 0.
->>
->> No, commit aacd5537270a752fe12a9914a207284fc2341c6d initializes and resets the slot tables with the ivalue which is 1 for the forechannel and 0 for the back channel, just as in 3.2.
->> To be clear from aacd5537:
->>
->> -static int nfs4_init_slot_tables(struct nfs4_session *session)
->> +static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
->>  {
->>         struct nfs4_slot_table *tbl;
->> -       int status = 0;
->> +       int status;
->>
->> -       tbl = &session->fc_slot_table;
->> +       dprintk("--> %s\n", __func__);
->> +       /* Fore channel */
->> +       tbl = &ses->fc_slot_table;
->>         if (tbl->slots == NULL) {
->> -               status = nfs4_init_slot_table(tbl,
->> -                               session->fc_attrs.max_reqs, 1);
->>                                                                              ^^^^^^^
->>                                                                              ivalue of 1
->>
->> +               status = nfs4_init_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->>                                                                                                                     ^^^^^
->>                                                                                                                   ivalue of 1
->> +               if (status) /* -ENOMEM */
->> +                       return status;
->> +       } else {
->> +               status = nfs4_reset_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
->>                                                                                                                     ^^^^^
->>                                                                                                                   ivalue of 1
->>                 if (status)
->>                         return status;
->>         }
->> -
->> -       tbl = &session->bc_slot_table;
->> +       /* Back channel */
->> +       tbl = &ses->bc_slot_table;
->>         if (tbl->slots == NULL) {
->> -               status = nfs4_init_slot_table(tbl,
->> -                               session->bc_attrs.max_reqs, 0);
->> +               status = nfs4_init_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->>                 if (status)
->> -                       nfs4_destroy_slot_tables(session);
->> -       }
->> -
->> +                       /* Fore and back channel share a connection so get
->> +                        * both slot tables or neither */
->> +                       nfs4_destroy_slot_tables(ses);
->> +       } else
->> +               status = nfs4_reset_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
->>         return status;
->>  }
->
-> Yes, and it then _removed_ the previously unconditional call to
-> nfs4_reset_slot_tables() from nfs4_proc_create_session(). Which means
-> that the tbl->slots == NULL path no longer initialises the slot table
-> sequence numbers.
+From: Andy Adamson <andros@netapp.com>
 
+Session statistics are needed for performance characterisation and debugging
+session recovery and migration.
 
-Ah - you are correct. nfs4_setup_session_slot_tables is called and
-incorrectly assumed that nfs4_init_slot_tables actually initialized
-the slots, which it doesn't and is  a bug.
+Only gather forechannel statistics as the backchannel has one session slot.
 
-For my 2 cents: I like Vitilay's inthinkitial patch.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c           |  120 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c         |    5 ++
+ include/linux/nfs_fs_sb.h |    3 +
+ 3 files changed, 128 insertions(+), 0 deletions(-)
 
--->Andy
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 31778f7..9d8c479 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1815,6 +1815,118 @@ static const struct file_operations nfs_volume_list_fops = {
+ 	.owner		= THIS_MODULE,
+ };
+ 
++#ifdef CONFIG_NFS_V4_1
++static int nfs_session_list_open(struct inode *inode, struct file *file);
++static void *nfs_session_list_start(struct seq_file *p, loff_t *pos);
++static void *nfs_session_list_next(struct seq_file *p, void *v, loff_t *pos);
++static void nfs_session_list_stop(struct seq_file *p, void *v);
++static int nfs_session_list_show(struct seq_file *m, void *v);
++
++static const struct seq_operations nfs_session_list_ops = {
++	.start	= nfs_session_list_start,
++	.next	= nfs_session_list_next,
++	.stop	= nfs_session_list_stop,
++	.show	= nfs_session_list_show,
++};
++
++static const struct file_operations nfs_session_list_fops = {
++	.open		= nfs_session_list_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= seq_release,
++	.owner		= THIS_MODULE,
++};
++
++/*
++ * open "/proc/fs/nfsfs/sessions" which provides a summary of sessions with
++ * which we're dealing
++ */
++static int nfs_session_list_open(struct inode *inode, struct file *file)
++{
++	struct seq_file *m;
++	int ret;
++
++	ret = seq_open(file, &nfs_session_list_ops);
++	if (ret < 0)
++		return ret;
++
++	m = file->private_data;
++	m->private = PDE(inode)->data;
++
++	return 0;
++}
++
++/*
++ * set up the iterator to start reading from the nfs_client list and return
++ * the first item
++ */
++static void *nfs_session_list_start(struct seq_file *m, loff_t *_pos)
++{
++	/* lock the list against modification */
++	spin_lock(&nfs_client_lock);
++	return seq_list_start_head(&nfs_client_list, *_pos);
++}
++
++/*
++ * move to next nfs_client
++ */
++static void *nfs_session_list_next(struct seq_file *p, void *v, loff_t *pos)
++{
++	return seq_list_next(v, &nfs_client_list, pos);
++}
++
++/*
++ * clean up after reading from the nfs_client list
++ */
++static void nfs_session_list_stop(struct seq_file *p, void *v)
++{
++	spin_unlock(&nfs_client_lock);
++}
++
++/*
++ * display a header line followed by a load of call lines
++ */
++static int nfs_session_list_show(struct seq_file *m, void *v)
++{
++	struct nfs_client *clp;
++	struct nfs4_slot_table *tbl;
++	char sessionid[16];
++
++	/* display header on line 1 */
++	if (v == &nfs_client_list) {
++		seq_puts(m, "HOSTNAME          SESSIONID       WAITQ:MAX,CUR"
++			"     SLOTID:MAX,TARGET,HIGHEST \n");
++		return 0;
++	}
++
++	/* display one session per line on subsequent lines */
++	clp = list_entry(v, struct nfs_client, cl_share_link);
++
++	/* Check if the nfs_client has a session and is initialized */
++	if (!clp->cl_session || clp->cl_cons_state != NFS_CS_READY)
++		return 0;
++
++	snprintf(sessionid, 16, "%x:%x:%x:%x",
++		((u32 *)&clp->cl_session->sess_id.data)[0],
++		((u32 *)&clp->cl_session->sess_id.data)[1],
++		((u32 *)&clp->cl_session->sess_id.data)[2],
++		((u32 *)&clp->cl_session->sess_id.data)[3]);
++
++	tbl = &clp->cl_session->fc_slot_table;
++	spin_lock(&tbl->slot_tbl_lock);
++	seq_printf(m, "%s  %-16s         %u,  %u               %d,  %d,  %d\n",
++		   clp->cl_hostname,
++		   sessionid,
++		   tbl->max_qlen,
++		   tbl->qlen,
++		   tbl->max_slots = 1,
++		   tbl->target_max_slots,
++		   tbl->highest_used_slotid);
++	spin_unlock(&tbl->slot_tbl_lock);
++	return 0;
++}
++#endif /* CONFIG_NFS_V4_1 */
++
+ /*
+  * open "/proc/fs/nfsfs/servers" which provides a summary of servers with which
+  * we're dealing
+@@ -1992,6 +2104,14 @@ int __init nfs_fs_proc_init(void)
+ 			proc_fs_nfs, &nfs_volume_list_fops);
+ 	if (!p)
+ 		goto error_2;
++
++#ifdef CONFIG_NFS_V4_1
++	/* a file of sessions that we are using */
++	p = proc_create("sessions", S_IFREG|S_IRUGO,
++			proc_fs_nfs, &nfs_session_list_fops);
++	if (!p)
++		goto error_2;
++#endif /* CONFIG_NFS_V4_1 */
+ 	return 0;
+ 
+ error_2:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 17b3d0b..1419e1e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -692,6 +692,11 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	tbl = &session->fc_slot_table;
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
++
++	/* Gather stats */
++	tbl->max_qlen = max(tbl->max_qlen, tbl->slot_tbl_waitq.qlen);
++	tbl->qlen = tbl->slot_tbl_waitq.qlen;
++
+ 	if (test_bit(NFS4_SESSION_DRAINING, &session->session_state) &&
+ 	    !rpc_task_has_priority(task, RPC_PRIORITY_PRIVILEGED)) {
+ 		/* The state manager will wait until the slot table is empty */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index a091dc1..5c04d42 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -207,6 +207,9 @@ struct nfs4_slot_table {
+ 	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
+ 						 * the new max_slots */
+ 	struct completion complete;
++	/* For session statistics */
++	unsigned short  max_qlen;		/* max waitq qlen */
++	unsigned short  qlen;			/* current waitq qlen */
+ };
+ 
+ /*
+-- 
+1.7.6.4
 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
