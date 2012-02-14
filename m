@@ -1,59 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:55973 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754658Ab2BOVgT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:36:19 -0500
-Received: by ggnh1 with SMTP id h1so960565ggn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:36:19 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/13] NFS: Simplify arguments of encode_renew()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:36:17 -0500
-Message-ID: <20120215213617.3254.57995.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:56081 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756715Ab2BNRDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Feb 2012 12:03:10 -0500
+Date: Tue, 14 Feb 2012 12:03:00 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20120214170300.GA4309@fieldses.org>
+References: <20101218020118.GA3179@amd>
+ <20101218161609.GA22150@fieldses.org>
+ <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
+ <20101227234641.GA22248@fieldses.org>
+ <20110118204509.GA10903@fieldses.org>
+ <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
+ <20110118220817.GF10903@fieldses.org>
+ <20110308181320.GA15566@fieldses.org>
+ <20110310105821.GE22723@ZenIV.linux.org.uk>
+ <20110311150749.2fa2be66@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110311150749.2fa2be66@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: pass just the piece of data that is needed to encode_renew()
-to enable it to be used by callers who might not have an nfs_client.
+On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
+> On Thu, 10 Mar 2011 10:58:21 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+> 
+> > On Tue, Mar 08, 2011 at 01:13:20PM -0500, J. Bruce Fields wrote:
+> > 
+> > > Al, do you have this in your queue to look at?  Need me to resend?  Or
+> > > should it take some other route?
+> > 
+> > It's in queue, but I'd be a lot happier if I understood what's going on
+> > with __d_find_alias() elsewhere.  Namely, in d_splice_alias().  The thing
+> > is, unless I'm missing something we ought to use __d_find_any_alias()
+> > there as well.  Directories really, _really_ should not have more than
+> > one alias.  And what we get is really weird:
+> > 	* find (the only) alias
+> > 	* if it doesn't exist, create one (OK, no problem)
+> > 	* if it does exist and happens to be IS_ROOT and DCACHE_DISCONNECTED,
+> > move it (also fine, modulo rather useless BUG_ON() in there)
+> > 	* if it does exist and either isn't IS_ROOT or not DCACHE_DISCONNECTED,
+> > add a new alias and say nothing.
+> > 
+> > The last part looks very strange.  I'd been staring at the history of this
+> > function and I _think_ it's a rudiment of period when we used that stuff for
+> > non-directories as well.  It used to be directory-only; then Neil had
+> > switched it to non-directories as well (in "Fix disconnected dentries on NFS
+> > exports" back in 2004), adding want_discon argument to __d_find_alias() in
+> > process and using it instead of open-coded equivalent of __d_find_any_alias().
+> > Then, two years later, in "knfsd: close a race-opportunity in d_splice_alias"
+> > he'd made that code directory-only again, at which point we arrived to the
+> > current situation.
+> > 
+> > Neil, is there some reason I'm missing that makes __d_find_alias() right in
+> > there?  And do we still need the second argument in __d_find_alias()?
+> > 
+> > Anyway, Bruce's patch goes in tonight's push, but I'd love to see that
+> > mess cleaned up as well or at least explained.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Nothing like seeing somebody actually run across a bug here to motivate
+getting back to this....
 
- fs/nfs/nfs4xdr.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+So, like Al I'm wondering whether the __d_find_alias in d_splice_alias
+should be a __d_find_any_alias.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2fb129d..16ee1cf 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1622,13 +1622,13 @@ static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, co
- 	hdr->replen += decode_rename_maxsz;
- }
- 
--static void encode_renew(struct xdr_stream *xdr, const struct nfs_client *client_stateid, struct compound_hdr *hdr)
-+static void encode_renew(struct xdr_stream *xdr, clientid4 clid, struct compound_hdr *hdr)
- {
- 	__be32 *p;
- 
- 	p = reserve_space(xdr, 12);
- 	*p++ = cpu_to_be32(OP_RENEW);
--	xdr_encode_hyper(p, client_stateid->cl_clientid);
-+	xdr_encode_hyper(p, clid);
- 	hdr->nops++;
- 	hdr->replen += decode_renew_maxsz;
- }
-@@ -2651,7 +2651,7 @@ static void nfs4_xdr_enc_renew(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	};
- 
- 	encode_compound_hdr(xdr, req, &hdr);
--	encode_renew(xdr, clp, &hdr);
-+	encode_renew(xdr, clp->cl_clientid, &hdr);
- 	encode_nops(&hdr);
- }
- 
+Disclaimer: the bug manifested in rhel5, and I haven't looked closely at
+upstream yet, though it seems like it would have the same problem.
 
+In the particular case I'm seeing, the directory already has an alias
+that is UNHASHED (but not DISCONNECTED).  So d_splice_alias adds a
+second alias.
+
+(And we notice because a rename happens to pick up one of each, and the
+rename locking then tries to take the parent's i_mutex twice (since the
+rename code think it's dealing with a cross-directory rename)).
+
+Using __d_find_any_alias seems to fix the problem.
+
+Would rehashing an UNHASHED dentry here violate any important assumptions?
+
+>    I'm a bit uncomfortable that d_splice_alias drops all locks before
+>    calling d_move.  Normally when d_move is called, both directories are
+>    locked in some way.  In the case the source is not a directory bit
+>    is the state of being anonymous.  Theoretically two calls to
+>    d_splice_alias on the same inode could try to d_move the same
+>    anonymous dentry to two different places, which would be bad.
+>    So I think some locking is needed there.
+
+I think d_splice_alias is only ever called from lookup, under the
+parent's i_mutex?
+
+So if we have two tasks in the d_move here, then the two callers must be
+doing lookups in two different directories, and holding the i_mutex on
+both of them.
+
+The directory can't have been renamed while either caller was holding
+the i_mutex, so this is really a directory that's returned on lookup
+from two different parents.
+
+That sounds like a bug already.  Could it happen on a corrupted
+filesystem maybe?
+
+--b.
