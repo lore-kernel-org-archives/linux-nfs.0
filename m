@@ -1,68 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:62957 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754236Ab2BMVv0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:26 -0500
-Received: by eaah12 with SMTP id h12so1933716eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:25 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 00/10] handle curruent stateid
-Date: Mon, 13 Feb 2012 22:54:34 +0100
-Message-Id: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mx2.netapp.com ([216.240.18.37]:50640 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750762Ab2BOPaS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 10:30:18 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+Date: Wed, 15 Feb 2012 15:29:53 +0000
+Message-ID: <1329319793.3364.9.camel@lade.trondhjem.org>
+References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1329259606.11759.15.camel@lade.trondhjem.org>
+	 <4F3AFD84.3020709@nexenta.com>
+	 <1329266587.28837.4.camel@lade.trondhjem.org>
+	 <20120215005315.GA9018@fieldses.org>
+	 <1329270628.28837.15.camel@lade.trondhjem.org>
+	 <0C12B635-0094-4099-B96C-3637B914A814@netapp.com>
+In-Reply-To: <0C12B635-0094-4099-B96C-3637B914A814@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
-
-With Benny's comments.
-
-This is ready-to-go patch set. Rebased to Bruce's nfsd-next.
-
-Implemented for:
-
- OPEN
- OPENDOWNGRADE
- CLOSE
- LOCK
- LOCKU
- DELEGRETURN
- FREE_STATEID
- SETATTR
- READ
- WRITE
- SAVEFH
- RESTOREFH
- PUTFH
- PUTROOTFH
- PUTPUBFH
- LOOKUP
- CREATE
-
-
-Coresponding pynfs test already submited.
-
-Tigran.
-Tigran Mkrtchyan (10):
-  nfsd4: initialize current stateid at compile time
-  nfsd41: handle current stateid in open and close
-  nfsd41: handle current stateid on lock and locku
-  nfsd41: consume current stateid on read and write
-  nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
-  nfsd41: save and restore current stateid with current fh
-  nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-  nfsd41: handle current stateid in SETATTR and FREE_STATEID
-  nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
-  nfsd41: use current stateid by value
-
- fs/nfsd/current_stateid.h |   28 ++++++++++++
- fs/nfsd/nfs4proc.c        |   61 +++++++++++++++++++++----
- fs/nfsd/nfs4state.c       |  107 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfsd/xdr4.h            |   11 +++++
- 4 files changed, 196 insertions(+), 11 deletions(-)
- create mode 100644 fs/nfsd/current_stateid.h
-
--- 
-1.7.7.6
-
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE1OjAxICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBGZWIgMTQsIDIwMTIsIGF0IDg6NTAgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
+IA0KPiA+IE9uIFR1ZSwgMjAxMi0wMi0xNCBhdCAxOTo1MyAtMDUwMCwgSi4gQnJ1Y2UgRmllbGRz
+IHdyb3RlOg0KPiA+PiBPbiBXZWQsIEZlYiAxNSwgMjAxMiBhdCAxMjo0MzowOEFNICswMDAwLCBN
+eWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4gVGhlbiB3ZSBoYXZlIGEgcHJvYmxlbS4gVGhl
+IHplcm8gaW5pdGlhbGlzYXRpb24gaXMgYWxyZWFkeSBpbiB1c2Ugb3V0DQo+ID4+PiB0aGVyZSBp
+biBib3RoIGNvbW1lcmNpYWwgYW5kIG5vbi1jb21tZXJjaWFsIHZlcnNpb25zIG9mIExpbnV4LiBJ
+dCBpcyB0b28NCj4gPj4+IGxhdGUgdG8gY2hhbmdlIHRoYXQgbm93Lg0KPiA+Pj4gDQo+ID4+PiBG
+dXJ0aGVybW9yZSwgc2luY2Ugbm9uZSBvZiB0aGUgc2VydmVycyB3ZSd2ZSB0ZXN0ZWQgYWdhaW5z
+dCBpbiBlYXJsaWVyDQo+ID4+PiBCYWtlYXRob25zIGFuZCBDb25uZWN0YXRob25zIGhhdmUgY29t
+cGxhaW5lZCwgSSBzdWdnZXN0IHRoYXQgd2UgcmF0aGVyDQo+ID4+PiBjaGFuZ2UgdGhlIHNwZWMg
+d2l0aCBhbiBlcnJhdGEuDQo+ID4+IA0KPiA+PiBBcmdoLg0KPiA+PiANCj4gPj4gSSBqdXN0IG5v
+dGljZWQgdGhhdCB0aGUgc2VydmVyIHdhcyBjcmFzaGluZyBpbnRlcm1pdHRlbnRseSBhbmQgdHJh
+Y2VkIGl0DQo+ID4+IHRvIGluY29ycmVjdCBoYW5kbGluZyBvZiB0aGUgY2FzZSB3aGVyZSB0aGUg
+Y2xpZW50IHNlbmRzIGEgb25lLW9wDQo+ID4+IFNFUVVFTkNFIGNvbXBvdW5kIHdpdGggc2VxaWQg
+MC4gIEknbSBub3Qgc3VyZSB3aHkgaXQgc3RhcnRlZCBwb3BwaW5nIHVwDQo+ID4+IGp1c3QgaW4g
+My4zLS1wZXJoYXBzIHNvbWUgY2hhbmdlIGluIHRoZSB3YXkgdGhlIGNsaWVudCB1c2VzIHNsb3Rz
+IG1hZGUNCj4gPj4gdGhhdCBtb3JlIGxpa2VseS4NCj4gPj4gDQo+ID4+IFRoZSBzZXJ2ZXIgY29k
+ZSBhY3R1YWxseSBsb29rcyBsaWtlIGl0IGRpZCBhc3N1bWUgaW5pdGlhbCBzZXFpZCAxLCBidXQN
+Cj4gPj4gYWNjZXB0ZWQgaW5pdGlhbCBzZXFpZCAwIChleGNlcHQgaW4gdGhpcyBvbmUgY2FzZSkg
+YmFzaWNhbGx5IGJ5IG1pc3Rha2UuDQo+ID4+IA0KPiA+PiBJbiBhbnkgY2FzZSwgSSB0aGluayBp
+dCBzaG91bGQgYmUgZWFzeSBlbm91Z2ggdG8gdGVhY2ggaXQganVzdCB0byBhY2NlcHQNCj4gPj4g
+YW55IHNlcWlkIG9uIGEgcHJldmlvdXNseSB1bnVzZWQgc2xvdCwgc28gSSdsbCBkbyB0aGF0Li4u
+Lg0KPiA+IA0KPiA+IEhhbmcgb24uLi4gTG9va2luZyBhdCAzLjIsIEkgdGhpbmsgeW91J3JlIGNv
+cnJlY3QuIFdlIHVzZWQgdG8gaW5pdGlhbGlzZQ0KPiA+IHRvIDEsIGFuZCBub3cgd2UncmUgaW5p
+dGlhbGlzaW5nIHRvIDAuDQo+IA0KPiBObywgY29tbWl0IGFhY2Q1NTM3MjcwYTc1MmZlMTJhOTkx
+NGEyMDcyODRmYzIzNDFjNmQgaW5pdGlhbGl6ZXMgYW5kIHJlc2V0cyB0aGUgc2xvdCB0YWJsZXMg
+d2l0aCB0aGUgaXZhbHVlIHdoaWNoIGlzIDEgZm9yIHRoZSBmb3JlY2hhbm5lbCBhbmQgMCBmb3Ig
+dGhlIGJhY2sgY2hhbm5lbCwganVzdCBhcyBpbiAzLjIuIA0KPiBUbyBiZSBjbGVhciBmcm9tIGFh
+Y2Q1NTM3Og0KPiANCj4gLXN0YXRpYyBpbnQgbmZzNF9pbml0X3Nsb3RfdGFibGVzKHN0cnVjdCBu
+ZnM0X3Nlc3Npb24gKnNlc3Npb24pDQo+ICtzdGF0aWMgaW50IG5mczRfc2V0dXBfc2Vzc2lvbl9z
+bG90X3RhYmxlcyhzdHJ1Y3QgbmZzNF9zZXNzaW9uICpzZXMpDQo+ICB7DQo+ICAgICAgICAgc3Ry
+dWN0IG5mczRfc2xvdF90YWJsZSAqdGJsOw0KPiAtICAgICAgIGludCBzdGF0dXMgPSAwOw0KPiAr
+ICAgICAgIGludCBzdGF0dXM7DQo+ICANCj4gLSAgICAgICB0YmwgPSAmc2Vzc2lvbi0+ZmNfc2xv
+dF90YWJsZTsNCj4gKyAgICAgICBkcHJpbnRrKCItLT4gJXNcbiIsIF9fZnVuY19fKTsNCj4gKyAg
+ICAgICAvKiBGb3JlIGNoYW5uZWwgKi8NCj4gKyAgICAgICB0YmwgPSAmc2VzLT5mY19zbG90X3Rh
+YmxlOw0KPiAgICAgICAgIGlmICh0YmwtPnNsb3RzID09IE5VTEwpIHsNCj4gLSAgICAgICAgICAg
+ICAgIHN0YXR1cyA9IG5mczRfaW5pdF9zbG90X3RhYmxlKHRibCwNCj4gLSAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICBzZXNzaW9uLT5mY19hdHRycy5tYXhfcmVxcywgMSk7DQo+ICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgXl5eXl5eXg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGl2YWx1ZSBvZiAx
+DQo+IA0KPiArICAgICAgICAgICAgICAgc3RhdHVzID0gbmZzNF9pbml0X3Nsb3RfdGFibGUodGJs
+LCBzZXMtPmZjX2F0dHJzLm1heF9yZXFzLCAxKTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBeXl5eXg0KPiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpdmFsdWUgb2YgMQ0K
+PiArICAgICAgICAgICAgICAgaWYgKHN0YXR1cykgLyogLUVOT01FTSAqLw0KPiArICAgICAgICAg
+ICAgICAgICAgICAgICByZXR1cm4gc3RhdHVzOw0KPiArICAgICAgIH0gZWxzZSB7DQo+ICsgICAg
+ICAgICAgICAgICBzdGF0dXMgPSBuZnM0X3Jlc2V0X3Nsb3RfdGFibGUodGJsLCBzZXMtPmZjX2F0
+dHJzLm1heF9yZXFzLCAxKTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICBeXl5eXg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpdmFsdWUgb2YgMQ0KPiAgICAgICAgICAg
+ICAgICAgaWYgKHN0YXR1cykNCj4gICAgICAgICAgICAgICAgICAgICAgICAgcmV0dXJuIHN0YXR1
+czsNCj4gICAgICAgICB9DQo+IC0NCj4gLSAgICAgICB0YmwgPSAmc2Vzc2lvbi0+YmNfc2xvdF90
+YWJsZTsNCj4gKyAgICAgICAvKiBCYWNrIGNoYW5uZWwgKi8NCj4gKyAgICAgICB0YmwgPSAmc2Vz
+LT5iY19zbG90X3RhYmxlOw0KPiAgICAgICAgIGlmICh0YmwtPnNsb3RzID09IE5VTEwpIHsNCj4g
+LSAgICAgICAgICAgICAgIHN0YXR1cyA9IG5mczRfaW5pdF9zbG90X3RhYmxlKHRibCwNCj4gLSAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzZXNzaW9uLT5iY19hdHRycy5tYXhfcmVxcywg
+MCk7DQo+ICsgICAgICAgICAgICAgICBzdGF0dXMgPSBuZnM0X2luaXRfc2xvdF90YWJsZSh0Ymws
+IHNlcy0+YmNfYXR0cnMubWF4X3JlcXMsIDApOw0KPiAgICAgICAgICAgICAgICAgaWYgKHN0YXR1
+cykNCj4gLSAgICAgICAgICAgICAgICAgICAgICAgbmZzNF9kZXN0cm95X3Nsb3RfdGFibGVzKHNl
+c3Npb24pOw0KPiAtICAgICAgIH0NCj4gLQ0KPiArICAgICAgICAgICAgICAgICAgICAgICAvKiBG
+b3JlIGFuZCBiYWNrIGNoYW5uZWwgc2hhcmUgYSBjb25uZWN0aW9uIHNvIGdldA0KPiArICAgICAg
+ICAgICAgICAgICAgICAgICAgKiBib3RoIHNsb3QgdGFibGVzIG9yIG5laXRoZXIgKi8NCj4gKyAg
+ICAgICAgICAgICAgICAgICAgICAgbmZzNF9kZXN0cm95X3Nsb3RfdGFibGVzKHNlcyk7DQo+ICsg
+ICAgICAgfSBlbHNlDQo+ICsgICAgICAgICAgICAgICBzdGF0dXMgPSBuZnM0X3Jlc2V0X3Nsb3Rf
+dGFibGUodGJsLCBzZXMtPmJjX2F0dHJzLm1heF9yZXFzLCAwKTsNCj4gICAgICAgICByZXR1cm4g
+c3RhdHVzOw0KPiAgfQ0KDQpZZXMsIGFuZCBpdCB0aGVuIF9yZW1vdmVkXyB0aGUgcHJldmlvdXNs
+eSB1bmNvbmRpdGlvbmFsIGNhbGwgdG8NCm5mczRfcmVzZXRfc2xvdF90YWJsZXMoKSBmcm9tIG5m
+czRfcHJvY19jcmVhdGVfc2Vzc2lvbigpLiBXaGljaCBtZWFucw0KdGhhdCB0aGUgdGJsLT5zbG90
+cyA9PSBOVUxMIHBhdGggbm8gbG9uZ2VyIGluaXRpYWxpc2VzIHRoZSBzbG90IHRhYmxlDQpzZXF1
+ZW5jZSBudW1iZXJzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
+cHAuY29tDQoNCg==
