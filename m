@@ -1,46 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16964 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36187 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755369Ab2BPUH2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:07:28 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 08/13] SUNRPC: Add API to acquire source address
-Date: Thu, 16 Feb 2012 20:07:21 +0000
-Message-ID: <1329422841.4279.28.camel@lade.trondhjem.org>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-	 <20120215213550.3254.1420.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213550.3254.1420.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1750907Ab2BOQQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 11:16:32 -0500
+Date: Wed, 15 Feb 2012 11:16:25 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Tom Tucker <tom@ogc.us>, trond.myklebust@netapp.com,
+        dan.carpenter@oracle.com, linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] svcrdma: Cleanup sparse warnings in the svcrdma module
+Message-ID: <20120215161625.GC12490@fieldses.org>
+References: <1329260485-16994-1-git-send-email-tom@ogc.us>
+ <20120214232342.GB23916@ZenIV.linux.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120214232342.GB23916@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-TkZTdjQuMCBjbGllbnRzIG11c3Qgc2VuZCBlbmRwb2ludCBpbmZvcm1hdGlvbiBmb3IgdGhlaXIg
-Y2FsbGJhY2sNCj4gc2VydmljZSB0byBORlN2NC4wIHNlcnZlcnMgZHVyaW5nIHRoZWlyIGZpcnN0
-IGNvbnRhY3Qgd2l0aCBhIHNlcnZlci4NCj4gVHJhZGl0aW9uYWxseSBvbiBMaW51eCwgdXNlciBz
-cGFjZSBwcm92aWRlcyB0aGUgY2FsbGJhY2sgZW5kcG9pbnQgSVANCj4gYWRkcmVzcyB2aWEgdGhl
-ICJjbGllbnRhZGRyPSIgbW91bnQgb3B0aW9uLg0KPiANCj4gRHVyaW5nIGFuIE5GU3Y0IG1pZ3Jh
-dGlvbiBldmVudCwgaXQgaXMgcG9zc2libGUgdGhhdCBhbiBGU0lEIG1heSBiZQ0KPiBtaWdyYXRl
-ZCB0byBhIGRlc3RpbmF0aW9uIHNlcnZlciB0aGF0IGlzIGFjY2Vzc2libGUgdmlhIGEgZGlmZmVy
-ZW50DQo+IHNvdXJjZSBJUCBhZGRyZXNzIHRoYW4gdGhlIHNvdXJjZSBzZXJ2ZXIgd2FzLiAgVGhl
-IGNsaWVudCBtdXN0IHVwZGF0ZQ0KPiBjYWxsYmFjayBlbmRwb2ludCBpbmZvcm1hdGlvbiBvbiB0
-aGUgZGVzdGluYXRpb24gc2VydmVyIHNvIHRoYXQgaXQgY2FuDQo+IG1haW50YWluIGxlYXNlcyBh
-bmQgYWxsb3cgZGVsZWdhdGlvbi4NCj4gDQo+IFdpdGhvdXQgYSBuZXcgImNsaWVudGFkZHI9IiBv
-cHRpb24gZnJvbSB1c2VyIHNwYWNlLCBob3dldmVyLCB0aGUNCj4ga2VybmVsIGl0c2VsZiBtdXN0
-IGNvbnN0cnVjdCBhbiBhcHByb3ByaWF0ZSBJUCBhZGRyZXNzIGZvciB0aGUNCj4gY2FsbGJhY2sg
-dXBkYXRlLiAgUHJvdmlkZSBhbiBBUEkgaW4gdGhlIFJQQyBjbGllbnQgZm9yIHVwcGVyIGxheWVy
-DQo+IFJQQyBjb25zdW1lcnMgdG8gYWNxdWlyZSBhIHNvdXJjZSBhZGRyZXNzIGZvciBhIHJlbW90
-ZS4NCj4gDQo+IFRoZSBtZWNoYW5pc20gdXNlZCBieSB0aGUgbW91bnQubmZzIGNvbW1hbmQgaXMg
-Y29waWVkOiBzZXQgdXAgYQ0KPiBjb25uZWN0ZWQgVURQIHNvY2tldCB0byB0aGUgZGVzaWduYXRl
-ZCByZW1vdGUsIHRoZW4gc2NyYXBlIHRoZSBzb3VyY2UNCj4gYWRkcmVzcyBvZmYgdGhlIHNvY2tl
-dC4gIFdlIGFyZSBjYXJlZnVsIHRvIHNlbGVjdCB0aGUgY29ycmVjdCBuZXR3b3JrDQo+IG5hbWVz
-cGFjZSB3aGVuIHNldHRpbmcgdXAgdGhlIHRlbXBvcmFyeSBVRFAgc29ja2V0Lg0KPiANCj4gU2ln
-bmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0K
-DQpUaGlzIGRvZXNuJ3QgYXBwZWFyIHRvIGFwcGx5IChub3IgZG8gc2V2ZXJhbCBvZiB0aGUgZGVi
-dWdnaW5nIHBhdGNoZXMpLg0KV2FzIGl0IHdyaXR0ZW4gYWdhaW5zdCB0aGUgbmZzLWZvci1uZXh0
-IGJyYW5jaD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+OK, Tom could you fix up these small things and repost?
+
+--b.
+
+On Tue, Feb 14, 2012 at 11:23:42PM +0000, Al Viro wrote:
+> On Tue, Feb 14, 2012 at 05:01:25PM -0600, Tom Tucker wrote:
+> 
+> > -	if (ch->rc_discrim == 0)
+> > +	if (ch->rc_discrim == xdr_zero)
+> 
+> Mostly, ACK, modulo this and similar sillyness.  sparse is just fine with
+> use of constant 0 in bitwise contexts; it's also just fine with use of
+> bitwise in logical ones.
+> 
+> > +	nchunks = ntohl(ary->wc_nchunks);
+> >  	if (((unsigned long)&ary->wc_array[0] +
+> > -	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
+> > +	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
+> 
+> BTW, this still can overflow.  With less painful consequences than before that
+> patch, but...
+> 
+> > -			BUG_ON(0 == virt_to_page(vec[i].iov_base));
+> > +			BUG_ON(NULL == virt_to_page(vec[i].iov_base));
+> 
+> Egads...  What, "!virt_to_page(...)" would have been too pedestrian?
