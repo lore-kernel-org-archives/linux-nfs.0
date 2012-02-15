@@ -1,40 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:33739 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751422Ab2BMKvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Feb 2012 05:51:53 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1RwtVe-0005ck-OF
-	for linux-nfs@vger.kernel.org; Mon, 13 Feb 2012 11:51:50 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1RwtVc-0006q5-DD
-	for linux-nfs@vger.kernel.org; Mon, 13 Feb 2012 11:51:48 +0100
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: mount hangs in NFS4+Kerberos setup
-Date: Mon, 13 Feb 2012 10:51:48 +0000 (UTC)
-Message-ID: <jhaq04$pev$1@ultimate100.geggus.net>
-References: <20120210154526.7b504146@little-poseidon> <4F35512A.9050500@steve-ss.com> <20120210184154.03fb6907@little-poseidon>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751540Ab2BOVfK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:10 -0500
+Received: by ghrr11 with SMTP id r11so965647ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:10 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 15 Feb 2012 16:35:08 -0500
+Message-ID: <20120215213508.3254.64687.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-whats_up@gmx.net wrote:
+Our dprintk() debugging facility doesn't specify any verbosity level
+for it's printk() calls, but it should.
 
-> What's your suggestion to improve/secure my configuration?
+The default verbosity for printk's is KERN_DEFAULT.  You might argue
+that these are debugging printk's and thus the verbosity should be
+KERN_DEBUG.  That would mean that to see NFS and SUNRPC debugging
+output an admin would also have to boost the syslog verbosity, which
+would be insufferably noisy.
 
-I already told you that you need a backport of the latest version of
-libtirpc. The Version included in squeeze is broken.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Sven
+ include/linux/sunrpc/debug.h |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
--- 
-If you can spend five minutes on the Internet and do not run Linux,
-you're a genius. (Dirk Hohndel)
+diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+index c2786f2..e0927c2 100644
+--- a/include/linux/sunrpc/debug.h
++++ b/include/linux/sunrpc/debug.h
+@@ -51,7 +51,11 @@ extern unsigned int		nlm_debug;
+ #undef ifdebug
+ #ifdef RPC_DEBUG			
+ # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
+-# define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
++# define dfprintk(fac, args...)	\
++	do { \
++		ifdebug(fac) \
++			printk(KERN_DEFAULT args); \
++	} while (0)
+ # define RPC_IFDEBUG(x)		x
+ #else
+ # define ifdebug(fac)		if (0)
 
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
