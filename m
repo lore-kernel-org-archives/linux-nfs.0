@@ -1,42 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:38274 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750796Ab2BBGjq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 01:39:46 -0500
-Received: from [192.168.1.13] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
-	(authenticated bits=0)
-	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q126eYf3009193
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Feb 2012 07:40:40 +0100
-Message-ID: <4F2A2F9E.6030908@steve-ss.com>
-Date: Thu, 02 Feb 2012 07:39:26 +0100
-From: steve <steve@steve-ss.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:39849 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755060Ab2BOTmf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 14:42:35 -0500
+Received: by mail-iy0-f174.google.com with SMTP id b35so1851170iac.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 11:42:35 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/13] NFS: Reduce debugging noise from encode_compound_hdr
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 15 Feb 2012 14:42:34 -0500
+Message-ID: <20120215194234.2925.82192.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
+References: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: where can I ask user qns about nfs4?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I want to ask a question about nfs4 keytabs and Samba 4. I've tried 
-asking here, on the Samba 4 list and on the openSUSE list (which is my 
-Linux distribution) but they refer me to an nfs list. I see that this 
-list is only for nfs devs.
+When NFSDBG_XDR debugging is enabled, I see a lot of
 
-I don't want to waste your time here but my question is just this:
+  encode_compound: tag=
 
-My nfs4 server has a service principal nfs/server.domain.name
+on the console.  This is noise if the tag is empty.  Some might argue
+that it is noise even if the tag isn't empty...
 
-I already use nfs4 to serve my Linux clients. I'm going to kerberize it. 
-My clients already have machine and host principals. What else do they need?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-1. nfs/client.domain.name
-2. nfs/server.domain/name
-3. neither
-4. both
+ fs/nfs/nfs4xdr.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-The Google doco is contradictory and confusing to say the least. If you 
-can't help, could you point me in the right direction?
-
-Thanks so much fr your time,
-Steve
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 606852a..2fb129d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -889,7 +889,9 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
+ 	 * but this is not required as a MUST for the server to do so. */
+ 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
+ 
+-	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
++	if (unlikely(hdr->taglen != 0))
++		dprintk("%s: tag=%.*s\n", __func__,
++				(int)hdr->taglen, hdr->tag);
+ 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
+ 	p = reserve_space(xdr, 4 + hdr->taglen + 8);
+ 	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
 
