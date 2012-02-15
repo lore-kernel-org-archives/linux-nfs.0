@@ -1,415 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61014 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9242 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760264Ab2BJWCX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:23 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 13/21] NFS: Custom alloc and free client functions for modules
-Date: Fri, 10 Feb 2012 17:01:57 -0500
-Message-Id: <1328911325-1566-13-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+	id S1757536Ab2BOBuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Feb 2012 20:50:39 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+Date: Wed, 15 Feb 2012 01:50:28 +0000
+Message-ID: <1329270628.28837.15.camel@lade.trondhjem.org>
+References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1329259606.11759.15.camel@lade.trondhjem.org>
+	 <4F3AFD84.3020709@nexenta.com>
+	 <1329266587.28837.4.camel@lade.trondhjem.org>
+	 <20120215005315.GA9018@fieldses.org>
+In-Reply-To: <20120215005315.GA9018@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-This gives v4 a chance to do any setup and teardown that it needs (such
-as pnfs or v4.1 sessions).
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile     |    2 +-
- fs/nfs/client.c     |   95 ++++++++++++--------------------------------------
- fs/nfs/nfs.h        |   15 ++++++++
- fs/nfs/nfs2super.c  |    2 +
- fs/nfs/nfs3super.c  |    2 +
- fs/nfs/nfs4_fs.h    |    4 ++
- fs/nfs/nfs4client.c |   80 +++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4super.c  |    2 +
- 8 files changed, 129 insertions(+), 73 deletions(-)
- create mode 100644 fs/nfs/nfs4client.c
-
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 92ebf2f..1961606 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -12,7 +12,7 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   nfs4super.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
--			   nfs4namespace.o
-+			   nfs4namespace.o nfs4client.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o nfs4sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a954a12..bf90169 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -54,6 +54,7 @@
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- DEFINE_SPINLOCK(nfs_client_lock);
-+EXPORT_SYMBOL_GPL(nfs_client_lock);
- static DEFINE_SPINLOCK(nfs_version_lock);
- static LIST_HEAD(nfs_versions);
- LIST_HEAD(nfs_client_list);
-@@ -66,7 +67,7 @@ static DEFINE_IDR(cb_ident_idr); /* Protected by nfs_client_lock */
-  * Get a unique NFSv4.0 callback identifier which will be used
-  * by the V4.0 callback service to lookup the nfs_client struct
-  */
--static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
-+int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
- {
- 	int ret = 0;
- 
-@@ -82,8 +83,8 @@ retry:
- 		goto retry;
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(nfs_get_cb_ident_idr);
- #endif /* CONFIG_NFS_V4 */
--
- /*
-  * Turn off NFSv4 uid/gid mapping when using AUTH_SYS
-  */
-@@ -111,16 +112,6 @@ struct rpc_stat nfs_rpcstat = {
- 	.program		= &nfs_program
- };
- 
--struct nfs_client_initdata {
--	const char *hostname;
--	const struct sockaddr *addr;
--	size_t addrlen;
--	const struct nfs_rpc_ops *rpc_ops;
--	int proto;
--	u32 minorversion;
--	struct net *net;
--};
--
- struct nfs_subversion *get_nfs_version(unsigned int version)
- {
- 	struct nfs_subversion *nfs;
-@@ -181,7 +172,7 @@ EXPORT_SYMBOL_GPL(unregister_nfs_version);
-  * Since these are allocated/deallocated very rarely, we don't
-  * bother putting them in a slab cache...
-  */
--static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
-+struct nfs_client *_nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- {
- 	struct nfs_client *clp;
- 	struct rpc_cred *cred;
-@@ -210,19 +201,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 
- 	clp->cl_proto = cl_init->proto;
- 
--#ifdef CONFIG_NFS_V4
--	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
--	if (err)
--		goto error_cleanup;
--
--	spin_lock_init(&clp->cl_lock);
--	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
--	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
--	clp->cl_boot_time = CURRENT_TIME;
--	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
--	clp->cl_minorversion = cl_init->minorversion;
--	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
--#endif
- 	cred = rpc_lookup_machine_cred("*");
- 	if (!IS_ERR(cred))
- 		clp->cl_machine_cred = cred;
-@@ -236,39 +214,23 @@ error_cleanup:
- error_0:
- 	return ERR_PTR(err);
- }
-+EXPORT_SYMBOL_GPL(_nfs_alloc_client);
- 
--#ifdef CONFIG_NFS_V4
--#ifdef CONFIG_NFS_V4_1
--static void nfs4_shutdown_session(struct nfs_client *clp)
--{
--	if (nfs4_has_session(clp))
--		nfs4_destroy_session(clp->cl_session);
--}
--#else /* CONFIG_NFS_V4_1 */
--static void nfs4_shutdown_session(struct nfs_client *clp)
-+static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- {
-+	struct nfs_subversion *nfs_mod = get_nfs_version(cl_init->rpc_ops->version);
-+	return nfs_mod->alloc_client(cl_init);
- }
--#endif /* CONFIG_NFS_V4_1 */
- 
--/*
-- * Destroy the NFS4 callback service
-- */
--static void nfs4_destroy_callback(struct nfs_client *clp)
-+#ifdef CONFIG_NFS_V4
-+static void pnfs_init_server(struct nfs_server *server)
- {
--	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
--		nfs_callback_down(clp->cl_mvops->minor_version);
-+	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
- }
- 
--static void nfs4_shutdown_client(struct nfs_client *clp)
-+static void nfs4_destroy_server(struct nfs_server *server)
- {
--	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
--		nfs4_kill_renewd(clp);
--	nfs4_shutdown_session(clp);
--	nfs4_destroy_callback(clp);
--	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
--		nfs_idmap_delete(clp);
--
--	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
-+	nfs4_purge_state_owners(server);
- }
- 
- /* idr_remove_all is not needed as all id's are removed by nfs_put_client */
-@@ -284,21 +246,7 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
- 		idr_remove(&cb_ident_idr, clp->cl_cb_ident);
- }
- 
--static void pnfs_init_server(struct nfs_server *server)
--{
--	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
--}
--
--static void nfs4_destroy_server(struct nfs_server *server)
--{
--	nfs4_purge_state_owners(server);
--}
--
- #else
--static void nfs4_shutdown_client(struct nfs_client *clp)
--{
--}
--
- void nfs_cleanup_cb_ident_idr(void)
- {
- }
-@@ -316,11 +264,9 @@ static void pnfs_init_server(struct nfs_server *server)
- /*
-  * Destroy a shared client record
-  */
--static void nfs_free_client(struct nfs_client *clp)
-+void _nfs_free_client(struct nfs_client *clp)
- {
--	dprintk("--> nfs_free_client(%u)\n", clp->rpc_ops->version);
--
--	nfs4_shutdown_client(clp);
-+	dprintk("--> _nfs_free_client(%u)\n", clp->rpc_ops->version);
- 
- 	nfs_fscache_release_client_cookie(clp);
- 
-@@ -331,13 +277,18 @@ static void nfs_free_client(struct nfs_client *clp)
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
- 
--	nfs4_deviceid_purge_client(clp);
--
- 	kfree(clp->cl_hostname);
- 	kfree(clp->server_scope);
- 	kfree(clp);
- 
--	dprintk("<-- nfs_free_client()\n");
-+	dprintk("<-- _nfs_free_client()\n");
-+}
-+EXPORT_SYMBOL_GPL(_nfs_free_client);
-+
-+static void nfs_free_client(struct nfs_client *clp)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_client_version(clp);
-+	nfs_mod->free_client(clp);
- }
- 
- /*
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index dd3496a..e538207 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -16,6 +16,16 @@
- struct nfs_parsed_mount_data;
- struct nfs_clone_mount;
- 
-+struct nfs_client_initdata {
-+	const char *hostname;
-+	const struct sockaddr *addr;
-+	size_t addrlen;
-+	const struct nfs_rpc_ops *rpc_ops;
-+	int proto;
-+	u32 minorversion;
-+	struct net *net;
-+};
-+
- struct nfs_subversion {
- 	unsigned int version;		/* Protocol number */
- 	struct rpc_version *rpc_vers;	/* NFS version information */
-@@ -24,6 +34,8 @@ struct nfs_subversion {
- 
- 	void (*reference)(void);	/* For reference counting */
- 	void (*unreference)(void);	/* Also for reference counting */
-+	struct nfs_client *(*alloc_client)(const struct nfs_client_initdata *);
-+	void (*free_client)(struct nfs_client *);
- 	struct dentry *(*fs_mount)(struct file_system_type *, int, const char *,
- 				   struct nfs_fh *, struct nfs_parsed_mount_data *);
- 	struct dentry *(*xdev_mount)(int, const char *, struct nfs_clone_mount *);
-@@ -45,7 +57,10 @@ void register_nfs_version(struct nfs_subversion *);
- void unregister_nfs_version(struct nfs_subversion *);
- 
- /* Exported in client.c */
-+int nfs_get_cb_ident_idr(struct nfs_client *, int);
- struct nfs_server *nfs_create_server(const struct nfs_parsed_mount_data *, struct nfs_fh *);
-+struct nfs_client *_nfs_alloc_client(const struct nfs_client_initdata *);
-+void _nfs_free_client(struct nfs_client *);
- 
- /* Exported in dir.c */
- struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
-diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
-index 6d2a1fd..697356f 100644
---- a/fs/nfs/nfs2super.c
-+++ b/fs/nfs/nfs2super.c
-@@ -54,6 +54,8 @@ static struct nfs_subversion nfs_v2 = {
- 
- 	.reference = nfs2_reference,
- 	.unreference = nfs2_unreference,
-+	.alloc_client = _nfs_alloc_client,
-+	.free_client = _nfs_free_client,
- 	.fs_mount = nfs2_fs_mount,
- 	.xdev_mount = nfs2_xdev_mount,
- 	.submount = nfs2_do_submount,
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-index c8ca918..d17ca8e 100644
---- a/fs/nfs/nfs3super.c
-+++ b/fs/nfs/nfs3super.c
-@@ -85,6 +85,8 @@ static struct nfs_subversion nfs_v3 = {
- 
- 	.reference = nfs3_reference,
- 	.unreference = nfs3_unreference,
-+	.alloc_client = _nfs_alloc_client,
-+	.free_client = _nfs_free_client,
- 	.fs_mount = nfs3_fs_mount,
- 	.xdev_mount = nfs3_xdev_mount,
- 	.submount = nfs3_do_submount,
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 2328d68..9a27673 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -210,6 +210,10 @@ extern const struct inode_operations nfs4_dir_inode_operations;
- extern struct file_system_type nfs4_fs_type;
- struct dentry *nfs4_try_mount(int flags, const char *dev_name, struct nfs_parsed_mount_data *);
- 
-+/* nfs4client.c */
-+struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *);
-+void nfs4_free_client(struct nfs_client *);
-+
- /* nfs4namespace.c */
- struct vfsmount *nfs4_do_submount(struct dentry *, struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
- 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-new file mode 100644
-index 0000000..3f653df
---- /dev/null
-+++ b/fs/nfs/nfs4client.c
-@@ -0,0 +1,80 @@
-+/*
-+ *Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#include <linux/nfs_idmap.h>
-+#include "internal.h"
-+#include "nfs4_fs.h"
-+#include "callback.h"
-+#include "pnfs.h"
-+#include "nfs.h"
-+
-+#ifdef CONFIG_NFS_V4_1
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+	if (nfs4_has_session(clp))
-+		nfs4_destroy_session(clp->cl_session);
-+}
-+#else /* CONFIG_NFS_V4_1 */
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_1 */
-+
-+/*
-+ * Destroy the NFS4 callback service
-+ */
-+static void nfs4_destroy_callback(struct nfs_client *clp)
-+{
-+	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
-+		nfs_callback_down(clp->cl_mvops->minor_version);
-+}
-+
-+static void nfs4_shutdown_client(struct nfs_client *clp)
-+{
-+	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
-+		nfs4_kill_renewd(clp);
-+	nfs4_shutdown_session(clp);
-+	nfs4_destroy_callback(clp);
-+	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
-+		nfs_idmap_delete(clp);
-+
-+	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
-+}
-+
-+void nfs4_free_client(struct nfs_client *clp)
-+{
-+	nfs4_shutdown_client(clp);
-+	nfs4_deviceid_purge_client(clp);
-+	_nfs_free_client(clp);
-+}
-+
-+struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
-+{
-+	struct nfs_client *clp = _nfs_alloc_client(cl_init);
-+	int err = -ENOMEM;
-+
-+	if (IS_ERR(clp))
-+		return clp;
-+
-+	err = nfs_get_cb_ident_idr(clp, cl_init->minorversion);
-+	if (err)
-+		goto error_cleanup;
-+
-+	spin_lock_init(&clp->cl_lock);
-+	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
-+	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-+	clp->cl_boot_time = CURRENT_TIME;
-+	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
-+	clp->cl_minorversion = cl_init->minorversion;
-+	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
-+
-+	return clp;
-+
-+error_cleanup:
-+	kfree(clp);
-+	return ERR_PTR(err);
-+}
-+
-+
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index d9bd619..d874d2f 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -617,6 +617,8 @@ static struct nfs_subversion nfs_v4 = {
- 
- 	.reference = nfs4_reference,
- 	.unreference = nfs4_unreference,
-+	.alloc_client = nfs4_alloc_client,
-+	.free_client = nfs4_free_client,
- 	.fs_mount = nfs4_fs_mount,
- 	.xdev_mount = nfs4_xdev_mount,
- 	.submount = nfs4_do_submount,
--- 
-1.7.9
-
+T24gVHVlLCAyMDEyLTAyLTE0IGF0IDE5OjUzIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgRmViIDE1LCAyMDEyIGF0IDEyOjQzOjA4QU0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gVGhlbiB3ZSBoYXZlIGEgcHJvYmxlbS4gVGhlIHplcm8gaW5pdGlh
+bGlzYXRpb24gaXMgYWxyZWFkeSBpbiB1c2Ugb3V0DQo+ID4gdGhlcmUgaW4gYm90aCBjb21tZXJj
+aWFsIGFuZCBub24tY29tbWVyY2lhbCB2ZXJzaW9ucyBvZiBMaW51eC4gSXQgaXMgdG9vDQo+ID4g
+bGF0ZSB0byBjaGFuZ2UgdGhhdCBub3cuDQo+ID4gDQo+ID4gRnVydGhlcm1vcmUsIHNpbmNlIG5v
+bmUgb2YgdGhlIHNlcnZlcnMgd2UndmUgdGVzdGVkIGFnYWluc3QgaW4gZWFybGllcg0KPiA+IEJh
+a2VhdGhvbnMgYW5kIENvbm5lY3RhdGhvbnMgaGF2ZSBjb21wbGFpbmVkLCBJIHN1Z2dlc3QgdGhh
+dCB3ZSByYXRoZXINCj4gPiBjaGFuZ2UgdGhlIHNwZWMgd2l0aCBhbiBlcnJhdGEuDQo+IA0KPiBB
+cmdoLg0KPiANCj4gSSBqdXN0IG5vdGljZWQgdGhhdCB0aGUgc2VydmVyIHdhcyBjcmFzaGluZyBp
+bnRlcm1pdHRlbnRseSBhbmQgdHJhY2VkIGl0DQo+IHRvIGluY29ycmVjdCBoYW5kbGluZyBvZiB0
+aGUgY2FzZSB3aGVyZSB0aGUgY2xpZW50IHNlbmRzIGEgb25lLW9wDQo+IFNFUVVFTkNFIGNvbXBv
+dW5kIHdpdGggc2VxaWQgMC4gIEknbSBub3Qgc3VyZSB3aHkgaXQgc3RhcnRlZCBwb3BwaW5nIHVw
+DQo+IGp1c3QgaW4gMy4zLS1wZXJoYXBzIHNvbWUgY2hhbmdlIGluIHRoZSB3YXkgdGhlIGNsaWVu
+dCB1c2VzIHNsb3RzIG1hZGUNCj4gdGhhdCBtb3JlIGxpa2VseS4NCj4gDQo+IFRoZSBzZXJ2ZXIg
+Y29kZSBhY3R1YWxseSBsb29rcyBsaWtlIGl0IGRpZCBhc3N1bWUgaW5pdGlhbCBzZXFpZCAxLCBi
+dXQNCj4gYWNjZXB0ZWQgaW5pdGlhbCBzZXFpZCAwIChleGNlcHQgaW4gdGhpcyBvbmUgY2FzZSkg
+YmFzaWNhbGx5IGJ5IG1pc3Rha2UuDQo+IA0KPiBJbiBhbnkgY2FzZSwgSSB0aGluayBpdCBzaG91
+bGQgYmUgZWFzeSBlbm91Z2ggdG8gdGVhY2ggaXQganVzdCB0byBhY2NlcHQNCj4gYW55IHNlcWlk
+IG9uIGEgcHJldmlvdXNseSB1bnVzZWQgc2xvdCwgc28gSSdsbCBkbyB0aGF0Li4uLg0KDQpIYW5n
+IG9uLi4uIExvb2tpbmcgYXQgMy4yLCBJIHRoaW5rIHlvdSdyZSBjb3JyZWN0LiBXZSB1c2VkIHRv
+IGluaXRpYWxpc2UNCnRvIDEsIGFuZCBub3cgd2UncmUgaW5pdGlhbGlzaW5nIHRvIDAuDQoNCkFo
+Li4uIEkgc2VlIHdoYXQgaGFwcGVuZWQuDQoNCmNvbW1pdCBhYWNkNTUzNzI3MGE3NTJmZTEyYTk5
+MTRhMjA3Mjg0ZmMyMzQxYzZkIChORlN2NC4xOiBjbGVhbnVwIGluaXQNCmFuZCByZXNldCBvZiBz
+ZXNzaW9uIHNsb3QgdGFibGVzKSBzZWVtcyB0byBoYXZlIHJlbW92ZWQgdGhlIGNhbGwgdG8NCm5m
+czRfcmVzZXRfc2xvdF90YWJsZXMoKSB0aGF0IHdhcyBkb2luZyB0aGF0IGluaXRpYWxpc2F0aW9u
+LiBPSy4uLiBTbw0KdGhpcyBpcyBhIExpbnV4IDMuMy1yY1ggb25seSByZWdyZXNzaW9uLCBhbmQg
+c2hvdWxkIGJlIHRyZWF0ZWQgYXMNCnN1Y2guLi4NCg0KSG93IGFib3V0IHRoZSBmb2xsb3dpbmcg
+aW5zdGVhZCBzbyB0aGF0IHdlIGVuc3VyZSB3ZSBmdWxseSBzaGFyZSB0aGUNCmluaXRpYWxpc2F0
+aW9uIGNvZGUgYmV0d2VlbiBuZnM0X3Jlc2V0X3Nsb3RfdGFibGVzIGFuZA0KbmZzNF9pbml0X3Ns
+b3RfdGFibGVzPw0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gOGFlOGQxNzdjYzEwNmVjZGIz
+ZTI5YjQ4Yzc4ZWMzN2NmNzZlYTU0OSBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRy
+b25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDE0
+IEZlYiAyMDEyIDIwOjMzOjE5IC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0LjE6IEZpeCBh
+IE5GU3Y0LjEgc2Vzc2lvbiBpbml0aWFsaXNhdGlvbiByZWdyZXNzaW9uDQoNCkNvbW1pdCBhYWNk
+NTUzIChORlN2NC4xOiBjbGVhbnVwIGluaXQgYW5kIHJlc2V0IG9mIHNlc3Npb24gc2xvdCB0YWJs
+ZXMpDQppbnRyb2R1Y2VzIGEgcmVncmVzc2lvbiBpbiB0aGUgc2Vzc2lvbiBpbml0aWFsaXNhdGlv
+biBjb2RlLiBOZXcgdGFibGVzDQpub3cgZmluZCB0aGVpciBzZXF1ZW5jZSBpZHMgaW5pdGlhbGlz
+ZWQgdG8gMCwgcmF0aGVyIHRoYW4gdGhlIG1hbmRhdGVkDQp2YWx1ZSBvZiAxIChzZWUgUkZDNTY2
+MSkuDQoNClJlcG9ydGVkLWJ5OiBWaXRhbGl5IEd1c2V2IDxndXNldi52aXRhbGl5QG5leGVudGEu
+Y29tPg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCi0tLQ0KIGZzL25mcy9uZnM0cHJvYy5jIHwgICA1OCArKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KIDEgZmlsZXMgY2hhbmdlZCwg
+MzUgaW5zZXJ0aW9ucygrKSwgMjMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMv
+bmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQppbmRleCBkMjAyZTA0Li45Zjc2Y2U5IDEw
+MDY0NA0KLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCisrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQpA
+QCAtNTAwOCwzNyArNTAwOCw1MyBAQCBpbnQgbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKHN0cnVj
+dCBuZnNfY2xpZW50ICpjbHAsIHN0cnVjdCBuZnNfZnNpbmZvICpmc2luZm8pDQogCXJldHVybiBz
+dGF0dXM7DQogfQ0KIA0KK3N0YXRpYyBzdHJ1Y3QgbmZzNF9zbG90ICpuZnM0X3Nlc3Npb25fYWxs
+b2Nfc2xvdHModTMyIG1heF9zbG90cywgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0KK3sNCisJcmV0dXJuIGtj
+YWxsb2MobWF4X3Nsb3RzLCBzaXplb2Yoc3RydWN0IG5mczRfc2xvdCksIGdmcF9mbGFncyk7DQor
+fQ0KKw0KK3N0YXRpYyB2b2lkIG5mczRfc2Vzc2lvbl9hZGRfc2xvdHMoc3RydWN0IG5mczRfc2xv
+dF90YWJsZSAqdGJsLA0KKwkJc3RydWN0IG5mczRfc2xvdCAqbmV3LA0KKwkJdTMyIG1heF9zbG90
+cywNCisJCXUzMiBpdmFsdWUpDQorew0KKwlzdHJ1Y3QgbmZzNF9zbG90ICpvbGQgPSBOVUxMOw0K
+Kwl1MzIgaTsNCisNCisJc3Bpbl9sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwlpZiAobmV3
+KSB7DQorCQlvbGQgPSB0YmwtPnNsb3RzOw0KKwkJdGJsLT5zbG90cyA9IG5ldzsNCisJCXRibC0+
+bWF4X3Nsb3RzID0gbWF4X3Nsb3RzOw0KKwl9DQorCXRibC0+aGlnaGVzdF91c2VkX3Nsb3RpZCA9
+IC0xOwkvKiBubyBzbG90IGlzIGN1cnJlbnRseSB1c2VkICovDQorCWZvciAoaSA9IDA7IGkgPCB0
+YmwtPm1heF9zbG90czsgaSsrKQ0KKwkJdGJsLT5zbG90c1tpXS5zZXFfbnIgPSBpdmFsdWU7DQor
+CXNwaW5fdW5sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwlrZnJlZShvbGQpOw0KK30NCisN
+CiAvKg0KICAqIFJlc2V0IGEgc2xvdCB0YWJsZQ0KICAqLw0KIHN0YXRpYyBpbnQgbmZzNF9yZXNl
+dF9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwgdTMyIG1heF9yZXFzLA0K
+LQkJCQkgaW50IGl2YWx1ZSkNCisJCQkJIHUzMiBpdmFsdWUpDQogew0KIAlzdHJ1Y3QgbmZzNF9z
+bG90ICpuZXcgPSBOVUxMOw0KLQlpbnQgaTsNCi0JaW50IHJldCA9IDA7DQorCWludCByZXQgPSAt
+RU5PTUVNOw0KIA0KIAlkcHJpbnRrKCItLT4gJXM6IG1heF9yZXFzPSV1LCB0YmwtPm1heF9zbG90
+cyAlZFxuIiwgX19mdW5jX18sDQogCQltYXhfcmVxcywgdGJsLT5tYXhfc2xvdHMpOw0KIA0KIAkv
+KiBEb2VzIHRoZSBuZXdseSBuZWdvdGlhdGVkIG1heF9yZXFzIG1hdGNoIHRoZSBleGlzdGluZyBz
+bG90IHRhYmxlPyAqLw0KIAlpZiAobWF4X3JlcXMgIT0gdGJsLT5tYXhfc2xvdHMpIHsNCi0JCXJl
+dCA9IC1FTk9NRU07DQotCQluZXcgPSBrbWFsbG9jKG1heF9yZXFzICogc2l6ZW9mKHN0cnVjdCBu
+ZnM0X3Nsb3QpLA0KLQkJCSAgICAgIEdGUF9OT0ZTKTsNCisJCW5ldyA9IG5mczRfc2Vzc2lvbl9h
+bGxvY19zbG90cyhtYXhfcmVxcywgR0ZQX05PRlMpOw0KIAkJaWYgKCFuZXcpDQogCQkJZ290byBv
+dXQ7DQotCQlyZXQgPSAwOw0KLQkJa2ZyZWUodGJsLT5zbG90cyk7DQogCX0NCi0Jc3Bpbl9sb2Nr
+KCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KLQlpZiAobmV3KSB7DQotCQl0YmwtPnNsb3RzID0gbmV3
+Ow0KLQkJdGJsLT5tYXhfc2xvdHMgPSBtYXhfcmVxczsNCi0JfQ0KLQlmb3IgKGkgPSAwOyBpIDwg
+dGJsLT5tYXhfc2xvdHM7ICsraSkNCi0JCXRibC0+c2xvdHNbaV0uc2VxX25yID0gaXZhbHVlOw0K
+LQlzcGluX3VubG9jaygmdGJsLT5zbG90X3RibF9sb2NrKTsNCisJcmV0ID0gMDsNCisNCisJbmZz
+NF9zZXNzaW9uX2FkZF9zbG90cyh0YmwsIG5ldywgbWF4X3JlcXMsIGl2YWx1ZSk7DQogCWRwcmlu
+dGsoIiVzOiB0Ymw9JXAgc2xvdHM9JXAgbWF4X3Nsb3RzPSVkXG4iLCBfX2Z1bmNfXywNCiAJCXRi
+bCwgdGJsLT5zbG90cywgdGJsLT5tYXhfc2xvdHMpOw0KIG91dDoNCkBAIC01MDY0LDcgKzUwODAs
+NyBAQCBzdGF0aWMgdm9pZCBuZnM0X2Rlc3Ryb3lfc2xvdF90YWJsZXMoc3RydWN0IG5mczRfc2Vz
+c2lvbiAqc2Vzc2lvbikNCiAgKiBJbml0aWFsaXplIHNsb3QgdGFibGUNCiAgKi8NCiBzdGF0aWMg
+aW50IG5mczRfaW5pdF9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwNCi0J
+CWludCBtYXhfc2xvdHMsIGludCBpdmFsdWUpDQorCQl1MzIgbWF4X3Nsb3RzLCB1MzIgaXZhbHVl
+KQ0KIHsNCiAJc3RydWN0IG5mczRfc2xvdCAqc2xvdDsNCiAJaW50IHJldCA9IC1FTk9NRU07DQpA
+QCAtNTA3MywxNiArNTA4OSwxMiBAQCBzdGF0aWMgaW50IG5mczRfaW5pdF9zbG90X3RhYmxlKHN0
+cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwNCiANCiAJZHByaW50aygiLS0+ICVzOiBtYXhfcmVx
+cz0ldVxuIiwgX19mdW5jX18sIG1heF9zbG90cyk7DQogDQotCXNsb3QgPSBrY2FsbG9jKG1heF9z
+bG90cywgc2l6ZW9mKHN0cnVjdCBuZnM0X3Nsb3QpLCBHRlBfTk9GUyk7DQorCXNsb3QgPSBuZnM0
+X3Nlc3Npb25fYWxsb2Nfc2xvdHMobWF4X3Nsb3RzLCBHRlBfTk9GUyk7DQogCWlmICghc2xvdCkN
+CiAJCWdvdG8gb3V0Ow0KIAlyZXQgPSAwOw0KIA0KLQlzcGluX2xvY2soJnRibC0+c2xvdF90Ymxf
+bG9jayk7DQotCXRibC0+bWF4X3Nsb3RzID0gbWF4X3Nsb3RzOw0KLQl0YmwtPnNsb3RzID0gc2xv
+dDsNCi0JdGJsLT5oaWdoZXN0X3VzZWRfc2xvdGlkID0gLTE7ICAvKiBubyBzbG90IGlzIGN1cnJl
+bnRseSB1c2VkICovDQotCXNwaW5fdW5sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwluZnM0
+X3Nlc3Npb25fYWRkX3Nsb3RzKHRibCwgc2xvdCwgbWF4X3Nsb3RzLCBpdmFsdWUpOw0KIAlkcHJp
+bnRrKCIlczogdGJsPSVwIHNsb3RzPSVwIG1heF9zbG90cz0lZFxuIiwgX19mdW5jX18sDQogCQl0
+YmwsIHRibC0+c2xvdHMsIHRibC0+bWF4X3Nsb3RzKTsNCiBvdXQ6DQotLSANCjEuNy43LjYNCg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
