@@ -1,39 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38845 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:23206 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751537Ab2BQSlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 13:41:20 -0500
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1HIf5dc014546
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 10:41:05 -0800 (PST)
+	id S1750862Ab2BOP5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 10:57:16 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSv4.1 set highest_used_slotid to NFS4_NO_SLOT
-Date: Fri, 17 Feb 2012 18:40:58 +0000
-Message-ID: <1329504057.12048.0.camel@lade.trondhjem.org>
-References: <1329501923-3999-1-git-send-email-andros@netapp.com>
-	 <1329501923-3999-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1329501923-3999-3-git-send-email-andros@netapp.com>
+To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Subject: Re: [PATCH] nfs41: Verify channel's attributes accordingly to RFC v2
+Date: Wed, 15 Feb 2012 15:57:07 +0000
+Message-ID: <1329321425.3364.24.camel@lade.trondhjem.org>
+References: <1329315756.3364.4.camel@lade.trondhjem.org>
+	 <1329320305-16111-1-git-send-email-gusev.vitaliy@nexenta.com>
+In-Reply-To: <1329320305-16111-1-git-send-email-gusev.vitaliy@nexenta.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAyLTE3IGF0IDEzOjA1IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
-bmZzL25mczRzdGF0ZS5jIHwgICAgMiArLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlv
-bnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0
-ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IGluZGV4IDRlMzc4MTguLmMxMTExYTMgMTAwNjQ0
-DQo+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMN
-Cj4gQEAgLTIxMiw3ICsyMTIsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2VuZF9kcmFpbl9zZXNzaW9u
-KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICBzdGF0aWMgaW50IG5mczRfd2FpdF9vbl9zbG90
-X3RibChzdHJ1Y3QgbmZzNF9zbG90X3RhYmxlICp0YmwpDQo+ICB7DQo+ICAJc3Bpbl9sb2NrKCZ0
-YmwtPnNsb3RfdGJsX2xvY2spOw0KPiAtCWlmICh0YmwtPmhpZ2hlc3RfdXNlZF9zbG90aWQgIT0g
-LTEpIHsNCj4gKwlpZiAodGJsLT5oaWdoZXN0X3VzZWRfc2xvdGlkICE9IE5GUzRfTk9fU0xPVCkg
-ew0KPiAgCQlJTklUX0NPTVBMRVRJT04odGJsLT5jb21wbGV0ZSk7DQo+ICAJCXNwaW5fdW5sb2Nr
-KCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KPiAgCQlyZXR1cm4gd2FpdF9mb3JfY29tcGxldGlvbl9p
-bnRlcnJ1cHRpYmxlKCZ0YmwtPmNvbXBsZXRlKTsNCg0KR29vZCBjYXRjaCEgQXBwbGllZC4uLg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE5OjM4ICswNDAwLCBWaXRhbGl5IEd1c2V2IHdyb3RlOg0K
+PiA+RnJvbSBSRkM1NjYxLCAxOC4zNi4zOg0KPiANCj4gIGNhX21heG9wZXJhdGlvbnM6DQo+IA0K
+PiAgICAgICBGb3IgdGhlIGJhY2tjaGFubmVsLCB0aGUgc2VydmVyIE1VU1QNCj4gICAgICAgTk9U
+IGNoYW5nZSB0aGUgdmFsdWUgdGhlIGNsaWVudCBvZmZlcnMuICBGb3IgdGhlIGZvcmUgY2hhbm5l
+bCwNCj4gICAgICAgdGhlIHNlcnZlciBNQVkgY2hhbmdlIHRoZSByZXF1ZXN0ZWQgdmFsdWUuDQo+
+IA0KPiAgIGNhX21heHJlcXVlc3RzOg0KPiANCj4gICAgICAgIEZvciB0aGUgYmFja2NoYW5uZWws
+IHRoZSBzZXJ2ZXIgTVVTVCBOT1QgY2hhbmdlIHRoZQ0KPiAgICAgICAgdmFsdWUgdGhlIGNsaWVu
+dCBvZmZlcnMuICBGb3IgdGhlIGZvcmUgY2hhbm5lbCwgdGhlIHNlcnZlciBNQVkNCj4gICAgICAg
+IGNoYW5nZSB0aGUgcmVxdWVzdGVkIHZhbHVlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogVml0YWxp
+eSBHdXNldiA8Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZz
+NHByb2MuYyB8ICAgIDYgKysrKy0tDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDQgaW5zZXJ0aW9ucygr
+KSwgMiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBi
+L2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDVkYTUzNTUuLjIzM2VkMjYgMTAwNjQ0DQo+IC0t
+LSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC01
+MTk5LDYgKzUxOTksOCBAQCBzdGF0aWMgaW50IG5mczRfdmVyaWZ5X2ZvcmVfY2hhbm5lbF9hdHRy
+cyhzdHJ1Y3QgbmZzNDFfY3JlYXRlX3Nlc3Npb25fYXJncyAqYXJncw0KPiAgCQlyZXR1cm4gLUVJ
+TlZBTDsNCj4gIAlpZiAocmN2ZC0+bWF4X3JlcXMgPT0gMCkNCj4gIAkJcmV0dXJuIC1FSU5WQUw7
+DQo+ICsJaWYgKHJjdmQtPm1heF9yZXFzID4gTkZTNF9NQVhfU0xPVF9UQUJMRSkNCj4gKwkJcmN2
+ZC0+bWF4X3JlcXMgPSBORlM0X01BWF9TTE9UX1RBQkxFOw0KPiAgCXJldHVybiAwOw0KPiAgfQ0K
+PiAgDQo+IEBAIC01MjE0LDkgKzUyMTYsOSBAQCBzdGF0aWMgaW50IG5mczRfdmVyaWZ5X2JhY2tf
+Y2hhbm5lbF9hdHRycyhzdHJ1Y3QgbmZzNDFfY3JlYXRlX3Nlc3Npb25fYXJncyAqYXJncw0KPiAg
+CWlmIChyY3ZkLT5tYXhfcmVzcF9zel9jYWNoZWQgPiBzZW50LT5tYXhfcmVzcF9zel9jYWNoZWQp
+DQo+ICAJCXJldHVybiAtRUlOVkFMOw0KPiAgCS8qIFRoZXNlIHdvdWxkIHJlbmRlciB0aGUgYmFj
+a2NoYW5uZWwgdXNlbGVzczogKi8NCj4gLQlpZiAocmN2ZC0+bWF4X29wcyAgPT0gMCkNCj4gKwlp
+ZiAocmN2ZC0+bWF4X29wcyAhPSBzZW50LT5tYXhfb3BzKQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsN
+Cj4gLQlpZiAocmN2ZC0+bWF4X3JlcXMgPT0gMCkNCj4gKwlpZiAocmN2ZC0+bWF4X3JlcXMgIT0g
+c2VudC0+bWF4X3JlcXMpDQo+ICAJCXJldHVybiAtRUlOVkFMOw0KPiAgCXJldHVybiAwOw0KPiAg
+fQ0KDQpUaGlzIGxvb2tzIGdvb2QsIGhvd2V2ZXIgSSdtIHF1ZXVlaW5nIGl0IHVwIGZvciB0aGUg
+My40IG1lcmdlIHdpbmRvdw0KcmF0aGVyIHRoYW4gYWRkaW5nIGl0IGFzIGEgYnVnZml4IGZvciAz
+LjMuIFRoZSBtYWluIHJlYXNvbiBmb3INCnBvc3Rwb25pbmcgaXMgdG8gZ2l2ZSB1cyB0aW1lIHRv
+IGNoZWNrIHRoYXQgd2UgZG9uJ3QgZ2V0IGJpdHRlbiBieSBhbnkNCnNlcnZlcnMgb3V0IHRoZXJl
+IHRoYXQgbWF5IGhhdmUgYnVnZ3kgYmFja2NoYW5uZWwgc2VtYW50aWNzLg0KDQpQbGVhc2UgbGV0
+J3MgbWFrZSBzdXJlIHRvIHRlc3QgdGhpcyBwYXRjaCB0aG9yb3VnaGx5IGF0IENvbm5lY3RhdGhv
+bg0KbmV4dCB3ZWVrIQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
+cHAuY29tDQoNCg==
