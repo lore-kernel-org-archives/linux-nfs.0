@@ -1,37 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61851 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36744 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751472Ab2BOWui (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 17:50:38 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 nfs-for-next 0/1] NFSv4.1 Session statistics
-Date: Wed, 15 Feb 2012 17:50:04 -0500
-Message-Id: <1329346205-2316-1-git-send-email-andros@netapp.com>
+	id S1754847Ab2BOAmu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Feb 2012 19:42:50 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/3] nfsd4: fix sessions slotid wraparound logic
+Date: Tue, 14 Feb 2012 19:42:44 -0500
+Message-Id: <1329266566-8977-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Data server sessions as well as MDS and of course normal NFSv4.1 mount session
-stats are recorded.
+>From RFC 5661 2.10.6.1: "If the previous sequence ID was 0xFFFFFFFF,
+then the next request for the slot MUST have the sequence ID set to
+zero."
 
-This is an RFC - I've used these stats to verify that DS session slot table
-waitq's have been drained when migrating from a dead DS to the MDS. The stats
-are also useful in seeing how many session slots are actually used for various
-work loads.
+While we're there, delete some redundant comments.
 
-Comments please.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    7 +------
+ 1 files changed, 1 insertions(+), 6 deletions(-)
 
-Andy Adamson (1):
-  NFSv4.1 add a session statistics file to /proc/fs/nfsfs
-
- fs/nfs/client.c           |   93 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |    5 ++
- include/linux/nfs_fs_sb.h |    3 +
- 3 files changed, 101 insertions(+), 0 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..2095dbb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1575,16 +1575,11 @@ check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
+ 		else
+ 			return nfserr_seq_misordered;
+ 	}
+-	/* Normal */
++	/* Note unsigned 32-bit arithmetic handles wraparound: */
+ 	if (likely(seqid == slot_seqid + 1))
+ 		return nfs_ok;
+-	/* Replay */
+ 	if (seqid == slot_seqid)
+ 		return nfserr_replay_cache;
+-	/* Wraparound */
+-	if (seqid == 1 && (slot_seqid + 1) == 0)
+-		return nfs_ok;
+-	/* Misordered replay or misordered new request */
+ 	return nfserr_seq_misordered;
+ }
+ 
 -- 
-1.7.6.4
+1.7.5.4
 
