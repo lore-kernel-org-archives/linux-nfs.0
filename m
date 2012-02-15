@@ -1,49 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57405 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757023Ab2BHVRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:17:21 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 03/17] FS-Cache: Check that there are no read ops when cookie
- relinquished
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:17:11 +0000
-Message-ID: <20120208211711.15607.46274.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+Received: from mail132.messagelabs.com ([216.82.242.115]:35497 "EHLO
+	mail132.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750995Ab2BOP1K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 10:27:10 -0500
+Message-ID: <4F3BCEC8.6050509@nexenta.com>
+Date: Wed, 15 Feb 2012 19:27:04 +0400
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com> <1329259606.11759.15.camel@lade.trondhjem.org> <4F3AFD84.3020709@nexenta.com> <1329266587.28837.4.camel@lade.trondhjem.org> <20120215005315.GA9018@fieldses.org> <1329270628.28837.15.camel@lade.trondhjem.org> <0C12B635-0094-4099-B96C-3637B914A814@netapp.com> <4F3BC9F6.90409@nexenta.com> <CAHVgHyXaAQvngPMrv+NaOKvKauHaqWJJbjqciJCOtJwYuSKVow@mail.gmail.com>
+In-Reply-To: <CAHVgHyXaAQvngPMrv+NaOKvKauHaqWJJbjqciJCOtJwYuSKVow@mail.gmail.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Check that the netfs isn't trying to relinquish a cookie that still has read
-operations in progress upon it.  If there are, then give log a warning and BUG.
+On 02/15/2012 07:16 PM, Andy Adamson wrote:
+>>> No, commit aacd5537270a752fe12a9914a207284fc2341c6d initializes and resets
+>>> the slot tables with the ivalue
+>>> which is 1 for the forechannel and 0 for the back channel, just as in 3.2.
+>>
+>>
+>>
+>> nfs4_init_slot_table() doesn't use ivalue at all.
+>
+> Yep - that is the bug - which is in v2.6.39, and v3.2 ....
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
-
- fs/fscache/cookie.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
-index 9905350..0666996 100644
---- a/fs/fscache/cookie.c
-+++ b/fs/fscache/cookie.c
-@@ -452,6 +452,14 @@ void __fscache_relinquish_cookie(struct fscache_cookie *cookie, int retire)
- 
- 		_debug("RELEASE OBJ%x", object->debug_id);
- 
-+		if (atomic_read(&object->n_reads)) {
-+			spin_unlock(&cookie->lock);
-+			printk(KERN_ERR "FS-Cache:"
-+			       " Cookie '%s' still has %d outstanding reads\n",
-+			       cookie->def->name, atomic_read(&object->n_reads));
-+			BUG();
-+		}
-+
- 		/* detach each cache object from the object cookie */
- 		spin_lock(&object->lock);
- 		hlist_del_init(&object->cookie_link);
+This bug was introduced by commit aacd5537270
 
