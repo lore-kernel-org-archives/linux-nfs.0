@@ -1,44 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34589 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753004Ab2BPNqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 08:46:55 -0500
-From: Jan Kara <jack@suse.cz>
-To: LKML <linux-kernel@vger.kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Eric Sandeen <sandeen@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        Jan Kara <jack@suse.cz>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 10/11] nfs: Push file_update_time() into nfs_vm_page_mkwrite()
-Date: Thu, 16 Feb 2012 14:46:18 +0100
-Message-Id: <1329399979-3647-11-git-send-email-jack@suse.cz>
-In-Reply-To: <1329399979-3647-1-git-send-email-jack@suse.cz>
-References: <1329399979-3647-1-git-send-email-jack@suse.cz>
+Received: from mail131.messagelabs.com ([216.82.242.99]:38443 "EHLO
+	mail131.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757300Ab2BOONF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 09:13:05 -0500
+Message-ID: <4F3BBCF8.8070402@nexenta.com>
+Date: Wed, 15 Feb 2012 18:11:04 +0400
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>  <1329259606.11759.15.camel@lade.trondhjem.org>  <4F3AFD84.3020709@nexenta.com>  <1329266587.28837.4.camel@lade.trondhjem.org>  <20120215005315.GA9018@fieldses.org>  <1329270628.28837.15.camel@lade.trondhjem.org> <1329273001.28837.19.camel@lade.trondhjem.org>
+In-Reply-To: <1329273001.28837.19.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/nfs/file.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+Looks good.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index c43a452..2407922 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -525,6 +525,9 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	/* make sure the cache has finished storing the page */
- 	nfs_fscache_wait_on_page_write(NFS_I(dentry->d_inode), page);
- 
-+	/* Update file times before taking page lock */
-+	file_update_time(filp);
-+
- 	lock_page(page);
- 	mapping = page->mapping;
- 	if (mapping != dentry->d_inode->i_mapping)
--- 
-1.7.1
+However here MUST be checking on big value of ses->fc_attrs.max_reqs and 
+  ses->bc_attrs.max_reqs. I'll send it soon.
 
+
+
+On 02/15/2012 06:30 AM, Myklebust, Trond wrote:
+>
+> Here's a version 2 that does a few more cleanups by merging the
+> nfs4_init_slot_table() and nfs4_reset_slot_table() into a single
+> function.
+>
