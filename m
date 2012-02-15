@@ -1,139 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:1175 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:39935 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031111Ab2B2O7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 09:59:49 -0500
-Subject: [PATCH] SUNRPC: set desired file system root before connecting local
- transports
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Wed, 29 Feb 2012 18:59:15 +0400
-Message-ID: <20120229145915.24030.31551.stgit@localhost6.localdomain6>
+	id S1753650Ab2BOTDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 14:03:13 -0500
+Date: Wed, 15 Feb 2012 14:03:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Tom Tucker <tom@ogc.us>,
+        trond.myklebust@netapp.com, dan.carpenter@oracle.com,
+        linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH] svcrdma: Cleanup sparse warnings in the svcrdma module
+Message-ID: <20120215190308.GB14687@fieldses.org>
+References: <1329260485-16994-1-git-send-email-tom@ogc.us>
+ <20120214232342.GB23916@ZenIV.linux.org.uk>
+ <20120215161625.GC12490@fieldses.org>
+ <4F3BE6B0.2090200@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F3BE6B0.2090200@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Today, there is a problem in connecting of local SUNRPC thansports. These
-transports uses UNIX sockets and connection itself is done by rpciod workqueue.
-But UNIX sockets lookup is done in context of process file system root. I.e.
-all local thunsports are connecting in rpciod context.
-This works nice until we will try to mount NFS from process with other root -
-for example in container. This container can have it's own (nested) root and
-rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
-this container will register new service (Lockd for example) in global rpcbind
-- not containers's one.
-This patch solves the problem by switching rpciod kernel thread's file system
-root to right one (stored on transport) while connecting of local transports.
+On Wed, Feb 15, 2012 at 11:09:04AM -0600, Tom Tucker wrote:
+> On 2/15/12 10:16 AM, J. Bruce Fields wrote:
+> >OK, Tom could you fix up these small things and repost?
+> 
+> Sure, but just to be certain I understand fully,
+> 
+> >--b.
+> >
+> >On Tue, Feb 14, 2012 at 11:23:42PM +0000, Al Viro wrote:
+> >>On Tue, Feb 14, 2012 at 05:01:25PM -0600, Tom Tucker wrote:
+> >>
+> >>>-	if (ch->rc_discrim == 0)
+> >>>+	if (ch->rc_discrim == xdr_zero)
+> 
+> You don't want this? It is true that sparse didn't complain, I was
+> simply making it obvious that this value is NBO and be consistent
+> across the code. Other places were using xdr_zero.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Mainly it's a matter of "Al bothered to review it, and it sounded like a
+reasonable request."
 
----
- fs/fs_struct.c        |    1 +
- net/sunrpc/xprtsock.c |   32 ++++++++++++++++++++++++++++++--
- 2 files changed, 31 insertions(+), 2 deletions(-)
+But, yes, I think I do agree with Al, a special constant for
+network-order zero seems like mild overkill, I'd be happier removing it.
 
-diff --git a/fs/fs_struct.c b/fs/fs_struct.c
-index 78b519c..0f984c3 100644
---- a/fs/fs_struct.c
-+++ b/fs/fs_struct.c
-@@ -36,6 +36,7 @@ void set_fs_root(struct fs_struct *fs, struct path *path)
- 	if (old_root.dentry)
- 		path_put_longterm(&old_root);
- }
-+EXPORT_SYMBOL_GPL(set_fs_root);
- 
- /*
-  * Replace the fs->{pwdmnt,pwd} with {mnt,dentry}. Put the old values.
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 4c8281d..c94c181 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -37,6 +37,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/file.h>
-+#include <linux/fs_struct.h>
- #ifdef CONFIG_SUNRPC_BACKCHANNEL
- #include <linux/sunrpc/bc_xprt.h>
- #endif
-@@ -255,6 +256,11 @@ struct sock_xprt {
- 	void			(*old_state_change)(struct sock *);
- 	void			(*old_write_space)(struct sock *);
- 	void			(*old_error_report)(struct sock *);
-+
-+	/*
-+	 * Saved transport creator root. Required for local transports only.
-+	 */
-+	struct path		root;
- };
- 
- /*
-@@ -1891,6 +1897,7 @@ static void xs_local_setup_socket(struct work_struct *work)
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	struct socket *sock;
- 	int status = -EIO;
-+	struct path root;
- 
- 	if (xprt->shutdown)
- 		goto out;
-@@ -1908,7 +1915,14 @@ static void xs_local_setup_socket(struct work_struct *work)
- 	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
- 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
- 
-+	get_fs_root(current->fs, &root);
-+	set_fs_root(current->fs, &transport->root);
-+
- 	status = xs_local_finish_connecting(xprt, sock);
-+
-+	set_fs_root(current->fs, &root);
-+	path_put(&root);
-+
- 	switch (status) {
- 	case 0:
- 		dprintk("RPC:       xprt %p connected to %s\n",
-@@ -2213,6 +2227,18 @@ static void xs_connect(struct rpc_task *task)
- 	}
- }
- 
-+static void xs_local_destroy(struct rpc_xprt *xprt)
-+{
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-+	struct path root = transport->root;
-+
-+	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
-+
-+	xs_destroy(xprt);
-+
-+	path_put(&root);
-+}
-+
- /**
-  * xs_local_print_stats - display AF_LOCAL socket-specifc stats
-  * @xprt: rpc_xprt struct containing statistics
-@@ -2431,7 +2457,7 @@ static struct rpc_xprt_ops xs_local_ops = {
- 	.send_request		= xs_local_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
- 	.close			= xs_close,
--	.destroy		= xs_destroy,
-+	.destroy		= xs_local_destroy,
- 	.print_stats		= xs_local_print_stats,
- };
- 
-@@ -2606,8 +2632,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 	dprintk("RPC:       set up xprt to %s via AF_LOCAL\n",
- 			xprt->address_strings[RPC_DISPLAY_ADDR]);
- 
--	if (try_module_get(THIS_MODULE))
-+	if (try_module_get(THIS_MODULE)) {
-+		get_fs_root(current->fs, &transport->root);
- 		return xprt;
-+	}
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
+--b.
 
+> 
+> >>Mostly, ACK, modulo this and similar sillyness.  sparse is just fine with
+> >>use of constant 0 in bitwise contexts; it's also just fine with use of
+> >>bitwise in logical ones.
+> >>
+> >>>+	nchunks = ntohl(ary->wc_nchunks);
+> >>>  	if (((unsigned long)&ary->wc_array[0] +
+> >>>-	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks))>
+> >>>+	     (sizeof(struct rpcrdma_write_chunk) * nchunks))>
+> >>BTW, this still can overflow.  With less painful consequences than before that
+> >>patch, but...
+> >>
+> >>>-			BUG_ON(0 == virt_to_page(vec[i].iov_base));
+> >>>+			BUG_ON(NULL == virt_to_page(vec[i].iov_base));
+> >>Egads...  What, "!virt_to_page(...)" would have been too pedestrian?
+> 
