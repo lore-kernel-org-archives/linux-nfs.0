@@ -1,106 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:61993 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756584Ab2BAPoX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:44:23 -0500
-Received: by mail-qw0-f46.google.com with SMTP id c10so3561743qad.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:44:23 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751555Ab2BOVf1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:27 -0500
+Received: by mail-iy0-f174.google.com with SMTP id b35so1972889iac.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:27 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/13] NFS: Clean up debugging in decode_pathname()
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 3/5] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
-Date: Wed,  1 Feb 2012 10:44:10 -0500
-Message-Id: <1328111052-28389-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
+Date: Wed, 15 Feb 2012 16:35:25 -0500
+Message-ID: <20120215213525.3254.55844.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We'll need a way to flag the nfs4_client as already being recorded on
-stable storage so that we don't continually upcall.
+I noticed recently that decode_attr_fs_locations() is not generating
+very pretty debugging output.  The pathname components each appear on
+a separate line of output, though that does not appear to be the
+intended display behavior.  The preferred way to generate continued
+lines of output on the console is to use pr_cont().
 
-The cl_cb_flags field is only using 2 bits right now, so repurpose that
-to a generic flags field. Rename NFSD4_CLIENT_KILL to
-NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
-flags. Add a mask that we can use for existing checks that look to see
-whether any flags are set, so that the new STABLE flag doesn't
-interfere.
+Note that incoming pathname4 components contain a string that is not
+necessarily NUL-terminated.  I did actually see some trailing garbage
+on the console.  In addition to correcting the line continuation
+problem, add a string precision format specifier to ensure that each
+component string is displayed properly, and that vsnprintf() does
+not Oops.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Someone pointed out that allowing incoming network data to possibly
+generate a console line of unbounded length may not be such a good
+idea.  Since this output will rarely be enabled, and there is a hard
+upper bound (NFS4_PATHNAME_MAXCOMPONENTS) in our implementation, this
+is probably not a major concern.
+
+It might be useful to additionally sanity-check the length of each
+incoming component, however.  RFC 3530bis15 does not suggest a maximum
+number of UTF-8 characters per component for either the pathname4 or
+component4 types.  However, we could invent one that is appropriate
+for our implementation.
+
+Another possibility is to scrap all of this and print these pathnames
+in upper layers after a reasonable amount of sanity checking in the
+XDR layer.  This would give us an opportunity to allocate a full
+buffer so that the whole pathname would be output via a single
+dprintk.
+
+Introduced by commit 7aaa0b3b: "NFSv4: convert fs-locations-components
+to conform to RFC3530," (June 9, 2006).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4callback.c |   12 ++++++------
- fs/nfsd/state.h        |    8 +++++---
- 2 files changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 6f3ebb4..730e2cc 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -756,7 +756,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
- {
- 	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
- 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
--	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
- 	do_probe_callback(clp);
- }
- 
-@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
- /* must be called under the state lock */
- void nfsd4_shutdown_callback(struct nfs4_client *clp)
- {
--	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
-+	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
- 	/*
- 	 * Note this won't actually result in a null callback;
- 	 * instead, nfsd4_do_callback_rpc() will detect the killed
-@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 		clp->cl_cb_conn.cb_xprt = NULL;
+ fs/nfs/nfs4xdr.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 51ef966..606852a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3512,16 +3512,17 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ 	n = be32_to_cpup(p);
+ 	if (n == 0)
+ 		goto root_path;
+-	dprintk("path ");
++	dprintk("pathname4: ");
+ 	path->ncomponents = 0;
+ 	while (path->ncomponents < n) {
+ 		struct nfs4_string *component = &path->components[path->ncomponents];
+ 		status = decode_opaque_inline(xdr, &component->len, &component->data);
+ 		if (unlikely(status != 0))
+ 			goto out_eio;
+-		if (path->ncomponents != n)
+-			dprintk("/");
+-		dprintk("%s", component->data);
++		if (unlikely(nfs_debug & NFSDBG_XDR))
++			pr_cont("%s%.*s ",
++				(path->ncomponents != n ? "/ " : ""),
++				component->len, component->data);
+ 		if (path->ncomponents < NFS4_PATHNAME_MAXCOMPONENTS)
+ 			path->ncomponents++;
+ 		else {
+@@ -3530,14 +3531,13 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ 		}
  	}
--	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
-+	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
- 		return;
- 	spin_lock(&clp->cl_lock);
- 	/*
- 	 * Only serialized callback code is allowed to clear these
- 	 * flags; main nfsd code can only set them:
- 	 */
--	BUG_ON(!clp->cl_cb_flags);
--	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
-+	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
- 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
- 	c = __nfsd4_find_backchannel(clp);
- 	if (c) {
-@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
- 	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt;
+ out:
+-	dprintk("\n");
+ 	return status;
+ root_path:
+ /* a root pathname is sent as a zero component4 */
+ 	path->ncomponents = 1;
+ 	path->components[0].len=0;
+ 	path->components[0].data=NULL;
+-	dprintk("path /\n");
++	dprintk("pathname4: /\n");
+ 	goto out;
+ out_eio:
+ 	dprintk(" status %d", status);
+@@ -3559,7 +3559,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 	status = 0;
+ 	if (unlikely(!(bitmap[0] & FATTR4_WORD0_FS_LOCATIONS)))
+ 		goto out;
+-	dprintk("%s: fsroot ", __func__);
++	dprintk("%s: fsroot:\n", __func__);
+ 	status = decode_pathname(xdr, &res->fs_path);
+ 	if (unlikely(status != 0))
+ 		goto out;
+@@ -3580,7 +3580,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 		m = be32_to_cpup(p);
  
--	if (clp->cl_cb_flags)
-+	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
- 		nfsd4_process_cb_update(cb);
- 
- 	clnt = clp->cl_cb_client;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 8f539ee..0f9a0ac 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -250,9 +250,11 @@ struct nfs4_client {
- 
- 	/* for v4.0 and v4.1 callbacks: */
- 	struct nfs4_cb_conn	cl_cb_conn;
--#define NFSD4_CLIENT_CB_UPDATE	1
--#define NFSD4_CLIENT_KILL	2
--	unsigned long		cl_cb_flags;
-+#define NFSD4_CLIENT_STABLE		(0)	/* client on stable storage */
-+#define NFSD4_CLIENT_CB_UPDATE		(1)
-+#define NFSD4_CLIENT_CB_KILL		(2)
-+#define NFSD4_CLIENT_CB_FLAG_MASK	(0x6)
-+	unsigned long		cl_flags;
- 	struct rpc_clnt		*cl_cb_client;
- 	u32			cl_cb_ident;
- #define NFSD4_CB_UP		0
--- 
-1.7.7.6
+ 		loc->nservers = 0;
+-		dprintk("%s: servers ", __func__);
++		dprintk("%s: servers:\n", __func__);
+ 		while (loc->nservers < m) {
+ 			struct nfs4_string *server = &loc->servers[loc->nservers];
+ 			status = decode_opaque_inline(xdr, &server->len, &server->data);
 
