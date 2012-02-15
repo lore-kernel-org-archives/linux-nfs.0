@@ -1,50 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:53425 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843Ab2BAXD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 18:03:29 -0500
-Message-ID: <4F29C4A4.8020005@panasas.com>
-Date: Thu, 2 Feb 2012 01:03:00 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55005 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757549Ab2BOOWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 09:22:43 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Subject: Re: [PATCH] nfs41: Verify channel's attributes accordingly to RFC
+Date: Wed, 15 Feb 2012 14:22:37 +0000
+Message-ID: <1329315756.3364.4.camel@lade.trondhjem.org>
+References: <1329315182-12051-1-git-send-email-gusev.vitaliy@nexenta.com>
+In-Reply-To: <1329315182-12051-1-git-send-email-gusev.vitaliy@nexenta.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Martin K. Petersen" <martin.petersen@oracle.com>
-CC: James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Chris Mason <chris.mason@oracle.com>,
-        Gregory Farnum <gregory.farnum@dreamhost.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-scsi@vger.kernel.org>,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        <lsf-pc@lists.linux-foundation.org>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
- detection
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com> <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net> <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net> <4F283F7A.4020905@itwm.fraunhofer.de> <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com> <20120201164521.GY16796@shiny> <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com> <yq1d39ys9n1.fsf@sermon.lab.mkp.net>
-In-Reply-To: <yq1d39ys9n1.fsf@sermon.lab.mkp.net>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/01/2012 08:15 PM, Martin K. Petersen wrote:
->>>>>> "James" == James Bottomley <James.Bottomley@HansenPartnership.com> writes:
-> 
-> IOW, the filesystem should only ever act as a conduit. The only real
-> challenge as far as I can tell is how to handle concurrent protected and
-> unprotected updates to a page. If a non-PI-aware app updates a cached
-> page which is subsequently read by an app requesting PI that means we
-> may have to force a write-out followed by a read to get valid PI. We
-> could synthesize it to avoid the I/O but I think that would be violating
-> the premise of protected transfer. Another option is to have an
-> exclusive write access mechanism that only permits either protected or
-> unprotected access to a page.
-
-Yes. a protected write implies a byte-range locking on the file.
-(And can be implemented with one)
-
-Also the open() call demands an O_PROTECT option. Protection is
-then a file attribute as well.
-
-> 
-
-Boaz
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE4OjEzICswNDAwLCBWaXRhbGl5IEd1c2V2IHdyb3RlOg0K
+PiA+RnJvbSBSRkM1NjYxLCAxOC4zNi4zOg0KPiANCj4gICAgY2FfbWF4b3BlcmF0aW9uczoNCj4g
+DQo+ICAgICAgICAgIEZvciB0aGUgYmFja2NoYW5uZWwsIHRoZSBzZXJ2ZXIgTVVTVA0KPiAgICAg
+ICAgICBOT1QgY2hhbmdlIHRoZSB2YWx1ZSB0aGUgY2xpZW50IG9mZmVycy4gIEZvciB0aGUgZm9y
+ZSBjaGFubmVsLA0KPiAgICAgICAgICB0aGUgc2VydmVyIE1BWSBjaGFuZ2UgdGhlIHJlcXVlc3Rl
+ZCB2YWx1ZS4NCj4gDQo+ICAgIGNhX21heHJlcXVlc3RzOg0KPiANCj4gICAgICAgICAgRm9yIHRo
+ZSBiYWNrY2hhbm5lbCwgdGhlIHNlcnZlciBNVVNUIE5PVCBjaGFuZ2UgdGhlDQo+ICAgICAgICAg
+IHZhbHVlIHRoZSBjbGllbnQgb2ZmZXJzLiAgRm9yIHRoZSBmb3JlIGNoYW5uZWwsIHRoZSBzZXJ2
+ZXIgTUFZDQo+ICAgICAgICAgIGNoYW5nZSB0aGUgcmVxdWVzdGVkIHZhbHVlLg0KPiANCj4gU2ln
+bmVkLW9mZi1ieTogVml0YWxpeSBHdXNldiA8Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbT4NCj4g
+LS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgIDYgKysrLS0tDQo+ICAxIGZpbGVzIGNoYW5n
+ZWQsIDMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9m
+cy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDVkYTUzNTUuLmIx
+NDRlYzMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9u
+ZnM0cHJvYy5jDQo+IEBAIC01MTk3LDcgKzUxOTcsNyBAQCBzdGF0aWMgaW50IG5mczRfdmVyaWZ5
+X2ZvcmVfY2hhbm5lbF9hdHRycyhzdHJ1Y3QgbmZzNDFfY3JlYXRlX3Nlc3Npb25fYXJncyAqYXJn
+cw0KPiAgCSAqLw0KPiAgCWlmIChyY3ZkLT5tYXhfb3BzIDwgc2VudC0+bWF4X29wcykNCj4gIAkJ
+cmV0dXJuIC1FSU5WQUw7DQo+IC0JaWYgKHJjdmQtPm1heF9yZXFzID09IDApDQo+ICsJaWYgKHJj
+dmQtPm1heF9yZXFzID09IDAgfHwgcmN2ZC0+bWF4X3JlcXMgPiBORlM0X01BWF9TTE9UX1RBQkxF
+KQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCg0KVGhpcyBsb29rcyBpbmNvcnJlY3QuDQoNCklmIHRo
+ZSBzZXJ2ZXIgb2ZmZXJzID4gTkZTNF9NQVhfU0xPVF9UQUJMRSBzbG90cywgdGhlIGNsaWVudCBz
+aG91bGRuJ3QNCmJlIGNhbGxpbmcgdGhhdCBhbiBlcnJvci4gSXQgc2hvdWxkIGp1c3QgbGltaXQg
+aXRzIHVzYWdlIHRvIHRoZSBmaXJzdA0KTkZTNF9NQVhfU0xPVF9UQUJMRSBzbG90cy4NCg0KPiAg
+CXJldHVybiAwOw0KPiAgfQ0KPiBAQCAtNTIxNCw5ICs1MjE0LDkgQEAgc3RhdGljIGludCBuZnM0
+X3ZlcmlmeV9iYWNrX2NoYW5uZWxfYXR0cnMoc3RydWN0IG5mczQxX2NyZWF0ZV9zZXNzaW9uX2Fy
+Z3MgKmFyZ3MNCj4gIAlpZiAocmN2ZC0+bWF4X3Jlc3Bfc3pfY2FjaGVkID4gc2VudC0+bWF4X3Jl
+c3Bfc3pfY2FjaGVkKQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCj4gIAkvKiBUaGVzZSB3b3VsZCBy
+ZW5kZXIgdGhlIGJhY2tjaGFubmVsIHVzZWxlc3M6ICovDQo+IC0JaWYgKHJjdmQtPm1heF9vcHMg
+ID09IDApDQo+ICsJaWYgKHJjdmQtPm1heF9vcHMgIT0gc2VudC0+bWF4X29wcykNCj4gIAkJcmV0
+dXJuIC1FSU5WQUw7DQo+IC0JaWYgKHJjdmQtPm1heF9yZXFzID09IDApDQo+ICsJaWYgKHJjdmQt
+Pm1heF9yZXFzICE9IHNlbnQtPm1heF9yZXFzKQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCg0KQUNL
+IG9uIHRoaXMgaHVuay4uLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
