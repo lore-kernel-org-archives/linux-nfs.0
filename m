@@ -1,442 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754641Ab2BAPpF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:05 -0500
-Received: by mail-qy0-f174.google.com with SMTP id w6so740319qcq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:05 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754438Ab2BOVfx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:53 -0500
+Received: by mail-iy0-f174.google.com with SMTP id b35so1972889iac.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:53 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/13] SUNRPC: Add API to acquire source address
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 3/9] nfsdcld: add routines for a sqlite backend database
-Date: Wed,  1 Feb 2012 10:44:50 -0500
-Message-Id: <1328111096-28430-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
-References: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+Date: Wed, 15 Feb 2012 16:35:50 -0500
+Message-ID: <20120215213550.3254.1420.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rather than roll our own "storage engine", use sqlite instead. It fits
-the bill nicely as it does:
+NFSv4.0 clients must send endpoint information for their callback
+service to NFSv4.0 servers during their first contact with a server.
+Traditionally on Linux, user space provides the callback endpoint IP
+address via the "clientaddr=" mount option.
 
-- durable on-disk storage
-- the ability to constrain record uniqueness
-- a facility for collating and searching the host records
+During an NFSv4 migration event, it is possible that an FSID may be
+migrated to a destination server that is accessible via a different
+source IP address than the source server was.  The client must update
+callback endpoint information on the destination server so that it can
+maintain leases and allow delegation.
 
-...it does add a build dependency to nfs-utils, but almost all modern
-distros provide those packages.
+Without a new "clientaddr=" option from user space, however, the
+kernel itself must construct an appropriate IP address for the
+callback update.  Provide an API in the RPC client for upper layer
+RPC consumers to acquire a source address for a remote.
 
-The current incarnation of this code dynamically links against a
-provided sqlite library, but we could also consider including their
-single-file "amalgamation" to reduce dependencies (though with all
-the caveats that that entails).
+The mechanism used by the mount.nfs command is copied: set up a
+connected UDP socket to the designated remote, then scrape the source
+address off the socket.  We are careful to select the correct network
+namespace when setting up the temporary UDP socket.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- utils/nfsdcld/Makefile.am |    4 +-
- utils/nfsdcld/nfsdcld.c   |   24 +++-
- utils/nfsdcld/sqlite.c    |  253 +++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h    |   26 +++++
- 4 files changed, 299 insertions(+), 8 deletions(-)
- create mode 100644 utils/nfsdcld/sqlite.c
- create mode 100644 utils/nfsdcld/sqlite.h
 
-diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
-index ed7ed42..8e4f2ab 100644
---- a/utils/nfsdcld/Makefile.am
-+++ b/utils/nfsdcld/Makefile.am
-@@ -6,9 +6,9 @@
- AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
- sbin_PROGRAMS	= nfsdcld
+ include/linux/sunrpc/clnt.h |    1 
+ net/sunrpc/clnt.c           |  149 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 150 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 3d8f9c4..6a869b4 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -160,6 +160,7 @@ size_t		rpc_max_payload(struct rpc_clnt *);
+ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
++int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
  
--nfsdcld_SOURCES = nfsdcld.c
-+nfsdcld_SOURCES = nfsdcld.c sqlite.c
- 
--nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT)
-+nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE)
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 7a83fbe..15746e6 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -36,6 +36,7 @@
- 
- #include "xlog.h"
- #include "nfslib.h"
-+#include "sqlite.h"
- 
- #ifndef PIPEFS_DIR
- #define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
-@@ -61,6 +62,7 @@ static struct option longopts[] =
- 	{ "foreground", 0, NULL, 'F' },
- 	{ "debug", 0, NULL, 'd' },
- 	{ "pipe", 1, NULL, 'p' },
-+	{ "storagedir", 1, NULL, 's' },
- 	{ NULL, 0, 0, 0 },
- };
- 
-@@ -71,7 +73,7 @@ static void
- usage(char *progname)
- {
- 	printf("Usage:\n");
--	printf("%s [ -hFd ] [ -p pipe ]\n", progname);
-+	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
+ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+ size_t		rpc_pton(const char *, const size_t,
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f0268ea..ebd2192 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -806,6 +806,155 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
  }
+ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
  
- static int
-@@ -145,15 +147,16 @@ cld_create(struct cld_client *clnt)
- 	ssize_t bsize, wsize;
- 	struct cld_msg *cmsg = &clnt->cl_msg;
- 
--	xlog(D_GENERAL, "%s: create client record", __func__);
-+	xlog(D_GENERAL, "%s: create client record.", __func__);
- 
--	/* FIXME: create client record on storage here */
-+	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
-+				   cmsg->cm_u.cm_name.cn_len);
- 
--	/* set up reply */
--	cmsg->cm_status = 0;
-+	cmsg->cm_status = ret ? -EREMOTEIO : ret;
- 
- 	bsize = sizeof(*cmsg);
- 
-+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize) {
- 		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-@@ -211,6 +214,7 @@ main(int argc, char **argv)
- 	int rc = 0;
- 	bool foreground = false;
- 	char *progname;
-+	char *storagedir = NULL;
- 	struct cld_client clnt;
- 
- 	memset(&clnt, 0, sizeof(clnt));
-@@ -226,7 +230,7 @@ main(int argc, char **argv)
- 	xlog_stderr(1);
- 
- 	/* process command-line options */
--	while ((arg = getopt_long(argc, argv, "hdFp:", longopts,
-+	while ((arg = getopt_long(argc, argv, "hdFp:s:", longopts,
- 				  NULL)) != EOF) {
- 		switch (arg) {
- 		case 'd':
-@@ -238,6 +242,9 @@ main(int argc, char **argv)
- 		case 'p':
- 			pipepath = optarg;
- 			break;
-+		case 's':
-+			storagedir = optarg;
-+			break;
- 		default:
- 			usage(progname);
- 			return 0;
-@@ -257,6 +264,11 @@ main(int argc, char **argv)
- 	}
- 
- 	/* set up storage db */
-+	rc = sqlite_maindb_init(storagedir);
-+	if (rc) {
-+		xlog(L_ERROR, "Failed to open main database: %d", rc);
++static const struct sockaddr_in rpc_inaddr_loopback = {
++	.sin_family		= AF_INET,
++	.sin_addr.s_addr	= htonl(INADDR_ANY),
++};
++
++static const struct sockaddr_in6 rpc_in6addr_loopback = {
++	.sin6_family		= AF_INET6,
++	.sin6_addr		= IN6ADDR_ANY_INIT,
++};
++
++/*
++ * Try a getsockname() on a connected datagram socket.  Using a
++ * connected datagram socket prevents leaving a socket in TIME_WAIT.
++ * This conserves the ephemeral port number space.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
++ */
++static int rpc_sockname(struct net *net, struct sockaddr *sap, size_t salen,
++			struct sockaddr *buf, int buflen)
++{
++	struct socket *sock;
++	int err;
++
++	err = __sock_create(net, sap->sa_family,
++				SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
++	if (err < 0) {
++		dprintk("RPC:       can't create UDP socket (%d)\n", err);
 +		goto out;
 +	}
- 
- 	/* set up event handler */
- 	rc = cld_pipe_init(&clnt);
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-new file mode 100644
-index 0000000..f70568e
---- /dev/null
-+++ b/utils/nfsdcld/sqlite.c
-@@ -0,0 +1,253 @@
-+/*
-+ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
 +
-+/*
-+ * Explanation:
-+ *
-+ * This file contains the code to manage the sqlite backend database for the
-+ * clstated upcall daemon.
-+ *
-+ * The main database is called main.sqlite and contains the following tables:
-+ *
-+ * parameters: simple key/value pairs for storing database info
-+ *
-+ * clients: one column containing a BLOB with the as sent by the client
-+ * 	    and a timestamp (in epoch seconds) of when the record was
-+ * 	    established
-+ *
-+ * FIXME: should we also record the fsid being accessed?
-+ */
++	switch (sap->sa_family) {
++	case AF_INET:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		err = kernel_bind(sock,
++				(struct sockaddr *)&rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++		break;
++	default:
++		err = -EAFNOSUPPORT;
++		goto out;
++	}
++	if (err < 0) {
++		dprintk("RPC:       can't bind UDP socket (%d)\n", err);
++		goto out_release;
++	}
 +
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif /* HAVE_CONFIG_H */
++	err = kernel_connect(sock, sap, salen, 0);
++	if (err < 0) {
++		dprintk("RPC:       can't connect UDP socket (%d)\n", err);
++		goto out_release;
++	}
 +
-+#include <errno.h>
-+#include <event.h>
-+#include <stdbool.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <sqlite3.h>
-+#include <linux/limits.h>
++	err = kernel_getsockname(sock, buf, &buflen);
++	if (err < 0) {
++		dprintk("RPC:       getsockname failed (%d)\n", err);
++		goto out_release;
++	}
 +
-+#include "xlog.h"
++	err = 0;
++	if (buf->sa_family == AF_INET6) {
++		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)buf;
++		sin6->sin6_scope_id = 0;
++	}
++	dprintk("RPC:       %s succeeded\n", __func__);
 +
-+#define CLD_SQLITE_SCHEMA_VERSION 1
-+
-+#ifndef CLD_SQLITE_TOPDIR
-+#define CLD_SQLITE_TOPDIR NFS_STATEDIR "/nfsdcld"
-+#endif
-+
-+/* in milliseconds */
-+#define CLD_SQLITE_BUSY_TIMEOUT 10000
-+
-+/* private data structures */
-+
-+/* global variables */
-+
-+/* top level DB directory */
-+static char *sqlite_topdir;
-+
-+/* reusable pathname and sql command buffer */
-+static char buf[PATH_MAX];
-+
-+/* global database handle */
-+static sqlite3 *dbh;
-+
-+/* forward declarations */
-+
-+/* make a directory, ignoring EEXIST errors unless it's not a directory */
-+static int
-+mkdir_if_not_exist(char *dirname)
-+{
-+	int ret;
-+	struct stat statbuf;
-+
-+	ret = mkdir(dirname, S_IRWXU);
-+	if (ret && errno != EEXIST)
-+		return -errno;
-+
-+	ret = stat(dirname, &statbuf);
-+	if (ret)
-+		return -errno;
-+
-+	if (!S_ISDIR(statbuf.st_mode))
-+		ret = -ENOTDIR;
-+
-+	return ret;
++out_release:
++	sock_release(sock);
++out:
++	return err;
 +}
 +
 +/*
-+ * Open the "main" database, and attempt to initialize it by creating the
-+ * parameters table and inserting the schema version into it. Ignore any errors
-+ * from that, and then attempt to select the version out of it again. If the
-+ * version appears wrong, then assume that the DB is corrupt or has been
-+ * upgraded, and return an error. If all of that works, then attempt to create
-+ * the "clients" table.
++ * Scraping a connected socket failed, so we don't have a useable
++ * local address.  Fallback: generate an address that will prevent
++ * the server from calling us back.
++ *
++ * Returns zero and fills in "buf" if successful; otherwise, a
++ * negative errno is returned.
 + */
-+int
-+sqlite_maindb_init(char *topdir)
++static int rpc_anyaddr(int family, struct sockaddr *buf, size_t buflen)
 +{
-+	int ret;
-+	char *err = NULL;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	sqlite_topdir = topdir ? topdir : CLD_SQLITE_TOPDIR;
-+
-+	ret = mkdir_if_not_exist(sqlite_topdir);
-+	if (ret)
-+		return ret;
-+
-+	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", sqlite_topdir);
-+	if (ret < 0)
-+		return ret;
-+
-+	buf[PATH_MAX - 1] = '\0';
-+
-+	ret = sqlite3_open(buf, &dbh);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to open main database: %d", ret);
-+		return ret;
++	switch (family) {
++	case AF_INET:
++		if (buflen < sizeof(rpc_inaddr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_inaddr_loopback,
++				sizeof(rpc_inaddr_loopback));
++		break;
++	case AF_INET6:
++		if (buflen < sizeof(rpc_in6addr_loopback))
++			return -EINVAL;
++		memcpy(buf, &rpc_in6addr_loopback,
++				sizeof(rpc_in6addr_loopback));
++	default:
++		dprintk("RPC:       %s: address family not supported\n",
++			__func__);
++		return -EAFNOSUPPORT;
 +	}
-+
-+	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
-+		goto out_err;
-+	}
-+
-+	/* Try to create table */
-+	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
-+				"(key TEXT PRIMARY KEY, value TEXT);",
-+				NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to create parameter table: %d", ret);
-+		goto out_err;
-+	}
-+
-+	/* insert version into table -- ignore error if it fails */
-+	ret = snprintf(buf, sizeof(buf),
-+		       "INSERT OR IGNORE INTO parameters values (\"version\", "
-+		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
-+	if (ret < 0) {
-+		goto out_err;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		ret = -EINVAL;
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to insert into parameter table: %d",
-+				ret);
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_prepare_v2(dbh,
-+		"SELECT value FROM parameters WHERE key == \"version\";",
-+		 -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to prepare select statement: %d", ret);
-+		goto out_err;
-+	}
-+
-+	/* check schema version */
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "Select statement execution failed: %s",
-+				sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	/* process SELECT result */
-+	ret = sqlite3_column_int(stmt, 0);
-+	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
-+		xlog(L_ERROR, "Unsupported database schema version! "
-+			"Expected %d, got %d.",
-+			CLD_SQLITE_SCHEMA_VERSION, ret);
-+		ret = -EINVAL;
-+		goto out_err;
-+	}
-+
-+	/* now create the "clients" table */
-+	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS clients "
-+				"(id BLOB PRIMARY KEY, time INTEGER);",
-+				NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to create clients table: %s", err);
-+		goto out_err;
-+	}
-+
-+	sqlite3_free(err);
-+	sqlite3_finalize(stmt);
++	dprintk("RPC:       %s: succeeded\n", __func__);
 +	return 0;
-+
-+out_err:
-+	if (err) {
-+		xlog(L_ERROR, "sqlite error: %s", err);
-+		sqlite3_free(err);
-+	}
-+	sqlite3_finalize(stmt);
-+	sqlite3_close(dbh);
-+	return ret;
 +}
 +
-+/*
-+ * Create a client record
++/**
++ * rpc_localaddr - discover local endpoint address for an RPC client
++ * @clnt: RPC client structure
++ * @buf: target buffer
++ * @buflen: size of target buffer, in bytes
 + *
-+ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
++ * Returns zero and fills in "buf" and "buflen" if successful;
++ * otherwise, a negative errno is returned.
++ *
++ * This works even if the underlying transport is not currently connected,
++ * or if the upper layer never previously provided a source address.
++ *
++ * The result of this function call is transient: multiple calls in
++ * succession may give different results, depending on how local
++ * networking configuration changes over time.
 + */
-+int
-+sqlite_insert_client(const unsigned char *clname, const size_t namelen)
++int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
 +{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
++	struct sockaddr_storage address;
++	struct sockaddr *sap = (struct sockaddr *)&address;
++	struct rpc_xprt *xprt;
++	struct net *net;
++	size_t salen;
++	int err;
 +
-+	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
-+				      "(?, strftime('%s', 'now'));", -1,
-+					&stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
-+			__func__, sqlite3_errmsg(dbh));
-+		return ret;
-+	}
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
++	salen = xprt->addrlen;
++	memcpy(sap, &xprt->addr, salen);
++	net = get_net(xprt->xprt_net);
++	rcu_read_unlock();
 +
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
-+				sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+
-+out_err:
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
-+	sqlite3_finalize(stmt);
-+	return ret;
++	rpc_set_port(sap, 0);
++	err = rpc_sockname(net, sap, salen, buf, buflen);
++	put_net(net);
++	if (err != 0)
++		/* Couldn't discover local address, return ANYADDR */
++		return rpc_anyaddr(sap->sa_family, buf, buflen);
++	return 0;
 +}
-diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-new file mode 100644
-index 0000000..ba4c213
---- /dev/null
-+++ b/utils/nfsdcld/sqlite.h
-@@ -0,0 +1,26 @@
-+/*
-+ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
++EXPORT_SYMBOL_GPL(rpc_localaddr);
 +
-+#ifndef _SQLITE_H_
-+#define _SQLITE_H_
-+
-+int sqlite_maindb_init(char *topdir);
-+int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
-+
-+#endif /* _SQLITE_H */
--- 
-1.7.7.6
+ void
+ rpc_setbufsize(struct rpc_clnt *clnt, unsigned int sndsize, unsigned int rcvsize)
+ {
 
