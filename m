@@ -1,51 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36323 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753057Ab2BSHu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 19 Feb 2012 02:50:27 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH 1/2] NFS: Ensure that the nfs_client 'net' field is always set
-Date: Sun, 19 Feb 2012 08:50:20 +0100
-Message-Id: <1329637821-6986-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:57147 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753474Ab2BOTly (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 14:41:54 -0500
+Received: by ggnh1 with SMTP id h1so886428ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 11:41:53 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/13] NFS: Fix comparison signage warnings with slot ID
+ computations
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 15 Feb 2012 14:41:52 -0500
+Message-ID: <20120215194152.2925.44044.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
+References: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the nfs_parsed_mount_data->net field is initialised in
-the nfs_parse_mount_options() function, which means that it only
-gets set if we're using text based mounts. The legacy binary
-mount interface is therefore broken.
+To make nfs4proc.c compile cleanly, address the following compiler
+warnings:
 
-Fix is to initialise the ->net field in nfs_alloc_parsed_mount_data.
+fs/nfs/nfs4proc.c: In function ‘nfs4_free_slot’:
+fs/nfs/nfs4proc.c:371:2: warning: comparison between signed and
+		unsigned integer expressions [-Wsign-compare]
+fs/nfs/nfs4proc.c: In function ‘nfs4_reset_slot_table’:
+fs/nfs/nfs4proc.c:5000:15: warning: comparison between signed and
+		unsigned integer expressions [-Wsign-compare]
+fs/nfs/nfs4proc.c: In function ‘nfs4_init_slot_table’:
+fs/nfs/nfs4proc.c:5064:2: warning: comparison between signed and
+		unsigned integer expressions [-Wsign-compare]
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Why is max_reqs always u32, but nfs4_slot_table.max_slots a signed
+integer?
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/super.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d05024a..6708f30 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -911,6 +911,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(unsigned int ve
- 		data->auth_flavor_len	= 1;
- 		data->version		= version;
- 		data->minorversion	= 0;
-+		data->net		= current->nsproxy->net_ns;
- 		security_init_mnt_opts(&data->lsm_opts);
- 	}
- 	return data;
-@@ -1110,8 +1111,6 @@ static int nfs_parse_mount_options(char *raw,
+ fs/nfs/nfs4proc.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d9f4d78..5ff9c5a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -368,7 +368,7 @@ nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *free_slot)
+ 	int free_slotid = free_slot - tbl->slots;
+ 	int slotid = free_slotid;
  
- 	free_secdata(secdata);
+-	BUG_ON(slotid < 0 || slotid >= NFS4_MAX_SLOT_TABLE);
++	BUG_ON(slotid < 0 || slotid >= (int)NFS4_MAX_SLOT_TABLE);
+ 	/* clear used bit in bitmap */
+ 	__clear_bit(slotid, tbl->used_slots);
  
--	mnt->net = current->nsproxy->net_ns;
--
- 	while ((p = strsep(&raw, ",")) != NULL) {
- 		substring_t args[MAX_OPT_ARGS];
- 		unsigned long option;
--- 
-1.7.7.6
+@@ -4997,7 +4997,7 @@ static int nfs4_reset_slot_table(struct nfs4_slot_table *tbl, u32 max_reqs,
+ 		max_reqs, tbl->max_slots);
+ 
+ 	/* Does the newly negotiated max_reqs match the existing slot table? */
+-	if (max_reqs != tbl->max_slots) {
++	if (max_reqs != (u32)tbl->max_slots) {
+ 		ret = -ENOMEM;
+ 		new = kmalloc(max_reqs * sizeof(struct nfs4_slot),
+ 			      GFP_NOFS);
+@@ -5056,7 +5056,7 @@ static void nfs4_destroy_slot_tables(struct nfs4_session *session)
+  * Initialize slot table
+  */
+ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+-		int max_slots, int ivalue)
++		u32 max_slots, int ivalue)
+ {
+ 	struct nfs4_slot *slot;
+ 	int ret = -ENOMEM;
 
