@@ -1,129 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10118 "EHLO mx2.netapp.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:38646 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754574Ab2BPUo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 15:44:29 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKiToZ013930
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:44:29 -0800 (PST)
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 16 Feb 2012 20:44:23 +0000
-Message-ID: <0A71914B-99D6-49C4-A2CE-18CBFF9384F7@netapp.com>
-References: <1329171728-3980-1-git-send-email-dros@netapp.com>
- <1329421700.4279.21.camel@lade.trondhjem.org>
-In-Reply-To: <1329421700.4279.21.camel@lade.trondhjem.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_1A863A1A-2185-4DD4-8769-3A1288A8E019";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1754386Ab2BOWI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 17:08:59 -0500
+Received: from /spool/local
+	by e4.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 15 Feb 2012 17:08:58 -0500
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 41B9138C8063
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 17:05:25 -0500 (EST)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q1FM5ON6200038
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 17:05:24 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q1FM5Okf006398
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 17:05:24 -0500
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q1FM5OwN006387
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 17:05:24 -0500
+Date: Wed, 15 Feb 2012 16:05:23 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
+Message-ID: <20120215220523.GA24995@us.ibm.com>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+ <20120215213508.3254.64687.stgit@ellison.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120215213508.3254.64687.stgit@ellison.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_1A863A1A-2185-4DD4-8769-3A1288A8E019
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Most of the dprintk() callers are using __func__. Not sure if adding
+that to the dprintk itself is a good idea. In any case, it will have to
+be a separate patchset though.
 
+Regards, Malahal.
 
-On Feb 16, 2012, at 2:48 PM, Myklebust, Trond wrote:
+Chuck Lever [chuck.lever@oracle.com] wrote:
+> Our dprintk() debugging facility doesn't specify any verbosity level
+> for it's printk() calls, but it should.
+> 
+> The default verbosity for printk's is KERN_DEFAULT.  You might argue
+> that these are debugging printk's and thus the verbosity should be
+> KERN_DEBUG.  That would mean that to see NFS and SUNRPC debugging
+> output an admin would also have to boost the syslog verbosity, which
+> would be insufferably noisy.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/debug.h |    6 +++++-
+>  1 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+> index c2786f2..e0927c2 100644
+> --- a/include/linux/sunrpc/debug.h
+> +++ b/include/linux/sunrpc/debug.h
+> @@ -51,7 +51,11 @@ extern unsigned int		nlm_debug;
+>  #undef ifdebug
+>  #ifdef RPC_DEBUG			
+>  # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
+> -# define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
+> +# define dfprintk(fac, args...)	\
+> +	do { \
+> +		ifdebug(fac) \
+> +			printk(KERN_DEFAULT args); \
+> +	} while (0)
+>  # define RPC_IFDEBUG(x)		x
+>  #else
+>  # define ifdebug(fac)		if (0)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-> On Mon, 2012-02-13 at 17:22 -0500, Weston Andros Adamson wrote:
->> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->> index efe5495..ab7a28f 100644
->> --- a/net/sunrpc/xprt.c
->> +++ b/net/sunrpc/xprt.c
->> @@ -1132,7 +1132,10 @@ void xprt_release(struct rpc_task *task)
->> 		return;
->>=20
->> 	xprt =3D req->rq_xprt;
->> -	rpc_count_iostats(task);
->> +	if (task->tk_client)
->> +		rpc_count_iostats(task, task->tk_client->cl_metrics);
->> +	if (task->tk_ops->rpc_count_stats !=3D NULL)
->> +		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
->> 	spin_lock_bh(&xprt->transport_lock);
->> 	xprt->ops->release_xprt(xprt, task);
->> 	if (xprt->ops->release_request)
->=20
-> 2 nits:
->=20
->     1. Aren't we guaranteed that task->tk_client !=3D NULL in
->        xprt_release()?
-
-I wasn't sure -- there is no other reference to tk_client in the =
-xprt_release() path.
-It worked fine for *me* without the if statement, but the old =
-rpc_count_iostats (of which this was the only caller) checked if =
-tk_client was NULL and I didn't want to break anything.
-
->     2. Shouldn't we be calling _either_ rpc_count_iostats(), _or_
->        task->tk_ops->rpc_count_stats()? As far as I can see, the
->        nfsstat output will now be double-counting and pNFS reads,
->        writes and commits that are sent to the DS.
-
-
-No, this doesn't double count with nfsstats.  nfsstats uses =
-rpc_clnt::cl_stats (and not rpc_clnt::cl_metrics).
-
-I probably should have done an if/else for this patch -- with the =
-current code, the DSs' rpc_clnt:cl_metrics will never be used.
-I left it accumulating here because we want to have per-DS stats =
-eventually and my plan was to print out stats in /proc/fs/nfsfs per =
-*client* (so not separated by mountpoint).
-
-I can repost with if/else, but looking at this some more made me realize =
-that we are *still* doing this wrong :)
-
-The callback method in this patch fails to accumulate stats for =
-operations to the DS other than read/write/commit -- that seems right, =
-but what about null, exchange_id, session heartbeats, etc?
-
-In order to properly accumulate those we are back to two obvious =
-choices:
-  1) add a count_iostats callback to the ~25 other rpc_call_ops in =
-nfs-land (yuck)
-  2) add an 'additional stats' pointer to the rpc_task structure (trond =
-already said you don't want to add to task struct)
-
-Or do we just not care about displaying those operations?  For my =
-purposes (nfsometer perf testing), it'd be nice to have *all* of the =
-operations.
-
--dros=
-
---Apple-Mail=_1A863A1A-2185-4DD4-8769-3A1288A8E019
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAyMTYyMDQ0MjNaMCMGCSqGSIb3DQEJBDEWBBRY8zW39CBjjV9V
-a86vMWhs8pd0kzANBgkqhkiG9w0BAQEFAASCAQBv/o3QEhtxiX1yhymkzAegoWp4Ro65KdwgD2kv
-yR4ufs/iWl6rO7VZY2RoCDgdtz8Uao2xc8p447AsMDWIFfRkbWLuI9feDaoeEJRf/pjAGN39OB6m
-GNrbR0nR332kGAk717XI0lqirlyFsWEkRfU39uQRvDfzUB1Dk3RqVhGeqYXlCMaC/7Zd8BrLZV6L
-+ESbj9eXs5GL6sJT6lnnyvxQes+Gmc3NqEsg9iO60iOq5BtQ3OSOJ4hCYud3gaKYufQFWVHzJgsU
-AGHJzoTqTllWmg7X1HA+9+wizxUhkOqdshVpUIHyjXJ7QZ9v4vVtsIbok03DnXT5D3c8iHVRcHHS
-AAAAAAAA
-
---Apple-Mail=_1A863A1A-2185-4DD4-8769-3A1288A8E019--
