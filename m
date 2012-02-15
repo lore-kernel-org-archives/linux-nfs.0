@@ -1,59 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:47049 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33952 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932308Ab2BATqP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Feb 2012 14:46:15 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: add mount option 'v4.1'
-Date: Wed, 1 Feb 2012 19:46:08 +0000
-Message-ID: <1328125568.3789.103.camel@lade.trondhjem.org>
-References: <1328122817-661-1-git-send-email-dros@netapp.com>
-	 <1328122817-661-2-git-send-email-dros@netapp.com>
-	 <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com>
-In-Reply-To: <16B8D5D9-4373-474E-A54A-AF853AC59153@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751549Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 17:45:22 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/5] 4.0 tests: kill "Starting Call Back server stub" printk
+Date: Wed, 15 Feb 2012 17:45:16 -0500
+Message-Id: <1329345920-16608-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTAxIGF0IDE0OjE3IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-SGktDQo+IA0KPiBJIHRoaW5rIHdlIHNob3VsZCBjby1vcmRpbmF0ZSB3aXRoIFNvbGFyaXMgb24g
-dGhpcyBhZG1pbmlzdHJhdGl2ZSBpbnRlcmZhY2UuICBDYW4gd2UgZGlzY3VzcyBpbiBTYW50YSBD
-bGFyYT8NCg0KVW5sZXNzIHRoZXkgaGF2ZSBhIHN0cm9uZyBhcmd1bWVudCBmb3Igd2h5IHRoaXMg
-aXMgYSBiYWQgaWRlYSwgSSBwbGFuIG9uDQpqdXN0IGFkZGluZyB0aGlzIHRvIDMuNC4gVGhlcmUg
-aXMgbm8gcG9pbnQgaW4gZm9vdC1kcmFnZ2luZyBvbiB0aGlzIGFueQ0KbW9yZS4NCg0KVHJvbmQN
-Cg0KPiBPbiBGZWIgMSwgMjAxMiwgYXQgMjowMCBQTSwgV2VzdG9uIEFuZHJvcyBBZGFtc29uIHdy
-b3RlOg0KPiANCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-PGRyb3NAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiBJIHdhcyBhbHJlYWR5IG1lc3NpbmcgYXJv
-dW5kIHdpdGggbW91bnRvcHRpb25zIGFuZCBmaWd1cmVkICJ3aHkgbm90Ii4NCj4gPiBJdCdzIGJl
-ZW4gam9rZWQgKD8pIHRoYXQgNC4xIHJlYWxseSBzaG91bGQgaGF2ZSBiZWVuIE5GU3Y1ISANCj4g
-PiANCj4gPiBmcy9uZnMvc3VwZXIuYyB8ICAgIDggKysrKysrKy0NCj4gPiAxIGZpbGVzIGNoYW5n
-ZWQsIDcgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KPiA+IGluZGV4IDUwYmFjYTEuLjgw
-MWIwNjAgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL3N1cGVyLmMNCj4gPiArKysgYi9mcy9uZnMv
-c3VwZXIuYw0KPiA+IEBAIC04MCw3ICs4MCw3IEBAIGVudW0gew0KPiA+IAlPcHRfY3RvLCBPcHRf
-bm9jdG8sDQo+ID4gCU9wdF9hYywgT3B0X25vYWMsDQo+ID4gCU9wdF9sb2NrLCBPcHRfbm9sb2Nr
-LA0KPiA+IC0JT3B0X3YyLCBPcHRfdjMsIE9wdF92NCwNCj4gPiArCU9wdF92MiwgT3B0X3YzLCBP
-cHRfdjQsIE9wdF92NF8xLA0KPiA+IAlPcHRfdWRwLCBPcHRfdGNwLCBPcHRfcmRtYSwNCj4gPiAJ
-T3B0X2FjbCwgT3B0X25vYWNsLA0KPiA+IAlPcHRfcmRpcnBsdXMsIE9wdF9ub3JkaXJwbHVzLA0K
-PiA+IEBAIC0xMzYsNiArMTM2LDcgQEAgc3RhdGljIGNvbnN0IG1hdGNoX3RhYmxlX3QgbmZzX21v
-dW50X29wdGlvbl90b2tlbnMgPSB7DQo+ID4gCXsgT3B0X3YyLCAidjIiIH0sDQo+ID4gCXsgT3B0
-X3YzLCAidjMiIH0sDQo+ID4gCXsgT3B0X3Y0LCAidjQiIH0sDQo+ID4gKwl7IE9wdF92NF8xLCAi
-djQuMSIgfSwNCj4gPiAJeyBPcHRfdWRwLCAidWRwIiB9LA0KPiA+IAl7IE9wdF90Y3AsICJ0Y3Ai
-IH0sDQo+ID4gCXsgT3B0X3JkbWEsICJyZG1hIiB9LA0KPiA+IEBAIC0xMTcyLDYgKzExNzMsMTEg
-QEAgc3RhdGljIGludCBuZnNfcGFyc2VfbW91bnRfb3B0aW9ucyhjaGFyICpyYXcsDQo+ID4gCQkJ
-bW50LT5mbGFncyAmPSB+TkZTX01PVU5UX1ZFUjM7DQo+ID4gCQkJbW50LT52ZXJzaW9uID0gNDsN
-Cj4gPiAJCQlicmVhazsNCj4gPiArCQljYXNlIE9wdF92NF8xOg0KPiA+ICsJCQltbnQtPmZsYWdz
-ICY9IH5ORlNfTU9VTlRfVkVSMzsNCj4gPiArCQkJbW50LT52ZXJzaW9uID0gNDsNCj4gPiArCQkJ
-bW50LT5taW5vcnZlcnNpb24gPSAxOw0KPiA+ICsJCQlicmVhazsNCj4gPiAJCWNhc2UgT3B0X3Vk
-cDoNCj4gPiAJCQltbnQtPmZsYWdzICY9IH5ORlNfTU9VTlRfVENQOw0KPiA+IAkJCW1udC0+bmZz
-X3NlcnZlci5wcm90b2NvbCA9IFhQUlRfVFJBTlNQT1JUX1VEUDsNCj4gPiAtLSANCj4gPiAxLjcu
-NC40DQo+ID4gDQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2Vu
-ZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEg
-bWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8g
-aW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+The printk doesn't seem especially useful, and it's just clutter if
+you want to use output of the scripts somehow.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ nfs4.0/nfs4lib.py |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index 0a38ebc..c6d6781 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -191,7 +191,6 @@ class CBServer(rpc.RPCServer):
+             raise "Bad name %s" % name
+ 
+     def run(self):
+-        print "Starting Call Back server stub on port %i" % self.port
+         rpc.RPCServer.run(self)
+ 
+     def handle_0(self, data, cred):
+-- 
+1.7.5.4
+
