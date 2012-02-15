@@ -1,158 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21654 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756163Ab2BHVSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:18:44 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 11/17] CacheFiles: Add missing retrieval completions
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:18:33 +0000
-Message-ID: <20120208211833.15607.67455.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754022Ab2BOVff (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:35 -0500
+Received: by mail-gy0-f174.google.com with SMTP id r11so965647ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:35 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/13] NFS: Add debugging messages to NFSv4's CLOSE procedure
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 15 Feb 2012 16:35:33 -0500
+Message-ID: <20120215213533.3254.51446.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CacheFiles is missing some calls to fscache_retrieval_complete() in the error
-handling/collision paths of its reader functions.
+CLOSE is new with NFSv4.  Sometimes it's important to know the timing
+of this operation compared to things like lease renewal.
 
-This can be seen by the following assertion tripping in fscache_put_operation()
-whereby the operation being destroyed is still in the in-progress state and has
-not been cancelled or completed:
-
-FS-Cache: Assertion failed
-3 == 5 is false
-------------[ cut here ]------------
-kernel BUG at fs/fscache/operation.c:408!
-invalid opcode: 0000 [#1] SMP
-CPU 2
-Modules linked in: xfs ioatdma dca loop joydev evdev
-psmouse dcdbas pcspkr serio_raw i5000_edac edac_core i5k_amb shpchp
-pci_hotplug sg sr_mod]
-
-Pid: 8062, comm: httpd Not tainted 3.1.0-rc8 #1 Dell Inc. PowerEdge 1950/0DT097
-RIP: 0010:[<ffffffff81197b24>]  [<ffffffff81197b24>] fscache_put_operation+0x304/0x330
-RSP: 0018:ffff880062f739d8  EFLAGS: 00010296
-RAX: 0000000000000025 RBX: ffff8800c5122e84 RCX: ffffffff81ddf040
-RDX: 00000000ffffffff RSI: 0000000000000082 RDI: ffffffff81ddef30
-RBP: ffff880062f739f8 R08: 0000000000000005 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000003 R12: ffff8800c5122e40
-R13: ffff880037a2cd20 R14: ffff880087c7a058 R15: ffff880087c7a000
-FS:  00007f63dcf636e0(0000) GS:ffff88022fc80000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f0c0a91f000 CR3: 0000000062ec2000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process httpd (pid: 8062, threadinfo ffff880062f72000, task ffff880087e58000)
-Stack:
- ffff880062f73bf8 0000000000000000 ffff880062f73bf8 ffff880037a2cd20
- ffff880062f73a68 ffffffff8119aa7e ffff88006540e000 ffff880062f73ad4
- ffff88008e9a4308 ffff880037a2cd20 ffff880062f73a48 ffff8800c5122e40
-Call Trace:
- [<ffffffff8119aa7e>] __fscache_read_or_alloc_pages+0x1fe/0x530
- [<ffffffff81250780>] __nfs_readpages_from_fscache+0x70/0x1c0
- [<ffffffff8123142a>] nfs_readpages+0xca/0x1e0
- [<ffffffff815f3c06>] ? rpc_do_put_task+0x36/0x50
- [<ffffffff8122755b>] ? alloc_nfs_open_context+0x4b/0x110
- [<ffffffff815ecd1a>] ? rpc_call_sync+0x5a/0x70
- [<ffffffff810e7e9a>] __do_page_cache_readahead+0x1ca/0x270
- [<ffffffff810e7f61>] ra_submit+0x21/0x30
- [<ffffffff810e818d>] ondemand_readahead+0x11d/0x250
- [<ffffffff810e83b6>] page_cache_sync_readahead+0x36/0x60
- [<ffffffff810dffa4>] generic_file_aio_read+0x454/0x770
- [<ffffffff81224ce1>] nfs_file_read+0xe1/0x130
- [<ffffffff81121bd9>] do_sync_read+0xd9/0x120
- [<ffffffff8114088f>] ? mntput+0x1f/0x40
- [<ffffffff811238cb>] ? fput+0x1cb/0x260
- [<ffffffff81122938>] vfs_read+0xc8/0x180
- [<ffffffff81122af5>] sys_read+0x55/0x90
-
-Reported-by: Mark Moseley <moseleymark@gmail.com>
-Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/cachefiles/rdwr.c |   14 ++++++++++----
- fs/fscache/page.c    |    2 ++
- 2 files changed, 12 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
-index f437e97..e6d35e9 100644
---- a/fs/cachefiles/rdwr.c
-+++ b/fs/cachefiles/rdwr.c
-@@ -361,8 +361,10 @@ out:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5ff9c5a..5629858 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1947,6 +1947,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	struct nfs4_state *state = calldata->state;
+ 	struct nfs_server *server = NFS_SERVER(calldata->inode);
  
- read_error:
- 	_debug("read error %d", ret);
--	if (ret == -ENOMEM)
-+	if (ret == -ENOMEM) {
-+		fscache_retrieval_complete(op, 1);
- 		goto out;
-+	}
- io_error:
- 	cachefiles_io_error_obj(object, "Page read error on backing file");
- 	fscache_retrieval_complete(op, 1);
-@@ -551,6 +553,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
- 		if (ret < 0) {
- 			if (ret == -EEXIST) {
- 				page_cache_release(netpage);
-+				fscache_retrieval_complete(op, 1);
- 				continue;
- 			}
- 			goto nomem;
-@@ -627,6 +630,7 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
- 		if (ret < 0) {
- 			if (ret == -EEXIST) {
- 				page_cache_release(netpage);
-+				fscache_retrieval_complete(op, 1);
- 				continue;
- 			}
- 			goto nomem;
-@@ -645,9 +649,9 @@ static int cachefiles_read_backing_file(struct cachefiles_object *object,
- 
- 		/* the netpage is unlocked and marked up to date here */
- 		fscache_end_io(op, netpage, 0);
--		fscache_retrieval_complete(op, 1);
- 		page_cache_release(netpage);
- 		netpage = NULL;
-+		fscache_retrieval_complete(op, 1);
- 		continue;
++	dprintk("%s: begin!\n", __func__);
+ 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
+ 		return;
+         /* hmm. we are done with the inode, and in the process of freeing
+@@ -1974,6 +1975,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
  	}
- 
-@@ -682,15 +686,17 @@ out:
- nomem:
- 	_debug("nomem");
- 	ret = -ENOMEM;
--	goto out;
-+	goto record_page_complete;
- 
- read_error:
- 	_debug("read error %d", ret);
- 	if (ret == -ENOMEM)
--		goto out;
-+		goto record_page_complete;
- io_error:
- 	cachefiles_io_error_obj(object, "Page read error on backing file");
- 	ret = -ENOBUFS;
-+record_page_complete:
-+	fscache_retrieval_complete(op, 1);
- 	goto out;
+ 	nfs_release_seqid(calldata->arg.seqid);
+ 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
++	dprintk("%s: done, ret = %d!\n", __func__, task->tk_status);
  }
  
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-index 7bf9d25..4dbbca1 100644
---- a/fs/fscache/page.c
-+++ b/fs/fscache/page.c
-@@ -329,6 +329,8 @@ check_if_dead:
- 		return -ENOBUFS;
+ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+@@ -1982,6 +1984,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	struct nfs4_state *state = calldata->state;
+ 	int call_close = 0;
+ 
++	dprintk("%s: begin!\n", __func__);
+ 	if (nfs_wait_on_sequence(calldata->arg.seqid, task) != 0)
+ 		return;
+ 
+@@ -2006,7 +2009,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	if (!call_close) {
+ 		/* Note: exit _without_ calling nfs4_close_done */
+ 		task->tk_action = NULL;
+-		return;
++		goto out;
  	}
- 	if (unlikely(fscache_object_is_dead(object))) {
-+		pr_err("%s() = -ENOBUFS [obj dead %d]", __func__, op->op.state);
-+		fscache_cancel_op(&op->op);
- 		fscache_stat(stat_object_dead);
- 		return -ENOBUFS;
+ 
+ 	if (calldata->arg.fmode == 0) {
+@@ -2015,7 +2018,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
+ 			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
+ 				     task, NULL);
+-			return;
++			goto out;
+ 		}
  	}
+ 
+@@ -2024,8 +2027,10 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
+ 				&calldata->arg.seq_args, &calldata->res.seq_res,
+ 				1, task))
+-		return;
++		goto out;
+ 	rpc_call_start(task);
++out:
++	dprintk("%s: done!\n", __func__);
+ }
+ 
+ static const struct rpc_call_ops nfs4_close_ops = {
 
