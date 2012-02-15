@@ -1,51 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37690 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33950 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757290Ab2B1UAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Feb 2012 15:00:20 -0500
-Date: Tue, 28 Feb 2012 15:00:15 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: steve <steve@steve-ss.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-Message-ID: <20120228200015.GD2723@fieldses.org>
-References: <4F40053A.3090301@steve-ss.com>
- <4F412E2F.9070200@steve-ss.com>
- <4F45E78E.8050501@steve-ss.com>
- <20120223063913.5736a5b1@tlielax.poochiereds.net>
- <4F4628B8.90401@steve-ss.com>
- <20120223144053.GA25010@fieldses.org>
- <4F465C3A.9080802@steve-ss.com>
- <20120223154215.GA26706@fieldses.org>
- <4F466467.3030506@steve-ss.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F466467.3030506@steve-ss.com>
+	id S1751257Ab2BOWpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Feb 2012 17:45:22 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/5] 4.0 tests: remove 1-second wait on client creation
+Date: Wed, 15 Feb 2012 17:45:17 -0500
+Message-Id: <1329345920-16608-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1329345920-16608-1-git-send-email-bfields@redhat.com>
+References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 23, 2012 at 05:08:07PM +0100, steve wrote:
-> OK. I see what you mean. umask 0022
-> So I can have a group rw with posix but not with nfs4_setfacl:-(
-> 
-> That's on openSUSE who default to 0022. The default on Ubuntu is
-> 0002 so presumably we could have group rw over nfs4 there out of the
-> box?
-> 
-> Is it a lot of work to implement umask override for nfs4? Or make it
-> an option perhaps?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Two fulltime-kernel-hacker-week-equivalents?
+I can't figure out why this wait is necessary, and it slows things down.
+(Noticed while trying to write a race-condition reproducer requiring
+more precise timing.)
 
-I'm not sure, I just made that up.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ nfs4.0/nfs4lib.py |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-It does appear that it's necessary to make v4 ACLs usable in a lot of
-cases.
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index c6d6781..7185057 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -293,7 +293,6 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
+         self.cb_control = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+         while 1:
+             try:
+-                time.sleep(1)
+                 self.cb_control.connect(('127.0.0.1', self.cb_server.port))
+                 break
+             except socket.error:
+-- 
+1.7.5.4
 
---b.
-
-> At the moment I'm using a big hammer and scanning the share every 4
-> seconds to change the permissions of any files created there. My
-> other thought was to have the share on a different partition, umask
-> it to 0002 and export that. But these are workarounds. It would be
-> really good to have the nfs4 acls do it.
