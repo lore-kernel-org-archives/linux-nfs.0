@@ -1,98 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:60653 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752110Ab2BRIRF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2012 03:17:05 -0500
-Received: by wgbdt10 with SMTP id dt10so3337209wgb.1
-        for <linux-nfs@vger.kernel.org>; Sat, 18 Feb 2012 00:17:03 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfsd41: refactor nfs4_open_deleg_none_ext logic out of nfs4_open_delegation
-Date: Sat, 18 Feb 2012 10:16:57 +0200
-Message-Id: <1329553017-2791-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4F3F5B30.3000501@tonian.com>
-References: <4F3F5B30.3000501@tonian.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:63766 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759266Ab2BON5H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 08:57:07 -0500
+Received: by eekc14 with SMTP id c14so365030eek.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 05:57:06 -0800 (PST)
+Message-ID: <4F3BB9AF.7090604@tonian.com>
+Date: Wed, 15 Feb 2012 15:57:03 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: Marc Eshel <eshel@almaden.ibm.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Linux pNFS status meeting 02/16/12  -- NO MEETING --
+References: <OF5E2F67F6.4278FA6C-ON8825799D.00793B9D-8825799D.007960B1@us.ibm.com> <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
+In-Reply-To: <OFB6DA5CEF.C6895471-ON882579A4.00712ECE-882579A4.00715EC4@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a 4.1 client asks for a delegation and the server returns none
-op_delegate_type is set to NFS4_OPEN_DELEGATE_NONE_EXT
-and op_why_no_deleg is set to either WND4_CONTENTION or WND4_RESOURCE.
-Or, if the client sent a NFS4_SHARE_WANT_CANCEL (which it is not supposed
-to ever do until our server supports delegations signaling),
-op_why_no_deleg is set to WND4_CANCELLED.
+See you in Connectathon?
 
-Note that for WND4_CONTENTION and WND4_RESOURCE, the xdr layer is hard coded
-at this time to encode boolean FALSE for ond_server_will_push_deleg /
-ond_server_will_signal_avail.
+Benny
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4state.c |   43 ++++++++++++++++++++++++-------------------
- 1 files changed, 24 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ad21b06..94daab4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2853,6 +2853,27 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	return 0;
- }
- 
-+static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
-+{
-+	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+	if (status == -EAGAIN)
-+		open->op_why_no_deleg = WND4_CONTENTION;
-+	else {
-+		open->op_why_no_deleg = WND4_RESOURCE;
-+		switch (open->op_deleg_want) {
-+		case NFS4_SHARE_WANT_READ_DELEG:
-+		case NFS4_SHARE_WANT_WRITE_DELEG:
-+		case NFS4_SHARE_WANT_ANY_DELEG:
-+			break;
-+		case NFS4_SHARE_WANT_CANCEL:
-+			open->op_why_no_deleg = WND4_CANCELLED;
-+			break;
-+		case NFS4_SHARE_WANT_NO_DELEG:
-+			BUG();	/* not supposed to get here */
-+		}
-+	}
-+}
-+
- /*
-  * Attempt to hand out a delegation.
-  */
-@@ -2909,25 +2930,9 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 		    open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
- 			dprintk("NFSD: WARNING: refusing delegation reclaim\n");
- 
--		if (open->op_deleg_want) {
--			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
--			if (status == -EAGAIN)
--				open->op_why_no_deleg = WND4_CONTENTION;
--			else {
--				open->op_why_no_deleg = WND4_RESOURCE;
--				switch (open->op_deleg_want) {
--				case NFS4_SHARE_WANT_READ_DELEG:
--				case NFS4_SHARE_WANT_WRITE_DELEG:
--				case NFS4_SHARE_WANT_ANY_DELEG:
--					break;
--				case NFS4_SHARE_WANT_CANCEL:
--					open->op_why_no_deleg = WND4_CANCELLED;
--					break;
--				case NFS4_SHARE_WANT_NO_DELEG:
--					BUG();	/* not supposed to get here */
--				}
--			}
--		}
-+		/* 4.1 client asking for a delegation? */
-+		if (open->op_deleg_want)
-+			nfsd4_open_deleg_none_ext(open, status);
- 	}
- 	return;
- out_free:
--- 
-1.7.6.5
-
+On 2012-02-14 22:38, Marc Eshel wrote:
+> Meeting on Thursday 02/16/12 at 9:30 AM PST (12:30 PM EST)
+> 
+> 
+> USA Toll-Free: 888-426-6840
+> USA Caller Paid: 215-861-6239
+> 
+> Israel Toll-Free: 1-809-417-783
+> 
+> Participant Code: 8792872
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
