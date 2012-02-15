@@ -1,58 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:50197 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757372Ab2BHUAa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Feb 2012 15:00:30 -0500
-Subject: Re: NFS Mount Option 'nofsc'
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=US-ASCII
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4F32D273.9060001@ti.com>
-Date: Wed, 8 Feb 2012 15:00:24 -0500
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <A0BFC63F-F357-45D8-B030-FB3217289430@oracle.com>
-References: <4F31E1CA.8060105@ti.com> <1328676860.2954.9.camel@lade.trondhjem.org> <4F32BB43.6040209@ti.com> <24C2FE94-75EB-497D-ABA4-BADD068808D8@oracle.com> <4F32D273.9060001@ti.com>
-To: Derek McEachern <derekm@ti.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:50758 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751061Ab2BOPPl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 10:15:41 -0500
+Received: by werb13 with SMTP id b13so685491wer.19
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 07:15:40 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
+References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
+Date: Wed, 15 Feb 2012 10:15:40 -0500
+Message-ID: <CAHVgHyUhaJnzNaoh_tYaAvXDwHTWCa4La1hLt_S3WYdt3BpG_w@mail.gmail.com>
+Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
+From: Andy Adamson <androsadamson@gmail.com>
+To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This looks correct to me. This same bug - where the ivalue is ignored,
+is in v2.6.39 and  v3.2.
 
-On Feb 8, 2012, at 2:52 PM, Derek McEachern wrote:
+-->Andy
 
-> 
-> 
-> -------- Original Message --------
-> Subject: Re: NFS Mount Option 'nofsc'
-> From: Chuck Lever <chuck.lever@oracle.com>
-> To: Derek McEachern <derekm@ti.com>
-> CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Date: Wednesday, February 08, 2012 12:15:37 PM
-> 
->>> So then what exact functionality if provided by the 'nofsc' option? It would seem to me from a write perspective that between noac and the sync option it is pretty close to forcedirectio.
->>> 
->>> From the man page describing sync "any system call that writes data to files on that mount point causes that data to be flushed to the server before the system call returns control to user  space."
->>> 
->>> Maybe I've answered one of my questions as flushing the data to the server before returning to user space is really what I'm after. The userspace app should be blocked until the write has been acknowledged by the server and if the server is an NFS appliance then I don't necessarily care if it has committed the data to disk as I expect it to managed its cache properly.
->>> 
->>> Though I still want to understand what 'nofsc' is doing.
->> "nofsc" disables file caching on the client's local disk.  It has nothing to do with direct I/O.
->> 
-> 
-> If 'nofsc' disables file caching on the client's local disk does that mean that write from userspace could go to kernel memory, then potentially to client's local disk, before being committed over network to the nfs server?
-> 
-> This seems really odd. What would be the use case for this?
-
-With "fsc", writes are indeed slower, but reads of a very large file that rarely changes are on average much better.  If a file is significantly larger than a client's page cache, a client can cache that file on its local disk, and get local read speeds instead of going over the wire.
-
-Additionally if multiple clients have to access the same large file, it reduces the load on the storage server if they have their own local copies of that file, since the file is too large for the clients to cache in their page cache.  This also has the benefit of keeping the file data cached across client reboots.
-
-This feature is an optimization for HPC workloads, where a large number of clients access very large read-mostly datasets on a handful of storage servers.  The clients' local fsc absorbs much of the aggregate read workload, allowing storage servers to scale to a larger number of clients.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+On Tue, Feb 14, 2012 at 4:48 PM, Vitaliy Gusev <gusev.vitaliy@gmail.com> wrote:
+> Uninitialized seq_nr causes sending first SESSION request
+> with sa_sequenceid = 0.
+>
+> Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+> ---
+>  fs/nfs/nfs4proc.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f0c849c..711a812 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5067,6 +5067,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+>                int max_slots, int ivalue)
+>  {
+>        struct nfs4_slot *slot;
+> +       int i;
+>        int ret = -ENOMEM;
+>
+>        BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
+> @@ -5082,6 +5083,8 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
+>        tbl->max_slots = max_slots;
+>        tbl->slots = slot;
+>        tbl->highest_used_slotid = -1;  /* no slot is currently used */
+> +       for (i = 0; i < tbl->max_slots; ++i)
+> +               tbl->slots[i].seq_nr = ivalue;
+>        spin_unlock(&tbl->slot_tbl_lock);
+>        dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
+>                tbl, tbl->slots, tbl->max_slots);
+> --
+> 1.7.5.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
