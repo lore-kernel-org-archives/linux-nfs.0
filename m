@@ -1,63 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:50758 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751061Ab2BOPPl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 10:15:41 -0500
-Received: by werb13 with SMTP id b13so685491wer.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 07:15:40 -0800 (PST)
+Received: from smtp.srv.ualberta.ca ([129.128.5.19]:50761 "EHLO
+	mail8.srv.ualberta.ca" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751431Ab2BOVc4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:32:56 -0500
+Date: Wed, 15 Feb 2012 14:32:54 -0700 (Mountain Standard Time)
+From: Marc Aurele La France <tsi@ualberta.ca>
+To: Tom Tucker <tom@opengridcomputing.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: RFC: NFS/RDMA, IPoIB MTU and [rw]size
+In-Reply-To: <4F3BF6D3.8060301@opengridcomputing.com>
+Message-ID: <alpine.WNT.2.00.1202151416300.1136@cluij.aict.ualberta.ca>
+References: <alpine.WNT.2.00.1201121214340.2732@cluij.aict.ualberta.ca> <4F3BF6D3.8060301@opengridcomputing.com>
 MIME-Version: 1.0
-In-Reply-To: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-Date: Wed, 15 Feb 2012 10:15:40 -0500
-Message-ID: <CAHVgHyUhaJnzNaoh_tYaAvXDwHTWCa4La1hLt_S3WYdt3BpG_w@mail.gmail.com>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-From: Andy Adamson <androsadamson@gmail.com>
-To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This looks correct to me. This same bug - where the ivalue is ignored,
-is in v2.6.39 and  v3.2.
+On Wed, 15 Feb 2012, Tom Tucker wrote:
 
--->Andy
+> This looks correct to me.
 
-On Tue, Feb 14, 2012 at 4:48 PM, Vitaliy Gusev <gusev.vitaliy@gmail.com> wrote:
-> Uninitialized seq_nr causes sending first SESSION request
-> with sa_sequenceid = 0.
->
-> Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-> ---
->  fs/nfs/nfs4proc.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f0c849c..711a812 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5067,6 +5067,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
->                int max_slots, int ivalue)
->  {
->        struct nfs4_slot *slot;
-> +       int i;
->        int ret = -ENOMEM;
->
->        BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
-> @@ -5082,6 +5083,8 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
->        tbl->max_slots = max_slots;
->        tbl->slots = slot;
->        tbl->highest_used_slotid = -1;  /* no slot is currently used */
-> +       for (i = 0; i < tbl->max_slots; ++i)
-> +               tbl->slots[i].seq_nr = ivalue;
->        spin_unlock(&tbl->slot_tbl_lock);
->        dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
->                tbl, tbl->slots, tbl->max_slots);
-> --
-> 1.7.5.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+... except that it doesn't work, and neither does your change at 
+http://git.openfabrics.org/git?p=~boomer/ofed_kernel/.git;a=commitdiff;h=217d68a9e4f8cb9c735e1098646f41fb36744ce9
+
+> I assume these are v3 mounts?
+
+Yes.
+
+> BTW, the when you say you're running NFS/TCP are you running TCP over IPoIB?
+
+Also yes.
+
+In any case, I've switched back to NFS/TCP/IPoIB with a 2044 MTU (had to 
+reboot everything to get that done).  So NFS/RDMA remains highly 
+experimental in my eyes.  And it will remain so until the Linux kernel 
+community and the OpenFabrics community get their co-operation issues 
+resolved, if ever.
+
+Marc.
+
+> On 1/12/12 1:17 PM, Marc Aurele La France wrote:
+>> Greetings.
+
+>> I am currently in the process of moving a cluster I administer from
+>> NFS/TCP to NFS/RDMA, and am running into a number of issues I'd like some
+>> assistance with.  Googling these doesn't help.
+
+>> For background on what caused me to move to NFS/TCP in the first place,
+>> please see the thread that starts at http://lkml.org/lkml/2010/8/23/204
+
+>> The main reason I'm moving away from NFS/TCP is that something happened in
+>> the later kernels that reduces its resilience.  Specifically, the client
+>> now permanently loses contact with the server whenever the latter fails to
+>> allocate an RPC sk_buff due to memory fragmentation.  Restarting the
+>> server's nfsd's fixes this problem, at least temporarily.
+
+>> I haven't nailed down when this started happening (somewhere since
+>> 2.6.38), nor am I inclined to do so.  This new experience (for me) with
+>> NFS/TCP has conclusively shown me that it is much more responsive with
+>> smaller IPoIB MTU's.  Thus I will instead be reducing that MTU from its
+>> connected mode maximum of 65520, perhaps all the way down to datagram
+>> mode's 2044, to completely factor out memory fragmentation effects.  More
+>> on that below.
+
+>> In moving to NFS/RDMA and reducing the IPoIB MTU, I have seen the
+>> following behaviours.
+
+>> --
+
+>> 1) Random client-side BUG()'outs.  In fact, these never finish producing a
+>> complete stack trace.  I've tracked this down to duplicate replies being
+>> encountered by rpcrdma_reply_handler() in net/sunrpc/xprtrdma/rpc_rdma.c.
+>> Frankly I don't see why rpcrdma_reply_handler() should BUG() out in that
+>> case given TCP's behaviour in similar situations, documented requirements
+>> for the use of BUG() & friends in the first place, and the fact that
+>> rpcrdma_reply_handler() essentially "ignores" replies for which it cannot
+>> find a corresponding request.
+
+>> For the past few days now, I've been running the following on some of my
+>> nodes with no ill effects.  And yes, I do see the log message this
+>> produces.  This changes rpcrdma_reply_handler() to treat duplicate replies
+>> in much the same way it treats replies for which it cannot find a request.
+
+>> diff -adNpru linux-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c 
+>> devel-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c
+>> --- linux-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c    2011-12-21 
+>> 14:00:46.000000000 -0700
+>> +++ devel-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c    2011-12-29 
+>> 07:25:59.000000000 -0700
+>> @@ -776,7 +776,13 @@ repost:
+>>          "                   RPC request 0x%p xid 0x%08x\n",
+>>              __func__, rep, req, rqst, headerp->rm_xid);
+>> 
+>> -    BUG_ON(!req || req->rl_reply);
+>> +    /* req cannot be NULL here */
+>> +    if (req->rl_reply) {
+>> +        spin_unlock(&xprt->transport_lock);
+>> +        printk(KERN_NOTICE "RPC: %s: duplicate replies to request 0x%p: "
+>> +            "0x%p and 0x%p\n", __func__, req, req->rl_reply, rep);
+>> +        goto repost;
+>> +    }
+>>
+>>      /* from here on, the reply is no longer an orphan */
+>>      req->rl_reply = rep;
+
+>> This would also apply, modulo patch fuzz, all the way back to 2.6.24.
+
+>> --
+
+>> 2) Still client-side, I'm seeing a lot of these sequences ...
+
+>> rpcrdma: connection to 10.0.6.1:20049 on mthca0, memreg 6 slots 32 ird 4
+>> rpcrdma: connection to 10.0.6.1:20049 closed (-103)
+
+>> 103 is ECONNABORTED.  memreg 6 is RPCRDMA_ALLPHYSICAL, so I'm assuming my
+>> Mellanox adapters don't support the default RPCRDMA_FRMR (memreg 5).  I've
+>> traced these aborted connections to IB_CM_DREP_RECEIVED events being
+>> received by cma_ib_handler() in drivers/infiniband/core/cma.c, but can go
+>> no further given my limited understanding of what this code is supposed to
+>> do.  I am guessing though, that these would presumably disappear when
+>> switching back to datagram mode (cm == connected mode).  These messages
+>> don't appear to affect anything (the client simply reconnects and I've
+>> seen no data corruption), but it would still be nice to know what's going
+>> on here.
+
+>> --
+
+>> 3) isn't related to NFS/RDMA per se, but to my attempts at reducing the
+>> IPoIB MTU.  Whenever I do so on the fly across the cluster, some but not
+>> all, IPoIB traffic simply times out.  Even, in some cases, TCP connections
+>> accept()'ed after the MTU reduction.  Oddly, neither NFS/TCP nor NFS/RDMA
+>> seem affected, but other things (MPI apps, torque, etc.) are, whether
+>> started before or after the change.  So, something, somewhere, remembers
+>> the previous (larger) MTU (opensm?).  It seems that the only way to clear
+>> this "memory" is to reboot the entire cluster, something I'd rather avoid
+>> if possible.
+
+>> --
+
+>> 4) Lastly, I would like to ask for a better understanding of the
+>> relationship, if any, between NFS/RDMA and the IPoIB MTU, and between
+>> NFS/RDMA and [rw]size NFS mount parameters.  What effect do these have on
+>> NFS/RDMA?  For [rw]size, I have found that specifying less than a page 
+>> (4K) results in data corruption.
+
+>> --
+
+>> Please CC me on any comments/flames about any of the above as I am not
+>> subscribed to this list.
+
++----------------------------------+----------------------------------+
+|  Marc Aurele La France           |  work:   1-780-492-9310          |
+|  Academic Information and        |  fax:    1-780-492-1729          |
+|    Communications Technologies   |  email:  tsi@ualberta.ca         |
+|  352 General Services Building   +----------------------------------+
+|  University of Alberta           |                                  |
+|  Edmonton, Alberta               |    Standard disclaimers apply    |
+|  T6G 2H1                         |                                  |
+|  CANADA                          |                                  |
++----------------------------------+----------------------------------+
