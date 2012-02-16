@@ -1,163 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:34555 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751623Ab2BWHPi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 02:15:38 -0500
-Received: from [192.168.1.14] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
-	(authenticated bits=0)
-	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q1N7FV2I031512
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 08:15:37 +0100
-Message-ID: <4F45E78E.8050501@steve-ss.com>
-Date: Thu, 23 Feb 2012 08:15:26 +0100
-From: steve <steve@steve-ss.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49483 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754574Ab2BPUnW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:43:22 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKhLPB025289
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:43:22 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFSv4: fix server_scope memory leak
+Date: Thu, 16 Feb 2012 20:43:13 +0000
+Message-ID: <1329424993.19793.12.camel@lade.trondhjem.org>
+References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+	 <1329409026-20466-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1329409026-20466-2-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-References: <4F40053A.3090301@steve-ss.com> <4F412E2F.9070200@steve-ss.com>
-In-Reply-To: <4F412E2F.9070200@steve-ss.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi everyone
-I'm sorry to bump this but I've tried the opensuse, ubuntu and samba 
-lists without any luck.
-
-The acls I have created are not inherited when exporting via nfs4. Can 
-anyone help me with this? Tell me it can/can't be done? Versions of nfs 
-to use? Details below.
-Thanks,
-Steve
-
-
-On 02/19/2012 06:15 PM, steve wrote:
-> On 18/02/12 21:08, steve wrote:
->> Hi
->> Is it possible for nfs4 to respect the acls I have setup on an ext4 
->> export?
->> Thanks,
->> Steve
->>
->> openSUSE 12.1
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Sorry, this is what I've tried so far:
->  cat /etc/exports
-> /home 
-> *(rw,no_root_squash,sec=none:sys:krb5:krb5i:krb5p,no_subtree_check,insecure)
->
-> 1. Make a folder to share:
-> hh3:/home/CACTUS # mkdir -m 770 dropbox
-> hh3:/home/CACTUS # chown root:suseusers dropbox
->
-> 2. Mount the share:
-> hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
->
-> 3. Look at the acls:
-> nfs4_getfacl /mnt/CACTUS/dropbox
-> A::OWNER@:rwaDxtTcCy
-> A::GROUP@:rwaDxtcy
-> A::EVERYONE@:tcy
->
-> Set an acl so that members of suseusers have rw on the share:
-> hh3:/home/CACTUS # nfs4_setfacl -a A:g:suseusers@hh3.site:RW 
-> /mnt/CACTUS/dropbox
->
-> hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-> A::OWNER@:rwaDxtTcCy
-> A::GROUP@:rwaDxtcy
-> A:g:suseusers@hh3.site:rwaDtcy
-> A::EVERYONE@:tcy
->
-> 4. Yes. Back in the unmounted directory, the acl + has appeared:
-> hh3:/home/CACTUS # ls -la dropbox/
-> total 8
-> drwxrwx---+ 2 root suseusers 4096 Feb 19 10:55 .
-> drwxr-xr-x  9 root root      4096 Feb 19 10:55 ..
->
-> 5. On the mounted share, the acl is not visible. steve6 can create a 
-> file but it is _not_ group rw:
-> steve6@hh3:~> cd /mnt/CACTUS/dropbox/
-> steve6@hh3:/mnt/CACTUS/dropbox> touch hola.txt
-> steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-> total 8
-> drwxrwx--- 2 root   suseusers 4096 Feb 19 11:02 .
-> drwxr-xr-x 9 root   root      4096 Feb 19 10:55 ..
-> -rw-r--r-- 1 steve6 suseusers    0 Feb 19 11:02 hola.txt
->
-> 6. Recreate the share but this time with a posix acl:
-> setfacl -d -m g::rw /home/CACTUS/dropbox
-> steve6@hh3:/home/CACTUS> touch dropbox/h
-> steve6@hh3:/home/CACTUS> ls -la dropbox/
-> total 8
-> drwxrws---+ 2 root   suseusers 4096 Feb 19 11:13 .
-> drwxr-xr-x  9 root   root      4096 Feb 19 11:11 ..
-> -rw-rw----  1 steve6 suseusers    0 Feb 19 11:13 h
->
-> Yes. Now when steve6 creates a file it _is_ group rw. = posix acl is 
-> working.
->
-> 7. Mount the new posix share and test again:
-> hh3:/home/CACTUS #chmod g+s /home/CACTUS/dropbox
-> hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
-> hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-> A::OWNER@:rwaDxtTcCy
-> A::GROUP@:rwaDxtcy
-> A::EVERYONE@:tcy
-> A:fdi:OWNER@:rwaDxtTcCy
-> A:fdi:GROUP@:rwaDtcy
-> A:fdi:EVERYONE@:tcy
->
-> steve6@hh3:/mnt/CACTUS/dropbox> touch h2
-> steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-> total 8
-> drwxrws--- 2 root   suseusers 4096 Feb 19 11:19 .
-> drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
-> -rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
-> -rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
-> hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-> A::OWNER@:rwaDxtTcCy
-> A::GROUP@:rwaDxtcy
-> A::EVERYONE@:tcy
-> A:fdi:OWNER@:rwaDxtTcCy
-> A:fdi:GROUP@:rwaDtcy
-> A:fdi:EVERYONE@:tcy
-> hh3:/home/CACTUS # nfs4_setfacl -a A:fdi:GROUP@:RWX 
-> /mnt/CACTUS/dropboxhh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-> A::OWNER@:rwaDxtTcCy
-> A::GROUP@:rwaDxtcy
-> A::EVERYONE@:tcy
-> A:fdi:OWNER@:rwaDxtTcCy
-> A:fdi:GROUP@:rwaDxtcy
-> A:fdi:EVERYONE@:tcy
->
-> steve6@hh3:/mnt/CACTUS/dropbox> touch h3
-> steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-> total 8
-> drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
-> drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
-> -rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
-> -rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
-> -rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
->
-> Still no group rw on created files. = nfs4 acl is not working as 
-> expected.
->
-> Workaround. Get the out the big hammer:
-> #!/bin/sh
-> while true; do $(chmod -R g+w /home/CACTUS/dropbox); sleep 2; done
->
-> Question:
-> What am I missing? How do I set files created on an nfs4 share to take 
-> group rw?
->
-> Thanks,
-> Steve
->
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+T24gVGh1LCAyMDEyLTAyLTE2IGF0IDExOjE3IC0wNTAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IHNlcnZlcl9zY29wZSB3b3VsZCBuZXZlciBiZSBmcmVlZCBpZiBuZnM0X2NoZWNr
+X2NsX2V4Y2hhbmdlX2ZsYWdzKCkgcmV0dXJuZWQNCj4gbm9uLXplcm8NCj4gDQo+IFNpZ25lZC1v
+ZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiAtLS0NCj4g
+IGZzL25mcy9uZnM0cHJvYy5jIHwgICAxNSArKysrKysrKystLS0tLS0NCj4gIDEgZmlsZXMgY2hh
+bmdlZCwgOSBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBh
+L2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggODdjNTg0ZC4u
+MjBjM2JiMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZz
+L25mczRwcm9jLmMNCj4gQEAgLTQ5NDUsOCArNDk0NSwxMCBAQCBpbnQgbmZzNF9wcm9jX2V4Y2hh
+bmdlX2lkKHN0cnVjdCBuZnNfY2xpZW50ICpjbHAsIHN0cnVjdCBycGNfY3JlZCAqY3JlZCkNCj4g
+IAkJCQljbHAtPmNsX3JwY2NsaWVudC0+Y2xfYXV0aC0+YXVfZmxhdm9yKTsNCj4gIA0KPiAgCXJl
+cy5zZXJ2ZXJfc2NvcGUgPSBremFsbG9jKHNpemVvZihzdHJ1Y3Qgc2VydmVyX3Njb3BlKSwgR0ZQ
+X0tFUk5FTCk7DQo+IC0JaWYgKHVubGlrZWx5KCFyZXMuc2VydmVyX3Njb3BlKSkNCj4gLQkJcmV0
+dXJuIC1FTk9NRU07DQo+ICsJaWYgKHVubGlrZWx5KCFyZXMuc2VydmVyX3Njb3BlKSkgew0KPiAr
+CQlzdGF0dXMgPSAtRU5PTUVNOw0KPiArCQlnb3RvIG91dDsNCj4gKwl9DQo+ICANCj4gIAlzdGF0
+dXMgPSBycGNfY2FsbF9zeW5jKGNscC0+Y2xfcnBjY2xpZW50LCAmbXNnLCBSUENfVEFTS19USU1F
+T1VUKTsNCj4gIAlpZiAoIXN0YXR1cykNCj4gQEAgLTQ5NjMsMTIgKzQ5NjUsMTMgQEAgaW50IG5m
+czRfcHJvY19leGNoYW5nZV9pZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2Ny
+ZWQgKmNyZWQpDQo+ICAJCQljbHAtPnNlcnZlcl9zY29wZSA9IE5VTEw7DQo+ICAJCX0NCj4gIA0K
+PiAtCQlpZiAoIWNscC0+c2VydmVyX3Njb3BlKQ0KPiArCQlpZiAoIWNscC0+c2VydmVyX3Njb3Bl
+KSB7DQo+ICAJCQljbHAtPnNlcnZlcl9zY29wZSA9IHJlcy5zZXJ2ZXJfc2NvcGU7DQo+IC0JCWVs
+c2UNCj4gLQkJCWtmcmVlKHJlcy5zZXJ2ZXJfc2NvcGUpOw0KPiArCQkJZ290byBvdXQ7DQo+ICsJ
+CX0NCj4gIAl9DQo+IC0NCj4gKwlrZnJlZShyZXMuc2VydmVyX3Njb3BlKTsNCj4gK291dDoNCj4g
+IAlkcHJpbnRrKCI8LS0gJXMgc3RhdHVzPSAlZFxuIiwgX19mdW5jX18sIHN0YXR1cyk7DQo+ICAJ
+cmV0dXJuIHN0YXR1czsNCj4gIH0NCg0KVGhpcyBsb29rcyBsaWtlIGl0IGlzIGEgYnVnIGluIGV4
+aXN0aW5nIGtlcm5lbHMuIFNob3VsZCBJIHF1ZXVlIGl0IHVwDQpmb3Igc3RhYmxlQHZnZXIua2Vy
+bmVsLm9yZz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
