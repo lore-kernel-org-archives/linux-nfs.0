@@ -1,77 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64297 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759461Ab2BJQGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 11:06:49 -0500
-Date: Fri, 10 Feb 2012 11:06:46 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:56618 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751134Ab2BPOYN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 09:24:13 -0500
+Received: by wgbdt10 with SMTP id dt10so1970138wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 06:24:12 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <4F3CD0D7.8040402@steve-ss.com>
+References: <4F3CD0D7.8040402@steve-ss.com>
+Date: Thu, 16 Feb 2012 09:24:12 -0500
+Message-ID: <CAHVgHyX-NUviMYbg2ROvgXUvj6UhFj1FfsUmcyO9JPxFhwhHcQ@mail.gmail.com>
+Subject: Re: NFS4 des and weak crypto
+From: Andy Adamson <androsadamson@gmail.com>
+To: steve <steve@steve-ss.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 3/5] nfsd: convert nfs4_client->cl_cb_flags to a
- generic flags field
-Message-ID: <20120210110646.61d96454@tlielax.poochiereds.net>
-In-Reply-To: <20120208160023.5ef38176@tlielax.poochiereds.net>
-References: <1328111052-28389-1-git-send-email-jlayton@redhat.com>
-	<1328111052-28389-4-git-send-email-jlayton@redhat.com>
-	<20120203193533.GA2999@fieldses.org>
-	<20120208160023.5ef38176@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 8 Feb 2012 16:00:23 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On Thu, Feb 16, 2012 at 4:48 AM, steve <steve@steve-ss.com> wrote:
+> Hi
+> openSUSE 12.1
+>
+> I'm trying to explain to our windows admin that modern nfs isn't restricted
+> to DES.
+>
+> Here is a Samba4 authenticated test setup.
+>
+> I've removed he DES keys from the keytab on the nfs server:
+>
+> klist -ke /etc/krb5.keytab
+> Keytab name: WRFILE:/etc/krb5.keytab
+> KVNO Principal
+> ---- ---------
+>   1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
+>   1 HH3$@hh3.site (arcfour-hmac)
+>
+> In /etc/krb5.conf, I comment out:
+> [libdefaults]
+> #allow_weak_crypto = true
+> It was never actually there. I've added it help my argument;)
+> hh3 is the server, hh6 is the client.
+>
+> On hh6, root issues:
+> mount -t nfs4 hh3:/foo /bar -o sec=krb5
+> rpc.gssd -fvvv throws a fit, the KDC responds with,
+>
+> Kerberos: ENC-TS Pre-authentication succeeded -- HH6$@HH3.SITE using
+> arcfour-hmac-md5
+> Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime:
+> 2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
+> Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96,
+> aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc,
+> des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
+> Kerberos: Requested flags: renewable-ok
+> Kerberos: TGS-REQ HH6$@HH3.SITE from ipv4:192.168.1.10:45421 for
+> nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
+> Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime:
+> 2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
+>
+> we can logon and request files via the mount.
+>
+> Questions
+> Does this procedure prove that nfs can use other than DES crypto?
+> Is arcfour what an AD admin would consider strong encryption?
 
-> On Fri, 3 Feb 2012 14:35:33 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Feb 01, 2012 at 10:44:10AM -0500, Jeff Layton wrote:
-> > > We'll need a way to flag the nfs4_client as already being recorded on
-> > > stable storage so that we don't continually upcall.
-> > 
-> > Looks like the code currently uses cl_firststate for that purpose.
-> > 
-> > I'm perfectly open to the argument that using a u32 to store a boolean
-> > is rather silly, and can't see any problem with doing it this way
-> > instead, but then let's remove cl_firstate while we're at it.
-> > 
-> > --b.
-> > 
-> 
-> I started looking at this. The semantics on cl_firststate are a little
-> different from my proposed flag:
-> 
-> The meaning of the flag I was proposing is fairly clear -- I set it
-> whenever the kernel believes that there is already a record for this
-> client on stable storage. So, when we first upcall to check if a client
-> is on stable storage, then we'll also set that bit if it was, as well
-> as when we first create a client record on stable storage.
-> 
-> The legacy tracker sets cl_firststate whenever the directory is
-> created, or in nfs4_set_claim_prev. When the clients are restored
-> after a reboot by reading in the contents of the v4recoverydir, then
-> they do not have the cl_firststate set initially. It's only after a
-> NFS4_OPEN_CLAIM_PREVIOUS open request comes in that they get it.
-> 
-> Now, I don't think it really matters much. We'll just have this flag
-> set a little earlier with the new client tracker, and it may get set
-> again when it's already set. I don't see any cases right offhand where
-> the legacy and new client trackers would cause different behavior.
-> 
-> Am I missing any subtlety in the semantics of cl_firststate here?
-> 
+Linux NFS clients and servers can use any of the crypto listed above
+in the "client supported enctypes". aes256-cts-hmac-sha1-96 is the
+strongest.
 
-Apologies for the self-reply...
+-->Andy
 
-It does matter -- the check in nfsd4_reclaim_complete won't work
-correctly with the new client ID tracker if we just replace
-cl_firststate with NFSD4_CLIENT_STABLE. I think the right approach
-is probably to add a new flag here that nfsd4_reclaim_complete can
-use in place of its existing cl_firststate check.
-
-I'll give it some more thought...
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+>
+> Thanks,
+> Steve
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
