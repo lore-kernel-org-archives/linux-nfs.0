@@ -1,34 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:46532 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932214Ab2B2Viv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 16:38:51 -0500
-Date: Wed, 29 Feb 2012 16:38:38 -0500
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Gregor Gruener <ggruner@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2.6.32-131.6.1.el6.x86_64] idmapd.c: deactivate the ASCII
- characters check
-Message-ID: <20120229213838.GA1560@umich.edu>
-References: <4F4603EC.9030404@redhat.com>
- <4F4E8F3A.8070708@RedHat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:16964 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755369Ab2BPUH2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:07:28 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 08/13] SUNRPC: Add API to acquire source address
+Date: Thu, 16 Feb 2012 20:07:21 +0000
+Message-ID: <1329422841.4279.28.camel@lade.trondhjem.org>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+	 <20120215213550.3254.1420.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213550.3254.1420.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <4F4E8F3A.8070708@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-
-  On 02/23/2012 04:16 AM, Gregor Gruener wrote:
-  > Customers are using Unicode characters umlauts (ö,ä,ü) in group names and this
-  > creates problems with NFS ID Mapping. Groups with umlauts will be redirected to
-  > the group NFS "nobody".
-  > This patch deactivate the ASCII characters check. It's maybe more like a temporary fix and I think it would be nicer to
-  > adjust the check to support Unicode characters instead to deactivate the check.
-  > Signed-off-by: Gregor Gruener<ggruner@redhat.com>
-  ...
-  Committed... 
-
-I still think the name should be changed.  The only thing validateascii() is
-doing now is verifying that the string is null terminated.
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+TkZTdjQuMCBjbGllbnRzIG11c3Qgc2VuZCBlbmRwb2ludCBpbmZvcm1hdGlvbiBmb3IgdGhlaXIg
+Y2FsbGJhY2sNCj4gc2VydmljZSB0byBORlN2NC4wIHNlcnZlcnMgZHVyaW5nIHRoZWlyIGZpcnN0
+IGNvbnRhY3Qgd2l0aCBhIHNlcnZlci4NCj4gVHJhZGl0aW9uYWxseSBvbiBMaW51eCwgdXNlciBz
+cGFjZSBwcm92aWRlcyB0aGUgY2FsbGJhY2sgZW5kcG9pbnQgSVANCj4gYWRkcmVzcyB2aWEgdGhl
+ICJjbGllbnRhZGRyPSIgbW91bnQgb3B0aW9uLg0KPiANCj4gRHVyaW5nIGFuIE5GU3Y0IG1pZ3Jh
+dGlvbiBldmVudCwgaXQgaXMgcG9zc2libGUgdGhhdCBhbiBGU0lEIG1heSBiZQ0KPiBtaWdyYXRl
+ZCB0byBhIGRlc3RpbmF0aW9uIHNlcnZlciB0aGF0IGlzIGFjY2Vzc2libGUgdmlhIGEgZGlmZmVy
+ZW50DQo+IHNvdXJjZSBJUCBhZGRyZXNzIHRoYW4gdGhlIHNvdXJjZSBzZXJ2ZXIgd2FzLiAgVGhl
+IGNsaWVudCBtdXN0IHVwZGF0ZQ0KPiBjYWxsYmFjayBlbmRwb2ludCBpbmZvcm1hdGlvbiBvbiB0
+aGUgZGVzdGluYXRpb24gc2VydmVyIHNvIHRoYXQgaXQgY2FuDQo+IG1haW50YWluIGxlYXNlcyBh
+bmQgYWxsb3cgZGVsZWdhdGlvbi4NCj4gDQo+IFdpdGhvdXQgYSBuZXcgImNsaWVudGFkZHI9IiBv
+cHRpb24gZnJvbSB1c2VyIHNwYWNlLCBob3dldmVyLCB0aGUNCj4ga2VybmVsIGl0c2VsZiBtdXN0
+IGNvbnN0cnVjdCBhbiBhcHByb3ByaWF0ZSBJUCBhZGRyZXNzIGZvciB0aGUNCj4gY2FsbGJhY2sg
+dXBkYXRlLiAgUHJvdmlkZSBhbiBBUEkgaW4gdGhlIFJQQyBjbGllbnQgZm9yIHVwcGVyIGxheWVy
+DQo+IFJQQyBjb25zdW1lcnMgdG8gYWNxdWlyZSBhIHNvdXJjZSBhZGRyZXNzIGZvciBhIHJlbW90
+ZS4NCj4gDQo+IFRoZSBtZWNoYW5pc20gdXNlZCBieSB0aGUgbW91bnQubmZzIGNvbW1hbmQgaXMg
+Y29waWVkOiBzZXQgdXAgYQ0KPiBjb25uZWN0ZWQgVURQIHNvY2tldCB0byB0aGUgZGVzaWduYXRl
+ZCByZW1vdGUsIHRoZW4gc2NyYXBlIHRoZSBzb3VyY2UNCj4gYWRkcmVzcyBvZmYgdGhlIHNvY2tl
+dC4gIFdlIGFyZSBjYXJlZnVsIHRvIHNlbGVjdCB0aGUgY29ycmVjdCBuZXR3b3JrDQo+IG5hbWVz
+cGFjZSB3aGVuIHNldHRpbmcgdXAgdGhlIHRlbXBvcmFyeSBVRFAgc29ja2V0Lg0KPiANCj4gU2ln
+bmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0K
+DQpUaGlzIGRvZXNuJ3QgYXBwZWFyIHRvIGFwcGx5IChub3IgZG8gc2V2ZXJhbCBvZiB0aGUgZGVi
+dWdnaW5nIHBhdGNoZXMpLg0KV2FzIGl0IHdyaXR0ZW4gYWdhaW5zdCB0aGUgbmZzLWZvci1uZXh0
+IGJyYW5jaD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
