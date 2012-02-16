@@ -1,48 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44057 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:49789 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756358Ab2BPB2J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 20:28:09 -0500
-Date: Wed, 15 Feb 2012 20:28:06 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: pynfs: cleanup and turn off some tests by default
-Message-ID: <20120216012805.GE19298@pad.fieldses.org>
-References: <1329345920-16608-1-git-send-email-bfields@redhat.com>
- <4F3C4D91.20300@panasas.com>
+	id S1751134Ab2BPOXY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 09:23:24 -0500
+Message-ID: <4F3D115A.5060008@netapp.com>
+Date: Thu, 16 Feb 2012 09:23:22 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F3C4D91.20300@panasas.com>
+To: Danny Kukawka <danny.kukawka@bisect.de>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Danny Kukawka <dkukawka@suse.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] fs/nfs/dns_resolve.c: included linux/nfs_fs.h twice
+References: <1329400481-31627-1-git-send-email-danny.kukawka@bisect.de> <4F3D101C.6080805@netapp.com>
+In-Reply-To: <4F3D101C.6080805@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 04:28:01PM -0800, Boaz Harrosh wrote:
-> On 02/15/2012 02:45 PM, J. Bruce Fields wrote:
-> > I've committed the following to my pynfs repo.
-> > 
-> > Fix a couple minor problems found while working on a bug, then turn off
-> > utf8 and pnfs tests by default (both can still be requested by adding
-> > "utf8" or "pnfs", respectively, on the commandline), and remove one
-> > incorrect test.
-> > 
-> > I'd like to get to the point where the pynfs tests all pass against a
-> > reasonable server.  That means fixing the server where necessary, of
-> > course, but also not complaining about unimplemented optional features
-> > or about stuff we don't plan to fix.
-> > 
+On 02/16/12 09:18, Bryan Schumaker wrote:
+
+> On 02/16/12 08:54, Danny Kukawka wrote:
 > 
-> Can't we "auto detect" the pnfs option. Request a pnfs access if failed
-> proceed to the next set of tests, if successful continue to test "pnfs"
+>> fs/nfs/dns_resolve.c: included 'linux/nfs_fs.h' twice. No need
+> 
+>          ^^^^^^^^^^^^^
+> You probably meant idamp.c here...
+> 
+> Good catch.  My idmapper fallback changes from a few weeks ago should have already done this see:
+> 
+> e6499c6f4b5f56a16f8b8ef60529c1da28b13aea  NFS: Fall back on old idmapper if request_key() fails
+> 3cd0f37a2cc9e4d6188df10041a2441eaa41d991  NFS: Keep idmapper include files in one place
+> 
+> in Trond's nfs-for-next branch.
 
-Good idea!  I think you'd still want "pnfs" and "nopnfs" options: "pnfs"
-for "I expect this server to support pnfs, and if it doesn't report that
-as a bug!", and "nopnfs" for: "this server claims to support  pnfs but
-please just don't even bother telling me how buggy it is, I already
-know".
 
-But just turning it off by default was a minute's worth of
-search-and-replace for me, and I don't have the time for more right now.
-So that's a project looking for a volunteer.
+After looking closer, I see that I'm still including <linux/nfs_fs.h> twice even after those commits.  It's gone after the patches I plan on submitting today...
 
---b.
+- Bryan
+
+> 
+> - Bryan
+> 
+>> to include it in the 'CONFIG_NFS_USE_NEW_IDMAPPER not defined'
+>> block since it's already included at the top of the file.
+>>
+>> Signed-off-by: Danny Kukawka <danny.kukawka@bisect.de>
+>> ---
+>>  fs/nfs/idmap.c |    2 --
+>>  1 files changed, 0 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+>> index 2c05f19..1526b5f 100644
+>> --- a/fs/nfs/idmap.c
+>> +++ b/fs/nfs/idmap.c
+>> @@ -374,8 +374,6 @@ int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf,
+>>  #include <linux/workqueue.h>
+>>  #include <linux/sunrpc/rpc_pipe_fs.h>
+>>  
+>> -#include <linux/nfs_fs.h>
+>> -
+>>  #include "nfs4_fs.h"
+>>  
+>>  #define IDMAP_HASH_SZ          128
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
