@@ -1,57 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:40476 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577Ab2BMVw2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:52:28 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933968eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:52:28 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 07/10] nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
-Date: Mon, 13 Feb 2012 22:55:29 +0100
-Message-Id: <1329170132-7081-8-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170132-7081-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from acsinet15.oracle.com ([141.146.126.227]:38950 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755321Ab2BPULz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 15:11:55 -0500
+Subject: Re: [PATCH 07/13] NFS: Reduce debugging noise from encode_compound_hdr
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1329422653.4279.26.camel@lade.trondhjem.org>
+Date: Thu, 16 Feb 2012 15:11:50 -0500
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <AD538E04-3BB7-4A75-A9E4-E2A791696FA9@oracle.com>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net> <20120215213542.3254.50291.stgit@ellison.1015granger.net> <1329422653.4279.26.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
 
+On Feb 16, 2012, at 3:04 PM, Myklebust, Trond wrote:
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/nfs4proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+> On Wed, 2012-02-15 at 16:35 -0500, Chuck Lever wrote:
+>> When NFSDBG_XDR debugging is enabled, I see a lot of
+>> 
+>>  encode_compound: tag=
+>> 
+>> on the console.  This is noise if the tag is empty.  Some might argue
+>> that it is noise even if the tag isn't empty...
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> fs/nfs/nfs4xdr.c |    4 +++-
+>> 1 files changed, 3 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index 606852a..2fb129d 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -889,7 +889,9 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
+>> 	 * but this is not required as a MUST for the server to do so. */
+>> 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
+>> 
+>> -	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
+>> +	if (unlikely(hdr->taglen != 0))
+>> +		dprintk("%s: tag=%.*s\n", __func__,
+>> +				(int)hdr->taglen, hdr->tag);
+>> 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
+>> 	p = reserve_space(xdr, 4 + hdr->taglen + 8);
+>> 	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
+>> 
+> 
+> Let's just comment out the tag dprintk for now. We don't use the tag
+> field at all...
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 59d9b4b..620abcc 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1445,7 +1445,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_CREATE] = {
- 		.op_func = (nfsd4op_func)nfsd4_create,
--		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME | OP_CLEAR_STATEID,
- 		.op_name = "OP_CREATE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_create_rsize,
- 	},
-@@ -1491,12 +1491,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUP",
- 	},
- 	[OP_LOOKUPP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookupp,
--		.op_flags = OP_HANDLES_WRONGSEC,
-+		.op_flags = OP_HANDLES_WRONGSEC | OP_CLEAR_STATEID,
- 		.op_name = "OP_LOOKUPP",
- 	},
- 	[OP_NVERIFY] = {
+OK.
+
 -- 
-1.7.7.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
