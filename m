@@ -1,75 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28353 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34514 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757982Ab2BIUhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 15:37:48 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 9 Feb 2012 20:37:42 +0000
-Message-ID: <1328819862.13180.72.camel@lade.trondhjem.org>
-References: <1328805686-19559-1-git-send-email-dros@netapp.com>
-	 <1328811417.13180.51.camel@lade.trondhjem.org>
-	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
-	 <1328815664.13180.60.camel@lade.trondhjem.org>
-	 <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
-	 <1328817534.13180.65.camel@lade.trondhjem.org>
-	 <F13A10AE-EECE-4CB9-B31B-D9163E3B48D0@netapp.com>
-In-Reply-To: <F13A10AE-EECE-4CB9-B31B-D9163E3B48D0@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751204Ab2BPNqq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 08:46:46 -0500
+From: Jan Kara <jack@suse.cz>
+To: LKML <linux-kernel@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Eric Sandeen <sandeen@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        Jan Kara <jack@suse.cz>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Ingo Molnar <mingo@elte.hu>, Paul Mackerras <paulus@samba.org>,
+        Arnaldo Carvalho de Melo <acme@ghostprotocols.net>,
+        Jaya Kumar <jayalk@intworks.biz>, Sage Weil <sage@newdream.net>,
+        ceph-devel@vger.kernel.org, Steve French <sfrench@samba.org>,
+        linux-cifs@vger.kernel.org, Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
+        v9fs-developer@lists.sourceforge.net,
+        Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.sourceforge.net,
+        Steven Whitehouse <swhiteho@redhat.com>, cluster-devel@redhat.com,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 00/11] Push file_update_time() into .page_mkwrite
+Date: Thu, 16 Feb 2012 14:46:08 +0100
+Message-Id: <1329399979-3647-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTA5IGF0IDIwOjIzICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBPbiBGZWIgOSwgMjAxMiwgYXQgMjo1OCBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-DQo+ID4gT24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdy
-b3RlOg0KPiA+Pj4gDQo+ID4+Pj4gSSBkbyBoYXZlIGFuIGltcGxlbWVudGF0aW9uIHRoYXQgZG9l
-c24ndCBuZWVkIHRvIHdhbGsgdGhlIGRldmljZWlkIGxpc3QgYnkgYWxsb3dpbmcgYSBzaGFyZWQg
-cnBjX2lvc3RhdHMgc3RydWN0IGJldHdlZW4gbXVsdGlwbGUgcnBjX2NsaWVudHMgKGluIGFkZGl0
-aW9uIHRvIHRoZSBjdXJyZW50IHJwY19pb3N0YXRzIHN0cnVjdHVyZSksIGJ1dCB0aGF0IHJlcXVp
-cmVkIGFkZGluZyBsb2NraW5nIGFuZCByZWZlcmVuY2UgY291bnRpbmcgLS0gYWxsIGZvciBwcmlu
-dGluZyBzdGF0cyAob2J2aW91c2x5IG5vdCB3aGF0IHdlIHdhbnQpLg0KPiA+Pj4gDQo+ID4+PiBU
-aGlzIG1pZ2h0IGJlIG1vcmUgaW4gbGluZSB3aXRoIHdoYXQgd2Ugd2FudC4gTm90ZSB0aGF0IGl0
-IHNob3VsZCBiZQ0KPiA+Pj4gZWFzeSB0byBjbG9uZSBhbiBycGNfY2xpZW50IGFuZCB0aGVuIHJl
-cGxhY2UgaXRzIHJwY19pb3N0YXRzIHN0cnVjdC4gSQ0KPiA+Pj4gZG9uJ3QgdGhpbmsgdGhhdCBu
-ZWVkcyBhbnkgZXh0cmEgbG9ja2luZy4gV2UncmUgYWxyZWFkeSBpZ25vcmluZyBsb2NraW5nDQo+
-ID4+PiBoZXJlIGJldHdlZW4gZGlmZmVyZW50IHJwY190YXNrcywgc28gdGhyb3dpbmcgaW4gZGlm
-ZmVyZW50IHJwY19jbGllbnRzDQo+ID4+PiB0byB0aGUgbWl4IHdpbGwgbWFrZSBubyBkaWZmZXJl
-bmNlLg0KPiA+PiANCj4gPj4gWWVhaCwgdGhhdCdzIGVhc3kgZW5vdWdoIGFuZCBpIGd1ZXNzIHdl
-IGNvdWxkIGlnbm9yZSBsb2NraW5nLCBidXQgd2UgYXJlIHN0aWxsIGxlZnQgd2l0aCB0aGUgc2Ft
-ZSBwcm9ibGVtOiBob3cgaXMgdGhpcyBzdXBwb3NlZCB0byBhY2NvdW50IGZvciBkaWZmZXJlbnQg
-bW91bnQgcG9pbnRzIHVzaW5nIHRoZSBzYW1lIG5mc19jbGllbnQ/ICBuZnNfY2xpZW50IG9ubHkg
-aGFzIG9uZSBycGNfY2xpZW50IG1lbWJlci4gIEkgZG91YnQgd2Ugd2FudCB0byBtYWtlIGEgaGFz
-aCBsb29rdXAgb24gbmZzX3NlcnZlciB0byBnZXQgdGhlIHJpZ2h0IHJwY19jbGllbnQgKHdoaWNo
-IGNvdWxkIGFsbCB1c2UgdGhlIHNhbWUgdW5kZXJseWluZyB4cHJ0KS4NCj4gPj4gDQo+ID4+IE1h
-eWJlIGl0J3MgdGltZSB0byBtb3ZlIHRoZXNlIHN0YXRzIGludG8gZnMvbmZzLyB3aGVyZSB0aGV5
-IHJlYWxseSBiZWxvbmc/ICBXZSBjb3VsZCBnZXQgcmlkIG9mIHRoZSBoYWNrIHRoYXQgb3Zlcmxv
-YWRzIHByb2NudW0gd2l0aCBvcG51bSBmcm9tIGluc2lkZSB0aGUgY29tcG91bmQgZm9yIHY0KyBh
-bmQgZmluYWxseSBvbmx5IHNob3cgYSBzcGVjaWZpYyBtb3VudCdzIFJQQyBzdGF0cy4NCj4gPiAN
-Cj4gPiBBY3R1YWxseSwgaG93IGFib3V0IGp1c3QgYWRkaW5nIGEgY2FsbGJhY2sgaW50byBzdHJ1
-Y3QgcnBjX2NhbGxfb3BzDQo+ID4gdGhhdCwgaWYgaXQgaXMgZGVmaW5lZCwgd291bGQgYmUgY2Fs
-bGVkIGluc3RlYWQgb2YgcnBjX2NvdW50X2lvc3RhdHMoKS4gDQo+ID4gSWYgeW91IHRoZW4gbW9k
-aWZ5IHJwY19jb3VudF9pb3N0YXRzKCkgdG8gdGFrZSB0aGUgJ3N0YXRzJyB2YXJpYWJsZSBhcyBh
-DQo+ID4gcGFyYW1ldGVyLCB5b3UgY2FuIHNpbXBseSBoYXZlIHRoZSBuZXcgY2FsbGJhY2sgY2Fs
-bCBycGNfY291bnRfaW9zdGF0cw0KPiA+IHdpdGggdGhlIHJpZ2h0IGFyZ3VtZW50cy4NCj4gDQo+
-IFllYWgsIHRoYXQgY291bGQgd29yayEgIE9uIG15IHdhbGsgaG9tZSBmcm9tIHRoZSBjYWZlICh0
-aGV5IGFsd2F5cyBzZWVtIHRvIGhlbHApIEkgY2FtZSB1cCB3aXRoIGEgc2xpZ2h0bHkgZGlmZmVy
-ZW50IHN0cmF0ZWd5Og0KPiANCj4gLSByZW1vdmUgdGhlIGNsX21ldHJpY3MgKHN0cnVjdCBycGNf
-aW9zdGF0cykgbWVtYmVyIGZyb20gcnBjX2NsbnQNCj4gLSBhZGQgYW4gKm9wdGlvbmFsKiBycGNf
-aW9zdGF0cyBwb2ludGVyIHRvIHJwY190YXNrIChpZ25vcmVkIGlmIE5VTEwpDQo+IC0gYWxsb2Nh
-dGUgb25lIHJwY19pb3N0YXRzIHN0cnVjdHVyZSAocmVhbGx5IGFycmF5IG9mIHN0cnVjdHMsIGJ1
-dCB5b3Uga25vdyB3aGF0IEkgbWVhbikgcGVyIG5mc19zZXJ2ZXIgc3RydWN0dXJlDQo+IC0gd2hl
-biBzZXR0aW5nIHVwIHJwY190YXNrcyBpbiBuZnMtbGFuZCwgcGFzcyB0aGUgY29ycmVjdCBycGNf
-aW9zdGF0cw0KPiANCj4gd2l0aCB0aGlzIHN0cmF0ZWd5IHdlIGRvbid0IGFjY3VtdWxhdGUgc3Rh
-dHMgd2hlbiB0aGV5IGFyZW4ndCBldmVyIHVzZWQgKGxpa2UgYW4gcnBjX2NsaWVudCB1c2VkIGZv
-ciBtb3VudCBwcm90b2NvbCkuICBhZ2Fpbiwgb25seSBORlMgdXNlcyB0aGUgcnBjIHN0YXRzIGlu
-dGVyZmFjZS4NCj4gDQo+IEkga2luZCBvZiBsaWtlIHRoaXMgYmV0dGVyIHRoYW4gYSBjYWxsYmFj
-aywgYnV0IGVpdGhlciB3YXkgaXMgZmluZSB3aXRoIG1lLiAgV2hpY2ggd2F5IHdvdWxkIHlvdSBw
-cmVmZXI/DQoNCkknZCBwcmVmZXIgbm90IHRvIGhhdmUgdG8gZ3JvdyB0aGUgc2l6ZSBvZiB0aGUg
-cnBjX3Rhc2sgdW5sZXNzIHdlIHJlYWxseQ0KbmVlZCB0by4gVGhhdCdzIHdoeSBJIHN1Z2dlc3Rl
-ZCB0aGUgY2FsbGJhY2sgaW5zdGVhZC4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+  Hello,
+
+  to provide reliable support for filesystem freezing, filesystems need to have
+complete control over when metadata is changed. In particular,
+file_update_time() calls from page fault code make it impossible for
+filesystems to prevent inodes from being dirtied while the filesystem is
+frozen.
+
+To fix the issue, this patch set changes page fault code to call
+file_update_time() only when ->page_mkwrite() callback is not provided. If the
+callback is provided, it is the responsibility of the filesystem to perform
+update of i_mtime / i_ctime if needed. We also push file_update_time() call
+to all existing ->page_mkwrite() implementations if the time update does not
+obviously happen by other means. If you know your filesystem does not need
+update of modification times in ->page_mkwrite() handler, please speak up and
+I'll drop the patch for your filesystem.
+
+As a side note, an alternative would be to remove call of file_update_time()
+from page fault code altogether and require all filesystems needing it to do
+that in their ->page_mkwrite() implementation. That is certainly possible
+although maybe slightly inefficient and would require auditting 100+
+vm_operations_structs *shake*.
+
+If I get acks on these patches, Andrew, would you be willing to take these
+patches?
+
+								Honza
+
+CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
+CC: Ingo Molnar <mingo@elte.hu>
+CC: Paul Mackerras <paulus@samba.org>
+CC: Arnaldo Carvalho de Melo <acme@ghostprotocols.net>
+CC: Jaya Kumar <jayalk@intworks.biz>
+CC: Sage Weil <sage@newdream.net>
+CC: ceph-devel@vger.kernel.org
+CC: Steve French <sfrench@samba.org>
+CC: linux-cifs@vger.kernel.org
+CC: Eric Van Hensbergen <ericvh@gmail.com>
+CC: Ron Minnich <rminnich@sandia.gov>
+CC: Latchesar Ionkov <lucho@ionkov.net>
+CC: v9fs-developer@lists.sourceforge.net
+CC: Miklos Szeredi <miklos@szeredi.hu>
+CC: fuse-devel@lists.sourceforge.net
+CC: Steven Whitehouse <swhiteho@redhat.com>
+CC: cluster-devel@redhat.com
+CC: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
