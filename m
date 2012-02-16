@@ -1,53 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:61147 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752013Ab2BMPPy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:54 -0500
-Received: by mail-qy0-f174.google.com with SMTP id w6so2987323qcq.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:53 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:4480 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754495Ab2BPTwW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 14:52:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
+Date: Thu, 16 Feb 2012 19:52:12 +0000
+Message-ID: <1329421931.4279.22.camel@lade.trondhjem.org>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+	 <20120215213451.3254.78502.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213451.3254.78502.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 2/5] sunrpc: create nfsd dir in rpc_pipefs
-Date: Mon, 13 Feb 2012 10:15:42 -0500
-Message-Id: <1329146145-7602-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
-References: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-upcall.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 58e1dd1..46d5279 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -988,6 +988,7 @@ enum {
- 	RPCAUTH_statd,
- 	RPCAUTH_nfsd4_cb,
- 	RPCAUTH_cache,
-+	RPCAUTH_nfsd,
- 	RPCAUTH_RootEOF
- };
- 
-@@ -1020,6 +1021,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "cache",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_nfsd] = {
-+		.name = "nfsd",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- };
- 
- static int
--- 
-1.7.7.6
-
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+RWxpbWluYXRlIGEgbnVtYmVyIG9mIGltcGxpY2l0IHR5cGUgY2FzdHMgaW4gY29tcGFyaXNvbnMs
+IGFuZCB0aGVzZQ0KPiBjb21waWxlciB3YXJuaW5nczoNCj4gDQo+IGZzL25mcy9kaXIuYzogSW4g
+ZnVuY3Rpb24g4oCYbmZzX3JlYWRkaXJfY2xlYXJfYXJyYXnigJk6DQo+IGZzL25mcy9kaXIuYzoy
+NjQ6MTY6IHdhcm5pbmc6IGNvbXBhcmlzb24gYmV0d2VlbiBzaWduZWQgYW5kIHVuc2lnbmVkDQo+
+IAkJaW50ZWdlciBleHByZXNzaW9ucyBbLVdzaWduLWNvbXBhcmVdDQo+IGZzL25mcy9kaXIuYzog
+SW4gZnVuY3Rpb24g4oCYbmZzX3JlYWRkaXJfc2VhcmNoX2Zvcl9jb29raWXigJk6DQo+IGZzL25m
+cy9kaXIuYzozNTI6MTY6IHdhcm5pbmc6IGNvbXBhcmlzb24gYmV0d2VlbiBzaWduZWQgYW5kIHVu
+c2lnbmVkDQo+IAkJaW50ZWdlciBleHByZXNzaW9ucyBbLVdzaWduLWNvbXBhcmVdDQo+IGZzL25m
+cy9kaXIuYzogSW4gZnVuY3Rpb24g4oCYbmZzX2RvX2ZpbGxkaXLigJk6DQo+IGZzL25mcy9kaXIu
+Yzo3Njk6Mzg6IHdhcm5pbmc6IGNvbXBhcmlzb24gYmV0d2VlbiBzaWduZWQgYW5kIHVuc2lnbmVk
+DQo+IAkJaW50ZWdlciBleHByZXNzaW9ucyBbLVdzaWduLWNvbXBhcmVdDQo+IGZzL25mcy9kaXIu
+Yzo3ODA6OTogd2FybmluZzogY29tcGFyaXNvbiBiZXR3ZWVuIHNpZ25lZCBhbmQgdW5zaWduZWQN
+Cj4gCQlpbnRlZ2VyIGV4cHJlc3Npb25zIFstV3NpZ24tY29tcGFyZV0NCj4gDQo+IFNpZ25lZC1v
+ZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gDQo+
+ICBmcy9uZnMvZGlyLmMgfCAgICAyICstDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDEgaW5zZXJ0aW9u
+cygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZGlyLmMgYi9m
+cy9uZnMvZGlyLmMNCj4gaW5kZXggYWMyODk5MC4uODY2MWUxMyAxMDA2NDQNCj4gLS0tIGEvZnMv
+bmZzL2Rpci5jDQo+ICsrKyBiL2ZzL25mcy9kaXIuYw0KPiBAQCAtMjA3LDcgKzIwNyw3IEBAIHN0
+cnVjdCBuZnNfY2FjaGVfYXJyYXlfZW50cnkgew0KPiAgfTsNCj4gIA0KPiAgc3RydWN0IG5mc19j
+YWNoZV9hcnJheSB7DQo+IC0JdW5zaWduZWQgaW50IHNpemU7DQo+ICsJaW50IHNpemU7DQo+ICAJ
+aW50IGVvZl9pbmRleDsNCj4gIAl1NjQgbGFzdF9jb29raWU7DQo+ICAJc3RydWN0IG5mc19jYWNo
+ZV9hcnJheV9lbnRyeSBhcnJheVswXTsNCj4gDQoNCk5vcGUuIFRoYXQncyBhIGNvcC1vdXQ6IGFy
+cmF5IHNpemVzIGNhbm5vdCBiZSBuZWdhdGl2ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
+bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
