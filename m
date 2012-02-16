@@ -1,67 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45450 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750797Ab2BXFBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Feb 2012 00:01:04 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] 4.1 server tests: maketree should not leave files open
-Date: Fri, 24 Feb 2012 00:00:57 -0500
-Message-Id: <1330059660-2053-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1330059660-2053-1-git-send-email-bfields@redhat.com>
-References: <1330059660-2053-1-git-send-email-bfields@redhat.com>
+Received: from wp188.webpack.hosteurope.de ([80.237.132.195]:51391 "EHLO
+	wp188.webpack.hosteurope.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751189Ab2BPNzG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 08:55:06 -0500
+From: Danny Kukawka <danny.kukawka@bisect.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Danny Kukawka <dkukawka@suse.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] fs/nfs/dns_resolve.c: included linux/sunrpc/clnt.h twice
+Date: Thu, 16 Feb 2012 14:55:01 +0100
+Message-Id: <1329400501-31682-1-git-send-email-danny.kukawka@bisect.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+fs/nfs/dns_resolve.c included 'linux/sunrpc/clnt.h' twice.
+No need to include it in the '#ifdef CONFIG_NFS_USE_KERNEL_DNS'
+and the '#else' block, include it at top of the file, since
+the file is always needed.
 
-In particular this causes spurious failures against any server that does
-not allow renames of open files.
-
-There are probably many more places where we should really be doing
-closes.
-
-Note: it might also be interesting to do a purely informational test to
-determine whether a server allows renames of open files.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Danny Kukawka <danny.kukawka@bisect.de>
 ---
- nfs4.1/server41tests/environment.py |   14 +++++++++++++-
- 1 files changed, 13 insertions(+), 1 deletions(-)
+ fs/nfs/dns_resolve.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index e9d2237..2566274 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -550,6 +550,18 @@ def create_confirm(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-     return fh, res.resarray[-2].stateid
-     return fh, openstateid
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index a6e711a..ab08011 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -6,9 +6,10 @@
+  * Resolves DNS hostnames into valid ip addresses
+  */
  
-+def create_close(sess, owner, path=None, attrs={FATTR4_MODE: 0644},
-+                   access=OPEN4_SHARE_ACCESS_BOTH,
-+                   deny=OPEN4_SHARE_DENY_NONE,
-+                   mode=GUARDED4):
-+    """Create (using open) a regular file, confirm the open, and close
++#include <linux/sunrpc/clnt.h>
 +
-+    Returns the fhandle
-+    """
-+    fh, stateid = create_confirm(sess, owner, path, attrs, access, deny, mode)
-+    close_file(sess, fh, stateid=stateid)
-+    return fh;
-+
- def _getname(owner, path):
-     if path is None:
-         return owner
-@@ -580,7 +592,7 @@ def maketree(sess, tree, root=None, owner=None):
-             check(res)
-             maketree(sess, obj[1:], root + [obj[0]], owner)
-         else:
--            create_confirm(sess, owner, root + [obj])
-+            create_close(sess, owner, root + [obj])
+ #ifdef CONFIG_NFS_USE_KERNEL_DNS
  
- def lookup_obj(sess, path):
-     compound = [op.putrootfh()]
+-#include <linux/sunrpc/clnt.h>
+ #include <linux/dns_resolver.h>
+ 
+ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+@@ -37,7 +38,6 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
+ #include <linux/socket.h>
+ #include <linux/seq_file.h>
+ #include <linux/inet.h>
+-#include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/svcauth.h>
+ 
 -- 
-1.7.7.6
+1.7.8.3
 
