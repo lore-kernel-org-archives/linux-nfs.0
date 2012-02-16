@@ -1,61 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59954 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:22816 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753664Ab2BGOt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 09:49:59 -0500
-Date: Tue, 7 Feb 2012 09:49:56 -0500
-From: "J.Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] lockd: fix arg parsing for grace_period and timeout.
-Message-ID: <20120207144956.GA4868@fieldses.org>
-References: <20120207153542.3df498ad@notabene.brown>
- <1328623124.4124.5.camel@lade.trondhjem.org>
+	id S1752614Ab2BPVB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 16:01:26 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GL1PQP024132
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 13:01:26 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Thu, 16 Feb 2012 21:01:11 +0000
+Message-ID: <1329426071.19793.21.camel@lade.trondhjem.org>
+References: <1329171728-3980-1-git-send-email-dros@netapp.com>
+	 <1329421700.4279.21.camel@lade.trondhjem.org>
+	 <0A71914B-99D6-49C4-A2CE-18CBFF9384F7@netapp.com>
+In-Reply-To: <0A71914B-99D6-49C4-A2CE-18CBFF9384F7@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1328623124.4124.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 07, 2012 at 01:58:43PM +0000, Myklebust, Trond wrote:
-> On Tue, 2012-02-07 at 15:35 +1100, NeilBrown wrote:
-> > If you try to set grace_period or timeout via a module parameter
-> > to lockd, and do this on a big-endian machine where
-> > 
-> >    sizeof(int) != sizeof(unsigned long)
-> > 
-> > it won't work.  This number given will be effectively shifted right
-> > by the difference in those two sizes.
-> > 
-> > So cast kp->arg properly to get correct result.
-> > 
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> > 
-> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> > index c061b9a..2444780 100644
-> > --- a/fs/lockd/svc.c
-> > +++ b/fs/lockd/svc.c
-> > @@ -440,7 +440,7 @@ static int param_set_##name(const char *val, struct kernel_param *kp)	\
-> >  	__typeof__(type) num = which_strtol(val, &endp, 0);		\
-> >  	if (endp == val || *endp || num < (min) || num > (max))		\
-> >  		return -EINVAL;						\
-> > -	*((int *) kp->arg) = num;					\
-> > +	*((type *) kp->arg) = num;					\
-> >  	return 0;							\
-> >  }
-> >  
-> Wow, that's a seriously old bug...
-
-Looking at a historical git repo, it was probably from "[PATCH] make NFS
-lockd port numbers assignable at run time", attributed to Jamie Lokier
-in August 2003, in 2.6.0.
-
-Anyway:
-
-> Bruce, do you want to carry it?
-
-Sure.  I'm a little slow getting stuff pushed out while I track down a
-couple very tricky bugs, but it should show up in my git tree in a few
-days....
-
---b.
+T24gVGh1LCAyMDEyLTAyLTE2IGF0IDIwOjQ0ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
+PiBPbiBGZWIgMTYsIDIwMTIsIGF0IDI6NDggUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
+ID4gICAgIDIuIFNob3VsZG4ndCB3ZSBiZSBjYWxsaW5nIF9laXRoZXJfIHJwY19jb3VudF9pb3N0
+YXRzKCksIF9vcl8NCj4gPiAgICAgICAgdGFzay0+dGtfb3BzLT5ycGNfY291bnRfc3RhdHMoKT8g
+QXMgZmFyIGFzIEkgY2FuIHNlZSwgdGhlDQo+ID4gICAgICAgIG5mc3N0YXQgb3V0cHV0IHdpbGwg
+bm93IGJlIGRvdWJsZS1jb3VudGluZyBhbmQgcE5GUyByZWFkcywNCj4gPiAgICAgICAgd3JpdGVz
+IGFuZCBjb21taXRzIHRoYXQgYXJlIHNlbnQgdG8gdGhlIERTLg0KPiANCj4gDQo+IE5vLCB0aGlz
+IGRvZXNuJ3QgZG91YmxlIGNvdW50IHdpdGggbmZzc3RhdHMuICBuZnNzdGF0cyB1c2VzIHJwY19j
+bG50OjpjbF9zdGF0cyAoYW5kIG5vdCBycGNfY2xudDo6Y2xfbWV0cmljcykuDQo+IA0KPiBJIHBy
+b2JhYmx5IHNob3VsZCBoYXZlIGRvbmUgYW4gaWYvZWxzZSBmb3IgdGhpcyBwYXRjaCAtLSB3aXRo
+IHRoZSBjdXJyZW50IGNvZGUsIHRoZSBEU3MnIHJwY19jbG50OmNsX21ldHJpY3Mgd2lsbCBuZXZl
+ciBiZSB1c2VkLg0KPiBJIGxlZnQgaXQgYWNjdW11bGF0aW5nIGhlcmUgYmVjYXVzZSB3ZSB3YW50
+IHRvIGhhdmUgcGVyLURTIHN0YXRzIGV2ZW50dWFsbHkgYW5kIG15IHBsYW4gd2FzIHRvIHByaW50
+IG91dCBzdGF0cyBpbiAvcHJvYy9mcy9uZnNmcyBwZXIgKmNsaWVudCogKHNvIG5vdCBzZXBhcmF0
+ZWQgYnkgbW91bnRwb2ludCkuDQo+IA0KPiBJIGNhbiByZXBvc3Qgd2l0aCBpZi9lbHNlLCBidXQg
+bG9va2luZyBhdCB0aGlzIHNvbWUgbW9yZSBtYWRlIG1lIHJlYWxpemUgdGhhdCB3ZSBhcmUgKnN0
+aWxsKiBkb2luZyB0aGlzIHdyb25nIDopDQo+IA0KPiBUaGUgY2FsbGJhY2sgbWV0aG9kIGluIHRo
+aXMgcGF0Y2ggZmFpbHMgdG8gYWNjdW11bGF0ZSBzdGF0cyBmb3Igb3BlcmF0aW9ucyB0byB0aGUg
+RFMgb3RoZXIgdGhhbiByZWFkL3dyaXRlL2NvbW1pdCAtLSB0aGF0IHNlZW1zIHJpZ2h0LCBidXQg
+d2hhdCBhYm91dCBudWxsLCBleGNoYW5nZV9pZCwgc2Vzc2lvbiBoZWFydGJlYXRzLCBldGM/DQo+
+IA0KPiBJbiBvcmRlciB0byBwcm9wZXJseSBhY2N1bXVsYXRlIHRob3NlIHdlIGFyZSBiYWNrIHRv
+IHR3byBvYnZpb3VzIGNob2ljZXM6DQo+ICAgMSkgYWRkIGEgY291bnRfaW9zdGF0cyBjYWxsYmFj
+ayB0byB0aGUgfjI1IG90aGVyIHJwY19jYWxsX29wcyBpbiBuZnMtbGFuZCAoeXVjaykNCj4gICAy
+KSBhZGQgYW4gJ2FkZGl0aW9uYWwgc3RhdHMnIHBvaW50ZXIgdG8gdGhlIHJwY190YXNrIHN0cnVj
+dHVyZSAodHJvbmQgYWxyZWFkeSBzYWlkIHlvdSBkb24ndCB3YW50IHRvIGFkZCB0byB0YXNrIHN0
+cnVjdCkNCj4gDQo+IE9yIGRvIHdlIGp1c3Qgbm90IGNhcmUgYWJvdXQgZGlzcGxheWluZyB0aG9z
+ZSBvcGVyYXRpb25zPyAgRm9yIG15IHB1cnBvc2VzIChuZnNvbWV0ZXIgcGVyZiB0ZXN0aW5nKSwg
+aXQnZCBiZSBuaWNlIHRvIGhhdmUgKmFsbCogb2YgdGhlIG9wZXJhdGlvbnMuDQoNCkFzIGZhciBh
+cyBJJ20gY29uY2VybmVkLCB0aGUgYWRtaW5pc3RyYXRpdmUgdHJhZmZpYyB0byB0aGUgRFMgc2hv
+dWxkIG5vdA0KYmUgYWNjb3VudGVkIGZvciBpbiB0aGUgbW91bnRzdGF0czogdGhhdCB3b3VsZCBi
+ZSB3cm9uZyBzaW5jZSBEU2VzIGNhbg0KYmUgc2hhcmVkIG5vdCBvbmx5IGJ5IGRpZmZlcmVudCBm
+aWxlc3lzdGVtcyBidXQgZXZlbiBieSBkaWZmZXJlbnQgTURTZXMuDQoNClNvIHRoZSBwZXJmb3Jt
+YW5jZSBvdmVyaGVhZCBvZiBsZWFzZSBhbmQgc2Vzc2lvbiBzZXR1cCB0byB0aGUgRFNlcyBuZWVk
+cw0KdG8gYmUgYWNjb3VudGVkIGZvciBieSBzb21lIG90aGVyIG1lY2hhbmlzbS4NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
