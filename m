@@ -1,40 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:40764 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755164Ab2BLXFk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Feb 2012 18:05:40 -0500
-Message-ID: <4F3845B5.6020402@panasas.com>
-Date: Mon, 13 Feb 2012 01:05:25 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+Received: from mx2.netapp.com ([216.240.18.37]:13816 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753998Ab2BPRgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 12:36:25 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 19/21] NFS: Convert v4 into a module
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>  <1328911325-1566-19-git-send-email-bjschuma@netapp.com>  <4F37FECD.9030500@panasas.com> <1329085229.2746.3.camel@lade.trondhjem.org>
-In-Reply-To: <1329085229.2746.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
+Date: Thu, 16 Feb 2012 17:36:05 +0000
+Message-ID: <1329413764.4279.12.camel@lade.trondhjem.org>
+References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+	 <20120216173022.GA29158@umich.edu>
+In-Reply-To: <20120216173022.GA29158@umich.edu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/13/2012 12:20 AM, Myklebust, Trond wrote:
-> On Sun, 2012-02-12 at 20:02 +0200, Boaz Harrosh wrote:
->> On 02/11/2012 12:02 AM, bjschuma@netapp.com wrote:
->>> The module will be created in the same directory as nfs.ko.  You need to
->>> run `modprobe nfs4` before you can use it.
->>>
->>
->> Can we do this mod_alias and autoloading magic like we do with 
->> LD drivers, so if NFSv4 is requested it is automatically loaded
->> by Kernel. 
-> 
-> You need to call request-module() from the nfs.ko module as soon as you
-> know which version the user is trying to load...
-> I don't see why you need mod_alias?
-> 
-
-That will work. I can now see that it's on the todo in the [00/21] mail
-Sorry for the noise
-
-Thanks
-Boaz
+T24gVGh1LCAyMDEyLTAyLTE2IGF0IDEyOjMwIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gV2Vz
+dG9uIEFuZHJvcyBBZGFtc29uIHdyb3RlOg0KPiANCj4gICBTZW5kIHRoZSBuZnMgaW1wbGVtZW50
+YXRpb24gaWQgaW4gRVhDSEFOR0VfSUQgcmVxdWVzdHMgdW5sZXNzIHRoZSBtb2R1bGUNCj4gICBw
+YXJhbWV0ZXIgbmZzLnNlbmRfaW1wbGVtZW50YXRpb25faWQgaXMgMC4NCj4gICANCj4gICBUaGlz
+IGFkZHMgYSBDT05GSUcgdmFyaWFibGUgZm9yIHRoZSBuaWlfZG9tYWluIHRoYXQgZGVmYXVsdHMg
+dG8gImtlcm5lbC5vcmciLg0KPiAgIA0KPiAgIFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3Mg
+QWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiANCj4gICBAQCAtMjcxLDcgKzI3MywxMiBAQCBz
+dGF0aWMgaW50IG5mczRfc3RhdF90b19lcnJubyhpbnQpOw0KPiAgICAJCQkJMSAvKiBmbGFncyAq
+LyArIFwNCj4gICAgCQkJCTEgLyogc3BhX2hvdyAqLyArIFwNCj4gICAgCQkJCTAgLyogU1A0X05P
+TkUgKGZvciBub3cpICovICsgXA0KPiAgIC0JCQkJMSAvKiB6ZXJvIGltcGxlbWV0YXRpb24gaWQg
+YXJyYXkgKi8pDQo+ICAgKwkJCQkxIC8qIGltcGxlbWV0YXRpb24gaWQgYXJyYXkgb2Ygc2l6ZSAx
+ICovICsgXA0KPiANCj4gaW1wbGVtZXRhdGlvbiAtPiBpbXBsZW1lbnRhdGlvbg0KPiBNaWdodCBh
+cyB3ZWxsIGZpeCB0aGlzIHR5cG8gd2hpbGUgeW91J3JlIGF0IGl0Lg0KPiANCj4gR2VuZXJhbCBj
+b21tZW50Li4uIElmIHRoaXMgaXMgZ29pbmcgdG8gYmUgY29uZmlndXJhYmxlLCBJJ2QgcmF0aGVy
+IG1ha2UgaXQgYQ0KPiBzeXNjdGwsIGFuZCBiZSBhYmxlIHRvIHNldCB0aGUgaWQgdG8gd2hhdGV2
+ZXIgSSB3YW50IGF0IHJ1biB0aW1lLiAgQnV0DQo+IHRoYXQncyBiZWNhdXNlIEkgbGlrZSB0byBi
+ZSBhYmxlIHRvIGJyZWFrIHRoaW5ncy4gIEkgc3VzcGVjdCBUcm9uZCB3aWxsDQo+IGRpc2FncmVl
+Lg0KDQpJIGRvLiBXZSBkb24ndCBtYWtlIHRoZSAndW5hbWUnIGNvbmZpZ3VyYWJsZSBhcyBhIHN5
+c2N0bC4gSG93IGlzIHRoaXMNCmFueSBkaWZmZXJlbnQ/IFdoeSB3b3VsZCB5b3Ugd2FudCB0byBk
+ZWxpYmVyYXRlbHkgbWlzcmVwcmVzZW50IHdoaWNoIE5GUw0KY2xpZW50IHRoaXMgaXMgdG8gdGhl
+IHNlcnZlcj8gVGhlIGltcGxlbWVudGF0aW9uIGlkIGlzIHRoZXJlIGZvciBlcnJvcg0KbG9nZ2lu
+ZyBwdXJwb3Nlcywgbm90aGluZyBlbHNlLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
+eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
