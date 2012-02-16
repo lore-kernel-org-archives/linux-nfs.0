@@ -1,54 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30806 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65342 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754140Ab2BIUAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 15:00:21 -0500
+	id S1755170Ab2BPUvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:51:03 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKp27Z017901
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:51:02 -0800 (PST)
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 9 Feb 2012 20:00:00 +0000
-Message-ID: <1328817601.13180.66.camel@lade.trondhjem.org>
-References: <1328805686-19559-1-git-send-email-dros@netapp.com>
-	 <1328811417.13180.51.camel@lade.trondhjem.org>
-	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
-	 <1328815664.13180.60.camel@lade.trondhjem.org>
-	 <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
-In-Reply-To: <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 nfs-for-next 1/1] NFSv4.1 add a session
+ statistics file to /proc/fs/nfsfs
+Date: Thu, 16 Feb 2012 20:50:45 +0000
+Message-ID: <1329425444.19793.16.camel@lade.trondhjem.org>
+References: <1329346205-2316-1-git-send-email-andros@netapp.com>
+	 <1329346205-2316-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1329346205-2316-2-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiA+IA0KPiA+PiBJIGRvIGhhdmUgYW4gaW1wbGVtZW50YXRpb24gdGhhdCBkb2Vzbid0IG5lZWQg
-dG8gd2FsayB0aGUgZGV2aWNlaWQgbGlzdCBieSBhbGxvd2luZyBhIHNoYXJlZCBycGNfaW9zdGF0
-cyBzdHJ1Y3QgYmV0d2VlbiBtdWx0aXBsZSBycGNfY2xpZW50cyAoaW4gYWRkaXRpb24gdG8gdGhl
-IGN1cnJlbnQgcnBjX2lvc3RhdHMgc3RydWN0dXJlKSwgYnV0IHRoYXQgcmVxdWlyZWQgYWRkaW5n
-IGxvY2tpbmcgYW5kIHJlZmVyZW5jZSBjb3VudGluZyAtLSBhbGwgZm9yIHByaW50aW5nIHN0YXRz
-IChvYnZpb3VzbHkgbm90IHdoYXQgd2Ugd2FudCkuDQo+ID4gDQo+ID4gVGhpcyBtaWdodCBiZSBt
-b3JlIGluIGxpbmUgd2l0aCB3aGF0IHdlIHdhbnQuIE5vdGUgdGhhdCBpdCBzaG91bGQgYmUNCj4g
-PiBlYXN5IHRvIGNsb25lIGFuIHJwY19jbGllbnQgYW5kIHRoZW4gcmVwbGFjZSBpdHMgcnBjX2lv
-c3RhdHMgc3RydWN0LiBJDQo+ID4gZG9uJ3QgdGhpbmsgdGhhdCBuZWVkcyBhbnkgZXh0cmEgbG9j
-a2luZy4gV2UncmUgYWxyZWFkeSBpZ25vcmluZyBsb2NraW5nDQo+ID4gaGVyZSBiZXR3ZWVuIGRp
-ZmZlcmVudCBycGNfdGFza3MsIHNvIHRocm93aW5nIGluIGRpZmZlcmVudCBycGNfY2xpZW50cw0K
-PiA+IHRvIHRoZSBtaXggd2lsbCBtYWtlIG5vIGRpZmZlcmVuY2UuDQo+IA0KPiBZZWFoLCB0aGF0
-J3MgZWFzeSBlbm91Z2ggYW5kIGkgZ3Vlc3Mgd2UgY291bGQgaWdub3JlIGxvY2tpbmcsIGJ1dCB3
-ZSBhcmUgc3RpbGwgbGVmdCB3aXRoIHRoZSBzYW1lIHByb2JsZW06IGhvdyBpcyB0aGlzIHN1cHBv
-c2VkIHRvIGFjY291bnQgZm9yIGRpZmZlcmVudCBtb3VudCBwb2ludHMgdXNpbmcgdGhlIHNhbWUg
-bmZzX2NsaWVudD8gIG5mc19jbGllbnQgb25seSBoYXMgb25lIHJwY19jbGllbnQgbWVtYmVyLiAg
-SSBkb3VidCB3ZSB3YW50IHRvIG1ha2UgYSBoYXNoIGxvb2t1cCBvbiBuZnNfc2VydmVyIHRvIGdl
-dCB0aGUgcmlnaHQgcnBjX2NsaWVudCAod2hpY2ggY291bGQgYWxsIHVzZSB0aGUgc2FtZSB1bmRl
-cmx5aW5nIHhwcnQpLg0KPiANCj4gTWF5YmUgaXQncyB0aW1lIHRvIG1vdmUgdGhlc2Ugc3RhdHMg
-aW50byBmcy9uZnMvIHdoZXJlIHRoZXkgcmVhbGx5IGJlbG9uZz8gIFdlIGNvdWxkIGdldCByaWQg
-b2YgdGhlIGhhY2sgdGhhdCBvdmVybG9hZHMgcHJvY251bSB3aXRoIG9wbnVtIGZyb20gaW5zaWRl
-IHRoZSBjb21wb3VuZCBmb3IgdjQrIGFuZCBmaW5hbGx5IG9ubHkgc2hvdyBhIHNwZWNpZmljIG1v
-dW50J3MgUlBDIHN0YXRzLg0KDQpBY3R1YWxseSwgaG93IGFib3V0IGp1c3QgYWRkaW5nIGEgY2Fs
-bGJhY2sgaW50byBzdHJ1Y3QgcnBjX2NhbGxfb3BzDQp0aGF0LCBpZiBpdCBpcyBkZWZpbmVkLCB3
-b3VsZCBiZSBjYWxsZWQgaW5zdGVhZCBvZiBycGNfY291bnRfaW9zdGF0cygpLiANCklmIHlvdSB0
-aGVuIG1vZGlmeSBycGNfY291bnRfaW9zdGF0cygpIHRvIHRha2UgdGhlICdzdGF0cycgdmFyaWFi
-bGUgYXMgYQ0KcGFyYW1ldGVyLCB5b3UgY2FuIHNpbXBseSBoYXZlIHRoZSBuZXcgY2FsbGJhY2sg
-Y2FsbCBycGNfY291bnRfaW9zdGF0cw0Kd2l0aCB0aGUgcmlnaHQgYXJndW1lbnRzLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg0K
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE3OjUwIC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNlc3Np
+b24gc3RhdGlzdGljcyBhcmUgbmVlZGVkIGZvciBwZXJmb3JtYW5jZSBjaGFyYWN0ZXJpc2F0aW9u
+IGFuZCBkZWJ1Z2dpbmcNCj4gcmVjb3ZlcnkgYW5kIG1pZ3JhdGlvbi4NCj4gDQo+IE9ubHkgZ2F0
+aGVyIGZvcmVjaGFubmVsIHN0YXRpc3RpY3MgYXMgdGhlIGJhY2tjaGFubmVsIGhhcyBvbmUgc2Vz
+c2lvbiBzbG90Lg0KPiANCg0KQ291bGQgdGhpcyBiZSBkb25lIGJldHRlciB1c2luZyB0cmFjZXBv
+aW50cz8gSSdtIG5vdCBzdXJlIHRoYXQgSSBzZWUgaG93DQphIHR5cGljYWwgc3lzdGVtIGFkbWlu
+IHdvdWxkIHVzZSB0aGlzIGtpbmQgb2YgZmlsZSwgc28gaXQgbG9va3MgbW9yZQ0KbGlrZSBhIGRl
+YnVnZ2luZyBhaWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
+aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
+cC5jb20NCg0K
