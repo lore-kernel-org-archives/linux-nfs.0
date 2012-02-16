@@ -1,47 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51018 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757548Ab2BCVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 16:10:01 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/6] locks: break delegations on any attribute modification
-Date: Fri,  3 Feb 2012 16:09:56 -0500
-Message-Id: <1328303397-3872-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120203205818.GE2999@fieldses.org>
-References: <20120203205818.GE2999@fieldses.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:46479 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752244Ab2BPQtM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 11:49:12 -0500
+Received: by ggnh1 with SMTP id h1so1357133ggn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 08:49:11 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <CAHVgHyX-NUviMYbg2ROvgXUvj6UhFj1FfsUmcyO9JPxFhwhHcQ@mail.gmail.com>
+References: <4F3CD0D7.8040402@steve-ss.com>
+	<CAHVgHyX-NUviMYbg2ROvgXUvj6UhFj1FfsUmcyO9JPxFhwhHcQ@mail.gmail.com>
+Date: Thu, 16 Feb 2012 11:49:11 -0500
+Message-ID: <CAKnQG+eYFcOFcKdw02KivkQDSBz6Tyv1VTwQR9rjA17Piw3tbA@mail.gmail.com>
+Subject: Re: NFS4 des and weak crypto
+From: Kevin Coffman <kwc@umich.edu>
+To: steve <steve@steve-ss.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Feb 16, 2012 at 9:24 AM, Andy Adamson <androsadamson@gmail.com> wrote:
+> On Thu, Feb 16, 2012 at 4:48 AM, steve <steve@steve-ss.com> wrote:
+>> Hi
+>> openSUSE 12.1
+>>
+>> I'm trying to explain to our windows admin that modern nfs isn't restricted
+>> to DES.
+>>
+>> Here is a Samba4 authenticated test setup.
+>>
+>> I've removed he DES keys from the keytab on the nfs server:
+>>
+>> klist -ke /etc/krb5.keytab
+>> Keytab name: WRFILE:/etc/krb5.keytab
+>> KVNO Principal
+>> ---- ---------
+>>   1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
+>>   1 HH3$@hh3.site (arcfour-hmac)
+>>
+>> In /etc/krb5.conf, I comment out:
+>> [libdefaults]
+>> #allow_weak_crypto = true
+>> It was never actually there. I've added it help my argument;)
+>> hh3 is the server, hh6 is the client.
+>>
+>> On hh6, root issues:
+>> mount -t nfs4 hh3:/foo /bar -o sec=krb5
+>> rpc.gssd -fvvv throws a fit, the KDC responds with,
+>>
+>> Kerberos: ENC-TS Pre-authentication succeeded -- HH6$@HH3.SITE using
+>> arcfour-hmac-md5
+>> Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime:
+>> 2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
+>> Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96,
+>> aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc,
+>> des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
+>> Kerberos: Requested flags: renewable-ok
+>> Kerberos: TGS-REQ HH6$@HH3.SITE from ipv4:192.168.1.10:45421 for
+>> nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
+>> Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime:
+>> 2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
+>>
+>> we can logon and request files via the mount.
+>>
+>> Questions
+>> Does this procedure prove that nfs can use other than DES crypto?
+>> Is arcfour what an AD admin would consider strong encryption?
 
-NFSv4 uses leases to guarantee that clients can cache metadata as well
-as data.
+As Andy said, modern Linux NFS supports all those "Cllient supported enctypes".
 
-This covers chmod, chown, etc.
+Re: strong encryption for AD.  What version of Windows AD?  If it is
+Windows 2003, then yes, I think arcfour would be considered strong.
+If it is Windows 2008 or later, AES is supported and is stronger.
+(Windows has never supported DES3).
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/attr.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/attr.c b/fs/attr.c
-index 95053ad..ac97995 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -232,6 +232,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 	error = security_inode_setattr(dentry, attr);
- 	if (error)
- 		return error;
-+	error = break_lease(inode, BREAK_ONLY_DELEGS|BREAK_R_AND_W_LEASES);
-+	if (error)
-+		return error;
- 
- 	if (inode->i_op->setattr)
- 		error = inode->i_op->setattr(dentry, attr);
--- 
-1.7.5.4
-
+K.C.
