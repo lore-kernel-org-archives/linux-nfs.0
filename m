@@ -1,114 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33482 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754847Ab2BLRyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 12 Feb 2012 12:54:12 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 7 1/3] NFS4.1 clean up nfs4_alloc_session
-Date: Sun, 12 Feb 2012 12:52:54 -0500
-Message-Id: <1329069176-8349-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1329069176-8349-1-git-send-email-andros@netapp.com>
-References: <1329069176-8349-1-git-send-email-andros@netapp.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:42443 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752284Ab2BPSRR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:17:17 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so968126eaa.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:17:16 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 2/5] 4.1 server tests: move testReadDeleg from st_open to st_delegation
+Date: Thu, 16 Feb 2012 20:17:13 +0200
+Message-Id: <1329416233-21148-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4F3D47B3.1090708@tonian.com>
+References: <4F3D47B3.1090708@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/nfs4proc.c |   39 ++++++++++++++++++++-------------------
- 1 files changed, 20 insertions(+), 19 deletions(-)
+ nfs4.1/server41tests/__init__.py      |    1 +
+ nfs4.1/server41tests/st_delegation.py |   54 +++++++++++++++++++++++++++++++++
+ nfs4.1/server41tests/st_open.py       |   45 ---------------------------
+ 3 files changed, 55 insertions(+), 45 deletions(-)
+ create mode 100644 nfs4.1/server41tests/st_delegation.py
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d202e04..18b095a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5061,9 +5061,9 @@ static void nfs4_destroy_slot_tables(struct nfs4_session *session)
- }
- 
- /*
-- * Initialize slot table
-+ * Set the initial slot table slots with CREATE_SESSION negotiated values
-  */
--static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
-+static int nfs4_set_slot_table(struct nfs4_slot_table *tbl,
- 		int max_slots, int ivalue)
- {
- 	struct nfs4_slot *slot;
-@@ -5091,7 +5091,7 @@ out:
- }
- 
- /*
-- * Initialize or reset the forechannel and backchannel tables
-+ * Set or reset the forechannel and backchannel tables
-  */
- static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- {
-@@ -5102,7 +5102,7 @@ static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- 	/* Fore channel */
- 	tbl = &ses->fc_slot_table;
- 	if (tbl->slots == NULL) {
--		status = nfs4_init_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
-+		status = nfs4_set_slot_table(tbl, ses->fc_attrs.max_reqs, 1);
- 		if (status) /* -ENOMEM */
- 			return status;
- 	} else {
-@@ -5113,7 +5113,7 @@ static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- 	/* Back channel */
- 	tbl = &ses->bc_slot_table;
- 	if (tbl->slots == NULL) {
--		status = nfs4_init_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
-+		status = nfs4_set_slot_table(tbl, ses->bc_attrs.max_reqs, 0);
- 		if (status)
- 			/* Fore and back channel share a connection so get
- 			 * both slot tables or neither */
-@@ -5123,29 +5123,30 @@ static int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- 	return status;
- }
- 
-+void nfs4_init_slot_table(struct nfs4_slot_table *tbl, bool forechannel)
-+{
-+	spin_lock_init(&tbl->slot_tbl_lock);
-+	if (forechannel)
-+		rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq,
-+					     "ForeChannel Slot table");
-+	else
-+		rpc_init_wait_queue(&tbl->slot_tbl_waitq,
-+				    "BackChannel Slot table");
-+	tbl->highest_used_slotid = -1;	/* for drain session to work */
-+	init_completion(&tbl->complete);
-+}
+diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+index 2bedb57..9d260a4 100644
+--- a/nfs4.1/server41tests/__init__.py
++++ b/nfs4.1/server41tests/__init__.py
+@@ -9,6 +9,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+            "st_sequence.py",
+ 	   "st_trunking.py",
+            "st_open.py",
++           "st_delegation.py",
+            "st_verify.py",
+            "st_getdevicelist.py",
+            "st_lookupp.py",
+diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
+new file mode 100644
+index 0000000..b9f866f
+--- /dev/null
++++ b/nfs4.1/server41tests/st_delegation.py
+@@ -0,0 +1,54 @@
++from st_create_session import create_session
++from st_open import open_claim4
++from nfs4_const import *
 +
- struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *session;
--	struct nfs4_slot_table *tbl;
++from environment import check, checklist, fail, create_file, open_file, close_file
++from nfs4_type import open_owner4, openflag4, createhow4, open_claim4
++from nfs4_type import creatverfattr, fattr4, stateid4, locker4, lock_owner4
++import nfs4_ops as op
++import threading
++
++def testReadDeleg(t, env):
++    """Test read delgation handout and return
++
++    FLAGS: open deleg all
++    CODE: DELEG1
++    """
++    recall = threading.Event()
++    def pre_hook(arg, env):
++        recall.stateid = arg.stateid # NOTE this must be done before set()
++        env.notify = recall.set # This is called after compound sent to queue
++    def post_hook(arg, env, res):
++        return res
++    # c1 - OPEN - READ
++    c1 = env.c1.new_client("%s_1" % env.testname(t))
++    c1.cb_pre_hook(OP_CB_RECALL, pre_hook)
++    c1.cb_post_hook(OP_CB_RECALL, post_hook)
++    sess1 = c1.create_session()
++    sess1.compound([op.reclaim_complete(FALSE)])
++    res = create_file(sess1, env.testname(t),
++                      access=OPEN4_SHARE_ACCESS_READ |
++                      OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
++    check(res)
++    fh = res.resarray[-1].object
++    deleg = res.resarray[-2].delegation
++    if deleg.delegation_type == OPEN_DELEGATE_NONE or deleg.delegation_type == OPEN_DELEGATE_NONE_EXT:
++        fail("Could not get delegation")
++    # c2 - OPEN - WRITE
++    sess2 = env.c1.new_client_session("%s_2" % env.testname(t))
++    claim = open_claim4(CLAIM_NULL, env.testname(t))
++    owner = open_owner4(0, "My Open Owner 2")
++    how = openflag4(OPEN4_NOCREATE)
++    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
++                      owner, how, claim)
++    slot = sess2.compound_async(env.home + [open_op])
++    # Wait for recall, and return delegation
++    recall.wait() # STUB - deal with timeout
++    # Getting here means CB_RECALL reply is in the send queue.
++    # Give it a moment to actually be sent
++    env.sleep(1)
++    res = sess1.compound([op.putfh(fh), op.delegreturn(recall.stateid)])
++    check(res)
++    # Now get OPEN reply
++    res = sess2.listen(slot)
++    checklist(res, [NFS4_OK, NFS4ERR_DELAY])
+diff --git a/nfs4.1/server41tests/st_open.py b/nfs4.1/server41tests/st_open.py
+index c64a7ef..862ec95 100644
+--- a/nfs4.1/server41tests/st_open.py
++++ b/nfs4.1/server41tests/st_open.py
+@@ -117,51 +117,6 @@ def xtestOpenClientid(t, env):
+     res = create_file(sess1, env.testname(t), clientid=c1.clientid)
+     check(res, NFS4ERR_INVAL, msg="Using non-zero clientid in open_owner")
  
- 	session = kzalloc(sizeof(struct nfs4_session), GFP_NOFS);
- 	if (!session)
- 		return NULL;
+-def testReadDeleg(t, env):
+-    """Test read delgation handout and return
+-
+-    FLAGS: open all
+-    CODE: OPEN20
+-    """
+-    recall = threading.Event()
+-    def pre_hook(arg, env):
+-        recall.stateid = arg.stateid # NOTE this must be done before set()
+-        env.notify = recall.set # This is called after compound sent to queue
+-    def post_hook(arg, env, res):
+-        return res
+-    # c1 - OPEN - READ
+-    c1 = env.c1.new_client("%s_1" % env.testname(t))
+-    c1.cb_pre_hook(OP_CB_RECALL, pre_hook)
+-    c1.cb_post_hook(OP_CB_RECALL, post_hook)
+-    sess1 = c1.create_session()
+-    sess1.compound([op.reclaim_complete(FALSE)])
+-    res = create_file(sess1, env.testname(t),
+-                      access=OPEN4_SHARE_ACCESS_READ |
+-                      OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
+-    check(res)
+-    fh = res.resarray[-1].object
+-    deleg = res.resarray[-2].delegation
+-    if deleg.delegation_type == OPEN_DELEGATE_NONE or deleg.delegation_type == OPEN_DELEGATE_NONE_EXT:
+-        fail("Could not get delegation")
+-    # c2 - OPEN - WRITE
+-    sess2 = env.c1.new_client_session("%s_2" % env.testname(t))
+-    claim = open_claim4(CLAIM_NULL, env.testname(t))
+-    owner = open_owner4(0, "My Open Owner 2")
+-    how = openflag4(OPEN4_NOCREATE)
+-    open_op = op.open(0, OPEN4_SHARE_ACCESS_BOTH, OPEN4_SHARE_DENY_NONE,
+-                      owner, how, claim)
+-    slot = sess2.compound_async(env.home + [open_op])
+-    # Wait for recall, and return delegation
+-    recall.wait() # STUB - deal with timeout
+-    # Getting here means CB_RECALL reply is in the send queue.
+-    # Give it a moment to actually be sent
+-    env.sleep(1)
+-    res = sess1.compound([op.putfh(fh), op.delegreturn(recall.stateid)])
+-    check(res)
+-    # Now get OPEN reply
+-    res = sess2.listen(slot)
+-    checklist(res, [NFS4_OK, NFS4ERR_DELAY])
+-
+ def testReadWrite(t, env):
+     """Do a simple READ and WRITE
  
--	tbl = &session->fc_slot_table;
--	tbl->highest_used_slotid = -1;
--	spin_lock_init(&tbl->slot_tbl_lock);
--	rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq, "ForeChannel Slot table");
--	init_completion(&tbl->complete);
--
--	tbl = &session->bc_slot_table;
--	tbl->highest_used_slotid = -1;
--	spin_lock_init(&tbl->slot_tbl_lock);
--	rpc_init_wait_queue(&tbl->slot_tbl_waitq, "BackChannel Slot table");
--	init_completion(&tbl->complete);
--
-+	nfs4_init_slot_table(&session->fc_slot_table, true);
-+	nfs4_init_slot_table(&session->bc_slot_table, false);
- 	session->session_state = 1<<NFS4_SESSION_INITING;
--
- 	session->clp = clp;
- 	return session;
- }
 -- 
-1.7.6.4
+1.7.6.5
 
