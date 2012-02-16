@@ -1,100 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:58423 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754789Ab2BASQI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 13:16:08 -0500
-Message-ID: <1328120165.2768.39.camel@dabdike.int.hansenpartnership.com>
-Subject: Re: [Lsf-pc] [LSF/MM TOPIC] end-to-end data and metadata corruption
- detection
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Cc: Chris Mason <chris.mason@oracle.com>,
-        Gregory Farnum <gregory.farnum@dreamhost.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-scsi@vger.kernel.org,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Sven Breuner <sven.breuner@itwm.fraunhofer.de>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        lsf-pc@lists.linux-foundation.org
-Date: Wed, 01 Feb 2012 12:16:05 -0600
-In-Reply-To: <4F297D90.1010509@fastmail.fm>
-References: <38C050B3-2AAD-4767-9A25-02C33627E427@oracle.com>
-	 <4F2147BA.6030607@itwm.fraunhofer.de> <yq1k44e1pn6.fsf@sermon.lab.mkp.net>
-	 <4F217F0C.6030105@itwm.fraunhofer.de> <yq1y5sovcyw.fsf@sermon.lab.mkp.net>
-	 <4F283F7A.4020905@itwm.fraunhofer.de>
-	 <CAF3hT9AgVpcZkGLkr4EH4x4heNFgxNykM4Mp3V_C-RBSwJh7mA@mail.gmail.com>
-	 <20120201164521.GY16796@shiny>
-	 <1328115175.2768.11.camel@dabdike.int.hansenpartnership.com>
-	 <20120201174131.GD16796@shiny> <4F297D90.1010509@fastmail.fm>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:41822 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754594Ab2BPUfI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:35:08 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
+Date: Thu, 16 Feb 2012 20:34:46 +0000
+Message-ID: <1329424486.19793.8.camel@lade.trondhjem.org>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+	 <20120215213451.3254.78502.stgit@ellison.1015granger.net>
+	 <1329421931.4279.22.camel@lade.trondhjem.org>
+	 <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com>
+In-Reply-To: <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-02-01 at 18:59 +0100, Bernd Schubert wrote:
-> On 02/01/2012 06:41 PM, Chris Mason wrote:
-> > On Wed, Feb 01, 2012 at 10:52:55AM -0600, James Bottomley wrote:
-> >> On Wed, 2012-02-01 at 11:45 -0500, Chris Mason wrote:
-[...]
-> >>> DIO isn't really required, but doing this without synchronous writes
-> >>> will get painful in a hurry.  There's nothing wrong with letting the
-> >>> data sit in the page cache after the IO is done though.
-> >>
-> >> I broadly agree with this, but even if you do sync writes and cache read
-> >> only copies, we still have the problem of how we do the read side
-> >> verification of DIX.  In theory, when you read, you could either get the
-> >> cached copy or an actual read (which will supply protection
-> >> information), so for the cached copy we need to return cached protection
-> >> information implying that we need some way of actually caching it.
-> >
-> > Good point, reading from the cached copy is a lower level of protection
-> > because in theory bugs in your scsi drivers could corrupt the pages
-> > later on.
-> 
-> But that only matters if the application is going to verify if data are 
-> really on disk. For example (client server scenario)
-
-Um, well, then why do you want DIX?  If you don't care about having the
-client verify the data, that means you trust the integrity of the page
-cache and then you just use the automated DIF within the driver layer
-and SCSI will verify the data all the way up until block places it in
-the page cache.
-
-The whole point of supplying protection information to user space is
-that the application can verify the data didn't get corrupted after it
-left the DIF protected block stack.
-
-> 1) client-A writes a page
-> 2) client-B reads this page
-> 
-> client-B is simply not interested here where it gets the page from, as 
-> long as it gets correct data.
-
-How does it know it got correct data if it doesn't verify?  Something
-might have corrupted the page between the time the block layer placed
-the DIF verified data there and the client reads it.
-
->  The network files system in between also 
-> will just be happy existing in-cache crcs for network verification.
-> Only if the page is later on dropped from the cache and read again, 
-> on-disk crcs matter. If those are bad, one of the layers is going to 
-> complain or correct those data.
-> 
-> If the application wants to check data on disk it can either use DIO or 
-> alternatively something like fadvsise(DONTNEED_LOCAL_AND_REMOTE) 
-> (something I wanted to propose for some time already, at least I'm not 
-> happy that posix_fadvise(POSIX_FADV_DONTNEED) is not passed to the file 
-> system at all).
-
-supplying protection information to user space isn't about the
-application checking what's on disk .. there's automatic verification in
-the chain to do that (both the HBA and the disk will check the
-protection information on entry/exit and transfer).  Supplying
-protection information to userspace is about checking nothing went wrong
-in the handoff between the end of the DIF stack and the application.
-
-James
-
-
+T24gVGh1LCAyMDEyLTAyLTE2IGF0IDE1OjA5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gRmViIDE2LCAyMDEyLCBhdCAyOjUyIFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiAN
+Cj4gPiBPbiBXZWQsIDIwMTItMDItMTUgYXQgMTY6MzQgLTA1MDAsIENodWNrIExldmVyIHdyb3Rl
+Og0KPiA+PiBFbGltaW5hdGUgYSBudW1iZXIgb2YgaW1wbGljaXQgdHlwZSBjYXN0cyBpbiBjb21w
+YXJpc29ucywgYW5kIHRoZXNlDQo+ID4+IGNvbXBpbGVyIHdhcm5pbmdzOg0KPiA+PiANCj4gPj4g
+ZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDigJhuZnNfcmVhZGRpcl9jbGVhcl9hcnJheeKAmToN
+Cj4gPj4gZnMvbmZzL2Rpci5jOjI2NDoxNjogd2FybmluZzogY29tcGFyaXNvbiBiZXR3ZWVuIHNp
+Z25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4cHJlc3Npb25zIFstV3NpZ24tY29t
+cGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDigJhuZnNfcmVhZGRpcl9zZWFy
+Y2hfZm9yX2Nvb2tpZeKAmToNCj4gPj4gZnMvbmZzL2Rpci5jOjM1MjoxNjogd2FybmluZzogY29t
+cGFyaXNvbiBiZXR3ZWVuIHNpZ25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4cHJl
+c3Npb25zIFstV3NpZ24tY29tcGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOiBJbiBmdW5jdGlvbiDi
+gJhuZnNfZG9fZmlsbGRpcuKAmToNCj4gPj4gZnMvbmZzL2Rpci5jOjc2OTozODogd2FybmluZzog
+Y29tcGFyaXNvbiBiZXR3ZWVuIHNpZ25lZCBhbmQgdW5zaWduZWQNCj4gPj4gCQlpbnRlZ2VyIGV4
+cHJlc3Npb25zIFstV3NpZ24tY29tcGFyZV0NCj4gPj4gZnMvbmZzL2Rpci5jOjc4MDo5OiB3YXJu
+aW5nOiBjb21wYXJpc29uIGJldHdlZW4gc2lnbmVkIGFuZCB1bnNpZ25lZA0KPiA+PiAJCWludGVn
+ZXIgZXhwcmVzc2lvbnMgWy1Xc2lnbi1jb21wYXJlXQ0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1i
+eTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0tLQ0KPiA+PiAN
+Cj4gPj4gZnMvbmZzL2Rpci5jIHwgICAgMiArLQ0KPiA+PiAxIGZpbGVzIGNoYW5nZWQsIDEgaW5z
+ZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gPj4gDQo+ID4+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gPj4gaW5kZXggYWMyODk5MC4uODY2MWUxMyAxMDA2
+NDQNCj4gPj4gLS0tIGEvZnMvbmZzL2Rpci5jDQo+ID4+ICsrKyBiL2ZzL25mcy9kaXIuYw0KPiA+
+PiBAQCAtMjA3LDcgKzIwNyw3IEBAIHN0cnVjdCBuZnNfY2FjaGVfYXJyYXlfZW50cnkgew0KPiA+
+PiB9Ow0KPiA+PiANCj4gPj4gc3RydWN0IG5mc19jYWNoZV9hcnJheSB7DQo+ID4+IC0JdW5zaWdu
+ZWQgaW50IHNpemU7DQo+ID4+ICsJaW50IHNpemU7DQo+ID4+IAlpbnQgZW9mX2luZGV4Ow0KPiA+
+PiAJdTY0IGxhc3RfY29va2llOw0KPiA+PiAJc3RydWN0IG5mc19jYWNoZV9hcnJheV9lbnRyeSBh
+cnJheVswXTsNCj4gPj4gDQo+ID4gDQo+ID4gTm9wZS4gVGhhdCdzIGEgY29wLW91dDogYXJyYXkg
+c2l6ZXMgY2Fubm90IGJlIG5lZ2F0aXZlLg0KPiANCj4gVGhhdCdzIHR5cGljYWxseSB0cnVlLCBi
+dXQgSUlSQyB0aGUgYXJyYXkgc2l6ZSBoZXJlIGNhbiBob2xkIGEgIi0xIiBhcyBhIHNwZWNpYWwg
+dmFsdWUuDQoNCg0KV2hlcmUgZG8geW91IHNlZSB0aGF0PyBJJ20gbm90IGZpbmRpbmcgdGhhdCBp
+biB0aGUgdXBzdHJlYW0ga2VybmVsLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
