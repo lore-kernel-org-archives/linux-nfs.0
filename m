@@ -1,68 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53963 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752885Ab2BISjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 13:39:15 -0500
-Date: Thu, 9 Feb 2012 13:39:11 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: Jim Rees <rees@umich.edu>, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
-Message-ID: <20120209183911.GB22168@fieldses.org>
-References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120208162322.GA13315@fieldses.org>
- <1328722042.3234.13.camel@lade.trondhjem.org>
- <20120208174901.GA28564@umich.edu>
- <20120208183151.GA14316@fieldses.org>
- <20120208203140.GA29238@umich.edu>
- <1328734255.3234.32.camel@lade.trondhjem.org>
- <20120208210150.GB29238@umich.edu>
- <CAGue13qU7OJ+Obnc0vtGt8_2BsydeOXmwhHNzctJbWitV4AVvA@mail.gmail.com>
+Received: from partagas.dragonet.es ([217.70.240.130]:59430 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750914Ab2BPJsW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 04:48:22 -0500
+Received: from [192.168.1.3] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
+	(authenticated bits=0)
+	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q1G9mg83018263
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:48:50 +0100
+Message-ID: <4F3CD0D7.8040402@steve-ss.com>
+Date: Thu, 16 Feb 2012 10:48:07 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAGue13qU7OJ+Obnc0vtGt8_2BsydeOXmwhHNzctJbWitV4AVvA@mail.gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS4 des and weak crypto
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 09, 2012 at 09:37:22AM +0100, Tigran Mkrtchyan wrote:
-> Putting my 'high energy physics community' hat on let me comment on it.
-> 
-> As soon as we trying to use nfs over high latency networks the
+Hi
+openSUSE 12.1
 
-How high is the latency?
+I'm trying to explain to our windows admin that modern nfs isn't 
+restricted to DES.
 
-> application efficiency rapidly drops. Efficiency is wallTIme/cpuTime.
-> We have solve this in our home grown protocols by adding vector read
-> and vector write. Vector is set of offset_length. As most of the our
-> files has DB like structure, after reading header (something like
-> index) we knew where data is located. This allows us to perform in
-> some work loads 100 times better than NFS.
-> 
-> Posix does not provides such interface. But we can simulate that with
-> fadvise calls (and we do). Since nfs-4.0 we got compound  operations.
-> And you can (in theory) build a compound with multiple READ or WRITE
-> ops. Nevertheless this does not work for several reasons: maximal
-> reply size and you still have to wait for full reply. and some reply
-> may be up 100MB in size.
-> 
-> The solution here is to issue multiple requests in parallel. And this
-> is possible only if you have enough session slots. Server can reply
-> out of order and populate clients file system cache.
+Here is a Samba4 authenticated test setup.
 
-Yep.
+I've removed he DES keys from the keytab on the nfs server:
 
-I'm just curious whether Andy or someone's beeing doing experiments with
-these patches, and if so, what they look like.
+klist -ke /etc/krb5.keytab
+Keytab name: WRFILE:/etc/krb5.keytab
+KVNO Principal
+---- ---------
+    1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
+    1 HH3$@hh3.site (arcfour-hmac)
 
-(The numbers I can find from the one case we worked on at citi (UM to
-CERN), were 10 gig * 120ms latency for a 143MB bandwidth-delay product,
-so in theory 143 slots would suffice if they were all doing maximum-size
-IO--but I can't find any results from NFS tests over that link (only
-results for a lower-latency 10gig network).
+In /etc/krb5.conf, I comment out:
+[libdefaults]
+#allow_weak_crypto = true
+It was never actually there. I've added it help my argument;)
+hh3 is the server, hh6 is the client.
 
-And, of course, if you're doing smaller operations or have an even
-higher-latency network, etc., you could need more slots--I just wondered
-abuot the details.)
+On hh6, root issues:
+mount -t nfs4 hh3:/foo /bar -o sec=krb5
+rpc.gssd -fvvv throws a fit, the KDC responds with,
 
---b.
+Kerberos: ENC-TS Pre-authentication succeeded -- HH6$@HH3.SITE using 
+arcfour-hmac-md5
+Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime: 
+2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
+Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96, 
+aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc, 
+des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
+Kerberos: Requested flags: renewable-ok
+Kerberos: TGS-REQ HH6$@HH3.SITE from ipv4:192.168.1.10:45421 for 
+nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
+Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime: 
+2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
+
+we can logon and request files via the mount.
+
+Questions
+Does this procedure prove that nfs can use other than DES crypto?
+Is arcfour what an AD admin would consider strong encryption?
+
+Thanks,
+Steve
+
