@@ -1,282 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11202 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61868 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760264Ab2BJWC2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:28 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 17/21] NFS: Deal with delegations
-Date: Fri, 10 Feb 2012 17:02:01 -0500
-Message-Id: <1328911325-1566-17-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+	id S1754067Ab2BPWIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 17:08:44 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GM8hBN008698
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 14:08:43 -0800 (PST)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 1/1] NFSv4.1 set the cl_hostname for data
+ servers
+Date: Thu, 16 Feb 2012 22:08:38 +0000
+Message-ID: <B2C8E6B1-523D-4890-B433-64B2BCB5B9AD@netapp.com>
+References: <1329426646-2074-1-git-send-email-andros@netapp.com>
+ <1329427752.19793.30.camel@lade.trondhjem.org>
+ <18B83A3A-12E1-42D8-AE93-9BC2C5FDB136@netapp.com>
+In-Reply-To: <18B83A3A-12E1-42D8-AE93-9BC2C5FDB136@netapp.com>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_89D89729-FE2E-4796-9864-49296829CFD8";
+	protocol="application/pkcs7-signature"; micalg=sha1
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Apple-Mail=_89D89729-FE2E-4796-9864-49296829CFD8
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Modules can implement their own have_delegation and return_delegation
-functions.  If not, then a default value is returned.  I also moved over
-the nfs4_evict_inode() function so it can find the
-return_delegation_noreclaim function.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/delegation.c |    8 ++++----
- fs/nfs/delegation.h |    9 +++++----
- fs/nfs/inode.c      |   41 ++++++++++++++++++-----------------------
- fs/nfs/internal.h   |    3 ---
- fs/nfs/nfs.h        |    7 +++++++
- fs/nfs/nfs4proc.c   |    4 ++--
- fs/nfs/nfs4super.c  |   18 ++++++++++++++++++
- 7 files changed, 54 insertions(+), 36 deletions(-)
+On Feb 16, 2012, at 5:00 PM, Adamson, Dros wrote:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 7f26540..0430513 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -41,13 +41,13 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation)
- }
- 
- /**
-- * nfs_have_delegation - check if inode has a delegation
-+ * nfs4_have_delegation - check if inode has a delegation
-  * @inode: inode to check
-  * @flags: delegation types to check for
-  *
-  * Returns one if inode has the indicated delegation, otherwise zero.
-  */
--int nfs_have_delegation(struct inode *inode, fmode_t flags)
-+int nfs4_have_delegation(struct inode *inode, fmode_t flags)
- {
- 	struct nfs_delegation *delegation;
- 	int ret = 0;
-@@ -376,12 +376,12 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
- }
- 
- /**
-- * nfs_inode_return_delegation - synchronously return a delegation
-+ * nfs4_inode_return_delegation - synchronously return a delegation
-  * @inode: inode to process
-  *
-  * Returns zero on success, or a negative errno value.
-  */
--int nfs_inode_return_delegation(struct inode *inode)
-+int nfs4_inode_return_delegation(struct inode *inode)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index d9322e4..0b388d7 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -9,6 +9,7 @@
- #define FS_NFS_DELEGATION_H
- 
- #if defined(CONFIG_NFS_V4)
-+#include "nfs.h"
- /*
-  * NFSv4 delegation
-  */
-@@ -33,7 +34,7 @@ enum {
- 
- int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
- void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
--int nfs_inode_return_delegation(struct inode *inode);
-+int nfs4_inode_return_delegation(struct inode *inode);
- int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
- void nfs_inode_return_delegation_noreclaim(struct inode *inode);
- 
-@@ -56,15 +57,15 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
- int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
- 
- void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
--int nfs_have_delegation(struct inode *inode, fmode_t flags);
-+int nfs4_have_delegation(struct inode *inode, fmode_t flags);
- 
- #else
--static inline int nfs_have_delegation(struct inode *inode, fmode_t flags)
-+static inline int nfs4_have_delegation(struct inode *inode, fmode_t flags)
- {
- 	return 0;
- }
- 
--static inline int nfs_inode_return_delegation(struct inode *inode)
-+static inline int nfs4_inode_return_delegation(struct inode *inode)
- {
- 	return 0;
- }
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 53bb916..2f48355 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -107,7 +107,7 @@ u64 nfs_compat_user_ino64(u64 fileid)
- 	return ino;
- }
- 
--static void nfs_clear_inode(struct inode *inode)
-+void nfs_clear_inode(struct inode *inode)
- {
- 	/*
- 	 * The following should never happen...
-@@ -118,6 +118,7 @@ static void nfs_clear_inode(struct inode *inode)
- 	nfs_access_zap_cache(inode);
- 	nfs_fscache_release_inode_cookie(inode);
- }
-+EXPORT_SYMBOL_GPL(nfs_clear_inode);
- 
- void nfs_evict_inode(struct inode *inode)
- {
-@@ -207,6 +208,22 @@ static void nfs_invalidate_inode(struct inode *inode)
- 	nfs_zap_caches_locked(inode);
- }
- 
-+int nfs_have_delegation(struct inode *inode, fmode_t flags)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
-+	if (!nfs_mod->have_delegation)
-+		return 0;
-+	return nfs_mod->have_delegation(inode, flags);
-+}
-+
-+int nfs_inode_return_delegation(struct inode *inode)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SERVER(inode));
-+	if (!nfs_mod->return_delegation)
-+		return 0;
-+	return nfs_mod->return_delegation(inode);
-+}
-+
- struct nfs_find_desc {
- 	struct nfs_fh		*fh;
- 	struct nfs_fattr	*fattr;
-@@ -1440,28 +1457,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	goto out_err;
- }
- 
--
--#ifdef CONFIG_NFS_V4
--
--/*
-- * Clean out any remaining NFSv4 state that might be left over due
-- * to open() calls that passed nfs_atomic_lookup, but failed to call
-- * nfs_open().
-- */
--void nfs4_evict_inode(struct inode *inode)
--{
--	truncate_inode_pages(&inode->i_data, 0);
--	end_writeback(inode);
--	pnfs_return_layout(inode);
--	pnfs_destroy_layout(NFS_I(inode));
--	/* If we are holding a delegation, return it! */
--	nfs_inode_return_delegation_noreclaim(inode);
--	/* First call standard NFS clear_inode() code */
--	nfs_clear_inode(inode);
--}
--EXPORT_SYMBOL_GPL(nfs4_evict_inode);
--#endif
--
- struct inode *nfs_alloc_inode(struct super_block *sb)
- {
- 	struct nfs_inode *nfsi;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index cdb121d..4ea1b93 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -258,9 +258,6 @@ extern struct inode *nfs_alloc_inode(struct super_block *sb);
- extern void nfs_destroy_inode(struct inode *);
- extern int nfs_write_inode(struct inode *, struct writeback_control *);
- extern void nfs_evict_inode(struct inode *);
--#ifdef CONFIG_NFS_V4
--extern void nfs4_evict_inode(struct inode *);
--#endif
- void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(void *word);
- 
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index 0c05f14..a83e154 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -40,6 +40,8 @@ struct nfs_subversion {
- 				   struct nfs_fh *, struct nfs_parsed_mount_data *);
- 	struct dentry *(*xdev_mount)(int, const char *, struct nfs_clone_mount *);
- 	struct vfsmount *(*submount)(struct dentry *, struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
-+	int (*have_delegation)(struct inode *, fmode_t);
-+	int (*return_delegation)(struct inode *);
- };
- 
- struct nfs_sb_mountdata {
-@@ -88,6 +90,11 @@ int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *)
- /* Exported in getroot.c */
- int nfs_superblock_set_dummy_root(struct super_block *, struct inode *);
- 
-+/* inode.c */
-+void nfs_clear_inode(struct inode *);
-+int nfs_have_delegation(struct inode *, fmode_t);
-+int nfs_inode_return_delegation(struct inode *);
-+
- /* Exported in namespace.c */
- struct vfsmount *_nfs_do_submount(struct file_system_type *, struct dentry *,
- 				  struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1bb0be3..3ae8485 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1028,7 +1028,7 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
- 		return;
- 	}
- 	rcu_read_unlock();
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- }
- 
- static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
-@@ -3694,7 +3694,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
- 	if (i < 0)
- 		return i;
--	nfs_inode_return_delegation(inode);
-+	nfs4_inode_return_delegation(inode);
- 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 
- 	/*
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index d874d2f..2764c28 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -10,6 +10,7 @@
- #include "delegation.h"
- #include "fscache.h"
- #include "nfs4_fs.h"
-+#include "pnfs.h"
- #include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
-@@ -26,6 +27,23 @@ static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_typ
- 	int flags, const char *dev_name, void *raw_data);
- static void nfs4_kill_super(struct super_block *sb);
- 
-+/*
-+ * Clean out any remaining NFSv4 state that might be left over due
-+ * to open() calls that passed nfs_atomic_lookup, but failed to call
-+ * nfs_open().
-+ */
-+void nfs4_evict_inode(struct inode *inode)
-+{
-+	truncate_inode_pages(&inode->i_data, 0);
-+	end_writeback(inode);
-+	pnfs_return_layout(inode);
-+	pnfs_destroy_layout(NFS_I(inode));
-+	/* If we are holding a delegation, return it! */
-+	nfs_inode_return_delegation_noreclaim(inode);
-+	/* First call standard NFS clear_inode() code */
-+	nfs_clear_inode(inode);
-+}
-+
- struct file_system_type nfs4_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfs4",
--- 
-1.7.9
+>=20
+> On Feb 16, 2012, at 4:29 PM, Myklebust, Trond wrote:
+>=20
+>> On Thu, 2012-02-16 at 16:10 -0500, andros@netapp.com wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>>=20
+>>> Used by /proc/fs/nfsfs/servers
+>>>=20
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> fs/nfs/client.c            |    3 ++-
+>>> fs/nfs/internal.h          |    3 ++-
+>>> fs/nfs/nfs4filelayoutdev.c |   11 ++++++++++-
+>>> 3 files changed, 14 insertions(+), 3 deletions(-)
+>>>=20
+>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>> index d0f850f..c625284 100644
+>>> --- a/fs/nfs/client.c
+>>> +++ b/fs/nfs/client.c
+>>> @@ -1443,7 +1443,7 @@ error:
+>>> */
+>>> struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+>>> 		const struct sockaddr *ds_addr,
+>>> -		int ds_addrlen, int ds_proto)
+>>> +		int ds_addrlen, int ds_proto, char *ds_hostname)
+>>=20
+>> Can you make this (and the other instances below) 'const char *', so
+>> that we avoid any confusion? Otherwise it looks more or less OK...
+>>=20
+>> Note that we should consider splitting da->da_remotestr into a
+>> hostname/port part at some point so that we avoid the copy below.
+>=20
+> da_remotestr (and ds_remotestr) were meant to be for display only (and =
+iirc they can actually be NULL).
 
+^^ dprintk() display, that is.
+
+>=20
+> The right way to do this is from the actual sin_addr (da_addr).
+>=20
+> -dros
+
+
+--Apple-Mail=_89D89729-FE2E-4796-9864-49296829CFD8
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjAyMTYyMjA4MzhaMCMGCSqGSIb3DQEJBDEWBBQpY6Dn9G/uLK1Q
+nwn+PcnZFO/8xTANBgkqhkiG9w0BAQEFAASCAQAk3+IdptUsYc3bkU3Kme9ag8Wzo0T81Slm5ym2
+/A+2+ExKb2Za1M+hLkaC53l7VzPBsVIa7P0Y/dzGWThFEGN0iC1tcjc5Omh+vv6OoREGQGZlX4Fk
+PEEA0Tk70tqm4ZTWbWNFJj7Q9Pu56NRSz5OeWaaJ/pKL+KWx0dMD+8r6h3KBebBWe+UBT1FrINVh
+/ofZvcHo6nAdb516XPWHpOGZUVanyNBAovxggHysSUdXxtPjNhBliRPSPAhegAU26Jrb6kRXk7xy
+yZ+W//V780RS0AxmZvu2GyGbLgM9Dz8UEUFbKI/r3v7fQiJIiQNuhGN0h6eTGUcY5un/XYVfurtP
+AAAAAAAA
+
+--Apple-Mail=_89D89729-FE2E-4796-9864-49296829CFD8--
