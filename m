@@ -1,106 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:51954 "EHLO
-	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756590Ab2B2Wko (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 17:40:44 -0500
-Received: from orca.cora.nwra.com (orca.cora.nwra.com [10.10.20.2])
-	(authenticated bits=0)
-	by earth.cora.nwra.com (8.13.8/8.13.8) with ESMTP id q1TMTapj022168
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 15:29:37 -0700
-Message-ID: <4F4EA6D0.30606@cora.nwra.com>
-Date: Wed, 29 Feb 2012 15:29:36 -0700
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from mx2.netapp.com ([216.240.18.37]:29489 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753290Ab2BPPOB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 10:14:01 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [RFC PATCH] SUNRPC: connect local transports synchronously
+Date: Thu, 16 Feb 2012 15:13:53 +0000
+Message-ID: <1329405232.4279.4.camel@lade.trondhjem.org>
+References: <20120216150507.19081.28659.stgit@localhost6.localdomain6>
+In-Reply-To: <20120216150507.19081.28659.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: nfs4 mount hanging suddenly
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just starting today, one of our user's nfs mounted home directory has started 
-locking up.  Client is Fedora 16 32-bit, server is CentOS 5.7 32-bit.  Have 
-not seen this particular problem elsewhere (yet).
-
-I captured this trace on the server after the hang:
-
-http://sw.cora.nwra.com/tmp/marie-nfs-home-lwang-hang.pcap
-
-   1   0.000000  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;GETATTR GETATTR
-   2   0.000133   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 1) 
-<EMPTY> PUTFH;GETATTR GETATTR
-   3   0.000421  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=137 
-Ack=225 Win=17738 Len=0 TSV=3584653 TSER=2438333196
-   4   0.000519  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;ACCESS ACCESS;GETATTR GETATTR
-   5   0.000587   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 4) 
-<EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled Packet [incorrect 
-TCP checksum]]
-   6   0.040522  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=289 
-Ack=465 Win=17738 Len=0 TSV=3584694 TSER=2438333196
-   7   0.451636  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;SAVEFH SAVEFH;OPEN OPEN;DELEGRETURN DELEGRETURN;Unknown
-   8   0.451892   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 7) 
-<EMPTY> PUTFH;SAVEFH SAVEFH;OPEN OPEN(10008)
-   9   0.452164  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=529 
-Ack=529 Win=17738 Len=0 TSV=3585105 TSER=2438333648
-.....
-120  53.161949  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;GETATTR GETATTR
-121  53.162281   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 120) 
-<EMPTY> PUTFH;GETATTR GETATTR
-122  53.162596  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8205 
-Ack=10341 Win=17738 Len=0 TSV=3637816 TSER=2438386366
-123  53.162680  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;GETATTR GETATTR
-124  53.162748   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 123) 
-<EMPTY> PUTFH;GETATTR GETATTR[Unreassembled Packet [incorrect TCP checksum]]
-125  53.163245  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;GETATTR GETATTR
-126  53.163418   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 125) 
-<EMPTY> PUTFH;GETATTR GETATTR
-127  53.203530  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8493 
-Ack=10685 Win=17738 Len=0 TSV=3637857 TSER=2438386368
-128  53.450308  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
-PUTFH;ACCESS ACCESS;GETATTR GETATTR
-129  53.450457   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 128) 
-<EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled Packet [incorrect 
-TCP checksum]]
-130  53.450671  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8645 
-Ack=10925 Win=17738 Len=0 TSV=3638104 TSER=2438386655
-
-
-I was not able to find any error messages anywhere.  Server has been up 28 
-days.  Client was up for 14 days before first hang, then 2 more today.  Home 
-directories are automounted and I was able to access a different home 
-directory that is served off the save server and filesystem.
-
-client kernels: 3.2.3-2.fc16.i68, 3.2.7-1.fc16.i68
-server kernel: 2.6.18-274.17.1.el5
-
-earth:/export/home/lwang on /home/lwang type nfs4 
-(rw,noatime,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=1,acregmax=1,acdirmin=1,acdirmax=1,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.20.15,minorversion=0,local_lock=none,addr=10.10.10.1)
-
-There is a newer nfs-utils:
-Jan 24 03:34:43 Updated: 1:nfs-utils-1.2.5-4.fc16.i686
-
-may try backing that off, but doesn't seem like a big change:
-
-* Mon Jan 16 2012 Steve Dickson <steved@redhat.com> 1.2.5-4
-- Reworked how the nfsd service requires the rpcbind service (bz 768550)
-
-and seems to only affect nfs-server.
-
-Anything else to check?
-
-TIA,
-
-  Orion
-
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                  orion@cora.nwra.com
-Boulder, CO 80301              http://www.cora.nwra.com
+T24gVGh1LCAyMDEyLTAyLTE2IGF0IDE5OjA2ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gTG9jYWwgdHJhbnBvcnRzIHVzZXMgVU5JWCBzb2NrZXRzIGFuZCBjb25uZWN0aW5n
+IG9mIHRoZXNlIHNvY2tldHMgaXMgZG9uZSBpbg0KPiBjb250ZXh0IG9mIGZpbGUgc3lzdGVtIG5h
+bWVzcGFjZSAoaS5lLiB0YXNrIGZpbGUgc3lzdGVtIHJvb3QpLg0KPiBDdXJyZW5seSwgYWxsIHNv
+Y2tldHMgY29ubmVjdCBvcGVyYXRpb25zIGFyZSBwZXJmb3JtZWQgYnkgcnBjaW9kIHdvcmsgcXVl
+dWUsDQo+IHdoaWNoIGFjdHVhbGx5IG1lYW5zLCB0aGF0IGFueSBzZXJ2aWNlIHdpbGwgYmUgcmVn
+aXN0ZXJlZCBpbiB0aGUgc2FtZSBycGNiaW5kDQo+IGluc3RhbmNlIHJlZ2FyZGxlc3MgdG8gcHJv
+Y2VzcyBmaWxlIHN5c3RlbSByb290Lg0KPiBUaGlzIGlzIG5vdCBjb250YWluZXJzLCB3aGljaCB1
+c3VhbGx5IGhhdmUgaXQncyBvd24gbmVzdGVkIHJvb3QuIFRoZXJlIGFyZSAyDQo+IGFwcHJvYWNo
+ZXMsIGhvdyB0byBzb2x2ZSB0aGUgcHJvYmxlbS4gRmlyc3Qgb25lIGlzIHRvIHN0b3JlIHByb3Bl
+ciByb290IGluDQo+IHRyYW5wb3J0IGFuZCBzd2l0Y2ggdG8gaXQgaW4gcnBjaW9kIHdvcmtxdWV1
+ZSBmdW5jdGlvbiBmb3IgY29ubmVjdCBvcGVyYXRpb25zLg0KPiBCdXQgdGhpcyBsb29rcyB1Z2x5
+LiBUaGUgc2Vjb25kIG9uZSBpcyB0byBjb25uZWN0IHRvIHVuaXggc29ja2V0cw0KPiBzeW5jaHJv
+bm91c2x5LiBUaGlzIGFwdGNoIGltcGxlbWVudHMgdGhlIGxhc3Qgb25lLg0KDQpUaGF0IGFwcHJv
+YWNoIGNhbiBmYWxsIGFmb3VsIG9mIHRoZSBzZWxpbnV4IHJlc3RyaWN0aW9ucyBvbiB0aGUgcHJv
+Y2Vzcw0KY29udGV4dC4gUHJvY2Vzc2VzIHRoYXQgYXJlIGFsbG93ZWQgdG8gd3JpdGUgZGF0YSwg
+bWF5IG5vdCBiZSBhbGxvd2VkIHRvDQpjcmVhdGUgc29ja2V0cyBvciBjYWxsIGNvbm5lY3QoKS4g
+VGhhdCBpcyB0aGUgbWFpbiByZWFzb24gZm9yIGRvaW5nIGl0DQppbiB0aGUgcnBjaW9kIGNvbnRl
+eHQsIHdoaWNoIGlzIGEgY2xlYW4ga2VybmVsIHByb2Nlc3MgY29udGV4dC4NCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
