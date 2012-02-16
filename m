@@ -1,423 +1,252 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:60183 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932117Ab2BNXB2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Feb 2012 18:01:28 -0500
-From: Tom Tucker <tom@ogc.us>
-To: bfields@fieldses.org
-Cc: tom@ogc.us, trond.myklebust@netapp.com, dan.carpenter@oracle.com,
-        linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH] svcrdma: Cleanup sparse warnings in the svcrdma module
-Date: Tue, 14 Feb 2012 17:01:25 -0600
-Message-Id: <1329260485-16994-1-git-send-email-tom@ogc.us>
+Received: from mx2.netapp.com ([216.240.18.37]:34549 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751354Ab2BPUwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:52:18 -0500
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GKqG9m018934
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 12:52:17 -0800 (PST)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
+Date: Thu, 16 Feb 2012 20:52:06 +0000
+Message-ID: <2399622F-3455-425B-AA3D-C0412EC4C0D2@netapp.com>
+References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+ <1329424827.19793.11.camel@lade.trondhjem.org>
+In-Reply-To: <1329424827.19793.11.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_83895B38-6419-4A23-BB2A-603EF61BA025";
+	protocol="application/pkcs7-signature"; micalg=sha1
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svcrdma transport was un-marshalling requests in-place. This resulted
-in sparse warnings due to __beXX data containing both NBO and HBO data.
+--Apple-Mail=_83895B38-6419-4A23-BB2A-603EF61BA025
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-The code has been restructured to do byte-swapping as the header is
-parsed instead of when the header is validated immediately after receipt.
 
-Also moved extern declarations for the workqueue and memory pools to the
-private header file.
+On Feb 16, 2012, at 3:40 PM, Myklebust, Trond wrote:
 
-Signed-off-by: Tom Tucker <tom@ogc.us>
----
- include/linux/sunrpc/svc_rdma.h          |    8 ++--
- net/sunrpc/xprtrdma/svc_rdma_marshal.c   |   68 +++++++----------------------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   24 ++++++-----
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   26 ++++++-----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +----
- net/sunrpc/xprtrdma/xprt_rdma.h          |    7 +++
- 6 files changed, 56 insertions(+), 87 deletions(-)
+> On Thu, 2012-02-16 at 11:17 -0500, Weston Andros Adamson wrote:
+>> Send the nfs implementation id in EXCHANGE_ID requests unless the =
+module
+>> parameter nfs.send_implementation_id is 0.
+>>=20
+>> This adds a CONFIG variable for the nii_domain that defaults to =
+"kernel.org".
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> Documentation/kernel-parameters.txt |    9 ++++++++
+>> fs/nfs/Kconfig                      |    8 +++++++
+>> fs/nfs/nfs4xdr.c                    |   38 =
++++++++++++++++++++++++++++++++++-
+>> 3 files changed, 53 insertions(+), 2 deletions(-)
+>>=20
+>> diff --git a/Documentation/kernel-parameters.txt =
+b/Documentation/kernel-parameters.txt
+>> index 1d369c6..7bae0fd 100644
+>> --- a/Documentation/kernel-parameters.txt
+>> +++ b/Documentation/kernel-parameters.txt
+>> @@ -1678,6 +1678,15 @@ bytes respectively. Such letter suffixes can =
+also be entirely omitted.
+>> 			back to using the idmapper.
+>> 			To turn off this behaviour, set the value to =
+'0'.
+>>=20
+>> +	nfs.send_implementation_id =3D
+>> +			[NFSv4.1] Send client implementation =
+identification
+>> +			information in exchange_id requests.
+>> +			If zero, no implementation identification =
+information
+>> +			will be sent.
+>> +			The default is to send the implementation =
+identification
+>> +			information.
+>> +
+>> +
+>> 	nmi_debug=3D	[KNL,AVR32,SH] Specify one or more actions to =
+take
+>> 			when a NMI is triggered.
+>> 			Format: [state][,regs][,debounce][,die]
+>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>> index ee86cfc..09f9e38 100644
+>> --- a/fs/nfs/Kconfig
+>> +++ b/fs/nfs/Kconfig
+>> @@ -99,6 +99,14 @@ config PNFS_OBJLAYOUT
+>> 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+>> 	default m
+>>=20
+>> +config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+>> +	string "NFSv4.1 Implementation ID Domain"
+>> +	depends on NFS_V4_1
+>> +	default "kernel.org"
+>> +	help
+>> +	  This value will be used in EXCHANGE_ID compounds to help =
+identify
+>> +	  the client implementation.
+>=20
+> This needs more fleshing out in order to explain what the purpose is
+> (identify the DNS domainname of the distribution), and what format the
+> string needs to take (DNS domainname). You might also follow up with a
+> recommendation that if the NFS client is unchanged from the upstream
+> kernel, then people should use the default 'kernel.org'.
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index c14fe86..4f9a63a 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -238,7 +238,7 @@ svc_rdma_get_read_chunk(struct rpcrdma_msg *rmsgp)
- 	struct rpcrdma_read_chunk *ch =
- 		(struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
- 
--	if (ch->rc_discrim == 0)
-+	if (ch->rc_discrim == xdr_zero)
- 		return NULL;
- 
- 	return ch;
-@@ -277,7 +277,7 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
- 
- 	rch = svc_rdma_get_read_chunk(rmsgp);
- 	if (rch) {
--		while (rch->rc_discrim)
-+		while (rch->rc_discrim != xdr_zero)
- 			rch++;
- 
- 		/* The reply list follows an empty write array located
-@@ -292,7 +292,7 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
- 	if (wr_ary) {
- 		rp_ary = (struct rpcrdma_write_array *)
- 			&wr_ary->
--			wc_array[wr_ary->wc_nchunks].wc_target.rs_length;
-+			wc_array[ntohl(wr_ary->wc_nchunks)].wc_target.rs_length;
- 
- 		goto found_it;
- 	}
-@@ -302,7 +302,7 @@ svc_rdma_get_reply_array(struct rpcrdma_msg *rmsgp)
- 		&rmsgp->rm_body.rm_chunks[2];
- 
-  found_it:
--	if (rp_ary->wc_discrim == 0)
-+	if (rp_ary->wc_discrim == xdr_zero)
- 		return NULL;
- 
- 	return rp_ary;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-index 9530ef2..8020b58 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-@@ -60,21 +60,11 @@ static u32 *decode_read_list(u32 *va, u32 *vaend)
- 	struct rpcrdma_read_chunk *ch = (struct rpcrdma_read_chunk *)va;
- 
- 	while (ch->rc_discrim != xdr_zero) {
--		u64 ch_offset;
--
- 		if (((unsigned long)ch + sizeof(struct rpcrdma_read_chunk)) >
- 		    (unsigned long)vaend) {
- 			dprintk("svcrdma: vaend=%p, ch=%p\n", vaend, ch);
- 			return NULL;
- 		}
--
--		ch->rc_discrim = ntohl(ch->rc_discrim);
--		ch->rc_position = ntohl(ch->rc_position);
--		ch->rc_target.rs_handle = ntohl(ch->rc_target.rs_handle);
--		ch->rc_target.rs_length = ntohl(ch->rc_target.rs_length);
--		va = (u32 *)&ch->rc_target.rs_offset;
--		xdr_decode_hyper(va, &ch_offset);
--		put_unaligned(ch_offset, (u64 *)va);
- 		ch++;
- 	}
- 	return (u32 *)&ch->rc_position;
-@@ -90,8 +80,8 @@ void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
- 	/* compute the number of bytes represented by read chunks */
- 	*byte_count = 0;
- 	*ch_count = 0;
--	for (; ch->rc_discrim != 0; ch++) {
--		*byte_count = *byte_count + ch->rc_target.rs_length;
-+	for (; ch->rc_discrim != xdr_zero; ch++) {
-+		*byte_count = *byte_count + ntohl(ch->rc_target.rs_length);
- 		*ch_count = *ch_count + 1;
- 	}
- }
-@@ -108,7 +98,8 @@ void svc_rdma_rcl_chunk_counts(struct rpcrdma_read_chunk *ch,
-  */
- static u32 *decode_write_list(u32 *va, u32 *vaend)
- {
--	int ch_no;
-+	int nchunks;
-+
- 	struct rpcrdma_write_array *ary =
- 		(struct rpcrdma_write_array *)va;
- 
-@@ -121,37 +112,24 @@ static u32 *decode_write_list(u32 *va, u32 *vaend)
- 		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
- 		return NULL;
- 	}
--	ary->wc_discrim = ntohl(ary->wc_discrim);
--	ary->wc_nchunks = ntohl(ary->wc_nchunks);
-+	nchunks = ntohl(ary->wc_nchunks);
- 	if (((unsigned long)&ary->wc_array[0] +
--	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
-+	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
- 	    (unsigned long)vaend) {
- 		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
--			ary, ary->wc_nchunks, vaend);
-+			ary, nchunks, vaend);
- 		return NULL;
- 	}
--	for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
--		u64 ch_offset;
--
--		ary->wc_array[ch_no].wc_target.rs_handle =
--			ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
--		ary->wc_array[ch_no].wc_target.rs_length =
--			ntohl(ary->wc_array[ch_no].wc_target.rs_length);
--		va = (u32 *)&ary->wc_array[ch_no].wc_target.rs_offset;
--		xdr_decode_hyper(va, &ch_offset);
--		put_unaligned(ch_offset, (u64 *)va);
--	}
--
- 	/*
- 	 * rs_length is the 2nd 4B field in wc_target and taking its
- 	 * address skips the list terminator
- 	 */
--	return (u32 *)&ary->wc_array[ch_no].wc_target.rs_length;
-+	return (u32 *)&ary->wc_array[nchunks].wc_target.rs_length;
- }
- 
- static u32 *decode_reply_array(u32 *va, u32 *vaend)
- {
--	int ch_no;
-+	int nchunks;
- 	struct rpcrdma_write_array *ary =
- 		(struct rpcrdma_write_array *)va;
- 
-@@ -164,28 +142,15 @@ static u32 *decode_reply_array(u32 *va, u32 *vaend)
- 		dprintk("svcrdma: ary=%p, vaend=%p\n", ary, vaend);
- 		return NULL;
- 	}
--	ary->wc_discrim = ntohl(ary->wc_discrim);
--	ary->wc_nchunks = ntohl(ary->wc_nchunks);
-+	nchunks = ntohl(ary->wc_nchunks);
- 	if (((unsigned long)&ary->wc_array[0] +
--	     (sizeof(struct rpcrdma_write_chunk) * ary->wc_nchunks)) >
-+	     (sizeof(struct rpcrdma_write_chunk) * nchunks)) >
- 	    (unsigned long)vaend) {
- 		dprintk("svcrdma: ary=%p, wc_nchunks=%d, vaend=%p\n",
--			ary, ary->wc_nchunks, vaend);
-+			ary, nchunks, vaend);
- 		return NULL;
- 	}
--	for (ch_no = 0; ch_no < ary->wc_nchunks; ch_no++) {
--		u64 ch_offset;
--
--		ary->wc_array[ch_no].wc_target.rs_handle =
--			ntohl(ary->wc_array[ch_no].wc_target.rs_handle);
--		ary->wc_array[ch_no].wc_target.rs_length =
--			ntohl(ary->wc_array[ch_no].wc_target.rs_length);
--		va = (u32 *)&ary->wc_array[ch_no].wc_target.rs_offset;
--		xdr_decode_hyper(va, &ch_offset);
--		put_unaligned(ch_offset, (u64 *)va);
--	}
--
--	return (u32 *)&ary->wc_array[ch_no];
-+	return (u32 *)&ary->wc_array[nchunks];
- }
- 
- int svc_rdma_xdr_decode_req(struct rpcrdma_msg **rdma_req,
-@@ -386,13 +351,14 @@ void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
- 
- void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
- 				     int chunk_no,
--				     u32 rs_handle, u64 rs_offset,
-+				     __be32 rs_handle,
-+				     __be64 rs_offset,
- 				     u32 write_len)
- {
- 	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
--	seg->rs_handle = htonl(rs_handle);
-+	seg->rs_handle = rs_handle;
-+	seg->rs_offset = rs_offset;
- 	seg->rs_length = htonl(write_len);
--	xdr_encode_hyper((u32 *) &seg->rs_offset, rs_offset);
- }
- 
- void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *xprt,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index df67211..b708c06 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -147,7 +147,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
- 	page_off = 0;
- 	ch = (struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
- 	ch_no = 0;
--	ch_bytes = ch->rc_target.rs_length;
-+	ch_bytes = ntohl(ch->rc_target.rs_length);
- 	head->arg.head[0] = rqstp->rq_arg.head[0];
- 	head->arg.tail[0] = rqstp->rq_arg.tail[0];
- 	head->arg.pages = &head->pages[head->count];
-@@ -183,7 +183,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
- 			ch_no++;
- 			ch++;
- 			chl_map->ch[ch_no].start = sge_no;
--			ch_bytes = ch->rc_target.rs_length;
-+			ch_bytes = ntohl(ch->rc_target.rs_length);
- 			/* If bytes remaining account for next chunk */
- 			if (byte_count) {
- 				head->arg.page_len += ch_bytes;
-@@ -281,11 +281,12 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
- 	offset = 0;
- 	ch = (struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
- 	for (ch_no = 0; ch_no < ch_count; ch_no++) {
-+		int len = ntohl(ch->rc_target.rs_length);
- 		rpl_map->sge[ch_no].iov_base = frmr->kva + offset;
--		rpl_map->sge[ch_no].iov_len = ch->rc_target.rs_length;
-+		rpl_map->sge[ch_no].iov_len = len;
- 		chl_map->ch[ch_no].count = 1;
- 		chl_map->ch[ch_no].start = ch_no;
--		offset += ch->rc_target.rs_length;
-+		offset += len;
- 		ch++;
- 	}
- 
-@@ -316,7 +317,7 @@ static int rdma_set_ctxt_sge(struct svcxprt_rdma *xprt,
- 	for (i = 0; i < count; i++) {
- 		ctxt->sge[i].length = 0; /* in case map fails */
- 		if (!frmr) {
--			BUG_ON(0 == virt_to_page(vec[i].iov_base));
-+			BUG_ON(NULL == virt_to_page(vec[i].iov_base));
- 			off = (unsigned long)vec[i].iov_base & ~PAGE_MASK;
- 			ctxt->sge[i].addr =
- 				ib_dma_map_page(xprt->sc_cm_id->device,
-@@ -425,7 +426,8 @@ static int rdma_read_xdr(struct svcxprt_rdma *xprt,
- 	ch_no = 0;
- 
- 	for (ch = (struct rpcrdma_read_chunk *)&rmsgp->rm_body.rm_chunks[0];
--	     ch->rc_discrim != 0; ch++, ch_no++) {
-+	     ch->rc_discrim != xdr_zero; ch++, ch_no++) {
-+		u64 rs_offset;
- next_sge:
- 		ctxt = svc_rdma_get_context(xprt);
- 		ctxt->direction = DMA_FROM_DEVICE;
-@@ -440,10 +442,10 @@ next_sge:
- 		read_wr.opcode = IB_WR_RDMA_READ;
- 		ctxt->wr_op = read_wr.opcode;
- 		read_wr.send_flags = IB_SEND_SIGNALED;
--		read_wr.wr.rdma.rkey = ch->rc_target.rs_handle;
--		read_wr.wr.rdma.remote_addr =
--			get_unaligned(&(ch->rc_target.rs_offset)) +
--			sgl_offset;
-+		read_wr.wr.rdma.rkey = ntohl(ch->rc_target.rs_handle);
-+		xdr_decode_hyper((__be32 *)&ch->rc_target.rs_offset,
-+				 &rs_offset);
-+		read_wr.wr.rdma.remote_addr = rs_offset + sgl_offset;
- 		read_wr.sg_list = ctxt->sge;
- 		read_wr.num_sge =
- 			rdma_read_max_sge(xprt, chl_map->ch[ch_no].count);
-@@ -456,7 +458,7 @@ next_sge:
- 			svc_rdma_put_context(ctxt, 0);
- 			goto out;
- 		}
--		if (((ch+1)->rc_discrim == 0) &&
-+		if (((ch+1)->rc_discrim == xdr_zero) &&
- 		    (read_wr.num_sge == chl_map->ch[ch_no].count)) {
- 			/*
- 			 * Mark the last RDMA_READ with a bit to
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 249a835..42eb7ba 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -409,21 +409,21 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 		u64 rs_offset;
- 
- 		arg_ch = &arg_ary->wc_array[chunk_no].wc_target;
--		write_len = min(xfer_len, arg_ch->rs_length);
-+		write_len = min(xfer_len, ntohl(arg_ch->rs_length));
- 
- 		/* Prepare the response chunk given the length actually
- 		 * written */
--		rs_offset = get_unaligned(&(arg_ch->rs_offset));
-+		xdr_decode_hyper((__be32 *)&arg_ch->rs_offset, &rs_offset);
- 		svc_rdma_xdr_encode_array_chunk(res_ary, chunk_no,
--					    arg_ch->rs_handle,
--					    rs_offset,
--					    write_len);
-+						arg_ch->rs_handle,
-+						arg_ch->rs_offset,
-+						write_len);
- 		chunk_off = 0;
- 		while (write_len) {
- 			int this_write;
- 			this_write = min(write_len, max_write);
- 			ret = send_write(xprt, rqstp,
--					 arg_ch->rs_handle,
-+					 ntohl(arg_ch->rs_handle),
- 					 rs_offset + chunk_off,
- 					 xdr_off,
- 					 this_write,
-@@ -457,6 +457,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
- 	u32 xdr_off;
- 	int chunk_no;
- 	int chunk_off;
-+	int nchunks;
- 	struct rpcrdma_segment *ch;
- 	struct rpcrdma_write_array *arg_ary;
- 	struct rpcrdma_write_array *res_ary;
-@@ -476,26 +477,27 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
- 		max_write = xprt->sc_max_sge * PAGE_SIZE;
- 
- 	/* xdr offset starts at RPC message */
-+	nchunks = ntohl(arg_ary->wc_nchunks);
- 	for (xdr_off = 0, chunk_no = 0;
--	     xfer_len && chunk_no < arg_ary->wc_nchunks;
-+	     xfer_len && chunk_no < nchunks;
- 	     chunk_no++) {
- 		u64 rs_offset;
- 		ch = &arg_ary->wc_array[chunk_no].wc_target;
--		write_len = min(xfer_len, ch->rs_length);
-+		write_len = min(xfer_len, htonl(ch->rs_length));
- 
- 		/* Prepare the reply chunk given the length actually
- 		 * written */
--		rs_offset = get_unaligned(&(ch->rs_offset));
-+		xdr_decode_hyper((__be32 *)&ch->rs_offset, &rs_offset);
- 		svc_rdma_xdr_encode_array_chunk(res_ary, chunk_no,
--					    ch->rs_handle, rs_offset,
--					    write_len);
-+						ch->rs_handle, ch->rs_offset,
-+						write_len);
- 		chunk_off = 0;
- 		while (write_len) {
- 			int this_write;
- 
- 			this_write = min(write_len, max_write);
- 			ret = send_write(xprt, rqstp,
--					 ch->rs_handle,
-+					 ntohl(ch->rs_handle),
- 					 rs_offset + chunk_off,
- 					 xdr_off,
- 					 this_write,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 894cb42..73b428b 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -51,6 +51,7 @@
- #include <rdma/rdma_cm.h>
- #include <linux/sunrpc/svc_rdma.h>
- #include <linux/export.h>
-+#include "xprt_rdma.h"
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
- 
-@@ -90,12 +91,6 @@ struct svc_xprt_class svc_rdma_class = {
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
- };
- 
--/* WR context cache. Created in svc_rdma.c  */
--extern struct kmem_cache *svc_rdma_ctxt_cachep;
--
--/* Workqueue created in svc_rdma.c */
--extern struct workqueue_struct *svc_rdma_wq;
--
- struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
- {
- 	struct svc_rdma_op_ctxt *ctxt;
-@@ -150,9 +145,6 @@ void svc_rdma_put_context(struct svc_rdma_op_ctxt *ctxt, int free_pages)
- 	atomic_dec(&xprt->sc_ctxt_used);
- }
- 
--/* Temporary NFS request map cache. Created in svc_rdma.c  */
--extern struct kmem_cache *svc_rdma_map_cachep;
--
- /*
-  * Temporary NFS req mappings are shared across all transport
-  * instances. These are short lived and should be bounded by the number
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 08c5d5a..9a66c95 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -343,4 +343,11 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
- 
-+/* Temporary NFS request map cache. Created in svc_rdma.c  */
-+extern struct kmem_cache *svc_rdma_map_cachep;
-+/* WR context cache. Created in svc_rdma.c  */
-+extern struct kmem_cache *svc_rdma_ctxt_cachep;
-+/* Workqueue created in svc_rdma.c */
-+extern struct workqueue_struct *svc_rdma_wq;
-+
- #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
--- 
-1.7.3.1
+Understood.
 
+>=20
+>> +
+>> config ROOT_NFS
+>> 	bool "Root file system on NFS"
+>> 	depends on NFS_FS=3Dy && IP_PNP
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index ae78343..70ded94 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -44,6 +44,8 @@
+>> #include <linux/pagemap.h>
+>> #include <linux/proc_fs.h>
+>> #include <linux/kdev_t.h>
+>> +#include <linux/module.h>
+>> +#include <linux/utsname.h>
+>> #include <linux/sunrpc/clnt.h>
+>> #include <linux/sunrpc/msg_prot.h>
+>> #include <linux/sunrpc/gss_api.h>
+>> @@ -271,7 +273,12 @@ static int nfs4_stat_to_errno(int);
+>> 				1 /* flags */ + \
+>> 				1 /* spa_how */ + \
+>> 				0 /* SP4_NONE (for now) */ + \
+>> -				1 /* zero implemetation id array */)
+>> +				1 /* implemetation id array of size 1 */ =
++ \
+>> +				1 /* nii_domain */ + \
+>> +				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
+>> +				1 /* nii_name */ + \
+>> +				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
+>> +				3 /* nii_date */)
+>> #define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
+>> 				2 /* eir_clientid */ + \
+>> 				1 /* eir_sequenceid */ + \
+>> @@ -838,6 +845,12 @@ const u32 nfs41_maxread_overhead =3D =
+((RPC_MAX_HEADER_WITH_AUTH +
+>> 				    XDR_UNIT);
+>> #endif /* CONFIG_NFS_V4_1 */
+>>=20
+>> +static unsigned short send_implementation_id =3D 1;
+>> +
+>> +module_param(send_implementation_id, ushort, 0644);
+>> +MODULE_PARM_DESC(send_implementation_id,
+>> +		"Send implementation ID with NFSv4.1 exchange_id");
+>> +
+>> static const umode_t nfs_type2fmt[] =3D {
+>> 	[NF4BAD] =3D 0,
+>> 	[NF4REG] =3D S_IFREG,
+>> @@ -1766,6 +1779,8 @@ static void encode_exchange_id(struct =
+xdr_stream *xdr,
+>> 			       struct compound_hdr *hdr)
+>> {
+>> 	__be32 *p;
+>> +	char impl_name[260]; /* 4 strs max 64 each, spaces and null */
+>                        ^^^^ Shouldn't you be putting this in terms of
+> NFS4_OPAQUE_LIMIT etc like you did above?
+
+The NFS4_OPAQUE_LIMIT is from the spec - that is, a server could make an =
+nii_name string that big. =20
+Creating the client's nii_name is bound by utsname() size limits =
+(__NEW_UTS_LEN =3D 64).
+
+If you'd prefer me to just use NFS4_OPAQUE_LIMIT, I have no problem with =
+it.
+
+>=20
+>> +	int len =3D 0;
+>>=20
+>> 	p =3D reserve_space(xdr, 4 + sizeof(args->verifier->data));
+>> 	*p++ =3D cpu_to_be32(OP_EXCHANGE_ID);
+>> @@ -1776,7 +1791,26 @@ static void encode_exchange_id(struct =
+xdr_stream *xdr,
+>> 	p =3D reserve_space(xdr, 12);
+>> 	*p++ =3D cpu_to_be32(args->flags);
+>> 	*p++ =3D cpu_to_be32(0);	/* zero length state_protect4_a =
+*/
+>> -	*p =3D cpu_to_be32(0);	/* zero length implementation id array =
+*/
+>> +
+>> +	if (send_implementation_id)
+>> +		len =3D snprintf(impl_name, sizeof(impl_name), "%s %s %s =
+%s",
+>> +			       utsname()->sysname, utsname()->release,
+>> +			       utsname()->version, utsname()->machine);
+>> +
+>=20
+> Can we put in a compile-time check on
+> CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN here to make sure that the
+> length is bounded?
+
+Yes, good call.  It should also check to make sure its not an empty =
+string -- some servers (pynfs at least) blow up when you send a string =
+of size 0 here.
+
+>=20
+>> +	if (len > 0) {
+>> +		*p =3D cpu_to_be32(1);	/* implementation id array =
+length=3D1 */
+>> +
+>> +		encode_string(xdr,
+>> +			=
+strlen(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN),
+>> +			CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN);
+>> +		encode_string(xdr, len, impl_name);
+>> +		/* just send zeros for nii_date - the date is in =
+nii_name */
+>> +		p =3D reserve_space(xdr, 12);
+>> +		p =3D xdr_encode_hyper(p, 0);
+>> +		*p =3D cpu_to_be32(0);
+>> +	} else
+>> +		*p =3D cpu_to_be32(0);	/* implementation id array =
+length=3D0 */
+>> +
+>> 	hdr->nops++;
+>> 	hdr->replen +=3D decode_exchange_id_maxsz;
+>> }
+
+Thanks,
+-dros=
+
+--Apple-Mail=_83895B38-6419-4A23-BB2A-603EF61BA025
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjAyMTYyMDUyMDdaMCMGCSqGSIb3DQEJBDEWBBQS65mo5HQN8CnQ
+T+6rDa+W7Sjm4zANBgkqhkiG9w0BAQEFAASCAQBokqtkGkMeTaSM5nlD0kdIoimCBlYdcmeLHtV4
+84FA60ucfoLoWZj8gxtOfuPVT2hhOcjYCMZJbGxvLxuoA2L8KR1uPzW0j+71ZVs5P9EpsUISGWxc
+6S5Py+8WlE/0WuNhDS0fODlOziHfDRrs70ZBiNg1HrmNDanMefIuQBRRKNlpopqORqd7Vd/7emlP
+UOjiuZHYaJJvejNNlpi1xAQ10moPVCYT60xfgkGbG/GNAHMmf0aWCNh2qaF9NgNuxja6WeMyVGQx
+KyWutIQJQQEC+ogRt1XFSJlhjBsz9iEa2ICYjPGun2BH0N9YTLRe3piENA+n76zip8AjxJcHxY4d
+AAAAAAAA
+
+--Apple-Mail=_83895B38-6419-4A23-BB2A-603EF61BA025--
