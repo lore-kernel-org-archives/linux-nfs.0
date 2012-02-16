@@ -1,93 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qw0-f53.google.com ([209.85.216.53]:44787 "EHLO
-	mail-qw0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752013Ab2BMPP4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 10:15:56 -0500
-Received: by mail-qw0-f53.google.com with SMTP id k1so3283230qaf.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 07:15:56 -0800 (PST)
-MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 4/5] nfsd: add a header describing upcall to nfsdcld
-Date: Mon, 13 Feb 2012 10:15:44 -0500
-Message-Id: <1329146145-7602-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
-References: <1329146145-7602-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:42443 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753062Ab2BPSR0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:17:26 -0500
+Received: by mail-ey0-f174.google.com with SMTP id h12so968126eaa.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:17:25 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 3/5] 4.1 server tests: testWriteDeleg
+Date: Thu, 16 Feb 2012 20:17:22 +0200
+Message-Id: <1329416242-21186-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4F3D47B3.1090708@tonian.com>
+References: <4F3D47B3.1090708@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 56 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
+ nfs4.1/server41tests/st_delegation.py |   45 +++++++++++++++++++++++++++++++++
+ 1 files changed, 45 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..f14a9ab
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,56 @@
-+/*
-+ * Upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2012 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
+diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
+index b9f866f..1011cbc 100644
+--- a/nfs4.1/server41tests/st_delegation.py
++++ b/nfs4.1/server41tests/st_delegation.py
+@@ -52,3 +52,48 @@ def testReadDeleg(t, env):
+     # Now get OPEN reply
+     res = sess2.listen(slot)
+     checklist(res, [NFS4_OK, NFS4ERR_DELAY])
 +
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
++def testWriteDeleg(t, env):
++    """Test write delgation handout and return
 +
-+/* latest upcall version available */
-+#define CLD_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Remove,		/* remove record of this cm_id */
-+	Cld_Check,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
++    FLAGS: open deleg all
++    CODE: DELEG2
++    """
++    recall = threading.Event()
++    def pre_hook(arg, env):
++        recall.stateid = arg.stateid # NOTE this must be done before set()
++        env.notify = recall.set # This is called after compound sent to queue
++    def post_hook(arg, env, res):
++        return res
++    # c1 - OPEN - WRITE
++    c1 = env.c1.new_client("%s_1" % env.testname(t))
++    c1.cb_pre_hook(OP_CB_RECALL, pre_hook)
++    c1.cb_post_hook(OP_CB_RECALL, post_hook)
++    sess1 = c1.create_session()
++    sess1.compound([op.reclaim_complete(FALSE)])
++    res = create_file(sess1, env.testname(t),
++                      access=OPEN4_SHARE_ACCESS_BOTH |
++                      OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG)
++    check(res)
++    fh = res.resarray[-1].object
++    deleg = res.resarray[-2].delegation
++    if deleg.delegation_type == OPEN_DELEGATE_NONE or deleg.delegation_type == OPEN_DELEGATE_NONE_EXT:
++        fail("Could not get delegation")
++    # c2 - OPEN - READ
++    sess2 = env.c1.new_client_session("%s_2" % env.testname(t))
++    claim = open_claim4(CLAIM_NULL, env.testname(t))
++    owner = open_owner4(0, "My Open Owner 2")
++    how = openflag4(OPEN4_NOCREATE)
++    open_op = op.open(0, OPEN4_SHARE_ACCESS_READ, OPEN4_SHARE_DENY_NONE,
++                      owner, how, claim)
++    slot = sess2.compound_async(env.home + [open_op])
++    # Wait for recall, and return delegation
++    recall.wait() # STUB - deal with timeout
++    # Getting here means CB_RECALL reply is in the send queue.
++    # Give it a moment to actually be sent
++    env.sleep(1)
++    res = sess1.compound([op.putfh(fh), op.delegreturn(recall.stateid)])
++    check(res)
++    # Now get OPEN reply
++    res = sess2.listen(slot)
++    checklist(res, [NFS4_OK, NFS4ERR_DELAY])
 -- 
-1.7.7.6
+1.7.6.5
 
