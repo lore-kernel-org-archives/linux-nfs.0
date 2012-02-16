@@ -1,39 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39842 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759724Ab2BJSvo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 13:51:44 -0500
-Date: Fri, 10 Feb 2012 13:51:41 -0500
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Cc: steve <steve@steve-ss.com>, whats_up@gmx.net, linux-nfs@vger.kernel.org
-Subject: Re: mount hangs in NFS4+Kerberos setup
-Message-ID: <20120210185141.GB5781@fieldses.org>
-References: <20120210154526.7b504146@little-poseidon>
- <4F35512A.9050500@steve-ss.com>
- <20120210184154.03fb6907@little-poseidon>
- <4F355CD2.6040603@steve-ss.com>
- <4F35603A.5050508@fifthhorseman.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F35603A.5050508@fifthhorseman.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:45905 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751896Ab2BPS5F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:57:05 -0500
+Received: by eekc14 with SMTP id c14so1017523eek.19
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:57:04 -0800 (PST)
+From: Benny Halevy <benny@tonian.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] nfsd41: share_access_to_flags should consider only nfs4.x share_access flags
+Date: Thu, 16 Feb 2012 20:57:00 +0200
+Message-Id: <1329418620-23850-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <4F3D4F1F.6080502@tonian.com>
+References: <4F3D4F1F.6080502@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 10, 2012 at 01:21:46PM -0500, Daniel Kahn Gillmor wrote:
-> On 02/10/2012 01:07 PM, steve wrote:
-> > Officially, you should not export from a pseudo root. Please see the
-> > last few lines in the link I sent.
-> 
-> That link offers the same assertion but no explanation for it.  Can you
-> explain why that's the recommendation?
-> 
-> If an admin were to remove fsid=0 from their exports line, they'd also
-> need to adjust the paths in all the connecting clients, right?
+Currently, it will not correctly ignore any nfsv4.1 signal flags
+if the client sends them.
 
-Yep.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-The main problem with the fsid=0 trick is that your v3 and v4 clients
-end up with different paths.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e8c98f0..a6cdbd5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2633,7 +2633,7 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+ 
+ static int share_access_to_flags(u32 share_access)
+ {
+-	share_access &= ~NFS4_SHARE_WANT_MASK;
++	share_access &= NFS4_SHARE_ACCESS_MASK;
+ 
+ 	return share_access == NFS4_SHARE_ACCESS_READ ? RD_STATE : WR_STATE;
+ }
+-- 
+1.7.6.5
 
---b.
