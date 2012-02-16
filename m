@@ -1,68 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53946 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753791Ab2BGQt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 11:49:27 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: add mount options 'v4.0' and 'v4.1'
-Date: Tue,  7 Feb 2012 11:49:11 -0500
-Message-Id: <1328633351-1741-1-git-send-email-dros@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:27581 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753584Ab2BPUKE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 15:10:04 -0500
+Subject: Re: [PATCH 01/13] NFS: Make nfs_cache_array.size a signed integer
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=windows-1252
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1329421931.4279.22.camel@lade.trondhjem.org>
+Date: Thu, 16 Feb 2012 15:09:59 -0500
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <D241F385-D756-4C1D-9BA2-95478927CBE4@oracle.com>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net> <20120215213451.3254.78502.stgit@ellison.1015granger.net> <1329421931.4279.22.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Updated to add 'v4.0' as trond requested.
 
-We'll talk about this change at connectathon.
+On Feb 16, 2012, at 2:52 PM, Myklebust, Trond wrote:
 
-This 'just works' with mount.nfs(8) -- v.* options are passed to the 
-kernel with no modifications needed.
+> On Wed, 2012-02-15 at 16:34 -0500, Chuck Lever wrote:
+>> Eliminate a number of implicit type casts in comparisons, and these
+>> compiler warnings:
+>> 
+>> fs/nfs/dir.c: In function ‘nfs_readdir_clear_array’:
+>> fs/nfs/dir.c:264:16: warning: comparison between signed and unsigned
+>> 		integer expressions [-Wsign-compare]
+>> fs/nfs/dir.c: In function ‘nfs_readdir_search_for_cookie’:
+>> fs/nfs/dir.c:352:16: warning: comparison between signed and unsigned
+>> 		integer expressions [-Wsign-compare]
+>> fs/nfs/dir.c: In function ‘nfs_do_filldir’:
+>> fs/nfs/dir.c:769:38: warning: comparison between signed and unsigned
+>> 		integer expressions [-Wsign-compare]
+>> fs/nfs/dir.c:780:9: warning: comparison between signed and unsigned
+>> 		integer expressions [-Wsign-compare]
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> fs/nfs/dir.c |    2 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+>> index ac28990..8661e13 100644
+>> --- a/fs/nfs/dir.c
+>> +++ b/fs/nfs/dir.c
+>> @@ -207,7 +207,7 @@ struct nfs_cache_array_entry {
+>> };
+>> 
+>> struct nfs_cache_array {
+>> -	unsigned int size;
+>> +	int size;
+>> 	int eof_index;
+>> 	u64 last_cookie;
+>> 	struct nfs_cache_array_entry array[0];
+>> 
+> 
+> Nope. That's a cop-out: array sizes cannot be negative.
 
- fs/nfs/super.c |   14 +++++++++++++-
- 1 files changed, 13 insertions(+), 1 deletions(-)
+That's typically true, but IIRC the array size here can hold a "-1" as a special value.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b88e023..d89cee2 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -80,7 +80,7 @@ enum {
- 	Opt_cto, Opt_nocto,
- 	Opt_ac, Opt_noac,
- 	Opt_lock, Opt_nolock,
--	Opt_v2, Opt_v3, Opt_v4,
-+	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
- 	Opt_udp, Opt_tcp, Opt_rdma,
- 	Opt_acl, Opt_noacl,
- 	Opt_rdirplus, Opt_nordirplus,
-@@ -136,6 +136,8 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_v2, "v2" },
- 	{ Opt_v3, "v3" },
- 	{ Opt_v4, "v4" },
-+	{ Opt_v4_0, "v4.0" },
-+	{ Opt_v4_1, "v4.1" },
- 	{ Opt_udp, "udp" },
- 	{ Opt_tcp, "tcp" },
- 	{ Opt_rdma, "rdma" },
-@@ -1172,6 +1174,16 @@ static int nfs_parse_mount_options(char *raw,
- 			mnt->flags &= ~NFS_MOUNT_VER3;
- 			mnt->version = 4;
- 			break;
-+		case Opt_v4_0:
-+			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 4;
-+			mnt->minorversion = 0;
-+			break;
-+		case Opt_v4_1:
-+			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 4;
-+			mnt->minorversion = 1;
-+			break;
- 		case Opt_udp:
- 			mnt->flags &= ~NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
 -- 
-1.7.4.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
