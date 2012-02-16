@@ -1,124 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13317 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22102 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754780Ab2BXTPD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Feb 2012 14:15:03 -0500
-From: bjschuma@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, dhowells@redhat.com,
-        Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 1/2 v3] Created a function for setting timeouts on keys
-Date: Fri, 24 Feb 2012 14:14:50 -0500
-Message-Id: <1330110891-4273-1-git-send-email-bjschuma@netapp.com>
+	id S1755578Ab2BPUEa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 15:04:30 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 07/13] NFS: Reduce debugging noise from
+ encode_compound_hdr
+Date: Thu, 16 Feb 2012 20:04:13 +0000
+Message-ID: <1329422653.4279.26.camel@lade.trondhjem.org>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+	 <20120215213542.3254.50291.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213542.3254.50291.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-The keyctl_set_timeout function isn't exported to other parts of the
-kernel, but I want to use it for the NFS idmapper.  I already have the
-key, but I wanted a generic way to set the timeout.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Acked-by: David Howells <dhowells@redhat.com>
----
-v3: No change in this patch
-v2: Rename the function to key_set_timeout
-
- include/linux/key.h    |    2 ++
- security/keys/key.c    |   20 ++++++++++++++++++++
- security/keys/keyctl.c |   18 ++----------------
- 3 files changed, 24 insertions(+), 16 deletions(-)
-
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 5253471..be3995d 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -276,6 +276,8 @@ static inline key_serial_t key_serial(const struct key *key)
- 	return key ? key->serial : 0;
- }
- 
-+extern void key_set_timeout(struct key *, unsigned);
-+
- /**
-  * key_is_instantiated - Determine if a key has been positively instantiated
-  * @key: The key to check.
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 7ada801..06783cf 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -671,6 +671,26 @@ found_kernel_type:
- 	return ktype;
- }
- 
-+void key_set_timeout(struct key *key, unsigned timeout)
-+{
-+	struct timespec now;
-+	time_t expiry = 0;
-+
-+	/* make the changes with the locks held to prevent races */
-+	down_write(&key->sem);
-+
-+	if (timeout > 0) {
-+		now = current_kernel_time();
-+		expiry = now.tv_sec + timeout;
-+	}
-+
-+	key->expiry = expiry;
-+	key_schedule_gc(key->expiry + key_gc_delay);
-+
-+	up_write(&key->sem);
-+}
-+EXPORT_SYMBOL_GPL(key_set_timeout);
-+
- /*
-  * Unlock a key type locked by key_type_lookup().
-  */
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index 0b3f5d7..0a4a21d 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -14,6 +14,7 @@
- #include <linux/sched.h>
- #include <linux/slab.h>
- #include <linux/syscalls.h>
-+#include <linux/key.h>
- #include <linux/keyctl.h>
- #include <linux/fs.h>
- #include <linux/capability.h>
-@@ -1244,10 +1245,8 @@ error:
-  */
- long keyctl_set_timeout(key_serial_t id, unsigned timeout)
- {
--	struct timespec now;
- 	struct key *key, *instkey;
- 	key_ref_t key_ref;
--	time_t expiry;
- 	long ret;
- 
- 	key_ref = lookup_user_key(id, KEY_LOOKUP_CREATE | KEY_LOOKUP_PARTIAL,
-@@ -1273,20 +1272,7 @@ long keyctl_set_timeout(key_serial_t id, unsigned timeout)
- 
- okay:
- 	key = key_ref_to_ptr(key_ref);
--
--	/* make the changes with the locks held to prevent races */
--	down_write(&key->sem);
--
--	expiry = 0;
--	if (timeout > 0) {
--		now = current_kernel_time();
--		expiry = now.tv_sec + timeout;
--	}
--
--	key->expiry = expiry;
--	key_schedule_gc(key->expiry + key_gc_delay);
--
--	up_write(&key->sem);
-+	key_set_timeout(key, timeout);
- 	key_put(key);
- 
- 	ret = 0;
--- 
-1.7.9.2
-
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+V2hlbiBORlNEQkdfWERSIGRlYnVnZ2luZyBpcyBlbmFibGVkLCBJIHNlZSBhIGxvdCBvZg0KPiAN
+Cj4gICBlbmNvZGVfY29tcG91bmQ6IHRhZz0NCj4gDQo+IG9uIHRoZSBjb25zb2xlLiAgVGhpcyBp
+cyBub2lzZSBpZiB0aGUgdGFnIGlzIGVtcHR5LiAgU29tZSBtaWdodCBhcmd1ZQ0KPiB0aGF0IGl0
+IGlzIG5vaXNlIGV2ZW4gaWYgdGhlIHRhZyBpc24ndCBlbXB0eS4uLg0KPiANCj4gU2lnbmVkLW9m
+Zi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0KPiANCj4g
+IGZzL25mcy9uZnM0eGRyLmMgfCAgICA0ICsrKy0NCj4gIDEgZmlsZXMgY2hhbmdlZCwgMyBpbnNl
+cnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0
+eGRyLmMgYi9mcy9uZnMvbmZzNHhkci5jDQo+IGluZGV4IDYwNjg1MmEuLjJmYjEyOWQgMTAwNjQ0
+DQo+IC0tLSBhL2ZzL25mcy9uZnM0eGRyLmMNCj4gKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KPiBA
+QCAtODg5LDcgKzg4OSw5IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9jb21wb3VuZF9oZHIoc3RydWN0
+IHhkcl9zdHJlYW0gKnhkciwNCj4gIAkgKiBidXQgdGhpcyBpcyBub3QgcmVxdWlyZWQgYXMgYSBN
+VVNUIGZvciB0aGUgc2VydmVyIHRvIGRvIHNvLiAqLw0KPiAgCWhkci0+cmVwbGVuID0gUlBDX1JF
+UEhEUlNJWkUgKyBhdXRoLT5hdV9yc2xhY2sgKyAzICsgaGRyLT50YWdsZW47DQo+ICANCj4gLQlk
+cHJpbnRrKCJlbmNvZGVfY29tcG91bmQ6IHRhZz0lLipzXG4iLCAoaW50KWhkci0+dGFnbGVuLCBo
+ZHItPnRhZyk7DQo+ICsJaWYgKHVubGlrZWx5KGhkci0+dGFnbGVuICE9IDApKQ0KPiArCQlkcHJp
+bnRrKCIlczogdGFnPSUuKnNcbiIsIF9fZnVuY19fLA0KPiArCQkJCShpbnQpaGRyLT50YWdsZW4s
+IGhkci0+dGFnKTsNCj4gIAlCVUdfT04oaGRyLT50YWdsZW4gPiBORlM0X01BWFRBR0xFTik7DQo+
+ICAJcCA9IHJlc2VydmVfc3BhY2UoeGRyLCA0ICsgaGRyLT50YWdsZW4gKyA4KTsNCj4gIAlwID0g
+eGRyX2VuY29kZV9vcGFxdWUocCwgaGRyLT50YWcsIGhkci0+dGFnbGVuKTsNCj4gDQoNCkxldCdz
+IGp1c3QgY29tbWVudCBvdXQgdGhlIHRhZyBkcHJpbnRrIGZvciBub3cuIFdlIGRvbid0IHVzZSB0
+aGUgdGFnDQpmaWVsZCBhdCBhbGwuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0KDQo=
