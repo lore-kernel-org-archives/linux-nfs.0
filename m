@@ -1,234 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:34223 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755092Ab2BFPIX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Feb 2012 10:08:23 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 1/2] SUNRPC: Add trace events to the sunrpc subsystem
-Date: Mon,  6 Feb 2012 10:08:07 -0500
-Message-Id: <1328540888-30109-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1328540888-30109-1-git-send-email-steved@redhat.com>
-References: <1328540888-30109-1-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:59870 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752902Ab2BPTzF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Feb 2012 14:55:05 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
+Date: Thu, 16 Feb 2012 19:54:58 +0000
+Message-ID: <1329422098.4279.24.camel@lade.trondhjem.org>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+	 <20120215213508.3254.64687.stgit@ellison.1015granger.net>
+In-Reply-To: <20120215213508.3254.64687.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Add declarations to allow tracing of RPC call creation, running,
-sleeping, and destruction.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- include/linux/sunrpc/sched.h  |    2 +-
- include/trace/events/sunrpc.h |  124 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/sched.c            |   12 ++++
- 3 files changed, 137 insertions(+), 1 deletions(-)
- create mode 100644 include/trace/events/sunrpc.h
-
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index e775689..c600035 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -267,7 +267,7 @@ static inline int rpc_task_has_priority(struct rpc_task *task, unsigned char pri
- }
- 
- #ifdef RPC_DEBUG
--static inline const char * rpc_qname(struct rpc_wait_queue *q)
-+static inline const char * rpc_qname(const struct rpc_wait_queue *q)
- {
- 	return ((q && q->name) ? q->name : "unknown");
- }
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-new file mode 100644
-index 0000000..2f82de9
---- /dev/null
-+++ b/include/trace/events/sunrpc.h
-@@ -0,0 +1,124 @@
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM sunrpc
-+
-+#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_SUNRPC_H
-+
-+#include <linux/sunrpc/sched.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/tracepoint.h>
-+
-+DECLARE_EVENT_CLASS(rpc_task_running,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(const struct rpc_task *, task)
-+		__field(const void *, action)
-+		__field(unsigned long, runstate)
-+		__field(int, status)
-+		__field(unsigned short, flags)
-+		),
-+
-+	TP_fast_assign(
-+		__entry->clnt = clnt;
-+		__entry->task = task;
-+		__entry->action = action;
-+		__entry->runstate = task->tk_runstate;
-+		__entry->status = task->tk_status;
-+		__entry->flags = task->tk_flags;
-+		),
-+
-+	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d action=%pf",
-+		__entry->task,
-+		__entry->clnt,
-+		__entry->flags,
-+		__entry->runstate,
-+		__entry->status,
-+		__entry->action
-+		)
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_begin,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_running, rpc_task_complete,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const void *action),
-+
-+	TP_ARGS(clnt, task, action)
-+
-+);
-+
-+DECLARE_EVENT_CLASS(rpc_task_queued,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q),
-+
-+	TP_STRUCT__entry(
-+		__field(const struct rpc_clnt *, clnt)
-+		__field(const struct rpc_task *, task)
-+		__string(    qname, rpc_qname(q))
-+		__field(unsigned long, timeout)
-+		__field(unsigned long, runstate)
-+		__field(int, status)
-+		__field(unsigned short, flags)
-+		),
-+
-+	TP_fast_assign(
-+		__entry->clnt = clnt;
-+		__entry->task = task;
-+		__assign_str(qname, rpc_qname(q));
-+		__entry->timeout = task->tk_timeout;
-+		__entry->runstate = task->tk_runstate;
-+		__entry->status = task->tk_status;
-+		__entry->flags = task->tk_flags;
-+		),
-+
-+	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-+		__entry->task,
-+		__entry->clnt,
-+		__entry->flags,
-+		__entry->runstate,
-+		__entry->status,
-+		__entry->timeout,
-+		__get_str(qname)
-+		)
-+);
-+
-+DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q)
-+
-+);
-+
-+DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
-+
-+	TP_PROTO(const struct rpc_clnt *clnt, const struct rpc_task *task, const struct rpc_wait_queue *q),
-+
-+	TP_ARGS(clnt, task, q)
-+
-+);
-+
-+#endif /* _TRACE_SUNRPC_H */
-+
-+#include <trace/define_trace.h>
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 3341d89..2ba5739 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -28,6 +28,9 @@
- #define RPCDBG_FACILITY		RPCDBG_SCHED
- #endif
- 
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/sunrpc.h>
-+
- /*
-  * RPC slabs and memory pools
-  */
-@@ -251,6 +254,8 @@ static inline void rpc_task_set_debuginfo(struct rpc_task *task)
- 
- static void rpc_set_active(struct rpc_task *task)
- {
-+	trace_rpc_task_begin(task->tk_client, task, NULL);
-+
- 	rpc_task_set_debuginfo(task);
- 	set_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
- }
-@@ -267,6 +272,8 @@ static int rpc_complete_task(struct rpc_task *task)
- 	unsigned long flags;
- 	int ret;
- 
-+	trace_rpc_task_complete(task->tk_client, task, NULL);
-+
- 	spin_lock_irqsave(&wq->lock, flags);
- 	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
- 	ret = atomic_dec_and_test(&task->tk_count);
-@@ -324,6 +331,8 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
- 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
- 			task->tk_pid, rpc_qname(q), jiffies);
- 
-+	trace_rpc_task_sleep(task->tk_client, task, q);
-+
- 	__rpc_add_wait_queue(q, task, queue_priority);
- 
- 	BUG_ON(task->tk_callback != NULL);
-@@ -378,6 +387,8 @@ static void __rpc_do_wake_up_task(struct rpc_wait_queue *queue, struct rpc_task
- 		return;
- 	}
- 
-+	trace_rpc_task_wakeup(task->tk_client, task, queue);
-+
- 	__rpc_remove_wait_queue(queue, task);
- 
- 	rpc_make_runnable(task);
-@@ -677,6 +688,7 @@ static void __rpc_execute(struct rpc_task *task)
- 			if (do_action == NULL)
- 				break;
- 		}
-+		trace_rpc_task_run_action(task->tk_client, task, task->tk_action);
- 		do_action(task);
- 
- 		/*
--- 
-1.7.7.5
-
+T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE2OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T3VyIGRwcmludGsoKSBkZWJ1Z2dpbmcgZmFjaWxpdHkgZG9lc24ndCBzcGVjaWZ5IGFueSB2ZXJi
+b3NpdHkgbGV2ZWwNCj4gZm9yIGl0J3MgcHJpbnRrKCkgY2FsbHMsIGJ1dCBpdCBzaG91bGQuDQo+
+IA0KPiBUaGUgZGVmYXVsdCB2ZXJib3NpdHkgZm9yIHByaW50aydzIGlzIEtFUk5fREVGQVVMVC4g
+IFlvdSBtaWdodCBhcmd1ZQ0KPiB0aGF0IHRoZXNlIGFyZSBkZWJ1Z2dpbmcgcHJpbnRrJ3MgYW5k
+IHRodXMgdGhlIHZlcmJvc2l0eSBzaG91bGQgYmUNCj4gS0VSTl9ERUJVRy4gIFRoYXQgd291bGQg
+bWVhbiB0aGF0IHRvIHNlZSBORlMgYW5kIFNVTlJQQyBkZWJ1Z2dpbmcNCj4gb3V0cHV0IGFuIGFk
+bWluIHdvdWxkIGFsc28gaGF2ZSB0byBib29zdCB0aGUgc3lzbG9nIHZlcmJvc2l0eSwgd2hpY2gN
+Cj4gd291bGQgYmUgaW5zdWZmZXJhYmx5IG5vaXN5Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1
+Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0KPiANCj4gIGluY2x1ZGUv
+bGludXgvc3VucnBjL2RlYnVnLmggfCAgICA2ICsrKysrLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCA1
+IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVk
+ZS9saW51eC9zdW5ycGMvZGVidWcuaCBiL2luY2x1ZGUvbGludXgvc3VucnBjL2RlYnVnLmgNCj4g
+aW5kZXggYzI3ODZmMi4uZTA5MjdjMiAxMDA2NDQNCj4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5y
+cGMvZGVidWcuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9kZWJ1Zy5oDQo+IEBAIC01
+MSw3ICs1MSwxMSBAQCBleHRlcm4gdW5zaWduZWQgaW50CQlubG1fZGVidWc7DQo+ICAjdW5kZWYg
+aWZkZWJ1Zw0KPiAgI2lmZGVmIFJQQ19ERUJVRwkJCQ0KPiAgIyBkZWZpbmUgaWZkZWJ1ZyhmYWMp
+CQlpZiAodW5saWtlbHkocnBjX2RlYnVnICYgUlBDREJHXyMjZmFjKSkNCj4gLSMgZGVmaW5lIGRm
+cHJpbnRrKGZhYywgYXJncy4uLikJZG8geyBpZmRlYnVnKGZhYykgcHJpbnRrKGFyZ3MpOyB9IHdo
+aWxlKDApDQo+ICsjIGRlZmluZSBkZnByaW50ayhmYWMsIGFyZ3MuLi4pCVwNCj4gKwlkbyB7IFwN
+Cj4gKwkJaWZkZWJ1ZyhmYWMpIFwNCj4gKwkJCXByaW50ayhLRVJOX0RFRkFVTFQgYXJncyk7IFwN
+Cj4gKwl9IHdoaWxlICgwKQ0KPiAgIyBkZWZpbmUgUlBDX0lGREVCVUcoeCkJCXgNCj4gICNlbHNl
+DQo+ICAjIGRlZmluZSBpZmRlYnVnKGZhYykJCWlmICgwKQ0KPiANCg0KTG9va3MgZ29vZC4gQXBw
+bGllZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+DQo=
