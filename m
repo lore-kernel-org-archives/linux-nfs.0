@@ -1,92 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6515 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757006Ab2BNWXW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 17:23:22 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1EMNMB4004451
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Feb 2012 14:23:22 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: fix nfs4_find_slot() not found ret value
-Date: Tue, 14 Feb 2012 22:23:16 +0000
-Message-ID: <1329258196.11759.8.camel@lade.trondhjem.org>
-References: <1329254637-1952-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1329254637-1952-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751670Ab2BQSP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Feb 2012 13:15:26 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: include filelayout DS rpc stats in mountstats
+Date: Fri, 17 Feb 2012 13:15:24 -0500
+Message-Id: <1329502524-27114-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTE0IGF0IDE2OjIzIC0wNTAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFRoZSBjYWxsZXIgb2YgbmZzNF9maW5kX3Nsb3QoKSBleHBlY3RzIE5GUzRfTUFY
-X1NMT1RfVEFCTEUgd2hlbiBubyBzbG90IGlzDQo+IGF2YWlsYWJsZSAoYWxzbyBtZW50aW9uZWQg
-aW4gdGhlIGNvbW1lbnQgaGVhZGVyIGZvciBuZnM0X2ZpbmRfc2xvdCgpKS4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiAtLS0N
-Cj4gVGhpcyBmaXhlcyBhbiBPT1BTIHRoYXQgaXMgZWFzeSB0byByZXByb2R1Y2U6DQo+IA0KPiAg
-ZGQgaWY9L2Rldi96ZXJvIG9mPS4vemVyb2ZpbGUgYnM9MTAwMjQgY291bnQ9MQ0KPiANCj4gbmZz
-NF9maW5kX3Nsb3QoKSByZXR1cm5zIDJeMzItMSB3aGljaCAhPSBORlM0X01BWF9TTE9UX1RBQkxF
-LCBzbyBpdCdzIHVzZWQNCj4gYXMgYSB2YWxpZCBzbG90aWQuDQo+IA0KPiBOb3RlIHRoYXQgTkZT
-NF9OT19TTE9UIGlzIHN0aWxsIHVzZWQgZm9yIG5mczRfc2xvdF90YWJsZTo6aGlnaGVzdF91c2Vk
-X3Nsb3RpZA0KDQpXZSBuZWVkIHRvIGZpeCB0aGUgYnJva2VuIGNhbGxlciwgbm90IG5mczRfZmlu
-ZF9zbG90KCkuLi4gSSBzZWVtIHRvIGhhdmUNCm1pc3NlZCBhIGNvdXBsZSBvZiBpbnN0YW5jZXMg
-aW4gdGhlICdDb252ZXJ0IHNsb3RpZCcgcGF0Y2guLi4NCg0KSG93J3MgdGhpcz8NCg0KODwtLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSA2ZTg4NWUzNzA3MjZjNGQ3MmEyNGFjZmIwNmNiZDY2NzNl
-NGI3OTFmIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMTQgRmViIDIwMTIgMTc6MTE6
-NTcgLTA1MDANClN1YmplY3Q6IFtQQVRDSF0gZml4dXAhIE5GU3Y0LjE6IENvbnZlcnQgc2xvdGlk
-IGZyb20gdTggdG8gdTMyDQoNClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+DQotLS0NCiBmcy9uZnMvbmZzNHByb2MuYyB8ICAgMjEgKysr
-KysrKysrKy0tLS0tLS0tLS0tDQogMSBmaWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCspLCAx
-MSBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZz
-L25mczRwcm9jLmMNCmluZGV4IGRhOTg1YzMuLjBiMzMxNjUgMTAwNjQ0DQotLS0gYS9mcy9uZnMv
-bmZzNHByb2MuYw0KKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCkBAIC0zNjIsMTYgKzM2MiwxNCBA
-QCBzdGF0aWMgdm9pZCByZW5ld19sZWFzZShjb25zdCBzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVy
-LCB1bnNpZ25lZCBsb25nIHRpbWVzdGFtcA0KICAqIFdoZW4gdXBkYXRpbmcgaGlnaGVzdF91c2Vk
-X3Nsb3RpZCB0aGVyZSBtYXkgYmUgImhvbGVzIiBpbiB0aGUgYml0bWFwDQogICogc28gd2UgbmVl
-ZCB0byBzY2FuIGRvd24gZnJvbSBoaWdoZXN0X3VzZWRfc2xvdGlkIHRvIDAgbG9va2luZyBmb3Ig
-dGhlIG5vdw0KICAqIGhpZ2hlc3Qgc2xvdGlkIGluIHVzZS4NCi0gKiBJZiBub25lIGZvdW5kLCBo
-aWdoZXN0X3VzZWRfc2xvdGlkIGlzIHNldCB0byAtMS4NCisgKiBJZiBub25lIGZvdW5kLCBoaWdo
-ZXN0X3VzZWRfc2xvdGlkIGlzIHNldCB0byBORlM0X05PX1NMT1QuDQogICoNCiAgKiBNdXN0IGJl
-IGNhbGxlZCB3aGlsZSBob2xkaW5nIHRibC0+c2xvdF90YmxfbG9jaw0KICAqLw0KIHN0YXRpYyB2
-b2lkDQotbmZzNF9mcmVlX3Nsb3Qoc3RydWN0IG5mczRfc2xvdF90YWJsZSAqdGJsLCB1OCBmcmVl
-X3Nsb3RpZCkNCituZnM0X2ZyZWVfc2xvdChzdHJ1Y3QgbmZzNF9zbG90X3RhYmxlICp0YmwsIHUz
-MiBzbG90aWQpDQogew0KLQlpbnQgc2xvdGlkID0gZnJlZV9zbG90aWQ7DQotDQotCUJVR19PTihz
-bG90aWQgPCAwIHx8IHNsb3RpZCA+PSBORlM0X01BWF9TTE9UX1RBQkxFKTsNCisJQlVHX09OKHNs
-b3RpZCA+PSBORlM0X01BWF9TTE9UX1RBQkxFKTsNCiAJLyogY2xlYXIgdXNlZCBiaXQgaW4gYml0
-bWFwICovDQogCV9fY2xlYXJfYml0KHNsb3RpZCwgdGJsLT51c2VkX3Nsb3RzKTsNCiANCkBAIC0z
-ODEsMTAgKzM3OSwxMCBAQCBuZnM0X2ZyZWVfc2xvdChzdHJ1Y3QgbmZzNF9zbG90X3RhYmxlICp0
-YmwsIHU4IGZyZWVfc2xvdGlkKQ0KIAkJaWYgKHNsb3RpZCA8IHRibC0+bWF4X3Nsb3RzKQ0KIAkJ
-CXRibC0+aGlnaGVzdF91c2VkX3Nsb3RpZCA9IHNsb3RpZDsNCiAJCWVsc2UNCi0JCQl0YmwtPmhp
-Z2hlc3RfdXNlZF9zbG90aWQgPSAtMTsNCisJCQl0YmwtPmhpZ2hlc3RfdXNlZF9zbG90aWQgPSBO
-RlM0X05PX1NMT1Q7DQogCX0NCi0JZHByaW50aygiJXM6IGZyZWVfc2xvdGlkICV1IGhpZ2hlc3Rf
-dXNlZF9zbG90aWQgJWRcbiIsIF9fZnVuY19fLA0KLQkJZnJlZV9zbG90aWQsIHRibC0+aGlnaGVz
-dF91c2VkX3Nsb3RpZCk7DQorCWRwcmludGsoIiVzOiBzbG90aWQgJXUgaGlnaGVzdF91c2VkX3Ns
-b3RpZCAlZFxuIiwgX19mdW5jX18sDQorCQlzbG90aWQsIHRibC0+aGlnaGVzdF91c2VkX3Nsb3Rp
-ZCk7DQogfQ0KIA0KIGJvb2wgbmZzNF9zZXRfdGFza19wcml2aWxlZ2VkKHN0cnVjdCBycGNfdGFz
-ayAqdGFzaywgdm9pZCAqZHVtbXkpDQpAQCAtNTEyLDcgKzUxMCw3IEBAIHN0YXRpYyBpbnQgbmZz
-NF9zZXF1ZW5jZV9kb25lKHN0cnVjdCBycGNfdGFzayAqdGFzaywNCiAgKiBuZnM0X2ZpbmRfc2xv
-dCBsb29rcyBmb3IgYW4gdW5zZXQgYml0IGluIHRoZSB1c2VkX3Nsb3RzIGJpdG1hcC4NCiAgKiBJ
-ZiBmb3VuZCwgd2UgbWFyayB0aGUgc2xvdCBhcyB1c2VkLCB1cGRhdGUgdGhlIGhpZ2hlc3RfdXNl
-ZF9zbG90aWQsDQogICogYW5kIHJlc3BlY3RpdmVseSBzZXQgdXAgdGhlIHNlcXVlbmNlIG9wZXJh
-dGlvbiBhcmdzLg0KLSAqIFRoZSBzbG90IG51bWJlciBpcyByZXR1cm5lZCBpZiBmb3VuZCwgb3Ig
-TkZTNF9NQVhfU0xPVF9UQUJMRSBvdGhlcndpc2UuDQorICogVGhlIHNsb3QgbnVtYmVyIGlzIHJl
-dHVybmVkIGlmIGZvdW5kLCBvciBORlM0X05PX1NMT1Qgb3RoZXJ3aXNlLg0KICAqDQogICogTm90
-ZTogbXVzdCBiZSBjYWxsZWQgd2l0aCB1bmRlciB0aGUgc2xvdF90YmxfbG9jay4NCiAgKi8NCkBA
-IC01MjksNyArNTI3LDggQEAgbmZzNF9maW5kX3Nsb3Qoc3RydWN0IG5mczRfc2xvdF90YWJsZSAq
-dGJsKQ0KIAlpZiAoc2xvdGlkID49IHRibC0+bWF4X3Nsb3RzKQ0KIAkJZ290byBvdXQ7DQogCV9f
-c2V0X2JpdChzbG90aWQsIHRibC0+dXNlZF9zbG90cyk7DQotCWlmIChzbG90aWQgPiB0YmwtPmhp
-Z2hlc3RfdXNlZF9zbG90aWQpDQorCWlmIChzbG90aWQgPiB0YmwtPmhpZ2hlc3RfdXNlZF9zbG90
-aWQgfHwNCisJCQl0YmwtPmhpZ2hlc3RfdXNlZF9zbG90aWQgPT0gTkZTNF9OT19TTE9UKQ0KIAkJ
-dGJsLT5oaWdoZXN0X3VzZWRfc2xvdGlkID0gc2xvdGlkOw0KIAlyZXRfaWQgPSBzbG90aWQ7DQog
-b3V0Og0KQEAgLTU4NCw3ICs1ODMsNyBAQCBpbnQgbmZzNDFfc2V0dXBfc2VxdWVuY2Uoc3RydWN0
-IG5mczRfc2Vzc2lvbiAqc2Vzc2lvbiwNCiAJfQ0KIA0KIAlzbG90aWQgPSBuZnM0X2ZpbmRfc2xv
-dCh0YmwpOw0KLQlpZiAoc2xvdGlkID09IE5GUzRfTUFYX1NMT1RfVEFCTEUpIHsNCisJaWYgKHNs
-b3RpZCA9PSBORlM0X05PX1NMT1QpIHsNCiAJCXJwY19zbGVlcF9vbigmdGJsLT5zbG90X3RibF93
-YWl0cSwgdGFzaywgTlVMTCk7DQogCQlzcGluX3VubG9jaygmdGJsLT5zbG90X3RibF9sb2NrKTsN
-CiAJCWRwcmludGsoIjwtLSAlczogbm8gZnJlZSBzbG90c1xuIiwgX19mdW5jX18pOw0KLS0gDQox
-LjcuNy42DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0KDQo=
+Include RPC statistics from all data servers in /proc/self/mountstats for pNFS
+filelayout mounts.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Update: don't increment tk_client stats if callback is used.
+
+This still checks task->tk_client != NULL -- I'm not convinced it's unneeded
+as it existed in rpc_count_iostats.
+
+ fs/nfs/nfs4filelayout.c        |   19 +++++++++++++++++++
+ include/linux/sunrpc/metrics.h |    6 ++++--
+ include/linux/sunrpc/sched.h   |    1 +
+ net/sunrpc/stats.c             |    8 ++++----
+ net/sunrpc/xprt.c              |    5 ++++-
+ 5 files changed, 32 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 79be7ac..47e8f34 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -33,6 +33,8 @@
+ #include <linux/nfs_page.h>
+ #include <linux/module.h>
+ 
++#include <linux/sunrpc/metrics.h>
++
+ #include "internal.h"
+ #include "nfs4filelayout.h"
+ 
+@@ -189,6 +191,13 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ 	rdata->mds_ops->rpc_call_done(task, data);
+ }
+ 
++static void filelayout_read_count_stats(struct rpc_task *task, void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
++}
++
+ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
+@@ -268,6 +277,13 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ 	wdata->mds_ops->rpc_call_done(task, data);
+ }
+ 
++static void filelayout_write_count_stats(struct rpc_task *task, void *data)
++{
++	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++
++	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
++}
++
+ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+@@ -288,18 +304,21 @@ static void filelayout_commit_release(void *data)
+ struct rpc_call_ops filelayout_read_call_ops = {
+ 	.rpc_call_prepare = filelayout_read_prepare,
+ 	.rpc_call_done = filelayout_read_call_done,
++	.rpc_count_stats = filelayout_read_count_stats,
+ 	.rpc_release = filelayout_read_release,
+ };
+ 
+ struct rpc_call_ops filelayout_write_call_ops = {
+ 	.rpc_call_prepare = filelayout_write_prepare,
+ 	.rpc_call_done = filelayout_write_call_done,
++	.rpc_count_stats = filelayout_write_count_stats,
+ 	.rpc_release = filelayout_write_release,
+ };
+ 
+ struct rpc_call_ops filelayout_commit_call_ops = {
+ 	.rpc_call_prepare = filelayout_write_prepare,
+ 	.rpc_call_done = filelayout_write_call_done,
++	.rpc_count_stats = filelayout_write_count_stats,
+ 	.rpc_release = filelayout_commit_release,
+ };
+ 
+diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
+index b6edbc0..1565bbe 100644
+--- a/include/linux/sunrpc/metrics.h
++++ b/include/linux/sunrpc/metrics.h
+@@ -74,14 +74,16 @@ struct rpc_clnt;
+ #ifdef CONFIG_PROC_FS
+ 
+ struct rpc_iostats *	rpc_alloc_iostats(struct rpc_clnt *);
+-void			rpc_count_iostats(struct rpc_task *);
++void			rpc_count_iostats(const struct rpc_task *,
++					  struct rpc_iostats *);
+ void			rpc_print_iostats(struct seq_file *, struct rpc_clnt *);
+ void			rpc_free_iostats(struct rpc_iostats *);
+ 
+ #else  /*  CONFIG_PROC_FS  */
+ 
+ static inline struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt) { return NULL; }
+-static inline void rpc_count_iostats(struct rpc_task *task) {}
++static inline void rpc_count_iostats(const struct rpc_task *task,
++				     struct rpc_iostats *stats) {}
+ static inline void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt) {}
+ static inline void rpc_free_iostats(struct rpc_iostats *stats) {}
+ 
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 22dfc24..dc0c3cc 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -103,6 +103,7 @@ typedef void			(*rpc_action)(struct rpc_task *);
+ struct rpc_call_ops {
+ 	void (*rpc_call_prepare)(struct rpc_task *, void *);
+ 	void (*rpc_call_done)(struct rpc_task *, void *);
++	void (*rpc_count_stats)(struct rpc_task *, void *);
+ 	void (*rpc_release)(void *);
+ };
+ 
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 3c4f688..1eb3304 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -133,20 +133,19 @@ EXPORT_SYMBOL_GPL(rpc_free_iostats);
+ /**
+  * rpc_count_iostats - tally up per-task stats
+  * @task: completed rpc_task
++ * @stats: array of stat structures
+  *
+  * Relies on the caller for serialization.
+  */
+-void rpc_count_iostats(struct rpc_task *task)
++void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+-	struct rpc_iostats *stats;
+ 	struct rpc_iostats *op_metrics;
+ 	ktime_t delta;
+ 
+-	if (!task->tk_client || !task->tk_client->cl_metrics || !req)
++	if (!stats || !req)
+ 		return;
+ 
+-	stats = task->tk_client->cl_metrics;
+ 	op_metrics = &stats[task->tk_msg.rpc_proc->p_statidx];
+ 
+ 	op_metrics->om_ops++;
+@@ -164,6 +163,7 @@ void rpc_count_iostats(struct rpc_task *task)
+ 	delta = ktime_sub(ktime_get(), task->tk_start);
+ 	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
+ }
++EXPORT_SYMBOL_GPL(rpc_count_iostats);
+ 
+ static void _print_name(struct seq_file *seq, unsigned int op,
+ 			struct rpc_procinfo *procs)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index efe5495..100b469 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1132,7 +1132,10 @@ void xprt_release(struct rpc_task *task)
+ 		return;
+ 
+ 	xprt = req->rq_xprt;
+-	rpc_count_iostats(task);
++	if (task->tk_ops->rpc_count_stats != NULL)
++		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
++	else if (task->tk_client)
++		rpc_count_iostats(task, task->tk_client->cl_metrics);
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	xprt->ops->release_xprt(xprt, task);
+ 	if (xprt->ops->release_request)
+-- 
+1.7.4.4
+
