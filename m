@@ -1,188 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3009 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27851 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756130Ab2BHLDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 06:03:23 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 3/9] KEYS: Move the key config into security/keys/Kconfig
-To: steved@redhat.com, jmorris@namei.org
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 08 Feb 2012 11:03:16 +0000
-Message-ID: <20120208110316.4050.7280.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-References: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751050Ab2BQUUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Feb 2012 15:20:41 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
+Date: Fri, 17 Feb 2012 15:20:24 -0500
+Message-Id: <1329510026-30403-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the key config into security/keys/Kconfig as there are going to be a lot
-of key-related options.
+Send the nfs implementation id in EXCHANGE_ID requests unless the module
+parameter nfs.send_implementation_id is 0.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Mimi Zohar <zohar@us.ibm.com>
+This adds a CONFIG variable for the nii_domain that defaults to "kernel.org".
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
+Update: Applied Trond's comments
 
- security/Kconfig      |   68 +----------------------------------------------
- security/keys/Kconfig |   71 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+), 67 deletions(-)
- create mode 100644 security/keys/Kconfig
+ Documentation/kernel-parameters.txt |    9 +++++++
+ fs/nfs/Kconfig                      |   12 ++++++++++
+ fs/nfs/nfs4xdr.c                    |   41 +++++++++++++++++++++++++++++++++-
+ 3 files changed, 60 insertions(+), 2 deletions(-)
 
-diff --git a/security/Kconfig b/security/Kconfig
-index 51bd5a0..1c5a7a4 100644
---- a/security/Kconfig
-+++ b/security/Kconfig
-@@ -4,73 +4,7 @@
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index 1d369c6..7bae0fd 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -1678,6 +1678,15 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			back to using the idmapper.
+ 			To turn off this behaviour, set the value to '0'.
  
- menu "Security options"
++	nfs.send_implementation_id =
++			[NFSv4.1] Send client implementation identification
++			information in exchange_id requests.
++			If zero, no implementation identification information
++			will be sent.
++			The default is to send the implementation identification
++			information.
++
++
+ 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
+ 			when a NMI is triggered.
+ 			Format: [state][,regs][,debounce][,die]
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index ee86cfc..7bce64c 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -99,6 +99,18 @@ config PNFS_OBJLAYOUT
+ 	depends on NFS_FS && NFS_V4_1 && SCSI_OSD_ULD
+ 	default m
  
--config KEYS
--	bool "Enable access key retention support"
--	help
--	  This option provides support for retaining authentication tokens and
--	  access keys in the kernel.
--
--	  It also includes provision of methods by which such keys might be
--	  associated with a process so that network filesystems, encryption
--	  support and the like can find them.
--
--	  Furthermore, a special type of key is available that acts as keyring:
--	  a searchable sequence of keys. Each process is equipped with access
--	  to five standard keyrings: UID-specific, GID-specific, session,
--	  process and thread.
--
--	  If you are unsure as to whether this is required, answer N.
--
--config TRUSTED_KEYS
--	tristate "TRUSTED KEYS"
--	depends on KEYS && TCG_TPM
--	select CRYPTO
--	select CRYPTO_HMAC
--	select CRYPTO_SHA1
--	help
--	  This option provides support for creating, sealing, and unsealing
--	  keys in the kernel. Trusted keys are random number symmetric keys,
--	  generated and RSA-sealed by the TPM. The TPM only unseals the keys,
--	  if the boot PCRs and other criteria match.  Userspace will only ever
--	  see encrypted blobs.
--
--	  If you are unsure as to whether this is required, answer N.
--
--config ENCRYPTED_KEYS
--	tristate "ENCRYPTED KEYS"
--	depends on KEYS
--	select CRYPTO
--	select CRYPTO_HMAC
--	select CRYPTO_AES
--	select CRYPTO_CBC
--	select CRYPTO_SHA256
--	select CRYPTO_RNG
--	help
--	  This option provides support for create/encrypting/decrypting keys
--	  in the kernel.  Encrypted keys are kernel generated random numbers,
--	  which are encrypted/decrypted with a 'master' symmetric key. The
--	  'master' key can be either a trusted-key or user-key type.
--	  Userspace only ever sees/stores encrypted blobs.
--
--	  If you are unsure as to whether this is required, answer N.
--
--config KEYS_DEBUG_PROC_KEYS
--	bool "Enable the /proc/keys file by which keys may be viewed"
--	depends on KEYS
--	help
--	  This option turns on support for the /proc/keys file - through which
--	  can be listed all the keys on the system that are viewable by the
--	  reading process.
--
--	  The only keys included in the list are those that grant View
--	  permission to the reading process whether or not it possesses them.
--	  Note that LSM security checks are still performed, and may further
--	  filter out keys that the current process is not authorised to view.
--
--	  Only key attributes are listed here; key payloads are not included in
--	  the resulting table.
--
--	  If you are unsure as to whether this is required, answer N.
-+source security/keys/Kconfig
++config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
++	string "NFSv4.1 Implementation ID Domain"
++	depends on NFS_V4_1
++	default "kernel.org"
++	help
++	  This option defines the domain portion of the implementation ID that
++	  may be sent in the NFS exchange_id operation.  The value must be in
++	  the format of a DNS domain name and should be set to the DNS domain
++	  name of the distribution.
++	  If the NFS client is unchanged from the upstream kernel, this
++	  option should be set to the default "kernel.org".
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ae78343..d824aed 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -44,6 +44,8 @@
+ #include <linux/pagemap.h>
+ #include <linux/proc_fs.h>
+ #include <linux/kdev_t.h>
++#include <linux/module.h>
++#include <linux/utsname.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/gss_api.h>
+@@ -271,7 +273,12 @@ static int nfs4_stat_to_errno(int);
+ 				1 /* flags */ + \
+ 				1 /* spa_how */ + \
+ 				0 /* SP4_NONE (for now) */ + \
+-				1 /* zero implemetation id array */)
++				1 /* implementation id array of size 1 */ + \
++				1 /* nii_domain */ + \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
++				1 /* nii_name */ + \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
++				3 /* nii_date */)
+ #define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
+ 				2 /* eir_clientid */ + \
+ 				1 /* eir_sequenceid */ + \
+@@ -838,6 +845,12 @@ const u32 nfs41_maxread_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
+ 				    XDR_UNIT);
+ #endif /* CONFIG_NFS_V4_1 */
  
- config SECURITY_DMESG_RESTRICT
- 	bool "Restrict unprivileged access to the kernel syslog"
-diff --git a/security/keys/Kconfig b/security/keys/Kconfig
-new file mode 100644
-index 0000000..a90d6d3
---- /dev/null
-+++ b/security/keys/Kconfig
-@@ -0,0 +1,71 @@
-+#
-+# Key management configuration
-+#
++static unsigned short send_implementation_id = 1;
 +
-+config KEYS
-+	bool "Enable access key retention support"
-+	help
-+	  This option provides support for retaining authentication tokens and
-+	  access keys in the kernel.
++module_param(send_implementation_id, ushort, 0644);
++MODULE_PARM_DESC(send_implementation_id,
++		"Send implementation ID with NFSv4.1 exchange_id");
 +
-+	  It also includes provision of methods by which such keys might be
-+	  associated with a process so that network filesystems, encryption
-+	  support and the like can find them.
+ static const umode_t nfs_type2fmt[] = {
+ 	[NF4BAD] = 0,
+ 	[NF4REG] = S_IFREG,
+@@ -1766,6 +1779,8 @@ static void encode_exchange_id(struct xdr_stream *xdr,
+ 			       struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
++	char impl_name[NFS4_OPAQUE_LIMIT];
++	int len = 0;
+ 
+ 	p = reserve_space(xdr, 4 + sizeof(args->verifier->data));
+ 	*p++ = cpu_to_be32(OP_EXCHANGE_ID);
+@@ -1776,7 +1791,29 @@ static void encode_exchange_id(struct xdr_stream *xdr,
+ 	p = reserve_space(xdr, 12);
+ 	*p++ = cpu_to_be32(args->flags);
+ 	*p++ = cpu_to_be32(0);	/* zero length state_protect4_a */
+-	*p = cpu_to_be32(0);	/* zero length implementation id array */
 +
-+	  Furthermore, a special type of key is available that acts as keyring:
-+	  a searchable sequence of keys. Each process is equipped with access
-+	  to five standard keyrings: UID-specific, GID-specific, session,
-+	  process and thread.
++	if (send_implementation_id &&
++	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) > 1 &&
++	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN)
++		<= NFS4_OPAQUE_LIMIT + 1)
++		len = snprintf(impl_name, sizeof(impl_name), "%s %s %s %s",
++			       utsname()->sysname, utsname()->release,
++			       utsname()->version, utsname()->machine);
 +
-+	  If you are unsure as to whether this is required, answer N.
++	if (len > 0) {
++		*p = cpu_to_be32(1);	/* implementation id array length=1 */
 +
-+config TRUSTED_KEYS
-+	tristate "TRUSTED KEYS"
-+	depends on KEYS && TCG_TPM
-+	select CRYPTO
-+	select CRYPTO_HMAC
-+	select CRYPTO_SHA1
-+	help
-+	  This option provides support for creating, sealing, and unsealing
-+	  keys in the kernel. Trusted keys are random number symmetric keys,
-+	  generated and RSA-sealed by the TPM. The TPM only unseals the keys,
-+	  if the boot PCRs and other criteria match.  Userspace will only ever
-+	  see encrypted blobs.
++		encode_string(xdr,
++			sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) - 1,
++			CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN);
++		encode_string(xdr, len, impl_name);
++		/* just send zeros for nii_date - the date is in nii_name */
++		p = reserve_space(xdr, 12);
++		p = xdr_encode_hyper(p, 0);
++		*p = cpu_to_be32(0);
++	} else
++		*p = cpu_to_be32(0);	/* implementation id array length=0 */
 +
-+	  If you are unsure as to whether this is required, answer N.
-+
-+config ENCRYPTED_KEYS
-+	tristate "ENCRYPTED KEYS"
-+	depends on KEYS
-+	select CRYPTO
-+	select CRYPTO_HMAC
-+	select CRYPTO_AES
-+	select CRYPTO_CBC
-+	select CRYPTO_SHA256
-+	select CRYPTO_RNG
-+	help
-+	  This option provides support for create/encrypting/decrypting keys
-+	  in the kernel.  Encrypted keys are kernel generated random numbers,
-+	  which are encrypted/decrypted with a 'master' symmetric key. The
-+	  'master' key can be either a trusted-key or user-key type.
-+	  Userspace only ever sees/stores encrypted blobs.
-+
-+	  If you are unsure as to whether this is required, answer N.
-+
-+config KEYS_DEBUG_PROC_KEYS
-+	bool "Enable the /proc/keys file by which keys may be viewed"
-+	depends on KEYS
-+	help
-+	  This option turns on support for the /proc/keys file - through which
-+	  can be listed all the keys on the system that are viewable by the
-+	  reading process.
-+
-+	  The only keys included in the list are those that grant View
-+	  permission to the reading process whether or not it possesses them.
-+	  Note that LSM security checks are still performed, and may further
-+	  filter out keys that the current process is not authorised to view.
-+
-+	  Only key attributes are listed here; key payloads are not included in
-+	  the resulting table.
-+
-+	  If you are unsure as to whether this is required, answer N.
+ 	hdr->nops++;
+ 	hdr->replen += decode_exchange_id_maxsz;
+ }
+-- 
+1.7.4.4
 
