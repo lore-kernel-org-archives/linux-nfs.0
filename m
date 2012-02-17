@@ -1,68 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:59430 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750914Ab2BPJsW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 04:48:22 -0500
-Received: from [192.168.1.3] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
-	(authenticated bits=0)
-	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q1G9mg83018263
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:48:50 +0100
-Message-ID: <4F3CD0D7.8040402@steve-ss.com>
-Date: Thu, 16 Feb 2012 10:48:07 +0100
-From: steve <steve@steve-ss.com>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:35238 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751804Ab2BQSxh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2012 13:53:37 -0500
+Received: by wics10 with SMTP id s10so1739564wic.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 10:53:36 -0800 (PST)
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFS4 des and weak crypto
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <91D161E5-801B-44C3-A110-9CFD21C7D0B1@oracle.com>
+References: <1329426646-2074-1-git-send-email-andros@netapp.com>
+	<1329427752.19793.30.camel@lade.trondhjem.org>
+	<18B83A3A-12E1-42D8-AE93-9BC2C5FDB136@netapp.com>
+	<B2C8E6B1-523D-4890-B433-64B2BCB5B9AD@netapp.com>
+	<CAHVgHyVGoJNfh-cQ7KsNCyUJhegYpKaJAdsAa5D-QACf-krA_g@mail.gmail.com>
+	<91D161E5-801B-44C3-A110-9CFD21C7D0B1@oracle.com>
+Date: Fri, 17 Feb 2012 13:53:36 -0500
+Message-ID: <CAHVgHyUgqOSPWz3p1nxaKDrtfRyboQhKrrvxnN0z8RpeO6UVkg@mail.gmail.com>
+Subject: Re: [PATCH Version 2 1/1] NFSv4.1 set the cl_hostname for data servers
+From: Andy Adamson <androsadamson@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Dros Adamson <Weston.Adamson@netapp.com>,
+        Andy Adamson <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
-openSUSE 12.1
+On Fri, Feb 17, 2012 at 1:46 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> I've got a patch that already does this, which Trond wrote a year ago.  I can submit this for 3.4.
 
-I'm trying to explain to our windows admin that modern nfs isn't 
-restricted to DES.
+OK. That solves the /proc/fs/nfsfs/servers HOSTNAME is null issue for
+filelayout data servers.
 
-Here is a Samba4 authenticated test setup.
-
-I've removed he DES keys from the keytab on the nfs server:
-
-klist -ke /etc/krb5.keytab
-Keytab name: WRFILE:/etc/krb5.keytab
-KVNO Principal
----- ---------
-    1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
-    1 HH3$@hh3.site (arcfour-hmac)
-
-In /etc/krb5.conf, I comment out:
-[libdefaults]
-#allow_weak_crypto = true
-It was never actually there. I've added it help my argument;)
-hh3 is the server, hh6 is the client.
-
-On hh6, root issues:
-mount -t nfs4 hh3:/foo /bar -o sec=krb5
-rpc.gssd -fvvv throws a fit, the KDC responds with,
-
-Kerberos: ENC-TS Pre-authentication succeeded -- HH6$@HH3.SITE using 
-arcfour-hmac-md5
-Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime: 
-2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
-Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96, 
-aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc, 
-des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
-Kerberos: Requested flags: renewable-ok
-Kerberos: TGS-REQ HH6$@HH3.SITE from ipv4:192.168.1.10:45421 for 
-nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
-Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime: 
-2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
-
-we can logon and request files via the mount.
-
-Questions
-Does this procedure prove that nfs can use other than DES crypto?
-Is arcfour what an AD admin would consider strong encryption?
-
-Thanks,
-Steve
-
+-->Andy
+>
+> On Feb 17, 2012, at 1:40 PM, Andy Adamson wrote:
+>
+>> Isn't the clp->cl_rpcclient->cl_server always the same as
+>> clp->cl_hostname? Can we just get rid of the cl_hostname and use the
+>> cl_server?
+>>
+>> -->Andy
+>>
+>> On Thu, Feb 16, 2012 at 5:08 PM, Adamson, Dros
+>> <Weston.Adamson@netapp.com> wrote:
+>>>
+>>> On Feb 16, 2012, at 5:00 PM, Adamson, Dros wrote:
+>>>
+>>>>
+>>>> On Feb 16, 2012, at 4:29 PM, Myklebust, Trond wrote:
+>>>>
+>>>>> On Thu, 2012-02-16 at 16:10 -0500, andros@netapp.com wrote:
+>>>>>> From: Andy Adamson <andros@netapp.com>
+>>>>>>
+>>>>>> Used by /proc/fs/nfsfs/servers
+>>>>>>
+>>>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>>>>> ---
+>>>>>> fs/nfs/client.c            |    3 ++-
+>>>>>> fs/nfs/internal.h          |    3 ++-
+>>>>>> fs/nfs/nfs4filelayoutdev.c |   11 ++++++++++-
+>>>>>> 3 files changed, 14 insertions(+), 3 deletions(-)
+>>>>>>
+>>>>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>>>>> index d0f850f..c625284 100644
+>>>>>> --- a/fs/nfs/client.c
+>>>>>> +++ b/fs/nfs/client.c
+>>>>>> @@ -1443,7 +1443,7 @@ error:
+>>>>>> */
+>>>>>> struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+>>>>>>             const struct sockaddr *ds_addr,
+>>>>>> -           int ds_addrlen, int ds_proto)
+>>>>>> +           int ds_addrlen, int ds_proto, char *ds_hostname)
+>>>>>
+>>>>> Can you make this (and the other instances below) 'const char *', so
+>>>>> that we avoid any confusion? Otherwise it looks more or less OK...
+>>>>>
+>>>>> Note that we should consider splitting da->da_remotestr into a
+>>>>> hostname/port part at some point so that we avoid the copy below.
+>>>>
+>>>> da_remotestr (and ds_remotestr) were meant to be for display only (and iirc they can actually be NULL).
+>>>
+>>> ^^ dprintk() display, that is.
+>>>
+>>>>
+>>>> The right way to do this is from the actual sin_addr (da_addr).
+>>>>
+>>>> -dros
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
