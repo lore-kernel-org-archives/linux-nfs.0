@@ -1,142 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24085 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754439Ab2B0SmA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 13:42:00 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-CC: "debian-backports@lists.debian.org"
-	<debian-backports@lists.debian.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: null pointer dereference in linux kernel 3.2.4 in
- nfs4_xdr_enc_getacl
-Date: Mon, 27 Feb 2012 18:41:59 +0000
-Message-ID: <1330368119.5541.59.camel@lade.trondhjem.org>
-References: <871upg2klr.fsf@pip.fifthhorseman.net>
-In-Reply-To: <871upg2klr.fsf@pip.fifthhorseman.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:44469 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752062Ab2BQQee convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Feb 2012 11:34:34 -0500
 MIME-Version: 1.0
+In-Reply-To: <20120216223011.GA23997@fieldses.org>
+References: <20101227234641.GA22248@fieldses.org> <20110118204509.GA10903@fieldses.org>
+ <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
+ <20110118220817.GF10903@fieldses.org> <20110308181320.GA15566@fieldses.org>
+ <20110310105821.GE22723@ZenIV.linux.org.uk> <20110311150749.2fa2be66@notabene.brown>
+ <20120214170300.GA4309@fieldses.org> <20120215165633.GE12490@fieldses.org>
+ <20120216140603.08cb4900@notabene.brown> <20120216223011.GA23997@fieldses.org>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Sat, 18 Feb 2012 00:34:14 +0800
+Message-ID: <CA+a=Yy7WgT37Gost38MrV-qtk8MgnTdqKmjBQDvRLGmuh59r3g@mail.gmail.com>
+Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed dentries
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>,
+        Nick Piggin <npiggin@gmail.com>, Nick Piggin <npiggin@kernel.dk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAyLTI3IGF0IDEzOjMyIC0wNTAwLCBEYW5pZWwgS2FobiBHaWxsbW9yIHdy
-b3RlOg0KPiBJJ20gcnVubmluZyBsaW51eCBrZXJuZWwgMy4yLjQtMX5icG82MCsxIGZyb20gZGVi
-aWFuJ3Mgc3F1ZWV6ZS1iYWNrcG9ydHMNCj4gcmVwb3NpdG9yeSBvbiBhIDMyLWJpdCB4ODYgbWFj
-aGluZS4gIFRoZSBtYWNoaW5lIGluIHF1ZXN0aW9uIGlzIGFuIE5GU3Y0DQo+IGNsaWVudCwgdXNp
-bmcgc2VjPWtyYjVwLiAgQm90aCB0aGUgTkZTIGNsaWVudCBhbmQgc2VydmVyIGFyZSBib3RoDQo+
-IHJ1bm5pbmcgcnBjLnN2Y2dzc2QgYW5kIHJwYy5nc3NkIChzbyBpIHRoaW5rIGRlbGVnYXRpb25z
-IGFyZSBpbiBlZmZlY3QsDQo+IHRob3VnaCBpIGRvbid0IGtub3cgaG93IHRvIGNoZWNrKS4NCj4g
-DQo+IEkgZ290IHRoZSBmb2xsb3dpbmcgY3Jhc2ggcmVwb3J0IGZyb20gdGhlIGNsaWVudCwgd2hp
-Y2ggd2FzIHN1YnNlcXVlbnRseQ0KPiB1bnJlc3BvbnNpdmUgYXQgdGhlIGtleWJvYXJkLCBhbmQg
-ZGVjbGluZWQgdG8gc2h1dCBkb3duIGNsZWFubHkgKGkNCj4gbmVlZGVkIHRvIGRvIGEgaGFyZCBw
-b3dlcm9mZiB0byBnZXQgdGhlIG1hY2hpbmUgZnVuY3Rpb25hbCBhZ2FpbiBmb3IgdGhlDQo+IHVz
-ZXIpLg0KPiANCj4gDQo+IEZlYiAyNyAxMDozOTo1NSBiaXJtYW4ga2VybmVsOiBbMTMxNzIuNjE4
-NDc0XSB1c2IgMi0xOiBVU0IgZGlzY29ubmVjdCwgZGV2aWNlIG51bWJlciA0DQo+IEZlYiAyNyAx
-MTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0MDc5XSBCVUc6IHVuYWJsZSB0byBoYW5k
-bGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAgIChudWxsKQ0KPiBGZWIgMjcg
-MTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDA5N10gSVA6IFs8YzEwYjI2MjM+XSBw
-YWdlX2FkZHJlc3MrMHg2LzB4OTcNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsx
-NzcwNi4xODQxMDhdICpwZHB0ID0gMDAwMDAwMDAzNjVkMzAwMSAqcGRlID0gMDAwMDAwMDAwMDAw
-MDAwMCANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQxMTZdIE9v
-cHM6IDAwMDAgWyMxXSBTTVAgDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3
-MDYuMTg0MTIyXSBNb2R1bGVzIGxpbmtlZCBpbjogbmxzX3V0ZjggbmxzX2NwNDM3IHZmYXQgZmF0
-IHVzYl9zdG9yYWdlIHVhcyB0dW4gaXA2dGFibGVfZmlsdGVyIGlwNl90YWJsZXMgaXB0YWJsZV9m
-aWx0ZXIgaXBfdGFibGVzIHhfdGFibGVzIHBhcnBvcnRfcGMgcHBkZXYgbHAgcGFycG9ydCBibmVw
-IHJmY29tbSBibHVldG9vdGggY3JjMTYgdWlucHV0IGt2bV9hbWQga3ZtIGZ1c2Ugc2hhMV9nZW5l
-cmljIGhtYWMgY3J5cHRkIGFlc19pNTg2IGFlc19nZW5lcmljIGNiYyBjdHMgcnBjc2VjX2dzc19r
-cmI1IG5mc2QgbmZzIGxvY2tkIGZzY2FjaGUgYXV0aF9ycGNnc3MgbmZzX2FjbCBzdW5ycGMgYnJp
-ZGdlIHN0cCBleHQyIGxvb3Agc25kX2hkYV9jb2RlY19oZG1pIHRwbV9pbmZpbmVvbiBzbmRfaGRh
-X2NvZGVjX3JlYWx0ZWsgbm91dmVhdSBzbmRfaGRhX2ludGVsIHNuZF9oZGFfY29kZWMgdHRtIGhw
-X3dtaSBkcm1fa21zX2hlbHBlciBkcm0gc3BhcnNlX2tleW1hcCBpMmNfYWxnb19iaXQgc25kX2h3
-ZGVwIHNuZF9wY20gcmZraWxsIHNuZF9zZXEgc25kX3RpbWVyIHNuZF9zZXFfZGV2aWNlIHNwNTEw
-MF90Y28gbXhtX3dtaSBpMmNfcGlpeDQgc25kIHVzYmhpZCB2aWRlbyBpMmNfY29yZSB3bWkgcGNz
-cGtyIHByb2Nlc3NvciBldmRldiBwc21vdXNlIHRwbV90aXMgdHBtIHRwbV9iaW9zIHNlcmlvX3Jh
-dyB0aGVybWFsX3N5cyB1c2JscCBzb3VuZGNvcmUgc25kX3BhZ2VfYWxsb2MgaGlkIGsxMHRlbXAg
-ZXh0MyBqYmQgbWJjYWNoZSBkbV9tb2Qgc2cgc2RfbW9kIHNyX21vZCBjcmNfdDEwZGlmIGNkcm9t
-IG9oY2lfaGNkIGVoY2lfaGNkIGFoY2kgbGliYWhjaSB0ZzMgbGlicGh5IGxpYmF0YSBzY3NpX21v
-ZCB1c2Jjb3JlIHVzYl9jb21tb24gYnV0dG9uIFtsYXN0IHVubG9hZGVkOiBzY3NpX3dhaXRfc2Nh
-bl0NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQyODFdIA0KPiBG
-ZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDI4NV0gUGlkOiA3NTY4LCBj
-b21tOiBlb2cgTm90IHRhaW50ZWQgMy4yLjAtMC5icG8uMS02ODYtcGFlICMxIEhld2xldHQtUGFj
-a2FyZCBIUCBDb21wYXEgNjAwNSBQcm8gU0ZGIFBDLzMwNDdoDQo+IEZlYiAyNyAxMTo1NToyOSBi
-aXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0Mjk5XSBFSVA6IDAwNjA6WzxjMTBiMjYyMz5dIEVGTEFH
-UzogMDAyMTAyMDIgQ1BVOiAyDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3
-MDYuMTg0MzA1XSBFSVAgaXMgYXQgcGFnZV9hZGRyZXNzKzB4Ni8weDk3DQo+IEZlYiAyNyAxMTo1
-NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0MzEwXSBFQVg6IDAwMDAwMDAwIEVCWDogMDAw
-MDAwMDAgRUNYOiBmNjcxMTgwNCBFRFg6IDAwMDAwMGRjDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJt
-YW4ga2VybmVsOiBbMTc3MDYuMTg0MzE2XSBFU0k6IGY2N2MzYmY0IEVESTogMDAwMDAwMzcgRUJQ
-OiBmNjdjM2MyNCBFU1A6IGY2N2MzYmQwDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVs
-OiBbMTc3MDYuMTg0MzIyXSAgRFM6IDAwN2IgRVM6IDAwN2IgRlM6IDAwZDggR1M6IDAwZTAgU1M6
-IDAwNjgNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzMjhdIFBy
-b2Nlc3MgZW9nIChwaWQ6IDc1NjgsIHRpPWY2N2MyMDAwIHRhc2s9ZjMxNWI3NjAgdGFzay50aT1m
-NjdjMjAwMCkNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzMzRd
-IFN0YWNrOg0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDMzN10g
-IGY2N2MzZGRjIGY2N2MzYmY0IDAwMDAwMDM3IGY2N2MzYzI0IGZiNGIxZmYzIDAwMDAwMDAwIDAw
-MDAxMDAwIGY2N2MzYmY0DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYu
-MTg0MzUxXSAgZjZhNjdhYzAgMDAwMDAwMDAgMDAwMDAwMDIgZjY3MTEwNzQgMDAwMDAwMDAgMDAw
-MDAwMDAgMDAwMDAwOTcgMDAwMDAwMDANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6
-IFsxNzcwNi4xODQzNjVdICBmNmE2N2FjMCBmYjRiMWY1YyBmYjRiMWY1YyBmNjcxMTA2NCBmODY0
-MDJhOCBmNjcxMTBhMCBmNmE2N2FjNCBmNjcxMTcyOA0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFu
-IGtlcm5lbDogWzE3NzA2LjE4NDM3OV0gQ2FsbCBUcmFjZToNCj4gRmViIDI3IDExOjU1OjI5IGJp
-cm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzOTNdICBbPGZiNGIxZmYzPl0gPyBuZnM0X3hkcl9lbmNf
-Z2V0YWNsKzB4OTcvMHhiNCBbbmZzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDog
-WzE3NzA2LjE4NDQwN10gIFs8ZmI0YjFmNWM+XSA/IG5mczRfeGRyX2VuY19zZXRhY2wrMHhkZi8w
-eGRmIFtuZnNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDIw
-XSAgWzxmYjRiMWY1Yz5dID8gbmZzNF94ZHJfZW5jX3NldGFjbCsweGRmLzB4ZGYgW25mc10NCj4g
-RmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ0MjhdICBbPGY4NjQwMmE4
-Pl0gPyBnc3Nfd3JhcF9yZXFfZW5jb2RlKzB4MWUvMHgyNSBbYXV0aF9ycGNnc3NdDQo+IEZlYiAy
-NyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDQxXSAgWzxmYjRiMWY1Yz5dID8g
-bmZzNF94ZHJfZW5jX3NldGFjbCsweGRmLzB4ZGYgW25mc10NCj4gRmViIDI3IDExOjU1OjI5IGJp
-cm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ0NDldICBbPGY4NjQwNDI5Pl0gPyBnc3Nfd3JhcF9yZXEr
-MHgxNTgvMHgyZWIgW2F1dGhfcnBjZ3NzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5l
-bDogWzE3NzA2LjE4NDQ1Nl0gIFs8Zjg2NDBhNjM+XSA/IGdzc19tYXJzaGFsKzB4MTM0LzB4MTNl
-IFthdXRoX3JwY2dzc10NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4x
-ODQ0NjRdICBbPGY4NjQwMmQxPl0gPyBwcml2X3JlbGVhc2Vfc25kX2J1ZisweDIyLzB4MjIgW2F1
-dGhfcnBjZ3NzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDQ3
-N10gIFs8ZmI0YjFmNWM+XSA/IG5mczRfeGRyX2VuY19zZXRhY2wrMHhkZi8weGRmIFtuZnNdDQo+
-IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDg5XSAgWzxmOGVjMTM4
-ZT5dID8gcnBjYXV0aF93cmFwX3JlcSsweDU2LzB4N2MgW3N1bnJwY10NCj4gRmViIDI3IDExOjU1
-OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ1MDZdICBbPGY4ZWJhYjkwPl0gPyBjYWxsX3Ry
-YW5zbWl0KzB4MTc1LzB4MWUwIFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2Vy
-bmVsOiBbMTc3MDYuMTg0NTE4XSAgWzxmOGVjMDk4OT5dID8gX19ycGNfZXhlY3V0ZSsweDViLzB4
-MWVlIFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0
-NTI3XSAgWzxmOGViYjY2OD5dID8gcnBjX3J1bl90YXNrKzB4NTcvMHg1YyBbc3VucnBjXQ0KPiBG
-ZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDUzNl0gIFs8ZjhlYmI3NGU+
-XSA/IHJwY19jYWxsX3N5bmMrMHgzYy8weDU2IFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBi
-aXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NTQ5XSAgWzxmYjRhNmExYz5dID8gX19uZnM0X2dldF9h
-Y2xfdW5jYWNoZWQrMHgxNjUvMHgxZjkgW25mc10NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBr
-ZXJuZWw6IFsxNzcwNi4xODQ1NjNdICBbPGZiNGE2YjhjPl0gPyBuZnM0X3hhdHRyX2dldF9uZnM0
-X2FjbCsweGRjLzB4MTBhIFtuZnNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBb
-MTc3MDYuMTg0NTcxXSAgWzxjMTBlYjY2MT5dID8gZ2VuZXJpY19nZXR4YXR0cisweDYxLzB4NjUN
-Cj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ1NzhdICBbPGMxMGVi
-NjAwPl0gPyBzaW5nbGVfb3BlbisweDcwLzB4NzANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBr
-ZXJuZWw6IFsxNzcwNi4xODQ1ODRdICBbPGMxMGViZDhlPl0gPyB2ZnNfZ2V0eGF0dHIrMHg3Ni8w
-eDdkDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NTg5XSAgWzxj
-MTBlYmUxOD5dID8gZ2V0eGF0dHIrMHg4My8weGUyDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4g
-a2VybmVsOiBbMTc3MDYuMTg0NTk2XSAgWzxjMTBlNTBjOD5dID8gZHB1dCsweDIxLzB4YzQNCj4g
-RmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MDFdICBbPGMxMGRmYjAx
-Pl0gPyBwYXRoX2xvb2t1cGF0KzB4Mjk3LzB4MmE4DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4g
-a2VybmVsOiBbMTc3MDYuMTg0NjA3XSAgWzxjMTBlMDRjZD5dID8gdXNlcl9wYXRoX2F0X2VtcHR5
-KzB4NDYvMHg2NQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDYx
-M10gIFs8YzEwZWJiMzY+XSA/IGxpc3R4YXR0cisweDgwLzB4ODgNCj4gRmViIDI3IDExOjU1OjI5
-IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MTldICBbPGMxMGViZWYzPl0gPyBzeXNfZ2V0eGF0
-dHIrMHgzNy8weDQ4DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0
-NjI2XSAgWzxjMTJjZGRiYz5dID8gc3lzY2FsbF9jYWxsKzB4Ny8weGINCj4gRmViIDI3IDExOjU1
-OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MzBdIENvZGU6IDg5IDczIDBjIDg5IDBlIGVi
-IDBjIDhkIDU4IGY4IDhkIDRiIDA4IDM5IGYxIDc1IGExIDg5IGY4IDU5IDViIDViIDVlIDVmIDVk
-IGU5IDE0IGI1IDIxIDAwIDBmIDBiIGU5IDA0IGZmIGZmIGZmIDU1IDU3IDU2IDUzIDg5IGMzIDw4
-Yj4gMDAgYzEgZTggMWUgNjkgYzAgNDAgMDMgMDAgMDAgMDUgNDAgN2UgNDEgYzEgMmIgODAgMGMg
-MDMgMDAgDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0Njk5XSBF
-SVA6IFs8YzEwYjI2MjM+XSBwYWdlX2FkZHJlc3MrMHg2LzB4OTcgU1M6RVNQIDAwNjg6ZjY3YzNi
-ZDANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ3MDldIENSMjog
-MDAwMDAwMDAwMDAwMDAwMA0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2
-LjE4ODM5N10gLS0tWyBlbmQgdHJhY2UgZTUyMTQ0N2M3M2Y1NzkxNCBdLS0tDQo+IA0KPiBQbGVh
-c2UgbGV0IG1lIGtub3cgaWYgaSBjYW4gcHJvdmlkZSBhbnkgbW9yZSB1c2VmdWwgaW5mb3JtYXRp
-b24gYWJvdXQNCj4gdGhpcywgb3IgaWYgdGhlcmUncyBzb21ldGhpbmcgaSBjYW4gZG8gdG8gYXZv
-aWQgdGhpcyBjcmFzaCBpbiB0aGUNCj4gZnV0dXJlLg0KDQpLbm93biBpc3N1ZSwgZm9yIHdoaWNo
-IGEgcGF0Y2ggaGFzIGFscmVhZHkgYmVlbiBtZXJnZWQgdXBzdHJlYW0uIFBsZWFzZQ0Kc2VlDQoN
-Cmh0dHA6Ly9naXQua2VybmVsLm9yZy8/cD1saW51eC9rZXJuZWwvZ2l0L3RvcnZhbGRzL2xpbnV4
-LTIuNi5naXQmYT1jb21taXRkaWZmJmg9MzMxODE4ZjFjNDY4YTI0ZTU4MWFlZGNiZTUyYWY3OTkz
-NjZhOWRmZQ0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Fri, Feb 17, 2012 at 6:30 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Feb 16, 2012 at 02:06:03PM +1100, NeilBrown wrote:
+>> I was going ask how you managed to get an 'unhashed' dentry which was not
+>> DISCONNECTED, and belonged to a directory that could be the subject of
+>> d_splice_alias (that implies it has a name).
+>>
+>> The bug sounds like a race between lookup and rmdir, which should be
+>> prevented by i_mutex.
+>>
+>> I think that using __d_find_any_alias would just be papering over the
+>> problem, and would trigger a BUG_ON when it returned a non-DISCONNECTED alias.
+>
+> Looking through the latest upstream code, I can't come up with another
+> obvious reproducer.
+>
+> But I also can't see the code making any particular effort to ensure
+> that dentries are removed from inode's alias lists at the same time
+> they're unhashed.
+>
+> E.g., trace up through the callers of d_drop/__d_drop and try to
+> convince yourselves that they all end up removing the dentry from the
+> alias list.
+>
+> Can you see any reason why the following would actually create a
+> problem?
+>
+> --b.
+>
+> commit fcfef6b7319c5d19ea5064317528ff994343b011
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon Feb 13 13:38:33 2012 -0500
+>
+>    exports: stop d_splice_alias creating directory aliases
+>
+>    A directory should never have more than one dentry pointing to it.
+>
+>    But d_splice_alias() does so in the case of a directory with an
+>    already-existing non-DISCONNECTED dentry.
+>
+>    Prior to the removal of dentry_unhash() from vfs_rmdir(), around v3.0,
+>    this could cause an nfsd deadlock like this:
+>
+>        - Somebody attempts to remove a non-empty directory.
+>        - The dentry_unhash() in vfs_rmdir() unhashes the dentry
+>          pointing to the non-empty directory.
+>        - ->rmdir() then fails with -ENOTEMPTY
+>        - Before the vfs_rmdir() caller reaches dput(), an nfsd process
+>          in rename looks up the directory by filehandle; at the end of
+>          that lookup, this dentry is found by d_alloc_anon(), and a
+>          reference is taken on it, preventing dput() from removing it.
+>        - A regular lookup of the directory calls d_splice_alias(),
+>          finds only an unhashed (not a DISCONNECTED) dentry, and
+>          insteads adds a new one, so the directory now has two
+>          dentries.
+>        - The nfsd process in rename, which was previously looking up
+>          the source directory of the rename, now looks up the target
+>          directory (which is the same), and gets the dentry newly
+>          created by the previous lookup.
+>        - The rename, seeing two different dentries, assumes this is a
+>          cross-directory rename and attempts to take the i_mutex on the
+>          directory twice.
+>
+>    I don't see as obvious a reproducer now, but I also don't see the
+>    existing code taking care to remove dentries from the alias list
+>    whenever they're unhashed.
+>
+>    It therefore seems safest to allow d_splice_alias to use any dentry it
+>    finds.
+>
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/fs/dcache.c b/fs/dcache.c
+> index f68e193..1fd2256 100644
+> --- a/fs/dcache.c
+> +++ b/fs/dcache.c
+> @@ -1602,9 +1602,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+>
+>        if (inode && S_ISDIR(inode->i_mode)) {
+>                spin_lock(&inode->i_lock);
+> -               new = __d_find_alias(inode, 1);
+by replacing this, the want_discon argument is no longer in use. care
+to remove it as well?
+
+-- 
+Thanks,
+Tao
+> +               new = __d_find_any_alias(inode);
+>                if (new) {
+> -                       BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
+>                        spin_unlock(&inode->i_lock);
+>                        security_d_instantiate(new, inode);
+>                        d_move(new, dentry);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
