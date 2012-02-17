@@ -1,75 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64694 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2576 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756940Ab2BHLDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 06:03:45 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 5/9] KEYS: Announce key type (un)registration
-To: steved@redhat.com, jmorris@namei.org
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 08 Feb 2012 11:03:38 +0000
-Message-ID: <20120208110338.4050.92429.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-References: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752010Ab2BQSFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Feb 2012 13:05:47 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/2] NFSv4.1 set highest_used_slotid to NFS4_NO_SLOT
+Date: Fri, 17 Feb 2012 13:05:23 -0500
+Message-Id: <1329501923-3999-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1329501923-3999-1-git-send-email-andros@netapp.com>
+References: <1329501923-3999-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Announce the (un)registration of a key type in the core key code rather than
-in the callers.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Mimi Zohar <zohar@us.ibm.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
+ fs/nfs/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
- net/dns_resolver/dns_key.c |    5 -----
- security/keys/key.c        |    3 +++
- 2 files changed, 3 insertions(+), 5 deletions(-)
-
-diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
-index c73bba3..14b2c3d 100644
---- a/net/dns_resolver/dns_key.c
-+++ b/net/dns_resolver/dns_key.c
-@@ -249,9 +249,6 @@ static int __init init_dns_resolver(void)
- 	struct key *keyring;
- 	int ret;
- 
--	printk(KERN_NOTICE "Registering the %s key type\n",
--	       key_type_dns_resolver.name);
--
- 	/* create an override credential set with a special thread keyring in
- 	 * which DNS requests are cached
- 	 *
-@@ -301,8 +298,6 @@ static void __exit exit_dns_resolver(void)
- 	key_revoke(dns_resolver_cache->thread_keyring);
- 	unregister_key_type(&key_type_dns_resolver);
- 	put_cred(dns_resolver_cache);
--	printk(KERN_NOTICE "Unregistered %s key type\n",
--	       key_type_dns_resolver.name);
- }
- 
- module_init(init_dns_resolver)
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 7ada801..9173253 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -960,6 +960,8 @@ int register_key_type(struct key_type *ktype)
- 
- 	/* store the type */
- 	list_add(&ktype->link, &key_types_list);
-+
-+	pr_notice("Key type %s registered\n", ktype->name);
- 	ret = 0;
- 
- out:
-@@ -982,6 +984,7 @@ void unregister_key_type(struct key_type *ktype)
- 	list_del_init(&ktype->link);
- 	downgrade_write(&key_types_sem);
- 	key_gc_keytype(ktype);
-+	pr_notice("Key type %s unregistered\n", ktype->name);
- 	up_read(&key_types_sem);
- }
- EXPORT_SYMBOL(unregister_key_type);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 4e37818..c1111a3 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -212,7 +212,7 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
+ static int nfs4_wait_on_slot_tbl(struct nfs4_slot_table *tbl)
+ {
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	if (tbl->highest_used_slotid != -1) {
++	if (tbl->highest_used_slotid != NFS4_NO_SLOT) {
+ 		INIT_COMPLETION(tbl->complete);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		return wait_for_completion_interruptible(&tbl->complete);
+-- 
+1.7.6.4
 
