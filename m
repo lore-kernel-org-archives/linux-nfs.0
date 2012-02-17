@@ -1,52 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:52476 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756766Ab2BYAcd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Feb 2012 19:32:33 -0500
-Received: by eekc4 with SMTP id c4so1172349eek.19
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Feb 2012 16:32:32 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:38845 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751537Ab2BQSlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Feb 2012 13:41:20 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1HIf5dc014546
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 10:41:05 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4.1 set highest_used_slotid to NFS4_NO_SLOT
+Date: Fri, 17 Feb 2012 18:40:58 +0000
+Message-ID: <1329504057.12048.0.camel@lade.trondhjem.org>
+References: <1329501923-3999-1-git-send-email-andros@netapp.com>
+	 <1329501923-3999-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1329501923-3999-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <CAHHaOuasyyQY7p+HCRwyYuJDT0mmmXUpUCivfp9D8nNRUQ9qDg@mail.gmail.com>
-References: <CAMgFM3CXWEXqo+Nr1tt6XS6XrhJVfW9a5Dx=iSACriCOxfXjkw@mail.gmail.com>
- <20120223115206.662b325c@redhat.com> <CAMgFM3DgWBSUsoSzcvn=2V+eFwj6wUdmb-XQjyyXGfCq9GD-=A@mail.gmail.com>
- <CAHHaOuasyyQY7p+HCRwyYuJDT0mmmXUpUCivfp9D8nNRUQ9qDg@mail.gmail.com>
-From: Louie <snikrep@gmail.com>
-Date: Fri, 24 Feb 2012 16:32:12 -0800
-Message-ID: <CAMgFM3BT104oF5p2FDMK7ofrnLESUSVAsWnsk4iweF5L61SLrQ@mail.gmail.com>
-Subject: Re: v4recovery client id lockup
-To: David Brodbeck <brodbd@uw.edu>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good idea, went ahead and implemented this, and everything appears to
-be working.
-
-Sure glad to solve this, was driving us absolutely nuts (it would
-freeze the NFS connections to our lab computers, which would crash
-everything).
-
-Many thanks!!
--Louie
-
-On Fri, Feb 24, 2012 at 2:29 PM, David Brodbeck <brodbd@uw.edu> wrote:
->
->
-> On Fri, Feb 24, 2012 at 1:08 PM, Louie <snikrep@gmail.com> wrote:
->>
->> I'm guessing there is no solution and our setup just isn't supported.
->> I'm leaning towards ditching the SSH tunnels and going with
->> unencrypted traffic for now, as it's not strictly necessary. But if
->> anybody has a tip on how to fix, would love to hear.
->>
->
-> You could always switch to a VPN solution of some kind, such as OpenVPN.
->  This would let your clients have different IPs while still preserving the
-> security advantages of an SSH tunnel.
->
-> --
-> David Brodbeck
-> System Administrator, Linguistics
-> University of Washington
->
+T24gRnJpLCAyMDEyLTAyLTE3IGF0IDEzOjA1IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMv
+bmZzL25mczRzdGF0ZS5jIHwgICAgMiArLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlv
+bnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0
+ZS5jIGIvZnMvbmZzL25mczRzdGF0ZS5jDQo+IGluZGV4IDRlMzc4MTguLmMxMTExYTMgMTAwNjQ0
+DQo+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMN
+Cj4gQEAgLTIxMiw3ICsyMTIsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2VuZF9kcmFpbl9zZXNzaW9u
+KHN0cnVjdCBuZnNfY2xpZW50ICpjbHApDQo+ICBzdGF0aWMgaW50IG5mczRfd2FpdF9vbl9zbG90
+X3RibChzdHJ1Y3QgbmZzNF9zbG90X3RhYmxlICp0YmwpDQo+ICB7DQo+ICAJc3Bpbl9sb2NrKCZ0
+YmwtPnNsb3RfdGJsX2xvY2spOw0KPiAtCWlmICh0YmwtPmhpZ2hlc3RfdXNlZF9zbG90aWQgIT0g
+LTEpIHsNCj4gKwlpZiAodGJsLT5oaWdoZXN0X3VzZWRfc2xvdGlkICE9IE5GUzRfTk9fU0xPVCkg
+ew0KPiAgCQlJTklUX0NPTVBMRVRJT04odGJsLT5jb21wbGV0ZSk7DQo+ICAJCXNwaW5fdW5sb2Nr
+KCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KPiAgCQlyZXR1cm4gd2FpdF9mb3JfY29tcGxldGlvbl9p
+bnRlcnJ1cHRpYmxlKCZ0YmwtPmNvbXBsZXRlKTsNCg0KR29vZCBjYXRjaCEgQXBwbGllZC4uLg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
+dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
