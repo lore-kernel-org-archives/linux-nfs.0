@@ -1,75 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51014 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:21799 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752422Ab2BCVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 16:10:01 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/6] locks: introduce new FL_DELEG lock flag.
-Date: Fri,  3 Feb 2012 16:09:52 -0500
-Message-Id: <1328303397-3872-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120203205818.GE2999@fieldses.org>
-References: <20120203205818.GE2999@fieldses.org>
+	id S1751116Ab2BQSFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Feb 2012 13:05:46 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/2]  NFSv4.1: Fix a NFSv4.1 session initialisation regression
+Date: Fri, 17 Feb 2012 13:05:21 -0500
+Message-Id: <1329501923-3999-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
-change behavior.
+Tronds patch to fix the regression with one change - the slot table 
+highest_used_slotid needs to be initialized in nfs4_alloc_session so that
+nfs41_init_clientid doesn't wait forever in nfs4_wait_on_slot_tbl  (called
+by nfs4_begin_drain_session).
 
-Next we'll modify break_lease to treat FL_DELEG leases differently, to
-account for the fact that NFSv4 delegations should be broken in more
-situations than Windows oplocks.
+Also a patch to use NFS4_NO_SLOT in nfs4_wait_on_slot_tbl.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c          |    2 +-
- fs/nfsd/nfs4state.c |    2 +-
- include/linux/fs.h  |    1 +
- 3 files changed, 3 insertions(+), 2 deletions(-)
+Tested CB_RECALL_SLOT and session reset using pynfs. Passed Cthon tests
+against Linux NFSv4.1 server.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 637694b..ea07a98 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -131,7 +131,7 @@
- 
- #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
- #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
--#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
-+#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
- 
- static bool lease_breaking(struct file_lock *fl)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e8c98f0..ad82255 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2804,7 +2804,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
- 		return NULL;
- 	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
--	fl->fl_flags = FL_LEASE;
-+	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
- 	fl->fl_end = OFFSET_MAX;
- 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 386da09..234b086 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1082,6 +1082,7 @@ static inline int file_check_writeable(struct file *filp)
- 
- #define FL_POSIX	1
- #define FL_FLOCK	2
-+#define FL_DELEG	4	/* NFSv4 delegation */
- #define FL_ACCESS	8	/* not trying to lock, just looking */
- #define FL_EXISTS	16	/* when unlocking, test for existence */
- #define FL_LEASE	32	/* lease held on this file */
+Compiled against Trond's 3.3-rc2 nfs-for-next tree.
+
+Andy Adamson (1):
+  NFSv4.1 set highest_used_slotid to NFS4_NO_SLOT
+
+Trond Myklebust (1):
+  NFSv4.1: Fix a NFSv4.1 session initialisation regression
+
+ fs/nfs/nfs4proc.c  |  111 ++++++++++++++++++++-------------------------------
+ fs/nfs/nfs4state.c |    2 +-
+ 2 files changed, 45 insertions(+), 68 deletions(-)
+
 -- 
-1.7.5.4
+1.7.6.4
 
