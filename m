@@ -1,41 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.81]:33800 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753584Ab2BPRaZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 12:30:25 -0500
-Date: Thu, 16 Feb 2012 12:30:22 -0500
-From: Jim Rees <rees@umich.edu>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSv4: Send implementation id with exchange_id
-Message-ID: <20120216173022.GA29158@umich.edu>
-References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:55575 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751793Ab2BRIDC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2012 03:03:02 -0500
+Received: by werb13 with SMTP id b13so2268720wer.19
+        for <linux-nfs@vger.kernel.org>; Sat, 18 Feb 2012 00:03:00 -0800 (PST)
+Message-ID: <4F3F5B30.3000501@tonian.com>
+Date: Sat, 18 Feb 2012 10:02:56 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1329409026-20466-1-git-send-email-dros@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Benny Halevy <benny@tonian.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd41: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT,
+ why_no_deleg
+References: <4F3D4F1F.6080502@tonian.com> <1329418637-23925-1-git-send-email-bhalevy@tonian.com> <20120217221411.GA3627@fieldses.org>
+In-Reply-To: <20120217221411.GA3627@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Weston Andros Adamson wrote:
+On 2012-02-18 00:14, J. Bruce Fields wrote:
+> On Thu, Feb 16, 2012 at 08:57:17PM +0200, Benny Halevy wrote:
+>> Respect client request for not getting a delegation in NFSv4.1
+>> Appropriately return delegation "type" NFS4_OPEN_DELEGATE_NONE_EXT
+>> and WND4_NOT_WANTED reason.
+> 
+> These all look fine, just two nits:
+> 
+>> @@ -2903,11 +2903,32 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
+>>  	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
+>>  		STATEID_VAL(&dp->dl_stid.sc_stateid));
+>>  out:
+>> -	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
+>> -			&& flag == NFS4_OPEN_DELEGATE_NONE
+>> -			&& open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
+>> -		dprintk("NFSD: WARNING: refusing delegation reclaim\n");
+>>  	open->op_delegate_type = flag;
+>> +	if (flag == NFS4_OPEN_DELEGATE_NONE) {
+>> +		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+>> +		    open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
+>> +			dprintk("NFSD: WARNING: refusing delegation reclaim\n");
+>> +
+>> +		if (open->op_deleg_want) {
+>> +			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
+>> +			if (status == -EAGAIN)
+>> +				open->op_why_no_deleg = WND4_CONTENTION;
+>> +			else {
+>> +				open->op_why_no_deleg = WND4_RESOURCE;
+>> +				switch (open->op_deleg_want) {
+>> +				case NFS4_SHARE_WANT_READ_DELEG:
+>> +				case NFS4_SHARE_WANT_WRITE_DELEG:
+>> +				case NFS4_SHARE_WANT_ANY_DELEG:
+>> +					break;
+>> +				case NFS4_SHARE_WANT_CANCEL:
+>> +					open->op_why_no_deleg = WND4_CANCELLED;
+>> +					break;
+>> +				case NFS4_SHARE_WANT_NO_DELEG:
+>> +					BUG();	/* not supposed to get here */
+>> +				}
+>> +			}
+>> +		}
+>> +	}
+> 
+> This looks like a reasonably well-encapsulated bit of code--could you
+> move it into a helper function?
+> 
+>>  out:
+>> +	/* 4.1 client trying to upgrade/downgrade delegation? */
+>> +	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
+>> +	    open->op_deleg_want) {
+>> +		if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
+>> +		    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
+>> +			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
+>> +			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
+>> +		} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
+>> +			   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
+>> +			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
+>> +			open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
+>> +		}
+>> +		/* Otherwise the client must be confused wanting a delegation
+>> +		 * it already has, therefore we don't return
+>> +		 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
+>> +		 */
+>> +	}
+> 
+> Ditto for this.
+> 
+> I'll go ahead and apply the previous two patches pending some regression
+> tests.
 
-  Send the nfs implementation id in EXCHANGE_ID requests unless the module
-  parameter nfs.send_implementation_id is 0.
-  
-  This adds a CONFIG variable for the nii_domain that defaults to "kernel.org".
-  
-  Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Thanks!
+I'm sending two additional patches that refactor these two helpers and add
+some documentation to the commit message.
 
-  @@ -271,7 +273,12 @@ static int nfs4_stat_to_errno(int);
-   				1 /* flags */ + \
-   				1 /* spa_how */ + \
-   				0 /* SP4_NONE (for now) */ + \
-  -				1 /* zero implemetation id array */)
-  +				1 /* implemetation id array of size 1 */ + \
+I think it might be helpful to keep them separated but let me know otherwise
+and I'll send a squashed patch instead.
 
-implemetation -> implementation
-Might as well fix this typo while you're at it.
+Benny
 
-General comment... If this is going to be configurable, I'd rather make it a
-sysctl, and be able to set the id to whatever I want at run time.  But
-that's because I like to be able to break things.  I suspect Trond will
-disagree.
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
