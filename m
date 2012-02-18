@@ -1,77 +1,220 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:32558 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752306Ab2BPPGw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 10:06:52 -0500
-Subject: [RFC PATCH] SUNRPC: connect local transports synchronously
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 16 Feb 2012 19:06:25 +0400
-Message-ID: <20120216150507.19081.28659.stgit@localhost6.localdomain6>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:45687 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752260Ab2BRPMj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Feb 2012 10:12:39 -0500
+Message-ID: <4F3FBFE5.4020703@ogc.us>
+Date: Sat, 18 Feb 2012 09:12:37 -0600
+From: Tom Tucker <tom@ogc.us>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Marc Aurele La France <tsi@ualberta.ca>
+CC: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
+Subject: Re: RFC: NFS/RDMA, IPoIB MTU and [rw]size
+References: <alpine.WNT.2.00.1201121214340.2732@cluij.aict.ualberta.ca> <4F3BF6D3.8060301@opengridcomputing.com> <alpine.WNT.2.00.1202151416300.1136@cluij.aict.ualberta.ca>
+In-Reply-To: <alpine.WNT.2.00.1202151416300.1136@cluij.aict.ualberta.ca>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Local tranports uses UNIX sockets and connecting of these sockets is done in
-context of file system namespace (i.e. task file system root).
-Currenly, all sockets connect operations are performed by rpciod work queue,
-which actually means, that any service will be registered in the same rpcbind
-instance regardless to process file system root.
-This is not containers, which usually have it's own nested root. There are 2
-approaches, how to solve the problem. First one is to store proper root in
-tranport and switch to it in rpciod workqueue function for connect operations.
-But this looks ugly. The second one is to connect to unix sockets
-synchronously. This aptch implements the last one.
+On 2/15/12 3:32 PM, Marc Aurele La France wrote:
+> On Wed, 15 Feb 2012, Tom Tucker wrote:
+>
+>> This looks correct to me.
+>
+> ... except that it doesn't work, and neither does your change at 
+> http://git.openfabrics.org/git?p=~boomer/ofed_kernel/.git;a=commitdiff;h=217d68a9e4f8cb9c735e1098646f41fb36744ce9
+>
+>> I assume these are v3 mounts?
+>
+> Yes.
+>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Ok, "good", because I have a patch that I had to make a change to get v4 
+to work.
 
----
- net/sunrpc/xprtsock.c |   22 +++++++++++++++++++++-
- 1 files changed, 21 insertions(+), 1 deletions(-)
+>> BTW, the when you say you're running NFS/TCP are you running TCP over 
+>> IPoIB?
+>
+I have experienced issues with takeover/giveback between
+> Also yes.
+> /
+> In any case, I've switched back to NFS/TCP/IPoIB with a 2044 MTU (had 
+> to reboot everything to get that done).  So NFS/RDMA remains highly 
+> experimental in my eyes.  And it will remain so until the Linux kernel 
+> community and the OpenFabrics community get their co-operation issues 
+> resolved, if ever.
+>
+> Marc.
+>
+>> On 1/12/12 1:17 PM, Marc Aurele La France wrote:
+>>> Greetings.
+>
+>>> I am currently in the process of moving a cluster I administer from
+>>> NFS/TCP to NFS/RDMA, and am running into a number of issues I'd like 
+>>> some
+>>> assistance with.  Googling these doesn't help.
+>
+>>> For background on what caused me to move to NFS/TCP in the first place,
+>>> please see the thread that starts at http://lkml.org/lkml/2010/8/23/204
+>
+>>> The main reason I'm moving away from NFS/TCP is that something 
+>>> happened in
+>>> the later kernels that reduces its resilience.  Specifically, the 
+>>> client
+>>> now permanently loses contact with the server whenever the latter 
+>>> fails to
+>>> allocate an RPC sk_buff due to memory fragmentation.  Restarting the
+>>> server's nfsd's fixes this problem, at least temporarily.
+>
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 55472c4..365cd6d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2177,6 +2177,26 @@ out:
- }
- 
- /**
-+ * xs_local_connect - connect a local (unix) socket to a remote endpoint
-+ * @task: address of RPC task that manages state of connect request
-+ *
-+ * We have to connect unix sockets synchronously. Otherwise this connection
-+ * will be done in file system context of rpciod queue, which is not suitable
-+ * for processes with other root (changed root is a usual part of environment
-+ * for containers).
-+ */
-+
-+static void xs_local_connect(struct rpc_task *task)
-+{
-+	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-+	struct work_struct *work = &transport->connect_worker.work;
-+
-+	dprintk("RPC:       xs_local_connect xprt %p\n", xprt);
-+	work->func(work);
-+}
-+
-+/**
-  * xs_connect - connect a socket to a remote endpoint
-  * @task: address of RPC task that manages state of connect request
-  *
-@@ -2414,7 +2434,7 @@ static struct rpc_xprt_ops xs_local_ops = {
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.rpcbind		= xs_local_rpcbind,
- 	.set_port		= xs_local_set_port,
--	.connect		= xs_connect,
-+	.connect		= xs_local_connect,
- 	.buf_alloc		= rpc_malloc,
- 	.buf_free		= rpc_free,
- 	.send_request		= xs_local_send_request,
+I have seen this behavior 'forever'. Perhaps you weren't getting the 
+memory exhaustion on the older kernels?
+
+
+>>> I haven't nailed down when this started happening (somewhere since
+>>> 2.6.38), nor am I inclined to do so.  This new experience (for me) with
+>>> NFS/TCP has conclusively shown me that it is much more responsive with
+>>> smaller IPoIB MTU's.  Thus I will instead be reducing that MTU from its
+>>> connected mode maximum of 65520, perhaps all the way down to datagram
+>>> mode's 2044, to completely factor out memory fragmentation effects.  
+>>> More
+>>> on that below.
+>
+
+Perhaps you are really comparing UD to CM?
+
+>>> In moving to NFS/RDMA and reducing the IPoIB MTU, I have seen the
+>>> following behaviours.
+>
+>>> -- 
+>
+>>> 1) Random client-side BUG()'outs.  In fact, these never finish 
+>>> producing a
+>>> complete stack trace.  I've tracked this down to duplicate replies 
+>>> being
+>>> encountered by rpcrdma_reply_handler() in 
+>>> net/sunrpc/xprtrdma/rpc_rdma.c.
+>>> Frankly I don't see why rpcrdma_reply_handler() should BUG() out in 
+>>> that
+>>> case given TCP's behaviour in similar situations, documented 
+>>> requirements
+>>> for the use of BUG() & friends in the first place, and the fact that
+>>> rpcrdma_reply_handler() essentially "ignores" replies for which it 
+>>> cannot
+>>> find a corresponding request.
+>
+>>> For the past few days now, I've been running the following on some 
+>>> of my
+>>> nodes with no ill effects.  And yes, I do see the log message this
+>>> produces.  This changes rpcrdma_reply_handler() to treat duplicate 
+>>> replies
+>>> in much the same way it treats replies for which it cannot find a 
+>>> request.
+>
+>>> diff -adNpru linux-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c 
+>>> devel-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c
+>>> --- linux-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c    2011-12-21 
+>>> 14:00:46.000000000 -0700
+>>> +++ devel-3.1.6/net/sunrpc/xprtrdma/rpc_rdma.c    2011-12-29 
+>>> 07:25:59.000000000 -0700
+>>> @@ -776,7 +776,13 @@ repost:
+>>>          "                   RPC request 0x%p xid 0x%08x\n",
+>>>              __func__, rep, req, rqst, headerp->rm_xid);
+>>>
+>>> -    BUG_ON(!req || req->rl_reply);
+>>> +    /* req cannot be NULL here */
+>>> +    if (req->rl_reply) {
+>>> +        spin_unlock(&xprt->transport_lock);
+>>> +        printk(KERN_NOTICE "RPC: %s: duplicate replies to request 
+>>> 0x%p: "
+>>> +            "0x%p and 0x%p\n", __func__, req, req->rl_reply, rep);
+>>> +        goto repost;
+>>> +    }
+>>>
+>>>      /* from here on, the reply is no longer an orphan */
+>>>      req->rl_reply = rep;
+>
+>>> This would also apply, modulo patch fuzz, all the way back to 2.6.24.
+>
+>>> -- 
+>
+>>> 2) Still client-side, I'm seeing a lot of these sequences ...
+>
+>>> rpcrdma: connection to 10.0.6.1:20049 on mthca0, memreg 6 slots 32 
+>>> ird 4
+>>> rpcrdma: connection to 10.0.6.1:20049 closed (-103)
+>
+>>> 103 is ECONNABORTED.  memreg 6 is RPCRDMA_ALLPHYSICAL, so I'm 
+>>> assuming my
+>>> Mellanox adapters don't support the default RPCRDMA_FRMR (memreg 
+>>> 5).  I've
+>>> traced these aborted connections to IB_CM_DREP_RECEIVED events being
+>>> received by cma_ib_handler() in drivers/infiniband/core/cma.c, but 
+>>> can go
+>>> no further given my limited understanding of what this code is 
+>>> supposed to
+>>> do.  I am guessing though, that these would presumably disappear when
+>>> switching back to datagram mode (cm == connected mode).  These messages
+>>> don't appear to affect anything (the client simply reconnects and I've
+>>> seen no data corruption), but it would still be nice to know what's 
+>>> going
+>>> on here.
+>
+
+You could try turning on debug as such "echo 511 > 
+/proc/sys/sunrpc/rpc_debug" and you will get lots of additional 
+information. Note, however, that those messages above are "normal". The 
+first one will occur when the mount happens, and the second when the 
+connection is closed; which occurs after 5-6 minutes of inactivity on 
+the mount.
+
+
+>>> -- 
+>
+>>> 3) isn't related to NFS/RDMA per se, but to my attempts at reducing the
+>>> IPoIB MTU.  Whenever I do so on the fly across the cluster, some but 
+>>> not
+>>> all, IPoIB traffic simply times out.  Even, in some cases, TCP 
+>>> connections
+>>> accept()'ed after the MTU reduction.  Oddly, neither NFS/TCP nor 
+>>> NFS/RDMA
+>>> seem affected, but other things (MPI apps, torque, etc.) are, whether
+>>> started before or after the change.  So, something, somewhere, 
+>>> remembers
+>>> the previous (larger) MTU (opensm?).  It seems that the only way to 
+>>> clear
+>>> this "memory" is to reboot the entire cluster, something I'd rather 
+>>> avoid
+>>> if possible.
+>
+NFSRDMA doesn't run over IPoIB, so it doesn't care what you've set the 
+IPoIB MTU to be.
+
+>>> -- 
+>
+>>> 4) Lastly, I would like to ask for a better understanding of the
+>>> relationship, if any, between NFS/RDMA and the IPoIB MTU, and between
+>>> NFS/RDMA and [rw]size NFS mount parameters.  What effect do these 
+>>> have on
+>>> NFS/RDMA?  For [rw]size, I have found that specifying less than a 
+>>> page (4K) results in data corruption.
+>
+
+None.
+
+>>> -- 
+>
+>>> Please CC me on any comments/flames about any of the above as I am not
+>>> subscribed to this list.
+>
+> +----------------------------------+----------------------------------+
+> |  Marc Aurele La France           |  work:   1-780-492-9310          |
+> |  Academic Information and        |  fax:    1-780-492-1729          |
+> |    Communications Technologies   |  email:  tsi@ualberta.ca         |
+> |  352 General Services Building   +----------------------------------+
+> |  University of Alberta           |                                  |
+> |  Edmonton, Alberta               |    Standard disclaimers apply    |
+> |  T6G 2H1                         |                                  |
+> |  CANADA                          |                                  |
+> +----------------------------------+----------------------------------+
 
