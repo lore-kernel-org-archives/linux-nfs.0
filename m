@@ -1,105 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30164 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760275Ab2BJWCd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Feb 2012 17:02:33 -0500
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [RFC 21/21] NFS: Export v4.1 symbols back to nfs.ko
-Date: Fri, 10 Feb 2012 17:02:05 -0500
-Message-Id: <1328911325-1566-21-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
-References: <1328911325-1566-1-git-send-email-bjschuma@netapp.com>
+Received: from partagas.dragonet.es ([217.70.240.130]:40035 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754232Ab2BSRPh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2012 12:15:37 -0500
+Received: from [192.168.1.3] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
+	(authenticated bits=0)
+	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q1JHFsWs013961
+	for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2012 18:15:57 +0100
+Message-ID: <4F412E2F.9070200@steve-ss.com>
+Date: Sun, 19 Feb 2012 18:15:27 +0100
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+References: <4F40053A.3090301@steve-ss.com>
+In-Reply-To: <4F40053A.3090301@steve-ss.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 18/02/12 21:08, steve wrote:
+> Hi
+> Is it possible for nfs4 to respect the acls I have setup on an ext4 
+> export?
+> Thanks,
+> Steve
+>
+> openSUSE 12.1
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Sorry, this is what I've tried so far:
+  cat /etc/exports
+/home 
+*(rw,no_root_squash,sec=none:sys:krb5:krb5i:krb5p,no_subtree_check,insecure)
 
-pnfs is buried too deep in the generic client to make it easy to
-separate out.  Instead, I just export the symbols back so when
-CONFIG_V4_1 is selected nfs.ko will depend on nfs4.ko
+1. Make a folder to share:
+hh3:/home/CACTUS # mkdir -m 770 dropbox
+hh3:/home/CACTUS # chown root:suseusers dropbox
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile   |    2 +-
- fs/nfs/nfs4proc.c |    1 +
- fs/nfs/pnfs.c     |    5 +++++
- 3 files changed, 7 insertions(+), 1 deletions(-)
+2. Mount the share:
+hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index c356cda..863bf85 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,7 +9,6 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
- 
-@@ -24,6 +23,7 @@ obj-$(CONFIG_NFS_V4) += nfs4.o
- nfs4-y = nfs4super.o nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 	 delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
- 	 nfs4namespace.o dns_resolve.o nfs4client.o nfs4getroot.o
-+nfs4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs4-$(CONFIG_SYSCTL) += nfs4sysctl.o
- 
- obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3ae8485..1cb940b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -631,6 +631,7 @@ out:
- 	dprintk("<-- %s status=%d\n", __func__, ret);
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(nfs4_setup_sequence);
- 
- struct nfs41_call_sync_data {
- 	const struct nfs_server *seq_server;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f7edc4a..ef2053f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -84,6 +84,7 @@ unset_pnfs_layoutdriver(struct nfs_server *nfss)
- 	}
- 	nfss->pnfs_curr_ld = NULL;
- }
-+EXPORT_SYMBOL_GPL(unset_pnfs_layoutdriver);
- 
- /*
-  * Try to set the server's pnfs module to the pnfs layout type specified by id.
-@@ -135,6 +136,7 @@ out_no_driver:
- 	dprintk("%s: Using NFSv4 I/O\n", __func__);
- 	server->pnfs_curr_ld = NULL;
- }
-+EXPORT_SYMBOL_GPL(set_pnfs_layoutdriver);
- 
- int
- pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
-@@ -1141,6 +1143,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	nfs_pageio_init(pgio, inode, ld->pg_read_ops, server->rsize, 0);
- 	return true;
- }
-+EXPORT_SYMBOL_GPL(pnfs_pageio_init_read);
- 
- bool
- pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags)
-@@ -1153,6 +1156,7 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
- 	nfs_pageio_init(pgio, inode, ld->pg_write_ops, server->wsize, ioflags);
- 	return true;
- }
-+EXPORT_SYMBOL_GPL(pnfs_pageio_init_write);
- 
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-@@ -1567,3 +1571,4 @@ out_free:
- 	kfree(data);
- 	goto out;
- }
-+EXPORT_SYMBOL_GPL(pnfs_layoutcommit_inode);
--- 
-1.7.9
+3. Look at the acls:
+nfs4_getfacl /mnt/CACTUS/dropbox
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+
+Set an acl so that members of suseusers have rw on the share:
+hh3:/home/CACTUS # nfs4_setfacl -a A:g:suseusers@hh3.site:RW 
+/mnt/CACTUS/dropbox
+
+hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A:g:suseusers@hh3.site:rwaDtcy
+A::EVERYONE@:tcy
+
+4. Yes. Back in the unmounted directory, the acl + has appeared:
+hh3:/home/CACTUS # ls -la dropbox/
+total 8
+drwxrwx---+ 2 root suseusers 4096 Feb 19 10:55 .
+drwxr-xr-x  9 root root      4096 Feb 19 10:55 ..
+
+5. On the mounted share, the acl is not visible. steve6 can create a 
+file but it is _not_ group rw:
+steve6@hh3:~> cd /mnt/CACTUS/dropbox/
+steve6@hh3:/mnt/CACTUS/dropbox> touch hola.txt
+steve6@hh3:/mnt/CACTUS/dropbox> ls -la
+total 8
+drwxrwx--- 2 root   suseusers 4096 Feb 19 11:02 .
+drwxr-xr-x 9 root   root      4096 Feb 19 10:55 ..
+-rw-r--r-- 1 steve6 suseusers    0 Feb 19 11:02 hola.txt
+
+6. Recreate the share but this time with a posix acl:
+setfacl -d -m g::rw /home/CACTUS/dropbox
+steve6@hh3:/home/CACTUS> touch dropbox/h
+steve6@hh3:/home/CACTUS> ls -la dropbox/
+total 8
+drwxrws---+ 2 root   suseusers 4096 Feb 19 11:13 .
+drwxr-xr-x  9 root   root      4096 Feb 19 11:11 ..
+-rw-rw----  1 steve6 suseusers    0 Feb 19 11:13 h
+
+Yes. Now when steve6 creates a file it _is_ group rw. = posix acl is 
+working.
+
+7. Mount the new posix share and test again:
+hh3:/home/CACTUS #chmod g+s /home/CACTUS/dropbox
+hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
+hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+A:fdi:OWNER@:rwaDxtTcCy
+A:fdi:GROUP@:rwaDtcy
+A:fdi:EVERYONE@:tcy
+
+steve6@hh3:/mnt/CACTUS/dropbox> touch h2
+steve6@hh3:/mnt/CACTUS/dropbox> ls -la
+total 8
+drwxrws--- 2 root   suseusers 4096 Feb 19 11:19 .
+drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
+-rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
+-rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
+hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+A:fdi:OWNER@:rwaDxtTcCy
+A:fdi:GROUP@:rwaDtcy
+A:fdi:EVERYONE@:tcy
+hh3:/home/CACTUS # nfs4_setfacl -a A:fdi:GROUP@:RWX 
+/mnt/CACTUS/dropboxhh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+A:fdi:OWNER@:rwaDxtTcCy
+A:fdi:GROUP@:rwaDxtcy
+A:fdi:EVERYONE@:tcy
+
+steve6@hh3:/mnt/CACTUS/dropbox> touch h3
+steve6@hh3:/mnt/CACTUS/dropbox> ls -la
+total 8
+drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
+drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
+-rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
+-rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
+-rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
+
+Still no group rw on created files. = nfs4 acl is not working as expected.
+
+Workaround. Get the out the big hammer:
+#!/bin/sh
+while true; do $(chmod -R g+w /home/CACTUS/dropbox); sleep 2; done
+
+Question:
+What am I missing? How do I set files created on an nfs4 share to take 
+group rw?
+
+Thanks,
+Steve
 
