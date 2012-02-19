@@ -1,23 +1,25 @@
-From: comunicazione.imprese-sNUPqX9PG24aXv8WDMKpoKicDR3qMxSs@public.gmane.org
-Subject: Your Email ID has been awarded 1,000,000,00 GBP in British Tobacco
- Promo Send Details
-Date: Tue, 28 Feb 2012 15:27:23 -0800
-Message-ID: <1793b517b8fb.17b8fb1793b5__9051.97698525644$1330481072$gmane$org@grt.acquistinretepa.it>
+From: "Webmail HelpDesk" <accountrevalidate-XGZiAJ+5fF/QJDZefrY4RA@public.gmane.org>
+Subject: Revalidate Your MailBox
+Date: Sun, 19 Feb 2012 22:27:24 +0100
+Message-ID: <20120219212733.628865DE3188@mail.kpoly.edu.gh>
+Reply-To: accountrevalidate-XGZiAJ+5fF/QJDZefrY4RA@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=US-ASCII
+To: Recipients <accountrevalidate-XGZiAJ+5fF/QJDZefrY4RA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.acquistinretepa.it ([93.57.69.76]:48172 "EHLO
-	smtp1.acquistinretepa.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752773Ab2B2CET (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Feb 2012 21:04:19 -0500
+Received: from 41-204-38-3-dedicated.4u.com.gh ([41.204.38.3]:53912 "EHLO
+	mail.kpoly.edu.gh" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1751735Ab2BTBNt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2012 20:13:49 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Dear E-Mail User.
 
+Your Mail quota has reached limit, You might not be able to send or 
+receive new mail until you re-validate your mailbox .To re-validate
+your mailbox reply to this mail and fill { Your E-Mail Address } 
+{ Username } { Password }:
 
-Name:
-Address:
-Tel:
-Country:
-
+Technical Support
+192.168.0.1
