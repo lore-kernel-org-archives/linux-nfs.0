@@ -1,78 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:52660 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756054Ab2BWPde (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 10:33:34 -0500
-Message-ID: <4F465C3A.9080802@steve-ss.com>
-Date: Thu, 23 Feb 2012 16:33:14 +0100
-From: steve <steve@steve-ss.com>
+Received: from cantor2.suse.de ([195.135.220.15]:41048 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754287Ab2BTWc6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Feb 2012 17:32:58 -0500
+Date: Mon, 20 Feb 2012 23:32:54 +0100
+From: Jan Kara <jack@suse.cz>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Eric Sandeen <sandeen@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] nfs: Push file_update_time() into
+ nfs_vm_page_mkwrite()
+Message-ID: <20120220223254.GC32708@quack.suse.cz>
+References: <1329399979-3647-1-git-send-email-jack@suse.cz>
+ <1329399979-3647-11-git-send-email-jack@suse.cz>
+ <1329400219.2924.1.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-References: <4F40053A.3090301@steve-ss.com> <4F412E2F.9070200@steve-ss.com> <4F45E78E.8050501@steve-ss.com> <20120223063913.5736a5b1@tlielax.poochiereds.net> <4F4628B8.90401@steve-ss.com> <20120223144053.GA25010@fieldses.org>
-In-Reply-To: <20120223144053.GA25010@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1329400219.2924.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/23/2012 03:40 PM, J. Bruce Fields wrote:
-> On Thu, Feb 23, 2012 at 12:53:28PM +0100, steve wrote:
->> Hi Jeff
->> Thanks for the reply. I'm trying to make the files created in a
->> share take on group rw.
->>
->> The trouble is that I've already tried setting the acl's via
->> nfs4_setfacl on the mounted share too (please see details below).
->> The acl + appears on the unmounted share and behaves as expected
->> even when it is not mounted. The mounted share however ignores the
->> acl I've set. I've tried remounting but still no acl is effective.
->> My workaround is to scan the folder and change the files to group rw
->> every few seconds.
-> Without looking at your details, apologies:
->
-> First, if you want an ace on a directory to be inherited by files and
-> directories created under that directory, make sure you're setting the f
-> and d flags (see nfs4_getfacl -H).
->
-> Second, there's a umask problem: posix acl inheritance overrides the
-> umask, but nfs4 acl inheritance isn't doing that.  (The client combines
-> the create mode and the umask and sets both together, there's no way for
-> the server to even tell what the umask is.)
->
-> (We should do something about this if we can: maybe modifying the client
-> to scan the directory acl for any inheritable aces and leaving out the
-> umask if they're found?  It has the obvious race, but I seem to recall
-> we live with that in the v3 case.  Or maybe there's something more
-> clever, but this comes up every now and then and I can't remember a
-> better solution.)
->
-> --b.
-Hi again
-I have this:
-nfs4_getfacl /mnt/CACTUS/dropbox/
+On Thu 16-02-12 13:50:19, Myklebust, Trond wrote:
+> On Thu, 2012-02-16 at 14:46 +0100, Jan Kara wrote:
+> > CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > CC: linux-nfs@vger.kernel.org
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/nfs/file.c |    3 +++
+> >  1 files changed, 3 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > index c43a452..2407922 100644
+> > --- a/fs/nfs/file.c
+> > +++ b/fs/nfs/file.c
+> > @@ -525,6 +525,9 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+> >  	/* make sure the cache has finished storing the page */
+> >  	nfs_fscache_wait_on_page_write(NFS_I(dentry->d_inode), page);
+> >  
+> > +	/* Update file times before taking page lock */
+> > +	file_update_time(filp);
+> > +
+> >  	lock_page(page);
+> >  	mapping = page->mapping;
+> >  	if (mapping != dentry->d_inode->i_mapping)
+> 
+> Hi Jan,
+> 
+> file_update_time() is a no-op in NFS, since we set S_NOATIME|S_NOCMTIME
+> on all inodes.
+  Thanks. I've discarded the patch.
 
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:tcy
-A:fdi:OWNER@:rwaDxtTcCy
-A:fdi:GROUP@:rwaDtcy
-A:fdi:EVERYONE@:tcy
-
-but files are created:
-steve6@hh3:/mnt/CACTUS/dropbox>  touch h3
-   ls -la
-total 8
-drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
-drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
--rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
--rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
-
-where h is a file created on the unmounted share and h3 on the nfs4 
-mounted share. IOW the file created does not have group rw. Ahhgghh!!
-
-Can anyone see anything wrong?
-
-Thanks so much for your patience.
-Steve.
-
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
