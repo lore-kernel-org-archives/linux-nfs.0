@@ -1,31 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from che.mayfirst.org ([209.234.253.108]:47267 "EHLO
-	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752021Ab2BWF6f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 00:58:35 -0500
-From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out Please check user daemon is running
-In-Reply-To: <20111209191057.GA10089@fieldses.org>
-References: <8762hrozdl.fsf@fifthhorseman.net> <20111208174501.GA30088@fieldses.org> <4EE253EC.2040609@fifthhorseman.net> <20111209191057.GA10089@fieldses.org>
-Date: Thu, 23 Feb 2012 00:58:46 -0500
-Message-ID: <87booq3xbd.fsf@pip.fifthhorseman.net>
+Received: from mx2.netapp.com ([216.240.18.37]:26465 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751952Ab2BTTJN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Feb 2012 14:09:13 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: Jim Rees <rees@umich.edu>, Chris Rankin <rankincj@yahoo.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [OOPS] NFS dereferenced NULL pointer with 3.2.6 kernel.
+Date: Mon, 20 Feb 2012 19:09:04 +0000
+Message-ID: <1329764945.5151.13.camel@lade.trondhjem.org>
+References: <4F4194C4.40104@yahoo.com>
+	  <1329760844.2834.1.camel@lade.trondhjem.org>
+	  <20120220182709.GA22899@umich.edu>
+	 <1329762949.5151.8.camel@lade.trondhjem.org>
+	 <4F429450.5080502@candelatech.com>
+In-Reply-To: <4F429450.5080502@candelatech.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 9 Dec 2011 14:10:57 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Fri, Dec 09, 2011 at 01:31:08PM -0500, Daniel Kahn Gillmor wrote:
-> > Thanks, that's useful.  Do the clients need to run cachefilesd as well
-> > to take advantage of delegation?
-> 
-> No.
-
-Is there a way that i can check to be sure that delegations are actually
-happening?  What kind of performance improvement would you expect to see
-with delegatons happening on, say, a standard desktop user's homedir
-workload?
-
-         --dkg
+T24gTW9uLCAyMDEyLTAyLTIwIGF0IDEwOjQzIC0wODAwLCBCZW4gR3JlZWFyIHdyb3RlOg0KPiBP
+biAwMi8yMC8yMDEyIDEwOjM1IEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIE1v
+biwgMjAxMi0wMi0yMCBhdCAxMzoyNyAtMDUwMCwgSmltIFJlZXMgd3JvdGU6DQo+ID4+IE15a2xl
+YnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4+DQo+ID4+ICAgIEl0J3MgYSBrbm93biBidWcuIFRoZXJl
+IGlzIGEgZml4IGF0DQo+ID4+DQo+ID4+ICAgIGh0dHA6Ly9naXQubGludXgtbmZzLm9yZy8/cD10
+cm9uZG15L25mcy0yLjYuZ2l0O2E9Y29tbWl0O2g9MzMxODE4ZjFjNDY4YTI0ZTU4MWFlZGNiZTUy
+YWY3OTkzNjZhOWRmZQ0KPiA+Pg0KPiA+PiBTaG91bGRuJ3QgdGhpcyBiZSBpbiBzdGFibGUgYnkg
+bm93PyAgWW91IHNlbnQgaXQgRmViIDMsIGFuZCB0aGVyZSBoYXZlIGJlZW4NCj4gPj4gdHdvIHN0
+YWJsZSByZWxlYXNlcyBzaW5jZSB0aGVuLg0KPiA+DQo+ID4gSSd2ZSBiZWVuIHdhaXRpbmcgZm9y
+IEFuZHkgdG8gZ2V0IGJhY2sgZnJvbSB2YWNhdGlvbi4gV2UndmUgYWxyZWFkeSBzZW50DQo+ID4g
+b25lIGJ1Z2d5IHBhdGNoIHRvIHN0YWJsZS4uLg0KPiA+DQo+IA0KPiBJdCdzIHN0aWxsIG5vdCBp
+biAzLjMtcmMgZWl0aGVyLCBhdCBsZWFzdCBwdXQgaXQgdGhlcmUgc28gb3RoZXJzDQo+IGNhbiB0
+ZXN0IGl0Pw0KDQozLjMtcmMgaXMgX05PVF8gYSBwbGFjZSB0byBwdXQgcGF0Y2hlcyBmb3IgdGVz
+dGluZy4uLiBZb3UgdGVzdCB0aGUNCnBhdGNoZXMgX0JFRk9SRV8geW91IHNlbmQgdGhlbSB1cHN0
+cmVhbS4NCg0KSW4gdGhpcyBjYXNlLCB0aGUgZGVsYXkgaGFzIGJlZW4gdGhyZWVmb2xkLg0KDQox
+KSBBbmR5IHdhcyBvbiB2YWNhdGlvbg0KMikgVGhlcmUgYXJlIG90aGVyIGZpeGVzIHRoYXQgbmVl
+ZCB0byBiZSBwdXNoZWQgYW5kIHRoYXQgdGVzdGVkIHRvbw0KMykgSSdtIGluIE5vcndheSB0cnlp
+bmcgdG8gYXR0ZW5kIGEgZnVuZXJhbC4uLg0KDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
+bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
