@@ -1,53 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:54865 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754960Ab2BOTmD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 14:42:03 -0500
-Received: by yhoo21 with SMTP id o21so904245yho.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 11:42:02 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 14:42:00 -0500
-Message-ID: <20120215194200.2925.93896.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
-References: <20120215193059.2925.10928.stgit@ellison.1015granger.net>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:58193 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752863Ab2BTPGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Feb 2012 10:06:19 -0500
+Received: from /spool/local
+	by e5.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Mon, 20 Feb 2012 10:06:18 -0500
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 2F36738C805C
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 10:02:23 -0500 (EST)
+Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q1KF2LTH287910
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 10:02:21 -0500
+Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q1KF1iwO020641
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2012 08:01:45 -0700
+Date: Mon, 20 Feb 2012 10:01:20 -0500
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 13/13] NFS: Request fh_expire_type attribute in "server
+ caps" operation
+Message-ID: <20120220150117.GA3954@Gelgoog.pok.ibm.com>
+References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+ <20120215213634.3254.25758.stgit@ellison.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120215213634.3254.25758.stgit@ellison.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Our dprintk() debugging facility doesn't specify any verbosity level
-for it's printk() calls, but it should.
+On Wed, Feb 15, 2012 at 04:36:34PM -0500, Chuck Lever wrote:
+> The fh_expire_type file attribute is a filesystem wide attribute that
+> consists of flags that indicate what characteristics file handles
+> on this FSID have.
+> 
+> Our client won't support volatile file handles, but it should find
+> out at mount time whether the server is going to play shenanighans
+> with file handles during a migration.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/nfs4proc.c         |    1 +
+>  fs/nfs/nfs4xdr.c          |   26 ++++++++++++++++++++++++++
+>  include/linux/nfs_fs_sb.h |    3 +++
+>  include/linux/nfs_xdr.h   |    1 +
+>  4 files changed, 31 insertions(+), 0 deletions(-)
+> 
+<snip>
+> index 6532d7b..f07d966 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -144,6 +144,9 @@ struct nfs_server {
+>  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
+>  						   that are supported on this
+>  						   filesystem */
+> +	u32			fh_expire_type;	/* V4 bitmask representing file
+> +						   handle volatility type for
+> +						   this filesystem */
+>  	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>  	struct rpc_wait_queue	roc_rpcwaitq;
+>  	void			*pnfs_ld_data;	/* per mount point data */
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index d609631..ff74d94 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -973,6 +973,7 @@ struct nfs4_server_caps_res {
+>  	u32				acl_bitmask;
+>  	u32				has_links;
+>  	u32				has_symlinks;
+> +	u32				fh_expire_type;
+>  	struct nfs4_sequence_res	seq_res;
+>  };
 
-The default verbosity for printk's is KERN_DEFAULT.  You might argue
-that these are debugging printk's and thus the verbosity should be
-KERN_DEBUG.  That would mean that to see NFS and SUNRPC debugging
-output an admin would also have to boost the syslog verbosity, which
-would be insufferably noisy.
+I had a similar patch in my volatile file handle tree, 
+(http://www.spinics.net/lists/linux-nfs/msg26069.html) but in my commit I used 
+fs_info instead of server caps. If I remember the spec correctly, it says that
+the attribute is set per file system, that's why I put it in fs_info. I'm just
+curious why you used server caps, not that it really makes a difference.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+-Matt Treinish
 
- include/linux/sunrpc/debug.h |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index c2786f2..e0927c2 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -51,7 +51,11 @@ extern unsigned int		nlm_debug;
- #undef ifdebug
- #ifdef RPC_DEBUG			
- # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
--# define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
-+# define dfprintk(fac, args...)	\
-+	do { \
-+		ifdebug(fac) \
-+			printk(KERN_DEFAULT args); \
-+	} while (0)
- # define RPC_IFDEBUG(x)		x
- #else
- # define ifdebug(fac)		if (0)
 
