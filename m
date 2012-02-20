@@ -1,115 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36147 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412Ab2BPLvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 06:51:41 -0500
-Date: Thu, 16 Feb 2012 06:51:33 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20120216115133.GA20279@fieldses.org>
-References: <20101227234641.GA22248@fieldses.org>
- <20110118204509.GA10903@fieldses.org>
- <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
- <20110118220817.GF10903@fieldses.org>
- <20110308181320.GA15566@fieldses.org>
- <20110310105821.GE22723@ZenIV.linux.org.uk>
- <20110311150749.2fa2be66@notabene.brown>
- <20120214170300.GA4309@fieldses.org>
- <20120215165633.GE12490@fieldses.org>
- <20120216140603.08cb4900@notabene.brown>
+Received: from nm4-vm0.bt.bullet.mail.ukl.yahoo.com ([217.146.182.229]:27594
+	"HELO nm4-vm0.bt.bullet.mail.ukl.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752097Ab2BTAi0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2012 19:38:26 -0500
+Message-ID: <4F4194C4.40104@yahoo.com>
+Date: Mon, 20 Feb 2012 00:33:08 +0000
+From: Chris Rankin <rankincj@yahoo.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120216140603.08cb4900@notabene.brown>
+To: linux-nfs@vger.kernel.org
+CC: linux-kernel@vger.kernel.org
+Subject: [OOPS] NFS dereferenced NULL pointer with 3.2.6 kernel.
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 16, 2012 at 02:06:03PM +1100, NeilBrown wrote:
-> On Wed, 15 Feb 2012 11:56:33 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Tue, Feb 14, 2012 at 12:03:00PM -0500, J. Bruce Fields wrote:
-> > > On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
-> > > > On Thu, 10 Mar 2011 10:58:21 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
-> > > > 
-> > > > > On Tue, Mar 08, 2011 at 01:13:20PM -0500, J. Bruce Fields wrote:
-> > > > > 
-> > > > > > Al, do you have this in your queue to look at?  Need me to resend?  Or
-> > > > > > should it take some other route?
-> > > > > 
-> > > > > It's in queue, but I'd be a lot happier if I understood what's going on
-> > > > > with __d_find_alias() elsewhere.  Namely, in d_splice_alias().  The thing
-> > > > > is, unless I'm missing something we ought to use __d_find_any_alias()
-> > > > > there as well.  Directories really, _really_ should not have more than
-> > > > > one alias.  And what we get is really weird:
-> > > > > 	* find (the only) alias
-> > > > > 	* if it doesn't exist, create one (OK, no problem)
-> > > > > 	* if it does exist and happens to be IS_ROOT and DCACHE_DISCONNECTED,
-> > > > > move it (also fine, modulo rather useless BUG_ON() in there)
-> > > > > 	* if it does exist and either isn't IS_ROOT or not DCACHE_DISCONNECTED,
-> > > > > add a new alias and say nothing.
-> > > > > 
-> > > > > The last part looks very strange.  I'd been staring at the history of this
-> > > > > function and I _think_ it's a rudiment of period when we used that stuff for
-> > > > > non-directories as well.  It used to be directory-only; then Neil had
-> > > > > switched it to non-directories as well (in "Fix disconnected dentries on NFS
-> > > > > exports" back in 2004), adding want_discon argument to __d_find_alias() in
-> > > > > process and using it instead of open-coded equivalent of __d_find_any_alias().
-> > > > > Then, two years later, in "knfsd: close a race-opportunity in d_splice_alias"
-> > > > > he'd made that code directory-only again, at which point we arrived to the
-> > > > > current situation.
-> > > > > 
-> > > > > Neil, is there some reason I'm missing that makes __d_find_alias() right in
-> > > > > there?  And do we still need the second argument in __d_find_alias()?
-> > > > > 
-> > > > > Anyway, Bruce's patch goes in tonight's push, but I'd love to see that
-> > > > > mess cleaned up as well or at least explained.
-> > > 
-> > > Nothing like seeing somebody actually run across a bug here to motivate
-> > > getting back to this....
-> > > 
-> > > So, like Al I'm wondering whether the __d_find_alias in d_splice_alias
-> > > should be a __d_find_any_alias.
-> > > 
-> > > Disclaimer: the bug manifested in rhel5, and I haven't looked closely at
-> > > upstream yet, though it seems like it would have the same problem.
-> > > 
-> > > In the particular case I'm seeing, the directory already has an alias
-> > > that is UNHASHED (but not DISCONNECTED).  So d_splice_alias adds a
-> > > second alias.
-> > 
-> > The reproducer I was using against rhel5 isn't going to work against
-> > upstream, because it depended on the dentry_unhash() call in vfs_rmdir()
-> > to create that UNHASHED dentry.
-> > 
-> > Though I think there's still code that can leave UNHASHED dentries
-> > around still on the alias list.  I'll look some more....
-> 
-> I was going ask how you managed to get an 'unhashed' dentry which was not
-> DISCONNECTED, and belonged to a directory that could be the subject of
-> d_splice_alias (that implies it has a name).
-> 
-> The bug sounds like a race between lookup and rmdir, which should be
-> prevented by i_mutex.
+Hi,
 
-The rhel5 race is a bit more complicated than that: a filehandle lookup
-has to come in to grab the unhashed dentry before rmdir drops the parent
-i_mutex, and then the lookup comes along later.
+My 3.2.6 (x86, 32 bit) kernel oopsed last night while pulling a file across an 
+NFS mount:
 
-I suspect that this is actually expected, and that it's not safe for us
-to assume that directories will lose any UNHASHED dentries before
-relevant locks are dropped.
+BUG: unable to handle kernel NULL pointer dereference at   (null)
+IP: [<c107a333>] page_address+0x7/0xa4
+*pde = 00000000
+Oops: 0000 [#1] PREEMPT SMP
+Modules linked in: nfs fuse cpufreq_ondemand p4_clockmod speedstep_lib bnep 
+bluetooth rfkill crc16 ip6t_LOG ipt_LOG nf_conntrack_ipv6 xt_tcpudp 
+nf_defrag_ipv6 nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack max6650 
+ip6table_filter iptable_filter ip6_tables ip_tables x_tables dm_mirror 
+dm_region_hash dm_log dm_mod snd_emu10k1_synth snd_emux_synth snd_seq_virmidi 
+snd_seq_midi_event snd_seq_midi_emul snd_emu10k1 snd_ac97_codec snd_usb_audio 
+ac97_bus snd_seq snd_pcm snd_timer snd_page_alloc snd_util_mem uvcvideo 
+snd_hwdep snd_usbmidi_lib snd_rawmidi snd_seq_device joydev snd usbhid psmouse 
+ppdev videodev parport_pc floppy parport sg firewire_ohci firewire_core pcspkr 
+dcdbas crc_itu_t soundcore serio_raw processor i2c_i801 binfmt_misc nfsd lockd 
+nfs_acl auth_rpcgss sunrpc exportfs uinput ipv6 ext3 jbd mbcache sr_mod sd_mod 
+cdrom sata_sil pata_acpi uhci_hcd ata_piix libata ehci_hcd e1000 scsi_mod 
+usbcore usb_common button radeon intel_agp intel_gtt ttm drm_kms_helper drm 
+agpgart backlight i2c_algo_bit cfbcopyarea cfbimgblt cfbfillrect [last unloaded: 
+scsi_wait_scan]
 
-I'm seeing something similar happening on an upstream kernel, so I'll
-try to figure out where that's coming from now....
+Pid: 3403, comm: mv Not tainted 3.2.6 #1 Dell Computer Corporation Precision 
+WorkStation 650    /0F1262
+EIP: 0060:[<c107a333>] EFLAGS: 00210206 CPU: 1
+EIP is at page_address+0x7/0xa4
+EAX: 00000000 EBX: f247fde8 ECX: f43df1e4 EDX: 00000038
+ESI: f247fccc EDI: 0000000e EBP: 00000000 ESP: f247fc74
+  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+Process mv (pid: 3403, ti=f247e000 task=f55c3b00 task.ti=f247e000)
+Stack:
+  f43df1e4 f247fde8 f247fccc 0000000e f2b79c00 f91d006f 00000000 00001000
+  f247fc98 00000000 00000002 f43df074 00000000 00000000 0000006e 00000000
+  f54d8400 f2b79c00 00000000 f91d0008 f84d25ff f43df020 f43df0ac f2b79c04
+Call Trace:
+  [<f91d006f>] ? nfs4_xdr_enc_getacl+0x67/0x86 [nfs]
+  [<f91d0008>] ? nfs4_xdr_enc_fs_locations+0x87/0x87 [nfs]
+  [<f84d25ff>] ? rpcauth_wrap_req+0x72/0x7c [sunrpc]
+  [<f84cc3ef>] ? call_transmit+0x172/0x1dd [sunrpc]
+  [<f84d182e>] ? __rpc_execute+0x59/0x216 [sunrpc]
+  [<c1021a61>] ? add_preempt_count+0x88/0x8a
+  [<c1039936>] ? wake_up_bit+0xb/0x16
+  [<f84cc71b>] ? rpc_run_task+0x57/0x5c [sunrpc]
+  [<f84cc7fb>] ? rpc_call_sync+0x3a/0x54 [sunrpc]
+  [<f91c9164>] ? __nfs4_get_acl_uncached+0x15d/0x1ed [nfs]
+  [<f91cb43a>] ? nfs4_xattr_get_nfs4_acl+0xdf/0x10c [nfs]
+  [<c10abaee>] ? generic_getxattr+0x3b/0x43
+  [<c10abab3>] ? xattr_resolve_name+0x4b/0x4b
+  [<c10abeb1>] ? vfs_getxattr+0x74/0x7b
+  [<c10abf2c>] ? getxattr+0x74/0xc5
+  [<c109fd8c>] ? path_openat+0x2bb/0x2d0
+  [<c107d0b7>] ? handle_pte_fault+0x23b/0x5fc
+  [<c109fe4a>] ? do_filp_open+0x23/0x5c
+  [<c109d1dc>] ? getname_flags+0x20/0xf1
+  [<c1021948>] ? get_parent_ip+0x8/0x19
+  [<c1021948>] ? get_parent_ip+0x8/0x19
+  [<c10219cd>] ? sub_preempt_count+0x74/0x80
+  [<c1021948>] ? get_parent_ip+0x8/0x19
+  [<c1021a61>] ? add_preempt_count+0x88/0x8a
+  [<c1094ede>] ? do_sys_open+0x161/0x16b
+  [<c1094ede>] ? do_sys_open+0x161/0x16b
+  [<c10ac041>] ? listxattr+0x80/0x88
+  [<c10ac5a8>] ? sys_fgetxattr+0x42/0x5a
+  [<c1219b8c>] ? sysenter_do_call+0x12/0x22
+Code: eb 05 bb ea ff ff ff 89 d8 83 c4 20 5b 5e 5f 5d c3 8b 6c 24 18 f7 44 24 44 
+00 00 01 00 74 86 31 db eb c5 90 55 57 56 53 51 89 c5 <8b> 00 c1 e8 1e c1 e0 0a 
+05 80 33 2f c1 2b 80 8c 03 00 00 3d 00
+EIP: [<c107a333>] page_address+0x7/0xa4 SS:ESP 0068:f247fc74
+CR2: 0000000000000000
 
-> I think that using __d_find_any_alias would just be papering over the
-> problem, and would trigger a BUG_ON when it returned a non-DISCONNECTED alias.
+The remote host was also running 3.2.6, but was x86_64. (I've not had any 
+trouble copying NFS files between two 32 bit 3.2.6 kernels, which is why I'm 
+thinking that the remote host being x86_64 might be significant.)
 
-Right, I throw away that BUG_ON as well.  Tested on rhel5 only.
+For the record, the file was actually copied successfully. After I'd rebooted, I 
+confirmed that the SHA1 sums matched. The "mv" operation obviously failed before 
+the remote copy could be deleted.
 
---b.
+Cheers,
+Chris
+
+
