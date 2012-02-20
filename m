@@ -1,45 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:60770 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754960Ab2BBJru (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Feb 2012 04:47:50 -0500
-Message-ID: <4F2A5BAD.4000609@panasas.com>
-Date: Thu, 2 Feb 2012 11:47:25 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15936 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751356Ab2BTSBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Feb 2012 13:01:13 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chris Rankin <rankincj@yahoo.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [OOPS] NFS dereferenced NULL pointer with 3.2.6 kernel.
+Date: Mon, 20 Feb 2012 18:00:44 +0000
+Message-ID: <1329760844.2834.1.camel@lade.trondhjem.org>
+References: <4F4194C4.40104@yahoo.com>
+In-Reply-To: <4F4194C4.40104@yahoo.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: wangjing <wangjing@300.cn>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: may i ask a question about nfs fs ? thanks a lot.
-References: <201202012212229514260@300.cn> <201202020009007716206@300.cn>
-In-Reply-To: <201202020009007716206@300.cn>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/01/2012 06:09 PM, wangjing wrote:
-> 
-> may i ask a question? thanks a lot.
-> 
-> the background
->    1、Linux fs has   /nfsmnt/work_pub/web and /nfsmnt/work_inwork/web ，they use NFS V3 mount
->    2、there is many process will read and write files in the dir /nfsmnt/work_pub/web 
->    3、cron will del  all files in dir  /nfsmnt/work_pub/web in period，and will copy all the files which in the dir /nfsmnt/work_inwork/web 
-> 
-> in some times delete all files in  /nfsmnt/work_pub/web will faild ,because there is some .nfsXXXX
-> 
-> 
-> 
-> My question is :can i modify nfs_sillyrename funncion  in the fs/nfs/dir.c , general all .nfsXXX in /tmp,and make kernel ?
-> 
-> 
-
-You can't do this. /tmp on the client is on a different superblock than the nfs mount, and the point of
-sillyrename is that it is a rename and not a move. (i.e same inode)
-
-The /tmp on the server is not even accessible on the client, which does the sillyrename.
-
-You'll have to better your scripts to loop and delete until all  .nfsXXXX go away because
-these are temporarily there until the application on the client stops using the file.
-
-Cheers
-Boaz
+T24gTW9uLCAyMDEyLTAyLTIwIGF0IDAwOjMzICswMDAwLCBDaHJpcyBSYW5raW4gd3JvdGU6DQo+
+IEhpLA0KPiANCj4gTXkgMy4yLjYgKHg4NiwgMzIgYml0KSBrZXJuZWwgb29wc2VkIGxhc3Qgbmln
+aHQgd2hpbGUgcHVsbGluZyBhIGZpbGUgYWNyb3NzIGFuIA0KPiBORlMgbW91bnQ6DQo+IA0KPiBC
+VUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAg
+IChudWxsKQ0KPiBJUDogWzxjMTA3YTMzMz5dIHBhZ2VfYWRkcmVzcysweDcvMHhhNA0KPiAqcGRl
+ID0gMDAwMDAwMDANCj4gT29wczogMDAwMCBbIzFdIFBSRUVNUFQgU01QDQo+IE1vZHVsZXMgbGlu
+a2VkIGluOiBuZnMgZnVzZSBjcHVmcmVxX29uZGVtYW5kIHA0X2Nsb2NrbW9kIHNwZWVkc3RlcF9s
+aWIgYm5lcCANCj4gYmx1ZXRvb3RoIHJma2lsbCBjcmMxNiBpcDZ0X0xPRyBpcHRfTE9HIG5mX2Nv
+bm50cmFja19pcHY2IHh0X3RjcHVkcCANCj4gbmZfZGVmcmFnX2lwdjYgbmZfY29ubnRyYWNrX2lw
+djQgbmZfZGVmcmFnX2lwdjQgeHRfc3RhdGUgbmZfY29ubnRyYWNrIG1heDY2NTAgDQo+IGlwNnRh
+YmxlX2ZpbHRlciBpcHRhYmxlX2ZpbHRlciBpcDZfdGFibGVzIGlwX3RhYmxlcyB4X3RhYmxlcyBk
+bV9taXJyb3IgDQo+IGRtX3JlZ2lvbl9oYXNoIGRtX2xvZyBkbV9tb2Qgc25kX2VtdTEwazFfc3lu
+dGggc25kX2VtdXhfc3ludGggc25kX3NlcV92aXJtaWRpIA0KPiBzbmRfc2VxX21pZGlfZXZlbnQg
+c25kX3NlcV9taWRpX2VtdWwgc25kX2VtdTEwazEgc25kX2FjOTdfY29kZWMgc25kX3VzYl9hdWRp
+byANCj4gYWM5N19idXMgc25kX3NlcSBzbmRfcGNtIHNuZF90aW1lciBzbmRfcGFnZV9hbGxvYyBz
+bmRfdXRpbF9tZW0gdXZjdmlkZW8gDQo+IHNuZF9od2RlcCBzbmRfdXNibWlkaV9saWIgc25kX3Jh
+d21pZGkgc25kX3NlcV9kZXZpY2Ugam95ZGV2IHNuZCB1c2JoaWQgcHNtb3VzZSANCj4gcHBkZXYg
+dmlkZW9kZXYgcGFycG9ydF9wYyBmbG9wcHkgcGFycG9ydCBzZyBmaXJld2lyZV9vaGNpIGZpcmV3
+aXJlX2NvcmUgcGNzcGtyIA0KPiBkY2RiYXMgY3JjX2l0dV90IHNvdW5kY29yZSBzZXJpb19yYXcg
+cHJvY2Vzc29yIGkyY19pODAxIGJpbmZtdF9taXNjIG5mc2QgbG9ja2QgDQo+IG5mc19hY2wgYXV0
+aF9ycGNnc3Mgc3VucnBjIGV4cG9ydGZzIHVpbnB1dCBpcHY2IGV4dDMgamJkIG1iY2FjaGUgc3Jf
+bW9kIHNkX21vZCANCj4gY2Ryb20gc2F0YV9zaWwgcGF0YV9hY3BpIHVoY2lfaGNkIGF0YV9waWl4
+IGxpYmF0YSBlaGNpX2hjZCBlMTAwMCBzY3NpX21vZCANCj4gdXNiY29yZSB1c2JfY29tbW9uIGJ1
+dHRvbiByYWRlb24gaW50ZWxfYWdwIGludGVsX2d0dCB0dG0gZHJtX2ttc19oZWxwZXIgZHJtIA0K
+PiBhZ3BnYXJ0IGJhY2tsaWdodCBpMmNfYWxnb19iaXQgY2ZiY29weWFyZWEgY2ZiaW1nYmx0IGNm
+YmZpbGxyZWN0IFtsYXN0IHVubG9hZGVkOiANCj4gc2NzaV93YWl0X3NjYW5dDQo+IA0KPiBQaWQ6
+IDM0MDMsIGNvbW06IG12IE5vdCB0YWludGVkIDMuMi42ICMxIERlbGwgQ29tcHV0ZXIgQ29ycG9y
+YXRpb24gUHJlY2lzaW9uIA0KPiBXb3JrU3RhdGlvbiA2NTAgICAgLzBGMTI2Mg0KPiBFSVA6IDAw
+NjA6WzxjMTA3YTMzMz5dIEVGTEFHUzogMDAyMTAyMDYgQ1BVOiAxDQo+IEVJUCBpcyBhdCBwYWdl
+X2FkZHJlc3MrMHg3LzB4YTQNCj4gRUFYOiAwMDAwMDAwMCBFQlg6IGYyNDdmZGU4IEVDWDogZjQz
+ZGYxZTQgRURYOiAwMDAwMDAzOA0KPiBFU0k6IGYyNDdmY2NjIEVESTogMDAwMDAwMGUgRUJQOiAw
+MDAwMDAwMCBFU1A6IGYyNDdmYzc0DQo+ICAgRFM6IDAwN2IgRVM6IDAwN2IgRlM6IDAwZDggR1M6
+IDAwMzMgU1M6IDAwNjgNCj4gUHJvY2VzcyBtdiAocGlkOiAzNDAzLCB0aT1mMjQ3ZTAwMCB0YXNr
+PWY1NWMzYjAwIHRhc2sudGk9ZjI0N2UwMDApDQo+IFN0YWNrOg0KPiAgIGY0M2RmMWU0IGYyNDdm
+ZGU4IGYyNDdmY2NjIDAwMDAwMDBlIGYyYjc5YzAwIGY5MWQwMDZmIDAwMDAwMDAwIDAwMDAxMDAw
+DQo+ICAgZjI0N2ZjOTggMDAwMDAwMDAgMDAwMDAwMDIgZjQzZGYwNzQgMDAwMDAwMDAgMDAwMDAw
+MDAgMDAwMDAwNmUgMDAwMDAwMDANCj4gICBmNTRkODQwMCBmMmI3OWMwMCAwMDAwMDAwMCBmOTFk
+MDAwOCBmODRkMjVmZiBmNDNkZjAyMCBmNDNkZjBhYyBmMmI3OWMwNA0KPiBDYWxsIFRyYWNlOg0K
+PiAgIFs8ZjkxZDAwNmY+XSA/IG5mczRfeGRyX2VuY19nZXRhY2wrMHg2Ny8weDg2IFtuZnNdDQo+
+ICAgWzxmOTFkMDAwOD5dID8gbmZzNF94ZHJfZW5jX2ZzX2xvY2F0aW9ucysweDg3LzB4ODcgW25m
+c10NCj4gICBbPGY4NGQyNWZmPl0gPyBycGNhdXRoX3dyYXBfcmVxKzB4NzIvMHg3YyBbc3VucnBj
+XQ0KPiAgIFs8Zjg0Y2MzZWY+XSA/IGNhbGxfdHJhbnNtaXQrMHgxNzIvMHgxZGQgW3N1bnJwY10N
+Cj4gICBbPGY4NGQxODJlPl0gPyBfX3JwY19leGVjdXRlKzB4NTkvMHgyMTYgW3N1bnJwY10NCj4g
+ICBbPGMxMDIxYTYxPl0gPyBhZGRfcHJlZW1wdF9jb3VudCsweDg4LzB4OGENCj4gICBbPGMxMDM5
+OTM2Pl0gPyB3YWtlX3VwX2JpdCsweGIvMHgxNg0KPiAgIFs8Zjg0Y2M3MWI+XSA/IHJwY19ydW5f
+dGFzaysweDU3LzB4NWMgW3N1bnJwY10NCj4gICBbPGY4NGNjN2ZiPl0gPyBycGNfY2FsbF9zeW5j
+KzB4M2EvMHg1NCBbc3VucnBjXQ0KPiAgIFs8ZjkxYzkxNjQ+XSA/IF9fbmZzNF9nZXRfYWNsX3Vu
+Y2FjaGVkKzB4MTVkLzB4MWVkIFtuZnNdDQo+ICAgWzxmOTFjYjQzYT5dID8gbmZzNF94YXR0cl9n
+ZXRfbmZzNF9hY2wrMHhkZi8weDEwYyBbbmZzXQ0KPiAgIFs8YzEwYWJhZWU+XSA/IGdlbmVyaWNf
+Z2V0eGF0dHIrMHgzYi8weDQzDQo+ICAgWzxjMTBhYmFiMz5dID8geGF0dHJfcmVzb2x2ZV9uYW1l
+KzB4NGIvMHg0Yg0KPiAgIFs8YzEwYWJlYjE+XSA/IHZmc19nZXR4YXR0cisweDc0LzB4N2INCj4g
+ICBbPGMxMGFiZjJjPl0gPyBnZXR4YXR0cisweDc0LzB4YzUNCj4gICBbPGMxMDlmZDhjPl0gPyBw
+YXRoX29wZW5hdCsweDJiYi8weDJkMA0KPiAgIFs8YzEwN2QwYjc+XSA/IGhhbmRsZV9wdGVfZmF1
+bHQrMHgyM2IvMHg1ZmMNCj4gICBbPGMxMDlmZTRhPl0gPyBkb19maWxwX29wZW4rMHgyMy8weDVj
+DQo+ICAgWzxjMTA5ZDFkYz5dID8gZ2V0bmFtZV9mbGFncysweDIwLzB4ZjENCj4gICBbPGMxMDIx
+OTQ4Pl0gPyBnZXRfcGFyZW50X2lwKzB4OC8weDE5DQo+ICAgWzxjMTAyMTk0OD5dID8gZ2V0X3Bh
+cmVudF9pcCsweDgvMHgxOQ0KPiAgIFs8YzEwMjE5Y2Q+XSA/IHN1Yl9wcmVlbXB0X2NvdW50KzB4
+NzQvMHg4MA0KPiAgIFs8YzEwMjE5NDg+XSA/IGdldF9wYXJlbnRfaXArMHg4LzB4MTkNCj4gICBb
+PGMxMDIxYTYxPl0gPyBhZGRfcHJlZW1wdF9jb3VudCsweDg4LzB4OGENCj4gICBbPGMxMDk0ZWRl
+Pl0gPyBkb19zeXNfb3BlbisweDE2MS8weDE2Yg0KPiAgIFs8YzEwOTRlZGU+XSA/IGRvX3N5c19v
+cGVuKzB4MTYxLzB4MTZiDQo+ICAgWzxjMTBhYzA0MT5dID8gbGlzdHhhdHRyKzB4ODAvMHg4OA0K
+PiAgIFs8YzEwYWM1YTg+XSA/IHN5c19mZ2V0eGF0dHIrMHg0Mi8weDVhDQo+ICAgWzxjMTIxOWI4
+Yz5dID8gc3lzZW50ZXJfZG9fY2FsbCsweDEyLzB4MjINCj4gQ29kZTogZWIgMDUgYmIgZWEgZmYg
+ZmYgZmYgODkgZDggODMgYzQgMjAgNWIgNWUgNWYgNWQgYzMgOGIgNmMgMjQgMTggZjcgNDQgMjQg
+NDQgDQo+IDAwIDAwIDAxIDAwIDc0IDg2IDMxIGRiIGViIGM1IDkwIDU1IDU3IDU2IDUzIDUxIDg5
+IGM1IDw4Yj4gMDAgYzEgZTggMWUgYzEgZTAgMGEgDQo+IDA1IDgwIDMzIDJmIGMxIDJiIDgwIDhj
+IDAzIDAwIDAwIDNkIDAwDQo+IEVJUDogWzxjMTA3YTMzMz5dIHBhZ2VfYWRkcmVzcysweDcvMHhh
+NCBTUzpFU1AgMDA2ODpmMjQ3ZmM3NA0KPiBDUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gDQo+IFRo
+ZSByZW1vdGUgaG9zdCB3YXMgYWxzbyBydW5uaW5nIDMuMi42LCBidXQgd2FzIHg4Nl82NC4gKEkn
+dmUgbm90IGhhZCBhbnkgDQo+IHRyb3VibGUgY29weWluZyBORlMgZmlsZXMgYmV0d2VlbiB0d28g
+MzIgYml0IDMuMi42IGtlcm5lbHMsIHdoaWNoIGlzIHdoeSBJJ20gDQo+IHRoaW5raW5nIHRoYXQg
+dGhlIHJlbW90ZSBob3N0IGJlaW5nIHg4Nl82NCBtaWdodCBiZSBzaWduaWZpY2FudC4pDQo+IA0K
+PiBGb3IgdGhlIHJlY29yZCwgdGhlIGZpbGUgd2FzIGFjdHVhbGx5IGNvcGllZCBzdWNjZXNzZnVs
+bHkuIEFmdGVyIEknZCByZWJvb3RlZCwgSSANCj4gY29uZmlybWVkIHRoYXQgdGhlIFNIQTEgc3Vt
+cyBtYXRjaGVkLiBUaGUgIm12IiBvcGVyYXRpb24gb2J2aW91c2x5IGZhaWxlZCBiZWZvcmUgDQo+
+IHRoZSByZW1vdGUgY29weSBjb3VsZCBiZSBkZWxldGVkLg0KDQpJdCdzIGEga25vd24gYnVnLiBU
+aGVyZSBpcyBhIGZpeCBhdA0KDQpodHRwOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9u
+ZnMtMi42LmdpdDthPWNvbW1pdDtoPTMzMTgxOGYxYzQ2OGEyNGU1ODFhZWRjYmU1MmFmNzk5MzY2
+YTlkZmUNCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
