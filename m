@@ -1,49 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:37226 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751555Ab2BOVfS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:18 -0500
-Received: by mail-iy0-f174.google.com with SMTP id b35so1972889iac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:18 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/13] nfs: Clean up debugging in nfs_follow_mountpoint()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:35:17 -0500
-Message-ID: <20120215213516.3254.14282.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:47181 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752607Ab2BUVGH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Feb 2012 16:06:07 -0500
+Date: Tue, 21 Feb 2012 16:06:03 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        kernel-janitors@vger.kernel.org,
+        Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [patch] svcrdma: silence a Sparse warning
+Message-ID: <20120221210603.GA4326@fieldses.org>
+References: <20120221072804.GA6896@elgon.mountain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120221072804.GA6896@elgon.mountain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Fix a debugging message which had an obsolete function name
-in it (nfs_follow_mountpoint).
+(Cc'ing Tom).
 
-Introduced by commit 36d43a43 "NFS: Use d_automount() rather than
-abusing follow_link()" (January 14, 2011)
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/namespace.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 8102391..1807866 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -276,7 +276,10 @@ out:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fh);
- out_nofree:
--	dprintk("<-- nfs_follow_mountpoint() = %p\n", mnt);
-+	if (IS_ERR(mnt))
-+		dprintk("<-- %s(): error %ld\n", __func__, PTR_ERR(mnt));
-+	else
-+		dprintk("<-- %s() = %p\n", __func__, mnt);
- 	return mnt;
- }
- 
-
+On Tue, Feb 21, 2012 at 10:28:04AM +0300, Dan Carpenter wrote:
+> Sparse complains that the definition function definition and the
+> implementation aren't anotated the same way.
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> 
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index d205e9f..0b8e3e6 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -190,7 +190,7 @@ extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
+>  extern void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *, int);
+>  extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
+>  extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
+> -					    u32, u64, u32);
+> +					    __be32, __be64, u32);
+>  extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
+>  					     struct rpcrdma_msg *,
+>  					     struct rpcrdma_msg *,
