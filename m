@@ -1,234 +1,796 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51905 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63048 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751797Ab2BPQRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 11:17:25 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 3/3] NFSv4: parse and display server implementation ids
-Date: Thu, 16 Feb 2012 11:17:06 -0500
-Message-Id: <1329409026-20466-3-git-send-email-dros@netapp.com>
-In-Reply-To: <1329409026-20466-1-git-send-email-dros@netapp.com>
-References: <1329409026-20466-1-git-send-email-dros@netapp.com>
+	id S1753024Ab2BUR2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Feb 2012 12:28:18 -0500
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, dhowells@redhat.com, iisaman@netapp.com,
+        William.Adamson@netapp.com, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/2] NFS: Store the legacy idmapper result in the keyring
+Date: Tue, 21 Feb 2012 12:28:08 -0500
+Message-Id: <1329845288-13238-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1329845288-13238-1-git-send-email-bjschuma@netapp.com>
+References: <1329845288-13238-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Shows the implementation ids in /proc/self/mountstats.  This doesn't break
-the nfs-utils mountstats tool.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+This patch removes the old hashmap-based caching and instead uses a
+"request key actor" to place an upcall to the legacy idmapper rather
+than going through /sbin/request-key.  This will only be used as a
+fallback if /etc/request-key.conf isn't configured to use nfsidmap.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/client.c           |    1 +
- fs/nfs/nfs4proc.c         |   21 +++++++++++++++++++++
- fs/nfs/nfs4xdr.c          |   42 +++++++++++++++++++++++++++++++++++++-----
- fs/nfs/super.c            |    8 ++++++++
- include/linux/nfs_fs_sb.h |    2 ++
- include/linux/nfs_xdr.h   |   15 +++++++--------
- 6 files changed, 76 insertions(+), 13 deletions(-)
+v2: Use key_set_timeout instead of set_key_timeout
+    Added changes to include/nfs_idmap.h
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d0f850f..3fd9a47 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -302,6 +302,7 @@ static void nfs_free_client(struct nfs_client *clp)
+ fs/nfs/idmap.c            |  535 +++++++++++++--------------------------------
+ include/linux/nfs_idmap.h |   11 -
+ 2 files changed, 147 insertions(+), 399 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index b5c6d8e..75473a0 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -34,42 +34,27 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ #include <linux/types.h>
+-#include <linux/string.h>
+-#include <linux/kernel.h>
+-#include <linux/slab.h>
++#include <linux/parser.h>
++#include <linux/fs.h>
+ #include <linux/nfs_idmap.h>
++#include <net/net_namespace.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/nfs_fs.h>
+-#include <linux/cred.h>
+-#include <linux/sunrpc/sched.h>
+-#include <linux/nfs4.h>
+ #include <linux/nfs_fs_sb.h>
++#include <linux/key.h>
+ #include <linux/keyctl.h>
+ #include <linux/key-type.h>
+-#include <linux/rcupdate.h>
+-#include <linux/err.h>
+ #include <keys/user-type.h>
+-
+-/* include files needed by legacy idmapper */
+ #include <linux/module.h>
+-#include <linux/mutex.h>
+-#include <linux/init.h>
+-#include <linux/socket.h>
+-#include <linux/in.h>
+-#include <linux/sched.h>
+-#include <linux/sunrpc/clnt.h>
+-#include <linux/workqueue.h>
+-#include <linux/sunrpc/rpc_pipe_fs.h>
+-#include <linux/nfs_fs.h>
+-#include "nfs4_fs.h"
+-#include "internal.h"
++
+ #include "netns.h"
  
- 	kfree(clp->cl_hostname);
- 	kfree(clp->server_scope);
-+	kfree(clp->impl_id);
- 	kfree(clp);
+ #define NFS_UINT_MAXLEN 11
+-#define IDMAP_HASH_SZ          128
  
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 20c3bb0..90a17cc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4950,11 +4950,24 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ /* Default cache timeout is 10 minutes */
+-unsigned int nfs_idmap_cache_timeout = 600 * HZ;
++unsigned int nfs_idmap_cache_timeout = 600;
+ const struct cred *id_resolver_cache;
++struct key_type key_type_id_resolver_legacy;
+ 
+ 
+ /**
+@@ -261,8 +246,10 @@ static ssize_t nfs_idmap_get_desc(const char *name, size_t namelen,
+ 	return desclen;
+ }
+ 
+-static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
+-		const char *type, void *data, size_t data_size)
++static ssize_t nfs_idmap_request_key(struct key_type *key_type,
++				     const char *name, size_t namelen,
++				     const char *type, void *data,
++				     size_t data_size, struct idmap *idmap)
+ {
+ 	const struct cred *saved_cred;
+ 	struct key *rkey;
+@@ -275,8 +262,12 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
+ 		goto out;
+ 
+ 	saved_cred = override_creds(id_resolver_cache);
+-	rkey = request_key(&key_type_id_resolver, desc, "");
++	if (idmap)
++		rkey = request_key_with_auxdata(key_type, desc, "", 0, idmap);
++	else
++		rkey = request_key(&key_type_id_resolver, desc, "");
+ 	revert_creds(saved_cred);
++
+ 	kfree(desc);
+ 	if (IS_ERR(rkey)) {
+ 		ret = PTR_ERR(rkey);
+@@ -309,31 +300,46 @@ out:
+ 	return ret;
+ }
+ 
++static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
++				 const char *type, void *data,
++				 size_t data_size, struct idmap *idmap)
++{
++	ssize_t ret = nfs_idmap_request_key(&key_type_id_resolver,
++					    name, namelen, type, data,
++					    data_size, NULL);
++	if (ret < 0) {
++		ret = nfs_idmap_request_key(&key_type_id_resolver_legacy,
++					    name, namelen, type, data,
++					    data_size, idmap);
++	}
++	return ret;
++}
+ 
+ /* ID -> Name */
+-static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf, size_t buflen)
++static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
++				     size_t buflen, struct idmap *idmap)
+ {
+ 	char id_str[NFS_UINT_MAXLEN];
+ 	int id_len;
+ 	ssize_t ret;
+ 
+ 	id_len = snprintf(id_str, sizeof(id_str), "%u", id);
+-	ret = nfs_idmap_request_key(id_str, id_len, type, buf, buflen);
++	ret = nfs_idmap_get_key(id_str, id_len, type, buf, buflen, idmap);
+ 	if (ret < 0)
+ 		return -EINVAL;
+ 	return ret;
+ }
+ 
+ /* Name -> ID */
+-static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+-				const char *type, __u32 *id)
++static int nfs_idmap_lookup_id(const char *name, size_t namelen, const char *type,
++			       __u32 *id, struct idmap *idmap)
+ {
+ 	char id_str[NFS_UINT_MAXLEN];
+ 	long id_long;
+ 	ssize_t data_size;
+ 	int ret = 0;
+ 
+-	data_size = nfs_idmap_request_key(name, namelen, type, id_str, NFS_UINT_MAXLEN);
++	data_size = nfs_idmap_get_key(name, namelen, type, id_str, NFS_UINT_MAXLEN, idmap);
+ 	if (data_size <= 0) {
+ 		ret = -EINVAL;
+ 	} else {
+@@ -344,54 +350,47 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+ }
+ 
+ /* idmap classic begins here */
+-static int param_set_idmap_timeout(const char *val, struct kernel_param *kp)
+-{
+-	char *endp;
+-	int num = simple_strtol(val, &endp, 0);
+-	int jif = num * HZ;
+-	if (endp == val || *endp || num < 0 || jif < num)
+-		return -EINVAL;
+-	*((int *)kp->arg) = jif;
+-	return 0;
+-}
+-
+-module_param_call(idmap_cache_timeout, param_set_idmap_timeout, param_get_int,
+-		 &nfs_idmap_cache_timeout, 0644);
++module_param(nfs_idmap_cache_timeout, int, 0644);
+ 
+-struct idmap_hashent {
+-	unsigned long		ih_expires;
+-	__u32			ih_id;
+-	size_t			ih_namelen;
+-	const char		*ih_name;
++struct idmap {
++	struct rpc_pipe		*idmap_pipe;
++	struct key_construction	*idmap_key_cons;
+ };
+ 
+-struct idmap_hashtable {
+-	__u8			h_type;
+-	struct idmap_hashent	*h_entries;
++enum {
++	Opt_find_uid, Opt_find_gid, Opt_find_user, Opt_find_group, Opt_find_err
+ };
+ 
+-struct idmap {
+-	struct rpc_pipe		*idmap_pipe;
+-	wait_queue_head_t	idmap_wq;
+-	struct idmap_msg	idmap_im;
+-	struct mutex		idmap_lock;	/* Serializes upcalls */
+-	struct mutex		idmap_im_lock;	/* Protects the hashtable */
+-	struct idmap_hashtable	idmap_user_hash;
+-	struct idmap_hashtable	idmap_group_hash;
++static const match_table_t nfs_idmap_tokens = {
++	{ Opt_find_uid, "uid:%s" },
++	{ Opt_find_gid, "gid:%s" },
++	{ Opt_find_user, "user:%s" },
++	{ Opt_find_group, "group:%s" },
++	{ Opt_find_err, NULL }
+ };
+ 
++static int nfs_idmap_legacy_upcall(struct key_construction *, const char *, void *);
+ static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
+ 				   size_t);
+ static void idmap_pipe_destroy_msg(struct rpc_pipe_msg *);
+ 
+-static unsigned int fnvhash32(const void *, size_t);
+-
+ static const struct rpc_pipe_ops idmap_upcall_ops = {
+ 	.upcall		= rpc_pipe_generic_upcall,
+ 	.downcall	= idmap_pipe_downcall,
+ 	.destroy_msg	= idmap_pipe_destroy_msg,
+ };
+ 
++struct key_type key_type_id_resolver_legacy = {
++	.name		= "id_resolver",
++	.instantiate	= user_instantiate,
++	.match		= user_match,
++	.revoke		= user_revoke,
++	.destroy	= user_destroy,
++	.describe	= user_describe,
++	.read		= user_read,
++	.request_key	= nfs_idmap_legacy_upcall,
++};
++
+ static void __nfs_idmap_unregister(struct rpc_pipe *pipe)
+ {
+ 	if (pipe->dentry)
+@@ -468,38 +467,11 @@ nfs_idmap_new(struct nfs_client *clp)
+ 		return error;
+ 	}
+ 	idmap->idmap_pipe = pipe;
+-	mutex_init(&idmap->idmap_lock);
+-	mutex_init(&idmap->idmap_im_lock);
+-	init_waitqueue_head(&idmap->idmap_wq);
+-	idmap->idmap_user_hash.h_type = IDMAP_TYPE_USER;
+-	idmap->idmap_group_hash.h_type = IDMAP_TYPE_GROUP;
+ 
+ 	clp->cl_idmap = idmap;
+ 	return 0;
+ }
+ 
+-static void
+-idmap_alloc_hashtable(struct idmap_hashtable *h)
+-{
+-	if (h->h_entries != NULL)
+-		return;
+-	h->h_entries = kcalloc(IDMAP_HASH_SZ,
+-			sizeof(*h->h_entries),
+-			GFP_KERNEL);
+-}
+-
+-static void
+-idmap_free_hashtable(struct idmap_hashtable *h)
+-{
+-	int i;
+-
+-	if (h->h_entries == NULL)
+-		return;
+-	for (i = 0; i < IDMAP_HASH_SZ; i++)
+-		kfree(h->h_entries[i].ih_name);
+-	kfree(h->h_entries);
+-}
+-
+ void
+ nfs_idmap_delete(struct nfs_client *clp)
+ {
+@@ -510,8 +482,6 @@ nfs_idmap_delete(struct nfs_client *clp)
+ 	nfs_idmap_unregister(clp, idmap->idmap_pipe);
+ 	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	clp->cl_idmap = NULL;
+-	idmap_free_hashtable(&idmap->idmap_user_hash);
+-	idmap_free_hashtable(&idmap->idmap_group_hash);
+ 	kfree(idmap);
+ }
+ 
+@@ -599,222 +569,87 @@ void nfs_idmap_quit(void)
+ 	nfs_idmap_quit_keyring();
+ }
+ 
+-/*
+- * Helper routines for manipulating the hashtable
+- */
+-static inline struct idmap_hashent *
+-idmap_name_hash(struct idmap_hashtable* h, const char *name, size_t len)
+-{
+-	if (h->h_entries == NULL)
+-		return NULL;
+-	return &h->h_entries[fnvhash32(name, len) % IDMAP_HASH_SZ];
+-}
+-
+-static struct idmap_hashent *
+-idmap_lookup_name(struct idmap_hashtable *h, const char *name, size_t len)
+-{
+-	struct idmap_hashent *he = idmap_name_hash(h, name, len);
+-
+-	if (he == NULL)
+-		return NULL;
+-	if (he->ih_namelen != len || memcmp(he->ih_name, name, len) != 0)
+-		return NULL;
+-	if (time_after(jiffies, he->ih_expires))
+-		return NULL;
+-	return he;
+-}
+-
+-static inline struct idmap_hashent *
+-idmap_id_hash(struct idmap_hashtable* h, __u32 id)
+-{
+-	if (h->h_entries == NULL)
+-		return NULL;
+-	return &h->h_entries[fnvhash32(&id, sizeof(id)) % IDMAP_HASH_SZ];
+-}
+-
+-static struct idmap_hashent *
+-idmap_lookup_id(struct idmap_hashtable *h, __u32 id)
+-{
+-	struct idmap_hashent *he = idmap_id_hash(h, id);
+-
+-	if (he == NULL)
+-		return NULL;
+-	if (he->ih_id != id || he->ih_namelen == 0)
+-		return NULL;
+-	if (time_after(jiffies, he->ih_expires))
+-		return NULL;
+-	return he;
+-}
+-
+-/*
+- * Routines for allocating new entries in the hashtable.
+- * For now, we just have 1 entry per bucket, so it's all
+- * pretty trivial.
+- */
+-static inline struct idmap_hashent *
+-idmap_alloc_name(struct idmap_hashtable *h, char *name, size_t len)
+-{
+-	idmap_alloc_hashtable(h);
+-	return idmap_name_hash(h, name, len);
+-}
+-
+-static inline struct idmap_hashent *
+-idmap_alloc_id(struct idmap_hashtable *h, __u32 id)
+-{
+-	idmap_alloc_hashtable(h);
+-	return idmap_id_hash(h, id);
+-}
+-
+-static void
+-idmap_update_entry(struct idmap_hashent *he, const char *name,
+-		size_t namelen, __u32 id)
+-{
+-	char *str = kmalloc(namelen + 1, GFP_KERNEL);
+-	if (str == NULL)
+-		return;
+-	kfree(he->ih_name);
+-	he->ih_id = id;
+-	memcpy(str, name, namelen);
+-	str[namelen] = '\0';
+-	he->ih_name = str;
+-	he->ih_namelen = namelen;
+-	he->ih_expires = jiffies + nfs_idmap_cache_timeout;
+-}
+-
+-/*
+- * Name -> ID
+- */
+-static int
+-nfs_idmap_id(struct idmap *idmap, struct idmap_hashtable *h,
+-		const char *name, size_t namelen, __u32 *id)
++static int nfs_idmap_prepare_message(char *desc, struct idmap_msg *im,
++				     struct rpc_pipe_msg *msg)
+ {
+-	struct rpc_pipe_msg msg;
+-	struct idmap_msg *im;
+-	struct idmap_hashent *he;
+-	DECLARE_WAITQUEUE(wq, current);
+-	int ret = -EIO;
+-
+-	im = &idmap->idmap_im;
+-
+-	/*
+-	 * String sanity checks
+-	 * Note that the userland daemon expects NUL terminated strings
+-	 */
+-	for (;;) {
+-		if (namelen == 0)
+-			return -EINVAL;
+-		if (name[namelen-1] != '\0')
+-			break;
+-		namelen--;
+-	}
+-	if (namelen >= IDMAP_NAMESZ)
+-		return -EINVAL;
++	substring_t substr;
++	int token, ret;
+ 
+-	mutex_lock(&idmap->idmap_lock);
+-	mutex_lock(&idmap->idmap_im_lock);
+-
+-	he = idmap_lookup_name(h, name, namelen);
+-	if (he != NULL) {
+-		*id = he->ih_id;
+-		ret = 0;
+-		goto out;
+-	}
++	memset(im,  0, sizeof(*im));
++	memset(msg, 0, sizeof(*msg));
+ 
+-	memset(im, 0, sizeof(*im));
+-	memcpy(im->im_name, name, namelen);
++	im->im_type = IDMAP_TYPE_GROUP;
++	token = match_token(desc, nfs_idmap_tokens, &substr);
+ 
+-	im->im_type = h->h_type;
+-	im->im_conv = IDMAP_CONV_NAMETOID;
++	switch (token) {
++	case Opt_find_uid:
++		im->im_type = IDMAP_TYPE_USER;
++	case Opt_find_gid:
++		im->im_conv = IDMAP_CONV_NAMETOID;
++		ret = match_strlcpy(im->im_name, &substr, IDMAP_NAMESZ);
++		break;
+ 
+-	memset(&msg, 0, sizeof(msg));
+-	msg.data = im;
+-	msg.len = sizeof(*im);
++	case Opt_find_user:
++		im->im_type = IDMAP_TYPE_USER;
++	case Opt_find_group:
++		im->im_conv = IDMAP_CONV_IDTONAME;
++		ret = match_int(&substr, &im->im_id);
++		break;
+ 
+-	add_wait_queue(&idmap->idmap_wq, &wq);
+-	if (rpc_queue_upcall(idmap->idmap_pipe, &msg) < 0) {
+-		remove_wait_queue(&idmap->idmap_wq, &wq);
++	default:
++		ret = -EINVAL;
  		goto out;
  	}
  
-+	res.impl_id = kzalloc(sizeof(struct nfs41_impl_id), GFP_KERNEL);
-+	if (unlikely(!res.impl_id)) {
-+		status = -ENOMEM;
-+		goto out_server_scope;
-+	}
-+
- 	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 	if (!status)
- 		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+-	set_current_state(TASK_UNINTERRUPTIBLE);
+-	mutex_unlock(&idmap->idmap_im_lock);
+-	schedule();
+-	__set_current_state(TASK_RUNNING);
+-	remove_wait_queue(&idmap->idmap_wq, &wq);
+-	mutex_lock(&idmap->idmap_im_lock);
++	msg->data = im;
++	msg->len  = sizeof(struct idmap_msg);
  
- 	if (!status) {
-+		/* use the most recent implementation id */
-+		kfree(clp->impl_id);
-+		clp->impl_id = res.impl_id;
-+	} else
-+		kfree(res.impl_id);
-+
-+	if (!status) {
- 		if (clp->server_scope &&
- 		    !nfs41_same_server_scope(clp->server_scope,
- 					     res.server_scope)) {
-@@ -4970,8 +4983,16 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 			goto out;
- 		}
- 	}
-+
-+out_server_scope:
- 	kfree(res.server_scope);
- out:
-+	if (clp->impl_id)
-+		dprintk("%s: Server Implementation ID: "
-+			"domain: %s, name: %s, date: %llu,%u\n",
-+			__func__, clp->impl_id->domain, clp->impl_id->name,
-+			clp->impl_id->date.seconds,
-+			clp->impl_id->date.nseconds);
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 70ded94..6bf3fe9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -291,7 +291,11 @@ static int nfs4_stat_to_errno(int);
- 				/* eir_server_scope<> */ \
- 				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 + \
- 				1 /* eir_server_impl_id array length */ + \
--				0 /* ignored eir_server_impl_id contents */)
-+				1 /* nii_domain */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				1 /* nii_name */ + \
-+				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				3 /* nii_date */)
- #define encode_channel_attrs_maxsz  (6 + 1 /* ca_rdma_ird.len (0) */)
- #define decode_channel_attrs_maxsz  (6 + \
- 				     1 /* ca_rdma_ird.len */ + \
-@@ -5253,6 +5257,7 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	char *dummy_str;
- 	int status;
- 	struct nfs_client *clp = res->client;
-+	uint32_t impl_id_count;
- 
- 	status = decode_op_hdr(xdr, OP_EXCHANGE_ID);
- 	if (status)
-@@ -5294,11 +5299,38 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	memcpy(res->server_scope->server_scope, dummy_str, dummy);
- 	res->server_scope->server_scope_sz = dummy;
- 
--	/* Throw away Implementation id array */
--	status = decode_opaque_inline(xdr, &dummy, &dummy_str);
--	if (unlikely(status))
--		return status;
-+	/* Implementation Id */
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	impl_id_count = be32_to_cpup(p++);
- 
-+	if (impl_id_count) {
-+		/* nii_domain */
-+		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
-+		if (unlikely(status))
-+			return status;
-+		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+			return -EIO;
-+		memcpy(res->impl_id->domain, dummy_str, dummy);
-+
-+		/* nii_name */
-+		status = decode_opaque_inline(xdr, &dummy, &dummy_str);
-+		if (unlikely(status))
-+			return status;
-+		if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
-+			return -EIO;
-+		memcpy(res->impl_id->name, dummy_str, dummy);
-+
-+		/* nii_date */
-+		p = xdr_inline_decode(xdr, 12);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		p = xdr_decode_hyper(p, &res->impl_id->date.seconds);
-+		res->impl_id->date.nseconds = be32_to_cpup(p);
-+
-+		/* if there's more than one entry, ignore the rest */
-+	}
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d05024a..5462225 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -809,6 +809,14 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 
- 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
- 
-+	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
-+		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-+		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
-+			   "date='%llu,%u'",
-+			   impl_id->name, impl_id->domain,
-+			   impl_id->date.seconds, impl_id->date.nseconds);
-+	}
-+
- 	seq_printf(m, "\n\tcaps:\t");
- 	seq_printf(m, "caps=0x%x", nfss->caps);
- 	seq_printf(m, ",wtmult=%u", nfss->wtmult);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3bf4766..03d0b91 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -18,6 +18,7 @@ struct nfs4_sequence_res;
- struct nfs_server;
- struct nfs4_minor_version_ops;
- struct server_scope;
-+struct nfs41_impl_id;
- 
- /*
-  * The nfs_client identifies our client state to the server.
-@@ -86,6 +87,7 @@ struct nfs_client {
- #endif
- 
- 	struct server_scope	*server_scope;	/* from exchange_id */
-+	struct nfs41_impl_id	*impl_id;	/* from exchange_id */
- 	struct net		*net;
- };
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index adbc84a..046c1bf 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1054,14 +1054,6 @@ struct nfstime4 {
- };
- 
- #ifdef CONFIG_NFS_V4_1
--struct nfs_impl_id4 {
--	u32		domain_len;
--	char		*domain;
--	u32		name_len;
--	char		*name;
--	struct nfstime4	date;
--};
+-	if (im->im_status & IDMAP_STATUS_SUCCESS) {
+-		*id = im->im_id;
+-		ret = 0;
+-	}
 -
- #define NFS4_EXCHANGE_ID_LEN	(48)
- struct nfs41_exchange_id_args {
- 	struct nfs_client		*client;
-@@ -1082,10 +1074,17 @@ struct server_scope {
- 	char 				server_scope[NFS4_OPAQUE_LIMIT];
- };
+- out:
+-	memset(im, 0, sizeof(*im));
+-	mutex_unlock(&idmap->idmap_im_lock);
+-	mutex_unlock(&idmap->idmap_lock);
++out:
+ 	return ret;
+ }
  
-+struct nfs41_impl_id {
-+	char				domain[NFS4_OPAQUE_LIMIT + 1];
-+	char				name[NFS4_OPAQUE_LIMIT + 1];
-+	struct nfstime4			date;
-+};
+-/*
+- * ID -> Name
+- */
+-static int
+-nfs_idmap_name(struct idmap *idmap, struct idmap_hashtable *h,
+-		__u32 id, char *name)
++static int nfs_idmap_legacy_upcall(struct key_construction *cons,
++				   const char *op,
++				   void *aux)
+ {
+ 	struct rpc_pipe_msg msg;
+-	struct idmap_msg *im;
+-	struct idmap_hashent *he;
+-	DECLARE_WAITQUEUE(wq, current);
+-	int ret = -EIO;
+-	unsigned int len;
+-
+-	im = &idmap->idmap_im;
+-
+-	mutex_lock(&idmap->idmap_lock);
+-	mutex_lock(&idmap->idmap_im_lock);
++	struct idmap_msg im;
++	struct idmap *idmap = (struct idmap *)aux;
++	struct key *key = cons->key;
++	int ret;
+ 
+-	he = idmap_lookup_id(h, id);
+-	if (he) {
+-		memcpy(name, he->ih_name, he->ih_namelen);
+-		ret = he->ih_namelen;
+-		goto out;
++	ret = nfs_idmap_prepare_message(key->description, &im, &msg);
++	if (ret < 0) {
++		complete_request_key(cons, ret);
++		return ret;
+ 	}
++	idmap->idmap_key_cons = cons;
+ 
+-	memset(im, 0, sizeof(*im));
+-	im->im_type = h->h_type;
+-	im->im_conv = IDMAP_CONV_IDTONAME;
+-	im->im_id = id;
+-
+-	memset(&msg, 0, sizeof(msg));
+-	msg.data = im;
+-	msg.len = sizeof(*im);
++	return rpc_queue_upcall(idmap->idmap_pipe, &msg);
++}
+ 
+-	add_wait_queue(&idmap->idmap_wq, &wq);
++static int nfs_idmap_instantiate(struct key *key, struct key *authkey, char *data)
++{
++	return key_instantiate_and_link(key, data, strlen(data) + 1,
++					id_resolver_cache->thread_keyring,
++					authkey);
++}
+ 
+-	if (rpc_queue_upcall(idmap->idmap_pipe, &msg) < 0) {
+-		remove_wait_queue(&idmap->idmap_wq, &wq);
+-		goto out;
+-	}
++static int nfs_idmap_read_message(struct idmap_msg *im, struct key *key, struct key *authkey)
++{
++	char id_str[NFS_UINT_MAXLEN];
++	int ret = -EINVAL;
+ 
+-	set_current_state(TASK_UNINTERRUPTIBLE);
+-	mutex_unlock(&idmap->idmap_im_lock);
+-	schedule();
+-	__set_current_state(TASK_RUNNING);
+-	remove_wait_queue(&idmap->idmap_wq, &wq);
+-	mutex_lock(&idmap->idmap_im_lock);
+-
+-	if (im->im_status & IDMAP_STATUS_SUCCESS) {
+-		if ((len = strnlen(im->im_name, IDMAP_NAMESZ)) == 0)
+-			goto out;
+-		memcpy(name, im->im_name, len);
+-		ret = len;
++	switch (im->im_conv) {
++	case IDMAP_CONV_NAMETOID:
++		sprintf(id_str, "%d", im->im_id);
++		ret = nfs_idmap_instantiate(key, authkey, id_str);
++		break;
++	case IDMAP_CONV_IDTONAME:
++		ret = nfs_idmap_instantiate(key, authkey, im->im_name);
++		break;
+ 	}
+ 
+- out:
+-	memset(im, 0, sizeof(*im));
+-	mutex_unlock(&idmap->idmap_im_lock);
+-	mutex_unlock(&idmap->idmap_lock);
+ 	return ret;
+ }
+ 
+@@ -823,79 +658,42 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ {
+ 	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
+ 	struct idmap *idmap = (struct idmap *)rpci->private;
+-	struct idmap_msg im_in, *im = &idmap->idmap_im;
+-	struct idmap_hashtable *h;
+-	struct idmap_hashent *he = NULL;
++	struct key_construction *cons = idmap->idmap_key_cons;
++	struct idmap_msg im;
+ 	size_t namelen_in;
+ 	int ret;
+ 
+-	if (mlen != sizeof(im_in))
+-		return -ENOSPC;
+-
+-	if (copy_from_user(&im_in, src, mlen) != 0)
+-		return -EFAULT;
+-
+-	mutex_lock(&idmap->idmap_im_lock);
+-
+-	ret = mlen;
+-	im->im_status = im_in.im_status;
+-	/* If we got an error, terminate now, and wake up pending upcalls */
+-	if (!(im_in.im_status & IDMAP_STATUS_SUCCESS)) {
+-		wake_up(&idmap->idmap_wq);
++	if (mlen != sizeof(im)) {
++		ret = -ENOSPC;
+ 		goto out;
+ 	}
+ 
+-	/* Sanity checking of strings */
+-	ret = -EINVAL;
+-	namelen_in = strnlen(im_in.im_name, IDMAP_NAMESZ);
+-	if (namelen_in == 0 || namelen_in == IDMAP_NAMESZ)
++	if (copy_from_user(&im, src, mlen) != 0) {
++		ret = -EFAULT;
+ 		goto out;
++	}
+ 
+-	switch (im_in.im_type) {
+-		case IDMAP_TYPE_USER:
+-			h = &idmap->idmap_user_hash;
+-			break;
+-		case IDMAP_TYPE_GROUP:
+-			h = &idmap->idmap_group_hash;
+-			break;
+-		default:
+-			goto out;
++	if (!(im.im_status & IDMAP_STATUS_SUCCESS)) {
++		ret = mlen;
++		complete_request_key(idmap->idmap_key_cons, -ENOKEY);
++		goto out_incomplete;
+ 	}
+ 
+-	switch (im_in.im_conv) {
+-	case IDMAP_CONV_IDTONAME:
+-		/* Did we match the current upcall? */
+-		if (im->im_conv == IDMAP_CONV_IDTONAME
+-				&& im->im_type == im_in.im_type
+-				&& im->im_id == im_in.im_id) {
+-			/* Yes: copy string, including the terminating '\0'  */
+-			memcpy(im->im_name, im_in.im_name, namelen_in);
+-			im->im_name[namelen_in] = '\0';
+-			wake_up(&idmap->idmap_wq);
+-		}
+-		he = idmap_alloc_id(h, im_in.im_id);
+-		break;
+-	case IDMAP_CONV_NAMETOID:
+-		/* Did we match the current upcall? */
+-		if (im->im_conv == IDMAP_CONV_NAMETOID
+-				&& im->im_type == im_in.im_type
+-				&& strnlen(im->im_name, IDMAP_NAMESZ) == namelen_in
+-				&& memcmp(im->im_name, im_in.im_name, namelen_in) == 0) {
+-			im->im_id = im_in.im_id;
+-			wake_up(&idmap->idmap_wq);
+-		}
+-		he = idmap_alloc_name(h, im_in.im_name, namelen_in);
+-		break;
+-	default:
++	namelen_in = strnlen(im.im_name, IDMAP_NAMESZ);
++	if (namelen_in == 0 || namelen_in == IDMAP_NAMESZ) {
++		ret = -EINVAL;
+ 		goto out;
+ 	}
+ 
+-	/* If the entry is valid, also copy it to the cache */
+-	if (he != NULL)
+-		idmap_update_entry(he, im_in.im_name, namelen_in, im_in.im_id);
+-	ret = mlen;
++	ret = nfs_idmap_read_message(&im, cons->key, cons->authkey);
++	if (ret >= 0) {
++		key_set_timeout(cons->key, nfs_idmap_cache_timeout);
++		ret = mlen;
++	}
 +
- struct nfs41_exchange_id_res {
- 	struct nfs_client		*client;
- 	u32				flags;
- 	struct server_scope		*server_scope;
-+	struct nfs41_impl_id		*impl_id;
- };
+ out:
+-	mutex_unlock(&idmap->idmap_im_lock);
++	complete_request_key(idmap->idmap_key_cons, ret);
++out_incomplete:
+ 	return ret;
+ }
  
- struct nfs41_create_session_args {
+@@ -903,61 +701,28 @@ static void
+ idmap_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ {
+ 	struct idmap_msg *im = msg->data;
+-	struct idmap *idmap = container_of(im, struct idmap, idmap_im); 
+ 
+ 	if (msg->errno >= 0)
+ 		return;
+-	mutex_lock(&idmap->idmap_im_lock);
+ 	im->im_status = IDMAP_STATUS_LOOKUPFAIL;
+-	wake_up(&idmap->idmap_wq);
+-	mutex_unlock(&idmap->idmap_im_lock);
+-}
+-
+-/* 
+- * Fowler/Noll/Vo hash
+- *    http://www.isthe.com/chongo/tech/comp/fnv/
+- */
+-
+-#define FNV_P_32 ((unsigned int)0x01000193) /* 16777619 */
+-#define FNV_1_32 ((unsigned int)0x811c9dc5) /* 2166136261 */
+-
+-static unsigned int fnvhash32(const void *buf, size_t buflen)
+-{
+-	const unsigned char *p, *end = (const unsigned char *)buf + buflen;
+-	unsigned int hash = FNV_1_32;
+-
+-	for (p = buf; p < end; p++) {
+-		hash *= FNV_P_32;
+-		hash ^= (unsigned int)*p;
+-	}
+-
+-	return hash;
+ }
+ 
+ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+ {
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+-	int ret = -EINVAL;
+ 
+ 	if (nfs_map_string_to_numeric(name, namelen, uid))
+ 		return 0;
+-	ret = nfs_idmap_lookup_id(name, namelen, "uid", uid);
+-	if (ret < 0)
+-		ret = nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+-	return ret;
++	return nfs_idmap_lookup_id(name, namelen, "uid", uid, idmap);
+ }
+ 
+ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
+ {
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+-	int ret = -EINVAL;
+ 
+ 	if (nfs_map_string_to_numeric(name, namelen, gid))
+ 		return 0;
+-	ret = nfs_idmap_lookup_id(name, namelen, "gid", gid);
+-	if (ret < 0)
+-		ret = nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, gid);
+-	return ret;
++	return nfs_idmap_lookup_id(name, namelen, "gid", gid, idmap);
+ }
+ 
+ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+@@ -965,11 +730,8 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 	int ret = -EINVAL;
+ 
+-	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
+-		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
+-		if (ret < 0)
+-			ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
+-	}
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+@@ -979,11 +741,8 @@ int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf,
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 	int ret = -EINVAL;
+ 
+-	if (!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
+-		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
+-		if (ret < 0)
+-			ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, gid, buf);
+-	}
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen, idmap);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(gid, buf, buflen);
+ 	return ret;
+diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
+index 7eed201..717fa50 100644
+--- a/include/linux/nfs_idmap.h
++++ b/include/linux/nfs_idmap.h
+@@ -69,19 +69,8 @@ struct nfs_server;
+ struct nfs_fattr;
+ struct nfs4_string;
+ 
+-#ifdef CONFIG_NFS_V4
+ int nfs_idmap_init(void);
+ void nfs_idmap_quit(void);
+-#else
+-static inline int nfs_idmap_init(void)
+-{
+-	return 0;
+-}
+-
+-static inline void nfs_idmap_quit(void)
+-{}
+-#endif
+-
+ int nfs_idmap_new(struct nfs_client *);
+ void nfs_idmap_delete(struct nfs_client *);
+ 
 -- 
-1.7.4.4
+1.7.9.1
 
