@@ -1,96 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:48560 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907Ab2BOQGZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 11:06:25 -0500
-Received: by wics10 with SMTP id s10so617182wic.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 08:06:24 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1329320764.3364.19.camel@lade.trondhjem.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-	<1329259606.11759.15.camel@lade.trondhjem.org>
-	<4F3AFD84.3020709@nexenta.com>
-	<1329266587.28837.4.camel@lade.trondhjem.org>
-	<20120215005315.GA9018@fieldses.org>
-	<1329270628.28837.15.camel@lade.trondhjem.org>
-	<1329273001.28837.19.camel@lade.trondhjem.org>
-	<077E41FB-D306-45F5-9344-05A15330A483@netapp.com>
-	<1329320764.3364.19.camel@lade.trondhjem.org>
-Date: Wed, 15 Feb 2012 11:06:23 -0500
-Message-ID: <CAHVgHyVAeBdJaMpFj5cxKpntmL+vGs8-JNiyQ=tzcJj4Y53jvA@mail.gmail.com>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
+Received: from mx2.netapp.com ([216.240.18.37]:43964 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754147Ab2BVKNR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Feb 2012 05:13:17 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [GIT PULL] Please pull 4 bugfixes for the NFS client
+Date: Wed, 22 Feb 2012 10:13:10 +0000
+Message-ID: <1329905589.3043.10.camel@lade.trondhjem.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="=-kJE3mws0/5SmWWp9H1Qr"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 10:46 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2012-02-15 at 15:07 +0000, Adamson, Andy wrote:
->>
->> Please don't merge nfs4_reset_slot_tables and nfs4_init_slot_tables.  It  assumes a static array (realloc) which goes away with the dynamic slot table code. Instead, take a look at the patch set I sent on Feb 12
->
-> Why not? There is _no_ functional difference between what
-> nfs4_reset_slot_tables() and nfs4_init_slot_tables() need to do.
-> They both need to allocate new slots (conditionally in the case of
-> nfs4_reset_slot_tables, but the condition is compatible with the
-> nfs4_init_slot_tables case), and they both need to initialise those
-> slots to the value '1'.
+--=-kJE3mws0/5SmWWp9H1Qr
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-The reset case also needs to reduce the number of slots.  In the
-dynamic slot case, the reset function will not require draining of the
-session. So reset will, in response to a change in  the
-target_highest_slotid or a CB_RECALL_SLOT from the server, add or
-remove slots without draining the session. In this case, reset will
-only initialize any new slots sequence numbers to 1, not all slots.
+Hi Linus,
 
-That said, I guess it can all be in one function.
+Please pull from the signed tag "nfs-for-3.3-4" in the repository at
 
->
-> AFAICS There is no reason for keeping those as 2 separate functions, and
-> I don't see how the dynamic session patches change anything to that
-> conclusion.
->
->> [PATCH Version 7 3/3] NFSv4.1 avoid freeing slot when tasks are waiting
->> [PATCH Version 1 2/3] NFSv4.1 prepare for dyamic session slots
->> [PATCH Version 7 1/3] NFS4.1 clean up nfs4_alloc_session
->
-> I need a fix for the 3.3 final...
->
-> Those patches can be cleaned up and made ready for 3.4 (needs work -
-> they won't apply to the 'nfs-for-next' branch),
+   git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tag nfs-=
+for-3.3-4
 
-I worked against the bugfix branch. I'll use the nfs-for-next branch.
+This will update the following files through the appended changesets.
 
-> but right now they're
-> not sufficiently tested nor are they sufficiently reviewed.
+  Cheers,
+    Trond
 
-Agreed. I want to test some more at connectathon. I did iozone tests
-to show that this dynamic slot implementation performs as well as the
-static array, but not enough testing / review for coding bugs.
+----
+ fs/nfs/nfs4proc.c       |  130 ++++++++++++++++++++-----------------------=
+----
+ fs/nfs/nfs4state.c      |    2 +
+ fs/nfs/nfs4xdr.c        |    5 ++-
+ include/linux/nfs_xdr.h |    2 +-
+ 4 files changed, 62 insertions(+), 77 deletions(-)
 
-> For
-> instance, I'm not happy with the idea of adding a 'tk_private' field in
-> the struct rpc_task.
+commit abe9a6d57b4544ac208401f9c0a4262814db2be4
+Author: Weston Andros Adamson <dros@netapp.com>
+Date:   Thu Feb 16 11:17:05 2012 -0500
 
-OK. Do you have a suggestion?
+    NFSv4: fix server_scope memory leak
+   =20
+    server_scope would never be freed if nfs4_check_cl_exchange_flags() ret=
+urned
+    non-zero
+   =20
+    Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+    Cc: stable@vger.kernel.org
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Thanks
+commit f86f36a6ae625eda87a13e1ea102a908e08f491b
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Feb 14 20:33:19 2012 -0500
 
--->Andy
+    NFSv4.1: Fix a NFSv4.1 session initialisation regression
+   =20
+    Commit aacd553 (NFSv4.1: cleanup init and reset of session slot tables)
+    introduces a regression in the session initialisation code. New tables
+    now find their sequence ids initialised to 0, rather than the mandated
+    value of 1 (see RFC5661).
+   =20
+    Fix the problem by merging nfs4_reset_slot_table() and nfs4_init_slot_t=
+able().
+    Since the tbl->max_slots is initialised to 0, the test in
+    nfs4_reset_slot_table for max_reqs !=3D tbl->max_slots will automatical=
+ly
+    pass for an empty table.
+   =20
+    Reported-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
->
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+commit b9f9a03150969e4bd9967c20bce67c4de769058f
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Feb 9 15:31:36 2012 -0500
+
+    NFSv4: Ensure we throw out bad delegation stateids on NFS4ERR_BAD_STATE=
+ID
+   =20
+    To ensure that we don't just reuse the bad delegation when we attempt t=
+o
+    recover the nfs4_state that received the bad stateid error.
+   =20
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: stable@vger.kernel.org
+
+commit 331818f1c468a24e581aedcbe52af799366a9dfe
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Fri Feb 3 18:30:53 2012 -0500
+
+    NFSv4: Fix an Oops in the NFSv4 getacl code
+   =20
+    Commit bf118a342f10dafe44b14451a1392c3254629a1f (NFSv4: include bitmap
+    in nfsv4 get acl data) introduces the 'acl_scratch' page for the case
+    where we may need to decode multi-page data. However it fails to take
+    into account the fact that the variable may be NULL (for the case where
+    we're not doing multi-page decode), and it also attaches it to the
+    encoding xdr_stream rather than the decoding one.
+   =20
+    The immediate result is an Oops in nfs4_xdr_enc_getacl due to the
+    call to page_address() with a NULL page pointer.
+   =20
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Cc: Andy Adamson <andros@netapp.com>
+    Cc: stable@vger.kernel.org
+
+
+--=20
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+
+--=-kJE3mws0/5SmWWp9H1Qr
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJPRL+1AAoJEGcL54qWCgDyW0AP/34kcBzJPVEn5QGucYUwYb1J
+EJKXF0SG32jdayRQjnGr+eFt2tCDotxRn8yJGyMLbcGimcgVEbfchpFzas5cKm8F
+TM4n4EjCRUqLq0BL7dD3QbCSbcUqP+OZ20DfHJlHVC1inZyfdLwoJCHU0PfHJ/ld
+YVuUfgZzwyoYIxnybk9j/zQpLOYABMwLKQ+F/m0CxNNY15id1ThRN+nmCnQM0YR3
+e+y8XIn9TZnkJ8YLBRhmXZOm+S1Kh/LWBuUZCFkiQohkFdHR61eXwok47B5Ikyfu
+BBOkf86mDWnIz8qVb3YXS+pfVTF8tv2gElGEITYDjZUjrAtPTXZKNlqVI34U/CeA
+YNlwTcT+/pfRIxwrPTe0Xs2S4GCkRo81M9HER5ozzJar0D2zJOFD/EEG1ATIkY+l
+CywnjblRhE+k0ZSxSQXeUOISit7cbRqU/H0QMx9iOTHvw5ZZQiWxRkNztqdoC58p
+Lds6PABiBZUd1qH4L7VCSUQwqmTeLFYey6L062fdy53QcXuhBM2vW7V3+t+dbj78
+MG8vpwHDoQj5qpYtKdnjySCb6a+ZKAEaAhBjRlAkqjwFPMoRTfBzvepVGCGxpJVo
+TpABeAKZy341qBcZJW6QrhVyhb5L2bXdU9r5Bd+4W4+IqIo1q3Q9wcovqVk/mo44
+NnxVixxFPkV3x7J7NoU3
+=ub8E
+-----END PGP SIGNATURE-----
+
+--=-kJE3mws0/5SmWWp9H1Qr--
