@@ -1,81 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:56618 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751134Ab2BPOYN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 09:24:13 -0500
-Received: by wgbdt10 with SMTP id dt10so1970138wgb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 06:24:12 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <4F3CD0D7.8040402@steve-ss.com>
-References: <4F3CD0D7.8040402@steve-ss.com>
-Date: Thu, 16 Feb 2012 09:24:12 -0500
-Message-ID: <CAHVgHyX-NUviMYbg2ROvgXUvj6UhFj1FfsUmcyO9JPxFhwhHcQ@mail.gmail.com>
-Subject: Re: NFS4 des and weak crypto
-From: Andy Adamson <androsadamson@gmail.com>
-To: steve <steve@steve-ss.com>
+Received: from fieldses.org ([174.143.236.118]:45106 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751796Ab2BWBpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Feb 2012 20:45:14 -0500
+Date: Wed, 22 Feb 2012 20:45:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Peter Horvath <peter.horvath77@googlemail.com>
 Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: NFSv4 client restriction
+Message-ID: <20120223014514.GA19890@fieldses.org>
+References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com>
+ <20120223010111.GA19432@fieldses.org>
+ <CAO9xhuZhtC8nWOhLjqG0iBRyvVN4ap7XqeD=hYHRR_29LBZpGA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAO9xhuZhtC8nWOhLjqG0iBRyvVN4ap7XqeD=hYHRR_29LBZpGA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 16, 2012 at 4:48 AM, steve <steve@steve-ss.com> wrote:
-> Hi
-> openSUSE 12.1
->
-> I'm trying to explain to our windows admin that modern nfs isn't restricted
-> to DES.
->
-> Here is a Samba4 authenticated test setup.
->
-> I've removed he DES keys from the keytab on the nfs server:
->
-> klist -ke /etc/krb5.keytab
-> Keytab name: WRFILE:/etc/krb5.keytab
-> KVNO Principal
-> ---- ---------
-> � 1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
-> � 1 HH3$@hh3.site (arcfour-hmac)
->
-> In /etc/krb5.conf, I comment out:
-> [libdefaults]
-> #allow_weak_crypto = true
-> It was never actually there. I've added it help my argument;)
-> hh3 is the server, hh6 is the client.
->
-> On hh6, root issues:
-> mount -t nfs4 hh3:/foo /bar -o sec=krb5
-> rpc.gssd -fvvv throws a fit, the KDC responds with,
->
-> Kerberos: ENC-TS Pre-authentication succeeded -- HH6$@HH3.SITE using
-> arcfour-hmac-md5
-> Kerberos: AS-REQ authtime: 2012-02-06T19:44:47 starttime: unset endtime:
-> 2012-02-07T05:44:47 renew till: 2012-02-07T19:44:47
-> Kerberos: Client supported enctypes: aes256-cts-hmac-sha1-96,
-> aes128-cts-hmac-sha1-96, des3-cbc-sha1, arcfour-hmac-md5, des-cbc-crc,
-> des-cbc-md5, des-cbc-md4, using arcfour-hmac-md5/arcfour-hmac-md5
-> Kerberos: Requested flags: renewable-ok
-> Kerberos: TGS-REQ HH6$@HH3.SITE from ipv4:192.168.1.10:45421 for
-> nfs/hh3.hh3.site@HH3.SITE [canonicalize, renewable]
-> Kerberos: TGS-REQ authtime: 2012-02-06T19:44:47 starttime:
-> 2012-02-06T19:44:47 endtime: 2012-02-07T05:44:47 renew till: 20
->
-> we can logon and request files via the mount.
->
-> Questions
-> Does this procedure prove that nfs can use other than DES crypto?
-> Is arcfour what an AD admin would consider strong encryption?
+On Thu, Feb 23, 2012 at 01:24:35AM +0000, Peter Horvath wrote:
+> It is a vmware RDM disk mounted /srv
+> It is the same filesystem.
+> Do you say this config would work if i use separate partition for the
+> separate directories?
 
-Linux NFS clients and servers can use any of the crypto listed above
-in the "client supported enctypes". aes256-cts-hmac-sha1-96 is the
-strongest.
+Yes, I expect so.
 
--->Andy
+--b.
 
->
-> Thanks,
-> Steve
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at �http://vger.kernel.org/majordomo-info.html
+> 
+> On 23 February 2012 01:01, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Wed, Feb 22, 2012 at 07:24:12PM +0000, Peter Horvath wrote:
+> >> We are using Ubuntu LTS 10.04 servers and clients.
+> >> NFS version is the following:
+> >> nfs-common                     1.2.0-4ubuntu4.2
+> >> nfs-kernel-server               1.2.0-4ubuntu4.2
+> >>
+> >> My exports looks like this:
+> >>
+> >> /srv 10.66.3.0/24(fsid=0,ro,no_subtree_check,sync)
+> >> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
+> >> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
+> >> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
+> >>
+> >> My problem is that in this case clients have only read-only access. If
+> >> i set the pseudofilesystem root to RW it is working but in that case
+> >> all the clients would be able to mount the root and access other
+> >> projects too.
+> >> How can i achieve the same results as it was in NFSv3 with this config.
+> >>
+> >> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
+> >> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
+> >> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
+> >
+> > Are project1, 2, 3 on the same filesystem as /srv and /srv/www?
+> >
+> > If so, this is expected; create a separate partition for /srv/www, or
+> > for each project1, 2, 3 directory, and you may find the problem is
+> > fixed.
+> >
+> > If that doesn't fix the problem, it may be a bug.  We've fixed a few
+> > bugs in that area lately, so it would be worth retrying with more recent
+> > kernel and nfs-utils.
+> >
+> > --b.
