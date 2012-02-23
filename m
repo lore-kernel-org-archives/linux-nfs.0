@@ -1,82 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10551 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753369Ab2BPV3Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Feb 2012 16:29:24 -0500
-Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1GLTILg012107
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 13:29:19 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 1/1] NFSv4.1 set the cl_hostname for data
- servers
-Date: Thu, 16 Feb 2012 21:29:12 +0000
-Message-ID: <1329427752.19793.30.camel@lade.trondhjem.org>
-References: <1329426646-2074-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1329426646-2074-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from partagas.dragonet.es ([217.70.240.130]:53019 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756032Ab2BWPnC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 10:43:02 -0500
+Message-ID: <4F465E76.4000201@steve-ss.com>
+Date: Thu, 23 Feb 2012 16:42:46 +0100
+From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+CC: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Subject: Re: NFSv4 client restriction
+References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com> <20120223010111.GA19432@fieldses.org> <4F45E63B.9090608@steve-ss.com> <4F464A4A.10403@fifthhorseman.net>
+In-Reply-To: <4F464A4A.10403@fifthhorseman.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTE2IGF0IDE2OjEwIC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFVzZWQg
-YnkgL3Byb2MvZnMvbmZzZnMvc2VydmVycw0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFt
-c29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvY2xpZW50LmMgICAgICAg
-ICAgICB8ICAgIDMgKystDQo+ICBmcy9uZnMvaW50ZXJuYWwuaCAgICAgICAgICB8ICAgIDMgKyst
-DQo+ICBmcy9uZnMvbmZzNGZpbGVsYXlvdXRkZXYuYyB8ICAgMTEgKysrKysrKysrKy0NCj4gIDMg
-ZmlsZXMgY2hhbmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMgYi9mcy9uZnMvY2xpZW50LmMNCj4gaW5kZXggZDBm
-ODUwZi4uYzYyNTI4NCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2NsaWVudC5jDQo+ICsrKyBiL2Zz
-L25mcy9jbGllbnQuYw0KPiBAQCAtMTQ0Myw3ICsxNDQzLDcgQEAgZXJyb3I6DQo+ICAgKi8NCj4g
-IHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X3NldF9kc19jbGllbnQoc3RydWN0IG5mc19jbGllbnQq
-IG1kc19jbHAsDQo+ICAJCWNvbnN0IHN0cnVjdCBzb2NrYWRkciAqZHNfYWRkciwNCj4gLQkJaW50
-IGRzX2FkZHJsZW4sIGludCBkc19wcm90bykNCj4gKwkJaW50IGRzX2FkZHJsZW4sIGludCBkc19w
-cm90bywgY2hhciAqZHNfaG9zdG5hbWUpDQoNCkNhbiB5b3UgbWFrZSB0aGlzIChhbmQgdGhlIG90
-aGVyIGluc3RhbmNlcyBiZWxvdykgJ2NvbnN0IGNoYXIgKicsIHNvDQp0aGF0IHdlIGF2b2lkIGFu
-eSBjb25mdXNpb24/IE90aGVyd2lzZSBpdCBsb29rcyBtb3JlIG9yIGxlc3MgT0suLi4NCg0KTm90
-ZSB0aGF0IHdlIHNob3VsZCBjb25zaWRlciBzcGxpdHRpbmcgZGEtPmRhX3JlbW90ZXN0ciBpbnRv
-IGENCmhvc3RuYW1lL3BvcnQgcGFydCBhdCBzb21lIHBvaW50IHNvIHRoYXQgd2UgYXZvaWQgdGhl
-IGNvcHkgYmVsb3cuDQoNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVudF9pbml0ZGF0YSBjbF9p
-bml0ID0gew0KPiAgCQkuYWRkciA9IGRzX2FkZHIsDQo+IEBAIC0xNDUyLDYgKzE0NTIsNyBAQCBz
-dHJ1Y3QgbmZzX2NsaWVudCAqbmZzNF9zZXRfZHNfY2xpZW50KHN0cnVjdCBuZnNfY2xpZW50KiBt
-ZHNfY2xwLA0KPiAgCQkucHJvdG8gPSBkc19wcm90bywNCj4gIAkJLm1pbm9ydmVyc2lvbiA9IG1k
-c19jbHAtPmNsX21pbm9ydmVyc2lvbiwNCj4gIAkJLm5ldCA9IG1kc19jbHAtPm5ldCwNCj4gKwkJ
-Lmhvc3RuYW1lID0gZHNfaG9zdG5hbWUsDQo+ICAJfTsNCj4gIAlzdHJ1Y3QgcnBjX3RpbWVvdXQg
-ZHNfdGltZW91dCA9IHsNCj4gIAkJLnRvX2luaXR2YWwgPSAxNSAqIEhaLA0KPiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL2ludGVybmFsLmggYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiBpbmRleCAwYzM2NDhh
-Li5iODcwNjk1IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaW50ZXJuYWwuaA0KPiArKysgYi9mcy9u
-ZnMvaW50ZXJuYWwuaA0KPiBAQCAtMTcwLDcgKzE3MCw4IEBAIGV4dGVybiB2b2lkIG5mc19tYXJr
-X2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBpbnQgc3RhdGUpOw0KPiAgZXh0
-ZXJuIGludCBuZnM0X2NoZWNrX2NsaWVudF9yZWFkeShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwKTsN
-Cj4gIGV4dGVybiBzdHJ1Y3QgbmZzX2NsaWVudCAqbmZzNF9zZXRfZHNfY2xpZW50KHN0cnVjdCBu
-ZnNfY2xpZW50KiBtZHNfY2xwLA0KPiAgCQkJCQkgICAgIGNvbnN0IHN0cnVjdCBzb2NrYWRkciAq
-ZHNfYWRkciwNCj4gLQkJCQkJICAgICBpbnQgZHNfYWRkcmxlbiwgaW50IGRzX3Byb3RvKTsNCj4g
-KwkJCQkJICAgICBpbnQgZHNfYWRkcmxlbiwgaW50IGRzX3Byb3RvLA0KPiArCQkJCQkgICAgIGNo
-YXIgKmRzX2hvc3RuYW1lKTsNCj4gICNpZmRlZiBDT05GSUdfUFJPQ19GUw0KPiAgZXh0ZXJuIGlu
-dCBfX2luaXQgbmZzX2ZzX3Byb2NfaW5pdCh2b2lkKTsNCj4gIGV4dGVybiB2b2lkIG5mc19mc19w
-cm9jX2V4aXQodm9pZCk7DQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXRkZXYu
-YyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dGRldi5jDQo+IGluZGV4IDQxNjc3ZjAuLmEwYjFmYzUg
-MTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dGRldi5jDQo+ICsrKyBiL2ZzL25m
-cy9uZnM0ZmlsZWxheW91dGRldi5jDQo+IEBAIC0xNTMsNiArMTUzLDcgQEAgbmZzNF9kc19jb25u
-ZWN0KHN0cnVjdCBuZnNfc2VydmVyICptZHNfc3J2LCBzdHJ1Y3QgbmZzNF9wbmZzX2RzICpkcykN
-Cj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gRVJSX1BUUigtRUlPKTsNCj4gIAlz
-dHJ1Y3QgbmZzNF9wbmZzX2RzX2FkZHIgKmRhOw0KPiArCWNoYXIgKmRzX2hvc3RuYW1lID0gTlVM
-TDsNCj4gIAlpbnQgc3RhdHVzID0gMDsNCj4gIA0KPiAgCWRwcmludGsoIi0tPiAlcyBEUyAlcyBh
-dV9mbGF2b3IgJWRcbiIsIF9fZnVuY19fLCBkcy0+ZHNfcmVtb3Rlc3RyLA0KPiBAQCAtMTY0LDkg
-KzE2NSwxNyBAQCBuZnM0X2RzX2Nvbm5lY3Qoc3RydWN0IG5mc19zZXJ2ZXIgKm1kc19zcnYsIHN0
-cnVjdCBuZnM0X3BuZnNfZHMgKmRzKQ0KPiAgCQlkcHJpbnRrKCIlczogRFMgJXM6IHRyeWluZyBh
-ZGRyZXNzICVzXG4iLA0KPiAgCQkJX19mdW5jX18sIGRzLT5kc19yZW1vdGVzdHIsIGRhLT5kYV9y
-ZW1vdGVzdHIpOw0KPiAgDQo+ICsJCS8qIEZvciBkZWJ1ZzogT0sgaWYgZHNfcmVtb3Rlc3RyIG9y
-IGRzX2hvc3RuYW1lIGlzIE5VTEwgKi8NCj4gKwkJaWYgKGRhLT5kYV9yZW1vdGVzdHIpIHsNCj4g
-KwkJCWNoYXIgKmVuZCA9IHN0cmNocihkYS0+ZGFfcmVtb3Rlc3RyLCAnOicpOw0KPiArCQkJZHNf
-aG9zdG5hbWUgPSBrc3RybmR1cChkYS0+ZGFfcmVtb3Rlc3RyLA0KPiArCQkJCQkgICAgICAgZW5k
-IC0gZGEtPmRhX3JlbW90ZXN0ciwNCj4gKwkJCQkJICAgICAgIEdGUF9LRVJORUwpOw0KPiArCQl9
-DQo+ICAJCWNscCA9IG5mczRfc2V0X2RzX2NsaWVudChtZHNfc3J2LT5uZnNfY2xpZW50LA0KPiAg
-CQkJCSAoc3RydWN0IHNvY2thZGRyICopJmRhLT5kYV9hZGRyLA0KPiAtCQkJCSBkYS0+ZGFfYWRk
-cmxlbiwgSVBQUk9UT19UQ1ApOw0KPiArCQkJCSBkYS0+ZGFfYWRkcmxlbiwgSVBQUk9UT19UQ1As
-IGRzX2hvc3RuYW1lKTsNCj4gKwkJa2ZyZWUoZHNfaG9zdG5hbWUpOw0KPiAgCQlpZiAoIUlTX0VS
-UihjbHApKQ0KPiAgCQkJYnJlYWs7DQo+ICAJfQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On 02/23/2012 03:16 PM, Daniel Kahn Gillmor wrote:
+> On 02/23/2012 02:09 AM, steve wrote:
+>> It is not recommended to use the pseudoroot fsid=0 stuff for Linux.
+>>
+>> See the nfs wiki: 'The linux implementation allows you to designate a
+>> real filesystem as the pseudofilesystem, identifying that export with
+>> the fsid=0 option; we no longer recommend this. Instead, on any recent
+>> linux distribution, just list exports in /etc/exports exactly as you
+>> would for NFSv2 or NFSv3.'
+> I believe the last time this came up, i asked for a rationale or
+> explanation.  The only reason given [0] was from J. Bruce Fields:
+I've never got to the bottom of this one either. I only know that it works.
+>>> The main problem with the fsid=0 trick is that your v3 and v4 clients
+>>> end up with different paths.
+But if say, you're exporting /home and have /home bind mounted to your 
+pseudoroot, then the paths are exactly the same. You still mount -t nfsx 
+server:/home /client/somewhere for x=3 or x=4. No?
+> So, if you have no v3 clients, i don't think there is any reason to
+> avoid fsid=0 if it makes things cleaner for you.  And removing fsid=0
+> will require you to change /etc/fstab (or your automounter config) in
+> all of your clients.
+Please accept my apologies for butting in on this. I'm simply trying to 
+get some facts together.
+Cheers,
+Steve
