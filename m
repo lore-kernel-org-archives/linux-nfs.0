@@ -1,145 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:40035 "EHLO
+Received: from partagas.dragonet.es ([217.70.240.130]:34424 "EHLO
 	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754232Ab2BSRPh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Feb 2012 12:15:37 -0500
-Received: from [192.168.1.3] (217-70-247-131.dragonet.es [217.70.247.131] (may be forged))
-	(authenticated bits=0)
-	by partagas.dragonet.es (8.12.11/8.12.11) with ESMTP id q1JHFsWs013961
-	for <linux-nfs@vger.kernel.org>; Sun, 19 Feb 2012 18:15:57 +0100
-Message-ID: <4F412E2F.9070200@steve-ss.com>
-Date: Sun, 19 Feb 2012 18:15:27 +0100
+	with ESMTP id S1750715Ab2BWHKE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 02:10:04 -0500
+Message-ID: <4F45E63B.9090608@steve-ss.com>
+Date: Thu, 23 Feb 2012 08:09:47 +0100
 From: steve <steve@steve-ss.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-References: <4F40053A.3090301@steve-ss.com>
-In-Reply-To: <4F40053A.3090301@steve-ss.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Peter Horvath <peter.horvath77@googlemail.com>, linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 client restriction
+References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com> <20120223010111.GA19432@fieldses.org>
+In-Reply-To: <20120223010111.GA19432@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18/02/12 21:08, steve wrote:
-> Hi
-> Is it possible for nfs4 to respect the acls I have setup on an ext4 
-> export?
-> Thanks,
-> Steve
+On 02/23/2012 02:01 AM, J. Bruce Fields wrote:
+> On Wed, Feb 22, 2012 at 07:24:12PM +0000, Peter Horvath wrote:
+>> We are using Ubuntu LTS 10.04 servers and clients.
+>> NFS version is the following:
+>> nfs-common                     1.2.0-4ubuntu4.2
+>> nfs-kernel-server               1.2.0-4ubuntu4.2
+>>
+>> My exports looks like this:
+>>
+>> /srv 10.66.3.0/24(fsid=0,ro,no_subtree_check,sync)
+>> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
+>> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
+>> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
+>>
+>> My problem is that in this case clients have only read-only access. If
+>> i set the pseudofilesystem root to RW it is working but in that case
+>> all the clients would be able to mount the root and access other
+>> projects too.
+>> How can i achieve the same results as it was in NFSv3 with this config.
+>>
+>> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
+>> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
+>> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
+> Are project1, 2, 3 on the same filesystem as /srv and /srv/www?
 >
-> openSUSE 12.1
-> -- 
+> If so, this is expected; create a separate partition for /srv/www, or
+> for each project1, 2, 3 directory, and you may find the problem is
+> fixed.
+>
+> If that doesn't fix the problem, it may be a bug.  We've fixed a few
+> bugs in that area lately, so it would be worth retrying with more recent
+> kernel and nfs-utils.
+>
+> --b.
+> --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-Sorry, this is what I've tried so far:
-  cat /etc/exports
-/home 
-*(rw,no_root_squash,sec=none:sys:krb5:krb5i:krb5p,no_subtree_check,insecure)
 
-1. Make a folder to share:
-hh3:/home/CACTUS # mkdir -m 770 dropbox
-hh3:/home/CACTUS # chown root:suseusers dropbox
+It is not recommended to use the pseudoroot fsid=0 stuff for Linux.
 
-2. Mount the share:
-hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
+See the nfs wiki: 'The linux implementation allows you to designate a 
+real filesystem as the pseudofilesystem, identifying that export with 
+the fsid=0 option; we no longer recommend this. Instead, on any recent 
+linux distribution, just list exports in /etc/exports exactly as you 
+would for NFSv2 or NFSv3.'
 
-3. Look at the acls:
-nfs4_getfacl /mnt/CACTUS/dropbox
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:tcy
-
-Set an acl so that members of suseusers have rw on the share:
-hh3:/home/CACTUS # nfs4_setfacl -a A:g:suseusers@hh3.site:RW 
-/mnt/CACTUS/dropbox
-
-hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A:g:suseusers@hh3.site:rwaDtcy
-A::EVERYONE@:tcy
-
-4. Yes. Back in the unmounted directory, the acl + has appeared:
-hh3:/home/CACTUS # ls -la dropbox/
-total 8
-drwxrwx---+ 2 root suseusers 4096 Feb 19 10:55 .
-drwxr-xr-x  9 root root      4096 Feb 19 10:55 ..
-
-5. On the mounted share, the acl is not visible. steve6 can create a 
-file but it is _not_ group rw:
-steve6@hh3:~> cd /mnt/CACTUS/dropbox/
-steve6@hh3:/mnt/CACTUS/dropbox> touch hola.txt
-steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-total 8
-drwxrwx--- 2 root   suseusers 4096 Feb 19 11:02 .
-drwxr-xr-x 9 root   root      4096 Feb 19 10:55 ..
--rw-r--r-- 1 steve6 suseusers    0 Feb 19 11:02 hola.txt
-
-6. Recreate the share but this time with a posix acl:
-setfacl -d -m g::rw /home/CACTUS/dropbox
-steve6@hh3:/home/CACTUS> touch dropbox/h
-steve6@hh3:/home/CACTUS> ls -la dropbox/
-total 8
-drwxrws---+ 2 root   suseusers 4096 Feb 19 11:13 .
-drwxr-xr-x  9 root   root      4096 Feb 19 11:11 ..
--rw-rw----  1 steve6 suseusers    0 Feb 19 11:13 h
-
-Yes. Now when steve6 creates a file it _is_ group rw. = posix acl is 
-working.
-
-7. Mount the new posix share and test again:
-hh3:/home/CACTUS #chmod g+s /home/CACTUS/dropbox
-hh3:/home/CACTUS # mount -t nfs4 hh3:/home /mnt
-hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:tcy
-A:fdi:OWNER@:rwaDxtTcCy
-A:fdi:GROUP@:rwaDtcy
-A:fdi:EVERYONE@:tcy
-
-steve6@hh3:/mnt/CACTUS/dropbox> touch h2
-steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-total 8
-drwxrws--- 2 root   suseusers 4096 Feb 19 11:19 .
-drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
--rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
--rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
-hh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:tcy
-A:fdi:OWNER@:rwaDxtTcCy
-A:fdi:GROUP@:rwaDtcy
-A:fdi:EVERYONE@:tcy
-hh3:/home/CACTUS # nfs4_setfacl -a A:fdi:GROUP@:RWX 
-/mnt/CACTUS/dropboxhh3:/home/CACTUS # nfs4_getfacl /mnt/CACTUS/dropbox/
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:tcy
-A:fdi:OWNER@:rwaDxtTcCy
-A:fdi:GROUP@:rwaDxtcy
-A:fdi:EVERYONE@:tcy
-
-steve6@hh3:/mnt/CACTUS/dropbox> touch h3
-steve6@hh3:/mnt/CACTUS/dropbox> ls -la
-total 8
-drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
-drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
--rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
--rw-r----- 1 steve6 suseusers    0 Feb 19 11:19 h2
--rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
-
-Still no group rw on created files. = nfs4 acl is not working as expected.
-
-Workaround. Get the out the big hammer:
-#!/bin/sh
-while true; do $(chmod -R g+w /home/CACTUS/dropbox); sleep 2; done
-
-Question:
-What am I missing? How do I set files created on an nfs4 share to take 
-group rw?
-
-Thanks,
+HTH
 Steve
 
