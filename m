@@ -1,45 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:48803 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753766Ab2B0PvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 10:51:13 -0500
-Subject: [PATCH v2 0/4] SUNRPC: several fixes around PipeFS objects
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Mon, 27 Feb 2012 19:50:47 +0400
-Message-ID: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
+Received: from che.mayfirst.org ([209.234.253.108]:47267 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752021Ab2BWF6f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 00:58:35 -0500
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out Please check user daemon is running
+In-Reply-To: <20111209191057.GA10089@fieldses.org>
+References: <8762hrozdl.fsf@fifthhorseman.net> <20111208174501.GA30088@fieldses.org> <4EE253EC.2040609@fifthhorseman.net> <20111209191057.GA10089@fieldses.org>
+Date: Thu, 23 Feb 2012 00:58:46 -0500
+Message-ID: <87booq3xbd.fsf@pip.fifthhorseman.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: 
-1) Prior to calling PipeFS dentry rountines (for both type of clients - SUNPRC
-and NFS) get the client and drop the list lock instead of replacing per-net
-locks by mutexes.
+On Fri, 9 Dec 2011 14:10:57 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Fri, Dec 09, 2011 at 01:31:08PM -0500, Daniel Kahn Gillmor wrote:
+> > Thanks, that's useful.  Do the clients need to run cachefilesd as well
+> > to take advantage of delegation?
+> 
+> No.
 
-First two pathes fixes lockdep warnings and next two - dereferencing of
-released pipe data on eventfd close and in file operations.
+Is there a way that i can check to be sure that delegations are actually
+happening?  What kind of performance improvement would you expect to see
+with delegatons happening on, say, a standard desktop user's homedir
+workload?
 
-The following series consists of:
-
----
-
-Stanislav Kinsbursky (4):
-      SUNRPC: release per-net clients lock before calling PipeFS dentries creation
-      NFS: release per-net clients lock before calling PipeFS dentries creation
-      SUNRPC: check RPC inode's pipe reference before dereferencing
-      SUNRPC: move waitq from RPC pipe to RPC inode
-
-
- fs/nfs/client.c                    |    2 +
- fs/nfs/idmap.c                     |    8 +++-
- include/linux/sunrpc/rpc_pipe_fs.h |    2 +
- net/sunrpc/clnt.c                  |   10 ++++-
- net/sunrpc/rpc_pipe.c              |   71 +++++++++++++++++++++++-------------
- 5 files changed, 60 insertions(+), 33 deletions(-)
-
+         --dkg
