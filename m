@@ -1,112 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20987 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30720 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757421Ab2BIKOZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 05:14:25 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate name
- service errors [ver #2]
-To: jmorris@namei.org, joseph@codesourcery.com, Valdis.Kletnieks@vt.edu
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-api@vger.kernel.org,
-        libc-alpha@sourceware.org
-Date: Thu, 09 Feb 2012 10:13:53 +0000
-Message-ID: <20120209101353.18365.87370.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120209101340.18365.97513.stgit@warthog.procyon.org.uk>
-References: <20120209101340.18365.97513.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752868Ab2BWQwI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Feb 2012 11:52:08 -0500
+Date: Thu, 23 Feb 2012 11:52:06 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Louie <snikrep@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: v4recovery client id lockup
+Message-ID: <20120223115206.662b325c@redhat.com>
+In-Reply-To: <CAMgFM3CXWEXqo+Nr1tt6XS6XrhJVfW9a5Dx=iSACriCOxfXjkw@mail.gmail.com>
+References: <CAMgFM3CXWEXqo+Nr1tt6XS6XrhJVfW9a5Dx=iSACriCOxfXjkw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the kernel has filesystems (and possibly other services) that want to
-look up internet addresses corresponding to arbitrary hostnames retrieved from
-the server, it would seem useful to provide a couple of error codes to indicate
-problems with the look up, rather than overloading some other error code.
+On Wed, 22 Feb 2012 17:06:49 -0800
+Louie <snikrep@gmail.com> wrote:
 
-Define ENONAMESERVICE to indicate "Network name service unavailable".  This can
-be used to indicate, for example, that an attempt was made by dns_query() to
-make a query, but the name server (e.g. a DNS server) it is supposed to contact
-didn't answer or that it couldn't determine the location of a suitable server.
+> We have a weird, intermittent issue with NFS that I've been trying to
+> track down for the past 6 months. This is on NFS v4, mounted over SSH,
+> with Centos 6.2 as client/server.
+> 
+> Periodically, when running a client-side command that reads a large amount of
+> files (e.g. converting 2000 small picture files to another format over
+> NFS), our server will completely lock up for a period of time. ATOP
+> shows 50-90% IO activity on the sda drive (root system, but not the
+> shared NFS area where the files are actually located).
+> 
+> I've finally tracked down the activity to the
+> /var/lib/nfs/v4recovery directory. One of the client ID directories
+> gets created/deleted over and over again (same name each time) -
+> enough to completely lock up the system. If I sit on the directory
+> while this is happening and do "ls" commands over and over, you can
+> see it disappear and appear ("ls -i" shows new inode numbers).
+> 
+> The strange thing is that this is periodic, and if you simply
+> kill the client process and restart, everything often works smoothly. The
+> actual server IO activity seems to be coming from the journal (what
+> appears in iostat), but it's only writing/rewriting the empty client
+> ID directories (the size of the activity shows 0.0 kb/s).
+> 
+> I've searched everywhere for info on this directory and trying to
+> debug this stuff in general and come up empty, sorry if this has been
+> covered before.
+> 
+> Appreciate ANY help, this has been driving me completely crazy.
 
-Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
-indicate, for example, that an attempt was made by dns_query() to make a query,
-but the name server (e.g. a DNS server) replied indicating that it had no
-matching records.
+Those directories are for the server to tell what clients are allowed
+to reclaim locks or not. There are some problems that can occur when
+there are server reboots in conjunction with a network partition
+between server and client. See section 8.6.3 in RFC3530 if you're
+interested in the gory details...
 
-The DNS query upcall program can report these to keyctl_reject() so that cached
-failed queries will respond with these errors until they expire.
+In any case, nfsd tracks some info in that directory in order to deal
+with those cases. It's certainly possible there is a bug in that code
+though. I fixed a few subtle bugs in that code recently, with this
+patchset which I've proposed for 3.4:
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+    [PATCH v6 0/5] nfsd: overhaul the client name tracking code
 
- arch/alpha/include/asm/errno.h  |    2 ++
- arch/mips/include/asm/errno.h   |    2 ++
- arch/parisc/include/asm/errno.h |    2 ++
- arch/sparc/include/asm/errno.h  |    2 ++
- include/asm-generic/errno.h     |    2 ++
- 5 files changed, 10 insertions(+), 0 deletions(-)
+...but none that sound similar to what you're seeing. Still, you may
+want to play with that and see whether it helps this case at all. You
+won't need the userspace pieces if you're still using the legacy client
+tracking code.
 
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index dce5fc9..a4fc77e 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -125,5 +125,7 @@
- #define EHWPOISON	139	/* Memory page has hardware error */
- 
- #define	ENOAUTHSERVICE	140	/* Authentication service not available */
-+#define	ENONAMESERVICE	141	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	142	/* Network name unknown */
- 
- #endif
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index 67c46bd..ac95669 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -123,6 +123,8 @@
- 
- #define EHWPOISON	168	/* Memory page has hardware error */
- #define	ENOAUTHSERVICE	169	/* Authentication service not available */
-+#define	ENONAMESERVICE	170	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	171	/* Network name unknown */
- 
- #define EDQUOT		1133	/* Quota exceeded */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 3a6ffcd..753cc5c 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -124,5 +124,7 @@
- 
- #define EHWPOISON	257	/* Memory page has hardware error */
- #define	ENOAUTHSERVICE	258	/* Authentication service not available */
-+#define	ENONAMESERVICE	259	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	260	/* Network name unknown */
- 
- #endif
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index 94a878f..01c9769 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -114,5 +114,7 @@
- 
- #define EHWPOISON	135	/* Memory page has hardware error */
- #define	ENOAUTHSERVICE	136	/* Authentication service not available */
-+#define	ENONAMESERVICE	137	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	138	/* Network name unknown */
- 
- #endif
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index 5e2b296..5d012c1 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -110,5 +110,7 @@
- 
- #define EHWPOISON	133	/* Memory page has hardware error */
- #define	ENOAUTHSERVICE	134	/* Authentication service not available */
-+#define	ENONAMESERVICE	135	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	136	/* Network name unknown */
- 
- #endif
-
+-- 
+Jeff Layton <jlayton@redhat.com>
