@@ -1,60 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20014 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60790 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756807Ab2BHLDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 06:03:34 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 4/9] KEYS: Reorganise keys Makefile
-To: steved@redhat.com, jmorris@namei.org
-Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 08 Feb 2012 11:03:27 +0000
-Message-ID: <20120208110327.4050.11227.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
-References: <20120208110254.4050.8856.stgit@warthog.procyon.org.uk>
+	id S1756032Ab2BWPmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Feb 2012 10:42:17 -0500
+Date: Thu, 23 Feb 2012 10:42:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120223154215.GA26706@fieldses.org>
+References: <4F40053A.3090301@steve-ss.com>
+ <4F412E2F.9070200@steve-ss.com>
+ <4F45E78E.8050501@steve-ss.com>
+ <20120223063913.5736a5b1@tlielax.poochiereds.net>
+ <4F4628B8.90401@steve-ss.com>
+ <20120223144053.GA25010@fieldses.org>
+ <4F465C3A.9080802@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F465C3A.9080802@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reorganise the keys directory Makefile to put all the core bits together and
-the type-specific bits after.
+On Thu, Feb 23, 2012 at 04:33:14PM +0100, steve wrote:
+> On 02/23/2012 03:40 PM, J. Bruce Fields wrote:
+> >On Thu, Feb 23, 2012 at 12:53:28PM +0100, steve wrote:
+> >>Hi Jeff
+> >>Thanks for the reply. I'm trying to make the files created in a
+> >>share take on group rw.
+> >>
+> >>The trouble is that I've already tried setting the acl's via
+> >>nfs4_setfacl on the mounted share too (please see details below).
+> >>The acl + appears on the unmounted share and behaves as expected
+> >>even when it is not mounted. The mounted share however ignores the
+> >>acl I've set. I've tried remounting but still no acl is effective.
+> >>My workaround is to scan the folder and change the files to group rw
+> >>every few seconds.
+> >Without looking at your details, apologies:
+> >
+> >First, if you want an ace on a directory to be inherited by files and
+> >directories created under that directory, make sure you're setting the f
+> >and d flags (see nfs4_getfacl -H).
+> >
+> >Second, there's a umask problem: posix acl inheritance overrides the
+> >umask, but nfs4 acl inheritance isn't doing that.  (The client combines
+> >the create mode and the umask and sets both together, there's no way for
+> >the server to even tell what the umask is.)
+> >
+> >(We should do something about this if we can: maybe modifying the client
+> >to scan the directory acl for any inheritable aces and leaving out the
+> >umask if they're found?  It has the obvious race, but I seem to recall
+> >we live with that in the v3 case.  Or maybe there's something more
+> >clever, but this comes up every now and then and I can't remember a
+> >better solution.)
+> >
+> >--b.
+> Hi again
+> I have this:
+> nfs4_getfacl /mnt/CACTUS/dropbox/
+> 
+> A::OWNER@:rwaDxtTcCy
+> A::GROUP@:rwaDxtcy
+> A::EVERYONE@:tcy
+> A:fdi:OWNER@:rwaDxtTcCy
+> A:fdi:GROUP@:rwaDtcy
+> A:fdi:EVERYONE@:tcy
+> 
+> but files are created:
+> steve6@hh3:/mnt/CACTUS/dropbox>  touch h3
+>   ls -la
+> total 8
+> drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
+> drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
+> -rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
+> -rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
+> 
+> where h is a file created on the unmounted share and h3 on the nfs4
+> mounted share. IOW the file created does not have group rw.
+> Ahhgghh!!
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Mimi Zohar <zohar@us.ibm.com>
----
+Right, so see the second point above: what's your umask?  (output of the
+"umask" command.)
 
- security/keys/Makefile |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
+--b.
 
-diff --git a/security/keys/Makefile b/security/keys/Makefile
-index a56f1ff..504aaa0 100644
---- a/security/keys/Makefile
-+++ b/security/keys/Makefile
-@@ -2,6 +2,9 @@
- # Makefile for key management
- #
- 
-+#
-+# Core
-+#
- obj-y := \
- 	gc.o \
- 	key.o \
-@@ -12,9 +15,12 @@ obj-y := \
- 	request_key.o \
- 	request_key_auth.o \
- 	user_defined.o
--
--obj-$(CONFIG_TRUSTED_KEYS) += trusted.o
--obj-$(CONFIG_ENCRYPTED_KEYS) += encrypted-keys/
- obj-$(CONFIG_KEYS_COMPAT) += compat.o
- obj-$(CONFIG_PROC_FS) += proc.o
- obj-$(CONFIG_SYSCTL) += sysctl.o
-+
-+#
-+# Key types
-+#
-+obj-$(CONFIG_TRUSTED_KEYS) += trusted.o
-+obj-$(CONFIG_ENCRYPTED_KEYS) += encrypted-keys/
-
+> 
+> Can anyone see anything wrong?
+> 
+> Thanks so much for your patience.
+> Steve.
+> 
