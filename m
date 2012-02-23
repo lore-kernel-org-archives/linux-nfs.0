@@ -1,62 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51769 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754629Ab2BFU2b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 15:28:31 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] SUNRPC: Fix up sunrpc trace events
-Date: Mon,  6 Feb 2012 15:28:25 -0500
-Message-Id: <1328560106-24066-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from partagas.dragonet.es ([217.70.240.130]:52660 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756054Ab2BWPde (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 10:33:34 -0500
+Message-ID: <4F465C3A.9080802@steve-ss.com>
+Date: Thu, 23 Feb 2012 16:33:14 +0100
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+References: <4F40053A.3090301@steve-ss.com> <4F412E2F.9070200@steve-ss.com> <4F45E78E.8050501@steve-ss.com> <20120223063913.5736a5b1@tlielax.poochiereds.net> <4F4628B8.90401@steve-ss.com> <20120223144053.GA25010@fieldses.org>
+In-Reply-To: <20120223144053.GA25010@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The reporting of the RPC queue name needs to use the __string()
-event interface.
+On 02/23/2012 03:40 PM, J. Bruce Fields wrote:
+> On Thu, Feb 23, 2012 at 12:53:28PM +0100, steve wrote:
+>> Hi Jeff
+>> Thanks for the reply. I'm trying to make the files created in a
+>> share take on group rw.
+>>
+>> The trouble is that I've already tried setting the acl's via
+>> nfs4_setfacl on the mounted share too (please see details below).
+>> The acl + appears on the unmounted share and behaves as expected
+>> even when it is not mounted. The mounted share however ignores the
+>> acl I've set. I've tried remounting but still no acl is effective.
+>> My workaround is to scan the folder and change the files to group rw
+>> every few seconds.
+> Without looking at your details, apologies:
+>
+> First, if you want an ace on a directory to be inherited by files and
+> directories created under that directory, make sure you're setting the f
+> and d flags (see nfs4_getfacl -H).
+>
+> Second, there's a umask problem: posix acl inheritance overrides the
+> umask, but nfs4 acl inheritance isn't doing that.  (The client combines
+> the create mode and the umask and sets both together, there's no way for
+> the server to even tell what the umask is.)
+>
+> (We should do something about this if we can: maybe modifying the client
+> to scan the directory acl for any inheritable aces and leaving out the
+> umask if they're found?  It has the obvious race, but I seem to recall
+> we live with that in the v3 case.  Or maybe there's something more
+> clever, but this comes up every now and then and I can't remember a
+> better solution.)
+>
+> --b.
+Hi again
+I have this:
+nfs4_getfacl /mnt/CACTUS/dropbox/
 
-Reported-by: Neil Horman <nhorman@redhat.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/trace/events/sunrpc.h |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+A:fdi:OWNER@:rwaDxtTcCy
+A:fdi:GROUP@:rwaDtcy
+A:fdi:EVERYONE@:tcy
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 51cc949..ec8668d 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -75,21 +75,21 @@ DECLARE_EVENT_CLASS(rpc_task_queued,
- 	TP_STRUCT__entry(
- 		__field(const struct rpc_clnt *, clnt)
- 		__field(const struct rpc_task *, task)
--		__field(const struct rpc_wait_queue *, queue)
- 		__field(unsigned long, timeout)
- 		__field(unsigned long, runstate)
- 		__field(int, status)
- 		__field(unsigned short, flags)
-+		__string(q_name, rpc_qname(q))
- 		),
- 
- 	TP_fast_assign(
- 		__entry->clnt = clnt;
- 		__entry->task = task;
--		__entry->queue = q;
- 		__entry->timeout = task->tk_timeout;
- 		__entry->runstate = task->tk_runstate;
- 		__entry->status = task->tk_status;
- 		__entry->flags = task->tk_flags;
-+		__assign_str(q_name, rpc_qname(q));
- 		),
- 
- 	TP_printk("task:%p@%p flags=%4.4x state=%4.4lx status=%d timeout=%lu queue=%s",
-@@ -99,7 +99,7 @@ DECLARE_EVENT_CLASS(rpc_task_queued,
- 		__entry->runstate,
- 		__entry->status,
- 		__entry->timeout,
--		rpc_qname(__entry->queue)
-+		__get_str(q_name)
- 		)
- );
- 
--- 
-1.7.7.6
+but files are created:
+steve6@hh3:/mnt/CACTUS/dropbox>  touch h3
+   ls -la
+total 8
+drwxrws--- 2 root   suseusers 4096 Feb 19 11:21 .
+drwxr-xr-x 9 root   root      4096 Feb 19 11:11 ..
+-rw-rw---- 1 steve6 suseusers    0 Feb 19 11:13 h
+-rw-r----- 1 steve6 suseusers    0 Feb 19 11:21 h3
+
+where h is a file created on the unmounted share and h3 on the nfs4 
+mounted share. IOW the file created does not have group rw. Ahhgghh!!
+
+Can anyone see anything wrong?
+
+Thanks so much for your patience.
+Steve.
 
