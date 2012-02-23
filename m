@@ -1,62 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail209.messagelabs.com ([216.82.255.3]:52827 "EHLO
-	mail209.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755610Ab2BOAeW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Feb 2012 19:34:22 -0500
-Message-ID: <4F3AFD84.3020709@nexenta.com>
-Date: Wed, 15 Feb 2012 04:34:12 +0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Received: from mx1.redhat.com ([209.132.183.28]:51280 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932093Ab2BWJPa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Feb 2012 04:15:30 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q1N9FTui003075
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 04:15:30 -0500
+Received: from ggruner.notebook (vpn1-6-69.ams2.redhat.com [10.36.6.69])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q1N9FSR3023300
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 04:15:29 -0500
+Message-ID: <4F4603EC.9030404@redhat.com>
+Date: Thu, 23 Feb 2012 10:16:28 +0100
+From: Gregor Gruener <ggruner@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com> <1329259606.11759.15.camel@lade.trondhjem.org>
-In-Reply-To: <1329259606.11759.15.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2.6.32-131.6.1.el6.x86_64] idmapd.c: deactivate the ASCII
+ characters check
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/15/2012 02:46 AM, Myklebust, Trond wrote:
-> Hi Vitaliy.
->
-> What's wrong with sa_sequenceid == 0? I can't see anything in the spec
-> that states that the sequenceid is supposed to be initialised to 1.
+Customers are using Unicode characters umlauts (ö,ä,ü) in group names and this
+creates problems with NFS ID Mapping. Groups with umlauts will be redirected to
+the group NFS "nobody".
+This patch deactivate the ASCII characters check. It's maybe more like a temporary fix and I think it would be nicer to
+adjust the check to support Unicode characters instead to deactivate the check.
 
-That is good question.
+========================================================================================================
 
-  In 2.10.6.1.  "Slot Identifiers and Reply Cache":
+diff -Nurp nfs-utils-1.2.2/utils/idmapd/idmapd.c nfs-utils-1.2.2-fag/utils/idmapd/idmapd.c
+--- nfs-utils-1.2.2/utils/idmapd/idmapd.c	2010-02-18 13:35:00.000000000 +0100
++++ nfs-utils-1.2.2-fag/utils/idmapd/idmapd.c	2011-10-05 09:09:05.815103100 +0200
+@@ -850,9 +850,6 @@ validateascii(char *string, u_int32_t le
+  	for (i = 0; i<  len; i++) {
+  		if (string[i] == '\0')
+  			break;
+-
+-		if (string[i]&  0x80)
+-			return (-1);
+  	}
 
-
-    A slot contains a sequence ID and the cached reply corresponding to
-    the request sent with that sequence ID.  The sequence ID is a 32-bit
-    unsigned value, and is therefore in the range 0..0xFFFFFFFF (2^32 -
-    1).  The first time a slot is used, the requester MUST specify a
-    sequence ID of one (Section 18.36).
-
-
-  In 18.36.4.4 "Session creation":
-
-        For each slot in the reply cache, the
-        server sets the sequence ID to zero, and records an entry
-                                    ^^^^^^^^^
-
-       containing a COMPOUND reply with zero operations and the error
-        NFS4ERR_SEQ_MISORDERED.  This way, if the first SEQUENCE request
-        sent has a sequence ID equal to zero, the server can simply
-                                  ^^^^^^^^^^^^
-
-        return what is in the reply cache: NFS4ERR_SEQ_MISORDERED.  The
-        client initializes its reply cache for receiving callbacks in the
-        same way, and similarly, the first CB_SEQUENCE operation on a
-        slot after session creation MUST have a sequence ID of one.
+  	if ((i>= len) || string[i] != '\0')
 
 
-So sending "zero" sa_sequenceid is allowed.
-But if Linux NFS server receives first OP_SEQUENCE with "sa_sequenceid 
-== 0", it replies "NFS4ERR_RETRY_UNCACHED_REP"  (for OP_PUTROOTFH) - but 
-expected SEQ_MISORDERED for OP_SEQUENCE.  Illumos NFSv4.1 implementation 
-returns allowed SEQ_MISORDERED.
 
-So why just do not fix receiving error and correct sending sa_sequenceid 
-to 1?
+=========================================================================================================
+
+
+
+
+Developer's Certificate of Origin 1.1
+
+         By making a contribution to this project, I certify that:
+
+         (a) The contribution was created in whole or in part by me and I
+             have the right to submit it under the open source license
+             indicated in the file; or
+
+         (b) The contribution is based upon previous work that, to the best
+             of my knowledge, is covered under an appropriate open source
+             license and I have the right under that license to submit that
+             work with modifications, whether created in whole or in part
+             by me, under the same open source license (unless I am
+             permitted to submit under a different license), as indicated
+             in the file; or
+
+         (c) The contribution was provided directly to me by some other
+             person who certified (a), (b) or (c) and I have not modified
+             it.
+
+         (d) I understand and agree that this project and the contribution
+             are public and that a record of the contribution (including all
+             personal information I submit with it, including my sign-off) is
+             maintained indefinitely and may be redistributed consistent with
+             this project or the open source license(s) involved.
+
+Signed-off-by: Gregor Gruener<ggruner@redhat.com>
+
