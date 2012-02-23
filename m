@@ -1,58 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59999 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757559Ab2BHVTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:19:14 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 14/17] FS-Cache: Don't mask off the object event mask when
- printing it
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:19:03 +0000
-Message-ID: <20120208211903.15607.54140.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:48152 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753413Ab2BWBHK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Feb 2012 20:07:10 -0500
+Received: by eekc4 with SMTP id c4so177470eek.19
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Feb 2012 17:07:09 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+From: Louie <snikrep@gmail.com>
+Date: Wed, 22 Feb 2012 17:06:49 -0800
+Message-ID: <CAMgFM3CXWEXqo+Nr1tt6XS6XrhJVfW9a5Dx=iSACriCOxfXjkw@mail.gmail.com>
+Subject: v4recovery client id lockup
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't mask off the object event mask when printing it.  That way it can be seen
-if threre are bits set that shouldn't be.
+We have a weird, intermittent issue with NFS that I've been trying to
+track down for the past 6 months. This is on NFS v4, mounted over SSH,
+with Centos 6.2 as client/server.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Periodically, when running a client-side command that reads a large amount of
+files (e.g. converting 2000 small picture files to another format over
+NFS), our server will completely lock up for a period of time. ATOP
+shows 50-90% IO activity on the sda drive (root system, but not the
+shared NFS area where the files are actually located).
 
- fs/cachefiles/namei.c    |    3 +--
- fs/fscache/object-list.c |    2 +-
- 2 files changed, 2 insertions(+), 3 deletions(-)
+I've finally tracked down the activity to the
+/var/lib/nfs/v4recovery directory. One of the client ID directories
+gets created/deleted over and over again (same name each time) -
+enough to completely lock up the system. If I sit on the directory
+while this is happening and do "ls" commands over and over, you can
+see it disappear and appear ("ls -i" shows new inode numbers).
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index a0358c2..0fd9b6d 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -40,8 +40,7 @@ void __cachefiles_printk_object(struct cachefiles_object *object,
- 	printk(KERN_ERR "%sobjstate=%s fl=%lx wbusy=%x ev=%lx[%lx]\n",
- 	       prefix, fscache_object_states[object->fscache.state],
- 	       object->fscache.flags, work_busy(&object->fscache.work),
--	       object->fscache.events,
--	       object->fscache.event_mask & FSCACHE_OBJECT_EVENTS_MASK);
-+	       object->fscache.events, object->fscache.event_mask);
- 	printk(KERN_ERR "%sops=%u inp=%u exc=%u\n",
- 	       prefix, object->fscache.n_ops, object->fscache.n_in_progress,
- 	       object->fscache.n_exclusive);
-diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
-index ebe29c5..f27c89d 100644
---- a/fs/fscache/object-list.c
-+++ b/fs/fscache/object-list.c
-@@ -245,7 +245,7 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
- 		   obj->n_in_progress,
- 		   obj->n_exclusive,
- 		   atomic_read(&obj->n_reads),
--		   obj->event_mask & FSCACHE_OBJECT_EVENTS_MASK,
-+		   obj->event_mask,
- 		   obj->events,
- 		   obj->flags,
- 		   work_busy(&obj->work));
+The strange thing is that this is periodic, and if you simply
+kill the client process and restart, everything often works smoothly. The
+actual server IO activity seems to be coming from the journal (what
+appears in iostat), but it's only writing/rewriting the empty client
+ID directories (the size of the activity shows 0.0 kb/s).
 
+I've searched everywhere for info on this directory and trying to
+debug this stuff in general and come up empty, sorry if this has been
+covered before.
+
+Appreciate ANY help, this has been driving me completely crazy.
