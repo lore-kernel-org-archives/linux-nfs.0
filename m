@@ -1,110 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56081 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756715Ab2BNRDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 12:03:10 -0500
-Date: Tue, 14 Feb 2012 12:03:00 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20120214170300.GA4309@fieldses.org>
-References: <20101218020118.GA3179@amd>
- <20101218161609.GA22150@fieldses.org>
- <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
- <20101227234641.GA22248@fieldses.org>
- <20110118204509.GA10903@fieldses.org>
- <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
- <20110118220817.GF10903@fieldses.org>
- <20110308181320.GA15566@fieldses.org>
- <20110310105821.GE22723@ZenIV.linux.org.uk>
- <20110311150749.2fa2be66@notabene.brown>
+Received: from che.mayfirst.org ([209.234.253.108]:49504 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755227Ab2BWOQY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 09:16:24 -0500
+Received: from [192.168.23.207] (dsl254-070-154.nyc1.dsl.speakeasy.net [216.254.70.154])
+	by che.mayfirst.org (Postfix) with ESMTPSA id 8CDCDF970
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 09:16:20 -0500 (EST)
+Message-ID: <4F464A4A.10403@fifthhorseman.net>
+Date: Thu, 23 Feb 2012 09:16:42 -0500
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Reply-To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110311150749.2fa2be66@notabene.brown>
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 client restriction
+References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com> <20120223010111.GA19432@fieldses.org> <4F45E63B.9090608@steve-ss.com>
+In-Reply-To: <4F45E63B.9090608@steve-ss.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 11, 2011 at 03:07:49PM +1100, NeilBrown wrote:
-> On Thu, 10 Mar 2011 10:58:21 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+On 02/23/2012 02:09 AM, steve wrote:
+> It is not recommended to use the pseudoroot fsid=0 stuff for Linux.
 > 
-> > On Tue, Mar 08, 2011 at 01:13:20PM -0500, J. Bruce Fields wrote:
-> > 
-> > > Al, do you have this in your queue to look at?  Need me to resend?  Or
-> > > should it take some other route?
-> > 
-> > It's in queue, but I'd be a lot happier if I understood what's going on
-> > with __d_find_alias() elsewhere.  Namely, in d_splice_alias().  The thing
-> > is, unless I'm missing something we ought to use __d_find_any_alias()
-> > there as well.  Directories really, _really_ should not have more than
-> > one alias.  And what we get is really weird:
-> > 	* find (the only) alias
-> > 	* if it doesn't exist, create one (OK, no problem)
-> > 	* if it does exist and happens to be IS_ROOT and DCACHE_DISCONNECTED,
-> > move it (also fine, modulo rather useless BUG_ON() in there)
-> > 	* if it does exist and either isn't IS_ROOT or not DCACHE_DISCONNECTED,
-> > add a new alias and say nothing.
-> > 
-> > The last part looks very strange.  I'd been staring at the history of this
-> > function and I _think_ it's a rudiment of period when we used that stuff for
-> > non-directories as well.  It used to be directory-only; then Neil had
-> > switched it to non-directories as well (in "Fix disconnected dentries on NFS
-> > exports" back in 2004), adding want_discon argument to __d_find_alias() in
-> > process and using it instead of open-coded equivalent of __d_find_any_alias().
-> > Then, two years later, in "knfsd: close a race-opportunity in d_splice_alias"
-> > he'd made that code directory-only again, at which point we arrived to the
-> > current situation.
-> > 
-> > Neil, is there some reason I'm missing that makes __d_find_alias() right in
-> > there?  And do we still need the second argument in __d_find_alias()?
-> > 
-> > Anyway, Bruce's patch goes in tonight's push, but I'd love to see that
-> > mess cleaned up as well or at least explained.
+> See the nfs wiki: 'The linux implementation allows you to designate a
+> real filesystem as the pseudofilesystem, identifying that export with
+> the fsid=0 option; we no longer recommend this. Instead, on any recent
+> linux distribution, just list exports in /etc/exports exactly as you
+> would for NFSv2 or NFSv3.'
 
-Nothing like seeing somebody actually run across a bug here to motivate
-getting back to this....
+I believe the last time this came up, i asked for a rationale or
+explanation.  The only reason given [0] was from J. Bruce Fields:
 
-So, like Al I'm wondering whether the __d_find_alias in d_splice_alias
-should be a __d_find_any_alias.
+>> The main problem with the fsid=0 trick is that your v3 and v4 clients
+>> end up with different paths.
 
-Disclaimer: the bug manifested in rhel5, and I haven't looked closely at
-upstream yet, though it seems like it would have the same problem.
+So, if you have no v3 clients, i don't think there is any reason to
+avoid fsid=0 if it makes things cleaner for you.  And removing fsid=0
+will require you to change /etc/fstab (or your automounter config) in
+all of your clients.
 
-In the particular case I'm seeing, the directory already has an alias
-that is UNHASHED (but not DISCONNECTED).  So d_splice_alias adds a
-second alias.
+	--dkg
 
-(And we notice because a rename happens to pick up one of each, and the
-rename locking then tries to take the parent's i_mutex twice (since the
-rename code think it's dealing with a cross-directory rename)).
-
-Using __d_find_any_alias seems to fix the problem.
-
-Would rehashing an UNHASHED dentry here violate any important assumptions?
-
->    I'm a bit uncomfortable that d_splice_alias drops all locks before
->    calling d_move.  Normally when d_move is called, both directories are
->    locked in some way.  In the case the source is not a directory bit
->    is the state of being anonymous.  Theoretically two calls to
->    d_splice_alias on the same inode could try to d_move the same
->    anonymous dentry to two different places, which would be bad.
->    So I think some locking is needed there.
-
-I think d_splice_alias is only ever called from lookup, under the
-parent's i_mutex?
-
-So if we have two tasks in the d_move here, then the two callers must be
-doing lookups in two different directories, and holding the i_mutex on
-both of them.
-
-The directory can't have been renamed while either caller was holding
-the i_mutex, so this is really a directory that's returned on lookup
-from two different parents.
-
-That sounds like a bug already.  Could it happen on a corrupted
-filesystem maybe?
-
---b.
+[0] http://thread.gmane.org/gmane.linux.nfs/46932/focus=46944
