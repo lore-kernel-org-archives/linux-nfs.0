@@ -1,129 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16208 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756092Ab2BHVSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:18:12 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 08/17] VFS: Make more complete truncate operation available to
- CacheFiles
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:18:03 +0000
-Message-ID: <20120208211802.15607.46621.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:62221 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756500Ab2BWTol (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 14:44:41 -0500
+Received: by yhoo21 with SMTP id o21so807358yho.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 11:44:40 -0800 (PST)
+Message-ID: <4F469726.50601@tonian.com>
+Date: Thu, 23 Feb 2012 11:44:38 -0800
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-3.3-rc4-2012-02-22
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make a more complete truncate operation available to CacheFiles (including
-security checks and suchlike) so that it can use this to clear invalidated
-cache files.
+I merged the following patches into pnfs-all-3.3-rc4-2012-02-22
+and rebased the tree onto v3.3-rc4
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+nfsd-next:
+  Dan Carpenter    2343044 nfsd: don't allow zero length strings in cache_parse()
+  Dan Carpenter    5ebc5d7 nfsd: remove some unneeded checks
+  Stanislav Kinsbursky  c3855e4 SUNPRC: remove marking service temporary sockets with XPT_CHNGBUF
+  J. Bruce Fields  5674b42 nfsd: cleanup setting of default max_block_size
+  J. Bruce Fields  4cc07fa nfsd: fix default iosize calculation on 32bit
+  J. Bruce Fields  379ce53 nfsd4: fix sessions slotid wraparound logic
+  J. Bruce Fields  53ca43c nfsd4: rearrange struct nfsd4_slot
+  J. Bruce Fields  804d780 nfsd4: check for uninitialized slot
+  Tigran Mkrtchyan  ce27a11 nfsd4: initialize current stateid at compile time
+  Tigran Mkrtchyan  fc21f4d nfsd41: handle current stateid in open and close
+  Tigran Mkrtchyan  475f192 nfsd41: handle current stateid on lock and locku
+  Tigran Mkrtchyan  3fe5cee nfsd41: consume current stateid on read and write
+  Tigran Mkrtchyan  2944fce nfsd41: mark PUTFH, PUTPUBFH and PUTROOTFH to clear current stateid
+  Tigran Mkrtchyan  6c9a965 nfsd41: save and restore current stateid with current fh
+  Tigran Mkrtchyan  fa0bdac nfsd41: mark LOOKUP, LOOKUPP and CREATE to invalidate current stateid
+  Tigran Mkrtchyan  19fd0e0 nfsd41: handle current stateid in SETATTR and FREE_STATEID
+  Tigran Mkrtchyan  2c49ed3 nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
+  Tigran Mkrtchyan  1e5d5c4 nfsd41: use current stateid by value
+  Benny Halevy     89817ad nfsd41: share_access_to_flags should consider only nfs4.x share_access flags
+  Benny Halevy     32f116e nfsd41: split out share_access want and signal flags while decoding
+  Tom Tucker       2b6d232 svcrdma: Cleanup sparse warnings in the svcrdma module
+  NeilBrown        8847415 lockd: fix arg parsing for grace_period and timeout.
+  Bryan Schumaker  89a16f8 NFSD: Clean up the test_stateid function
 
- fs/open.c          |   50 +++++++++++++++++++++++++++-----------------------
- include/linux/fs.h |    1 +
- 2 files changed, 28 insertions(+), 23 deletions(-)
+nfsd-upstream:
+  Benny Halevy     e77b654 nfsd41: refactor nfs4_open_deleg_none_ext logic out of nfs4_open_delegation
+  Benny Halevy     958ac96 nfsd41: refactor nfsd4_deleg_xgrade_none_ext logic out of nfsd4_process_open2
 
-diff --git a/fs/open.c b/fs/open.c
-index 77becc0..7535620 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -61,33 +61,22 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
- 	return ret;
- }
- 
--static long do_sys_truncate(const char __user *pathname, loff_t length)
-+long vfs_truncate(struct path *path, loff_t length)
- {
--	struct path path;
- 	struct inode *inode;
--	int error;
--
--	error = -EINVAL;
--	if (length < 0)	/* sorry, but loff_t says... */
--		goto out;
-+	long error;
- 
--	error = user_path(pathname, &path);
--	if (error)
--		goto out;
--	inode = path.dentry->d_inode;
-+	inode = path->dentry->d_inode;
- 
- 	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
--	error = -EISDIR;
- 	if (S_ISDIR(inode->i_mode))
--		goto dput_and_out;
--
--	error = -EINVAL;
-+		return -EISDIR;
- 	if (!S_ISREG(inode->i_mode))
--		goto dput_and_out;
-+		return -EINVAL;
- 
--	error = mnt_want_write(path.mnt);
-+	error = mnt_want_write(path->mnt);
- 	if (error)
--		goto dput_and_out;
-+		goto out;
- 
- 	error = inode_permission(inode, MAY_WRITE);
- 	if (error)
-@@ -111,19 +100,34 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
- 
- 	error = locks_verify_truncate(inode, NULL, length);
- 	if (!error)
--		error = security_path_truncate(&path);
-+		error = security_path_truncate(path);
- 	if (!error)
--		error = do_truncate(path.dentry, length, 0, NULL);
-+		error = do_truncate(path->dentry, length, 0, NULL);
- 
- put_write_and_out:
- 	put_write_access(inode);
- mnt_drop_write_and_out:
--	mnt_drop_write(path.mnt);
--dput_and_out:
--	path_put(&path);
-+	mnt_drop_write(path->mnt);
- out:
- 	return error;
- }
-+EXPORT_SYMBOL_GPL(vfs_truncate);
-+
-+static long do_sys_truncate(const char __user *pathname, loff_t length)
-+{
-+	struct path path;
-+	int error;
-+
-+	if (length < 0)	/* sorry, but loff_t says... */
-+		return -EINVAL;
-+
-+	error = user_path(pathname, &path);
-+	if (!error) {
-+		error = vfs_truncate(&path, length);
-+		path_put(&path);
-+	}
-+	return error;
-+}
- 
- SYSCALL_DEFINE2(truncate, const char __user *, path, long, length)
- {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 386da09..79449e4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2014,6 +2014,7 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
- 
- /* fs/open.c */
- 
-+extern long vfs_truncate(struct path *, loff_t);
- extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
- 		       struct file *filp);
- extern int do_fallocate(struct file *file, int mode, loff_t offset,
+pnfsd:
+  Benny Halevy     fa8d72d pnfsd: add support for per-file layout_types attribute
+
+pnfsd-exofs:
+  Boaz Harrosh     e10ae7d SQUASHME: pnfsd-exofs: Fix the RAID5 export
+
 
