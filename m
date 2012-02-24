@@ -1,33 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail131.messagelabs.com ([216.82.242.99]:38443 "EHLO
-	mail131.messagelabs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757300Ab2BOONF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 09:13:05 -0500
-Message-ID: <4F3BBCF8.8070402@nexenta.com>
-Date: Wed, 15 Feb 2012 18:11:04 +0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:15406 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753465Ab2BXOBm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Feb 2012 09:01:42 -0500
+Message-ID: <4F47983A.3020104@parallels.com>
+Date: Fri, 24 Feb 2012 18:01:30 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>  <1329259606.11759.15.camel@lade.trondhjem.org>  <4F3AFD84.3020709@nexenta.com>  <1329266587.28837.4.camel@lade.trondhjem.org>  <20120215005315.GA9018@fieldses.org>  <1329270628.28837.15.camel@lade.trondhjem.org> <1329273001.28837.19.camel@lade.trondhjem.org>
-In-Reply-To: <1329273001.28837.19.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+To: Fred Isaman <iisaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: fix use-after-free of rpc pipes
+References: <1330019288-13031-1-git-send-email-iisaman@netapp.com> <4F4778C6.8050705@parallels.com> <802ED333-DCE5-4EA5-ACDC-0269E8817EA7@netapp.com>
+In-Reply-To: <802ED333-DCE5-4EA5-ACDC-0269E8817EA7@netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good.
-
-However here MUST be checking on big value of ses->fc_attrs.max_reqs and 
-  ses->bc_attrs.max_reqs. I'll send it soon.
-
-
-
-On 02/15/2012 06:30 AM, Myklebust, Trond wrote:
+24.02.2012 17:17, Fred Isaman пишет:
 >
-> Here's a version 2 that does a few more cleanups by merging the
-> nfs4_init_slot_table() and nfs4_reset_slot_table() into a single
-> function.
+> On Feb 24, 2012, at 3:47 AM, Stanislav Kinsbursky wrote:
 >
+>> BTW, it looks very strange...
+>> Now many networks namespaces do you use?
+>>
+>
+> Not sure, I definitely was not intentionally adding any, so I assume one.  This was reproduced on Fedora 12, Fedora 16 and recent RHEL distros with custom kernels installed.
+>
+> The Fedora 16 install was a fresh install onto a VMWare Fusion guest with two NICs (one NAT and one bridged), though the bridged one was turned off.
+>
+>
+
+Ok, thanks, Fred.
+Will try to reproduce.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
