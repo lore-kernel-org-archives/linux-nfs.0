@@ -1,149 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48342 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756215Ab2BFW4o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 17:56:44 -0500
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 01/11] netvm: Prevent a stream-specific deadlock
-Date: Mon,  6 Feb 2012 22:56:31 +0000
-Message-Id: <1328569001-17599-2-git-send-email-mgorman@suse.de>
-In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
-References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:35419 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752334Ab2BXBkz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Feb 2012 20:40:55 -0500
+Received: by ghrr11 with SMTP id r11so944259ghr.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Feb 2012 17:40:55 -0800 (PST)
+From: Benny Halevy <bhalevy@tonian.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd41: free_session/free_client must be called under the client_lock
+Date: Thu, 23 Feb 2012 17:40:52 -0800
+Message-Id: <1330047652-21252-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It could happen that all !SOCK_MEMALLOC sockets have buffered so
-much data that we're over the global rmem limit. This will prevent
-SOCK_MEMALLOC buffers from receiving data, which will prevent userspace
-from running, which is needed to reduce the buffered data.
+The session client is manipulated under the client_lock hence
+both free_session and nfsd4_del_conns must be called under this lock.
 
-Fix this by exempting the SOCK_MEMALLOC sockets from the rmem limit.
+This patch adds a BUG_ON that checks this condition in the
+respective functions and implements the missing locks.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+nfsd4_{get,put}_session helpers were moved to the C file that uses them
+so to prevent use from external files and an unlocked version of
+nfsd4_put_session is provided for external use from nfs4xdr.c
+
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- include/net/sock.h     |    7 ++++---
- net/caif/caif_socket.c |    2 +-
- net/core/sock.c        |    2 +-
- net/ipv4/tcp_input.c   |   12 ++++++------
- net/sctp/ulpevent.c    |    2 +-
- 5 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index bb147fd..bdae68a 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1249,12 +1249,13 @@ static inline int sk_wmem_schedule(struct sock *sk, int size)
- 		__sk_mem_schedule(sk, size, SK_MEM_SEND);
- }
+ fs/nfsd/nfs4state.c |   35 +++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h     |   13 +------------
+ 2 files changed, 32 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3876c75..cc89f0d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -93,6 +93,19 @@
+ static struct kmem_cache *stateid_slab = NULL;
+ static struct kmem_cache *deleg_slab = NULL;
  
--static inline int sk_rmem_schedule(struct sock *sk, int size)
-+static inline int sk_rmem_schedule(struct sock *sk, struct sk_buff *skb)
++static void free_session(struct kref *);
++
++/* Must be called under the client_lock */
++static void nfsd4_put_session_locked(struct nfsd4_session *ses)
++{
++	kref_put(&ses->se_ref, free_session);
++}
++
++static void nfsd4_get_session(struct nfsd4_session *ses)
++{
++	kref_get(&ses->se_ref);
++}
++
+ void
+ __nfs4_lock_state(const char *func)
  {
- 	if (!sk_has_account(sk))
- 		return 1;
--	return size <= sk->sk_forward_alloc ||
--		__sk_mem_schedule(sk, size, SK_MEM_RECV);
-+	return skb->truesize <= sk->sk_forward_alloc ||
-+		__sk_mem_schedule(sk, skb->truesize, SK_MEM_RECV) ||
-+		skb_pfmemalloc(skb);
+@@ -860,11 +873,12 @@ static void nfsd4_del_conns(struct nfsd4_session *s)
+ 	spin_unlock(&clp->cl_lock);
  }
  
- static inline void sk_mem_reclaim(struct sock *sk)
-diff --git a/net/caif/caif_socket.c b/net/caif/caif_socket.c
-index a986280..78ef332 100644
---- a/net/caif/caif_socket.c
-+++ b/net/caif/caif_socket.c
-@@ -168,7 +168,7 @@ static int caif_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	err = sk_filter(sk, skb);
- 	if (err)
- 		return err;
--	if (!sk_rmem_schedule(sk, skb->truesize) && rx_flow_is_on(cf_sk)) {
-+	if (!sk_rmem_schedule(sk, skb) && rx_flow_is_on(cf_sk)) {
- 		set_rx_flow_off(cf_sk);
- 		if (net_ratelimit())
- 			pr_debug("sending flow OFF due to rmem_schedule\n");
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 0aebbde..cf81592 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -392,7 +392,7 @@ int sock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
- 	if (err)
- 		return err;
+-void free_session(struct kref *kref)
++static void free_session(struct kref *kref)
+ {
+ 	struct nfsd4_session *ses;
+ 	int mem;
  
--	if (!sk_rmem_schedule(sk, skb->truesize)) {
-+	if (!sk_rmem_schedule(sk, skb)) {
- 		atomic_inc(&sk->sk_drops);
- 		return -ENOBUFS;
++	BUG_ON(!spin_is_locked(&client_lock));
+ 	ses = container_of(kref, struct nfsd4_session, se_ref);
+ 	nfsd4_del_conns(ses);
+ 	spin_lock(&nfsd_drc_lock);
+@@ -875,6 +889,13 @@ void free_session(struct kref *kref)
+ 	kfree(ses);
+ }
+ 
++void nfsd4_put_session(struct nfsd4_session *ses)
++{
++	spin_lock(&client_lock);
++	nfsd4_put_session_locked(ses);
++	spin_unlock(&client_lock);
++}
++
+ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+ {
+ 	struct nfsd4_session *new;
+@@ -922,7 +943,9 @@ void free_session(struct kref *kref)
+ 	status = nfsd4_new_conn_from_crses(rqstp, new);
+ 	/* whoops: benny points out, status is ignored! (err, or bogus) */
+ 	if (status) {
++		spin_lock(&client_lock);
+ 		free_session(&new->se_ref);
++		spin_unlock(&client_lock);
+ 		return NULL;
  	}
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 976034f..b46bc36 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -4405,19 +4405,19 @@ static void tcp_ofo_queue(struct sock *sk)
- static int tcp_prune_ofo_queue(struct sock *sk);
- static int tcp_prune_queue(struct sock *sk);
- 
--static inline int tcp_try_rmem_schedule(struct sock *sk, unsigned int size)
-+static inline int tcp_try_rmem_schedule(struct sock *sk, struct sk_buff *skb)
+ 	if (cses->flags & SESSION4_BACK_CHAN) {
+@@ -1034,12 +1057,13 @@ void free_session(struct kref *kref)
+ static inline void
+ free_client(struct nfs4_client *clp)
  {
- 	if (atomic_read(&sk->sk_rmem_alloc) > sk->sk_rcvbuf ||
--	    !sk_rmem_schedule(sk, size)) {
-+	    !sk_rmem_schedule(sk, skb)) {
- 
- 		if (tcp_prune_queue(sk) < 0)
- 			return -1;
- 
--		if (!sk_rmem_schedule(sk, size)) {
-+		if (!sk_rmem_schedule(sk, skb)) {
- 			if (!tcp_prune_ofo_queue(sk))
- 				return -1;
- 
--			if (!sk_rmem_schedule(sk, size))
-+			if (!sk_rmem_schedule(sk, skb))
- 				return -1;
++	BUG_ON(!spin_is_locked(&client_lock));
+ 	while (!list_empty(&clp->cl_sessions)) {
+ 		struct nfsd4_session *ses;
+ 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
+ 				se_perclnt);
+ 		list_del(&ses->se_perclnt);
+-		nfsd4_put_session(ses);
++		nfsd4_put_session_locked(ses);
+ 	}
+ 	if (clp->cl_cred.cr_group_info)
+ 		put_group_info(clp->cl_cred.cr_group_info);
+@@ -1212,7 +1236,9 @@ struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+ 	if (princ) {
+ 		clp->cl_principal = kstrdup(princ, GFP_KERNEL);
+ 		if (clp->cl_principal == NULL) {
++			spin_lock(&client_lock);
+ 			free_client(clp);
++			spin_unlock(&client_lock);
+ 			return NULL;
  		}
  	}
-@@ -4470,7 +4470,7 @@ static void tcp_data_queue(struct sock *sk, struct sk_buff *skb)
- 		if (eaten <= 0) {
- queue_and_out:
- 			if (eaten < 0 &&
--			    tcp_try_rmem_schedule(sk, skb->truesize))
-+			    tcp_try_rmem_schedule(sk, skb))
- 				goto drop;
+@@ -1877,9 +1903,10 @@ static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4
+ 	nfsd4_probe_callback_sync(ses->se_client);
+ 	nfs4_unlock_state();
  
- 			skb_set_owner_r(skb, sk);
-@@ -4541,7 +4541,7 @@ drop:
++	spin_lock(&client_lock);
+ 	nfsd4_del_conns(ses);
+-
+-	nfsd4_put_session(ses);
++	nfsd4_put_session_locked(ses);
++	spin_unlock(&client_lock);
+ 	status = nfs_ok;
+ out:
+ 	dprintk("%s returns %d\n", __func__, ntohl(status));
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e2dd1c6..d381508 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -195,18 +195,7 @@ struct nfsd4_session {
+ 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
+ };
  
- 	TCP_ECN_check_ce(tp, skb);
+-static inline void
+-nfsd4_put_session(struct nfsd4_session *ses)
+-{
+-	extern void free_session(struct kref *kref);
+-	kref_put(&ses->se_ref, free_session);
+-}
+-
+-static inline void
+-nfsd4_get_session(struct nfsd4_session *ses)
+-{
+-	kref_get(&ses->se_ref);
+-}
++extern void nfsd4_put_session(struct nfsd4_session *ses);
  
--	if (tcp_try_rmem_schedule(sk, skb->truesize))
-+	if (tcp_try_rmem_schedule(sk, skb))
- 		goto drop;
- 
- 	/* Disable header prediction. */
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8a84017..6c6ed2d 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -702,7 +702,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
- 
- 		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-+		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb)))
- 			goto fail;
- 	}
- 
+ /* formatted contents of nfs4_sessionid */
+ struct nfsd4_sessionid {
 -- 
-1.7.3.4
+1.7.6.5
 
