@@ -1,136 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52744 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45446 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753003Ab2BCVej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Feb 2012 16:34:39 -0500
-Message-ID: <4F2C52EC.8050405@netapp.com>
-Date: Fri, 03 Feb 2012 16:34:36 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Fix comparison between DS address lists
-References: <1328301940-478-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1328301940-478-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750799Ab2BXFBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Feb 2012 00:01:04 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/5] 4.1 server tests: don't insist on 0-seqid trick in setup
+Date: Fri, 24 Feb 2012 00:01:00 -0500
+Message-Id: <1330059660-2053-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1330059660-2053-1-git-send-email-bfields@redhat.com>
+References: <1330059660-2053-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/03/12 15:45, Weston Andros Adamson wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> data_server_cache entries should only be treated as the same if the address
-> list hasn't changed.
-> 
-> A new entry will be made when an MDS changes an address list (as seen by
-> GETDEVINFO). The old entry will be freed once all references are gone.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfs/nfs4filelayoutdev.c |   71 +++++++++++++++-----------------------------
->  1 files changed, 24 insertions(+), 47 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> index 6eb59b0..420e748 100644
-> --- a/fs/nfs/nfs4filelayoutdev.c
-> +++ b/fs/nfs/nfs4filelayoutdev.c
-> @@ -108,58 +108,40 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
->  	return false;
->  }
->  
-> -/*
-> - * Lookup DS by addresses.  The first matching address returns true.
-> - * nfs4_ds_cache_lock is held
-> - */
-> -static struct nfs4_pnfs_ds *
-> -_data_server_lookup_locked(struct list_head *dsaddrs)
-> +bool
-> +_same_data_server_addrs_locked(const struct list_head *dsaddrs1,
-> +			       const struct list_head *dsaddrs2)
->  {
-> -	struct nfs4_pnfs_ds *ds;
->  	struct nfs4_pnfs_ds_addr *da1, *da2;
->  
-> -	list_for_each_entry(da1, dsaddrs, da_node) {
-> -		list_for_each_entry(ds, &nfs4_data_server_cache, ds_node) {
-> -			list_for_each_entry(da2, &ds->ds_addrs, da_node) {
-> -				if (same_sockaddr(
-> -					(struct sockaddr *)&da1->da_addr,
-> -					(struct sockaddr *)&da2->da_addr))
-> -					return ds;
-> -			}
-> -		}
-> +	/* step through both lists, comparing as we go */
-> +	for (da1 = list_first_entry(dsaddrs1, typeof(*da1), da_node),
-> +	     da2 = list_first_entry(dsaddrs2, typeof(*da2), da_node);
-> +	     da1 != NULL && da2 != NULL;
-> +	     da1 = list_entry(da1->da_node.next, typeof(*da1), da_node),
-> +	     da2 = list_entry(da2->da_node.next, typeof(*da2), da_node)) {
-> +		if (!same_sockaddr((struct sockaddr *)&da1->da_addr,
-> +				   (struct sockaddr *)&da2->da_addr))
-> +			return false;
->  	}
+The 4.1 spec requires servers to handle stateid's with seqid field 0
+(they have the special meaning of "use the latest stateid in this
+stateid stream").
 
+We've seen buggy or incomplete servers that don't handle this yet.
 
-Does anybody else in the kernel ever need to walk two lists at the same time?  Would this be better as a helper function in list.h?
+We *should* add a test for that.  But insisting on it (for no real
+reason) during setup just prevents all the other tests from running
+unnecessarily.
 
-> -	return NULL;
-> +	if (da1 == NULL && da2 == NULL)
-> +		return true;
-> +
-> +	return false;
->  }
->  
->  /*
-> - * Compare two lists of addresses.
-> + * Lookup DS by addresses.  nfs4_ds_cache_lock is held
->   */
-> -static bool
-> -_data_server_match_all_addrs_locked(struct list_head *dsaddrs1,
-> -				    struct list_head *dsaddrs2)
-> +static struct nfs4_pnfs_ds *
-> +_data_server_lookup_locked(const struct list_head *dsaddrs)
->  {
-> -	struct nfs4_pnfs_ds_addr *da1, *da2;
-> -	size_t count1 = 0,
-> -	       count2 = 0;
-> -
-> -	list_for_each_entry(da1, dsaddrs1, da_node)
-> -		count1++;
-> -
-> -	list_for_each_entry(da2, dsaddrs2, da_node) {
-> -		bool found = false;
-> -		count2++;
-> -		list_for_each_entry(da1, dsaddrs1, da_node) {
-> -			if (same_sockaddr((struct sockaddr *)&da1->da_addr,
-> -				(struct sockaddr *)&da2->da_addr)) {
-> -				found = true;
-> -				break;
-> -			}
-> -		}
-> -		if (!found)
-> -			return false;
-> -	}
-> +	struct nfs4_pnfs_ds *ds;
->  
-> -	return (count1 == count2);
-> +	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
-> +		if (_same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
-> +			return ds;
-> +	return NULL;
->  }
->  
->  /*
-> @@ -356,11 +338,6 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
->  		dprintk("%s add new data server %s\n", __func__,
->  			ds->ds_remotestr);
->  	} else {
-> -		if (!_data_server_match_all_addrs_locked(&tmp_ds->ds_addrs,
-> -							 dsaddrs)) {
-> -			dprintk("%s:  multipath address mismatch: %s != %s",
-> -				__func__, tmp_ds->ds_remotestr, remotestr);
-> -		}
->  		kfree(remotestr);
->  		kfree(ds);
->  		atomic_inc(&tmp_ds->ds_count);
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ nfs4.1/server41tests/environment.py |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+index 2566274..24e82cd 100644
+--- a/nfs4.1/server41tests/environment.py
++++ b/nfs4.1/server41tests/environment.py
+@@ -190,7 +190,7 @@ class Environment(testmod.Environment):
+                 log.warning("could not create /%s" % '/'.join(path))
+         # Make file-object in /tree
+         fh, stateid = create_confirm(sess, 'maketree', tree + ['file'])
+-        stateid.seqid = 0
++        # stateid.seqid = 0
+         ops = [op.putfh(fh),
+                op.write(stateid, 0, FILE_SYNC4, self.filedata)]
+         res = sess.compound(ops)
+-- 
+1.7.7.6
 
