@@ -1,58 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tango.0pointer.de ([85.214.72.216]:57510 "EHLO
-	tango.0pointer.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753705Ab2BAWab (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 17:30:31 -0500
-Date: Wed, 1 Feb 2012 23:30:27 +0100
-From: Lennart Poettering <lennart@poettering.net>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Tom Gundersen <teg@jklm.no>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Michal Schmidt <mschmidt@redhat.com>,
-        Steve Dickson <steved@redhat.com>, systemd-devel@lists.freedesktop.org,
-        libtirpc <libtirpc-devel@lists.sourceforge.net>
-Subject: Re: [PATCH] rpcbind: add support for systemd socket activation
-Message-ID: <20120201223027.GA29681@tango.0pointer.de>
-References: <1324602327-1789-1-git-send-email-teg@jklm.no>
- <1328096830-1383-1-git-send-email-teg@jklm.no>
- <22B77A95-49D5-4855-A230-A86C57372B28@oracle.com>
- <CAG-2HqVC3k+vmO2ieARqrKFEuP1RWZmBZ63J088DvBzSh2EdMA@mail.gmail.com>
- <20120201214536.GL18571@tango.0pointer.de>
- <5748CC59-354A-4D97-AF0C-224975BCA253@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5748CC59-354A-4D97-AF0C-224975BCA253@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:45442 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750721Ab2BXFBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Feb 2012 00:01:04 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/5] 4.1 server tests: rename tests incorrectly using root dir
+Date: Fri, 24 Feb 2012 00:00:56 -0500
+Message-Id: <1330059660-2053-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1330059660-2053-1-git-send-email-bfields@redhat.com>
+References: <1330059660-2053-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 01.02.12 17:03, Chuck Lever (chuck.lever@oracle.com) wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> >>> Why is sockaddr_storage included in this union?
-> >> 
-> >> This is from Lennart's original patch. Lennart, care to comment?
-> > 
-> > Well, simply because sockaddr_storage is the actual struct one should
-> > normally use for this kind of thing (where you try to determine a
-> > sockaddr from a socket you don't know at all). With one exception
-> > however, sockaddr_un is actually longer than sockaddr_storage, which is
-> > documented borkedness in the socket API.
-> 
-> You don't reference any of the fields inside this union, except for sa.  It seems unnecessary to include all of these members, and then not use most of them.
-> 
-> The biggest address you're ever going to get out of libtirpc is a sockaddr_storage.  If we must stick with a union to prevent pointer aliasing, can we have just two members: sockaddr and sockaddr_storage?
-> 
-> Otherwise, there's no need for this kind of generality here:  TI-RPC handles only IPv4, IPv6, and AF_LOCAL.
+Several of the rename tests were incorrectly creating objects in the
+export root.
 
-Well, as said, sockaddr_un is actually larger than sockaddr_storage, and
-hence you definitely do need sockaddr_un in the union. The IP cases are
-covered by sockaddr_storage however, and hence can be left out of the
-union.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ nfs4.1/server41tests/st_rename.py |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-I mean, it's completely up to you what is used here, I just figured the
-point of the whole library was to be an exercise in keeping things
-independent from the used socket family.
-
-Lennart
-
+diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_rename.py
+index ed5dbb5..f706a1c 100644
+--- a/nfs4.1/server41tests/st_rename.py
++++ b/nfs4.1/server41tests/st_rename.py
+@@ -185,7 +185,7 @@ def testCfhFile(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usefile + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
+@@ -198,7 +198,7 @@ def testCfhLink(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.uselink + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
+@@ -211,7 +211,7 @@ def testCfhBlock(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.useblock + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
+@@ -224,7 +224,7 @@ def testCfhChar(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usechar + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
+@@ -237,7 +237,7 @@ def testCfhFifo(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usefifo + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
+@@ -250,7 +250,7 @@ def testCfhSocket(t, env):
+     """
+     name = env.testname(t)
+     sess = env.c1.new_client_session(name)
+-    res = create_obj(sess, [name])
++    res = create_obj(sess, env.c1.homedir + [name])
+     check(res)
+     res = rename_obj(sess, env.c1.homedir + [name], env.opts.usesocket + [name])
+     check(res, NFS4ERR_NOTDIR, "RENAME with non-dir <cfh>")
 -- 
-Lennart Poettering - Red Hat, Inc.
+1.7.7.6
+
