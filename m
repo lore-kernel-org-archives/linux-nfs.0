@@ -1,41 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:41403 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753059Ab2BTUxX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2012 15:53:23 -0500
-Date: Mon, 20 Feb 2012 15:53:18 -0500
-From: Jim Rees <rees@umich.edu>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chris Rankin <rankincj@yahoo.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [OOPS] NFS dereferenced NULL pointer with 3.2.6 kernel.
-Message-ID: <20120220205318.GA23524@umich.edu>
-References: <4F4194C4.40104@yahoo.com>
- <1329760844.2834.1.camel@lade.trondhjem.org>
- <20120220182709.GA22899@umich.edu>
- <1329762949.5151.8.camel@lade.trondhjem.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:52476 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756766Ab2BYAcd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Feb 2012 19:32:33 -0500
+Received: by eekc4 with SMTP id c4so1172349eek.19
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Feb 2012 16:32:32 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1329762949.5151.8.camel@lade.trondhjem.org>
+In-Reply-To: <CAHHaOuasyyQY7p+HCRwyYuJDT0mmmXUpUCivfp9D8nNRUQ9qDg@mail.gmail.com>
+References: <CAMgFM3CXWEXqo+Nr1tt6XS6XrhJVfW9a5Dx=iSACriCOxfXjkw@mail.gmail.com>
+ <20120223115206.662b325c@redhat.com> <CAMgFM3DgWBSUsoSzcvn=2V+eFwj6wUdmb-XQjyyXGfCq9GD-=A@mail.gmail.com>
+ <CAHHaOuasyyQY7p+HCRwyYuJDT0mmmXUpUCivfp9D8nNRUQ9qDg@mail.gmail.com>
+From: Louie <snikrep@gmail.com>
+Date: Fri, 24 Feb 2012 16:32:12 -0800
+Message-ID: <CAMgFM3BT104oF5p2FDMK7ofrnLESUSVAsWnsk4iweF5L61SLrQ@mail.gmail.com>
+Subject: Re: v4recovery client id lockup
+To: David Brodbeck <brodbd@uw.edu>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond wrote:
+Good idea, went ahead and implemented this, and everything appears to
+be working.
 
-  On Mon, 2012-02-20 at 13:27 -0500, Jim Rees wrote:
-  > Myklebust, Trond wrote:
-  > 
-  >   It's a known bug. There is a fix at
-  >   
-  >   http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=commit;h=331818f1c468a24e581aedcbe52af799366a9dfe
-  > 
-  > Shouldn't this be in stable by now?  You sent it Feb 3, and there have been
-  > two stable releases since then.
+Sure glad to solve this, was driving us absolutely nuts (it would
+freeze the NFS connections to our lab computers, which would crash
+everything).
 
-  I've been waiting for Andy to get back from vacation. We've already sent
-  one buggy patch to stable...
+Many thanks!!
+-Louie
 
-That explains why I have two versions of this patch.
-
-The obvious solution is that Andy should not be allowed to take any
-vacations.  Should we chain him to his desk?
+On Fri, Feb 24, 2012 at 2:29 PM, David Brodbeck <brodbd@uw.edu> wrote:
+>
+>
+> On Fri, Feb 24, 2012 at 1:08 PM, Louie <snikrep@gmail.com> wrote:
+>>
+>> I'm guessing there is no solution and our setup just isn't supported.
+>> I'm leaning towards ditching the SSH tunnels and going with
+>> unencrypted traffic for now, as it's not strictly necessary. But if
+>> anybody has a tip on how to fix, would love to hear.
+>>
+>
+> You could always switch to a VPN solution of some kind, such as OpenVPN.
+>  This would let your clients have different IPs while still preserving the
+> security advantages of an SSH tunnel.
+>
+> --
+> David Brodbeck
+> System Administrator, Linguistics
+> University of Washington
+>
