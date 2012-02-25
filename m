@@ -1,109 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:49290 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754605Ab2BERFC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 12:05:02 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so1892522eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Feb 2012 09:05:02 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v8 09/10] nfsd41: consume current stateid on DELEGRETURN and OPENDOWNGRADE
-Date: Sun,  5 Feb 2012 18:07:58 +0100
-Message-Id: <1328461679-4108-10-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1328461679-4108-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from partagas.dragonet.es ([217.70.240.130]:56898 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754607Ab2BYIUQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Feb 2012 03:20:16 -0500
+Message-ID: <4F489999.30909@steve-ss.com>
+Date: Sat, 25 Feb 2012 09:19:37 +0100
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+References: <4F40053A.3090301@steve-ss.com> <4F412E2F.9070200@steve-ss.com> <4F45E78E.8050501@steve-ss.com> <20120223063913.5736a5b1@tlielax.poochiereds.net> <4F4628B8.90401@steve-ss.com> <20120223144053.GA25010@fieldses.org> <4F465C3A.9080802@steve-ss.com> <20120223154215.GA26706@fieldses.org> <4F466467.3030506@steve-ss.com>
+In-Reply-To: <4F466467.3030506@steve-ss.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+On 23/02/12 17:08, steve wrote:
+> On 02/23/2012 04:42 PM, J. Bruce Fields wrote:
+>>>> First, if you want an ace on a directory to be inherited by files and
+>>>> directories created under that directory, make sure you're setting
+>>>> the f
+>>>> and d flags (see nfs4_getfacl -H).
+>>>>
+>>>> Second, there's a umask problem: posix acl inheritance overrides the
+>>>> umask, but nfs4 acl inheritance isn't doing that. (The client combines
+>>>> the create mode and the umask and sets both together, there's no way
+>>>> for
+>>>> the server to even tell what the umask is.)
+>>>>
+>>>> (We should do something about this if we can: maybe modifying the
+>>>> client
+>>>> to scan the directory acl for any inheritable aces and leaving out the
+>>>> umask if they're found? It has the obvious race, but I seem to recall
+>>>> we live with that in the v3 case. Or maybe there's something more
+>>>> clever, but this comes up every now and then and I can't remember a
+>>>> better solution.)
+>>>>
 
+Hi everyone
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
----
- fs/nfsd/current_stateid.h |    3 +++
- fs/nfsd/nfs4proc.c        |    3 +++
- fs/nfsd/nfs4state.c       |   18 ++++++++++++++++++
- 3 files changed, 24 insertions(+), 0 deletions(-)
+This really is a show stopper for us.
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index e1ae950..d8c9992 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -7,6 +7,7 @@
- /*
-  * functions to set current state id
-  */
-+extern void nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
- extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
- extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
- extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-@@ -14,6 +15,8 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_c
- /*
-  * functions to consume current state id
-  */
-+extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
-+extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *, struct nfsd4_delegreturn *);
- extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
- extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
- extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 124934a..dffc9bd 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1454,6 +1454,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_DELEGRETURN",
- 		.op_rsize_bop = nfsd4_only_status_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_delegreturnstateid,
- 	},
- 	[OP_GETATTR] = {
- 		.op_func = (nfsd4op_func)nfsd4_getattr,
-@@ -1521,6 +1522,8 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_OPEN_DOWNGRADE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_opendowngradestateid,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_opendowngradestateid,
- 	},
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8214c0f..9c5a239 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4714,6 +4714,12 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
-  * functions to set current state id
-  */
- void
-+nfsd4_set_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
-+{
-+	put_stateid(cstate, &odp->od_stateid);
-+}
-+
-+void
- nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
- {
- 	put_stateid(cstate, &open->op_stateid);
-@@ -4736,6 +4742,18 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lo
-  */
- 
- void
-+nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
-+{
-+	get_stateid(cstate, &odp->od_stateid);
-+}
-+
-+void
-+nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate, struct nfsd4_delegreturn *drp)
-+{
-+	get_stateid(cstate, &drp->dr_stateid);
-+}
-+
-+void
- nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
- {
- 	get_stateid(cstate, &fsp->fr_stateid);
--- 
-1.7.7.6
+Would it be possible to give users the choice of being able to disable 
+nfs4 acls so we can fall back to POSIX or nt acls? Or at least until the 
+nfs4 team have had time to consider the situation?
 
+Mounting with -o nofacl in the hope that the POSIX acl set on the 
+unmounted directory would take effect, seems to have no effect.
+
+What I'm doing at the moment is scanning the unmounted directory every 
+few seconds using 'find' and changing the files to g+rw:-(
+
+Thanks,
+Steve
