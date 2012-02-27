@@ -1,81 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53461 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754235Ab2BOSiC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 13:38:02 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-Date: Wed, 15 Feb 2012 18:37:39 +0000
-Message-ID: <1329331059.3364.41.camel@lade.trondhjem.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-	 <1329259606.11759.15.camel@lade.trondhjem.org>
-	 <4F3AFD84.3020709@nexenta.com>
-	 <1329266587.28837.4.camel@lade.trondhjem.org>
-	 <20120215005315.GA9018@fieldses.org>
-	 <1329270628.28837.15.camel@lade.trondhjem.org>
-	 <1329273001.28837.19.camel@lade.trondhjem.org>
-	 <077E41FB-D306-45F5-9344-05A15330A483@netapp.com>
-	 <1329320764.3364.19.camel@lade.trondhjem.org>
-	 <CAHVgHyVAeBdJaMpFj5cxKpntmL+vGs8-JNiyQ=tzcJj4Y53jvA@mail.gmail.com>
-In-Reply-To: <CAHVgHyVAeBdJaMpFj5cxKpntmL+vGs8-JNiyQ=tzcJj4Y53jvA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx0.aculab.com ([213.249.233.131]:39749 "HELO mx0.aculab.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1753318Ab2B0RM0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2012 12:12:26 -0500
+Received: from mx0.aculab.com ([127.0.0.1])
+ by localhost (mx0.aculab.com [127.0.0.1]) (amavisd-new, port 10024) with SMTP
+ id 00601-08 for <linux-nfs@vger.kernel.org>;
+ Mon, 27 Feb 2012 17:12:20 +0000 (GMT)
 MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH v2 1/4] SUNRPC: release per-net clients lock before calling PipeFS dentries creation
+Date: Mon, 27 Feb 2012 17:11:37 -0000
+Message-ID: <AE90C24D6B3A694183C094C60CF0A2F6026B6E80@saturn3.aculab.com>
+In-Reply-To: <4F4BB570.60105@parallels.com>
+From: "David Laight" <David.Laight@ACULAB.COM>
+To: "Stanislav Kinsbursky" <skinsbursky@parallels.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>, "Pavel Emelianov" <xemul@parallels.com>,
+        <neilb@suse.de>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>,
+        "James Bottomley" <jbottomley@parallels.com>, <bfields@fieldses.org>,
+        <davem@davemloft.net>, <devel@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTE1IGF0IDExOjA2IC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIFdlZCwgRmViIDE1LCAyMDEyIGF0IDEwOjQ2IEFNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTAyLTE1
-IGF0IDE1OjA3ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0KPiA+Pg0KPiA+PiBQbGVhc2Ug
-ZG9uJ3QgbWVyZ2UgbmZzNF9yZXNldF9zbG90X3RhYmxlcyBhbmQgbmZzNF9pbml0X3Nsb3RfdGFi
-bGVzLiAgSXQgIGFzc3VtZXMgYSBzdGF0aWMgYXJyYXkgKHJlYWxsb2MpIHdoaWNoIGdvZXMgYXdh
-eSB3aXRoIHRoZSBkeW5hbWljIHNsb3QgdGFibGUgY29kZS4gSW5zdGVhZCwgdGFrZSBhIGxvb2sg
-YXQgdGhlIHBhdGNoIHNldCBJIHNlbnQgb24gRmViIDEyDQo+ID4NCj4gPiBXaHkgbm90PyBUaGVy
-ZSBpcyBfbm9fIGZ1bmN0aW9uYWwgZGlmZmVyZW5jZSBiZXR3ZWVuIHdoYXQNCj4gPiBuZnM0X3Jl
-c2V0X3Nsb3RfdGFibGVzKCkgYW5kIG5mczRfaW5pdF9zbG90X3RhYmxlcygpIG5lZWQgdG8gZG8u
-DQo+ID4gVGhleSBib3RoIG5lZWQgdG8gYWxsb2NhdGUgbmV3IHNsb3RzIChjb25kaXRpb25hbGx5
-IGluIHRoZSBjYXNlIG9mDQo+ID4gbmZzNF9yZXNldF9zbG90X3RhYmxlcywgYnV0IHRoZSBjb25k
-aXRpb24gaXMgY29tcGF0aWJsZSB3aXRoIHRoZQ0KPiA+IG5mczRfaW5pdF9zbG90X3RhYmxlcyBj
-YXNlKSwgYW5kIHRoZXkgYm90aCBuZWVkIHRvIGluaXRpYWxpc2UgdGhvc2UNCj4gPiBzbG90cyB0
-byB0aGUgdmFsdWUgJzEnLg0KPiANCj4gVGhlIHJlc2V0IGNhc2UgYWxzbyBuZWVkcyB0byByZWR1
-Y2UgdGhlIG51bWJlciBvZiBzbG90cy4gIEluIHRoZQ0KPiBkeW5hbWljIHNsb3QgY2FzZSwgdGhl
-IHJlc2V0IGZ1bmN0aW9uIHdpbGwgbm90IHJlcXVpcmUgZHJhaW5pbmcgb2YgdGhlDQo+IHNlc3Np
-b24uIFNvIHJlc2V0IHdpbGwsIGluIHJlc3BvbnNlIHRvIGEgY2hhbmdlIGluICB0aGUNCj4gdGFy
-Z2V0X2hpZ2hlc3Rfc2xvdGlkIG9yIGEgQ0JfUkVDQUxMX1NMT1QgZnJvbSB0aGUgc2VydmVyLCBh
-ZGQgb3INCj4gcmVtb3ZlIHNsb3RzIHdpdGhvdXQgZHJhaW5pbmcgdGhlIHNlc3Npb24uIEluIHRo
-aXMgY2FzZSwgcmVzZXQgd2lsbA0KPiBvbmx5IGluaXRpYWxpemUgYW55IG5ldyBzbG90cyBzZXF1
-ZW5jZSBudW1iZXJzIHRvIDEsIG5vdCBhbGwgc2xvdHMuDQo+IA0KPiBUaGF0IHNhaWQsIEkgZ3Vl
-c3MgaXQgY2FuIGFsbCBiZSBpbiBvbmUgZnVuY3Rpb24uDQo+IA0KPiA+DQo+ID4gQUZBSUNTIFRo
-ZXJlIGlzIG5vIHJlYXNvbiBmb3Iga2VlcGluZyB0aG9zZSBhcyAyIHNlcGFyYXRlIGZ1bmN0aW9u
-cywgYW5kDQo+ID4gSSBkb24ndCBzZWUgaG93IHRoZSBkeW5hbWljIHNlc3Npb24gcGF0Y2hlcyBj
-aGFuZ2UgYW55dGhpbmcgdG8gdGhhdA0KPiA+IGNvbmNsdXNpb24uDQo+ID4NCj4gPj4gW1BBVENI
-IFZlcnNpb24gNyAzLzNdIE5GU3Y0LjEgYXZvaWQgZnJlZWluZyBzbG90IHdoZW4gdGFza3MgYXJl
-IHdhaXRpbmcNCj4gPj4gW1BBVENIIFZlcnNpb24gMSAyLzNdIE5GU3Y0LjEgcHJlcGFyZSBmb3Ig
-ZHlhbWljIHNlc3Npb24gc2xvdHMNCj4gPj4gW1BBVENIIFZlcnNpb24gNyAxLzNdIE5GUzQuMSBj
-bGVhbiB1cCBuZnM0X2FsbG9jX3Nlc3Npb24NCj4gPg0KPiA+IEkgbmVlZCBhIGZpeCBmb3IgdGhl
-IDMuMyBmaW5hbC4uLg0KPiA+DQo+ID4gVGhvc2UgcGF0Y2hlcyBjYW4gYmUgY2xlYW5lZCB1cCBh
-bmQgbWFkZSByZWFkeSBmb3IgMy40IChuZWVkcyB3b3JrIC0NCj4gPiB0aGV5IHdvbid0IGFwcGx5
-IHRvIHRoZSAnbmZzLWZvci1uZXh0JyBicmFuY2gpLA0KPiANCj4gSSB3b3JrZWQgYWdhaW5zdCB0
-aGUgYnVnZml4IGJyYW5jaC4gSSdsbCB1c2UgdGhlIG5mcy1mb3ItbmV4dCBicmFuY2guDQo+IA0K
-PiA+IGJ1dCByaWdodCBub3cgdGhleSdyZQ0KPiA+IG5vdCBzdWZmaWNpZW50bHkgdGVzdGVkIG5v
-ciBhcmUgdGhleSBzdWZmaWNpZW50bHkgcmV2aWV3ZWQuDQo+IA0KPiBBZ3JlZWQuIEkgd2FudCB0
-byB0ZXN0IHNvbWUgbW9yZSBhdCBjb25uZWN0YXRob24uIEkgZGlkIGlvem9uZSB0ZXN0cw0KPiB0
-byBzaG93IHRoYXQgdGhpcyBkeW5hbWljIHNsb3QgaW1wbGVtZW50YXRpb24gcGVyZm9ybXMgYXMg
-d2VsbCBhcyB0aGUNCj4gc3RhdGljIGFycmF5LCBidXQgbm90IGVub3VnaCB0ZXN0aW5nIC8gcmV2
-aWV3IGZvciBjb2RpbmcgYnVncy4NCj4gDQo+ID4gRm9yDQo+ID4gaW5zdGFuY2UsIEknbSBub3Qg
-aGFwcHkgd2l0aCB0aGUgaWRlYSBvZiBhZGRpbmcgYSAndGtfcHJpdmF0ZScgZmllbGQgaW4NCj4g
-PiB0aGUgc3RydWN0IHJwY190YXNrLg0KPiANCj4gT0suIERvIHlvdSBoYXZlIGEgc3VnZ2VzdGlv
-bj8NCg0KWWVzLiBQbGVhc2Ugc2VlIGhvdyB3ZSBzb2x2ZSB0aGUgbWlub3IgdmVyc2lvbiAwIGVx
-dWl2YWxlbnQgcHJvYmxlbSBpbg0KbmZzX3JlbGVhc2Vfc2VxaWQoKS4NCg0KSW4gdGhlIGNhc2Ug
-b2YgbWlub3IgdmVyc2lvbiAxLCBJIHN1Z2dlc3Qgc2V0dGluZyB1cCBhIGRlZGljYXRlZCBsaW5r
-ZWQNCmxpc3Qgb2YgJ3RoaW5ncyB3YWl0aW5nIGZvciBhIHNsb3QnLCB3aGVyZSBlYWNoIGVudHJ5
-IGluIHRoZSBsaW5rZWQgbGlzdA0KY29udGFpbnMgdGhlIG5mczRfc2VxdWVuY2VfYXJncy9uZnM0
-X3NlcXVlbmNlX3JlcyB0byBpbml0aWFsaXNlLCBhbmQNCnRoZW4gYSBwb2ludGVyIHRvIHRoZSBy
-cGNfdGFzayB0byB3YWtlIHVwLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
-dy5uZXRhcHAuY29tDQoNCg==
+ 
+> Gmmm.
+> Please, correct me, if I'm wrong, that you are proposing 
+> something like this:
+> 
+>    	spin_lock(&sn->rpc_client_lock);
+> again:
+> 	list_for_each_entry(clnt,&sn->all_clients, cl_clients) {
+> 		if ((event == RPC_PIPEFS_MOUNT) && clnt->cl_dentry) ||
+> 		    (event == RPC_PIPEFS_UMOUNT) && !clnt->cl_dentry))
+> 			continue;
+> 		atomic_inc(&clnt->cl_count);
+> 		spin_unlock(&sn->rpc_client_lock);
+>     		error = __rpc_pipefs_event(clnt, event, sb);
+> 		rpc_release_client(clnt);
+> 		spin_lock(&sn->rpc_client_lock);
+>     		if (error)
+>     			break;
+> 		goto again;
+>     	}
+>     	spin_unlock(&sn->rpc_client_lock);
+
+You might manage to request reference to the 'next'
+item while holding the lock. So maybe a loop that has:
+
+	error = ...
+	if (error) {
+		rpc_release_client(clnt);
+		break;
+	}
+	spin_lock(&sn->rpc_client_lock);
+	next_clnt = list_next(clnt);
+	if (next_clnt)
+		atomic_inc(&next_clnt->cl_count);
+	spin_unlock(&sn->rpc_client_lock);
+	rpc_release_client(clnt);
+	clnt = next_clnt;
+   } while (clnt != NULL);
+
+	David
+
+
