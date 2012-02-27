@@ -1,48 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42433 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:48803 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755543Ab2BOAxT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 19:53:19 -0500
-Date: Tue, 14 Feb 2012 19:53:15 -0500
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at
- nfs4_init_slot_table()
-Message-ID: <20120215005315.GA9018@fieldses.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
- <1329259606.11759.15.camel@lade.trondhjem.org>
- <4F3AFD84.3020709@nexenta.com>
- <1329266587.28837.4.camel@lade.trondhjem.org>
+	id S1753766Ab2B0PvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 10:51:13 -0500
+Subject: [PATCH v2 0/4] SUNRPC: several fixes around PipeFS objects
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 27 Feb 2012 19:50:47 +0400
+Message-ID: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1329266587.28837.4.camel@lade.trondhjem.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 15, 2012 at 12:43:08AM +0000, Myklebust, Trond wrote:
-> Then we have a problem. The zero initialisation is already in use out
-> there in both commercial and non-commercial versions of Linux. It is too
-> late to change that now.
-> 
-> Furthermore, since none of the servers we've tested against in earlier
-> Bakeathons and Connectathons have complained, I suggest that we rather
-> change the spec with an errata.
+v2: 
+1) Prior to calling PipeFS dentry rountines (for both type of clients - SUNPRC
+and NFS) get the client and drop the list lock instead of replacing per-net
+locks by mutexes.
 
-Argh.
+First two pathes fixes lockdep warnings and next two - dereferencing of
+released pipe data on eventfd close and in file operations.
 
-I just noticed that the server was crashing intermittently and traced it
-to incorrect handling of the case where the client sends a one-op
-SEQUENCE compound with seqid 0.  I'm not sure why it started popping up
-just in 3.3--perhaps some change in the way the client uses slots made
-that more likely.
+The following series consists of:
 
-The server code actually looks like it did assume initial seqid 1, but
-accepted initial seqid 0 (except in this one case) basically by mistake.
+---
 
-In any case, I think it should be easy enough to teach it just to accept
-any seqid on a previously unused slot, so I'll do that....
+Stanislav Kinsbursky (4):
+      SUNRPC: release per-net clients lock before calling PipeFS dentries creation
+      NFS: release per-net clients lock before calling PipeFS dentries creation
+      SUNRPC: check RPC inode's pipe reference before dereferencing
+      SUNRPC: move waitq from RPC pipe to RPC inode
 
---b.
+
+ fs/nfs/client.c                    |    2 +
+ fs/nfs/idmap.c                     |    8 +++-
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 +
+ net/sunrpc/clnt.c                  |   10 ++++-
+ net/sunrpc/rpc_pipe.c              |   71 +++++++++++++++++++++++-------------
+ 5 files changed, 60 insertions(+), 33 deletions(-)
+
