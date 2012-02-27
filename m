@@ -1,152 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48386 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:5079 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756256Ab2BFW4u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 17:56:50 -0500
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 06/11] mm: Add get_kernel_page[s] for pinning of kernel addresses for I/O
-Date: Mon,  6 Feb 2012 22:56:36 +0000
-Message-Id: <1328569001-17599-7-git-send-email-mgorman@suse.de>
-In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
-References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+	id S1754301Ab2B0SGF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 13:06:05 -0500
+Subject: [PATCH v3 2/4] NFS: release per-net clients lock before calling
+ PipeFS dentries creation
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 27 Feb 2012 22:05:37 +0400
+Message-ID: <20120227180537.1089.45100.stgit@localhost6.localdomain6>
+In-Reply-To: <20120227180509.1089.29555.stgit@localhost6.localdomain6>
+References: <20120227180509.1089.29555.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds two new APIs get_kernel_pages() and get_kernel_page()
-that may be used to pin a vector of kernel addresses for IO. The initial
-user is expected to be NFS for allowing pages to be written to swap
-using aops->direct_IO(). Strictly speaking, swap-over-NFS only needs
-to pin one page for IO but it makes sense to express the API in terms
-of a vector and add a helper for pinning single pages.
+v3:
+1) Lookup for client is performed from the beginning of the list on each PipeFS
+event handling operation.
 
-Signed-off-by: Mel Gorman <mgorman@suse.de>
+Lockdep is sad otherwise, because inode mutex is taken on PipeFS dentry
+creation, which can be called on mount notification, where this per-net client
+lock is taken on clients list walk.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- include/linux/blk_types.h |    2 +
- include/linux/fs.h        |    2 +
- include/linux/mm.h        |    4 +++
- mm/memory.c               |   53 +++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 61 insertions(+), 0 deletions(-)
+ fs/nfs/idmap.c |   30 ++++++++++++++++++++++++------
+ 1 files changed, 24 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 4053cbd..1e62642 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -150,6 +150,7 @@ enum rq_flag_bits {
- 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
- 	__REQ_IO_STAT,		/* account I/O stat */
- 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
-+	__REQ_KERNEL, 		/* direct IO to kernel pages */
- 	__REQ_NR_BITS,		/* stops here */
- };
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index b5c6d8e..d4db3b6 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -553,23 +553,41 @@ static int __rpc_pipefs_event(struct nfs_client *clp, unsigned long event,
+ 	return err;
+ }
  
-@@ -191,5 +192,6 @@ enum rq_flag_bits {
- #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1 << __REQ_SECURE)
-+#define REQ_KERNEL		(1 << __REQ_KERNEL)
+-static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+-			    void *ptr)
++static struct nfs_client *nfs_get_client_for_event(struct net *net, int event)
+ {
+-	struct super_block *sb = ptr;
+-	struct nfs_net *nn = net_generic(sb->s_fs_info, nfs_net_id);
++	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	struct dentry *cl_dentry;
+ 	struct nfs_client *clp;
+-	int error = 0;
  
- #endif /* __LINUX_BLK_TYPES_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5031625..4888f18 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -161,6 +161,8 @@ struct inodes_stat_t {
- #define READ			0
- #define WRITE			RW_MASK
- #define READA			RWA_MASK
-+#define KERNEL_READ		(READ|REQ_KERNEL)
-+#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
- 
- #define READ_SYNC		(READ | REQ_SYNC)
- #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index ac90729..250fe61 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1022,6 +1022,10 @@ int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
- 			struct page **pages, struct vm_area_struct **vmas);
- int get_user_pages_fast(unsigned long start, int nr_pages, int write,
- 			struct page **pages);
-+struct kvec;
-+int get_kernel_pages(const struct kvec *iov, int nr_pages, int write,
-+			struct page **pages);
-+int get_kernel_page(unsigned long start, int write, struct page **pages);
- struct page *get_dump_page(unsigned long addr);
- 
- extern int try_to_release_page(struct page * page, gfp_t gfp_mask);
-diff --git a/mm/memory.c b/mm/memory.c
-index fa2f04e..ff60ade 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -1825,6 +1825,59 @@ next_page:
- EXPORT_SYMBOL(__get_user_pages);
- 
- /*
-+ * get_kernel_pages() - pin kernel pages in memory
-+ * @kiov:	An array of struct kvec structures
-+ * @nr_segs:	number of segments to pin
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointers to the pages pinned.
-+ *		Should be at least nr_segs long.
-+ *
-+ * Returns number of pages pinned. This may be fewer than the number
-+ * requested. If nr_pages is 0 or negative, returns 0. If no pages
-+ * were pinned, returns -errno. Each page returned must be released
-+ * with a put_page() call when it is finished with.
-+ */
-+int get_kernel_pages(const struct kvec *kiov, int nr_segs, int write,
-+		struct page **pages)
-+{
-+	int seg;
-+
-+	for (seg = 0; seg < nr_segs; seg++) {
-+		if (WARN_ON(kiov[seg].iov_len != PAGE_SIZE))
-+			return seg;
-+
-+		/* virt_to_page sanity checks the PFN */
-+		pages[seg] = virt_to_page(kiov[seg].iov_base);
-+		page_cache_get(pages[seg]);
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+ 		if (clp->rpc_ops != &nfs_v4_clientops)
+ 			continue;
++		cl_dentry = clp->cl_idmap->idmap_pipe->dentry;
++		if (((event == RPC_PIPEFS_MOUNT) && cl_dentry) ||
++		    ((event == RPC_PIPEFS_UMOUNT) && !cl_dentry))
++			continue;
++		atomic_inc(&clp->cl_count);
++		spin_unlock(&nn->nfs_client_lock);
++		return clp;
 +	}
-+
-+	return seg;
++	spin_unlock(&nn->nfs_client_lock);
++	return NULL;
 +}
-+EXPORT_SYMBOL_GPL(get_kernel_pages);
 +
-+/*
-+ * get_kernel_page() - pin a kernel page in memory
-+ * @start:	starting kernel address
-+ * @write:	pinning for read/write, currently ignored
-+ * @pages:	array that receives pointer to the page pinned.
-+ *		Must be at least nr_segs long.
-+ *
-+ * Returns 1 if page is pinned. If the page was not pinned, returns
-+ * -errno. The page returned must be released with a put_page() call
-+ * when it is finished with.
-+ */
-+int get_kernel_page(unsigned long start, int write, struct page **pages)
++static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
++			    void *ptr)
 +{
-+	const struct kvec kiov = {
-+		.iov_base = (void *)start,
-+		.iov_len = PAGE_SIZE
-+	};
++	struct super_block *sb = ptr;
++	struct nfs_client *clp;
++	int error = 0;
 +
-+	return get_kernel_pages(&kiov, 1, write, pages);
-+}
-+EXPORT_SYMBOL_GPL(get_kernel_page);
-+
-+/*
-  * fixup_user_fault() - manually resolve a user page fault
-  * @tsk:	the task_struct to use for page fault accounting, or
-  *		NULL if faults are not to be recorded.
--- 
-1.7.3.4
++	while ((clp = nfs_get_client_for_event(sb->s_fs_info, event))) {
+ 		error = __rpc_pipefs_event(clp, event, sb);
++		nfs_put_client(clp);
+ 		if (error)
+ 			break;
+ 	}
+-	spin_unlock(&nn->nfs_client_lock);
+ 	return error;
+ }
+ 
 
