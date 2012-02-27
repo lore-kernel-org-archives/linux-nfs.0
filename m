@@ -1,93 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:59012 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965496Ab2B2RQH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 12:16:07 -0500
-Received: by yenl12 with SMTP id l12so1412252yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 09:16:06 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:10028 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753960Ab2B0QVe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 11:21:34 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 1/4] SUNRPC: release per-net clients lock before
+ calling PipeFS dentries creation
+Date: Mon, 27 Feb 2012 16:21:32 +0000
+Message-ID: <1330359695.5541.45.camel@lade.trondhjem.org>
+References: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
+	 <20120227155055.7941.18741.stgit@localhost6.localdomain6>
+In-Reply-To: <20120227155055.7941.18741.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v7 4/5] nfsd: add a header describing upcall to nfsdcld
-Date: Wed, 29 Feb 2012 12:15:56 -0500
-Message-Id: <1330535757-24925-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
-References: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The daemon takes a versioned binary struct. Hopefully this should allow
-us to revise the struct later if it becomes necessary.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 56 insertions(+), 0 deletions(-)
- create mode 100644 include/linux/nfsd/cld.h
-
-diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
-new file mode 100644
-index 0000000..f14a9ab
---- /dev/null
-+++ b/include/linux/nfsd/cld.h
-@@ -0,0 +1,56 @@
-+/*
-+ * Upcall description for nfsdcld communication
-+ *
-+ * Copyright (c) 2012 Red Hat, Inc.
-+ * Author(s): Jeff Layton <jlayton@redhat.com>
-+ *
-+ *  This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 2 of the License, or
-+ *  (at your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program; if not, write to the Free Software
-+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _NFSD_CLD_H
-+#define _NFSD_CLD_H
-+
-+/* latest upcall version available */
-+#define CLD_UPCALL_VERSION 1
-+
-+/* defined by RFC3530 */
-+#define NFS4_OPAQUE_LIMIT 1024
-+
-+enum cld_command {
-+	Cld_Create,		/* create a record for this cm_id */
-+	Cld_Remove,		/* remove record of this cm_id */
-+	Cld_Check,		/* is this cm_id allowed? */
-+	Cld_GraceDone,		/* grace period is complete */
-+};
-+
-+/* representation of long-form NFSv4 client ID */
-+struct cld_name {
-+	uint16_t	cn_len;				/* length of cm_id */
-+	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
-+} __attribute__((packed));
-+
-+/* message struct for communication with userspace */
-+struct cld_msg {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		int64_t		cm_gracetime;	/* grace period start time */
-+		struct cld_name	cm_name;
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
-+#endif /* !_NFSD_CLD_H */
--- 
-1.7.7.6
-
+T24gTW9uLCAyMDEyLTAyLTI3IGF0IDE5OjUwICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gTG9ja2RlcCBpcyBzYWQgb3RoZXJ3aXNlLCBiZWNhdXNlIGlub2RlIG11dGV4IGlz
+IHRha2VuIG9uIFBpcGVGUyBkZW50cnkNCj4gY3JlYXRpb24sIHdoaWNoIGNhbiBiZSBjYWxsZWQg
+b24gbW91bnQgbm90aWZpY2F0aW9uLCB3aGVyZSB0aGlzIHBlci1uZXQgY2xpZW50DQo+IGxvY2sg
+aXMgdGFrZW4gb24gY2xpZW50cyBsaXN0IHdhbGsuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTdGFu
+aXNsYXYgS2luc2J1cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4NCj4gDQo+IC0tLQ0K
+PiAgbmV0L3N1bnJwYy9jbG50LmMgfCAgIDEwICsrKysrKystLS0NCj4gIDEgZmlsZXMgY2hhbmdl
+ZCwgNyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25l
+dC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gaW5kZXggYmI3ZWQyZjMuLmRk
+YjU3NDEgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5y
+cGMvY2xudC5jDQo+IEBAIC04NCw3ICs4NCw3IEBAIHN0YXRpYyB2b2lkIHJwY19yZWdpc3Rlcl9j
+bGllbnQoc3RydWN0IHJwY19jbG50ICpjbG50KQ0KPiAgCXN0cnVjdCBzdW5ycGNfbmV0ICpzbiA9
+IG5ldF9nZW5lcmljKGNsbnQtPmNsX3hwcnQtPnhwcnRfbmV0LCBzdW5ycGNfbmV0X2lkKTsNCj4g
+IA0KPiAgCXNwaW5fbG9jaygmc24tPnJwY19jbGllbnRfbG9jayk7DQo+IC0JbGlzdF9hZGQoJmNs
+bnQtPmNsX2NsaWVudHMsICZzbi0+YWxsX2NsaWVudHMpOw0KPiArCWxpc3RfYWRkX3RhaWwoJmNs
+bnQtPmNsX2NsaWVudHMsICZzbi0+YWxsX2NsaWVudHMpOw0KPiAgCXNwaW5fdW5sb2NrKCZzbi0+
+cnBjX2NsaWVudF9sb2NrKTsNCj4gIH0NCj4gIA0KPiBAQCAtMjA4LDE1ICsyMDgsMTkgQEAgc3Rh
+dGljIGludCBycGNfcGlwZWZzX2V2ZW50KHN0cnVjdCBub3RpZmllcl9ibG9jayAqbmIsIHVuc2ln
+bmVkIGxvbmcgZXZlbnQsDQo+ICAJCQkgICAgdm9pZCAqcHRyKQ0KPiAgew0KPiAgCXN0cnVjdCBz
+dXBlcl9ibG9jayAqc2IgPSBwdHI7DQo+IC0Jc3RydWN0IHJwY19jbG50ICpjbG50Ow0KPiArCXN0
+cnVjdCBycGNfY2xudCAqY2xudCwgKnRtcDsNCj4gIAlpbnQgZXJyb3IgPSAwOw0KPiAgCXN0cnVj
+dCBzdW5ycGNfbmV0ICpzbiA9IG5ldF9nZW5lcmljKHNiLT5zX2ZzX2luZm8sIHN1bnJwY19uZXRf
+aWQpOw0KPiAgDQo+ICAJc3Bpbl9sb2NrKCZzbi0+cnBjX2NsaWVudF9sb2NrKTsNCj4gLQlsaXN0
+X2Zvcl9lYWNoX2VudHJ5KGNsbnQsICZzbi0+YWxsX2NsaWVudHMsIGNsX2NsaWVudHMpIHsNCj4g
+KwlsaXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUoY2xudCwgdG1wLCAmc24tPmFsbF9jbGllbnRzLCBj
+bF9jbGllbnRzKSB7DQo+ICsJCWF0b21pY19pbmMoJmNsbnQtPmNsX2NvdW50KTsNCj4gKwkJc3Bp
+bl91bmxvY2soJnNuLT5ycGNfY2xpZW50X2xvY2spOw0KPiAgCQllcnJvciA9IF9fcnBjX3BpcGVm
+c19ldmVudChjbG50LCBldmVudCwgc2IpOw0KPiArCQlycGNfcmVsZWFzZV9jbGllbnQoY2xudCk7
+DQo+ICAJCWlmIChlcnJvcikNCj4gIAkJCWJyZWFrOw0KPiArCQlzcGluX2xvY2soJnNuLT5ycGNf
+Y2xpZW50X2xvY2spOw0KPiAgCX0NCj4gIAlzcGluX3VubG9jaygmc24tPnJwY19jbGllbnRfbG9j
+ayk7DQo+ICAJcmV0dXJuIGVycm9yOw0KPiANCg0KVGhpcyB3b24ndCBiZSBzYWZlLiBOb3RoaW5n
+IGd1YXJhbnRlZXMgdGhhdCAndG1wJyByZW1haW5zIHZhbGlkIGFmdGVyDQp5b3UgZHJvcCB0aGUg
+c3Bpbl9sb2NrLg0KDQpJIHRoaW5rIHlvdSByYXRoZXIgbmVlZCB0byBhZGQgYSBjaGVjayBmb3Ig
+d2hldGhlciBjbG50LT5jbF9kZW50cnkgaXMgaW4NCnRoZSByaWdodCBzdGF0ZSAoTlVMTCBpZiBS
+UENfUElQRUZTX1VNT1VOVCBvciBub24tTlVMTCBpZg0KUlBDX1BJUEVGU19NT1VOVCkgYmVmb3Jl
+IGRlY2lkaW5nIHdoZXRoZXIgb3Igbm90IHRvIGF0b21pY19pbmMoKSBhbmQNCmRyb3AgdGhlIGxv
+Y2ssIHNvIHRoYXQgeW91IGNhbiByZXN0YXJ0IHRoZSBsb29wIGFmdGVyIGNhbGxpbmcNCl9fcnBj
+X3BpcGVmc19ldmVudCgpLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg0K
