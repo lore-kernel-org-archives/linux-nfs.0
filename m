@@ -1,54 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52676 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25736 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752265Ab2BIT7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Feb 2012 14:59:02 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Thu, 9 Feb 2012 19:58:54 +0000
-Message-ID: <1328817534.13180.65.camel@lade.trondhjem.org>
-References: <1328805686-19559-1-git-send-email-dros@netapp.com>
-	 <1328811417.13180.51.camel@lade.trondhjem.org>
-	 <39752416-3EE2-4E32-944C-4F75672C2872@netapp.com>
-	 <1328815664.13180.60.camel@lade.trondhjem.org>
-	 <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
-In-Reply-To: <BAC7F881-0F2D-423D-92FB-DE0F579CC6D6@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753354Ab2B0Ntn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 08:49:43 -0500
+Subject: [PATCH 4/4] SUNRPC: move waitq from RPC pipe to RPC inode
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 27 Feb 2012 17:49:16 +0400
+Message-ID: <20120227134916.13371.79606.stgit@localhost6.localdomain6>
+In-Reply-To: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
+References: <20120227134623.13371.61185.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE5OjQ4ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiA+IA0KPiA+PiBJIGRvIGhhdmUgYW4gaW1wbGVtZW50YXRpb24gdGhhdCBkb2Vzbid0IG5lZWQg
-dG8gd2FsayB0aGUgZGV2aWNlaWQgbGlzdCBieSBhbGxvd2luZyBhIHNoYXJlZCBycGNfaW9zdGF0
-cyBzdHJ1Y3QgYmV0d2VlbiBtdWx0aXBsZSBycGNfY2xpZW50cyAoaW4gYWRkaXRpb24gdG8gdGhl
-IGN1cnJlbnQgcnBjX2lvc3RhdHMgc3RydWN0dXJlKSwgYnV0IHRoYXQgcmVxdWlyZWQgYWRkaW5n
-IGxvY2tpbmcgYW5kIHJlZmVyZW5jZSBjb3VudGluZyAtLSBhbGwgZm9yIHByaW50aW5nIHN0YXRz
-IChvYnZpb3VzbHkgbm90IHdoYXQgd2Ugd2FudCkuDQo+ID4gDQo+ID4gVGhpcyBtaWdodCBiZSBt
-b3JlIGluIGxpbmUgd2l0aCB3aGF0IHdlIHdhbnQuIE5vdGUgdGhhdCBpdCBzaG91bGQgYmUNCj4g
-PiBlYXN5IHRvIGNsb25lIGFuIHJwY19jbGllbnQgYW5kIHRoZW4gcmVwbGFjZSBpdHMgcnBjX2lv
-c3RhdHMgc3RydWN0LiBJDQo+ID4gZG9uJ3QgdGhpbmsgdGhhdCBuZWVkcyBhbnkgZXh0cmEgbG9j
-a2luZy4gV2UncmUgYWxyZWFkeSBpZ25vcmluZyBsb2NraW5nDQo+ID4gaGVyZSBiZXR3ZWVuIGRp
-ZmZlcmVudCBycGNfdGFza3MsIHNvIHRocm93aW5nIGluIGRpZmZlcmVudCBycGNfY2xpZW50cw0K
-PiA+IHRvIHRoZSBtaXggd2lsbCBtYWtlIG5vIGRpZmZlcmVuY2UuDQo+IA0KPiBZZWFoLCB0aGF0
-J3MgZWFzeSBlbm91Z2ggYW5kIGkgZ3Vlc3Mgd2UgY291bGQgaWdub3JlIGxvY2tpbmcsIGJ1dCB3
-ZSBhcmUgc3RpbGwgbGVmdCB3aXRoIHRoZSBzYW1lIHByb2JsZW06IGhvdyBpcyB0aGlzIHN1cHBv
-c2VkIHRvIGFjY291bnQgZm9yIGRpZmZlcmVudCBtb3VudCBwb2ludHMgdXNpbmcgdGhlIHNhbWUg
-bmZzX2NsaWVudD8gIG5mc19jbGllbnQgb25seSBoYXMgb25lIHJwY19jbGllbnQgbWVtYmVyLiAg
-SSBkb3VidCB3ZSB3YW50IHRvIG1ha2UgYSBoYXNoIGxvb2t1cCBvbiBuZnNfc2VydmVyIHRvIGdl
-dCB0aGUgcmlnaHQgcnBjX2NsaWVudCAod2hpY2ggY291bGQgYWxsIHVzZSB0aGUgc2FtZSB1bmRl
-cmx5aW5nIHhwcnQpLg0KPiANCj4gTWF5YmUgaXQncyB0aW1lIHRvIG1vdmUgdGhlc2Ugc3RhdHMg
-aW50byBmcy9uZnMvIHdoZXJlIHRoZXkgcmVhbGx5IGJlbG9uZz8gIFdlIGNvdWxkIGdldCByaWQg
-b2YgdGhlIGhhY2sgdGhhdCBvdmVybG9hZHMgcHJvY251bSB3aXRoIG9wbnVtIGZyb20gaW5zaWRl
-IHRoZSBjb21wb3VuZCBmb3IgdjQrIGFuZCBmaW5hbGx5IG9ubHkgc2hvdyBhIHNwZWNpZmljIG1v
-dW50J3MgUlBDIHN0YXRzLg0KDQpBY3R1YWxseSwgaG93IGFib3V0IGp1c3QgYWRkaW5nIGEgY2Fs
-bGJhY2sgaW50byBzdHJ1Y3QgcnBjX2NhbGxfb3BzDQp0aGF0LCBpZiBpdCBpcyBkZWZpbmVkLCB3
-b3VsZCBiZSBjYWxsZWQgaW5zdGVhZCBvZiBycGNfY291bnRfaW9zdGF0cygpLiANCklmIHlvdSB0
-aGVuIG1vZGlmeSBycGNfY291bnRfaW9zdGF0cygpIHRvIHRha2UgdGhlICdzdGF0cycgdmFyaWFi
-bGUgYXMgYQ0KcGFyYW1ldGVyLCB5b3UgY2FuIHNpbXBseSBoYXZlIHRoZSBuZXcgY2FsbGJhY2sg
-Y2FsbCBycGNfY291bnRfaW9zdGF0cw0Kd2l0aCB0aGUgcmlnaHQgYXJndW1lbnRzLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Currently, wait queue, used for polling of RPC pipe changes from user-space,
+is a part of RPC pipe. But the pipe data itself can be released on NFS umount
+prior to dentry-inode pair, connected to it (is case of this pair is open by
+some process).
+This is not a problem for almost all pipe users, because all PipeFS file
+operations checks pipe reference prior to using it.
+Except evenfd. This thing registers itself with "poll" file operation and thus
+has a reference to pipe wait queue. This leads to oopses on destroying eventfd
+after NFS umount (like rpc_idmapd do) since not pipe data left to the point
+already.
+The solution is to wait queue from pipe data to internal RPC inode data. This
+looks more logical, because this wiat queue used only for user-space processes,
+which already holds inode reference.
+
+Note: upcalls have to get pipe->dentry prior to dereferecing wait queue to make
+sure, that mount point won't disappear from underneath us.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 +-
+ net/sunrpc/rpc_pipe.c              |   39 ++++++++++++++++++++++++------------
+ 2 files changed, 27 insertions(+), 14 deletions(-)
+
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 426ce6e..a7b422b 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -28,7 +28,6 @@ struct rpc_pipe {
+ 	int pipelen;
+ 	int nreaders;
+ 	int nwriters;
+-	wait_queue_head_t waitq;
+ #define RPC_PIPE_WAIT_FOR_OPEN	1
+ 	int flags;
+ 	struct delayed_work queue_timeout;
+@@ -41,6 +40,7 @@ struct rpc_inode {
+ 	struct inode vfs_inode;
+ 	void *private;
+ 	struct rpc_pipe *pipe;
++	wait_queue_head_t waitq;
+ };
+ 
+ static inline struct rpc_inode *
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b67b2ae..ac9ee15 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -57,7 +57,7 @@ void rpc_pipefs_notifier_unregister(struct notifier_block *nb)
+ }
+ EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_unregister);
+ 
+-static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
++static void rpc_purge_list(wait_queue_head_t *waitq, struct list_head *head,
+ 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
+ {
+ 	struct rpc_pipe_msg *msg;
+@@ -70,7 +70,7 @@ static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
+ 		msg->errno = err;
+ 		destroy_msg(msg);
+ 	} while (!list_empty(head));
+-	wake_up(&pipe->waitq);
++	wake_up(waitq);
+ }
+ 
+ static void
+@@ -80,6 +80,7 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 	struct rpc_pipe *pipe =
+ 		container_of(work, struct rpc_pipe, queue_timeout.work);
+ 	void (*destroy_msg)(struct rpc_pipe_msg *);
++	struct dentry *dentry;
+ 
+ 	spin_lock(&pipe->lock);
+ 	destroy_msg = pipe->ops->destroy_msg;
+@@ -87,8 +88,13 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 		list_splice_init(&pipe->pipe, &free_list);
+ 		pipe->pipelen = 0;
+ 	}
++	dentry = dget(pipe->dentry);
+ 	spin_unlock(&pipe->lock);
+-	rpc_purge_list(pipe, &free_list, destroy_msg, -ETIMEDOUT);
++	if (dentry) {
++		rpc_purge_list(&RPC_I(dentry->d_inode)->waitq,
++			       &free_list, destroy_msg, -ETIMEDOUT);
++		dput(dentry);
++	}
+ }
+ 
+ ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+@@ -125,6 +131,7 @@ int
+ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
+ {
+ 	int res = -EPIPE;
++	struct dentry *dentry;
+ 
+ 	spin_lock(&pipe->lock);
+ 	if (pipe->nreaders) {
+@@ -140,8 +147,12 @@ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
+ 		pipe->pipelen += msg->len;
+ 		res = 0;
+ 	}
++	dentry = dget(pipe->dentry);
+ 	spin_unlock(&pipe->lock);
+-	wake_up(&pipe->waitq);
++	if (dentry) {
++		wake_up(&RPC_I(dentry->d_inode)->waitq);
++		dput(dentry);
++	}
+ 	return res;
+ }
+ EXPORT_SYMBOL_GPL(rpc_queue_upcall);
+@@ -168,7 +179,7 @@ rpc_close_pipes(struct inode *inode)
+ 	pipe->pipelen = 0;
+ 	pipe->dentry = NULL;
+ 	spin_unlock(&pipe->lock);
+-	rpc_purge_list(pipe, &free_list, pipe->ops->destroy_msg, -EPIPE);
++	rpc_purge_list(&RPC_I(inode)->waitq, &free_list, pipe->ops->destroy_msg, -EPIPE);
+ 	pipe->nwriters = 0;
+ 	if (need_release && pipe->ops->release_pipe)
+ 		pipe->ops->release_pipe(inode);
+@@ -257,7 +268,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
+ 			list_splice_init(&pipe->pipe, &free_list);
+ 			pipe->pipelen = 0;
+ 			spin_unlock(&pipe->lock);
+-			rpc_purge_list(pipe, &free_list,
++			rpc_purge_list(&RPC_I(inode)->waitq, &free_list,
+ 					pipe->ops->destroy_msg, -EAGAIN);
+ 		}
+ 	}
+@@ -330,16 +341,18 @@ rpc_pipe_write(struct file *filp, const char __user *buf, size_t len, loff_t *of
+ static unsigned int
+ rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
+ {
+-	struct rpc_pipe *pipe = RPC_I(filp->f_path.dentry->d_inode)->pipe;
+-	unsigned int mask = 0;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct rpc_inode *rpci = RPC_I(inode);
++	unsigned int mask = POLLOUT | POLLWRNORM;
+ 
+-	poll_wait(filp, &pipe->waitq, wait);
++	poll_wait(filp, &rpci->waitq, wait);
+ 
+-	mask = POLLOUT | POLLWRNORM;
+-	if (pipe->dentry == NULL)
++	mutex_lock(&inode->i_mutex);
++	if (rpci->pipe == NULL)
+ 		mask |= POLLERR | POLLHUP;
+-	if (filp->private_data || !list_empty(&pipe->pipe))
++	else if (filp->private_data || !list_empty(&rpci->pipe->pipe))
+ 		mask |= POLLIN | POLLRDNORM;
++	mutex_unlock(&inode->i_mutex);
+ 	return mask;
+ }
+ 
+@@ -543,7 +556,6 @@ init_pipe(struct rpc_pipe *pipe)
+ 	INIT_LIST_HEAD(&pipe->in_downcall);
+ 	INIT_LIST_HEAD(&pipe->pipe);
+ 	pipe->pipelen = 0;
+-	init_waitqueue_head(&pipe->waitq);
+ 	INIT_DELAYED_WORK(&pipe->queue_timeout,
+ 			    rpc_timeout_upcall_queue);
+ 	pipe->ops = NULL;
+@@ -1165,6 +1177,7 @@ init_once(void *foo)
+ 	inode_init_once(&rpci->vfs_inode);
+ 	rpci->private = NULL;
+ 	rpci->pipe = NULL;
++	init_waitqueue_head(&rpci->waitq);
+ }
+ 
+ int register_rpc_pipefs(void)
+
