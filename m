@@ -1,309 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48377 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:24085 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756185Ab2BFW4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 17:56:49 -0500
-From: Mel Gorman <mgorman@suse.de>
-To: Linux-MM <linux-mm@kvack.org>
-Cc: Linux-Netdev <netdev@vger.kernel.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Miller <davem@davemloft.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Mel Gorman <mgorman@suse.de>
-Subject: [PATCH 05/11] mm: swap: Implement generic handler for swap_activate
-Date: Mon,  6 Feb 2012 22:56:35 +0000
-Message-Id: <1328569001-17599-6-git-send-email-mgorman@suse.de>
-In-Reply-To: <1328569001-17599-1-git-send-email-mgorman@suse.de>
-References: <1328569001-17599-1-git-send-email-mgorman@suse.de>
+	id S1754439Ab2B0SmA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 13:42:00 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+CC: "debian-backports@lists.debian.org"
+	<debian-backports@lists.debian.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: null pointer dereference in linux kernel 3.2.4 in
+ nfs4_xdr_enc_getacl
+Date: Mon, 27 Feb 2012 18:41:59 +0000
+Message-ID: <1330368119.5541.59.camel@lade.trondhjem.org>
+References: <871upg2klr.fsf@pip.fifthhorseman.net>
+In-Reply-To: <871upg2klr.fsf@pip.fifthhorseman.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The version of swap_activate introduced is sufficient for swap-over-NFS
-but would not provide enough information to implement a generic handler.
-This patch shuffles things slightly to ensure the same information is
-available for aops->swap_activate() as is available to the core.
-
-No functionality change.
-
-Signed-off-by: Mel Gorman <mgorman@suse.de>
----
- include/linux/fs.h   |    7 +++-
- include/linux/swap.h |    5 +++
- mm/page_io.c         |   92 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mm/swapfile.c        |   91 +++----------------------------------------------
- 4 files changed, 107 insertions(+), 88 deletions(-)
-
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5224246..5031625 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -582,6 +582,8 @@ typedef struct {
- typedef int (*read_actor_t)(read_descriptor_t *, struct page *,
- 		unsigned long, unsigned long);
- 
-+struct swap_info_struct;
-+
- struct address_space_operations {
- 	int (*writepage)(struct page *page, struct writeback_control *wbc);
- 	int (*readpage)(struct file *, struct page *);
-@@ -623,8 +625,9 @@ struct address_space_operations {
- 	int (*error_remove_page)(struct address_space *, struct page *);
- 
- 	/* swapfile support */
--	int (*swap_activate)(struct file *file);
--	int (*swap_deactivate)(struct file *file);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
-+				sector_t *span);
-+	void (*swap_deactivate)(struct file *file);
- };
- 
- extern const struct address_space_operations empty_aops;
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index b5bb3a9..a06b7cd 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -309,6 +309,11 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
- extern int swap_set_page_dirty(struct page *page);
- extern void end_swap_bio_read(struct bio *bio, int err);
- 
-+int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
-+		unsigned long nr_pages, sector_t start_block);
-+int generic_swapfile_activate(struct swap_info_struct *, struct file *,
-+		sector_t *);
-+
- /* linux/mm/swap_state.c */
- extern struct address_space swapper_space;
- #define total_swapcache_pages  swapper_space.nrpages
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 2a7a4c1..0a7492c 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -86,6 +86,98 @@ void end_swap_bio_read(struct bio *bio, int err)
- 	bio_put(bio);
- }
- 
-+int generic_swapfile_activate(struct swap_info_struct *sis,
-+				struct file *swap_file,
-+				sector_t *span)
-+{
-+	struct address_space *mapping = swap_file->f_mapping;
-+	struct inode *inode = mapping->host;
-+	unsigned blocks_per_page;
-+	unsigned long page_no;
-+	unsigned blkbits;
-+	sector_t probe_block;
-+	sector_t last_block;
-+	sector_t lowest_block = -1;
-+	sector_t highest_block = 0;
-+	int nr_extents = 0;
-+	int ret;
-+
-+	blkbits = inode->i_blkbits;
-+	blocks_per_page = PAGE_SIZE >> blkbits;
-+
-+	/*
-+	 * Map all the blocks into the extent list.  This code doesn't try
-+	 * to be very smart.
-+	 */
-+	probe_block = 0;
-+	page_no = 0;
-+	last_block = i_size_read(inode) >> blkbits;
-+	while ((probe_block + blocks_per_page) <= last_block &&
-+			page_no < sis->max) {
-+		unsigned block_in_page;
-+		sector_t first_block;
-+
-+		first_block = bmap(inode, probe_block);
-+		if (first_block == 0)
-+			goto bad_bmap;
-+
-+		/*
-+		 * It must be PAGE_SIZE aligned on-disk
-+		 */
-+		if (first_block & (blocks_per_page - 1)) {
-+			probe_block++;
-+			goto reprobe;
-+		}
-+
-+		for (block_in_page = 1; block_in_page < blocks_per_page;
-+					block_in_page++) {
-+			sector_t block;
-+
-+			block = bmap(inode, probe_block + block_in_page);
-+			if (block == 0)
-+				goto bad_bmap;
-+			if (block != first_block + block_in_page) {
-+				/* Discontiguity */
-+				probe_block++;
-+				goto reprobe;
-+			}
-+		}
-+
-+		first_block >>= (PAGE_SHIFT - blkbits);
-+		if (page_no) {	/* exclude the header page */
-+			if (first_block < lowest_block)
-+				lowest_block = first_block;
-+			if (first_block > highest_block)
-+				highest_block = first_block;
-+		}
-+
-+		/*
-+		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
-+		 */
-+		ret = add_swap_extent(sis, page_no, 1, first_block);
-+		if (ret < 0)
-+			goto out;
-+		nr_extents += ret;
-+		page_no++;
-+		probe_block += blocks_per_page;
-+reprobe:
-+		continue;
-+	}
-+	ret = nr_extents;
-+	*span = 1 + highest_block - lowest_block;
-+	if (page_no == 0)
-+		page_no = 1;	/* force Empty message */
-+	sis->max = page_no;
-+	sis->pages = page_no - 1;
-+	sis->highest_bit = page_no - 1;
-+out:
-+	return ret;
-+bad_bmap:
-+	printk(KERN_ERR "swapon: swapfile has holes\n");
-+	ret = -EINVAL;
-+	goto out;
-+}
-+
- /*
-  * We may have stale swap cache pages in memory: notice
-  * them here and get rid of the unnecessary final write.
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 85e7a95..e1bac6c 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -1360,7 +1360,7 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
-  *
-  * This function rather assumes that it is called in ascending page order.
-  */
--static int
-+int
- add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
- 		unsigned long nr_pages, sector_t start_block)
- {
-@@ -1436,106 +1436,25 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
- 	struct file *swap_file = sis->swap_file;
- 	struct address_space *mapping = swap_file->f_mapping;
- 	struct inode *inode = mapping->host;
--	unsigned blocks_per_page;
--	unsigned long page_no;
--	unsigned blkbits;
--	sector_t probe_block;
--	sector_t last_block;
--	sector_t lowest_block = -1;
--	sector_t highest_block = 0;
--	int nr_extents = 0;
- 	int ret;
- 
- 	if (S_ISBLK(inode->i_mode)) {
- 		ret = add_swap_extent(sis, 0, sis->max, 0);
- 		*span = sis->pages;
--		goto out;
-+		return ret;
- 	}
- 
- 	if (mapping->a_ops->swap_activate) {
--		ret = mapping->a_ops->swap_activate(swap_file);
-+		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
- 		if (!ret) {
- 			sis->flags |= SWP_FILE;
- 			ret = add_swap_extent(sis, 0, sis->max, 0);
- 			*span = sis->pages;
- 		}
--		goto out;
-+		return ret;
- 	}
- 
--	blkbits = inode->i_blkbits;
--	blocks_per_page = PAGE_SIZE >> blkbits;
--
--	/*
--	 * Map all the blocks into the extent list.  This code doesn't try
--	 * to be very smart.
--	 */
--	probe_block = 0;
--	page_no = 0;
--	last_block = i_size_read(inode) >> blkbits;
--	while ((probe_block + blocks_per_page) <= last_block &&
--			page_no < sis->max) {
--		unsigned block_in_page;
--		sector_t first_block;
--
--		first_block = bmap(inode, probe_block);
--		if (first_block == 0)
--			goto bad_bmap;
--
--		/*
--		 * It must be PAGE_SIZE aligned on-disk
--		 */
--		if (first_block & (blocks_per_page - 1)) {
--			probe_block++;
--			goto reprobe;
--		}
--
--		for (block_in_page = 1; block_in_page < blocks_per_page;
--					block_in_page++) {
--			sector_t block;
--
--			block = bmap(inode, probe_block + block_in_page);
--			if (block == 0)
--				goto bad_bmap;
--			if (block != first_block + block_in_page) {
--				/* Discontiguity */
--				probe_block++;
--				goto reprobe;
--			}
--		}
--
--		first_block >>= (PAGE_SHIFT - blkbits);
--		if (page_no) {	/* exclude the header page */
--			if (first_block < lowest_block)
--				lowest_block = first_block;
--			if (first_block > highest_block)
--				highest_block = first_block;
--		}
--
--		/*
--		 * We found a PAGE_SIZE-length, PAGE_SIZE-aligned run of blocks
--		 */
--		ret = add_swap_extent(sis, page_no, 1, first_block);
--		if (ret < 0)
--			goto out;
--		nr_extents += ret;
--		page_no++;
--		probe_block += blocks_per_page;
--reprobe:
--		continue;
--	}
--	ret = nr_extents;
--	*span = 1 + highest_block - lowest_block;
--	if (page_no == 0)
--		page_no = 1;	/* force Empty message */
--	sis->max = page_no;
--	sis->pages = page_no - 1;
--	sis->highest_bit = page_no - 1;
--out:
--	return ret;
--bad_bmap:
--	printk(KERN_ERR "swapon: swapfile has holes\n");
--	ret = -EINVAL;
--	goto out;
-+	return generic_swapfile_activate(sis, swap_file, span);
- }
- 
- static void enable_swap_info(struct swap_info_struct *p, int prio,
--- 
-1.7.3.4
-
+T24gTW9uLCAyMDEyLTAyLTI3IGF0IDEzOjMyIC0wNTAwLCBEYW5pZWwgS2FobiBHaWxsbW9yIHdy
+b3RlOg0KPiBJJ20gcnVubmluZyBsaW51eCBrZXJuZWwgMy4yLjQtMX5icG82MCsxIGZyb20gZGVi
+aWFuJ3Mgc3F1ZWV6ZS1iYWNrcG9ydHMNCj4gcmVwb3NpdG9yeSBvbiBhIDMyLWJpdCB4ODYgbWFj
+aGluZS4gIFRoZSBtYWNoaW5lIGluIHF1ZXN0aW9uIGlzIGFuIE5GU3Y0DQo+IGNsaWVudCwgdXNp
+bmcgc2VjPWtyYjVwLiAgQm90aCB0aGUgTkZTIGNsaWVudCBhbmQgc2VydmVyIGFyZSBib3RoDQo+
+IHJ1bm5pbmcgcnBjLnN2Y2dzc2QgYW5kIHJwYy5nc3NkIChzbyBpIHRoaW5rIGRlbGVnYXRpb25z
+IGFyZSBpbiBlZmZlY3QsDQo+IHRob3VnaCBpIGRvbid0IGtub3cgaG93IHRvIGNoZWNrKS4NCj4g
+DQo+IEkgZ290IHRoZSBmb2xsb3dpbmcgY3Jhc2ggcmVwb3J0IGZyb20gdGhlIGNsaWVudCwgd2hp
+Y2ggd2FzIHN1YnNlcXVlbnRseQ0KPiB1bnJlc3BvbnNpdmUgYXQgdGhlIGtleWJvYXJkLCBhbmQg
+ZGVjbGluZWQgdG8gc2h1dCBkb3duIGNsZWFubHkgKGkNCj4gbmVlZGVkIHRvIGRvIGEgaGFyZCBw
+b3dlcm9mZiB0byBnZXQgdGhlIG1hY2hpbmUgZnVuY3Rpb25hbCBhZ2FpbiBmb3IgdGhlDQo+IHVz
+ZXIpLg0KPiANCj4gDQo+IEZlYiAyNyAxMDozOTo1NSBiaXJtYW4ga2VybmVsOiBbMTMxNzIuNjE4
+NDc0XSB1c2IgMi0xOiBVU0IgZGlzY29ubmVjdCwgZGV2aWNlIG51bWJlciA0DQo+IEZlYiAyNyAx
+MTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0MDc5XSBCVUc6IHVuYWJsZSB0byBoYW5k
+bGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAgIChudWxsKQ0KPiBGZWIgMjcg
+MTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDA5N10gSVA6IFs8YzEwYjI2MjM+XSBw
+YWdlX2FkZHJlc3MrMHg2LzB4OTcNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsx
+NzcwNi4xODQxMDhdICpwZHB0ID0gMDAwMDAwMDAzNjVkMzAwMSAqcGRlID0gMDAwMDAwMDAwMDAw
+MDAwMCANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQxMTZdIE9v
+cHM6IDAwMDAgWyMxXSBTTVAgDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3
+MDYuMTg0MTIyXSBNb2R1bGVzIGxpbmtlZCBpbjogbmxzX3V0ZjggbmxzX2NwNDM3IHZmYXQgZmF0
+IHVzYl9zdG9yYWdlIHVhcyB0dW4gaXA2dGFibGVfZmlsdGVyIGlwNl90YWJsZXMgaXB0YWJsZV9m
+aWx0ZXIgaXBfdGFibGVzIHhfdGFibGVzIHBhcnBvcnRfcGMgcHBkZXYgbHAgcGFycG9ydCBibmVw
+IHJmY29tbSBibHVldG9vdGggY3JjMTYgdWlucHV0IGt2bV9hbWQga3ZtIGZ1c2Ugc2hhMV9nZW5l
+cmljIGhtYWMgY3J5cHRkIGFlc19pNTg2IGFlc19nZW5lcmljIGNiYyBjdHMgcnBjc2VjX2dzc19r
+cmI1IG5mc2QgbmZzIGxvY2tkIGZzY2FjaGUgYXV0aF9ycGNnc3MgbmZzX2FjbCBzdW5ycGMgYnJp
+ZGdlIHN0cCBleHQyIGxvb3Agc25kX2hkYV9jb2RlY19oZG1pIHRwbV9pbmZpbmVvbiBzbmRfaGRh
+X2NvZGVjX3JlYWx0ZWsgbm91dmVhdSBzbmRfaGRhX2ludGVsIHNuZF9oZGFfY29kZWMgdHRtIGhw
+X3dtaSBkcm1fa21zX2hlbHBlciBkcm0gc3BhcnNlX2tleW1hcCBpMmNfYWxnb19iaXQgc25kX2h3
+ZGVwIHNuZF9wY20gcmZraWxsIHNuZF9zZXEgc25kX3RpbWVyIHNuZF9zZXFfZGV2aWNlIHNwNTEw
+MF90Y28gbXhtX3dtaSBpMmNfcGlpeDQgc25kIHVzYmhpZCB2aWRlbyBpMmNfY29yZSB3bWkgcGNz
+cGtyIHByb2Nlc3NvciBldmRldiBwc21vdXNlIHRwbV90aXMgdHBtIHRwbV9iaW9zIHNlcmlvX3Jh
+dyB0aGVybWFsX3N5cyB1c2JscCBzb3VuZGNvcmUgc25kX3BhZ2VfYWxsb2MgaGlkIGsxMHRlbXAg
+ZXh0MyBqYmQgbWJjYWNoZSBkbV9tb2Qgc2cgc2RfbW9kIHNyX21vZCBjcmNfdDEwZGlmIGNkcm9t
+IG9oY2lfaGNkIGVoY2lfaGNkIGFoY2kgbGliYWhjaSB0ZzMgbGlicGh5IGxpYmF0YSBzY3NpX21v
+ZCB1c2Jjb3JlIHVzYl9jb21tb24gYnV0dG9uIFtsYXN0IHVubG9hZGVkOiBzY3NpX3dhaXRfc2Nh
+bl0NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQyODFdIA0KPiBG
+ZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDI4NV0gUGlkOiA3NTY4LCBj
+b21tOiBlb2cgTm90IHRhaW50ZWQgMy4yLjAtMC5icG8uMS02ODYtcGFlICMxIEhld2xldHQtUGFj
+a2FyZCBIUCBDb21wYXEgNjAwNSBQcm8gU0ZGIFBDLzMwNDdoDQo+IEZlYiAyNyAxMTo1NToyOSBi
+aXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0Mjk5XSBFSVA6IDAwNjA6WzxjMTBiMjYyMz5dIEVGTEFH
+UzogMDAyMTAyMDIgQ1BVOiAyDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3
+MDYuMTg0MzA1XSBFSVAgaXMgYXQgcGFnZV9hZGRyZXNzKzB4Ni8weDk3DQo+IEZlYiAyNyAxMTo1
+NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0MzEwXSBFQVg6IDAwMDAwMDAwIEVCWDogMDAw
+MDAwMDAgRUNYOiBmNjcxMTgwNCBFRFg6IDAwMDAwMGRjDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJt
+YW4ga2VybmVsOiBbMTc3MDYuMTg0MzE2XSBFU0k6IGY2N2MzYmY0IEVESTogMDAwMDAwMzcgRUJQ
+OiBmNjdjM2MyNCBFU1A6IGY2N2MzYmQwDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVs
+OiBbMTc3MDYuMTg0MzIyXSAgRFM6IDAwN2IgRVM6IDAwN2IgRlM6IDAwZDggR1M6IDAwZTAgU1M6
+IDAwNjgNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzMjhdIFBy
+b2Nlc3MgZW9nIChwaWQ6IDc1NjgsIHRpPWY2N2MyMDAwIHRhc2s9ZjMxNWI3NjAgdGFzay50aT1m
+NjdjMjAwMCkNCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzMzRd
+IFN0YWNrOg0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDMzN10g
+IGY2N2MzZGRjIGY2N2MzYmY0IDAwMDAwMDM3IGY2N2MzYzI0IGZiNGIxZmYzIDAwMDAwMDAwIDAw
+MDAxMDAwIGY2N2MzYmY0DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYu
+MTg0MzUxXSAgZjZhNjdhYzAgMDAwMDAwMDAgMDAwMDAwMDIgZjY3MTEwNzQgMDAwMDAwMDAgMDAw
+MDAwMDAgMDAwMDAwOTcgMDAwMDAwMDANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6
+IFsxNzcwNi4xODQzNjVdICBmNmE2N2FjMCBmYjRiMWY1YyBmYjRiMWY1YyBmNjcxMTA2NCBmODY0
+MDJhOCBmNjcxMTBhMCBmNmE2N2FjNCBmNjcxMTcyOA0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFu
+IGtlcm5lbDogWzE3NzA2LjE4NDM3OV0gQ2FsbCBUcmFjZToNCj4gRmViIDI3IDExOjU1OjI5IGJp
+cm1hbiBrZXJuZWw6IFsxNzcwNi4xODQzOTNdICBbPGZiNGIxZmYzPl0gPyBuZnM0X3hkcl9lbmNf
+Z2V0YWNsKzB4OTcvMHhiNCBbbmZzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDog
+WzE3NzA2LjE4NDQwN10gIFs8ZmI0YjFmNWM+XSA/IG5mczRfeGRyX2VuY19zZXRhY2wrMHhkZi8w
+eGRmIFtuZnNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDIw
+XSAgWzxmYjRiMWY1Yz5dID8gbmZzNF94ZHJfZW5jX3NldGFjbCsweGRmLzB4ZGYgW25mc10NCj4g
+RmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ0MjhdICBbPGY4NjQwMmE4
+Pl0gPyBnc3Nfd3JhcF9yZXFfZW5jb2RlKzB4MWUvMHgyNSBbYXV0aF9ycGNnc3NdDQo+IEZlYiAy
+NyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDQxXSAgWzxmYjRiMWY1Yz5dID8g
+bmZzNF94ZHJfZW5jX3NldGFjbCsweGRmLzB4ZGYgW25mc10NCj4gRmViIDI3IDExOjU1OjI5IGJp
+cm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ0NDldICBbPGY4NjQwNDI5Pl0gPyBnc3Nfd3JhcF9yZXEr
+MHgxNTgvMHgyZWIgW2F1dGhfcnBjZ3NzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5l
+bDogWzE3NzA2LjE4NDQ1Nl0gIFs8Zjg2NDBhNjM+XSA/IGdzc19tYXJzaGFsKzB4MTM0LzB4MTNl
+IFthdXRoX3JwY2dzc10NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4x
+ODQ0NjRdICBbPGY4NjQwMmQxPl0gPyBwcml2X3JlbGVhc2Vfc25kX2J1ZisweDIyLzB4MjIgW2F1
+dGhfcnBjZ3NzXQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDQ3
+N10gIFs8ZmI0YjFmNWM+XSA/IG5mczRfeGRyX2VuY19zZXRhY2wrMHhkZi8weGRmIFtuZnNdDQo+
+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NDg5XSAgWzxmOGVjMTM4
+ZT5dID8gcnBjYXV0aF93cmFwX3JlcSsweDU2LzB4N2MgW3N1bnJwY10NCj4gRmViIDI3IDExOjU1
+OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ1MDZdICBbPGY4ZWJhYjkwPl0gPyBjYWxsX3Ry
+YW5zbWl0KzB4MTc1LzB4MWUwIFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2Vy
+bmVsOiBbMTc3MDYuMTg0NTE4XSAgWzxmOGVjMDk4OT5dID8gX19ycGNfZXhlY3V0ZSsweDViLzB4
+MWVlIFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0
+NTI3XSAgWzxmOGViYjY2OD5dID8gcnBjX3J1bl90YXNrKzB4NTcvMHg1YyBbc3VucnBjXQ0KPiBG
+ZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDUzNl0gIFs8ZjhlYmI3NGU+
+XSA/IHJwY19jYWxsX3N5bmMrMHgzYy8weDU2IFtzdW5ycGNdDQo+IEZlYiAyNyAxMTo1NToyOSBi
+aXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NTQ5XSAgWzxmYjRhNmExYz5dID8gX19uZnM0X2dldF9h
+Y2xfdW5jYWNoZWQrMHgxNjUvMHgxZjkgW25mc10NCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBr
+ZXJuZWw6IFsxNzcwNi4xODQ1NjNdICBbPGZiNGE2YjhjPl0gPyBuZnM0X3hhdHRyX2dldF9uZnM0
+X2FjbCsweGRjLzB4MTBhIFtuZnNdDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBb
+MTc3MDYuMTg0NTcxXSAgWzxjMTBlYjY2MT5dID8gZ2VuZXJpY19nZXR4YXR0cisweDYxLzB4NjUN
+Cj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ1NzhdICBbPGMxMGVi
+NjAwPl0gPyBzaW5nbGVfb3BlbisweDcwLzB4NzANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBr
+ZXJuZWw6IFsxNzcwNi4xODQ1ODRdICBbPGMxMGViZDhlPl0gPyB2ZnNfZ2V0eGF0dHIrMHg3Ni8w
+eDdkDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0NTg5XSAgWzxj
+MTBlYmUxOD5dID8gZ2V0eGF0dHIrMHg4My8weGUyDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4g
+a2VybmVsOiBbMTc3MDYuMTg0NTk2XSAgWzxjMTBlNTBjOD5dID8gZHB1dCsweDIxLzB4YzQNCj4g
+RmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MDFdICBbPGMxMGRmYjAx
+Pl0gPyBwYXRoX2xvb2t1cGF0KzB4Mjk3LzB4MmE4DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4g
+a2VybmVsOiBbMTc3MDYuMTg0NjA3XSAgWzxjMTBlMDRjZD5dID8gdXNlcl9wYXRoX2F0X2VtcHR5
+KzB4NDYvMHg2NQ0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2LjE4NDYx
+M10gIFs8YzEwZWJiMzY+XSA/IGxpc3R4YXR0cisweDgwLzB4ODgNCj4gRmViIDI3IDExOjU1OjI5
+IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MTldICBbPGMxMGViZWYzPl0gPyBzeXNfZ2V0eGF0
+dHIrMHgzNy8weDQ4DQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0
+NjI2XSAgWzxjMTJjZGRiYz5dID8gc3lzY2FsbF9jYWxsKzB4Ny8weGINCj4gRmViIDI3IDExOjU1
+OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ2MzBdIENvZGU6IDg5IDczIDBjIDg5IDBlIGVi
+IDBjIDhkIDU4IGY4IDhkIDRiIDA4IDM5IGYxIDc1IGExIDg5IGY4IDU5IDViIDViIDVlIDVmIDVk
+IGU5IDE0IGI1IDIxIDAwIDBmIDBiIGU5IDA0IGZmIGZmIGZmIDU1IDU3IDU2IDUzIDg5IGMzIDw4
+Yj4gMDAgYzEgZTggMWUgNjkgYzAgNDAgMDMgMDAgMDAgMDUgNDAgN2UgNDEgYzEgMmIgODAgMGMg
+MDMgMDAgDQo+IEZlYiAyNyAxMTo1NToyOSBiaXJtYW4ga2VybmVsOiBbMTc3MDYuMTg0Njk5XSBF
+SVA6IFs8YzEwYjI2MjM+XSBwYWdlX2FkZHJlc3MrMHg2LzB4OTcgU1M6RVNQIDAwNjg6ZjY3YzNi
+ZDANCj4gRmViIDI3IDExOjU1OjI5IGJpcm1hbiBrZXJuZWw6IFsxNzcwNi4xODQ3MDldIENSMjog
+MDAwMDAwMDAwMDAwMDAwMA0KPiBGZWIgMjcgMTE6NTU6MjkgYmlybWFuIGtlcm5lbDogWzE3NzA2
+LjE4ODM5N10gLS0tWyBlbmQgdHJhY2UgZTUyMTQ0N2M3M2Y1NzkxNCBdLS0tDQo+IA0KPiBQbGVh
+c2UgbGV0IG1lIGtub3cgaWYgaSBjYW4gcHJvdmlkZSBhbnkgbW9yZSB1c2VmdWwgaW5mb3JtYXRp
+b24gYWJvdXQNCj4gdGhpcywgb3IgaWYgdGhlcmUncyBzb21ldGhpbmcgaSBjYW4gZG8gdG8gYXZv
+aWQgdGhpcyBjcmFzaCBpbiB0aGUNCj4gZnV0dXJlLg0KDQpLbm93biBpc3N1ZSwgZm9yIHdoaWNo
+IGEgcGF0Y2ggaGFzIGFscmVhZHkgYmVlbiBtZXJnZWQgdXBzdHJlYW0uIFBsZWFzZQ0Kc2VlDQoN
+Cmh0dHA6Ly9naXQua2VybmVsLm9yZy8/cD1saW51eC9rZXJuZWwvZ2l0L3RvcnZhbGRzL2xpbnV4
+LTIuNi5naXQmYT1jb21taXRkaWZmJmg9MzMxODE4ZjFjNDY4YTI0ZTU4MWFlZGNiZTUyYWY3OTkz
+NjZhOWRmZQ0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
