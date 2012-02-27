@@ -1,55 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:44691 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752337Ab2BUVIt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Feb 2012 16:08:49 -0500
-Message-ID: <4F4407E1.7030400@opengridcomputing.com>
-Date: Tue, 21 Feb 2012 15:08:49 -0600
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:46508 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752113Ab2B0Mvm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 07:51:42 -0500
+Message-ID: <4F4B7C4B.5000901@parallels.com>
+Date: Mon, 27 Feb 2012 16:51:23 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Dan Carpenter <dan.carpenter@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: Re: [patch] svcrdma: silence a Sparse warning
-References: <20120221072804.GA6896@elgon.mountain> <20120221210603.GA4326@fieldses.org>
-In-Reply-To: <20120221210603.GA4326@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: fix use-after-free of rpc pipes
+References: <1330019288-13031-1-git-send-email-iisaman@netapp.com>	 <4F47D37D.2080409@parallels.com> <1330300376.18817.0.camel@lade.trondhjem.org>
+In-Reply-To: <1330300376.18817.0.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-This is my bad. I don't know why my sparse didn't catch it, it seems like 
-it should have. Thanks for
-fixing it Dan.
-
-Tom
-
-
-On 2/21/12 3:06 PM, J. Bruce Fields wrote:
-> (Cc'ing Tom).
+27.02.2012 03:52, Myklebust, Trond пишет:
+> On Fri, 2012-02-24 at 22:14 +0400, Stanislav Kinsbursky wrote:
+>> 23.02.2012 21:48, Fred Isaman пишет:
+>>> This needs to be looked at closely by someone more familiar with the
+>>> pipe code.
+>>>
+>>> It fixes an issue with the current nfs_for_next branch which causes a
+>>> chain of oopses on umount every time if sufficient CONFIG_* debug
+>>> options are set.
+>>>
+>>> A git-bisect shows that the problem was introduced by
+>>> commit c239d83b  SUNRPC: split SUNPRC PipeFS dentry and private pipe data creation
+>>>
+>>
+>>
+>>
+>> Fred, thanks for the config.
+>> The problem is caused by destroying pipe data on NFS client umount after
+>> unlinking pipe dentry. This is valid approach, but it looks like idmap daemon
+>> holds dentry by eventfd.
+>> This is a race between idmap daemon release of this dentry and releasing of pipe
+>> data...
+>> I need some time to find out how to fix this properly.
+>>
 >
-> On Tue, Feb 21, 2012 at 10:28:04AM +0300, Dan Carpenter wrote:
->> Sparse complains that the definition function definition and the
->> implementation aren't anotated the same way.
->>
->> Signed-off-by: Dan Carpenter<dan.carpenter@oracle.com>
->>
->> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
->> index d205e9f..0b8e3e6 100644
->> --- a/include/linux/sunrpc/svc_rdma.h
->> +++ b/include/linux/sunrpc/svc_rdma.h
->> @@ -190,7 +190,7 @@ extern int svc_rdma_xdr_encode_error(struct svcxprt_rdma *,
->>   extern void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *, int);
->>   extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
->>   extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
->> -					    u32, u64, u32);
->> +					    __be32, __be64, u32);
->>   extern void svc_rdma_xdr_encode_reply_header(struct svcxprt_rdma *,
->>   					     struct rpcrdma_msg *,
->>   					     struct rpcrdma_msg *,
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> How about something like the following (still untested) patch?
+>
+> Cheers
+>    Trond
 
+
+Hi, Trond. Thanks for participating.
+Frankly, I don't like the idea of put'ing pipe data on dentry unlink. IOW, I 
+don't like that this data will be controlled somehow in PipeFS.
+I'll send my version soon.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
