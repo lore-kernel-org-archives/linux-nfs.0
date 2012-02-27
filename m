@@ -1,119 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:62957 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755244Ab2BMVva (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Feb 2012 16:51:30 -0500
-Received: by mail-ey0-f174.google.com with SMTP id h12so1933716eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Feb 2012 13:51:29 -0800 (PST)
-From: Tigran Mkrtchyan <kofemann@googlemail.com>
-To: linux-nfs@vger.kernel.org, bhalevy@tonian.com, bfields@fieldses.org
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATH v9 03/10] nfsd41: handle current stateid on lock and locku
-Date: Mon, 13 Feb 2012 22:54:37 +0100
-Message-Id: <1329170084-7032-4-git-send-email-tigran.mkrtchyan@desy.de>
-In-Reply-To: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
-References: <1329170084-7032-1-git-send-email-tigran.mkrtchyan@desy.de>
+Received: from mailhub.sw.ru ([195.214.232.25]:18081 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754019Ab2B0Pvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 10:51:47 -0500
+Subject: [PATCH v2 4/4] SUNRPC: move waitq from RPC pipe to RPC inode
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
+        devel@openvz.org
+Date: Mon, 27 Feb 2012 19:51:20 +0400
+Message-ID: <20120227155120.7941.7583.stgit@localhost6.localdomain6>
+In-Reply-To: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
+References: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <kofemann@gmail.com>
+Currently, wait queue, used for polling of RPC pipe changes from user-space,
+is a part of RPC pipe. But the pipe data itself can be released on NFS umount
+prior to dentry-inode pair, connected to it (is case of this pair is open by
+some process).
+This is not a problem for almost all pipe users, because all PipeFS file
+operations checks pipe reference prior to using it.
+Except evenfd. This thing registers itself with "poll" file operation and thus
+has a reference to pipe wait queue. This leads to oopses on destroying eventfd
+after NFS umount (like rpc_idmapd do) since not pipe data left to the point
+already.
+The solution is to wait queue from pipe data to internal RPC inode data. This
+looks more logical, because this wiat queue used only for user-space processes,
+which already holds inode reference.
 
+Note: upcalls have to get pipe->dentry prior to dereferecing wait queue to make
+sure, that mount point won't disappear from underneath us.
 
-Signed-off-by: Tigran Mkrtchyan <kofemann@gmail.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
- fs/nfsd/current_stateid.h |   11 ++++++++++-
- fs/nfsd/nfs4proc.c        |    2 ++
- fs/nfsd/nfs4state.c       |   22 ++++++++++++++++++++--
- 3 files changed, 32 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 +-
+ net/sunrpc/rpc_pipe.c              |   39 ++++++++++++++++++++++++------------
+ 2 files changed, 27 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index a83dd50..21550b6 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -4,8 +4,17 @@
- #include "state.h"
- #include "xdr4.h"
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 426ce6e..a7b422b 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -28,7 +28,6 @@ struct rpc_pipe {
+ 	int pipelen;
+ 	int nreaders;
+ 	int nwriters;
+-	wait_queue_head_t waitq;
+ #define RPC_PIPE_WAIT_FOR_OPEN	1
+ 	int flags;
+ 	struct delayed_work queue_timeout;
+@@ -41,6 +40,7 @@ struct rpc_inode {
+ 	struct inode vfs_inode;
+ 	void *private;
+ 	struct rpc_pipe *pipe;
++	wait_queue_head_t waitq;
+ };
  
-+/*
-+ * functions to set current state id
-+ */
- extern void nfsd4_set_openstateid(struct nfsd4_compound_state *, struct nfsd4_open *);
--extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_set_lockstateid(struct nfsd4_compound_state *, struct nfsd4_lock *);
- extern void nfsd4_set_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
- 
-+/*
-+ * functions to consume current state id
-+ */
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
-+extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
-+
- #endif   /* _NFSD4_CURRENT_STATE_H */
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a457551..f66a8b2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1474,6 +1474,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCK",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lock_rsize,
-+		.op_set_currentstateid = (stateid_setter)nfsd4_set_lockstateid,
- 	},
- 	[OP_LOCKT] = {
- 		.op_func = (nfsd4op_func)nfsd4_lockt,
-@@ -1484,6 +1485,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCKU",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6322a59..5665061 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4710,6 +4710,9 @@ put_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- 		cstate->current_stateid = stateid;
+ static inline struct rpc_inode *
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b67b2ae..ac9ee15 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -57,7 +57,7 @@ void rpc_pipefs_notifier_unregister(struct notifier_block *nb)
  }
+ EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_unregister);
  
-+/*
-+ * functions to set current state id
-+ */
- void
- nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
+-static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
++static void rpc_purge_list(wait_queue_head_t *waitq, struct list_head *head,
+ 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
  {
-@@ -4717,13 +4720,28 @@ nfsd4_set_openstateid(struct nfsd4_compound_state *cstate, struct nfsd4_open *op
+ 	struct rpc_pipe_msg *msg;
+@@ -70,7 +70,7 @@ static void rpc_purge_list(struct rpc_pipe *pipe, struct list_head *head,
+ 		msg->errno = err;
+ 		destroy_msg(msg);
+ 	} while (!list_empty(head));
+-	wake_up(&pipe->waitq);
++	wake_up(waitq);
  }
  
- void
-+nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+{
-+	put_stateid(cstate, &close->cl_stateid);
-+}
-+
-+void
-+nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate, struct nfsd4_lock *lock)
-+{
-+	put_stateid(cstate, &lock->lk_resp_stateid);
-+}
-+
-+/*
-+ * functions to consume current state id
-+ */
-+void
- nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
- {
- 	get_stateid(cstate, &close->cl_stateid);
+ static void
+@@ -80,6 +80,7 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 	struct rpc_pipe *pipe =
+ 		container_of(work, struct rpc_pipe, queue_timeout.work);
+ 	void (*destroy_msg)(struct rpc_pipe_msg *);
++	struct dentry *dentry;
+ 
+ 	spin_lock(&pipe->lock);
+ 	destroy_msg = pipe->ops->destroy_msg;
+@@ -87,8 +88,13 @@ rpc_timeout_upcall_queue(struct work_struct *work)
+ 		list_splice_init(&pipe->pipe, &free_list);
+ 		pipe->pipelen = 0;
+ 	}
++	dentry = dget(pipe->dentry);
+ 	spin_unlock(&pipe->lock);
+-	rpc_purge_list(pipe, &free_list, destroy_msg, -ETIMEDOUT);
++	if (dentry) {
++		rpc_purge_list(&RPC_I(dentry->d_inode)->waitq,
++			       &free_list, destroy_msg, -ETIMEDOUT);
++		dput(dentry);
++	}
  }
  
- void
--nfsd4_set_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
+ ssize_t rpc_pipe_generic_upcall(struct file *filp, struct rpc_pipe_msg *msg,
+@@ -125,6 +131,7 @@ int
+ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
  {
--	get_stateid(cstate, &close->cl_stateid);
-+	get_stateid(cstate, &locku->lu_stateid);
+ 	int res = -EPIPE;
++	struct dentry *dentry;
+ 
+ 	spin_lock(&pipe->lock);
+ 	if (pipe->nreaders) {
+@@ -140,8 +147,12 @@ rpc_queue_upcall(struct rpc_pipe *pipe, struct rpc_pipe_msg *msg)
+ 		pipe->pipelen += msg->len;
+ 		res = 0;
+ 	}
++	dentry = dget(pipe->dentry);
+ 	spin_unlock(&pipe->lock);
+-	wake_up(&pipe->waitq);
++	if (dentry) {
++		wake_up(&RPC_I(dentry->d_inode)->waitq);
++		dput(dentry);
++	}
+ 	return res;
  }
--- 
-1.7.7.6
+ EXPORT_SYMBOL_GPL(rpc_queue_upcall);
+@@ -168,7 +179,7 @@ rpc_close_pipes(struct inode *inode)
+ 	pipe->pipelen = 0;
+ 	pipe->dentry = NULL;
+ 	spin_unlock(&pipe->lock);
+-	rpc_purge_list(pipe, &free_list, pipe->ops->destroy_msg, -EPIPE);
++	rpc_purge_list(&RPC_I(inode)->waitq, &free_list, pipe->ops->destroy_msg, -EPIPE);
+ 	pipe->nwriters = 0;
+ 	if (need_release && pipe->ops->release_pipe)
+ 		pipe->ops->release_pipe(inode);
+@@ -257,7 +268,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
+ 			list_splice_init(&pipe->pipe, &free_list);
+ 			pipe->pipelen = 0;
+ 			spin_unlock(&pipe->lock);
+-			rpc_purge_list(pipe, &free_list,
++			rpc_purge_list(&RPC_I(inode)->waitq, &free_list,
+ 					pipe->ops->destroy_msg, -EAGAIN);
+ 		}
+ 	}
+@@ -330,16 +341,18 @@ rpc_pipe_write(struct file *filp, const char __user *buf, size_t len, loff_t *of
+ static unsigned int
+ rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
+ {
+-	struct rpc_pipe *pipe = RPC_I(filp->f_path.dentry->d_inode)->pipe;
+-	unsigned int mask = 0;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct rpc_inode *rpci = RPC_I(inode);
++	unsigned int mask = POLLOUT | POLLWRNORM;
+ 
+-	poll_wait(filp, &pipe->waitq, wait);
++	poll_wait(filp, &rpci->waitq, wait);
+ 
+-	mask = POLLOUT | POLLWRNORM;
+-	if (pipe->dentry == NULL)
++	mutex_lock(&inode->i_mutex);
++	if (rpci->pipe == NULL)
+ 		mask |= POLLERR | POLLHUP;
+-	if (filp->private_data || !list_empty(&pipe->pipe))
++	else if (filp->private_data || !list_empty(&rpci->pipe->pipe))
+ 		mask |= POLLIN | POLLRDNORM;
++	mutex_unlock(&inode->i_mutex);
+ 	return mask;
+ }
+ 
+@@ -543,7 +556,6 @@ init_pipe(struct rpc_pipe *pipe)
+ 	INIT_LIST_HEAD(&pipe->in_downcall);
+ 	INIT_LIST_HEAD(&pipe->pipe);
+ 	pipe->pipelen = 0;
+-	init_waitqueue_head(&pipe->waitq);
+ 	INIT_DELAYED_WORK(&pipe->queue_timeout,
+ 			    rpc_timeout_upcall_queue);
+ 	pipe->ops = NULL;
+@@ -1165,6 +1177,7 @@ init_once(void *foo)
+ 	inode_init_once(&rpci->vfs_inode);
+ 	rpci->private = NULL;
+ 	rpci->pipe = NULL;
++	init_waitqueue_head(&rpci->waitq);
+ }
+ 
+ int register_rpc_pipefs(void)
 
