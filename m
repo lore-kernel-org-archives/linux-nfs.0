@@ -1,184 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6456 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:19318 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751670Ab2BQSP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 13:15:26 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Fri, 17 Feb 2012 13:15:24 -0500
-Message-Id: <1329502524-27114-1-git-send-email-dros@netapp.com>
+	id S1753876Ab2B0QVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 11:21:20 -0500
+Message-ID: <4F4BAD5E.9000600@parallels.com>
+Date: Mon, 27 Feb 2012 20:20:46 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: David Laight <David.Laight@ACULAB.COM>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 2/4] NFS: release per-net clients lock before calling
+ PipeFS dentries creation
+References: <AE90C24D6B3A694183C094C60CF0A2F6026B6E7E@saturn3.aculab.com>
+In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B6E7E@saturn3.aculab.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Include RPC statistics from all data servers in /proc/self/mountstats for pNFS
-filelayout mounts.
+27.02.2012 19:59, David Laight пишет:
+>
+>>   	spin_lock(&nn->nfs_client_lock);
+>> -	list_for_each_entry(clp,&nn->nfs_client_list, cl_share_link) {
+>> +	list_for_each_entry_safe(clp, tmp,&nn->nfs_client_list,
+> cl_share_link) {
+>>   		if (clp->rpc_ops !=&nfs_v4_clientops)
+>>   			continue;
+>> +		atomic_inc(&clp->cl_count);
+>> +		spin_unlock(&nn->nfs_client_lock);
+>>   		error = __rpc_pipefs_event(clp, event, sb);
+>> +		nfs_put_client(clp);
+>>   		if (error)
+>>   			break;
+>> +		spin_lock(&nn->nfs_client_lock);
+>>   	}
+>>   	spin_unlock(&nn->nfs_client_lock);
+>>   	return error;
+>
+> The locking doesn't look right if the loop breaks on error.
+> (Same applied to patch v2 1/4)
+>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-Update: don't increment tk_client stats if callback is used.
+Thanks for the catch. I'll fix this.
 
-This still checks task->tk_client != NULL -- I'm not convinced it's unneeded
-as it existed in rpc_count_iostats.
+> Although list_fo_each_entry_safe() allows the current entry
+> to be freed, I don't believe it allows the 'next' to be freed.
+> I doubt there is protection against that happening.
+>
 
- fs/nfs/nfs4filelayout.c        |   19 +++++++++++++++++++
- include/linux/sunrpc/metrics.h |    6 ++++--
- include/linux/sunrpc/sched.h   |    1 +
- net/sunrpc/stats.c             |    8 ++++----
- net/sunrpc/xprt.c              |    5 ++++-
- 5 files changed, 32 insertions(+), 7 deletions(-)
+We need to use safe macro, because client can be destroyed on nfs_put_client() call.
+About "protection against ... the 'next' to be freed" - I dont' think, that we 
+need any protection against it. This will be done under nfs_client_lock, and 
+current entry list pointers will be updated properly.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 79be7ac..47e8f34 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -33,6 +33,8 @@
- #include <linux/nfs_page.h>
- #include <linux/module.h>
- 
-+#include <linux/sunrpc/metrics.h>
-+
- #include "internal.h"
- #include "nfs4filelayout.h"
- 
-@@ -189,6 +191,13 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- 	rdata->mds_ops->rpc_call_done(task, data);
- }
- 
-+static void filelayout_read_count_stats(struct rpc_task *task, void *data)
-+{
-+	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+
-+	rpc_count_iostats(task, NFS_SERVER(rdata->inode)->client->cl_metrics);
-+}
-+
- static void filelayout_read_release(void *data)
- {
- 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-@@ -268,6 +277,13 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
- 	wdata->mds_ops->rpc_call_done(task, data);
- }
- 
-+static void filelayout_write_count_stats(struct rpc_task *task, void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	rpc_count_iostats(task, NFS_SERVER(wdata->inode)->client->cl_metrics);
-+}
-+
- static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-@@ -288,18 +304,21 @@ static void filelayout_commit_release(void *data)
- struct rpc_call_ops filelayout_read_call_ops = {
- 	.rpc_call_prepare = filelayout_read_prepare,
- 	.rpc_call_done = filelayout_read_call_done,
-+	.rpc_count_stats = filelayout_read_count_stats,
- 	.rpc_release = filelayout_read_release,
- };
- 
- struct rpc_call_ops filelayout_write_call_ops = {
- 	.rpc_call_prepare = filelayout_write_prepare,
- 	.rpc_call_done = filelayout_write_call_done,
-+	.rpc_count_stats = filelayout_write_count_stats,
- 	.rpc_release = filelayout_write_release,
- };
- 
- struct rpc_call_ops filelayout_commit_call_ops = {
- 	.rpc_call_prepare = filelayout_write_prepare,
- 	.rpc_call_done = filelayout_write_call_done,
-+	.rpc_count_stats = filelayout_write_count_stats,
- 	.rpc_release = filelayout_commit_release,
- };
- 
-diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
-index b6edbc0..1565bbe 100644
---- a/include/linux/sunrpc/metrics.h
-+++ b/include/linux/sunrpc/metrics.h
-@@ -74,14 +74,16 @@ struct rpc_clnt;
- #ifdef CONFIG_PROC_FS
- 
- struct rpc_iostats *	rpc_alloc_iostats(struct rpc_clnt *);
--void			rpc_count_iostats(struct rpc_task *);
-+void			rpc_count_iostats(const struct rpc_task *,
-+					  struct rpc_iostats *);
- void			rpc_print_iostats(struct seq_file *, struct rpc_clnt *);
- void			rpc_free_iostats(struct rpc_iostats *);
- 
- #else  /*  CONFIG_PROC_FS  */
- 
- static inline struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt) { return NULL; }
--static inline void rpc_count_iostats(struct rpc_task *task) {}
-+static inline void rpc_count_iostats(const struct rpc_task *task,
-+				     struct rpc_iostats *stats) {}
- static inline void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt) {}
- static inline void rpc_free_iostats(struct rpc_iostats *stats) {}
- 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 22dfc24..dc0c3cc 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -103,6 +103,7 @@ typedef void			(*rpc_action)(struct rpc_task *);
- struct rpc_call_ops {
- 	void (*rpc_call_prepare)(struct rpc_task *, void *);
- 	void (*rpc_call_done)(struct rpc_task *, void *);
-+	void (*rpc_count_stats)(struct rpc_task *, void *);
- 	void (*rpc_release)(void *);
- };
- 
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 3c4f688..1eb3304 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -133,20 +133,19 @@ EXPORT_SYMBOL_GPL(rpc_free_iostats);
- /**
-  * rpc_count_iostats - tally up per-task stats
-  * @task: completed rpc_task
-+ * @stats: array of stat structures
-  *
-  * Relies on the caller for serialization.
-  */
--void rpc_count_iostats(struct rpc_task *task)
-+void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
--	struct rpc_iostats *stats;
- 	struct rpc_iostats *op_metrics;
- 	ktime_t delta;
- 
--	if (!task->tk_client || !task->tk_client->cl_metrics || !req)
-+	if (!stats || !req)
- 		return;
- 
--	stats = task->tk_client->cl_metrics;
- 	op_metrics = &stats[task->tk_msg.rpc_proc->p_statidx];
- 
- 	op_metrics->om_ops++;
-@@ -164,6 +163,7 @@ void rpc_count_iostats(struct rpc_task *task)
- 	delta = ktime_sub(ktime_get(), task->tk_start);
- 	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
- }
-+EXPORT_SYMBOL_GPL(rpc_count_iostats);
- 
- static void _print_name(struct seq_file *seq, unsigned int op,
- 			struct rpc_procinfo *procs)
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index efe5495..100b469 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1132,7 +1132,10 @@ void xprt_release(struct rpc_task *task)
- 		return;
- 
- 	xprt = req->rq_xprt;
--	rpc_count_iostats(task);
-+	if (task->tk_ops->rpc_count_stats != NULL)
-+		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
-+	else if (task->tk_client)
-+		rpc_count_iostats(task, task->tk_client->cl_metrics);
- 	spin_lock_bh(&xprt->transport_lock);
- 	xprt->ops->release_xprt(xprt, task);
- 	if (xprt->ops->release_request)
+> Do you need to use an atomic_inc() for cl_count.
+> I'd guess the nfs_client_lock is usually held?
+>
+
+Sorry, I don't understand this question.
+
 -- 
-1.7.4.4
-
+Best regards,
+Stanislav Kinsbursky
