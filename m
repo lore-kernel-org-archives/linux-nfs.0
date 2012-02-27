@@ -1,195 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:45905 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754691Ab2BPS5W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2012 13:57:22 -0500
-Received: by mail-ee0-f46.google.com with SMTP id c14so1017523eek.19
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2012 10:57:21 -0800 (PST)
-From: Benny Halevy <benny@tonian.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] nfsd41: implement NFS4_SHARE_WANT_NO_DELEG, NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg
-Date: Thu, 16 Feb 2012 20:57:17 +0200
-Message-Id: <1329418637-23925-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <4F3D4F1F.6080502@tonian.com>
-References: <4F3D4F1F.6080502@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:1746 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753715Ab2B0RhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 12:37:17 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "James Bottomley" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2 1/4] SUNRPC: release per-net clients lock before
+ calling PipeFS dentries creation
+Date: Mon, 27 Feb 2012 17:37:13 +0000
+Message-ID: <1330364238.5541.52.camel@lade.trondhjem.org>
+References: <20120227154713.7941.17963.stgit@localhost6.localdomain6>
+		 <20120227155055.7941.18741.stgit@localhost6.localdomain6>
+	 <1330359695.5541.45.camel@lade.trondhjem.org>
+	 <4F4BB570.60105@parallels.com>
+In-Reply-To: <4F4BB570.60105@parallels.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Respect client request for not getting a delegation in NFSv4.1
-Appropriately return delegation "type" NFS4_OPEN_DELEGATE_NONE_EXT
-and WND4_NOT_WANTED reason.
-
-[nfsd41: add missing break when encoding op_why_no_deleg]
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4state.c  |   60 ++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4xdr.c    |   14 +++++++++++
- fs/nfsd/xdr4.h       |    1 +
- include/linux/nfs4.h |   15 +++++++++++-
- 4 files changed, 82 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c165df7..ad21b06 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2862,7 +2862,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	struct nfs4_delegation *dp;
- 	struct nfs4_openowner *oo = container_of(stp->st_stateowner, struct nfs4_openowner, oo_owner);
- 	int cb_up;
--	int status, flag = 0;
-+	int status = 0, flag = 0;
- 
- 	cb_up = nfsd4_cb_channel_good(oo->oo_owner.so_client);
- 	flag = NFS4_OPEN_DELEGATE_NONE;
-@@ -2903,11 +2903,32 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
- 		STATEID_VAL(&dp->dl_stid.sc_stateid));
- out:
--	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS
--			&& flag == NFS4_OPEN_DELEGATE_NONE
--			&& open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
--		dprintk("NFSD: WARNING: refusing delegation reclaim\n");
- 	open->op_delegate_type = flag;
-+	if (flag == NFS4_OPEN_DELEGATE_NONE) {
-+		if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
-+		    open->op_delegate_type != NFS4_OPEN_DELEGATE_NONE)
-+			dprintk("NFSD: WARNING: refusing delegation reclaim\n");
-+
-+		if (open->op_deleg_want) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			if (status == -EAGAIN)
-+				open->op_why_no_deleg = WND4_CONTENTION;
-+			else {
-+				open->op_why_no_deleg = WND4_RESOURCE;
-+				switch (open->op_deleg_want) {
-+				case NFS4_SHARE_WANT_READ_DELEG:
-+				case NFS4_SHARE_WANT_WRITE_DELEG:
-+				case NFS4_SHARE_WANT_ANY_DELEG:
-+					break;
-+				case NFS4_SHARE_WANT_CANCEL:
-+					open->op_why_no_deleg = WND4_CANCELLED;
-+					break;
-+				case NFS4_SHARE_WANT_NO_DELEG:
-+					BUG();	/* not supposed to get here */
-+				}
-+			}
-+		}
-+	}
- 	return;
- out_free:
- 	nfs4_put_delegation(dp);
-@@ -2977,20 +2998,45 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, int flag)
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
--	if (nfsd4_has_session(&resp->cstate))
-+	if (nfsd4_has_session(&resp->cstate)) {
- 		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
- 
-+		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_WANTED;
-+			goto nodeleg;
-+		}
-+	}
-+
- 	/*
- 	* Attempt to hand out a delegation. No error return, because the
- 	* OPEN succeeds even if we fail.
- 	*/
- 	nfs4_open_delegation(current_fh, open, stp);
--
-+nodeleg:
- 	status = nfs_ok;
- 
- 	dprintk("%s: stateid=" STATEID_FMT "\n", __func__,
- 		STATEID_VAL(&stp->st_stid.sc_stateid));
- out:
-+	/* 4.1 client trying to upgrade/downgrade delegation? */
-+	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
-+	    open->op_deleg_want) {
-+		if (open->op_deleg_want == NFS4_SHARE_WANT_READ_DELEG &&
-+		    dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_SUPP_DOWNGRADE;
-+		} else if (open->op_deleg_want == NFS4_SHARE_WANT_WRITE_DELEG &&
-+			   dp->dl_type == NFS4_OPEN_DELEGATE_WRITE) {
-+			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
-+			open->op_why_no_deleg = WND4_NOT_SUPP_UPGRADE;
-+		}
-+		/* Otherwise the client must be confused wanting a delegation
-+		 * it already has, therefore we don't return
-+		 * NFS4_OPEN_DELEGATE_NONE_EXT and reason.
-+		 */
-+	}
-+
- 	if (fp)
- 		put_nfs4_file(fp);
- 	if (status == 0 && open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 78d2bb8..c2cf857 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2862,6 +2862,20 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		WRITE32(0);   /* XXX: is NULL principal ok? */
- 		ADJUST_ARGS();
- 		break;
-+	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
-+		switch (open->op_why_no_deleg) {
-+		case WND4_CONTENTION:
-+		case WND4_RESOURCE:
-+			RESERVE_SPACE(8);
-+			WRITE32(open->op_why_no_deleg);
-+			WRITE32(0);	/* deleg signaling not supported yet */
-+			break;
-+		default:
-+			RESERVE_SPACE(4);
-+			WRITE32(open->op_why_no_deleg);
-+		}
-+		ADJUST_ARGS();
-+		break;
- 	default:
- 		BUG();
- 	}
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 1771a91..fea600f 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -212,6 +212,7 @@ struct nfsd4_open {
- 	struct xdr_netobj op_fname;	    /* request - everything but CLAIM_PREV */
- 	u32		op_delegate_type;   /* request - CLAIM_PREV only */
- 	stateid_t       op_delegate_stateid; /* request - response */
-+	u32		op_why_no_deleg;    /* response - DELEG_NONE_EXT only */
- 	u32		op_create;     	    /* request */
- 	u32		op_createmode;      /* request */
- 	u32		op_bmval[3];        /* request */
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 32345c2..8cdde4d 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -441,7 +441,20 @@ enum limit_by4 {
- enum open_delegation_type4 {
- 	NFS4_OPEN_DELEGATE_NONE = 0,
- 	NFS4_OPEN_DELEGATE_READ = 1,
--	NFS4_OPEN_DELEGATE_WRITE = 2
-+	NFS4_OPEN_DELEGATE_WRITE = 2,
-+	NFS4_OPEN_DELEGATE_NONE_EXT = 3, /* 4.1 */
-+};
-+
-+enum why_no_delegation4 { /* new to v4.1 */
-+	WND4_NOT_WANTED = 0,
-+	WND4_CONTENTION = 1,
-+	WND4_RESOURCE = 2,
-+	WND4_NOT_SUPP_FTYPE = 3,
-+	WND4_WRITE_DELEG_NOT_SUPP_FTYPE = 4,
-+	WND4_NOT_SUPP_UPGRADE = 5,
-+	WND4_NOT_SUPP_DOWNGRADE = 6,
-+	WND4_CANCELLED = 7,
-+	WND4_IS_DIR = 8,
- };
- 
- enum lock_type4 {
--- 
-1.7.6.5
-
+T24gTW9uLCAyMDEyLTAyLTI3IGF0IDIwOjU1ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gMjcuMDIuMjAxMiAyMDoyMSwgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
+PiA+IE9uIE1vbiwgMjAxMi0wMi0yNyBhdCAxOTo1MCArMDQwMCwgU3RhbmlzbGF2IEtpbnNidXJz
+a3kgd3JvdGU6DQo+ID4+IExvY2tkZXAgaXMgc2FkIG90aGVyd2lzZSwgYmVjYXVzZSBpbm9kZSBt
+dXRleCBpcyB0YWtlbiBvbiBQaXBlRlMgZGVudHJ5DQo+ID4+IGNyZWF0aW9uLCB3aGljaCBjYW4g
+YmUgY2FsbGVkIG9uIG1vdW50IG5vdGlmaWNhdGlvbiwgd2hlcmUgdGhpcyBwZXItbmV0IGNsaWVu
+dA0KPiA+PiBsb2NrIGlzIHRha2VuIG9uIGNsaWVudHMgbGlzdCB3YWxrLg0KPiA+Pg0KPiA+PiBT
+aWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreTxza2luc2J1cnNreUBwYXJhbGxlbHMu
+Y29tPg0KPiA+Pg0KPiA+PiAtLS0NCj4gPj4gICBuZXQvc3VucnBjL2NsbnQuYyB8ICAgMTAgKysr
+KysrKy0tLQ0KPiA+PiAgIDEgZmlsZXMgY2hhbmdlZCwgNyBpbnNlcnRpb25zKCspLCAzIGRlbGV0
+aW9ucygtKQ0KPiA+Pg0KPiA+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQv
+c3VucnBjL2NsbnQuYw0KPiA+PiBpbmRleCBiYjdlZDJmMy4uZGRiNTc0MSAxMDA2NDQNCj4gPj4g
+LS0tIGEvbmV0L3N1bnJwYy9jbG50LmMNCj4gPj4gKysrIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4g
+Pj4gQEAgLTg0LDcgKzg0LDcgQEAgc3RhdGljIHZvaWQgcnBjX3JlZ2lzdGVyX2NsaWVudChzdHJ1
+Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+ICAgCXN0cnVjdCBzdW5ycGNfbmV0ICpzbiA9IG5ldF9n
+ZW5lcmljKGNsbnQtPmNsX3hwcnQtPnhwcnRfbmV0LCBzdW5ycGNfbmV0X2lkKTsNCj4gPj4NCj4g
+Pj4gICAJc3Bpbl9sb2NrKCZzbi0+cnBjX2NsaWVudF9sb2NrKTsNCj4gPj4gLQlsaXN0X2FkZCgm
+Y2xudC0+Y2xfY2xpZW50cywmc24tPmFsbF9jbGllbnRzKTsNCj4gPj4gKwlsaXN0X2FkZF90YWls
+KCZjbG50LT5jbF9jbGllbnRzLCZzbi0+YWxsX2NsaWVudHMpOw0KPiA+PiAgIAlzcGluX3VubG9j
+aygmc24tPnJwY19jbGllbnRfbG9jayk7DQo+ID4+ICAgfQ0KPiA+Pg0KPiA+PiBAQCAtMjA4LDE1
+ICsyMDgsMTkgQEAgc3RhdGljIGludCBycGNfcGlwZWZzX2V2ZW50KHN0cnVjdCBub3RpZmllcl9i
+bG9jayAqbmIsIHVuc2lnbmVkIGxvbmcgZXZlbnQsDQo+ID4+ICAgCQkJICAgIHZvaWQgKnB0cikN
+Cj4gPj4gICB7DQo+ID4+ICAgCXN0cnVjdCBzdXBlcl9ibG9jayAqc2IgPSBwdHI7DQo+ID4+IC0J
+c3RydWN0IHJwY19jbG50ICpjbG50Ow0KPiA+PiArCXN0cnVjdCBycGNfY2xudCAqY2xudCwgKnRt
+cDsNCj4gPj4gICAJaW50IGVycm9yID0gMDsNCj4gPj4gICAJc3RydWN0IHN1bnJwY19uZXQgKnNu
+ID0gbmV0X2dlbmVyaWMoc2ItPnNfZnNfaW5mbywgc3VucnBjX25ldF9pZCk7DQo+ID4+DQo+ID4+
+ICAgCXNwaW5fbG9jaygmc24tPnJwY19jbGllbnRfbG9jayk7DQo+ID4+IC0JbGlzdF9mb3JfZWFj
+aF9lbnRyeShjbG50LCZzbi0+YWxsX2NsaWVudHMsIGNsX2NsaWVudHMpIHsNCj4gPj4gKwlsaXN0
+X2Zvcl9lYWNoX2VudHJ5X3NhZmUoY2xudCwgdG1wLCZzbi0+YWxsX2NsaWVudHMsIGNsX2NsaWVu
+dHMpIHsNCj4gPj4gKwkJYXRvbWljX2luYygmY2xudC0+Y2xfY291bnQpOw0KPiA+PiArCQlzcGlu
+X3VubG9jaygmc24tPnJwY19jbGllbnRfbG9jayk7DQo+ID4+ICAgCQllcnJvciA9IF9fcnBjX3Bp
+cGVmc19ldmVudChjbG50LCBldmVudCwgc2IpOw0KPiA+PiArCQlycGNfcmVsZWFzZV9jbGllbnQo
+Y2xudCk7DQo+ID4+ICAgCQlpZiAoZXJyb3IpDQo+ID4+ICAgCQkJYnJlYWs7DQo+ID4+ICsJCXNw
+aW5fbG9jaygmc24tPnJwY19jbGllbnRfbG9jayk7DQo+ID4+ICAgCX0NCj4gPj4gICAJc3Bpbl91
+bmxvY2soJnNuLT5ycGNfY2xpZW50X2xvY2spOw0KPiA+PiAgIAlyZXR1cm4gZXJyb3I7DQo+ID4+
+DQo+ID4NCj4gPiBUaGlzIHdvbid0IGJlIHNhZmUuIE5vdGhpbmcgZ3VhcmFudGVlcyB0aGF0ICd0
+bXAnIHJlbWFpbnMgdmFsaWQgYWZ0ZXINCj4gPiB5b3UgZHJvcCB0aGUgc3Bpbl9sb2NrLg0KPiA+
+DQo+ID4gSSB0aGluayB5b3UgcmF0aGVyIG5lZWQgdG8gYWRkIGEgY2hlY2sgZm9yIHdoZXRoZXIg
+Y2xudC0+Y2xfZGVudHJ5IGlzIGluDQo+ID4gdGhlIHJpZ2h0IHN0YXRlIChOVUxMIGlmIFJQQ19Q
+SVBFRlNfVU1PVU5UIG9yIG5vbi1OVUxMIGlmDQo+ID4gUlBDX1BJUEVGU19NT1VOVCkgYmVmb3Jl
+IGRlY2lkaW5nIHdoZXRoZXIgb3Igbm90IHRvIGF0b21pY19pbmMoKSBhbmQNCj4gPiBkcm9wIHRo
+ZSBsb2NrLCBzbyB0aGF0IHlvdSBjYW4gcmVzdGFydCB0aGUgbG9vcCBhZnRlciBjYWxsaW5nDQo+
+ID4gX19ycGNfcGlwZWZzX2V2ZW50KCkuDQo+ID4NCj4gDQo+IEdtbW0uDQo+IFBsZWFzZSwgY29y
+cmVjdCBtZSwgaWYgSSdtIHdyb25nLCB0aGF0IHlvdSBhcmUgcHJvcG9zaW5nIHNvbWV0aGluZyBs
+aWtlIHRoaXM6DQo+IA0KPiAgICAJc3Bpbl9sb2NrKCZzbi0+cnBjX2NsaWVudF9sb2NrKTsNCj4g
+YWdhaW46DQo+IAlsaXN0X2Zvcl9lYWNoX2VudHJ5KGNsbnQsJnNuLT5hbGxfY2xpZW50cywgY2xf
+Y2xpZW50cykgew0KPiAJCWlmICgoZXZlbnQgPT0gUlBDX1BJUEVGU19NT1VOVCkgJiYgY2xudC0+
+Y2xfZGVudHJ5KSB8fA0KPiAJCSAgICAoZXZlbnQgPT0gUlBDX1BJUEVGU19VTU9VTlQpICYmICFj
+bG50LT5jbF9kZW50cnkpKQ0KPiAJCQljb250aW51ZTsNCj4gCQlhdG9taWNfaW5jKCZjbG50LT5j
+bF9jb3VudCk7DQo+IAkJc3Bpbl91bmxvY2soJnNuLT5ycGNfY2xpZW50X2xvY2spOw0KPiAgICAg
+CQllcnJvciA9IF9fcnBjX3BpcGVmc19ldmVudChjbG50LCBldmVudCwgc2IpOw0KPiAJCXJwY19y
+ZWxlYXNlX2NsaWVudChjbG50KTsNCj4gCQlzcGluX2xvY2soJnNuLT5ycGNfY2xpZW50X2xvY2sp
+Ow0KPiAgICAgCQlpZiAoZXJyb3IpDQo+ICAgICAJCQlicmVhazsNCj4gCQlnb3RvIGFnYWluOw0K
+PiAgICAgCX0NCj4gICAgIAlzcGluX3VubG9jaygmc24tPnJwY19jbGllbnRfbG9jayk7DQoNClNv
+bWV0aGluZyBhbG9uZyB0aG9zZSBsaW5lcywgeWVzLi4uIEFsdGVybmF0aXZlbHksIHlvdSBjb3Vs
+ZCBkbyBhcyBEYXZpZA0KcHJvcG9zZXMsIGFuZCBncmFiIGEgcmVmZXJlbmNlIHRvIHRoZSBuZXh0
+IHJwY19jbGllbnQgYmVmb3JlIGNhbGxpbmcNCnJwY19yZWxlYXNlX2NsaWVudC4gRWl0aGVyIHdv
+cmtzIGZvciBtZS4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
+cHAuY29tDQoNCg==
