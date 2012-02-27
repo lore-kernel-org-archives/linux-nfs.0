@@ -1,52 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:1380 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:21209 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754878Ab2BOVAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 16:00:00 -0500
-From: andros@netapp.com
-To: trond.myklebust.netapp.com@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 set the cl_hostname for data servers
-Date: Wed, 15 Feb 2012 15:59:06 -0500
-Message-Id: <1329339546-1899-1-git-send-email-andros@netapp.com>
+	id S1754290Ab2B0SHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 13:07:40 -0500
+Message-ID: <4F4BC652.6030300@parallels.com>
+Date: Mon, 27 Feb 2012 22:07:14 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        James Bottomley <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3 1/4] SUNRPC: release per-net clients lock before calling
+ PipeFS dentries creation
+References: <20120227180509.1089.29555.stgit@localhost6.localdomain6> <20120227180529.1089.29305.stgit@localhost6.localdomain6>
+In-Reply-To: <20120227180529.1089.29305.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+27.02.2012 22:05, Stanislav Kinsbursky пишет:
+> v3:
+> 1) Lookup for client is performed from the beginning of the list on each PipeFS
+> event handling operation.
+>
+> Lockdep is sad otherwise, because inode mutex is taken on PipeFS dentry
+> creation, which can be called on mount notification, where this per-net client
+> lock is taken on clients list walk.
+>
+> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>
+> ---
+>   net/sunrpc/clnt.c |   26 +++++++++++++++++++++-----
+>   1 files changed, 21 insertions(+), 5 deletions(-)
+>
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index bb7ed2f3..48f3d15 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -50,7 +50,7 @@
+>   			__func__, t->tk_status)
+>
+>   /*
+> - * All RPC clients are linked into this list
+> + * All RPC clients are linked into this list Client Cto hand;le ustatus is checke
+>    */
+>
+>   static DECLARE_WAIT_QUEUE_HEAD(destroy_wait);
 
-Used by /proc/fs/nfsfs files.
+Sorry for this hunk.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d0f850f..9e9cb50 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1468,7 +1468,21 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
- 	 */
- 	clp = nfs_get_client(&cl_init, &ds_timeout, mds_clp->cl_ipaddr,
- 			     mds_clp->cl_rpcclient->cl_auth->au_flavor, 0);
-+	if (IS_ERR(clp))
-+		return clp;
- 
-+	/*
-+	 * cl_init.servername is NULL so the cl_hostname is not set for new
-+	 * ds nfs_clients
-+	 */
-+	if (clp->cl_hostname == NULL) {
-+		clp->cl_hostname = kstrdup(clp->cl_rpcclient->cl_server,
-+					   GFP_KERNEL);
-+		if (clp->cl_hostname == NULL) {
-+			nfs_put_client(clp);
-+			return ERR_PTR(-ENOMEM);
-+		}
-+	}
- 	dprintk("<-- %s %p\n", __func__, clp);
- 	return clp;
- }
 -- 
-1.7.6.4
-
+Best regards,
+Stanislav Kinsbursky
