@@ -1,33 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52551 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41053 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750819Ab2B0Nos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 08:44:48 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: fix use-after-free of rpc pipes
-Date: Mon, 27 Feb 2012 13:44:45 +0000
-Message-ID: <1330350288.5541.3.camel@lade.trondhjem.org>
-References: <1330019288-13031-1-git-send-email-iisaman@netapp.com>
-		 <4F47D37D.2080409@parallels.com>
-	 <1330300376.18817.0.camel@lade.trondhjem.org>
-	 <4F4B7C4B.5000901@parallels.com>
-In-Reply-To: <4F4B7C4B.5000901@parallels.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932152Ab2B1BqT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Feb 2012 20:46:19 -0500
+Date: Mon, 27 Feb 2012 20:46:18 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Fu Liankun <fuliankun@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: spnfs write performance issue
+Message-ID: <20120228014618.GA28042@fieldses.org>
+References: <4F44C071.8010104@cn.fujitsu.com>
+ <20120222172510.GA12708@fieldses.org>
+ <4F4B224C.8030101@cn.fujitsu.com>
+ <20120227120136.GA21384@fieldses.org>
+ <4F4C2EAA.1010505@cn.fujitsu.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4F4C2EAA.1010505@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAyLTI3IGF0IDE2OjUxICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gRnJhbmtseSwgSSBkb24ndCBsaWtlIHRoZSBpZGVhIG9mIHB1dCdpbmcgcGlwZSBk
-YXRhIG9uIGRlbnRyeSB1bmxpbmsuIElPVywgSSANCj4gZG9uJ3QgbGlrZSB0aGF0IHRoaXMgZGF0
-YSB3aWxsIGJlIGNvbnRyb2xsZWQgc29tZWhvdyBpbiBQaXBlRlMuDQo+IEknbGwgc2VuZCBteSB2
-ZXJzaW9uIHNvb24uDQo+IA0KDQpJIGRvbid0IHVuZGVyc3RhbmQgdGhhdCBvYmplY3Rpb24uIFRo
-ZSBsaWZldGltZSBvZiB0aGF0IGRhdGEgbmVlZHMgdG8gYmUNCmJvdW5kZWQgYnkgdGhlIGxpZmV0
-aW1lIG9mIHRoZSBwaXBlIGl0c2VsZiwgd2hpY2ggbWVhbnMgdGhhdCBpdCBfaGFzXyB0bw0KYmUg
-Y29udHJvbGxlZCBieSB0aGUgcGlwZWZzLg0KDQpCVFc6IGl0IGlzbid0IGJlaW5nIHB1dCBvbiBk
-ZW50cnkgdW5saW5rLiBJdCBpcyBiZWluZyBwdXQgb24gZGVudHJ5DQpfZGVzdHJ1Y3Rpb25fLiBU
-aG9zZSBhcmUgdHdvIGRpZmZlcmVudCBldmVudHMgKHdoaWNoIGlzIHdoeSB3ZSBoYXZlIGENCnBy
-b2JsZW0gdG9kYXkpLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg==
+On Tue, Feb 28, 2012 at 09:32:26AM +0800, Fu Liankun wrote:
+> J. Bruce Fields 写道:
+> >On Mon, Feb 27, 2012 at 02:27:24PM +0800, Fu Liankun wrote:
+> >>J. Bruce Fields 写道:
+> >>>On Wed, Feb 22, 2012 at 06:16:17PM +0800, Fu Liankun wrote:
+> >>>>When copy a big file(about 500MB) to nfs server using pnfs, it cost
+> >>>>obvious longer time as compared with NFSv3 or NFSv4 protocol.
+> >>>>
+> >>>>PNFS cost about 300-550s
+> >>>>NFSv3 cost about 49s
+> >>>>NFSv4 cost about 49s
+> >>>>
+> >>>>My test environment as following:
+> >>>>
+> >>>>MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
+> >>>>DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
+> >>>>DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
+> >>>>client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
+> >>>What kind of server are you using?
+> >>Sorry for late response.
+> >>
+> >>Fedora14 + 3.1.0-rc8-pnfs
+> >
+> >And you're exporting gfs2?
+> 
+> No. I'm exporting ext4.
+> Does the file system type would influence the result?
+
+So you're using local-pnfs?  Or spnfs?  What setup instructions did you
+follow?
+
+--b.
