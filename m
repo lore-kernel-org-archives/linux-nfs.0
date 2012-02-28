@@ -1,37 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28574 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49993 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751740Ab2BHR13 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 12:27:29 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 1/2] NFSv4.1: Convert slotid from u8 to u32
-Date: Wed, 8 Feb 2012 17:27:22 +0000
-Message-ID: <1328722042.3234.13.camel@lade.trondhjem.org>
-References: <1328576237-7362-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120208162322.GA13315@fieldses.org>
-In-Reply-To: <20120208162322.GA13315@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1030264Ab2B1Tt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Feb 2012 14:49:27 -0500
+Date: Tue, 28 Feb 2012 14:49:26 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: linux-image: on nfs4 server: RPC: AUTH_GSS upcall timed out
+ Please check user daemon is running
+Message-ID: <20120228194926.GB2723@fieldses.org>
+References: <8762hrozdl.fsf@fifthhorseman.net>
+ <20111208174501.GA30088@fieldses.org>
+ <4EE253EC.2040609@fifthhorseman.net>
+ <20111209191057.GA10089@fieldses.org>
+ <87booq3xbd.fsf@pip.fifthhorseman.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87booq3xbd.fsf@pip.fifthhorseman.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTA4IGF0IDExOjIzIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIE1vbiwgRmViIDA2LCAyMDEyIGF0IDA3OjU3OjE2UE0gLTA1MDAsIFRyb25kIE15a2xl
-YnVzdCB3cm90ZToNCj4gPiBJdCBpcyBwZXJmZWN0bHkgbGVnYWwgdG8gbmVnb3RpYXRlIHVwIHRv
-IDJeMzItMSBzbG90cyBpbiB0aGUgcHJvdG9jb2wsDQo+ID4gYW5kIHdpdGggMTBHaWdFLCB3ZSBh
-cmUgYWxyZWFkeSBzZWVpbmcgdGhhdCAyNTUgc2xvdHMgaXMgZmFyIHRvbyBsaW1pdGluZy4NCj4g
-DQo+IFNlZW1zIGxpa2UgYW4gZW50aXJlbHkgcmVhc29uYWJsZSBjaGFuZ2UsIGJ1dCBqdXN0IG91
-dCBvZiBjdXJpb3NpdHksDQo+IHdoYXQgd29ya2xvYWQgYXJlIHlvdSB1c2luZyB0byBoaXQgdGhh
-dCBsaW1pdD8NCj4gDQo+IChJZiBpdCdzIGp1c3QgYnVsayBJTyBvdmVyIGEgbG9jYWwgMTBHaWdF
-IG5ldHdvcmssIHRoZW4gc3VyZWx5IHRoZQ0KPiBwcm9ibGVtIGlzIGVsc2V3aGVyZT8gIEV2ZW4g
-b24gMTBHaWdFIEkgdGhpbmsgeW91J2QgbmVlZCBmYWlybHkgaGlnaA0KPiBsYXRlbmNpZXMgKGEg
-bGl0dGxlIG92ZXIgMjAwbXMsIGlmIG15IG1hdGggaXMgcmlnaHQ/KSB0byBrZWVwIHRoYXQgbXVj
-aA0KPiBkYXRhIGluIGZsaWdodC4gIE9yIGFyZSB5b3UgdGVzdGluZyBtdWNoIHNtYWxsZXIgb3Bl
-cmF0aW9ucz8pDQoNCjEwR2lnRSArIGhpZ2ggbGF0ZW5jaWVzIGlzIGV4YWN0bHkgd2hlcmUgd2Un
-cmUgc2VlaW5nIHRoZSB2YWx1ZS4gQW5keQ0KaGFzIGJlZW4gd29ya2luZyB3aXRoIHRoZSBoaWdo
-IGVuZXJneSBwaHlzaWNzIGNvbW11bml0eSBkb2luZyBORlMNCnRyYWZmaWMgYmV0d2VlbiB0aGUg
-VVMgYW5kIENFUk4uLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+On Thu, Feb 23, 2012 at 12:58:46AM -0500, Daniel Kahn Gillmor wrote:
+> On Fri, 9 Dec 2011 14:10:57 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Fri, Dec 09, 2011 at 01:31:08PM -0500, Daniel Kahn Gillmor wrote:
+> > > Thanks, that's useful.  Do the clients need to run cachefilesd as well
+> > > to take advantage of delegation?
+> > 
+> > No.
+> 
+> Is there a way that i can check to be sure that delegations are actually
+> happening?
+
+On the client I suppose you'll eventually start seeing DELEG_RETURN
+calls in /proc/self/mountstats.  On the server side the
+nfsd4_delegations line of /proc/slabinfo should give a hint.
+
+> What kind of performance improvement would you expect to see
+> with delegatons happening on, say, a standard desktop user's homedir
+> workload?
+
+I don't know.  If you get any test results that would be interesting.
+
+--b.
