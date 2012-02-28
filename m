@@ -1,59 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49398 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48316 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755300Ab2BFPjx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Feb 2012 10:39:53 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 2/2] SUNRPC: Adding status trace points
-Date: Mon, 6 Feb 2012 15:39:31 +0000
-Message-ID: <1328542771.5687.1.camel@lade.trondhjem.org>
-References: <1328540888-30109-1-git-send-email-steved@redhat.com>
-	 <1328540888-30109-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1328540888-30109-3-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757211Ab2B1M5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Feb 2012 07:57:54 -0500
+Date: Tue, 28 Feb 2012 07:57:41 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Harshula <harshula@redhat.com>, Steve Dickson <SteveD@redhat.com>,
+        NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: "Using NFS over UDP on high-speed links such as Gigabit can
+ cause silent data corruption."
+Message-ID: <20120228075741.2966a530@tlielax.poochiereds.net>
+In-Reply-To: <20120228124646.GA2528@umich.edu>
+References: <1330406521.9157.16.camel@serendib>
+	<20120228065218.7e110936@tlielax.poochiereds.net>
+	<20120228124646.GA2528@umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAyLTA2IGF0IDEwOjA4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiBUaGlzIHBhdGNoIGFkZHMgdGhyZWUgdHJhY2UgcG9pbnRzIHRvIHRoZSBzdGF0dXMgcm91dGlu
-ZXMNCj4gaW4gdGhlIHN1bnJwYyBzdGF0ZSBtYWNoaW5lLg0KPiANCj4gVGhlIGdvYWwgb2YgdGhl
-c2UgdHJhY2UgcG9pbnRzIGlzIHRvIGdpdmUgYW4gQWRtaW4NCj4gdGhlIGFiaWxpdHkgdG8gY2hl
-Y2sgb24gYmluZGluZyBzdGF0dXMgb3IgY29ubmVjdGlvbg0KPiBzdGF0dXMgdG8gc2VlIGlmIHRo
-ZXJlIGlzIGEgcG90ZW50aWFsIHByb2JsZW0uDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTdGV2ZSBE
-aWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBpbmNsdWRlL3RyYWNlL2V2ZW50
-cy9zdW5ycGMuaCB8ICAgNTMgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysNCj4gIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAgIHwgICAgNiArKysrLQ0KPiAgMiBm
-aWxlcyBjaGFuZ2VkLCA1OCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlm
-ZiAtLWdpdCBhL2luY2x1ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oIGIvaW5jbHVkZS90cmFjZS9l
-dmVudHMvc3VucnBjLmgNCj4gaW5kZXggMmY4MmRlOS4uYWJjZjQ1ZCAxMDA2NDQNCj4gLS0tIGEv
-aW5jbHVkZS90cmFjZS9ldmVudHMvc3VucnBjLmgNCj4gKysrIGIvaW5jbHVkZS90cmFjZS9ldmVu
-dHMvc3VucnBjLmgNCj4gQEAgLTgsNiArOCw1OSBAQA0KPiAgI2luY2x1ZGUgPGxpbnV4L3N1bnJw
-Yy9jbG50Lmg+DQo+ICAjaW5jbHVkZSA8bGludXgvdHJhY2Vwb2ludC5oPg0KPiAgDQo+ICtERUNM
-QVJFX0VWRU5UX0NMQVNTKHJwY190YXNrX3N0YXR1cywNCj4gKw0KPiArCVRQX1BST1RPKHN0cnVj
-dCBycGNfdGFzayAqdGFzayksDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spLA0KPiArDQo+ICsJVFBf
-U1RSVUNUX19lbnRyeSgNCj4gKwkJX19maWVsZChjb25zdCBzdHJ1Y3QgcnBjX3Rhc2sgKiwgdGFz
-aykNCj4gKwkJX19maWVsZChjb25zdCBzdHJ1Y3QgcnBjX2NsbnQgKiwgY2xudCkNCj4gKwkJX19m
-aWVsZChpbnQsIHN0YXR1cykNCj4gKwkpLA0KPiArDQo+ICsJVFBfZmFzdF9hc3NpZ24oDQo+ICsJ
-CV9fZW50cnktPnRhc2sgPSB0YXNrOw0KPiArCQlfX2VudHJ5LT5jbG50ID0gdGFzay0+dGtfY2xp
-ZW50Ow0KPiArCQlfX2VudHJ5LT5zdGF0dXMgPSB0YXNrLT50a19zdGF0dXM7DQo+ICsJKSwNCj4g
-Kw0KPiArCVRQX3ByaW50aygidGFzazolcEAlcCwgc3RhdHVzICVkIixfX2VudHJ5LT50YXNrLCBf
-X2VudHJ5LT5jbG50LCBfX2VudHJ5LT5zdGF0dXMpDQo+ICspOw0KPiArDQo+ICtERUZJTkVfRVZF
-TlQocnBjX3Rhc2tfc3RhdHVzLCBycGNfY2FsbF9zdGF0dXMsDQo+ICsJVFBfUFJPVE8oc3RydWN0
-IHJwY190YXNrICp0YXNrKSwgDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spDQo+ICspOw0KPiArDQo+
-ICtERUZJTkVfRVZFTlQocnBjX3Rhc2tfc3RhdHVzLCBycGNfYmluZF9zdGF0dXMsDQo+ICsJVFBf
-UFJPVE8oc3RydWN0IHJwY190YXNrICp0YXNrKSwgDQo+ICsNCj4gKwlUUF9BUkdTKHRhc2spDQo+
-ICspOw0KPiArDQo+ICtUUkFDRV9FVkVOVChycGNfY29ubmVjdF9zdGF0dXMsDQo+ICsJVFBfUFJP
-VE8oc3RydWN0IHJwY190YXNrICp0YXNrLCBpbnQgc3RhdHVzKSwNCj4gKw0KPiArCVRQX0FSR1Mo
-dGFzaywgc3RhdHVzKSwNCj4gKw0KPiArCVRQX1NUUlVDVF9fZW50cnkoDQo+ICsJCV9fZmllbGQo
-Y29uc3Qgc3RydWN0IHJwY190YXNrICosIHRhc2spDQo+ICsJCV9fZmllbGQoY29uc3Qgc3RydWN0
-IHJwY19jbG50ICosIGNsbnQpDQo+ICsJCV9fZmllbGQoaW50LCBzdGF0dXMpDQo+ICsJKSwNCj4g
-Kw0KPiArCVRQX2Zhc3RfYXNzaWduKA0KPiArCQlfX2VudHJ5LT50YXNrID0gdGFzazsNCj4gKwkJ
-X19lbnRyeS0+Y2xudCA9IHRhc2stPnRrX2NsaWVudDsNCj4gKwkJX19lbnRyeS0+c3RhdHVzID0g
-c3RhdHVzOw0KPiArCSksDQo+ICsNCj4gKwlUUF9wcmludGsoInRhc2s6JXBAJXAsIHN0YXR1cyAl
-ZCIsX19lbnRyeS0+dGFzaywgX19lbnRyeS0+Y2xudCwgX19lbnRyeS0+c3RhdHVzKQ0KPiArKTsN
-Cj4gKw0KPiAgREVDTEFSRV9FVkVOVF9DTEFTUyhycGNfdGFza19ydW5uaW5nLA0KPiAgDQoNCg0K
-VGhpcyBodW5rIGRpZCBjb250YWluIGEgY291cGxlIG9mIHRyYWlsaW5nIHdoaXRlc3BhY2UgZXJy
-b3JzLCBidXQgSSd2ZQ0KZml4ZWQgdGhlbSB1cCBhbmQgYXBwbGllZC4NCg==
+On Tue, 28 Feb 2012 07:46:46 -0500
+Jim Rees <rees@umich.edu> wrote:
+
+> Jeff Layton wrote:
+> 
+>   On Tue, 28 Feb 2012 16:22:01 +1100
+>   Harshula <harshula@redhat.com> wrote:
+>   
+>   > Hi Steve,
+>   > 
+>   > The following openSUSE nfs-utils patch, warn-nfs-udp.patch, is not
+>   > included upstream:
+>   > 
+>   > https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
+>   > 
+>   > Please consider including it.
+>   > 
+>   > Thanks,
+>   > #
+>   > 
+>   
+>   I think that patch looks reasonable and clearly documenting the
+>   problems with UDP is a wonderful thing.
+>   
+>   It may be best to send it formally to steved and the list as a real
+>   [PATCH] with a real description and SoB line.
+> 
+> This feels like the wrong place to document this, since it affects anything
+> that uses udp, not just nfs.  It also seems like this should be solved in
+> the network layer with an adaptive frag time.  But I'm not volunteering to
+> do that.
+
+Certainly, documenting it in udp(7) or whatever would be fine too. The
+problem though is that someone setting up a NFS mount isn't as likely
+to see it there as they would if it were in nfs(5).
+
+I see no harm in documenting it here too. At the very least, if you're
+going to put this into udp(7) instead then nfs(5) should refer to that
+manpage and chapter explicitly.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
