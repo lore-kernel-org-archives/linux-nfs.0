@@ -1,75 +1,23 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12289 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756163Ab2BHVSx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:18:53 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 12/17] FS-Cache: Convert the object event ID #defines into an
- enum
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:18:44 +0000
-Message-ID: <20120208211844.15607.77232.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+From: comunicazione.imprese-sNUPqX9PG24aXv8WDMKpoKicDR3qMxSs@public.gmane.org
+Subject: Your Email ID has been awarded 1,000,000,00 GBP in British Tobacco
+ Promo Send Details
+Date: Tue, 28 Feb 2012 15:27:23 -0800
+Message-ID: <1793b517b8fb.17b8fb1793b5__9051.97698525644$1330481072$gmane$org@grt.acquistinretepa.it>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from smtp1.acquistinretepa.it ([93.57.69.76]:48172 "EHLO
+	smtp1.acquistinretepa.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752773Ab2B2CET (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Feb 2012 21:04:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert the fscache_object event IDs from #defines into an enum.  Also add an
-extra label to the enum to carry the event count and redefine the event mask
-in terms of that.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
 
- include/linux/fscache-cache.h |   26 +++++++++++++++++---------
- 1 files changed, 17 insertions(+), 9 deletions(-)
-
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 1e454ad..73e68c8 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -338,6 +338,23 @@ struct fscache_cookie {
- extern struct fscache_cookie fscache_fsdef_index;
- 
- /*
-+ * Event list for fscache_object::{event_mask,events}
-+ */
-+enum {
-+	FSCACHE_OBJECT_EV_REQUEUE,	/* T if object should be requeued */
-+	FSCACHE_OBJECT_EV_UPDATE,	/* T if object should be updated */
-+	FSCACHE_OBJECT_EV_INVALIDATE,	/* T if cache requested object invalidation */
-+	FSCACHE_OBJECT_EV_CLEARED,	/* T if accessors all gone */
-+	FSCACHE_OBJECT_EV_ERROR,	/* T if fatal error occurred during processing */
-+	FSCACHE_OBJECT_EV_RELEASE,	/* T if netfs requested object release */
-+	FSCACHE_OBJECT_EV_RETIRE,	/* T if netfs requested object retirement */
-+	FSCACHE_OBJECT_EV_WITHDRAW,	/* T if cache requested object withdrawal */
-+	NR_FSCACHE_OBJECT_EVENTS
-+};
-+
-+#define FSCACHE_OBJECT_EVENTS_MASK ((1UL << NR_FSCACHE_OBJECT_EVENTS) - 1)
-+
-+/*
-  * on-disk cache file or index handle
-  */
- struct fscache_object {
-@@ -376,15 +393,6 @@ struct fscache_object {
- 	unsigned long		event_mask;	/* events this object is interested in */
- 	unsigned long		events;		/* events to be processed by this object
- 						 * (order is important - using fls) */
--#define FSCACHE_OBJECT_EV_REQUEUE	0	/* T if object should be requeued */
--#define FSCACHE_OBJECT_EV_UPDATE	1	/* T if object should be updated */
--#define FSCACHE_OBJECT_EV_CLEARED	2	/* T if accessors all gone */
--#define FSCACHE_OBJECT_EV_ERROR		3	/* T if fatal error occurred during processing */
--#define FSCACHE_OBJECT_EV_RELEASE	4	/* T if netfs requested object release */
--#define FSCACHE_OBJECT_EV_RETIRE	5	/* T if netfs requested object retirement */
--#define FSCACHE_OBJECT_EV_WITHDRAW	6	/* T if cache requested object withdrawal */
--#define FSCACHE_OBJECT_EV_INVALIDATE	7	/* T if cache requested object invalidation */
--#define FSCACHE_OBJECT_EVENTS_MASK	0xff	/* mask of all events*/
- 
- 	unsigned long		flags;
- #define FSCACHE_OBJECT_LOCK		0	/* T if object is busy being processed */
+Name:
+Address:
+Tel:
+Country:
 
