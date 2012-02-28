@@ -1,63 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45077 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:37690 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756403Ab2B2VoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 16:44:04 -0500
-Date: Wed, 29 Feb 2012 16:44:00 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 5/5] nfsd: add the infrastructure to handle the cld
- upcall
-Message-ID: <20120229214400.GA6506@fieldses.org>
-References: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
- <1330535757-24925-6-git-send-email-jlayton@redhat.com>
- <4F4E70C5.9030608@parallels.com>
- <20120229144512.37de84e7@tlielax.poochiereds.net>
+	id S1757290Ab2B1UAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Feb 2012 15:00:20 -0500
+Date: Tue, 28 Feb 2012 15:00:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120228200015.GD2723@fieldses.org>
+References: <4F40053A.3090301@steve-ss.com>
+ <4F412E2F.9070200@steve-ss.com>
+ <4F45E78E.8050501@steve-ss.com>
+ <20120223063913.5736a5b1@tlielax.poochiereds.net>
+ <4F4628B8.90401@steve-ss.com>
+ <20120223144053.GA25010@fieldses.org>
+ <4F465C3A.9080802@steve-ss.com>
+ <20120223154215.GA26706@fieldses.org>
+ <4F466467.3030506@steve-ss.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120229144512.37de84e7@tlielax.poochiereds.net>
+In-Reply-To: <4F466467.3030506@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 29, 2012 at 02:45:12PM -0500, Jeff Layton wrote:
-> On Wed, 29 Feb 2012 22:39:01 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+On Thu, Feb 23, 2012 at 05:08:07PM +0100, steve wrote:
+> OK. I see what you mean. umask 0022
+> So I can have a group rw with posix but not with nfs4_setfacl:-(
 > 
-> > Hi, Jeff.
-> > I'll try to explain, how all this namespaces-aware SUNRPC PipeFS works.
-> > The main idea is, that today we have 2 types of independently created and 
-> > destroyed but linked objects:
-> > 1) pipe data itself. This object is created whenever kernel requires (on mount, 
-> > module install, whatever)
-> > 2) dentry/inode for this pipe. This object is created on PipeFS superblock creation.
-> > This means, any kernel user of SUNRPC pipes have to provide two mechanisms:
-> > 1) Safe call (in per-net operations, if the object is global your case) for 
-> > PipeFS dentry/inode pair. This is done this in nfsd4_init_cld_pipe().
-> >
-> > 2) Notifier callback for PipeFS mount/umount operations. Note: this callback is 
-> > done from SUNRPC module (i.e. you have to get nfsd module); this callback is 
-> > safe - i.e you can be sure, that superblock is valid.
-> > 
+> That's on openSUSE who default to 0022. The default on Ubuntu is
+> 0002 so presumably we could have group rw over nfs4 there out of the
+> box?
 > 
-> This is the part I'm having a hard time with. IIUC, the existing
-> examples are fairly clear since you have a 1:1 ratio of objects: a
-> per-net object (the pipe data) that is hooked up to a dentry/inode in a
-> per-net sb.
-> 
-> Here though, we don't really have that. We have a global pipe object
-> and I don't see how you can hook that up to multiple dentries/inodes.
-> 
-> One possibility is to completely "namespacify" this code -- don't use a
-> global rpc_pipe object and make it per-net instead. If I do that though,
-> then I suppose I'll also need to make all of the
-> nfsd4_client_tracking_ops take a struct net arg as well?
+> Is it a lot of work to implement umask override for nfs4? Or make it
+> an option perhaps?
 
-That does sound like what we'll want eventually.
+Two fulltime-kernel-hacker-week-equivalents?
 
-And callers will use pass svc_rqst->rq_xprt->xpt_net there, I assume.
+I'm not sure, I just made that up.
 
-(Or actually we may need a pointer to the netns from the nfs4 client?)
+It does appear that it's necessary to make v4 ACLs usable in a lot of
+cases.
 
 --b.
+
+> At the moment I'm using a big hammer and scanning the share every 4
+> seconds to change the permissions of any files created there. My
+> other thought was to have the share on a different partition, umask
+> it to 0002 and export that. But these are workarounds. It would be
+> really good to have the nfs4 acls do it.
