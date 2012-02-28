@@ -1,54 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55005 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55626 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757549Ab2BOOWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Feb 2012 09:22:43 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Vitaliy Gusev <gusev.vitaliy@gmail.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-Subject: Re: [PATCH] nfs41: Verify channel's attributes accordingly to RFC
-Date: Wed, 15 Feb 2012 14:22:37 +0000
-Message-ID: <1329315756.3364.4.camel@lade.trondhjem.org>
-References: <1329315182-12051-1-git-send-email-gusev.vitaliy@nexenta.com>
-In-Reply-To: <1329315182-12051-1-git-send-email-gusev.vitaliy@nexenta.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1757294Ab2B1UF0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Feb 2012 15:05:26 -0500
+Date: Tue, 28 Feb 2012 15:05:24 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120228200524.GE2723@fieldses.org>
+References: <4F40053A.3090301@steve-ss.com>
+ <4F412E2F.9070200@steve-ss.com>
+ <4F45E78E.8050501@steve-ss.com>
+ <20120223063913.5736a5b1@tlielax.poochiereds.net>
+ <4F4628B8.90401@steve-ss.com>
+ <20120223144053.GA25010@fieldses.org>
+ <4F465C3A.9080802@steve-ss.com>
+ <20120223154215.GA26706@fieldses.org>
+ <4F466467.3030506@steve-ss.com>
+ <4F489999.30909@steve-ss.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F489999.30909@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTE1IGF0IDE4OjEzICswNDAwLCBWaXRhbGl5IEd1c2V2IHdyb3RlOg0K
-PiA+RnJvbSBSRkM1NjYxLCAxOC4zNi4zOg0KPiANCj4gICAgY2FfbWF4b3BlcmF0aW9uczoNCj4g
-DQo+ICAgICAgICAgIEZvciB0aGUgYmFja2NoYW5uZWwsIHRoZSBzZXJ2ZXIgTVVTVA0KPiAgICAg
-ICAgICBOT1QgY2hhbmdlIHRoZSB2YWx1ZSB0aGUgY2xpZW50IG9mZmVycy4gIEZvciB0aGUgZm9y
-ZSBjaGFubmVsLA0KPiAgICAgICAgICB0aGUgc2VydmVyIE1BWSBjaGFuZ2UgdGhlIHJlcXVlc3Rl
-ZCB2YWx1ZS4NCj4gDQo+ICAgIGNhX21heHJlcXVlc3RzOg0KPiANCj4gICAgICAgICAgRm9yIHRo
-ZSBiYWNrY2hhbm5lbCwgdGhlIHNlcnZlciBNVVNUIE5PVCBjaGFuZ2UgdGhlDQo+ICAgICAgICAg
-IHZhbHVlIHRoZSBjbGllbnQgb2ZmZXJzLiAgRm9yIHRoZSBmb3JlIGNoYW5uZWwsIHRoZSBzZXJ2
-ZXIgTUFZDQo+ICAgICAgICAgIGNoYW5nZSB0aGUgcmVxdWVzdGVkIHZhbHVlLg0KPiANCj4gU2ln
-bmVkLW9mZi1ieTogVml0YWxpeSBHdXNldiA8Z3VzZXYudml0YWxpeUBuZXhlbnRhLmNvbT4NCj4g
-LS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAgIDYgKysrLS0tDQo+ICAxIGZpbGVzIGNoYW5n
-ZWQsIDMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDVkYTUzNTUuLmIx
-NDRlYzMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9u
-ZnM0cHJvYy5jDQo+IEBAIC01MTk3LDcgKzUxOTcsNyBAQCBzdGF0aWMgaW50IG5mczRfdmVyaWZ5
-X2ZvcmVfY2hhbm5lbF9hdHRycyhzdHJ1Y3QgbmZzNDFfY3JlYXRlX3Nlc3Npb25fYXJncyAqYXJn
-cw0KPiAgCSAqLw0KPiAgCWlmIChyY3ZkLT5tYXhfb3BzIDwgc2VudC0+bWF4X29wcykNCj4gIAkJ
-cmV0dXJuIC1FSU5WQUw7DQo+IC0JaWYgKHJjdmQtPm1heF9yZXFzID09IDApDQo+ICsJaWYgKHJj
-dmQtPm1heF9yZXFzID09IDAgfHwgcmN2ZC0+bWF4X3JlcXMgPiBORlM0X01BWF9TTE9UX1RBQkxF
-KQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCg0KVGhpcyBsb29rcyBpbmNvcnJlY3QuDQoNCklmIHRo
-ZSBzZXJ2ZXIgb2ZmZXJzID4gTkZTNF9NQVhfU0xPVF9UQUJMRSBzbG90cywgdGhlIGNsaWVudCBz
-aG91bGRuJ3QNCmJlIGNhbGxpbmcgdGhhdCBhbiBlcnJvci4gSXQgc2hvdWxkIGp1c3QgbGltaXQg
-aXRzIHVzYWdlIHRvIHRoZSBmaXJzdA0KTkZTNF9NQVhfU0xPVF9UQUJMRSBzbG90cy4NCg0KPiAg
-CXJldHVybiAwOw0KPiAgfQ0KPiBAQCAtNTIxNCw5ICs1MjE0LDkgQEAgc3RhdGljIGludCBuZnM0
-X3ZlcmlmeV9iYWNrX2NoYW5uZWxfYXR0cnMoc3RydWN0IG5mczQxX2NyZWF0ZV9zZXNzaW9uX2Fy
-Z3MgKmFyZ3MNCj4gIAlpZiAocmN2ZC0+bWF4X3Jlc3Bfc3pfY2FjaGVkID4gc2VudC0+bWF4X3Jl
-c3Bfc3pfY2FjaGVkKQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCj4gIAkvKiBUaGVzZSB3b3VsZCBy
-ZW5kZXIgdGhlIGJhY2tjaGFubmVsIHVzZWxlc3M6ICovDQo+IC0JaWYgKHJjdmQtPm1heF9vcHMg
-ID09IDApDQo+ICsJaWYgKHJjdmQtPm1heF9vcHMgIT0gc2VudC0+bWF4X29wcykNCj4gIAkJcmV0
-dXJuIC1FSU5WQUw7DQo+IC0JaWYgKHJjdmQtPm1heF9yZXFzID09IDApDQo+ICsJaWYgKHJjdmQt
-Pm1heF9yZXFzICE9IHNlbnQtPm1heF9yZXFzKQ0KPiAgCQlyZXR1cm4gLUVJTlZBTDsNCg0KQUNL
-IG9uIHRoaXMgaHVuay4uLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg0K
+On Sat, Feb 25, 2012 at 09:19:37AM +0100, steve wrote:
+> On 23/02/12 17:08, steve wrote:
+> >On 02/23/2012 04:42 PM, J. Bruce Fields wrote:
+> >>>>First, if you want an ace on a directory to be inherited by files and
+> >>>>directories created under that directory, make sure you're setting
+> >>>>the f
+> >>>>and d flags (see nfs4_getfacl -H).
+> >>>>
+> >>>>Second, there's a umask problem: posix acl inheritance overrides the
+> >>>>umask, but nfs4 acl inheritance isn't doing that. (The client combines
+> >>>>the create mode and the umask and sets both together, there's no way
+> >>>>for
+> >>>>the server to even tell what the umask is.)
+> >>>>
+> >>>>(We should do something about this if we can: maybe modifying the
+> >>>>client
+> >>>>to scan the directory acl for any inheritable aces and leaving out the
+> >>>>umask if they're found? It has the obvious race, but I seem to recall
+> >>>>we live with that in the v3 case. Or maybe there's something more
+> >>>>clever, but this comes up every now and then and I can't remember a
+> >>>>better solution.)
+> >>>>
+> 
+> Hi everyone
+> 
+> This really is a show stopper for us.
+> 
+> Would it be possible to give users the choice of being able to
+> disable nfs4 acls so we can fall back to POSIX or nt acls? Or at
+> least until the nfs4 team have had time to consider the situation?
+
+The NFSv4 protocol has no support for posix acls, so this isn't an
+option; possibly you're best off with v3 for some reason.  (Why the
+migration to v4?)
+
+--b.
+
+> 
+> Mounting with -o nofacl in the hope that the POSIX acl set on the
+> unmounted directory would take effect, seems to have no effect.
+> 
+> What I'm doing at the moment is scanning the unmounted directory
+> every few seconds using 'find' and changing the files to g+rw:-(
+> 
+> Thanks,
+> Steve
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
