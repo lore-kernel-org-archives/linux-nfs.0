@@ -1,55 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from partagas.dragonet.es ([217.70.240.130]:35971 "EHLO
-	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799Ab2BEJ1R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Feb 2012 04:27:17 -0500
-Message-ID: <4F2E4B50.5040701@steve-ss.com>
-Date: Sun, 05 Feb 2012 10:26:40 +0100
-From: steve <steve@steve-ss.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:58207 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754523Ab2B1Btv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2012 20:49:51 -0500
+Message-ID: <4F4C3262.9050301@cn.fujitsu.com>
+Date: Tue, 28 Feb 2012 09:48:18 +0800
+From: Fu Liankun <fuliankun@cn.fujitsu.com>
 MIME-Version: 1.0
-To: Liam Gretton <liam.gretton@leicester.ac.uk>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: where can I ask user qns about nfs4?
-References: <4F2A2F9E.6030908@steve-ss.com> <CAGue13owEdBsr+anLKrbW931QZHYC7RbwiSH_7WjBb5aXw4JJQ@mail.gmail.com> <4F2D9A0E.6010503@leicester.ac.uk>
-In-Reply-To: <4F2D9A0E.6010503@leicester.ac.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: spnfs write performance issue
+References: <4F44C071.8010104@cn.fujitsu.com> <20120222172510.GA12708@fieldses.org> <4F4B224C.8030101@cn.fujitsu.com> <20120227120136.GA21384@fieldses.org> <4F4C2EAA.1010505@cn.fujitsu.com> <20120228014618.GA28042@fieldses.org>
+In-Reply-To: <20120228014618.GA28042@fieldses.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/02/12 21:50, Liam Gretton wrote:
-> I have a related question, and like the OP I was reluctant to ask here 
-> as it's not a dev question, but I can't find any other suitable forum.
->
-> Has ANYBODY got kerberised NFS working where the KDC is Active 
-> Directory on a Windows 2008 R2 system? With 2008 R2, DES encryption 
-> for Kerberos is no longer enabled.
->
-> Our AD admins are understandably not keen to go against the 
-> recommended behaviour and enable DES just for this service (it needs 
-> to be enabled globally across the domain).
->
-> I can't find any documentation about Kerberised NFS that looks more 
-> recent than about 2006. That coupled with what I can see in the 
-> sources suggest that there's little development in this area, so I 
-> suspect the answer is that nobody has managed what I'm trying to do.
->
-Hi Liam
-I am the OP. We really do need some down to earth and up to date info on 
-NFS4. More to the point, it needs to be all in one place, rather than 
-having snippets all around the Internet. I'm not a tecchie but maybe I 
-could put together a readable howto if there was enough demand.
+J. Bruce Fields 写道:
+> On Tue, Feb 28, 2012 at 09:32:26AM +0800, Fu Liankun wrote:
+>> J. Bruce Fields 写道:
+>>> On Mon, Feb 27, 2012 at 02:27:24PM +0800, Fu Liankun wrote:
+>>>> J. Bruce Fields 写道:
+>>>>> On Wed, Feb 22, 2012 at 06:16:17PM +0800, Fu Liankun wrote:
+>>>>>> When copy a big file(about 500MB) to nfs server using pnfs, it cost
+>>>>>> obvious longer time as compared with NFSv3 or NFSv4 protocol.
+>>>>>>
+>>>>>> PNFS cost about 300-550s
+>>>>>> NFSv3 cost about 49s
+>>>>>> NFSv4 cost about 49s
+>>>>>>
+>>>>>> My test environment as following:
+>>>>>>
+>>>>>> MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
+>>>>>> DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
+>>>>>> DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
+>>>>>> client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
+>>>>> What kind of server are you using?
+>>>> Sorry for late response.
+>>>>
+>>>> Fedora14 + 3.1.0-rc8-pnfs
+>>> And you're exporting gfs2?
+>> No. I'm exporting ext4.
+>> Does the file system type would influence the result?
+> 
+> So you're using local-pnfs?  Or spnfs?  What setup instructions did you
+> follow?
 
-We have kerberized nfs4 working against Samba 4. There seem to be 
-different flavours of des. The Samba 4 Kerberos produced these server 
-keys for our test domain:
+I'm using spnfs.
 
-    1 nfs/hh3.hh3.site@HH3.SITE (des-cbc-crc)
-    1 nfs/hh3.hh3.site@HH3.SITE (des-cbc-md5)
-    1 nfs/hh3.hh3.site@HH3.SITE (arcfour-hmac)
+--b
 
-We put together a howto which includes the nfs4 stuff here:
-http://linuxcostablanca.blogspot.com/p/samba-4.html
+> 
+> --b.
+> 
 
-HTH a little
-Cheers,
-Steve
