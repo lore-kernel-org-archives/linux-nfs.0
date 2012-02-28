@@ -1,66 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45106 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796Ab2BWBpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Feb 2012 20:45:14 -0500
-Date: Wed, 22 Feb 2012 20:45:14 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Peter Horvath <peter.horvath77@googlemail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 client restriction
-Message-ID: <20120223014514.GA19890@fieldses.org>
-References: <CAO9xhuZ+2VsTog1bqomC82jVfNFVOx6JTGgG+muDQsFu_5R7ZA@mail.gmail.com>
- <20120223010111.GA19432@fieldses.org>
- <CAO9xhuZhtC8nWOhLjqG0iBRyvVN4ap7XqeD=hYHRR_29LBZpGA@mail.gmail.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:64968 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932340Ab2B1CPw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Feb 2012 21:15:52 -0500
+Message-ID: <4F4C387D.3070003@cn.fujitsu.com>
+Date: Tue, 28 Feb 2012 10:14:21 +0800
+From: Fu Liankun <fuliankun@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CAO9xhuZhtC8nWOhLjqG0iBRyvVN4ap7XqeD=hYHRR_29LBZpGA@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: spnfs write performance issue
+References: <4F44C071.8010104@cn.fujitsu.com> <20120222172510.GA12708@fieldses.org> <4F4B224C.8030101@cn.fujitsu.com> <20120227120136.GA21384@fieldses.org> <4F4C2EAA.1010505@cn.fujitsu.com> <20120228014618.GA28042@fieldses.org> <4F4C3262.9050301@cn.fujitsu.com> <20120228015324.GB28042@fieldses.org>
+In-Reply-To: <20120228015324.GB28042@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 23, 2012 at 01:24:35AM +0000, Peter Horvath wrote:
-> It is a vmware RDM disk mounted /srv
-> It is the same filesystem.
-> Do you say this config would work if i use separate partition for the
-> separate directories?
-
-Yes, I expect so.
-
---b.
-
+J. Bruce Fields 写道:
+> On Tue, Feb 28, 2012 at 09:48:18AM +0800, Fu Liankun wrote:
+>> J. Bruce Fields 写道:
+>>> On Tue, Feb 28, 2012 at 09:32:26AM +0800, Fu Liankun wrote:
+>>>> J. Bruce Fields 写道:
+>>>>> On Mon, Feb 27, 2012 at 02:27:24PM +0800, Fu Liankun wrote:
+>>>>>> J. Bruce Fields 写道:
+>>>>>>> On Wed, Feb 22, 2012 at 06:16:17PM +0800, Fu Liankun wrote:
+>>>>>>>> When copy a big file(about 500MB) to nfs server using pnfs, it cost
+>>>>>>>> obvious longer time as compared with NFSv3 or NFSv4 protocol.
+>>>>>>>>
+>>>>>>>> PNFS cost about 300-550s
+>>>>>>>> NFSv3 cost about 49s
+>>>>>>>> NFSv4 cost about 49s
+>>>>>>>>
+>>>>>>>> My test environment as following:
+>>>>>>>>
+>>>>>>>> MDS: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.100, ipaddr2:192.168.1.100
+>>>>>>>> DS1: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.101, ipaddr2:192.168.1.101
+>>>>>>>> DS2: 3.1.0-rc8-pnfs   ipaddr1: 192.168.0.102, ipaddr2:192.168.1.102
+>>>>>>>> client: RHEL6.2GA(2.6.32-220.el6.i686)    ipaddr1: 192.168.0.19,
+>>>>>>> What kind of server are you using?
+>>>>>> Sorry for late response.
+>>>>>>
+>>>>>> Fedora14 + 3.1.0-rc8-pnfs
+>>>>> And you're exporting gfs2?
+>>>> No. I'm exporting ext4.
+>>>> Does the file system type would influence the result?
+>>> So you're using local-pnfs?  Or spnfs?  What setup instructions did you
+>>> follow?
+>> I'm using spnfs.
 > 
-> On 23 February 2012 01:01, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Wed, Feb 22, 2012 at 07:24:12PM +0000, Peter Horvath wrote:
-> >> We are using Ubuntu LTS 10.04 servers and clients.
-> >> NFS version is the following:
-> >> nfs-common                     1.2.0-4ubuntu4.2
-> >> nfs-kernel-server               1.2.0-4ubuntu4.2
-> >>
-> >> My exports looks like this:
-> >>
-> >> /srv 10.66.3.0/24(fsid=0,ro,no_subtree_check,sync)
-> >> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
-> >> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
-> >> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
-> >>
-> >> My problem is that in this case clients have only read-only access. If
-> >> i set the pseudofilesystem root to RW it is working but in that case
-> >> all the clients would be able to mount the root and access other
-> >> projects too.
-> >> How can i achieve the same results as it was in NFSv3 with this config.
-> >>
-> >> /srv/www/project1 10.66.3.101(rw,no_root_squash,no_subtree_check,sync)
-> >> /srv/www/project2 10.66.3.102(rw,no_root_squash,no_subtree_check,sync)
-> >> /srv/www/project3 10.66.3.103(rw,no_root_squash,no_subtree_check,sync)
-> >
-> > Are project1, 2, 3 on the same filesystem as /srv and /srv/www?
-> >
-> > If so, this is expected; create a separate partition for /srv/www, or
-> > for each project1, 2, 3 directory, and you may find the problem is
-> > fixed.
-> >
-> > If that doesn't fix the problem, it may be a bug.  We've fixed a few
-> > bugs in that area lately, so it would be worth retrying with more recent
-> > kernel and nfs-utils.
-> >
-> > --b.
+> OK, got it.
+> 
+> I'm not sure if anyone here can talk about the performance of spnfs.
+> It's not really maintained as far as I know.
+>
+
+Got it.
+I will keep on investigating the issue.
+
+--b
+
+
+> So, you're the expert.
+> 
+
+
+
+
+
+-- 
+----
+Best wishes
+Fu Liankun
+
