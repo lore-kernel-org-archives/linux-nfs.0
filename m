@@ -1,53 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:62070 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751540Ab2BOVfK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Feb 2012 16:35:10 -0500
-Received: by ghrr11 with SMTP id r11so965647ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Feb 2012 13:35:10 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/13] SUNRPC: Use KERN_DEFAULT for debugging printk's
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 15 Feb 2012 16:35:08 -0500
-Message-ID: <20120215213508.3254.64687.stgit@ellison.1015granger.net>
-In-Reply-To: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
-References: <20120215213336.3254.98936.stgit@ellison.1015granger.net>
+Received: from earth.cora.nwra.com ([4.28.99.180]:51954 "EHLO
+	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756590Ab2B2Wko (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 17:40:44 -0500
+Received: from orca.cora.nwra.com (orca.cora.nwra.com [10.10.20.2])
+	(authenticated bits=0)
+	by earth.cora.nwra.com (8.13.8/8.13.8) with ESMTP id q1TMTapj022168
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 15:29:37 -0700
+Message-ID: <4F4EA6D0.30606@cora.nwra.com>
+Date: Wed, 29 Feb 2012 15:29:36 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: nfs4 mount hanging suddenly
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Our dprintk() debugging facility doesn't specify any verbosity level
-for it's printk() calls, but it should.
+Just starting today, one of our user's nfs mounted home directory has started 
+locking up.  Client is Fedora 16 32-bit, server is CentOS 5.7 32-bit.  Have 
+not seen this particular problem elsewhere (yet).
 
-The default verbosity for printk's is KERN_DEFAULT.  You might argue
-that these are debugging printk's and thus the verbosity should be
-KERN_DEBUG.  That would mean that to see NFS and SUNRPC debugging
-output an admin would also have to boost the syslog verbosity, which
-would be insufferably noisy.
+I captured this trace on the server after the hang:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+http://sw.cora.nwra.com/tmp/marie-nfs-home-lwang-hang.pcap
 
- include/linux/sunrpc/debug.h |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+   1   0.000000  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;GETATTR GETATTR
+   2   0.000133   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 1) 
+<EMPTY> PUTFH;GETATTR GETATTR
+   3   0.000421  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=137 
+Ack=225 Win=17738 Len=0 TSV=3584653 TSER=2438333196
+   4   0.000519  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;ACCESS ACCESS;GETATTR GETATTR
+   5   0.000587   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 4) 
+<EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled Packet [incorrect 
+TCP checksum]]
+   6   0.040522  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=289 
+Ack=465 Win=17738 Len=0 TSV=3584694 TSER=2438333196
+   7   0.451636  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;SAVEFH SAVEFH;OPEN OPEN;DELEGRETURN DELEGRETURN;Unknown
+   8   0.451892   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 7) 
+<EMPTY> PUTFH;SAVEFH SAVEFH;OPEN OPEN(10008)
+   9   0.452164  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=529 
+Ack=529 Win=17738 Len=0 TSV=3585105 TSER=2438333648
+.....
+120  53.161949  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;GETATTR GETATTR
+121  53.162281   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 120) 
+<EMPTY> PUTFH;GETATTR GETATTR
+122  53.162596  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8205 
+Ack=10341 Win=17738 Len=0 TSV=3637816 TSER=2438386366
+123  53.162680  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;GETATTR GETATTR
+124  53.162748   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 123) 
+<EMPTY> PUTFH;GETATTR GETATTR[Unreassembled Packet [incorrect TCP checksum]]
+125  53.163245  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;GETATTR GETATTR
+126  53.163418   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 125) 
+<EMPTY> PUTFH;GETATTR GETATTR
+127  53.203530  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8493 
+Ack=10685 Win=17738 Len=0 TSV=3637857 TSER=2438386368
+128  53.450308  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> 
+PUTFH;ACCESS ACCESS;GETATTR GETATTR
+129  53.450457   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call In 128) 
+<EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled Packet [incorrect 
+TCP checksum]]
+130  53.450671  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK] Seq=8645 
+Ack=10925 Win=17738 Len=0 TSV=3638104 TSER=2438386655
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index c2786f2..e0927c2 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -51,7 +51,11 @@ extern unsigned int		nlm_debug;
- #undef ifdebug
- #ifdef RPC_DEBUG			
- # define ifdebug(fac)		if (unlikely(rpc_debug & RPCDBG_##fac))
--# define dfprintk(fac, args...)	do { ifdebug(fac) printk(args); } while(0)
-+# define dfprintk(fac, args...)	\
-+	do { \
-+		ifdebug(fac) \
-+			printk(KERN_DEFAULT args); \
-+	} while (0)
- # define RPC_IFDEBUG(x)		x
- #else
- # define ifdebug(fac)		if (0)
 
+I was not able to find any error messages anywhere.  Server has been up 28 
+days.  Client was up for 14 days before first hang, then 2 more today.  Home 
+directories are automounted and I was able to access a different home 
+directory that is served off the save server and filesystem.
+
+client kernels: 3.2.3-2.fc16.i68, 3.2.7-1.fc16.i68
+server kernel: 2.6.18-274.17.1.el5
+
+earth:/export/home/lwang on /home/lwang type nfs4 
+(rw,noatime,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=1,acregmax=1,acdirmin=1,acdirmax=1,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.20.15,minorversion=0,local_lock=none,addr=10.10.10.1)
+
+There is a newer nfs-utils:
+Jan 24 03:34:43 Updated: 1:nfs-utils-1.2.5-4.fc16.i686
+
+may try backing that off, but doesn't seem like a big change:
+
+* Mon Jan 16 2012 Steve Dickson <steved@redhat.com> 1.2.5-4
+- Reworked how the nfsd service requires the rpcbind service (bz 768550)
+
+and seems to only affect nfs-server.
+
+Anything else to check?
+
+TIA,
+
+  Orion
+
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                  orion@cora.nwra.com
+Boulder, CO 80301              http://www.cora.nwra.com
