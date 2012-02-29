@@ -1,79 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35750 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59298 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751755Ab2BQOxB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 09:53:01 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q1HEr07j001648
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 09:53:00 -0500
-Message-ID: <1329490378.3976.31.camel@serendib>
-Subject: [PATCH] nfs-utils: exports man page: no_acl is not supported
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Bruce Fields <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Date: Sat, 18 Feb 2012 01:52:58 +1100
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1754991Ab2B2UOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 15:14:03 -0500
+Date: Wed, 29 Feb 2012 15:14:01 -0500
+To: Simon Kirby <sim@netnation.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.2.5] Stale NFS file handle issue on subdirectory of NFSv3
+ mount
+Message-ID: <20120229201401.GA5253@fieldses.org>
+References: <20120229010629.GC24948@hostway.ca>
+ <1330477890.3053.93.camel@lade.trondhjem.org>
+ <20120229195916.GB8092@hostway.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120229195916.GB8092@hostway.ca>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The inclusion of no_acl in the exports man page is confusing since it is
-not actually supported (v3.3-rc3):
+On Wed, Feb 29, 2012 at 11:59:16AM -0800, Simon Kirby wrote:
+> On Wed, Feb 29, 2012 at 01:11:31AM +0000, Myklebust, Trond wrote:
+> 
+> > On Tue, 2012-02-28 at 17:06 -0800, Simon Kirby wrote:
+> > > Hi,
+> > > 
+> > > Since upgrading from 2.6.39-ish to 3.1-ish, and on 3.2.5, we are seeing a
+> > > lot of occurrences of Stale NFS file handle errors when accessing a mount
+> > > whose NFSv3 source is a subdirectory of another mount point. For example,
+> > > in this case:
+> > > 
+> > > # mount | grep /shared
+> > > 10.10.1.1:/storage/vg1/shared on /shared type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
+> > > 10.10.1.1:/storage/vg1/shared/fp on /usr/local/fp type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
+> > > 
+> > > When the issue occurs, the /shared mount point is fine as is /shared/fp,
+> > > but "df" or "ls" or anything on /usr/local/fp will ESTALE. This somehow
+> > > corrected itself while I was trying to gather information this time, but
+> > > usually the d_ino returned by getdents() on the parent directory shows a
+> > > different inode number than for /shared/fp.
+> > > 
+> > > When this happens, I am unable to umount -f or umount -l /usr/local/fp
+> > > (ESTALE), but I can actually umount /shared; umount /usr/local/fp; and
+> > > mount -a, which seems to "fix" it.
+> > > 
+> > > is this acting similar to a bind mount internally now and revalidation or
+> > > something is breaking in this case? This is happening fairly often, so I
+> > > will try to collect more info again next time.
+> > 
+> > ESTALE is a server side error, not a client side error. What server are
+> > you using here, and what do the export options look like?
+> 
+> An older 2.6.33 host running DRBD HA knfsd bits. We had problems with the
+> XFS inode reclaim changes causing crashes on newer kernels (actually on
+> 2.6.33, too, but not so much on this node with only locally-attached
+> disks), so these kernels haven't been upgraded for some time. It's likely
+> time to try again. The export is:
+> 
+> /storage/vg1 /10.10.1.0/24(rw,sync,no_root_squash,no_subtree_check,fsid=1)
+> 
+> I just found it weird to see the ESTALE when accessing /usr/local/fp,
+> while /shared/fp works fine at the same time, even though they're the
+> same path on the server.
 
-1090 static struct flags {
-1091         int flag;
-1092         char *name[2];
-1093 } expflags[] = {
-1094         { NFSEXP_READONLY, {"ro", "rw"}},
-1095         { NFSEXP_INSECURE_PORT, {"insecure", ""}},
-1096         { NFSEXP_ROOTSQUASH, {"root_squash", "no_root_squash"}},
-1097         { NFSEXP_ALLSQUASH, {"all_squash", ""}},
-1098         { NFSEXP_ASYNC, {"async", "sync"}},
-1099         { NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
-1100         { NFSEXP_NOHIDE, {"nohide", ""}},
-1101         { NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
-1102         { NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
-1103         { NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
-1104         { NFSEXP_V4ROOT, {"v4root", ""}},
-1105         { 0, {"", ""}}
-1106 };
+Is /storage/vg1/shared/fp on that server something that can ever be
+removed?  (Say to be replaced by something else?)
 
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-Acked-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/exportfs/exports.man |   18 ------------------
- 1 files changed, 0 insertions(+), 18 deletions(-)
+For normal directories that's not a problem, the client's used to
+dealing with the fact that directories may come and go.
 
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index 54adfeb..bc1de73 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -293,24 +293,6 @@ be explicitly requested with either of the synonymous
- .IR auth_nlm ,
- or
- .IR secure_locks .
--.TP
--.IR no_acl
--On some specially patched kernels, and when exporting filesystems that
--support ACLs, this option tells
--.B nfsd
--not to reveal ACLs to clients, so
--they will see only a subset of actual permissions on the given file
--system.  This option is safe for filesystems used by NFSv2 clients and
--old NFSv3 clients that perform access decisions locally.  Current
--NFSv3 clients use the ACCESS RPC to perform all access decisions on
--the server.  Note that the
--.I no_acl
--option only has effect on kernels specially patched to support it, and
--when exporting filesystems with ACL support.  The default is to export
--with ACL support (i.e. by default,
--.I no_acl
--is off).
--
- .\".TP
- .\".I noaccess
- .\"This makes everything below the directory inaccessible for the named
--- 
-1.7.7.6
+For a directory that you've told the client to *mount*, that's dirty
+trick--it's really expecting that directory to be there as long as it's 
+mounted....
 
+--b.
+
+> 
+> The plan was to upgrade this pair first anyway, so we can do that if
+> the problem is likely coming from the server side.
+> 
+> Simon-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
