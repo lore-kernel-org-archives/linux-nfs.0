@@ -1,44 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:33052 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752517Ab2B0Nzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Feb 2012 08:55:43 -0500
-Message-ID: <4F4B8B4E.7090307@parallels.com>
-Date: Mon, 27 Feb 2012 17:55:26 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from earth.cora.nwra.com ([4.28.99.180]:54106 "EHLO
+	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965013Ab2B2XVh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 18:21:37 -0500
+Message-ID: <4F4EB2FE.9040108@cora.nwra.com>
+Date: Wed, 29 Feb 2012 16:21:34 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: fix use-after-free of rpc pipes
-References: <1330019288-13031-1-git-send-email-iisaman@netapp.com>		 <4F47D37D.2080409@parallels.com>	 <1330300376.18817.0.camel@lade.trondhjem.org>	 <4F4B7C4B.5000901@parallels.com> <1330350288.5541.3.camel@lade.trondhjem.org>
-In-Reply-To: <1330350288.5541.3.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs4 mount hanging suddenly
+References: <4F4EA6D0.30606@cora.nwra.com> <20120229231732.GD6506@fieldses.org>
+In-Reply-To: <20120229231732.GD6506@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-27.02.2012 17:44, Myklebust, Trond пишет:
-> On Mon, 2012-02-27 at 16:51 +0400, Stanislav Kinsbursky wrote:
->> Frankly, I don't like the idea of put'ing pipe data on dentry unlink. IOW, I
->> don't like that this data will be controlled somehow in PipeFS.
->> I'll send my version soon.
+On 02/29/2012 04:17 PM, J. Bruce Fields wrote:
+> On Wed, Feb 29, 2012 at 03:29:36PM -0700, Orion Poplawski wrote:
+>> Just starting today, one of our user's nfs mounted home directory
+>> has started locking up.  Client is Fedora 16 32-bit, server is
+>> CentOS 5.7 32-bit.  Have not seen this particular problem elsewhere
+>> (yet).
 >>
+>> I captured this trace on the server after the hang:
+>>
+>> http://sw.cora.nwra.com/tmp/marie-nfs-home-lwang-hang.pcap
+>>
+>>    1   0.000000  10.10.20.15 ->  10.10.10.1   NFS V4 COMP Call<EMPTY>
+>> PUTFH;GETATTR GETATTR
+>>    2   0.000133   10.10.10.1 ->  10.10.20.15  NFS V4 COMP Reply (Call
+>> In 1)<EMPTY>  PUTFH;GETATTR GETATTR
+>>    3   0.000421  10.10.20.15 ->  10.10.10.1   TCP 879>  nfs [ACK]
+>> Seq=137 Ack=225 Win=17738 Len=0 TSV=3584653 TSER=2438333196
+>>    4   0.000519  10.10.20.15 ->  10.10.10.1   NFS V4 COMP Call<EMPTY>
+>> PUTFH;ACCESS ACCESS;GETATTR GETATTR
+>>    5   0.000587   10.10.10.1 ->  10.10.20.15  NFS V4 COMP Reply (Call
+>> In 4)<EMPTY>  PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled
+>> Packet [incorrect TCP checksum]]
+>>    6   0.040522  10.10.20.15 ->  10.10.10.1   TCP 879>  nfs [ACK]
+>> Seq=289 Ack=465 Win=17738 Len=0 TSV=3584694 TSER=2438333196
+>>    7   0.451636  10.10.20.15 ->  10.10.10.1   NFS V4 COMP Call<EMPTY>
+>> PUTFH;SAVEFH SAVEFH;OPEN OPEN;DELEGRETURN DELEGRETURN;Unknown
 >
-> I don't understand that objection. The lifetime of that data needs to be
-> bounded by the lifetime of the pipe itself, which means that it _has_ to
-> be controlled by the pipefs.
+> That looks weird.  Looking at the pcap--ok, the "delegreturn" is a
+> mistake, there's no delegreturn there.
 >
-> BTW: it isn't being put on dentry unlink. It is being put on dentry
-> _destruction_. Those are two different events (which is why we have a
-> problem today).
+>>    8   0.451892   10.10.10.1 ->  10.10.20.15  NFS V4 COMP Reply (Call
+>> In 7)<EMPTY>  PUTFH;SAVEFH SAVEFH;OPEN OPEN(10008)
 >
+> That probably means the server is waiting for the client to return a
+> delegation.
+>
+> Either the server's confused about their being a delegation, or the
+> client's failing to return one it should?
+>
+> --b.
 
-Please, have a look at "SUNRPC: several fixes around PipeFS objects" patch set.
-Briefly, pipe data is created on some kernel event (mount or module install), 
-while PipeFS dentry/inode is created on user-space event (PipeFS mount/umount 
-request). Thus this two objects are created independently.
-And I believe, that they have to be destroyed independently too.
+All way over my head.  Any way to check in more detail?
+
+thanks.
+
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                  orion@cora.nwra.com
+Boulder, CO 80301              http://www.cora.nwra.com
