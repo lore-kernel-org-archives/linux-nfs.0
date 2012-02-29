@@ -1,99 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18263 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965662Ab2B2RKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 12:10:31 -0500
-Date: Wed, 29 Feb 2012 11:56:17 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
- allocation
-Message-ID: <20120229115617.6cb6c6f9@tlielax.poochiereds.net>
-In-Reply-To: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from partagas.dragonet.es ([217.70.240.130]:48323 "EHLO
+	partagas.dragonet.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758013Ab2B2Okw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 09:40:52 -0500
+Message-ID: <4F4E38E7.6060308@steve-ss.com>
+Date: Wed, 29 Feb 2012 15:40:39 +0100
+From: steve <steve@steve-ss.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+References: <4F465C3A.9080802@steve-ss.com> <20120223154215.GA26706@fieldses.org> <4F466467.3030506@steve-ss.com> <4F489999.30909@steve-ss.com> <20120228200524.GE2723@fieldses.org> <4F4D61B6.5090304@steve-ss.com> <20120229124401.GA9160@fieldses.org> <4F4E306C.6030400@steve-ss.com> <20120229140903.GA3007@fieldses.org> <4F4E3599.2050209@steve-ss.com> <20120229143236.GB3007@fieldses.org>
+In-Reply-To: <20120229143236.GB3007@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 24 Jan 2012 12:40:50 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On 02/29/2012 03:32 PM, J. Bruce Fields wrote:
+> On Wed, Feb 29, 2012 at 03:26:33PM +0100, steve wrote:
+>> On 02/29/2012 03:09 PM, J. Bruce Fields wrote:
+>>> On Wed, Feb 29, 2012 at 03:04:28PM +0100, steve wrote:
+>>>> On 29/02/12 13:44, J. Bruce Fields wrote:
+>>>>> On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
+>>>>>> We are authenticating against Samba4, so our domain user accounts
+>>>>>> are under Kerberos.
+>>>>> Kerberos works fine with v3.
+>>>>>
+>>>>> --b.
+>>>> Hi
+>>>> Unfortunately, it doesn't seem to. We just tried it, and anyone
+>>>> (with or without a ticket) gets access:-(
+>>> Could you give any more detail about your test?
+>>>
+>>> --b.
+>> steve is a /etc/passwd user
+>>
+>> steve@hh3:~$ sudo su
+>> [sudo] password for steve:
+>> root@hh3:/home/steve# mount -t nfs4 hh3:/home /mnt -o sec=krb5
+>> root@hh3:/home/steve# exit
+>> exit
+>> steve@hh3:~$ cd /mnt
+>> bash: cd: /mnt: Permission denied
+>> steve@hh3:~$ sudo su
+>> root@hh3:/home/steve# umount /mnt
+>> root@hh3:/home/steve# mount -t nfs hh3:/home /mnt -o sec=krb5
+>> root@hh3:/home/steve# exit
+>> exit
+>> steve@hh3:~$ cd /mnt
+>> steve@hh3:/mnt$
+> Why is that a problem?  You haven't actually accessed anything on the
+> filesystem.
+>
+> --b.
+Steve can access the mounted folder. I can live with that but the acl 
+still isn't working:
 
-> The debugobjects code will sometimes pop a warning like this when the
-> queue_timeout job is queued to a workqueue:
-> 
-> [ 5157.128514] WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
-> [ 5157.128742] Hardware name: Bochs
-> [ 5157.128742] ODEBUG: activate not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
-> [ 5157.128742] Modules linked in: nfsd(O) nfs_acl auth_rpcgss lockd sunrpc floppy virtio_net i2c_piix4 i2c_core virtio_balloon joydev pcspkr virtio_blk [last unloaded: nfsd]
-> [ 5157.128742] Pid: 1312, comm: rpc.nfsd Tainted: G        W  O 3.3.0-rc1+ #1
-> [ 5157.128742] Call Trace:
-> [ 5157.128742]  [<ffffffff8106135f>] warn_slowpath_common+0x7f/0xc0
-> [ 5157.128742]  [<ffffffff81061456>] warn_slowpath_fmt+0x46/0x50
-> [ 5157.128742]  [<ffffffff8132ba2c>] debug_print_object+0x8c/0xb0
-> [ 5157.128742]  [<ffffffff81070db0>] ? timer_debug_hint+0x10/0x10
-> [ 5157.128742]  [<ffffffff8132c02b>] debug_object_activate+0xfb/0x190
-> [ 5157.128742]  [<ffffffff81072728>] ? lock_timer_base.isra.24+0x38/0x70
-> [ 5157.128742]  [<ffffffff81074676>] mod_timer+0xf6/0x450
-> [ 5157.128742]  [<ffffffff810749e8>] add_timer+0x18/0x20
-> [ 5157.128742]  [<ffffffff8108168e>] queue_delayed_work_on+0xbe/0x140
-> [ 5157.128742]  [<ffffffff81084441>] queue_delayed_work+0x21/0x40
-> [ 5157.128742]  [<ffffffffa006e568>] rpc_queue_upcall+0xe8/0x100 [sunrpc]
-> [ 5157.128742]  [<ffffffffa012a121>] __cld_pipe_upcall+0x61/0xc0 [nfsd]
-> [ 5157.128742]  [<ffffffffa012ad98>] nfsd4_cld_init+0x48/0x140 [nfsd]
-> [ 5157.128742]  [<ffffffffa012b22a>] nfsd4_client_tracking_init+0x2a/0xc0 [nfsd]
-> [ 5157.128742]  [<ffffffff8169797e>] ? mutex_unlock+0xe/0x10
-> [ 5157.128742]  [<ffffffffa01266fa>] nfs4_state_start+0x1a/0x100 [nfsd]
-> [ 5157.128742]  [<ffffffffa01028c5>] nfsd_svc+0x135/0x200 [nfsd]
-> [ 5157.128742]  [<ffffffffa0103df0>] ? write_maxblksize+0x130/0x130 [nfsd]
-> [ 5157.128742]  [<ffffffffa0103e6d>] write_threads+0x7d/0xd0 [nfsd]
-> [ 5157.128742]  [<ffffffff811dd16a>] ? simple_transaction_get+0xca/0xe0
-> [ 5157.128742]  [<ffffffffa0102ee7>] nfsctl_transaction_write+0x57/0x90 [nfsd]
-> [ 5157.128742]  [<ffffffff811b4c9f>] vfs_write+0xaf/0x190
-> [ 5157.128742]  [<ffffffff811b4fdd>] sys_write+0x4d/0x90
-> [ 5157.128742]  [<ffffffff816a3469>] system_call_fastpath+0x16/0x1b
-> 
-> This occurs when an rpc_inode object is recycled. The slab constructor
-> routine doesn't necessarily get called on it again, so the debugobjects
-> code isn't aware that it's already initialized.
-> 
-> Work around this problem by initializing the delayed work every time
-> an inode is allocated out of the slab, not just when a new slab is.
-> 
-> Cc: Boaz Harrosh <bharrosh@panasas.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/rpc_pipe.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index 63a7a7a..58e1dd1 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -178,6 +178,8 @@ rpc_alloc_inode(struct super_block *sb)
->  	rpci = (struct rpc_inode *)kmem_cache_alloc(rpc_inode_cachep, GFP_KERNEL);
->  	if (!rpci)
->  		return NULL;
-> +
-> +	INIT_DELAYED_WORK(&rpci->queue_timeout, rpc_timeout_upcall_queue);
->  	return &rpci->vfs_inode;
->  }
->  
-> @@ -1073,8 +1075,6 @@ init_once(void *foo)
->  	INIT_LIST_HEAD(&rpci->pipe);
->  	rpci->pipelen = 0;
->  	init_waitqueue_head(&rpci->waitq);
-> -	INIT_DELAYED_WORK(&rpci->queue_timeout,
-> -			    rpc_timeout_upcall_queue);
->  	rpci->ops = NULL;
->  }
->  
+lynn2 has authinticated by Kerberos
 
-It looks like Stanislav's proposed namespace patches for rpc_pipefs
-should also fix this problem as well. Assuming those are slated for
-3.4, I think we can drop this patch.
+root@hh3:~# setfacl -d -m g::rw /home/CACTUS/dropbox
+root@hh3:~# mount -t nfs hh3:/home /mnt -o sec=krb5
+lynn2@hh3:/mnt/CACTUS$ ls -la
+total 28
+drwxr-xr-x  6 root   root         4096 2012-02-27 14:24 .
+drwxr-xr-x  4 root   root         4096 2012-02-18 18:52 ..
+drwxrws---  3 root   debusers     4096 2012-02-29 15:31 dropbox
+drwxr-xr-x 20 lynn2  debusers     4096 2012-02-26 16:43 lynn2
+drwxrwxrwx  5 root   root         4096 2012-02-29 14:19 profiles
+drwxr-xr-x  4 steve2 Domain Users 4096 2012-02-29 14:36 steve2
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+lynn2 then crates a file in the mount called l3:
+
+lynn2@hh3:/mnt/CACTUS$ ls -la /home/CACTUS/dropbox/
+total 20
+drwxrws---+ 3 root  debusers 4096 2012-02-29 15:31 .
+drwxr-xr-x  6 root  root     4096 2012-02-27 14:24 ..
+-rw-r-----  1 lynn2 debusers    0 2012-02-29 15:31 a
+drwxrwS---+ 2 root  debusers 4096 2012-02-29 14:28 adminfolder
+-rw-rw----  1 lynn2 debusers    0 2012-02-25 23:23 l2
+-rw-r-----  1 lynn2 debusers    0 2012-02-29 15:24 l3
+-rw-rw----  1 lynn2 debusers    0 2012-02-26 16:20 lynn2-ubuntu.txt
+-rw-rw----  1 lynn2 debusers   11 2012-02-26 00:46 lynnnautilus.txt
+
+??
+Cheers,
+Steve
