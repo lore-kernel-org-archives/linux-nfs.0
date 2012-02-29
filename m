@@ -1,83 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53113 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:40162 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754671Ab2BGTNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 14:13:02 -0500
-Date: Tue, 7 Feb 2012 14:12:54 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: bjschuma@netapp.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
- fails
-Message-ID: <20120207141254.2948e735@tlielax.poochiereds.net>
-In-Reply-To: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1758051Ab2B2Ocj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 09:32:39 -0500
+Date: Wed, 29 Feb 2012 09:32:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120229143236.GB3007@fieldses.org>
+References: <4F465C3A.9080802@steve-ss.com>
+ <20120223154215.GA26706@fieldses.org>
+ <4F466467.3030506@steve-ss.com>
+ <4F489999.30909@steve-ss.com>
+ <20120228200524.GE2723@fieldses.org>
+ <4F4D61B6.5090304@steve-ss.com>
+ <20120229124401.GA9160@fieldses.org>
+ <4F4E306C.6030400@steve-ss.com>
+ <20120229140903.GA3007@fieldses.org>
+ <4F4E3599.2050209@steve-ss.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F4E3599.2050209@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 26 Jan 2012 16:54:23 -0500
-bjschuma@netapp.com wrote:
-
-> From: Bryan Schumaker <bjschuma@netapp.com>
+On Wed, Feb 29, 2012 at 03:26:33PM +0100, steve wrote:
+> On 02/29/2012 03:09 PM, J. Bruce Fields wrote:
+> >On Wed, Feb 29, 2012 at 03:04:28PM +0100, steve wrote:
+> >>On 29/02/12 13:44, J. Bruce Fields wrote:
+> >>>On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
+> >>>>We are authenticating against Samba4, so our domain user accounts
+> >>>>are under Kerberos.
+> >>>Kerberos works fine with v3.
+> >>>
+> >>>--b.
+> >>Hi
+> >>Unfortunately, it doesn't seem to. We just tried it, and anyone
+> >>(with or without a ticket) gets access:-(
+> >Could you give any more detail about your test?
+> >
+> >--b.
+> steve is a /etc/passwd user
 > 
-> This patch removes the CONFIG_NFS_USE_NEW_IDMAPPER compile option.
-> First, the idmapper will attempt to map the id using /sbin/request-key
-> and nfsidmap.  If this fails (if /etc/request-key.conf is not configured
-> properly) then the idmapper will call the legacy code to perform the
-> mapping.  I left a comment stating where the legacy code begins to make
-> it easier for somebody to remove in the future.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
+> steve@hh3:~$ sudo su
+> [sudo] password for steve:
+> root@hh3:/home/steve# mount -t nfs4 hh3:/home /mnt -o sec=krb5
+> root@hh3:/home/steve# exit
+> exit
+> steve@hh3:~$ cd /mnt
+> bash: cd: /mnt: Permission denied
+> steve@hh3:~$ sudo su
+> root@hh3:/home/steve# umount /mnt
+> root@hh3:/home/steve# mount -t nfs hh3:/home /mnt -o sec=krb5
+> root@hh3:/home/steve# exit
+> exit
+> steve@hh3:~$ cd /mnt
+> steve@hh3:/mnt$
 
+Why is that a problem?  You haven't actually accessed anything on the
+filesystem.
 
-I think this patch is the right approach and will make the transition
-easier. But there is still a bit of a problem here...
-
-One of the main complaints about the old idmapper was that it did a
-rather large allocation on every time a new nfs_client is created:
-
------------------------[snip]----------------------
-
-int
-nfs_idmap_new(struct nfs_client *clp)
-{
-        struct idmap *idmap;
-        struct rpc_pipe *pipe;
-        int error;
-
-        BUG_ON(clp->cl_idmap != NULL);
-
-        idmap = kzalloc(sizeof(*idmap), GFP_KERNEL);
-        if (idmap == NULL)
-                return -ENOMEM;
-
------------------------[snip]----------------------
-
-On a 32-bit box when you try to mount and low memory is heavily
-fragmented, you can get a NULL pointer back on that kzalloc with a
-nice stack trace headed by a message like this:
-
-    mount.nfs: page allocation failure. order:4, mode:0xc0d0
-
-Here's a RHBZ against RHEL6 if you're interested in gory details:
-
-    https://bugzilla.redhat.com/show_bug.cgi?id=730045
-
-In any case, this problem was one of the reasons for pushing the new
-idmapper. A number of people have complained about this problem in the
-past and we told them "use the new idmapper". Now, with this patchset,
-that won't help.
-
-I think the right solution is to probably look at breaking up the idmap
-structure in the legacy idmapper into multiple allocations. It's more
-complicated to deal with and will mean restructuring the code a bit,
-but it will allow for a relatively graceful transition to the new
-idmapper.
-
-Thoughts?
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
