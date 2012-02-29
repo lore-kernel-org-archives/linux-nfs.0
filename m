@@ -1,40 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8830 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285Ab2BQTEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Feb 2012 14:04:33 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q1HJ4N49000485
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Feb 2012 11:04:23 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH] NFS: include filelayout DS rpc stats in mountstats
-Date: Fri, 17 Feb 2012 19:04:13 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9030685@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1329502524-27114-1-git-send-email-dros@netapp.com>
- <1329504423.12048.3.camel@lade.trondhjem.org>
- <9E808232-0D4C-4498-8BD8-4856C4D8190F@netapp.com>
-In-Reply-To: <9E808232-0D4C-4498-8BD8-4856C4D8190F@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:59012 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965496Ab2B2RQH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 12:16:07 -0500
+Received: by yenl12 with SMTP id l12so1412252yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 09:16:06 -0800 (PST)
 MIME-Version: 1.0
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
+Subject: [PATCH v7 4/5] nfsd: add a header describing upcall to nfsdcld
+Date: Wed, 29 Feb 2012 12:15:56 -0500
+Message-Id: <1330535757-24925-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
+References: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBBZGFtc29uLCBEcm9zDQo+IFNl
-bnQ6IEZyaWRheSwgRmVicnVhcnkgMTcsIDIwMTIgMjowMiBQTQ0KPiBUbzogTXlrbGVidXN0LCBU
-cm9uZA0KPiBDYzogQWRhbXNvbiwgRHJvczsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBT
-dWJqZWN0OiBSZTogW1BBVENIXSBORlM6IGluY2x1ZGUgZmlsZWxheW91dCBEUyBycGMgc3RhdHMg
-aW4gbW91bnRzdGF0cw0KPiANCj4gT24gRmViIDE3LCAyMDEyLCBhdCAxOjQ3IFBNLCBNeWtsZWJ1
-c3QsIFRyb25kIHdyb3RlOg0KPiANCj4gPiBPbiBGcmksIDIwMTItMDItMTcgYXQgMTM6MTUgLTA1
-MDAsIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiB3cm90ZToNCj4gPj4gSW5jbHVkZSBSUEMgc3RhdGlz
-dGljcyBmcm9tIGFsbCBkYXRhIHNlcnZlcnMgaW4gL3Byb2Mvc2VsZi9tb3VudHN0YXRzIGZvcg0K
-PiBwTkZTDQo+ID4+IGZpbGVsYXlvdXQgbW91bnRzLg0KPiA+Pg0KPiA+PiBTaWduZWQtb2ZmLWJ5
-OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gLS0tDQo+ID4+
-IFVwZGF0ZTogZG9uJ3QgaW5jcmVtZW50IHRrX2NsaWVudCBzdGF0cyBpZiBjYWxsYmFjayBpcyB1
-c2VkLg0KPiA+Pg0KPiA+PiBUaGlzIHN0aWxsIGNoZWNrcyB0YXNrLT50a19jbGllbnQgIT0gTlVM
-TCAtLSBJJ20gbm90IGNvbnZpbmNlZCBpdCdzIHVubmVlZGVkDQo+ID4+IGFzIGl0IGV4aXN0ZWQg
-aW4gcnBjX2NvdW50X2lvc3RhdHMuDQo+ID4NCj4gPiBJJ2xsIHJlbW92ZSBpdCBiZWZvcmUgYXBw
-bHlpbmcuDQo+IA0KPiBJIGNhbiByZXBvc3QgdGhlIHBhdGNoLCBpZiB0aGF0J3MgZWFzaWVyLg0K
-DQpOYWguIEkndmUgYWxyZWFkeSBhcHBsaWVkIGFuZCBwdXNoZWQgdG8gdGhlIGdpdCByZXBvc2l0
-b3J5Lg0KDQo=
+The daemon takes a versioned binary struct. Hopefully this should allow
+us to revise the struct later if it becomes necessary.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 56 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
+
+diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+new file mode 100644
+index 0000000..f14a9ab
+--- /dev/null
++++ b/include/linux/nfsd/cld.h
+@@ -0,0 +1,56 @@
++/*
++ * Upcall description for nfsdcld communication
++ *
++ * Copyright (c) 2012 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef _NFSD_CLD_H
++#define _NFSD_CLD_H
++
++/* latest upcall version available */
++#define CLD_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++enum cld_command {
++	Cld_Create,		/* create a record for this cm_id */
++	Cld_Remove,		/* remove record of this cm_id */
++	Cld_Check,		/* is this cm_id allowed? */
++	Cld_GraceDone,		/* grace period is complete */
++};
++
++/* representation of long-form NFSv4 client ID */
++struct cld_name {
++	uint16_t	cn_len;				/* length of cm_id */
++	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
++} __attribute__((packed));
++
++/* message struct for communication with userspace */
++struct cld_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		struct cld_name	cm_name;
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLD_H */
+-- 
+1.7.7.6
+
