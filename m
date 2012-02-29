@@ -1,103 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56616 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62539 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750825Ab2BGOat (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 09:30:49 -0500
-Message-ID: <4F313595.7090004@netapp.com>
-Date: Tue, 07 Feb 2012 09:30:45 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1755581Ab2B2UnE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 15:43:04 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q1TKh3v9004259
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 15:43:03 -0500
+Message-ID: <4F4E8DD8.8050709@RedHat.com>
+Date: Wed, 29 Feb 2012 15:43:04 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Pavel Emelianov <xemul@parallels.com>, "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        James Bottomley <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 4/4] NFS: make nfs_client_lock per net ns
-References: <20120123172631.29637.17188.stgit@localhost6.localdomain6>  <1328622659.4124.3.camel@lade.trondhjem.org>  <4F31308B.1090002@parallels.com> <1328623906.4124.10.camel@lade.trondhjem.org>
-In-Reply-To: <1328623906.4124.10.camel@lade.trondhjem.org>
+To: Harshula Jayasuriya <harshula@redhat.com>
+CC: Bruce Fields <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: exports man page: no_acl is not supported
+References: <1329490378.3976.31.camel@serendib>
+In-Reply-To: <1329490378.3976.31.camel@serendib>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/07/12 09:11, Myklebust, Trond wrote:
 
-> On Tue, 2012-02-07 at 18:09 +0400, Stanislav Kinsbursky wrote:
->> 07.02.2012 17:51, Myklebust, Trond пишет:
->>> 8<-------------------------------------------------------------------------
->>>  From 5a489156da4fd15dd143f2b21dd9657b97dcef88 Mon Sep 17 00:00:00 2001
->>> From: Trond Myklebust<Trond.Myklebust@netapp.com>
->>> Date: Tue, 7 Feb 2012 00:05:11 -0500
->>> Subject: [PATCH] NFS: Initialise the nfs_net->nfs_client_lock
->>>
->>> Ensure that we initialise the nfs_net->nfs_client_lock spinlock.
->>> Also ensure that nfs_server_remove_lists() doesn't try to
->>> dereference server->nfs_client before that is initialised.
->>>
->>
->> Sorry.
->> Patch looks nice. Except one notice below.
->>
->>> Signed-off-by: Trond Myklebust<Trond.Myklebust@netapp.com>
->>> Cc: Stanislav Kinsbursky<skinsbursky@parallels.com>
->>> ---
->>>   fs/nfs/client.c |    6 +++++-
->>>   1 files changed, 5 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>> index 1a5cd49..f0dacad 100644
->>> --- a/fs/nfs/client.c
->>> +++ b/fs/nfs/client.c
->>> @@ -1055,8 +1055,11 @@ static void nfs_server_insert_lists(struct nfs_server *server)
->>>   static void nfs_server_remove_lists(struct nfs_server *server)
->>>   {
->>>   	struct nfs_client *clp = server->nfs_client;
->>> -	struct nfs_net *nn = net_generic(clp->net, nfs_net_id);
->>> +	struct nfs_net *nn;
->>>
->>> +	if (clp == NULL)
->>> +		return;
->>> +	nn = net_generic(clp->net, nfs_net_id);
->>>   	spin_lock(&nn->nfs_client_lock);
->>>   	list_del_rcu(&server->client_link);
->>>   	if (clp&&  list_empty(&clp->cl_superblocks))
->>
->> This check for clp != NULL can be removed.
->>
+
+On 02/17/2012 09:52 AM, Harshula Jayasuriya wrote:
+> The inclusion of no_acl in the exports man page is confusing since it is
+> not actually supported (v3.3-rc3):
 > 
-> Yep... I'll add that in...
-
-
-
-When I compile Trond's devel branch I get this:
-
-make[1]: Nothing to be done for `all'.
-  CHK     include/linux/version.h
-  CHK     include/generated/utsrelease.h
-  CALL    scripts/checksyscalls.sh
-  CHK     include/generated/compile.h
-  CHK     kernel/config_data.h
-  CC [M]  fs/nfs/idmap.o
-fs/nfs/idmap.c: In function 'rpc_pipefs_event':
-fs/nfs/idmap.c:535:9: error: implicit declaration of function 'net_generic' [-Werror=implicit-function-declaration]
-fs/nfs/idmap.c:535:50: error: 'nfs_net_id' undeclared (first use in this function)
-fs/nfs/idmap.c:535:50: note: each undeclared identifier is reported only once for each function it appears in
-fs/nfs/idmap.c:540:82: error: dereferencing pointer to incomplete type
-fs/nfs/idmap.c:540:224: error: dereferencing pointer to incomplete type
-cc1: some warnings being treated as errors
-
-make[2]: *** [fs/nfs/idmap.o] Error 1
-make[1]: *** [fs/nfs] Error 2
-make: *** [fs] Error 2
-
-I bisected it to this patch, probably a missing #include?
-
-- Bryan
-
+> 1090 static struct flags {
+> 1091         int flag;
+> 1092         char *name[2];
+> 1093 } expflags[] = {
+> 1094         { NFSEXP_READONLY, {"ro", "rw"}},
+> 1095         { NFSEXP_INSECURE_PORT, {"insecure", ""}},
+> 1096         { NFSEXP_ROOTSQUASH, {"root_squash", "no_root_squash"}},
+> 1097         { NFSEXP_ALLSQUASH, {"all_squash", ""}},
+> 1098         { NFSEXP_ASYNC, {"async", "sync"}},
+> 1099         { NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
+> 1100         { NFSEXP_NOHIDE, {"nohide", ""}},
+> 1101         { NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
+> 1102         { NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
+> 1103         { NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
+> 1104         { NFSEXP_V4ROOT, {"v4root", ""}},
+> 1105         { 0, {"", ""}}
+> 1106 };
 > 
+> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+> Acked-by: J. Bruce Fields <bfields@redhat.com>
+Committed... sorry it too so long...
 
+steved.
 
+> ---
+>  utils/exportfs/exports.man |   18 ------------------
+>  1 files changed, 0 insertions(+), 18 deletions(-)
+> 
+> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+> index 54adfeb..bc1de73 100644
+> --- a/utils/exportfs/exports.man
+> +++ b/utils/exportfs/exports.man
+> @@ -293,24 +293,6 @@ be explicitly requested with either of the synonymous
+>  .IR auth_nlm ,
+>  or
+>  .IR secure_locks .
+> -.TP
+> -.IR no_acl
+> -On some specially patched kernels, and when exporting filesystems that
+> -support ACLs, this option tells
+> -.B nfsd
+> -not to reveal ACLs to clients, so
+> -they will see only a subset of actual permissions on the given file
+> -system.  This option is safe for filesystems used by NFSv2 clients and
+> -old NFSv3 clients that perform access decisions locally.  Current
+> -NFSv3 clients use the ACCESS RPC to perform all access decisions on
+> -the server.  Note that the
+> -.I no_acl
+> -option only has effect on kernels specially patched to support it, and
+> -when exporting filesystems with ACL support.  The default is to export
+> -with ACL support (i.e. by default,
+> -.I no_acl
+> -is off).
+> -
+>  .\".TP
+>  .\".I noaccess
+>  .\"This makes everything below the directory inaccessible for the named
+> -- 1.7.7.6
+> 
