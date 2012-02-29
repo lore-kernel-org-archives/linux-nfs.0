@@ -1,123 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9242 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18263 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757536Ab2BOBuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Feb 2012 20:50:39 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Vitaliy Gusev <gusev.vitaliy@nexenta.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: Initialize slot->seq_nr at nfs4_init_slot_table()
-Date: Wed, 15 Feb 2012 01:50:28 +0000
-Message-ID: <1329270628.28837.15.camel@lade.trondhjem.org>
-References: <1329256108-1535-1-git-send-email-gusev.vitaliy@nexenta.com>
-	 <1329259606.11759.15.camel@lade.trondhjem.org>
-	 <4F3AFD84.3020709@nexenta.com>
-	 <1329266587.28837.4.camel@lade.trondhjem.org>
-	 <20120215005315.GA9018@fieldses.org>
-In-Reply-To: <20120215005315.GA9018@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S965662Ab2B2RKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 12:10:31 -0500
+Date: Wed, 29 Feb 2012 11:56:17 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: initialize delayed work on each rpc_inode
+ allocation
+Message-ID: <20120229115617.6cb6c6f9@tlielax.poochiereds.net>
+In-Reply-To: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
+References: <1327426850-14837-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTE0IGF0IDE5OjUzIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFdlZCwgRmViIDE1LCAyMDEyIGF0IDEyOjQzOjA4QU0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gVGhlbiB3ZSBoYXZlIGEgcHJvYmxlbS4gVGhlIHplcm8gaW5pdGlh
-bGlzYXRpb24gaXMgYWxyZWFkeSBpbiB1c2Ugb3V0DQo+ID4gdGhlcmUgaW4gYm90aCBjb21tZXJj
-aWFsIGFuZCBub24tY29tbWVyY2lhbCB2ZXJzaW9ucyBvZiBMaW51eC4gSXQgaXMgdG9vDQo+ID4g
-bGF0ZSB0byBjaGFuZ2UgdGhhdCBub3cuDQo+ID4gDQo+ID4gRnVydGhlcm1vcmUsIHNpbmNlIG5v
-bmUgb2YgdGhlIHNlcnZlcnMgd2UndmUgdGVzdGVkIGFnYWluc3QgaW4gZWFybGllcg0KPiA+IEJh
-a2VhdGhvbnMgYW5kIENvbm5lY3RhdGhvbnMgaGF2ZSBjb21wbGFpbmVkLCBJIHN1Z2dlc3QgdGhh
-dCB3ZSByYXRoZXINCj4gPiBjaGFuZ2UgdGhlIHNwZWMgd2l0aCBhbiBlcnJhdGEuDQo+IA0KPiBB
-cmdoLg0KPiANCj4gSSBqdXN0IG5vdGljZWQgdGhhdCB0aGUgc2VydmVyIHdhcyBjcmFzaGluZyBp
-bnRlcm1pdHRlbnRseSBhbmQgdHJhY2VkIGl0DQo+IHRvIGluY29ycmVjdCBoYW5kbGluZyBvZiB0
-aGUgY2FzZSB3aGVyZSB0aGUgY2xpZW50IHNlbmRzIGEgb25lLW9wDQo+IFNFUVVFTkNFIGNvbXBv
-dW5kIHdpdGggc2VxaWQgMC4gIEknbSBub3Qgc3VyZSB3aHkgaXQgc3RhcnRlZCBwb3BwaW5nIHVw
-DQo+IGp1c3QgaW4gMy4zLS1wZXJoYXBzIHNvbWUgY2hhbmdlIGluIHRoZSB3YXkgdGhlIGNsaWVu
-dCB1c2VzIHNsb3RzIG1hZGUNCj4gdGhhdCBtb3JlIGxpa2VseS4NCj4gDQo+IFRoZSBzZXJ2ZXIg
-Y29kZSBhY3R1YWxseSBsb29rcyBsaWtlIGl0IGRpZCBhc3N1bWUgaW5pdGlhbCBzZXFpZCAxLCBi
-dXQNCj4gYWNjZXB0ZWQgaW5pdGlhbCBzZXFpZCAwIChleGNlcHQgaW4gdGhpcyBvbmUgY2FzZSkg
-YmFzaWNhbGx5IGJ5IG1pc3Rha2UuDQo+IA0KPiBJbiBhbnkgY2FzZSwgSSB0aGluayBpdCBzaG91
-bGQgYmUgZWFzeSBlbm91Z2ggdG8gdGVhY2ggaXQganVzdCB0byBhY2NlcHQNCj4gYW55IHNlcWlk
-IG9uIGEgcHJldmlvdXNseSB1bnVzZWQgc2xvdCwgc28gSSdsbCBkbyB0aGF0Li4uLg0KDQpIYW5n
-IG9uLi4uIExvb2tpbmcgYXQgMy4yLCBJIHRoaW5rIHlvdSdyZSBjb3JyZWN0LiBXZSB1c2VkIHRv
-IGluaXRpYWxpc2UNCnRvIDEsIGFuZCBub3cgd2UncmUgaW5pdGlhbGlzaW5nIHRvIDAuDQoNCkFo
-Li4uIEkgc2VlIHdoYXQgaGFwcGVuZWQuDQoNCmNvbW1pdCBhYWNkNTUzNzI3MGE3NTJmZTEyYTk5
-MTRhMjA3Mjg0ZmMyMzQxYzZkIChORlN2NC4xOiBjbGVhbnVwIGluaXQNCmFuZCByZXNldCBvZiBz
-ZXNzaW9uIHNsb3QgdGFibGVzKSBzZWVtcyB0byBoYXZlIHJlbW92ZWQgdGhlIGNhbGwgdG8NCm5m
-czRfcmVzZXRfc2xvdF90YWJsZXMoKSB0aGF0IHdhcyBkb2luZyB0aGF0IGluaXRpYWxpc2F0aW9u
-LiBPSy4uLiBTbw0KdGhpcyBpcyBhIExpbnV4IDMuMy1yY1ggb25seSByZWdyZXNzaW9uLCBhbmQg
-c2hvdWxkIGJlIHRyZWF0ZWQgYXMNCnN1Y2guLi4NCg0KSG93IGFib3V0IHRoZSBmb2xsb3dpbmcg
-aW5zdGVhZCBzbyB0aGF0IHdlIGVuc3VyZSB3ZSBmdWxseSBzaGFyZSB0aGUNCmluaXRpYWxpc2F0
-aW9uIGNvZGUgYmV0d2VlbiBuZnM0X3Jlc2V0X3Nsb3RfdGFibGVzIGFuZA0KbmZzNF9pbml0X3Ns
-b3RfdGFibGVzPw0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gOGFlOGQxNzdjYzEwNmVjZGIz
-ZTI5YjQ4Yzc4ZWMzN2NmNzZlYTU0OSBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRy
-b25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBUdWUsIDE0
-IEZlYiAyMDEyIDIwOjMzOjE5IC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0LjE6IEZpeCBh
-IE5GU3Y0LjEgc2Vzc2lvbiBpbml0aWFsaXNhdGlvbiByZWdyZXNzaW9uDQoNCkNvbW1pdCBhYWNk
-NTUzIChORlN2NC4xOiBjbGVhbnVwIGluaXQgYW5kIHJlc2V0IG9mIHNlc3Npb24gc2xvdCB0YWJs
-ZXMpDQppbnRyb2R1Y2VzIGEgcmVncmVzc2lvbiBpbiB0aGUgc2Vzc2lvbiBpbml0aWFsaXNhdGlv
-biBjb2RlLiBOZXcgdGFibGVzDQpub3cgZmluZCB0aGVpciBzZXF1ZW5jZSBpZHMgaW5pdGlhbGlz
-ZWQgdG8gMCwgcmF0aGVyIHRoYW4gdGhlIG1hbmRhdGVkDQp2YWx1ZSBvZiAxIChzZWUgUkZDNTY2
-MSkuDQoNClJlcG9ydGVkLWJ5OiBWaXRhbGl5IEd1c2V2IDxndXNldi52aXRhbGl5QG5leGVudGEu
-Y29tPg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCi0tLQ0KIGZzL25mcy9uZnM0cHJvYy5jIHwgICA1OCArKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KIDEgZmlsZXMgY2hhbmdlZCwg
-MzUgaW5zZXJ0aW9ucygrKSwgMjMgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMv
-bmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQppbmRleCBkMjAyZTA0Li45Zjc2Y2U5IDEw
-MDY0NA0KLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCisrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQpA
-QCAtNTAwOCwzNyArNTAwOCw1MyBAQCBpbnQgbmZzNF9wcm9jX2dldF9sZWFzZV90aW1lKHN0cnVj
-dCBuZnNfY2xpZW50ICpjbHAsIHN0cnVjdCBuZnNfZnNpbmZvICpmc2luZm8pDQogCXJldHVybiBz
-dGF0dXM7DQogfQ0KIA0KK3N0YXRpYyBzdHJ1Y3QgbmZzNF9zbG90ICpuZnM0X3Nlc3Npb25fYWxs
-b2Nfc2xvdHModTMyIG1heF9zbG90cywgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0KK3sNCisJcmV0dXJuIGtj
-YWxsb2MobWF4X3Nsb3RzLCBzaXplb2Yoc3RydWN0IG5mczRfc2xvdCksIGdmcF9mbGFncyk7DQor
-fQ0KKw0KK3N0YXRpYyB2b2lkIG5mczRfc2Vzc2lvbl9hZGRfc2xvdHMoc3RydWN0IG5mczRfc2xv
-dF90YWJsZSAqdGJsLA0KKwkJc3RydWN0IG5mczRfc2xvdCAqbmV3LA0KKwkJdTMyIG1heF9zbG90
-cywNCisJCXUzMiBpdmFsdWUpDQorew0KKwlzdHJ1Y3QgbmZzNF9zbG90ICpvbGQgPSBOVUxMOw0K
-Kwl1MzIgaTsNCisNCisJc3Bpbl9sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwlpZiAobmV3
-KSB7DQorCQlvbGQgPSB0YmwtPnNsb3RzOw0KKwkJdGJsLT5zbG90cyA9IG5ldzsNCisJCXRibC0+
-bWF4X3Nsb3RzID0gbWF4X3Nsb3RzOw0KKwl9DQorCXRibC0+aGlnaGVzdF91c2VkX3Nsb3RpZCA9
-IC0xOwkvKiBubyBzbG90IGlzIGN1cnJlbnRseSB1c2VkICovDQorCWZvciAoaSA9IDA7IGkgPCB0
-YmwtPm1heF9zbG90czsgaSsrKQ0KKwkJdGJsLT5zbG90c1tpXS5zZXFfbnIgPSBpdmFsdWU7DQor
-CXNwaW5fdW5sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwlrZnJlZShvbGQpOw0KK30NCisN
-CiAvKg0KICAqIFJlc2V0IGEgc2xvdCB0YWJsZQ0KICAqLw0KIHN0YXRpYyBpbnQgbmZzNF9yZXNl
-dF9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwgdTMyIG1heF9yZXFzLA0K
-LQkJCQkgaW50IGl2YWx1ZSkNCisJCQkJIHUzMiBpdmFsdWUpDQogew0KIAlzdHJ1Y3QgbmZzNF9z
-bG90ICpuZXcgPSBOVUxMOw0KLQlpbnQgaTsNCi0JaW50IHJldCA9IDA7DQorCWludCByZXQgPSAt
-RU5PTUVNOw0KIA0KIAlkcHJpbnRrKCItLT4gJXM6IG1heF9yZXFzPSV1LCB0YmwtPm1heF9zbG90
-cyAlZFxuIiwgX19mdW5jX18sDQogCQltYXhfcmVxcywgdGJsLT5tYXhfc2xvdHMpOw0KIA0KIAkv
-KiBEb2VzIHRoZSBuZXdseSBuZWdvdGlhdGVkIG1heF9yZXFzIG1hdGNoIHRoZSBleGlzdGluZyBz
-bG90IHRhYmxlPyAqLw0KIAlpZiAobWF4X3JlcXMgIT0gdGJsLT5tYXhfc2xvdHMpIHsNCi0JCXJl
-dCA9IC1FTk9NRU07DQotCQluZXcgPSBrbWFsbG9jKG1heF9yZXFzICogc2l6ZW9mKHN0cnVjdCBu
-ZnM0X3Nsb3QpLA0KLQkJCSAgICAgIEdGUF9OT0ZTKTsNCisJCW5ldyA9IG5mczRfc2Vzc2lvbl9h
-bGxvY19zbG90cyhtYXhfcmVxcywgR0ZQX05PRlMpOw0KIAkJaWYgKCFuZXcpDQogCQkJZ290byBv
-dXQ7DQotCQlyZXQgPSAwOw0KLQkJa2ZyZWUodGJsLT5zbG90cyk7DQogCX0NCi0Jc3Bpbl9sb2Nr
-KCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KLQlpZiAobmV3KSB7DQotCQl0YmwtPnNsb3RzID0gbmV3
-Ow0KLQkJdGJsLT5tYXhfc2xvdHMgPSBtYXhfcmVxczsNCi0JfQ0KLQlmb3IgKGkgPSAwOyBpIDwg
-dGJsLT5tYXhfc2xvdHM7ICsraSkNCi0JCXRibC0+c2xvdHNbaV0uc2VxX25yID0gaXZhbHVlOw0K
-LQlzcGluX3VubG9jaygmdGJsLT5zbG90X3RibF9sb2NrKTsNCisJcmV0ID0gMDsNCisNCisJbmZz
-NF9zZXNzaW9uX2FkZF9zbG90cyh0YmwsIG5ldywgbWF4X3JlcXMsIGl2YWx1ZSk7DQogCWRwcmlu
-dGsoIiVzOiB0Ymw9JXAgc2xvdHM9JXAgbWF4X3Nsb3RzPSVkXG4iLCBfX2Z1bmNfXywNCiAJCXRi
-bCwgdGJsLT5zbG90cywgdGJsLT5tYXhfc2xvdHMpOw0KIG91dDoNCkBAIC01MDY0LDcgKzUwODAs
-NyBAQCBzdGF0aWMgdm9pZCBuZnM0X2Rlc3Ryb3lfc2xvdF90YWJsZXMoc3RydWN0IG5mczRfc2Vz
-c2lvbiAqc2Vzc2lvbikNCiAgKiBJbml0aWFsaXplIHNsb3QgdGFibGUNCiAgKi8NCiBzdGF0aWMg
-aW50IG5mczRfaW5pdF9zbG90X3RhYmxlKHN0cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwNCi0J
-CWludCBtYXhfc2xvdHMsIGludCBpdmFsdWUpDQorCQl1MzIgbWF4X3Nsb3RzLCB1MzIgaXZhbHVl
-KQ0KIHsNCiAJc3RydWN0IG5mczRfc2xvdCAqc2xvdDsNCiAJaW50IHJldCA9IC1FTk9NRU07DQpA
-QCAtNTA3MywxNiArNTA4OSwxMiBAQCBzdGF0aWMgaW50IG5mczRfaW5pdF9zbG90X3RhYmxlKHN0
-cnVjdCBuZnM0X3Nsb3RfdGFibGUgKnRibCwNCiANCiAJZHByaW50aygiLS0+ICVzOiBtYXhfcmVx
-cz0ldVxuIiwgX19mdW5jX18sIG1heF9zbG90cyk7DQogDQotCXNsb3QgPSBrY2FsbG9jKG1heF9z
-bG90cywgc2l6ZW9mKHN0cnVjdCBuZnM0X3Nsb3QpLCBHRlBfTk9GUyk7DQorCXNsb3QgPSBuZnM0
-X3Nlc3Npb25fYWxsb2Nfc2xvdHMobWF4X3Nsb3RzLCBHRlBfTk9GUyk7DQogCWlmICghc2xvdCkN
-CiAJCWdvdG8gb3V0Ow0KIAlyZXQgPSAwOw0KIA0KLQlzcGluX2xvY2soJnRibC0+c2xvdF90Ymxf
-bG9jayk7DQotCXRibC0+bWF4X3Nsb3RzID0gbWF4X3Nsb3RzOw0KLQl0YmwtPnNsb3RzID0gc2xv
-dDsNCi0JdGJsLT5oaWdoZXN0X3VzZWRfc2xvdGlkID0gLTE7ICAvKiBubyBzbG90IGlzIGN1cnJl
-bnRseSB1c2VkICovDQotCXNwaW5fdW5sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KKwluZnM0
-X3Nlc3Npb25fYWRkX3Nsb3RzKHRibCwgc2xvdCwgbWF4X3Nsb3RzLCBpdmFsdWUpOw0KIAlkcHJp
-bnRrKCIlczogdGJsPSVwIHNsb3RzPSVwIG1heF9zbG90cz0lZFxuIiwgX19mdW5jX18sDQogCQl0
-YmwsIHRibC0+c2xvdHMsIHRibC0+bWF4X3Nsb3RzKTsNCiBvdXQ6DQotLSANCjEuNy43LjYNCg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Tue, 24 Jan 2012 12:40:50 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> The debugobjects code will sometimes pop a warning like this when the
+> queue_timeout job is queued to a workqueue:
+> 
+> [ 5157.128514] WARNING: at lib/debugobjects.c:262 debug_print_object+0x8c/0xb0()
+> [ 5157.128742] Hardware name: Bochs
+> [ 5157.128742] ODEBUG: activate not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
+> [ 5157.128742] Modules linked in: nfsd(O) nfs_acl auth_rpcgss lockd sunrpc floppy virtio_net i2c_piix4 i2c_core virtio_balloon joydev pcspkr virtio_blk [last unloaded: nfsd]
+> [ 5157.128742] Pid: 1312, comm: rpc.nfsd Tainted: G        W  O 3.3.0-rc1+ #1
+> [ 5157.128742] Call Trace:
+> [ 5157.128742]  [<ffffffff8106135f>] warn_slowpath_common+0x7f/0xc0
+> [ 5157.128742]  [<ffffffff81061456>] warn_slowpath_fmt+0x46/0x50
+> [ 5157.128742]  [<ffffffff8132ba2c>] debug_print_object+0x8c/0xb0
+> [ 5157.128742]  [<ffffffff81070db0>] ? timer_debug_hint+0x10/0x10
+> [ 5157.128742]  [<ffffffff8132c02b>] debug_object_activate+0xfb/0x190
+> [ 5157.128742]  [<ffffffff81072728>] ? lock_timer_base.isra.24+0x38/0x70
+> [ 5157.128742]  [<ffffffff81074676>] mod_timer+0xf6/0x450
+> [ 5157.128742]  [<ffffffff810749e8>] add_timer+0x18/0x20
+> [ 5157.128742]  [<ffffffff8108168e>] queue_delayed_work_on+0xbe/0x140
+> [ 5157.128742]  [<ffffffff81084441>] queue_delayed_work+0x21/0x40
+> [ 5157.128742]  [<ffffffffa006e568>] rpc_queue_upcall+0xe8/0x100 [sunrpc]
+> [ 5157.128742]  [<ffffffffa012a121>] __cld_pipe_upcall+0x61/0xc0 [nfsd]
+> [ 5157.128742]  [<ffffffffa012ad98>] nfsd4_cld_init+0x48/0x140 [nfsd]
+> [ 5157.128742]  [<ffffffffa012b22a>] nfsd4_client_tracking_init+0x2a/0xc0 [nfsd]
+> [ 5157.128742]  [<ffffffff8169797e>] ? mutex_unlock+0xe/0x10
+> [ 5157.128742]  [<ffffffffa01266fa>] nfs4_state_start+0x1a/0x100 [nfsd]
+> [ 5157.128742]  [<ffffffffa01028c5>] nfsd_svc+0x135/0x200 [nfsd]
+> [ 5157.128742]  [<ffffffffa0103df0>] ? write_maxblksize+0x130/0x130 [nfsd]
+> [ 5157.128742]  [<ffffffffa0103e6d>] write_threads+0x7d/0xd0 [nfsd]
+> [ 5157.128742]  [<ffffffff811dd16a>] ? simple_transaction_get+0xca/0xe0
+> [ 5157.128742]  [<ffffffffa0102ee7>] nfsctl_transaction_write+0x57/0x90 [nfsd]
+> [ 5157.128742]  [<ffffffff811b4c9f>] vfs_write+0xaf/0x190
+> [ 5157.128742]  [<ffffffff811b4fdd>] sys_write+0x4d/0x90
+> [ 5157.128742]  [<ffffffff816a3469>] system_call_fastpath+0x16/0x1b
+> 
+> This occurs when an rpc_inode object is recycled. The slab constructor
+> routine doesn't necessarily get called on it again, so the debugobjects
+> code isn't aware that it's already initialized.
+> 
+> Work around this problem by initializing the delayed work every time
+> an inode is allocated out of the slab, not just when a new slab is.
+> 
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/rpc_pipe.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 63a7a7a..58e1dd1 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -178,6 +178,8 @@ rpc_alloc_inode(struct super_block *sb)
+>  	rpci = (struct rpc_inode *)kmem_cache_alloc(rpc_inode_cachep, GFP_KERNEL);
+>  	if (!rpci)
+>  		return NULL;
+> +
+> +	INIT_DELAYED_WORK(&rpci->queue_timeout, rpc_timeout_upcall_queue);
+>  	return &rpci->vfs_inode;
+>  }
+>  
+> @@ -1073,8 +1075,6 @@ init_once(void *foo)
+>  	INIT_LIST_HEAD(&rpci->pipe);
+>  	rpci->pipelen = 0;
+>  	init_waitqueue_head(&rpci->waitq);
+> -	INIT_DELAYED_WORK(&rpci->queue_timeout,
+> -			    rpc_timeout_upcall_queue);
+>  	rpci->ops = NULL;
+>  }
+>  
+
+It looks like Stanislav's proposed namespace patches for rpc_pipefs
+should also fix this problem as well. Assuming those are slated for
+3.4, I think we can drop this patch.
+
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
