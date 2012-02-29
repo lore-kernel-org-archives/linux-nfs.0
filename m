@@ -1,76 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:46265 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754641Ab2BAPpB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Feb 2012 10:45:01 -0500
-Received: by qcqw6 with SMTP id w6so740319qcq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Feb 2012 07:45:00 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v5 0/9] nfsdcld: add a daemon to track NFSv4 client names on stable storage
-Date: Wed,  1 Feb 2012 10:44:47 -0500
-Message-Id: <1328111096-28430-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64213 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964989Ab2B2Xeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 18:34:37 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.1: Get rid of redundant NFS4CLNT_LAYOUTRECALL tests
+Date: Wed, 29 Feb 2012 18:34:04 -0500
+Message-Id: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the userspace portion of the knfsd client name tracking
-overhaul. See this patch series for an explanation:
+The NFS4CLNT_LAYOUTRECALL tests in pnfs_layout_process and
+pnfs_update_layout are redundant.
 
-    nfsd: overhaul the client name tracking code
+In the case of a bulk layout recall, we're always testing for
+the NFS_LAYOUT_BULK_RECALL flay anyway.
+In the case of a file or segment recall, the call to
+pnfs_set_layout_stateid() updates the layout_header 'barrier'
+sequence id, which triggers the test in pnfs_layoutgets_blocked()
+and is less race-prone than NFS4CLNT_LAYOUTRECALL anyway.
 
-This version scales back some of the changes in the last set. Since
-then, it's become clear that I'm not entirely certain what changes we'll
-need in order to handle this in a clustered configuration. Instead of
-trying to anticipate those changes, I've decided just to focus on the
-single-server case and leave any other changes for later once it becomes
-more clear what (if anything) is needed.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
-The main changes from the last set are:
-
-- the "remove" upcall has been readded
-
-- the "init" upcall has been removed
-
-- the "check" and "update" upcalls no longer return a client index
-  to the kernel
-
-- the pipe open and reopen code has been overhauled and consolidated.
-  Instead of looping indefinitely when trying to reopen the file, it will
-  abort the daemon if the open fails with anything besides ENOENT. If
-  the pipe isn't present when the daemon starts, it now uses the inotify
-  event callback to handle the opening.
-
-Jeff Layton (9):
-  nfsdcld: add client tracking daemon stub
-  nfsdcld: add autoconf goop for sqlite
-  nfsdcld: add routines for a sqlite backend database
-  nfsdcld: add remove functionality
-  nfsdcld: add check/update functionality
-  nfsdcld: add function to remove unreclaimed client records
-  nfsdcld: make it watch for inotify events in the containing directory
-  nfsdcld: add a manpage for nfsdcld
-  nfsdcld: update the README
-
- README                    |   25 ++-
- aclocal/libsqlite3.m4     |   33 +++
- configure.ac              |   21 ++
- utils/Makefile.am         |    4 +
- utils/nfsdcld/Makefile.am |   14 ++
- utils/nfsdcld/nfsdcld.c   |  528 +++++++++++++++++++++++++++++++++++++++++++++
- utils/nfsdcld/nfsdcld.man |  180 +++++++++++++++
- utils/nfsdcld/nfsdcld.pod |   67 ++++++
- utils/nfsdcld/sqlite.c    |  390 +++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h    |   29 +++
- 10 files changed, 1289 insertions(+), 2 deletions(-)
- create mode 100644 aclocal/libsqlite3.m4
- create mode 100644 utils/nfsdcld/Makefile.am
- create mode 100644 utils/nfsdcld/nfsdcld.c
- create mode 100644 utils/nfsdcld/nfsdcld.man
- create mode 100644 utils/nfsdcld/nfsdcld.pod
- create mode 100644 utils/nfsdcld/sqlite.c
- create mode 100644 utils/nfsdcld/sqlite.h
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a534216..9c19f92 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -966,8 +966,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
+ 
+ 	/* Do we even need to bother with this? */
+-	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
+-	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+ 		dprintk("%s matches recall, use MDS\n", __func__);
+ 		goto out_unlock;
+ 	}
+@@ -1048,8 +1047,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 
+ 	spin_lock(&ino->i_lock);
+-	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
+-	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+ 		dprintk("%s forget reply due to recall\n", __func__);
+ 		goto out_forget_reply;
+ 	}
 -- 
 1.7.7.6
 
