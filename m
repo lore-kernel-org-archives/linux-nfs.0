@@ -1,50 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61042 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756116Ab2B1Mcb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Feb 2012 07:32:31 -0500
-Message-ID: <1330432346.9157.30.camel@serendib>
-Subject: Re: "Using NFS over UDP on high-speed links such as Gigabit can
- cause silent data corruption."
-From: Harshula <harshula@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Date: Tue, 28 Feb 2012 23:32:26 +1100
-In-Reply-To: <20120228065218.7e110936@tlielax.poochiereds.net>
-References: <1330406521.9157.16.camel@serendib>
-	 <20120228065218.7e110936@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:35268 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965496Ab2B2RQD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 12:16:03 -0500
+Received: by ggnh1 with SMTP id h1so3253662ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 09:16:02 -0800 (PST)
+MIME-Version: 1.0
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
+Subject: [PATCH v7 0/5] nfsd: overhaul the client name tracking code
+Date: Wed, 29 Feb 2012 12:15:52 -0500
+Message-Id: <1330535757-24925-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-02-28 at 06:52 -0500, Jeff Layton wrote:
-> On Tue, 28 Feb 2012 16:22:01 +1100
-> Harshula <harshula@redhat.com> wrote:
-> 
-> > Hi Steve,
-> > 
-> > The following openSUSE nfs-utils patch, warn-nfs-udp.patch, is not
-> > included upstream:
-> > 
-> > https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
-> > 
-> > Please consider including it.
-> > 
-> > Thanks,
-> > #
-> > 
-> 
-> I think that patch looks reasonable and clearly documenting the
-> problems with UDP is a wonderful thing.
-> 
-> It may be best to send it formally to steved and the list as a real
-> [PATCH] with a real description and SoB line.
+This is the seventh iteration of this patchset. The primary motivation
+for the respin here is to deal with the changes introduced by Stanislav's
+"namespacification" of rpc_pipefs.
 
-I do not know who authored the above patch, hopefully someone will come
-out and claim it now that it is on this list.
+My conversion here is fairly simple-minded. Since most of the existing
+nfsd code works under the aegis of "init_net", this patchset makes the
+new code do basically the same thing.
 
-cya,
-#
+I've not done any real work to make this do different pipes for different
+namespaces or anything. As a result, the initialization of the client
+tracking will currently fail if rpc_pipefs isn't mounted.
+
+Comments or suggestions on this are welcome. I'm still trying to wrap
+my brain around how all of this namespace stuff is supposed to work,
+so it's quite possible I've overlooked something. In particular, I'd
+like Stanislav's feedback since he's done the bulk of the rpc_pipefs
+namespace work so far.
+
+An earlier version of this patchset can be viewed here. That set also
+contains a more comprehensive description of the rationale for doing
+this:
+
+    http://www.spinics.net/lists/linux-nfs/msg26324.html
+
+Jeff Layton (5):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+  nfsd: add a header describing upcall to nfsdcld
+  nfsd: add the infrastructure to handle the cld upcall
+
+ fs/nfsd/nfs4callback.c   |   14 +-
+ fs/nfsd/nfs4proc.c       |    3 +-
+ fs/nfsd/nfs4recover.c    |  515 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/nfs4state.c      |   50 ++---
+ fs/nfsd/state.h          |   24 ++-
+ include/linux/nfsd/cld.h |   56 +++++
+ net/sunrpc/rpc_pipe.c    |    5 +
+ 7 files changed, 604 insertions(+), 63 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
+
+-- 
+1.7.7.6
 
