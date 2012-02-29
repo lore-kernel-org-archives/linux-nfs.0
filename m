@@ -1,100 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8604 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64213 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758024Ab2BIEMJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 23:12:09 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Harshula <harshula@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Derek McEachern <derekm@ti.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Mount Option 'nofsc'
-Date: Thu, 9 Feb 2012 04:12:02 +0000
-Message-ID: <1328760721.3234.86.camel@lade.trondhjem.org>
-References: <4F31E1CA.8060105@ti.com>
-	 <1328676860.2954.9.camel@lade.trondhjem.org>
-	 <1328687026.8981.25.camel@serendib>
-	 <386479B9-C285-44C9-896B-A254091272FD@oracle.com>
-	 <1328759776.8981.75.camel@serendib>
-In-Reply-To: <1328759776.8981.75.camel@serendib>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S965013Ab2B2Xei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 18:34:38 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4.1: Get rid of NFS4CLNT_LAYOUTRECALL
+Date: Wed, 29 Feb 2012 18:34:05 -0500
+Message-Id: <1330558445-4583-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAyLTA5IGF0IDE0OjU2ICsxMTAwLCBIYXJzaHVsYSB3cm90ZToNCj4gSGkg
-Q2h1Y2ssDQo+IA0KPiBPbiBXZWQsIDIwMTItMDItMDggYXQgMTA6NDAgLTA1MDAsIENodWNrIExl
-dmVyIHdyb3RlOg0KPiA+IE9uIEZlYiA4LCAyMDEyLCBhdCAyOjQzIEFNLCBIYXJzaHVsYSB3cm90
-ZToNCj4gDQo+ID4gPiBDb3VsZCB5b3UgcGxlYXNlIGV4cGFuZCBvbiB0aGUgc3VidGxldGllcyBp
-bnZvbHZlZCB0aGF0IHJlcXVpcmUgYW4NCj4gPiA+IGFwcGxpY2F0aW9uIHRvIGJlIHJld3JpdHRl
-biBpZiBmb3JjZWRpcmVjdGlvIG1vdW50IG9wdGlvbiB3YXMgYXZhaWxhYmxlPw0KPiA+ID4gDQo+
-ID4gPiBBIHNjZW5hcmlvIHdoZXJlIGZvcmNlZGlyZWN0aW8gd291bGQgYmUgdXNlZnVsIGlzIHdo
-ZW4gYW4gYXBwbGljYXRpb24NCj4gPiA+IHJlYWRzIG5lYXJseSBhIFRCIG9mIGRhdGEgZnJvbSBs
-b2NhbCBkaXNrcywgcHJvY2Vzc2VzIHRoYXQgZGF0YSBhbmQgdGhlbg0KPiA+ID4gZHVtcHMgaXQg
-dG8gYW4gTkZTIG1vdW50LiBBbGwgdGhhdCBoYXBwZW5zIHdoaWxlIG90aGVyIHByb2Nlc3NlcyBh
-cmUNCj4gPiA+IHJlYWRpbmcvd3JpdGluZyB0byB0aGUgbG9jYWwgZGlza3MuIFRoZSBhcHBsaWNh
-dGlvbiBkb2VzIG5vdCBoYXZlIGFuDQo+ID4gPiBPX0RJUkVDVCBvcHRpb24gbm9yIGlzIHRoZSBz
-b3VyY2UgY29kZSBhdmFpbGFibGUuDQoNCm1vdW50IC1vc3luYyB3b3JrcyBqdXN0IGFzIHdlbGwg
-YXMgZm9yY2VkaXJlY3RpbyBmb3IgdGhpcy4NCg0KPiA+ID4gV2l0aCBwYWdlZCBJL08gdGhlIHBy
-b2JsZW0gd2Ugc2VlIGlzIHRoYXQgdGhlIE5GUyBjbGllbnQgc3lzdGVtIHJlYWNoZXMNCj4gPiA+
-IGRpcnR5X2J5dGVzL2RpcnR5X3JhdGlvIHRocmVzaG9sZCBhbmQgdGhlbiBibG9ja3MvZm9yY2Vz
-IGFsbCB0aGUNCj4gPiA+IHByb2Nlc3NlcyB0byBmbHVzaCBkaXJ0eSBwYWdlcy4gVGhpcyBlZmZl
-Y3RpdmVseSAnbG9ja3MnIHVwIHRoZSBORlMNCj4gPiA+IGNsaWVudCBzeXN0ZW0gd2hpbGUgdGhl
-IE5GUyBkaXJ0eSBwYWdlcyBhcmUgcHVzaGVkIHNsb3dseSBvdmVyIHRoZSB3aXJlDQo+ID4gPiB0
-byB0aGUgTkZTIHNlcnZlci4gU29tZSBvZiB0aGUgcHJvY2Vzc2VzIHRoYXQgaGF2ZSBub3RoaW5n
-IHRvIGRvIHdpdGgNCj4gPiA+IHdyaXRpbmcgdG8gdGhlIE5GUyBtb3VudCBhcmUgYmFkbHkgaW1w
-YWN0ZWQuIEEgZm9yY2VkaXJlY3RpbyBtb3VudA0KPiA+ID4gb3B0aW9uIHdvdWxkIGJlIHZlcnkg
-aGVscGZ1bCBpbiB0aGlzIHNjZW5hcmlvLiBEbyB5b3UgaGF2ZSBhbnkgYWR2aWNlIG9uDQo+ID4g
-PiBhbGxldmlhdGluZyBzdWNoIHByb2JsZW1zIG9uIHRoZSBORlMgY2xpZW50IGJ5IG9ubHkgdXNp
-bmcgZXhpc3RpbmcNCj4gPiA+IHR1bmFibGVzPw0KPiA+IA0KPiA+IFVzaW5nIGRpcmVjdCBJL08g
-d291bGQgYmUgYSB3b3JrLWFyb3VuZC4gIFRoZSBmdW5kYW1lbnRhbCBwcm9ibGVtIGlzDQo+ID4g
-dGhlIGFyY2hpdGVjdHVyZSBvZiB0aGUgVk0gc3lzdGVtLCBhbmQgb3ZlciB0aW1lIHdlIGhhdmUg
-YmVlbiBtYWtpbmcNCj4gPiBpbXByb3ZlbWVudHMgdGhlcmUuDQoNClRoZSBhcmd1bWVudCBhYm92
-ZSBkb2Vzbid0IHByb3ZpZGVkIGFueSBtb3RpdmUgZm9yIHVzaW5nIGRpcmVjdGlvDQoodW5jYWNo
-ZWQgaS9vKSB2cyBzeW5jaHJvbm91cyBpL28uIEkgc2VlIG5vIHJlYXNvbiB3aHkgZm9yY2VkDQpz
-eW5jaHJvbm91cyBpL28gd291bGQgYmUgYSBwcm9ibGVtIGhlcmUuDQoNCj4gPiBJbnN0ZWFkIG9m
-IGEgbW91bnQgb3B0aW9uLCB5b3UgY2FuIGZpeCB5b3VyIGFwcGxpY2F0aW9uIHRvIHVzZSBkaXJl
-Y3QNCj4gPiBJL08uICBPciB5b3UgY2FuIGNoYW5nZSBpdCB0byBwcm92aWRlIHRoZSBrZXJuZWwg
-d2l0aCAoYmV0dGVyKSBoaW50cw0KPiA+IGFib3V0IHRoZSBkaXNwb3NpdGlvbiBvZiB0aGUgZGF0
-YSBpdCBpcyBnZW5lcmF0aW5nIChtYWR2aXNlIGFuZA0KPiA+IGZhZHZpc2Ugc3lzdGVtIGNhbGxz
-KS4gIChPbiBMaW51eCB3ZSBhc3N1bWUgeW91IGhhdmUgc291cmNlIGNvZGUgYW5kDQo+ID4gY2Fu
-IG1ha2Ugc3VjaCBjaGFuZ2VzLiAgSSByZWFsaXplIHRoaXMgaXMgbm90IHRydWUgZm9yIHByb3By
-aWV0YXJ5DQo+ID4gYXBwbGljYXRpb25zKS4NCj4gPiANCj4gPiBZb3UgY291bGQgdHJ5IHVzaW5n
-IHRoZSAic3luYyIgbW91bnQgb3B0aW9uIHRvIGNhdXNlIHRoZSBORlMgY2xpZW50IHRvDQo+ID4g
-cHVzaCB3cml0ZXMgdG8gdGhlIHNlcnZlciBpbW1lZGlhdGVseSByYXRoZXIgdGhhbiBkZWxheWlu
-ZyB0aGVtLiAgVGhpcw0KPiA+IHdvdWxkIGFsc28gc2xvdyBkb3duIGFwcGxpY2F0aW9ucyB0aGF0
-IGFnZ3Jlc3NpdmVseSBkaXJ0aWVzIHBhZ2VzIG9uDQo+ID4gdGhlIGNsaWVudC4NCj4gPiANCj4g
-PiBNZWFud2hpbGUsIHlvdSBjYW4gZGlhbCBkb3duIHRoZSBkaXJ0eV9yYXRpbyBhbmQgZXNwZWNp
-YWxseSB0aGUNCj4gPiBkaXJ0eV9iYWNrZ3JvdW5kX3JhdGlvIHNldHRpbmdzIHRvIHRyaWdnZXIg
-ZWFybGllciB3cml0ZWJhY2suICBXZSd2ZQ0KPiA+IGFsc28gZm91bmQgaW5jcmVhc2luZyBtaW5f
-ZnJlZV9ieXRlcyBoYXMgcG9zaXRpdmUgZWZmZWN0cy4gIFRoZSBleGFjdA0KPiA+IHNldHRpbmdz
-IGRlcGVuZCBvbiBob3cgbXVjaCBtZW1vcnkgeW91ciBjbGllbnQgaGFzLiAgRXhwZXJpbWVudGlu
-Zw0KPiA+IHlvdXJzZWxmIGlzIHByZXR0eSBoYXJtbGVzcywgc28gSSB3b24ndCBnaXZlIGV4YWN0
-IHNldHRpbmdzIGhlcmUuDQo+IA0KPiBUaGFua3MgZm9yIHRoZSByZXBseS4gVW5mb3J0dW5hdGVs
-eSwgbm90IGFsbCB2ZW5kb3JzIHByb3ZpZGUgdGhlIHNvdXJjZQ0KPiBjb2RlLCBzbyB1c2luZyBP
-X0RJUkVDVCBvciBmc3luYyBpcyBub3QgYWx3YXlzIGFuIG9wdGlvbi4gDQoNClRoaXMgaXMgd2hh
-dCB2ZW5kb3Igc3VwcG9ydCBpcyBmb3IuIFdpdGggY2xvc2VkIHNvdXJjZSBzb2Z0d2FyZSB5b3UN
-CmdlbmVyYWxseSBnZXRzIHdoYXQgeW91IHBheXMgZm9yLg0KDQo+IExvd2VyaW5nIGRpcnR5X2J5
-dGVzL2RpcnR5X3JhdGlvIGFuZA0KPiBkaXJ0eV9iYWNrZ3JvdW5kX2J5dGVzL2RpcnR5X2JhY2tn
-cm91bmRfcmF0aW8gZGlkIGhlbHAgYXMgaXQgc21vb3RoZWQNCj4gb3V0IHRoZSBkYXRhIHRyYW5z
-ZmVyIG92ZXIgdGhlIHdpcmUgYnkgcHVzaGluZyBkYXRhIG91dCB0byB0aGUgTkZTDQo+IHNlcnZl
-ciBzb29uZXIuIE90aGVyd2lzZSwgSSB3YXMgc2VlaW5nIHRoZSBkYXRhIHRyYW5zZmVyIG92ZXIg
-dGhlIHdpcmUNCj4gaGF2aW5nIGlkbGUgcGVyaW9kcyB3aGlsZSA+MTBHaUIgb2YgcGFnZXMgd2Vy
-ZSBiZWluZyBkaXJ0aWVkIGJ5IHRoZQ0KPiBwcm9jZXNzZXMsIHRoZW4gY29uZ2VzdGlvbiBhcyBz
-b29uIGFzIHRoZSBkaXJ0eV9yYXRpbyB3YXMgcmVhY2hlZCBhbmQNCj4gdGhlIGZyYW50aWMgZmx1
-c2hpbmcgb2YgZGlydHkgcGFnZXMgdG8gdGhlIE5GUyBzZXJ2ZXIuIEhvd2V2ZXIsDQo+IG1vZGlm
-eWluZyBkaXJ0eV8qIHR1bmFibGVzIGhhcyBhIHN5c3RlbS13aWRlIGltcGFjdCwgaGVuY2UgaXQg
-d2FzIG5vdA0KPiBhY2NlcHRlZC4NCj4gDQo+IFRoZSAic3luYyIgb3B0aW9uLCBkZXBlbmRpbmcg
-b24gdGhlIE5GUyBzZXJ2ZXIsIG1heSBpbXBhY3QgdGhlIE5GUw0KPiBzZXJ2ZXIncyBwZXJmb3Jt
-YW5jZSB3aGVuIHNlcnZpbmcgbWFueSBORlMgY2xpZW50cy4gQnV0IHN0aWxsIHdvcnRoIGENCj4g
-dHJ5Lg0KDQpXaGF0IG9uIGVhcnRoIG1ha2VzIHlvdSB0aGluayB0aGF0IGRpcmVjdGlvIHdvdWxk
-IGJlIGFueSBkaWZmZXJlbnQ/IElmDQp5b3VyIHBlcmZvcm1hbmNlIHJlcXVpcmVtZW50cyBjYW4n
-dCBjb3BlIHdpdGggJ3N5bmMnLCB0aGVuIHRoZXkgc3VyZSBhcw0KaGVsbCB3b24ndCBkZWFsIHdl
-bGwgd2l0aCAnZnNjJy4NCg0KRGlyZWN0aW8gaXMgX3N5bmNocm9ub3VzXyBqdXN0IGxpa2UgJ3N5
-bmMnLiBUaGUgYmlnIGRpZmZlcmVuY2UgaXMgdGhhdA0Kd2l0aCAnc3luYycgdGhlbiBhdCBsZWFz
-dCB0aG9zZSByZWFkcyBhcmUgc3RpbGwgY2FjaGVkLg0KDQo+IFRoZSBvdGhlciBoYWNrIHRoYXQg
-c2VlbXMgdG8gd29yayBpcyBwZXJpb2RpY2FsbHkgdHJpZ2dlcmluZyBhbg0KPiBuZnNfZ2V0YXR0
-cigpLCB2aWEgbHMgLWwsIHRvIGZvcmNlIHRoZSBkaXJ0eSBwYWdlcyB0byBiZSBmbHVzaGVkIHRv
-IHRoZQ0KPiBORlMgc2VydmVyLiBOb3QgZXhhY3RseSBlbGVnYW50IC4uLg0KDQo/Pz8/Pz8/Pz8/
-Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/PyANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-DQp3d3cubmV0YXBwLmNvbQ0KDQo=
+The NFS4CLNT_LAYOUTRECALL bit is a long-term impediment to scalability. It
+basically stops all other recalls by a given server once any layout recall
+is requested.
+
+If the recall is for a different file, then we don't care.
+If the recall applies to the same file, then we're in one of two situations:
+Either we are in the case of a replay of an existing request, in which case
+the session is supposed to deal with matters, or we are dealing with a
+completely different request, in which case we should just try to process
+it.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c |    6 +-----
+ fs/nfs/nfs4_fs.h       |    1 -
+ 2 files changed, 1 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index f71978d..0e0865e 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -233,17 +233,13 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				    struct cb_layoutrecallargs *args)
+ {
+-	u32 res = NFS4ERR_DELAY;
++	u32 res;
+ 
+ 	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
+-	if (test_and_set_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state))
+-		goto out;
+ 	if (args->cbl_recall_type == RETURN_FILE)
+ 		res = initiate_file_draining(clp, args);
+ 	else
+ 		res = initiate_bulk_draining(clp, args);
+-	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
+-out:
+ 	dprintk("%s returning %i\n", __func__, res);
+ 	return res;
+ 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b133b50..19079ec 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -20,7 +20,6 @@ enum nfs4_client_state {
+ 	NFS4CLNT_RECLAIM_REBOOT,
+ 	NFS4CLNT_RECLAIM_NOGRACE,
+ 	NFS4CLNT_DELEGRETURN,
+-	NFS4CLNT_LAYOUTRECALL,
+ 	NFS4CLNT_SESSION_RESET,
+ 	NFS4CLNT_RECALL_SLOT,
+ 	NFS4CLNT_LEASE_CONFIRM,
+-- 
+1.7.7.6
+
