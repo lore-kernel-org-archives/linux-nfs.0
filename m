@@ -1,124 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47037 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43266 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965072Ab2B2XRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Feb 2012 18:17:33 -0500
-Date: Wed, 29 Feb 2012 18:17:32 -0500
-To: Orion Poplawski <orion@cora.nwra.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4 mount hanging suddenly
-Message-ID: <20120229231732.GD6506@fieldses.org>
-References: <4F4EA6D0.30606@cora.nwra.com>
+	id S932430Ab2B2MoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 07:44:04 -0500
+Date: Wed, 29 Feb 2012 07:44:01 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120229124401.GA9160@fieldses.org>
+References: <4F45E78E.8050501@steve-ss.com>
+ <20120223063913.5736a5b1@tlielax.poochiereds.net>
+ <4F4628B8.90401@steve-ss.com>
+ <20120223144053.GA25010@fieldses.org>
+ <4F465C3A.9080802@steve-ss.com>
+ <20120223154215.GA26706@fieldses.org>
+ <4F466467.3030506@steve-ss.com>
+ <4F489999.30909@steve-ss.com>
+ <20120228200524.GE2723@fieldses.org>
+ <4F4D61B6.5090304@steve-ss.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F4EA6D0.30606@cora.nwra.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4F4D61B6.5090304@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 29, 2012 at 03:29:36PM -0700, Orion Poplawski wrote:
-> Just starting today, one of our user's nfs mounted home directory
-> has started locking up.  Client is Fedora 16 32-bit, server is
-> CentOS 5.7 32-bit.  Have not seen this particular problem elsewhere
-> (yet).
-> 
-> I captured this trace on the server after the hang:
-> 
-> http://sw.cora.nwra.com/tmp/marie-nfs-home-lwang-hang.pcap
-> 
->   1   0.000000  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;GETATTR GETATTR
->   2   0.000133   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 1) <EMPTY> PUTFH;GETATTR GETATTR
->   3   0.000421  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=137 Ack=225 Win=17738 Len=0 TSV=3584653 TSER=2438333196
->   4   0.000519  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;ACCESS ACCESS;GETATTR GETATTR
->   5   0.000587   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 4) <EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled
-> Packet [incorrect TCP checksum]]
->   6   0.040522  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=289 Ack=465 Win=17738 Len=0 TSV=3584694 TSER=2438333196
->   7   0.451636  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;SAVEFH SAVEFH;OPEN OPEN;DELEGRETURN DELEGRETURN;Unknown
+On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
+> We are authenticating against Samba4, so our domain user accounts
+> are under Kerberos.
 
-That looks weird.  Looking at the pcap--ok, the "delegreturn" is a
-mistake, there's no delegreturn there.
-
->   8   0.451892   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 7) <EMPTY> PUTFH;SAVEFH SAVEFH;OPEN OPEN(10008)
-
-That probably means the server is waiting for the client to return a
-delegation.
-
-Either the server's confused about their being a delegation, or the
-client's failing to return one it should?
+Kerberos works fine with v3.
 
 --b.
 
->   9   0.452164  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=529 Ack=529 Win=17738 Len=0 TSV=3585105 TSER=2438333648
-> .....
-> 120  53.161949  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;GETATTR GETATTR
-> 121  53.162281   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 120) <EMPTY> PUTFH;GETATTR GETATTR
-> 122  53.162596  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=8205 Ack=10341 Win=17738 Len=0 TSV=3637816 TSER=2438386366
-> 123  53.162680  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;GETATTR GETATTR
-> 124  53.162748   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 123) <EMPTY> PUTFH;GETATTR GETATTR[Unreassembled Packet
-> [incorrect TCP checksum]]
-> 125  53.163245  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;GETATTR GETATTR
-> 126  53.163418   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 125) <EMPTY> PUTFH;GETATTR GETATTR
-> 127  53.203530  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=8493 Ack=10685 Win=17738 Len=0 TSV=3637857 TSER=2438386368
-> 128  53.450308  10.10.20.15 -> 10.10.10.1   NFS V4 COMP Call <EMPTY>
-> PUTFH;ACCESS ACCESS;GETATTR GETATTR
-> 129  53.450457   10.10.10.1 -> 10.10.20.15  NFS V4 COMP Reply (Call
-> In 128) <EMPTY> PUTFH;ACCESS ACCESS;GETATTR GETATTR[Unreassembled
-> Packet [incorrect TCP checksum]]
-> 130  53.450671  10.10.20.15 -> 10.10.10.1   TCP 879 > nfs [ACK]
-> Seq=8645 Ack=10925 Win=17738 Len=0 TSV=3638104 TSER=2438386655
+> We could wait for the s4 cifs fileserver and
+> winbind to be ready but would rather stick with nfs for our Linux
+> clients. Simple reason being that it beats cifs on speed, especially
+> when the lan is busy.
+> 
+> Is there an option to turn off the nfs4 acl's? I see that there is a
+> -o noacl mount option but it seems to have no effect for us.
+> 
+> Guys, basically we don't know where to turn next. We have this issue
+> open here, and on the samba and openSUSE lists. Is there anyway we
+> can get together to thrash this out?
+> 
+> Thanks so much for replying.
+> Cheers,
+> Steve pp the Spanish team at lcb
 > 
 > 
-> I was not able to find any error messages anywhere.  Server has been
-> up 28 days.  Client was up for 14 days before first hang, then 2
-> more today.  Home directories are automounted and I was able to
-> access a different home directory that is served off the save server
-> and filesystem.
+> >
+> >--b.
+> >
+> >>Mounting with -o nofacl in the hope that the POSIX acl set on the
+> >>unmounted directory would take effect, seems to have no effect.
+> >>
+> >>What I'm doing at the moment is scanning the unmounted directory
+> >>every few seconds using 'find' and changing the files to g+rw:-(
+> >>
+> >>Thanks,
+> >>Steve
+> >>--
+> >>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>the body of a message to majordomo@vger.kernel.org
+> >>More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> client kernels: 3.2.3-2.fc16.i68, 3.2.7-1.fc16.i68
-> server kernel: 2.6.18-274.17.1.el5
-> 
-> earth:/export/home/lwang on /home/lwang type nfs4 (rw,noatime,vers=4,rsize=32768,wsize=32768,namlen=255,acregmin=1,acregmax=1,acdirmin=1,acdirmax=1,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.20.15,minorversion=0,local_lock=none,addr=10.10.10.1)
-> 
-> There is a newer nfs-utils:
-> Jan 24 03:34:43 Updated: 1:nfs-utils-1.2.5-4.fc16.i686
-> 
-> may try backing that off, but doesn't seem like a big change:
-> 
-> * Mon Jan 16 2012 Steve Dickson <steved@redhat.com> 1.2.5-4
-> - Reworked how the nfsd service requires the rpcbind service (bz 768550)
-> 
-> and seems to only affect nfs-server.
-> 
-> Anything else to check?
-> 
-> TIA,
-> 
->  Orion
-> 
-> -- 
-> Orion Poplawski
-> Technical Manager                     303-415-9701 x222
-> NWRA, Boulder Office                  FAX: 303-415-9702
-> 3380 Mitchell Lane                  orion@cora.nwra.com
-> Boulder, CO 80301              http://www.cora.nwra.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
