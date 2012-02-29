@@ -1,50 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36538 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:42323 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757652Ab2BHVTY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Feb 2012 16:19:24 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 15/17] FS-Cache: Limit the number of I/O error reports for a
- cache
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Wed, 08 Feb 2012 21:19:15 +0000
-Message-ID: <20120208211915.15607.60413.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
-References: <20120208211640.15607.58537.stgit@warthog.procyon.org.uk>
+	id S1030191Ab2B2OJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Feb 2012 09:09:05 -0500
+Date: Wed, 29 Feb 2012 09:09:03 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steve <steve@steve-ss.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: POSIX acls over nfs4
+Message-ID: <20120229140903.GA3007@fieldses.org>
+References: <4F4628B8.90401@steve-ss.com>
+ <20120223144053.GA25010@fieldses.org>
+ <4F465C3A.9080802@steve-ss.com>
+ <20120223154215.GA26706@fieldses.org>
+ <4F466467.3030506@steve-ss.com>
+ <4F489999.30909@steve-ss.com>
+ <20120228200524.GE2723@fieldses.org>
+ <4F4D61B6.5090304@steve-ss.com>
+ <20120229124401.GA9160@fieldses.org>
+ <4F4E306C.6030400@steve-ss.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F4E306C.6030400@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Limit the number of I/O error reports for a cache to 1 to prevent massive
-amounts of noise.  After the first I/O error the cache is taken off line
-automatically, so must be restarted to resume caching.
+On Wed, Feb 29, 2012 at 03:04:28PM +0100, steve wrote:
+> On 29/02/12 13:44, J. Bruce Fields wrote:
+> >On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
+> >>We are authenticating against Samba4, so our domain user accounts
+> >>are under Kerberos.
+> >
+> >Kerberos works fine with v3.
+> >
+> >--b.
+> 
+> Hi
+> Unfortunately, it doesn't seem to. We just tried it, and anyone
+> (with or without a ticket) gets access:-(
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+Could you give any more detail about your test?
 
- fs/fscache/cache.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/fscache/cache.c b/fs/fscache/cache.c
-index 6a3c48a..b52aed1 100644
---- a/fs/fscache/cache.c
-+++ b/fs/fscache/cache.c
-@@ -314,10 +314,10 @@ EXPORT_SYMBOL(fscache_add_cache);
-  */
- void fscache_io_error(struct fscache_cache *cache)
- {
--	set_bit(FSCACHE_IOERROR, &cache->flags);
--
--	printk(KERN_ERR "FS-Cache: Cache %s stopped due to I/O error\n",
--	       cache->ops->name);
-+	if (!test_and_set_bit(FSCACHE_IOERROR, &cache->flags))
-+		printk(KERN_ERR "FS-Cache:"
-+		       " Cache '%s' stopped due to I/O error\n",
-+		       cache->ops->name);
- }
- EXPORT_SYMBOL(fscache_io_error);
- 
-
+--b.
