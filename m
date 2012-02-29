@@ -1,50 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49144 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756620Ab2BGTVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Feb 2012 14:21:33 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFS: Fall back on old idmapper if request_key()
- fails
-Date: Tue, 7 Feb 2012 19:21:25 +0000
-Message-ID: <1328642485.4124.40.camel@lade.trondhjem.org>
-References: <1327614865-29322-1-git-send-email-bjschuma@netapp.com>
-	 <20120207141254.2948e735@tlielax.poochiereds.net>
-In-Reply-To: <20120207141254.2948e735@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from e34.co.us.ibm.com ([32.97.110.152]:41681 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965680Ab2B2XU1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Feb 2012 18:20:27 -0500
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
+	Wed, 29 Feb 2012 16:20:27 -0700
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 5E0AFC9005C
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 18:19:51 -0500 (EST)
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q1TNJpnW281204
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 18:19:51 -0500
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q1TNJp77007875
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 20:19:51 -0300
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q1TNJpW5007870
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Feb 2012 20:19:51 -0300
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
+Subject: Linux pNFS status meeting 03/01/12 
+Message-ID: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 29 Feb 2012 15:19:38 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAyLTA3IGF0IDE0OjEyIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gYSAzMi1iaXQgYm94IHdoZW4geW91IHRyeSB0byBtb3VudCBhbmQgbG93IG1lbW9yeSBpcyBo
-ZWF2aWx5DQo+IGZyYWdtZW50ZWQsIHlvdSBjYW4gZ2V0IGEgTlVMTCBwb2ludGVyIGJhY2sgb24g
-dGhhdCBremFsbG9jIHdpdGggYQ0KPiBuaWNlIHN0YWNrIHRyYWNlIGhlYWRlZCBieSBhIG1lc3Nh
-Z2UgbGlrZSB0aGlzOg0KPiANCj4gICAgIG1vdW50Lm5mczogcGFnZSBhbGxvY2F0aW9uIGZhaWx1
-cmUuIG9yZGVyOjQsIG1vZGU6MHhjMGQwDQo+IA0KPiBIZXJlJ3MgYSBSSEJaIGFnYWluc3QgUkhF
-TDYgaWYgeW91J3JlIGludGVyZXN0ZWQgaW4gZ29yeSBkZXRhaWxzOg0KPiANCj4gICAgIGh0dHBz
-Oi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9NzMwMDQ1DQo+IA0KPiBJbiBh
-bnkgY2FzZSwgdGhpcyBwcm9ibGVtIHdhcyBvbmUgb2YgdGhlIHJlYXNvbnMgZm9yIHB1c2hpbmcg
-dGhlIG5ldw0KPiBpZG1hcHBlci4gQSBudW1iZXIgb2YgcGVvcGxlIGhhdmUgY29tcGxhaW5lZCBh
-Ym91dCB0aGlzIHByb2JsZW0gaW4gdGhlDQo+IHBhc3QgYW5kIHdlIHRvbGQgdGhlbSAidXNlIHRo
-ZSBuZXcgaWRtYXBwZXIiLiBOb3csIHdpdGggdGhpcyBwYXRjaHNldCwNCj4gdGhhdCB3b24ndCBo
-ZWxwLg0KDQpXYWl0LiBIb3cgaXMgdGhhdCB0cnVlPyBUaGUgd2hvbGUgcG9pbnQgb2YgdGhpcyBw
-YXRjaHNldCBpcyB0aGF0IGl0DQphbGxvd3MgeW91IHRvIGNvbXBpbGUgaW4gc3VwcG9ydCBmb3Ig
-X2JvdGhfIGlkbWFwcGVycywgd2l0aCB0aGUgbmV3DQprZXlyaW5nLWJhc2VkIGlkbWFwcGVyIGJl
-aW5nIHRyaWVkIGZpcnN0LiBUaGUgY2xpZW50IHRoZW4gZmFsbHMgYmFjayB0bw0KdXNpbmcgdGhl
-IG9sZCBpZG1hcHBlciBpZiBhbmQgb25seSBpZiB0aGUgdXNlciBoYXMgZmFpbGVkIHRvIHNldCB1
-cCB0aGUNCm5ldyBpZG1hcHBlciBjb3JyZWN0bHkuDQoNCj4gSSB0aGluayB0aGUgcmlnaHQgc29s
-dXRpb24gaXMgdG8gcHJvYmFibHkgbG9vayBhdCBicmVha2luZyB1cCB0aGUgaWRtYXANCj4gc3Ry
-dWN0dXJlIGluIHRoZSBsZWdhY3kgaWRtYXBwZXIgaW50byBtdWx0aXBsZSBhbGxvY2F0aW9ucy4g
-SXQncyBtb3JlDQo+IGNvbXBsaWNhdGVkIHRvIGRlYWwgd2l0aCBhbmQgd2lsbCBtZWFuIHJlc3Ry
-dWN0dXJpbmcgdGhlIGNvZGUgYSBiaXQsDQo+IGJ1dCBpdCB3aWxsIGFsbG93IGZvciBhIHJlbGF0
-aXZlbHkgZ3JhY2VmdWwgdHJhbnNpdGlvbiB0byB0aGUgbmV3DQo+IGlkbWFwcGVyLg0KDQpJJ2Qg
-bGlrZSB0byBzZWUgdGhlIG9sZCBpZG1hcHBlciBjb2RlIGNoYW5nZWQgdG8gdXNlIHRoZSBuZXcN
-CmtleXJpbmctYmFzZWQgY2FjaGUgaW5zdGVhZC4gSSd2ZSBhc2tlZCBCcnlhbiB0byBsb29rIGlu
-dG8gaG93IHdlIGNhbiBkbw0KdGhpcy4NCg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Meeting on Thursday 03/01/12 at 9:30 AM PST (12:30 PM EST)
+
+
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
+
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
+
+
+
+
+
+
