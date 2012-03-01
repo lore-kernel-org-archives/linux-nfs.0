@@ -1,99 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58800 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21002 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760081Ab2CUUKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 16:10:32 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] NFS: Create a single nfs_clone_super() function
-Date: Wed, 21 Mar 2012 16:10:15 -0400
-Message-Id: <1332360615-2714-1-git-send-email-bjschuma@netapp.com>
+	id S964983Ab2CAPjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Mar 2012 10:39:37 -0500
+Message-ID: <4F4F9828.9040808@netapp.com>
+Date: Thu, 01 Mar 2012 10:39:20 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFSv4.1: Get rid of redundant NFS4CLNT_LAYOUTRECALL
+ tests
+References: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 02/29/2012 06:34 PM, Trond Myklebust wrote:
 
-v2 and v3 shared a function for this, but v4 implemented something very
-slightly different.  Might as well share code whenever possible...
+> The NFS4CLNT_LAYOUTRECALL tests in pnfs_layout_process and
+> pnfs_update_layout are redundant.
+> 
+> In the case of a bulk layout recall, we're always testing for
+> the NFS_LAYOUT_BULK_RECALL flay anyway.
+> In the case of a file or segment recall, the call to
+> pnfs_set_layout_stateid() updates the layout_header 'barrier'
+> sequence id, which triggers the test in pnfs_layoutgets_blocked()
+> and is less race-prone than NFS4CLNT_LAYOUTRECALL anyway.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/pnfs.c |    6 ++----
+>  1 files changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index a534216..9c19f92 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -966,8 +966,7 @@ pnfs_update_layout(struct inode *ino,
+>  	}
+>  
+>  	/* Do we even need to bother with this? */
+> -	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
+> -	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+> +	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+>  		dprintk("%s matches recall, use MDS\n", __func__);
+>  		goto out_unlock;
+>  	}
+> @@ -1048,8 +1047,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+>  	}
+>  
+>  	spin_lock(&ino->i_lock);
+> -	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
+> -	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/super.c |   33 +++++++--------------------------
- 1 file changed, 7 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ccc4cdb..e6e40fe 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2152,7 +2152,7 @@ static void nfs_fill_super(struct super_block *sb,
- }
- 
- /*
-- * Finish setting up a cloned NFS2/3 superblock
-+ * Finish setting up a cloned NFS2/3/4 superblock
-  */
- static void nfs_clone_super(struct super_block *sb,
- 			    const struct super_block *old_sb)
-@@ -2162,17 +2162,18 @@ static void nfs_clone_super(struct super_block *sb,
- 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
- 	sb->s_blocksize = old_sb->s_blocksize;
- 	sb->s_maxbytes = old_sb->s_maxbytes;
-+	sb->s_xattr = old_sb->s_xattr;
-+	sb->s_op = old_sb->s_op;
-+	sb->s_time_gran = 1;
- 
--	if (server->nfs_client->rpc_ops->version == 3) {
-+	if (server->nfs_client->rpc_ops->version != 2) {
- 		/* The VFS shouldn't apply the umask to mode bits. We will do
- 		 * so ourselves when necessary.
- 		 */
- 		sb->s_flags |= MS_POSIXACL;
--		sb->s_time_gran = 1;
- 	}
- 
--	sb->s_op = old_sb->s_op;
-- 	nfs_initialise_sb(sb);
-+	nfs_initialise_sb(sb);
- }
- 
- static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
-@@ -2502,26 +2503,6 @@ error_splat_bdi:
- #ifdef CONFIG_NFS_V4
- 
- /*
-- * Finish setting up a cloned NFS4 superblock
-- */
--static void nfs4_clone_super(struct super_block *sb,
--			    const struct super_block *old_sb)
--{
--	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
--	sb->s_blocksize = old_sb->s_blocksize;
--	sb->s_maxbytes = old_sb->s_maxbytes;
--	sb->s_time_gran = 1;
--	sb->s_op = old_sb->s_op;
--	/*
--	 * The VFS shouldn't apply the umask to mode bits. We will do
--	 * so ourselves when necessary.
--	 */
--	sb->s_flags  |= MS_POSIXACL;
--	sb->s_xattr  = old_sb->s_xattr;
--	nfs_initialise_sb(sb);
--}
--
--/*
-  * Set up an NFS4 superblock
-  */
- static void nfs4_fill_super(struct super_block *sb)
-@@ -2984,7 +2965,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 
- 	if (!s->s_root) {
- 		/* initial superblock/root creation */
--		nfs4_clone_super(s, data->sb);
-+		nfs_clone_super(s, data->sb);
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
--- 
-1.7.9.4
+This was the only place that the clp structure was used, so you could probably remove it to avoid this warning:
+
+fs/nfs/pnfs.c: In function 'pnfs_layout_process':
+fs/nfs/pnfs.c:1058:21: warning: unused variable 'clp' [-Wunused-variable]
+
+- Bryan
+
+> +	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+>  		dprintk("%s forget reply due to recall\n", __func__);
+>  		goto out_forget_reply;
+>  	}
+
 
