@@ -1,104 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:45603 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932365Ab2CEU2w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 15:28:52 -0500
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Mon, 5 Mar 2012 15:28:51 -0500
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id CF82738C805E
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 15:27:13 -0500 (EST)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25KR4Vs3301610
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:27:05 -0500
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25KQuKn013603
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 13:26:57 -0700
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC v3 00/10] Volatile File Handle Client-side Support
-Date: Mon,  5 Mar 2012 15:26:41 -0500
-Message-Id: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from peace.netnation.com ([204.174.223.2]:57677 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758198Ab2CAWpm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:45:42 -0500
+Date: Thu, 1 Mar 2012 14:45:39 -0800
+From: Simon Kirby <sim@netnation.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.2.5] Stale NFS file handle issue on subdirectory of NFSv3
+	mount
+Message-ID: <20120301224539.GA27595@hostway.ca>
+References: <20120229010629.GC24948@hostway.ca> <1330477890.3053.93.camel@lade.trondhjem.org> <20120229195916.GB8092@hostway.ca> <20120229201401.GA5253@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120229201401.GA5253@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series implements client side support for volatile file handle
-recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
-test the client you either need a server that supports volatile file handles or
-you can hard code the Linux server to output NFS4ERR_FHEXPIRED instead of
-NFSERR_STALE.
+On Wed, Feb 29, 2012 at 03:14:01PM -0500, J. Bruce Fields wrote:
 
-The approach used here for recovery is to perform lookups for each file handle
-that receives a FHEXPIRED error. If the lookup also fails with FHEXPIRED, using
-the dcache, it will recursively walk back to the root of the mount, and recover
-that using get_root.
+> On Wed, Feb 29, 2012 at 11:59:16AM -0800, Simon Kirby wrote:
+> > On Wed, Feb 29, 2012 at 01:11:31AM +0000, Myklebust, Trond wrote:
+> > 
+> > > On Tue, 2012-02-28 at 17:06 -0800, Simon Kirby wrote:
+> > > > Hi,
+> > > > 
+> > > > Since upgrading from 2.6.39-ish to 3.1-ish, and on 3.2.5, we are seeing a
+> > > > lot of occurrences of Stale NFS file handle errors when accessing a mount
+> > > > whose NFSv3 source is a subdirectory of another mount point. For example,
+> > > > in this case:
+> > > > 
+> > > > # mount | grep /shared
+> > > > 10.10.1.1:/storage/vg1/shared on /shared type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
+> > > > 10.10.1.1:/storage/vg1/shared/fp on /usr/local/fp type nfs (rw,hard,intr,tcp,timeo=300,retrans=2,vers=3,addr=10.10.1.1)
+> > > > 
+> > > > When the issue occurs, the /shared mount point is fine as is /shared/fp,
+> > > > but "df" or "ls" or anything on /usr/local/fp will ESTALE. This somehow
+> > > > corrected itself while I was trying to gather information this time, but
+> > > > usually the d_ino returned by getdents() on the parent directory shows a
+> > > > different inode number than for /shared/fp.
+> > > > 
+> > > > When this happens, I am unable to umount -f or umount -l /usr/local/fp
+> > > > (ESTALE), but I can actually umount /shared; umount /usr/local/fp; and
+> > > > mount -a, which seems to "fix" it.
+> > > > 
+> > > > is this acting similar to a bind mount internally now and revalidation or
+> > > > something is breaking in this case? This is happening fairly often, so I
+> > > > will try to collect more info again next time.
+> > > 
+> > > ESTALE is a server side error, not a client side error. What server are
+> > > you using here, and what do the export options look like?
+> > 
+> > An older 2.6.33 host running DRBD HA knfsd bits. We had problems with the
+> > XFS inode reclaim changes causing crashes on newer kernels (actually on
+> > 2.6.33, too, but not so much on this node with only locally-attached
+> > disks), so these kernels haven't been upgraded for some time. It's likely
+> > time to try again. The export is:
+> > 
+> > /storage/vg1 /10.10.1.0/24(rw,sync,no_root_squash,no_subtree_check,fsid=1)
+> > 
+> > I just found it weird to see the ESTALE when accessing /usr/local/fp,
+> > while /shared/fp works fine at the same time, even though they're the
+> > same path on the server.
+> 
+> Is /storage/vg1/shared/fp on that server something that can ever be
+> removed?  (Say to be replaced by something else?)
+> 
+> For normal directories that's not a problem, the client's used to
+> dealing with the fact that directories may come and go.
+> 
+> For a directory that you've told the client to *mount*, that's dirty
+> trick--it's really expecting that directory to be there as long as it's 
+> mounted....
 
-The 2 key changes in this iteration are fixing recovery from getattr and 
-adding support for VFH during migration/replication. Recovery from getattr is
-accomplished by taking the file handle and searching for a match in the dcache.
-I couldn't find a better way to get a dentry or inode from the filehandle,
-since nfs_fhget() needs the fattr for the file. (Which clearly isn't accessible
-or up to date if getattr is being called)
+Sure, but nope, the directory hasn't moved or been deleted since it was
+created. It only grows.
 
-For migration/replication, if FH4_VOL_MIGRATION is set in FH_EXPIRE_TYPE, then
-after the client migrates or replicates to another server we can assume that
-all the file handles have expired. nfs4_vfh_replication() will traverse all
-the dentries in the dcache for the NFS mount and perform a nfs4_proc_lookup()
-on them to refresh the file handle. However, the VFH migration/replication 
-recovery function is currently not being used. When migration and replication
-are added to the tree I will add patches that will call it at the appropriate 
-time. 
-
-Also, when used for replication and migration, volatile file handles allows 
-the client to switch between 2 servers that have file synced exports
-but different filesystems. For example, if 2 read-only servers are synced
-using rsync and then remain static the client should have no issues switching
-between the servers with volatile file handles.
-
-Volatile file handle support fulfills an actual need. The z/OS NFS server
-currently uses volatile file handles and the Linux client can't handle them
-preventing those who use the z/OS server from connecting with a Linux client.
-Additionally, other clients, such as Solaris, AIX, z/OS, and possibly Windows,
-can handle volatile file handles. So I think including support is necessary 
-despite the flaws in the spec that were previously discussed. This is why I 
-included a mount option that disables the recovery routines by default, so 
-there is no risk to the user who doesn't understand what the potential issues
-are when recovering from volatile file handles.
-
-v3:
-- Fixed recovery from nfs4_proc_getattr() which is only passed a file handle
-- Added support for migration/replication file handle recovery
-
-v2:
-- Added rpc_cred passing to the vfh lookup and added handling of access errors
-  on the lookup
-
-Matthew Treinish (10):
-  New mount option for volatile filehandle recovery
-  Add support for FH_EXPIRE_TYPE attribute.
-  Save root file handle in nfs_server.
-  Store root dentry in server object
-  Store objects in nfs4_exception to be used during FHEXPIRED recovery.
-  Add nfs4_vfh_getdentry() for getattr recovery.
-  Add VFH FHEXPIRED recovery functions.
-  Perform recovery on both inodes for rename.
-  Added error handling for NFS4ERR_FHEXPIRED
-  VFH recovery from a replication/migration event.
-
- fs/nfs/client.c           |    3 +
- fs/nfs/getroot.c          |    8 +
- fs/nfs/nfs4_fs.h          |    5 +
- fs/nfs/nfs4proc.c         |  422 +++++++++++++++++++++++++++++++++++++++++----
- fs/nfs/nfs4xdr.c          |   27 +++
- fs/nfs/super.c            |    7 +
- include/linux/nfs_fs_sb.h |    3 +
- include/linux/nfs_mount.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 9 files changed, 447 insertions(+), 30 deletions(-)
-
--- 
-1.7.4.4
-
+Simon-
