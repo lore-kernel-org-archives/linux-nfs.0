@@ -1,78 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54993 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932528Ab2CSRg2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 13:36:28 -0400
-Message-ID: <4F676E95.3090409@RedHat.com>
-Date: Mon, 19 Mar 2012 13:36:21 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:51202 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754352Ab2CAWBY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:01:24 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so1389945iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Mar 2012 14:01:24 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/15] commit 6f38b4ba433ac6494f83cb73dd07dcbde797e1e0
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 01 Mar 2012 17:01:23 -0500
+Message-ID: <20120301220122.2138.64772.stgit@degas.1015granger.net>
+In-Reply-To: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last
- realm
-References: <1332160616-4522-1-git-send-email-steved@redhat.com> <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com>
-In-Reply-To: <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFS: Make clientaddr= optional
 
+    For NFSv4 mounts, the clientaddr= mount option has always been
+    required.  Now we have rpc_localaddr() in the kernel, which was
+    modeled after the same logic in the mount.nfs command that constructs
+    the clientaddr= mount option.  If user space doesn't provide a
+    clientaddr= mount option, the kernel can now construct its own.
 
-On 03/19/2012 10:05 AM, Chuck Lever wrote:
-> 
-> On Mar 19, 2012, at 8:36 AM, Steve Dickson wrote:
-> 
->> From: Juno Krahn <Juno.Krahn@gmail.com>
->>
->> The list of local realms can be logged with a massage like the following:
->>   rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
->> Instead of printing a list of realms, only the last realm in the list is shown.
->>
->> https://bugzilla.redhat.com/show_bug.cgi?id=804152
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> The patch says "From: Juno Krahn" but the sign-off is from you. 
-The patch came from:
-    http://sourceforge.net/tracker/?func=detail&atid=903784&aid=3507122&group_id=183075 
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Now in the past I have asked people to post patches to this list with
-the appropriate format, but with a no-brainier like this patch, I
-thought that would have been a waste time on both ends.    
+ fs/nfs/client.c |   15 +++++++++++++++
+ fs/nfs/super.c  |    6 ------
+ 2 files changed, 15 insertions(+), 6 deletions(-)
 
->  Should you also have an SOB from Juno?
-Juno gets credit for authoring the patch and I'm taking 
-responsibility for the patch with my SOB... Does there
-have to be any more process than that?? 
-
-steved. 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 994899d..add92d9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1344,6 +1344,7 @@ int nfs4_init_client(struct nfs_client *clp,
+ 		     rpc_authflavor_t authflavour,
+ 		     int noresvport)
+ {
++	char buf[INET6_ADDRSTRLEN + 1];
+ 	int error;
  
-> 
->> ---
->> libnfsidmap.c |    3 ++-
->> 1 files changed, 2 insertions(+), 1 deletions(-)
->>
->> diff --git a/libnfsidmap.c b/libnfsidmap.c
->> index 57bb6c3..641d766 100644
->> --- a/libnfsidmap.c
->> +++ b/libnfsidmap.c
->> @@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
->> 			}
->> 			buf = malloc(siz);
->> 			if (buf) {
->> +				*buf = 0;
->> 				TAILQ_FOREACH(r, &local_realms->fields, link) {
->> -					sprintf(buf, "'%s' ", r->field);
->> +					sprintf(buf+strlen(buf), "'%s' ", r->field);
->> 				}
->> 				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
->> 				free(buf);
->> -- 
->> 1.7.7.5
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+@@ -1359,6 +1360,20 @@ int nfs4_init_client(struct nfs_client *clp,
+ 				      1, noresvport);
+ 	if (error < 0)
+ 		goto error;
++
++	/* If no clientaddr= option was specified, find a usable cb address */
++	if (ip_addr == NULL) {
++		struct sockaddr_storage cb_addr;
++		struct sockaddr *sap = (struct sockaddr *)&cb_addr;
++
++		error = rpc_localaddr(clp->cl_rpcclient, sap, sizeof(cb_addr));
++		if (error < 0)
++			goto error;
++		error = rpc_ntop(sap, buf, sizeof(buf));
++		if (error < 0)
++			goto error;
++		ip_addr = (const char *)buf;
++	}
+ 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+ 
+ 	error = nfs_idmap_new(clp);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 72c7f63..8ae8fb2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2526,12 +2526,6 @@ static int nfs4_validate_text_mount_data(void *options,
+ 		return -EINVAL;
+ 	}
+ 
+-	if (args->client_address == NULL) {
+-		dfprintk(MOUNT,
+-			 "NFS4: mount program didn't pass callback address\n");
+-		return -EINVAL;
+-	}
+-
+ 	return nfs_parse_devname(dev_name,
+ 				   &args->nfs_server.hostname,
+ 				   NFS4_MAXNAMLEN,
+
