@@ -1,28 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from che.mayfirst.org ([209.234.253.108]:32984 "EHLO
-	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757817Ab2CLWXt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 18:23:49 -0400
-Message-ID: <4F5E7772.9000102@fifthhorseman.net>
-Date: Mon, 12 Mar 2012 18:23:46 -0400
-From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:42487 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759340Ab2CAOAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Mar 2012 09:00:34 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steven Wilton <steven.wilton@team.eftel.com.au>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rate-limiting state manager error messages?
-References: <87ty1t4iy1.fsf@pip.fifthhorseman.net> <1331590587.12005.15.camel@lade.trondhjem.org>
-In-Reply-To: <1331590587.12005.15.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: NFS client (3.0.0-3.2.8) high system CPU
+Date: Thu, 1 Mar 2012 14:00:32 +0000
+Message-ID: <1330610432.6218.11.camel@lade.trondhjem.org>
+References: <33F3252F24B63C42BA48F5636E0C821001FA434BBCA3@exchange.corporate.eftel.com>
+In-Reply-To: <33F3252F24B63C42BA48F5636E0C821001FA434BBCA3@exchange.corporate.eftel.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2012 06:16 PM, Myklebust, Trond wrote:
-> Sure. How about the following patch?
-
-I don't have the infrastructure set up to test it right now 
-(fortunately, i don't see these kind of failures terribly often), but 
-the proposed patch certainly looks reasonable to me.
-
-Thanks for such a quick response!
-
-	--dkg
+T24gVGh1LCAyMDEyLTAzLTAxIGF0IDA4OjUyICswODAwLCBTdGV2ZW4gV2lsdG9uIHdyb3RlOg0K
+PiBIaSwNCj4gDQo+IEkndmUgYmVlbiB0cnlpbmcgdG8gdHJhY2sgZG93biBhbiBpc3N1ZSB3ZSd2
+ZSBzdGFydGVkIHNlZWluZyBvbiBhIGJ1bmNoIG9mIE5GUyBjbGllbnRzIHdoZXJlIHRoZSBwZXJj
+ZW50YWdlIG9mIENQVSB0aW1lIHNwZW50IGJ5IHRoZSBzeXN0ZW0gaGFzIGluY3JlYXNlZCBmb3Ig
+dGhlIHBhc3QgbW9udGggKGl0IHdhcyBwcmV2aW91c2x5IHVzaW5nIHJvdWdobHkgZXF1YWwgc3lz
+dGVtL3VzZXIgdGltZSwgd2hpbGUgbm93IHRoZSBzeXN0ZW0gdGltZSBpcyBhcm91bmQgM3ggdGhl
+IHVzZXIgdGltZSkuICBUaGUgaW5mb3JtYXRpb24gdGhhdCBJIGhhdmUgaXMgYXMgZm9sbG93czoN
+Cj4gDQo+IC0gQWZ0ZXIgcmVib290aW5nIHRoZSBzZXJ2ZXIsIHRoZSB1c2VyL3N5c3RlbSBDUFUg
+dGltZXMgbG9vayBnb29kIChyb3VnaGx5IGVxdWFsKQ0KPiAtIEFmdGVyIDI0IGhvdXJzIG9mIGhl
+YXZ5IGFjdGl2aXR5IHRoZSBzeXN0ZW0gQ1BVIHRpbWUgaW5jcmVhc2VzIHRvIGFyb3VuZCAzLTR4
+IHRoZSB1c2VyIENQVSB0aW1lDQo+IC0gSWYgSSBydW4gImVjaG8gMiA+IC9wcm9jL3N5cy92bS9k
+cm9wX2NhY2hlcyIgdGhlIHN5c3RlbSBDUFUgdGltZSBkcm9wcyBiYWNrIGRvd24gdG8gcm91Z2hs
+eSB0aGUgc2FtZSBhcyB1c2VyDQo+IA0KPiBUaGUgbWFpbiBkaWZmZXJlbmNlIHRoYXQgSSBjYW4g
+c2VlIGluIHNsYWJ0b3AgYmV0d2VlbiBhIHN5c3RlbSBydW5uaW5nIGF0IGhpZ2ggbG9hZCBhbmQg
+Im5vcm1hbCIgbG9hZCBpcyB0aGUgbnVtYmVyIG9mIG5mc19pbm9kZV9jYWNoZSBvYmplY3RzIChh
+cyBzaG93biBiZWxvdykuICBJIHRyaWVkIHRvIGluY3JlYXNlIHRoZSBpaGFzaF9lbnRyaWVzIGFu
+ZCBkaGFzaF9lbnRyaWVzIGtlcm5lbCBwYXJhbWV0ZXJzLCBidXQgdGhpcyBkaWQgbm90IGZpeCB0
+aGUgcHJvYmxlbS4gIEkgaGF2ZSBub3QgZm91bmQgYW55IG90aGVyIHN1Z2dlc3Rpb25zIG9uIGhv
+dyB0byByZXNvbHZlIGlzc3VlcyBjYXVzZWQgYnkgbGFyZ2UgbmZzIGlub2RlIGNhY2hlcy4NCj4g
+DQo+IEkgaGF2ZSB0cmllZCB2YXJpb3VzIGtlcm5lbHMgYmV0d2VlbiAzLjAuMCBhbmQgMy4yLjQs
+IGFuZCB0aGUgbWFjaGluZXMgYXJlIGN1cnJlbnRseSBydW5uaW5nIGEgMy4wLjIyIGtlcm5lbC4g
+IFRoZSBtYWNoaW5lcyBoYXZlIDhHQiBSQU0sIGFuZCBoYXZlIDMgTkZTdjQgbW91bnRzIGFuZCBv
+bmUgTkZTdjMgbW91bnQgKHdpdGggdGhlIG1ham9yaXR5IG9mIHRoZSBmaWxlcyB0aGF0IHRoZXkg
+YWNjZXNzIGJlaW5nIG9uIG9uZSBvZiB0aGUgTkZTdjQgbW91bnQgcG9pbnRzLCBiZWluZyBhIG1h
+aWxkaXIgc3R5bGUgbWFpbCBzcG9vbCkuDQo+IA0KPiBJIGhhdmUgaW5jcmVhc2VkIC9wcm9jL3N5
+cy92bS92ZnNfY2FjaGVfcHJlc3N1cmUgdG8gMTAwMDAsIHdoaWNoIGhhcyByZXNvbHZlZCB0aGUg
+cHJvYmxlbSBmb3Igbm93LCBob3dldmVyIEkgYmVsaWV2ZSB0aGF0IHRoZSByZWFzb24gd2Ugc3Rh
+cnRlZCBzZWVpbmcgdGhlIGlzc3VlIGlzIHRoYXQgd2UgYWRkZWQgYSBsb3Qgb2YgZXh0cmEgdXNl
+cnMgb250byB0aGUgc3lzdGVtLCByZXN1bHRpbmcgaW4gYWNjZXNzIHRvIGEgbGFyZ2VyIG51bWJl
+ciBvZiBmaWxlcyBmb3IgZWFjaCBvZiB0aGUgY2xpZW50cy4gIEkgYW0gbm90IGNvbmZpZGVudCB0
+aGF0IGZ1dHVyZSBncm93dGggd2lsbCBzdGF5IGJlbG93IHdoYXRldmVyIHRocmVzaG9sZCB3ZSBo
+YWQgZXhjZWVkZWQgdG8gY2F1c2UgdGhlIGV4Y2Vzc2l2ZSBzeXN0ZW0gQ1BVIGxvYWQsIHNpbmNl
+IHRoZSBwcm9ibGVtIHNlZW1lZCB0byBhcHBlYXIgYXQgYXJvdW5kIDEsMDAwLDAwMCBuZnNfaW5v
+ZGVfY2FjaGUgZW50cmllcyBpbiBzbGFidG9wLCBhbmQgdGhlIE5GUyBjbGllbnRzIGFyZSBmbG9h
+dGluZyBiZXR3ZWVuIDUwMCwwMDAgYW5kIDkwMCwwMDAgaW5vZGVfY2FjaGUgZW50cmllcy4NCj4g
+DQo+IEhlbHAgcGxlYXNlIDopLCBhbmQgcGxlYXNlIGxldCBtZSBrbm93IGlmIEkgY2FuIHByb3Zp
+ZGUgYW55IG1vcmUgaW5mb3JtYXRpb24gdG8gYXNzaXN0IGluIGRlYnVnZ2luZy4NCg0KVGhpcyBs
+b29rcyBsaWtlIG1vcmUgb2YgYSBwcm9ibGVtIGZvciB0aGUgbWVtb3J5IG1hbmFnZW1lbnQgZm9s
+a3MgcmF0aGVyDQp0aGFuIHRoZSBORlMgdGVhbS4gVGhlIE5GUyBjbGllbnQgaGFzIHZlcnkgbGlt
+aXRlZCBjb250cm9sIG92ZXIgdGhlDQpjYWNoaW5nIG9mIGlub2Rlcy4NCg0KT25lIHRoaW5nIHRo
+YXQgeW91IG1pZ2h0IHRyeSBkb2luZyBpcyB0dXJuaW5nIG9mZiByZWFkZGlycGx1cyAodXNpbmcg
+dGhlDQotb25vcmRpcnBsdXMgbW91bnQgb3B0aW9uKSBhbmQgc2VlaW5nIGlmIHRoYXQgY2F1c2Vz
+IGZld2VyIGlub2RlcyB0byBiZQ0KY3JlYXRlZCBpbiB0aGUgZmlyc3QgcGxhY2UuDQoNCkNoZWVy
+cw0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
