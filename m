@@ -1,86 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28291 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758228Ab2C1Rrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 13:47:32 -0400
-Date: Wed, 28 Mar 2012 19:38:58 +0200
-From: Oleg Nesterov <oleg@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new
-	wait_for_completion_timeout_state
-Message-ID: <20120328173858.GC18944@redhat.com>
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:51202 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754999Ab2CAWBl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:01:41 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so1389945iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Mar 2012 14:01:41 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/15] NFS: Save root file handle in nfs_server
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 01 Mar 2012 17:01:40 -0500
+Message-ID: <20120301220139.2138.99499.stgit@degas.1015granger.net>
+In-Reply-To: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F7126E0.5080700@panasas.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/26, Boaz Harrosh wrote:
->
-> +int __sched
-> +wait_for_completion_timeout_state(struct completion *x,
-> +				  unsigned long timeout, int state)
-> +{
-> +	long t;
-> +	int ret;
-> +
-> +	if (!timeout)
-> +		timeout = MAX_SCHEDULE_TIMEOUT;
-> +
-> +	switch (state) {
-> +	default:
-> +		WARN_ON_ONCE(1);
-> +		/* fall through */
-> +	case 0:
-> +		state = TASK_UNINTERRUPTIBLE;
-> +		break;
+Save each FSID's root directory file handle in the FSID's nfs_server
+structure on the client.  For now, only NFSv4 mounts save the root FH.
+This is needed for migration recovery.
 
-Well, this looks strange, imho. If the caller wants TASK_UNINTERRUPTIBLE,
-it should simply pass TASK_UNINTERRUPTIBLE.
-wait_for_completion_timeout_state(state => 0) looks confusing, and this
-is not symmetrical wrt other states.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> +	t = wait_for_common(x, timeout, state);
-> +	if (likely(t > 0)) {
-> +		ret = 0;
-> +	} else  {
-> +		if (t < 0)
-> +			ret = t;
-> +		else
-> +			ret = -ETIMEDOUT;
-> +	}
-> +	return ret;
+ fs/nfs/client.c           |    1 +
+ fs/nfs/getroot.c          |    5 +++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 7 insertions(+), 0 deletions(-)
 
-I tend to agree with Peter. This is the common helper, probably it
-will have more users. We shouldn't throw out the positive return
-value, it can be useful.
-
-call_usermodehelper_exec() can simply do
-
-	retval = wait_for_common(...);
-
-	if (retval > 0)
-		retval = sub_info->retval;
-	else if (!retval)
-		retval = -ETIMEDOUT;
-
-Oleg.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index add92d9..c9e1bb4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1135,6 +1135,7 @@ void nfs_free_server(struct nfs_server *server)
+ 	ida_destroy(&server->lockowner_id);
+ 	ida_destroy(&server->openowner_id);
+ 	nfs_free_iostats(server->io_stats);
++	nfs_free_fhandle(server->rootfh);
+ 	bdi_destroy(&server->backing_dev_info);
+ 	kfree(server);
+ 	nfs_release_automount_timer();
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index dcb6154..8d4fbe1 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -232,6 +232,11 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 		ret = ERR_CAST(inode);
+ 		goto out;
+ 	}
++	server->rootfh = nfs_alloc_fhandle();
++	if (server->rootfh != NULL) {
++		nfs_display_fhandle(mntfh, "nfs_get_root: new root FH");
++		nfs_copy_fh(server->rootfh, mntfh);
++	}
+ 
+ 	error = nfs_superblock_set_dummy_root(sb, inode);
+ 	if (error != 0) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 3bf4766..0a2c826 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -159,6 +159,7 @@ struct nfs_server {
+ 	struct list_head	layouts;
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
++	struct nfs_fh		*rootfh;
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 
 
