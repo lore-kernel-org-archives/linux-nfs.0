@@ -1,71 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:48836 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932944Ab2CZSoB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 14:44:01 -0400
-Message-ID: <4F70B8DF.9000108@panasas.com>
-Date: Mon, 26 Mar 2012 11:43:43 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Re: unlink within an open directory stream
-References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>  <1332609149.25346.12.camel@lade.trondhjem.org>  <4F70B2AE.4000504@panasas.com> <1332786347.17253.33.camel@lade.trondhjem.org>
-In-Reply-To: <1332786347.17253.33.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:40150 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965243Ab2CAW1e convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:27:34 -0500
+Subject: Re: [PATCH 07/15] SUNRPC: Add API to acquire source address
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120301220918.GA3778@umich.edu>
+Date: Thu, 1 Mar 2012 17:27:27 -0500
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <51C34EC1-1EF2-4106-A2D9-3963C1C00A5C@oracle.com>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net> <20120301220114.2138.67690.stgit@degas.1015granger.net> <20120301220918.GA3778@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
 
-> On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
->> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
->>
->>
->> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
+On Mar 1, 2012, at 5:09 PM, Jim Rees wrote:
+
+> Chuck Lever wrote:
 > 
-> What?
+>  NFSv4.0 clients must send endpoint information for their callback
+>  service to NFSv4.0 servers during their first contact with a server.
+>  Traditionally on Linux, user space provides the callback endpoint IP
+>  address via the "clientaddr=" mount option.
 > 
-
-
-The links below report on regression in RHEL 6.2 which have a new NFS
-implementation where  6.0 used to be fine.
-(Or it's what I understood from the reporters)
-
-<snip>
-
+>  During an NFSv4 migration event, it is possible that an FSID may be
+>  migrated to a destination server that is accessible via a different
+>  source IP address than the source server was.  The client must update
+>  callback endpoint information on the destination server so that it can
+>  maintain leases and allow delegation.
 > 
-
-> No.
+>  Without a new "clientaddr=" option from user space, however, the
+>  kernel itself must construct an appropriate IP address for the
+>  callback update.  Provide an API in the RPC client for upper layer
+>  RPC consumers to acquire a source address for a remote.
 > 
-> If the server supports permanent readdir cookies, then there is no need
-> for opendir after unlink.
+>  The mechanism used by the mount.nfs command is copied: set up a
+>  connected UDP socket to the designated remote, then scrape the source
+>  address off the socket.  We are careful to select the correct network
+>  namespace when setting up the temporary UDP socket.
 > 
-> If the server does not have permanent readdir cookies, then our client
-> has never supported it anyway (nor will it ever do so). That whole
-> 'cookieverf' READDIR bullshit has never provided a workable model for a
-> POSIX client...
+> That seems like a lot of work.  On OpenBSD it's a one-liner, a call into the
+> routing system to get the device and source address that would be used to
+> talk to a given destination.
+
+The goal here is to emulate exactly what is done in user space so that the result is the same whether the address is obtained in the kernel or by the mount.nfs command.
+
+> Is there no equivalent in linux?
+
+No idea.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-Thanks Trond for the explanation. Forgive my slowness. So you are
-saying that with knfsd it's actually filesystem dependent and maybe
-the reporters did not compare apples-to-apples and the difference is
-in the behind file system.
-
-Matt I'm sure Trond is right with regard to Ganesha, because we
-send a readdir index and a cookieverf, which will change after
-unlink. Since the application does not call opendir again the
-client will send the old cookies, which is now a different file
-or might get out-of-bounds for Ganesha.
-
-Let me think about it a bit. I'm sure we can send a Better
-64bit cookie, which will be more persistent, even across unlinks.
-
-> 
-> 
 
 
-Thanks
-Boaz
