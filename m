@@ -1,101 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32951 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:25293 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932089Ab2CLUmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 16:42:38 -0400
-Date: Mon, 12 Mar 2012 16:42:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nikolaus Rath <Nikolaus@rath.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Message-ID: <20120312204238.GA8991@fieldses.org>
-References: <878vj7x6mj.fsf@vostro.rath.org>
- <87pqchn64e.fsf@inspiron.ap.columbia.edu>
- <20120312193115.GA7203@fieldses.org>
- <4F5E5241.7070008@rath.org>
- <20120312201505.GC7203@fieldses.org>
- <4F5E5CF2.50309@rath.org>
+	id S1755562Ab2CAHbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Mar 2012 02:31:36 -0500
+Message-ID: <4F4F25C4.2080307@parallels.com>
+Date: Thu, 01 Mar 2012 11:31:16 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F5E5CF2.50309@rath.org>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v7 5/5] nfsd: add the infrastructure to handle the cld
+ upcall
+References: <1330535757-24925-1-git-send-email-jlayton@redhat.com> <1330535757-24925-6-git-send-email-jlayton@redhat.com> <4F4E70C5.9030608@parallels.com> <20120229144512.37de84e7@tlielax.poochiereds.net> <20120229214400.GA6506@fieldses.org>
+In-Reply-To: <20120229214400.GA6506@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 12, 2012 at 04:30:42PM -0400, Nikolaus Rath wrote:
-> On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
-> > On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
-> >> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
-> >>> On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
-> >>>> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
-> >>>>> The problem is that as soon as more than three clients are accessing the
-> >>>>> NFS shares, any operations on the NFS mountpoints by the clients hang.
-> >>>>> At the same time, CPU usage of the VPN processes becomes very high. If I
-> >>>>> run the VPN in debug mode, all I can see is that it is busy forwarding
-> >>>>> lots of packets. I also ran a packet sniffer which showed me that 90% of
-> >>>>> the packets were NFS related, but I am not familiar enough with NFS to
-> >>>>> be able to tell anything from the packets themselves. I can provide an
-> >>>>> example of the dump if that helps.
-> >>>>
-> >>>> I have put a screenshot of the dump on
-> >>>> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
-> >>>> not sure which parts are important).
-> >>>
-> >>> Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
-> >>> OPEN_CONFIRM repeatedly.
-> >>>
-> >>>> Any suggestions how I could further debug this?
-> >>>
-> >>> Could the clients be stepping on each others' state if they all think
-> >>> they have the same IP address (because of something to do with the VPN
-> >>> networking?)
-> >>
-> >> That sounds like promising path of investigation. What determines the IP
-> >> of a client as far as NFS is concerned?
-> > 
-> > I don't remember where it gets the ip it uses to construct clientid's
-> > from....  But there is a mount option (clientaddr=) that will let you
-> > change what it uses.  So it *might* be worth checking whether using a
-> > clientaddr= option on each client (giving it a different ipaddr on each
-> > client) would change the behavior.
-> 
-> I'll try that.
-> 
-> Since there seems to be some problem with client identity: all the
-> clients are generated using the same disk image. This image also
-> includes some stuff in /var/lib/nfs. I already tried emptying this on
-> every client and did not help, but maybe there is another directory with
-> state data that could cause problems?
+01.03.2012 01:44, bfields@fieldses.org пишет:
+> On Wed, Feb 29, 2012 at 02:45:12PM -0500, Jeff Layton wrote:
+>> On Wed, 29 Feb 2012 22:39:01 +0400
+>> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>>
+>>> Hi, Jeff.
+>>> I'll try to explain, how all this namespaces-aware SUNRPC PipeFS works.
+>>> The main idea is, that today we have 2 types of independently created and
+>>> destroyed but linked objects:
+>>> 1) pipe data itself. This object is created whenever kernel requires (on mount,
+>>> module install, whatever)
+>>> 2) dentry/inode for this pipe. This object is created on PipeFS superblock creation.
+>>> This means, any kernel user of SUNRPC pipes have to provide two mechanisms:
+>>> 1) Safe call (in per-net operations, if the object is global your case) for
+>>> PipeFS dentry/inode pair. This is done this in nfsd4_init_cld_pipe().
+>>>
+>>> 2) Notifier callback for PipeFS mount/umount operations. Note: this callback is
+>>> done from SUNRPC module (i.e. you have to get nfsd module); this callback is
+>>> safe - i.e you can be sure, that superblock is valid.
+>>>
+>>
+>> This is the part I'm having a hard time with. IIUC, the existing
+>> examples are fairly clear since you have a 1:1 ratio of objects: a
+>> per-net object (the pipe data) that is hooked up to a dentry/inode in a
+>> per-net sb.
+>>
+>> Here though, we don't really have that. We have a global pipe object
+>> and I don't see how you can hook that up to multiple dentries/inodes.
+>>
+>> One possibility is to completely "namespacify" this code -- don't use a
+>> global rpc_pipe object and make it per-net instead. If I do that though,
+>> then I suppose I'll also need to make all of the
+>> nfsd4_client_tracking_ops take a struct net arg as well?
+>
+> That does sound like what we'll want eventually.
+>
+> And callers will use pass svc_rqst->rq_xprt->xpt_net there, I assume.
+>
+> (Or actually we may need a pointer to the netns from the nfs4 client?)
+>
 
-The state in there is used by the v2/v3 client, and by the server with
-v4 as well, but not by the v4 client, so I wouldn't expect that to be an
-issue.
+Hi, Bruce. I haven't think about the whole structure yet. But I'm going to work 
+on NFSd containerization soon.
+Hope for your assistance.
 
-> >>> It'd be interesting to know the fields of the setclientid call, and the
-> >>> errors that the server is responding with to these calls.  If you look
-> >>> at the packet details you'll probably see the same thing happening
-> >>> over and over again.
-> >>>
-> >>> Filtering to look at traffic between server and one client at a time
-> >>> might help to see the pattern.
-> >>
-> >> Hmm. I'm looking at the fields, but I just have no idea what any of
-> >> those mean. Would you possibly be willing to take a look? I uploaded a
-> >> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
-> > 
-> > Looking at the packet details, under the client id field, the clients
-> > are all using:
-> > 
-> > 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
-> 
-> Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
-> be there?
-
-Yes,and the first ip is usually the ip of the client, which does suggest
-the client is guessing it's ip wrong; so the "clientaddr=" option will
-likely help.
-
-Hm, perhaps the server should be rejecting these SETCLIENTID's with
-INUSE.  It used to do that, and the client would likely recover from
-that more easily.
-
---b.
+-- 
+Best regards,
+Stanislav Kinsbursky
