@@ -1,45 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:31117 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030590Ab2CTQZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 12:25:50 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/2] NFS: ncommit count is being double decremented
-Date: Tue, 20 Mar 2012 12:25:46 -0400
-Message-Id: <1332260746-8351-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
-References: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:63857 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751111Ab2CAWAY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:00:24 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so1389076iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Mar 2012 14:00:24 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/15] NFS: Make nfs_cache_array.size a signed integer
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 01 Mar 2012 17:00:23 -0500
+Message-ID: <20120301220022.2138.96800.stgit@degas.1015granger.net>
+In-Reply-To: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The decrement is handled by each call to nfs_request_remove_commit_list,
-no need to do it again in nfs_scan_commit.
+Eliminate a number of implicit type casts in comparisons, and these
+compiler warnings:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+fs/nfs/dir.c: In function ‘nfs_readdir_clear_array’:
+fs/nfs/dir.c:264:16: warning: comparison between signed and unsigned
+		integer expressions [-Wsign-compare]
+fs/nfs/dir.c: In function ‘nfs_readdir_search_for_cookie’:
+fs/nfs/dir.c:352:16: warning: comparison between signed and unsigned
+		integer expressions [-Wsign-compare]
+fs/nfs/dir.c: In function ‘nfs_do_filldir’:
+fs/nfs/dir.c:769:38: warning: comparison between signed and unsigned
+		integer expressions [-Wsign-compare]
+fs/nfs/dir.c:780:9: warning: comparison between signed and unsigned
+		integer expressions [-Wsign-compare]
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/write.c |    5 +----
- 1 files changed, 1 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0de19f4..e39ddfd 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -595,12 +595,9 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst)
- 	spin_lock(&inode->i_lock);
- 	if (nfsi->ncommit > 0) {
- 		const int max = INT_MAX;
--		int pnfs_ret;
+ fs/nfs/dir.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index bb132a8..9952170 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -207,7 +207,7 @@ struct nfs_cache_array_entry {
+ };
  
- 		ret = nfs_scan_commit_list(&nfsi->commit_list, dst, max);
--		pnfs_ret = pnfs_scan_commit_lists(inode, max - ret);
--		ret += pnfs_ret;
--		nfsi->ncommit -= ret;
-+		pnfs_scan_commit_lists(inode, max - ret);
- 	}
- 	spin_unlock(&inode->i_lock);
- 	return ret;
--- 
-1.7.2.1
+ struct nfs_cache_array {
+-	unsigned int size;
++	int size;
+ 	int eof_index;
+ 	u64 last_cookie;
+ 	struct nfs_cache_array_entry array[0];
 
