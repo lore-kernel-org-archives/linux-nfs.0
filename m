@@ -1,92 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53026 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24394 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755715Ab2CUT41 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:56:27 -0400
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 failures in recent nfs-for-next
-Date: Wed, 21 Mar 2012 19:56:24 +0000
-Message-ID: <72DB89A4-DDDB-41FD-9B47-3CBECA0E5966@netapp.com>
-References: <20120321192448.GB11222@fieldses.org>
- <4F6A2DE8.6060403@netapp.com> <20120321194544.GC11222@fieldses.org>
-In-Reply-To: <20120321194544.GC11222@fieldses.org>
-Content-Type: multipart/signed;
-	boundary="Apple-Mail=_D6E414B2-C41A-471E-9EA6-C8492C2A01B2";
-	protocol="application/pkcs7-signature"; micalg=sha1
+	id S1756323Ab2CAQS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Mar 2012 11:18:27 -0500
+Received: from vmwexceht01-prd.hq.netapp.com ([10.106.76.239])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q21GIR9x025388
+	for <linux-nfs@vger.kernel.org>; Thu, 1 Mar 2012 08:18:27 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.1: Get rid of redundant NFS4CLNT_LAYOUTRECALL
+ tests
+Date: Thu, 1 Mar 2012 16:18:25 +0000
+Message-ID: <1330618704.9416.1.camel@lade.trondhjem.org>
+References: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <4F4F9828.9040808@netapp.com>
+In-Reply-To: <4F4F9828.9040808@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Apple-Mail=_D6E414B2-C41A-471E-9EA6-C8492C2A01B2
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-Hey Bruce,
-
-Any more info on this?  nfs-for-next wfm with kerberos against a server =
-with fedora 16 kernel 3.2.10-3.fc16.x86_64.
-
--dros
-
-On Mar 21, 2012, at 3:45 PM, J. Bruce Fields wrote:
-
-> On Wed, Mar 21, 2012 at 03:37:12PM -0400, Bryan Schumaker wrote:
->> On 03/21/2012 03:24 PM, J. Bruce Fields wrote:
->>=20
->>> Have you been doing any krb5 testing?
->>=20
->>=20
->> Not yet.  It's still on my Jenkins todo list, but I haven't gotten =
-around to it yet.  Sounds like we need it, though, so I'll try working =
-on it soon.
->=20
-> Actually, I've since seen the failure over nfsv4 and auth_sys.  All
-> that's left on the console is enough to tell me it's happening in
-> nfs4_free_lock_state, called from __rpc_execute in a kthread.  (Well,
-> assuming that's actually the first backtrace.)
->=20
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Apple-Mail=_D6E414B2-C41A-471E-9EA6-C8492C2A01B2
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
-ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
-VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
-DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
-HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
-AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
-/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
-dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
-vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
-zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
-gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
-KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
-f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
-nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
-F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
-ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
-MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
-ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
-MBwGCSqGSIb3DQEJBTEPFw0xMjAzMjExOTU2MzFaMCMGCSqGSIb3DQEJBDEWBBTofgl+lwwii7+N
-hrKE388fTL397TANBgkqhkiG9w0BAQEFAASCAQAopjVpTD2rbhnkxVUHenQlGCwxvrD36UMCPzlv
-Iw1fpTRmgLbxw7erG3KGlHXCW/B7+J1BsQVzSfIsFCfli+yFuYuWM1PtLS+ZIYRwOApS0+BvAeTb
-mgKrfW318x76WK2NbtO6VVETW/TaGzKBxhEAnpybB2x9bFwmD3X/A35b1Pz92UBgyV/+EuUnFMNM
-y2biev9mP2z5+1lrWoum2kk9x/IzHUz5s3wcK1x15P9junTrHTGSCdSkt6xV+GK58LcCLTSnOg3E
-FpPCs8KvpaQaKt5/byGhzqvMVvnt78SvfOYMukPHrxMXDubNQMZgeTawoMt3nhKx6os25AzcuSUY
-AAAAAAAA
-
---Apple-Mail=_D6E414B2-C41A-471E-9EA6-C8492C2A01B2--
+T24gVGh1LCAyMDEyLTAzLTAxIGF0IDEwOjM5IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDAyLzI5LzIwMTIgMDY6MzQgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+
+ID4gVGhlIE5GUzRDTE5UX0xBWU9VVFJFQ0FMTCB0ZXN0cyBpbiBwbmZzX2xheW91dF9wcm9jZXNz
+IGFuZA0KPiA+IHBuZnNfdXBkYXRlX2xheW91dCBhcmUgcmVkdW5kYW50Lg0KPiA+IA0KPiA+IElu
+IHRoZSBjYXNlIG9mIGEgYnVsayBsYXlvdXQgcmVjYWxsLCB3ZSdyZSBhbHdheXMgdGVzdGluZyBm
+b3INCj4gPiB0aGUgTkZTX0xBWU9VVF9CVUxLX1JFQ0FMTCBmbGF5IGFueXdheS4NCj4gPiBJbiB0
+aGUgY2FzZSBvZiBhIGZpbGUgb3Igc2VnbWVudCByZWNhbGwsIHRoZSBjYWxsIHRvDQo+ID4gcG5m
+c19zZXRfbGF5b3V0X3N0YXRlaWQoKSB1cGRhdGVzIHRoZSBsYXlvdXRfaGVhZGVyICdiYXJyaWVy
+Jw0KPiA+IHNlcXVlbmNlIGlkLCB3aGljaCB0cmlnZ2VycyB0aGUgdGVzdCBpbiBwbmZzX2xheW91
+dGdldHNfYmxvY2tlZCgpDQo+ID4gYW5kIGlzIGxlc3MgcmFjZS1wcm9uZSB0aGFuIE5GUzRDTE5U
+X0xBWU9VVFJFQ0FMTCBhbnl3YXkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
+bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZz
+L3BuZnMuYyB8ICAgIDYgKystLS0tDQo+ID4gIDEgZmlsZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25z
+KCspLCA0IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvcG5mcy5j
+IGIvZnMvbmZzL3BuZnMuYw0KPiA+IGluZGV4IGE1MzQyMTYuLjljMTlmOTIgMTAwNjQ0DQo+ID4g
+LS0tIGEvZnMvbmZzL3BuZnMuYw0KPiA+ICsrKyBiL2ZzL25mcy9wbmZzLmMNCj4gPiBAQCAtOTY2
+LDggKzk2Niw3IEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywNCj4gPiAg
+CX0NCj4gPiAgDQo+ID4gIAkvKiBEbyB3ZSBldmVuIG5lZWQgdG8gYm90aGVyIHdpdGggdGhpcz8g
+Ki8NCj4gPiAtCWlmICh0ZXN0X2JpdChORlM0Q0xOVF9MQVlPVVRSRUNBTEwsICZjbHAtPmNsX3N0
+YXRlKSB8fA0KPiA+IC0JICAgIHRlc3RfYml0KE5GU19MQVlPVVRfQlVMS19SRUNBTEwsICZsby0+
+cGxoX2ZsYWdzKSkgew0KPiA+ICsJaWYgKHRlc3RfYml0KE5GU19MQVlPVVRfQlVMS19SRUNBTEws
+ICZsby0+cGxoX2ZsYWdzKSkgew0KPiA+ICAJCWRwcmludGsoIiVzIG1hdGNoZXMgcmVjYWxsLCB1
+c2UgTURTXG4iLCBfX2Z1bmNfXyk7DQo+ID4gIAkJZ290byBvdXRfdW5sb2NrOw0KPiA+ICAJfQ0K
+PiA+IEBAIC0xMDQ4LDggKzEwNDcsNyBAQCBwbmZzX2xheW91dF9wcm9jZXNzKHN0cnVjdCBuZnM0
+X2xheW91dGdldCAqbGdwKQ0KPiA+ICAJfQ0KPiA+ICANCj4gPiAgCXNwaW5fbG9jaygmaW5vLT5p
+X2xvY2spOw0KPiA+IC0JaWYgKHRlc3RfYml0KE5GUzRDTE5UX0xBWU9VVFJFQ0FMTCwgJmNscC0+
+Y2xfc3RhdGUpIHx8DQo+ID4gLQkgICAgdGVzdF9iaXQoTkZTX0xBWU9VVF9CVUxLX1JFQ0FMTCwg
+JmxvLT5wbGhfZmxhZ3MpKSB7DQo+IA0KPiANCj4gVGhpcyB3YXMgdGhlIG9ubHkgcGxhY2UgdGhh
+dCB0aGUgY2xwIHN0cnVjdHVyZSB3YXMgdXNlZCwgc28geW91IGNvdWxkIHByb2JhYmx5IHJlbW92
+ZSBpdCB0byBhdm9pZCB0aGlzIHdhcm5pbmc6DQo+IA0KPiBmcy9uZnMvcG5mcy5jOiBJbiBmdW5j
+dGlvbiAncG5mc19sYXlvdXRfcHJvY2Vzcyc6DQo+IGZzL25mcy9wbmZzLmM6MTA1ODoyMTogd2Fy
+bmluZzogdW51c2VkIHZhcmlhYmxlICdjbHAnIFstV3VudXNlZC12YXJpYWJsZV0NCg0KRG9uZS4g
+VGhhbmtzIGZvciBzcG90dGluZyB0aGF0IQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
