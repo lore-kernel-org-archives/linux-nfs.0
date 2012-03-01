@@ -1,100 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032160Ab2COSlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Mar 2012 14:41:04 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 1 11/11] NFSv4.1 de reference a disconnected data server client record
-Date: Thu, 15 Mar 2012 14:40:50 -0400
-Message-Id: <1331836850-5195-12-git-send-email-andros@netapp.com>
-In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
-References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:19937 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755999Ab2CAWck (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:32:40 -0500
+Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS file handles
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1330640881.15828.9.camel@lade.trondhjem.org>
+Date: Thu, 1 Mar 2012 17:32:35 -0500
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <C63AE7A1-D21E-4222-9927-60D7B092CD58@oracle.com>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net> <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-When the last DS io is processed, the data server client record will be
-freed.
+On Mar 1, 2012, at 5:28 PM, Myklebust, Trond wrote:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c    |    4 ++++
- fs/nfs/nfs4filelayout.h    |    1 +
- fs/nfs/nfs4filelayoutdev.c |   17 +++++++++++++++++
- 3 files changed, 22 insertions(+), 0 deletions(-)
+> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
+>> For debugging, introduce a simplistic function to print NFS file
+>> handles on the system console.  The main function is hooked into the
+>> dprintk debugging facility, but you can directly call the helper,
+>> _nfs_display_fhandle(), if you want to print a handle unconditionally.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+> 
+> One of the things that I really like about wireshark is that it also
+> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
+> compare 2 filehandles _much_ faster than trying to look at the full
+> shebang.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 4c846cb..28b71bf 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -209,10 +209,12 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 			reset, data->ds_clp, data->ds_clp->cl_session);
- 
- 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
-+			struct nfs_client *clp = data->ds_clp;
- 			filelayout_reset_read(task, data);
- 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
- 				filelayout_mark_devid_invalid(devid);
- 				rpc_drain_queue(&tbl->slot_tbl_waitq);
-+				nfs4_ds_disconnect(clp);
- 			}
- 		}
- 		rpc_restart_call_prepare(task);
-@@ -310,10 +312,12 @@ static int filelayout_write_done_cb(struct rpc_task *task,
- 			reset, data->ds_clp, data->ds_clp->cl_session);
- 
- 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
-+			struct nfs_client *clp = data->ds_clp;
- 			filelayout_reset_write(task, data);
- 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
- 				filelayout_mark_devid_invalid(devid);
- 				rpc_drain_queue(&tbl->slot_tbl_waitq);
-+				nfs4_ds_disconnect(clp);
- 			}
- 		}
- 		rpc_restart_call_prepare(task);
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 08b667a..3abf7d9 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -138,5 +138,6 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- struct nfs4_file_layout_dsaddr *
- get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
-+void nfs4_ds_disconnect(struct nfs_client *clp);
- 
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 2b8ae96..025275f 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -145,6 +145,23 @@ _data_server_lookup_locked(const struct list_head *dsaddrs)
- }
- 
- /*
-+ * Lookup DS by nfs_client pointer. Zero data server client pointer
-+ */
-+void nfs4_ds_disconnect(struct nfs_client *clp)
-+{
-+	struct nfs4_pnfs_ds *ds;
-+
-+	dprintk("%s clp %p\n", __func__, clp);
-+	spin_lock(&nfs4_ds_cache_lock);
-+	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
-+		if (ds->ds_clp && ds->ds_clp == clp) {
-+			nfs_put_client(clp);
-+			ds->ds_clp = NULL;
-+	}
-+	spin_unlock(&nfs4_ds_cache_lock);
-+}
-+
-+/*
-  * Create an rpc connection to the nfs4_pnfs_ds data server
-  * Currently only supports IPv4 and IPv6 addresses
-  */
+It should be easy to add a displayed hash in a subsequent patch.
+
 -- 
-1.7.6.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
