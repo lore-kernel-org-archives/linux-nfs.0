@@ -1,95 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17556 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759359Ab2CVTTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 15:19:39 -0400
-From: andros@netapp.com
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:51202 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755915Ab2CAWB6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:01:58 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so1389945iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Mar 2012 14:01:58 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/15] NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
 To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 00/11] NFSv4.1 file layout data server quick failover
-Date: Thu, 22 Mar 2012 15:19:28 -0400
-Message-Id: <1332443979-2302-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 01 Mar 2012 17:01:57 -0500
+Message-ID: <20120301220156.2138.11207.stgit@degas.1015granger.net>
+In-Reply-To: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+The Linux NFS client must distinguish between referral events (which
+it currently supports) and migration events (which it does not yet
+support).
 
-Changes from Version 2:
+In both types of events, an fs_locations array is returned.  But upper
+layers, not the XDR layer, should make the distinction between a
+referral and a migration.  There really isn't a way for an XDR decoder
+function to distinguish the two, in general.
 
-- refactored filelayout_async_handle errors responding to comments.
-- removed NFSv4.1-have-filelayout_initiate_commit-return-void.patch
-  as per comments.
+Slightly adjust the FATTR flags returned by decode_fs_locations()
+to set NFS_ATTR_FATTR_V4_LOCATIONS only if a non-empty locations
+array was returned from the server.  Then have logic in nfs4proc.c
+distinguish whether the locations array is for a referral or
+something else.
 
-Currently, when a data server connection goes down due to a network partion,
-a data server failure, or an administrative action, RPC tasks in various
-stages of the RPC finite state machine (FSM) need to transmit and timeout
-(or other failure) before being redirected towards an alternative server
-(MDS or another DS).
-This can take a very long time if the connection goes down during a heavy
-I/O load where the data server fore channel session slot_tbl_waitq and the
-transport sending/pending waitqs are populated with many requests.
-(see RedHat Bugzilla 756212 "Redirecting I/O through the MDS after a data
-server network partition is very slow")
-The current code also keeps the client structure and the session to the failed
-data server until umount.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-These patches address this problem by setting data server RPC tasks to
-RPC_TASK_SOFTCONN and handling the resultant connection errors as follows:
+ fs/nfs/nfs4proc.c       |    6 +++---
+ fs/nfs/nfs4xdr.c        |    2 +-
+ include/linux/nfs_xdr.h |   11 ++++++-----
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
- * The pNFS deviceid is marked invalid which blocks any new pNFS io using that
-deviceid.
- * The RPC done routines for READ, WRITE and COMMIT redirect the requests
-to the new server (MDS) and send the request back through the RPC FSM.
- * The data server session fore channel slot_tbl_waitq is drained using
-the debugged rpc_wake_up
- * Code is added to the filelayout read/write prepare routines to reset
-the task for io to MDS upon invalid deviceid. This is called when the
-session fore channel slot table is drained.
- * All data server io requests reference the data server client structure
-across io calls, and the client is dereferenced upon deviceid invalidation so
-that the client (and the session) is freed upon the last (failed) redirected io.
-
-Testing:
-I use a pynfs file layout server with a DS to test. The pynfs server and DS
-is modified to use the local host for MDS to DS communication. I add a
-second ipv4 address to the single machine interface for the DS to client
-communication. While a "dd" or a read/write heavy Connectathon test is
-running, the DS ip address is removed from the ethernet interface, and the
-client recovers io to the MDS.
-I have tested READ and WRITE recovery multiple times, and have managed to
-time the removal of the DS ip address during a DS COMMIT and have seen it
-recover as well. :)
-
-
-Comments welcome
-
---> Andy
-
-
-
-Andy Adamson (11):
-  NFSv4.1 move nfs4_reset_read and nfs_reset_write
-  NFSv4.1: cleanup filelayout invalid deviceid handling
-  NFSv4.1 cleanup filelayout invalid layout handling
-  NFSv4.1 set RPC_TASK_SOFTCONN for filelayout DS RPC calls
-  NFSv4.1: mark deviceid invalid on filelayout DS connection errors
-  NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
-  NFSv4.1 Check invalid deviceid upon slot table waitq wakeup
-  NFSv4.1 wake up all tasks on un-connected DS slot table waitq
-  NFSv4.1 ref count nfs_client across filelayout data server io
-  NFSv4.1 de reference a disconnected data server client record
-  NFSv4.1 check for NULL pnfs_layout_hdr in pnfs scan commit lists
-
- fs/nfs/internal.h          |   11 ++-
- fs/nfs/nfs4filelayout.c    |  202 +++++++++++++++++++++++++++++---------------
- fs/nfs/nfs4filelayout.h    |   25 +++++-
- fs/nfs/nfs4filelayoutdev.c |   54 ++++++------
- fs/nfs/nfs4proc.c          |   39 +--------
- fs/nfs/pnfs.h              |    3 +-
- fs/nfs/read.c              |    6 +-
- fs/nfs/write.c             |   13 ++--
- 8 files changed, 205 insertions(+), 148 deletions(-)
-
--- 
-1.7.6.4
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d43bcda..ced56d0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -79,6 +79,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
++static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -2340,7 +2341,6 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return nfs4_map_errors(status);
+ }
+ 
+-static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
+ /*
+  * Get locations and (maybe) other attributes of a referral.
+  * Note that we'll actually follow the referral later when
+@@ -4797,11 +4797,11 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
+ 	if (!(((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) ||
+ 	       (fattr->valid & NFS_ATTR_FATTR_FILEID)) &&
+ 	      (fattr->valid & NFS_ATTR_FATTR_FSID) &&
+-	      (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
++	      (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
+ 		return;
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
+-		NFS_ATTR_FATTR_NLINK;
++		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_V4_REFERRAL;
+ 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
+ 	fattr->nlink = 2;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 8cb35f2..bec7227 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3621,7 +3621,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 			res->nlocations++;
+ 	}
+ 	if (res->nlocations != 0)
+-		status = NFS_ATTR_FATTR_V4_REFERRAL;
++		status = NFS_ATTR_FATTR_V4_LOCATIONS;
+ out:
+ 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
+ 	return status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index adbc84a..07eb9c9 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -88,11 +88,12 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_PRECTIME		(1U << 16)
+ #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+-#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
+-#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
+-#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID		(1U << 21)
+-#define NFS_ATTR_FATTR_OWNER_NAME	(1U << 22)
+-#define NFS_ATTR_FATTR_GROUP_NAME	(1U << 23)
++#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 19)
++#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 20)
++#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 21)
++#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
++#define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
++#define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
 
