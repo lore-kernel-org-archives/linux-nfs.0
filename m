@@ -1,90 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50307 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750900Ab2CJRWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 10 Mar 2012 12:22:25 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] NFS: Don't copy read delegation stateids in setattr
-Date: Sat, 10 Mar 2012 12:21:44 -0500
-Message-Id: <1331400105-17204-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from hawk.cora.nwra.com ([4.28.99.182]:52933 "EHLO
+	hawk.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758697Ab2CAPeR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 10:34:17 -0500
+Message-ID: <4F4F96EA.9050203@cora.nwra.com>
+Date: Thu, 01 Mar 2012 08:34:02 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs4 mount hanging suddenly
+References: <4F4EA6D0.30606@cora.nwra.com>  <20120229231732.GD6506@fieldses.org> <4F4EB2FE.9040108@cora.nwra.com> <1330609841.6218.6.camel@lade.trondhjem.org>
+In-Reply-To: <1330609841.6218.6.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server will just return an NFS4ERR_OPENMODE anyway.
+On 03/01/2012 06:50 AM, Myklebust, Trond wrote:
+> On Wed, 2012-02-29 at 16:21 -0700, Orion Poplawski wrote:
+>> On 02/29/2012 04:17 PM, J. Bruce Fields wrote:
+>>> On Wed, Feb 29, 2012 at 03:29:36PM -0700, Orion Poplawski wrote:
+OMP Reply (Call
+>>>
+>>> That probably means the server is waiting for the client to return a
+>>> delegation.
+>>>
+>>> Either the server's confused about their being a delegation, or the
+>>> client's failing to return one it should?
+>>>
+>
+> As far as I can see from your trace, the client keeps trying to open the
+> file '.history', and the server keeps replying with NFS4ERR_DELAY. There
+> is nothing in the trace itself that can tell us why the server is
+> delaying.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-v2: Simplify the mode arguments. Use either FMODE_READ or FMODE_WRITE
-    depending on whether we're reading or writing.
+So, it seems to be on the server side?  I didn't get any relief 
+restarting nfs on the server.  Any way to trace what is happening on the 
+server side?
 
- fs/nfs/delegation.c |   16 ++++++++++------
- fs/nfs/delegation.h |    2 +-
- fs/nfs/nfs4proc.c   |    2 +-
- 3 files changed, 12 insertions(+), 8 deletions(-)
+Thanks again.
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 97d5357..e27c097 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -694,21 +694,25 @@ int nfs_delegations_present(struct nfs_client *clp)
-  * nfs4_copy_delegation_stateid - Copy inode's state ID information
-  * @dst: stateid data structure to fill in
-  * @inode: inode to check
-+ * @flags: delegation type requirement
-  *
-- * Returns one and fills in "dst->data" * if inode had a delegation,
-- * otherwise zero is returned.
-+ * Returns "true" and fills in "dst->data" * if inode had a delegation,
-+ * otherwise "false" is returned.
-  */
--int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode)
-+bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode,
-+		fmode_t flags)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_delegation *delegation;
--	int ret = 0;
-+	bool ret;
- 
-+	flags &= FMODE_READ|FMODE_WRITE;
- 	rcu_read_lock();
- 	delegation = rcu_dereference(nfsi->delegation);
--	if (delegation != NULL) {
-+	ret = (delegation != NULL && (delegation->type & flags) == flags);
-+	if (ret) {
- 		nfs4_stateid_copy(dst, &delegation->stateid);
--		ret = 1;
-+		nfs_mark_delegation_referenced(delegation);
- 	}
- 	rcu_read_unlock();
- 	return ret;
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 691a796..e193012 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -54,7 +54,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
- int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
- int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
- int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
--int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
-+bool nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode, fmode_t flags);
- 
- void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
- int nfs_have_delegation(struct inode *inode, fmode_t flags);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a8dd04d..3578ad3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1929,7 +1929,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 
- 	nfs_fattr_init(fattr);
- 
--	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
-+	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, FMODE_WRITE)) {
- 		/* Use that stateid */
- 	} else if (state != NULL) {
- 		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+
 -- 
-1.7.7.6
-
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA/CoRA Division                    FAX: 303-415-9702
+3380 Mitchell Lane                  orion@cora.nwra.com
+Boulder, CO 80301              http://www.cora.nwra.com
