@@ -1,88 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39930 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933123Ab2C2Uug (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 16:50:36 -0400
-Date: Thu, 29 Mar 2012 16:50:35 -0400
-From: Dr James Bruce Fields <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <20120329205035.GB21493@fieldses.org>
-References: <loom.20120329T182500-467@post.gmane.org>
- <1333040091.5547.32.camel@lade.trondhjem.org>
- <4F749CCA.3000400@cora.nwra.com>
- <1333042863.5547.37.camel@lade.trondhjem.org>
- <4F74A4D5.1040802@cora.nwra.com>
- <20120329193100.GA20329@fieldses.org>
- <1333052170.10318.6.camel@lade.trondhjem.org>
- <1333053750.10318.15.camel@lade.trondhjem.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757447Ab2CBV6t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:58:49 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:58:49 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/12] NFS: Add debugging messages to NFSv4's CLOSE procedure
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 02 Mar 2012 16:58:48 -0500
+Message-ID: <20120302215848.12758.84433.stgit@degas.1015granger.net>
+In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
+References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1333053750.10318.15.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 08:42:24PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-03-29 at 16:16 -0400, Trond Myklebust wrote:
-> > On Thu, 2012-03-29 at 15:31 -0400, Dr James Bruce Fields wrote:
-> > > On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
-> > > > On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
-> > > > >>Going back to v4 on EL5.8 server: nfsv4el.log, nfsv4f18.log
-> > > > >>
-> > > > >>Both get NFS4ERR_EXIST in this case.
-> > > > >
-> > > > >Which is an obvious server bug: it should be sending NFS4ERR_SYMLINK in
-> > > > >reply to that OPEN.
-> > > > >
-> > > > >Bruce?
-> > > > >
-> > > > 
-> > > > I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
-> > > 
-> > > Hm.  So how about this?  (Untested.)
-> > > 
-> > > Probably there should be a pynfs test too.
-> > > 
-> > > I'm assuming it should still be ERR_EXIST in the exclusive,
-> > > exclusive4_1, and guarded cases.
-> > > 
-> > > --b.
-> > > 
-> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > index 7423d71..2bfcad4 100644
-> > > --- a/fs/nfsd/vfs.c
-> > > +++ b/fs/nfsd/vfs.c
-> > > @@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> > >  
-> > >  		switch (createmode) {
-> > >  		case NFS3_CREATE_UNCHECKED:
-> > > -			if (! S_ISREG(dchild->d_inode->i_mode))
-> > > -				err = nfserr_exist;
-> > > -			else if (truncp) {
-> > > +			if (! S_ISREG(dchild->d_inode->i_mode)) {
-> > > +				if (rqstp->rq_vers == 4)
-> > > +					err = nfserr_symlink;
-> > > +				else
-> > > +					err = nfserr_exist;
-> > 
-> > No. This should _never_ return NFS4ERR_EXIST.
-> > 
-> > It should return
-> >       * NFS4ERR_ISDIR if the object is a directory
-> >       * NFS4ERR_SYMLINK if it is symbolic link,
-> >       * either NFS4ERR_WRONG_TYPE (NFSv4.1) or NFS4ERR_SYMLINK (NFSv4.0)
-> >         if the object is any other non-regular file.
-> 
-> Basically, if an object already exists with that name, then
-> NFS3_CREATE_UNCHECKED should be treated as if it is an ordinary OPEN (in
-> the case of NFSv4) or LOOKUP (in the case of NFSv3).
+CLOSE is new with NFSv4.  Sometimes it's important to know the timing
+of this operation compared to things like lease renewal.
 
-Oh, so in the v3 case this should be nfs_ok, and it's up to the client
-to check attributes on the result and decide what to do?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-(Is this written down someplace?)
+ fs/nfs/nfs4proc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 87c584d..53daab9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1983,6 +1983,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	struct nfs4_state *state = calldata->state;
+ 	struct nfs_server *server = NFS_SERVER(calldata->inode);
+ 
++	dprintk("%s: begin!\n", __func__);
+ 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
+ 		return;
+         /* hmm. we are done with the inode, and in the process of freeing
+@@ -2010,6 +2011,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	}
+ 	nfs_release_seqid(calldata->arg.seqid);
+ 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
++	dprintk("%s: done, ret = %d!\n", __func__, task->tk_status);
+ }
+ 
+ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+@@ -2018,6 +2020,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	struct nfs4_state *state = calldata->state;
+ 	int call_close = 0;
+ 
++	dprintk("%s: begin!\n", __func__);
+ 	if (nfs_wait_on_sequence(calldata->arg.seqid, task) != 0)
+ 		return;
+ 
+@@ -2042,7 +2045,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	if (!call_close) {
+ 		/* Note: exit _without_ calling nfs4_close_done */
+ 		task->tk_action = NULL;
+-		return;
++		goto out;
+ 	}
+ 
+ 	if (calldata->arg.fmode == 0) {
+@@ -2051,7 +2054,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
+ 			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
+ 				     task, NULL);
+-			return;
++			goto out;
+ 		}
+ 	}
+ 
+@@ -2061,8 +2064,10 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 				&calldata->arg.seq_args,
+ 				&calldata->res.seq_res,
+ 				task))
+-		return;
++		goto out;
+ 	rpc_call_start(task);
++out:
++	dprintk("%s: done!\n", __func__);
+ }
+ 
+ static const struct rpc_call_ops nfs4_close_ops = {
+
