@@ -1,51 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11826 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753474Ab2CUUxs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 16:53:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 failures in recent nfs-for-next
-Date: Wed, 21 Mar 2012 20:53:45 +0000
-Message-ID: <1332363225.12332.13.camel@lade.trondhjem.org>
-References: <20120321192448.GB11222@fieldses.org>
-	 <4F6A2DE8.6060403@netapp.com> <20120321194544.GC11222@fieldses.org>
-	 <1332359824.12332.2.camel@lade.trondhjem.org>
-	 <20120321205023.GC12309@fieldses.org>
-In-Reply-To: <20120321205023.GC12309@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:40235 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755698Ab2CBTyx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 14:54:53 -0500
+Received: by iagz16 with SMTP id z16so2712877iag.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 11:54:53 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] RFC: export options for junctions
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 02 Mar 2012 14:54:51 -0500
+Message-ID: <20120302195451.18167.81861.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE2OjUwIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFdlZCwgTWFyIDIxLCAyMDEyIGF0IDA3OjU3OjAzUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ1IC0wNDAwLCBKLiBC
-cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBXZWQsIE1hciAyMSwgMjAxMiBhdCAwMzozNzox
-MlBNIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6DQo+ID4gPiA+IE9uIDAzLzIxLzIwMTIg
-MDM6MjQgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+ID4gSGF2
-ZSB5b3UgYmVlbiBkb2luZyBhbnkga3JiNSB0ZXN0aW5nPw0KPiA+ID4gPiANCj4gPiA+ID4gDQo+
-ID4gPiA+IE5vdCB5ZXQuICBJdCdzIHN0aWxsIG9uIG15IEplbmtpbnMgdG9kbyBsaXN0LCBidXQg
-SSBoYXZlbid0IGdvdHRlbiBhcm91bmQgdG8gaXQgeWV0LiAgU291bmRzIGxpa2Ugd2UgbmVlZCBp
-dCwgdGhvdWdoLCBzbyBJJ2xsIHRyeSB3b3JraW5nIG9uIGl0IHNvb24uDQo+ID4gPiANCj4gPiA+
-IEFjdHVhbGx5LCBJJ3ZlIHNpbmNlIHNlZW4gdGhlIGZhaWx1cmUgb3ZlciBuZnN2NCBhbmQgYXV0
-aF9zeXMuICBBbGwNCj4gPiA+IHRoYXQncyBsZWZ0IG9uIHRoZSBjb25zb2xlIGlzIGVub3VnaCB0
-byB0ZWxsIG1lIGl0J3MgaGFwcGVuaW5nIGluDQo+ID4gPiBuZnM0X2ZyZWVfbG9ja19zdGF0ZSwg
-Y2FsbGVkIGZyb20gX19ycGNfZXhlY3V0ZSBpbiBhIGt0aHJlYWQuICAoV2VsbCwNCj4gPiA+IGFz
-c3VtaW5nIHRoYXQncyBhY3R1YWxseSB0aGUgZmlyc3QgYmFja3RyYWNlLikNCj4gPiANCj4gPiBJ
-J3ZlIGp1c3QgYmVlbiBzbG93IHRvIHVwZGF0ZSBuZnMtZm9yLW5leHQuIFRoZXJlIGhhcyBiZWVu
-IGEgZml4IGZvcg0KPiA+IHRoaXMgaW4gdGhlICdkZXZlbCcgYW5kICdsaW51eC1uZXh0JyBicmFu
-Y2hlcyBmb3IgYSB3aGlsZS4gUHVzaGVkIG91dA0KPiA+IG5vdy4uLg0KPiA+IA0KPiA+IFRoZSBh
-Y3R1YWwgY29tbWl0ZGlmZiBpcyBoZXJlOg0KPiA+ICAgaHR0cDovL2dpdC5saW51eC1uZnMub3Jn
-Lz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPWNvbW1pdGRpZmY7aD01YWU2N2M0ZmVlODY5Yzli
-M2M4N2I3MjdhOWVhNTExYjYzMjZiODM0DQo+IA0KPiBUaGFua3MhDQo+IA0KPiBBbmQgdGhhdCB0
-cmVlJ3Mgc3RhYmxlLCByaWdodD8NCg0KWWVzLiBUaGF0J3Mgd2h5IEkgd2FzIHNsb3cgdG8gbWVy
-Z2U6IEkgd2FudGVkIGFtcGxlIHRlc3RpbmcgZmlyc3QuDQoNCj4gSW4gd2hpY2ggY2FzZSBpZiB5
-b3UndmUgbm8gb2JqZWN0aW9uIEknbGwgbGlrZWx5IG1lcmdlIGl0IHdpdGggYSBub3RlDQo+IHRo
-YXQgSSBuZWVkIGl0ICh3ZWxsLCBzb21lIG9mIHRoZSBjb250YWluZXIgY2hhbmdlcykgZm9yIGps
-YXl0b24ncw0KPiByZWJvb3QgcmVjb3ZlcnkgcGF0Y2hlcy4NCg0KT0suIEknbGwgbGlrZWx5IGJl
-IHNlbmRpbmcgdGhlIG1lcmdlIHJlcXVlc3QgdG8gTGludXMgb24gb3IgYmVmb3JlDQpGcmlkYXku
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+At Connectathon, I ran my FedFS-enabled client in a guest environment
+with NAT networking.  This made the source port for my NFS connections
+unprivileged.
+
+Attempting to access a junction on my test server failed with a
+"client insecure" error on the server, even if I specified the
+"insecure" export option on the parent export.  I added "insecure" to
+the default junction export options, and this fixed the problem.
+
+Bruce suggested, however, that the correct way to address this is to
+have junctions inherit the export options of their parent.  I don't
+see a direct way to do this, so I'm posting this patch as a
+conversation starter.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mountd/cache.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index ac9cdbd..35bc2e9 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+ 			ptr += len;
+ 		} else {
+ 			if (last_path == NULL)
+-				len = snprintf(ptr, remaining, "refer=%s@%s",
++				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+ 							rootpath, server);
+ 			else
+ 				len = snprintf(ptr, remaining, ":%s@%s",
+
