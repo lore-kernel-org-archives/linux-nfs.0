@@ -1,58 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63818 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756773Ab2CEQub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 11:50:31 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/16] NFSv4: Add a helper for encoding opaque data
-Date: Mon,  5 Mar 2012 11:50:10 -0500
-Message-Id: <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:32143 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753955Ab2CBRTJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 12:19:09 -0500
+Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS file handles
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F51009E.6030906@RedHat.com>
+Date: Fri, 2 Mar 2012 12:19:02 -0500
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <A558B81B-F666-4783-8FC8-7C2929BBBCE8@oracle.com>
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>  <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org> <4F51009E.6030906@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index af11e8b..de4cb5c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -885,6 +885,14 @@ static __be32 *reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 	return p;
- }
- 
-+static void encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, len);
-+	xdr_encode_opaque_fixed(p, buf, len);
-+}
-+
- static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
- {
- 	__be32 *p;
-@@ -922,11 +930,7 @@ static void encode_nops(struct compound_hdr *hdr)
- 
- static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *verf)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
--	BUG_ON(p == NULL);
--	xdr_encode_opaque_fixed(p, verf->data, NFS4_VERIFIER_SIZE);
-+	encode_opaque_fixed(xdr, verf->data, NFS4_VERIFIER_SIZE);
- }
- 
- static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const struct nfs_server *server)
+On Mar 2, 2012, at 12:17 PM, Steve Dickson wrote:
+
+> 
+> 
+> On 03/01/2012 05:28 PM, Myklebust, Trond wrote:
+>> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
+>>> For debugging, introduce a simplistic function to print NFS file
+>>> handles on the system console.  The main function is hooked into the
+>>> dprintk debugging facility, but you can directly call the helper,
+>>> _nfs_display_fhandle(), if you want to print a handle unconditionally.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> 
+>> 
+>> One of the things that I really like about wireshark is that it also
+>> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
+>> compare 2 filehandles _much_ faster than trying to look at the full
+>> shebang.
+>> 
+>> 
+> +1 Being able to easily trace filehandle in both the kernel debug and
+> wireshark would be huge.... IMHO...
+
+Dros mentioned a possible follow-on patch last night at the pub that would add exactly this functionality.
+
 -- 
-1.7.7.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
