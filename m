@@ -1,77 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53297 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754163Ab2CWQjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 12:39:20 -0400
-Date: Fri, 23 Mar 2012 17:30:46 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        akpm@linux-foundation.org, rjw@sisk.pl, keyrings@linux-nfs.org,
-        linux-security-module@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com, sbhamare@panasas.com, dhowells@redhat.com,
-        eparis@redhat.com, srivatsa.bhat@linux.vnet.ibm.com,
-        kay.sievers@vrfy.org, jmorris@namei.org, ebiederm@xmission.com,
-        gregkh@linuxfoundation.org, rusty@rustcorp.com.au, tj@kernel.org,
-        rientjes@google.com
-Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new
-	call_usermodehelper_timeout()API
-Message-ID: <20120323163046.GA16562@redhat.com>
-References: <4F691059.30405@panasas.com> <4F691383.5040506@panasas.com> <4F6A92FC.6060702@panasas.com> <20120322142758.GA12370@redhat.com> <4F6B789C.8020201@panasas.com> <201203230716.GFE32712.StOJOVFHMQOFFL@I-love.SAKURA.ne.jp> <4F6C0092.1010901@panasas.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:51937 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756401Ab2CBUmg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 15:42:36 -0500
+Received: by yhmm54 with SMTP id m54so1008975yhm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 12:42:35 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F6C0092.1010901@panasas.com>
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
+Subject: [PATCH v8 0/6] nfsd: overhaul the client name tracking code
+Date: Fri,  2 Mar 2012 15:42:24 -0500
+Message-Id: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/22, Boaz Harrosh wrote:
->
-> On 03/22/2012 03:16 PM, Tetsuo Handa wrote:
->
-> > I think you should use a fork()ed wrapper in userspace for implementing
-> > timeout.
->
-> I did that actually. But I would like not to be dependent on it. I would like
-> the Kernel to be independent and simple timeout and recover,
+This is the eighth iteration of this patchset. The primary motivation
+for the respin here is to deal with the changes introduced by Stanislav's
+"namespacification" of rpc_pipefs. I think this one should be closer
+to what Stanislav suggested for this code.
 
-Tetsuo, Boaz, since I do not understand the problem space, I am not
-going to discuss the "do we need the timeout" thing.
+In particular, I've tried to make the "helpers" be containerized
+by net namespace already and simply have the code call those helpers
+for init_net, and ignore cases where they get called for other net
+namespaces.
 
-But, just in case, perhaps there is no need to change kmod.c ? I do
-not know if it works for you, but you can simply do something like
+An earlier version of this patchset can be viewed here. That set also
+contains a more comprehensive description of the rationale for doing
+this:
 
+    http://www.spinics.net/lists/linux-nfs/msg26324.html
 
-	struct kill_work {
-		struct delayed_work work;
-		struct pid *pid;
-	};
+Jeff Layton (6):
+  nfsd: add nfsd4_client_tracking_ops struct and a way to set it
+  sunrpc: create nfsd dir in rpc_pipefs
+  nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
+  nfsd: add a header describing upcall to nfsdcld
+  nfsd: add the infrastructure to handle the cld upcall
+  nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
 
-	void kill_work_func(struct work_struct *_work)
-	{
-		struct kill_work *work = container_of(_work, struct kill_work, work);
-		kill_pid(work->pid, SIGKILL);
-		put_pid(work->pid);
-		kfree(work);
-	}
+ fs/nfsd/nfs4callback.c   |   14 +-
+ fs/nfsd/nfs4proc.c       |    3 +-
+ fs/nfsd/nfs4recover.c    |  594 ++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4state.c      |   50 ++---
+ fs/nfsd/state.h          |   24 +-
+ include/linux/nfsd/cld.h |   56 +++++
+ net/sunrpc/rpc_pipe.c    |    5 +
+ 7 files changed, 683 insertions(+), 63 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
 
-	int unh_setup_timeout(struct subprocess_info *info, struct cred *new)
-	{
-		struct kill_work *work = kmalloc(sizeof(struct kill_work));
-		if (!work)
-			return -ENOMEM;
-
-		INIT_WORK(&work->work, kill_work_func);
-		work->pid = get_pid(task_pid(current));
-		schedule_delayed_work(&work->work, (long)info->data);
-
-		return 0;
-	}
-
-Now you can do
-
-	call_usermodehelper_fns(init => unh_setup_timeout,
-				data => (void*)timeout);
-
-Oleg.
+-- 
+1.7.7.6
 
