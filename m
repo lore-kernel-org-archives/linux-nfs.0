@@ -1,42 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:50944 "EHLO
-	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754767Ab2CPVW4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 17:22:56 -0400
-Received: from compute2.internal (compute2.nyi.mail.srv.osa [10.202.2.42])
-	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 9041B216A6
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 17:22:55 -0400 (EDT)
-Message-ID: <4F63AF2B.5080307@fastmail.fm>
-Date: Fri, 16 Mar 2012 22:22:51 +0100
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758615Ab2CBV7l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:59:41 -0500
+Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:59:41 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 09/12] NFS: Add a client-side function to display NFS file
+ handles
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 02 Mar 2012 16:59:40 -0500
+Message-ID: <20120302215939.12758.77566.stgit@degas.1015granger.net>
+In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
+References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "J. Bruce Fields" <bfields@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int may_flags'
- in nfsd_open()
-References: <20120309205148.GB5635@thunk.org> <20120312150912.GB12440@thunk.org> <20120312154921.GB17153@pad.fieldses.org> <20120312222250.GD8991@fieldses.org> <20120313200117.GA21991@fieldses.org> <4F5FA827.8020606@itwm.fraunhofer.de> <20120313203446.GB21991@fieldses.org> <4F5FB771.9010805@fastmail.fm> <20120313212947.GK31995@pad.fieldses.org> <4F60AC0D.9020204@itwm.fraunhofer.de> <20120314160529.GB31194@fieldses.org>
-In-Reply-To: <20120314160529.GB31194@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/14/2012 05:05 PM, J. Bruce Fields wrote:
-> On Wed, Mar 14, 2012 at 03:32:45PM +0100, Bernd Schubert wrote:
->> shall I sent an updated version of the previous ext4 patch
->> or is this patch sufficient?
->
-> Up to Ted.
->
-> Ted, I haven't published my merge of your branch, so at least for my
-> purposes I don't care whether you fold this in or pop another patch on
-> top.
+For debugging, introduce a simplistic function to print NFS file
+handles on the system console.  The main function is hooked into the
+dprintk debugging facility, but you can directly call the helper,
+_nfs_display_fhandle(), if you want to print a handle unconditionally.
 
-Ted, could you please tell me how to proceed?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h |   14 ++++++++++++++
+ 2 files changed, 59 insertions(+), 0 deletions(-)
 
-Thanks,
-Bernd
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 6c66259..99a4f52 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1046,6 +1046,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+ }
+ 
+ /**
++ * _nfs_display_fhandle - display an NFS file handle on the console
++ *
++ * @fh: file handle to display
++ * @caption: display caption
++ *
++ * For debugging only.
++ */
++#ifdef RPC_DEBUG
++void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
++{
++	unsigned short i;
++
++	if (fh->size == 0 || fh == NULL) {
++		printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
++		return;
++	}
++
++	printk(KERN_DEFAULT "%s at %p is %u bytes:\n", caption, fh, fh->size);
++	for (i = 0; i < fh->size; i += 16) {
++		__be32 *pos = (__be32 *)&fh->data[i];
++
++		switch ((fh->size - i - 1) >> 2) {
++		case 0:
++			printk(KERN_DEFAULT " %08x\n",
++				be32_to_cpup(pos));
++			break;
++		case 1:
++			printk(KERN_DEFAULT " %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1));
++			break;
++		case 2:
++			printk(KERN_DEFAULT " %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2));
++			break;
++		default:
++			printk(KERN_DEFAULT " %08x %08x %08x %08x\n",
++				be32_to_cpup(pos), be32_to_cpup(pos + 1),
++				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
++		}
++	}
++}
++#endif
++
++/**
+  * nfs_inode_attrs_need_update - check if the inode attributes need updating
+  * @inode - pointer to inode
+  * @fattr - attributes
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 8c29950..c07a757 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -395,6 +395,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
+ 	kfree(fh);
+ }
+ 
++#ifdef RPC_DEBUG
++extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
++#define nfs_display_fhandle(fh, caption)			\
++	do {							\
++		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
++			_nfs_display_fhandle(fh, caption);	\
++	} while (0)
++#else
++static inline void nfs_display_fhandle(const struct nfs_fh *fh,
++				       const char *caption)
++{
++}
++#endif
++
+ /*
+  * linux/fs/nfs/nfsroot.c
+  */
+
