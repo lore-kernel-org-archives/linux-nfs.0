@@ -1,37 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35135 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63875 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753321Ab2CERgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 12:36:01 -0500
-Received: from vmwexceht02-prd.hq.netapp.com ([10.106.76.240])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q25HZk0H003265
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 09:35:46 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 08/11] NFSv4: Simplify the struct nfs4_stateid
-Date: Mon, 5 Mar 2012 17:35:45 +0000
-Message-ID: <1330968945.2509.5.camel@lade.trondhjem.org>
-References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1330902183-18879-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <4F54F48C.2090703@netapp.com>
-In-Reply-To: <4F54F48C.2090703@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1756326Ab2CBRRT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 12:17:19 -0500
+Message-ID: <4F51009E.6030906@RedHat.com>
+Date: Fri, 02 Mar 2012 12:17:18 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS
+ file handles
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>  <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org>
+In-Reply-To: <1330640881.15828.9.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTA1IGF0IDEyOjE0IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IEkganVzdCBmaW5pc2hlZCBiaXNlY3RpbmcgYW4gb29wcyB0byB0aGlzIHBhdGNoLCBkb2Vz
-IHYyIGZpeCB0aGUgcHJvYmxlbT8gIEkgaGl0IGl0IHdoaWxlIHJ1bm5pbmcgdGhlIHNwZWNpYWwg
-dGVzdHMgb3ZlciB2NC4gIEkgd2FzIGFibGUgdG8gY29tcGlsZSBhZnRlciB0aGVzZSBwYXRjaGVz
-LCBzbyB0aGF0J3MgYSBzdGVwIGZvcndhcmQhDQoNCkkndmUgZ290IGEgZml4IGZvciB0aGF0IGlu
-IHYzLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+
+
+On 03/01/2012 05:28 PM, Myklebust, Trond wrote:
+> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
+>> For debugging, introduce a simplistic function to print NFS file
+>> handles on the system console.  The main function is hooked into the
+>> dprintk debugging facility, but you can directly call the helper,
+>> _nfs_display_fhandle(), if you want to print a handle unconditionally.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+> 
+> One of the things that I really like about wireshark is that it also
+> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
+> compare 2 filehandles _much_ faster than trying to look at the full
+> shebang.
+> 
+> 
++1 Being able to easily trace filehandle in both the kernel debug and
+wireshark would be huge.... IMHO... 
+
+steved. 
