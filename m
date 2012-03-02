@@ -1,45 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:14576 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932452Ab2CTQjs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 12:39:48 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2KGdmpl006261
-	for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2012 09:39:48 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: ncommit count is being double decremented
-Date: Tue, 20 Mar 2012 16:39:46 +0000
-Message-ID: <1332261586.2963.51.camel@lade.trondhjem.org>
-References: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
-	 <1332260746-8351-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1332260746-8351-2-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:36263 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757447Ab2CBV6l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:58:41 -0500
+Received: by ghrr11 with SMTP id r11so1042162ghr.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:58:41 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/12] NFS: Clean up debugging in decode_pathname()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 02 Mar 2012 16:58:39 -0500
+Message-ID: <20120302215839.12758.34650.stgit@degas.1015granger.net>
+In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
+References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTIwIGF0IDEyOjI1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-VGhlIGRlY3JlbWVudCBpcyBoYW5kbGVkIGJ5IGVhY2ggY2FsbCB0byBuZnNfcmVxdWVzdF9yZW1v
-dmVfY29tbWl0X2xpc3QsDQo+IG5vIG5lZWQgdG8gZG8gaXQgYWdhaW4gaW4gbmZzX3NjYW5fY29t
-bWl0Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBwLmNv
-bT4NCj4gLS0tDQo+ICBmcy9uZnMvd3JpdGUuYyB8ICAgIDUgKy0tLS0NCj4gIDEgZmlsZXMgY2hh
-bmdlZCwgMSBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBh
-L2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4gaW5kZXggMGRlMTlmNC4uZTM5ZGRm
-ZCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4gKysrIGIvZnMvbmZzL3dyaXRlLmMN
-Cj4gQEAgLTU5NSwxMiArNTk1LDkgQEAgbmZzX3NjYW5fY29tbWl0KHN0cnVjdCBpbm9kZSAqaW5v
-ZGUsIHN0cnVjdCBsaXN0X2hlYWQgKmRzdCkNCj4gIAlzcGluX2xvY2soJmlub2RlLT5pX2xvY2sp
-Ow0KPiAgCWlmIChuZnNpLT5uY29tbWl0ID4gMCkgew0KPiAgCQljb25zdCBpbnQgbWF4ID0gSU5U
-X01BWDsNCj4gLQkJaW50IHBuZnNfcmV0Ow0KPiAgDQo+ICAJCXJldCA9IG5mc19zY2FuX2NvbW1p
-dF9saXN0KCZuZnNpLT5jb21taXRfbGlzdCwgZHN0LCBtYXgpOw0KPiAtCQlwbmZzX3JldCA9IHBu
-ZnNfc2Nhbl9jb21taXRfbGlzdHMoaW5vZGUsIG1heCAtIHJldCk7DQo+IC0JCXJldCArPSBwbmZz
-X3JldDsNCg0KTm8hIElmIHdlJ3ZlIHNjYW5uZWQgcE5GUyBwYWdlcyB0byBjb21taXQsIHRoZW4g
-d2UgbmVlZCB0byByZXBvcnQgdGhpcw0KdG8gbmZzX2NvbW1pdF9pbm9kZS4gT3RoZXJ3aXNlIGl0
-IHdpbGwgc2tpcCBzZW5kaW5nIHRoZSBSUEMgY2FsbHMuDQoNCj4gLQkJbmZzaS0+bmNvbW1pdCAt
-PSByZXQ7DQoJCV5eXl5eXl5eXl5eXl5eXl5eXl5eXl4NCkkgYWdyZWUgd2l0aCB0aGlzLi4uIEkg
-Zm9yZ290IHRvIHJlbW92ZSBpdC4NCg0KPiArCQlwbmZzX3NjYW5fY29tbWl0X2xpc3RzKGlub2Rl
-LCBtYXggLSByZXQpOw0KPiAgCX0NCj4gIAlzcGluX3VubG9jaygmaW5vZGUtPmlfbG9jayk7DQo+
-ICAJcmV0dXJuIHJldDsNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+I noticed recently that decode_attr_fs_locations() is not generating
+very pretty debugging output.  The pathname components each appear on
+a separate line of output, though that does not appear to be the
+intended display behavior.  The preferred way to generate continued
+lines of output on the console is to use pr_cont().
+
+Note that incoming pathname4 components contain a string that is not
+necessarily NUL-terminated.  I did actually see some trailing garbage
+on the console.  In addition to correcting the line continuation
+problem, add a string precision format specifier to ensure that each
+component string is displayed properly, and that vsnprintf() does
+not Oops.
+
+Someone pointed out that allowing incoming network data to possibly
+generate a console line of unbounded length may not be such a good
+idea.  Since this output will rarely be enabled, and there is a hard
+upper bound (NFS4_PATHNAME_MAXCOMPONENTS) in our implementation, this
+is probably not a major concern.
+
+It might be useful to additionally sanity-check the length of each
+incoming component, however.  RFC 3530bis15 does not suggest a maximum
+number of UTF-8 characters per component for either the pathname4 or
+component4 types.  However, we could invent one that is appropriate
+for our implementation.
+
+Another possibility is to scrap all of this and print these pathnames
+in upper layers after a reasonable amount of sanity checking in the
+XDR layer.  This would give us an opportunity to allocate a full
+buffer so that the whole pathname would be output via a single
+dprintk.
+
+Introduced by commit 7aaa0b3b: "NFSv4: convert fs-locations-components
+to conform to RFC3530," (June 9, 2006).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4xdr.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ae78343..4ca87cb 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3514,16 +3514,17 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ 	n = be32_to_cpup(p);
+ 	if (n == 0)
+ 		goto root_path;
+-	dprintk("path ");
++	dprintk("pathname4: ");
+ 	path->ncomponents = 0;
+ 	while (path->ncomponents < n) {
+ 		struct nfs4_string *component = &path->components[path->ncomponents];
+ 		status = decode_opaque_inline(xdr, &component->len, &component->data);
+ 		if (unlikely(status != 0))
+ 			goto out_eio;
+-		if (path->ncomponents != n)
+-			dprintk("/");
+-		dprintk("%s", component->data);
++		if (unlikely(nfs_debug & NFSDBG_XDR))
++			pr_cont("%s%.*s ",
++				(path->ncomponents != n ? "/ " : ""),
++				component->len, component->data);
+ 		if (path->ncomponents < NFS4_PATHNAME_MAXCOMPONENTS)
+ 			path->ncomponents++;
+ 		else {
+@@ -3532,14 +3533,13 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ 		}
+ 	}
+ out:
+-	dprintk("\n");
+ 	return status;
+ root_path:
+ /* a root pathname is sent as a zero component4 */
+ 	path->ncomponents = 1;
+ 	path->components[0].len=0;
+ 	path->components[0].data=NULL;
+-	dprintk("path /\n");
++	dprintk("pathname4: /\n");
+ 	goto out;
+ out_eio:
+ 	dprintk(" status %d", status);
+@@ -3565,7 +3565,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 	/* Ignore borken servers that return unrequested attrs */
+ 	if (unlikely(res == NULL))
+ 		goto out;
+-	dprintk("%s: fsroot ", __func__);
++	dprintk("%s: fsroot:\n", __func__);
+ 	status = decode_pathname(xdr, &res->fs_path);
+ 	if (unlikely(status != 0))
+ 		goto out;
+@@ -3586,7 +3586,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 		m = be32_to_cpup(p);
+ 
+ 		loc->nservers = 0;
+-		dprintk("%s: servers ", __func__);
++		dprintk("%s: servers:\n", __func__);
+ 		while (loc->nservers < m) {
+ 			struct nfs4_string *server = &loc->servers[loc->nservers];
+ 			status = decode_opaque_inline(xdr, &server->len, &server->data);
+
