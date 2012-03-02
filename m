@@ -1,97 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from merlin.infradead.org ([205.233.59.134]:42749 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752795Ab2C0INH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2012 04:13:07 -0400
-Message-ID: <1332835919.16159.195.camel@twins>
-Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new
- wait_for_completion_timeout_state
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        linux-security-module@vger.kernel.org, Ingo Molnar <mingo@elte.hu>,
-        Paul Turner <pjt@google.com>, Thomas Gleixner <tglx@linutronix.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Date: Tue, 27 Mar 2012 10:11:59 +0200
-In-Reply-To: <4F7126E0.5080700@panasas.com>
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>
-	 <4F7120B6.2090509@panasas.com> <4F7126E0.5080700@panasas.com>
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0
+Received: from peace.netnation.com ([204.174.223.2]:57690 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756213Ab2CBAZM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 19:25:12 -0500
+Date: Thu, 1 Mar 2012 16:25:11 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [3.1-rc4] NFSv3 client hang
+Message-ID: <20120302002511.GA4495@hostway.ca>
+References: <20110909194509.GB6195@hostway.ca> <1315610322.17611.112.camel@lade.trondhjem.org> <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120301225524.GB27595@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2012-03-26 at 19:33 -0700, Boaz Harrosh wrote:
-> +int __sched
-> +wait_for_completion_timeout_state(struct completion *x,
-> +                                 unsigned long timeout, int state)
-> +{
-> +       long t;
-> +       int ret;
-> +
-> +       if (!timeout)
-> +               timeout = MAX_SCHEDULE_TIMEOUT;
-> +
-> +       switch (state) {
-> +       default:
-> +               WARN_ON_ONCE(1);
-> +               /* fall through */
-> +       case 0:
-> +               state = TASK_UNINTERRUPTIBLE;
-> +               break;
-> +       case TASK_KILLABLE:
-> +       case TASK_INTERRUPTIBLE:
-> +               break;
-> +       }
+On Thu, Mar 01, 2012 at 02:55:24PM -0800, Simon Kirby wrote:
 
-Don't do this, just pass in TASK_UNINTERRUPTIBLE (or TASK_NORMAL)
-whatever you like/need.
+> Here's another one, from 3.2.2. I guess it's still happening. :/
 
-Don't fudge it by over-loading TASK_RUNNING (aka. 0).
+In cleaning this one up, "umount -t nfs -a -l" left the socket there
+still in CLOSE_WAIT. There were a few stuck "df" processes from our
+monitoring script:
 
-> +       t = wait_for_common(x, timeout, state);
-> +       if (likely(t > 0)) {
-> +               ret = 0;
-> +       } else  {
-> +               if (t < 0)
-> +                       ret = t;
-> +               else
-> +                       ret = -ETIMEDOUT;
-> +       }
-> +       return ret;
+31370 D<   df -mPt nfs                 rpc_wait_bit_killable
+31822 D<   df -mPt nfs                 rpc_wait_bit_killable
+31847 D<   df -mPt nfs                 rpc_wait_bit_killable
 
-Again, why wreck an entirely reasonable return code and break with the
-rest of the API.
+...killing those made the socket actually close and change to TIME_WAIT,
+allowing me to remount everything, and it all works again.
 
-> +}
-> +EXPORT_SYMBOL(wait_for_completion_timeout_state); 
-
-
-So I'm fine with adding wait_for_completion_timeout_state(), but make it
-look and smell like wait_for_completion_timeout() and use a proper
-state, like wake_up_state().
-
-IOW:
-
-unsigned long __sched 
-wait_for_completion_timeout_state(struct completion *x, 
-				  unsigned long timeout,
-				  unsigned int state)
-{
-	return wait_for_common(x, timeout, state);
-}
-EXPORT_SYMBOL(wait_for_completion_timeout_state);
-
-
+Simon-
