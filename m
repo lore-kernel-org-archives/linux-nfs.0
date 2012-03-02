@@ -1,174 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:10745 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932608Ab2C2Pe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 11:34:26 -0400
-Subject: [PATCH] NFSd: remove hard-coded dereferences to name-to-id and
- id-to-name caches
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 29 Mar 2012 19:34:16 +0400
-Message-ID: <20120329153352.11921.78796.stgit@localhost6.localdomain6>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:60833 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750832Ab2CBFIX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 00:08:23 -0500
+Date: Thu, 1 Mar 2012 23:08:13 -0600
+From: Jonathan Nieder <jrnieder@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Rik Theys <Rik.Theys@esat.kuleuven.be>,
+        David Flyn <davidf@rd.bbc.co.uk>
+Subject: Re: [PATCH v2] NFSv4: Save the owner/group name string when doing
+ open
+Message-ID: <20120302050813.GA32761@burratino>
+References: <1325956115-21767-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1325960863-31742-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1325960863-31742-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These dereferences to global static caches are redundant. They also prevents
-converting these caches into per-net ones. So this patch is cleanup + precursor
-of patch set,a which will make them per-net.
+Hi,
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Trond Myklebust wrote:
 
----
- fs/nfsd/nfs4idmap.c |   50 ++++++++++++++++++++++++--------------------------
- 1 files changed, 24 insertions(+), 26 deletions(-)
+> [Subject: NFSv4: Save the owner/group name string when doing open]
+>
+> ...so that we can do the uid/gid mapping outside the asynchronous RPC
+> context.
+> This fixes a bug in the current NFSv4 atomic open code where the client
+> isn't able to determine what the true uid/gid fields of the file are,
+> (because the asynchronous nature of the OPEN call denies it the ability
+> to do an upcall) and so fills them with default values, marking the
+> inode as needing revalidation.
+> Unfortunately, in some cases, the VFS will do some additional sanity
+> checks on the file, and may override the server's decision to allow
+> the open because it sees the wrong owner/group fields.
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 322d11c..2ff4470 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -183,8 +183,9 @@ warn_no_idmapd(struct cache_detail *detail, int has_died)
- 
- 
- static int         idtoname_parse(struct cache_detail *, char *, int);
--static struct ent *idtoname_lookup(struct ent *);
--static struct ent *idtoname_update(struct ent *, struct ent *);
-+static struct ent *idtoname_lookup(struct cache_detail *, struct ent *);
-+static struct ent *idtoname_update(struct cache_detail *, struct ent *,
-+				   struct ent *);
- 
- static struct cache_detail idtoname_cache = {
- 	.owner		= THIS_MODULE,
-@@ -244,7 +245,7 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
- 		goto out;
- 
- 	error = -ENOMEM;
--	res = idtoname_lookup(&ent);
-+	res = idtoname_lookup(cd, &ent);
- 	if (!res)
- 		goto out;
- 
-@@ -260,11 +261,11 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
- 	else
- 		memcpy(ent.name, buf1, sizeof(ent.name));
- 	error = -ENOMEM;
--	res = idtoname_update(&ent, res);
-+	res = idtoname_update(cd, &ent, res);
- 	if (res == NULL)
- 		goto out;
- 
--	cache_put(&res->h, &idtoname_cache);
-+	cache_put(&res->h, cd);
- 
- 	error = 0;
- out:
-@@ -275,10 +276,9 @@ out:
- 
- 
- static struct ent *
--idtoname_lookup(struct ent *item)
-+idtoname_lookup(struct cache_detail *cd, struct ent *item)
- {
--	struct cache_head *ch = sunrpc_cache_lookup(&idtoname_cache,
--						    &item->h,
-+	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
- 						    idtoname_hash(item));
- 	if (ch)
- 		return container_of(ch, struct ent, h);
-@@ -287,10 +287,9 @@ idtoname_lookup(struct ent *item)
- }
- 
- static struct ent *
--idtoname_update(struct ent *new, struct ent *old)
-+idtoname_update(struct cache_detail *cd, struct ent *new, struct ent *old)
- {
--	struct cache_head *ch = sunrpc_cache_update(&idtoname_cache,
--						    &new->h, &old->h,
-+	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
- 						    idtoname_hash(new));
- 	if (ch)
- 		return container_of(ch, struct ent, h);
-@@ -359,8 +358,9 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
- 	return 0;
- }
- 
--static struct ent *nametoid_lookup(struct ent *);
--static struct ent *nametoid_update(struct ent *, struct ent *);
-+static struct ent *nametoid_lookup(struct cache_detail *, struct ent *);
-+static struct ent *nametoid_update(struct cache_detail *, struct ent *,
-+				   struct ent *);
- static int         nametoid_parse(struct cache_detail *, char *, int);
- 
- static struct cache_detail nametoid_cache = {
-@@ -426,14 +426,14 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
- 		set_bit(CACHE_NEGATIVE, &ent.h.flags);
- 
- 	error = -ENOMEM;
--	res = nametoid_lookup(&ent);
-+	res = nametoid_lookup(cd, &ent);
- 	if (res == NULL)
- 		goto out;
--	res = nametoid_update(&ent, res);
-+	res = nametoid_update(cd, &ent, res);
- 	if (res == NULL)
- 		goto out;
- 
--	cache_put(&res->h, &nametoid_cache);
-+	cache_put(&res->h, cd);
- 	error = 0;
- out:
- 	kfree(buf1);
-@@ -443,10 +443,9 @@ out:
- 
- 
- static struct ent *
--nametoid_lookup(struct ent *item)
-+nametoid_lookup(struct cache_detail *cd, struct ent *item)
- {
--	struct cache_head *ch = sunrpc_cache_lookup(&nametoid_cache,
--						    &item->h,
-+	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
- 						    nametoid_hash(item));
- 	if (ch)
- 		return container_of(ch, struct ent, h);
-@@ -455,10 +454,9 @@ nametoid_lookup(struct ent *item)
- }
- 
- static struct ent *
--nametoid_update(struct ent *new, struct ent *old)
-+nametoid_update(struct cache_detail *cd, struct ent *new, struct ent *old)
- {
--	struct cache_head *ch = sunrpc_cache_update(&nametoid_cache,
--						    &new->h, &old->h,
-+	struct cache_head *ch = sunrpc_cache_update(cd, &new->h, &old->h,
- 						    nametoid_hash(new));
- 	if (ch)
- 		return container_of(ch, struct ent, h);
-@@ -493,12 +491,12 @@ nfsd_idmap_shutdown(void)
- 
- static int
- idmap_lookup(struct svc_rqst *rqstp,
--		struct ent *(*lookup_fn)(struct ent *), struct ent *key,
--		struct cache_detail *detail, struct ent **item)
-+		struct ent *(*lookup_fn)(struct cache_detail *, struct ent *),
-+		struct ent *key, struct cache_detail *detail, struct ent **item)
- {
- 	int ret;
- 
--	*item = lookup_fn(key);
-+	*item = lookup_fn(detail, key);
- 	if (!*item)
- 		return -ENOMEM;
-  retry:
-@@ -506,7 +504,7 @@ idmap_lookup(struct svc_rqst *rqstp,
- 
- 	if (ret == -ETIMEDOUT) {
- 		struct ent *prev_item = *item;
--		*item = lookup_fn(key);
-+		*item = lookup_fn(detail, key);
- 		if (*item != prev_item)
- 			goto retry;
- 		cache_put(&(*item)->h, detail);
+Thanks!  This patch (commit 6926afd1925a, 2012-01-07) fixes the
+following client-side bug[1]:
 
+| Our home directories here are mounted over NFS4. When I log in to machine A
+| and run
+|
+| vim
+| :q
+|
+| and then log into machine B and do:
+|
+| vim
+| :q
+|
+| I get E137: Viminfo file is not writable: /users/system/rtheys/.viminfo
+|
+| Every invocation of 'vim and :q' will trigger this.
+|
+| Explicitely doing a stat of the file fixes this.
+
+Rik Theys bisected and found the bug reproducible after and not before
+v2.6.32-rc1~412^2~48^2~15 (NFSv4: Don't do idmapper upcalls for
+asynchronous RPC calls, 2009-08-09).
+
+[...]
+>  6 files changed, 162 insertions(+), 64 deletions(-)
+
+Now I am wondering what, if anything, can be done to fix this in the
+2.6.32.y, 3.0.y, and 3.2.y stable kernels.  The patch looks too big
+for inclusion under the usual stable_kernel_rules:
+
+ - It cannot be bigger than 100 lines, with context.
+
+Ideas?
+Jonathan
+
+[1] http://bugs.debian.org/659111
+    http://thread.gmane.org/gmane.linux.nfs/37230
