@@ -1,165 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52466 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759239Ab2CVTJR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 15:09:17 -0400
-Message-ID: <4F6B789C.8020201@panasas.com>
-Date: Thu, 22 Mar 2012 12:08:12 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:51937 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030601Ab2CBUml (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 15:42:41 -0500
+Received: by mail-yw0-f46.google.com with SMTP id m54so1008975yhm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 12:42:41 -0800 (PST)
 MIME-Version: 1.0
-To: Oleg Nesterov <oleg@redhat.com>
-CC: Andrew Morton <akpm@linux-foundation.org>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
-        <linux-security-module@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Rusty Russell <rusty@rustcorp.com.au>, Tejun Heo <tj@kernel.org>,
-        David Rientjes <rientjes@google.com>
-Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout()
- API
-References: <4F691059.30405@panasas.com> <4F691383.5040506@panasas.com> <4F6A92FC.6060702@panasas.com> <20120322142758.GA12370@redhat.com>
-In-Reply-To: <20120322142758.GA12370@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
+Subject: [PATCH v8 6/6] nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
+Date: Fri,  2 Mar 2012 15:42:30 -0500
+Message-Id: <1330720950-5872-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/22/2012 07:27 AM, Oleg Nesterov wrote:
-> On 03/21, Boaz Harrosh wrote:
->>
->>> @@ -258,7 +262,8 @@ static void __call_usermodehelper(struct work_struct *work)
->>>
->>>  	switch (wait) {
->>>  	case UMH_NO_WAIT:
->>> -		call_usermodehelper_freeinfo(sub_info);
->>> +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
->>> +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
->>>  		break;
-> 
-> This doesn't look very nice. If you add the refcounting, it should be
-> consistent. Imho it is better to change call_usermodehelper_exec() so
-> that UMH_NO_WAIT does kref_put() too. Just s/goto unlock/goto out/ afaics.
-> 
+In the event that rpc_pipefs isn't mounted when nfsd starts, we
+must register a notifier to handle creating the dentry once it
+is mounted, and to remove the dentry on unmount.
 
-Yes I've seen this. after I sent the patch. Hence the RFC tag
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 51 insertions(+), 1 deletions(-)
 
->>> @@ -452,22 +459,27 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info,
->>>
->>>  	sub_info->complete = &done;
->>>  	sub_info->wait = wait;
->>> +	if (!sub_info->wait_timeout)
->>> +		sub_info->wait_timeout = MAX_SCHEDULE_TIMEOUT;
->>>
->>> +	/* Balanced in __call_usermodehelper or wait_for_helper */
->>> +	kref_get(&sub_info->kref);
->>>  	queue_work(khelper_wq, &sub_info->work);
->>>  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
->>>  		goto unlock;
->>> -	wait_for_completion(&done);
->>> -	retval = sub_info->retval;
->>> -
->>> +	if (likely(wait_for_completion_timeout(&done, sub_info->wait_timeout)))
->>> +		retval = sub_info->retval;
->>> +	else
->>> +		retval = -ETIMEDOUT;
->>>  out:
->>> -	call_usermodehelper_freeinfo(sub_info);
->>> +	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
->>>  unlock:
->>>  	helper_unlock();
->>>  	return retval;
->>>  }
-> 
-> This looks obviously wrong. You also need to move *sub_info->complete
-> into subprocess_info.
-> 
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index d928c58..31af1d0 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -38,6 +38,7 @@
+ #include <linux/crypto.h>
+ #include <linux/sched.h>
+ #include <linux/fs.h>
++#include <linux/module.h>
+ #include <net/net_namespace.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/clnt.h>
+@@ -658,6 +659,48 @@ nfsd4_cld_unregister_net(struct net *net, struct rpc_pipe *pipe)
+ 	}
+ }
+ 
++static int
++rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
++{
++	struct super_block *sb = ptr;
++	struct net *net = sb->s_fs_info;
++	struct dentry *dentry;
++	int ret = 0;
++
++	if (!try_module_get(THIS_MODULE))
++		return 0;
++
++	/* FIXME: containerize this code */
++	if (!cld_pipe || net != &init_net) {
++		module_put(THIS_MODULE);
++		return 0;
++	}
++
++	switch (event) {
++	case RPC_PIPEFS_MOUNT:
++		dentry = nfsd4_cld_register_sb(sb, cld_pipe);
++		if (IS_ERR(dentry)) {
++			ret = PTR_ERR(dentry);
++			break;
++		}
++		cld_pipe->dentry = dentry;
++		break;
++	case RPC_PIPEFS_UMOUNT:
++		if (cld_pipe->dentry)
++			nfsd4_cld_unregister_sb(cld_pipe);
++		break;
++	default:
++		ret = -ENOTSUPP;
++		break;
++	}
++	module_put(THIS_MODULE);
++	return ret;
++}
++
++static struct notifier_block nfsd4_cld_block = {
++	.notifier_call = rpc_pipefs_event,
++};
++
+ /* Initialize rpc_pipefs pipe for communication with client tracking daemon */
+ static int
+ nfsd4_init_cld_pipe(void)
+@@ -669,10 +712,14 @@ nfsd4_init_cld_pipe(void)
+ 	if (cld_pipe)
+ 		return 0;
+ 
++	ret = rpc_pipefs_notifier_register(&nfsd4_cld_block);
++	if (ret)
++		goto err;
++
+ 	cld_pipe = rpc_mkpipe_data(&cld_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
+ 	if (IS_ERR(cld_pipe)) {
+ 		ret = PTR_ERR(cld_pipe);
+-		goto err;
++		goto err_notifier;
+ 	}
+ 
+ 	dentry = nfsd4_cld_register_net(&init_net, cld_pipe);
+@@ -686,6 +733,8 @@ nfsd4_init_cld_pipe(void)
+ 
+ err_destroy_data:
+ 	rpc_destroy_pipe_data(cld_pipe);
++err_notifier:
++	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
+ err:
+ 	cld_pipe = NULL;
+ 	printk(KERN_ERR "NFSD: unable to create nfsdcld upcall pipe (%d)\n",
+@@ -696,6 +745,7 @@ err:
+ static void
+ nfsd4_remove_cld_pipe(void)
+ {
++	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
+ 	/* FIXME: containerize... */
+ 	nfsd4_cld_unregister_net(&init_net, cld_pipe);
+ 	rpc_destroy_pipe_data(cld_pipe);
+-- 
+1.7.7.6
 
-Yes I caught that with farther testing. A stupid mistake. Again RFC
-
->> Author: Oleg Nesterov <oleg@redhat.com>
->> Date:   Wed Mar 21 10:57:41 2012 +1100
->>
->>     usermodehelper: implement UMH_KILLABLE
->>
->>     Implement UMH_KILLABLE, should be used along with UMH_WAIT_EXEC/PROC.  The
->>     caller must ensure that subprocess_info->path/etc can not go away until
->>     call_usermodehelper_freeinfo().
->> ...
->>
->> I think that my patch above does a much better/cleaner lifetime management of the
->> subprocess_info struct, with the use of a kref.
-> 
-> This is subjective, you know ;) I specially tried to avoid the
-> refcounting.
-> 
-
-Why? 
-
-The all kref_ abstraction comes to a simple atomic_inc/dec.
-Which is in theory a more lite wait operation then xchg, no memory
-bus locking, and in practice is the same. (Except on massively
-parallel machines which it is)
-
-The last time I submitted a patch with xchg I got clobbered on the head
-so strong that I ran away from it as-fast-as-I-could.
-
-For objects life cycle the kref_get/put pattern is a much simpler
-more common and understood style in the Kernel, if just for that sake.
-
-I don't see why it needs to be "avoided".
-
-> In any case. I do not know why do we need timeout, but this is
-> orthogonal to KILLABLE. Please redo your patches on top of -mm
-> tree? Please note that in this case the change becomes trivial.
-> 
-
-Yes you are right. 
-
-> And please explain the use-case for the new API.
-> 
-
-The reason I need a timeout, is because: Calling from Kernel to
-user-mode gives me the creeps. I don't trust user-mode programs,
-specially when in final Control by a Distribution. Bugs can happen
-and deadlocks are a possibility. An operation that should take 
-1/2 second and could max to at most 1.5 seconds, I can say in
-confidence that after 15 seconds, a dmesg and a clean error recovery
-is better. I don't want any chance of D stating IO operations.
-(My code is in the IO path, either fsync or write-back. There is not
- always a killable target)
-
-The code path I have is easily recoverable, and if not for the scary
-message in dmesg the user will not notice.
-
-So in short it is so I can sleep at night.
-
->> Anyway I thought that we are not
->> suppose to use xhcg() since it is not portable to all ARCHs. ;-)
-> 
-> Hmm. For example, exit_mm() does xchg().
-> 
-
-Again, Personally I like xchg, but not here, not for an object
-life-time management. Two threads share a structure, that needs
-to go when the last one ends. That's a kref_ abstraction. Kref,
-inside, could be implemented with xchg(), But that's not for me to
-decide, I should use good abstractions when they exist and do the
-job (well). No?
-
-> Oleg.
-> 
-
-Thanks Oleg, yes I'll rebase, Is there an mm git tree? I could not
-find it on git://git.kernel.org/pub/scm/ . mean while I'll use a
-random linux-next/master point. Which should do the job.
-
-Thanks
-Boaz
