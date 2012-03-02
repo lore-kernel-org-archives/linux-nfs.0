@@ -1,47 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:14884 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756365Ab2CLSyY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 14:54:24 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Kevin Coffman <kwc@citi.umich.edu>, Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Don't use variable length automatic arrays in kernel code
-Date: Mon, 12 Mar 2012 14:54:16 -0400
-Message-Id: <1331578456-10917-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:51343 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754720Ab2CBWB1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 17:01:27 -0500
+Received: from /spool/local
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Fri, 2 Mar 2012 15:01:26 -0700
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 0E74519D804C
+	for <linux-nfs@vger.kernel.org>; Fri,  2 Mar 2012 15:01:19 -0700 (MST)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q22M19P0062676
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:10 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q22M19JQ020494
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:09 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q22M18dm020472
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:08 -0700
+Date: Fri, 2 Mar 2012 16:01:08 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+Message-ID: <20120302220108.GA17119@us.ibm.com>
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
+ <4F2BC1C0.8070900@panasas.com>
+ <20120203231623.442fefde@notabene.brown>
+ <20120203142945.GA31805@us.ibm.com>
+ <4F2E620F.5090100@panasas.com>
+ <20120207204401.GA31752@us.ibm.com>
+ <4F511B21.1020907@RedHat.com>
+ <20120302192758.GA28389@us.ibm.com>
+ <4F513429.1050209@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F513429.1050209@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the variable length array in the RPCSEC_GSS crypto code with
-a fixed length one. The size should be bounded by the variable
-GSS_KRB5_MAX_BLOCKSIZE, so use that.
+Steve Dickson [SteveD@redhat.com] wrote:
+> So what my patch does is "normalizes" the device name early
+> on in main, so the correct name used used through the mount
+> and when its written the mtab. Plus, for better or worses, 
+> since the new device name will always be shorter, I just 
+> reuse/rewrite the memory allocated for the argv vector.. 
+> Meaning there is no allocation... 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+My problem is a bit different.
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 9576f35..0f43e89 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -600,11 +600,14 @@ gss_krb5_cts_crypt(struct crypto_blkcipher *cipher, struct xdr_buf *buf,
- 	u32 ret;
- 	struct scatterlist sg[1];
- 	struct blkcipher_desc desc = { .tfm = cipher, .info = iv };
--	u8 data[crypto_blkcipher_blocksize(cipher) * 2];
-+	u8 data[GSS_KRB5_MAX_BLOCKSIZE * 2];
- 	struct page **save_pages;
- 	u32 len = buf->len - offset;
- 
--	BUG_ON(len > crypto_blkcipher_blocksize(cipher) * 2);
-+	if (len > ARRAY_SIZE(data)) {
-+		WARN_ON(0);
-+		return -ENOMEM;
-+	}
- 
- 	/*
- 	 * For encryption, we want to read from the cleartext
--- 
-1.7.7.6
+"mount -t nfs4 server:export /mnt" works but umount fails.
+
+Notice that there is no '/' in the path!
+
+Normalizing or just stripping leading '/'s early won't help with the
+above problem and since there is already a hack to strip the
+__trailing__ '/' that kernel adds to /proc/mounts file, I just made the
+existing hack it a bit better by normalizing.
+
+Regards, Malahal.
 
