@@ -1,49 +1,230 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41700 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753404Ab2CHPLZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Mar 2012 10:11:25 -0500
-Message-ID: <4F58CC1E.4030805@RedHat.com>
-Date: Thu, 08 Mar 2012 10:11:26 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:32793 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754205Ab2CBWNw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 17:13:52 -0500
+Received: by iagz16 with SMTP id z16so2869719iag.19
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 14:13:51 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFSD: Fix nfs4_verifier memory alignment
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 02 Mar 2012 17:13:50 -0500
+Message-ID: <20120302221251.13019.46002.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
-References: <1331150190-18401-1-git-send-email-steved@redhat.com> <20120307203649.GA582@fieldses.org> <20120307205005.GB582@fieldses.org> <AAB0D4F3-A275-482E-A520-06715885B08F@oracle.com>
-In-Reply-To: <AAB0D4F3-A275-482E-A520-06715885B08F@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Clean up due to code review.
+
+The nfs4_verifier's data field is not guaranteed to be u32-aligned.
+Casting an array of chars to a u32 * is considered generally
+hazardous.
+
+We can fix most of this by using a __be32 array to generate the
+verifier's contents and then byte-copying it into the verifier field.
+
+However, there is one spot where there is a backwards compatibility
+constraint: the do_nfsd_create() call expects a verifier which is
+32-bit aligned.  Fix this spot by forcing the alignment of the create
+verifier in the nfsd4_open args structure.
+
+Also, sizeof(nfs4_verifer) is the size of the in-core verifier data
+structure, but NFS4_VERIFIER_SIZE is the number of octets in an XDR'd
+verifier.  The two are not interchangeable, even if they happen to
+have the same value.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+Hi Bruce-
+
+Compile-tested only.  Does this look reasonable?
 
 
-On 03/07/2012 03:52 PM, Chuck Lever wrote:
-> 
-> On Mar 7, 2012, at 3:50 PM, J. Bruce Fields wrote:
-> 
->> On Wed, Mar 07, 2012 at 03:36:49PM -0500, bfields wrote:
->>> On Wed, Mar 07, 2012 at 02:56:30PM -0500, Steve Dickson wrote:
->>>> This problem can occur when multiple cluster services fail over
->>>> at the same time, causing missing high-available exports.
->>>> Having a lot of nfs-exports will trigger this issue easier.
->>>
->>> Isn't the locking in support/export/xtab.c supposed to take care of
->>> this?
->>
->> Huh, maybe that's just meant to prevent etab from getting corrupted, or
->> mountd from seeing a partially-written file.
->>
->> But it probably doesn't prevent two exportfs processes from both reading
->> etab, adding an export, and each writing out an etab with its one export
->> added, with the last writer winning.
->>
->> Was that the problem?
-> 
-> For bug 224, yes.  After disparate concurrent exportfs commands race, the etab file ends up missing some exports.
-This morning I took another look at this and there does indeed need to
-be some global lock to stop to serialize dueling exportfs commands. The
-locks in xtab.c are just to granular....
+ fs/nfsd/nfs4proc.c  |   19 +++++++++++--------
+ fs/nfsd/nfs4state.c |    8 ++++----
+ fs/nfsd/nfs4xdr.c   |   28 ++++++++++++++--------------
+ fs/nfsd/xdr4.h      |    4 ++--
+ 4 files changed, 31 insertions(+), 28 deletions(-)
 
-steved.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 896da74..e4b5748 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -481,14 +481,20 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			   &access->ac_supported);
+ }
+ 
++static void gen_boot_verifier(nfs4_verifier *verifier)
++{
++	__be32 verf[2];
++
++	verf[0] = (__be32)nfssvc_boot.tv_sec;
++	verf[1] = (__be32)nfssvc_boot.tv_usec;
++	memcpy(verifier->data, verf, sizeof(verifier->data));
++}
++
+ static __be32
+ nfsd4_commit(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     struct nfsd4_commit *commit)
+ {
+-	u32 *p = (u32 *)commit->co_verf.data;
+-	*p++ = nfssvc_boot.tv_sec;
+-	*p++ = nfssvc_boot.tv_usec;
+-
++	gen_boot_verifier(&commit->co_verf);
+ 	return nfsd_commit(rqstp, &cstate->current_fh, commit->co_offset,
+ 			     commit->co_count);
+ }
+@@ -865,7 +871,6 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	stateid_t *stateid = &write->wr_stateid;
+ 	struct file *filp = NULL;
+-	u32 *p;
+ 	__be32 status = nfs_ok;
+ 	unsigned long cnt;
+ 
+@@ -887,9 +892,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	cnt = write->wr_buflen;
+ 	write->wr_how_written = write->wr_stable_how;
+-	p = (u32 *)write->wr_verifier.data;
+-	*p++ = nfssvc_boot.tv_sec;
+-	*p++ = nfssvc_boot.tv_usec;
++	gen_boot_verifier(&write->wr_verifier);
+ 
+ 	status =  nfsd_write(rqstp, &cstate->current_fh, filp,
+ 			     write->wr_offset, rqstp->rq_vec, write->wr_vlen,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c5cddd6..9f0e139 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1138,12 +1138,12 @@ static void gen_clid(struct nfs4_client *clp)
+ 
+ static void gen_confirm(struct nfs4_client *clp)
+ {
++	__be32 verf[2];
+ 	static u32 i;
+-	u32 *p;
+ 
+-	p = (u32 *)clp->cl_confirm.data;
+-	*p++ = get_seconds();
+-	*p++ = i++;
++	verf[0] = (__be32)get_seconds();
++	verf[1] = (__be32)i++;
++	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
+ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0ec5a1b..1701ad6 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -755,14 +755,14 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 				goto out;
+ 			break;
+ 		case NFS4_CREATE_EXCLUSIVE:
+-			READ_BUF(8);
+-			COPYMEM(open->op_verf.data, 8);
++			READ_BUF(NFS4_VERIFIER_SIZE);
++			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+ 			break;
+ 		case NFS4_CREATE_EXCLUSIVE4_1:
+ 			if (argp->minorversion < 1)
+ 				goto xdr_error;
+-			READ_BUF(8);
+-			COPYMEM(open->op_verf.data, 8);
++			READ_BUF(NFS4_VERIFIER_SIZE);
++			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+ 			status = nfsd4_decode_fattr(argp, open->op_bmval,
+ 				&open->op_iattr, &open->op_acl);
+ 			if (status)
+@@ -994,8 +994,8 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
+ {
+ 	DECODE_HEAD;
+ 
+-	READ_BUF(8);
+-	COPYMEM(setclientid->se_verf.data, 8);
++	READ_BUF(NFS4_VERIFIER_SIZE);
++	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+ 
+ 	status = nfsd4_decode_opaque(argp, &setclientid->se_name);
+ 	if (status)
+@@ -1020,9 +1020,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
+ {
+ 	DECODE_HEAD;
+ 
+-	READ_BUF(8 + sizeof(nfs4_verifier));
++	READ_BUF(8 + NFS4_VERIFIER_SIZE);
+ 	COPYMEM(&scd_c->sc_clientid, 8);
+-	COPYMEM(&scd_c->sc_confirm, sizeof(nfs4_verifier));
++	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
+ 
+ 	DECODE_TAIL;
+ }
+@@ -2661,8 +2661,8 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 	__be32 *p;
+ 
+ 	if (!nfserr) {
+-		RESERVE_SPACE(8);
+-		WRITEMEM(commit->co_verf.data, 8);
++		RESERVE_SPACE(NFS4_VERIFIER_SIZE);
++		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
+ 		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+@@ -3008,7 +3008,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 	if (resp->xbuf->page_len)
+ 		return nfserr_resource;
+ 
+-	RESERVE_SPACE(8);  /* verifier */
++	RESERVE_SPACE(NFS4_VERIFIER_SIZE);
+ 	savep = p;
+ 
+ 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+@@ -3209,9 +3209,9 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
+ 	__be32 *p;
+ 
+ 	if (!nfserr) {
+-		RESERVE_SPACE(8 + sizeof(nfs4_verifier));
++		RESERVE_SPACE(8 + NFS4_VERIFIER_SIZE);
+ 		WRITEMEM(&scd->se_clientid, 8);
+-		WRITEMEM(&scd->se_confirm, sizeof(nfs4_verifier));
++		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
+ 		ADJUST_ARGS();
+ 	}
+ 	else if (nfserr == nfserr_clid_inuse) {
+@@ -3232,7 +3232,7 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+ 		RESERVE_SPACE(16);
+ 		WRITE32(write->wr_bytes_written);
+ 		WRITE32(write->wr_how_written);
+-		WRITEMEM(write->wr_verifier.data, 8);
++		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
+ 		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2364747..8d1031a 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -216,7 +216,8 @@ struct nfsd4_open {
+ 	u32		op_createmode;      /* request */
+ 	u32		op_bmval[3];        /* request */
+ 	struct iattr	iattr;              /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
+-	nfs4_verifier	verf;               /* EXCLUSIVE4 */
++	nfs4_verifier	op_verf __attribute__((aligned(32)));
++					    /* EXCLUSIVE4 */
+ 	clientid_t	op_clientid;        /* request */
+ 	struct xdr_netobj op_owner;           /* request */
+ 	u32		op_seqid;           /* request */
+@@ -234,7 +235,6 @@ struct nfsd4_open {
+ 	struct nfs4_acl *op_acl;
+ };
+ #define op_iattr	iattr
+-#define op_verf		verf
+ 
+ struct nfsd4_open_confirm {
+ 	stateid_t	oc_req_stateid		/* request */;
+
