@@ -1,193 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22848 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759273Ab2CFOqy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 09:46:54 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        stable@vger.kernel.org
-Subject: [PATCH 2/3] NFS: Properly handle the case where the delegation is revoked
-Date: Tue,  6 Mar 2012 09:46:44 -0500
-Message-Id: <1331045205-3031-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1331045205-3031-1-git-send-email-andros@netapp.com>
-References: <1331045205-3031-1-git-send-email-andros@netapp.com>
+Received: from peace.netnation.com ([204.174.223.2]:58116 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754539Ab2CBStS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 13:49:18 -0500
+Received: from sim by peace.netnation.com with local (Exim 4.72)
+	(envelope-from <sim@netnation.com>)
+	id 1S3XXa-0005ut-3w
+	for linux-nfs@vger.kernel.org; Fri, 02 Mar 2012 10:49:18 -0800
+Date: Fri, 2 Mar 2012 10:49:18 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: linux-nfs@vger.kernel.org
+Subject: [3.2.5] NFSv3 CLOSE_WAIT hang
+Message-ID: <20120302184918.GA20702@hostway.ca>
+References: <20110909194509.GB6195@hostway.ca> <1315610322.17611.112.camel@lade.trondhjem.org> <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca> <20120302002511.GA4495@hostway.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120302002511.GA4495@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Here's another CLOSE_WAIT hang, 3.2.5 client, 3.2.2 knfsd server, NFSv3.
+Not sure why these are all happening again now. This cluster seems to
+have a set of customers that are good at breaking things. ;)
 
-If we know that the delegation stateid is bad or revoked, we need to
-remove that delegation as soon as possible, and then mark all the
-stateids that relied on that delegation for recovery. We cannot use
-the delegation as part of the recovery process.
+The only other maybe weird thing we do on this partition is bind mount
+some NFS paths to break through some chroots. Perhaps this is pegging
+things in place (or expecting them to stay there) and causing problems?
 
-Also note that NFSv4.1 uses a different error code (NFS4ERR_DELEG_REVOKED)
-to indicate that the delegation was revoked.
+export:
 
-Finally, ensure that setlk() and setattr() can both recover safely from
-a revoked delegation.
+/home/logs 10.10.52.0/24(rw,async,no_root_squash,no_subtree_check,fsid=1)
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org
----
- fs/nfs/delegation.c |   11 +++++++++++
- fs/nfs/delegation.h |    1 +
- fs/nfs/nfs4_fs.h    |    2 ++
- fs/nfs/nfs4proc.c   |   16 ++++++++++++++--
- fs/nfs/nfs4state.c  |   26 ++++++++++++++++++++++++++
- 5 files changed, 54 insertions(+), 2 deletions(-)
+mount:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 1596098..c14512c 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -466,6 +466,17 @@ static void nfs_delegation_run_state_manager(struct nfs_client *clp)
- 		nfs4_schedule_state_manager(clp);
- }
- 
-+void nfs_remove_bad_delegation(struct inode *inode)
-+{
-+	struct nfs_delegation *delegation;
-+
-+	delegation = nfs_detach_delegation(NFS_I(inode), NFS_SERVER(inode));
-+	if (delegation) {
-+		nfs_inode_find_state_and_recover(inode, &delegation->stateid);
-+		nfs_free_delegation(delegation);
-+	}
-+}
-+
- /**
-  * nfs_expire_all_delegation_types
-  * @clp: client to process
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index d9322e4..691a796 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -45,6 +45,7 @@ void nfs_expire_unreferenced_delegations(struct nfs_client *clp);
- void nfs_handle_cb_pathdown(struct nfs_client *clp);
- int nfs_client_return_marked_delegations(struct nfs_client *clp);
- int nfs_delegations_present(struct nfs_client *clp);
-+void nfs_remove_bad_delegation(struct inode *inode);
- 
- void nfs_delegation_mark_reclaim(struct nfs_client *clp);
- void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index b133b50..6b53cca 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -318,6 +318,8 @@ extern void nfs4_put_open_state(struct nfs4_state *);
- extern void nfs4_close_state(struct nfs4_state *, fmode_t);
- extern void nfs4_close_sync(struct nfs4_state *, fmode_t);
- extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
-+extern void nfs_inode_find_state_and_recover(struct inode *inode,
-+		const nfs4_stateid *stateid);
- extern void nfs4_schedule_lease_recovery(struct nfs_client *);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0d5134a..2722388 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -267,8 +267,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 	switch(errorcode) {
- 		case 0:
- 			return 0;
-+		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
-+			if (state != NULL)
-+				nfs_remove_bad_delegation(state->inode);
- 		case -NFS4ERR_OPENMODE:
- 			if (state == NULL)
- 				break;
-@@ -1329,6 +1332,7 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
- 				 * The show must go on: exit, but mark the
- 				 * stateid as needing recovery.
- 				 */
-+			case -NFS4ERR_DELEG_REVOKED:
- 			case -NFS4ERR_ADMIN_REVOKED:
- 			case -NFS4ERR_BAD_STATEID:
- 				nfs4_schedule_stateid_recovery(server, state);
-@@ -1929,7 +1933,9 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			   struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.state = state,
-+	};
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(server,
-@@ -3753,8 +3759,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 	if (task->tk_status >= 0)
- 		return 0;
- 	switch(task->tk_status) {
-+		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
-+			if (state != NULL)
-+				nfs_remove_bad_delegation(state->inode);
- 		case -NFS4ERR_OPENMODE:
- 			if (state == NULL)
- 				break;
-@@ -4595,7 +4604,9 @@ out:
- 
- static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
--	struct nfs4_exception exception = { };
-+	struct nfs4_exception exception = {
-+		.state = state,
-+	};
- 	int err;
- 
- 	do {
-@@ -4688,6 +4699,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- 				 * The show must go on: exit, but mark the
- 				 * stateid as needing recovery.
- 				 */
-+			case -NFS4ERR_DELEG_REVOKED:
- 			case -NFS4ERR_ADMIN_REVOKED:
- 			case -NFS4ERR_BAD_STATEID:
- 			case -NFS4ERR_OPENMODE:
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 653bfd7..7bd9822 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1103,6 +1103,32 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
- 	nfs4_schedule_state_manager(clp);
- }
- 
-+void nfs_inode_find_state_and_recover(struct inode *inode,
-+		const nfs4_stateid *stateid)
-+{
-+	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct nfs_open_context *ctx;
-+	struct nfs4_state *state;
-+	bool found = false;
-+
-+	spin_lock(&inode->i_lock);
-+	list_for_each_entry(ctx, &nfsi->open_files, list) {
-+		state = ctx->state;
-+		if (state == NULL)
-+			continue;
-+		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
-+			continue;
-+		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
-+			continue;
-+		nfs4_state_mark_reclaim_nograce(clp, state);
-+		found = true;
-+	}
-+	spin_unlock(&inode->i_lock);
-+	if (found)
-+		nfs4_schedule_state_manager(clp);
-+}
-+
- static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_recovery_ops *ops)
- {
- 	struct inode *inode = state->inode;
--- 
-1.7.6.4
+10.10.52.15:/home/logs       /home/logs        nfs     rw,soft,intr,tcp,timeo=300,retrans=2,vers=3        0 0
 
+current socket state:
+
+tcp        0      0 10.10.52.11:719         10.10.52.15:2049        CLOSE_WAIT  -                off (0.00/0/0)
+
+demsg:
+
+[505238.409106] ------------[ cut here ]------------
+[505238.409194] WARNING: at fs/dcache.c:2485 prepend_path+0x19c/0x1b0()
+[505238.409269] Hardware name: PowerEdge 1950
+[505238.409339] Root dentry has weird name <>
+[505238.409409] Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler xt_recent nf_conntrack_ftp xt_state xt_owner nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 bnx2
+[505238.410107] Pid: 3461, comm: sftp-server Tainted: G        W    3.2.5-hw+ #3
+[505238.410184] Call Trace:
+[505238.410256]  [<ffffffff8113140c>] ? prepend_path+0x19c/0x1b0
+[505238.410333]  [<ffffffff8105b0e0>] warn_slowpath_common+0x80/0xc0
+[505238.410408]  [<ffffffff8105b219>] warn_slowpath_fmt+0x69/0x70
+[505238.410485]  [<ffffffff8111bf89>] ? do_sync_read+0xd9/0x120
+[505238.410560]  [<ffffffff81130db0>] ? prepend+0x30/0x40
+[505238.410634]  [<ffffffff8113140c>] prepend_path+0x19c/0x1b0
+[505238.410708]  [<ffffffff81131940>] sys_getcwd+0x100/0x1e0
+[505238.410786]  [<ffffffff816e1392>] system_call_fastpath+0x16/0x1b
+[505238.410861] ---[ end trace 3cedde7daf396ef5 ]---
+[505238.461689] ------------[ cut here ]------------
+[505238.461772] WARNING: at fs/dcache.c:2485 prepend_path+0x19c/0x1b0()
+[505238.461846] Hardware name: PowerEdge 1950
+[505238.461916] Root dentry has weird name <>
+[505238.461986] Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler xt_recent nf_conntrack_ftp xt_state xt_owner nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 bnx2
+[505238.462680] Pid: 3461, comm: sftp-server Tainted: G        W    3.2.5-hw+ #3
+[505238.462756] Call Trace:
+[505238.462826]  [<ffffffff8113140c>] ? prepend_path+0x19c/0x1b0
+[505238.462902]  [<ffffffff8105b0e0>] warn_slowpath_common+0x80/0xc0
+[505238.462977]  [<ffffffff8105b219>] warn_slowpath_fmt+0x69/0x70
+[505238.463053]  [<ffffffff8111bf89>] ? do_sync_read+0xd9/0x120
+[505238.463128]  [<ffffffff81130db0>] ? prepend+0x30/0x40
+[505238.463202]  [<ffffffff8113140c>] prepend_path+0x19c/0x1b0
+[505238.463277]  [<ffffffff81131940>] sys_getcwd+0x100/0x1e0
+[505238.463352]  [<ffffffff816e1392>] system_call_fastpath+0x16/0x1b
+[505238.463427] ---[ end trace 3cedde7daf396ef6 ]---
+[505526.997108] SUNRPC: xprt(ffff880081b48800) state=18, snd_task=0
+[505526.997189] SUNRPC: xprt(ffff8802252a4800) state=18, snd_task=0
+[505526.997264] SUNRPC: xprt(ffff880025b5b800) state=18, snd_task=0
+[505526.997338] SUNRPC: xprt(ffff880223590000) state=18, snd_task=0
+[505526.997412] SUNRPC: xprt(ffff880223590000) state=18, snd_task=0
+[505526.997486] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997560] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997634] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997708] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997782] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997856] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.997930] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.998004] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.998078] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505526.998152] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505526.998226] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505526.998300] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505526.998374] SUNRPC: xprt(ffff880208c53800) state=16, snd_task=0
+[505526.998448] SUNRPC: xprt(ffff8801cabf1000) state=16, snd_task=0
+[505526.998523] SUNRPC: xprt(ffff8802235ac800) state=18, snd_task=0
+[505526.998597] SUNRPC: xprt(ffff880208c53000) state=18, snd_task=0
+[505526.998671] SUNRPC: xprt(ffff8802235a0800) state=18, snd_task=0
+[505526.998745] SUNRPC: xprt(ffff880211b70000) state=18, snd_task=0
+[505526.998819] SUNRPC: xprt(ffff88022503b800) state=18, snd_task=0
+[505527.000640] SUNRPC: xprt(ffff88022360d000) state=18, snd_task=0
+[505527.000715] SUNRPC: xprt(ffff880223650800) state=18, snd_task=0
+[505527.000790] SUNRPC: xprt(ffff880223608800) state=16, snd_task=0
+[505527.000864] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.000938] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001012] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001086] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001160] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001234] -pid- flgs status -client- --rqstp- -timeout ---ops--
+[505527.001317]  7094 0880      0 ffff880223763000 ffff880224046400     7500 ffffffff8178b220 nfsv3 SETATTR a:call_status q:xprt_pending
+[505527.001417] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001522] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001597] SUNRPC: xprt(ffff8802257d2000) state=18, snd_task=0
+[505527.001671] SUNRPC: xprt(ffff8802235a1800) state=18, snd_task=0
+[505527.001745] SUNRPC: xprt(ffff8802235a1800) state=18, snd_task=0
+[505527.001824] 12105 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.001926] 12106 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002028] 12125 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002130] 12126 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002231] 12129 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002332] 12167 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002434] 12176 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002535] 12188 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002637] 12189 0280    -11 ffff88022551c200   (null)        0 ffffffff8178b220 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+[505527.002736] SUNRPC: xprt(ffff88022510f800) state=27, snd_task->tk_pid=32732
+[505527.002813] SUNRPC: xprt(ffff88022510f800) state=27, snd_task->tk_pid=32732
+[505527.002889] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505527.002963] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505527.003036] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505527.003110] SUNRPC: xprt(ffff8802251d7800) state=18, snd_task=0
+[505527.003184] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003258] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003334] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003408] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003482] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003555] SUNRPC: xprt(ffff8802251d3800) state=18, snd_task=0
+[505527.003629] SUNRPC: xprt(ffff8802252a5000) state=18, snd_task=0
+[505527.003703] SUNRPC: xprt(ffff880225f05800) state=18, snd_task=0
+[505527.003777] SUNRPC: xprt(ffff880225f05800) state=18, snd_task=0
+[505527.003851] SUNRPC: xprt(ffff8802252a5000) state=18, snd_task=0
+[505527.003925] SUNRPC: xprt(ffff8802252a5000) state=18, snd_task=0
+[505527.004012] SUNRPC: xprt(ffff880223586800) state=18, snd_task=0
+[505527.004089] SUNRPC: xprt(ffff880223586800) state=18, snd_task=0
+[505527.004167] SUNRPC: xprt(ffff8802235a3800) state=18, snd_task=0
+[505527.004243] SUNRPC: xprt(ffff8802235a3800) state=18, snd_task=0
+[505527.004317] SUNRPC: xprt(ffff8802235ab800) state=18, snd_task=0
+[505527.004393] SUNRPC: xprt(ffff8802235ab800) state=18, snd_task=0
+[505527.004467] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.004544]  7708 0880      0 ffff880224080000 ffff88022557b400     7500 ffffffff8178b220 nfsv3 SETATTR a:call_status q:xprt_pending
+[505527.004644] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.004718] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.004792] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.004868] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.004945] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005019] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005096]  7512 0801      0 ffff88022501f200 ffff880223695800     7500 ffffffff81714ee0 nfsv3 WRITE a:call_status q:xprt_pending
+[505527.005198]  7516 0880      0 ffff88022501f200 ffff8802252e1200     7500 ffffffff8178b220 nfsv3 SETATTR a:call_status q:xprt_pending
+[505527.005297] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005372] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005447] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005521] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005607] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005682] SUNRPC: xprt(ffff8802236a3800) state=18, snd_task=0
+[505527.005756] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.005829] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.005906]  7688 0880      0 ffff880225479a00 ffff880225019600     7500 ffffffff8178b220 nfsv3 GETATTR a:call_status q:xprt_pending
+[505527.006005] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006079] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006153] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006227] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006301] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006375] SUNRPC: xprt(ffff88022359e800) state=18, snd_task=0
+[505527.006448] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006522] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006596] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006670] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006744] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006818] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006891] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.006965] SUNRPC: xprt(ffff8802235bf000) state=18, snd_task=0
+[505527.007039] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007113] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007187] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007261] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007335] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007409] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+[505527.007483] SUNRPC: xprt(ffff8802236a2000) state=16, snd_task=0
+[505527.007557] SUNRPC: xprt(ffff88022344a000) state=18, snd_task=0
+
+Thanks,
+
+Simon-
