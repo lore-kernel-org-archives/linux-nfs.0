@@ -1,53 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:38271 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932360Ab2CBTrA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 14:47:00 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 2 Mar 2012 12:47:00 -0700
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id CDA6019D8048
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Mar 2012 12:46:52 -0700 (MST)
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q22JkvOF170198
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:46:57 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q22Jku7I027439
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:46:57 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q22JkukZ027429
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:46:56 -0700
-Date: Fri, 2 Mar 2012 13:46:55 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: strip of extra slashes in device name
-Message-ID: <20120302194655.GB28389@us.ibm.com>
-References: <1330707221-4005-1-git-send-email-steved@redhat.com>
- <20120302184556.GA6880@us.ibm.com>
- <4F511C95.2040806@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F511C95.2040806@RedHat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:41393 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751833Ab2CBTHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:07:16 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFS: Extend the -overs= mount option to allow 4.x minorversions
+Date: Fri,  2 Mar 2012 14:07:09 -0500
+Message-Id: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson [SteveD@redhat.com] wrote:
-> 
-> 
-> On 03/02/2012 01:45 PM, Malahal Naineni wrote:
-> > My kernel doesn't seem to strip '/' from its /proc/mounts. What kernel
-> > are you using? 
-> a later RHEL6 kernel... but I see the same thing with Fedora f16 kernels (3.2)
-> as well... What kernel are you using?
+Allow the user to mount an NFSv4.0 or NFSv4.1 partition using a
+standard syntax of '-overs=4.0', or '-overs=4.1' rather than the
+more cumbersome '-overs=4,minorversion=1'.
 
-Using 3.3.0-rc1+ kernel.
-[root@elm3c105 ~]# grep mnt /proc/mounts 
-elm3c104:///server/ /mnt nfs rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=9.47.69.104,mountvers=3,mountport=929,mountproto=udp,local_lock=none,addr=9.47.69.104 0 0
+See also the earlier patch by Dros Adamson, which added the
+Linux-specific syntax '-ov4.0', '-ov4.1'.
 
-I must be missing something, I see the same thing in RHEL6.2 version of
-Linux.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/super.c |   84 +++++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 62 insertions(+), 22 deletions(-)
 
-Regards, Malahal.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 8154acc..ab58bb9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -98,10 +98,10 @@ enum {
+ 	Opt_namelen,
+ 	Opt_mountport,
+ 	Opt_mountvers,
+-	Opt_nfsvers,
+ 	Opt_minorversion,
+ 
+ 	/* Mount options that take string arguments */
++	Opt_nfsvers,
+ 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+ 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
+ 	Opt_lookupcache,
+@@ -166,9 +166,10 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_namelen, "namlen=%s" },
+ 	{ Opt_mountport, "mountport=%s" },
+ 	{ Opt_mountvers, "mountvers=%s" },
++	{ Opt_minorversion, "minorversion=%s" },
++
+ 	{ Opt_nfsvers, "nfsvers=%s" },
+ 	{ Opt_nfsvers, "vers=%s" },
+-	{ Opt_minorversion, "minorversion=%s" },
+ 
+ 	{ Opt_sec, "sec=%s" },
+ 	{ Opt_proto, "proto=%s" },
+@@ -262,6 +263,22 @@ static match_table_t nfs_local_lock_tokens = {
+ 	{ Opt_local_lock_err, NULL }
+ };
+ 
++enum {
++	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
++	Opt_vers_4_1,
++
++	Opt_vers_err
++};
++
++static match_table_t nfs_vers_tokens = {
++	{ Opt_vers_2, "2" },
++	{ Opt_vers_3, "3" },
++	{ Opt_vers_4, "4" },
++	{ Opt_vers_4_0, "4.0" },
++	{ Opt_vers_4_1, "4.1" },
++
++	{ Opt_vers_err, NULL }
++};
+ 
+ static void nfs_umount_begin(struct super_block *);
+ static int  nfs_statfs(struct dentry *, struct kstatfs *);
+@@ -1064,6 +1081,40 @@ static int nfs_parse_security_flavors(char *value,
+ 	return 1;
+ }
+ 
++static int nfs_parse_version_string(char *string,
++		struct nfs_parsed_mount_data *mnt,
++		substring_t *args)
++{
++	mnt->flags &= ~NFS_MOUNT_VER3;
++	switch (match_token(string, nfs_vers_tokens, args)) {
++	case Opt_vers_2:
++		mnt->version = 2;
++		break;
++	case Opt_vers_3:
++		mnt->flags |= NFS_MOUNT_VER3;
++		mnt->version = 3;
++		break;
++	case Opt_vers_4:
++		/* Backward compatibility option. In future,
++		 * the mount program should always supply
++		 * a NFSv4 minor version number.
++		 */
++		mnt->version = 4;
++		break;
++	case Opt_vers_4_0:
++		mnt->version = 4;
++		mnt->minorversion = 0;
++		break;
++	case Opt_vers_4_1:
++		mnt->version = 4;
++		mnt->minorversion = 1;
++		break;
++	default:
++		return 0;
++	}
++	return 1;
++}
++
+ static int nfs_get_option_str(substring_t args[], char **option)
+ {
+ 	kfree(*option);
+@@ -1317,26 +1368,6 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_invalid_value;
+ 			mnt->mount_server.version = option;
+ 			break;
+-		case Opt_nfsvers:
+-			if (nfs_get_option_ul(args, &option))
+-				goto out_invalid_value;
+-			switch (option) {
+-			case NFS2_VERSION:
+-				mnt->flags &= ~NFS_MOUNT_VER3;
+-				mnt->version = 2;
+-				break;
+-			case NFS3_VERSION:
+-				mnt->flags |= NFS_MOUNT_VER3;
+-				mnt->version = 3;
+-				break;
+-			case NFS4_VERSION:
+-				mnt->flags &= ~NFS_MOUNT_VER3;
+-				mnt->version = 4;
+-				break;
+-			default:
+-				goto out_invalid_value;
+-			}
+-			break;
+ 		case Opt_minorversion:
+ 			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+@@ -1348,6 +1379,15 @@ static int nfs_parse_mount_options(char *raw,
+ 		/*
+ 		 * options that take text values
+ 		 */
++		case Opt_nfsvers:
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			rc = nfs_parse_version_string(string, mnt, args);
++			kfree(string);
++			if (!rc)
++				goto out_invalid_value;
++			break;
+ 		case Opt_sec:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+-- 
+1.7.7.6
 
