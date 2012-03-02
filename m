@@ -1,76 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:36547 "EHLO ebox.rath.org"
+Received: from mx2.netapp.com ([216.240.18.37]:4191 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753951Ab2CSSvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 14:51:05 -0400
-Message-ID: <4F678016.9050803@rath.org>
-Date: Mon, 19 Mar 2012 14:51:02 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
+	id S1750745Ab2CBU5O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 15:57:14 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Ensure we display the minor version correctly
+ in /proc/mounts etc.
+Date: Fri, 2 Mar 2012 20:57:13 +0000
+Message-ID: <1330721831.4073.2.camel@lade.trondhjem.org>
+References: <1330715086-13871-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330715086-13871-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <20120302204603.GA1807@umich.edu>
+In-Reply-To: <20120302204603.GA1807@umich.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>, Rick Macklem <rmacklem@uoguelph.ca>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org> <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com> <20120319183955.GC23670@fieldses.org>
-In-Reply-To: <20120319183955.GC23670@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org> writes:
-> > On Mon, Mar 19, 2012 at 01:06:47PM -0400, Rick Macklem wrote:
->> >> I wrote:
->>> >> > J. Bruce Fields wrote:
->>>> >> > > On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
->>>>> >> > > > On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
->>>>>> >> > > > > IMO, the server should do a comparison of the nfs_client_id4
->>>>>> >> > > > > strings, and nothing else.
->>>>> >> > > >
->>>>> >> > > > We're supposed to return CLID_INUSE when we see a setclientid
->>>>> >> > > > from a "different" client using the same string, to keep
->>>>> >> > > > clients from doing mischief with other clients' state (either
->>>>> >> > > > maliciously or, as in this case, accidentally).
->>>>> >> > > >
->>>>> >> > > > "Different" here is defined as "not having the same principal".
->>>>> >> > > > I know what that means in the krb5 case, but I'm less certain
->>>>> >> > > > in the auth_sys case.
->>>> >> > >
->>>> >> > > Cc'ing the ietf list. Is it reasonable for a server to expect
->>>> >> > > setclientid's to come from the same client IP address at least in
->>>> >> > > the auth_sys case, or could that break multi-homed clients?
->>>> >> > >
->>> >> > I think that even a dhcp lease renewal might result in a different
->>> >> > client IP, if the client has been partitioned from the dhcp server
->>> >> > for a while.
-> >
-> > Yeah, but by that point the client's v4 lease is probably expired
-> > anyway so the client's not likely to be bothered by the NFS4ERR_INUSE.
-> >
->>> >> > I'm not convinced that different client IP# implies different
->>> >> > client. (Even "same ip# implies same client" might not be true, if
->>> >> > the dhcp server assigned the IP# to another machine while the
->>> >> > client was partitioned from the dhcp server, I think? I haven't
->>> >> > looked at current dhcp implementations, but it seems conceivable to
->>> >> > me.)
->>> >> > 
->> >> Oh, and what about the case of 2 clients that are sitting behind the
->> >> same NAT gateway? (I think they'd both be seen as having the client
->> >> host ip# of the gateway, but with different TCP connections on
->> >> different client port#s.)
-> >
-> > Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
-> > case where we get setclientid's with the same client-provided id.
-
-At least in the case that sparked this discussion, it would already be
-enough to return NFS4ERR_INUSE only if the client id is being reassigned
-*and* has a 0.0.0.0 (aka autodetection failed) value.
-
-
-Best,
-
-   -Nikolaus
-
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
-
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+T24gRnJpLCAyMDEyLTAzLTAyIGF0IDE1OjQ2IC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gVHJv
+bmQgTXlrbGVidXN0IHdyb3RlOg0KPiANCj4gICBUaGUgJ21pbm9ydmVyc2lvbicgbW91bnQgb3B0
+aW9uIGlzIG5vdyBkZXByZWNhdGVkLCBzbyB3ZSBuZWVkIHRvIGRpc3BsYXkNCj4gICB0aGUgbWlu
+b3IgdmVyc2lvbiBudW1iZXIgaW4gdGhlICd2ZXJzPScgZm9ybWF0Lg0KPiAgIA0KPiAgIFNpZ25l
+ZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+
+ICAgLS0tDQo+ICAgIGZzL25mcy9zdXBlci5jIHwgICAxMiArKysrKysrKysrLS0NCj4gICAgMSBm
+aWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiAgIA0KPiAg
+IGRpZmYgLS1naXQgYS9mcy9uZnMvc3VwZXIuYyBiL2ZzL25mcy9zdXBlci5jDQo+ICAgaW5kZXgg
+YWI1OGJiOS4uN2YwYzkzZiAxMDA2NDQNCj4gICAtLS0gYS9mcy9uZnMvc3VwZXIuYw0KPiAgICsr
+KyBiL2ZzL25mcy9zdXBlci5jDQo+ICAgQEAgLTY0MCw3ICs2NDAsNiBAQCBzdGF0aWMgdm9pZCBu
+ZnNfc2hvd19uZnN2NF9vcHRpb25zKHN0cnVjdCBzZXFfZmlsZSAqbSwgc3RydWN0IG5mc19zZXJ2
+ZXIgKm5mc3MsDQo+ICAgIAlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gbmZzcy0+bmZzX2NsaWVu
+dDsNCj4gICAgDQo+ICAgIAlzZXFfcHJpbnRmKG0sICIsY2xpZW50YWRkcj0lcyIsIGNscC0+Y2xf
+aXBhZGRyKTsNCj4gICAtCXNlcV9wcmludGYobSwgIixtaW5vcnZlcnNpb249JXUiLCBjbHAtPmNs
+X21pbm9ydmVyc2lvbik7DQo+ICAgIH0NCj4gICAgI2Vsc2UNCj4gICAgc3RhdGljIHZvaWQgbmZz
+X3Nob3dfbmZzdjRfb3B0aW9ucyhzdHJ1Y3Qgc2VxX2ZpbGUgKm0sIHN0cnVjdCBuZnNfc2VydmVy
+ICpuZnNzLA0KPiAgIEBAIC02NDksNiArNjQ4LDE1IEBAIHN0YXRpYyB2b2lkIG5mc19zaG93X25m
+c3Y0X29wdGlvbnMoc3RydWN0IHNlcV9maWxlICptLCBzdHJ1Y3QgbmZzX3NlcnZlciAqbmZzcywN
+Cj4gICAgfQ0KPiAgICAjZW5kaWYNCj4gICAgDQo+ICAgK3N0YXRpYyB2b2lkIG5mc19zaG93X25m
+c192ZXJzaW9uKHN0cnVjdCBzZXFfZmlsZSAqbSwNCj4gICArCQl1bnNpZ25lZCBpbnQgdmVyc2lv
+biwNCj4gICArCQl1bnNpZ25lZCBpbnQgbWlub3J2ZXJzaW9uKQ0KPiAgICt7DQo+ICAgKwlzZXFf
+cHJpbnRmKG0sICIsdmVycz0ldSIsIHZlcnNpb24pOw0KPiANCj4gSXNuJ3QgIm5mc3ZlcnM9IiBw
+cmVmZXJyZWQ/ICBUaGF0J3Mgd2hhdCB0aGUgbWFuIHBhZ2UgaW1wbGllcy4NCg0KSSBiZWxpZXZl
+IHRoYXQgU29sYXJpcywgQUlYLCBldGMgYWxsIHN1cHBvcnQgdGhlICd2ZXJzPScgbW91bnQgb3B0
+aW9uLA0Kc28gdGhhdCdzIHdoYXQgbW9zdCBhdXRvbW91bnRlciBzY3JpcHRzIHdpbGwgdXNlLg0K
+DQo+ICAgKwlpZiAodmVyc2lvbiA9PSA0KQ0KPiANCj4gU2hvdWxkIHRoaXMgYmUgInZlcnNpb24g
+Pj0gNCI/ICAob25seSBoYWxmIHNlcmlvdXMpDQoNCldoaWNoIGNyeXN0YWwgYmFsbCBzaG91bGQg
+SSB1c2UgdG8gdmVyaWZ5IHRoYXQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg0K
