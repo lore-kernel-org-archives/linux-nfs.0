@@ -1,146 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:59758 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756063Ab2C0Cdo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 22:33:44 -0400
-Message-ID: <4F7126E0.5080700@panasas.com>
-Date: Mon, 26 Mar 2012 19:33:04 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
-        Thomas Gleixner <tglx@linutronix.de>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: Re: [PATCH 4/6 OPTION-A version 3] completion: Add new wait_for_completion_timeout_state
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com> <4F7120B6.2090509@panasas.com>
-In-Reply-To: <4F7120B6.2090509@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:52652 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755583Ab2CBQxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 11:53:41 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q22GrePa003815
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 11:53:41 -0500
+Received: from badhat.bos.devel.redhat.com (vpn-11-150.rdu.redhat.com [10.11.11.150])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q22GreaC004718
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 11:53:40 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] mount.nfs: strip of extra slashes in device name
+Date: Fri,  2 Mar 2012 11:53:41 -0500
+Message-Id: <1330707221-4005-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry had a checkpatch problem near the switch statement (missing space)
+The kernel strips off extra '/' when the  device is entered
+into /proc/mounts. So that umounts can this devices, strip off
+any extra '/' before storing the device in the mtab.
 
-Boaz
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] completion: Add new wait_for_completion_timeout_state
+ utils/mount/mount.c |   18 ++++++++++++++++++
+ 1 files changed, 18 insertions(+), 0 deletions(-)
 
-There are sometime places where an API hides a completion
-inside it's implementation, and needs to expose the kind of
-wait it does to it's upper users. Instead of such cases that
-now need an ugly switch case to call the different
-wait_for_completion_xxx function define a generic one
-which can do all.
-
-A new user will be added to this API in linux/kmod.h.
-
-The return value from this member is a more Linux Kernel natural.
-It will return:
-	0  - If the wait was actually completed by a complete() signal.
-	-ERESTARTSYS - If interrupted
-	-ETIMEDOUT - If timeout expired
-
-CC: Oleg Nesterov <oleg@redhat.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- include/linux/completion.h |    2 +
- kernel/sched/core.c        |   56 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 58 insertions(+), 0 deletions(-)
-
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 51494e6..c41b836 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -85,6 +85,8 @@ extern long wait_for_completion_interruptible_timeout(
- 	struct completion *x, unsigned long timeout);
- extern long wait_for_completion_killable_timeout(
- 	struct completion *x, unsigned long timeout);
-+extern int wait_for_completion_timeout_state(
-+	struct completion *x, unsigned long timeout, int state);
- extern bool try_wait_for_completion(struct completion *x);
- extern bool completion_done(struct completion *x);
- 
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
-index 503d642..7aef53e 100644
---- a/kernel/sched/core.c
-+++ b/kernel/sched/core.c
-@@ -3664,6 +3664,62 @@ int __sched wait_for_completion_killable(struct completion *x)
- EXPORT_SYMBOL(wait_for_completion_killable_timeout);
- 
- /**
-+ * wait_for_completion_timeout_state: - waits for completion of a task all modes
-+ * @x:  holds the state of this particular completion
-+ * @timeout:  timeout value in jiffies
-+ * @state: Can be either 0 or TASK_KILLABLE or TASK_INTERRUPTIBLE
-+ *
-+ * This waits for either a completion of a specific task to be
-+ * signaled or for a specified timeout to expire.
-+ * If @state == TASK_KILLABLE It can be interrupted by a kill signal only.
-+ * If @state == TASK_INTERRUPTIBLE It can be interrupted by any signal.
-+ *
-+ * This is a Swiss-army-knife of all the above, for API's that needs to hide
-+ * a completion, and needs to expose it's control to users.
-+ *
-+ * The return value is:
-+ *	0 means completion was signaled with a complete call.
-+ *	-ERESTARTSYS if interrupted
-+ *	-ETIMEDOUT if timeout expired
-+ *  Be careful the return value is Boolean opposite to the above _timeout
-+ *  members.
-+ */
-+int __sched
-+wait_for_completion_timeout_state(struct completion *x,
-+				  unsigned long timeout, int state)
-+{
-+	long t;
-+	int ret;
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index eea00af..eb63f50 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -485,6 +485,24 @@ int main(int argc, char *argv[])
+ 		goto out;
+ 	}
+ 	/*
++	 * The kernel strips off extra '/' when the device is entered 
++	 * into /proc/mounts. So that umounts can this devices, strip off
++	 * any extra '/' before storing the device in the mtab.
++	 */
++	if (strstr(spec, "//") != NULL) {
++		char *colen, *slash;
 +
-+	if (!timeout)
-+		timeout = MAX_SCHEDULE_TIMEOUT;
-+
-+	switch (state) {
-+	default:
-+		WARN_ON_ONCE(1);
-+		/* fall through */
-+	case 0:
-+		state = TASK_UNINTERRUPTIBLE;
-+		break;
-+	case TASK_KILLABLE:
-+	case TASK_INTERRUPTIBLE:
-+		break;
++		if ((colen = strchr(spec, ':'))) {
++			slash = (colen + 1);
++			while (*slash && *(slash+1) == '/')
++				slash++;
++			while (*slash)
++				*(++colen) = *(slash++);
++			*(colen+1) = '\0';
++		}
 +	}
 +
-+	t = wait_for_common(x, timeout, state);
-+	if (likely(t > 0)) {
-+		ret = 0;
-+	} else  {
-+		if (t < 0)
-+			ret = t;
-+		else
-+			ret = -ETIMEDOUT;
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL(wait_for_completion_timeout_state);
-+
-+/**
-  *	try_wait_for_completion - try to decrement a completion without blocking
-  *	@x:	completion structure
-  *
++	/*
+ 	 * Concatenate mount options from the configuration file
+ 	 */
+ 	mount_opts = mount_config_opts(spec, mount_point, mount_opts);
 -- 
-1.7.6.5
-
+1.7.1
 
