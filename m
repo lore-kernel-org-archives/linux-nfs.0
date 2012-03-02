@@ -1,117 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35780 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:14011 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759344Ab2C2N7y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 09:59:54 -0400
-Date: Thu, 29 Mar 2012 09:59:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: Paul Gortmaker <paul.gortmaker@windriver.com>, jlayton@redhat.com,
-        bfields@redhat.com, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org, linux-next@vger.kernel.org
-Subject: Re: linux-next: breakage on undefined reference to
- `nfsd4_cld_block'
-Message-ID: <20120329135949.GG16938@fieldses.org>
-References: <CAP=VYLr9CL33ZbEVUhVNXsKOCcDWmwmP268jggzWJEBaMa_W0w@mail.gmail.com>
- <20120329142455.dbad3778ced27db683d06a6a@canb.auug.org.au>
+	id S1759094Ab2CBTRt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:17:49 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 3/3] NFS: Consolidate the parsing of the '-ov4.x' and
+ '-overs=4.x' mount options
+Date: Fri, 2 Mar 2012 19:17:48 +0000
+Message-ID: <1330715866.12731.4.camel@lade.trondhjem.org>
+References: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330715231-20650-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330715231-20650-3-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120329142455.dbad3778ced27db683d06a6a@canb.auug.org.au>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 02:24:55PM +1100, Stephen Rothwell wrote:
-> [cc of nfsd tree contact added]
-
-The nfsd tree should have a fix now.  Thanks for the report.--b.
-
-> 
-> On Wed, 28 Mar 2012 20:31:36 -0400 Paul Gortmaker <paul.gortmaker@windriver.com> wrote:
-> >
-> > Hi all,
-> > 
-> > The linux-next tree got about ten new failures today, spanning all arch.
-> > They all shared this in common, it seems.
-> > 
-> > ERROR: "nfsd4_cld_block" [fs/nfsd/nfsd.ko] undefined!
-> > make[2]: *** [__modpost] Error 1
-> > 
-> > I chose alpha (since it was the 1st I saw alphabetically) and did a bisect,
-> > and it came up with the below commit.  I've also included the bisect log.
-> > 
-> > Can someone please take a look at this?  Too late to fix for the Thursday
-> > build, but Friday might be the last for 3.4 content and it would be nice to
-> > have all these builds green again in that one.
-> > 
-> > Thanks,
-> > Paul.
-> > 
-> > --------------
-> > commit 813fd320c16691eac508fe350b4ee7362c6c4a56
-> > Author: Jeff Layton <jlayton@redhat.com>
-> > Date:   Wed Mar 21 09:52:08 2012 -0400
-> > 
-> >     nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
-> > 
-> >     In the event that rpc_pipefs isn't mounted when nfsd starts, we
-> >     must register a notifier to handle creating the dentry once it
-> >     is mounted, and to remove the dentry on unmount.
-> > 
-> >     Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > -------------------
-> > 
-> > git bisect start
-> > # good: [c16fa4f2ad19908a47c63d8fa436a1178438c7e7] Linux 3.3
-> > git bisect good c16fa4f2ad19908a47c63d8fa436a1178438c7e7
-> > # bad: [7734592ef4a5d14bba15cf2df7fcac8c39d6bdb4] Add linux-next
-> > specific files for 20120328
-> > git bisect bad 7734592ef4a5d14bba15cf2df7fcac8c39d6bdb4
-> > # good: [50953e0640b3473dcb409d5d0d938c2742c93b0d] Merge branch 'poll'
-> > into staging/for_v3.4
-> > git bisect good 50953e0640b3473dcb409d5d0d938c2742c93b0d
-> > # bad: [ecc717668be52fe7b3b29e922b96700067767f05] Merge
-> > remote-tracking branch 'l2-mtd/master'
-> > git bisect bad ecc717668be52fe7b3b29e922b96700067767f05
-> > # good: [d0f6867abfb505b191e31a87dbcdeed65241243a] Merge
-> > remote-tracking branch 'arm/for-next'
-> > git bisect good d0f6867abfb505b191e31a87dbcdeed65241243a
-> > # bad: [2dddaf865e0c13448518abbabd0ad462a7a2d3dd] Merge
-> > remote-tracking branch 'kbuild/for-next'
-> > git bisect bad 2dddaf865e0c13448518abbabd0ad462a7a2d3dd
-> > # bad: [7be8f9ff0749f5d8a0a508b071c206cb68decf04] Merge
-> > remote-tracking branch 'nfsd/nfsd-next'
-> > git bisect bad 7be8f9ff0749f5d8a0a508b071c206cb68decf04
-> > # good: [5537f6f1d690270d388987d543de2cc1e7be40e6] Merge
-> > remote-tracking branch 'ceph/master'
-> > git bisect good 5537f6f1d690270d388987d543de2cc1e7be40e6
-> > # good: [9d547c35799a4ddd235f1565cec2fff6c9263504] vfs: remove unused
-> > superblock helpers
-> > git bisect good 9d547c35799a4ddd235f1565cec2fff6c9263504
-> > # bad: [cc27e0d407021a278d08c1952f5af4ab38c49eda] nfsd: don't allow
-> > legacy client tracker init for anything but init_net
-> > git bisect bad cc27e0d407021a278d08c1952f5af4ab38c49eda
-> > # good: [1255a8f36cb16a02540bdad91c0bc0971b9fb429] nfsd4: don't set
-> > cl_firststate on first reclaim in 4.1 case
-> > git bisect good 1255a8f36cb16a02540bdad91c0bc0971b9fb429
-> > # good: [62b9510cb373d5722fdaba71d961d8f695acfcd5] nfsd: merge cookie
-> > collision fixes from ext4 tree
-> > git bisect good 62b9510cb373d5722fdaba71d961d8f695acfcd5
-> > # good: [2a4317c55438d8589a015d42912454ede12031f0] nfsd: add
-> > nfsd4_client_tracking_ops struct and a way to set it
-> > git bisect good 2a4317c55438d8589a015d42912454ede12031f0
-> > # good: [0ab628d856a63d63b47307b09851d1e955c706ac] nfsd: add a header
-> > describing upcall to nfsdcld
-> > git bisect good 0ab628d856a63d63b47307b09851d1e955c706ac
-> > # bad: [813fd320c16691eac508fe350b4ee7362c6c4a56] nfsd: add notifier
-> > to handle mount/unmount of rpc_pipefs sb
-> > git bisect bad 813fd320c16691eac508fe350b4ee7362c6c4a56
-> > # good: [f3f8014862d813cca81a597c83bd1dbf0fb2b8f6] nfsd: add the
-> > infrastructure to handle the cld upcall
-> > git bisect good f3f8014862d813cca81a597c83bd1dbf0fb2b8f6
-> 
-> -- 
-> Cheers,
-> Stephen Rothwell                    sfr@canb.auug.org.au
-
-
+U3RldmUsDQoNCldoZW4gdGVzdGluZyB0aGlzIHBhdGNoLCBJIG5vdGljZWQgdGhhdCB0aGUgJ21v
+dW50JyBwcm9ncmFtIHNlZW1zIHRvIGJlDQphZGRpbmcgYSAndmVycz00JyB0byBteSBtb3VudCBv
+cHRpb25zLg0KDQpJT1c6IHdoZW4gSSB0ZXN0ZWQgdGhlIGZvbGxvd2luZyBtb3VudCBjb21tYW5k
+Og0KDQogICAgICAgIG1vdW50IC10IG5mcyAtb3Y0LjEgZm9vOi9iYXIgL21udA0KDQp0aGUga2Vy
+bmVsIGVuZGVkIHVwIHBhcnNpbmcNCg0KICAgJ3Y0LjEsdmVycz00LGFkZHI9eHh4Lnh4eC54eHgu
+eHh4LCBjbGllbnRhZGRyPXl5eS55eXkueXl5Lnl5eScNCg0Kd2hpY2ggY2F1c2VkIGEgYnVnIGlu
+IG15IG9yaWdpbmFsIHBhdGNoZXMgKHdoZXJlIEkgaGFkICd2ZXJzPTQnDQphdXRvbWF0aWNhbGx5
+IHNldCBtaW5vcnZlcnNpb249MCkuDQoNCkFueSBpZGVhIHdoeSB3ZSdyZSBhZGRpbmcgdGhhdCBl
+eHRyYSB2ZXJzPTQ/DQoNCkNoZWVycw0KICBUcm9uZA0KDQpPbiBGcmksIDIwMTItMDMtMDIgYXQg
+MTQ6MDcgLTA1MDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gU2lnbmVkLW9mZi1ieTogVHJv
+bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9u
+ZnMvc3VwZXIuYyB8ICAgMzEgKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAgMSBm
+aWxlcyBjaGFuZ2VkLCAzIGluc2VydGlvbnMoKyksIDI4IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlm
+ZiAtLWdpdCBhL2ZzL25mcy9zdXBlci5jIGIvZnMvbmZzL3N1cGVyLmMNCj4gaW5kZXggN2YwYzkz
+Zi4uZjRjY2RhZSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3N1cGVyLmMNCj4gKysrIGIvZnMvbmZz
+L3N1cGVyLmMNCj4gQEAgLTgwLDcgKzgwLDYgQEAgZW51bSB7DQo+ICAJT3B0X2N0bywgT3B0X25v
+Y3RvLA0KPiAgCU9wdF9hYywgT3B0X25vYWMsDQo+ICAJT3B0X2xvY2ssIE9wdF9ub2xvY2ssDQo+
+IC0JT3B0X3YyLCBPcHRfdjMsIE9wdF92NCwgT3B0X3Y0XzAsIE9wdF92NF8xLA0KPiAgCU9wdF91
+ZHAsIE9wdF90Y3AsIE9wdF9yZG1hLA0KPiAgCU9wdF9hY2wsIE9wdF9ub2FjbCwNCj4gIAlPcHRf
+cmRpcnBsdXMsIE9wdF9ub3JkaXJwbHVzLA0KPiBAQCAtMTMzLDExICsxMzIsNiBAQCBzdGF0aWMg
+Y29uc3QgbWF0Y2hfdGFibGVfdCBuZnNfbW91bnRfb3B0aW9uX3Rva2VucyA9IHsNCj4gIAl7IE9w
+dF9ub2FjLCAibm9hYyIgfSwNCj4gIAl7IE9wdF9sb2NrLCAibG9jayIgfSwNCj4gIAl7IE9wdF9u
+b2xvY2ssICJub2xvY2siIH0sDQo+IC0JeyBPcHRfdjIsICJ2MiIgfSwNCj4gLQl7IE9wdF92Mywg
+InYzIiB9LA0KPiAtCXsgT3B0X3Y0LCAidjQiIH0sDQo+IC0JeyBPcHRfdjRfMCwgInY0LjAiIH0s
+DQo+IC0JeyBPcHRfdjRfMSwgInY0LjEiIH0sDQo+ICAJeyBPcHRfdWRwLCAidWRwIiB9LA0KPiAg
+CXsgT3B0X3RjcCwgInRjcCIgfSwNCj4gIAl7IE9wdF9yZG1hLCAicmRtYSIgfSwNCj4gQEAgLTE4
+Myw2ICsxNzcsOSBAQCBzdGF0aWMgY29uc3QgbWF0Y2hfdGFibGVfdCBuZnNfbW91bnRfb3B0aW9u
+X3Rva2VucyA9IHsNCj4gIAl7IE9wdF9mc2NhY2hlX3VuaXEsICJmc2M9JXMiIH0sDQo+ICAJeyBP
+cHRfbG9jYWxfbG9jaywgImxvY2FsX2xvY2s9JXMiIH0sDQo+ICANCj4gKwkvKiBUaGUgZm9sbG93
+aW5nIG5lZWRzIHRvIGJlIGxpc3RlZCBhZnRlciBhbGwgb3RoZXIgb3B0aW9ucyAqLw0KPiArCXsg
+T3B0X25mc3ZlcnMsICJ2JXMiIH0sDQo+ICsNCj4gIAl7IE9wdF9lcnIsIE5VTEwgfQ0KPiAgfTsN
+Cj4gIA0KPiBAQCAtMTIyOCwyOCArMTIyNSw2IEBAIHN0YXRpYyBpbnQgbmZzX3BhcnNlX21vdW50
+X29wdGlvbnMoY2hhciAqcmF3LA0KPiAgCQkJbW50LT5mbGFncyB8PSAoTkZTX01PVU5UX0xPQ0FM
+X0ZMT0NLIHwNCj4gIAkJCQkgICAgICAgTkZTX01PVU5UX0xPQ0FMX0ZDTlRMKTsNCj4gIAkJCWJy
+ZWFrOw0KPiAtCQljYXNlIE9wdF92MjoNCj4gLQkJCW1udC0+ZmxhZ3MgJj0gfk5GU19NT1VOVF9W
+RVIzOw0KPiAtCQkJbW50LT52ZXJzaW9uID0gMjsNCj4gLQkJCWJyZWFrOw0KPiAtCQljYXNlIE9w
+dF92MzoNCj4gLQkJCW1udC0+ZmxhZ3MgfD0gTkZTX01PVU5UX1ZFUjM7DQo+IC0JCQltbnQtPnZl
+cnNpb24gPSAzOw0KPiAtCQkJYnJlYWs7DQo+IC0JCWNhc2UgT3B0X3Y0Og0KPiAtCQkJbW50LT5m
+bGFncyAmPSB+TkZTX01PVU5UX1ZFUjM7DQo+IC0JCQltbnQtPnZlcnNpb24gPSA0Ow0KPiAtCQkJ
+YnJlYWs7DQo+IC0JCWNhc2UgT3B0X3Y0XzA6DQo+IC0JCQltbnQtPmZsYWdzICY9IH5ORlNfTU9V
+TlRfVkVSMzsNCj4gLQkJCW1udC0+dmVyc2lvbiA9IDQ7DQo+IC0JCQltbnQtPm1pbm9ydmVyc2lv
+biA9IDA7DQo+IC0JCQlicmVhazsNCj4gLQkJY2FzZSBPcHRfdjRfMToNCj4gLQkJCW1udC0+Zmxh
+Z3MgJj0gfk5GU19NT1VOVF9WRVIzOw0KPiAtCQkJbW50LT52ZXJzaW9uID0gNDsNCj4gLQkJCW1u
+dC0+bWlub3J2ZXJzaW9uID0gMTsNCj4gLQkJCWJyZWFrOw0KPiAgCQljYXNlIE9wdF91ZHA6DQo+
+ICAJCQltbnQtPmZsYWdzICY9IH5ORlNfTU9VTlRfVENQOw0KPiAgCQkJbW50LT5uZnNfc2VydmVy
+LnByb3RvY29sID0gWFBSVF9UUkFOU1BPUlRfVURQOw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
