@@ -1,84 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41466 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:30099 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752633Ab2CTTed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 15:34:33 -0400
-Date: Tue, 20 Mar 2012 15:34:32 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Fix warnings when NFSD_DEBUG is not defined
-Message-ID: <20120320193431.GB1431@fieldses.org>
-References: <1332270677-19044-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S932241Ab2CBSua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 13:50:30 -0500
+Message-ID: <4F511675.8000500@RedHat.com>
+Date: Fri, 02 Mar 2012 13:50:29 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332270677-19044-1-git-send-email-Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS
+ file handles
+References: <20120301215755.2138.73488.stgit@degas.1015granger.net>  <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org> <4F51009E.6030906@RedHat.com> <A558B81B-F666-4783-8FC8-7C2929BBBCE8@oracle.com>
+In-Reply-To: <A558B81B-F666-4783-8FC8-7C2929BBBCE8@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
 
-On Tue, Mar 20, 2012 at 03:11:17PM -0400, Trond Myklebust wrote:
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c  |    4 ++++
->  fs/nfsd/nfs4state.c |    8 ++++++++
->  2 files changed, 12 insertions(+), 0 deletions(-)
+
+On 03/02/2012 12:19 PM, Chuck Lever wrote:
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 896da74..a62aa4f 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1037,7 +1037,9 @@ struct nfsd4_operation {
->  
->  static struct nfsd4_operation nfsd4_ops[];
->  
-> +#ifdef NFSD_DEBUG
->  static const char *nfsd4_op_name(unsigned opnum);
-> +#endif
->  
->  /*
->   * Enforce NFSv4.1 COMPOUND ordering rules:
-> @@ -1674,12 +1676,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  	},
->  };
->  
-> +#ifdef NFSD_DEBUG
->  static const char *nfsd4_op_name(unsigned opnum)
->  {
->  	if (opnum < ARRAY_SIZE(nfsd4_ops))
->  		return nfsd4_ops[opnum].op_name;
->  	return "unknown_operation";
->  }
-> +#endif
->  
->  #define nfsd4_voidres			nfsd4_voidargs
->  struct nfsd4_voidargs { int dummy; };
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c5cddd6..813de8f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -605,12 +605,20 @@ hash_sessionid(struct nfs4_sessionid *sessionid)
->  	return sid->sequence % SESSION_HASH_SIZE;
->  }
->  
-> +#ifdef NFSD_DEBUG
->  static inline void
->  dump_sessionid(const char *fn, struct nfs4_sessionid *sessionid)
->  {
->  	u32 *ptr = (u32 *)(&sessionid->data[0]);
->  	dprintk("%s: %u:%u:%u:%u\n", fn, ptr[0], ptr[1], ptr[2], ptr[3]);
->  }
-> +#else
-> +static inline void
-> +dump_sessionid(const char *fn, struct nfs4_sessionid *sessionid)
-> +{
-> +}
-> +#endif
-> +
->  
->  static void
->  gen_sessionid(struct nfsd4_session *ses)
-> -- 
-> 1.7.7.6
+> On Mar 2, 2012, at 12:17 PM, Steve Dickson wrote:
 > 
+>>
+>>
+>> On 03/01/2012 05:28 PM, Myklebust, Trond wrote:
+>>> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
+>>>> For debugging, introduce a simplistic function to print NFS file
+>>>> handles on the system console.  The main function is hooked into the
+>>>> dprintk debugging facility, but you can directly call the helper,
+>>>> _nfs_display_fhandle(), if you want to print a handle unconditionally.
+>>>>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>>
+>>>
+>>> One of the things that I really like about wireshark is that it also
+>>> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
+>>> compare 2 filehandles _much_ faster than trying to look at the full
+>>> shebang.
+>>>
+>>>
+>> +1 Being able to easily trace filehandle in both the kernel debug and
+>> wireshark would be huge.... IMHO...
+> 
+> Dros mentioned a possible follow-on patch last night at the pub that would add exactly this functionality.
+> 
+And they say good things don't come out of debauchery!!! 8-)  
