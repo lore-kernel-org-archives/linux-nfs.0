@@ -1,74 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:3211 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:41393 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750967Ab2CEPtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 10:49:15 -0500
-Message-ID: <4F54E05F.5040405@parallels.com>
-Date: Mon, 05 Mar 2012 19:48:47 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
- upcall
-References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>	<1330720950-5872-6-git-send-email-jlayton@redhat.com>	<4F547DF1.8090003@parallels.com>	<20120305074256.6dc36fed@tlielax.poochiereds.net>	<4F54B6B7.1010703@parallels.com>	<20120305093948.435f39cc@tlielax.poochiereds.net>	<4F54D367.4000503@parallels.com> <20120305101604.497e705f@tlielax.poochiereds.net>
-In-Reply-To: <20120305101604.497e705f@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1759099Ab2CBTHR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:07:17 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: Consolidate the parsing of the '-ov4.x' and '-overs=4.x' mount options
+Date: Fri,  2 Mar 2012 14:07:11 -0500
+Message-Id: <1330715231-20650-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-05.03.2012 19:16, Jeff Layton пишет:
-> On Mon, 05 Mar 2012 18:53:27 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> 05.03.2012 18:39, Jeff Layton пишет:
->>>
->>> Ok, I've started looking at the existing examples to try and ease the
->>> eventual containerization of this. Am I correct that the existing
->>> blocklayout pipe containerization is not yet complete?
->>>
->>> AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
->>> allocated on a per-net basis. bl_pipe_downcall does this however:
->>>
->>>           if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
->>>                   return -EFAULT;
->>>
->>> ...but bl_mount_reply is global:
->>>
->>>       static struct bl_dev_msg bl_mount_reply;
->>>
->>> So, if you're getting downcalls in two different network namespaces at
->>> the same time this could end up corrupt. It seems like bl_mount_reply
->>> needs to be part of nfs_net as well.
->>
->> Thanks for this catch, Jeff!
->> I need to fix this.
->>
->>>
->>> When you get a downcall, you have a filp pointer. Is there any way to
->>> determine the "correct" nfs_net object for a particular filp?
->>>
->>
->> Yes, sure.
->> This nfs_net object will be, obviously, in the same network namespace, as PipeFS
->> superblock. Network namespace is stored on PipeFS sb->s_fs_info.
->> IOW, code below should works:
->>
->> struct nfs_net *nn = net_generic(file->f_dentry->d_sb->s_fs_info, nfs_net_id);
->>
->
-> Ok, I'm going to have to do something similar for the cld upcall
-> eventually. We'll need a per-ns list of upcalls in flight, xid counter
-> and spinlock.
->
-> What may be best is to go ahead and introduce a nfsd_net struct as a
-> per-net object start putting stuff inside it.
->
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/super.c |   31 +++----------------------------
+ 1 files changed, 3 insertions(+), 28 deletions(-)
 
-Agreed.
-Would be cool, if you'll introduce this with your patch set.
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 7f0c93f..f4ccdae 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -80,7 +80,6 @@ enum {
+ 	Opt_cto, Opt_nocto,
+ 	Opt_ac, Opt_noac,
+ 	Opt_lock, Opt_nolock,
+-	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
+ 	Opt_udp, Opt_tcp, Opt_rdma,
+ 	Opt_acl, Opt_noacl,
+ 	Opt_rdirplus, Opt_nordirplus,
+@@ -133,11 +132,6 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_noac, "noac" },
+ 	{ Opt_lock, "lock" },
+ 	{ Opt_nolock, "nolock" },
+-	{ Opt_v2, "v2" },
+-	{ Opt_v3, "v3" },
+-	{ Opt_v4, "v4" },
+-	{ Opt_v4_0, "v4.0" },
+-	{ Opt_v4_1, "v4.1" },
+ 	{ Opt_udp, "udp" },
+ 	{ Opt_tcp, "tcp" },
+ 	{ Opt_rdma, "rdma" },
+@@ -183,6 +177,9 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_fscache_uniq, "fsc=%s" },
+ 	{ Opt_local_lock, "local_lock=%s" },
+ 
++	/* The following needs to be listed after all other options */
++	{ Opt_nfsvers, "v%s" },
++
+ 	{ Opt_err, NULL }
+ };
+ 
+@@ -1228,28 +1225,6 @@ static int nfs_parse_mount_options(char *raw,
+ 			mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
+ 				       NFS_MOUNT_LOCAL_FCNTL);
+ 			break;
+-		case Opt_v2:
+-			mnt->flags &= ~NFS_MOUNT_VER3;
+-			mnt->version = 2;
+-			break;
+-		case Opt_v3:
+-			mnt->flags |= NFS_MOUNT_VER3;
+-			mnt->version = 3;
+-			break;
+-		case Opt_v4:
+-			mnt->flags &= ~NFS_MOUNT_VER3;
+-			mnt->version = 4;
+-			break;
+-		case Opt_v4_0:
+-			mnt->flags &= ~NFS_MOUNT_VER3;
+-			mnt->version = 4;
+-			mnt->minorversion = 0;
+-			break;
+-		case Opt_v4_1:
+-			mnt->flags &= ~NFS_MOUNT_VER3;
+-			mnt->version = 4;
+-			mnt->minorversion = 1;
+-			break;
+ 		case Opt_udp:
+ 			mnt->flags &= ~NFS_MOUNT_TCP;
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.7.6
+
