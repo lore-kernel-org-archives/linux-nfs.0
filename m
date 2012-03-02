@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
 Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
 	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757740Ab2CBV66 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:58:58 -0500
+	with ESMTP id S1758615Ab2CBV7d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:59:33 -0500
 Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:58:57 -0800 (PST)
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:59:32 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/12] NFS: Reduce debugging noise from encode_compound_hdr
+Subject: [PATCH 08/12] commit 6f38b4ba433ac6494f83cb73dd07dcbde797e1e0
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 16:58:56 -0500
-Message-ID: <20120302215856.12758.90132.stgit@degas.1015granger.net>
+Date: Fri, 02 Mar 2012 16:59:31 -0500
+Message-ID: <20120302215931.12758.32538.stgit@degas.1015granger.net>
 In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
 References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
 MIME-Version: 1.0
@@ -18,29 +18,69 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Get rid of
+NFS: Make clientaddr= optional
 
-  encode_compound: tag=
+    For NFSv4 mounts, the clientaddr= mount option has always been
+    required.  Now we have rpc_localaddr() in the kernel, which was
+    modeled after the same logic in the mount.nfs command that constructs
+    the clientaddr= mount option.  If user space doesn't provide a
+    clientaddr= mount option, the kernel can now construct its own.
 
-when XDR debugging is enabled.  The current Linux client never sets
-compound tags.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4xdr.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
+ fs/nfs/client.c |   15 +++++++++++++++
+ fs/nfs/super.c  |    6 ------
+ 2 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4ca87cb..ea01e31 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -889,7 +889,6 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 	 * but this is not required as a MUST for the server to do so. */
- 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 994899d..add92d9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1344,6 +1344,7 @@ int nfs4_init_client(struct nfs_client *clp,
+ 		     rpc_authflavor_t authflavour,
+ 		     int noresvport)
+ {
++	char buf[INET6_ADDRSTRLEN + 1];
+ 	int error;
  
--	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
- 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
- 	p = reserve_space(xdr, 4 + hdr->taglen + 8);
- 	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
+ 	if (clp->cl_cons_state == NFS_CS_READY) {
+@@ -1359,6 +1360,20 @@ int nfs4_init_client(struct nfs_client *clp,
+ 				      1, noresvport);
+ 	if (error < 0)
+ 		goto error;
++
++	/* If no clientaddr= option was specified, find a usable cb address */
++	if (ip_addr == NULL) {
++		struct sockaddr_storage cb_addr;
++		struct sockaddr *sap = (struct sockaddr *)&cb_addr;
++
++		error = rpc_localaddr(clp->cl_rpcclient, sap, sizeof(cb_addr));
++		if (error < 0)
++			goto error;
++		error = rpc_ntop(sap, buf, sizeof(buf));
++		if (error < 0)
++			goto error;
++		ip_addr = (const char *)buf;
++	}
+ 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+ 
+ 	error = nfs_idmap_new(clp);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 72c7f63..8ae8fb2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2526,12 +2526,6 @@ static int nfs4_validate_text_mount_data(void *options,
+ 		return -EINVAL;
+ 	}
+ 
+-	if (args->client_address == NULL) {
+-		dfprintk(MOUNT,
+-			 "NFS4: mount program didn't pass callback address\n");
+-		return -EINVAL;
+-	}
+-
+ 	return nfs_parse_devname(dev_name,
+ 				   &args->nfs_server.hostname,
+ 				   NFS4_MAXNAMLEN,
 
