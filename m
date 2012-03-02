@@ -1,64 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63325 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29484 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755290Ab2CWPeY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 11:34:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Date: Fri, 23 Mar 2012 15:34:21 +0000
-Message-ID: <1332516863.3087.10.camel@lade.trondhjem.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	 <1332337929-18580-4-git-send-email-jlayton@redhat.com>
-	 <20120323121208.GA3219@fieldses.org> <20120323133111.GA2991@fieldses.org>
-	 <1332516024.3087.1.camel@lade.trondhjem.org>
-	 <20120323152220.GA4953@fieldses.org>
-In-Reply-To: <20120323152220.GA4953@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1753130Ab2CBTQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 2 Mar 2012 14:16:35 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q22JGZx6016202
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 14:16:35 -0500
+Received: from badhat.bos.devel.redhat.com (vpn-11-150.rdu.redhat.com [10.11.11.150])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q22JGYUc031096
+	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 14:16:34 -0500
+Message-ID: <4F511C95.2040806@RedHat.com>
+Date: Fri, 02 Mar 2012 14:16:37 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] mount.nfs: strip of extra slashes in device name
+References: <1330707221-4005-1-git-send-email-steved@redhat.com> <20120302184556.GA6880@us.ibm.com>
+In-Reply-To: <20120302184556.GA6880@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTIzIGF0IDExOjIyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgTWFyIDIzLCAyMDEyIGF0IDAzOjIwOjIxUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gRnJpLCAyMDEyLTAzLTIzIGF0IDA5OjMxIC0wNDAwLCBKLiBC
-cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBGcmksIE1hciAyMywgMjAxMiBhdCAwODoxMjow
-OEFNIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiA+IE9uIFdlZCwgTWFyIDIx
-LCAyMDEyIGF0IDA5OjUyOjA0QU0gLTA0MDAsIEplZmYgTGF5dG9uIHdyb3RlOg0KPiA+ID4gPiA+
-IEFkZCBhIG5ldyB0b3AtbGV2ZWwgZGlyIGluIHJwY19waXBlZnMgdG8gaG9sZCB0aGUgcGlwZSBm
-b3IgdGhlIGNsaWVudGlkDQo+ID4gPiA+ID4gdXBjYWxsLg0KPiA+ID4gPiANCj4gPiA+ID4gQWZ0
-ZXIgYXBwbHlpbmcgdGhpcyBwYXRjaCwgbXkgdGVzdHMgY29uc2lzdGVudGx5IGhhbmcuICBUaGUg
-aGFuZyBoYXBwZW5zDQo+ID4gPiA+IGluIGV4Y2x0ZXN0IChvZiB0aGUgc3BlY2lhbCBjb25uZWN0
-YXRvbiB0ZXN0cyksIG92ZXIgbmZzNC4xIGFuZCBrcmI1Lg0KPiA+ID4gPiBMb29raW5nIGF0IHRo
-ZSB3aXJlIHRyYWZmaWMsIEknbSBzZWVpbmcgREVMQVkgcmV0dXJuZWQgZnJvbSBhIHNldGF0dHIN
-Cj4gPiA+ID4gZm9yIG1vZGUgb24gYSBuZXdseS1jcmVhdGVkICh3aXRoIEVYQ0xVU0lWRTRfMSkg
-ZmlsZS4gIFRoYXQgb3BlbiBnb3QgYQ0KPiA+ID4gPiBkZWxlZ2F0aW9uLCBzbyBwcmVzdW1hYmx5
-IHRoYXQncyB3aGF0J3MgY2F1c2luZyB0aGUgREVMQVksIHRob3VnaCBJJ20NCj4gPiA+ID4gbm90
-IHNlZWluZyB0aGUgc2VydmVyIHNlbmQgYSByZWNhbGwuICBUaGF0IGNvdWxkIGJlIGEga3JiNSBi
-dWcuDQo+ID4gPiA+IA0KPiA+ID4gPiBXaGF0ZXZlciBidWcgdGhlcmUgaXMgaGVyZSwgaXQncyBo
-YXJkIHRvIHRlbGwgd2h5IHRoaXMgcGF0Y2ggaW4NCj4gPiA+ID4gcGFydGljdWxhciB3b3VsZCBt
-YWtlIGl0IG1vcmUgbGlrZWx5Lg0KPiA+ID4gPiANCj4gPiA+ID4gU28sIHN0aWxsIGludmVzdGln
-YXRpbmchDQo+ID4gPiANCj4gPiA+IFJlcHJvZHVjZWFibGUgYnk6DQo+ID4gPiANCj4gPiA+IAlt
-b3VudCAtb3NlYz1rcmI1LG1pbm9ydmVyc2lvbj0xIHNlcnZlcjovZXhwb3J0LyAvbW50Lw0KPiA+
-ID4gCWNwIGN0aG9uMDQvc3BlY2lhbC9leGNsdGVzdCAvbW50Lw0KPiA+ID4gCWNkIC9tbnQNCj4g
-PiA+IAkuL2V4Y2x0ZXN0DQo+ID4gDQo+ID4gVW1tLi4uIFdoZW4gd291bGQgeW91IGV2ZXIgZ2V0
-IGEgREVMQVkgaW4gdGhlIGFib3ZlIHNjZW5hcmlvPyBJIGNhbiBzZWUNCj4gPiBnZXR0aW5nIGFu
-IE5GUzRFUlJfT1BFTk1PREUsIGJ1dCBub3QgREVMQVkuDQo+IA0KPiBUaGVyZSdzIGEgc2V0YXR0
-ciBmb3IgbW9kZSByaWdodCBhZnRlciB0aGUgb3Blbi4gIElzIHRoYXQgdW5leHBlY3RlZD8NCg0K
-V2VsbCB5ZXMsIGl0IGlzLiBUaGUgTkZTdjQuMSBleGNsdXNpdmUgb3BlbiBzaG91bGQgYWx3YXlz
-IGJlIHNlbmRpbmcgYQ0KZnVsbCBzZXQgb2YgYXR0cmlidXRlcyBhcyBwYXJ0IG9mIHRoZSBPUEVO
-IG9wZXJhdGlvbi4gVGhlIHNlc3Npb24gcmVwbGF5DQpjYWNoZSBpcyBub3cgc3VwcG9zZWQgdG8g
-Z3VhcmFudGVlIHRoZSBvbmx5LW9uY2Ugc2VtYW50aWNzIHRoYXQgdGhlDQp2ZXJpZmllciB1c2Vk
-IHRvIHByb3ZpZGUuDQoNCj4gVGhlIHNlcnZlciBkb2Vzbid0IHJlYWxseSBoYXZlIHRvIHJlY2Fs
-bCB0aGUgZGVsZWdhdGlvbiBpbiB0aGF0IGNhc2UgKGl0DQo+IG9ubHkgbmVlZHMgdG8gcmVjYWxs
-ICpvdGhlciogY2xpZW50cycgZGVsZWdhdGlvbnMpIGJ1dCBJIGRvbid0IHRoaW5rDQo+IGl0J3Mg
-d3JvbmcgdG8uDQoNClRoZW4gd2h5IGlzbid0IGl0IGFsbG93aW5nIHRoZSBvcGVyYXRpb24/IEFu
-eSBzYW5lIGNsaWVudCB3b3VsZCBub3JtYWxseQ0KaW50ZXJwcmV0IE5GUzRFUlJfREVMQVkgdG8g
-bWVhbiB0aGF0IHRoZSBzZXJ2ZXIgaXMgZG9pbmcgc29tZXRoaW5nIHRvDQpmaXggd2hhdGV2ZXIg
-c2l0dWF0aW9uIGlzIHByZXZlbnRpbmcgdGhlIG9wZXJhdGlvbiBmcm9tIGNvbXBsZXRpbmcNCihw
-cmVzdW1hYmx5IGJ5IHJlY2FsbGluZyBkZWxlZ2F0aW9ucyBpbiB0aGlzIGNhc2UpLiBKdXN0IHJl
-cGx5aW5nIERFTEFZDQphbmQgZG9pbmcgbm90aGluZyBpcyBub3QgaGVscGZ1bC4uLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+
+On 03/02/2012 01:45 PM, Malahal Naineni wrote:
+> My kernel doesn't seem to strip '/' from its /proc/mounts. What kernel
+> are you using? 
+a later RHEL6 kernel... but I see the same thing with Fedora f16 kernels (3.2)
+as well... What kernel are you using?
+
+> Anyway, how about something similar to the following
+> patch that fixes only NFSv4 atm:
+> 
+> http://www.spinics.net/lists/linux-nfs/msg27351.html
+I made a comment on that... Again, sorry for my tartness...
+
+steved.
+ 
+> 
+> Regards, Malahal.
+> 
+> Steve Dickson [steved@redhat.com] wrote:
+>> The kernel strips off extra '/' when the  device is entered
+>> into /proc/mounts. So that umounts can this devices, strip off
+>> any extra '/' before storing the device in the mtab.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/mount/mount.c |   18 ++++++++++++++++++
+>>  1 files changed, 18 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+>> index eea00af..eb63f50 100644
+>> --- a/utils/mount/mount.c
+>> +++ b/utils/mount/mount.c
+>> @@ -485,6 +485,24 @@ int main(int argc, char *argv[])
+>>  		goto out;
+>>  	}
+>>  	/*
+>> +	 * The kernel strips off extra '/' when the device is entered 
+>> +	 * into /proc/mounts. So that umounts can this devices, strip off
+>> +	 * any extra '/' before storing the device in the mtab.
+>> +	 */
+>> +	if (strstr(spec, "//") != NULL) {
+>> +		char *colen, *slash;
+>> +
+>> +		if ((colen = strchr(spec, ':'))) {
+>> +			slash = (colen + 1);
+>> +			while (*slash && *(slash+1) == '/')
+>> +				slash++;
+>> +			while (*slash)
+>> +				*(++colen) = *(slash++);
+>> +			*(colen+1) = '\0';
+>> +		}
+>> +	}
+>> +
+>> +	/*
+>>  	 * Concatenate mount options from the configuration file
+>>  	 */
+>>  	mount_opts = mount_config_opts(spec, mount_point, mount_opts);
+>> -- 
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
