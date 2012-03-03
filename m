@@ -1,37 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60927 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:10282 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933237Ab2CZTBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Mar 2012 15:01:15 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Re: unlink within an open directory stream
-Date: Mon, 26 Mar 2012 19:01:09 +0000
-Message-ID: <1332788474.20469.9.camel@lade.trondhjem.org>
-References: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751243Ab2CCRjK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 3 Mar 2012 12:39:10 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q23HdAw8011650
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sat, 3 Mar 2012 12:39:10 -0500
+Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q23Hd97K008876
+	for <linux-nfs@vger.kernel.org>; Sat, 3 Mar 2012 12:39:10 -0500
+Message-ID: <4F525741.2060404@RedHat.com>
+Date: Sat, 03 Mar 2012 12:39:13 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com> <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown> <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com> <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com> <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com> <20120302220108.GA17119@us.ibm.com>
+In-Reply-To: <20120302220108.GA17119@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTI2IGF0IDE0OjU1IC0wNDAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
-Og0KPiBIaSwNCj4gDQo+IEJvYXo6ICB3ZSBkbyBub3QgYW55IGxvbmdlciBzZW5kIGEgcmVhZGRp
-ciBpbmRleC4gIFdlIGRvIHNlbmQgYSBjb29raWV2ZXJmLg0KDQpVaGguLi4gVGhhdCB3b3VsZCBi
-ZSBzbyBicm9rZW4sIHRoYXQgSSBjYW4ndCBpbWFnaW5lIHRoYXQgaXMgdHJ1ZS4uLg0KDQo+IEZp
-c3Qgb2YgYWxsLCBJIGhhdmVuJ3QgZXN0YWJsaXNoZWQgdGhhdCB0aGUgaXNzdWUgd2UncmUgYWN0
-dWFsbHkgb2JzZXJ2aW5nIGlzIGNhdXNlZA0KPiBieSB0aGUgTGludXggY2xpZW50IHNlbmRpbmcg
-b2xkIGNvb2tpZXMgdG8gcmVhZGRpcihzb21ldGhpbmcpLiAgSG93ZXZlciwgaWYgaXQgaXMsDQo+
-IGl0J3MgaW4gbm8gd2F5IGJldHRlciB0byB0cnkgdG8gbWFrZSBjb29raWVzICJtb3JlIHBlcnNp
-c3RlbnQuIiAgTm9yIHNob3VsZCB0aGUgTGludXgNCj4gY2xpZW50IGJlIGV4cGVjdGluZyBpdC4g
-IFRoZSBhc3N1bXB0aW9uIGlzIHNpbXBseSBmbGF3ZWQuICBUaGUgcHJvdG9jb2wgaW50cm9kdWNl
-ZA0KPiBjb29raWUgdmVyaWZpZXIgKGEgTE9ORyB0aW1lIGFnbykgZm9yIGEgcmVhc29uLg0KDQpC
-dWxsc2hpdC4uLiBUaGUgY29va2llIHZlcmlmaWVyIGlzIHVuaW1wbGVtZW50YWJsZS4gRmVlbCBm
-cmVlIHRvIHRyeSBvcg0KdG8gc2hvdyBtZSBhbiBpbXBsZW1lbnRhdGlvbiB0aGF0IHdvcmtzLiBI
-b3dldmVyIEkgcmVmdXNlIHRvIHdhc3RlIGFueQ0KbW9yZSBvZiBteSB0aW1lIHRyeWluZyB0byBt
-YWtlIHRoYXQgY3JhcCB3b3JrLCBoYXZpbmcgYWxyZWFkeSB3YXN0ZWQNCnNldmVyYWwgbW9udGhz
-IG9mIG15IGxpZmUgZG9pbmcganVzdCB0aGF0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+
+
+On 03/02/2012 05:01 PM, Malahal Naineni wrote:
+> Steve Dickson [SteveD@redhat.com] wrote:
+>> So what my patch does is "normalizes" the device name early
+>> on in main, so the correct name used used through the mount
+>> and when its written the mtab. Plus, for better or worses, 
+>> since the new device name will always be shorter, I just 
+>> reuse/rewrite the memory allocated for the argv vector.. 
+>> Meaning there is no allocation... 
+> 
+> My problem is a bit different.
+> 
+> "mount -t nfs4 server:export /mnt" works but umount fails.
+> 
+> Notice that there is no '/' in the path!
+> 
+> Normalizing or just stripping leading '/'s early won't help with the
+> above problem and since there is already a hack to strip the
+> __trailing__ '/' that kernel adds to /proc/mounts file, I just made the
+> existing hack it a bit better by normalizing.
+>
+How about something like this... It takes on both case early on...
+
+Author: Steve Dickson <steved@redhat.com>
+Date:   Sat Mar 3 12:31:23 2012 -0500
+
+    mount.nfs: Validate device name syntax
+    
+    To ensure the device name is found at unmount time strip
+    off the multiple '/' or add a '/' if one does not exist.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index eea00af..7b9ba8b 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -344,6 +344,52 @@ static void parse_opts(const char *options, int *flags, char **extra_opts)
+ 	}
+ }
+ 
++/*
++ * To ensure the device is found at unmount time strip
++ * off the multiple '/' or add a '/' if one does not exist.
++ */
++static char *
++chk_devicename(char *spec) {
++
++	char *colen, *slash;
++
++	if (strstr(spec, "//") != NULL) {
++		if ((colen = strchr(spec, ':')) == NULL)
++			return NULL;
++
++		slash = (colen + 1);
++		while (*slash && *(slash+1) == '/')
++			slash++;
++		while (*slash)
++			*(++colen) = *(slash++);
++		*(colen+1) = '\0';
++
++		return spec;
++	} 
++
++	if (strchr(spec, '/') == NULL) {
++		char *colen, *ptr, *str, *dev;
++		
++		if ((colen = strchr(spec, ':')) == NULL)
++			return NULL;
++
++		dev = str = malloc(strlen(spec) + 2);
++		if (dev == NULL) 
++			return NULL;
++
++		ptr = spec;
++		while (ptr <= colen)
++			*(str++) = *(ptr++);
++		*str++='/';
++		while (*ptr)
++			*(str++) = *(ptr++);
++		*str='\0';
++		spec = dev;
++	}
++
++	return spec;
++}
++
+ static int try_mount(char *spec, char *mount_point, int flags,
+ 			char *fs_type, char **extra_opts, char *mount_opts,
+ 			int fake, int bg)
+@@ -445,6 +491,15 @@ int main(int argc, char *argv[])
+ 		}
+ 	}
+ 
++	/*
++	 * Validate the device name syntax
++	 */
++	if ((spec = chk_devicename(argv[1])) == NULL) {
++		nfs_error(_("%s: %s - Invalid device name syntax"),
++			progname, argv[1]);
++		goto out_usage;
++	}
++
+ 	if (strcmp(progname, "mount.nfs4") == 0)
+ 		fs_type = "nfs4";
+ 
