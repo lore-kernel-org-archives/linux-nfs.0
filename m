@@ -1,49 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.12.86]:60067 "EHLO
-	tombraider.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755677Ab2CWSCw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Mar 2012 14:02:52 -0400
-Date: Fri, 23 Mar 2012 14:02:47 -0400
-From: Jim Rees <rees@umich.edu>
-To: Bruno Silva <bs@cin.ufpe.br>
-Cc: Lev Solomonov <solo@tonian.com>, linux-nfs@vger.kernel.org
-Subject: Re: About pNFS installation process.
-Message-ID: <20120323180247.GA2815@umich.edu>
-References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
- <CAOdHTRB5tfXvdEprnUpfswdr7Afq-cOvsqj2VicLipKc2sOK9w@mail.gmail.com>
- <CAAJC9VbvRm49iW2jFUfVqw4k20hPbLfrUr_Wm=pHLmD_23WJew@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15489 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752126Ab2CCTNP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 3 Mar 2012 14:13:15 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+Date: Sat, 3 Mar 2012 19:12:57 +0000
+Message-ID: <1330801976.2781.19.camel@lade.trondhjem.org>
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
+	 <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>
+	 <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>
+	 <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>
+	 <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>
+	 <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>
+In-Reply-To: <4F525741.2060404@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAAJC9VbvRm49iW2jFUfVqw4k20hPbLfrUr_Wm=pHLmD_23WJew@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Blkmapd is finding your iscsi devices, but can't create the mapped device
-for some reason.  I suspect the geometry is wrong but you'd have to do some
-debugging to figure out exactly why.
-
-I guess we should fix or get rid of pretty_sig.
-
-Date: Thu, 2 Dec 2010 09:41:26 -0500
-From: Jim Rees <rees@umich.edu>
-Subject: Re: [PATCH 4/5] various minor cleanups
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-
-...
-
-I am glad you are paying attention!  I am aware of the shortcomings of
-pretty_sig().  In addition to the problems you noted, it also assumes that a
-signature over 8 bytes long is representable as a text string, which is not
-guaranteed.  The code it replaced was worse.
-
-I put this in because for debugging I need to be able to follow a signature
-all the way from my EMC server to the devmapper.  pretty_sig() simply prints
-the signature in a way that I can match it up with the signature on the
-server.
-
-I don't want to spend a lot of time on this, but I also am uneasy leaving
-EMC-specific code in nfs-utils, especially since it can blow up if you use
-it against a non-EMC server.  My inclination is to remove this debugging
-code when I no longer need it.  I guess at the very least I should put in a
-comment.  I am open to suggestions.
+T24gU2F0LCAyMDEyLTAzLTAzIGF0IDEyOjM5IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDMvMDIvMjAxMiAwNTowMSBQTSwgTWFsYWhhbCBOYWluZW5pIHdyb3RlOg0KPiA+
+IFN0ZXZlIERpY2tzb24gW1N0ZXZlREByZWRoYXQuY29tXSB3cm90ZToNCj4gPj4gU28gd2hhdCBt
+eSBwYXRjaCBkb2VzIGlzICJub3JtYWxpemVzIiB0aGUgZGV2aWNlIG5hbWUgZWFybHkNCj4gPj4g
+b24gaW4gbWFpbiwgc28gdGhlIGNvcnJlY3QgbmFtZSB1c2VkIHVzZWQgdGhyb3VnaCB0aGUgbW91
+bnQNCj4gPj4gYW5kIHdoZW4gaXRzIHdyaXR0ZW4gdGhlIG10YWIuIFBsdXMsIGZvciBiZXR0ZXIg
+b3Igd29yc2VzLCANCj4gPj4gc2luY2UgdGhlIG5ldyBkZXZpY2UgbmFtZSB3aWxsIGFsd2F5cyBi
+ZSBzaG9ydGVyLCBJIGp1c3QgDQo+ID4+IHJldXNlL3Jld3JpdGUgdGhlIG1lbW9yeSBhbGxvY2F0
+ZWQgZm9yIHRoZSBhcmd2IHZlY3Rvci4uIA0KPiA+PiBNZWFuaW5nIHRoZXJlIGlzIG5vIGFsbG9j
+YXRpb24uLi4gDQo+ID4gDQo+ID4gTXkgcHJvYmxlbSBpcyBhIGJpdCBkaWZmZXJlbnQuDQo+ID4g
+DQo+ID4gIm1vdW50IC10IG5mczQgc2VydmVyOmV4cG9ydCAvbW50IiB3b3JrcyBidXQgdW1vdW50
+IGZhaWxzLg0KPiA+IA0KPiA+IE5vdGljZSB0aGF0IHRoZXJlIGlzIG5vICcvJyBpbiB0aGUgcGF0
+aCENCj4gPiANCj4gPiBOb3JtYWxpemluZyBvciBqdXN0IHN0cmlwcGluZyBsZWFkaW5nICcvJ3Mg
+ZWFybHkgd29uJ3QgaGVscCB3aXRoIHRoZQ0KPiA+IGFib3ZlIHByb2JsZW0gYW5kIHNpbmNlIHRo
+ZXJlIGlzIGFscmVhZHkgYSBoYWNrIHRvIHN0cmlwIHRoZQ0KPiA+IF9fdHJhaWxpbmdfXyAnLycg
+dGhhdCBrZXJuZWwgYWRkcyB0byAvcHJvYy9tb3VudHMgZmlsZSwgSSBqdXN0IG1hZGUgdGhlDQo+
+ID4gZXhpc3RpbmcgaGFjayBpdCBhIGJpdCBiZXR0ZXIgYnkgbm9ybWFsaXppbmcuDQo+ID4NCj4g
+SG93IGFib3V0IHNvbWV0aGluZyBsaWtlIHRoaXMuLi4gSXQgdGFrZXMgb24gYm90aCBjYXNlIGVh
+cmx5IG9uLi4uDQo+IA0KPiBBdXRob3I6IFN0ZXZlIERpY2tzb24gPHN0ZXZlZEByZWRoYXQuY29t
+Pg0KPiBEYXRlOiAgIFNhdCBNYXIgMyAxMjozMToyMyAyMDEyIC0wNTAwDQo+IA0KPiAgICAgbW91
+bnQubmZzOiBWYWxpZGF0ZSBkZXZpY2UgbmFtZSBzeW50YXgNCj4gICAgIA0KPiAgICAgVG8gZW5z
+dXJlIHRoZSBkZXZpY2UgbmFtZSBpcyBmb3VuZCBhdCB1bm1vdW50IHRpbWUgc3RyaXANCj4gICAg
+IG9mZiB0aGUgbXVsdGlwbGUgJy8nIG9yIGFkZCBhICcvJyBpZiBvbmUgZG9lcyBub3QgZXhpc3Qu
+DQo+ICAgICANCj4gICAgIFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERpY2tzb24gPHN0ZXZlZEByZWRo
+YXQuY29tPg0KDQpOQUNLLg0KDQpORlN2NCBpcyB0aGUgb25seSBwcm90b2NvbCB0aGF0IGhhcyBh
+IHN0YW5kYXJkIG1vdW50IHBhdGggc3ludGF4LCBhbmQNCnRoYXQgaXMgYmVjYXVzZSB0aGUgY2xp
+ZW50IHBlcmZvcm1zIHRoZSBqb2Igb2YgaW50ZXJwcmV0aW5nIHRoZSBwYXRoDQpuYW1lIGFuZCB0
+cmFuc2xhdGluZyBpdCBpbnRvIFBVVFJPT1RGSCBmb2xsb3dlZCBieSBhIGJ1bmNoIG9mIExPT0tV
+UHMuDQpJT1c6IHRoZSBzdGFuZGFyZCBzeW50YXggdGhlcmUgaXMgdGhlIG9uZSBpbXBvc2VkIGJ5
+IHRoZSBjbGllbnQuDQoNClRoZXJlIGlzIG5vdGhpbmcgaW4gdGhlIE5GU3YyL3YzIE1PVU5UIHNw
+ZWMgdGhhdCBzdGF0ZXMgdGhhdCBhIHBhdGgNCm5lZWRzIHRvIHN0YXJ0IHdpdGggJy8nLiBOb3Ig
+aXMgdGhlcmUgZXZlbiBhbnl0aGluZyBpbiB0aGUgc3BlYyB0aGF0DQpzdGF0ZXMgdGhhdCAnLycg
+aXMgcmVxdWlyZWQgdG8gYmUgdXNlZCBhcyB0aGUgZGlyZWN0b3J5IGNvbXBvbmVudA0Kc2VwYXJh
+dG9yLiBUaGUgWC9PUEVOIGRvY3Mgc3RhdGUgdGhhdCAnLycgaXMgcmVjb21tZW5kZWQgZm9yDQpw
+b3J0YWJpbGl0eSwgYnV0IGRvIG5vdCBtYWtlIGl0IGEgcmVxdWlyZW1lbnQuIFNlZQ0KaHR0cDov
+L3B1YnMub3Blbmdyb3VwLm9yZy9vbmxpbmVwdWJzLzk2Mjk3OTkvY2hhcDguaHRtI3RhZ2NqaF8w
+OV8wMl8wMl8wMyANCg0KSU9XOiBJJ20gcGVyZmVjdGx5IGFsbG93ZWQgdG8gc2V0IHVwIGEgJ21v
+dW50ZCcgc2VydmVyIHRoYXQgdXNlcyAnXCcgb3INCmV2ZW4gc29tZXRoaW5nIGxpa2UgJ3wnIGFz
+IGEgcGF0aCBjb21wb25lbnQgc2VwYXJhdG9yLiBUaGlzIGtpbmQgb2YNCnBhdGNoIHdvdWxkIGJy
+ZWFrIHRoZSBjbGllbnQncyBleGlzdGluZyBhYmlsaXR5IHRvIG1vdW50IGZyb20gc3VjaCBhDQpz
+ZXJ2ZXIuDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
