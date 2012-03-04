@@ -1,66 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50922 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:44047 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751802Ab2CUVLk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 17:11:40 -0400
-Date: Wed, 21 Mar 2012 17:11:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 failures in recent nfs-for-next
-Message-ID: <20120321211133.GE12309@fieldses.org>
-References: <20120321192448.GB11222@fieldses.org>
- <4F6A2DE8.6060403@netapp.com>
- <20120321194544.GC11222@fieldses.org>
- <1332359824.12332.2.camel@lade.trondhjem.org>
- <20120321205023.GC12309@fieldses.org>
- <1332363225.12332.13.camel@lade.trondhjem.org>
+	id S1754987Ab2CDWbw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 17:31:52 -0500
+Message-ID: <4F53ED3C.2020209@RedHat.com>
+Date: Sun, 04 Mar 2012 17:31:24 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332363225.12332.13.camel@lade.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>  <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>  <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>  <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>  <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>  <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com> <1330801976.2781.19.camel@lade.trondhjem.org>
+In-Reply-To: <1330801976.2781.19.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 08:53:45PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-03-21 at 16:50 -0400, J. Bruce Fields wrote:
-> > On Wed, Mar 21, 2012 at 07:57:03PM +0000, Myklebust, Trond wrote:
-> > > On Wed, 2012-03-21 at 15:45 -0400, J. Bruce Fields wrote:
-> > > > On Wed, Mar 21, 2012 at 03:37:12PM -0400, Bryan Schumaker wrote:
-> > > > > On 03/21/2012 03:24 PM, J. Bruce Fields wrote:
-> > > > > 
-> > > > > > Have you been doing any krb5 testing?
-> > > > > 
-> > > > > 
-> > > > > Not yet.  It's still on my Jenkins todo list, but I haven't gotten around to it yet.  Sounds like we need it, though, so I'll try working on it soon.
-> > > > 
-> > > > Actually, I've since seen the failure over nfsv4 and auth_sys.  All
-> > > > that's left on the console is enough to tell me it's happening in
-> > > > nfs4_free_lock_state, called from __rpc_execute in a kthread.  (Well,
-> > > > assuming that's actually the first backtrace.)
-> > > 
-> > > I've just been slow to update nfs-for-next. There has been a fix for
-> > > this in the 'devel' and 'linux-next' branches for a while. Pushed out
-> > > now...
-> > > 
-> > > The actual commitdiff is here:
-> > >   http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=5ae67c4fee869c9b3c87b727a9ea511b6326b834
-> > 
-> > Thanks!
-> > 
-> > And that tree's stable, right?
-> 
-> Yes. That's why I was slow to merge: I wanted ample testing first.
-> 
-> > In which case if you've no objection I'll likely merge it with a note
-> > that I need it (well, some of the container changes) for jlayton's
-> > reboot recovery patches.
-> 
-> OK. I'll likely be sending the merge request to Linus on or before
-> Friday.
 
-That'll work.  I'm running slower than that.
 
-Thanks!  (Tests pass now.)
+On 03/03/2012 02:12 PM, Myklebust, Trond wrote:
+> On Sat, 2012-03-03 at 12:39 -0500, Steve Dickson wrote:
+>>
+>> On 03/02/2012 05:01 PM, Malahal Naineni wrote:
+>>> Steve Dickson [SteveD@redhat.com] wrote:
+>>>> So what my patch does is "normalizes" the device name early
+>>>> on in main, so the correct name used used through the mount
+>>>> and when its written the mtab. Plus, for better or worses, 
+>>>> since the new device name will always be shorter, I just 
+>>>> reuse/rewrite the memory allocated for the argv vector.. 
+>>>> Meaning there is no allocation... 
+>>>
+>>> My problem is a bit different.
+>>>
+>>> "mount -t nfs4 server:export /mnt" works but umount fails.
+>>>
+>>> Notice that there is no '/' in the path!
+>>>
+>>> Normalizing or just stripping leading '/'s early won't help with the
+>>> above problem and since there is already a hack to strip the
+>>> __trailing__ '/' that kernel adds to /proc/mounts file, I just made the
+>>> existing hack it a bit better by normalizing.
+>>>
+>> How about something like this... It takes on both case early on...
+>>
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Sat Mar 3 12:31:23 2012 -0500
+>>
+>>     mount.nfs: Validate device name syntax
+>>     
+>>     To ensure the device name is found at unmount time strip
+>>     off the multiple '/' or add a '/' if one does not exist.
+>>     
+>>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> NACK.
+> 
+> NFSv4 is the only protocol that has a standard mount path syntax, and
+> that is because the client performs the job of interpreting the path
+> name and translating it into PUTROOTFH followed by a bunch of LOOKUPs.
+> IOW: the standard syntax there is the one imposed by the client.
+> 
+> There is nothing in the NFSv2/v3 MOUNT spec that states that a path
+> needs to start with '/'. Nor is there even anything in the spec that
+> states that '/' is required to be used as the directory component
+> separator. The X/OPEN docs state that '/' is recommended for
+> portability, but do not make it a requirement. See
+> http://pubs.opengroup.org/onlinepubs/9629799/chap8.htm#tagcjh_09_02_02_03 
+> 
+> IOW: I'm perfectly allowed to set up a 'mountd' server that uses '\' or
+> even something like '|' as a path component separator. This kind of
+> patch would break the client's existing ability to mount from such a
+> server.
+And where does an server like this exist? One that uses '|' as its
+path component separator?? ;-)
 
---b.
+Just to be clear, you are ok with striping the multiple slashes, for
+all protocol versions, but its only kosher to added the leading 
+slash for v4 mounts. Correct?  
+
+steved.
+ 
