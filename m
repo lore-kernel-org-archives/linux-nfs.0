@@ -1,58 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e38.co.us.ibm.com ([32.97.110.159]:59815 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757915Ab2C2K7y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 06:59:54 -0400
-Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Thu, 29 Mar 2012 04:59:53 -0600
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 8FD70C90052
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Mar 2012 06:59:08 -0400 (EDT)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2TAx4VF376998
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Mar 2012 06:59:05 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2TAx4GG004361
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Mar 2012 07:59:04 -0300
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q2TAx3TT004300
-	for <linux-nfs@vger.kernel.org>; Thu, 29 Mar 2012 07:59:03 -0300
-In-Reply-To: <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
-References: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com> <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:16131 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755943Ab2CDXDM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 18:03:12 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-MIME-Version: 1.0
-Subject: Linux pNFS status meeting - NO MEETING THIS WEEK
-Message-ID: <OF6A015704.7A586134-ON882579D0.003C32C7-882579D0.003C52DC@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Thu, 29 Mar 2012 03:59:02 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Subject: [PATCH 06/11] NFSv4: Rename nfs4_copy_stateid()
+Date: Sun,  4 Mar 2012 18:02:58 -0500
+Message-Id: <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From:
-Marc Eshel <eshel@almaden.ibm.com>
-To:
-linux-nfs@vger.kernel.org
-Date:
-03/14/2012 09:47 AM
-Subject:
-Linux pNFS status meeting 03/15/12
+It is really a function for selecting the correct stateid to use in a
+read or write situation.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h   |    2 +-
+ fs/nfs/nfs4proc.c  |    2 +-
+ fs/nfs/nfs4state.c |    2 +-
+ fs/nfs/nfs4xdr.c   |    2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
-
-Meeting on Thursday 03/15/12 at 9:30 AM PST (12:30 PM EST)
-
-
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
-
-Israel Toll-Free: 1-809-417-783
-
-Participant Code: 8792872
-
-
-
-
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9c05799..e76f17c 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -327,7 +327,7 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+-extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
++extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
+ 
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a79f623..9200327 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1916,7 +1916,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
+ 		/* Use that stateid */
+ 	} else if (state != NULL) {
+-		nfs4_copy_stateid(&arg.stateid, state, current->files, current->tgid);
++		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+ 	} else
+ 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2f76060..b59b39e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -888,7 +888,7 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
+  * Byte-range lock aware utility to initialize the stateid of read/write
+  * requests.
+  */
+-void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
++void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
+ {
+ 	struct nfs4_lock_state *lsp;
+ 	int seq;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c03ba77..38736dc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1546,7 +1546,7 @@ static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_co
+ 	nfs4_stateid stateid;
+ 
+ 	if (ctx->state != NULL) {
+-		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		nfs4_select_rw_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
+ 		if (zero_seqid)
+ 			stateid.stateid.seqid = 0;
+ 		encode_nfs4_stateid(xdr, &stateid);
+-- 
+1.7.7.6
 
