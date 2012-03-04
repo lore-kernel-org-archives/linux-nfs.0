@@ -1,791 +1,278 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53728 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38040 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757989Ab2CUPVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 11:21:14 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 03/23] NFS: Add version registering framework
-Date: Wed, 21 Mar 2012 11:20:33 -0400
-Message-Id: <1332343253-24970-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+	id S1755948Ab2CDXDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 18:03:13 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 07/11] NFSv4: Add helpers for basic copying of stateids
+Date: Sun,  4 Mar 2012 18:02:59 -0500
+Message-Id: <1330902183-18879-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-This patch adds in the code to track multiple versions of the NFS
-protocol.  I created default structures for v2, v3 and v4 so that each
-version can continue to work while I convert them into kernel modules.
-I also removed the const parameter from the rpc_version array so that I
-can change it at runtime.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/lockd/clnt4xdr.c         |    2 +-
- fs/lockd/clntxdr.c          |    6 +--
- fs/lockd/mon.c              |    4 +-
- fs/nfs/Makefile             |    6 +--
- fs/nfs/client.c             |  111 ++++++++++++++++++++++++++++++++++---------
- fs/nfs/inode.c              |    2 +
- fs/nfs/mount_clnt.c         |    6 +--
- fs/nfs/nfs.h                |   35 ++++++++++++++
- fs/nfs/nfs2super.c          |   31 ++++++++++++
- fs/nfs/nfs2xdr.c            |    2 +-
- fs/nfs/nfs3super.c          |   31 ++++++++++++
- fs/nfs/nfs3xdr.c            |    4 +-
- fs/nfs/nfs4super.c          |   31 ++++++++++++
- fs/nfs/nfs4xdr.c            |    2 +-
- fs/nfs/super.c              |   48 ++++++++++++++-----
- fs/nfsd/nfs4callback.c      |    2 +-
- include/linux/lockd/xdr4.h  |    2 +-
- include/linux/nfs_xdr.h     |    8 ++--
- include/linux/sunrpc/clnt.h |    2 +-
- net/sunrpc/rpcb_clnt.c      |    8 ++--
- 20 files changed, 280 insertions(+), 63 deletions(-)
- create mode 100644 fs/nfs/nfs.h
- create mode 100644 fs/nfs/nfs2super.c
- create mode 100644 fs/nfs/nfs3super.c
- create mode 100644 fs/nfs/nfs4super.c
+ fs/nfs/delegation.c |   10 ++++------
+ fs/nfs/nfs4_fs.h    |   10 ++++++++++
+ fs/nfs/nfs4proc.c   |   34 +++++++++++++++-------------------
+ fs/nfs/nfs4state.c  |    4 ++--
+ fs/nfs/pnfs.c       |   10 ++++------
+ 5 files changed, 35 insertions(+), 33 deletions(-)
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index 3ddcbb1..580dbe2 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -598,7 +598,7 @@ static struct rpc_procinfo	nlm4_procedures[] = {
- 	PROC(GRANTED_RES,	res,		norep),
- };
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 9722e15..6502e59 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -105,7 +105,7 @@ again:
+ 			continue;
+ 		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
+ 			continue;
+-		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
++		if (!nfs4_stateid_match(&state->stateid, stateid))
+ 			continue;
+ 		get_nfs_open_context(ctx);
+ 		spin_unlock(&inode->i_lock);
+@@ -139,8 +139,7 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
+ 	if (delegation != NULL) {
+ 		spin_lock(&delegation->lock);
+ 		if (delegation->inode != NULL) {
+-			memcpy(delegation->stateid.data, res->delegation.data,
+-			       sizeof(delegation->stateid.data));
++			nfs4_stateid_copy(&delegation->stateid, &res->delegation);
+ 			delegation->type = res->delegation_type;
+ 			delegation->maxsize = res->maxsize;
+ 			oldcred = delegation->cred;
+@@ -236,8 +235,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 	delegation = kmalloc(sizeof(*delegation), GFP_NOFS);
+ 	if (delegation == NULL)
+ 		return -ENOMEM;
+-	memcpy(delegation->stateid.data, res->delegation.data,
+-			sizeof(delegation->stateid.data));
++	nfs4_stateid_copy(&delegation->stateid, &res->delegation);
+ 	delegation->type = res->delegation_type;
+ 	delegation->maxsize = res->maxsize;
+ 	delegation->change_attr = inode->i_version;
+@@ -697,7 +695,7 @@ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode)
+ 	rcu_read_lock();
+ 	delegation = rcu_dereference(nfsi->delegation);
+ 	if (delegation != NULL) {
+-		memcpy(dst->data, delegation->stateid.data, sizeof(dst->data));
++		nfs4_stateid_copy(dst, &delegation->stateid);
+ 		ret = 1;
+ 	}
+ 	rcu_read_unlock();
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index e76f17c..f4cafab 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -347,6 +347,16 @@ struct nfs4_mount_data;
+ extern struct svc_version nfs4_callback_version1;
+ extern struct svc_version nfs4_callback_version4;
  
--const struct rpc_version nlm_version4 = {
-+struct rpc_version nlm_version4 = {
- 	.number		= 4,
- 	.nrprocs	= ARRAY_SIZE(nlm4_procedures),
- 	.procs		= nlm4_procedures,
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 3d35e3e..78e80c4 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -596,19 +596,19 @@ static struct rpc_procinfo	nlm_procedures[] = {
- 	PROC(GRANTED_RES,	res,		norep),
- };
- 
--static const struct rpc_version	nlm_version1 = {
-+static struct rpc_version	nlm_version1 = {
- 		.number		= 1,
- 		.nrprocs	= ARRAY_SIZE(nlm_procedures),
- 		.procs		= nlm_procedures,
- };
- 
--static const struct rpc_version	nlm_version3 = {
-+static struct rpc_version	nlm_version3 = {
- 		.number		= 3,
- 		.nrprocs	= ARRAY_SIZE(nlm_procedures),
- 		.procs		= nlm_procedures,
- };
- 
--static const struct rpc_version	*nlm_versions[] = {
-+static struct rpc_version	*nlm_versions[] = {
- 	[1] = &nlm_version1,
- 	[3] = &nlm_version3,
- #ifdef CONFIG_LOCKD_V4
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 7ef14b3..888d1ef 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -535,13 +535,13 @@ static struct rpc_procinfo	nsm_procedures[] = {
- 	},
- };
- 
--static const struct rpc_version nsm_version1 = {
-+static struct rpc_version nsm_version1 = {
- 		.number		= 1,
- 		.nrprocs	= ARRAY_SIZE(nsm_procedures),
- 		.procs		= nsm_procedures
- };
- 
--static const struct rpc_version *nsm_version[] = {
-+static struct rpc_version *nsm_version[] = {
- 	[1] = &nsm_version1,
- };
- 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 7ddd45d..c6e7844 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -9,11 +9,11 @@ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
--nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
--nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
-+nfs-$(CONFIG_NFS_V2)	+= nfs2super.o proc.o nfs2xdr.o
-+nfs-$(CONFIG_NFS_V3)	+= nfs3super.o nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
--			   delegation.o idmap.o \
-+			   nfs4super.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4d793b2..0fafedd 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -51,11 +51,14 @@
- #include "internal.h"
- #include "fscache.h"
- #include "pnfs.h"
-+#include "nfs.h"
- #include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
-+static DEFINE_SPINLOCK(nfs_version_lock);
-+static LIST_HEAD(nfs_versions);
- #ifdef CONFIG_NFS_V4
- 
- /*
-@@ -89,16 +92,10 @@ static bool nfs4_disable_idmapping = true;
- /*
-  * RPC cruft for NFS
-  */
--static const struct rpc_version *nfs_version[5] = {
--#ifdef CONFIG_NFS_V2
--	[2]			= &nfs_version2,
--#endif
--#ifdef CONFIG_NFS_V3
--	[3]			= &nfs_version3,
--#endif
--#ifdef CONFIG_NFS_V4
--	[4]			= &nfs_version4,
--#endif
-+static struct rpc_version *nfs_version[5] = {
-+	[2] = NULL,
-+	[3] = NULL,
-+	[4] = NULL,
- };
- 
- const struct rpc_program nfs_program = {
-@@ -114,10 +111,9 @@ struct rpc_stat nfs_rpcstat = {
- 	.program		= &nfs_program
- };
- 
--
- #ifdef CONFIG_NFS_V3_ACL
- static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
--static const struct rpc_version *nfsacl_version[] = {
-+static struct rpc_version *nfsacl_version[] = {
- 	[3]			= &nfsacl_version3,
- };
- 
-@@ -140,6 +136,81 @@ struct nfs_client_initdata {
- 	struct net *net;
- };
- 
-+static int find_nfs_version(struct nfs_subversion **nfs, unsigned int version)
++static inline void nfs4_stateid_copy(nfs4_stateid *dst, const nfs4_stateid *src)
 +{
-+	struct nfs_subversion *tmp;
-+	spin_lock(&nfs_version_lock);
-+
-+	list_for_each_entry_safe((*nfs), tmp, &nfs_versions, list) {
-+		if ((*nfs)->version == version) {
-+			spin_unlock(&nfs_version_lock);
-+			return 1;
-+		}
-+	};
-+
-+	spin_unlock(&nfs_version_lock);
-+	return 0;
++	memcpy(dst->data, src->data, sizeof(dst->data));
 +}
 +
-+struct nfs_subversion *get_nfs_version(unsigned int version)
++static inline bool nfs4_stateid_match(const nfs4_stateid *dst, const nfs4_stateid *src)
 +{
-+	struct nfs_subversion *nfs;
-+
-+	if (try_then_request_module(find_nfs_version(&nfs, version), "nfs%d", version))
-+		return nfs;
-+	return ERR_PTR(-EPROTONOSUPPORT);
++	return memcmp(dst->data, src->data, sizeof(dst->data)) == 0;
 +}
 +
-+inline struct nfs_subversion *get_nfs_client_version(struct nfs_client *clp)
-+{
-+	return get_nfs_version(clp->rpc_ops->version);
-+}
-+
-+inline struct nfs_subversion *get_nfs_server_version(struct nfs_server *srv)
-+{
-+	return get_nfs_client_version(srv->nfs_client);
-+}
-+
-+void register_nfs_version(struct nfs_subversion *nfs)
-+{
-+	spin_lock(&nfs_version_lock);
-+
-+	list_add(&nfs->list, &nfs_versions);
-+	nfs_version[nfs->version] = nfs->rpc_vers;
-+
-+	spin_unlock(&nfs_version_lock);
-+}
-+EXPORT_SYMBOL_GPL(register_nfs_version);
-+
-+void unregister_nfs_version(struct nfs_subversion *nfs)
-+{
-+	spin_lock(&nfs_version_lock);
-+
-+	nfs_version[nfs->version] = NULL;
-+	list_del(&nfs->list);
-+
-+	spin_unlock(&nfs_version_lock);
-+}
-+EXPORT_SYMBOL_GPL(unregister_nfs_version);
-+
-+/*
-+ * Preload all configured NFS versions during module init.
-+ * This function should be edited after each protocol is converted,
-+ * and eventually removed.
-+ */
-+void __init nfs_register_versions(void)
-+{
-+#ifdef CONFIG_NFS_V2
-+	init_nfs_v2();
-+#endif
-+#ifdef CONFIG_NFS_V3
-+	init_nfs_v3();
-+#endif
-+#ifdef CONFIG_NFS_V4
-+	init_nfs_v4();
-+#endif
-+}
-+
- /*
-  * Allocate a shared client record
-  *
-@@ -855,21 +926,15 @@ static int nfs_init_server(struct nfs_server *server,
- 	};
- 	struct rpc_timeout timeparms;
- 	struct nfs_client *clp;
-+	struct nfs_subversion *nfs_mod;
- 	int error;
+ #else
  
- 	dprintk("--> nfs_init_server()\n");
+ #define nfs4_close_state(a, b) do { } while (0)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9200327..3e65766 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -938,8 +938,8 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
+ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
+ {
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+-		memcpy(state->stateid.data, stateid->data, sizeof(state->stateid.data));
+-	memcpy(state->open_stateid.data, stateid->data, sizeof(state->open_stateid.data));
++		nfs4_stateid_copy(&state->stateid, stateid);
++	nfs4_stateid_copy(&state->open_stateid, stateid);
+ 	switch (fmode) {
+ 		case FMODE_READ:
+ 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
+@@ -967,7 +967,7 @@ static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_s
+ 	 */
+ 	write_seqlock(&state->seqlock);
+ 	if (deleg_stateid != NULL) {
+-		memcpy(state->stateid.data, deleg_stateid->data, sizeof(state->stateid.data));
++		nfs4_stateid_copy(&state->stateid, deleg_stateid);
+ 		set_bit(NFS_DELEGATED_STATE, &state->flags);
+ 	}
+ 	if (open_stateid != NULL)
+@@ -998,7 +998,7 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
  
--
--#ifdef CONFIG_NFS_V2
--	if (data->version == 2)
--		cl_init.rpc_ops = &nfs_v2_clientops;
--#endif
--#ifdef CONFIG_NFS_V3
--	if (data->version == 3)
--		cl_init.rpc_ops = &nfs_v3_clientops;
--#endif
--	if (cl_init.rpc_ops == NULL)
--		return -EPROTONOSUPPORT;
-+	nfs_mod = get_nfs_version(data->version);
-+	if (IS_ERR(nfs_mod))
-+		return PTR_ERR(nfs_mod);
-+	cl_init.rpc_ops = nfs_mod->rpc_ops;
+ 	if (delegation == NULL)
+ 		delegation = &deleg_cur->stateid;
+-	else if (memcmp(deleg_cur->stateid.data, delegation->data, NFS4_STATEID_SIZE) != 0)
++	else if (!nfs4_stateid_match(&deleg_cur->stateid, delegation))
+ 		goto no_delegation_unlock;
  
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 7bb4d13..02a1c43 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -52,6 +52,7 @@
- #include "fscache.h"
- #include "dns_resolve.h"
- #include "pnfs.h"
-+#include "nfs.h"
- #include "netns.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
-@@ -1695,6 +1696,7 @@ static int __init init_nfs_fs(void)
- #endif
- 	if ((err = register_nfs_fs()) != 0)
- 		goto out;
-+	nfs_register_versions();
+ 	nfs_mark_delegation_referenced(deleg_cur);
+@@ -1059,7 +1059,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 			break;
+ 		}
+ 		/* Save the delegation */
+-		memcpy(stateid.data, delegation->stateid.data, sizeof(stateid.data));
++		nfs4_stateid_copy(&stateid, &delegation->stateid);
+ 		rcu_read_unlock();
+ 		ret = nfs_may_open(state->inode, state->owner->so_cred, open_mode);
+ 		if (ret != 0)
+@@ -1222,10 +1222,10 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
+ 	 * Check if we need to update the current stateid.
+ 	 */
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0 &&
+-	    memcmp(state->stateid.data, state->open_stateid.data, sizeof(state->stateid.data)) != 0) {
++	    !nfs4_stateid_match(&state->stateid, &state->open_stateid)) {
+ 		write_seqlock(&state->seqlock);
+ 		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+-			memcpy(state->stateid.data, state->open_stateid.data, sizeof(state->stateid.data));
++			nfs4_stateid_copy(&state->stateid, &state->open_stateid);
+ 		write_sequnlock(&state->seqlock);
+ 	}
  	return 0;
- out:
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 8e65c7f..ddc7d19 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -488,19 +488,19 @@ static struct rpc_procinfo mnt3_procedures[] = {
- };
+@@ -1294,8 +1294,7 @@ static int _nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs
+ 	if (IS_ERR(opendata))
+ 		return PTR_ERR(opendata);
+ 	opendata->o_arg.claim = NFS4_OPEN_CLAIM_DELEGATE_CUR;
+-	memcpy(opendata->o_arg.u.delegation.data, stateid->data,
+-			sizeof(opendata->o_arg.u.delegation.data));
++	nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
+ 	ret = nfs4_open_recover(opendata, state);
+ 	nfs4_opendata_put(opendata);
+ 	return ret;
+@@ -1357,8 +1356,7 @@ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
  
+ 	data->rpc_status = task->tk_status;
+ 	if (data->rpc_status == 0) {
+-		memcpy(data->o_res.stateid.data, data->c_res.stateid.data,
+-				sizeof(data->o_res.stateid.data));
++		nfs4_stateid_copy(&data->o_res.stateid, &data->c_res.stateid);
+ 		nfs_confirm_seqid(&data->owner->so_seqid, 0);
+ 		renew_lease(data->o_res.server, data->timestamp);
+ 		data->rpc_done = 1;
+@@ -1918,7 +1916,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	} else if (state != NULL) {
+ 		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+ 	} else
+-		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
++		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
  
--static const struct rpc_version mnt_version1 = {
-+static struct rpc_version mnt_version1 = {
- 	.number		= 1,
- 	.nrprocs	= ARRAY_SIZE(mnt_procedures),
- 	.procs		= mnt_procedures,
- };
- 
--static const struct rpc_version mnt_version3 = {
-+static struct rpc_version mnt_version3 = {
- 	.number		= 3,
- 	.nrprocs	= ARRAY_SIZE(mnt3_procedures),
- 	.procs		= mnt3_procedures,
- };
- 
--static const struct rpc_version *mnt_version[] = {
-+static struct rpc_version *mnt_version[] = {
- 	NULL,
- 	&mnt_version1,
- 	NULL,
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-new file mode 100644
-index 0000000..05f6849
---- /dev/null
-+++ b/fs/nfs/nfs.h
-@@ -0,0 +1,35 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ *
-+ * Function and structures exported by the NFS module
-+ * for use by NFS version-specific modules.
-+ */
-+#ifndef __LINUX_INTERNAL_NFS_H
-+#define __LINUX_INTERNAL_NFS_H
-+
-+#include <linux/fs.h>
-+#include <linux/sunrpc/sched.h>
-+#include <linux/nfs_xdr.h>
-+
-+struct nfs_subversion {
-+	unsigned int version;		/* Protocol number */
-+	struct rpc_version *rpc_vers;	/* NFS version information */
-+	const struct nfs_rpc_ops *rpc_ops;	/* NFS operations */
-+	struct list_head list;		/* List of NFS versions */
-+
-+	void (*reference)(void);	/* For reference counting */
-+	void (*unreference)(void);	/* Also for reference counting */
-+};
-+
-+void nfs_register_versions(void);
-+int init_nfs_v2(void);
-+int init_nfs_v3(void);
-+int init_nfs_v4(void);
-+
-+struct nfs_subversion *get_nfs_version(unsigned int);
-+struct nfs_subversion *get_nfs_client_version(struct nfs_client *);
-+struct nfs_subversion *get_nfs_server_version(struct nfs_server *);
-+void register_nfs_version(struct nfs_subversion *);
-+void unregister_nfs_version(struct nfs_subversion *);
-+
-+#endif /* __LINUX_INTERNAL_NFS_H */
-diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
-new file mode 100644
-index 0000000..12fa906
---- /dev/null
-+++ b/fs/nfs/nfs2super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs2_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs2_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v2 = {
-+	.version  = 2,
-+	.rpc_vers = &nfs_version2,
-+	.rpc_ops  = &nfs_v2_clientops,
-+
-+	.reference = nfs2_reference,
-+	.unreference = nfs2_unreference,
-+};
-+
-+int __init init_nfs_v2(void)
-+{
-+	register_nfs_version(&nfs_v2);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index a01084d..5d9ec8b 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -1086,7 +1086,7 @@ struct rpc_procinfo	nfs_procedures[] = {
- 	PROC(STATFS,	fhandle,	statfsres,	0),
- };
- 
--const struct rpc_version nfs_version2 = {
-+struct rpc_version nfs_version2 = {
- 	.number			= 2,
- 	.nrprocs		= ARRAY_SIZE(nfs_procedures),
- 	.procs			= nfs_procedures
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-new file mode 100644
-index 0000000..a02c815
---- /dev/null
-+++ b/fs/nfs/nfs3super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs3_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs3_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v3 = {
-+	.version  = 3,
-+	.rpc_vers = &nfs_version3,
-+	.rpc_ops  = &nfs_v3_clientops,
-+
-+	.reference = nfs3_reference,
-+	.unreference = nfs3_unreference,
-+};
-+
-+int __init init_nfs_v3(void)
-+{
-+	register_nfs_version(&nfs_v3);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index a77cc9a..5f9aabd 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -2461,7 +2461,7 @@ struct rpc_procinfo	nfs3_procedures[] = {
- 	PROC(COMMIT,		commit,		commit,		5),
- };
- 
--const struct rpc_version nfs_version3 = {
-+struct rpc_version nfs_version3 = {
- 	.number			= 3,
- 	.nrprocs		= ARRAY_SIZE(nfs3_procedures),
- 	.procs			= nfs3_procedures
-@@ -2489,7 +2489,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	},
- };
- 
--const struct rpc_version nfsacl_version3 = {
-+struct rpc_version nfsacl_version3 = {
- 	.number			= 3,
- 	.nrprocs		= sizeof(nfs3_acl_procedures)/
- 				  sizeof(nfs3_acl_procedures[0]),
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-new file mode 100644
-index 0000000..9b2a679
---- /dev/null
-+++ b/fs/nfs/nfs4super.c
-@@ -0,0 +1,31 @@
-+/*
-+ * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-+ */
-+#include <linux/module.h>
-+#include <linux/nfs_fs.h>
-+#include "nfs.h"
-+
-+static void nfs4_reference(void)
-+{
-+	try_module_get(THIS_MODULE);
-+}
-+
-+static void nfs4_unreference(void)
-+{
-+	module_put(THIS_MODULE);
-+}
-+
-+static struct nfs_subversion nfs_v4 = {
-+	.version  = 4,
-+	.rpc_vers = &nfs_version4,
-+	.rpc_ops  = &nfs_v4_clientops,
-+
-+	.reference = nfs4_reference,
-+	.unreference = nfs4_unreference,
-+};
-+
-+int __init init_nfs_v4(void)
-+{
-+	register_nfs_version(&nfs_v4);
-+	return 0;
-+}
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c74fdb1..cfd333c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7071,7 +7071,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
--const struct rpc_version nfs_version4 = {
-+struct rpc_version nfs_version4 = {
- 	.number			= 4,
- 	.nrprocs		= ARRAY_SIZE(nfs4_procedures),
- 	.procs			= nfs4_procedures
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index aac4030..5ab7c0d 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -65,6 +65,7 @@
- #include "internal.h"
- #include "fscache.h"
- #include "pnfs.h"
-+#include "nfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -2284,6 +2285,22 @@ static int nfs_bdi_register(struct nfs_server *server)
- 	return bdi_register_dev(&server->backing_dev_info, server->s_dev);
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (status == 0 && state != NULL)
+@@ -3978,7 +3976,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	data->args.stateid = &data->stateid;
+ 	data->args.bitmask = server->attr_bitmask;
+ 	nfs_copy_fh(&data->fh, NFS_FH(inode));
+-	memcpy(&data->stateid, stateid, sizeof(data->stateid));
++	nfs4_stateid_copy(&data->stateid, stateid);
+ 	data->res.fattr = &data->fattr;
+ 	data->res.server = server;
+ 	nfs_fattr_init(data->res.fattr);
+@@ -4161,9 +4159,8 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
+ 		return;
+ 	switch (task->tk_status) {
+ 		case 0:
+-			memcpy(calldata->lsp->ls_stateid.data,
+-					calldata->res.stateid.data,
+-					sizeof(calldata->lsp->ls_stateid.data));
++			nfs4_stateid_copy(&calldata->lsp->ls_stateid,
++					&calldata->res.stateid);
+ 			renew_lease(calldata->server, calldata->timestamp);
+ 			break;
+ 		case -NFS4ERR_BAD_STATEID:
+@@ -4376,8 +4373,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+ 			goto out;
+ 	}
+ 	if (data->rpc_status == 0) {
+-		memcpy(data->lsp->ls_stateid.data, data->res.stateid.data,
+-					sizeof(data->lsp->ls_stateid.data));
++		nfs4_stateid_copy(&data->lsp->ls_stateid, &data->res.stateid);
+ 		data->lsp->ls_flags |= NFS_LOCK_INITIALIZED;
+ 		renew_lease(NFS_SERVER(data->ctx->dentry->d_inode), data->timestamp);
+ 	}
+@@ -6278,7 +6274,7 @@ static bool nfs41_match_stateid(const nfs4_stateid *s1,
+ static bool nfs4_match_stateid(const nfs4_stateid *s1,
+ 		const nfs4_stateid *s2)
+ {
+-	return memcmp(s1->data, s2->data, sizeof(s1->data)) == 0;
++	return nfs4_stateid_match(s1, s2);
  }
  
-+static int nfs_register(struct nfs_server *server)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
-+	int err = nfs_bdi_register(server);
-+	if (!err)
-+		nfs_mod->reference();
-+	return err;
-+}
-+
-+static void nfs_unregister(struct nfs_server *server)
-+{
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
-+	bdi_unregister(&server->backing_dev_info);
-+	nfs_mod->unreference();
-+}
-+
- static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data)
- {
-@@ -2296,6 +2313,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	struct nfs_sb_mountdata sb_mntdata = {
- 		.mntflags = flags,
- 	};
-+	struct nfs_subversion *nfs_mod;
- 	int error;
  
- 	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
-@@ -2310,6 +2328,12 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		goto out;
- 	}
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index b59b39e..41e2b44 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -895,7 +895,7 @@ void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owne
  
-+	nfs_mod = get_nfs_version(data->version);
-+	if (IS_ERR(nfs_mod)) {
-+		mntroot = (struct dentry *)nfs_mod;
-+		goto out;
-+	}
-+
- #ifdef CONFIG_NFS_V4
- 	if (data->version == 4) {
- 		mntroot = nfs4_try_mount(flags, dev_name, data);
-@@ -2343,7 +2367,7 @@ static struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error) {
- 			mntroot = ERR_PTR(error);
- 			goto error_splat_bdi;
-@@ -2380,7 +2404,7 @@ error_splat_root:
- 	mntroot = ERR_PTR(error);
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	goto out;
-@@ -2392,9 +2416,7 @@ error_splat_bdi:
-  */
- static void nfs_put_super(struct super_block *s)
- {
--	struct nfs_server *server = NFS_SB(s);
--
--	bdi_unregister(&server->backing_dev_info);
-+	nfs_unregister(NFS_SB(s));
+ 	do {
+ 		seq = read_seqbegin(&state->seqlock);
+-		memcpy(dst, &state->stateid, sizeof(*dst));
++		nfs4_stateid_copy(dst, &state->stateid);
+ 	} while (read_seqretry(&state->seqlock, seq));
+ 	if (test_bit(LK_STATE_IN_USE, &state->flags) == 0)
+ 		return;
+@@ -903,7 +903,7 @@ void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owne
+ 	spin_lock(&state->state_lock);
+ 	lsp = __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK_TYPE);
+ 	if (lsp != NULL && (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
+-		memcpy(dst, &lsp->ls_stateid, sizeof(*dst));
++		nfs4_stateid_copy(dst, &lsp->ls_stateid);
+ 	spin_unlock(&state->state_lock);
+ 	nfs4_put_lock_state(lsp);
  }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 402efc2..c190e9c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -499,7 +499,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+ 	oldseq = be32_to_cpu(lo->plh_stateid.stateid.seqid);
+ 	newseq = be32_to_cpu(new->stateid.seqid);
+ 	if ((int)(newseq - oldseq) > 0) {
+-		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
++		nfs4_stateid_copy(&lo->plh_stateid, new);
+ 		if (update_barrier) {
+ 			u32 new_barrier = be32_to_cpu(new->stateid.seqid);
  
- /*
-@@ -2454,7 +2476,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -2492,7 +2514,7 @@ out_err_noserver:
+@@ -549,11 +549,10 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
  
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
-@@ -2717,7 +2739,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -2755,7 +2777,7 @@ error_splat_root:
- 	dput(mntroot);
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	goto out;
-@@ -2977,7 +2999,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -3014,7 +3036,7 @@ out_err_noserver:
+ 		do {
+ 			seq = read_seqbegin(&open_state->seqlock);
+-			memcpy(dst->data, open_state->stateid.data,
+-			       sizeof(open_state->stateid.data));
++			nfs4_stateid_copy(dst, &open_state->stateid);
+ 		} while (read_seqretry(&open_state->seqlock, seq));
+ 	} else
+-		memcpy(dst->data, lo->plh_stateid.data, sizeof(lo->plh_stateid.data));
++		nfs4_stateid_copy(dst, &lo->plh_stateid);
+ 	spin_unlock(&lo->plh_inode->i_lock);
+ 	dprintk("<-- %s\n", __func__);
+ 	return status;
+@@ -1527,8 +1526,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	end_pos = nfsi->layout->plh_lwb;
+ 	nfsi->layout->plh_lwb = 0;
  
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
-@@ -3068,7 +3090,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = nfs_bdi_register(server);
-+		error = nfs_register(server);
- 		if (error)
- 			goto error_splat_bdi;
- 	}
-@@ -3108,7 +3130,7 @@ out_err_nofh:
+-	memcpy(&data->args.stateid.data, nfsi->layout->plh_stateid.data,
+-		sizeof(nfsi->layout->plh_stateid.data));
++	nfs4_stateid_copy(&data->args.stateid, &nfsi->layout->plh_stateid);
+ 	spin_unlock(&inode->i_lock);
  
- error_splat_super:
- 	if (server && !s->s_root)
--		bdi_unregister(&server->backing_dev_info);
-+		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
- 	nfs_free_fhandle(mntfh);
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 0e262f3..74d19d4 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -605,7 +605,7 @@ static struct rpc_version nfs_cb_version4 = {
- 	.procs			= nfs4_cb_procedures
- };
- 
--static const struct rpc_version *nfs_cb_version[] = {
-+static struct rpc_version *nfs_cb_version[] = {
- 	&nfs_cb_version4,
- };
- 
-diff --git a/include/linux/lockd/xdr4.h b/include/linux/lockd/xdr4.h
-index e58c88b..7353821 100644
---- a/include/linux/lockd/xdr4.h
-+++ b/include/linux/lockd/xdr4.h
-@@ -42,6 +42,6 @@ int	nlmclt_encode_lockargs(struct rpc_rqst *, u32 *, struct nlm_args *);
- int	nlmclt_encode_cancargs(struct rpc_rqst *, u32 *, struct nlm_args *);
- int	nlmclt_encode_unlockargs(struct rpc_rqst *, u32 *, struct nlm_args *);
-  */
--extern const struct rpc_version nlm_version4;
-+extern struct rpc_version nlm_version4;
- 
- #endif /* LOCKD_XDR4_H */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bfd0d1b..a52ddd5 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1300,11 +1300,11 @@ struct nfs_rpc_ops {
- extern const struct nfs_rpc_ops	nfs_v2_clientops;
- extern const struct nfs_rpc_ops	nfs_v3_clientops;
- extern const struct nfs_rpc_ops	nfs_v4_clientops;
--extern const struct rpc_version nfs_version2;
--extern const struct rpc_version nfs_version3;
--extern const struct rpc_version nfs_version4;
-+extern struct rpc_version nfs_version2;
-+extern struct rpc_version nfs_version3;
-+extern struct rpc_version nfs_version4;
- 
--extern const struct rpc_version nfsacl_version3;
-+extern struct rpc_version nfsacl_version3;
- extern const struct rpc_program nfsacl_program;
- 
- #endif
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 523547e..624d8e3 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -72,7 +72,7 @@ struct rpc_program {
- 	const char *		name;		/* protocol name */
- 	u32			number;		/* program number */
- 	unsigned int		nrvers;		/* number of versions */
--	const struct rpc_version **	version;	/* version array */
-+	struct rpc_version **	version;	/* version array */
- 	struct rpc_stat *	stats;		/* statistics */
- 	const char *		pipe_dir_name;	/* path to rpc_pipefs dir */
- };
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 207a746..227b5fb 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -1081,25 +1081,25 @@ static const struct rpcb_info rpcb_next_version6[] = {
- 	},
- };
- 
--static const struct rpc_version rpcb_version2 = {
-+static struct rpc_version rpcb_version2 = {
- 	.number		= RPCBVERS_2,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures2),
- 	.procs		= rpcb_procedures2
- };
- 
--static const struct rpc_version rpcb_version3 = {
-+static struct rpc_version rpcb_version3 = {
- 	.number		= RPCBVERS_3,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures3),
- 	.procs		= rpcb_procedures3
- };
- 
--static const struct rpc_version rpcb_version4 = {
-+static struct rpc_version rpcb_version4 = {
- 	.number		= RPCBVERS_4,
- 	.nrprocs	= ARRAY_SIZE(rpcb_procedures4),
- 	.procs		= rpcb_procedures4
- };
- 
--static const struct rpc_version *rpcb_version[] = {
-+static struct rpc_version *rpcb_version[] = {
- 	NULL,
- 	NULL,
- 	&rpcb_version2,
+ 	data->args.inode = inode;
 -- 
-1.7.9.4
+1.7.7.6
 
