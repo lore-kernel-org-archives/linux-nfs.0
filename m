@@ -1,203 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([134.215.213.37]:3230 "EHLO aa.linuxbox.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48967 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758958Ab2C3RLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 13:11:19 -0400
-Date: Fri, 30 Mar 2012 13:10:57 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        Peter Staubach <pstaubach@exagrid.com>
-Message-ID: <2010727361.65.1333127457578.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1333122400.8099.17.camel@lade.trondhjem.org>
-Subject: Re: unlink within an open directory stream
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+	id S1756053Ab2CEMnG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 07:43:06 -0500
+Date: Mon, 5 Mar 2012 07:42:56 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
+ upcall
+Message-ID: <20120305074256.6dc36fed@tlielax.poochiereds.net>
+In-Reply-To: <4F547DF1.8090003@parallels.com>
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+	<1330720950-5872-6-git-send-email-jlayton@redhat.com>
+	<4F547DF1.8090003@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Mon, 05 Mar 2012 12:48:49 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Thanks for providing all this reasoning and additional background.
-
-I guess I've always constructed an imaginary intention of the protocol feature that's different from the actual one.  Yet the feature nevertheless seemed useful.
-
-There seem to be two parts to my construction:
-
-1. negatively, it never occurred to me that a client implementation would assume that it could protect an application from invalidation, unless it was able to perform, and cache a complete traversal--this would be one with a consistent verifier for all component readdirs
-
-2. at the same time, it seems a conforming server implementation can be made which would often support a client in doing this, presuming it was able to use the cookie verifier to select a prior version of the directory;  not only do some filesystems now appear able to do this, this technique is used by the dcache nfs server, though iiuc, dcache doesn't make any promises that it will have a specific component cached at every version, etc
-
-Matt
-
------ "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2012-03-30 at 11:24 -0400, Peter Staubach wrote:
-> > Yes, hmmm, ummm...
-> > 
-> > A long time, I thought that the readdir cookie verifier sounded like
-> a good idea.  After all, if directories can be compacted, it would be
-> nice to be able to tell when the cookie has become invalid, right? 
-> So, I added it to the NFSv3 protocol.
-> > 
-> > It was only afterwards, in attempting to implement it, that the real
-> truth was discovered.  This is that the interfaces are not sufficient
-> to be able to convey this information sufficiently and to be able to
-> recover from the situation.  Currently, recovery require action on the
-> part of the application.
-> > 
-> > In retrospect, I wouldn't add the cookie verifier if I was doing it
-> again.
-> > 
-> > Thanks for the support, though.  :-)
-> > 
-> > I do disagree with Trond though, in that applications must be coded
-> to be able to handle directories where cookies can become invalidated.
->  That's why rm and such have to be coded to keep track of their
-> location in the directory by more than just d_off.
+> This variant is almost what was desired.
+> If you would be able to prepare one more version - please look at my comments below.
 > 
-> The problem with that is that there is no standard for how
-> applications
-> should proceed to do this, and so there are no guidelines for how the
-> client should behave.
+> 03.03.2012 00:42, Jeff Layton пишет:
+> > ...and add a mechanism for switching between the "legacy" tracker and
+> > the new one. The decision is made by looking to see whether the
+> > v4recoverydir exists. If it does, then the legacy client tracker is
+> > used.
+> >
+> > If it's not, then the kernel will create a "cld" pipe in rpc_pipefs.
+> > That pipe is used to talk to a daemon for handling the upcall.
+> >
+> > Signed-off-by: Jeff Layton<jlayton@redhat.com>
+> > ---
+> >   fs/nfsd/nfs4recover.c |  411 ++++++++++++++++++++++++++++++++++++++++++++++++-
+> >   1 files changed, 410 insertions(+), 1 deletions(-)
+> >
+> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> > index ccd9b97..d928c58 100644
+> > --- a/fs/nfsd/nfs4recover.c
+> > +++ b/fs/nfsd/nfs4recover.c
+> > @@ -1,5 +1,6 @@
+> >   /*
+> >   *  Copyright (c) 2004 The Regents of the University of Michigan.
+> > +*  Copyright (c) 2012 Jeff Layton<jlayton@redhat.com>
+> >   *  All rights reserved.
+> >   *
+> >   *  Andy Adamson<andros@citi.umich.edu>
+> > @@ -36,6 +37,11 @@
+> >   #include<linux/namei.h>
+> >   #include<linux/crypto.h>
+> >   #include<linux/sched.h>
+> > +#include<linux/fs.h>
+> > +#include<net/net_namespace.h>
+> > +#include<linux/sunrpc/rpc_pipe_fs.h>
+> > +#include<linux/sunrpc/clnt.h>
+> > +#include<linux/nfsd/cld.h>
+> >
+> >   #include "nfsd.h"
+> >   #include "state.h"
+> > @@ -478,12 +484,415 @@ static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+> >   	.grace_done	= nfsd4_recdir_purge_old,
+> >   };
+> >
+> > +/* Globals */
+> > +#define NFSD_PIPE_DIR		"nfsd"
+> > +#define NFSD_CLD_PIPE		"cld"
+> > +
+> > +static struct rpc_pipe *cld_pipe;
+> > +
+> > +/* list of cld_msg's that are currently in use */
+> > +static DEFINE_SPINLOCK(cld_lock);
+> > +static LIST_HEAD(cld_list);
+> > +static unsigned int cld_xid;
+> > +
+> > +struct cld_upcall {
+> > +	struct list_head	cu_list;
+> > +	struct task_struct	*cu_task;
+> > +	struct cld_msg	cu_msg;
+> > +};
+> > +
+> > +static int
+> > +__cld_pipe_upcall(struct cld_msg *cmsg)
+> > +{
+> > +	int ret;
+> > +	struct rpc_pipe_msg msg;
+> > +
+> > +	memset(&msg, 0, sizeof(msg));
+> > +	msg.data = cmsg;
+> > +	msg.len = sizeof(*cmsg);
+> > +
+> > +	/*
+> > +	 * Set task state before we queue the upcall. That prevents
+> > +	 * wake_up_process in the downcall from racing with schedule.
+> > +	 */
+> > +	set_current_state(TASK_UNINTERRUPTIBLE);
+> > +	ret = rpc_queue_upcall(cld_pipe,&msg);
 > 
-> Worse, if you've looked at the glibc readdir library code, you'll
-> have
-> noticed that it _depends_ on being able to use a strictly
-> POSIX-conforming version of telldir()/seekdir(). If it can't rewind to
-> a
-> previously saved offset, then it can end up skipping entries.
 > 
-> So no, I can't rely on applications either...
+> Would be great to replace hard-coded cld_pipe here with a passed one.
+> For example, put this cld_pipe on cld_msg structure.
+> And initialize this pointer (hard-coded value for now) below in 
+> nfsd4_cld_create() and all other places where alloc_cld_upcall() is called.
 > 
-> > 		ps
-> > 
-> > 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Matt W.
-> Benjamin
-> > Sent: Monday, March 26, 2012 2:55 PM
-> > To: Boaz Harrosh
-> > Cc: linux-nfs; Ganesha NFS List; Trond Myklebust
-> > Subject: Re: unlink within an open directory stream
-> > 
-> > Hi,
-> > 
-> > Boaz:  we do not any longer send a readdir index.  We do send a
-> cookieverf.
-> > 
-> > Fist of all, I haven't established that the issue we're actually
-> observing is caused by the Linux client sending old cookies to
-> readdir(something).  However, if it is, it's in no way better to try
-> to make cookies "more persistent."  Nor should the Linux client be
-> expecting it.  The assumption is simply flawed.  The protocol
-> introduced cookie verifier (a LONG time ago) for a reason.
-> > 
-> > Matt
-> > ----- "Boaz Harrosh" <bharrosh@panasas.com> wrote:
-> > 
-> > > On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
-> > > 
-> > > > On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
-> > > >> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
-> > > >>
-> > > >>
-> > > >> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after
-> an
-> > > unlink.
-> > > > 
-> > > > What?
-> > > > 
-> > > 
-> > > 
-> > > The links below report on regression in RHEL 6.2 which have a new
-> NFS 
-> > > implementation where  6.0 used to be fine.
-> > > (Or it's what I understood from the reporters)
-> > > 
-> > > <snip>
-> > > 
-> > > > 
-> > > 
-> > > > No.
-> > > > 
-> > > > If the server supports permanent readdir cookies, then there is
-> no
-> > > need
-> > > > for opendir after unlink.
-> > > > 
-> > > > If the server does not have permanent readdir cookies, then our
-> > > client
-> > > > has never supported it anyway (nor will it ever do so). That
-> whole 
-> > > > 'cookieverf' READDIR bullshit has never provided a workable
-> model
-> > > for a
-> > > > POSIX client...
-> > > 
-> > > 
-> > > Thanks Trond for the explanation. Forgive my slowness. So you are
+> BTW, maybe allocate this struct cld_upcall per NFS client somehow? And thus get 
+> rid of alloc-free calls?
 > 
-> > > saying that with knfsd it's actually filesystem dependent and
-> maybe 
-> > > the reporters did not compare apples-to-apples and the difference
-> is 
-> > > in the behind file system.
-> > > 
-> > > Matt I'm sure Trond is right with regard to Ganesha, because we
-> send a 
-> > > readdir index and a cookieverf, which will change after unlink.
-> Since 
-> > > the application does not call opendir again the client will send
-> the 
-> > > old cookies, which is now a different file or might get
-> out-of-bounds 
-> > > for Ganesha.
-> > > 
-> > > Let me think about it a bit. I'm sure we can send a Better 64bit 
-> > > cookie, which will be more persistent, even across unlinks.
-> > > 
-> > > > 
-> > > > 
-> > > 
-> > > 
-> > > Thanks
-> > > Boaz
-> > 
-> > --
-> > Matt Benjamin
-> > The Linux Box
-> > 206 South Fifth Ave. Suite 150
-> > Ann Arbor, MI  48104
-> > 
-> > http://linuxbox.com
-> > 
-> > tel. 734-761-4689
-> > fax. 734-769-8938
-> > cel. 734-216-5309
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in the body of a message to majordomo@vger.kernel.org More majordomo
-> info at  http://vger.kernel.org/majordomo-info.html
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
 
+Ok, I think I must have misunderstood what you meant when you said no
+per-net ops required. I'll respin and see if I can get closer to what
+you intended.
+
+Since most of the upcalls are infrequent and come from nfsd threads,
+the number of calls in flight will always be less than the order of the
+number of nfsd threads. That value may be much less than the number of
+nfs4_clients, so we're probably best off allocating these dynamically.
+
+Now that I've had some time to look, I think what you're probably going
+to want to do eventually is to add a new per-namespace object for nfsd,
+similar to struct nfs_net for the nfs client. This container will hold
+the pointer to the upcall pipe as well as other objects.
+
+The nfs4_client objects for nfsd will then need to be per-namespace,
+and will have a pointer back to "struct nfsd_net" or whatever you end up
+calling it. From that they'll be able to get the rpc_pipe pointer.
+
+For now, I'll just hardcode init_net in the appropriate places under the
+assumption that eventually you'll be able to get a rpc_pipe pointer
+given a pointer to an nfs4_client struct.
+
+Thanks,
 -- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
-
-http://linuxbox.com
-
-tel. 734-761-4689
-fax. 734-769-8938
-cel. 734-216-5309
+Jeff Layton <jlayton@redhat.com>
