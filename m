@@ -1,59 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37131 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751563Ab2CEToA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 14:44:00 -0500
-Message-ID: <4F551781.8030803@RedHat.com>
-Date: Mon, 05 Mar 2012 14:44:01 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:49119 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752440Ab2CEQmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 11:42:43 -0500
+Received: by gghe5 with SMTP id e5so968082ggh.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Mar 2012 08:42:43 -0800 (PST)
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/1] Normalized path names on umounts (take 2)
-References: <1330976165-19849-1-git-send-email-steved@redhat.com> <5C0B4422-2BF3-4534-817C-0480B1A21D34@oracle.com>
-In-Reply-To: <5C0B4422-2BF3-4534-817C-0480B1A21D34@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] nfsd: only initialize client tracking if nfs4_state_start is successful
+Date: Mon,  5 Mar 2012 11:42:36 -0500
+Message-Id: <1330965756-24180-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1330965756-24180-1-git-send-email-jlayton@redhat.com>
+References: <1330965756-24180-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The current code never calls nfsd4_client_tracking_exit if
+nfs4_state_start returns an error. Also, it's better to go ahead and
+consolidate these functions since one is just a trivial wrapper around
+the other.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   26 +++++++++++++-------------
+ 1 files changed, 13 insertions(+), 13 deletions(-)
 
-On 03/05/2012 02:37 PM, Chuck Lever wrote:
-> 
-> On Mar 5, 2012, at 2:36 PM, Steve Dickson wrote:
-> 
->> There is a second attempted at making paths in the
->> device names that have multiple slashes or no slash
->> at all unmount-able, without breaking any APIs.
->>
->> Due to the way entries are written to both the /etc/mtab
->> and /proc/mounts, multiple slash have to be stripped and
->> leading slash have to be added (when they don't exist) 
->> on v4 mounts.
-> 
-> I thought a pathname without a leading slash was allowed for NFSv4, for mounting OSD devices?  Not really sure.
-Sorry I guess I didn't make myself clear... this adding and subtracting 
-of slashes only happen on umounts and only if /etc/mtab is not symbolically
-to /proc/mounts.  Has no effect on the mounts that do or do not have 
-slashes... Is that a bit clearer? 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e547b27..1198fe8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4629,21 +4629,26 @@ set_max_delegations(void)
+ 
+ /* initialization to perform when the nfsd service is started: */
+ 
+-static int
+-__nfs4_state_start(void)
++int
++nfs4_state_start(void)
+ {
+ 	int ret;
+ 
++	nfsd4_load_reboot_recovery_data();
+ 	boot_time = get_seconds();
+ 	locks_start_grace(&nfsd4_manager);
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
+ 	       nfsd4_grace);
+ 	ret = set_callback_cred();
+-	if (ret)
+-		return -ENOMEM;
++	if (ret) {
++		ret = -ENOMEM;
++		goto out_recovery;
++	}
+ 	laundry_wq = create_singlethread_workqueue("nfsd4");
+-	if (laundry_wq == NULL)
+-		return -ENOMEM;
++	if (laundry_wq == NULL) {
++		ret = -ENOMEM;
++		goto out_recovery;
++	}
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+ 		goto out_free_laundry;
+@@ -4652,16 +4657,11 @@ __nfs4_state_start(void)
+ 	return 0;
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
++out_recovery:
++	nfsd4_shutdown_recdir();
+ 	return ret;
+ }
+ 
+-int
+-nfs4_state_start(void)
+-{
+-	nfsd4_load_reboot_recovery_data();
+-	return __nfs4_state_start();
+-}
+-
+ static void
+ __nfs4_state_shutdown(void)
+ {
+-- 
+1.7.7.6
 
-steved.
-
-> 
->> With v3 mounts this normalization can 
->> not occur since those entries are always in the same format.
->>
->> Finally, this normalization only needs to happen
->> when the mtab and /proc/mounts are not the same file.
->>
->> Steve Dickson (1):
->>  umount.nfs: normalize path names during umounts.
->>
->> utils/mount/nfsumount.c |   64 +++++++++++++++++++++++++++++++++++++++++++++-
->> 1 files changed, 62 insertions(+), 2 deletions(-)
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
