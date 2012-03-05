@@ -1,111 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:26782 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:4236 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758079Ab2C1PJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 11:09:35 -0400
-Subject: [PATCH 5/8] nfsd: pass svc_export_cache pointer as private data to
- "exports" seq file ops
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 28 Mar 2012 19:09:29 +0400
-Message-ID: <20120328150929.2646.59343.stgit@localhost6.localdomain6>
-In-Reply-To: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-References: <20120328150152.2646.33607.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S932129Ab2CEPQO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 10:16:14 -0500
+Date: Mon, 5 Mar 2012 10:16:04 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
+ upcall
+Message-ID: <20120305101604.497e705f@tlielax.poochiereds.net>
+In-Reply-To: <4F54D367.4000503@parallels.com>
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+	<1330720950-5872-6-git-send-email-jlayton@redhat.com>
+	<4F547DF1.8090003@parallels.com>
+	<20120305074256.6dc36fed@tlielax.poochiereds.net>
+	<4F54B6B7.1010703@parallels.com>
+	<20120305093948.435f39cc@tlielax.poochiereds.net>
+	<4F54D367.4000503@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Global svc_export_cache cache is going to be replaced with per-net instance. So
-prepare the ground for it.
+On Mon, 05 Mar 2012 18:53:27 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 05.03.2012 18:39, Jeff Layton пишет:
+> >
+> > Ok, I've started looking at the existing examples to try and ease the
+> > eventual containerization of this. Am I correct that the existing
+> > blocklayout pipe containerization is not yet complete?
+> >
+> > AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
+> > allocated on a per-net basis. bl_pipe_downcall does this however:
+> >
+> >          if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
+> >                  return -EFAULT;
+> >
+> > ...but bl_mount_reply is global:
+> >
+> >      static struct bl_dev_msg bl_mount_reply;
+> >
+> > So, if you're getting downcalls in two different network namespaces at
+> > the same time this could end up corrupt. It seems like bl_mount_reply
+> > needs to be part of nfs_net as well.
+> 
+> Thanks for this catch, Jeff!
+> I need to fix this.
+> 
+> >
+> > When you get a downcall, you have a filp pointer. Is there any way to
+> > determine the "correct" nfs_net object for a particular filp?
+> >
+> 
+> Yes, sure.
+> This nfs_net object will be, obviously, in the same network namespace, as PipeFS 
+> superblock. Network namespace is stored on PipeFS sb->s_fs_info.
+> IOW, code below should works:
+> 
+> struct nfs_net *nn = net_generic(file->f_dentry->d_sb->s_fs_info, nfs_net_id);
+> 
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Ok, I'm going to have to do something similar for the cld upcall
+eventually. We'll need a per-ns list of upcalls in flight, xid counter
+and spinlock.
 
----
- fs/nfsd/export.c |   18 +++++++++++-------
- fs/nfsd/nfsctl.c |   11 ++++++++++-
- 2 files changed, 21 insertions(+), 8 deletions(-)
+What may be best is to go ahead and introduce a nfsd_net struct as a
+per-net object start putting stuff inside it.
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index c20a405..1495320 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1029,13 +1029,14 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
- /* Iterator */
- 
- static void *e_start(struct seq_file *m, loff_t *pos)
--	__acquires(svc_export_cache.hash_lock)
-+	__acquires(((struct cache_detail *)m->private)->hash_lock)
- {
- 	loff_t n = *pos;
- 	unsigned hash, export;
- 	struct cache_head *ch;
--	
--	read_lock(&svc_export_cache.hash_lock);
-+	struct cache_detail *cd = m->private;
-+
-+	read_lock(&cd->hash_lock);
- 	if (!n--)
- 		return SEQ_START_TOKEN;
- 	hash = n >> 32;
-@@ -1082,9 +1083,11 @@ static void *e_next(struct seq_file *m, void *p, loff_t *pos)
- }
- 
- static void e_stop(struct seq_file *m, void *p)
--	__releases(svc_export_cache.hash_lock)
-+	__releases(((struct cache_detail *)m->private)->hash_lock)
- {
--	read_unlock(&svc_export_cache.hash_lock);
-+	struct cache_detail *cd = m->private;
-+
-+	read_unlock(&cd->hash_lock);
- }
- 
- static struct flags {
-@@ -1195,6 +1198,7 @@ static int e_show(struct seq_file *m, void *p)
- {
- 	struct cache_head *cp = p;
- 	struct svc_export *exp = container_of(cp, struct svc_export, h);
-+	struct cache_detail *cd = m->private;
- 
- 	if (p == SEQ_START_TOKEN) {
- 		seq_puts(m, "# Version 1.1\n");
-@@ -1203,10 +1207,10 @@ static int e_show(struct seq_file *m, void *p)
- 	}
- 
- 	cache_get(&exp->h);
--	if (cache_check(&svc_export_cache, &exp->h, NULL))
-+	if (cache_check(cd, &exp->h, NULL))
- 		return 0;
- 	exp_put(exp);
--	return svc_export_show(m, &svc_export_cache, cp);
-+	return svc_export_show(m, cd, cp);
- }
- 
- const struct seq_operations nfs_exports_op = {
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index dee6c1b..9bc6f8c 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -127,7 +127,16 @@ static const struct file_operations transaction_ops = {
- 
- static int exports_open(struct inode *inode, struct file *file)
- {
--	return seq_open(file, &nfs_exports_op);
-+	int err;
-+	struct seq_file *seq;
-+
-+	err = seq_open(file, &nfs_exports_op);
-+	if (err)
-+		return err;
-+
-+	seq = file->private_data;
-+	seq->private = &svc_export_cache;
-+	return 0;
- }
- 
- static const struct file_operations exports_operations = {
-
+-- 
+Jeff Layton <jlayton@redhat.com>
