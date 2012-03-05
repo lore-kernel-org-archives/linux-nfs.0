@@ -1,163 +1,219 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:41393 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751833Ab2CBTHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 14:07:16 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:45027 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932332Ab2CEU2Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 15:28:16 -0500
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Mon, 5 Mar 2012 13:28:12 -0700
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id 1F1DFC9005E
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 15:27:36 -0500 (EST)
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25KR0rL249672
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:27:04 -0500
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25KRBXL027708
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 13:27:11 -0700
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: Extend the -overs= mount option to allow 4.x minorversions
-Date: Fri,  2 Mar 2012 14:07:09 -0500
-Message-Id: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC v3 06/10] Add VFH FHEXPIRED recovery functions.
+Date: Mon,  5 Mar 2012 15:26:47 -0500
+Message-Id: <1330979211-894-7-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the user to mount an NFSv4.0 or NFSv4.1 partition using a
-standard syntax of '-overs=4.0', or '-overs=4.1' rather than the
-more cumbersome '-overs=4,minorversion=1'.
+The VFH recovery functions perform a recursive walk back on FHEXPIRED
+errors. If an FHEXPIRED error is received during a recovery lookup
+This means that the directory's filehandle is also expired and
+needs to be recovered.
 
-See also the earlier patch by Dros Adamson, which added the
-Linux-specific syntax '-ov4.0', '-ov4.1'.
+The end case for the recursion is if the file handle is the rootfh.
+This means that we recursed back to the root of the export, and we
+can just perform a rootfh lookup.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Also added a modified lookup for volatile file handle recovery. This
+function will not use the exception handling on FHEXPIRED errors
+and just return FHEXPIRED instead.
+
+v3:
+- Add support for getattr recovery by calling nfs4_vfh_getdentry() when a
+file handle is passed in from nfs4_exception.
+
+v2:
+- Added credentials to the lookup request on an ACCESS error and
+if a credential is passed into recovery.
+
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
 ---
- fs/nfs/super.c |   84 +++++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 62 insertions(+), 22 deletions(-)
+ fs/nfs/nfs4proc.c |  143 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 143 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8154acc..ab58bb9 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -98,10 +98,10 @@ enum {
- 	Opt_namelen,
- 	Opt_mountport,
- 	Opt_mountvers,
--	Opt_nfsvers,
- 	Opt_minorversion,
- 
- 	/* Mount options that take string arguments */
-+	Opt_nfsvers,
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
- 	Opt_lookupcache,
-@@ -166,9 +166,10 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_namelen, "namlen=%s" },
- 	{ Opt_mountport, "mountport=%s" },
- 	{ Opt_mountvers, "mountvers=%s" },
-+	{ Opt_minorversion, "minorversion=%s" },
-+
- 	{ Opt_nfsvers, "nfsvers=%s" },
- 	{ Opt_nfsvers, "vers=%s" },
--	{ Opt_minorversion, "minorversion=%s" },
- 
- 	{ Opt_sec, "sec=%s" },
- 	{ Opt_proto, "proto=%s" },
-@@ -262,6 +263,22 @@ static match_table_t nfs_local_lock_tokens = {
- 	{ Opt_local_lock_err, NULL }
- };
- 
-+enum {
-+	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
-+	Opt_vers_4_1,
-+
-+	Opt_vers_err
-+};
-+
-+static match_table_t nfs_vers_tokens = {
-+	{ Opt_vers_2, "2" },
-+	{ Opt_vers_3, "3" },
-+	{ Opt_vers_4, "4" },
-+	{ Opt_vers_4_0, "4.0" },
-+	{ Opt_vers_4_1, "4.1" },
-+
-+	{ Opt_vers_err, NULL }
-+};
- 
- static void nfs_umount_begin(struct super_block *);
- static int  nfs_statfs(struct dentry *, struct kstatfs *);
-@@ -1064,6 +1081,40 @@ static int nfs_parse_security_flavors(char *value,
- 	return 1;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ee62c1e..9edf9ae 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -80,6 +80,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
++static int nfs4_fhexpired_recovery(struct nfs_server *server, struct nfs4_exception *exception);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+ 			    struct nfs4_state *state);
+@@ -2649,6 +2650,148 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	return status;
  }
  
-+static int nfs_parse_version_string(char *string,
-+		struct nfs_parsed_mount_data *mnt,
-+		substring_t *args)
++static int _nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
++		const struct qstr *name, struct nfs_fh *fhandle,
++		struct nfs_fattr *fattr, struct rpc_cred *cred)
 +{
-+	mnt->flags &= ~NFS_MOUNT_VER3;
-+	switch (match_token(string, nfs_vers_tokens, args)) {
-+	case Opt_vers_2:
-+		mnt->version = 2;
-+		break;
-+	case Opt_vers_3:
-+		mnt->flags |= NFS_MOUNT_VER3;
-+		mnt->version = 3;
-+		break;
-+	case Opt_vers_4:
-+		/* Backward compatibility option. In future,
-+		 * the mount program should always supply
-+		 * a NFSv4 minor version number.
-+		 */
-+		mnt->version = 4;
-+		break;
-+	case Opt_vers_4_0:
-+		mnt->version = 4;
-+		mnt->minorversion = 0;
-+		break;
-+	case Opt_vers_4_1:
-+		mnt->version = 4;
-+		mnt->minorversion = 1;
-+		break;
-+	default:
-+		return 0;
-+	}
-+	return 1;
++	struct nfs_server *server = NFS_SERVER(dir);
++	int                    status;
++	struct nfs4_lookup_arg args = {
++		.bitmask = server->attr_bitmask,
++		.dir_fh = NFS_FH(dir),
++		.name = name,
++	};
++	struct nfs4_lookup_res res = {
++		.server = server,
++		.fattr = fattr,
++		.fh = fhandle,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LOOKUP],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++		.rpc_cred = cred,
++	};
++
++	nfs_fattr_init(fattr);
++
++	dprintk("NFS call  lookup %s\n", name->name);
++	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
++	dprintk("NFS reply lookup: %d\n", status);
++	return status;
 +}
 +
- static int nfs_get_option_str(substring_t args[], char **option)
- {
- 	kfree(*option);
-@@ -1317,26 +1368,6 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_invalid_value;
- 			mnt->mount_server.version = option;
- 			break;
--		case Opt_nfsvers:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			switch (option) {
--			case NFS2_VERSION:
--				mnt->flags &= ~NFS_MOUNT_VER3;
--				mnt->version = 2;
--				break;
--			case NFS3_VERSION:
--				mnt->flags |= NFS_MOUNT_VER3;
--				mnt->version = 3;
--				break;
--			case NFS4_VERSION:
--				mnt->flags &= ~NFS_MOUNT_VER3;
--				mnt->version = 4;
--				break;
--			default:
--				goto out_invalid_value;
--			}
--			break;
- 		case Opt_minorversion:
- 			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
-@@ -1348,6 +1379,15 @@ static int nfs_parse_mount_options(char *raw,
- 		/*
- 		 * options that take text values
- 		 */
-+		case Opt_nfsvers:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			rc = nfs_parse_version_string(string, mnt, args);
-+			kfree(string);
-+			if (!rc)
-+				goto out_invalid_value;
++static int nfs4_proc_vfh_lookup(struct rpc_clnt *clnt, struct inode *dir,
++	struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr,
++	struct rpc_cred *cred)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		int status;
++		if (cred)
++			status = _nfs4_proc_vfh_lookup(clnt, dir, name,
++					fhandle, fattr, cred);
++		else
++			status = _nfs4_proc_lookup(clnt, dir, name, fhandle,
++						fattr);
++		switch (status) {
++		case -NFS4ERR_BADNAME:
++			return -ENOENT;
++		case -NFS4ERR_MOVED:
++			err = nfs4_get_referral(dir, name, fattr, fhandle);
 +			break;
- 		case Opt_sec:
- 			string = match_strdup(args);
- 			if (string == NULL)
++		case -NFS4ERR_FHEXPIRED:
++			return -NFS4ERR_FHEXPIRED;
++		case -NFS4ERR_WRONGSEC:
++			nfs_fixup_secinfo_attributes(fattr, fhandle);
++		}
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++					status, &exception);
++	} while (exception.retry);
++	return err;
++}
++
++static int _nfs4_fhexpired_recovery(struct nfs_server *server, struct dentry *d_parent, struct qstr *name, struct inode *inode, struct rpc_cred *cred)
++{
++	int err;
++	struct nfs_fh *fhandle = NFS_FH(inode);
++	struct nfs_fattr *fattr = nfs_alloc_fattr();
++	if (fattr == NULL)
++		return -ENOMEM;
++	fattr->fileid = 0;
++	if (!nfs_compare_fh(fhandle, server->rootfh)) {
++		struct nfs_fsinfo info = {
++			.fattr = fattr,
++		};
++		err = nfs4_proc_get_root(server, fhandle, &info);
++		if (!err) {
++			if (NFS_FILEID(inode) != info.fattr->fileid)
++				set_nfs_fileid(inode, info.fattr->fileid);
++			nfs_copy_fh(server->rootfh, fhandle);
++			/* Only needed if fsid changes on server */
++			memcpy(&server->fsid, &info.fattr->fsid,
++				sizeof(server->fsid));
++		}
++		nfs_free_fattr(fattr);
++		return err;
++	}
++	err = nfs4_proc_vfh_lookup(server->client, d_parent->d_inode, name,
++				fhandle, fattr, cred);
++	if (!fattr->fileid && !err && fattr->fileid != NFS_FILEID(inode))
++		set_nfs_fileid(inode, fattr->fileid);
++	if (err == -NFS4ERR_FHEXPIRED) {
++		err = _nfs4_fhexpired_recovery(server, d_parent->d_parent,
++				&d_parent->d_name, d_parent->d_inode, cred);
++		if (!err) {
++			err = nfs4_proc_vfh_lookup(server->client,
++					d_parent->d_inode, name,
++					fhandle, fattr, cred);
++			if (!fattr->fileid && !err &&
++					fattr->fileid != NFS_FILEID(inode))
++					set_nfs_fileid(inode, fattr->fileid);
++		}
++	}
++	nfs_free_fattr(fattr);
++	return err;
++}
++
++static int nfs4_fhexpired_recovery(struct nfs_server *server, struct nfs4_exception *exception)
++{
++	int err = 0;
++	struct dentry *dentry = NULL;
++	struct rpc_cred *cred = NULL;
++	if (exception->cred)
++		cred = exception->cred;
++	if (exception->dentry) {
++		dentry = exception->dentry;
++		err = _nfs4_fhexpired_recovery(server, dentry->d_parent,
++				&dentry->d_name, dentry->d_inode, cred);
++	} else if (exception->inode) {
++		dentry = d_obtain_alias(exception->inode);
++		err = _nfs4_fhexpired_recovery(server, dentry->d_parent,
++				&dentry->d_name, exception->inode, cred);
++		dput(dentry);
++	} else if (exception->fhandle) {
++		dentry = nfs4_vfh_getdentry(server, exception->fhandle);
++		if (IS_ERR(dentry) || dentry == NULL)
++			return -ESTALE;
++		err = _nfs4_fhexpired_recovery(server, dentry->d_parent,
++			&dentry->d_name, dentry->d_inode, cred);
++		dput(dentry);
++	} else {
++		BUG_ON(!exception->inode && !exception->dentry
++				&& !exception->fhandle);/*Recovery without
++							* VFS objects, missed
++							* a proc function
++							*/
++	}
++	if (!err)
++		return -EAGAIN; /* Return EAGAIN so that the operation will
++				be performed again on successful recovery */
++	return err;
++}
++
+ static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ {
+ 	struct nfs4_exception exception = {
 -- 
-1.7.7.6
+1.7.4.4
 
