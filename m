@@ -1,49 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:41669 "EHLO ebox.rath.org"
+Received: from mx2.netapp.com ([216.240.18.37]:63818 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753907Ab2CTOge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 10:36:34 -0400
-Message-ID: <4F6895EE.8090609@rath.org>
-Date: Tue, 20 Mar 2012 10:36:30 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Rick Macklem <rmacklem@uoguelph.ca>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-References: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>	 <4F688655.1090703@rath.org> <1332251753.2963.17.camel@lade.trondhjem.org>
-In-Reply-To: <1332251753.2963.17.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1755533Ab2CEQub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:31 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 04/16] NFSv4: Rename encode_stateid() to encode_open_stateid()
+Date: Mon,  5 Mar 2012 11:50:09 -0500
+Message-Id: <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/20/2012 09:55 AM, Myklebust, Trond wrote:
-> On Tue, 2012-03-20 at 09:29 -0400, Nikolaus Rath wrote:
->> On 03/19/2012 06:25 PM, Rick Macklem wrote:
->>> Nikolaus Rath wrote:
->>> ps: Also, although it's not very relevant, getting the MAC address of
->>>     the first ethernet interface isn't easy in FreeBSD. I have no idea
->>>     if the same is true of Linux. (I'd also be worried that "first"
->>>     might not be fixed?)
->>
->> It doesn't need to be the same interface all the time, I just meant the
->> first as in not a specific one.
-> 
-> Yes it does have to be the same interface all the time. Otherwise the
-> server cannot tell that this is the same client booting up again.
+The current version of encode_stateid really only applies to open stateids.
+You can't use it for locks, delegations or layouts.
 
-The likelihood of the interface order changing is certainly much lower
-than the likelihood of the IP address changing (which I understand is
-currently used for the clientid), so the situation would still improve.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-
-Best,
-
-   -Nikolaus
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index bca8c77..af11e8b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1528,7 +1528,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	hdr->replen += decode_putrootfh_maxsz;
+ }
+ 
+-static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
++static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
+ {
+ 	nfs4_stateid stateid;
+ 	__be32 *p;
+@@ -1550,7 +1550,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_READ);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context,
++	encode_open_stateid(xdr, args->context, args->lock_context,
+ 		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 12);
+@@ -1739,7 +1739,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_WRITE);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context,
++	encode_open_stateid(xdr, args->context, args->lock_context,
+ 		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 16);
 -- 
- »Time flies like an arrow, fruit flies like a Banana.«
+1.7.7.6
 
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
