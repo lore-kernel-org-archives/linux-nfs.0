@@ -1,34 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43568 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52547 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754869Ab2CXQpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 24 Mar 2012 12:45:08 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>, Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: unlink within an open directory stream
-Date: Sat, 24 Mar 2012 16:44:59 +0000
-Message-ID: <1332607503.25346.2.camel@lade.trondhjem.org>
-References: <1886390911.6.1332606886333.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1886390911.6.1332606886333.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757485Ab2CETgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 14:36:02 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q25Ja2dL029541
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:02 -0500
+Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q25Ja1oA027125
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:02 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/1] Normalized path names on umounts (take 2)
+Date: Mon,  5 Mar 2012 14:36:04 -0500
+Message-Id: <1330976165-19849-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTAzLTI0IGF0IDEyOjM0IC0wNDAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
-Og0KPiBIaSwNCj4gDQo+IEZvbGtzIHRlc3RpbmcgbGludXggbmZzICsgR2FuZXNoYSB3aXRoIGJv
-bm5pZSsrIGhhdmUgbm90aWNlZCB0aGUgaXNzdWUgZGVzY3JpYmVkIGhlcmUgKGJ1dCBJIGRpZG4n
-dCBzZWUgdHJhZmZpYyBvbiB0aGlzIGxpc3QpOg0KPiANCj4gaHR0cDovL2J1Z3MuY2VudG9zLm9y
-Zy92aWV3LnBocD9pZD01NDk2DQo+IGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1
-Zy5jZ2k/aWQ9Nzg5NDUyDQo+IA0KPiBJZSwgYW4gYXBwbGljYXRpb24gd2hpY2ggdW5saW5rcyBv
-biBhbiBvcGVuIChuZnMpIGRpcmVjdG9yeSBzdHJlYW0sIGFuZCBjb250aW51ZXMgdG8gcmVhZCBh
-bmQgdW5saW5rIHByb2dyZXNzaXZlbHksIHdpbGwgZ2VuZXJhbGx5IG5vdCBzZWUgYWxsIHRoZSBl
-bnRyaWVzIG9yaWdpbmFsbHkgaW4gdGhlIHN0cmVhbS4gIFJlb3BlbmluZyB0aGUgc3RyZWFtIGl2
-ZXMgdGhlICJjb3JyZWN0IiByZXN1bHQuICBTbywgYXBwYXJlbnRseSBvbGRlciBjbGllbnRzIHdl
-cmUgbW9yZSBmb3JnaXZpbmcsIGFzIG1lbnRpb25lZCBpbiB0aGUgbGlua3MuICBJcyB0aGUgY3Vy
-cmVudCBiZWhhdmlvciBvbmUgdGhlIGNsaWVudCBpcyBpbnRlbmRpbmc/DQo+IA0KPiBUaGFua3Ms
-DQo+IA0KPiBNYXR0DQoNCldoYXQgaXMgc28gcGFydGljdWxhciBhYm91dCB0aGUgZ2FuZXNoYSBy
-ZWFkZGlyIGltcGxlbWVudGF0aW9uPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQoNCg==
+There is a second attempted at making paths in the
+device names that have multiple slashes or no slash
+at all unmount-able, without breaking any APIs.
+
+Due to the way entries are written to both the /etc/mtab
+and /proc/mounts, multiple slash have to be stripped and
+leading slash have to be added (when they don't exist) 
+on v4 mounts. With v3 mounts this normalization can 
+not occur since those entries are always in the same format.
+
+Finally, this normalization only needs to happen
+when the mtab and /proc/mounts are not the same file.
+
+Steve Dickson (1):
+  umount.nfs: normalize path names during umounts.
+
+ utils/mount/nfsumount.c |   64 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 62 insertions(+), 2 deletions(-)
+
