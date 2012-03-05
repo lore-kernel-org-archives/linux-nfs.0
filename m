@@ -1,93 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48028 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757839Ab2CEXVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 16/16] NFSv4: Add a helper encode_uint64
-Date: Mon,  5 Mar 2012 18:20:54 -0500
-Message-Id: <1330989654-4694-16-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330989654-4694-15-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-9-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-12-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-13-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-14-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-15-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755430Ab2CEADp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 19:03:45 -0500
+Message-ID: <4F5402E4.4030506@RedHat.com>
+Date: Sun, 04 Mar 2012 19:03:48 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>   <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>   <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>   <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>   <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>   <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>  <1330801976.2781.19.camel@lade.trondhjem.org> <4F53ED3C.2020209@RedHat.com>  <4F53F39E.9050802@RedHat.com> <1330903600.14357.10.camel@lade.trondhjem.org>
+In-Reply-To: <1330903600.14357.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   21 +++++++++++----------
- 1 files changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4ea9f50..e4bb8e6 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -909,6 +909,14 @@ static void encode_uint32(struct xdr_stream *xdr, u32 n)
- 	*p = cpu_to_be32(n);
- }
- 
-+static void encode_uint64(struct xdr_stream *xdr, u64 n)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 8);
-+	xdr_encode_hyper(p, n);
-+}
-+
- static void encode_nfs4_seqid(struct xdr_stream *xdr,
- 		const struct nfs_seqid *seqid)
- {
-@@ -1532,8 +1540,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 		attrs[0] |= FATTR4_WORD0_FILEID;
- 
- 	encode_op_hdr(xdr, OP_READDIR, decode_readdir_maxsz, hdr);
--	p = reserve_space(xdr, 8);
--	p = xdr_encode_hyper(p, readdir->cookie);
-+	encode_uint64(xdr, readdir->cookie);
- 	encode_nfs4_verifier(xdr, &readdir->verifier);
- 	p = reserve_space(xdr, 20);
- 	*p++ = cpu_to_be32(dircount);
-@@ -1572,11 +1579,8 @@ static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, co
- static void encode_renew(struct xdr_stream *xdr, clientid4 clid,
- 			 struct compound_hdr *hdr)
- {
--	__be32 *p;
--
- 	encode_op_hdr(xdr, OP_RENEW, decode_renew_maxsz, hdr);
--	p = reserve_space(xdr, 8);
--	xdr_encode_hyper(p, clid);
-+	encode_uint64(xdr, clid);
- }
- 
- static void
-@@ -1632,12 +1636,9 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
- 
- static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs4_setclientid_res *arg, struct compound_hdr *hdr)
- {
--	__be32 *p;
--
- 	encode_op_hdr(xdr, OP_SETCLIENTID_CONFIRM,
- 			decode_setclientid_confirm_maxsz, hdr);
--	p = reserve_space(xdr, 8);
--	p = xdr_encode_hyper(p, arg->clientid);
-+	encode_uint64(xdr, arg->clientid);
- 	encode_nfs4_verifier(xdr, &arg->confirm);
- }
- 
--- 
-1.7.7.6
 
+On 03/04/2012 06:26 PM, Myklebust, Trond wrote:
+> On Sun, 2012-03-04 at 17:58 -0500, Steve Dickson wrote:
+>> So to restate... this normalizing of the path names (aka striping 
+>> multiple slashes or added the leading slash) only need to occur on 
+>> (successful) v4 mounts... Although the former would not be an 
+>> problem with v2/v3 mounts but its not needed....
+> 
+> Normalising for v4 only is OK as far as I'm concerned, but as an
+> alternative: is there any reason why you can't just grab the path from
+> '/proc/mounts'?
+> 
+Well in some distros /etc/mtab is symbolically linked to /proc/mounts
+so this problem does not exist. But from what I've been told not
+all distros do that. Plus being backward compatible with older 
+release of distro is a good thing... IMHO...
+
+steved.
+  
