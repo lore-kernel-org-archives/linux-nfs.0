@@ -1,120 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o142.mxlogic.net ([208.65.145.75]:40652 "EHLO
-	p02c12o142.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756010Ab2C3Q7x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 12:59:53 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-Date: Fri, 30 Mar 2012 12:46:31 -0400
-Subject: RE: unlink within an open directory stream
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDC8@IT-1874.Isys.com>
-References: <4F70B8DF.9000108@panasas.com>
-	 <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDA9@IT-1874.Isys.com>
- <1333122400.8099.17.camel@lade.trondhjem.org>
-In-Reply-To: <1333122400.8099.17.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:35449 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932332Ab2CEU2J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 15:28:09 -0500
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Mon, 5 Mar 2012 15:28:08 -0500
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id D62F838C806A
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 15:26:59 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25KQwVE2785366
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:26:59 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25KQvfb010551
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:26:58 -0500
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Cc: treinish@linux.vnet.ibm.com
+Subject: [PATCH/RFC v3 08/10] Added error handling for NFS4ERR_FHEXPIRED
+Date: Mon,  5 Mar 2012 15:26:49 -0500
+Message-Id: <1330979211-894-9-git-send-email-treinish@linux.vnet.ibm.com>
+In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-UHJlY2lzZWx5LCBUcm9uZCEgIDotKQ0KDQpUaGF0J3Mgd2h5IHRoZSBjb29raWUgdmVyaWZpZXIg
-dHVybmVkIG91dCB0byBiZSBhIHVudGVuYWJsZSBpZGVhLg0KDQpUaGUgYXBwbGljYXRpb24gaXRz
-ZWxmLCBub3QganVzdCB0aGUgYXBwbGljYXRpb24gbGV2ZWwsIG11c3QgcGFydGljaXBhdGUgaW4g
-dGhlIHJlY292ZXJ5LiAgSWYgdGhlIHJtIGNvbW1hbmQgd2FudHMgdG8gZW5zdXJlIHRoYXQgaXQg
-cmVtb3ZlcyBldmVyeSBlbnRyeSBpbiBhIGRpcmVjdG9yeSBiZWZvcmUgYXR0ZW1wdGluZyB0byBy
-ZW1vdmUgdGhlIGRpcmVjdG9yeSBpdHNlbGYsIHRoZW4gaXQgbXVzdCBhcnJhbmdlIHRvIGRvIHNv
-IGFuZCBjYW4ndCByZWFsbHkgYXNzdW1lIHRoYXQgZGlyZWN0b3J5IGNvb2tpZXMgY2FuIG5ldmVy
-IGJlY29tZSBpbnZhbGlkLiAgUGVyaGFwcyBpdCBjb3VsZCBvbiBhIHB1cmVseSBQT1NJWCBzeXN0
-ZW0sIEkgZHVubm8sIGJ1dCBJIGFtIG5vdCBzdXJlIHRoYXQgYSBwdXJlIFBPU0lYIHN5c3RlbSBl
-eGlzdHMgYW55d2hlcmUuDQoNCgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0K
-RnJvbTogTXlrbGVidXN0LCBUcm9uZCBbbWFpbHRvOlRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-XSANClNlbnQ6IEZyaWRheSwgTWFyY2ggMzAsIDIwMTIgMTE6NDcgQU0NClRvOiBQZXRlciBTdGF1
-YmFjaA0KQ2M6IE1hdHQgVy4gQmVuamFtaW47IEJvYXogSGFycm9zaDsgbGludXgtbmZzOyBHYW5l
-c2hhIE5GUyBMaXN0DQpTdWJqZWN0OiBSRTogdW5saW5rIHdpdGhpbiBhbiBvcGVuIGRpcmVjdG9y
-eSBzdHJlYW0NCg0KT24gRnJpLCAyMDEyLTAzLTMwIGF0IDExOjI0IC0wNDAwLCBQZXRlciBTdGF1
-YmFjaCB3cm90ZToNCj4gWWVzLCBobW1tLCB1bW1tLi4uDQo+IA0KPiBBIGxvbmcgdGltZSwgSSB0
-aG91Z2h0IHRoYXQgdGhlIHJlYWRkaXIgY29va2llIHZlcmlmaWVyIHNvdW5kZWQgbGlrZSBhIGdv
-b2QgaWRlYS4gIEFmdGVyIGFsbCwgaWYgZGlyZWN0b3JpZXMgY2FuIGJlIGNvbXBhY3RlZCwgaXQg
-d291bGQgYmUgbmljZSB0byBiZSBhYmxlIHRvIHRlbGwgd2hlbiB0aGUgY29va2llIGhhcyBiZWNv
-bWUgaW52YWxpZCwgcmlnaHQ/ICBTbywgSSBhZGRlZCBpdCB0byB0aGUgTkZTdjMgcHJvdG9jb2wu
-DQo+IA0KPiBJdCB3YXMgb25seSBhZnRlcndhcmRzLCBpbiBhdHRlbXB0aW5nIHRvIGltcGxlbWVu
-dCBpdCwgdGhhdCB0aGUgcmVhbCB0cnV0aCB3YXMgZGlzY292ZXJlZC4gIFRoaXMgaXMgdGhhdCB0
-aGUgaW50ZXJmYWNlcyBhcmUgbm90IHN1ZmZpY2llbnQgdG8gYmUgYWJsZSB0byBjb252ZXkgdGhp
-cyBpbmZvcm1hdGlvbiBzdWZmaWNpZW50bHkgYW5kIHRvIGJlIGFibGUgdG8gcmVjb3ZlciBmcm9t
-IHRoZSBzaXR1YXRpb24uICBDdXJyZW50bHksIHJlY292ZXJ5IHJlcXVpcmUgYWN0aW9uIG9uIHRo
-ZSBwYXJ0IG9mIHRoZSBhcHBsaWNhdGlvbi4NCj4gDQo+IEluIHJldHJvc3BlY3QsIEkgd291bGRu
-J3QgYWRkIHRoZSBjb29raWUgdmVyaWZpZXIgaWYgSSB3YXMgZG9pbmcgaXQgYWdhaW4uDQo+IA0K
-PiBUaGFua3MgZm9yIHRoZSBzdXBwb3J0LCB0aG91Z2guICA6LSkNCj4gDQo+IEkgZG8gZGlzYWdy
-ZWUgd2l0aCBUcm9uZCB0aG91Z2gsIGluIHRoYXQgYXBwbGljYXRpb25zIG11c3QgYmUgY29kZWQg
-dG8gYmUgYWJsZSB0byBoYW5kbGUgZGlyZWN0b3JpZXMgd2hlcmUgY29va2llcyBjYW4gYmVjb21l
-IGludmFsaWRhdGVkLiAgVGhhdCdzIHdoeSBybSBhbmQgc3VjaCBoYXZlIHRvIGJlIGNvZGVkIHRv
-IGtlZXAgdHJhY2sgb2YgdGhlaXIgbG9jYXRpb24gaW4gdGhlIGRpcmVjdG9yeSBieSBtb3JlIHRo
-YW4ganVzdCBkX29mZi4NCg0KDQpUaGUgcHJvYmxlbSB3aXRoIHRoYXQgaXMgdGhhdCB0aGVyZSBp
-cyBubyBzdGFuZGFyZCBmb3IgaG93IGFwcGxpY2F0aW9ucyBzaG91bGQgcHJvY2VlZCB0byBkbyB0
-aGlzLCBhbmQgc28gdGhlcmUgYXJlIG5vIGd1aWRlbGluZXMgZm9yIGhvdyB0aGUgY2xpZW50IHNo
-b3VsZCBiZWhhdmUuDQoNCldvcnNlLCBpZiB5b3UndmUgbG9va2VkIGF0IHRoZSBnbGliYyByZWFk
-ZGlyIGxpYnJhcnkgY29kZSwgeW91J2xsIGhhdmUgbm90aWNlZCB0aGF0IGl0IF9kZXBlbmRzXyBv
-biBiZWluZyBhYmxlIHRvIHVzZSBhIHN0cmljdGx5IFBPU0lYLWNvbmZvcm1pbmcgdmVyc2lvbiBv
-ZiB0ZWxsZGlyKCkvc2Vla2RpcigpLiBJZiBpdCBjYW4ndCByZXdpbmQgdG8gYSBwcmV2aW91c2x5
-IHNhdmVkIG9mZnNldCwgdGhlbiBpdCBjYW4gZW5kIHVwIHNraXBwaW5nIGVudHJpZXMuDQoNClNv
-IG5vLCBJIGNhbid0IHJlbHkgb24gYXBwbGljYXRpb25zIGVpdGhlci4uLg0KDQo+IAkJcHMNCj4g
-DQo+IA0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3du
-ZXJAdmdlci5rZXJuZWwub3JnIA0KPiBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5l
-bC5vcmddIE9uIEJlaGFsZiBPZiBNYXR0IFcuIEJlbmphbWluDQo+IFNlbnQ6IE1vbmRheSwgTWFy
-Y2ggMjYsIDIwMTIgMjo1NSBQTQ0KPiBUbzogQm9heiBIYXJyb3NoDQo+IENjOiBsaW51eC1uZnM7
-IEdhbmVzaGEgTkZTIExpc3Q7IFRyb25kIE15a2xlYnVzdA0KPiBTdWJqZWN0OiBSZTogdW5saW5r
-IHdpdGhpbiBhbiBvcGVuIGRpcmVjdG9yeSBzdHJlYW0NCj4gDQo+IEhpLA0KPiANCj4gQm9hejog
-IHdlIGRvIG5vdCBhbnkgbG9uZ2VyIHNlbmQgYSByZWFkZGlyIGluZGV4LiAgV2UgZG8gc2VuZCBh
-IGNvb2tpZXZlcmYuDQo+IA0KPiBGaXN0IG9mIGFsbCwgSSBoYXZlbid0IGVzdGFibGlzaGVkIHRo
-YXQgdGhlIGlzc3VlIHdlJ3JlIGFjdHVhbGx5IG9ic2VydmluZyBpcyBjYXVzZWQgYnkgdGhlIExp
-bnV4IGNsaWVudCBzZW5kaW5nIG9sZCBjb29raWVzIHRvIHJlYWRkaXIoc29tZXRoaW5nKS4gIEhv
-d2V2ZXIsIGlmIGl0IGlzLCBpdCdzIGluIG5vIHdheSBiZXR0ZXIgdG8gdHJ5IHRvIG1ha2UgY29v
-a2llcyAibW9yZSBwZXJzaXN0ZW50LiIgIE5vciBzaG91bGQgdGhlIExpbnV4IGNsaWVudCBiZSBl
-eHBlY3RpbmcgaXQuICBUaGUgYXNzdW1wdGlvbiBpcyBzaW1wbHkgZmxhd2VkLiAgVGhlIHByb3Rv
-Y29sIGludHJvZHVjZWQgY29va2llIHZlcmlmaWVyIChhIExPTkcgdGltZSBhZ28pIGZvciBhIHJl
-YXNvbi4NCj4gDQo+IE1hdHQNCj4gLS0tLS0gIkJvYXogSGFycm9zaCIgPGJoYXJyb3NoQHBhbmFz
-YXMuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gMDMvMjYvMjAxMiAxMToyNSBBTSwgTXlrbGVidXN0
-LCBUcm9uZCB3cm90ZToNCj4gPiANCj4gPiA+IE9uIE1vbiwgMjAxMi0wMy0yNiBhdCAxMToxNyAt
-MDcwMCwgQm9heiBIYXJyb3NoIHdyb3RlOg0KPiA+ID4+IE9uIDAzLzI0LzIwMTIgMTA6MTIgQU0s
-IE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gPj4NCj4gPiA+Pg0KPiA+ID4+IEl0J3MgdGhl
-IG5ldyAocG9zdCBSSEVMIDYuMCBLZXJuZWwpIE5GUyBuZWVkIGZvciBvcGVuZGlyIGFmdGVyIGFu
-DQo+ID4gdW5saW5rLg0KPiA+ID4gDQo+ID4gPiBXaGF0Pw0KPiA+ID4gDQo+ID4gDQo+ID4gDQo+
-ID4gVGhlIGxpbmtzIGJlbG93IHJlcG9ydCBvbiByZWdyZXNzaW9uIGluIFJIRUwgNi4yIHdoaWNo
-IGhhdmUgYSBuZXcgDQo+ID4gTkZTIGltcGxlbWVudGF0aW9uIHdoZXJlICA2LjAgdXNlZCB0byBi
-ZSBmaW5lLg0KPiA+IChPciBpdCdzIHdoYXQgSSB1bmRlcnN0b29kIGZyb20gdGhlIHJlcG9ydGVy
-cykNCj4gPiANCj4gPiA8c25pcD4NCj4gPiANCj4gPiA+IA0KPiA+IA0KPiA+ID4gTm8uDQo+ID4g
-PiANCj4gPiA+IElmIHRoZSBzZXJ2ZXIgc3VwcG9ydHMgcGVybWFuZW50IHJlYWRkaXIgY29va2ll
-cywgdGhlbiB0aGVyZSBpcyBubw0KPiA+IG5lZWQNCj4gPiA+IGZvciBvcGVuZGlyIGFmdGVyIHVu
-bGluay4NCj4gPiA+IA0KPiA+ID4gSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBoYXZlIHBlcm1hbmVu
-dCByZWFkZGlyIGNvb2tpZXMsIHRoZW4gb3VyDQo+ID4gY2xpZW50DQo+ID4gPiBoYXMgbmV2ZXIg
-c3VwcG9ydGVkIGl0IGFueXdheSAobm9yIHdpbGwgaXQgZXZlciBkbyBzbykuIFRoYXQgd2hvbGUg
-DQo+ID4gPiAnY29va2lldmVyZicgUkVBRERJUiBidWxsc2hpdCBoYXMgbmV2ZXIgcHJvdmlkZWQg
-YSB3b3JrYWJsZSBtb2RlbA0KPiA+IGZvciBhDQo+ID4gPiBQT1NJWCBjbGllbnQuLi4NCj4gPiAN
-Cj4gPiANCj4gPiBUaGFua3MgVHJvbmQgZm9yIHRoZSBleHBsYW5hdGlvbi4gRm9yZ2l2ZSBteSBz
-bG93bmVzcy4gU28geW91IGFyZSANCj4gPiBzYXlpbmcgdGhhdCB3aXRoIGtuZnNkIGl0J3MgYWN0
-dWFsbHkgZmlsZXN5c3RlbSBkZXBlbmRlbnQgYW5kIG1heWJlIA0KPiA+IHRoZSByZXBvcnRlcnMg
-ZGlkIG5vdCBjb21wYXJlIGFwcGxlcy10by1hcHBsZXMgYW5kIHRoZSBkaWZmZXJlbmNlIGlzIA0K
-PiA+IGluIHRoZSBiZWhpbmQgZmlsZSBzeXN0ZW0uDQo+ID4gDQo+ID4gTWF0dCBJJ20gc3VyZSBU
-cm9uZCBpcyByaWdodCB3aXRoIHJlZ2FyZCB0byBHYW5lc2hhLCBiZWNhdXNlIHdlIHNlbmQgDQo+
-ID4gYSByZWFkZGlyIGluZGV4IGFuZCBhIGNvb2tpZXZlcmYsIHdoaWNoIHdpbGwgY2hhbmdlIGFm
-dGVyIHVubGluay4gDQo+ID4gU2luY2UgdGhlIGFwcGxpY2F0aW9uIGRvZXMgbm90IGNhbGwgb3Bl
-bmRpciBhZ2FpbiB0aGUgY2xpZW50IHdpbGwgDQo+ID4gc2VuZCB0aGUgb2xkIGNvb2tpZXMsIHdo
-aWNoIGlzIG5vdyBhIGRpZmZlcmVudCBmaWxlIG9yIG1pZ2h0IGdldCANCj4gPiBvdXQtb2YtYm91
-bmRzIGZvciBHYW5lc2hhLg0KPiA+IA0KPiA+IExldCBtZSB0aGluayBhYm91dCBpdCBhIGJpdC4g
-SSdtIHN1cmUgd2UgY2FuIHNlbmQgYSBCZXR0ZXIgNjRiaXQgDQo+ID4gY29va2llLCB3aGljaCB3
-aWxsIGJlIG1vcmUgcGVyc2lzdGVudCwgZXZlbiBhY3Jvc3MgdW5saW5rcy4NCj4gPiANCj4gPiA+
-IA0KPiA+ID4gDQo+ID4gDQo+ID4gDQo+ID4gVGhhbmtzDQo+ID4gQm9heg0KPiANCj4gLS0NCj4g
-TWF0dCBCZW5qYW1pbg0KPiBUaGUgTGludXggQm94DQo+IDIwNiBTb3V0aCBGaWZ0aCBBdmUuIFN1
-aXRlIDE1MA0KPiBBbm4gQXJib3IsIE1JICA0ODEwNA0KPiANCj4gaHR0cDovL2xpbnV4Ym94LmNv
-bQ0KPiANCj4gdGVsLiA3MzQtNzYxLTQ2ODkNCj4gZmF4LiA3MzQtNzY5LTg5MzgNCj4gY2VsLiA3
-MzQtMjE2LTUzMDkNCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQg
-dGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgDQo+IGluIHRoZSBib2R5IG9mIGEgbWVz
-c2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vIA0KPiBpbmZv
-IGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0KLS0NClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Added checks in the nfs4_handle_exception for FHEXPIRED.
+If FHEXPIRED is received from the server and the appropriate
+attributes are enabled then the client calls
+nfs4_fhexpired_recovery() to perform the lookup operation to
+try and recovery the expired vfh.
+
+If the mount option is not enabled or the server FH_EXPIRE_TYPE
+doesn't have VOLATILE_ANY then client will convert the
+FHEXPIRED error into ESTALE since recovery isn't possible.
+
+Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+---
+ fs/nfs/nfs4proc.c |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a593eef..78ed5c5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -283,6 +283,16 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 			nfs4_schedule_lease_recovery(clp);
+ 			goto wait_on_recovery;
++		case -NFS4ERR_FHEXPIRED:
++			if (server->flags & NFS_MOUNT_VFHRETRY)
++				if (server->fhexpiretype & NFS4_FH_VOLATILE_ANY) {
++					ret = nfs4_fhexpired_recovery(server, exception);
++					if (!ret)
++						ret = -EAGAIN;
++					break;
++				}
++			ret = -ESTALE;
++			break;
+ #if defined(CONFIG_NFS_V4_1)
+ 		case -NFS4ERR_BADSESSION:
+ 		case -NFS4ERR_BADSLOT:
+-- 
+1.7.4.4
+
