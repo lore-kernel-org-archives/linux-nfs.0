@@ -1,58 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63818 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757750Ab2CEXVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:08 -0500
+	id S1752440Ab2CEQu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:29 -0500
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 05/16] NFSv4: Add a helper for encoding opaque data
-Date: Mon,  5 Mar 2012 18:20:43 -0500
-Message-Id: <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 01/16] NFS: Fix a compile issue when !CONFIG_NFS_V4_1
+Date: Mon,  5 Mar 2012 11:50:06 -0500
+Message-Id: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The attempt to display the implementation ID needs to be conditional on
+whether or not CONFIG_NFS_V4_1 is defined
+
+Reported-by: Bryan Schumaker <Bryan.Schumaker@netapp.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4xdr.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
+ fs/nfs/super.c |   22 +++++++++++++++-------
+ 1 files changed, 15 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index af11e8b..de4cb5c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -885,6 +885,14 @@ static __be32 *reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 	return p;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 3935a37..61419c9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -785,8 +785,22 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
+ 	else
+ 		seq_printf(m, "not configured");
  }
- 
-+static void encode_opaque_fixed(struct xdr_stream *xdr, const void *buf, size_t len)
++
++static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
 +{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, len);
-+	xdr_encode_opaque_fixed(p, buf, len);
++	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
++		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
++		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
++			   "date='%llu,%u'",
++			   impl_id->name, impl_id->domain,
++			   impl_id->date.seconds, impl_id->date.nseconds);
++	}
 +}
-+
- static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
- {
- 	__be32 *p;
-@@ -922,11 +930,7 @@ static void encode_nops(struct compound_hdr *hdr)
+ #else
+ static void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
++static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
++{
++}
+ #endif
+ #endif
  
- static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *verf)
- {
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
--	BUG_ON(p == NULL);
--	xdr_encode_opaque_fixed(p, verf->data, NFS4_VERIFIER_SIZE);
-+	encode_opaque_fixed(xdr, verf->data, NFS4_VERIFIER_SIZE);
- }
+@@ -836,13 +850,7 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
  
- static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const struct nfs_server *server)
+ 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
+ 
+-	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
+-		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
+-		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
+-			   "date='%llu,%u'",
+-			   impl_id->name, impl_id->domain,
+-			   impl_id->date.seconds, impl_id->date.nseconds);
+-	}
++	show_implementation_id(m, nfss);
+ 
+ 	seq_printf(m, "\n\tcaps:\t");
+ 	seq_printf(m, "caps=0x%x", nfss->caps);
 -- 
 1.7.7.6
 
