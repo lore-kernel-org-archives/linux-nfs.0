@@ -1,88 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25812 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965218Ab2CGWk5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 17:40:57 -0500
+	id S1757811Ab2CEXVK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 18:21:10 -0500
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4: Return the delegation if the server returns NFS4ERR_OPENMODE
-Date: Wed,  7 Mar 2012 17:40:49 -0500
-Message-Id: <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
- <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
- <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 07/16] NFSv4: Rename nfs4_copy_stateid()
+Date: Mon,  5 Mar 2012 18:20:45 -0500
+Message-Id: <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a setattr() fails because of an NFS4ERR_OPENMODE error, it is
-probably due to us holding a read delegation. Ensure that the
-recovery routines return that delegation in this case.
+It is really a function for selecting the correct stateid to use in a
+read or write situation.
 
-Reported-by: Miklos Szeredi <miklos@szeredi.hu>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org
 ---
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |   13 ++++++++++++-
- 2 files changed, 13 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4_fs.h   |    2 +-
+ fs/nfs/nfs4proc.c  |    2 +-
+ fs/nfs/nfs4state.c |    2 +-
+ fs/nfs/nfs4xdr.c   |    2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 5c9b20b..8ccaf24 100644
+index 9c05799..e76f17c 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -193,6 +193,7 @@ struct nfs4_exception {
- 	long timeout;
- 	int retry;
- 	struct nfs4_state *state;
-+	struct inode *inode;
- };
+@@ -327,7 +327,7 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+-extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
++extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
  
- struct nfs4_state_recovery_ops {
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3d26bab..bfcaa03 100644
+index f0c0184..76fc260 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -259,18 +259,28 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs4_state *state = exception->state;
-+	struct inode *inode = exception->inode;
- 	int ret = errorcode;
+@@ -1916,7 +1916,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
+ 		/* Use that stateid */
+ 	} else if (state != NULL) {
+-		nfs4_copy_stateid(&arg.stateid, state, current->files, current->tgid);
++		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+ 	} else
+ 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
  
- 	exception->retry = 0;
- 	switch(errorcode) {
- 		case 0:
- 			return 0;
-+		case -NFS4ERR_OPENMODE:
-+			if (nfs_have_delegation(inode, FMODE_READ)) {
-+				nfs_inode_return_delegation(inode);
-+				exception->retry = 1;
-+				return 0;
-+			}
-+			if (state == NULL)
-+				break;
-+			nfs4_schedule_stateid_recovery(server, state);
-+			goto wait_on_recovery;
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
- 			if (state != NULL)
- 				nfs_remove_bad_delegation(state->inode);
--		case -NFS4ERR_OPENMODE:
- 			if (state == NULL)
- 				break;
- 			nfs4_schedule_stateid_recovery(server, state);
-@@ -1908,6 +1918,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs4_exception exception = {
- 		.state = state,
-+		.inode = inode,
- 	};
- 	int err;
- 	do {
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2f76060..b59b39e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -888,7 +888,7 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
+  * Byte-range lock aware utility to initialize the stateid of read/write
+  * requests.
+  */
+-void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
++void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
+ {
+ 	struct nfs4_lock_state *lsp;
+ 	int seq;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c03ba77..38736dc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1546,7 +1546,7 @@ static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_co
+ 	nfs4_stateid stateid;
+ 
+ 	if (ctx->state != NULL) {
+-		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		nfs4_select_rw_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
+ 		if (zero_seqid)
+ 			stateid.stateid.seqid = 0;
+ 		encode_nfs4_stateid(xdr, &stateid);
 -- 
 1.7.7.6
 
