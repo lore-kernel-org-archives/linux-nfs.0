@@ -1,86 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758615Ab2CBV7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:59:33 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:59:32 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/12] commit 6f38b4ba433ac6494f83cb73dd07dcbde797e1e0
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 16:59:31 -0500
-Message-ID: <20120302215931.12758.32538.stgit@degas.1015granger.net>
-In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:44378 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755533Ab2CEQud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:33 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 07/16] NFSv4: Rename nfs4_copy_stateid()
+Date: Mon,  5 Mar 2012 11:50:12 -0500
+Message-Id: <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS: Make clientaddr= optional
+It is really a function for selecting the correct stateid to use in a
+read or write situation.
 
-    For NFSv4 mounts, the clientaddr= mount option has always been
-    required.  Now we have rpc_localaddr() in the kernel, which was
-    modeled after the same logic in the mount.nfs command that constructs
-    the clientaddr= mount option.  If user space doesn't provide a
-    clientaddr= mount option, the kernel can now construct its own.
-
-    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/nfs4_fs.h   |    2 +-
+ fs/nfs/nfs4proc.c  |    2 +-
+ fs/nfs/nfs4state.c |    2 +-
+ fs/nfs/nfs4xdr.c   |    2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
- fs/nfs/client.c |   15 +++++++++++++++
- fs/nfs/super.c  |    6 ------
- 2 files changed, 15 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 994899d..add92d9 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1344,6 +1344,7 @@ int nfs4_init_client(struct nfs_client *clp,
- 		     rpc_authflavor_t authflavour,
- 		     int noresvport)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9c05799..e76f17c 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -327,7 +327,7 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+-extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
++extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
+ 
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a79f623..9200327 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1916,7 +1916,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode)) {
+ 		/* Use that stateid */
+ 	} else if (state != NULL) {
+-		nfs4_copy_stateid(&arg.stateid, state, current->files, current->tgid);
++		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+ 	} else
+ 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2f76060..b59b39e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -888,7 +888,7 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
+  * Byte-range lock aware utility to initialize the stateid of read/write
+  * requests.
+  */
+-void nfs4_copy_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
++void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
  {
-+	char buf[INET6_ADDRSTRLEN + 1];
- 	int error;
+ 	struct nfs4_lock_state *lsp;
+ 	int seq;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c03ba77..38736dc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1546,7 +1546,7 @@ static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_co
+ 	nfs4_stateid stateid;
  
- 	if (clp->cl_cons_state == NFS_CS_READY) {
-@@ -1359,6 +1360,20 @@ int nfs4_init_client(struct nfs_client *clp,
- 				      1, noresvport);
- 	if (error < 0)
- 		goto error;
-+
-+	/* If no clientaddr= option was specified, find a usable cb address */
-+	if (ip_addr == NULL) {
-+		struct sockaddr_storage cb_addr;
-+		struct sockaddr *sap = (struct sockaddr *)&cb_addr;
-+
-+		error = rpc_localaddr(clp->cl_rpcclient, sap, sizeof(cb_addr));
-+		if (error < 0)
-+			goto error;
-+		error = rpc_ntop(sap, buf, sizeof(buf));
-+		if (error < 0)
-+			goto error;
-+		ip_addr = (const char *)buf;
-+	}
- 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
- 
- 	error = nfs_idmap_new(clp);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 72c7f63..8ae8fb2 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2526,12 +2526,6 @@ static int nfs4_validate_text_mount_data(void *options,
- 		return -EINVAL;
- 	}
- 
--	if (args->client_address == NULL) {
--		dfprintk(MOUNT,
--			 "NFS4: mount program didn't pass callback address\n");
--		return -EINVAL;
--	}
--
- 	return nfs_parse_devname(dev_name,
- 				   &args->nfs_server.hostname,
- 				   NFS4_MAXNAMLEN,
+ 	if (ctx->state != NULL) {
+-		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		nfs4_select_rw_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
+ 		if (zero_seqid)
+ 			stateid.stateid.seqid = 0;
+ 		encode_nfs4_stateid(xdr, &stateid);
+-- 
+1.7.7.6
 
