@@ -1,232 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f52.google.com ([209.85.210.52]:56216 "EHLO
-	mail-pz0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750877Ab2CNEQJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 00:16:09 -0400
-Received: by dadp12 with SMTP id p12so2158072dad.11
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 21:16:08 -0700 (PDT)
+Received: from mailhub.sw.ru ([195.214.232.25]:13166 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932078Ab2CEOxz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 09:53:55 -0500
+Message-ID: <4F54D367.4000503@parallels.com>
+Date: Mon, 05 Mar 2012 18:53:27 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <4F5FB04B.9040200@netapp.com>
-References: <CANhbJ3XhN8r3hT9xpng44=pa18sx1jj_=p0_+Az+zV5F6WjAyw@mail.gmail.com>
-	<4F5FB04B.9040200@netapp.com>
-Date: Wed, 14 Mar 2012 09:46:08 +0530
-Message-ID: <CANhbJ3UpCOBxLt4m-+U0btCyt1618g7RTaDLwEqXA9LM6OhJBw@mail.gmail.com>
-Subject: Re: nfs locking with cent os 6?
-From: Rahul Katariya <katariya.rahul@gmail.com>
-To: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
+ upcall
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>	<1330720950-5872-6-git-send-email-jlayton@redhat.com>	<4F547DF1.8090003@parallels.com>	<20120305074256.6dc36fed@tlielax.poochiereds.net>	<4F54B6B7.1010703@parallels.com> <20120305093948.435f39cc@tlielax.poochiereds.net>
+In-Reply-To: <20120305093948.435f39cc@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Bryan for reply.
-
-Cent OS 6 is using 2.6.32-71.el6.x86_64 kernel.
-
-My server is netapp filer.
-
-I have increased timeout, but still same warning messages.
-
-If I execute by using -f option, non-native 64 bit LFS locking
-testcases are passing, but native post-LFS locking testcases still
-give same warning messages
-
-======================================
-$ ./runtests   -f /nfstests
-Starting LOCKING tests: test directory  (arg: -f)
-
-Testing native post-LFS locking
-
-Creating parent/child synchronization pipes.
-
-Test #1 - Test regions of an unlocked file.
-        Parent: 1.1  - F_TEST  [       0,       1] PASSED.
-        Parent: 1.2  - F_TEST  [       0,  ENDING] PASSED.
-        Parent: 1.3  - F_TEST  [       0,7fffffff] PASSED.
-        Parent: 1.4  - F_TEST  [       1,       1] PASSED.
-        Parent: 1.5  - F_TEST  [       1,  ENDING] PASSED.
-        Parent: 1.6  - F_TEST  [       1,7fffffff] PASSED.
-        Parent: 1.7  - F_TEST  [7fffffff,       1] PASSED.
-        Parent: 1.8  - F_TEST  [7fffffff,  ENDING] PASSED.
-        Parent: 1.9  - F_TEST  [7fffffff,7fffffff] WARNING!
-        Parent: **** Expected EOVERFLOW, returned success...
-
-Test #2 - Try to lock the whole file.
-        Parent: 2.0  - F_TLOCK [       0,  ENDING] PASSED.
-        Child:  2.1  - F_TEST  [       0,       1] PASSED.
-        Child:  2.2  - F_TEST  [       0,  ENDING] PASSED.
-        Child:  2.3  - F_TEST  [       0,7fffffff] PASSED.
-        Child:  2.4  - F_TEST  [       1,       1] PASSED.
-        Child:  2.5  - F_TEST  [       1,  ENDING] PASSED.
-        Child:  2.6  - F_TEST  [       1,7fffffff] PASSED.
-        Child:  2.7  - F_TEST  [7fffffff,       1] PASSED.
-        Child:  2.8  - F_TEST  [7fffffff,  ENDING] PASSED.
-        Child:  2.9  - F_TEST  [7fffffff,7fffffff] WARNING!
-        Child:  **** Expected EOVERFLOW, returned EACCES...
-        Parent: 2.10 - F_ULOCK [       0,  ENDING] PASSED.
-
-Test #6 - Try to lock the MAXEOF byte.
-        Parent: 6.0  - F_TLOCK [7fffffff,       1] PASSED.
-        Child:  6.1  - F_TEST  [7ffffffe,       1] PASSED.
-        Child:  6.2  - F_TEST  [7ffffffe,       2] PASSED.
-        Child:  6.3  - F_TEST  [7ffffffe,  ENDING] PASSED.
-        Child:  6.4  - F_TEST  [7fffffff,       1] PASSED.
-        Child:  6.5  - F_TEST  [7fffffff,       2] WARNING!
-        Child:  **** Expected EOVERFLOW, returned EACCES...
-        Child:  6.6  - F_TEST  [7fffffff,  ENDING] PASSED.
-        Child:  6.7  - F_TEST  [80000000,  ENDING] PASSED.
-        Child:  6.8  - F_TEST  [80000000,       1] PASSED.
-        Child:  6.9  - F_TEST  [80000000,7fffffff] PASSED.
-        Child:  6.10 - F_TEST  [80000000,80000000] PASSED.
-        Parent: 6.11 - F_ULOCK [7fffffff,       1] PASSED.
-
-** PARENT pass 1 results: 48/48 pass, 2/2 warn, 0/0 fail (pass/total).
-
-**  CHILD pass 1 results: 62/62 pass, 2/2 warn, 0/0 fail (pass/total).
-
-Testing non-native 64 bit LFS locking
-
-Creating parent/child synchronization pipes.
-
-Test #1 - Test regions of an unlocked file.
-        Parent: 1.1  - F_TEST  [               0,               1] PASSED.
-        Parent: 1.2  - F_TEST  [               0,          ENDING] PASSED.
-        Parent: 1.3  - F_TEST  [               0,7fffffffffffffff] PASSED.
-        Parent: 1.4  - F_TEST  [               1,               1] PASSED.
-        Parent: 1.5  - F_TEST  [               1,          ENDING] PASSED.
-        Parent: 1.6  - F_TEST  [               1,7fffffffffffffff] PASSED.
-        Parent: 1.7  - F_TEST  [7fffffffffffffff,               1] PASSED.
-        Parent: 1.8  - F_TEST  [7fffffffffffffff,          ENDING] PASSED.
-        Parent: 1.9  - F_TEST  [7fffffffffffffff,7fffffffffffffff] PASSED.
-
-Test #2 - Try to lock the whole file.
-        Parent: 2.0  - F_TLOCK [               0,          ENDING] PASSED.
-        Child:  2.1  - F_TEST  [               0,               1] PASSED.
-        Child:  2.2  - F_TEST  [               0,          ENDING] PASSED.
-        Child:  2.3  - F_TEST  [               0,7fffffffffffffff] PASSED.
-        Child:  2.4  - F_TEST  [               1,               1] PASSED.
-        Child:  2.5  - F_TEST  [               1,          ENDING] PASSED.
-        Child:  2.6  - F_TEST  [               1,7fffffffffffffff] PASSED.
-        Child:  2.7  - F_TEST  [7fffffffffffffff,               1] PASSED.
-        Child:  2.8  - F_TEST  [7fffffffffffffff,          ENDING] PASSED.
-        Child:  2.9  - F_TEST  [7fffffffffffffff,7fffffffffffffff] PASSED.
-        Parent: 2.10 - F_ULOCK [               0,          ENDING] PASSED.
-
-Test #6 - Try to lock the MAXEOF byte.
-        Parent: 6.0  - F_TLOCK [7fffffffffffffff,               1] PASSED.
-        Child:  6.1  - F_TEST  [7ffffffffffffffe,               1] PASSED.
-        Child:  6.2  - F_TEST  [7ffffffffffffffe,               2] PASSED.
-        Child:  6.3  - F_TEST  [7ffffffffffffffe,          ENDING] PASSED.
-        Child:  6.4  - F_TEST  [7fffffffffffffff,               1] PASSED.
-        Child:  6.5  - F_TEST  [7fffffffffffffff,               2] PASSED.
-        Child:  6.6  - F_TEST  [7fffffffffffffff,          ENDING] PASSED.
-        Child:  6.7  - F_TEST  [8000000000000000,          ENDING] PASSED.
-        Child:  6.8  - F_TEST  [8000000000000000,               1] PASSED.
-        Child:  6.9  - F_TEST  [8000000000000000,7fffffffffffffff] PASSED.
-        Child:  6.10 - F_TEST  [8000000000000000,8000000000000000] PASSED.
-        Parent: 6.11 - F_ULOCK [7fffffffffffffff,               1] PASSED.
-======================================
-
-Thanks,
-Rahul
-
-
-On Wed, Mar 14, 2012 at 2:08 AM, Bryan Schumaker <bjschuma@netapp.com> wrote:
-> On 03/13/2012 04:21 PM, Rahul Katariya wrote:
+05.03.2012 18:39, Jeff Layton пишет:
 >
->>  Hi ,
->>
->> I am using Cent OS 6 64 bit which supports NFS version 4.
+> Ok, I've started looking at the existing examples to try and ease the
+> eventual containerization of this. Am I correct that the existing
+> blocklayout pipe containerization is not yet complete?
 >
+> AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
+> allocated on a per-net basis. bl_pipe_downcall does this however:
 >
-> A few questions:
+>          if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
+>                  return -EFAULT;
 >
-> - What kernel version is Cent OS 6 using?  I'm running 3.2.7 (on Archlinux, though) and those tests pass...
-> - Is the server Cent OS 6, too?
-> - Do you still get the warnings if you run with -f instead of -t?
-> - Have you tried increasing your "timeo" value?  7 seems somewhat low...
+> ...but bl_mount_reply is global:
 >
-> My `mount` output looks like this:
-> davros:/home/bjschuma/ on /nfs type nfs (rw,relatime,vers=3,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.122.1,mountvers=3,mountport=20048,mountproto=udp,local_lock=none,addr=192.168.122.1)
+>      static struct bl_dev_msg bl_mount_reply;
 >
+> So, if you're getting downcalls in two different network namespaces at
+> the same time this could end up corrupt. It seems like bl_mount_reply
+> needs to be part of nfs_net as well.
+
+Thanks for this catch, Jeff!
+I need to fix this.
+
 >
-> - Bryan
+> When you get a downcall, you have a filp pointer. Is there any way to
+> determine the "correct" nfs_net object for a particular filp?
 >
->>
->> I ran cthon-nfs-tests on it.
->>
->> Although NFS version is 4 supported, I am using NFS 3 for mounting NFS share.
->>
->> Following are packages installed.
->> # rpm -qa |grep nfs
->> nfs-utils-1.2.2-7.el6.x86_64
->>  nfs-utils-lib-1.1.5-1.el6.x86_64
->>
->>  Mount shows following
->>  # mount
->>  nfs-server:/export/share/connectathon on /nfstestdir1 type nfs
->> (rw,intr,retrans=5,timeo=7,tcp,nfsvers=3,rsize=8192,wsize=8192,addr=10.10.10.1)
->>
->> Following is a nfs locking testcase result:
->>
->> [lock]$  ./runtests   -t /nfstestdir1
->> Starting LOCKING tests: test directory  (arg: -t)
->>
->>  Testing native post-LFS locking
->>
->>  Creating parent/child synchronization pipes.
->>  =======================================================
->>  Test #1 - Test regions of an unlocked file.
->>          Parent: 1.1  - F_TEST  [       0,       1] PASSED.
->>          Parent: 1.2  - F_TEST  [       0,  ENDING] PASSED.
->>          Parent: 1.3  - F_TEST  [       0,7fffffff] PASSED.
->>          Parent: 1.4  - F_TEST  [       1,       1] PASSED.
->>          Parent: 1.5  - F_TEST  [       1,  ENDING] PASSED.
->>          Parent: 1.6  - F_TEST  [       1,7fffffff] PASSED.
->>          Parent: 1.7  - F_TEST  [7fffffff,       1] PASSED.
->>          Parent: 1.8  - F_TEST  [7fffffff,  ENDING] PASSED.
->>          Parent: 1.9  - F_TEST  [7fffffff,7fffffff] WARNING!
->>          Parent: **** Expected EOVERFLOW, returned success...
->>
->>  Test #2 - Try to lock the whole file.
->>          Parent: 2.0  - F_TLOCK [       0,  ENDING] PASSED.
->>          Child:  2.1  - F_TEST  [       0,       1] PASSED.
->>          Child:  2.2  - F_TEST  [       0,  ENDING] PASSED.
->>          Child:  2.3  - F_TEST  [       0,7fffffff] PASSED.
->>          Child:  2.4  - F_TEST  [       1,       1] PASSED.
->>          Child:  2.5  - F_TEST  [       1,  ENDING] PASSED.
->>          Child:  2.6  - F_TEST  [       1,7fffffff] PASSED.
->>          Child:  2.7  - F_TEST  [7fffffff,       1] PASSED.
->>          Child:  2.8  - F_TEST  [7fffffff,  ENDING] PASSED.
->>          Child:  2.9  - F_TEST  [7fffffff,7fffffff] WARNING!
->>          Child:  **** Expected EOVERFLOW, returned EACCES...
->>          Parent: 2.10 - F_ULOCK [       0,  ENDING] PASSED.
->>
->>  Test #6 - Try to lock the MAXEOF byte.
->>          Parent: 6.0  - F_TLOCK [7fffffff,       1] PASSED.
->>          Child:  6.1  - F_TEST  [7ffffffe,       1] PASSED.
->>          Child:  6.2  - F_TEST  [7ffffffe,       2] PASSED.
->>          Child:  6.3  - F_TEST  [7ffffffe,  ENDING] PASSED.
->>          Child:  6.4  - F_TEST  [7fffffff,       1] PASSED.
->>          Child:  6.5  - F_TEST  [7fffffff,       2] WARNING!
->>          Child:  **** Expected EOVERFLOW, returned EACCES...
->>          Child:  6.6  - F_TEST  [7fffffff,  ENDING] PASSED.
->>          Child:  6.7  - F_TEST  [80000000,  ENDING] PASSED.
->>          Child:  6.8  - F_TEST  [80000000,       1] PASSED.
->>          Child:  6.9  - F_TEST  [80000000,7fffffff] PASSED.
->>          Child:  6.10 - F_TEST  [80000000,80000000] PASSED.
->>          Parent: 6.11 - F_ULOCK [7fffffff,       1] PASSED.
->>
->>  =======================================================
->>
->>   Test#1 , Test#2  and Test#6  Shows warning in locking .. i.e.
->> Expected .something. and returned some-other-thing ..
->>
->> Are these locking well-known issues?
->>
->> Are there any patch available for the same?  Are these serious warnings?
->>
->> Thanks,
->> Rahul
->>  ｢鴈ｹｻ ｮ&ﾞ~ｺ&ｶ ｬ-+-ｱ鰡ｶ ･Swｮzﾋ>ｱﾊ穃饕z�g~ﾈｧｶ >｡ﾜｨ}ｩzｲﾆ zﾚ&j:+v?ｨｾ ｫ'�zZ+?ﾊ+zf｣｢ｷhs^ｧ~?ｭ?ﾛi鍗zｹ ｮw･｢ｸ?Tｨ隴ﾚ&｢)ﾟ｢ f
->
->
+
+Yes, sure.
+This nfs_net object will be, obviously, in the same network namespace, as PipeFS 
+superblock. Network namespace is stored on PipeFS sb->s_fs_info.
+IOW, code below should works:
+
+struct nfs_net *nn = net_generic(file->f_dentry->d_sb->s_fs_info, nfs_net_id);
+
+-- 
+Best regards,
+Stanislav Kinsbursky
