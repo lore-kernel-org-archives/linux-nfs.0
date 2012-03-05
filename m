@@ -1,61 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e35.co.us.ibm.com ([32.97.110.153]:51648 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751693Ab2CEVaT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 16:30:19 -0500
-Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 5 Mar 2012 14:30:18 -0700
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 90C1B19D804A
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 14:30:09 -0700 (MST)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25LUEqW055502
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:30:14 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25LUBlr022501
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:30:11 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q25LUBcS022428
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:30:11 -0700
-Date: Mon, 5 Mar 2012 15:30:05 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-Message-ID: <20120305213005.GB21904@us.ibm.com>
-References: <1330976165-19849-1-git-send-email-steved@redhat.com>
- <1330976165-19849-2-git-send-email-steved@redhat.com>
- <20120305212015.GA21904@us.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:2165 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755958Ab2CECBc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 21:01:32 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 04/11] NFSv4: Add a helper for encoding opaque data
+Date: Mon, 5 Mar 2012 02:00:55 +0000
+Message-ID: <1330912851.14357.17.camel@lade.trondhjem.org>
+References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <8F1C4F4B-BC08-446A-99F9-34AB4722E365@oracle.com>
+In-Reply-To: <8F1C4F4B-BC08-446A-99F9-34AB4722E365@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120305212015.GA21904@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Malahal Naineni [malahal@us.ibm.com] wrote:
-> >  		while (pmc->m.mnt_fsname[nlen - 1] == '/')
-> >  			nlen--;
-> > -		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
-> > -			continue;
-> > +		/*
-> > +		 * When the mtab and /proc/mounts are not the same
-> > +		 * file, normalize the path in the mtab if needed.
-> > +		 */
-> > +		if (mtab_is_writable())
-> > +			normpath = normalize_path(mc->m.mnt_fsname);
-> > +
-> > +		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0) {
-> > +			/* Is there a normalized path, if so compare that one too */
-> > +			if (normpath == NULL)
-> > +				continue;
-> > +			if (strncmp(pmc->m.mnt_fsname, normpath, nlen) != 0)
-> > +				continue;
-> 
-> You need to free normpath here before the "continue".
-
-Better yet, you don't need to normalize the path inside the loop. The
-path you normalize doesn't change, so keep it outside "do while" loop.
-
-Regards, Malahal.
-
+T24gU3VuLCAyMDEyLTAzLTA0IGF0IDIwOjA4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+RXIuICBUaGlzIGNvbGxpZGVzIHdpdGggYSBwYXRjaCBJIHNlbnQgZWFybGllciB0aGlzIHdlZWsu
+DQo+IA0KPiBTZW50IGZyb20gbXkgaVBhZA0KDQpQbGVhc2UgY2hlY2sgY29tbWl0IDU2ZmVhZjQ4
+NjdkY2JiYTM1NDcwNTA4ZTI1YTZiZWNmZmI4YWVlOTYgKE5GUzogRml4DQpuZnM0X3ZlcmlmaWVy
+IG1lbW9yeSBhbGlnbm1lbnQpLg0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
