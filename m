@@ -1,44 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54447 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756660Ab2CVUyY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 16:54:24 -0400
-Date: Thu, 22 Mar 2012 16:54:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4: Change the default setting of the
- nfs4_disable_idmapping parameter
-Message-ID: <20120322205423.GB23737@fieldses.org>
-References: <1326138354-8138-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120322204705.GA23737@fieldses.org>
+Received: from mailgw1.uni-kl.de ([131.246.120.220]:39224 "EHLO
+	mailgw1.uni-kl.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756561Ab2CEMXp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 07:23:45 -0500
+Message-ID: <4F54B049.5000705@itwm.fraunhofer.de>
+Date: Mon, 05 Mar 2012 13:23:37 +0100
+From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120322204705.GA23737@fieldses.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Andreas Dilger <adilger@whamcloud.com>, linux-nfs@vger.kernel.org,
+        ext4 development <linux-ext4@vger.kernel.org>,
+        linux-fsdevel Devel <linux-fsdevel@vger.kernel.org>,
+        Fan Yong <yong.fan@whamcloud.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 0/4] [RESEND] 32/64 bit llseek hashes (v5)
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <B5CFE283-4C3A-4C05-A779-05E2BE2EF5C6@whamcloud.com> <20120111144827.GA32381@fieldses.org> <20120111153125.GC4589@thunk.org>
+In-Reply-To: <20120111153125.GC4589@thunk.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 22, 2012 at 04:47:05PM -0400, bfields wrote:
-> By the way, I finally got around to looking at the server side.
-> 
-> We don't have any way to negotiate with the client--we don't get an
-> error back if the name we return in a getattr reply isn't one the client
-> likes--so I don't think I can default the new behavior to "on" without
-> breaking existing setups.
+On 01/11/2012 04:31 PM, Ted Ts'o wrote:
+> On Wed, Jan 11, 2012 at 09:48:27AM -0500, J. Bruce Fields wrote:
+>>
+>> Yes, this needs to be fixed--is there anything in particular holding up
+>> these patches?
+>
+> Yes, I need more people reviewing ext4 patches, so it's not me doing
+> all of the review.  :-)
+>
+> I will put this on my "high priority to review ASAP for the next merge
+> window" list.
 
-But we should still be able to make this effectively the default on new
-server installations:  maybe:
 
-	- Have the new module parameter be set based on a new
-	  "ServerNumericMapping" variable in idmapd.conf defaults to
-	  off.
-	- Set it to "on" in the example idmapd.conf we distribute
-	  upstream, and encourage distributions to do the same in the
-	  idmapd.conf they install by default.
+Ted,
 
---b.
+did you have a chance to review the patches in the mean time?
 
-> 
-> Other than that I think I'll just copy the client, module parameter and
-> all.  That allows us to do the numeric case in-kernel and avoid
-> polluting our mapping cache with lots of "obvious" 123<->"123" mappings.
+
+I will go on vacation on Wednesday for two weeks in Moscow and I'm not 
+sure yet if I will have internet access there. So if I need to update 
+the patches for linux-3.4, tomorrow is probably the last day me to do that.
+
+
+Thanks,
+Bernd
+
