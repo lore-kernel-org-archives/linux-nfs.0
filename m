@@ -1,67 +1,429 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34197 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:34857 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751741Ab2C2TbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 15:31:06 -0400
-Date: Thu, 29 Mar 2012 15:31:00 -0400
-From: Dr James Bruce Fields <bfields@fieldses.org>
-To: Orion Poplawski <orion@cora.nwra.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <20120329193100.GA20329@fieldses.org>
-References: <loom.20120329T182500-467@post.gmane.org>
- <1333040091.5547.32.camel@lade.trondhjem.org>
- <4F749CCA.3000400@cora.nwra.com>
- <1333042863.5547.37.camel@lade.trondhjem.org>
- <4F74A4D5.1040802@cora.nwra.com>
+	id S1751837Ab2CEIfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 03:35:07 -0500
+Message-ID: <4F547A9C.8050907@parallels.com>
+Date: Mon, 05 Mar 2012 12:34:36 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F74A4D5.1040802@cora.nwra.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v8 1/6] nfsd: add nfsd4_client_tracking_ops struct and
+ a way to set it
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com> <1330720950-5872-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1330720950-5872-2-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
-> On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
-> >>Going back to v4 on EL5.8 server: nfsv4el.log, nfsv4f18.log
-> >>
-> >>Both get NFS4ERR_EXIST in this case.
-> >
-> >Which is an obvious server bug: it should be sending NFS4ERR_SYMLINK in
-> >reply to that OPEN.
-> >
-> >Bruce?
-> >
-> 
-> I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
+Hi, Jeff.
+Thank for the update.
+Would you mind, if I'll ask for some more?
+I no, then, please, have a look at my comments below.
 
-Hm.  So how about this?  (Untested.)
 
-Probably there should be a pynfs test too.
+03.03.2012 00:42, Jeff Layton пишет:
+> Abstract out the mechanism that we use to track clients into a set of
+> client name tracking functions.
+>
+> This gives us a mechanism to plug in a new set of client tracking
+> functions without disturbing the callers. It also gives us a way to
+> decide on what tracking scheme to use at runtime.
+>
+> For now, this just looks like pointless abstraction, but later we'll
+> add a new alternate scheme for tracking clients on stable storage.
+>
+> Signed-off-by: Jeff Layton<jlayton@redhat.com>
+> ---
+>   fs/nfsd/nfs4recover.c |  121 +++++++++++++++++++++++++++++++++++++++++++++----
+>   fs/nfsd/nfs4state.c   |   46 +++++++------------
+>   fs/nfsd/state.h       |   14 +++---
+>   3 files changed, 136 insertions(+), 45 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 0b3e875..1dda803 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -43,9 +43,20 @@
+>
+>   #define NFSDDBG_FACILITY                NFSDDBG_PROC
+>
+> +/* Declarations */
+> +struct nfsd4_client_tracking_ops {
+> +	int (*init)(void);
+> +	void (*exit)(void);
 
-I'm assuming it should still be ERR_EXIST in the exclusive,
-exclusive4_1, and guarded cases.
+These two routines looks like going to be per network namespace in future - can 
+you pass struct net pointers in there?
 
---b.
+> +	void (*create)(struct nfs4_client *);
+> +	void (*remove)(struct nfs4_client *);
+> +	int (*check)(struct nfs4_client *);
+> +	void (*grace_done)(time_t);
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7423d71..2bfcad4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 		switch (createmode) {
- 		case NFS3_CREATE_UNCHECKED:
--			if (! S_ISREG(dchild->d_inode->i_mode))
--				err = nfserr_exist;
--			else if (truncp) {
-+			if (! S_ISREG(dchild->d_inode->i_mode)) {
-+				if (rqstp->rq_vers == 4)
-+					err = nfserr_symlink;
-+				else
-+					err = nfserr_exist;
-+			} else if (truncp) {
- 				/* in nfsv4, we need to treat this case a little
- 				 * differently.  we don't want to truncate the
- 				 * file now; this would be wrong if the OPEN
+Maybe this one requires struct net too?
+
+> +};
+> +
+>   /* Globals */
+>   static struct file *rec_file;
+>   static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+> +static struct nfsd4_client_tracking_ops *client_tracking_ops;
+>
+>   static int
+>   nfs4_save_creds(const struct cred **original_creds)
+> @@ -117,7 +128,8 @@ out_no_tfm:
+>   	return status;
+>   }
+>
+> -void nfsd4_create_clid_dir(struct nfs4_client *clp)
+> +static void
+> +nfsd4_create_clid_dir(struct nfs4_client *clp)
+>   {
+>   	const struct cred *original_cred;
+>   	char *dname = clp->cl_recdir;
+> @@ -265,7 +277,7 @@ out_unlock:
+>   	return status;
+>   }
+>
+> -void
+> +static void
+>   nfsd4_remove_clid_dir(struct nfs4_client *clp)
+>   {
+>   	const struct cred *original_cred;
+> @@ -292,7 +304,6 @@ out:
+>   	if (status)
+>   		printk("NFSD: Failed to remove expired client state directory"
+>   				" %.*s\n", HEXDIR_LEN, clp->cl_recdir);
+> -	return;
+>   }
+>
+>   static int
+> @@ -311,8 +322,8 @@ purge_old(struct dentry *parent, struct dentry *child)
+>   	return 0;
+>   }
+>
+> -void
+> -nfsd4_recdir_purge_old(void) {
+> +static void
+> +nfsd4_recdir_purge_old(time_t boot_time __attribute__ ((unused))) {
+>   	int status;
+>
+>   	if (!rec_file)
+> @@ -343,7 +354,7 @@ load_recdir(struct dentry *parent, struct dentry *child)
+>   	return 0;
+>   }
+>
+> -int
+> +static int
+>   nfsd4_recdir_load(void) {
+>   	int status;
+>
+> @@ -361,8 +372,8 @@ nfsd4_recdir_load(void) {
+>    * Hold reference to the recovery directory.
+>    */
+>
+> -void
+> -nfsd4_init_recdir()
+> +static int
+> +nfsd4_init_recdir(void)
+>   {
+>   	const struct cred *original_cred;
+>   	int status;
+> @@ -377,20 +388,37 @@ nfsd4_init_recdir()
+>   		printk("NFSD: Unable to change credentials to find recovery"
+>   		       " directory: error %d\n",
+>   		       status);
+> -		return;
+> +		return status;
+>   	}
+>
+>   	rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
+>   	if (IS_ERR(rec_file)) {
+>   		printk("NFSD: unable to find recovery directory %s\n",
+>   				user_recovery_dirname);
+> +		status = PTR_ERR(rec_file);
+>   		rec_file = NULL;
+>   	}
+>
+>   	nfs4_reset_creds(original_cred);
+> +	return status;
+>   }
+>
+> -void
+> +static int
+> +nfsd4_load_reboot_recovery_data(void)
+> +{
+> +	int status;
+> +
+> +	nfs4_lock_state();
+> +	status = nfsd4_init_recdir();
+> +	if (!status)
+> +		status = nfsd4_recdir_load();
+> +	nfs4_unlock_state();
+> +	if (status)
+> +		printk(KERN_ERR "NFSD: Failure reading reboot recovery data\n");
+> +	return status;
+> +}
+> +
+> +static void
+>   nfsd4_shutdown_recdir(void)
+>   {
+>   	if (!rec_file)
+> @@ -425,3 +453,76 @@ nfs4_recoverydir(void)
+>   {
+>   	return user_recovery_dirname;
+>   }
+> +
+> +static int
+> +nfsd4_check_legacy_client(struct nfs4_client *clp)
+> +{
+> +	if (nfsd4_find_reclaim_client(clp) != NULL)
+> +		return 0;
+> +	else
+> +		return -ENOENT;
+> +}
+> +
+> +static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
+> +	.init		= nfsd4_load_reboot_recovery_data,
+> +	.exit		= nfsd4_shutdown_recdir,
+> +	.create		= nfsd4_create_clid_dir,
+> +	.remove		= nfsd4_remove_clid_dir,
+> +	.check		= nfsd4_check_legacy_client,
+> +	.grace_done	= nfsd4_recdir_purge_old,
+> +};
+> +
+> +int
+> +nfsd4_client_tracking_init(void)
+
+This function requires struct net being passed.
+
+> +{
+> +	int status;
+> +
+> +	client_tracking_ops =&nfsd4_legacy_tracking_ops;
+> +
+> +	status = client_tracking_ops->init();
+> +	if (status) {
+> +		printk(KERN_WARNING "NFSD: Unable to initialize client "
+> +				    "recovery tracking! (%d)\n", status);
+> +		client_tracking_ops = NULL;
+> +	}
+> +	return status;
+> +}
+> +
+> +void
+> +nfsd4_client_tracking_exit(void)
+> +{
+
+Ditto.
+
+> +	if (client_tracking_ops) {
+> +		client_tracking_ops->exit();
+> +		client_tracking_ops = NULL;
+> +	}
+> +}
+> +
+> +void
+> +nfsd4_client_record_create(struct nfs4_client *clp)
+> +{
+> +	if (client_tracking_ops)
+> +		client_tracking_ops->create(clp);
+> +}
+> +
+> +void
+> +nfsd4_client_record_remove(struct nfs4_client *clp)
+> +{
+> +	if (client_tracking_ops)
+> +		client_tracking_ops->remove(clp);
+> +}
+> +
+> +int
+> +nfsd4_client_record_check(struct nfs4_client *clp)
+> +{
+> +	if (client_tracking_ops)
+> +		return client_tracking_ops->check(clp);
+> +
+> +	return -EOPNOTSUPP;
+> +}
+> +
+> +void
+> +nfsd4_record_grace_done(time_t boot_time)
+> +{
+> +	if (client_tracking_ops)
+> +		client_tracking_ops->grace_done(boot_time);
+> +}
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index c5cddd6..0c7ac26 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2045,7 +2045,7 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+>   		goto out;
+>
+>   	status = nfs_ok;
+> -	nfsd4_create_clid_dir(cstate->session->se_client);
+> +	nfsd4_client_record_create(cstate->session->se_client);
+>   out:
+>   	nfs4_unlock_state();
+>   	return status;
+> @@ -2240,7 +2240,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>   			conf = find_confirmed_client_by_str(unconf->cl_recdir,
+>   							    hash);
+>   			if (conf) {
+> -				nfsd4_remove_clid_dir(conf);
+> +				nfsd4_client_record_remove(conf);
+>   				expire_client(conf);
+>   			}
+>   			move_to_confirmed(unconf);
+> @@ -3066,7 +3066,7 @@ static void
+>   nfsd4_end_grace(void)
+>   {
+>   	dprintk("NFSD: end of grace period\n");
+> -	nfsd4_recdir_purge_old();
+> +	nfsd4_record_grace_done(boot_time);
+>   	locks_end_grace(&nfsd4_manager);
+>   	/*
+>   	 * Now that every NFSv4 client has had the chance to recover and
+> @@ -3115,7 +3115,7 @@ nfs4_laundromat(void)
+>   		clp = list_entry(pos, struct nfs4_client, cl_lru);
+>   		dprintk("NFSD: purging unused client (clientid %08x)\n",
+>   			clp->cl_clientid.cl_id);
+> -		nfsd4_remove_clid_dir(clp);
+> +		nfsd4_client_record_remove(clp);
+>   		expire_client(clp);
+>   	}
+>   	spin_lock(&recall_lock);
+> @@ -3539,7 +3539,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>   	dprintk("NFSD: %s: success, seqid=%d stateid=" STATEID_FMT "\n",
+>   		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stid.sc_stateid));
+>
+> -	nfsd4_create_clid_dir(oo->oo_owner.so_client);
+> +	nfsd4_client_record_create(oo->oo_owner.so_client);
+>   	status = nfs_ok;
+>   out:
+>   	if (!cstate->replay_owner)
+> @@ -4397,19 +4397,13 @@ nfs4_release_reclaim(void)
+>
+>   /*
+>    * called from OPEN, CLAIM_PREVIOUS with a new clientid. */
+> -static struct nfs4_client_reclaim *
+> -nfs4_find_reclaim_client(clientid_t *clid)
+> +struct nfs4_client_reclaim *
+> +nfsd4_find_reclaim_client(struct nfs4_client *clp)
+>   {
+>   	unsigned int strhashval;
+> -	struct nfs4_client *clp;
+>   	struct nfs4_client_reclaim *crp = NULL;
+>
+>
+> -	/* find clientid in conf_id_hashtbl */
+> -	clp = find_confirmed_client(clid);
+> -	if (clp == NULL)
+> -		return NULL;
+> -
+>   	dprintk("NFSD: nfs4_find_reclaim_client for %.*s with recdir %s\n",
+>   		            clp->cl_name.len, clp->cl_name.data,
+>   			    clp->cl_recdir);
+> @@ -4430,7 +4424,14 @@ nfs4_find_reclaim_client(clientid_t *clid)
+>   __be32
+>   nfs4_check_open_reclaim(clientid_t *clid)
+>   {
+> -	return nfs4_find_reclaim_client(clid) ? nfs_ok : nfserr_reclaim_bad;
+> +	struct nfs4_client *clp;
+> +
+> +	/* find clientid in conf_id_hashtbl */
+> +	clp = find_confirmed_client(clid);
+> +	if (clp == NULL)
+> +		return nfserr_reclaim_bad;
+> +
+> +	return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
+>   }
+>
+>   #ifdef CONFIG_NFSD_FAULT_INJECTION
+> @@ -4577,19 +4578,6 @@ nfs4_state_init(void)
+>   	reclaim_str_hashtbl_size = 0;
+>   }
+>
+> -static void
+> -nfsd4_load_reboot_recovery_data(void)
+> -{
+> -	int status;
+> -
+> -	nfs4_lock_state();
+> -	nfsd4_init_recdir();
+> -	status = nfsd4_recdir_load();
+> -	nfs4_unlock_state();
+> -	if (status)
+> -		printk("NFSD: Failure reading reboot recovery data\n");
+> -}
+> -
+>   /*
+>    * Since the lifetime of a delegation isn't limited to that of an open, a
+>    * client may quite reasonably hang on to a delegation as long as it has
+> @@ -4642,7 +4630,7 @@ out_free_laundry:
+>   int
+>   nfs4_state_start(void)
+>   {
+> -	nfsd4_load_reboot_recovery_data();
+> +	nfsd4_client_tracking_init();
+
+Pass &init_net in nfsd4_client_tracking_init().
+
+>   	return __nfs4_state_start();
+>   }
+>
+> @@ -4676,7 +4664,7 @@ __nfs4_state_shutdown(void)
+>   		unhash_delegation(dp);
+>   	}
+>
+> -	nfsd4_shutdown_recdir();
+> +	nfsd4_client_tracking_exit();
+
+Ditto.
+
+>   }
+>
+>   void
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index ffb5df1..e22f90f 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -463,6 +463,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>   extern void nfs4_lock_state(void);
+>   extern void nfs4_unlock_state(void);
+>   extern int nfs4_in_grace(void);
+> +extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(struct nfs4_client *crp);
+>   extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
+>   extern void nfs4_free_openowner(struct nfs4_openowner *);
+>   extern void nfs4_free_lockowner(struct nfs4_lockowner *);
+> @@ -477,16 +478,17 @@ extern void nfsd4_destroy_callback_queue(void);
+>   extern void nfsd4_shutdown_callback(struct nfs4_client *);
+>   extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+>   extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
+> -extern void nfsd4_init_recdir(void);
+> -extern int nfsd4_recdir_load(void);
+> -extern void nfsd4_shutdown_recdir(void);
+>   extern int nfs4_client_to_reclaim(const char *name);
+>   extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
+> -extern void nfsd4_recdir_purge_old(void);
+> -extern void nfsd4_create_clid_dir(struct nfs4_client *clp);
+> -extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+>   extern void release_session_client(struct nfsd4_session *);
+>   extern __be32 nfs4_validate_stateid(struct nfs4_client *, stateid_t *);
+>   extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+>
+> +/* nfs4recover operations */
+> +extern int nfsd4_client_tracking_init(void);
+> +extern void nfsd4_client_tracking_exit(void);
+> +extern void nfsd4_client_record_create(struct nfs4_client *clp);
+> +extern void nfsd4_client_record_remove(struct nfs4_client *clp);
+> +extern int nfsd4_client_record_check(struct nfs4_client *clp);
+> +extern void nfsd4_record_grace_done(time_t boot_time);
+>   #endif   /* NFSD4_STATE_H */
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
