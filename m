@@ -1,70 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38392 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:39846 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032553Ab2CSTI4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 15:08:56 -0400
-Date: Mon, 19 Mar 2012 15:08:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-Message-ID: <20120319190853.GF23670@fieldses.org>
-References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca>
- <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca>
- <20120319173656.GA23670@fieldses.org>
- <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com>
- <20120319182712.GB23670@fieldses.org>
- <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com>
- <20120319183955.GC23670@fieldses.org>
- <C14ACD08-1D43-44F8-8504-46DCB98359BB@oracle.com>
- <20120319185421.GD23670@fieldses.org>
- <2B0656CB-C28D-411C-A2DD-5FA573498380@oracle.com>
+	id S1756494Ab2CELzi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 06:55:38 -0500
+Message-ID: <4F54A9BD.4020702@RedHat.com>
+Date: Mon, 05 Mar 2012 06:55:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2B0656CB-C28D-411C-A2DD-5FA573498380@oracle.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>    <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>    <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>    <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>    <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>    <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>   <1330801976.2781.19.camel@lade.trondhjem.org>  <4F53ED3C.2020209@RedHat.com>  <4F53F39E.9050802@RedHat.com>  <1330903600.14357.10.camel@lade.trondhjem.org>  <4F5402E4.4030506@RedHat.com> <1330913047.14357.19.camel@lade.trondhjem.org>
+In-Reply-To: <1330913047.14357.19.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 19, 2012 at 03:00:57PM -0400, Chuck Lever wrote:
-> 
-> On Mar 19, 2012, at 2:54 PM, J. Bruce Fields wrote:
-> 
-> > On Mon, Mar 19, 2012 at 02:42:30PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Mar 19, 2012, at 2:39 PM, J. Bruce Fields wrote:
-> >> 
-> >>> On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
-> >>>> 
-> >>>> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
-> >>>>> That's also not this case, sorry, this time with all the conditions:
-> >>>>> 
-> >>>>> 	- if the nfs_client_id4 is the same, and
-> >>>>> 	- if the flavor is auth_sys, and
-> >>>>> 	- if the client IP address is different,
-> >>>>> 	- then return NFS4ERR_INUSE.
-> >>>> 
-> >>>> This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
-> >>> 
-> >>> OK.  So probably there's nothing we can do to help here.
-> >>> 
-> >>> As a bandaid maybe a rate-limited log message ("clientid X now in use
-> >>> from IP Y") might help debug these things....
-> >> 
-> >> Hm, OK.  That implies your server implementation assumes that a clientid4 maps to exactly one client IP address at a time.
-> > 
-> > OK, agreed.  So how about something like "state for client X previously
-> > established from IP Y now cleared from IP Z"  ??
-> > 
-> > (Assuming it's only the I-just-rebooted setclientid case that's likely
-> > to be the sign of a problem.)
-> 
-> We would see that only in the case where the boot verifier and the client IP change at the same time.  That can happen legitimately, too, if the client has a dynamically assigned IP address.  Maybe this event is only interesting if it happens more than once during the same second.
 
-"Warning: IP addresses Y and Z currently appear to be in a bitter
-struggle over client id X"....
 
-That may be getting complicated enough to not be worth it except as a
-part of some more general statistics.
+On 03/04/2012 09:04 PM, Myklebust, Trond wrote:
+> On Sun, 2012-03-04 at 19:03 -0500, Steve Dickson wrote:
+>>
+>> On 03/04/2012 06:26 PM, Myklebust, Trond wrote:
+>>> On Sun, 2012-03-04 at 17:58 -0500, Steve Dickson wrote:
+>>>> So to restate... this normalizing of the path names (aka striping 
+>>>> multiple slashes or added the leading slash) only need to occur on 
+>>>> (successful) v4 mounts... Although the former would not be an 
+>>>> problem with v2/v3 mounts but its not needed....
+>>>
+>>> Normalising for v4 only is OK as far as I'm concerned, but as an
+>>> alternative: is there any reason why you can't just grab the path from
+>>> '/proc/mounts'?
+>>>
+>> Well in some distros /etc/mtab is symbolically linked to /proc/mounts
+>> so this problem does not exist. But from what I've been told not
+>> all distros do that. Plus being backward compatible with older 
+>> release of distro is a good thing... IMHO...
+> 
+> Which is why I'm asking you if you can't copy from /proc/mounts. Distros
+> which already have a symlink betweek /etc/mtab and /proc/mounts don't
+> have any of these problems...
+> 
+Personally I think it simpler to just normalize the paths before 
+writing it to the mtab verses open up and searching /proc/mounts
+esp on client where there is large amount of mounts...  
 
---b.
+steved.
