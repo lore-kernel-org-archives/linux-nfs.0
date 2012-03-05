@@ -1,146 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47732 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:46452 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757214Ab2CIW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 17:29:37 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/7] vfs: take i_mutex on renamed file
-Date: Fri,  9 Mar 2012 17:29:28 -0500
-Message-Id: <1331332174-22621-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120309222114.GA22423@fieldses.org>
-References: <20120309222114.GA22423@fieldses.org>
+	id S1751029Ab2CEVBY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 16:01:24 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: DENIEL Philippe <philippe.deniel@cea.fr>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: How does the client manage NFS3ERR_NOSPC ?
+Date: Mon, 5 Mar 2012 21:01:06 +0000
+Message-ID: <1330981266.2509.18.camel@lade.trondhjem.org>
+References: <4F54F4F0.108@cea.fr>
+In-Reply-To: <4F54F4F0.108@cea.fr>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-A read delegation is used by NFSv4 as a guarantee that a client can
-perform local read opens without informing the server.
-
-The open operation takes the last component of the pathname as an
-argument, thus is also a lookup operation, and giving the client the
-above guarantee means informing the client before we allow anything that
-would change the set of names pointing to the inode.
-
-Therefore, we need to break delegations on rename, link, and unlink.
-
-We also need to prevent new delegations from being acquired while one of
-these operations is in progress.
-
-We could add some completely new locking for that purpose, but it's
-simpler to use the i_mutex, since that's already taken by all the
-operations we care about.
-
-The single exception is rename.  So, modify rename to take the i_mutex
-on the file that is being renamed.
-
-Also fix up lockdep and Documentation/filesystems/directory-locking to
-reflect the change.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/directory-locking |   11 ++++++-----
- fs/namei.c                                  |    3 +++
- include/linux/fs.h                          |    9 ++++++---
- 3 files changed, 15 insertions(+), 8 deletions(-)
-
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..9edbcd2 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -12,8 +12,8 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent, finds source and target, locks source, also locks target if
-+it already exists, and then calls the method.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,6 +30,7 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
-+	* lock source if it is not a directory.
- 	* if target exists - lock it.
- 	* call the method.
- 
-@@ -56,9 +57,9 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after taking locks
-+    on their parents (which remain their parents until all locks are
-+    acquired, by (1) and (2)).  (Proof: see descriptions of operations).
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-diff --git a/fs/namei.c b/fs/namei.c
-index 208c6aa..d29b3c4 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3073,6 +3073,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3080,6 +3081,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		return error;
- 
- 	dget(new_dentry);
-+	mutex_lock_nested(&source->i_mutex, I_MUTEX_RENAME_SOURCE);
- 	if (target)
- 		mutex_lock(&target->i_mutex);
- 
-@@ -3098,6 +3100,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- out:
- 	if (target)
- 		mutex_unlock(&target->i_mutex);
-+	mutex_unlock(&source->i_mutex);
- 	dput(new_dentry);
- 	return error;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 386da09..e537b67 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -855,10 +855,12 @@ static inline int inode_unhashed(struct inode *inode)
-  * 0: the object of the current VFS operation
-  * 1: parent
-  * 2: child/target
-- * 3: quota file
-+ * 3: xattr
-+ * 4: quota file
-+ * 5: the file being renamed (used only in rename of a non-directory)
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> rename_source -> normal -> xattr -> quota
-  */
- enum inode_i_mutex_lock_class
- {
-@@ -866,7 +868,8 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_QUOTA,
-+	I_MUTEX_RENAME_SOURCE
- };
- 
- /*
--- 
-1.7.5.4
-
+T24gTW9uLCAyMDEyLTAzLTA1IGF0IDE4OjE2ICswMTAwLCBERU5JRUwgUGhpbGlwcGUgd3JvdGU6
+DQo+IEhpIExpc3QsDQo+IA0KPiBJIHJhbiBhIHN0dXBpZCB0ZXN0ICh1c2luZyB0aGUga2VybmVs
+J3Mga25mc2QpIDogSSBmaWxsZWQgdXAgY29tcGxldGVseSANCj4gYSBmaWxlc3lzdGVtIHdpdGgg
+YSBmZXcgYmlnIGZpbGUuIFdoZW4gaXQgd2FzIDEwMCUgZnVsbCAobm8gZnJlZSBibG9jayANCj4g
+YXQgYWxsKSwgSSByYW4gYSBkZCBvbiBpdC4NCj4gVGhlIGRkIHNhaWQgaXQgY291bGQgd3JpdGUg
+NzkzIGJsb2NrcyBvZiBzaXplIDFtYiAgYW5kIGZhaWxlZCBvbiBJTyANCj4gZXJyb3IuIEF0IHRo
+ZSBlbmQsIEkgY291bGQgc2VlIGFuIGVtcHR5IGZpbGUgaW4gdGhlIE5GUyBleHBvcnRlZCB0cmVl
+Lg0KPiBRdWVzdGlvbiBpcyA6DQo+ICAgICAtIHdoeSBkaWQgSSBnZXQgRUlPIGFuZCBub3QgRU5P
+U1BDID8NCg0KRGlkIHRoZSBzZXJ2ZXIgYWN0dWFsbHkgcmV0dXJuIE5GUzNFUlJfTk9TUEMsIG9y
+IGRpZCBpdCByZXR1cm4gc29tZXRoaW5nDQplbHNlPyBJZiB0aGUgc2VydmVyIHJldHVybnMgTkZT
+M0VSUl9OT1NQQywgdGhlbiBJJ2QgZXhwZWN0IHRoZSBjbGllbnQgdG8NCnRyYW5zbGF0ZSB0aGF0
+IGFzIEVOT1NQQy4NCg0KTm90ZSB0aGF0IGlmIHlvdSB3ZXJlIHVzaW5nIHNvZnQgbW91bnRzIChi
+b28hIGhpc3MhKSwgdGhlbiB0aGUgY2xpZW50DQptYXkgaGF2ZSB0aW1lZCBvdXQgd2hpbGUgdGhl
+IHNlcnZlciB3YXMgdHJ5aW5nIHRvIGZpbmQgZnJlZSBzcGFjZSBvbiB0aGUNCmZpbGVzeXN0ZW0u
+IEluIHRoYXQgY2FzZSwgSSdkIGluZGVlZCBleHBlY3QgRUlPLg0KDQo+ICAgICAtIHdoeSBkaWQg
+ZGQgc2F5ICJoZXksIEkgY291bGQgd3JpdGUgNzkzIGJsb2NrcyIgd2hlbiBpdCB3cm90ZSANCj4g
+bm90aGluZyAoYW5kIGNvdWxkIG5vdCB3cml0ZSBhbnl0aGluZykuDQo+IERvIHlvdSBoYXZlIGFu
+IGlkZWEgb24gdGhhdCA/DQoNClRoZSBjbGllbnQgY2FuJ3QgcHJlZGljdCB0aGUgc3RhdGUgb2Yg
+dGhlIHNlcnZlci4NCg0KSXQgd2lsbCBmaWxsIHVwIGl0cyBjYWNoZSwgYW5kIHRoZW4gb25seSBm
+aW5kIG91dCBhYm91dCB0aGUgRU5PU1BDIGVycm9yDQp3aGVuIGl0IHRyaWVzIHRvIHdyaXRlIG91
+dCB0aGUgZGF0YS4gVGhhdCBpcyB0aGUgY29ycmVjdCB3YXkgdG8gb3B0aW1pc2UNCnRoZSBjbGll
+bnQgYmVoYXZpb3VyIHdoZW4gd2UncmUgZGVhbGluZyB3aXRoIHdoYXQgc2hvdWxkIGJlIGEgdmVy
+eSByYXJlDQpjb25kaXRpb24uDQoNClRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
