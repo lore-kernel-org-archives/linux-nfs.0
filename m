@@ -1,95 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29484 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:3211 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753130Ab2CBTQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 14:16:35 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q22JGZx6016202
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 14:16:35 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-11-150.rdu.redhat.com [10.11.11.150])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q22JGYUc031096
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 14:16:34 -0500
-Message-ID: <4F511C95.2040806@RedHat.com>
-Date: Fri, 02 Mar 2012 14:16:37 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750967Ab2CEPtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 10:49:15 -0500
+Message-ID: <4F54E05F.5040405@parallels.com>
+Date: Mon, 05 Mar 2012 19:48:47 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: strip of extra slashes in device name
-References: <1330707221-4005-1-git-send-email-steved@redhat.com> <20120302184556.GA6880@us.ibm.com>
-In-Reply-To: <20120302184556.GA6880@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
+ upcall
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>	<1330720950-5872-6-git-send-email-jlayton@redhat.com>	<4F547DF1.8090003@parallels.com>	<20120305074256.6dc36fed@tlielax.poochiereds.net>	<4F54B6B7.1010703@parallels.com>	<20120305093948.435f39cc@tlielax.poochiereds.net>	<4F54D367.4000503@parallels.com> <20120305101604.497e705f@tlielax.poochiereds.net>
+In-Reply-To: <20120305101604.497e705f@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/02/2012 01:45 PM, Malahal Naineni wrote:
-> My kernel doesn't seem to strip '/' from its /proc/mounts. What kernel
-> are you using? 
-a later RHEL6 kernel... but I see the same thing with Fedora f16 kernels (3.2)
-as well... What kernel are you using?
-
-> Anyway, how about something similar to the following
-> patch that fixes only NFSv4 atm:
-> 
-> http://www.spinics.net/lists/linux-nfs/msg27351.html
-I made a comment on that... Again, sorry for my tartness...
-
-steved.
- 
-> 
-> Regards, Malahal.
-> 
-> Steve Dickson [steved@redhat.com] wrote:
->> The kernel strips off extra '/' when the  device is entered
->> into /proc/mounts. So that umounts can this devices, strip off
->> any extra '/' before storing the device in the mtab.
+05.03.2012 19:16, Jeff Layton пишет:
+> On Mon, 05 Mar 2012 18:53:27 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> 05.03.2012 18:39, Jeff Layton пишет:
+>>>
+>>> Ok, I've started looking at the existing examples to try and ease the
+>>> eventual containerization of this. Am I correct that the existing
+>>> blocklayout pipe containerization is not yet complete?
+>>>
+>>> AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
+>>> allocated on a per-net basis. bl_pipe_downcall does this however:
+>>>
+>>>           if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
+>>>                   return -EFAULT;
+>>>
+>>> ...but bl_mount_reply is global:
+>>>
+>>>       static struct bl_dev_msg bl_mount_reply;
+>>>
+>>> So, if you're getting downcalls in two different network namespaces at
+>>> the same time this could end up corrupt. It seems like bl_mount_reply
+>>> needs to be part of nfs_net as well.
 >>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  utils/mount/mount.c |   18 ++++++++++++++++++
->>  1 files changed, 18 insertions(+), 0 deletions(-)
+>> Thanks for this catch, Jeff!
+>> I need to fix this.
 >>
->> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
->> index eea00af..eb63f50 100644
->> --- a/utils/mount/mount.c
->> +++ b/utils/mount/mount.c
->> @@ -485,6 +485,24 @@ int main(int argc, char *argv[])
->>  		goto out;
->>  	}
->>  	/*
->> +	 * The kernel strips off extra '/' when the device is entered 
->> +	 * into /proc/mounts. So that umounts can this devices, strip off
->> +	 * any extra '/' before storing the device in the mtab.
->> +	 */
->> +	if (strstr(spec, "//") != NULL) {
->> +		char *colen, *slash;
->> +
->> +		if ((colen = strchr(spec, ':'))) {
->> +			slash = (colen + 1);
->> +			while (*slash && *(slash+1) == '/')
->> +				slash++;
->> +			while (*slash)
->> +				*(++colen) = *(slash++);
->> +			*(colen+1) = '\0';
->> +		}
->> +	}
->> +
->> +	/*
->>  	 * Concatenate mount options from the configuration file
->>  	 */
->>  	mount_opts = mount_config_opts(spec, mount_point, mount_opts);
->> -- 
->> 1.7.1
+>>>
+>>> When you get a downcall, you have a filp pointer. Is there any way to
+>>> determine the "correct" nfs_net object for a particular filp?
+>>>
 >>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Yes, sure.
+>> This nfs_net object will be, obviously, in the same network namespace, as PipeFS
+>> superblock. Network namespace is stored on PipeFS sb->s_fs_info.
+>> IOW, code below should works:
 >>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> struct nfs_net *nn = net_generic(file->f_dentry->d_sb->s_fs_info, nfs_net_id);
+>>
+>
+> Ok, I'm going to have to do something similar for the cld upcall
+> eventually. We'll need a per-ns list of upcalls in flight, xid counter
+> and spinlock.
+>
+> What may be best is to go ahead and introduce a nfsd_net struct as a
+> per-net object start putting stuff inside it.
+>
+
+Agreed.
+Would be cool, if you'll introduce this with your patch set.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
