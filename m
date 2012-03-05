@@ -1,56 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36882 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18904 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759245Ab2CPN4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Mar 2012 09:56:33 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2GDuHX0026422
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 06:56:17 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4.1: Clean ups and bugfixes for the pNFS
- read/writeback/commit code
-Date: Fri, 16 Mar 2012 13:56:16 +0000
-Message-ID: <1331906176.2518.6.camel@lade.trondhjem.org>
-References: <1331855983-24264-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <CADnza47r+qd_jWLMBA3LP_U9cBfiUh=gPBMvHX_q8EG88_B=fQ@mail.gmail.com>
-In-Reply-To: <CADnza47r+qd_jWLMBA3LP_U9cBfiUh=gPBMvHX_q8EG88_B=fQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755533Ab2CEQuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:35 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 11/16] NFSv4: Add a helper for encoding NFSv4 sequence ids
+Date: Mon,  5 Mar 2012 11:50:16 -0500
+Message-Id: <1330966221-17164-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTE2IGF0IDA5OjQ4IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gVGh1LCBNYXIgMTUsIDIwMTIgYXQgNzo1OSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+IDxUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gTW92ZSBtb3JlIHBuZnMtaXNtcyBv
-dXQgb2YgdGhlIGdlbmVyaWMgY29tbWl0IGNvZGUuDQoNCj4gPiBAQCAtNzgxLDkgKzc4NCwxNSBA
-QCBzdGF0aWMgdTMyIHNlbGVjdF9idWNrZXRfaW5kZXgoc3RydWN0IG5mczRfZmlsZWxheW91dF9z
-ZWdtZW50ICpmbCwgdTMyIGopDQo+ID4gICogSWYgdGhpcyB3aWxsIG1ha2UgdGhlIGJ1Y2tldCBl
-bXB0eSwgaXQgd2lsbCBuZWVkIHRvIHB1dCB0aGUgbHNlZyByZWZlcmVuY2UuDQo+ID4gICogTm90
-ZSBpbm9kZSBsb2NrIGlzIGhlbGQsIHNvIHdlIGNhbid0IGRvIHRoZSBwdXQgaGVyZS4NCj4gPiAg
-Ki8NCj4gDQo+IFRoZSB3aG9sZSBjb21tZW50IGFib3ZlIHNob3VsZCBwcm9iYWJseSBiZSByZW1v
-dmVkLg0KDQpXaWxsIGRvIQ0KDQoNCj4gPiArLyoqDQo+ID4gKyAqIG5mc19yZXF1ZXN0X2FkZF9j
-b21taXRfbGlzdCAtIGFkZCByZXF1ZXN0IHRvIGEgY29tbWl0IGxpc3QNCj4gPiArICogQHJlcTog
-cG9pbnRlciB0byBhIHN0cnVjdCBuZnNfcGFnZQ0KPiA+ICsgKiBAaGVhZDogY29tbWl0IGxpc3Qg
-aGVhZA0KPiA+ICsgKg0KPiA+ICsgKiBUaGlzIHNldHMgdGhlIFBHX0NMRUFOIGJpdCwgdXBkYXRl
-cyB0aGUgaW5vZGUgZ2xvYmFsIGNvdW50IG9mDQo+ID4gKyAqIG51bWJlciBvZiBvdXRzdGFuZGlu
-ZyByZXF1ZXN0cyByZXF1aXJpbmcgYSBjb21taXQgYXMgd2VsbCBhcw0KPiA+ICsgKiB0aGUgTU0g
-cGFnZSBzdGF0cy4NCj4gPiArICoNCj4gPiArICogVGhlIGNhbGxlciBtdXN0IF9ub3RfIGhvbGQg
-dGhlIGlub2RlLT5pX2xvY2suDQo+ID4gICovDQo+ID4gLXN0YXRpYyB2b2lkDQo+ID4gLW5mc19t
-YXJrX3JlcXVlc3RfY29tbWl0KHN0cnVjdCBuZnNfcGFnZSAqcmVxLCBzdHJ1Y3QgcG5mc19sYXlv
-dXRfc2VnbWVudCAqbHNlZykNCj4gPiArdm9pZA0KPiA+ICtuZnNfcmVxdWVzdF9hZGRfY29tbWl0
-X2xpc3Qoc3RydWN0IG5mc19wYWdlICpyZXEsIHN0cnVjdCBsaXN0X2hlYWQgKmhlYWQpDQo+ID4g
-IHsNCj4gPiAgICAgICAgc3RydWN0IGlub2RlICppbm9kZSA9IHJlcS0+d2JfY29udGV4dC0+ZGVu
-dHJ5LT5kX2lub2RlOw0KPiA+IC0gICAgICAgc3RydWN0IG5mc19pbm9kZSAqbmZzaSA9IE5GU19J
-KGlub2RlKTsNCj4gPiAtICAgICAgIHN0cnVjdCBsaXN0X2hlYWQgKmNsaXN0Ow0KPiA+DQo+ID4g
-LSAgICAgICBjbGlzdCA9IHBuZnNfY2hvb3NlX2NvbW1pdF9saXN0KHJlcSwgbHNlZyk7DQo+ID4g
-LSAgICAgICBzcGluX2xvY2soJmlub2RlLT5pX2xvY2spOw0KPiA+ICAgICAgICBzZXRfYml0KFBH
-X0NMRUFOLCAmKHJlcSktPndiX2ZsYWdzKTsNCj4gDQo+IHNob3VsZG4ndCB0aGlzIHN0YXkgaW5z
-aWRlIHRoZSBzcGlubG9jaz8NCj4gDQo+IEZyZWQNCg0KVGhlIHNldF9iaXQ/IFdlIHNob3VsZCBh
-bHdheXMgYmUgaG9sZGluZyB0aGUgUEdfQlVTWSBsb2NrIGFueSB0aW1lIHRoYXQNCndlIHRlc3Qg
-b3IgbW9kaWZ5IHRoZSBvdGhlciB3Yl9mbGFncyAobWF5YmUgSSBzaG91bGQgcHV0IHRoYXQgaW4g
-dGhlDQpjb21tZW50IGFib3ZlKSwgYW5kIHNvIGNoYW5naW5nIHRoZW0gb3V0c2lkZSB0aGUgaW5v
-ZGUtPmlfbG9jayBzaG91bGQgYmUNCnNhZmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |   47 ++++++++++++++++++++++++++++-------------------
+ 1 files changed, 28 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index d6e8306..3b38ca5 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -901,6 +901,20 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
+ 	xdr_encode_opaque(p, str, len);
+ }
+ 
++static void encode_uint32(struct xdr_stream *xdr, u32 n)
++{
++	__be32 *p;
++
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(n);
++}
++
++static void encode_nfs4_seqid(struct xdr_stream *xdr,
++		const struct nfs_seqid *seqid)
++{
++	encode_uint32(xdr, seqid->sequence->counter);
++}
++
+ static void encode_compound_hdr(struct xdr_stream *xdr,
+ 				struct rpc_rqst *req,
+ 				struct compound_hdr *hdr)
+@@ -1074,9 +1088,9 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 8);
+-	*p++ = cpu_to_be32(OP_CLOSE);
+-	*p = cpu_to_be32(arg->seqid->sequence->counter);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(OP_CLOSE);
++	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+ 	hdr->nops++;
+ 	hdr->replen += decode_close_maxsz;
+@@ -1264,17 +1278,14 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
+ 	p = xdr_encode_hyper(p, nfs4_lock_length(args->fl));
+ 	*p = cpu_to_be32(args->new_lock_owner);
+ 	if (args->new_lock_owner){
+-		p = reserve_space(xdr, 4);
+-		*p = cpu_to_be32(args->open_seqid->sequence->counter);
++		encode_nfs4_seqid(xdr, args->open_seqid);
+ 		encode_nfs4_stateid(xdr, args->open_stateid);
+-		p = reserve_space(xdr, 4);
+-		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
++		encode_nfs4_seqid(xdr, args->lock_seqid);
+ 		encode_lockowner(xdr, &args->lock_owner);
+ 	}
+ 	else {
+ 		encode_nfs4_stateid(xdr, args->lock_stateid);
+-		p = reserve_space(xdr, 4);
+-		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
++		encode_nfs4_seqid(xdr, args->lock_seqid);
+ 	}
+ 	hdr->nops++;
+ 	hdr->replen += decode_lock_maxsz;
+@@ -1298,10 +1309,10 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 12);
++	p = reserve_space(xdr, 8);
+ 	*p++ = cpu_to_be32(OP_LOCKU);
+-	*p++ = cpu_to_be32(nfs4_lock_type(args->fl, 0));
+-	*p = cpu_to_be32(args->seqid->sequence->counter);
++	*p = cpu_to_be32(nfs4_lock_type(args->fl, 0));
++	encode_nfs4_seqid(xdr, args->seqid);
+ 	encode_nfs4_stateid(xdr, args->stateid);
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->fl->fl_start);
+@@ -1360,9 +1371,9 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+  * opcode 4, seqid 4, share_access 4, share_deny 4, clientid 8, ownerlen 4,
+  * owner 4 = 32
+  */
+-	p = reserve_space(xdr, 8);
+-	*p++ = cpu_to_be32(OP_OPEN);
+-	*p = cpu_to_be32(arg->seqid->sequence->counter);
++	p = reserve_space(xdr, 4);
++	*p = cpu_to_be32(OP_OPEN);
++	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_share_access(xdr, arg->fmode);
+ 	p = reserve_space(xdr, 32);
+ 	p = xdr_encode_hyper(p, arg->clientid);
+@@ -1496,8 +1507,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_OPEN_CONFIRM);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(arg->seqid->sequence->counter);
++	encode_nfs4_seqid(xdr, arg->seqid);
+ 	hdr->nops++;
+ 	hdr->replen += decode_open_confirm_maxsz;
+ }
+@@ -1509,8 +1519,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_OPEN_DOWNGRADE);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(arg->seqid->sequence->counter);
++	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_share_access(xdr, arg->fmode);
+ 	hdr->nops++;
+ 	hdr->replen += decode_open_downgrade_maxsz;
+-- 
+1.7.7.6
+
