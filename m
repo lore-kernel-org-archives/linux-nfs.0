@@ -1,50 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:34046 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965128Ab2CFKvo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 05:51:44 -0500
-Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
-	by rcsinet15.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q26AphrA003841
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 10:51:43 GMT
-Received: from acsmt357.oracle.com (acsmt357.oracle.com [141.146.40.157])
-	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id q26ApgWU022253
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 10:51:42 GMT
-Received: from abhmt107.oracle.com (abhmt107.oracle.com [141.146.116.59])
-	by acsmt357.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id q26Apg7k015092
-	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 04:51:42 -0600
-Date: Tue, 6 Mar 2012 13:51:35 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: chuck.lever@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: re: NFS: Add a client-side function to display NFS file handles
-Message-ID: <20120306105134.GA1048@elgon.mountain>
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:36073 "EHLO e8.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753577Ab2CEVmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 16:42:47 -0500
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 5 Mar 2012 16:42:46 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 550B538C803A
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 16:42:42 -0500 (EST)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25Lgfrt336038
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:41 -0500
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25LgdDO030054
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:39 -0500
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q25Lgaw2029857
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:36 -0500
+Date: Mon, 5 Mar 2012 15:42:35 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: How does the client manage NFS3ERR_NOSPC ?
+Message-ID: <20120305214235.GC21904@us.ibm.com>
+References: <4F54F4F0.108@cea.fr>
+ <1330981266.2509.18.camel@lade.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1330981266.2509.18.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Chuck Lever,
+Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
+> On Mon, 2012-03-05 at 18:16 +0100, DENIEL Philippe wrote:
+> > Hi List,
+> > 
+> > I ran a stupid test (using the kernel's knfsd) : I filled up completely 
+> > a filesystem with a few big file. When it was 100% full (no free block 
+> > at all), I ran a dd on it.
+> > The dd said it could write 793 blocks of size 1mb  and failed on IO 
+> > error. At the end, I could see an empty file in the NFS exported tree.
+> > Question is :
+> >     - why did I get EIO and not ENOSPC ?
+> 
+> Did the server actually return NFS3ERR_NOSPC, or did it return something
+> else? If the server returns NFS3ERR_NOSPC, then I'd expect the client to
+> translate that as ENOSPC.
 
-This is a semi-automatic email about new static checker warnings.
+AFAIR, the server returns ENOSPC but the Linux client has a bug under
+certain cases that returns it as EIO. Filed a bug and Neil sent a patch
+but I have not tested it yet.
 
-The patch 20d27e929fb4: "NFS: Add a client-side function to display 
-NFS file handles" from Mar 1, 2012, leads to the following Smatch 
-complaint:
+I tried with various versions and they gave some differing results. I
+think in one case fsync() got ENOSPC but close() got EIO (or the other
+way around?)
 
-fs/nfs/inode.c:1061 _nfs_display_fhandle()
-	 warn: variable dereferenced before check 'fh' (see line 1061)
-
-fs/nfs/inode.c
-  1060	
-  1061		if (fh->size == 0 || fh == NULL) {
-                    ^^^^^^^^         ^^^^^^^^^^
-                   dereference          check
-
-  1062			printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
-  1063			return;
-
-regards,
-dan carpenter
+Regards, Malahal.
+PS: Easy way to reproduce the problem, just run the following:
+dd if=/dev/zero of=./testfile conv=fdatasync
 
