@@ -1,70 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25613 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753282Ab2CLV6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 17:58:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Nikolaus Rath <Nikolaus@rath.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Date: Mon, 12 Mar 2012 21:57:59 +0000
-Message-ID: <1331589478.12005.13.camel@lade.trondhjem.org>
-References: <878vj7x6mj.fsf@vostro.rath.org>
-	 <87pqchn64e.fsf@inspiron.ap.columbia.edu>
-	 <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org>
-	 <20120312201505.GC7203@fieldses.org>
-	 <87mx7lms1y.fsf@inspiron.ap.columbia.edu>
-	 <683A9678-14CF-4F27-8CC9-DD569722EE39@oracle.com>
-	 <4F5E6CBF.4080608@rath.org>
-	 <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
-In-Reply-To: <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from e37.co.us.ibm.com ([32.97.110.158]:52317 "EHLO
+	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932379Ab2CEOrv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 09:47:51 -0500
+Received: from /spool/local
+	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 5 Mar 2012 07:47:51 -0700
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 6A97F19D804A
+	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 07:47:43 -0700 (MST)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25ElmwJ120052
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 07:47:48 -0700
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25ElikX012705
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 07:47:44 -0700
+Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q25ElirD012687
+	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 07:47:44 -0700
+Date: Mon, 5 Mar 2012 08:47:43 -0600
+From: Malahal Naineni <malahal@us.ibm.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
+Message-ID: <20120305144743.GA31639@us.ibm.com>
+References: <4F513429.1050209@RedHat.com>
+ <20120302220108.GA17119@us.ibm.com>
+ <4F525741.2060404@RedHat.com>
+ <1330801976.2781.19.camel@lade.trondhjem.org>
+ <4F53ED3C.2020209@RedHat.com>
+ <4F53F39E.9050802@RedHat.com>
+ <1330903600.14357.10.camel@lade.trondhjem.org>
+ <4F5402E4.4030506@RedHat.com>
+ <1330913047.14357.19.camel@lade.trondhjem.org>
+ <4F54A9BD.4020702@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F54A9BD.4020702@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTEyIGF0IDE3OjQ2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gTWFyIDEyLCAyMDEyLCBhdCA1OjM4IFBNLCBOaWtvbGF1cyBSYXRoIHdyb3RlOg0KPiANCj4g
-PiBPbiAwMy8xMi8yMDEyIDA1OjI3IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gDQo+ID4+
-IE9uIE1hciAxMiwgMjAxMiwgYXQgNToyNCBQTSwgTmlrb2xhdXMgUmF0aCB3cm90ZToNCj4gPj4g
-DQo+ID4+PiBBbHJpZ2h0LCBpdCBzZWVtcyB0aGF0IHRoaXMgd2FzIHRoZSBwcm9ibGVtLiBXaXRo
-IGNvcnJlY3QgY2xpZW50YWRkciwgSQ0KPiA+Pj4gaGF2ZW4ndCBiZWVuIGFibGUgdG8gcHJvZHVj
-ZSBhbnkgZnJlZXplcyBmb3IgdGhlIGxhc3QgMTUgbWludXRlcw0KPiA+Pj4gKHVzdWFsbHkgaXQg
-aGFwcGVucyBpbiB+MjAgc2Vjb25kcykuDQo+ID4+PiANCj4gPj4+IFRoZSB3ZWlyZCB0aGluZyBp
-cyB0aGF0IEkgY2Fubm90IHJlcHJvZHVjZSB0aGUgd3JvbmcgY2xpZW50YWRkcg0KPiA+Pj4gYXV0
-b2RldGVjdGlvbiB3aGVuIEkgbW91bnQgdGhlIE5GUyB2b2x1bWVzIGZyb20gdGhlIGNvbW1hbmQg
-bGluZS4gSXQNCj4gPj4+IHNlZW1zIHRvIGhhcHBlbiBvbmx5IHdoZW4gdGhlIG1vdW50aW5nIGlz
-IGRvbmUgYnkgbW91bnRhbGwgZHVyaW5nIHRoZQ0KPiA+Pj4gYm9vdCBzZXF1ZW5jZS4NCj4gPj4+
-IA0KPiA+Pj4gSW4gb3RoZXIgd29yZHMsIHRoaXMgZnN0YWIgZW50cnkgcmVzdWx0cyBpbiBmcmVl
-emVzIGFuZCBhIGNsaWVudGFkZHIgb2YgMC4wLjAuMDoNCj4gPj4+IA0KPiA+Pj4gc3BpdHplcjov
-b3B0IC9vcHQgICAgICAgIG5mczQgICAgYmcgMCAgMA0KPiA+Pj4gDQo+ID4+PiBXaGlsZSB0aGlz
-IG9uZSwgZm9sbG93ZWQgYnkgYSAibW91bnQgL29wdCIgb24gdGhlIGNvbnNvbGUgYXMgc29vbiBh
-cyBJJ20NCj4gPj4+IGFibGUgdG8gbG9nIGluLCB3b3JrcyBqdXN0IGZpbmUgKGFuZCBoYXMgYSBj
-b3JyZWN0IGNsaWVudGFkZHIpOg0KPiA+Pj4gDQo+ID4+PiBzcGl0emVyOi9vcHQgL29wdCAgICAg
-ICAgbmZzNCAgICBub2F1dG8gMCAgMA0KPiA+PiANCj4gPj4gVGhhdCdzIGFsbW9zdCBjZXJ0YWlu
-bHkgYmVjYXVzZSBuZXR3b3JraW5nIGlzbid0IHVwIGR1cmluZyBib290LiAgVGhlICJiZyIgb3B0
-aW9uIGtlZXBzIHRyeWluZyB0aGUgbW91bnQgdW50aWwgaXQgc3VjY2VlZHMsIGJ1dCB0aGUgc3lz
-dGVtIHN0YXJ0ZWQgdGhlIG1vdW50IHByb2Nlc3MgYmVmb3JlIHRoZXJlIHdhcyBhIHNvdXJjZSBh
-ZGRyZXNzIG9uIHRoZSBzeXN0ZW0uDQo+ID4gDQo+ID4gT2gsIHNvIHRoZSBjbGllbnRhZGRyIGRl
-dGVjdGlvbiB0YWtlcyBwbGFjZSBvbmx5IG9uY2UgYXQgdGhlIGJlZ2lubmluZywNCj4gPiBhbmQg
-aXMgbm90IHJlcGVhdGVkIGlmIHRoZSBtb3VudCBhdHRlbXB0cyBhcmUgcmVwZWF0ZWQ/DQo+ID4g
-DQo+ID4gVGhpcyB3b3VsZCBleHBsYWluIHdoYXQncyBoYXBwZW5pbmcuIFRoZSBWUE4gaXMgbm90
-IHlldCB1cCB3aGVuIHRoZQ0KPiA+IHN5c3RlbSBmaXJzdCBhdHRlbXB0cyB0byBtb3VudCB0aGUg
-c2hhcmUuDQo+ID4gDQo+ID4gSXMgdGhlcmUgYSByYXRpb25hbGUgYmVoaW5kIHRoaXM/IEl0IHNl
-ZW1zIHRvIG1lIHRoYXQgaWYgdGhlIG1vdW50IGlzDQo+ID4gcmV0cmllZCwgaXQgd291bGQgYmUg
-cmVhc29uYWJsZSB0byBleHBlY3QgdGhhdCB0aGUgY2xpZW50YWRkciBkZXRlY3Rpb24NCj4gPiBp
-cyByZXRyaWVkIGFzIHdlbGwuDQo+IA0KPiBUaGVyZSdzIG5vIHJlYXNvbiBJIGNhbiByZWNhbGwg
-cmVxdWlyaW5nIHRoYXQgdGhpcyBpcyBkb25lIG9ubHkgb25jZSwgb3RoZXIgdGhhbiBpdCdzIHRo
-ZSBzaW1wbGVzdCBpbXBsZW1lbnRhdGlvbiBmb3IgbW91bnQubmZzLiAgSGlzdG9yaWNhbGx5LCBO
-RlMgaXMgZGVwbG95ZWQgb24gc3lzdGVtcyB3aXRoIHN0YXRpYyBuZXR3b3JrIGNvbmZpZ3VyYXRp
-b25zIHRoYXQgYXJlIHN1cHBvc2VkIHRvIGJlIHNldCB1cCBiZWZvcmUgdGhlIE5GUyB1dGlsaXRp
-ZXMgY29tZSBpbnRvIHBsYXkuICBBcyBCcnVjZSBzdWdnZXN0ZWQsIHBlcmhhcHMgdGhpcyBkZXNp
-Z24gYXNzdW1wdGlvbiBuZWVkcyB0byBiZSByZXZpc2l0ZWQuDQo+IA0KPiBJIHN1cHBvc2UgSSBz
-aG91bGQgZmlsZSBhIGJ1Zy4NCg0KQ29uc2lkZXIgdGhlIHdob2xlICdiZycgb3B0aW9uIHRvIGJl
-IGEgYnVnIGF0IHRoaXMgcG9pbnQuDQoNCk5vdyB0aGF0IHdlIGhhdmUgd29ya2luZyBhdXRvZnMg
-c3VwcG9ydCBmb3IgZGlyZWN0IG1vdW50cywgdGhlcmUgaXMgbm8NCnJlYXNvbiB0byBrZWVwIHRo
-ZSAnYmcnIG1vdW50IG9wdGlvbiBvbiBsaWZlIHN1cHBvcnQgYW55IG1vcmUuDQoNCkNoZWVycw0K
-ICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
-DQo=
+Steve Dickson [SteveD@redhat.com] wrote:
+> 
+> > Which is why I'm asking you if you can't copy from /proc/mounts. Distros
+> > which already have a symlink betweek /etc/mtab and /proc/mounts don't
+> > have any of these problems...
+> > 
+> Personally I think it simpler to just normalize the paths before 
+> writing it to the mtab verses open up and searching /proc/mounts
+> esp on client where there is large amount of mounts...  
+
+We always open up and search /proc/mounts today for the matching
+mountpoint to know the exact version of nfs, right? The umount time
+normalization is going to cost us? Or you proposing a patch that is
+going to avoid opening up /proc/mounts altogether?
+
+Regards, Malahal.
+
