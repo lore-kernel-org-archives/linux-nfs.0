@@ -1,114 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43100 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:10569 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751264Ab2C2LsB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 07:48:01 -0400
-Date: Thu, 29 Mar 2012 07:47:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-next@vger.kernel.org, paul.gortmaker@windriver.com
-Subject: Re: [PATCH] nfsd: only register cld pipe notifier when
- CONFIG_NFSD_V4 is enabled
-Message-ID: <20120329114755.GC16938@fieldses.org>
-References: <1333021311-8774-1-git-send-email-jlayton@redhat.com>
+	id S1756243Ab2CECE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 Mar 2012 21:04:58 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 04/11] NFSv4: Add a helper for encoding opaque data
+Date: Mon, 5 Mar 2012 02:04:56 +0000
+Message-ID: <1330913097.14357.20.camel@lade.trondhjem.org>
+References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <8F1C4F4B-BC08-446A-99F9-34AB4722E365@oracle.com>
+In-Reply-To: <8F1C4F4B-BC08-446A-99F9-34AB4722E365@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1333021311-8774-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 07:41:51AM -0400, Jeff Layton wrote:
-> Otherwise, we get a warning or error similar to this when building with
-> CONFIG_NFSD_V4 disabled:
-> 
->     ERROR: "nfsd4_cld_block" [fs/nfsd/nfsd.ko] undefined!
-> 
-> Fix this by wrapping the calls to rpc_pipefs_notifier_register and
-> ..._unregister in another function and providing no-op replacements
-> when CONFIG_NFSD_V4 is disabled.
-
-Thanks to you and Paul, applying.--b.
-
-> 
-> Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/netns.h       |   10 +++++++++-
->  fs/nfsd/nfs4recover.c |   12 ++++++++++++
->  fs/nfsd/nfsctl.c      |    6 +++---
->  3 files changed, 24 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 66eac33..e87ba91 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -31,5 +31,13 @@ struct nfsd_net {
->  };
->  
->  extern int nfsd_net_id;
-> -extern struct notifier_block nfsd4_cld_block;
-> +
-> +#if IS_ENABLED(CONFIG_NFSD_V4)
-> +extern int register_cld_notifier(void);
-> +extern void unregister_cld_notifier(void);
-> +#else /* IS_ENABLED(CONFIG_NFSD_V4) */
-> +#define register_cld_notifier() 0
-> +#define unregister_cld_notifier() do { } while(0)
-> +#endif /* IS_ENABLED(CONFIG_NFSD_V4) */
-> +
->  #endif /* __NFSD_NETNS_H__ */
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index eaaf948..4767429 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1032,3 +1032,15 @@ rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
->  struct notifier_block nfsd4_cld_block = {
->  	.notifier_call = rpc_pipefs_event,
->  };
-> +
-> +int
-> +register_cld_notifier(void)
-> +{
-> +	return rpc_pipefs_notifier_register(&nfsd4_cld_block);
-> +}
-> +
-> +void
-> +unregister_cld_notifier(void)
-> +{
-> +	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +}
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index dee6c1b..2c53be6 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1137,7 +1137,7 @@ static int __init init_nfsd(void)
->  	int retval;
->  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
->  
-> -	retval = rpc_pipefs_notifier_register(&nfsd4_cld_block);
-> +	retval = register_cld_notifier();
->  	if (retval)
->  		return retval;
->  	retval = register_pernet_subsys(&nfsd_net_ops);
-> @@ -1186,7 +1186,7 @@ out_free_slabs:
->  out_unregister_pernet:
->  	unregister_pernet_subsys(&nfsd_net_ops);
->  out_unregister_notifier:
-> -	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +	unregister_cld_notifier();
->  	return retval;
->  }
->  
-> @@ -1203,7 +1203,7 @@ static void __exit exit_nfsd(void)
->  	nfsd_fault_inject_cleanup();
->  	unregister_filesystem(&nfsd_fs_type);
->  	unregister_pernet_subsys(&nfsd_net_ops);
-> -	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +	unregister_cld_notifier();
->  }
->  
->  MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
-> -- 
-> 1.7.7.6
-> 
+T24gU3VuLCAyMDEyLTAzLTA0IGF0IDIwOjA4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCg0K
+PiBTZW50IGZyb20gbXkgaVBhZA0KDQpJcyB0aGF0IHJ1bm5pbmcgTGludXg/DQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
