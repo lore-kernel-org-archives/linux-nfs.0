@@ -1,43 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44677 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18241 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754409Ab2CUTqy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:46:54 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 06/12] NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
-Date: Wed, 21 Mar 2012 15:46:18 -0400
-Message-Id: <1332359184-1887-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	id S1754106Ab2CEQuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:37 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 14/16] NFSv4: Cleanup - convert more functions to use encode_op_hdr
+Date: Mon,  5 Mar 2012 11:50:19 -0500
+Message-Id: <1330966221-17164-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330966221-17164-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-13-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4xdr.c |   11 ++---------
+ 1 files changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 1f1be26..fdec7a8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -860,10 +860,11 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 			      struct pnfs_layout_segment *lseg)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 62effaf..f958849 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1644,8 +1644,7 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
  {
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
- 	u32 i, j;
- 	struct list_head *list;
+ 	__be32 *p;
  
--	if (fl->commit_through_mds)
-+	if (fl->commit_through_mds || filelayout_test_devid_invalid(devid))
- 		return &NFS_I(req->wb_context->dentry->d_inode)->commit_list;
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_SETCLIENTID);
++	encode_op_hdr(xdr, OP_SETCLIENTID, decode_setclientid_maxsz, hdr);
+ 	encode_nfs4_verifier(xdr, setclientid->sc_verifier);
  
- 	/* Note that we are calling nfs4_fl_calc_j_index on each page
+ 	encode_string(xdr, setclientid->sc_name_len, setclientid->sc_name);
+@@ -1655,8 +1654,6 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
+ 	encode_string(xdr, setclientid->sc_uaddr_len, setclientid->sc_uaddr);
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(setclientid->sc_cb_ident);
+-	hdr->nops++;
+-	hdr->replen += decode_setclientid_maxsz;
+ }
+ 
+ static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs4_setclientid_res *arg, struct compound_hdr *hdr)
+@@ -1709,8 +1706,7 @@ static void encode_exchange_id(struct xdr_stream *xdr,
+ 	char impl_name[NFS4_OPAQUE_LIMIT];
+ 	int len = 0;
+ 
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_EXCHANGE_ID);
++	encode_op_hdr(xdr, OP_EXCHANGE_ID, decode_exchange_id_maxsz, hdr);
+ 	encode_nfs4_verifier(xdr, args->verifier);
+ 
+ 	encode_string(xdr, args->id_len, args->id);
+@@ -1740,9 +1736,6 @@ static void encode_exchange_id(struct xdr_stream *xdr,
+ 		*p = cpu_to_be32(0);
+ 	} else
+ 		*p = cpu_to_be32(0);	/* implementation id array length=0 */
+-
+-	hdr->nops++;
+-	hdr->replen += decode_exchange_id_maxsz;
+ }
+ 
+ static void encode_create_session(struct xdr_stream *xdr,
 -- 
-1.7.6.4
+1.7.7.6
 
