@@ -1,50 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hawk.cora.nwra.com ([4.28.99.182]:52933 "EHLO
-	hawk.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758697Ab2CAPeR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 10:34:17 -0500
-Message-ID: <4F4F96EA.9050203@cora.nwra.com>
-Date: Thu, 01 Mar 2012 08:34:02 -0700
-From: Orion Poplawski <orion@cora.nwra.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mx1.redhat.com ([209.132.183.28]:52325 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932348Ab2CEOjx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 09:39:53 -0500
+Date: Mon, 5 Mar 2012 09:39:48 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 mount hanging suddenly
-References: <4F4EA6D0.30606@cora.nwra.com>  <20120229231732.GD6506@fieldses.org> <4F4EB2FE.9040108@cora.nwra.com> <1330609841.6218.6.camel@lade.trondhjem.org>
-In-Reply-To: <1330609841.6218.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
+ upcall
+Message-ID: <20120305093948.435f39cc@tlielax.poochiereds.net>
+In-Reply-To: <4F54B6B7.1010703@parallels.com>
+References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+	<1330720950-5872-6-git-send-email-jlayton@redhat.com>
+	<4F547DF1.8090003@parallels.com>
+	<20120305074256.6dc36fed@tlielax.poochiereds.net>
+	<4F54B6B7.1010703@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/01/2012 06:50 AM, Myklebust, Trond wrote:
-> On Wed, 2012-02-29 at 16:21 -0700, Orion Poplawski wrote:
->> On 02/29/2012 04:17 PM, J. Bruce Fields wrote:
->>> On Wed, Feb 29, 2012 at 03:29:36PM -0700, Orion Poplawski wrote:
-OMP Reply (Call
->>>
->>> That probably means the server is waiting for the client to return a
->>> delegation.
->>>
->>> Either the server's confused about their being a delegation, or the
->>> client's failing to return one it should?
->>>
->
-> As far as I can see from your trace, the client keeps trying to open the
-> file '.history', and the server keeps replying with NFS4ERR_DELAY. There
-> is nothing in the trace itself that can tell us why the server is
-> delaying.
+On Mon, 05 Mar 2012 16:51:03 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-So, it seems to be on the server side?  I didn't get any relief 
-restarting nfs on the server.  Any way to trace what is happening on the 
-server side?
+> 05.03.2012 16:42, Jeff Layton пишет:
+> >>
+> >>
+> >> Would be great to replace hard-coded cld_pipe here with a passed one.
+> >> For example, put this cld_pipe on cld_msg structure.
+> >> And initialize this pointer (hard-coded value for now) below in
+> >> nfsd4_cld_create() and all other places where alloc_cld_upcall() is called.
+> >>
+> >> BTW, maybe allocate this struct cld_upcall per NFS client somehow? And thus get
+> >> rid of alloc-free calls?
+> >>
+> >>
+> >
+> > Ok, I think I must have misunderstood what you meant when you said no
+> > per-net ops required. I'll respin and see if I can get closer to what
+> > you intended.
+> >
+> > Since most of the upcalls are infrequent and come from nfsd threads,
+> > the number of calls in flight will always be less than the order of the
+> > number of nfsd threads. That value may be much less than the number of
+> > nfs4_clients, so we're probably best off allocating these dynamically.
+> >
+> 
+> 
+> Sure, it's up to you. Only wanna note, that this dynamic allocation in several 
+> places looks a little bit confusing to me.
+> 
+> 
+> > Now that I've had some time to look, I think what you're probably going
+> > to want to do eventually is to add a new per-namespace object for nfsd,
+> > similar to struct nfs_net for the nfs client. This container will hold
+> > the pointer to the upcall pipe as well as other objects.
+> >
+> 
+> Exactly.
+> 
+> > The nfs4_client objects for nfsd will then need to be per-namespace,
+> > and will have a pointer back to "struct nfsd_net" or whatever you end up
+> > calling it. From that they'll be able to get the rpc_pipe pointer.
+> >
+> 
+> You most probably right (I'm not working on NFSd yet - so hard to be sure).
+> 
+> > For now, I'll just hardcode init_net in the appropriate places under the
+> > assumption that eventually you'll be able to get a rpc_pipe pointer
+> > given a pointer to an nfs4_client struct.
+> >
+> 
+> Yes, thank you, Jeff.
+> 
 
-Thanks again.
+Ok, I've started looking at the existing examples to try and ease the
+eventual containerization of this. Am I correct that the existing
+blocklayout pipe containerization is not yet complete?
 
+AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
+allocated on a per-net basis. bl_pipe_downcall does this however:
+
+        if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
+                return -EFAULT;
+
+...but bl_mount_reply is global:
+
+    static struct bl_dev_msg bl_mount_reply;
+
+So, if you're getting downcalls in two different network namespaces at
+the same time this could end up corrupt. It seems like bl_mount_reply
+needs to be part of nfs_net as well.
+
+When you get a downcall, you have a filp pointer. Is there any way to
+determine the "correct" nfs_net object for a particular filp?
 
 -- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA/CoRA Division                    FAX: 303-415-9702
-3380 Mitchell Lane                  orion@cora.nwra.com
-Boulder, CO 80301              http://www.cora.nwra.com
+Jeff Layton <jlayton@redhat.com>
