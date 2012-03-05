@@ -1,212 +1,391 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:33035 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754352Ab2CWC5g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 22:57:36 -0400
-Message-ID: <4F6BE693.1000107@panasas.com>
-Date: Thu, 22 Mar 2012 19:57:23 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>
-Subject: [PATCH version2] osd_login: Add autologin script for objlayoutdriver.
-References: <4F62DADD.3010502@panasas.com> <4F62DD6C.4040504@panasas.com>
-In-Reply-To: <4F62DD6C.4040504@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757843Ab2CEXVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 18:21:12 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 12/16] NFSv4: Add a encode op helper
+Date: Mon,  5 Mar 2012 18:20:50 -0500
+Message-Id: <1330989654-4694-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sachin Bhamare <sbhamare@panasas.com>
-
-This script is part of the autologin feature mandated by the
-pnfs-objects standard.
-It is called from objlayoutdriver.ko in the kernel.
-
-It invokes iscsiadm program to perform the iscsi login to OSDs.
-It also features a watchdog which will make sure that control
-returns to kernel after 15s timeout.
-
-Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- configure.ac                |    1 +
- utils/Makefile.am           |    1 +
- utils/osd_login/Makefile.am |   13 +++++
- utils/osd_login/osd_login   |  118 +++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 133 insertions(+), 0 deletions(-)
- create mode 100644 utils/osd_login/Makefile.am
- create mode 100755 utils/osd_login/osd_login
+ fs/nfs/nfs4xdr.c |  161 +++++++++++-------------------------------------------
+ 1 files changed, 32 insertions(+), 129 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 67e8d2d..011a2bf 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -467,6 +467,7 @@ AC_CONFIG_FILES([
- 	utils/nfsidmap/Makefile
- 	utils/showmount/Makefile
- 	utils/statd/Makefile
-+	utils/osd_login/Makefile
- 	tests/Makefile
- 	tests/nsm_client/Makefile])
- AC_OUTPUT
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index d074b85..c7e5d27 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -28,6 +28,7 @@ SUBDIRS = \
- 	nfsstat \
- 	showmount \
- 	statd \
-+	osd_login \
- 	$(OPTDIRS)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 3b38ca5..e9d4ac0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -935,6 +935,15 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
+ 	*p = cpu_to_be32(hdr->nops);
+ }
  
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
-new file mode 100644
-index 0000000..e931e36
---- /dev/null
-+++ b/utils/osd_login/Makefile.am
-@@ -0,0 +1,12 @@
-+## Process this file with automake to produce Makefile.in
-+
-+OSD_LOGIN_FILES= osd_login
-+
-+EXTRA_DIST= $(OSD_LOGIN_FILES)
-+
-+all-local: $(OSD_LOGIN_FILES)
-+
-+install-data-hook:
-+	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
-+
-+MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/osd_login/osd_login b/utils/osd_login/osd_login
-new file mode 100755
-index 0000000..63967fc
---- /dev/null
-+++ b/utils/osd_login/osd_login
-@@ -0,0 +1,118 @@
-+#!/bin/bash
-+#
-+# osd_login : This script is part of the autologin feature
-+#             mandated by the pnfs-objects standard.
-+# It is called from objlayoutdriver.ko in the kernel.
-+
-+# Copyright (C) 2012, Sachin Bhamare <sbhamare@panasas.com>
-+# Copyright (C) 2012, Boaz Harrosh <bharrosh@panasas.com>
-+#
-+# This program is free software; you can redistribute it and/or modify
-+# it under the terms of the GNU General Public License version 2 as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it will be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write to the Free Software
-+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-+# MA 02110-1301 USA
-+
-+umask 022
-+
-+PATH="/sbin:/usr/sbin:/bin:/usr/bin"
-+
-+iscsiadm=/sbin/iscsiadm
-+
-+PARENT_PID=$BASHPID
-+WATCHDOG_TIMEOUT=15
-+
-+protocol=""
-+portal=""
-+uri=""
-+osdname=""
-+systemid=""
-+
-+usage()
++static void encode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 op,
++		uint32_t replen,
++		struct compound_hdr *hdr)
 +{
-+	echo "Usage: $0 -u <URI> -o <OSDNAME> -s <SYSTEMID>"
-+	echo "Options:"
-+	echo  "-u		target uri e.g. iscsi://<ip>:<port>"
-+	echo  "-o		osdname of the target OSD"
-+	echo  "-s		systemid of the target OSD"
++	encode_uint32(xdr, op);
++	hdr->nops++;
++	hdr->replen += replen;
 +}
 +
-+parse_cmdline()
-+{
-+	argc=$#
-+	if [ $# -lt 3 ]; then
-+		usage
-+		exit 1
-+	fi
-+
-+	# parse the input arguments
-+	while getopts "u:o:s:" options; do
-+	    case $options in
-+		u ) uri=$OPTARG;;
-+		o ) osdname=$OPTARG;;
-+		s ) systemid=$OPTARG;;
-+		\? ) usage
-+			exit 1;;
-+		* )  usage
-+			exit 1;;
-+	    esac
-+	done
-+
-+	echo "-u : $uri"
-+	echo "-o : $osdname"
-+	echo "-s : $systemid"
-+
-+	protocol=`echo $uri | awk -F ':' '{print $1}'`
-+	portal=`echo $uri | awk -F '//' '{print $2}'`
-+}
-+
-+watchdog()
-+{
-+	timeout=$1
-+	portal=$2
-+
-+	sleep $timeout
-+	if kill -9 $PARENT_PID; then
-+	    echo "watchdog : Timed out (>$timeout seconds) while login into $portal" | logger -t "osd_login"
-+	fi
-+	echo "watchdog: exiting .."
-+	exit 2
-+}
-+
-+login_iscsi_osd()
-+{
-+	echo "login into: $1"
-+	if ! $iscsiadm -m discovery -o nonpersistent -t sendtargets -p $1 --login; then
-+		echo "$iscsiadm -m discovery -t sendtargets -p $1 --login returned error $? !"
-+		sleep 1;
-+	fi
-+}
-+
-+echo "============= osd_login ========="
-+echo "progname : $0"
-+parse_cmdline "$@"
-+echo "protocol: $protocol"
-+echo "portal: $portal"
-+
-+watchdog $WATCHDOG_TIMEOUT $portal &
-+watchdog_pid=$!
-+
-+case $protocol in
-+iscsi)
-+	login_iscsi_osd $portal |& logger -t "osd_login"
-+	;;
-+*)
-+	echo "Error: protocol $protocol not supported !" | logger -t "osd_login"
-+	;;
-+esac
-+
-+kill -9 $watchdog_pid
-+exit 0
+ static void encode_nops(struct compound_hdr *hdr)
+ {
+ 	BUG_ON(hdr->nops > NFS4_MAX_OPS);
+@@ -1086,14 +1095,9 @@ static void encode_access(struct xdr_stream *xdr, u32 access, struct compound_hd
+ 
+ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_CLOSE);
++	encode_op_hdr(xdr, OP_CLOSE, decode_close_maxsz, hdr);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+-	hdr->nops++;
+-	hdr->replen += decode_close_maxsz;
+ }
+ 
+ static void encode_commit(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
+@@ -1172,8 +1176,7 @@ encode_getattr_three(struct xdr_stream *xdr,
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_GETATTR);
++	encode_op_hdr(xdr, OP_GETATTR, decode_getattr_maxsz, hdr);
+ 	if (bm2) {
+ 		p = reserve_space(xdr, 16);
+ 		*p++ = cpu_to_be32(3);
+@@ -1190,8 +1193,6 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 		*p++ = cpu_to_be32(1);
+ 		*p = cpu_to_be32(bm0);
+ 	}
+-	hdr->nops++;
+-	hdr->replen += decode_getattr_maxsz;
+ }
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+@@ -1217,23 +1218,13 @@ static void encode_fs_locations(struct xdr_stream *xdr, const u32* bitmask, stru
+ 
+ static void encode_getfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_GETFH);
+-	hdr->nops++;
+-	hdr->replen += decode_getfh_maxsz;
++	encode_op_hdr(xdr, OP_GETFH, decode_getfh_maxsz, hdr);
+ }
+ 
+ static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_LINK);
++	encode_op_hdr(xdr, OP_LINK, decode_link_maxsz, hdr);
+ 	encode_string(xdr, name->len, name->name);
+-	hdr->nops++;
+-	hdr->replen += decode_link_maxsz;
+ }
+ 
+ static inline int nfs4_lock_type(struct file_lock *fl, int block)
+@@ -1323,24 +1314,14 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
+ 
+ static void encode_release_lockowner(struct xdr_stream *xdr, const struct nfs_lowner *lowner, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_RELEASE_LOCKOWNER);
++	encode_op_hdr(xdr, OP_RELEASE_LOCKOWNER, decode_release_lockowner_maxsz, hdr);
+ 	encode_lockowner(xdr, lowner);
+-	hdr->nops++;
+-	hdr->replen += decode_release_lockowner_maxsz;
+ }
+ 
+ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_LOOKUP);
++	encode_op_hdr(xdr, OP_LOOKUP, decode_lookup_maxsz, hdr);
+ 	encode_string(xdr, name->len, name->name);
+-	hdr->nops++;
+-	hdr->replen += decode_lookup_maxsz;
+ }
+ 
+ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
+@@ -1371,8 +1352,6 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+  * opcode 4, seqid 4, share_access 4, share_deny 4, clientid 8, ownerlen 4,
+  * owner 4 = 32
+  */
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_OPEN);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_share_access(xdr, arg->fmode);
+ 	p = reserve_space(xdr, 32);
+@@ -1481,6 +1460,7 @@ static inline void encode_claim_delegate_cur(struct xdr_stream *xdr, const struc
+ 
+ static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg, struct compound_hdr *hdr)
+ {
++	encode_op_hdr(xdr, OP_OPEN, decode_open_maxsz, hdr);
+ 	encode_openhdr(xdr, arg);
+ 	encode_opentype(xdr, arg);
+ 	switch (arg->claim) {
+@@ -1496,55 +1476,33 @@ static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg,
+ 	default:
+ 		BUG();
+ 	}
+-	hdr->nops++;
+-	hdr->replen += decode_open_maxsz;
+ }
+ 
+ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_confirmargs *arg, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_OPEN_CONFIRM);
++	encode_op_hdr(xdr, OP_OPEN_CONFIRM, decode_open_confirm_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+-	hdr->nops++;
+-	hdr->replen += decode_open_confirm_maxsz;
+ }
+ 
+ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_OPEN_DOWNGRADE);
++	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+ 	encode_share_access(xdr, arg->fmode);
+-	hdr->nops++;
+-	hdr->replen += decode_open_downgrade_maxsz;
+ }
+ 
+ static void
+ encode_putfh(struct xdr_stream *xdr, const struct nfs_fh *fh, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_PUTFH);
++	encode_op_hdr(xdr, OP_PUTFH, decode_putfh_maxsz, hdr);
+ 	encode_string(xdr, fh->size, fh->data);
+-	hdr->nops++;
+-	hdr->replen += decode_putfh_maxsz;
+ }
+ 
+ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_PUTROOTFH);
+-	hdr->nops++;
+-	hdr->replen += decode_putrootfh_maxsz;
++	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
+ }
+ 
+ static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
+@@ -1564,17 +1522,13 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_READ);
+-
++	encode_op_hdr(xdr, OP_READ, decode_read_maxsz, hdr);
+ 	encode_open_stateid(xdr, args->context, args->lock_context,
+ 		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+ 	*p = cpu_to_be32(args->count);
+-	hdr->nops++;
+-	hdr->replen += decode_read_maxsz;
+ }
+ 
+ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
+@@ -1622,35 +1576,20 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 
+ static void encode_readlink(struct xdr_stream *xdr, const struct nfs4_readlink *readlink, struct rpc_rqst *req, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_READLINK);
+-	hdr->nops++;
+-	hdr->replen += decode_readlink_maxsz;
++	encode_op_hdr(xdr, OP_READLINK, decode_readlink_maxsz, hdr);
+ }
+ 
+ static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_REMOVE);
++	encode_op_hdr(xdr, OP_REMOVE, decode_remove_maxsz, hdr);
+ 	encode_string(xdr, name->len, name->name);
+-	hdr->nops++;
+-	hdr->replen += decode_remove_maxsz;
+ }
+ 
+ static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, const struct qstr *newname, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_RENAME);
++	encode_op_hdr(xdr, OP_RENAME, decode_rename_maxsz, hdr);
+ 	encode_string(xdr, oldname->len, oldname->name);
+ 	encode_string(xdr, newname->len, newname->name);
+-	hdr->nops++;
+-	hdr->replen += decode_rename_maxsz;
+ }
+ 
+ static void encode_renew(struct xdr_stream *xdr, clientid4 clid,
+@@ -1668,12 +1607,7 @@ static void encode_renew(struct xdr_stream *xdr, clientid4 clid,
+ static void
+ encode_restorefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_RESTOREFH);
+-	hdr->nops++;
+-	hdr->replen += decode_restorefh_maxsz;
++	encode_op_hdr(xdr, OP_RESTOREFH, decode_restorefh_maxsz, hdr);
+ }
+ 
+ static void
+@@ -1681,8 +1615,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_SETATTR);
++	encode_op_hdr(xdr, OP_SETATTR, decode_setacl_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, &zero_stateid);
+ 	p = reserve_space(xdr, 2*4);
+ 	*p++ = cpu_to_be32(1);
+@@ -1691,30 +1624,18 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(arg->acl_len);
+ 	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
+-	hdr->nops++;
+-	hdr->replen += decode_setacl_maxsz;
+ }
+ 
+ static void
+ encode_savefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_SAVEFH);
+-	hdr->nops++;
+-	hdr->replen += decode_savefh_maxsz;
++	encode_op_hdr(xdr, OP_SAVEFH, decode_savefh_maxsz, hdr);
+ }
+ 
+ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs *arg, const struct nfs_server *server, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_SETATTR);
++	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, &arg->stateid);
+-	hdr->nops++;
+-	hdr->replen += decode_setattr_maxsz;
+ 	encode_attrs(xdr, arg->iap, server);
+ }
+ 
+@@ -1753,9 +1674,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ {
+ 	__be32 *p;
+ 
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_WRITE);
+-
++	encode_op_hdr(xdr, OP_WRITE, decode_write_maxsz, hdr);
+ 	encode_open_stateid(xdr, args->context, args->lock_context,
+ 		       hdr->minorversion);
+ 
+@@ -1765,30 +1684,18 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	*p = cpu_to_be32(args->count);
+ 
+ 	xdr_write_pages(xdr, args->pages, args->pgbase, args->count);
+-	hdr->nops++;
+-	hdr->replen += decode_write_maxsz;
+ }
+ 
+ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *stateid, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_DELEGRETURN);
++	encode_op_hdr(xdr, OP_DELEGRETURN, decode_delegreturn_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, stateid);
+-	hdr->nops++;
+-	hdr->replen += decode_delegreturn_maxsz;
+ }
+ 
+ static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_SECINFO);
++	encode_op_hdr(xdr, OP_SECINFO, decode_secinfo_maxsz, hdr);
+ 	encode_string(xdr, name->len, name->name);
+-	hdr->nops++;
+-	hdr->replen += decode_secinfo_maxsz;
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+@@ -2132,12 +2039,8 @@ static void encode_free_stateid(struct xdr_stream *xdr,
+ 				struct nfs41_free_stateid_args *args,
+ 				struct compound_hdr *hdr)
+ {
+-	__be32 *p;
+-	p = reserve_space(xdr, 4);
+-	*p = cpu_to_be32(OP_FREE_STATEID);
++	encode_op_hdr(xdr, OP_FREE_STATEID, decode_free_stateid_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, args->stateid);
+-	hdr->nops++;
+-	hdr->replen += decode_free_stateid_maxsz;
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
 -- 
-1.7.6.2
-
+1.7.7.6
 
