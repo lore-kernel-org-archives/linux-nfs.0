@@ -1,53 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:43360 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755943Ab2CLPNy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 11:13:54 -0400
-Received: by ghrr11 with SMTP id r11so2656745ghr.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 08:13:54 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:42427 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755163Ab2CEQwc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:52:32 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peter Staubach <pstaubach@exagrid.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH 08/11] NFSv4: Simplify the struct nfs4_stateid
+Date: Mon, 5 Mar 2012 16:52:31 +0000
+Message-ID: <1330966351.2509.4.camel@lade.trondhjem.org>
+References: <1330902183-18879-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1330902183-18879-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D48307D@IT-1874.Isys.com>
+In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D48307D@IT-1874.Isys.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20120311230249.GA1305@fieldses.org>
-References: <1331504084.2792.7.camel@lade.trondhjem.org>
-	<20120311230249.GA1305@fieldses.org>
-Date: Mon, 12 Mar 2012 11:13:53 -0400
-Message-ID: <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
-Subject: Re: Bug in gss_krb5_crypto.c
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Dr James Bruce Fields <bfields@fieldses.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 11, 2012 at 7:02 PM, Dr James Bruce Fields
-<bfields@fieldses.org> wrote:
-> On Sun, Mar 11, 2012 at 10:14:44PM +0000, Myklebust, Trond wrote:
->> Hi Kevin & Bruce,
->>
->> When running sparse on the sunrpc code, I'm seeing the following error
->> message:
->> "net/sunrpc/auth_gss/gss_krb5_crypto.c:603:52: error: bad constant
->> expression"
->>
->> This boils down to the line:
->>         u8 data[crypto_blkcipher_blocksize(cipher) * 2];
->
-> Oops.
->
->> which is using a GNU Cc-ism in order to do dynamic allocation on the
->> stack. This is not acceptable in kernel code, and really needs to be
->> changed. How should we move forward with this? Is there an upper limit
->> on the value of crypto_blkcipher_blocksize(cipher) that we can use?
->
-> I think it's always either 8 or 16.
->
-> --b.
->
-
-Yes, I think 16 is currently the upper blocksize limit.  I was
-thinking there was a constant defined in a header for the
-maxblocksize, but I'm not able to get to my machine to grep for it
-right now.
-
-K.C.
+T24gTW9uLCAyMDEyLTAzLTA1IGF0IDExOjMxIC0wNTAwLCBQZXRlciBTdGF1YmFjaCB3cm90ZToN
+Cj4gQ29tbWVudCBpbnRlcm1peGVkIGJlbG93Li4uDQo+IA0KPiAgDQo+IA0KPiAgDQo+IA0KPiAt
+LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5r
+ZXJuZWwub3JnDQo+IFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIFRyb25kIE15a2xlYnVzdA0KPiBTZW50OiBTdW5kYXksIE1hcmNoIDA0LCAyMDEy
+IDY6MDMgUE0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogW1BB
+VENIIDA4LzExXSBORlN2NDogU2ltcGxpZnkgdGhlIHN0cnVjdCBuZnM0X3N0YXRlaWQNCj4gDQo+
+ICANCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20+DQo+IA0KPiAtLS0NCj4gDQo+IGZzL25mcy9uZnM0X2ZzLmggICAgIHwgICAg
+NCArKy0tDQo+IA0KPiBmcy9uZnMvbmZzNHByb2MuYyAgICB8ICAgIDggKysrKy0tLS0NCj4gDQo+
+IGZzL25mcy9uZnM0c3RhdGUuYyAgIHwgICAgNCArKy0tDQo+IA0KPiBmcy9uZnMvbmZzNHhkci5j
+ICAgICB8ICAgIDYgKysrLS0tDQo+IA0KPiBmcy9uZnMvcG5mcy5jICAgICAgICB8ICAgMTAgKysr
+KystLS0tLQ0KPiANCj4gaW5jbHVkZS9saW51eC9uZnM0LmggfCAgICA3ICsrLS0tLS0NCj4gDQo+
+IDYgZmlsZXMgY2hhbmdlZCwgMTggaW5zZXJ0aW9ucygrKSwgMjEgZGVsZXRpb25zKC0pDQo+IA0K
+PiAgDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRfZnMuaCBiL2ZzL25mcy9uZnM0X2Zz
+LmggaW5kZXgNCj4gZjRjYWZhYi4uNGI0ZTQ4YiAxMDA2NDQNCj4gDQo+IC0tLSBhL2ZzL25mcy9u
+ZnM0X2ZzLmgNCj4gDQo+ICsrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCj4gDQo+IEBAIC0zNDksMTIg
+KzM0OSwxMiBAQCBleHRlcm4gc3RydWN0IHN2Y192ZXJzaW9uDQo+IG5mczRfY2FsbGJhY2tfdmVy
+c2lvbjQ7DQo+IA0KPiAgc3RhdGljIGlubGluZSB2b2lkIG5mczRfc3RhdGVpZF9jb3B5KG5mczRf
+c3RhdGVpZCAqZHN0LCBjb25zdA0KPiBuZnM0X3N0YXRlaWQgKnNyYykgIHsNCj4gDQo+IC0gICAg
+ICAgICAgICAgIG1lbWNweShkc3QtPmRhdGEsIHNyYy0+ZGF0YSwgc2l6ZW9mKGRzdC0+ZGF0YSkp
+Ow0KPiANCj4gKyAgICAgICAgICAgICBtZW1jcHkoZHN0LCBzcmMsIHNpemVvZigqZHN0KSk7DQo+
+IA0KPiB9DQo+IA0KPiAgc3RhdGljIGlubGluZSBib29sIG5mczRfc3RhdGVpZF9tYXRjaChjb25z
+dCBuZnM0X3N0YXRlaWQgKmRzdCwgY29uc3QNCj4gbmZzNF9zdGF0ZWlkICpzcmMpICB7DQo+IA0K
+PiAtICAgICAgICAgICAgICByZXR1cm4gbWVtY21wKGRzdC0+ZGF0YSwgc3JjLT5kYXRhLCBzaXpl
+b2YoZHN0LT5kYXRhKSkNCj4gPT0gMDsNCj4gDQo+ICsgICAgICAgICAgICAgcmV0dXJuIG1lbWNt
+cChkc3QsIHNyYywgc2l6ZW9mKCpkc3QpKSA9PSAwOw0KPiANCj4gfQ0KPiANCj4gICNlbHNlDQo+
+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYyBp
+bmRleA0KPiAzZTY1NzY2Li41ZDkwZGM4IDEwMDY0NA0KPiANCj4gLS0tIGEvZnMvbmZzL25mczRw
+cm9jLmMNCj4gDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IA0KPiBAQCAtNjI1NywxMyAr
+NjI1NywxMyBAQCBzdGF0aWMgaW50IG5mczQxX2ZyZWVfc3RhdGVpZChzdHJ1Y3QNCj4gbmZzX3Nl
+cnZlciAqc2VydmVyLCBuZnM0X3N0YXRlaWQgKnN0YXRlaWQpICBzdGF0aWMgYm9vbA0KPiBuZnM0
+MV9tYXRjaF9zdGF0ZWlkKGNvbnN0IG5mczRfc3RhdGVpZCAqczEsDQo+IA0KPiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgY29uc3QgbmZzNF9zdGF0ZWlkICpzMikNCj4gDQo+IHsNCj4g
+DQo+IC0gICAgICAgICAgICAgIGlmIChtZW1jbXAoczEtPnN0YXRlaWQub3RoZXIsIHMyLT5zdGF0
+ZWlkLm90aGVyLA0KPiANCj4gLSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNpemVv
+ZihzMS0+c3RhdGVpZC5vdGhlcikpICE9IDApDQo+IA0KPiArICAgICAgICAgICAgIGlmIChtZW1j
+bXAoczEtPm90aGVyLCBzMi0+b3RoZXIsDQo+IA0KPiArICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICBzaXplb2YoczEtPm90aGVyKSkgIT0gMCkNCj4gDQo+ICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICByZXR1cm4gZmFsc2U7DQo+IA0KPiAtICAgICAgICAgICAgICBpZiAoczEt
+PnN0YXRlaWQuc2VxaWQgPT0gczItPnN0YXRlaWQuc2VxaWQpDQo+IA0KPiArICAgICAgICAgICAg
+IGlmIChzMS0+c2VxaWQgPT0gczItPnNlcWlkKQ0KPiANCj4gICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgIHJldHVybiB0cnVlOw0KPiANCj4gLSAgICAgICAgICAgICAgaWYgKHMxLT5zdGF0
+ZWlkLnNlcWlkID09IDAgfHwgczEtPnN0YXRlaWQuc2VxaWQgPT0gMCkNCj4gDQo+ICsgICAgICAg
+ICAgICAgaWYgKHMxLT5zZXFpZCA9PSAwIHx8IHMxLT5zZXFpZCA9PSAwKQ0KPiANCj4gPiANCj4g
+DQo+ID4gSXMgdGhpcyB0ZXN0IGNvcnJlY3Q/ICBPciBzaG91bGQgdGhlIHNlY29uZCBzMSBiZSBz
+Mj8NCg0KT29wcy4uLiBUaGFua3MgZm9yIHNwb3R0aW5nIHRoYXQhIEknbGwgZml4IGl0IHVwIGlu
+IHYzLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
+Cg0K
