@@ -1,56 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19399 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63818 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030775Ab2CFPNj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:13:39 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4.1: Fix the checking of the stateid when
- returning a delegation
-Date: Tue, 6 Mar 2012 15:13:37 +0000
-Message-ID: <0A25AB17-8DC0-4524-A276-2BB1B80348C5@netapp.com>
-References: <1331045205-3031-1-git-send-email-andros@netapp.com>
- <1331045205-3031-2-git-send-email-andros@netapp.com>
- <1331045839.3260.8.camel@lade.trondhjem.org>
-In-Reply-To: <1331045839.3260.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1755577Ab2CEQua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 11:50:30 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 03/16] NFSv4: Further clean-ups of delegation stateid validation
+Date: Mon,  5 Mar 2012 11:50:08 -0500
+Message-Id: <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Change the name to reflect what we're really doing: testing two
+stateids for whether or not they match according the the rules in
+RFC3530 and RFC5661.
+Move the code from callback_proc.c to nfs4proc.c
 
-On Mar 6, 2012, at 9:57 AM, Myklebust, Trond wrote:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c |   24 ------------------------
+ fs/nfs/delegation.c    |    2 +-
+ fs/nfs/nfs4_fs.h       |    2 +-
+ fs/nfs/nfs4proc.c      |   27 +++++++++++++++++++++++++--
+ 4 files changed, 27 insertions(+), 28 deletions(-)
 
-> On Tue, 2012-03-06 at 09:46 -0500, andros@netapp.com wrote:
->> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->> 
->> nfs41_validate_delegation_stateid is broken if we supply a stateid with
->> a non-zero sequence id. Instead of trying to match the sequence id,
->> the function assumes that we always want to error. While this is
->> true for a delegation callback, it is not true in general.
->> 
->> Also fix a typo in nfs4_callback_recall.
->> 
->> Reported-by: Andy Adamson <andros@netapp.com>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Did you really intend to Cc: stable on these before we've committed them
-> upstream?
-
-I guess I misunderstood when to add the Cc: stable.
-
--->Andy
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index ea83219..1b5d809 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -98,14 +98,6 @@ out:
+ 	return res;
+ }
+ 
+-int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+-{
+-	if (delegation == NULL || memcmp(delegation->stateid.data, stateid->data,
+-					 sizeof(delegation->stateid.data)) != 0)
+-		return 0;
+-	return 1;
+-}
+-
+ #if defined(CONFIG_NFS_V4_1)
+ 
+ /*
+@@ -319,22 +311,6 @@ out:
+ 	return res;
+ }
+ 
+-int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+-{
+-	if (delegation == NULL)
+-		return 0;
+-
+-	if (stateid->stateid.seqid != 0 &&
+-	    stateid->stateid.seqid != delegation->stateid.stateid.seqid)
+-		return 0;
+-	if (memcmp(delegation->stateid.stateid.other,
+-		   stateid->stateid.other,
+-		   NFS4_STATEID_OTHER_SIZE))
+-		return 0;
+-
+-	return 1;
+-}
+-
+ /*
+  * Validate the sequenceID sent by the server.
+  * Return success if the sequenceID is one more than what we last saw on
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 1596098..9722e15 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -545,7 +545,7 @@ int nfs_async_inode_return_delegation(struct inode *inode,
+ 	rcu_read_lock();
+ 	delegation = rcu_dereference(NFS_I(inode)->delegation);
+ 
+-	if (!clp->cl_mvops->validate_stateid(delegation, stateid)) {
++	if (!clp->cl_mvops->match_stateid(&delegation->stateid, stateid)) {
+ 		rcu_read_unlock();
+ 		return -ENOENT;
+ 	}
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 19079ec..9c05799 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -43,7 +43,7 @@ struct nfs4_minor_version_ops {
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+ 			int cache_reply);
+-	int	(*validate_stateid)(struct nfs_delegation *,
++	bool	(*match_stateid)(const nfs4_stateid *,
+ 			const nfs4_stateid *);
+ 	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
+ 			struct nfs_fsinfo *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ea7adfc..a79f623 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6257,8 +6257,31 @@ static int nfs41_free_stateid(struct nfs_server *server, nfs4_stateid *stateid)
+ 	} while (exception.retry);
+ 	return err;
+ }
++
++static bool nfs41_match_stateid(const nfs4_stateid *s1,
++		const nfs4_stateid *s2)
++{
++	if (memcmp(s1->stateid.other, s2->stateid.other,
++		   sizeof(s1->stateid.other)) != 0)
++		return false;
++
++	if (s1->stateid.seqid == s2->stateid.seqid)
++		return true;
++	if (s1->stateid.seqid == 0 || s1->stateid.seqid == 0)
++		return true;
++
++	return false;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static bool nfs4_match_stateid(const nfs4_stateid *s1,
++		const nfs4_stateid *s2)
++{
++	return memcmp(s1->data, s2->data, sizeof(s1->data)) == 0;
++}
++
++
+ struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
+ 	.state_flag_bit	= NFS_STATE_RECLAIM_REBOOT,
+@@ -6317,7 +6340,7 @@ struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
+ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 	.minor_version = 0,
+ 	.call_sync = _nfs4_call_sync,
+-	.validate_stateid = nfs4_validate_delegation_stateid,
++	.match_stateid = nfs4_match_stateid,
+ 	.find_root_sec = nfs4_find_root_sec,
+ 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
+@@ -6328,7 +6351,7 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 	.minor_version = 1,
+ 	.call_sync = _nfs4_call_sync_session,
+-	.validate_stateid = nfs41_validate_delegation_stateid,
++	.match_stateid = nfs41_match_stateid,
+ 	.find_root_sec = nfs41_find_root_sec,
+ 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+-- 
+1.7.7.6
 
