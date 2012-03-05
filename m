@@ -1,91 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22733 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031065Ab2CFUsK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 15:48:10 -0500
-Date: Tue, 6 Mar 2012 15:48:02 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
-Message-ID: <20120306154802.00e76225@tlielax.poochiereds.net>
-In-Reply-To: <20120306133124.5dbef60c@tlielax.poochiereds.net>
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
-	<1331047733-1641-4-git-send-email-jlayton@redhat.com>
-	<4F564CCD.9040708@parallels.com>
-	<20120306133124.5dbef60c@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet15.oracle.com ([148.87.113.117]:23182 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757792Ab2CEXXv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 18:23:51 -0500
+Subject: Re: nfs3 lockd: cannot monitor errors
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F554954.9050901@steve-ss.com>
+Date: Mon, 5 Mar 2012 18:23:35 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <52BCED70-81F8-454E-BD01-3261B1E76931@oracle.com>
+References: <4F520CB4.1030203@steve-ss.com> <4F554954.9050901@steve-ss.com>
+To: steve <steve@steve-ss.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 6 Mar 2012 13:31:24 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
 
-> On Tue, 06 Mar 2012 21:43:41 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> 
-> > 06.03.2012 19:28, Jeff Layton пишет:
-> > > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > > index 64c24af..141197e 100644
-> > > --- a/fs/nfsd/nfsctl.c
-> > > +++ b/fs/nfsd/nfsctl.c
-> > > @@ -19,6 +19,7 @@
-> > >   #include "nfsd.h"
-> > >   #include "cache.h"
-> > >   #include "fault_inject.h"
-> > > +#include "netns.h"
-> > >
-> > >   /*
-> > >    *	We have a single directory with several nodes in it.
-> > > @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
-> > >   }
-> > >   #endif
-> > >
-> > > +int nfsd_net_id;
-> > > +static struct pernet_operations nfsd_net_ops = {
-> > > +	.id   =&nfsd_net_id,
-> > > +	.size = sizeof(struct nfsd_net),
-> > > +};
-> > > +
-> > >   static int __init init_nfsd(void)
-> > >   {
-> > >   	int retval;
-> > >   	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
-> > >
-> > > +	retval = register_pernet_subsys(&nfsd_net_ops);
-> > 
-> > Hi, Jeff.
-> > You've created per-net structure and operations and that's cool.
-> > But why don't you move nfsd client tracking control into per-net operations?
-> > I.e. add init-exit callbacks in struct pernet_operations and call 
-> > nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
-> > And since we don't support any other networks namesapce except init_net, then 
-> > just skip all others in these callbacks.
-> > 
-> 
-> Well...the way I had envisioned it is that you'd create a new net
-> namespace container and would then start up nfsd within that container.
-> 
-> Just because we're spawning a new namespace doesn't mean that we'll
-> necessarily want to serve nfs from it, right? If we do it this way,
-> then we don't end up allocating resources for containers that aren't
-> going to use it.
-> 
-> ...or do I not understand the "vision" of how all of this is going to
-> eventually work?
-> 
+On Mar 5, 2012, at 6:16 PM, steve wrote:
 
-To carry this thought a little further...
+> On 03/03/12 13:21, steve wrote:
+>> Hi
+>> We recently switched to nfs3 from nfs4 and now we're getting lots of
+>> lockd errors. We can remove the error by mounting with:
+>> -o local_lock=posix
+>> 
+>> We had to switch to be able to use the posix acl we had set on the share.
+>> 
+>> What problems may we face by setting the local_lock?
+>> Thanks,
+>> Steve
+>> 
+> 
+> Hi
+> Sorry to bump
+> This is openSUSE 12.1. All the references to lockd probs seem to come from 10 or so years ago.
+> 
+> Could anyone give me a one liner as to where to start looking? I've gone through all the usual channels.
+> 
+> Cheers,
+> Steve
+> 
+> Server:
+> Mar  5 16:24:46 hh3 kernel: [16760.656609] lockd: cannot monitor hh6
 
-The pernet operations get registered whenever the module is plugged in.
-The reason for doing it the way I did it here is that we don't need or
-really want to do the client_tracking_init until we start up nfsd.
+This error message means "hh3" cannot monitor "hh6".  Usually that's a sign that rpc.statd on hh3 is having trouble getting a clean DNS lookup of hh6.  Maybe enabling debugging on statd would produce a little more diagnostic information.
 
-This is particularly the case with the legacy client tracker, which
-slurps in the contents of v4recoverydir when it initializes. We don't
-really want to do that at module plugin, I don't think.
+> ps aux | grep rpc
+> root      1214  0.0  0.1   2356   656 ?        Ss   Mar05   0:00 /sbin/rpcbind
+> root      1821  0.0  0.0      0     0 ?        S<   Mar05   0:00 [rpciod]
+> root      4649  0.0  0.0   2416   416 ?        Ss   Mar05   0:00 /usr/sbin/rpc.idmapd
+> root      4668  0.0  0.3   4092  1508 ?        Ss   Mar05   0:00 rpc.gssd
+> root      5192  0.0  0.2   3840  1096 ?        Ss   Mar05   0:00 /usr/sbin/rpc.svcgssd
+> root      5206  0.0  0.1   3032   568 ?        Ss   Mar05   0:00 /usr/sbin/rpc.mountd --no-nfs-version 4
+> statd     5243  0.0  0.1   2584   652 ?        Ss   Mar05   0:00 /usr/sbin/rpc.statd --no-notify
+> 
+> 
+> rpcinfo
+>   program version netid     address                service    owner
+>    100000    4    tcp6      ::.0.111               portmapper superuser
+>    100000    3    tcp6      ::.0.111               portmapper superuser
+>    100000    4    udp6      ::.0.111               portmapper superuser
+>    100000    3    udp6      ::.0.111               portmapper superuser
+>    100000    4    tcp       0.0.0.0.0.111          portmapper superuser
+>    100000    3    tcp       0.0.0.0.0.111          portmapper superuser
+>    100000    2    tcp       0.0.0.0.0.111          portmapper superuser
+>    100000    4    udp       0.0.0.0.0.111          portmapper superuser
+>    100000    3    udp       0.0.0.0.0.111          portmapper superuser
+>    100000    2    udp       0.0.0.0.0.111          portmapper superuser
+>    100000    4    local     /var/run/rpcbind.sock  portmapper superuser
+>    100000    3    local     /var/run/rpcbind.sock  portmapper superuser
+>    100005    1    udp       0.0.0.0.178.110        mountd     superuser
+>    100005    1    tcp       0.0.0.0.136.30         mountd     superuser
+>    100005    1    udp6      ::.145.115             mountd     superuser
+>    100005    1    tcp6      ::.220.209             mountd     superuser
+>    100005    2    udp       0.0.0.0.163.232        mountd     superuser
+>    100003    2    tcp       0.0.0.0.8.1            nfs        superuser
+>    100003    3    tcp       0.0.0.0.8.1            nfs        superuser
+>    100227    2    tcp       0.0.0.0.8.1            nfs_acl    superuser
+>    100227    3    tcp       0.0.0.0.8.1            nfs_acl    superuser
+>    100003    2    udp       0.0.0.0.8.1            nfs        superuser
+>    100003    3    udp       0.0.0.0.8.1            nfs        superuser
+>    100227    2    udp       0.0.0.0.8.1            nfs_acl    superuser
+>    100227    3    udp       0.0.0.0.8.1            nfs_acl    superuser
+>    100005    2    tcp       0.0.0.0.210.206        mountd     superuser
+>    100005    2    udp6      ::.150.240             mountd     superuser
+>    100003    2    tcp6      ::.8.1                 nfs        superuser
+>    100003    3    tcp6      ::.8.1                 nfs        superuser
+>    100227    2    tcp6      ::.8.1                 nfs_acl    superuser
+>    100227    3    tcp6      ::.8.1                 nfs_acl    superuser
+>    100003    2    udp6      ::.8.1                 nfs        superuser
+>    100003    3    udp6      ::.8.1                 nfs        superuser
+>    100227    2    udp6      ::.8.1                 nfs_acl    superuser
+>    100227    3    udp6      ::.8.1                 nfs_acl    superuser
+>    100021    1    udp       0.0.0.0.141.165        nlockmgr   superuser
+>    100021    3    udp       0.0.0.0.141.165        nlockmgr   superuser
+>    100021    4    udp       0.0.0.0.141.165        nlockmgr   superuser
+>    100021    1    tcp       0.0.0.0.173.52         nlockmgr   superuser
+>    100021    3    tcp       0.0.0.0.173.52         nlockmgr   superuser
+>    100021    4    tcp       0.0.0.0.173.52         nlockmgr   superuser
+>    100021    1    udp6      ::.208.135             nlockmgr   superuser
+>    100021    3    udp6      ::.208.135             nlockmgr   superuser
+>    100021    4    udp6      ::.208.135             nlockmgr   superuser
+>    100021    1    tcp6      ::.175.226             nlockmgr   superuser
+>    100021    3    tcp6      ::.175.226             nlockmgr   superuser
+>    100021    4    tcp6      ::.175.226             nlockmgr   superuser
+>    100005    2    tcp6      ::.200.118             mountd     superuser
+>    100005    3    udp       0.0.0.0.217.9          mountd     superuser
+>    100005    3    tcp       0.0.0.0.185.184        mountd     superuser
+>    100005    3    udp6      ::.226.152             mountd     superuser
+>    100005    3    tcp6      ::.204.113             mountd     superuser
+>    100024    1    udp       0.0.0.0.131.53         status     103
+>    100024    1    tcp       0.0.0.0.130.61         status     103
+>    100024    1    udp6      ::.140.153             status     103
+>    100024    1    tcp6      ::.179.31              status     103
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
