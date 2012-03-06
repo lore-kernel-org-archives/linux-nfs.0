@@ -1,75 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:59074 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751850Ab2CMUWA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 16:22:00 -0400
-Received: by gghe5 with SMTP id e5so999561ggh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 13:22:00 -0700 (PDT)
-MIME-Version: 1.0
-Date: Wed, 14 Mar 2012 01:51:59 +0530
-Message-ID: <CANhbJ3XhN8r3hT9xpng44=pa18sx1jj_=p0_+Az+zV5F6WjAyw@mail.gmail.com>
-Subject: nfs locking with cent os 6?
-From: Rahul Katariya <katariya.rahul@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:57937 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758289Ab2CFTIZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 14:08:25 -0500
+Date: Tue, 6 Mar 2012 13:31:24 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
+Message-ID: <20120306133124.5dbef60c@tlielax.poochiereds.net>
+In-Reply-To: <4F564CCD.9040708@parallels.com>
+References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
+	<1331047733-1641-4-git-send-email-jlayton@redhat.com>
+	<4F564CCD.9040708@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-IEhpICwKCkkgYW0gdXNpbmcgQ2VudCBPUyA2IDY0IGJpdCB3aGljaCBzdXBwb3J0cyBORlMgdmVy
-c2lvbiA0LgoKSSByYW4gY3Rob24tbmZzLXRlc3RzIG9uIGl0LgoKQWx0aG91Z2ggTkZTIHZlcnNp
-b24gaXMgNCBzdXBwb3J0ZWQsIEkgYW0gdXNpbmcgTkZTIDMgZm9yIG1vdW50aW5nIE5GUyBzaGFy
-ZS4KCkZvbGxvd2luZyBhcmUgcGFja2FnZXMgaW5zdGFsbGVkLgojIHJwbSAtcWEgfGdyZXAgbmZz
-Cm5mcy11dGlscy0xLjIuMi03LmVsNi54ODZfNjQKIG5mcy11dGlscy1saWItMS4xLjUtMS5lbDYu
-eDg2XzY0CgogTW91bnQgc2hvd3MgZm9sbG93aW5nCiAjIG1vdW50CiBuZnMtc2VydmVyOi9leHBv
-cnQvc2hhcmUvY29ubmVjdGF0aG9uIG9uIC9uZnN0ZXN0ZGlyMSB0eXBlIG5mcwoocncsaW50cixy
-ZXRyYW5zPTUsdGltZW89Nyx0Y3AsbmZzdmVycz0zLHJzaXplPTgxOTIsd3NpemU9ODE5MixhZGRy
-PTEwLjEwLjEwLjEpCgpGb2xsb3dpbmcgaXMgYSBuZnMgbG9ja2luZyB0ZXN0Y2FzZSByZXN1bHQ6
-CgpbbG9ja10koCAuL3J1bnRlc3RzoKAgLXQgL25mc3Rlc3RkaXIxClN0YXJ0aW5nIExPQ0tJTkcg
-dGVzdHM6IHRlc3QgZGlyZWN0b3J5oCAoYXJnOiAtdCkKCiBUZXN0aW5nIG5hdGl2ZSBwb3N0LUxG
-UyBsb2NraW5nCgogQ3JlYXRpbmcgcGFyZW50L2NoaWxkIHN5bmNocm9uaXphdGlvbiBwaXBlcy4K
-ID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0K
-IFRlc3QgIzEgLSBUZXN0IHJlZ2lvbnMgb2YgYW4gdW5sb2NrZWQgZmlsZS4KIKCgoKCgoKAgUGFy
-ZW50OiAxLjGgIC0gRl9URVNUoCBboKCgoKCgIDAsoKCgoKCgIDFdIFBBU1NFRC4KIKCgoKCgoKAg
-UGFyZW50OiAxLjKgIC0gRl9URVNUoCBboKCgoKCgIDAsoCBFTkRJTkddIFBBU1NFRC4KIKCgoKCg
-oKAgUGFyZW50OiAxLjOgIC0gRl9URVNUoCBboKCgoKCgIDAsN2ZmZmZmZmZdIFBBU1NFRC4KIKCg
-oKCgoKAgUGFyZW50OiAxLjSgIC0gRl9URVNUoCBboKCgoKCgIDEsoKCgoKCgIDFdIFBBU1NFRC4K
-IKCgoKCgoKAgUGFyZW50OiAxLjWgIC0gRl9URVNUoCBboKCgoKCgIDEsoCBFTkRJTkddIFBBU1NF
-RC4KIKCgoKCgoKAgUGFyZW50OiAxLjagIC0gRl9URVNUoCBboKCgoKCgIDEsN2ZmZmZmZmZdIFBB
-U1NFRC4KIKCgoKCgoKAgUGFyZW50OiAxLjegIC0gRl9URVNUoCBbN2ZmZmZmZmYsoKCgoKCgIDFd
-IFBBU1NFRC4KIKCgoKCgoKAgUGFyZW50OiAxLjigIC0gRl9URVNUoCBbN2ZmZmZmZmYsoCBFTkRJ
-TkddIFBBU1NFRC4KIKCgoKCgoKAgUGFyZW50OiAxLjmgIC0gRl9URVNUoCBbN2ZmZmZmZmYsN2Zm
-ZmZmZmZdIFdBUk5JTkchCiCgoKCgoKCgIFBhcmVudDogKioqKiBFeHBlY3RlZCBFT1ZFUkZMT1cs
-IHJldHVybmVkIHN1Y2Nlc3MuLi4KCiBUZXN0ICMyIC0gVHJ5IHRvIGxvY2sgdGhlIHdob2xlIGZp
-bGUuCiCgoKCgoKCgIFBhcmVudDogMi4woCAtIEZfVExPQ0sgW6CgoKCgoCAwLKAgRU5ESU5HXSBQ
-QVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi4xoCAtIEZfVEVTVKAgW6CgoKCgoCAwLKCgoKCgoCAx
-XSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi4yoCAtIEZfVEVTVKAgW6CgoKCgoCAwLKAgRU5E
-SU5HXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi4zoCAtIEZfVEVTVKAgW6CgoKCgoCAwLDdm
-ZmZmZmZmXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi40oCAtIEZfVEVTVKAgW6CgoKCgoCAx
-LKCgoKCgoCAxXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi41oCAtIEZfVEVTVKAgW6CgoKCg
-oCAxLKAgRU5ESU5HXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi42oCAtIEZfVEVTVKAgW6Cg
-oKCgoCAxLDdmZmZmZmZmXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi43oCAtIEZfVEVTVKAg
-WzdmZmZmZmZmLKCgoKCgoCAxXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi44oCAtIEZfVEVT
-VKAgWzdmZmZmZmZmLKAgRU5ESU5HXSBQQVNTRUQuCiCgoKCgoKCgIENoaWxkOqAgMi45oCAtIEZf
-VEVTVKAgWzdmZmZmZmZmLDdmZmZmZmZmXSBXQVJOSU5HIQogoKCgoKCgoCBDaGlsZDqgICoqKiog
-RXhwZWN0ZWQgRU9WRVJGTE9XLCByZXR1cm5lZCBFQUNDRVMuLi4KIKCgoKCgoKAgUGFyZW50OiAy
-LjEwIC0gRl9VTE9DSyBboKCgoKCgIDAsoCBFTkRJTkddIFBBU1NFRC4KCiBUZXN0ICM2IC0gVHJ5
-IHRvIGxvY2sgdGhlIE1BWEVPRiBieXRlLgogoKCgoKCgoCBQYXJlbnQ6IDYuMKAgLSBGX1RMT0NL
-IFs3ZmZmZmZmZiygoKCgoKAgMV0gUEFTU0VELgogoKCgoKCgoCBDaGlsZDqgIDYuMaAgLSBGX1RF
-U1SgIFs3ZmZmZmZmZSygoKCgoKAgMV0gUEFTU0VELgogoKCgoKCgoCBDaGlsZDqgIDYuMqAgLSBG
-X1RFU1SgIFs3ZmZmZmZmZSygoKCgoKAgMl0gUEFTU0VELgogoKCgoKCgoCBDaGlsZDqgIDYuM6Ag
-LSBGX1RFU1SgIFs3ZmZmZmZmZSygIEVORElOR10gUEFTU0VELgogoKCgoKCgoCBDaGlsZDqgIDYu
-NKAgLSBGX1RFU1SgIFs3ZmZmZmZmZiygoKCgoKAgMV0gUEFTU0VELgogoKCgoKCgoCBDaGlsZDqg
-IDYuNaAgLSBGX1RFU1SgIFs3ZmZmZmZmZiygoKCgoKAgMl0gV0FSTklORyEKIKCgoKCgoKAgQ2hp
-bGQ6oCAqKioqIEV4cGVjdGVkIEVPVkVSRkxPVywgcmV0dXJuZWQgRUFDQ0VTLi4uCiCgoKCgoKCg
-IENoaWxkOqAgNi42oCAtIEZfVEVTVKAgWzdmZmZmZmZmLKAgRU5ESU5HXSBQQVNTRUQuCiCgoKCg
-oKCgIENoaWxkOqAgNi43oCAtIEZfVEVTVKAgWzgwMDAwMDAwLKAgRU5ESU5HXSBQQVNTRUQuCiCg
-oKCgoKCgIENoaWxkOqAgNi44oCAtIEZfVEVTVKAgWzgwMDAwMDAwLKCgoKCgoCAxXSBQQVNTRUQu
-CiCgoKCgoKCgIENoaWxkOqAgNi45oCAtIEZfVEVTVKAgWzgwMDAwMDAwLDdmZmZmZmZmXSBQQVNT
-RUQuCiCgoKCgoKCgIENoaWxkOqAgNi4xMCAtIEZfVEVTVKAgWzgwMDAwMDAwLDgwMDAwMDAwXSBQ
-QVNTRUQuCiCgoKCgoKCgIFBhcmVudDogNi4xMSAtIEZfVUxPQ0sgWzdmZmZmZmZmLKCgoKCgoCAx
-XSBQQVNTRUQuCgogPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PQoKIKBUZXN0IzEgLCBUZXN0IzKgIGFuZCBUZXN0IzagIFNob3dzIHdhcm5pbmcg
-aW4gbG9ja2luZyAuLiBpLmUuCkV4cGVjdGVkIC5zb21ldGhpbmcuIGFuZCByZXR1cm5lZCBzb21l
-LW90aGVyLXRoaW5nIC4uCgpBcmUgdGhlc2UgbG9ja2luZyB3ZWxsLWtub3duIGlzc3Vlcz8KCkFy
-ZSB0aGVyZSBhbnkgcGF0Y2ggYXZhaWxhYmxlIGZvciB0aGUgc2FtZT+gIEFyZSB0aGVzZSBzZXJp
-b3VzIHdhcm5pbmdzPwoKVGhhbmtzLApSYWh1bAo=
+On Tue, 06 Mar 2012 21:43:41 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+
+> 06.03.2012 19:28, Jeff Layton пишет:
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index 64c24af..141197e 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -19,6 +19,7 @@
+> >   #include "nfsd.h"
+> >   #include "cache.h"
+> >   #include "fault_inject.h"
+> > +#include "netns.h"
+> >
+> >   /*
+> >    *	We have a single directory with several nodes in it.
+> > @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
+> >   }
+> >   #endif
+> >
+> > +int nfsd_net_id;
+> > +static struct pernet_operations nfsd_net_ops = {
+> > +	.id   =&nfsd_net_id,
+> > +	.size = sizeof(struct nfsd_net),
+> > +};
+> > +
+> >   static int __init init_nfsd(void)
+> >   {
+> >   	int retval;
+> >   	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+> >
+> > +	retval = register_pernet_subsys(&nfsd_net_ops);
+> 
+> Hi, Jeff.
+> You've created per-net structure and operations and that's cool.
+> But why don't you move nfsd client tracking control into per-net operations?
+> I.e. add init-exit callbacks in struct pernet_operations and call 
+> nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
+> And since we don't support any other networks namesapce except init_net, then 
+> just skip all others in these callbacks.
+> 
+
+Well...the way I had envisioned it is that you'd create a new net
+namespace container and would then start up nfsd within that container.
+
+Just because we're spawning a new namespace doesn't mean that we'll
+necessarily want to serve nfs from it, right? If we do it this way,
+then we don't end up allocating resources for containers that aren't
+going to use it.
+
+...or do I not understand the "vision" of how all of this is going to
+eventually work?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
