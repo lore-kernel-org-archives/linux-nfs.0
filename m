@@ -1,71 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52954 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4379 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753254Ab2CCOJl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 3 Mar 2012 09:09:41 -0500
-Message-ID: <4F522623.3070709@netapp.com>
-Date: Sat, 03 Mar 2012 09:09:39 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1755491Ab2CFX3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 18:29:54 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: add crc hash to nfs_display_fhandle
+Date: Tue, 6 Mar 2012 23:29:53 +0000
+Message-ID: <1331076593.10560.51.camel@lade.trondhjem.org>
+References: <1331075875-20421-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1331075875-20421-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] NFSv4: parse and display server implementation ids
-References: <1329510026-30403-1-git-send-email-dros@netapp.com> <1329510026-30403-3-git-send-email-dros@netapp.com>
-In-Reply-To: <1329510026-30403-3-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Dros,
-
-On 02/17/2012 03:20 PM, Weston Andros Adamson wrote:
-
-> Shows the implementation ids in /proc/self/mountstats.  This doesn't break
-> the nfs-utils mountstats tool.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
->  fs/nfs/client.c           |    1 +
->  fs/nfs/nfs4proc.c         |   21 +++++++++++++++++++++
->  fs/nfs/nfs4xdr.c          |   42 +++++++++++++++++++++++++++++++++++++-----
->  fs/nfs/super.c            |    8 ++++++++
->  include/linux/nfs_fs_sb.h |    2 ++
->  include/linux/nfs_xdr.h   |   15 +++++++--------
->  6 files changed, 76 insertions(+), 13 deletions(-)
-> 
-
-<snip>
-
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index d05024a..5462225 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -809,6 +809,14 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
->  
->  	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
->  
-> +	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
-> +		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
-
-
-"struct nfs41_impl_id" is only defined when CONFIG_NFS_V4_1 is enabled, so if I compile without NFS 4.1 enabled I get this error:
-
-  CC [M]  fs/nfs/super.o
-/home/bjschuma/linux/modules/fs/nfs/super.c: In function 'nfs_show_stats':
-/home/bjschuma/linux/modules/fs/nfs/super.c:843:14: error: dereferencing pointer to incomplete type
-/home/bjschuma/linux/modules/fs/nfs/super.c:843:29: error: dereferencing pointer to incomplete type
-/home/bjschuma/linux/modules/fs/nfs/super.c:844:14: error: dereferencing pointer to incomplete type
-/home/bjschuma/linux/modules/fs/nfs/super.c:844:37: error: dereferencing pointer to incomplete type
-make[3]: *** [fs/nfs/super.o] Error 1
-
-- Bryan
-
-> +		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
-> +			   "date='%llu,%u'",
-> +			   impl_id->name, impl_id->domain,
-> +			   impl_id->date.seconds, impl_id->date.nseconds);
-> +	}
-> +
->  	seq_printf(m, "\n\tcaps:\t");
->  	seq_printf(m, "caps=0x%x", nfss->caps);
->  	seq_printf(m, ",wtmult=%u", nfss->wtmult);
+T24gVHVlLCAyMDEyLTAzLTA2IGF0IDE4OjE3IC0wNTAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IE1hdGNoIHdpcmVzaGFyaydzIENSQy0zMiBoYXNoIGZvciBlYXNpZXIgZGVidWdn
+aW5nLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFuZHJvcyBBZGFtc29uIDxkcm9zQG5l
+dGFwcC5jb20+DQo+IC0tLQ0KPiBSZXF1ZXN0ZWQgYnkgQ2h1Y2sgYW5kIG90aGVycy4NCj4gDQo+
+IE5vdGhpbmcgaW4gdHJvbmQvbmZzLWZvci1uZXh0IHVzZXMgbmZzX2Rpc3BsYXlfZmhhbmRsZSgp
+IHlldC4NCj4gSSB0ZXN0ZWQgYnkgY2FsbGluZyBpdCBpbiBuZnM0eGRyLmM6ZW5jb2RlX3B1dGZo
+KCkuDQo+IA0KPiAgZnMvbmZzL2lub2RlLmMgfCAgICA4ICsrKysrKystDQo+ICAxIGZpbGVzIGNo
+YW5nZWQsIDcgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQg
+YS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9kZS5jDQo+IGluZGV4IDk5YTRmNTIuLmMxZjQ0
+ZTkgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9pbm9kZS5jDQo+ICsrKyBiL2ZzL25mcy9pbm9kZS5j
+DQo+IEBAIC0zOSw2ICszOSw3IEBADQo+ICAjaW5jbHVkZSA8bGludXgvc2xhYi5oPg0KPiAgI2lu
+Y2x1ZGUgPGxpbnV4L2NvbXBhdC5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L2ZyZWV6ZXIuaD4NCj4g
+KyNpbmNsdWRlIDxsaW51eC9jcmMzMi5oPg0KPiAgDQo+ICAjaW5jbHVkZSA8YXNtL3N5c3RlbS5o
+Pg0KPiAgI2luY2x1ZGUgPGFzbS91YWNjZXNzLmg+DQo+IEBAIC0xMDU3LDEzICsxMDU4LDE4IEBA
+IHN0cnVjdCBuZnNfZmggKm5mc19hbGxvY19maGFuZGxlKHZvaWQpDQo+ICB2b2lkIF9uZnNfZGlz
+cGxheV9maGFuZGxlKGNvbnN0IHN0cnVjdCBuZnNfZmggKmZoLCBjb25zdCBjaGFyICpjYXB0aW9u
+KQ0KPiAgew0KPiAgCXVuc2lnbmVkIHNob3J0IGk7DQo+ICsJdTMyIGNyYzsNCj4gIA0KPiAgCWlm
+IChmaC0+c2l6ZSA9PSAwIHx8IGZoID09IE5VTEwpIHsNCj4gIAkJcHJpbnRrKEtFUk5fREVGQVVM
+VCAiJXMgYXQgJXAgaXMgZW1wdHlcbiIsIGNhcHRpb24sIGZoKTsNCj4gIAkJcmV0dXJuOw0KPiAg
+CX0NCj4gIA0KPiAtCXByaW50ayhLRVJOX0RFRkFVTFQgIiVzIGF0ICVwIGlzICV1IGJ5dGVzOlxu
+IiwgY2FwdGlvbiwgZmgsIGZoLT5zaXplKTsNCj4gKwkvKiBtYXRjaCB3aXJlc2hhcmsncyBDUkMt
+MzIgaGFzaCAqLw0KPiArCWNyYyA9IH5jcmMzMigweEZGRkZGRkZGLCAmZmgtPmRhdGFbMF0sIGZo
+LT5zaXplKTsNCj4gKw0KPiArCXByaW50ayhLRVJOX0RFRkFVTFQgIiVzIGF0ICVwIGlzICV1IGJ5
+dGVzLCBjcmM6IDB4JTA4eDpcbiIsDQo+ICsJICAgICAgICAgICAgICAgICAgICBjYXB0aW9uLCBm
+aCwgZmgtPnNpemUsIGNyYyk7DQo+ICAJZm9yIChpID0gMDsgaSA8IGZoLT5zaXplOyBpICs9IDE2
+KSB7DQo+ICAJCV9fYmUzMiAqcG9zID0gKF9fYmUzMiAqKSZmaC0+ZGF0YVtpXTsNCkNvdWxkIHdl
+IHNwbGl0IHRoaXMgaW50byAyIGZ1bmN0aW9uczoNCg0KbmZzX2Rpc3BsYXlfZmhhbmRsZV9oYXNo
+KCkgYW5kIG5mc19kaXNwbGF5X2ZoYW5kbGUoKSwgd2l0aCB0aGUgbGF0dGVyDQpjYWxsaW5nIHRo
+ZSBmb3JtZXI/DQoNClRoYXQgd2lsbCBhbGxvdyB1cyB0byBzZWxlY3QgYm90aCBhIHNob3J0IGZv
+cm0gYW5kIGEgZnVsbCBmb3JtLiBJIGNhbg0Kc2VlIHRoZSBmb3JtZXIgYmVpbmcgdXNlZCBpbiBz
+b21ldGhpbmcgbGlrZSBuZnNfZmhnZXQoKSwgb3IgdGhlDQpyZXZhbGlkYXRpb24gZnVuY3Rpb25z
+LCB3aGlsZSB0aGUgbGF0dGVyIHdvdWxkIGJlIHVzZWZ1bCBpbg0KKl9wcm9jX2xvb2t1cCgpIG9y
+IG5mc19pbnN0YW50aWF0ZSgpLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg0K
