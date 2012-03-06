@@ -1,60 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59272 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031140Ab2CITtv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 14:49:51 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29Jno8n029967
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:49:50 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/7] Kill SPKM3: Remove spkm3 references from svcgssd
-Date: Fri,  9 Mar 2012 14:49:40 -0500
-Message-Id: <1331322586-4631-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1331322586-4631-1-git-send-email-simo@redhat.com>
-References: <1331322586-4631-1-git-send-email-simo@redhat.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:34497 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030708Ab2CFP3C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:29:02 -0500
+Received: by gghe5 with SMTP id e5so1506351ggh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Mar 2012 07:29:01 -0800 (PST)
+MIME-Version: 1.0
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
+Subject: [PATCH v9 4/6] nfsd: add a header describing upcall to nfsdcld
+Date: Tue,  6 Mar 2012 10:28:51 -0500
+Message-Id: <1331047733-1641-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
+References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- utils/gssd/svcgssd_mech2file.c |    1 -
- utils/gssd/svcgssd_proc.c      |    8 ++------
- 2 files changed, 2 insertions(+), 7 deletions(-)
+The daemon takes a versioned binary struct. Hopefully this should allow
+us to revise the struct later if it becomes necessary.
 
-diff --git a/utils/gssd/svcgssd_mech2file.c b/utils/gssd/svcgssd_mech2file.c
-index 65de8d01fedba026f35b11c4bd689f634579ef8d..a3177f6ff8ab7e0ee5eef7c830ce2c2042553c3c 100644
---- a/utils/gssd/svcgssd_mech2file.c
-+++ b/utils/gssd/svcgssd_mech2file.c
-@@ -53,7 +53,6 @@ struct mech2file {
- 
- struct mech2file m2f[] = {
- 	{{9, "\052\206\110\206\367\022\001\002\002"}, "krb5"},
--	{{7, "\053\006\001\005\005\001\003"}, "spkm3"},
- 	{{7, "\053\006\001\005\005\001\009"}, "lipkey"},
- 	{{0,0},""},
- };
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index c714d99dd654aaff3b3369bebcbc0df0946284dd..0d4f78d9668396aaebb05ab97804cfb1e8d5ed5a 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -369,12 +369,8 @@ get_hostbased_client_name(gss_name_t client_name, gss_OID mech,
- 	if (g_OID_equal(&krb5oid, mech)) {
- 		if (get_krb5_hostbased_name(&name, &cname) == 0)
- 			*hostbased_name = cname;
--	}
--
--	/* No support for SPKM3, just print a warning (for now) */
--	if (g_OID_equal(&spkm3oid, mech)) {
--		printerr(1, "WARNING: get_hostbased_client_name: "
--			 "no hostbased_name support for SPKM3\n");
-+	} else {
-+		printerr(1, "WARNING: unknown/unsupport mech OID\n");
- 	}
- 
- 	res = 0;
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 56 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
+
+diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+new file mode 100644
+index 0000000..f14a9ab
+--- /dev/null
++++ b/include/linux/nfsd/cld.h
+@@ -0,0 +1,56 @@
++/*
++ * Upcall description for nfsdcld communication
++ *
++ * Copyright (c) 2012 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef _NFSD_CLD_H
++#define _NFSD_CLD_H
++
++/* latest upcall version available */
++#define CLD_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++enum cld_command {
++	Cld_Create,		/* create a record for this cm_id */
++	Cld_Remove,		/* remove record of this cm_id */
++	Cld_Check,		/* is this cm_id allowed? */
++	Cld_GraceDone,		/* grace period is complete */
++};
++
++/* representation of long-form NFSv4 client ID */
++struct cld_name {
++	uint16_t	cn_len;				/* length of cm_id */
++	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
++} __attribute__((packed));
++
++/* message struct for communication with userspace */
++struct cld_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		struct cld_name	cm_name;
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLD_H */
 -- 
 1.7.7.6
 
