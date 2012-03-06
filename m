@@ -1,76 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vx0-f174.google.com ([209.85.220.174]:49826 "EHLO
-	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754050Ab2CTSll convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2012 14:41:41 -0400
-Received: by vcqp1 with SMTP id p1so328135vcq.19
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2012 11:41:41 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:60003 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752598Ab2CFP2s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 10:28:48 -0500
+Date: Tue, 6 Mar 2012 10:28:43 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120306152842.GA8339@pad.fieldses.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
+ <20120306020819.GH31388@pad.fieldses.org>
+ <20120306151816.GB32282@thunk.org>
 MIME-Version: 1.0
-In-Reply-To: <1332262605.2963.61.camel@lade.trondhjem.org>
-References: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
-	<1332262605.2963.61.camel@lade.trondhjem.org>
-Date: Tue, 20 Mar 2012 14:41:40 -0400
-Message-ID: <CADnza47KuSGqve_LQVQAwT9H+ujwN2c01pRR_Dj46Q+6Fz3KuQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFS4.1: filelayout_commit_pagelist needs to pass back error
-From: Fred Isaman <faisaman4@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120306151816.GB32282@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 20, 2012 at 12:56 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2012-03-20 at 12:25 -0400, Fred Isaman wrote:
->> It was reporting success even if it did nothing.
->>
->> Note this is still not right.  Caller nfs_commit_unstable_pages
->> assumes this is all or none, and count is going to be off.
->>
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->>  fs/nfs/nfs4filelayout.c |    4 +++-
->>  1 files changed, 3 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index e0bdbf4..08625a8 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -1027,6 +1027,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->>       struct nfs_write_data   *data, *tmp;
->>       LIST_HEAD(list);
->>       unsigned int nreq = 0;
->> +     int status = PNFS_ATTEMPTED;
->>
->>       if (!list_empty(mds_pages)) {
->>               data = nfs_commitdata_alloc();
->> @@ -1042,6 +1043,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
->>
->>       if (nreq == 0) {
->>               nfs_commit_clear_lock(NFS_I(inode));
->> +             status = -ENOMEM;
->
-> What if nreq != 0, but some of the allocations still failed?
->
-> Then there's the issue of what if the one or more of the calls to
-> nfs_initiate_commit() fail?
->
-> Finally, there is the question of what if the commit RPC calls
-> themselves fail, or cause a retransmission?
->
-> IOW: Why do we single out some of these errors as worthy of reporting,
-> but not others? The cleanup seems to be the same in all cases above
-> (mark the requests for retransmission and mark the inode dirty).
->
+On Tue, Mar 06, 2012 at 10:18:16AM -0500, Ted Ts'o wrote:
+> On Mon, Mar 05, 2012 at 09:08:19PM -0500, J. Bruce Fields wrote:
+> > Yes, that would be fine.
+> > 
+> > (There may well be some conflict: simplest might be if you can get that
+> > pushed out to a stable public branch somewhere, hopefully before the
+> > merge window opens, and that'll give me a chance to pull it and handle
+> > any merge conflicts.
+> 
+> Are the commits you're worried about on the NFS side already in
+> linux-next?
 
-I agree (which is why I didn't fix it "in full"), but I haven't traced
-all the VFS callers and their expectations.  However, at one point
-nfs_commit_inode returned the count of the number of pages sent to RPC
-(and nfs_commit_unstable_pages uses that fact).  It would not be too
-hard to get that to happen again.  Or stop returning a count
-entirely...which means doing something about
-nfs_commit_unstable_pages.  Or at least make clear in comments that
-the count returned is an undercount
+No (though there might be some other conflicts there I haven't thought
+of).
 
-Fred
+> If so, I'll do a quick test merge and see if there are
+> any conflicts.  If so, I'll segregate out these patches into a
+> separate pre-merge branch --- and then if you like you could pull them
+> into your branch and we can deal with it that way.
+
+That sounds like a good way to do it regardless?
+
+--b.
