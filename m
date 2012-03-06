@@ -1,56 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45360 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28699 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030772Ab2CFOxX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 09:53:23 -0500
+	id S1757893Ab2CFO5U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 09:57:20 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "Adamson, Andy" <William.Adamson@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until
- stateid is tested
-Date: Tue, 6 Mar 2012 14:53:22 +0000
-Message-ID: <1331045602.3260.7.camel@lade.trondhjem.org>
+Subject: Re: [PATCH 1/3] NFSv4.1: Fix the checking of the stateid when
+ returning a delegation
+Date: Tue, 6 Mar 2012 14:57:19 +0000
+Message-ID: <1331045839.3260.8.camel@lade.trondhjem.org>
 References: <1331045205-3031-1-git-send-email-andros@netapp.com>
-	 <1331045205-3031-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1331045205-3031-4-git-send-email-andros@netapp.com>
+	 <1331045205-3031-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1331045205-3031-2-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 T24gVHVlLCAyMDEyLTAzLTA2IGF0IDA5OjQ2IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IG5mczQx
-X29wZW5fZXhwaXJlZCgpIHdpbGwgdGVzdCB0aGUgZGVsZWdhdGlvbiBzdGF0ZWlkIGJhc2VkIG9u
-DQo+IE5GU19ERUxFR0FURURfU1RBVEUgYmVpbmcgc2V0LiBJZiB0aGUgc3RhdGVpZCBpcyBiYWQs
-IG5mczRfb3Blbl9yZWNvdmVyDQo+IHdpbGwgY2xlYXIgdGhlIE5GU19ERUxFR0FURURfU1RBVEUg
-Yml0IHJlY292ZXJpbmcgdGhlIGRlbGVnYXRpb24uDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5
-IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9y
-Zw0KPiAtLS0NCj4gIGZzL25mcy9uZnM0c3RhdGUuYyB8ICAgIDUgKysrKy0NCj4gIDEgZmlsZXMg
-Y2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdp
-dCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBpbmRleCA3YmQ5
-ODIyLi40NGZjZDYwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gKysrIGIv
-ZnMvbmZzL25mczRzdGF0ZS5jDQo+IEBAIC02OTYsNyArNjk2LDEwIEBAIHN0YXRpYyB2b2lkIF9f
-bmZzNF9jbG9zZShzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ICAJCQljYWxsX2Nsb3NlIHw9
-IHRlc3RfYml0KE5GU19PX1JEV1JfU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpOw0KPiAgCQl9DQo+ICAJ
-CWlmIChuZXdzdGF0ZSA9PSAwKQ0KPiArew0KPiArcHJpbnRrKCIlcyBDTEVBUiBORlNfREVMRUdB
-VEVEX1NUQVRFIHN0YXRlICVwXG4iLCBfX2Z1bmNfXywgc3RhdGUpOw0KPiAgCQkJY2xlYXJfYml0
-KE5GU19ERUxFR0FURURfU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpOw0KPiArfVwNCg0KRXd3dy4uLi4u
-DQoNCj4gIAl9DQo+ICAJbmZzNF9zdGF0ZV9zZXRfbW9kZV9sb2NrZWQoc3RhdGUsIG5ld3N0YXRl
-KTsNCj4gIAlzcGluX3VubG9jaygmb3duZXItPnNvX2xvY2spOw0KPiBAQCAtMTA5Nyw3ICsxMTAw
-LDcgQEAgdm9pZCBuZnM0X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3ZlcnkoY29uc3Qgc3RydWN0IG5m
-c19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mczQNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVu
-dCAqY2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0KPiAgDQo+IC0JaWYgKHRlc3RfYW5kX2NsZWFy
-X2JpdChORlNfREVMRUdBVEVEX1NUQVRFLCAmc3RhdGUtPmZsYWdzKSkNCj4gKwlpZiAodGVzdF9i
-aXQoTkZTX0RFTEVHQVRFRF9TVEFURSwgJnN0YXRlLT5mbGFncykpDQo+ICAJCW5mc19hc3luY19p
-bm9kZV9yZXR1cm5fZGVsZWdhdGlvbihzdGF0ZS0+aW5vZGUsICZzdGF0ZS0+c3RhdGVpZCk7DQo+
-ICAJbmZzNF9zdGF0ZV9tYXJrX3JlY2xhaW1fbm9ncmFjZShjbHAsIHN0YXRlKTsNCj4gIAluZnM0
-X3NjaGVkdWxlX3N0YXRlX21hbmFnZXIoY2xwKTsNCg0KQWN0dWFsbHksIHRoZSBsYXRlc3QgaW5j
-YXJuYXRpb24gb2YgdGhlIHBhdGNoIDIvMyByZW1vdmVzIHRoZQ0KYXN5bmNfaW5vZGVfcmV0dXJu
-X2RlbGVnYXRpb24gZnJvbSBuZnM0X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3ZlcnkuIFdlDQpkb24n
-dCBuZWVkIHRvIHJldHVybiB0aGUgZGVsZWdhdGlvbiBpZiBhbGwgdGhlIHN0YXRlaWRzIGhhdmUg
-YmVlbiBtYXJrZWQNCmZvciByZXR1cm4sIGFuZCB3ZSd2ZSB0aHJvd24gb3V0IHRoZSBkZWxlZ2F0
-aW9uIGl0c2VsZi4NCg0KTGV0J3Mgbm90IGh1cnJ5IHRoaXMgaW50byB0aGUgc3RhYmxlIHRyZWUg
-eWV0Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+ZToNCj4gRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4N
+Cj4gDQo+IG5mczQxX3ZhbGlkYXRlX2RlbGVnYXRpb25fc3RhdGVpZCBpcyBicm9rZW4gaWYgd2Ug
+c3VwcGx5IGEgc3RhdGVpZCB3aXRoDQo+IGEgbm9uLXplcm8gc2VxdWVuY2UgaWQuIEluc3RlYWQg
+b2YgdHJ5aW5nIHRvIG1hdGNoIHRoZSBzZXF1ZW5jZSBpZCwNCj4gdGhlIGZ1bmN0aW9uIGFzc3Vt
+ZXMgdGhhdCB3ZSBhbHdheXMgd2FudCB0byBlcnJvci4gV2hpbGUgdGhpcyBpcw0KPiB0cnVlIGZv
+ciBhIGRlbGVnYXRpb24gY2FsbGJhY2ssIGl0IGlzIG5vdCB0cnVlIGluIGdlbmVyYWwuDQo+IA0K
+PiBBbHNvIGZpeCBhIHR5cG8gaW4gbmZzNF9jYWxsYmFja19yZWNhbGwuDQo+IA0KPiBSZXBvcnRl
+ZC1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gU2lnbmVkLW9mZi1ieTog
+VHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCg0KRGlkIHlvdSBy
+ZWFsbHkgaW50ZW5kIHRvIENjOiBzdGFibGUgb24gdGhlc2UgYmVmb3JlIHdlJ3ZlIGNvbW1pdHRl
+ZCB0aGVtDQp1cHN0cmVhbT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0KDQo=
