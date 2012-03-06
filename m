@@ -1,130 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18904 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22733 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756813Ab2CEQuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 11:50:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/16] NFSv4: Minor clean ups for encode_string()
-Date: Mon,  5 Mar 2012 11:50:15 -0500
-Message-Id: <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330966221-17164-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-9-git-send-email-Trond.Myklebust@netapp.com>
+	id S1031065Ab2CFUsK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 15:48:10 -0500
+Date: Tue, 6 Mar 2012 15:48:02 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
+Message-ID: <20120306154802.00e76225@tlielax.poochiereds.net>
+In-Reply-To: <20120306133124.5dbef60c@tlielax.poochiereds.net>
+References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
+	<1331047733-1641-4-git-send-email-jlayton@redhat.com>
+	<4F564CCD.9040708@parallels.com>
+	<20120306133124.5dbef60c@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   40 ++++++++++++++++++----------------------
- 1 files changed, 18 insertions(+), 22 deletions(-)
+On Tue, 6 Mar 2012 13:31:24 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 76ef986..d6e8306 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -897,8 +897,7 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
- {
- 	__be32 *p;
- 
--	p = xdr_reserve_space(xdr, 4 + len);
--	BUG_ON(p == NULL);
-+	p = reserve_space(xdr, 4 + len);
- 	xdr_encode_opaque(p, str, len);
- }
- 
-@@ -915,8 +914,8 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
- 
- 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
--	p = reserve_space(xdr, 4 + hdr->taglen + 8);
--	p = xdr_encode_opaque(p, hdr->tag, hdr->taglen);
-+	encode_string(xdr, hdr->taglen, hdr->tag);
-+	p = reserve_space(xdr, 8);
- 	*p++ = cpu_to_be32(hdr->minorversion);
- 	hdr->nops_p = p;
- 	*p = cpu_to_be32(hdr->nops);
-@@ -1216,9 +1215,9 @@ static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + name->len);
--	*p++ = cpu_to_be32(OP_LINK);
--	xdr_encode_opaque(p, name->name, name->len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_LINK);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_link_maxsz;
- }
-@@ -1324,12 +1323,11 @@ static void encode_release_lockowner(struct xdr_stream *xdr, const struct nfs_lo
- 
- static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	int len = name->len;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_LOOKUP);
--	xdr_encode_opaque(p, name->name, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_LOOKUP);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_lookup_maxsz;
- }
-@@ -1521,12 +1519,11 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- static void
- encode_putfh(struct xdr_stream *xdr, const struct nfs_fh *fh, struct compound_hdr *hdr)
- {
--	int len = fh->size;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_PUTFH);
--	xdr_encode_opaque(p, fh->data, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_PUTFH);
-+	encode_string(xdr, fh->size, fh->data);
- 	hdr->nops++;
- 	hdr->replen += decode_putfh_maxsz;
- }
-@@ -1628,9 +1625,9 @@ static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struc
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + name->len);
--	*p++ = cpu_to_be32(OP_REMOVE);
--	xdr_encode_opaque(p, name->name, name->len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_REMOVE);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_remove_maxsz;
- }
-@@ -1776,12 +1773,11 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
- 
- static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
- {
--	int len = name->len;
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8 + len);
--	*p++ = cpu_to_be32(OP_SECINFO);
--	xdr_encode_opaque(p, name->name, len);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_SECINFO);
-+	encode_string(xdr, name->len, name->name);
- 	hdr->nops++;
- 	hdr->replen += decode_secinfo_maxsz;
- }
+> On Tue, 06 Mar 2012 21:43:41 +0400
+> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> 
+> > 06.03.2012 19:28, Jeff Layton пишет:
+> > > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > > index 64c24af..141197e 100644
+> > > --- a/fs/nfsd/nfsctl.c
+> > > +++ b/fs/nfsd/nfsctl.c
+> > > @@ -19,6 +19,7 @@
+> > >   #include "nfsd.h"
+> > >   #include "cache.h"
+> > >   #include "fault_inject.h"
+> > > +#include "netns.h"
+> > >
+> > >   /*
+> > >    *	We have a single directory with several nodes in it.
+> > > @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
+> > >   }
+> > >   #endif
+> > >
+> > > +int nfsd_net_id;
+> > > +static struct pernet_operations nfsd_net_ops = {
+> > > +	.id   =&nfsd_net_id,
+> > > +	.size = sizeof(struct nfsd_net),
+> > > +};
+> > > +
+> > >   static int __init init_nfsd(void)
+> > >   {
+> > >   	int retval;
+> > >   	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+> > >
+> > > +	retval = register_pernet_subsys(&nfsd_net_ops);
+> > 
+> > Hi, Jeff.
+> > You've created per-net structure and operations and that's cool.
+> > But why don't you move nfsd client tracking control into per-net operations?
+> > I.e. add init-exit callbacks in struct pernet_operations and call 
+> > nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
+> > And since we don't support any other networks namesapce except init_net, then 
+> > just skip all others in these callbacks.
+> > 
+> 
+> Well...the way I had envisioned it is that you'd create a new net
+> namespace container and would then start up nfsd within that container.
+> 
+> Just because we're spawning a new namespace doesn't mean that we'll
+> necessarily want to serve nfs from it, right? If we do it this way,
+> then we don't end up allocating resources for containers that aren't
+> going to use it.
+> 
+> ...or do I not understand the "vision" of how all of this is going to
+> eventually work?
+> 
+
+To carry this thought a little further...
+
+The pernet operations get registered whenever the module is plugged in.
+The reason for doing it the way I did it here is that we don't need or
+really want to do the client_tracking_init until we start up nfsd.
+
+This is particularly the case with the legacy client tracker, which
+slurps in the contents of v4recoverydir when it initializes. We don't
+really want to do that at module plugin, I don't think.
+
 -- 
-1.7.7.6
-
+Jeff Layton <jlayton@redhat.com>
