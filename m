@@ -1,51 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8808 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756354Ab2COCYz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Mar 2012 22:24:55 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Paul Gortmaker <paul.gortmaker@windriver.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS related randconfig failure on powerpc ('nfs_debug'
- undeclared)
-Date: Thu, 15 Mar 2012 02:24:52 +0000
-Message-ID: <1331778292.9623.22.camel@lade.trondhjem.org>
-References: <CAP=VYLoNpAU7YAvy+3KrqpBErbJtE9i4_3uCyv-QaMgHiD6evw@mail.gmail.com>
-In-Reply-To: <CAP=VYLoNpAU7YAvy+3KrqpBErbJtE9i4_3uCyv-QaMgHiD6evw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:42668 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1758045Ab2CFAOi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 19:14:38 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1S4i31-0003mi-LI
+	for linux-nfs@vger.kernel.org; Mon, 05 Mar 2012 19:14:36 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] nfsmount: Fixed parsing error in the nfsmount.conf code.
+Date: Mon,  5 Mar 2012 19:13:20 -0500
+Message-Id: <1330992800-6895-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTE0IGF0IDE5OjI1IC0wNDAwLCBQYXVsIEdvcnRtYWtlciB3cm90ZToN
-Cj4gSnVzdCBhIGhlYWRzIHVwIHRoYXQgbGludXgtbmV4dCBidWlsZHMgZm91bmQgdGhpczsNCj4g
-DQo+IGZzL25mcy9uZnM0eGRyLmM6MzQ0MzoyNzogZXJyb3I6ICduZnNfZGVidWcnIHVuZGVjbGFy
-ZWQgKGZpcnN0IHVzZSBpbg0KPiB0aGlzIGZ1bmN0aW9uKQ0KPiBtYWtlWzNdOiAqKiogW2ZzL25m
-cy9uZnM0eGRyLm9dIEVycm9yIDENCj4gbWFrZVsyXTogKioqIFtmcy9uZnNdIEVycm9yIDINCj4g
-bWFrZVsxXTogKioqIFtmc10gRXJyb3IgMg0KPiBtYWtlOiAqKiogW3N1Yi1tYWtlXSBFcnJvciAy
-DQo+IA0KPiBGdWxsIGJ1aWxkIGxvZyBhdDoNCj4gDQo+IGh0dHA6Ly9raXNza2IuZWxsZXJtYW4u
-aWQuYXUva2lzc2tiL2J1aWxkcmVzdWx0LzU4NzE5NzMvDQo+IA0KPiBQYXVsLg0KDQpIaSBQYXVs
-LA0KDQpEb2VzIHRoZSBmb2xsb3dpbmcgZml4IHdvcmsgZm9yIHlvdT8NCg0KVGhhbmtzIQ0KICBU
-cm9uZA0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0NCkZyb20gOTVhMTNmN2IzM2JlODdkODVkOGU2NjUyMTI2YTNmNGQ2NGQxNjRkYiBNb24g
-U2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20+DQpEYXRlOiBXZWQsIDE0IE1hciAyMDEyIDIxOjU1OjAxIC0wNDAwDQpT
-dWJqZWN0OiBbUEFUQ0hdIE5GUzogRml4IGEgY29tcGlsZSBlcnJvciB3aGVuICFkZWZpbmVkIE5G
-U19ERUJVRw0KDQpXZSBzaG91bGQgdXNlIHRoZSAnaWZkZWJ1Zycgd3JhcHBlciByYXRoZXIgdGhh
-biB0cnlpbmcgdG8gaW5saW5lDQp0ZXN0cyBvZiBuZnNfZGVidWcsIHNvIHRoYXQgdGhlIGNvZGUg
-Y29tcGlsZXMgY29ycmVjdGx5IHdoZW4gd2UNCmRvbid0IGRlZmluZSBORlNfREVCVUcuDQoNClJl
-cG9ydGVkLWJ5OiBQYXVsIEdvcnRtYWtlciA8cGF1bC5nb3J0bWFrZXJAd2luZHJpdmVyLmNvbT4N
-ClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20+DQotLS0NCiBmcy9uZnMvbmZzNHhkci5jIHwgICAgMiArLQ0KIDEgZmlsZXMgY2hhbmdlZCwg
-MSBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25m
-czR4ZHIuYyBiL2ZzL25mcy9uZnM0eGRyLmMNCmluZGV4IGY3ZTA2NGQuLmM3NGZkYjEgMTAwNjQ0
-DQotLS0gYS9mcy9uZnMvbmZzNHhkci5jDQorKysgYi9mcy9uZnMvbmZzNHhkci5jDQpAQCAtMzQ0
-MCw3ICszNDQwLDcgQEAgc3RhdGljIGludCBkZWNvZGVfcGF0aG5hbWUoc3RydWN0IHhkcl9zdHJl
-YW0gKnhkciwgc3RydWN0IG5mczRfcGF0aG5hbWUgKnBhdGgpDQogCQlzdGF0dXMgPSBkZWNvZGVf
-b3BhcXVlX2lubGluZSh4ZHIsICZjb21wb25lbnQtPmxlbiwgJmNvbXBvbmVudC0+ZGF0YSk7DQog
-CQlpZiAodW5saWtlbHkoc3RhdHVzICE9IDApKQ0KIAkJCWdvdG8gb3V0X2VpbzsNCi0JCWlmICh1
-bmxpa2VseShuZnNfZGVidWcgJiBORlNEQkdfWERSKSkNCisJCWlmZGVidWcgKFhEUikNCiAJCQlw
-cl9jb250KCIlcyUuKnMgIiwNCiAJCQkJKHBhdGgtPm5jb21wb25lbnRzICE9IG4gPyAiLyAiIDog
-IiIpLA0KIAkJCQljb21wb25lbnQtPmxlbiwgY29tcG9uZW50LT5kYXRhKTsNCi0tIA0KMS43Ljcu
-Ng0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
-Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+When the options where prefixed with spaces (instead of tabs)
+the second option in the list was missed to so a miscalculation
+the the nfsmount.conf parsing code.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/nfs/conffile.c |   19 ++++++-------------
+ 1 files changed, 6 insertions(+), 13 deletions(-)
+
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index 3990578..2f1e235 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -211,7 +211,7 @@ static void
+ conf_parse_line(int trans, char *line, size_t sz)
+ {
+ 	char *val, *ptr;
+-	size_t i;
++	size_t i, valsize;
+ 	size_t j;
+ 	static char *section = 0;
+ 	static char *arg = 0;
+@@ -298,23 +298,16 @@ conf_parse_line(int trans, char *line, size_t sz)
+ 			}
+ 			line[strcspn (line, " \t=")] = '\0';
+ 			val = line + i + 1 + strspn (line + i + 1, " \t");
++			valsize = 0;
++			while (val[valsize++]);
+ 
+-			/* Skip trailing comments, if any */
+-			for (j = 0; j < sz - (val - line); j++) {
+-				if (val[j] == '#' || val[j] == ';') {
++			/* Skip trailing spaces and comments */
++			for (j = 0; j < valsize; j++) {
++				if (val[j] == '#' || val[j] == ';' || isspace(val[j])) {
+ 					val[j] = '\0';
+ 					break;
+ 				}
+ 			}
+-
+-			/* Skip trailing whitespace, if any */
+-			for (j--; j > 0; j--) {
+-				if (isspace(val[j]))
+-					val[j] = '\0';
+-				else 
+-					break;
+-			}
+-
+ 			/* XXX Perhaps should we not ignore errors?  */
+ 			conf_set(trans, section, arg, line, val, 0, 0);
+ 			return;
+-- 
+1.7.7.5
+
