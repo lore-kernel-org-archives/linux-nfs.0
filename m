@@ -1,219 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:51937 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030598Ab2CBUmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 15:42:39 -0500
-Received: by mail-yw0-f46.google.com with SMTP id m54so1008975yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 12:42:38 -0800 (PST)
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:34776 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030900Ab2CFPMH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:12:07 -0500
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v8 3/6] nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
-Date: Fri,  2 Mar 2012 15:42:27 -0500
-Message-Id: <1330720950-5872-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
-References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1331045602.3260.7.camel@lade.trondhjem.org>
+References: <1331045205-3031-1-git-send-email-andros@netapp.com>
+	<1331045205-3031-4-git-send-email-andros@netapp.com>
+	<1331045602.3260.7.camel@lade.trondhjem.org>
+Date: Tue, 6 Mar 2012 10:12:05 -0500
+Message-ID: <CAHVgHyXMqqP9UDumwdAzQyZAS2o-JoLrzYUMkgs0xNtz3X3Xvw@mail.gmail.com>
+Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until stateid
+ is tested
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We'll need a way to flag the nfs4_client as already being recorded on
-stable storage so that we don't continually upcall. Currently, that's
-recorded in the cl_firststate field of the client struct. Using an
-entire u32 to store a flag is rather wasteful though.
+On Tue, Mar 6, 2012 at 9:53 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2012-03-06 at 09:46 -0500, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> nfs41_open_expired() will test the delegation stateid based on
+>> NFS_DELEGATED_STATE being set. If the stateid is bad, nfs4_open_recover
+>> will clear the NFS_DELEGATED_STATE bit recovering the delegation.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Cc: stable@vger.kernel.org
+>> ---
+>>  fs/nfs/nfs4state.c |    5 ++++-
+>>  1 files changed, 4 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 7bd9822..44fcd60 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -696,7 +696,10 @@ static void __nfs4_close(struct nfs4_state *state,
+>>                       call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+>>               }
+>>               if (newstate == 0)
+>> +{
+>> +printk("%s CLEAR NFS_DELEGATED_STATE state %p\n", __func__, state);
+>>                       clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>> +}\
+>
+> Ewww.....
+>
+>>       }
+>>       nfs4_state_set_mode_locked(state, newstate);
+>>       spin_unlock(&owner->so_lock);
+>> @@ -1097,7 +1100,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
+>>  {
+>>       struct nfs_client *clp = server->nfs_client;
+>>
+>> -     if (test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
+>> +     if (test_bit(NFS_DELEGATED_STATE, &state->flags))
+>>               nfs_async_inode_return_delegation(state->inode, &state->stateid);
+>>       nfs4_state_mark_reclaim_nograce(clp, state);
+>>       nfs4_schedule_state_manager(clp);
+>
+> Actually, the latest incarnation of the patch 2/3 removes the
+> async_inode_return_delegation from nfs4_schedule_stateid_recovery.
 
-The cl_cb_flags field is only using 2 bits right now, so repurpose that
-to a generic flags field. Rename NFSD4_CLIENT_KILL to
-NFSD4_CLIENT_CB_KILL to make it evident that it's part of the callback
-flags. Add a mask that we can use for existing checks that look to see
-whether any flags are set, so that the new flags don't interfere.
+OK - but I think we still need to postpone clearing the
+NFS_DELEGATED_STATE bit until after calling nfs41_open_expired.
+Otherwise nfs41_check_expired_stateid will not test the delegation
+stateid, and nfs4_open_recover will not be called, as no stateid is
+deemed bad, and the OPEN with CLAIM_NULL to (potentially) recover the
+delegation will not be sent. In this case, the old bad delegation
+stateid will be resent.
 
-Convert all references to cl_firstate to the NFSD4_CLIENT_STABLE flag,
-and add a new NFSD4_CLIENT_RECLAIM_COMPLETE flag. I believe there's an
-existing bug here too that this should fix:
+> We
+> don't need to return the delegation if all the stateids have been marked
+> for return, and we've thrown out the delegation itself.
+>
+> Let's not hurry this into the stable tree yet...
 
-nfs4_set_claim_prev sets cl_firststate on the first CLAIM_PREV open.
-nfsd4_reclaim_complete looks for that flag though, and returns
-NFS4ERR_COMPLETE_ALREADY if it's set. The upshot here is that once a
-client does a CLAIM_PREV open, the RECLAIM_COMPLETE call will fail.
-Let's fix this by adding a new RECLAIM_COMPLETE flag on the client to
-indicate that that's already been done.
+OK.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4callback.c |   14 +++++++-------
- fs/nfsd/nfs4proc.c     |    3 ++-
- fs/nfsd/nfs4recover.c  |   20 +++++++++++++-------
- fs/nfsd/nfs4state.c    |    4 ++--
- fs/nfsd/state.h        |   10 ++++++----
- 5 files changed, 30 insertions(+), 21 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 0e262f3..a09dcc4 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -754,9 +754,9 @@ static void do_probe_callback(struct nfs4_client *clp)
-  */
- void nfsd4_probe_callback(struct nfs4_client *clp)
- {
--	/* XXX: atomicity?  Also, should we be using cl_cb_flags? */
-+	/* XXX: atomicity?  Also, should we be using cl_flags? */
- 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
--	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
- 	do_probe_callback(clp);
- }
- 
-@@ -915,7 +915,7 @@ void nfsd4_destroy_callback_queue(void)
- /* must be called under the state lock */
- void nfsd4_shutdown_callback(struct nfs4_client *clp)
- {
--	set_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags);
-+	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
- 	/*
- 	 * Note this won't actually result in a null callback;
- 	 * instead, nfsd4_do_callback_rpc() will detect the killed
-@@ -966,15 +966,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 		clp->cl_cb_conn.cb_xprt = NULL;
- 	}
--	if (test_bit(NFSD4_CLIENT_KILL, &clp->cl_cb_flags))
-+	if (test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags))
- 		return;
- 	spin_lock(&clp->cl_lock);
- 	/*
- 	 * Only serialized callback code is allowed to clear these
- 	 * flags; main nfsd code can only set them:
- 	 */
--	BUG_ON(!clp->cl_cb_flags);
--	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_cb_flags);
-+	BUG_ON(!(clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK));
-+	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
- 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
- 	c = __nfsd4_find_backchannel(clp);
- 	if (c) {
-@@ -1000,7 +1000,7 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
- 	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt;
- 
--	if (clp->cl_cb_flags)
-+	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
- 		nfsd4_process_cb_update(cb);
- 
- 	clnt = clp->cl_cb_client;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 896da74..af2c3e8 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -319,7 +319,8 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * Before RECLAIM_COMPLETE done, server should deny new lock
- 	 */
- 	if (nfsd4_has_session(cstate) &&
--	    !cstate->session->se_client->cl_firststate &&
-+	    !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
-+		      &cstate->session->se_client->cl_flags) &&
- 	    open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
- 		return nfserr_grace;
- 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 1dda803..ccd9b97 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -138,9 +138,8 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
- 
- 	dprintk("NFSD: nfsd4_create_clid_dir for \"%s\"\n", dname);
- 
--	if (clp->cl_firststate)
-+	if (test_and_set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return;
--	clp->cl_firststate = 1;
- 	if (!rec_file)
- 		return;
- 	status = nfs4_save_creds(&original_cred);
-@@ -283,13 +282,13 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
- 	const struct cred *original_cred;
- 	int status;
- 
--	if (!rec_file || !clp->cl_firststate)
-+	if (!rec_file || !test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return;
- 
- 	status = mnt_want_write_file(rec_file);
- 	if (status)
- 		goto out;
--	clp->cl_firststate = 0;
-+	clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
- 
- 	status = nfs4_save_creds(&original_cred);
- 	if (status < 0)
-@@ -457,10 +456,17 @@ nfs4_recoverydir(void)
- static int
- nfsd4_check_legacy_client(struct nfs4_client *clp)
- {
--	if (nfsd4_find_reclaim_client(clp) != NULL)
-+	/* did we already find that this client is stable? */
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return 0;
--	else
--		return -ENOENT;
-+
-+	/* look for it in the reclaim hashtable otherwise */
-+	if (nfsd4_find_reclaim_client(clp)) {
-+		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+		return 0;
-+	}
-+
-+	return -ENOENT;
- }
- 
- static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0c7ac26..e831ac6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2030,7 +2030,8 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 
- 	nfs4_lock_state();
- 	status = nfserr_complete_already;
--	if (cstate->session->se_client->cl_firststate)
-+	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
-+			     &cstate->session->se_client->cl_flags))
- 		goto out;
- 
- 	status = nfserr_stale_clientid;
-@@ -2779,7 +2780,6 @@ static void
- nfs4_set_claim_prev(struct nfsd4_open *open)
- {
- 	open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
--	open->op_openowner->oo_owner.so_client->cl_firststate = 1;
- }
- 
- /* Should we give out recallable state?: */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e22f90f..fac413b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -245,14 +245,16 @@ struct nfs4_client {
- 	struct svc_cred		cl_cred; 	/* setclientid principal */
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
--	u32			cl_firststate;	/* recovery dir creation */
- 	u32			cl_minorversion;
- 
- 	/* for v4.0 and v4.1 callbacks: */
- 	struct nfs4_cb_conn	cl_cb_conn;
--#define NFSD4_CLIENT_CB_UPDATE	1
--#define NFSD4_CLIENT_KILL	2
--	unsigned long		cl_cb_flags;
-+#define NFSD4_CLIENT_CB_UPDATE		(0)
-+#define NFSD4_CLIENT_CB_KILL		(1)
-+#define NFSD4_CLIENT_STABLE		(2)	/* client on stable storage */
-+#define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
-+#define NFSD4_CLIENT_CB_FLAG_MASK	(0x3)
-+	unsigned long		cl_flags;
- 	struct rpc_clnt		*cl_cb_client;
- 	u32			cl_cb_ident;
- #define NFSD4_CB_UP		0
--- 
-1.7.7.6
-
+-->Andy
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
