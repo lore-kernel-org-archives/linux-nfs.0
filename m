@@ -1,38 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22337 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:49053 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751352Ab2CUThO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:37:14 -0400
-Message-ID: <4F6A2DE8.6060403@netapp.com>
-Date: Wed, 21 Mar 2012 15:37:12 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S932607Ab2CFBFN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 20:05:13 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
+Date: Tue, 6 Mar 2012 01:04:55 +0000
+Message-ID: <1330995896.5407.8.camel@lade.trondhjem.org>
+References: <1330976165-19849-1-git-send-email-steved@redhat.com>
+	  <1330976165-19849-2-git-send-email-steved@redhat.com>
+	  <20120305212015.GA21904@us.ibm.com> <4F5559EA.7010206@RedHat.com>
+	 <1330993903.5407.3.camel@lade.trondhjem.org> <4F556007.2030603@RedHat.com>
+In-Reply-To: <4F556007.2030603@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: krb5 failures in recent nfs-for-next
-References: <20120321192448.GB11222@fieldses.org>
-In-Reply-To: <20120321192448.GB11222@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/21/2012 03:24 PM, J. Bruce Fields wrote:
-
-> Have you been doing any krb5 testing?
-
-
-Not yet.  It's still on my Jenkins todo list, but I haven't gotten around to it yet.  Sounds like we need it, though, so I'll try working on it soon.
-
-- Bryan
-
-> 
-> I'm seeing the client crash as of nfs-for-next, and haven't been able to
-> get any debugging out of it so far.
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+T24gTW9uLCAyMDEyLTAzLTA1IGF0IDE5OjUzIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDMvMDUvMjAxMiAwNzozMSBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiBPbiBNb24sIDIwMTItMDMtMDUgYXQgMTk6MjcgLTA1MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6
+DQo+ID4+DQo+ID4+IE9uIDAzLzA1LzIwMTIgMDQ6MjAgUE0sIE1hbGFoYWwgTmFpbmVuaSB3cm90
+ZToNCj4gPj4+IFN0ZXZlIERpY2tzb24gW3N0ZXZlZEByZWRoYXQuY29tXSB3cm90ZToNCj4gPj4+
+DQo+ID4+PiBBbHNvLCB3aGVuIHlvdSBub3JtYWxpemUsIHdoeSBub3QgZ28gdGhlIGV4dHJhIG1p
+bGUgb2YgZG9pbmcgaXQgYWxsIHRoZQ0KPiA+Pj4gd2F5IGFzIHRoZSBwYXRjaCBJIHBvc3RlZD8g
+SSB3YW50ZWQgdG8gY292ZXIgc3BlY3MgbGlrZQ0KPiA+Pj4gImhvc3Q6L3NlcnZlci8uLi9ob21l
+Ly4vYmxhaCIuIFRoaXMgcGF0Y2ggb25seSBkb2VzIHBhcnRpYWwNCj4gPj4+IG5vcm1hbGl6YXRp
+b24uIFRoZSBvcmlnaW5hbCBwYXRjaCBhbHNvIG5vcm1hbGl6ZXMgL3Byb2MvbW91bnQgZW50cnkn
+cw0KPiA+Pj4gcGF0aG5hbWUgKHRoaXMgYXZvaWRzIGRlYWxpbmcgd2l0aCB0cmFpbGluZyAnLycg
+aGFjayB0aGF0IGV4aXN0cyBub3cpLg0KPiA+PiBJIGp1c3QgZG8gbm90IHNlZSB0aGUgbmVlZCBm
+b3IgdGhhdCB0eXBlIG9mIGNvbXBsZXhpdHkuLi4gTWF5YmUgSSdtDQo+ID4+IGJlaW5nIGEgYml0
+IG5haXZlLCBidXQgSSBzZWUgdHdvIHByb2JsZW1zIGhlcmUuIE9uZSwgdjQgbW91bnRzIA0KPiA+
+PiB3aXRoIG11bHRpcGxlIHNsYXNoZXMgYW5kIHR3byB2NCBtb3VudHMgd2l0aG91dCBhbnkgc2xh
+c2hlcy4uLiANCj4gPj4NCj4gPj4gTm93IGJvdGggb2Ygb3VyIHBhdGNoZXMgZG8gYWRkcmVzcyB0
+aG9zZSBpc3N1ZXMgYnV0IG1pbmUgb25seQ0KPiA+PiBhZGRyZXNzZXMgdGhvc2UgaXNzdWVzIGFu
+ZCBubywgaXQgZG9lcyBub3QgZ28gdGhlICJleHRyYSBtaWxlIiANCj4gPj4gb2YgYWRkcmVzc2lu
+ZyAnLi4nIGluIHBhdGggbmFtZXMsIGJ1dCBkb2VzIGl0IG5lZWQgdG8/IElzIA0KPiA+PiB0aGVy
+ZSByZWFsbHkgYW4gdXNlIGNhc2Ugd2hlcmUgcGVvcGxlIGV4cG9ydCB0aGluZ3Mgd2l0aCAiLi4i
+DQo+ID4+IGluIHRoZSBwYXRoPyANCj4gPj4NCj4gPj4gU29tZXRpbWVzIGdvaW5nIHRoZSBqdXN0
+IGV4dHJhIG1pbGUganVzdCBicmluZ3MgbW9yZSBwYWluLi4uIA0KPiA+PiBmb3Igbm8gcmVhc29u
+Li4uIGFuZCBiZWxpZXZlIG1lIEknbSBubyBydW5uZXIuLi4gIDgtKSANCj4gPiANCj4gPiBOb3Rl
+IHRoYXQgdGhlIE5GU3Y0IHNlcnZlciBtYXkgaGF2ZSBzeW1saW5rcyBhbmQvb3IgcmVmZXJyYWxz
+IGluIHRoZQ0KPiA+IG1vdW50IHBhdGgsIGluIHdoaWNoIGNhc2UgaXQgaXMgZ2FtZSBvdmVyIGZv
+ciB0aGlzIGtpbmQgb2YgYXBwcm9hY2gNCj4gPiBhbnl3YXk6IHlvdSBjYW4ndCAnbm9ybWFsaXNl
+JyB5b3VyIHdheSB0byBpbnRlcnByZXRpbmcgdGhhdC4uLg0KPiBXZWxsIEkgZ3Vlc3Mgd2Ugd2ls
+bCBjcm9zcyB0aGF0IGJyaWRnZSB3aGVuIHdlIGdldCB0aGVyZS4uLiBBdA0KPiB0aGlzIHBvaW50
+IEkganVzdCB3YW50IGZpeGVzIHRoZXNlIHR3byBidWdzIGFuZCBtb3ZlIG9uLi4uIA0KPiANCj4g
+PiANCj4gPiBJcyB0aGVyZSBhbnkgcmVhc29uIHdoeSB3ZSBhY3R1YWxseSBjYXJlIGFib3V0IGNo
+ZWNraW5nIHRoZSBjcmFwDQo+ID4gaW4gL2V0Yy9tdGFiIG9uIHVtb3VudD8NCj4gPiANCj4gWWVh
+aC4uLiBpdHMgY2FsbGVkIGJhY2t3YXJkcyBjb21wYXRpYmlsaXR5IHdpdGggb2xkZXIgZGlzdHJv
+cy4uLg0KPiBCZWxpZXZlLCBpZiBJIGNvdWxkIGJ1cnkgbXRhYiBJIHdvdWxkLi4uIGluIGEgTmV3
+IFlvcmsgbWludXRlISANCj4gSSBqdXN0IGRvbid0IHNlZSBpdCBoYXBwZW5pbmcuLi4gDQoNClll
+cywgYnV0IGRlc3BpdGUgYWxsIHlvdXIgd29yaywgeW91IGFyZSBqdXN0IHJlcGxhY2luZyBvbmUg
+YnJva2VuIG1vZGVsDQpieSBhbm90aGVyLg0KDQpBdCBsZWFzdCB3aXRoIHRoZSBjdXJyZW50IGNv
+ZGUsIHRoZXkgY2FuIF9zZWVfIHRoYXQgdGhlIG1vZGVsIGlzIGJyb2tlbg0KYW5kIGhhdmUgYW4g
+aW1tZWRpYXRlIGluY2VudGl2ZSB0byBtb3ZlIHRvIHRoZQ0KbXRhYi1pcy1hLXN5bWxpbmstdG8t
+L3Byb2MvbW91bnRzIGJhc2VkIG1vZGVsLiBUaGUgbGF0dGVyIGlzIGluIGFueSBjYXNlDQp0aGUg
+b25seSBvbmUgdGhhdCBpcyB2YWxpZCBpbiB0aGUgbW91bnQtbmFtZXNwYWNlIGJhc2VkIHdvcmxk
+IGluIHdoaWNoDQp3ZSd2ZSBiZWVuIGxpdmluZyBmb3IgdGhlIHBhc3QgNSB5ZWFycyBvciBzby4u
+Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
