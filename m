@@ -1,36 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27223 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45502 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754491Ab2CVVBQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 17:01:16 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Change the default setting of the
- nfs4_disable_idmapping parameter
-Date: Thu, 22 Mar 2012 21:01:12 +0000
-Message-ID: <1332450074.8976.13.camel@lade.trondhjem.org>
-References: <1326138354-8138-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20120322204705.GA23737@fieldses.org>
-	 <1332449607.8976.9.camel@lade.trondhjem.org>
-In-Reply-To: <1332449607.8976.9.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1030772Ab2CFOyS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 09:54:18 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        stable@vger.kernel.org
+Subject: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until stateid is tested
+Date: Tue,  6 Mar 2012 09:54:12 -0500
+Message-Id: <1331045652-3086-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTIyIGF0IDE2OjUzIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IERvZXMgdGhlIGlkbWFwcGVyIGRvIHRoZSByaWdodCB0aGluZyBmb3IgbnVtZXJpYyBpZHMg
-dGhlc2UgZGF5cz8gSWYgdGhlDQo+IG9sZGVyIGNsaWVudHMgYXJlIHJ1bm5pbmcgYSBuZXdlciBp
-ZG1hcHBlciB0aGF0IGNhbiBkZWFsIHdpdGggbnVtZXJpYw0KPiBpZHMsIHRoZW4gZXZlbiB0aGUg
-bGVnYWN5IGNsaWVudHMgc2hvdWxkIGJlIGFibGUgdG8gd29yayBjbGVhbmx5Lg0KDQpJZiB0aGlz
-IGlzbid0IHRoZSBjYXNlLCB0aGVuIHRoZSBvbGRlciBjbGllbnRzIGFyZSBicm9rZW4gYW55d2F5
-LiBUaGUNCnNlcnZlciBoYXMgYWx3YXlzIGhhZCB0aGUgb3B0aW9uIG9mIHJldHVybmluZyBudW1l
-cmljIGlkcyBpZiBpdCBoYXMgbm8NCm1hcHBpbmcgZnJvbSBhIHVpZC9naWQgaW50byBhbiBvd25l
-ci9ncm91cCBzdHJpbmcuDQoNCklPVzogdGhlIG9ubHkgZGlmZmVyZW5jZSBiZXR3ZWVuIG9sZGVy
-IGFuZCBuZXdlciBjbGllbnRzIHNob3VsZCByZWFsbHkNCmJlIHRoYXQgdGhlIG5ld2VyIG9uZXMg
-aGFuZGxlIG51bWVyaWMgc3RyaW5ncyBtb3JlIGVmZmljaWVudGx5IHdpdGhvdXQNCnJlcXVpcmlu
-ZyBhbiB1cGNhbGwsIGFuZCB0aGF0IHRoZSBuZXdlciBjbGllbnRzIHdpbGwgYWxzbyB0cnkgdG8g
-X3NlbmRfDQpudW1lcmljIGlkcyBpbiBTRVRBVFRSIGNhbGxzLg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: Andy Adamson <andros@netapp.com>
+
+nfs41_open_expired() will test the delegation stateid based on
+NFS_DELEGATED_STATE being set. If the stateid is bad, nfs4_open_recover
+will clear the NFS_DELEGATED_STATE bit recovering the delegation.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 7bd9822..5c92185 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1097,7 +1097,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 
+-	if (test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
++	if (test_bit(NFS_DELEGATED_STATE, &state->flags))
+ 		nfs_async_inode_return_delegation(state->inode, &state->stateid);
+ 	nfs4_state_mark_reclaim_nograce(clp, state);
+ 	nfs4_schedule_state_manager(clp);
+-- 
+1.7.6.4
+
