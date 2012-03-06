@@ -1,24 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:39635 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754466Ab2CMQWD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 12:22:03 -0400
-Received: by eaaq12 with SMTP id q12so369019eaa.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 09:22:01 -0700 (PDT)
-From: Anton Starikov <ant.starikov@gmail.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57484 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751867Ab2CFPPt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 10:15:49 -0500
+Date: Tue, 6 Mar 2012 10:15:43 -0500
+From: "Ted Ts'o" <tytso@mit.edu>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
+        bfields@redhat.com, sandeen@redhat.com,
+        Andreas Dilger <adilger@whamcloud.com>
+Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to
+ usage type
+Message-ID: <20120306151543.GA32282@thunk.org>
+References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
+ <20120109132148.2616029.68798.stgit@localhost.localdomain>
+ <20120305155939.GE21356@thunk.org>
+ <4F555CE5.7050401@itwm.fraunhofer.de>
+ <20120306022838.GA24323@thunk.org>
+ <4F55E01B.3060105@itwm.fraunhofer.de>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Subject: NFS4 without id mapper
-Date: Tue, 13 Mar 2012 17:21:57 +0100
-Message-Id: <66B6E4EA-A94C-4FD9-87C1-A110B0AB3D71@gmail.com>
-To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0 (Apple Message framework v1257)
+In-Reply-To: <4F55E01B.3060105@itwm.fraunhofer.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Tue, Mar 06, 2012 at 10:59:55AM +0100, Bernd Schubert wrote:
+> Arg, my bad, I introduced this issue when I converted from f_flags
+> to f_mode, seems I forgot all of those above :(
+> Hrm, I thought I had tested sufficiently, but obviously I did not :(
+> Here's the test tool.
+> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
+> 
+> While quickly looking, I think it only affects NFSv2, which I think
+> I indeed didn't test. I only run tests for 32 bit and 64-bit user
+> space and NFSv3. But yes, NFSv2 is an important test too. Not sure
+> if I will find time for that today.
 
-I have probably stupid question, but is there a way to use NFS-4 in old-fashoned way without any idmapper involved? Assuming setup with auth=sys/none and no root squash.
+I think the problem case to worry about would have been on a 32-bit
+NFS server (think embedded/bookshelf NAS servers) and NFSv3, since
+that's where the inconsistency would have meant that hash2pos would
+use the 32-bit codepath, but pos2maj_hash would use the 64-bit
+codepath, and so then...  kablooey.
 
-Thanks, 
+> Will send an updated version later on.
 
-Anton.
+If it's just those changes, no worries, as I've already fixed up the
+f_flags vs. f_mode issue in my copy of the patches.
+
+Let me know if there are any other changes that you'd like to make or
+issues that you've spotted.
+
+						- Ted
