@@ -1,230 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:32793 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754205Ab2CBWNw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 17:13:52 -0500
-Received: by iagz16 with SMTP id z16so2869719iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 14:13:51 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFSD: Fix nfs4_verifier memory alignment
-To: bfields@redhat.com
+Received: from mx2.netapp.com ([216.240.18.37]:25853 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030791Ab2CFPDM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 10:03:12 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: andros@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 17:13:50 -0500
-Message-ID: <20120302221251.13019.46002.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v2] NFS: Properly handle the case where the delegation is revoked
+Date: Tue,  6 Mar 2012 10:03:06 -0500
+Message-Id: <1331046186-5638-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up due to code review.
+If we know that the delegation stateid is bad or revoked, we need to
+remove that delegation as soon as possible, and then mark all the
+stateids that relied on that delegation for recovery. We cannot use
+the delegation as part of the recovery process.
 
-The nfs4_verifier's data field is not guaranteed to be u32-aligned.
-Casting an array of chars to a u32 * is considered generally
-hazardous.
+Also note that NFSv4.1 uses a different error code (NFS4ERR_DELEG_REVOKED)
+to indicate that the delegation was revoked.
 
-We can fix most of this by using a __be32 array to generate the
-verifier's contents and then byte-copying it into the verifier field.
+Finally, ensure that setlk() and setattr() can both recover safely from
+a revoked delegation.
 
-However, there is one spot where there is a backwards compatibility
-constraint: the do_nfsd_create() call expects a verifier which is
-32-bit aligned.  Fix this spot by forcing the alignment of the create
-verifier in the nfsd4_open args structure.
-
-Also, sizeof(nfs4_verifer) is the size of the in-core verifier data
-structure, but NFS4_VERIFIER_SIZE is the number of octets in an XDR'd
-verifier.  The two are not interchangeable, even if they happen to
-have the same value.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
 ---
+v2: - Add handling of BAD_STATEID/DELEG_REVOKED/... in
+      nfs4_open_delegation_recall
+    - Remove redundant nfs_async_inode_return_delegation from
+      nfs4_schedule_stateid_recovery
 
-Hi Bruce-
 
-Compile-tested only.  Does this look reasonable?
+ fs/nfs/delegation.c |   11 +++++++++++
+ fs/nfs/delegation.h |    1 +
+ fs/nfs/nfs4_fs.h    |    2 ++
+ fs/nfs/nfs4proc.c   |   18 ++++++++++++++++--
+ fs/nfs/nfs4state.c  |   29 +++++++++++++++++++++++++++--
+ 5 files changed, 57 insertions(+), 4 deletions(-)
 
-
- fs/nfsd/nfs4proc.c  |   19 +++++++++++--------
- fs/nfsd/nfs4state.c |    8 ++++----
- fs/nfsd/nfs4xdr.c   |   28 ++++++++++++++--------------
- fs/nfsd/xdr4.h      |    4 ++--
- 4 files changed, 31 insertions(+), 28 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 896da74..e4b5748 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -481,14 +481,20 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			   &access->ac_supported);
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 2d06080..5eb3981 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -467,6 +467,17 @@ static void nfs_delegation_run_state_manager(struct nfs_client *clp)
+ 		nfs4_schedule_state_manager(clp);
  }
  
-+static void gen_boot_verifier(nfs4_verifier *verifier)
++void nfs_remove_bad_delegation(struct inode *inode)
 +{
-+	__be32 verf[2];
++	struct nfs_delegation *delegation;
 +
-+	verf[0] = (__be32)nfssvc_boot.tv_sec;
-+	verf[1] = (__be32)nfssvc_boot.tv_usec;
-+	memcpy(verifier->data, verf, sizeof(verifier->data));
++	delegation = nfs_detach_delegation(NFS_I(inode), NFS_SERVER(inode));
++	if (delegation) {
++		nfs_inode_find_state_and_recover(inode, &delegation->stateid);
++		nfs_free_delegation(delegation);
++	}
 +}
 +
- static __be32
- nfsd4_commit(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     struct nfsd4_commit *commit)
+ /**
+  * nfs_expire_all_delegation_types
+  * @clp: client to process
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index d9322e4..691a796 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -45,6 +45,7 @@ void nfs_expire_unreferenced_delegations(struct nfs_client *clp);
+ void nfs_handle_cb_pathdown(struct nfs_client *clp);
+ int nfs_client_return_marked_delegations(struct nfs_client *clp);
+ int nfs_delegations_present(struct nfs_client *clp);
++void nfs_remove_bad_delegation(struct inode *inode);
+ 
+ void nfs_delegation_mark_reclaim(struct nfs_client *clp);
+ void nfs_delegation_reap_unclaimed(struct nfs_client *clp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 4d7d0ae..5c9b20b 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -327,6 +327,8 @@ extern void nfs4_put_open_state(struct nfs4_state *);
+ extern void nfs4_close_state(struct nfs4_state *, fmode_t);
+ extern void nfs4_close_sync(struct nfs4_state *, fmode_t);
+ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
++extern void nfs_inode_find_state_and_recover(struct inode *inode,
++		const nfs4_stateid *stateid);
+ extern void nfs4_schedule_lease_recovery(struct nfs_client *);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
+ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ec9f6ef..3d26bab 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -265,8 +265,11 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 	switch(errorcode) {
+ 		case 0:
+ 			return 0;
++		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
++			if (state != NULL)
++				nfs_remove_bad_delegation(state->inode);
+ 		case -NFS4ERR_OPENMODE:
+ 			if (state == NULL)
+ 				break;
+@@ -1319,8 +1322,11 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
+ 				 * The show must go on: exit, but mark the
+ 				 * stateid as needing recovery.
+ 				 */
++			case -NFS4ERR_DELEG_REVOKED:
+ 			case -NFS4ERR_ADMIN_REVOKED:
+ 			case -NFS4ERR_BAD_STATEID:
++				nfs_inode_find_state_and_recover(state->inode,
++						stateid);
+ 				nfs4_schedule_stateid_recovery(server, state);
+ 			case -EKEYEXPIRED:
+ 				/*
+@@ -1900,7 +1906,9 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			   struct nfs4_state *state)
  {
--	u32 *p = (u32 *)commit->co_verf.data;
--	*p++ = nfssvc_boot.tv_sec;
--	*p++ = nfssvc_boot.tv_usec;
--
-+	gen_boot_verifier(&commit->co_verf);
- 	return nfsd_commit(rqstp, &cstate->current_fh, commit->co_offset,
- 			     commit->co_count);
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.state = state,
++	};
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(server,
+@@ -3714,8 +3722,11 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 	if (task->tk_status >= 0)
+ 		return 0;
+ 	switch(task->tk_status) {
++		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
++			if (state != NULL)
++				nfs_remove_bad_delegation(state->inode);
+ 		case -NFS4ERR_OPENMODE:
+ 			if (state == NULL)
+ 				break;
+@@ -4533,7 +4544,9 @@ out:
+ 
+ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.state = state,
++	};
+ 	int err;
+ 
+ 	do {
+@@ -4626,6 +4639,7 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
+ 				 * The show must go on: exit, but mark the
+ 				 * stateid as needing recovery.
+ 				 */
++			case -NFS4ERR_DELEG_REVOKED:
+ 			case -NFS4ERR_ADMIN_REVOKED:
+ 			case -NFS4ERR_BAD_STATEID:
+ 			case -NFS4ERR_OPENMODE:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 4539203..0e60df1 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1132,12 +1132,37 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 
+-	if (test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
+-		nfs_async_inode_return_delegation(state->inode, &state->stateid);
+ 	nfs4_state_mark_reclaim_nograce(clp, state);
+ 	nfs4_schedule_state_manager(clp);
  }
-@@ -865,7 +871,6 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
++void nfs_inode_find_state_and_recover(struct inode *inode,
++		const nfs4_stateid *stateid)
++{
++	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_open_context *ctx;
++	struct nfs4_state *state;
++	bool found = false;
++
++	spin_lock(&inode->i_lock);
++	list_for_each_entry(ctx, &nfsi->open_files, list) {
++		state = ctx->state;
++		if (state == NULL)
++			continue;
++		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
++			continue;
++		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
++			continue;
++		nfs4_state_mark_reclaim_nograce(clp, state);
++		found = true;
++	}
++	spin_unlock(&inode->i_lock);
++	if (found)
++		nfs4_schedule_state_manager(clp);
++}
++
++
+ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_recovery_ops *ops)
  {
- 	stateid_t *stateid = &write->wr_stateid;
- 	struct file *filp = NULL;
--	u32 *p;
- 	__be32 status = nfs_ok;
- 	unsigned long cnt;
- 
-@@ -887,9 +892,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	cnt = write->wr_buflen;
- 	write->wr_how_written = write->wr_stable_how;
--	p = (u32 *)write->wr_verifier.data;
--	*p++ = nfssvc_boot.tv_sec;
--	*p++ = nfssvc_boot.tv_usec;
-+	gen_boot_verifier(&write->wr_verifier);
- 
- 	status =  nfsd_write(rqstp, &cstate->current_fh, filp,
- 			     write->wr_offset, rqstp->rq_vec, write->wr_vlen,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c5cddd6..9f0e139 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1138,12 +1138,12 @@ static void gen_clid(struct nfs4_client *clp)
- 
- static void gen_confirm(struct nfs4_client *clp)
- {
-+	__be32 verf[2];
- 	static u32 i;
--	u32 *p;
- 
--	p = (u32 *)clp->cl_confirm.data;
--	*p++ = get_seconds();
--	*p++ = i++;
-+	verf[0] = (__be32)get_seconds();
-+	verf[1] = (__be32)i++;
-+	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
- }
- 
- static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0ec5a1b..1701ad6 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -755,14 +755,14 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 				goto out;
- 			break;
- 		case NFS4_CREATE_EXCLUSIVE:
--			READ_BUF(8);
--			COPYMEM(open->op_verf.data, 8);
-+			READ_BUF(NFS4_VERIFIER_SIZE);
-+			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
- 			break;
- 		case NFS4_CREATE_EXCLUSIVE4_1:
- 			if (argp->minorversion < 1)
- 				goto xdr_error;
--			READ_BUF(8);
--			COPYMEM(open->op_verf.data, 8);
-+			READ_BUF(NFS4_VERIFIER_SIZE);
-+			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
- 			status = nfsd4_decode_fattr(argp, open->op_bmval,
- 				&open->op_iattr, &open->op_acl);
- 			if (status)
-@@ -994,8 +994,8 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
- {
- 	DECODE_HEAD;
- 
--	READ_BUF(8);
--	COPYMEM(setclientid->se_verf.data, 8);
-+	READ_BUF(NFS4_VERIFIER_SIZE);
-+	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
- 
- 	status = nfsd4_decode_opaque(argp, &setclientid->se_name);
- 	if (status)
-@@ -1020,9 +1020,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
- {
- 	DECODE_HEAD;
- 
--	READ_BUF(8 + sizeof(nfs4_verifier));
-+	READ_BUF(8 + NFS4_VERIFIER_SIZE);
- 	COPYMEM(&scd_c->sc_clientid, 8);
--	COPYMEM(&scd_c->sc_confirm, sizeof(nfs4_verifier));
-+	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
- 
- 	DECODE_TAIL;
- }
-@@ -2661,8 +2661,8 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	__be32 *p;
- 
- 	if (!nfserr) {
--		RESERVE_SPACE(8);
--		WRITEMEM(commit->co_verf.data, 8);
-+		RESERVE_SPACE(NFS4_VERIFIER_SIZE);
-+		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
- 		ADJUST_ARGS();
- 	}
- 	return nfserr;
-@@ -3008,7 +3008,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	if (resp->xbuf->page_len)
- 		return nfserr_resource;
- 
--	RESERVE_SPACE(8);  /* verifier */
-+	RESERVE_SPACE(NFS4_VERIFIER_SIZE);
- 	savep = p;
- 
- 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
-@@ -3209,9 +3209,9 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
- 	__be32 *p;
- 
- 	if (!nfserr) {
--		RESERVE_SPACE(8 + sizeof(nfs4_verifier));
-+		RESERVE_SPACE(8 + NFS4_VERIFIER_SIZE);
- 		WRITEMEM(&scd->se_clientid, 8);
--		WRITEMEM(&scd->se_confirm, sizeof(nfs4_verifier));
-+		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
- 		ADJUST_ARGS();
- 	}
- 	else if (nfserr == nfserr_clid_inuse) {
-@@ -3232,7 +3232,7 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- 		RESERVE_SPACE(16);
- 		WRITE32(write->wr_bytes_written);
- 		WRITE32(write->wr_how_written);
--		WRITEMEM(write->wr_verifier.data, 8);
-+		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
- 		ADJUST_ARGS();
- 	}
- 	return nfserr;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 2364747..8d1031a 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -216,7 +216,8 @@ struct nfsd4_open {
- 	u32		op_createmode;      /* request */
- 	u32		op_bmval[3];        /* request */
- 	struct iattr	iattr;              /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
--	nfs4_verifier	verf;               /* EXCLUSIVE4 */
-+	nfs4_verifier	op_verf __attribute__((aligned(32)));
-+					    /* EXCLUSIVE4 */
- 	clientid_t	op_clientid;        /* request */
- 	struct xdr_netobj op_owner;           /* request */
- 	u32		op_seqid;           /* request */
-@@ -234,7 +235,6 @@ struct nfsd4_open {
- 	struct nfs4_acl *op_acl;
- };
- #define op_iattr	iattr
--#define op_verf		verf
- 
- struct nfsd4_open_confirm {
- 	stateid_t	oc_req_stateid		/* request */;
+ 	struct inode *inode = state->inode;
+-- 
+1.7.7.6
 
