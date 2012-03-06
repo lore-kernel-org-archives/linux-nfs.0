@@ -1,124 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59635 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:15735 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757070Ab2CGUuG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 15:50:06 -0500
-Date: Wed, 7 Mar 2012 15:50:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
-Message-ID: <20120307205005.GB582@fieldses.org>
-References: <1331150190-18401-1-git-send-email-steved@redhat.com>
- <20120307203649.GA582@fieldses.org>
+	id S932527Ab2CFRoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 12:44:12 -0500
+Message-ID: <4F564CCD.9040708@parallels.com>
+Date: Tue, 06 Mar 2012 21:43:41 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120307203649.GA582@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
+References: <1331047733-1641-1-git-send-email-jlayton@redhat.com> <1331047733-1641-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1331047733-1641-4-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 07, 2012 at 03:36:49PM -0500, bfields wrote:
-> On Wed, Mar 07, 2012 at 02:56:30PM -0500, Steve Dickson wrote:
-> > This problem can occur when multiple cluster services fail over
-> > at the same time, causing missing high-available exports.
-> > Having a lot of nfs-exports will trigger this issue easier.
-> 
-> Isn't the locking in support/export/xtab.c supposed to take care of
-> this?
+06.03.2012 19:28, Jeff Layton пишет:
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 64c24af..141197e 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -19,6 +19,7 @@
+>   #include "nfsd.h"
+>   #include "cache.h"
+>   #include "fault_inject.h"
+> +#include "netns.h"
+>
+>   /*
+>    *	We have a single directory with several nodes in it.
+> @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
+>   }
+>   #endif
+>
+> +int nfsd_net_id;
+> +static struct pernet_operations nfsd_net_ops = {
+> +	.id   =&nfsd_net_id,
+> +	.size = sizeof(struct nfsd_net),
+> +};
+> +
+>   static int __init init_nfsd(void)
+>   {
+>   	int retval;
+>   	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+>
+> +	retval = register_pernet_subsys(&nfsd_net_ops);
 
-Huh, maybe that's just meant to prevent etab from getting corrupted, or
-mountd from seeing a partially-written file.
+Hi, Jeff.
+You've created per-net structure and operations and that's cool.
+But why don't you move nfsd client tracking control into per-net operations?
+I.e. add init-exit callbacks in struct pernet_operations and call 
+nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
+And since we don't support any other networks namesapce except init_net, then 
+just skip all others in these callbacks.
 
-But it probably doesn't prevent two exportfs processes from both reading
-etab, adding an export, and each writing out an etab with its one export
-added, with the last writer winning.
 
-Was that the problem?
+> +	if (retval<  0)
+> +		return retval;
+>   	retval = nfsd4_init_slabs();
+>   	if (retval)
+> -		return retval;
+> +		goto out_unregister_pernet;
+>   	nfs4_state_init();
+>   	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+>   	if (retval)
+> @@ -1169,6 +1179,8 @@ out_free_stat:
+>   	nfsd_fault_inject_cleanup();
+>   out_free_slabs:
+>   	nfsd4_free_slabs();
+> +out_unregister_pernet:
+> +	unregister_pernet_subsys(&nfsd_net_ops);
+>   	return retval;
+>   }
+>
+> @@ -1184,6 +1196,7 @@ static void __exit exit_nfsd(void)
+>   	nfsd4_free_slabs();
+>   	nfsd_fault_inject_cleanup();
+>   	unregister_filesystem(&nfsd_fs_type);
+> +	unregister_pernet_subsys(&nfsd_net_ops);
+>   }
+>
+>   MODULE_AUTHOR("Olaf Kirch<okir@monad.swb.de>");
 
-I think it'd be worth a comment above grab/release_lockfile().
 
---b.
-
-> 
-> I may be confused--I forget what all these files are for....
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > ---
-> >  support/include/exportfs.h |    4 ++++
-> >  utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
-> >  2 files changed, 28 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> > index 01e87dd..99916e5 100644
-> > --- a/support/include/exportfs.h
-> > +++ b/support/include/exportfs.h
-> > @@ -32,6 +32,10 @@ enum {
-> >  	FSLOC_STUB
-> >  };
-> >  
-> > +#ifndef EXP_LOCKFILE
-> > +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
-> > +#endif
-> > +
-> >  typedef struct mclient {
-> >  	struct mclient *	m_next;
-> >  	char *			m_hostname;
-> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > index 7432a65..769d438 100644
-> > --- a/utils/exportfs/exportfs.c
-> > +++ b/utils/exportfs/exportfs.c
-> > @@ -16,6 +16,7 @@
-> >  #include <sys/stat.h>
-> >  #include <sys/vfs.h>
-> >  #include <sys/stat.h>
-> > +#include <sys/file.h>
-> >  #include <unistd.h>
-> >  #include <stdbool.h>
-> >  #include <stdlib.h>
-> > @@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
-> >  static int	matchhostname(const char *hostname1, const char *hostname2);
-> >  static void	export_d_read(const char *dname);
-> >  
-> > +static const char *lockfile = EXP_LOCKFILE;
-> > +static int _lockfd = -1;
-> > +
-> > +void 
-> > +grab_lockfile()
-> > +{
-> > +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
-> > +	if (_lockfd != -1) 
-> > +		lockf(_lockfd, F_LOCK, 0);
-> > +}
-> > +void 
-> > +release_lockfile()
-> > +{
-> > +	if (_lockfd != -1)
-> > +		lockf(_lockfd, F_ULOCK, 0);
-> > +}
-> > +
-> >  int
-> >  main(int argc, char **argv)
-> >  {
-> > @@ -129,6 +147,12 @@ main(int argc, char **argv)
-> >  			return 0;
-> >  		}
-> >  	}
-> > +	/*
-> > +	 * Serialize things as best we can
-> > +	 */
-> > +	grab_lockfile();
-> > +	atexit(release_lockfile);
-> > +
-> >  	if (f_export && ! f_ignore) {
-> >  		export_read(_PATH_EXPORTS);
-> >  		export_d_read(_PATH_EXPORTS_D);
-> > -- 
-> > 1.7.7.6
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Best regards,
+Stanislav Kinsbursky
