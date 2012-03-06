@@ -1,39 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52547 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26178 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757485Ab2CETgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 14:36:02 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q25Ja2dL029541
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:02 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q25Ja1oA027125
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:02 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/1] Normalized path names on umounts (take 2)
-Date: Mon,  5 Mar 2012 14:36:04 -0500
-Message-Id: <1330976165-19849-1-git-send-email-steved@redhat.com>
+	id S1031568Ab2CFXSH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 18:18:07 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: add crc hash to nfs_display_fhandle
+Date: Tue,  6 Mar 2012 18:17:55 -0500
+Message-Id: <1331075875-20421-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a second attempted at making paths in the
-device names that have multiple slashes or no slash
-at all unmount-able, without breaking any APIs.
+Match wireshark's CRC-32 hash for easier debugging.
 
-Due to the way entries are written to both the /etc/mtab
-and /proc/mounts, multiple slash have to be stripped and
-leading slash have to be added (when they don't exist) 
-on v4 mounts. With v3 mounts this normalization can 
-not occur since those entries are always in the same format.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Requested by Chuck and others.
 
-Finally, this normalization only needs to happen
-when the mtab and /proc/mounts are not the same file.
+Nothing in trond/nfs-for-next uses nfs_display_fhandle() yet.
+I tested by calling it in nfs4xdr.c:encode_putfh().
 
-Steve Dickson (1):
-  umount.nfs: normalize path names during umounts.
+ fs/nfs/inode.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
- utils/mount/nfsumount.c |   64 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 62 insertions(+), 2 deletions(-)
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 99a4f52..c1f44e9 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -39,6 +39,7 @@
+ #include <linux/slab.h>
+ #include <linux/compat.h>
+ #include <linux/freezer.h>
++#include <linux/crc32.h>
+ 
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -1057,13 +1058,18 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+ void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
+ {
+ 	unsigned short i;
++	u32 crc;
+ 
+ 	if (fh->size == 0 || fh == NULL) {
+ 		printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
+ 		return;
+ 	}
+ 
+-	printk(KERN_DEFAULT "%s at %p is %u bytes:\n", caption, fh, fh->size);
++	/* match wireshark's CRC-32 hash */
++	crc = ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
++
++	printk(KERN_DEFAULT "%s at %p is %u bytes, crc: 0x%08x:\n",
++	                    caption, fh, fh->size, crc);
+ 	for (i = 0; i < fh->size; i += 16) {
+ 		__be32 *pos = (__be32 *)&fh->data[i];
+ 
+-- 
+1.7.4.4
 
