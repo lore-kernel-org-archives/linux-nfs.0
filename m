@@ -1,36 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56568 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758641Ab2C2CIw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 22:08:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
-Date: Thu, 29 Mar 2012 02:08:44 +0000
-Message-ID: <1332986928.19172.45.camel@lade.trondhjem.org>
-References: <1332986348.19172.43.camel@lade.trondhjem.org>
-	 <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
-In-Reply-To: <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from li9-11.members.linode.com ([67.18.176.11]:41757 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758017Ab2CFAIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 19:08:42 -0500
+Date: Mon, 5 Mar 2012 19:08:37 -0500
+From: "Ted Ts'o" <tytso@mit.edu>
+To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        "J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
+        adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120306000837.GA17164@thunk.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTI4IGF0IDE5OjA2IC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
-Cj4gT24gV2VkLCBNYXIgMjgsIDIwMTIgYXQgNjo1OSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+DQo+ID4gUGxlYXNlIHB1bGwg
-ZnJvbSB0aGUgc2lnbmVkIHRhZyAibmZzLWZvci0zLjQtMiIgaW4gdGhlIHJlcG9zaXRvcnkgYXQN
-Cj4gPg0KPiA+ICAgZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJv
-bmRteS9saW51eC1uZnMuZ2l0IHRhZyBuZnMtZm9yLTMuNC0yDQo+IA0KPiBCdHcsIHBsZWFzZSBj
-aGFuZ2UgeW91ciBwdWxsIHJlcXVlc3QgdG8gc2F5ICJ0YWcvbmZzLWZvci0zLjQtMiINCj4gaW5z
-dGVhZCBvZiAidGFnIG5mcy1mb3ItMy40LTIiLg0KPiANCj4gQm90aCB3b3JrLCBidXQgdGhlcmUn
-cyBhIHN1YnRsZSBkaWZmZXJlbmNlOiB0aGUgInB1bGwgdGFnIHh5eiIgaXMNCj4gYmFzaWNhbGx5
-IGFza2luZyBtZSB0byBub3QganVzdCBwdWxsLCBidXQgYWxzbyBhZGQgdGhlIHRhZyB0byBteSBz
-ZXQNCj4gb2YgdGFncywgd2hpY2ggSSdtIG5vdCBpbnRlcmVzdGVkIGluLiBJbiBjb250cmFzdCAi
-cHVsbCB0YWcveHl6IiBhc2tzDQo+IG1lIHRvIGp1c3QgcHVsbCB0aGUgdGFnIGNvbnRlbnRzLg0K
-DQpTdXJlIHRoaW5nLi4uIEkgd2Fzbid0IGF3YXJlIG9mIHRoYXQgc2VtYW50aWMgZGlmZmVyZW5j
-ZSwgYnV0IEknbSBxdWl0ZQ0KaGFwcHkgdG8gYWRkIGl0IHRvIG15IHNjcmlwdC4uLg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Mon, Jan 09, 2012 at 02:21:53PM +0100, Bernd Schubert wrote:
+> Just rename this variable, as the next patch will add a flag and
+> 'access' as variable name would not be correct any more.
+> 
+> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> Acked-by: J. Bruce Fields<bfields@redhat.com>
+> ---
+>  fs/nfsd/vfs.c |   18 ++++++++++--------
+>  1 files changed, 10 insertions(+), 8 deletions(-)
+
+On Mon, Jan 09, 2012 at 02:21:58PM +0100, Bernd Schubert wrote:
+> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+> the NFS version. NFSv2 gets 32-bit hashes only.
+> 
+> NOTE: This patch got rather complex as Christoph asked to set the
+> filp->f_mode flag in the open call or immediatly after dentry_open()
+> in nfsd_open() to avoid races.
+> Personally I still do not see a reason for that and in my opinion
+> FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+> follows directly after nfsd_open() without a chance of races.
+> 
+> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> Acked-by: J. Bruce Fields<bfields@redhat.com>
+> ---
+>  fs/nfsd/vfs.c |   15 +++++++++++++--
+>  fs/nfsd/vfs.h |    2 ++
+>  2 files changed, 15 insertions(+), 2 deletions(-)
+
+NFS folks,
+
+Since Bruce has ack'ed these patches I assume it will be OK if I carry
+them in the ext4 tree for merging?  (They depend on changes in ext4
+found in the first two patches of these patch series.)
+
+						- Ted
