@@ -1,97 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:43899 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757769Ab2C2Abi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 20:31:38 -0400
+Received: from rcsinet15.oracle.com ([148.87.113.117]:34046 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965128Ab2CFKvo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 05:51:44 -0500
+Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
+	by rcsinet15.oracle.com (Sentrion-MTA-4.2.2/Sentrion-MTA-4.2.2) with ESMTP id q26AphrA003841
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 10:51:43 GMT
+Received: from acsmt357.oracle.com (acsmt357.oracle.com [141.146.40.157])
+	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id q26ApgWU022253
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 10:51:42 GMT
+Received: from abhmt107.oracle.com (abhmt107.oracle.com [141.146.116.59])
+	by acsmt357.oracle.com (8.12.11.20060308/8.12.11) with ESMTP id q26Apg7k015092
+	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 04:51:42 -0600
+Date: Tue, 6 Mar 2012 13:51:35 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Subject: re: NFS: Add a client-side function to display NFS file handles
+Message-ID: <20120306105134.GA1048@elgon.mountain>
 MIME-Version: 1.0
-Date: Wed, 28 Mar 2012 20:31:36 -0400
-Message-ID: <CAP=VYLr9CL33ZbEVUhVNXsKOCcDWmwmP268jggzWJEBaMa_W0w@mail.gmail.com>
-Subject: linux-next: breakage on undefined reference to `nfsd4_cld_block'
-From: Paul Gortmaker <paul.gortmaker@windriver.com>
-To: jlayton@redhat.com, bfields@redhat.com, Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-next@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+Hello Chuck Lever,
 
-The linux-next tree got about ten new failures today, spanning all arch.
-They all shared this in common, it seems.
+This is a semi-automatic email about new static checker warnings.
 
-ERROR: "nfsd4_cld_block" [fs/nfsd/nfsd.ko] undefined!
-make[2]: *** [__modpost] Error 1
+The patch 20d27e929fb4: "NFS: Add a client-side function to display 
+NFS file handles" from Mar 1, 2012, leads to the following Smatch 
+complaint:
 
-I chose alpha (since it was the 1st I saw alphabetically) and did a bisect,
-and it came up with the below commit.  I've also included the bisect log.
+fs/nfs/inode.c:1061 _nfs_display_fhandle()
+	 warn: variable dereferenced before check 'fh' (see line 1061)
 
-Can someone please take a look at this?  Too late to fix for the Thursday
-build, but Friday might be the last for 3.4 content and it would be nice to
-have all these builds green again in that one.
+fs/nfs/inode.c
+  1060	
+  1061		if (fh->size == 0 || fh == NULL) {
+                    ^^^^^^^^         ^^^^^^^^^^
+                   dereference          check
 
-Thanks,
-Paul.
+  1062			printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
+  1063			return;
 
---------------
-commit 813fd320c16691eac508fe350b4ee7362c6c4a56
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Wed Mar 21 09:52:08 2012 -0400
+regards,
+dan carpenter
 
-    nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
-
-    In the event that rpc_pipefs isn't mounted when nfsd starts, we
-    must register a notifier to handle creating the dentry once it
-    is mounted, and to remove the dentry on unmount.
-
-    Signed-off-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
--------------------
-
-git bisect start
-# good: [c16fa4f2ad19908a47c63d8fa436a1178438c7e7] Linux 3.3
-git bisect good c16fa4f2ad19908a47c63d8fa436a1178438c7e7
-# bad: [7734592ef4a5d14bba15cf2df7fcac8c39d6bdb4] Add linux-next
-specific files for 20120328
-git bisect bad 7734592ef4a5d14bba15cf2df7fcac8c39d6bdb4
-# good: [50953e0640b3473dcb409d5d0d938c2742c93b0d] Merge branch 'poll'
-into staging/for_v3.4
-git bisect good 50953e0640b3473dcb409d5d0d938c2742c93b0d
-# bad: [ecc717668be52fe7b3b29e922b96700067767f05] Merge
-remote-tracking branch 'l2-mtd/master'
-git bisect bad ecc717668be52fe7b3b29e922b96700067767f05
-# good: [d0f6867abfb505b191e31a87dbcdeed65241243a] Merge
-remote-tracking branch 'arm/for-next'
-git bisect good d0f6867abfb505b191e31a87dbcdeed65241243a
-# bad: [2dddaf865e0c13448518abbabd0ad462a7a2d3dd] Merge
-remote-tracking branch 'kbuild/for-next'
-git bisect bad 2dddaf865e0c13448518abbabd0ad462a7a2d3dd
-# bad: [7be8f9ff0749f5d8a0a508b071c206cb68decf04] Merge
-remote-tracking branch 'nfsd/nfsd-next'
-git bisect bad 7be8f9ff0749f5d8a0a508b071c206cb68decf04
-# good: [5537f6f1d690270d388987d543de2cc1e7be40e6] Merge
-remote-tracking branch 'ceph/master'
-git bisect good 5537f6f1d690270d388987d543de2cc1e7be40e6
-# good: [9d547c35799a4ddd235f1565cec2fff6c9263504] vfs: remove unused
-superblock helpers
-git bisect good 9d547c35799a4ddd235f1565cec2fff6c9263504
-# bad: [cc27e0d407021a278d08c1952f5af4ab38c49eda] nfsd: don't allow
-legacy client tracker init for anything but init_net
-git bisect bad cc27e0d407021a278d08c1952f5af4ab38c49eda
-# good: [1255a8f36cb16a02540bdad91c0bc0971b9fb429] nfsd4: don't set
-cl_firststate on first reclaim in 4.1 case
-git bisect good 1255a8f36cb16a02540bdad91c0bc0971b9fb429
-# good: [62b9510cb373d5722fdaba71d961d8f695acfcd5] nfsd: merge cookie
-collision fixes from ext4 tree
-git bisect good 62b9510cb373d5722fdaba71d961d8f695acfcd5
-# good: [2a4317c55438d8589a015d42912454ede12031f0] nfsd: add
-nfsd4_client_tracking_ops struct and a way to set it
-git bisect good 2a4317c55438d8589a015d42912454ede12031f0
-# good: [0ab628d856a63d63b47307b09851d1e955c706ac] nfsd: add a header
-describing upcall to nfsdcld
-git bisect good 0ab628d856a63d63b47307b09851d1e955c706ac
-# bad: [813fd320c16691eac508fe350b4ee7362c6c4a56] nfsd: add notifier
-to handle mount/unmount of rpc_pipefs sb
-git bisect bad 813fd320c16691eac508fe350b4ee7362c6c4a56
-# good: [f3f8014862d813cca81a597c83bd1dbf0fb2b8f6] nfsd: add the
-infrastructure to handle the cld upcall
-git bisect good f3f8014862d813cca81a597c83bd1dbf0fb2b8f6
