@@ -1,53 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36705 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7445 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752003Ab2CSSj7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 14:39:59 -0400
-Date: Mon, 19 Mar 2012 14:39:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-Message-ID: <20120319183955.GC23670@fieldses.org>
-References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca>
- <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca>
- <20120319173656.GA23670@fieldses.org>
- <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com>
- <20120319182712.GB23670@fieldses.org>
- <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com>
+	id S932461Ab2CFCI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 21:08:26 -0500
+Date: Mon, 5 Mar 2012 21:08:19 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120306020819.GH31388@pad.fieldses.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com>
+In-Reply-To: <20120306000837.GA17164@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
-> 
-> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
-> 
-> > On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
-> >>> Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
-> >>> case where we get setclientid's with the same client-provided id.
-> >>> There'd be no change of behavior in the case of multiple clients sharing
-> >>> an IP (which is fine, of course).
-> >> 
-> >> The migration draft proposes that clients use the same nfs_client_id4 string for all of a server's IP addresses.  Would a server then be obliged to return NFS4ERR_CLID_IN_USE if a client attempts a SETCLIENTID with the same boot verifier and nfs_client_id4 on more than one IP address for the same server?
+On Mon, Mar 05, 2012 at 07:08:37PM -0500, Ted Ts'o wrote:
+> On Mon, Jan 09, 2012 at 02:21:53PM +0100, Bernd Schubert wrote:
+> > Just rename this variable, as the next patch will add a flag and
+> > 'access' as variable name would not be correct any more.
 > > 
-> > That's also not this case, sorry, this time with all the conditions:
-> > 
-> > 	- if the nfs_client_id4 is the same, and
-> > 	- if the flavor is auth_sys, and
-> > 	- if the client IP address is different,
-> > 	- then return NFS4ERR_INUSE.
+> > Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> > Acked-by: J. Bruce Fields<bfields@redhat.com>
+> > ---
+> >  fs/nfsd/vfs.c |   18 ++++++++++--------
+> >  1 files changed, 10 insertions(+), 8 deletions(-)
 > 
-> This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
+> On Mon, Jan 09, 2012 at 02:21:58PM +0100, Bernd Schubert wrote:
+> > Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
+> > the NFS version. NFSv2 gets 32-bit hashes only.
+> > 
+> > NOTE: This patch got rather complex as Christoph asked to set the
+> > filp->f_mode flag in the open call or immediatly after dentry_open()
+> > in nfsd_open() to avoid races.
+> > Personally I still do not see a reason for that and in my opinion
+> > FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
+> > follows directly after nfsd_open() without a chance of races.
+> > 
+> > Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+> > Acked-by: J. Bruce Fields<bfields@redhat.com>
+> > ---
+> >  fs/nfsd/vfs.c |   15 +++++++++++++--
+> >  fs/nfsd/vfs.h |    2 ++
+> >  2 files changed, 15 insertions(+), 2 deletions(-)
+> 
+> NFS folks,
+> 
+> Since Bruce has ack'ed these patches I assume it will be OK if I carry
+> them in the ext4 tree for merging?  (They depend on changes in ext4
+> found in the first two patches of these patch series.)
 
-OK.  So probably there's nothing we can do to help here.
+Yes, that would be fine.
 
-As a bandaid maybe a rate-limited log message ("clientid X now in use
-from IP Y") might help debug these things....
+(There may well be some conflict: simplest might be if you can get that
+pushed out to a stable public branch somewhere, hopefully before the
+merge window opens, and that'll give me a chance to pull it and handle
+any merge conflicts.
+
+Then as long as your initial pull request goes in early (so that the
+ext4 changes don't get sucked in with mine), everything works.)
 
 --b.
