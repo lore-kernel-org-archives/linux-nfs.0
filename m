@@ -1,111 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16511 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61192 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1032930Ab2CPPZm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 11:25:42 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Andy Adamson <androsadamson@gmail.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 1 08/11] SUNRPC: add rpc_drain_queue to empty an
- rpc_waitq
-Date: Fri, 16 Mar 2012 15:25:41 +0000
-Message-ID: <8587FE07-0E16-4E0B-BCBE-7B295B89062C@netapp.com>
-References: <1331836850-5195-1-git-send-email-andros@netapp.com>
- <1331836850-5195-9-git-send-email-andros@netapp.com>
- <1331856643.24392.3.camel@lade.trondhjem.org>
- <CAHVgHyWPPu_+9-6mr__n3q-BP=0C+=_5SwTwzZqMiBqQJonp+A@mail.gmail.com>
- <1331911317.2518.14.camel@lade.trondhjem.org>
-In-Reply-To: <1331911317.2518.14.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1754275Ab2CFQdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 11:33:20 -0500
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q26GXKEw013707
+	for <linux-nfs@vger.kernel.org>; Tue, 6 Mar 2012 08:33:20 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFS: Properly handle the case where the delegation
+ is revoked
+Date: Tue, 6 Mar 2012 16:33:19 +0000
+Message-ID: <1331051598.3260.26.camel@lade.trondhjem.org>
+References: <1331046186-5638-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <E67CE84F-776D-42C2-8939-8FABEA44D360@netapp.com>
+In-Reply-To: <E67CE84F-776D-42C2-8939-8FABEA44D360@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 16, 2012, at 11:21 AM, Myklebust, Trond wrote:
-
-> On Fri, 2012-03-16 at 11:13 -0400, Andy Adamson wrote:
->> On Thu, Mar 15, 2012 at 8:10 PM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->>> On Thu, 2012-03-15 at 14:40 -0400, andros@netapp.com wrote:
->>>> From: Andy Adamson <andros@netapp.com>
->>>> 
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>> include/linux/sunrpc/sched.h |    1 +
->>>> net/sunrpc/sched.c           |   27 +++++++++++++++++++++++++++
->>>> 2 files changed, 28 insertions(+), 0 deletions(-)
->>>> 
->>>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
->>>> index dc0c3cc..fce0873 100644
->>>> --- a/include/linux/sunrpc/sched.h
->>>> +++ b/include/linux/sunrpc/sched.h
->>>> @@ -235,6 +235,7 @@ void              rpc_sleep_on_priority(struct rpc_wait_queue *,
->>>> void         rpc_wake_up_queued_task(struct rpc_wait_queue *,
->>>>                                      struct rpc_task *);
->>>> void         rpc_wake_up(struct rpc_wait_queue *);
->>>> +void         rpc_drain_queue(struct rpc_wait_queue *);
->>>> struct rpc_task *rpc_wake_up_next(struct rpc_wait_queue *);
->>>> struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
->>>>                                      bool (*)(struct rpc_task *, void *),
->>>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->>>> index 1c570a8..11928ff 100644
->>>> --- a/net/sunrpc/sched.c
->>>> +++ b/net/sunrpc/sched.c
->>>> @@ -551,6 +551,33 @@ void rpc_wake_up(struct rpc_wait_queue *queue)
->>>> EXPORT_SYMBOL_GPL(rpc_wake_up);
->>>> 
->>>> /**
->>>> + * rpc_drain_queue - empty the queue and wake up all rpc_tasks
->>>> + * @queue: rpc_wait_queue on which the tasks are sleeping
->>>> + *
->>>> + * Grabs queue->lock
->>>> + */
->>>> +void rpc_drain_queue(struct rpc_wait_queue *queue)
->>>> +{
->>>> +     struct rpc_task *task;
->>>> +     struct list_head *head;
->>>> +
->>>> +     spin_lock_bh(&queue->lock);
->>>> +     head = &queue->tasks[queue->maxpriority];
->>>> +     for (;;) {
->>>> +             while (!list_empty(head)) {
->>>> +                     task = list_entry(head->next, struct rpc_task,
->>>> +                                       u.tk_wait.list);
->>>> +                     rpc_wake_up_task_queue_locked(queue, task);
->>>> +             }
->>>> +             if (head == &queue->tasks[0])
->>>> +                     break;
->>>> +             head--;
->>>> +     }
->>>> +     spin_unlock_bh(&queue->lock);
->>>> +}
->>>> +EXPORT_SYMBOL_GPL(rpc_drain_queue);
->>>> +
->>> 
->>> Confused... How is this function any different from rpc_wake_up()?
->> 
->> Because it actually drains the queues where rpc_wake_up does not.  See
->> the attached output where I added the same printks to both
->> rpc_drain_queue and rpc_wake_up.
-> 
-> So you are seeing a bug in rpc_wake_up()? I'm surprised; a bug of that
-> magnitude should have caused a lot of hangs. Can you please look into
-> what is happening.
-
-OK. Didn't know it was a bug - just thought the comment was off...
-
--->Andy
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+T24gVHVlLCAyMDEyLTAzLTA2IGF0IDE2OjI0ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBXaXRoICAiTkZTOiBQcm9wZXJseSBoYW5kbGUgdGhlIGNhc2Ugd2hlcmUgdGhlIGRlbGVnYXRp
+b24gaXMgcmV2b2tlZCIgcGF0Y2ggYWRkZWQgdG8gVHJvbmQncyBvcmlnaW4vdGVzdGlnbiBicmFu
+Y2gsICBteSBweXRob24gdGVzdCB0aGF0IHJlbW92ZXMgdGhlIChkZWxlZ2F0aW9uKSBzdGF0ZWlk
+IG9uIGEgUkVBRCwgYW5kIHJldHVybnMgTkZTNEVSUl9CQURfU1RBVEVJRCBwYXNzZXMgYXMgdGhl
+IGNsaWVudCByZWNvdmVycyBieSB0ZXN0aW5nIGFuZCBmcmVlaW5nIHRoZSBzdGF0ZWlkLCBhbmQg
+dGhlbiBzZW5kaW5nIGFuIE9QRU4gd2l0aCBhIENMQUlNX05VTEwuDQo+IA0KPiAtLT5BbmR5DQo+
+IA0KPiANCj4gQlRXOiB0aGlzIHBhdGNoIGNsZWFucyB1cCBzb21lIHN0YXRlaWQgY29tcGFyZXMg
+YW5kIHRoZSBzZWNvbmQgY2h1bmsgaXMgbmVlZGVkIGZvciB0aGUgb3JpZ2luL3Rlc3RpbmcgYnJh
+bmNoIHRvIGNvbXBpbGUuICBZb3UndmUgcHJvYmFibHkgYWxyZWFkeSBmb3VuZCB0aGlz4oCmLi4N
+Cg0KWWVzLiBJbiBvcmRlciB0byBtYWtlIHRoZSBwYXRjaCBhcHBseSB0byB0aGUgc3RhYmxlIGtl
+cm5lbHMsIEkgYWN0dWFsbHkNCmluc2VydGVkIGl0IGJlZm9yZSB0aGUgc3RhdGVpZCBjaGFuZ2Vz
+IGluIHRoZSAnZGV2ZWwnIGJyYW5jaCwgYW5kIHRoZW4NCmZpeGVkIHRoZSBzdGF0ZWlkIHBhdGNo
+ZXMgdXAgaW5zdGVhZC4gVGhlIGN1cnJlbnQgJ3Rlc3RpbmcnIGJyYW5jaA0Kc2hvdWxkIGhhdmUg
+YSB3b3JraW5nIHZlcnNpb24gb2YgYm90aC4NCg0KQlRXOiB3aXRoIHRoaXMgcGF0Y2gsIHRoZSAi
+TkZTdjQuMTogRml4IHRoZSBjaGVja2luZyBvZiB0aGUgc3RhdGVpZCB3aGVuDQpyZXR1cm5pbmcg
+YSBkZWxlZ2F0aW9uIiBpcyBub3QgbmVlZGVkIGFzIGEgc3RhYmxlIGZpeCwgc2luY2Ugd2Ugbm8N
+CmxvbmdlciB1c2UgbmZzX2FzeW5jX2lub2RlX3JldHVybl9kZWxlZ2F0aW9uKCkgaW4gc3RhdGUg
+cmVjb3Zlcnkgc28gSSd2ZQ0KcmVtb3ZlZCB0aGUgQ2M6IHN0YWJsZSBmcm9tIHRoYXQgcGF0Y2gu
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
