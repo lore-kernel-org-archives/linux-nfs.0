@@ -1,99 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([134.215.213.37]:2207 "EHLO aa.linuxbox.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45360 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932961Ab2CZSzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Mar 2012 14:55:24 -0400
-Date: Mon, 26 Mar 2012 14:55:00 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-ID: <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <4F70B8DF.9000108@panasas.com>
-Subject: Re: unlink within an open directory stream
+	id S1030772Ab2CFOxX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 09:53:23 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until
+ stateid is tested
+Date: Tue, 6 Mar 2012 14:53:22 +0000
+Message-ID: <1331045602.3260.7.camel@lade.trondhjem.org>
+References: <1331045205-3031-1-git-send-email-andros@netapp.com>
+	 <1331045205-3031-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1331045205-3031-4-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-Boaz:  we do not any longer send a readdir index.  We do send a cookieverf.
-
-Fist of all, I haven't established that the issue we're actually observing is caused
-by the Linux client sending old cookies to readdir(something).  However, if it is,
-it's in no way better to try to make cookies "more persistent."  Nor should the Linux
-client be expecting it.  The assumption is simply flawed.  The protocol introduced
-cookie verifier (a LONG time ago) for a reason.
-
-Matt
------ "Boaz Harrosh" <bharrosh@panasas.com> wrote:
-
-> On 03/26/2012 11:25 AM, Myklebust, Trond wrote:
-> 
-> > On Mon, 2012-03-26 at 11:17 -0700, Boaz Harrosh wrote:
-> >> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
-> >>
-> >>
-> >> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an
-> unlink.
-> > 
-> > What?
-> > 
-> 
-> 
-> The links below report on regression in RHEL 6.2 which have a new NFS
-> implementation where  6.0 used to be fine.
-> (Or it's what I understood from the reporters)
-> 
-> <snip>
-> 
-> > 
-> 
-> > No.
-> > 
-> > If the server supports permanent readdir cookies, then there is no
-> need
-> > for opendir after unlink.
-> > 
-> > If the server does not have permanent readdir cookies, then our
-> client
-> > has never supported it anyway (nor will it ever do so). That whole
-> > 'cookieverf' READDIR bullshit has never provided a workable model
-> for a
-> > POSIX client...
-> 
-> 
-> Thanks Trond for the explanation. Forgive my slowness. So you are
-> saying that with knfsd it's actually filesystem dependent and maybe
-> the reporters did not compare apples-to-apples and the difference is
-> in the behind file system.
-> 
-> Matt I'm sure Trond is right with regard to Ganesha, because we
-> send a readdir index and a cookieverf, which will change after
-> unlink. Since the application does not call opendir again the
-> client will send the old cookies, which is now a different file
-> or might get out-of-bounds for Ganesha.
-> 
-> Let me think about it a bit. I'm sure we can send a Better
-> 64bit cookie, which will be more persistent, even across unlinks.
-> 
-> > 
-> > 
-> 
-> 
-> Thanks
-> Boaz
-
--- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
-
-http://linuxbox.com
-
-tel. 734-761-4689
-fax. 734-769-8938
-cel. 734-216-5309
+T24gVHVlLCAyMDEyLTAzLTA2IGF0IDA5OjQ2IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IG5mczQx
+X29wZW5fZXhwaXJlZCgpIHdpbGwgdGVzdCB0aGUgZGVsZWdhdGlvbiBzdGF0ZWlkIGJhc2VkIG9u
+DQo+IE5GU19ERUxFR0FURURfU1RBVEUgYmVpbmcgc2V0LiBJZiB0aGUgc3RhdGVpZCBpcyBiYWQs
+IG5mczRfb3Blbl9yZWNvdmVyDQo+IHdpbGwgY2xlYXIgdGhlIE5GU19ERUxFR0FURURfU1RBVEUg
+Yml0IHJlY292ZXJpbmcgdGhlIGRlbGVnYXRpb24uDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBBbmR5
+IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiBDYzogc3RhYmxlQHZnZXIua2VybmVsLm9y
+Zw0KPiAtLS0NCj4gIGZzL25mcy9uZnM0c3RhdGUuYyB8ICAgIDUgKysrKy0NCj4gIDEgZmlsZXMg
+Y2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiBpbmRleCA3YmQ5
+ODIyLi40NGZjZDYwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gKysrIGIv
+ZnMvbmZzL25mczRzdGF0ZS5jDQo+IEBAIC02OTYsNyArNjk2LDEwIEBAIHN0YXRpYyB2b2lkIF9f
+bmZzNF9jbG9zZShzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ICAJCQljYWxsX2Nsb3NlIHw9
+IHRlc3RfYml0KE5GU19PX1JEV1JfU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpOw0KPiAgCQl9DQo+ICAJ
+CWlmIChuZXdzdGF0ZSA9PSAwKQ0KPiArew0KPiArcHJpbnRrKCIlcyBDTEVBUiBORlNfREVMRUdB
+VEVEX1NUQVRFIHN0YXRlICVwXG4iLCBfX2Z1bmNfXywgc3RhdGUpOw0KPiAgCQkJY2xlYXJfYml0
+KE5GU19ERUxFR0FURURfU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpOw0KPiArfVwNCg0KRXd3dy4uLi4u
+DQoNCj4gIAl9DQo+ICAJbmZzNF9zdGF0ZV9zZXRfbW9kZV9sb2NrZWQoc3RhdGUsIG5ld3N0YXRl
+KTsNCj4gIAlzcGluX3VubG9jaygmb3duZXItPnNvX2xvY2spOw0KPiBAQCAtMTA5Nyw3ICsxMTAw
+LDcgQEAgdm9pZCBuZnM0X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3ZlcnkoY29uc3Qgc3RydWN0IG5m
+c19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mczQNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzX2NsaWVu
+dCAqY2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0KPiAgDQo+IC0JaWYgKHRlc3RfYW5kX2NsZWFy
+X2JpdChORlNfREVMRUdBVEVEX1NUQVRFLCAmc3RhdGUtPmZsYWdzKSkNCj4gKwlpZiAodGVzdF9i
+aXQoTkZTX0RFTEVHQVRFRF9TVEFURSwgJnN0YXRlLT5mbGFncykpDQo+ICAJCW5mc19hc3luY19p
+bm9kZV9yZXR1cm5fZGVsZWdhdGlvbihzdGF0ZS0+aW5vZGUsICZzdGF0ZS0+c3RhdGVpZCk7DQo+
+ICAJbmZzNF9zdGF0ZV9tYXJrX3JlY2xhaW1fbm9ncmFjZShjbHAsIHN0YXRlKTsNCj4gIAluZnM0
+X3NjaGVkdWxlX3N0YXRlX21hbmFnZXIoY2xwKTsNCg0KQWN0dWFsbHksIHRoZSBsYXRlc3QgaW5j
+YXJuYXRpb24gb2YgdGhlIHBhdGNoIDIvMyByZW1vdmVzIHRoZQ0KYXN5bmNfaW5vZGVfcmV0dXJu
+X2RlbGVnYXRpb24gZnJvbSBuZnM0X3NjaGVkdWxlX3N0YXRlaWRfcmVjb3ZlcnkuIFdlDQpkb24n
+dCBuZWVkIHRvIHJldHVybiB0aGUgZGVsZWdhdGlvbiBpZiBhbGwgdGhlIHN0YXRlaWRzIGhhdmUg
+YmVlbiBtYXJrZWQNCmZvciByZXR1cm4sIGFuZCB3ZSd2ZSB0aHJvd24gb3V0IHRoZSBkZWxlZ2F0
+aW9uIGl0c2VsZi4NCg0KTGV0J3Mgbm90IGh1cnJ5IHRoaXMgaW50byB0aGUgc3RhYmxlIHRyZWUg
+eWV0Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
+Cg0K
