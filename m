@@ -1,40 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36389 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755697Ab2CPTDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Mar 2012 15:03:34 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2GJ3Y07015581
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 12:03:34 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Error: state manager encountered RPCSEC_GSS session expired
- against NFSv4 server
-Date: Fri, 16 Mar 2012 19:03:33 +0000
-Message-ID: <1331924613.12136.1.camel@lade.trondhjem.org>
-References: <1331912791.2336.3.camel@localhost>
-	 <1331919386.2518.44.camel@lade.trondhjem.org>
-	 <4F637B68.2000202@fifthhorseman.net>
-In-Reply-To: <4F637B68.2000202@fifthhorseman.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1758066Ab2CFBe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Mar 2012 20:34:58 -0500
+Message-ID: <4F5569C5.1000100@RedHat.com>
+Date: Mon, 05 Mar 2012 20:35:01 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
+References: <1330976165-19849-1-git-send-email-steved@redhat.com>   <1330976165-19849-2-git-send-email-steved@redhat.com>   <20120305212015.GA21904@us.ibm.com> <4F5559EA.7010206@RedHat.com>  <1330993903.5407.3.camel@lade.trondhjem.org> <4F556007.2030603@RedHat.com> <1330995896.5407.8.camel@lade.trondhjem.org>
+In-Reply-To: <1330995896.5407.8.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTE2IGF0IDEzOjQyIC0wNDAwLCBEYW5pZWwgS2FobiBHaWxsbW9yIHdy
-b3RlOg0KPiBPbiAwMy8xNi8yMDEyIDAxOjM2IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
-PiA+IFRoZSBwcm9ibGVtIGlzIHRoYXQgaWYgdGhlIGNsaWVudCBkb2Vzbid0IGhhdmUgYSBtYWNo
-aW5lIGNyZWQsIHRoZW4geW91DQo+ID4gZW5kIHVwIHRha2luZyBhIHJhbmRvbSB1c2VyIGNyZWRl
-bnRpYWwgdGhhdCBtYXkgbm90IGN1cnJlbnRseSBiZSBob2xkaW5nDQo+ID4gYW55IE9QRU4gZmls
-ZXMuIEluIHRoYXQgY2FzZSB0b28gdGhlIFJFTkVXIHdpbGwgZmFpbC4NCj4gDQo+IFNvIGlmIGkn
-bSB1bmRlcnN0YW5kaW5nIHRoaXMgcmlnaHQ6DQo+IA0KPiBTYWNoaW4ncyBwcm9wb3NhbCBmYWls
-cyB3aGVuIHRoZSBtYWNoaW5lIGhhcyBubyBtYWNoaW5lIGNyZWRzLg0KPiANCj4gVGhlIGN1cnJl
-bnQgaW1wbGVtZW50YXRpb24gZmFpbHMgd2hlbiB0aGUgbG9nZ2VkLWluIHVzZXIncyBjcmVkZW50
-aWFscyANCj4gYXJlIGV4cGlyZWQuDQo+IA0KPiBDYW4gdGhlIE5GUyBjbGllbnQncyBsb2dpYyB0
-ZXN0IGZvciB0aG9zZSBkaWZmZXJlbnQgY2FzZXMsIHVzZSB0aGUgDQo+IGFwcHJvcHJpYXRlIGNy
-ZWRzIGZvciBSRU5FVyBpbiB0aGVpciBkaWZmZXJlbmNlLCBhbmQgcmVkdWNlIHRoZSBmYWlsdXJl
-IA0KPiBjYXNlIHRvIHRoZWlyIGludGVyc2VjdGlvbj8NCg0KU2ltcGxlciBzb2x1dGlvbjogYWRk
-IHRoZSBjYWxsIHRvIGdldCBtYWNoaW5lIGNyZWRzIHRvIHRoZSBleGlzdGluZw0KZ2V0X3JlbmV3
-X2NyZWRzIGZ1bmN0aW9uLg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0KDQo=
+
+
+On 03/05/2012 08:04 PM, Myklebust, Trond wrote:
+>>> Is there any reason why we actually care about checking the crap
+>>> in /etc/mtab on umount?
+>>>
+>> Yeah... its called backwards compatibility with older distros...
+>> Believe, if I could bury mtab I would... in a New York minute! 
+>> I just don't see it happening... 
+> 
+> Yes, but despite all your work, you are just replacing one broken model
+> by another.
+>
+> 
+> At least with the current code, they can _see_ that the model is broken
+> and have an immediate incentive to move to the
+> mtab-is-a-symlink-to-/proc/mounts based model. The latter is in any case
+> the only one that is valid in the mount-namespace based world in which
+> we've been living for the past 5 years or so...
+> 
+I do not disagree with what you are saying... The fact the code/model
+is broken is unarguably true... Relying on info in the mtab verses 
+/proc/mounts is completely brain dead... But those bits are on the 
+street and need to be fixed... So the question is how to fix
+them...
+
+Sending out a patch that symbolically links mtab to /proc/mounts
+would solve this entire problem! But I just can't make major change
+like that in established worlds... Who know what people use mtab
+for... I certainly don't. Changing mtab to read-only is recipe for
+disaster... IMHO... 
+
+Now if we don't want to take a patch like this in upstream 
+that's a different story... This patch is basically meaningless 
+when  it comes to new Linux distros... I'm ok with that..
+But I do think its wise for us to at least try to be somewhat
+backwards compatible....
+
+steved.
+ 
+
