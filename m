@@ -1,128 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45337 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38392 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753764Ab2C2Osp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 10:48:45 -0400
-Date: Thu, 29 Mar 2012 10:48:43 -0400
+	id S1759258Ab2CFWMV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 17:12:21 -0500
+Date: Tue, 6 Mar 2012 17:12:19 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
-Message-ID: <20120329144843.GJ16938@fieldses.org>
-References: <20120328234617.GB13231@fieldses.org>
- <1996969981.63.1333031372979.JavaMail.root@thunderbeast.private.linuxbox.com>
+To: bjschuma@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSD: Clean up the test_stateid function
+Message-ID: <20120306221219.GF24741@fieldses.org>
+References: <1327677769-7554-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1996969981.63.1333031372979.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <1327677769-7554-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 10:29:32AM -0400, Matt W. Benjamin wrote:
-> Am I correct that this limitation is only with respect to v40 (that's how I read the comment and the code in fs/nfs/callback.c)?
+On Fri, Jan 27, 2012 at 10:22:49AM -0500, bjschuma@netapp.com wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+> 
+> When I initially wrote it, I didn't understand how lists worked so I
+> wrote something that didn't use them.  I think making a list of stateids
+> to test is a more straightforward implementation, especially compared to
+> especially compared to decoding stateids while simultaneously encoding
+> a reply to the client.
 
-I'm not sure what "limitation" you mean exactly....  The way the spec
-works is (from memory, someone correct me if I screw up):
-
-	- In the 4.0 case, the server's callbacks use the same flavor as
-	  was used on the setclientid.
-	- In the 4.1 case, the server's callbacks use the flavor
-	  specified in the csa_sec_parms field in a create_session or
-	  backchannel_ctl.
-
-In the 4.1 case the client always requests auth_unix on the backchannel.
-That is the client's right, and is an implementation choice based on the
-assumption that the amount of mischief somebody could perform by reading
-(or spoofing) callbacks is limited.
-
-The Linux server correctly implements the 4.0 case, but in the 4.1 case
-(after this patch, and before my earlier mistake in 80fc015bdfe) it
-always uses auth_unix.  That happens to satisfy the linux client, but
-isn't really correct, as it is perfectly legal for a client to request
-something other than auth_unix, and the Linux server would currently
-fail to interoperate with such a client.
-
---b.
+I've applied this and pushed it out.  Sorry, can't remember if I replied
+before, just noticed this still in my inbox....--b.
 
 > 
-> Thanks,
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+> v2: Use defer_free() to free kmalloc()ed memory.
 > 
-> Matt
+>  fs/nfsd/nfs4state.c |    9 ++++++-
+>  fs/nfsd/nfs4xdr.c   |   66 +++++++++++++++-----------------------------------
+>  fs/nfsd/xdr4.h      |    9 +++++-
+>  3 files changed, 35 insertions(+), 49 deletions(-)
 > 
-> ----- "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Mar 28, 2012 at 11:16:49PM +0000, Myklebust, Trond wrote:
-> > > On Wed, 2012-03-28 at 19:09 -0400, J. Bruce Fields wrote:
-> > > > This is a bandaid.
-> > > > 
-> > > > I have a series of patches that actually implement the correct
-> > behavior,
-> > > > but that may not quite be ready for 3.4.
-> > > > 
-> > > > --b.
-> > > > 
-> > > > commit 2f026867c76171d26f003b211063ff0562097d5e
-> > > > Author: J. Bruce Fields <bfields@redhat.com>
-> > > > Date:   Wed Mar 28 14:18:16 2012 -0400
-> > > > 
-> > > >     nfsd4: use auth_unix unconditionally on backchannel
-> > > >     
-> > > >     This isn't actually correct, but it works with the Linux
-> > client, and
-> > > >     agrees with the behavior we used to have before commit
-> > 80fc015bdfe.
-> > > 
-> > > Question: does the Linux client ever send you anything other than
-> > > AUTH_SYS credentials for the csa_sec_parms argument in
-> > CREATE_SESSION?
-> > > Anything other than that would be a bug, since our client doesn't
-> > > actually support RPCSEC_GSS in the callback channel.
-> > 
-> > Right, I've never seen anything else, so I think the client's
-> > behaving
-> > as expected.
-> > 
-> > But the server needs to be fixed to deal with the range of possible
-> > csa_sec_parms possibilities regardless.
-> > 
-> > The only thing I find odd about the client behavior is why it even
-> > bothers with auth_sys when auth_null would work just as well and be
-> > even
-> > slightly simpler.
-> > 
-> > --b.
-> > 
-> > > 
-> > > >     Later patches will implement the spec-mandated behavior (which
-> > is to use
-> > > >     the security parameters explicitly given by the client in
-> > create_session
-> > > >     or backchannel_ctl).
-> > > >     
-> > > 
-> > > 
-> > > -- 
-> > > Trond Myklebust
-> > > Linux NFS client maintainer
-> > > 
-> > > NetApp
-> > > Trond.Myklebust@netapp.com
-> > > www.netapp.com
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e8c98f0..c59a3f6 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3400,7 +3400,14 @@ __be32
+>  nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		   struct nfsd4_test_stateid *test_stateid)
+>  {
+> -	/* real work is done during encoding */
+> +	struct nfsd4_test_stateid_id *stateid;
+> +	struct nfs4_client *cl = cstate->session->se_client;
+> +
+> +	nfs4_lock_state();
+> +	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
+> +		stateid->ts_id_status = nfs4_validate_stateid(cl, &stateid->ts_id_stateid);
+> +	nfs4_unlock_state();
+> +
+>  	return nfs_ok;
+>  }
+>  
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 0ec5a1b..5785a98 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -133,22 +133,6 @@ xdr_error:					\
+>  	}					\
+>  } while (0)
+>  
+> -static void save_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+> -{
+> -	savep->p        = argp->p;
+> -	savep->end      = argp->end;
+> -	savep->pagelen  = argp->pagelen;
+> -	savep->pagelist = argp->pagelist;
+> -}
+> -
+> -static void restore_buf(struct nfsd4_compoundargs *argp, struct nfsd4_saved_compoundargs *savep)
+> -{
+> -	argp->p        = savep->p;
+> -	argp->end      = savep->end;
+> -	argp->pagelen  = savep->pagelen;
+> -	argp->pagelist = savep->pagelist;
+> -}
+> -
+>  static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
+>  {
+>  	/* We want more bytes than seem to be available.
+> @@ -1385,26 +1369,29 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+>  static __be32
+>  nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_stateid *test_stateid)
+>  {
+> -	unsigned int nbytes;
+> -	stateid_t si;
+>  	int i;
+> -	__be32 *p;
+> -	__be32 status;
+> +	__be32 *p, status;
+> +	struct nfsd4_test_stateid_id *stateid;
+>  
+>  	READ_BUF(4);
+>  	test_stateid->ts_num_ids = ntohl(*p++);
+>  
+> -	nbytes = test_stateid->ts_num_ids * sizeof(stateid_t);
+> -	if (nbytes > (u32)((char *)argp->end - (char *)argp->p))
+> -		goto xdr_error;
+> -
+> -	test_stateid->ts_saved_args = argp;
+> -	save_buf(argp, &test_stateid->ts_savedp);
+> +	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
+>  
+>  	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+> -		status = nfsd4_decode_stateid(argp, &si);
+> +		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
+> +		if (!stateid) {
+> +			status = PTR_ERR(stateid);
+> +			goto out;
+> +		}
+> +
+> +		defer_free(argp, kfree, stateid);
+> +		INIT_LIST_HEAD(&stateid->ts_id_list);
+> +		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
+> +
+> +		status = nfsd4_decode_stateid(argp, &stateid->ts_id_stateid);
+>  		if (status)
+> -			return status;
+> +			goto out;
+>  	}
+>  
+>  	status = 0;
+> @@ -3391,30 +3378,17 @@ __be32
+>  nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, int nfserr,
+>  			  struct nfsd4_test_stateid *test_stateid)
+>  {
+> -	struct nfsd4_compoundargs *argp;
+> -	struct nfs4_client *cl = resp->cstate.session->se_client;
+> -	stateid_t si;
+> +	struct nfsd4_test_stateid_id *stateid, *next;
+>  	__be32 *p;
+> -	int i;
+> -	int valid;
+>  
+> -	restore_buf(test_stateid->ts_saved_args, &test_stateid->ts_savedp);
+> -	argp = test_stateid->ts_saved_args;
+> -
+> -	RESERVE_SPACE(4);
+> +	RESERVE_SPACE(4 + (4 * test_stateid->ts_num_ids));
+>  	*p++ = htonl(test_stateid->ts_num_ids);
+> -	resp->p = p;
+>  
+> -	nfs4_lock_state();
+> -	for (i = 0; i < test_stateid->ts_num_ids; i++) {
+> -		nfsd4_decode_stateid(argp, &si);
+> -		valid = nfs4_validate_stateid(cl, &si);
+> -		RESERVE_SPACE(4);
+> -		*p++ = htonl(valid);
+> -		resp->p = p;
+> +	list_for_each_entry_safe(stateid, next, &test_stateid->ts_stateid_list, ts_id_list) {
+> +		*p++ = htonl(stateid->ts_id_status);
+>  	}
+> -	nfs4_unlock_state();
+>  
+> +	ADJUST_ARGS();
+>  	return nfserr;
+>  }
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 2364747..0a667e9 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -343,10 +343,15 @@ struct nfsd4_saved_compoundargs {
+>  	struct page **pagelist;
+>  };
+>  
+> +struct nfsd4_test_stateid_id {
+> +	__be32			ts_id_status;
+> +	stateid_t		ts_id_stateid;
+> +	struct list_head	ts_id_list;
+> +};
+> +
+>  struct nfsd4_test_stateid {
+>  	__be32		ts_num_ids;
+> -	struct nfsd4_compoundargs *ts_saved_args;
+> -	struct nfsd4_saved_compoundargs ts_savedp;
+> +	struct list_head ts_stateid_list;
+>  };
+>  
+>  struct nfsd4_free_stateid {
 > -- 
-> Matt Benjamin
-> The Linux Box
-> 206 South Fifth Ave. Suite 150
-> Ann Arbor, MI  48104
+> 1.7.8.4
 > 
-> http://linuxbox.com
-> 
-> tel. 734-761-4689
-> fax. 734-769-8938
-> cel. 734-216-5309
