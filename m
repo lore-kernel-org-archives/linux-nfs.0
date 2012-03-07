@@ -1,58 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:13166 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932078Ab2CEOxz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 09:53:55 -0500
-Message-ID: <4F54D367.4000503@parallels.com>
-Date: Mon, 05 Mar 2012 18:53:27 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
- upcall
-References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>	<1330720950-5872-6-git-send-email-jlayton@redhat.com>	<4F547DF1.8090003@parallels.com>	<20120305074256.6dc36fed@tlielax.poochiereds.net>	<4F54B6B7.1010703@parallels.com> <20120305093948.435f39cc@tlielax.poochiereds.net>
-In-Reply-To: <20120305093948.435f39cc@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from rcsinet15.oracle.com ([148.87.113.117]:48966 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609Ab2CGUwq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2012 15:52:46 -0500
+Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120307205005.GB582@fieldses.org>
+Date: Wed, 7 Mar 2012 15:52:33 -0500
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <AAB0D4F3-A275-482E-A520-06715885B08F@oracle.com>
+References: <1331150190-18401-1-git-send-email-steved@redhat.com> <20120307203649.GA582@fieldses.org> <20120307205005.GB582@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-05.03.2012 18:39, Jeff Layton пишет:
->
-> Ok, I've started looking at the existing examples to try and ease the
-> eventual containerization of this. Am I correct that the existing
-> blocklayout pipe containerization is not yet complete?
->
-> AIUI, you have a rpc_pipe per nfs_net struct, and those structs are
-> allocated on a per-net basis. bl_pipe_downcall does this however:
->
->          if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
->                  return -EFAULT;
->
-> ...but bl_mount_reply is global:
->
->      static struct bl_dev_msg bl_mount_reply;
->
-> So, if you're getting downcalls in two different network namespaces at
-> the same time this could end up corrupt. It seems like bl_mount_reply
-> needs to be part of nfs_net as well.
 
-Thanks for this catch, Jeff!
-I need to fix this.
+On Mar 7, 2012, at 3:50 PM, J. Bruce Fields wrote:
 
->
-> When you get a downcall, you have a filp pointer. Is there any way to
-> determine the "correct" nfs_net object for a particular filp?
->
+> On Wed, Mar 07, 2012 at 03:36:49PM -0500, bfields wrote:
+>> On Wed, Mar 07, 2012 at 02:56:30PM -0500, Steve Dickson wrote:
+>>> This problem can occur when multiple cluster services fail over
+>>> at the same time, causing missing high-available exports.
+>>> Having a lot of nfs-exports will trigger this issue easier.
+>> 
+>> Isn't the locking in support/export/xtab.c supposed to take care of
+>> this?
+> 
+> Huh, maybe that's just meant to prevent etab from getting corrupted, or
+> mountd from seeing a partially-written file.
+> 
+> But it probably doesn't prevent two exportfs processes from both reading
+> etab, adding an export, and each writing out an etab with its one export
+> added, with the last writer winning.
+> 
+> Was that the problem?
 
-Yes, sure.
-This nfs_net object will be, obviously, in the same network namespace, as PipeFS 
-superblock. Network namespace is stored on PipeFS sb->s_fs_info.
-IOW, code below should works:
+For bug 224, yes.  After disparate concurrent exportfs commands race, the etab file ends up missing some exports.
 
-struct nfs_net *nn = net_generic(file->f_dentry->d_sb->s_fs_info, nfs_net_id);
+> 
+> I think it'd be worth a comment above grab/release_lockfile().
+> 
+> --b.
+> 
+>> 
+>> I may be confused--I forget what all these files are for....
+>> 
+>> --b.
+>> 
+>>> 
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>> support/include/exportfs.h |    4 ++++
+>>> utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
+>>> 2 files changed, 28 insertions(+), 0 deletions(-)
+>>> 
+>>> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+>>> index 01e87dd..99916e5 100644
+>>> --- a/support/include/exportfs.h
+>>> +++ b/support/include/exportfs.h
+>>> @@ -32,6 +32,10 @@ enum {
+>>> 	FSLOC_STUB
+>>> };
+>>> 
+>>> +#ifndef EXP_LOCKFILE
+>>> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
+>>> +#endif
+>>> +
+>>> typedef struct mclient {
+>>> 	struct mclient *	m_next;
+>>> 	char *			m_hostname;
+>>> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+>>> index 7432a65..769d438 100644
+>>> --- a/utils/exportfs/exportfs.c
+>>> +++ b/utils/exportfs/exportfs.c
+>>> @@ -16,6 +16,7 @@
+>>> #include <sys/stat.h>
+>>> #include <sys/vfs.h>
+>>> #include <sys/stat.h>
+>>> +#include <sys/file.h>
+>>> #include <unistd.h>
+>>> #include <stdbool.h>
+>>> #include <stdlib.h>
+>>> @@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
+>>> static int	matchhostname(const char *hostname1, const char *hostname2);
+>>> static void	export_d_read(const char *dname);
+>>> 
+>>> +static const char *lockfile = EXP_LOCKFILE;
+>>> +static int _lockfd = -1;
+>>> +
+>>> +void 
+>>> +grab_lockfile()
+>>> +{
+>>> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
+>>> +	if (_lockfd != -1) 
+>>> +		lockf(_lockfd, F_LOCK, 0);
+>>> +}
+>>> +void 
+>>> +release_lockfile()
+>>> +{
+>>> +	if (_lockfd != -1)
+>>> +		lockf(_lockfd, F_ULOCK, 0);
+>>> +}
+>>> +
+>>> int
+>>> main(int argc, char **argv)
+>>> {
+>>> @@ -129,6 +147,12 @@ main(int argc, char **argv)
+>>> 			return 0;
+>>> 		}
+>>> 	}
+>>> +	/*
+>>> +	 * Serialize things as best we can
+>>> +	 */
+>>> +	grab_lockfile();
+>>> +	atexit(release_lockfile);
+>>> +
+>>> 	if (f_export && ! f_ignore) {
+>>> 		export_read(_PATH_EXPORTS);
+>>> 		export_d_read(_PATH_EXPORTS_D);
+>>> -- 
+>>> 1.7.7.6
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
