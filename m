@@ -1,122 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58958 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51011 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756637Ab2CLTRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 15:17:37 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2CJHaTX021417
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 15:17:37 -0400
-Message-ID: <4F5E4BCF.5050908@RedHat.com>
-Date: Mon, 12 Mar 2012 15:17:35 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750987Ab2CGVL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 16:11:29 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Paul Anderson <pha@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: new (to us) kernel panic nfsv4 linux 3.0.12
+Date: Wed, 7 Mar 2012 21:11:27 +0000
+Message-ID: <1331154687.13896.3.camel@lade.trondhjem.org>
+References: <CAOO4vO4HRwcQsOm+y7TKzsxaSpALfN5+cj3Y7fKUb1njWhqzQQ@mail.gmail.com>
+	 <1331153346.13896.1.camel@lade.trondhjem.org>
+	 <242E892E-D7A9-4442-8ADB-9D2F4C3C01D0@oracle.com>
+In-Reply-To: <242E892E-D7A9-4442-8ADB-9D2F4C3C01D0@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/1] exportfs: Stop racing exportfs on clusters
-References: <1331573020-28628-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1331573020-28628-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/12/2012 01:23 PM, Steve Dickson wrote:
-> This problem can occur when multiple cluster services fail over
-> at the same time, causing missing high-available exports.
-> Having a lot of nfs-exports will trigger this issue easier.
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=224
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
-
-steved.
-
-> ---
->  support/include/exportfs.h |    4 ++++
->  utils/exportfs/exportfs.c  |   41 +++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 45 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 01e87dd..99916e5 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -32,6 +32,10 @@ enum {
->  	FSLOC_STUB
->  };
->  
-> +#ifndef EXP_LOCKFILE
-> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
-> +#endif
-> +
->  typedef struct mclient {
->  	struct mclient *	m_next;
->  	char *			m_hostname;
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 7432a65..7326802 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -16,6 +16,7 @@
->  #include <sys/stat.h>
->  #include <sys/vfs.h>
->  #include <sys/stat.h>
-> +#include <sys/file.h>
->  #include <unistd.h>
->  #include <stdbool.h>
->  #include <stdlib.h>
-> @@ -44,6 +45,39 @@ static void	validate_export(nfs_export *exp);
->  static int	matchhostname(const char *hostname1, const char *hostname2);
->  static void	export_d_read(const char *dname);
->  
-> +static const char *lockfile = EXP_LOCKFILE;
-> +static int _lockfd = -1;
-> +
-> +/*
-> + * If we aren't careful, changes made by exportfs can be lost
-> + * when multiple exports process run at once:
-> + *
-> + *	exportfs process 1	exportfs process 2
-> + *	------------------------------------------
-> + *	reads etab version A	reads etab version A
-> + *	adds new export B	adds new export C
-> + *	writes A+B		writes A+C
-> + *
-> + * The locking in support/export/xtab.c will prevent mountd from
-> + * seeing a partially written version of etab, and will prevent 
-> + * the two writers above from writing simultaneously and
-> + * corrupting etab, but to prevent problems like the above we
-> + * need these additional lockfile() routines.
-> + */
-> +void 
-> +grab_lockfile()
-> +{
-> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
-> +	if (_lockfd != -1) 
-> +		lockf(_lockfd, F_LOCK, 0);
-> +}
-> +void 
-> +release_lockfile()
-> +{
-> +	if (_lockfd != -1)
-> +		lockf(_lockfd, F_ULOCK, 0);
-> +}
-> +
->  int
->  main(int argc, char **argv)
->  {
-> @@ -129,6 +163,13 @@ main(int argc, char **argv)
->  			return 0;
->  		}
->  	}
-> +
-> +	/*
-> +	 * Serialize things as best we can
-> +	 */
-> +	grab_lockfile();
-> +	atexit(release_lockfile);
-> +
->  	if (f_export && ! f_ignore) {
->  		export_read(_PATH_EXPORTS);
->  		export_d_read(_PATH_EXPORTS_D);
+T24gV2VkLCAyMDEyLTAzLTA3IGF0IDE1OjUzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gTWFyIDcsIDIwMTIsIGF0IDM6NDkgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0K
+PiA+IE9uIFdlZCwgMjAxMi0wMy0wNyBhdCAxNDo0MSAtMDUwMCwgUGF1bCBBbmRlcnNvbiB3cm90
+ZToNCj4gPj4gVGhlIGZvbGxvd2luZyBrZXJuZWwgcGFuaWMgb2NjdXJyZWQgb24gYXQgbGVhc3Qg
+NCBjb21wdXRlIG5vZGVzIG5lYXJseQ0KPiA+PiBzaW11bHRhbmVvdXNseS4gIEl0IHdhcyBkdXJp
+bmcgdW5hdHRlbmRlZCBvcGVyYXRpb24sIHNvIG5vIGNsdWUgYXMgdG8NCj4gPj4gd2hhdCB0aGUg
+c2VydmVyIHdhcyBkb2luZy4NCj4gPj4gDQo+ID4+IFRoZSBjbGllbnQgbm9kZSB3YXMgdW5kZXIg
+dmVyeSBoZWF2eSBDUFUgbG9hZCAoMTIgY29yZSBwbHVzIEhUIHdpdGgNCj4gPj4gNTAtMTAwIGpv
+YnMgcnVubmluZykuICBObyBzd2FwcGluZywgdW5rbm93biBJL08gYnV0IHByb2JhYmx5IGxvdywN
+Cj4gPj4gZXhjZXB0IGZvciB0aGUgc2V0IG9mIHNsdXJtIGpvYnMgdGhhdCBzdG9wcGVkIGluIEQg
+c3RhdGUgcHJvYmFibHkgZHVlDQo+ID4+IHRvIHRoZSBrZXJuZWwgcGFuaWMuDQo+ID4+IA0KPiA+
+PiB1bmFtZSAtPiBMaW51eCBjMDkgMy4wLjEyICMxIFNNUCBXZWQgTm92IDMwIDE5OjQyOjQwIEVT
+VCAyMDExIHg4Nl82NCBHTlUvTGludXgNCj4gPj4gDQo+ID4+IFBsZWFzZSBsZXQgbWUga25vdyB3
+aGF0IGFkZGl0aW9uYWwgaW5mb3JtYXRpb24gSSBjYW4gcHJvdmlkZSAtIHRoYW5rcyENCj4gPj4g
+DQo+ID4+IFBhdWwgQW5kZXJzb24NCj4gPj4gVW5pdmVyc2l0eSBvZiBNaWNoaWdhbg0KPiA+PiAN
+Cj4gPj4gWzE0MTE0MDQuNzI0MzAxXSBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZTogTG9jayByZWNs
+YWltIGZhaWxlZCENCj4gPj4gWzE0MTI3MzguMTc1NzkxXSBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0
+ZTogTG9jayByZWNsYWltIGZhaWxlZCENCj4gPj4gWzE0MTI3MzguMTc1ODA1XSBnZW5lcmFsIHBy
+b3RlY3Rpb24gZmF1bHQ6IDAwMDAgWyMxXSBTTVANCj4gPj4gWzE0MTI3MzguMTc2MDM2XSBDUFUg
+Mw0KPiA+PiBbMTQxMjczOC4xNzYxMTJdIE1vZHVsZXMgbGlua2VkIGluOiBiaW5mbXRfbWlzYyBp
+cG1pX21zZ2hhbmRsZXINCj4gPj4gaXB0X1VMT0cgeF90YWJsZXMgYXV0b2ZzNCBtcHRjdGwgbXB0
+YmFzZSBkbG0gY29uZmlnZnMgZG1fY3J5cHQgbmZzZA0KPiA+PiBuZnMgbG9ja2QgeGZzIGF1dGhf
+cnBjZ3NzIG4NCj4gPj4gWzE0MTI3MzguMTc3MjA1XQ0KPiA+PiBbMTQxMjczOC4xNzcyOTddIFBp
+ZDogMTA0NzMsIGNvbW06IDE5Mi4xNjguMS4xNi1tYSBOb3QgdGFpbnRlZCAzLjAuMTINCj4gPj4g
+IzEgRGVsbCAgICAgQzYxMDAgICAgICAgLzBENjFYUA0KPiA+PiBbMTQxMjczOC4xNzc2ODNdIFJJ
+UDogMDAxMDpbPGZmZmZmZmZmYTAyYThlMDA+XSAgWzxmZmZmZmZmZmEwMmE4ZTAwPl0NCj4gPj4g
+bmZzNF9kb19yZWNsYWltKzB4MWMwLzB4NTYwIFtuZnNdDQo+ID4+IFsxNDEyNzM4LjE3ODA3NF0g
+UlNQOiAwMDE4OmZmZmY4ODEwMGU2NTFlMDAgIEVGTEFHUzogMDAwMTAyODcNCj4gPj4gWzE0MTI3
+MzguMTc4Mjk2XSBSQVg6IDAwMDAwMDAwMDAwMDAwNDIgUkJYOiBmZmZmODgwODBkZmY1MzgwIFJD
+WDoNCj4gPj4gMDAwMDAwMDAwMDAzZmZmZg0KPiA+PiBbMTQxMjczOC4xNzg2MDZdIFJEWDogZmZm
+Zjg4MDgwZGZmNTNhMCBSU0k6IDAwMDAwMDAwMDAwMDAwODIgUkRJOg0KPiA+PiAwMDAwMDAwMDAw
+MDAwMjQ2DQo+ID4+IFsxNDEyNzM4LjE3ODkxN10gUkJQOiBmZmZmODgxMDBlNjUxZTgwIFIwODog
+MDAwMDAwMDAwMDAwMDAwMCBSMDk6DQo+ID4+IDAwMDAwMDAwMDAwMDAwMDANCj4gPj4gWzE0MTI3
+MzguMTc5MjI3XSBSMTA6IDAwMDAwMDAwMDAwMDAwMDYgUjExOiAwMDAwMDAwMDAwMDAwMDAwIFIx
+MjoNCj4gPj4gZmZmZmZmZmZhMDJiOWMwMA0KPiA+PiBbMTQxMjczOC4xNzk1MzddIFIxMzogZGVh
+ZDAwMDAwMDEwMDEwMCBSMTQ6IGZmZmY4ODEwMGU3NjJhNTggUjE1Og0KPiA+PiBmZmZmODgxMDBl
+NzYyYTAwDQo+ID4+IFsxNDEyNzM4LjE3OTg0OF0gRlM6ICAwMDAwMDAwMDAwMDAwMDAwKDAwMDAp
+IEdTOmZmZmY4ODA4M2ZjNjAwMDAoMDAwMCkNCj4gPj4ga25sR1M6MDAwMDAwMDAwMDAwMDAwMA0K
+PiA+PiBbMTQxMjczOC4xODAxOTJdIENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAw
+MDAwMDAwODAwNTAwM2INCj4gPj4gWzE0MTI3MzguMTgwNDI4XSBDUjI6IDAwMDAwMDAwMDFjODkw
+NjggQ1IzOiAwMDAwMDAxMDA1MzRmMDAwIENSNDoNCj4gPj4gMDAwMDAwMDAwMDAwMDZlMA0KPiA+
+PiBbMTQxMjczOC4xODA3MzldIERSMDogMDAwMDAwMDAwMDAwMDAwMCBEUjE6IDAwMDAwMDAwMDAw
+MDAwMDAgRFIyOg0KPiA+PiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4+IFsxNDEyNzM4LjE4MTA0OV0g
+RFIzOiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6DQo+ID4+IDAw
+MDAwMDAwMDAwMDA0MDANCj4gPj4gWzE0MTI3MzguMTgxMzYwXSBQcm9jZXNzIDE5Mi4xNjguMS4x
+Ni1tYSAocGlkOiAxMDQ3MywgdGhyZWFkaW5mbw0KPiA+PiBmZmZmODgxMDBlNjUwMDAwLCB0YXNr
+IGZmZmY4ODA5YTdjYTgwMDApDQo+ID4+IFsxNDEyNzM4LjE4MTczOV0gU3RhY2s6DQo+ID4+IFsx
+NDEyNzM4LjE4MTg0N10gIGZmZmY4ODA4MGRmZjUzYTAgZmZmZjg4MDgwZGZmNTNjMCBmZmZmODgw
+ODA1NWNmNGIwDQo+ID4+IGZmZmY4ODA4MDU1Y2Y0MDANCj4gPj4gWzE0MTI3MzguMTgyMTkyXSAg
+ZmZmZjg4MTAwZTc2MmE1MCBmZmZmODgwNTRhYjBiMmIwIGZmZmY4ODA4MDU1Y2Y0ZjgNCj4gPj4g
+ZmZmZjg4MTAwZTc2MmE0OA0KPiA+PiBbMTQxMjczOC4xODI1MzhdICBmZmZmZmZmZmEwMmI5ZWM4
+IGZmZmY4ODBhYzIyOTYwMDggZmZmZjg4MTAwZTY1MWU4MA0KPiA+PiBmZmZmODgwODA1NWNmNGYw
+DQo+ID4+IFsxNDEyNzM4LjE4Mjg4Ml0gQ2FsbCBUcmFjZToNCj4gPj4gWzE0MTI3MzguMTgzMDE1
+XSAgWzxmZmZmZmZmZmEwMmE5NDI0Pl0gbmZzNF9ydW5fc3RhdGVfbWFuYWdlcisweDI4NC8weDQy
+MCBbbmZzXQ0KPiA+PiBbMTQxMjczOC4xODMyOThdICBbPGZmZmZmZmZmYTAyYTkxYTA+XSA/IG5m
+czRfZG9fcmVjbGFpbSsweDU2MC8weDU2MCBbbmZzXQ0KPiA+PiBbMTQxMjczOC4xODM1NjJdICBb
+PGZmZmZmZmZmODEwODBhOTY+XSBrdGhyZWFkKzB4OTYvMHhhMA0KPiA+PiBbMTQxMjczOC4xODM3
+NzFdICBbPGZmZmZmZmZmODE1YWMxMjQ+XSBrZXJuZWxfdGhyZWFkX2hlbHBlcisweDQvMHgxMA0K
+PiA+PiBbMTQxMjczOC4xODQ5MjddICBbPGZmZmZmZmZmODEwODBhMDA+XSA/IGt0aHJlYWRfd29y
+a2VyX2ZuKzB4MTkwLzB4MTkwDQo+ID4+IFsxNDEyNzM4LjE4NTE3N10gIFs8ZmZmZmZmZmY4MTVh
+YzEyMD5dID8gZ3NfY2hhbmdlKzB4MTMvMHgxMw0KPiA+PiBbMTQxMjczOC4xODUzOTVdIENvZGU6
+IDQ4IDc0IDUwIDRkIDhiIDZkIDAwIDRkIDg1IGVkIDc1IGRmIGU4IDJhIGE1IGVlDQo+ID4+IGUw
+IDQ4IDhiIDdkIGE4IGU4IDQxIGNmIGRkIGUwIDRjIDhiIDZiIDIwIDQ4IDhkIDUzIDIwIDQ5IDM5
+IGQ1IDc0IDE4DQo+ID4+IDBmIDFmIDQwIDAwDQo+ID4+IFsxNDEyNzM4LjE4NjE4N10gIGY2IDQ1
+IDE4IDAxIDBmIDg0IDZhIDAzIDAwIDAwIDRkIDhiIDZkIDAwIDQ5IDM5IGQ1IDc1IGVjIDQ4DQo+
+ID4+IFsxNDEyNzM4LjE4NjY0Nl0gUklQICBbPGZmZmZmZmZmYTAyYThlMDA+XSBuZnM0X2RvX3Jl
+Y2xhaW0rMHgxYzAvMHg1NjAgW25mc10NCj4gPj4gWzE0MTI3MzguMTg2OTI2XSAgUlNQIDxmZmZm
+ODgxMDBlNjUxZTAwPg0KPiA+PiBbMTQxMjczOC4xODczNTNdIC0tLVsgZW5kIHRyYWNlIDRkYmI3
+MzJkMTc1NmY2YjEgXS0tLQ0KPiA+IA0KPiA+IDMuMCBrZXJuZWxzIGFyZSBubyBsb25nZXIgc3Vw
+cG9ydGVkIGFzIHBhcnQgb2YgdGhlIHN0YWJsZSBrZXJuZWwgc2VyaWVzLA0KPiANCj4gSSB0aG91
+Z2h0IEkganVzdCBzYXcgR3JlZyBLSCBwb3N0IGFuIGUtbWFpbCBjYWxsaW5nIGZvciBldmVyeW9u
+ZSB0byBtb3ZlIHRvIDMuMC4NCg0KT29wcy4uIFlvdSBhcmUgcmlnaHQuIEkgc2VlIHRoYXQgdGhl
+IGJ1ZyBJIHN1c3BlY3QgaXMgYmVpbmcgaGl0IGFib3ZlDQp3YXMgc3ViamVjdCB0byBhIHBhdGNo
+IHRoYXQgZGlkbid0IGdvIHRocm91Z2ggc3RhYmxlLg0KaHR0cDovL2dpdC5rZXJuZWwub3JnLz9w
+PWxpbnV4L2tlcm5lbC9naXQvdG9ydmFsZHMvbGludXgtMi42LmdpdCZhPWNvbW1pdGRpZmYmaD00
+YjQ0YjQwZTA0YTc1OGUyMjQyZmY0YTNmN2MxNTk4MjgwMWVjOGJjDQoNCg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
