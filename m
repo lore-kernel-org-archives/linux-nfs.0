@@ -1,45 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46253 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12885 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752972Ab2CWNbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 09:31:12 -0400
-Date: Fri, 23 Mar 2012 09:31:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323133111.GA2991@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <1332337929-18580-4-git-send-email-jlayton@redhat.com>
- <20120323121208.GA3219@fieldses.org>
+	id S1030948Ab2CGAVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 19:21:49 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "xemul@parallels.com" <xemul@parallels.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jbottomley@parallels.com" <jbottomley@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH] SUNRPC: set desired file system root before connecting
+ local transports
+Date: Wed, 7 Mar 2012 00:21:47 +0000
+Message-ID: <1331079707.10560.56.camel@lade.trondhjem.org>
+References: <20120229145915.24030.31551.stgit@localhost6.localdomain6>
+	 <1331079588.10560.55.camel@lade.trondhjem.org>
+In-Reply-To: <1331079588.10560.55.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120323121208.GA3219@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
-> On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> > upcall.
-> 
-> After applying this patch, my tests consistently hang.  The hang happens
-> in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-> Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-> for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-> delegation, so presumably that's what's causing the DELAY, though I'm
-> not seeing the server send a recall.  That could be a krb5 bug.
-> 
-> Whatever bug there is here, it's hard to tell why this patch in
-> particular would make it more likely.
-> 
-> So, still investigating!
-
-Reproduceable by:
-
-	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
-	cp cthon04/special/excltest /mnt/
-	cd /mnt
-	./excltest
-
---b.
+T24gV2VkLCAyMDEyLTAzLTA3IGF0IDAwOjE5ICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
+Og0KPiBPbiBXZWQsIDIwMTItMDItMjkgYXQgMTg6NTkgKzA0MDAsIFN0YW5pc2xhdiBLaW5zYnVy
+c2t5IHdyb3RlOg0KPiA+IFRvZGF5LCB0aGVyZSBpcyBhIHByb2JsZW0gaW4gY29ubmVjdGluZyBv
+ZiBsb2NhbCBTVU5SUEMgdGhhbnNwb3J0cy4gVGhlc2UNCj4gPiB0cmFuc3BvcnRzIHVzZXMgVU5J
+WCBzb2NrZXRzIGFuZCBjb25uZWN0aW9uIGl0c2VsZiBpcyBkb25lIGJ5IHJwY2lvZCB3b3JrcXVl
+dWUuDQo+ID4gQnV0IFVOSVggc29ja2V0cyBsb29rdXAgaXMgZG9uZSBpbiBjb250ZXh0IG9mIHBy
+b2Nlc3MgZmlsZSBzeXN0ZW0gcm9vdC4gSS5lLg0KPiA+IGFsbCBsb2NhbCB0aHVuc3BvcnRzIGFy
+ZSBjb25uZWN0aW5nIGluIHJwY2lvZCBjb250ZXh0Lg0KPiA+IFRoaXMgd29ya3MgbmljZSB1bnRp
+bCB3ZSB3aWxsIHRyeSB0byBtb3VudCBORlMgZnJvbSBwcm9jZXNzIHdpdGggb3RoZXIgcm9vdCAt
+DQo+ID4gZm9yIGV4YW1wbGUgaW4gY29udGFpbmVyLiBUaGlzIGNvbnRhaW5lciBjYW4gaGF2ZSBp
+dCdzIG93biAobmVzdGVkKSByb290IGFuZA0KPiA+IHJjcGJpbmQgcHJvY2VzcywgbGlzdGVuaW5n
+IG9uIGl0J3Mgb3duIHVuaXggc29ja2V0cy4gQnV0IE5GUyBtb3VudCBhdHRlbXB0IGluDQo+ID4g
+dGhpcyBjb250YWluZXIgd2lsbCByZWdpc3RlciBuZXcgc2VydmljZSAoTG9ja2QgZm9yIGV4YW1w
+bGUpIGluIGdsb2JhbCBycGNiaW5kDQo+ID4gLSBub3QgY29udGFpbmVycydzIG9uZS4NCj4gPiBU
+aGlzIHBhdGNoIHNvbHZlcyB0aGUgcHJvYmxlbSBieSBzd2l0Y2hpbmcgcnBjaW9kIGtlcm5lbCB0
+aHJlYWQncyBmaWxlIHN5c3RlbQ0KPiA+IHJvb3QgdG8gcmlnaHQgb25lIChzdG9yZWQgb24gdHJh
+bnNwb3J0KSB3aGlsZSBjb25uZWN0aW5nIG9mIGxvY2FsIHRyYW5zcG9ydHMuDQo+ID4gDQo+ID4g
+U2lnbmVkLW9mZi1ieTogU3RhbmlzbGF2IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVs
+cy5jb20+DQo+ID4gDQo+ID4gLS0tDQo+ID4gIGZzL2ZzX3N0cnVjdC5jICAgICAgICB8ICAgIDEg
+Kw0KPiA+ICBuZXQvc3VucnBjL3hwcnRzb2NrLmMgfCAgIDMyICsrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKy0tDQo+ID4gIDIgZmlsZXMgY2hhbmdlZCwgMzEgaW5zZXJ0aW9ucygrKSwgMiBk
+ZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMvZnNfc3RydWN0LmMgYi9mcy9m
+c19zdHJ1Y3QuYw0KPiA+IGluZGV4IDc4YjUxOWMuLjBmOTg0YzMgMTAwNjQ0DQo+ID4gLS0tIGEv
+ZnMvZnNfc3RydWN0LmMNCj4gPiArKysgYi9mcy9mc19zdHJ1Y3QuYw0KPiA+IEBAIC0zNiw2ICsz
+Niw3IEBAIHZvaWQgc2V0X2ZzX3Jvb3Qoc3RydWN0IGZzX3N0cnVjdCAqZnMsIHN0cnVjdCBwYXRo
+ICpwYXRoKQ0KPiA+ICAJaWYgKG9sZF9yb290LmRlbnRyeSkNCj4gPiAgCQlwYXRoX3B1dF9sb25n
+dGVybSgmb2xkX3Jvb3QpOw0KPiA+ICB9DQo+ID4gK0VYUE9SVF9TWU1CT0xfR1BMKHNldF9mc19y
+b290KTsNCj4gPiAgDQo+ID4gIC8qDQo+ID4gICAqIFJlcGxhY2UgdGhlIGZzLT57cHdkbW50LHB3
+ZH0gd2l0aCB7bW50LGRlbnRyeX0uIFB1dCB0aGUgb2xkIHZhbHVlcy4NCj4gPiBkaWZmIC0tZ2l0
+IGEvbmV0L3N1bnJwYy94cHJ0c29jay5jIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQo+ID4gaW5k
+ZXggNGM4MjgxZC4uYzk0YzE4MSAxMDA2NDQNCj4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnRzb2Nr
+LmMNCj4gPiArKysgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gPiBAQCAtMzcsNiArMzcsNyBA
+QA0KPiA+ICAjaW5jbHVkZSA8bGludXgvc3VucnBjL3N2Y3NvY2suaD4NCj4gPiAgI2luY2x1ZGUg
+PGxpbnV4L3N1bnJwYy94cHJ0c29jay5oPg0KPiA+ICAjaW5jbHVkZSA8bGludXgvZmlsZS5oPg0K
+PiA+ICsjaW5jbHVkZSA8bGludXgvZnNfc3RydWN0Lmg+DQo+ID4gICNpZmRlZiBDT05GSUdfU1VO
+UlBDX0JBQ0tDSEFOTkVMDQo+ID4gICNpbmNsdWRlIDxsaW51eC9zdW5ycGMvYmNfeHBydC5oPg0K
+PiA+ICAjZW5kaWYNCj4gPiBAQCAtMjU1LDYgKzI1NiwxMSBAQCBzdHJ1Y3Qgc29ja194cHJ0IHsN
+Cj4gPiAgCXZvaWQJCQkoKm9sZF9zdGF0ZV9jaGFuZ2UpKHN0cnVjdCBzb2NrICopOw0KPiA+ICAJ
+dm9pZAkJCSgqb2xkX3dyaXRlX3NwYWNlKShzdHJ1Y3Qgc29jayAqKTsNCj4gPiAgCXZvaWQJCQko
+Km9sZF9lcnJvcl9yZXBvcnQpKHN0cnVjdCBzb2NrICopOw0KPiA+ICsNCj4gPiArCS8qDQo+ID4g
+KwkgKiBTYXZlZCB0cmFuc3BvcnQgY3JlYXRvciByb290LiBSZXF1aXJlZCBmb3IgbG9jYWwgdHJh
+bnNwb3J0cyBvbmx5Lg0KPiA+ICsJICovDQo+ID4gKwlzdHJ1Y3QgcGF0aAkJcm9vdDsNCj4gPiAg
+fTsNCj4gPiAgDQo+ID4gIC8qDQo+ID4gQEAgLTE4OTEsNiArMTg5Nyw3IEBAIHN0YXRpYyB2b2lk
+IHhzX2xvY2FsX3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQo+ID4gIAlz
+dHJ1Y3QgcnBjX3hwcnQgKnhwcnQgPSAmdHJhbnNwb3J0LT54cHJ0Ow0KPiA+ICAJc3RydWN0IHNv
+Y2tldCAqc29jazsNCj4gPiAgCWludCBzdGF0dXMgPSAtRUlPOw0KPiA+ICsJc3RydWN0IHBhdGgg
+cm9vdDsNCj4gPiAgDQo+ID4gIAlpZiAoeHBydC0+c2h1dGRvd24pDQo+ID4gIAkJZ290byBvdXQ7
+DQo+ID4gQEAgLTE5MDgsNyArMTkxNSwxNCBAQCBzdGF0aWMgdm9pZCB4c19sb2NhbF9zZXR1cF9z
+b2NrZXQoc3RydWN0IHdvcmtfc3RydWN0ICp3b3JrKQ0KPiA+ICAJZHByaW50aygiUlBDOiAgICAg
+ICB3b3JrZXIgY29ubmVjdGluZyB4cHJ0ICVwIHZpYSBBRl9MT0NBTCB0byAlc1xuIiwNCj4gPiAg
+CQkJeHBydCwgeHBydC0+YWRkcmVzc19zdHJpbmdzW1JQQ19ESVNQTEFZX0FERFJdKTsNCj4gPiAg
+DQo+ID4gKwlnZXRfZnNfcm9vdChjdXJyZW50LT5mcywgJnJvb3QpOw0KPiA+ICsJc2V0X2ZzX3Jv
+b3QoY3VycmVudC0+ZnMsICZ0cmFuc3BvcnQtPnJvb3QpOw0KPiA+ICsNCj4gPiAgCXN0YXR1cyA9
+IHhzX2xvY2FsX2ZpbmlzaF9jb25uZWN0aW5nKHhwcnQsIHNvY2spOw0KPiA+ICsNCj4gPiArCXNl
+dF9mc19yb290KGN1cnJlbnQtPmZzLCAmcm9vdCk7DQo+ID4gKwlwYXRoX3B1dCgmcm9vdCk7DQo+
+ID4gKw0KPiA+ICAJc3dpdGNoIChzdGF0dXMpIHsNCj4gPiAgCWNhc2UgMDoNCj4gDQo+IEhpIFN0
+YW5pc2xhdiwNCj4gDQo+IFdoYXQgaGFwcGVucyBoZXJlIGlmIHRoZSBtb3VudCBuYW1lc3BhY2Ug
+b2YgdGhlIHByb2Nlc3MgdGhhdCBvcmlnaW5hbGx5DQo+IGNyZWF0ZWQgdGhlIHNvY2tfeHBydCBu
+byBsb25nZXIgZXhpc3RzPyBTaG91bGQgd2UgY2FyZSBhYm91dCB0aGF0IGNhc2U/DQo+IA0KPiBD
+aGVlcnMNCj4gICBUcm9uZA0KDQpCVFc6IFdlIHdpbGwgaW4gYW55IGNhc2UgbmVlZCBBbCBWaXJv
+IGFuZCBDaHJpc3RvcGgncyBBQ0sgaW4gb3JkZXIgdG8NCmV4cG9ydCB0aGUgc2V0X2ZzX3Jvb3Qo
+KSBmdW5jdGlvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
+LmNvbQ0KDQo=
