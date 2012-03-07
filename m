@@ -1,128 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758615Ab2CBWAH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 17:00:07 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 14:00:06 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/12] NFS: Request fh_expire_type attribute in "server caps"
- operation
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 17:00:05 -0500
-Message-ID: <20120302220005.12758.89678.stgit@degas.1015granger.net>
-In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
+Received: from mailhub.sw.ru ([195.214.232.25]:8632 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754569Ab2CGQ0O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 11:26:14 -0500
+Subject: [PATCH v2] SUNRPC: set desired file system root before connecting
+ local transports
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, xemul@parallels.com,
+        neilb@suse.de, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jbottomley@parallels.com, hch@infradead.org, viro@zeniv.linux.org.uk,
+        davem@davemloft.net, devel@openvz.org
+Date: Wed, 07 Mar 2012 20:25:17 +0400
+Message-ID: <20120307162359.6359.76479.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fh_expire_type file attribute is a filesystem wide attribute that
-consists of flags that indicate what characteristics file handles
-on this FSID have.
+v2: added Alexander Viro and Christoph Hellwig to recipience.
 
-Our client doesn't support volatile file handles.  It should find
-out early (say, at mount time) whether the server is going to play
-shenanighans with file handles during a migration.
+Today, there is a problem in connecting of local SUNRPC thansports. These
+transports uses UNIX sockets and connection itself is done by rpciod workqueue.
+But UNIX sockets lookup is done in context of process file system root. I.e.
+all local thunsports are connecting in rpciod context.
+This works nice until we will try to mount NFS from process with other root -
+for example in container. This container can have it's own (nested) root and
+rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
+this container will register new service (Lockd for example) in global rpcbind
+- not containers's one.
+This patch solves the problem by switching rpciod kernel thread's file system
+root to right one (stored on transport) while connecting of local transports.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
 ---
+ fs/fs_struct.c        |    1 +
+ net/sunrpc/xprtsock.c |   32 ++++++++++++++++++++++++++++++--
+ 2 files changed, 31 insertions(+), 2 deletions(-)
 
- fs/nfs/nfs4proc.c         |    1 +
- fs/nfs/nfs4xdr.c          |   26 ++++++++++++++++++++++++++
- include/linux/nfs_fs_sb.h |    3 +++
- include/linux/nfs_xdr.h   |    1 +
- 4 files changed, 31 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ced56d0..07bd1f3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2220,6 +2220,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
- 		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
- 		server->acl_bitmask = res.acl_bitmask;
-+		server->fh_expire_type = res.fh_expire_type;
- 	}
- 
- 	return status;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b78cd08..d8d5b61 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2634,6 +2634,7 @@ static void nfs4_xdr_enc_server_caps(struct rpc_rqst *req,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fhandle, &hdr);
- 	encode_getattr_one(xdr, FATTR4_WORD0_SUPPORTED_ATTRS|
-+			   FATTR4_WORD0_FH_EXPIRE_TYPE|
- 			   FATTR4_WORD0_LINK_SUPPORT|
- 			   FATTR4_WORD0_SYMLINK_SUPPORT|
- 			   FATTR4_WORD0_ACLSUPPORT, &hdr);
-@@ -3181,6 +3182,28 @@ out_overflow:
- 	return -EIO;
+diff --git a/fs/fs_struct.c b/fs/fs_struct.c
+index 78b519c..0f984c3 100644
+--- a/fs/fs_struct.c
++++ b/fs/fs_struct.c
+@@ -36,6 +36,7 @@ void set_fs_root(struct fs_struct *fs, struct path *path)
+ 	if (old_root.dentry)
+ 		path_put_longterm(&old_root);
  }
++EXPORT_SYMBOL_GPL(set_fs_root);
  
-+static int decode_attr_fh_expire_type(struct xdr_stream *xdr,
-+				      uint32_t *bitmap, uint32_t *type)
-+{
-+	__be32 *p;
+ /*
+  * Replace the fs->{pwdmnt,pwd} with {mnt,dentry}. Put the old values.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 4c8281d..c94c181 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -37,6 +37,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/file.h>
++#include <linux/fs_struct.h>
+ #ifdef CONFIG_SUNRPC_BACKCHANNEL
+ #include <linux/sunrpc/bc_xprt.h>
+ #endif
+@@ -255,6 +256,11 @@ struct sock_xprt {
+ 	void			(*old_state_change)(struct sock *);
+ 	void			(*old_write_space)(struct sock *);
+ 	void			(*old_error_report)(struct sock *);
 +
-+	*type = 0;
-+	if (unlikely(bitmap[0] & (FATTR4_WORD0_FH_EXPIRE_TYPE - 1U)))
-+		return -EIO;
-+	if (likely(bitmap[0] & FATTR4_WORD0_FH_EXPIRE_TYPE)) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		*type = be32_to_cpup(p);
-+		bitmap[0] &= ~FATTR4_WORD0_FH_EXPIRE_TYPE;
-+	}
-+	dprintk("%s: expire type=0x%x\n", __func__, *type);
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- static int decode_attr_change(struct xdr_stream *xdr, uint32_t *bitmap, uint64_t *change)
- {
- 	__be32 *p;
-@@ -4229,6 +4252,9 @@ static int decode_server_caps(struct xdr_stream *xdr, struct nfs4_server_caps_re
- 		goto xdr_error;
- 	if ((status = decode_attr_supported(xdr, bitmap, res->attr_bitmask)) != 0)
- 		goto xdr_error;
-+	if ((status = decode_attr_fh_expire_type(xdr, bitmap,
-+						 &res->fh_expire_type)) != 0)
-+		goto xdr_error;
- 	if ((status = decode_attr_link_support(xdr, bitmap, &res->has_links)) != 0)
- 		goto xdr_error;
- 	if ((status = decode_attr_symlink_support(xdr, bitmap, &res->has_symlinks)) != 0)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 3bf4766..c2595d7 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -146,6 +146,9 @@ struct nfs_server {
- 	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
- 						   that are supported on this
- 						   filesystem */
-+	u32			fh_expire_type;	/* V4 bitmask representing file
-+						   handle volatility type for
-+						   this filesystem */
- 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- 	struct rpc_wait_queue	roc_rpcwaitq;
- 	void			*pnfs_ld_data;	/* per mount point data */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 07eb9c9..211b280 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -977,6 +977,7 @@ struct nfs4_server_caps_res {
- 	u32				acl_bitmask;
- 	u32				has_links;
- 	u32				has_symlinks;
-+	u32				fh_expire_type;
- 	struct nfs4_sequence_res	seq_res;
++	/*
++	 * Saved transport creator root. Required for local transports only.
++	 */
++	struct path		root;
  };
  
+ /*
+@@ -1891,6 +1897,7 @@ static void xs_local_setup_socket(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock;
+ 	int status = -EIO;
++	struct path root;
+ 
+ 	if (xprt->shutdown)
+ 		goto out;
+@@ -1908,7 +1915,14 @@ static void xs_local_setup_socket(struct work_struct *work)
+ 	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+ 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 
++	get_fs_root(current->fs, &root);
++	set_fs_root(current->fs, &transport->root);
++
+ 	status = xs_local_finish_connecting(xprt, sock);
++
++	set_fs_root(current->fs, &root);
++	path_put(&root);
++
+ 	switch (status) {
+ 	case 0:
+ 		dprintk("RPC:       xprt %p connected to %s\n",
+@@ -2213,6 +2227,18 @@ static void xs_connect(struct rpc_task *task)
+ 	}
+ }
+ 
++static void xs_local_destroy(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct path root = transport->root;
++
++	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
++
++	xs_destroy(xprt);
++
++	path_put(&root);
++}
++
+ /**
+  * xs_local_print_stats - display AF_LOCAL socket-specifc stats
+  * @xprt: rpc_xprt struct containing statistics
+@@ -2431,7 +2457,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.send_request		= xs_local_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+ 	.close			= xs_close,
+-	.destroy		= xs_destroy,
++	.destroy		= xs_local_destroy,
+ 	.print_stats		= xs_local_print_stats,
+ };
+ 
+@@ -2606,8 +2632,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 	dprintk("RPC:       set up xprt to %s via AF_LOCAL\n",
+ 			xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 
+-	if (try_module_get(THIS_MODULE))
++	if (try_module_get(THIS_MODULE)) {
++		get_fs_root(current->fs, &transport->root);
+ 		return xprt;
++	}
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
 
