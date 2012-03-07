@@ -1,86 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30679 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55265 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758855Ab2CITek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 14:34:40 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYdQi023983
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:40 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 4/7] Kill SPKM3: Remove spkm3 support from nfs.mount
-Date: Fri,  9 Mar 2012 14:34:29 -0500
-Message-Id: <1331321672-2111-5-git-send-email-simo@redhat.com>
-In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
-References: <1331321672-2111-1-git-send-email-simo@redhat.com>
+	id S964983Ab2CGBrE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Mar 2012 20:47:04 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: add filehandle crc for debug display
+Date: Tue,  6 Mar 2012 20:46:43 -0500
+Message-Id: <1331084803-21460-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- utils/mount/nfs.man     |    7 ++-----
- utils/mount/nfs_mount.h |    3 ---
- utils/mount/nfsmount.c  |    6 ------
- 3 files changed, 2 insertions(+), 14 deletions(-)
+Match wireshark's CRC-32 hash for easier debugging
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 2ad92d1e55c7aab52c24fee64da11f6a25985999..810bfc075cb2629beedb8738f60e3f5fdf771f1e 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -375,11 +375,8 @@ Valid security flavors are
- .BR krb5p ,
- .BR lkey ,
- .BR lkeyi ,
-+and
- .BR lkeyp ,
--.BR spkm ,
--.BR spkmi ,
--and
--.BR spkmp .
- Refer to the SECURITY CONSIDERATIONS section for details.
- .TP 1.5i
- .BR sharecache " / " nosharecache
-@@ -1416,7 +1413,7 @@ security flavor encrypts every RPC request
- to prevent data exposure during network transit; however,
- expect some performance impact
- when using integrity checking or encryption.
--Similar support for other forms of cryptographic security (such as lipkey and SPKM3)
-+Similar support for other forms of cryptographic security (such as lipkey)
- is also available.
- .P
- The NFS version 4 protocol allows
-diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
-index 2becfb1a0d655093385f47571b026124218fcf46..ec30c9b62a6da09c8671e3b8b7c995e1ef7f7e3c 100644
---- a/utils/mount/nfs_mount.h
-+++ b/utils/mount/nfs_mount.h
-@@ -75,9 +75,6 @@ struct nfs_mount_data {
- #define AUTH_GSS_LKEY		390006
- #define AUTH_GSS_LKEYI		390007
- #define AUTH_GSS_LKEYP		390008
--#define AUTH_GSS_SPKM		390009
--#define AUTH_GSS_SPKMI		390010
--#define AUTH_GSS_SPKMP		390011
- #endif
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+Reposted with Trond's suggestion of splitting out hash calculation to a 
+separate function.  Now dprintks can use a fh's CRC instead of the 
+multiline nfs_display_fhandle() when it makes sense.
+
+ fs/nfs/inode.c         |   23 ++++++++++++++++++++---
+ include/linux/nfs_fs.h |    8 ++++++++
+ 2 files changed, 28 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 99a4f52..3919ceb 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -39,6 +39,7 @@
+ #include <linux/slab.h>
+ #include <linux/compat.h>
+ #include <linux/freezer.h>
++#include <linux/crc32.h>
  
- int	nfsmount(const char *, const char *, int , char **, int, int);
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 1298fe44485789bae59cc10cf7430c2599b4f5a5..7bd1c97b291eb585221452ba865036d25e7fa8ff 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -300,12 +300,6 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 					data->pseudoflavor = AUTH_GSS_LKEYI;
- 				else if (!strcmp(secflavor, "lipkey-p"))
- 					data->pseudoflavor = AUTH_GSS_LKEYP;
--				else if (!strcmp(secflavor, "spkm3"))
--					data->pseudoflavor = AUTH_GSS_SPKM;
--				else if (!strcmp(secflavor, "spkm3i"))
--					data->pseudoflavor = AUTH_GSS_SPKMI;
--				else if (!strcmp(secflavor, "spkm3p"))
--					data->pseudoflavor = AUTH_GSS_SPKMP;
- 				else if (sloppy)
- 					continue;
- 				else {
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -1045,7 +1046,23 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+ 	return fh;
+ }
+ 
+-/**
++#ifdef RPC_DEBUG
++/*
++ * _nfs_display_fhandle_hash - calculate the crc32 hash for the filehandle
++ *                             in the same way that wireshark does
++ *
++ * @fh: file handle
++ *
++ * For debugging only.
++ */
++u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
++{
++	/* wireshark uses 32-bit AUTODIN crc and does a bitwise
++	 * not on the result */
++	return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
++}
++
++/*
+  * _nfs_display_fhandle - display an NFS file handle on the console
+  *
+  * @fh: file handle to display
+@@ -1053,7 +1070,6 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+  *
+  * For debugging only.
+  */
+-#ifdef RPC_DEBUG
+ void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
+ {
+ 	unsigned short i;
+@@ -1063,7 +1079,8 @@ void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
+ 		return;
+ 	}
+ 
+-	printk(KERN_DEFAULT "%s at %p is %u bytes:\n", caption, fh, fh->size);
++	printk(KERN_DEFAULT "%s at %p is %u bytes, crc: 0x%08x:\n",
++	       caption, fh, fh->size, _nfs_display_fhandle_hash(fh));
+ 	for (i = 0; i < fh->size; i += 16) {
+ 		__be32 *pos = (__be32 *)&fh->data[i];
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c07a757..ce8e436 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -396,6 +396,11 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
+ }
+ 
+ #ifdef RPC_DEBUG
++extern u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh);
++static inline u32 nfs_display_fhandle_hash(const struct nfs_fh *fh)
++{
++	return _nfs_display_fhandle_hash(fh);
++}
+ extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
+ #define nfs_display_fhandle(fh, caption)			\
+ 	do {							\
+@@ -403,6 +408,9 @@ extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
+ 			_nfs_display_fhandle(fh, caption);	\
+ 	} while (0)
+ #else
++static inline u32 nfs_display_fhandle_hash(const struct nfs_fh *fh)
++{
++}
+ static inline void nfs_display_fhandle(const struct nfs_fh *fh,
+ 				       const char *caption)
+ {
 -- 
-1.7.7.6
+1.7.4.4
 
