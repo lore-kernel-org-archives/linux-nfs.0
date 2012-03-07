@@ -1,76 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19621 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:17676 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755246Ab2CEB40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 20:56:26 -0500
-Message-ID: <1330912576.9157.53.camel@serendib>
-Subject: Re: "Using NFS over UDP on high-speed links such as Gigabit can
- cause silent data corruption."
-From: Harshula <harshula@redhat.com>
+	id S1751040Ab2CGIqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 03:46:39 -0500
+Message-ID: <4F572051.5060503@parallels.com>
+Date: Wed, 07 Mar 2012 12:46:09 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
 To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Date: Mon, 05 Mar 2012 12:56:16 +1100
-In-Reply-To: <20120228074121.3cedb321@tlielax.poochiereds.net>
-References: <1330406521.9157.16.camel@serendib>
-	 <20120228065218.7e110936@tlielax.poochiereds.net>
-	 <1330432346.9157.30.camel@serendib>
-	 <20120228074121.3cedb321@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
+References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>	<1331047733-1641-4-git-send-email-jlayton@redhat.com>	<4F564CCD.9040708@parallels.com> <20120306133124.5dbef60c@tlielax.poochiereds.net>
+In-Reply-To: <20120306133124.5dbef60c@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-02-28 at 07:41 -0500, Jeff Layton wrote:
-> On Tue, 28 Feb 2012 23:32:26 +1100
-> Harshula <harshula@redhat.com> wrote:
-> 
-> > On Tue, 2012-02-28 at 06:52 -0500, Jeff Layton wrote:
-> > > On Tue, 28 Feb 2012 16:22:01 +1100
-> > > Harshula <harshula@redhat.com> wrote:
-> > > 
-> > > > Hi Steve,
-> > > > 
-> > > > The following openSUSE nfs-utils patch, warn-nfs-udp.patch, is not
-> > > > included upstream:
-> > > > 
-> > > > https://build.opensuse.org/package/view_file?file=warn-nfs-udp.patch&package=nfs-utils&project=openSUSE%3AFactory&rev=8e3e60c70e8270cd4afa036e13f6b2bb
-> > > > 
-> > > > Please consider including it.
-> > > > 
-> > > > Thanks,
-> > > > #
-> > > > 
-> > > 
-> > > I think that patch looks reasonable and clearly documenting the
-> > > problems with UDP is a wonderful thing.
-> > > 
-> > > It may be best to send it formally to steved and the list as a real
-> > > [PATCH] with a real description and SoB line.
-> > 
-> > I do not know who authored the above patch, hopefully someone will come
-> > out and claim it now that it is on this list.
-> > 
-> > cya,
-> > #
-> > 
-> 
-> Well, presumably that patch is open-source licensed like the rest of
-> the nfs-utils code. Is that sufficient to simply copy it from opensuse?
-> 
-> Either way, if the author were to step forward that would certainly be
-> preferable...
+06.03.2012 22:31, Jeff Layton пишет:
+> On Tue, 06 Mar 2012 21:43:41 +0400
+> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
+>
+>> 06.03.2012 19:28, Jeff Layton пишет:
+>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>> index 64c24af..141197e 100644
+>>> --- a/fs/nfsd/nfsctl.c
+>>> +++ b/fs/nfsd/nfsctl.c
+>>> @@ -19,6 +19,7 @@
+>>>    #include "nfsd.h"
+>>>    #include "cache.h"
+>>>    #include "fault_inject.h"
+>>> +#include "netns.h"
+>>>
+>>>    /*
+>>>     *	We have a single directory with several nodes in it.
+>>> @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
+>>>    }
+>>>    #endif
+>>>
+>>> +int nfsd_net_id;
+>>> +static struct pernet_operations nfsd_net_ops = {
+>>> +	.id   =&nfsd_net_id,
+>>> +	.size = sizeof(struct nfsd_net),
+>>> +};
+>>> +
+>>>    static int __init init_nfsd(void)
+>>>    {
+>>>    	int retval;
+>>>    	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+>>>
+>>> +	retval = register_pernet_subsys(&nfsd_net_ops);
+>>
+>> Hi, Jeff.
+>> You've created per-net structure and operations and that's cool.
+>> But why don't you move nfsd client tracking control into per-net operations?
+>> I.e. add init-exit callbacks in struct pernet_operations and call
+>> nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
+>> And since we don't support any other networks namesapce except init_net, then
+>> just skip all others in these callbacks.
+>>
+>
+> Well...the way I had envisioned it is that you'd create a new net
+> namespace container and would then start up nfsd within that container.
+>
+> Just because we're spawning a new namespace doesn't mean that we'll
+> necessarily want to serve nfs from it, right? If we do it this way,
+> then we don't end up allocating resources for containers that aren't
+> going to use it.
+>
+> ...or do I not understand the "vision" of how all of this is going to
+> eventually work?
+>
 
-I was told the following:
-----------------------------------------------------------------
-Olaf wrote the patch, and Mads Martin Joergensen applied it
-to util-linux in SLES 9 SP2 and/or SP3 by about mid 2005.  This appears
-in the util-linux changelog as:
+You, probably, right.
+If this data is allocated and initialized on NFSd start, then per-net operations 
+has nothing with it.
 
-  Wed Jun 29 11:26:31 CEST 2005 - mmj@suse.de
-  - Document load and clearly issues about NFS over UDP [#80263]
-----------------------------------------------------------------
 
-cya,
-#
 
+-- 
+Best regards,
+Stanislav Kinsbursky
