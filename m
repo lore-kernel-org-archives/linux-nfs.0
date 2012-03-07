@@ -1,170 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36490 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51875 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756198Ab2CUTqy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:46:54 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 05/12] NFSv4.1: mark deviceid invalid on filelayout DS connection errors
-Date: Wed, 21 Mar 2012 15:46:17 -0400
-Message-Id: <1332359184-1887-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	id S1757745Ab2CGNPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 08:15:01 -0500
+Date: Wed, 7 Mar 2012 08:14:58 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd41: implement NFS4_SHARE_WANT_NO_DELEG,
+ NFS4_OPEN_DELEGATE_NONE_EXT, why_no_deleg
+Message-ID: <20120307131458.GD30323@fieldses.org>
+References: <4F3D4F1F.6080502@tonian.com>
+ <1329418637-23925-1-git-send-email-bhalevy@tonian.com>
+ <20120217221411.GA3627@fieldses.org>
+ <4F3F5B30.3000501@tonian.com>
+ <20120218144103.GA7997@fieldses.org>
+ <4F426B07.1080804@tonian.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F426B07.1080804@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Feb 20, 2012 at 07:47:19AM -0800, Benny Halevy wrote:
+> On 2012-02-18 06:41, J. Bruce Fields wrote:
+> > On Sat, Feb 18, 2012 at 10:02:56AM +0200, Benny Halevy wrote:
+> >> I'm sending two additional patches that refactor these two helpers and add
+> >> some documentation to the commit message.
+> >>
+> >> I think it might be helpful to keep them separated but let me know otherwise
+> >> and I'll send a squashed patch instead.
+> > 
+> > Either way's fine.  What I've got so far is pushed out to
+> > 
+> > 	git://linux-nfs.org/~bfields/linux.git for-3.4
+> 
+> Good. So the missing patches are:
+> http://marc.info/?l=linux-nfs&m=132941866004294&w=2
+> http://marc.info/?l=linux-nfs&m=132955306211255&w=2
+> http://marc.info/?l=linux-nfs&m=132955306211256&w=2
 
-This prevents the use of any layout for i/o that references the deviceid.
-I/O is redirected through the MDS.
+Sorry for the delay.  I've committed and pushed out everything I have
+from you (to git://linux-nfs.org/~bfields/linux.git for-3.4).  Let me
+know if I've overlooked anything.
 
-Redirect the unhandled failed I/O to the MDS without marking either the
-layout or the deviceid invalid.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   65 ++++++++++++++++++++++++++++++++++------------
- fs/nfs/nfs4filelayout.h |    6 ++++
- 2 files changed, 54 insertions(+), 17 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 3802937..1f1be26 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -116,7 +116,7 @@ void filelayout_reset_read(struct rpc_task *task, struct nfs_read_data *data)
- static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs4_state *state,
- 					 struct nfs_client *clp,
--					 int *reset)
-+					 unsigned long *reset)
- {
- 	struct nfs_server *mds_server = NFS_SERVER(state->inode);
- 	struct nfs_client *mds_client = mds_server->nfs_client;
-@@ -158,10 +158,23 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		break;
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
- 		break;
-+	/* RPC connection errors */
-+	case -ECONNREFUSED:
-+	case -EHOSTDOWN:
-+	case -EHOSTUNREACH:
-+	case -ENETUNREACH:
-+	case -EIO:
-+	case -ETIMEDOUT:
-+	case -EPIPE:
-+		dprintk("%s DS connection error. Retry through MDS %d\n",
-+			__func__, task->tk_status);
-+		set_bit(NFS4_RESET_DEVICEID, reset);
-+		set_bit(NFS4_RESET_TO_MDS, reset);
-+		break;
- 	default:
--		dprintk("%s DS error. Retry through MDS %d\n", __func__,
--			task->tk_status);
--		*reset = 1;
-+		dprintk("%s Unhandled DS error. Retry through MDS %d\n",
-+			__func__, task->tk_status);
-+		set_bit(NFS4_RESET_TO_MDS, reset);
- 		break;
- 	}
- out:
-@@ -179,16 +192,22 @@ wait_on_recovery:
- static int filelayout_read_done_cb(struct rpc_task *task,
- 				struct nfs_read_data *data)
- {
--	int reset = 0;
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
-+	unsigned long reset = 0;
- 
- 	dprintk("%s DS read\n", __func__);
- 
- 	if (filelayout_async_handle_error(task, data->args.context->state,
- 					  data->ds_clp, &reset) == -EAGAIN) {
--		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
--			__func__, data->ds_clp, data->ds_clp->cl_session);
--		if (reset)
-+
-+		dprintk("%s reset 0x%lx ds_clp %p session %p\n", __func__,
-+			reset, data->ds_clp, data->ds_clp->cl_session);
-+
-+		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
- 			filelayout_reset_read(task, data);
-+			if (test_bit(NFS4_RESET_DEVICEID, &reset))
-+				filelayout_mark_devid_invalid(devid);
-+		}
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
-@@ -260,14 +279,20 @@ static void filelayout_read_release(void *data)
- static int filelayout_write_done_cb(struct rpc_task *task,
- 				struct nfs_write_data *data)
- {
--	int reset = 0;
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
-+	unsigned long reset = 0;
- 
- 	if (filelayout_async_handle_error(task, data->args.context->state,
- 					  data->ds_clp, &reset) == -EAGAIN) {
--		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
--			__func__, data->ds_clp, data->ds_clp->cl_session);
--		if (reset)
-+
-+		dprintk("%s reset 0x%lx ds_clp %p session %p\n", __func__,
-+			reset, data->ds_clp, data->ds_clp->cl_session);
-+
-+		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
- 			filelayout_reset_write(task, data);
-+			if (test_bit(NFS4_RESET_DEVICEID, &reset))
-+				filelayout_mark_devid_invalid(devid);
-+		}
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	}
-@@ -290,16 +315,22 @@ static void prepare_to_resend_writes(struct nfs_write_data *data)
- static int filelayout_commit_done_cb(struct rpc_task *task,
- 				     struct nfs_write_data *data)
- {
--	int reset = 0;
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
-+	unsigned long reset = 0;
- 
- 	if (filelayout_async_handle_error(task, data->args.context->state,
- 					  data->ds_clp, &reset) == -EAGAIN) {
--		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
--			__func__, data->ds_clp, data->ds_clp->cl_session);
--		if (reset)
-+
-+		dprintk("%s reset 0x%lx ds_clp %p session %p\n", __func__,
-+			reset, data->ds_clp, data->ds_clp->cl_session);
-+
-+		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
- 			prepare_to_resend_writes(data);
--		else
-+			if (test_bit(NFS4_RESET_DEVICEID, &reset))
-+				filelayout_mark_devid_invalid(devid);
-+		} else {
- 			rpc_restart_call_prepare(task);
-+		}
- 		return -EAGAIN;
- 	}
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index b54b389..08b667a 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -41,6 +41,12 @@
- #define NFS4_PNFS_MAX_STRIPE_CNT 4096
- #define NFS4_PNFS_MAX_MULTI_CNT  256 /* 256 fit into a u8 stripe_index */
- 
-+/* internal use */
-+enum nfs4_fl_reset_state {
-+	NFS4_RESET_TO_MDS = 0,
-+	NFS4_RESET_DEVICEID,
-+};
-+
- enum stripetype4 {
- 	STRIPE_SPARSE = 1,
- 	STRIPE_DENSE = 2
--- 
-1.7.6.4
-
+--b.
