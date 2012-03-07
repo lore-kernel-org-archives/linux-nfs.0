@@ -1,95 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:34776 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030900Ab2CFPMH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:12:07 -0500
+Received: from earth.cora.nwra.com ([4.28.99.180]:45975 "EHLO
+	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030654Ab2CGWM4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2012 17:12:56 -0500
+Received: from orca.cora.nwra.com (orca.cora.nwra.com [10.10.20.2])
+	(authenticated bits=0)
+	by earth.cora.nwra.com (8.13.8/8.13.8) with ESMTP id q27MCrPq007453
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 7 Mar 2012 15:12:53 -0700
+Message-ID: <4F57DD65.5090202@cora.nwra.com>
+Date: Wed, 07 Mar 2012 15:12:53 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-In-Reply-To: <1331045602.3260.7.camel@lade.trondhjem.org>
-References: <1331045205-3031-1-git-send-email-andros@netapp.com>
-	<1331045205-3031-4-git-send-email-andros@netapp.com>
-	<1331045602.3260.7.camel@lade.trondhjem.org>
-Date: Tue, 6 Mar 2012 10:12:05 -0500
-Message-ID: <CAHVgHyXMqqP9UDumwdAzQyZAS2o-JoLrzYUMkgs0xNtz3X3Xvw@mail.gmail.com>
-Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until stateid
- is tested
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Subject: NFS mount commands hanging
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 6, 2012 at 9:53 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2012-03-06 at 09:46 -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> nfs41_open_expired() will test the delegation stateid based on
->> NFS_DELEGATED_STATE being set. If the stateid is bad, nfs4_open_recover
->> will clear the NFS_DELEGATED_STATE bit recovering the delegation.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Cc: stable@vger.kernel.org
->> ---
->>  fs/nfs/nfs4state.c |    5 ++++-
->>  1 files changed, 4 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 7bd9822..44fcd60 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -696,7 +696,10 @@ static void __nfs4_close(struct nfs4_state *state,
->>                       call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->>               }
->>               if (newstate == 0)
->> +{
->> +printk("%s CLEAR NFS_DELEGATED_STATE state %p\n", __func__, state);
->>                       clear_bit(NFS_DELEGATED_STATE, &state->flags);
->> +}\
->
-> Ewww.....
->
->>       }
->>       nfs4_state_set_mode_locked(state, newstate);
->>       spin_unlock(&owner->so_lock);
->> @@ -1097,7 +1100,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
->>  {
->>       struct nfs_client *clp = server->nfs_client;
->>
->> -     if (test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
->> +     if (test_bit(NFS_DELEGATED_STATE, &state->flags))
->>               nfs_async_inode_return_delegation(state->inode, &state->stateid);
->>       nfs4_state_mark_reclaim_nograce(clp, state);
->>       nfs4_schedule_state_manager(clp);
->
-> Actually, the latest incarnation of the patch 2/3 removes the
-> async_inode_return_delegation from nfs4_schedule_stateid_recovery.
+I'm starting to see mount commands on my Fedora 15/16 clients hanging 
+accessing CentOS 5.7 servers.  I've filed a fedora bug here:
 
-OK - but I think we still need to postpone clearing the
-NFS_DELEGATED_STATE bit until after calling nfs41_open_expired.
-Otherwise nfs41_check_expired_stateid will not test the delegation
-stateid, and nfs4_open_recover will not be called, as no stateid is
-deemed bad, and the OPEN with CLAIM_NULL to (potentially) recover the
-delegation will not be sent. In this case, the old bad delegation
-stateid will be resent.
+https://bugzilla.redhat.com/show_bug.cgi?id=791311
 
-> We
-> don't need to return the delegation if all the stateids have been marked
-> for return, and we've thrown out the delegation itself.
->
-> Let's not hurry this into the stable tree yet...
+that includes a packet capture.  Packets seem to be the following repeating 
+very fast:
 
-OK.
+   1   0.000000   10.10.11.2 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> PUTROOTFH
+PUTROOTFH;GETFH GETFH;GETATTR GETATTR
+   2   0.000029   10.10.41.5 -> 10.10.10.1   NFS V4 COMP Call <EMPTY> PUTROOTFH
+PUTROOTFH;GETFH GETFH;GETATTR GETATTR
+   3   0.000072   10.10.10.1 -> 10.10.11.2   NFS V4 COMP Reply (Call In 1)
+<EMPTY> PUTROOTFH PUTROOTFH;GETFH GETFH;GETATTR GETATTR
+   4   0.000087   10.10.10.1 -> 10.10.41.5   NFS V4 COMP Reply (Call In 2)
+<EMPTY> PUTROOTFH PUTROOTFH;GETFH GETFH;GETATTR GETATTR
 
--->Andy
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+
+Any help tracking this down would be greatly appreciated.
+
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
