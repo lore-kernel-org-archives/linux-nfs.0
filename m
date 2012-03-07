@@ -1,66 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from web100706.mail.kks.yahoo.co.jp ([183.79.100.10]:24807 "HELO
-	web100706.mail.kks.yahoo.co.jp" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750808Ab2CaRU1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2012 13:20:27 -0400
-Message-ID: <68163.71483.qm@web100706.mail.kks.yahoo.co.jp>
-Date: Sun, 1 Apr 2012 02:13:42 +0900 (JST)
-From: =?iso-2022-jp?B?GyRCTGs/QCEhNGRDSxsoQg==?=
-	<supergiantpotato@yahoo.co.jp>
-Subject: Re: nfsd hangs for more than 120 seconds
-To: linux-nfs@vger.kernel.org
-In-Reply-To: <p9nj49-5hf.ln1@homer.bruehl.pontohonk.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
+Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932758Ab2CGT4h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 14:56:37 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q27Jub8Q016777
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 7 Mar 2012 14:56:37 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q27Juatg032563
+	for <linux-nfs@vger.kernel.org>; Wed, 7 Mar 2012 14:56:37 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
+Date: Wed,  7 Mar 2012 14:56:30 -0500
+Message-Id: <1331150190-18401-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This problem can occur when multiple cluster services fail over
+at the same time, causing missing high-available exports.
+Having a lot of nfs-exports will trigger this issue easier.
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/include/exportfs.h |    4 ++++
+ utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
+ 2 files changed, 28 insertions(+), 0 deletions(-)
 
---- On Sun, 2012/4/1, Christoph Bartoschek <ponto@pontohonk.de> wrote:
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 01e87dd..99916e5 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -32,6 +32,10 @@ enum {
+ 	FSLOC_STUB
+ };
+ 
++#ifndef EXP_LOCKFILE
++#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
++#endif
++
+ typedef struct mclient {
+ 	struct mclient *	m_next;
+ 	char *			m_hostname;
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 7432a65..769d438 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -16,6 +16,7 @@
+ #include <sys/stat.h>
+ #include <sys/vfs.h>
+ #include <sys/stat.h>
++#include <sys/file.h>
+ #include <unistd.h>
+ #include <stdbool.h>
+ #include <stdlib.h>
+@@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
+ static int	matchhostname(const char *hostname1, const char *hostname2);
+ static void	export_d_read(const char *dname);
+ 
++static const char *lockfile = EXP_LOCKFILE;
++static int _lockfd = -1;
++
++void 
++grab_lockfile()
++{
++	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
++	if (_lockfd != -1) 
++		lockf(_lockfd, F_LOCK, 0);
++}
++void 
++release_lockfile()
++{
++	if (_lockfd != -1)
++		lockf(_lockfd, F_ULOCK, 0);
++}
++
+ int
+ main(int argc, char **argv)
+ {
+@@ -129,6 +147,12 @@ main(int argc, char **argv)
+ 			return 0;
+ 		}
+ 	}
++	/*
++	 * Serialize things as best we can
++	 */
++	grab_lockfile();
++	atexit(release_lockfile);
++
+ 	if (f_export && ! f_ignore) {
+ 		export_read(_PATH_EXPORTS);
+ 		export_d_read(_PATH_EXPORTS_D);
+-- 
+1.7.7.6
 
-> Myklebust, Trond wrote:
-> 
-> > On Sat, 2012-03-31 at 13:55 +0200, Christoph Bartoschek wrote:
-> >> Hi,
-> >> 
-> >> we use Ubuntu 10.04.3 LTS and often get a traceback for NFS indicating
-> >> that the daemon hangs for several seconds. At the same time some client
-> >> machines cannot access the server and have to wait. After some minutes
-> >> everything goes on.
-> >> 
-> >> What could cause the problem? Is there anything we should change?
-
-> > At a guess, I'd say that your mountd  or rpc.svcgssd is probably
-> > busy/hanging, causing the kernel NFS daemon to hang while it waits to
-> > authorise a client or user. Typically, you will see the above in the
-> > case of a kerberos, NIS or ldap outage.
-> > 
-> > So are you using NIS or ldap-based netgroups in your /etc/exports, or
-> > are your clients perhaps mounting with sys=krb5?
-
-> We are still using NFS3 and NIS. 
-> 
-> We are also sometimes seeing the following problem that might be related:
-> 
-> One user suddenly has no access to a directory and its subdirectories on a 
-> NFS share. The user always gets "permission denied". The access bits and 
-> group memberships did not change.
-> 
-> At the same time all other users within the same groups can access the 
-> directory on the same client machine and on other client machines.
-> 
-> After about 15 minutes the problem vanishes by itself. The user no longer 
-> gets "permission denied" and everything is normal.
-> 
-> This happens about twice a week for different users. We see no pattern in 
-> which user is affected and when this happens.
-
-That sounds a lot like an NIS lookup problem. I've been experiencing hangs (not quite 120 seconds, but over a minute at times, and really annoying) with NFS4 even with an export set this way:
-
-/mnt/export/home *.subdomain.localnet(rw.fsid=0,insecure)
-/mnt/export/home *.subdomain.localnet(rw,nohide,insecure)
-
-But its universal, not on a single user. When LDAP was sketchy we used to get a single user or a few users who wouldn't get a complete directory listing of, say, /home/* uid:gid owners, and so that one user would not be able to access anything that didn't come in the listing before it failed until the cache cleared.
-
-But that's been sorted. The only applications that are completely handicapped by the current mystery problem are email clients like Thunderbird and Evolution, and it seems that new requests pass through fine (like a new file browser instance or browsing in Bash works). I've yet to figure that out.
