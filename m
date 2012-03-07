@@ -1,61 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34475 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31278 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755325Ab2C0WgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Mar 2012 18:36:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSv4: Minor cleanups for nfs4_handle_exception and nfs4_async_handle_error
-Date: Tue, 27 Mar 2012 18:35:44 -0400
-Message-Id: <1332887744-4222-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1332887744-4222-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
- <1332887744-4222-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1030646Ab2CGTwi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 14:52:38 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Fred.Isaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 2/3] pynfs: use has_key for enum validation in rpcgen
+Date: Wed,  7 Mar 2012 14:52:30 -0500
+Message-Id: <1331149951-2430-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1331149951-2430-1-git-send-email-dros@netapp.com>
+References: <1331149951-2430-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+Avoid building a new valid list every encode/decode of an enum,
+also do a cheaper lookup using a dict rather than a list.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1933e67..f82bde0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -270,7 +270,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 		case 0:
- 			return 0;
- 		case -NFS4ERR_OPENMODE:
--			if (nfs_have_delegation(inode, FMODE_READ)) {
-+			if (inode && nfs_have_delegation(inode, FMODE_READ)) {
- 				nfs_inode_return_delegation(inode);
- 				exception->retry = 1;
- 				return 0;
-@@ -282,10 +282,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
--			if (state != NULL)
--				nfs_remove_bad_delegation(state->inode);
- 			if (state == NULL)
- 				break;
-+			nfs_remove_bad_delegation(state->inode);
- 			nfs4_schedule_stateid_recovery(server, state);
- 			goto wait_on_recovery;
- 		case -NFS4ERR_EXPIRED:
-@@ -3825,8 +3824,9 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
--			if (state != NULL)
--				nfs_remove_bad_delegation(state->inode);
-+			if (state == NULL)
-+				break;
-+			nfs_remove_bad_delegation(state->inode);
- 		case -NFS4ERR_OPENMODE:
- 			if (state == NULL)
- 				break;
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ xdr/xdrgen.py |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/xdr/xdrgen.py b/xdr/xdrgen.py
+index 6d89bfe..963e01b 100755
+--- a/xdr/xdrgen.py
++++ b/xdr/xdrgen.py
+@@ -857,21 +857,17 @@ class Info(object):
+         
+     def packenum(self, prefix, data='data'):
+         prefix, data, subheader, array = self._array_pack(prefix, data)
+-        varlist = ["const.%s" % l.id for l in self.body]
+-        check = "%sif self.check_enum and %s not in [%s]:\n" \
++        check = "%sif self.check_enum and not const.%s.has_key(%s):\n" \
+                 "%s%sraise XDRError, 'value=%%s not in enum %s' %% %s\n" % \
+-                (prefix, data, ', '.join(varlist),
+-                 prefix, indent, self.id, data)
++                (prefix, self.id, data, prefix, indent, self.id, data)
+         pack = check + "%sself.pack_int(%s)\n" % (prefix, data)
+         return subheader + pack + array
+ 
+     def unpackenum(self, prefix, data='data'):
+         prefix, data, subheader, array = self._array_unpack(prefix, data)
+-        varlist = ["const.%s" % l.id for l in self.body]
+-        check = "%sif self.check_enum and %s not in [%s]:\n" \
++        check = "%sif self.check_enum and not const.%s.has_key(%s):\n" \
+                 "%s%sraise XDRError, 'value=%%s not in enum %s' %% %s\n" % \
+-                (prefix, data, ', '.join(varlist),
+-                 prefix, indent, self.id, data)
++                (prefix, self.id, data, prefix, indent, self.id, data)
+         unpack = "%s%s = self.unpack_int()\n" % (prefix, data)
+         return subheader + unpack + check + array
+ 
 -- 
-1.7.7.6
+1.7.4.4
 
