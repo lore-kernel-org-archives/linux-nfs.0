@@ -1,180 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36490 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53873 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753000Ab2CUTqw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:46:52 -0400
+	id S1754106Ab2CGPts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Mar 2012 10:49:48 -0500
 From: andros@netapp.com
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 02/12] NFSv4.1: cleanup filelayout invalid deviceid handling
-Date: Wed, 21 Mar 2012 15:46:14 -0400
-Message-Id: <1332359184-1887-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 handle DS stateid errors
+Date: Wed,  7 Mar 2012 10:49:41 -0500
+Message-Id: <1331135381-2556-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Move the invalid deviceid test into nfs4_fl_prepare_ds, called by the
-filelayout read, write, and commit routines. NFS4_DEVICE_ID_NEG_ENTRY
-is no longer needed.
-Remove redundant printk's - filelayout_mark_devid_invalid prints a KERN_WARNING.
+Handle DS READ and WRITE stateid errors by recovering the stateid on the MDS.
 
-An invalid device prevents pNFS io.
+NFS4ERR_OLD_STATEID is ignored as the client always sends a
+state sequenceid of zero for DS READ and WRITE stateids.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c    |   10 ----------
- fs/nfs/nfs4filelayout.h    |   21 +++++++++++++++++----
- fs/nfs/nfs4filelayoutdev.c |   37 +++++++++++--------------------------
- 3 files changed, 28 insertions(+), 40 deletions(-)
+ fs/nfs/delegation.c     |    1 +
+ fs/nfs/nfs4filelayout.c |   29 ++++++++++++++++++++++++++++-
+ fs/nfs/nfs4state.c      |    2 ++
+ 3 files changed, 31 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 87f7544..97d5357 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -474,6 +474,7 @@ void nfs_remove_bad_delegation(struct inode *inode)
+ 		nfs_free_delegation(delegation);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
+ 
+ /**
+  * nfs_expire_all_delegation_types
 diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 36a65ce..cb9ea7e 100644
+index 47e8f34..b2d3bb5 100644
 --- a/fs/nfs/nfs4filelayout.c
 +++ b/fs/nfs/nfs4filelayout.c
-@@ -392,9 +392,6 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 		__func__, data->inode->i_ino,
- 		data->args.pgbase, (size_t)data->args.count, offset);
+@@ -36,6 +36,7 @@
+ #include <linux/sunrpc/metrics.h>
  
--	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
--		return PNFS_NOT_ATTEMPTED;
--
- 	/* Retrieve the correct rpc_client for the byte range */
- 	j = nfs4_fl_calc_j_index(lseg, offset);
- 	idx = nfs4_fl_calc_ds_index(lseg, j);
-@@ -434,16 +431,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
- 	struct nfs_fh *fh;
- 	int status;
+ #include "internal.h"
++#include "delegation.h"
+ #include "nfs4filelayout.h"
  
--	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
--		return PNFS_NOT_ATTEMPTED;
--
- 	/* Retrieve the correct rpc_client for the byte range */
- 	j = nfs4_fl_calc_j_index(lseg, offset);
- 	idx = nfs4_fl_calc_ds_index(lseg, j);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds) {
--		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
--			__func__);
- 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
- 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
- 		return PNFS_NOT_ATTEMPTED;
-@@ -922,8 +914,6 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
- 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds) {
--		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
--			__func__);
- 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
- 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
- 		prepare_to_resend_writes(data);
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 21190bb..b54b389 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -62,12 +62,8 @@ struct nfs4_pnfs_ds {
- 	atomic_t		ds_count;
- };
- 
--/* nfs4_file_layout_dsaddr flags */
--#define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
--
- struct nfs4_file_layout_dsaddr {
- 	struct nfs4_deviceid_node	id_node;
--	unsigned long			flags;
- 	u32				stripe_count;
- 	u8				*stripe_indices;
- 	u32				ds_num;
-@@ -107,6 +103,23 @@ FILELAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg)
- 	return &FILELAYOUT_LSEG(lseg)->dsaddr->id_node;
- }
- 
-+static inline void
-+filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
-+{
-+	u32 *p = (u32 *)&node->deviceid;
-+
-+	printk(KERN_WARNING "NFS: Deviceid [%x%x%x%x] marked out of use.\n",
-+		p[0], p[1], p[2], p[3]);
-+
-+	set_bit(NFS_DEVICEID_INVALID, &node->flags);
-+}
-+
-+static inline bool
-+filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
-+{
-+	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
-+}
-+
- extern struct nfs_fh *
- nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
- 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index a866bbd..2b8ae96 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -791,48 +791,33 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
- 	return flseg->fh_array[i];
- }
- 
--static void
--filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
--			       int err, const char *ds_remotestr)
--{
--	u32 *p = (u32 *)&dsaddr->id_node.deviceid;
--
--	printk(KERN_ERR "NFS: data server %s connection error %d."
--		" Deviceid [%x%x%x%x] marked out of use.\n",
--		ds_remotestr, err, p[0], p[1], p[2], p[3]);
--
--	spin_lock(&nfs4_ds_cache_lock);
--	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
--	spin_unlock(&nfs4_ds_cache_lock);
--}
--
- struct nfs4_pnfs_ds *
- nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+@@ -86,12 +87,31 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 					 struct nfs_client *clp,
+ 					 int *reset)
  {
- 	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
- 	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
-+	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
++	struct nfs_server *mds_server = NFS_SERVER(state->inode);
++	struct nfs_client *mds_client = mds_server->nfs_client;
 +
-+	if (filelayout_test_devid_invalid(devid))
-+		return NULL;
+ 	if (task->tk_status >= 0)
+ 		return 0;
+-
+ 	*reset = 0;
  
- 	if (ds == NULL) {
- 		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
- 			__func__, ds_idx);
--		return NULL;
-+		goto mark_dev_invalid;
+ 	switch (task->tk_status) {
++	/* MDS state errors */
++	case -NFS4ERR_DELEG_REVOKED:
++	case -NFS4ERR_ADMIN_REVOKED:
++	case -NFS4ERR_BAD_STATEID:
++		if (state != NULL)
++			nfs_remove_bad_delegation(state->inode);
++	case -NFS4ERR_OPENMODE:
++		if (state == NULL)
++			break;
++		nfs4_schedule_stateid_recovery(mds_server, state);
++		goto wait_on_recovery;
++	case -NFS4ERR_EXPIRED:
++		if (state != NULL)
++			nfs4_schedule_stateid_recovery(mds_server, state);
++		nfs4_schedule_lease_recovery(mds_client);
++		goto wait_on_recovery;
++	/* DS session errors */
+ 	case -NFS4ERR_BADSESSION:
+ 	case -NFS4ERR_BADSLOT:
+ 	case -NFS4ERR_BAD_HIGH_SLOT:
+@@ -117,8 +137,15 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		*reset = 1;
+ 		break;
  	}
- 
- 	if (!ds->ds_clp) {
- 		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
- 		int err;
- 
--		if (dsaddr->flags & NFS4_DEVICE_ID_NEG_ENTRY) {
--			/* Already tried to connect, don't try again */
--			dprintk("%s Deviceid marked out of use\n", __func__);
--			return NULL;
--		}
- 		err = nfs4_ds_connect(s, ds);
--		if (err) {
--			filelayout_mark_devid_negative(dsaddr, err,
--						       ds->ds_remotestr);
--			return NULL;
--		}
-+		if (err)
-+			goto mark_dev_invalid;
- 	}
- 	return ds;
++out:
+ 	task->tk_status = 0;
+ 	return -EAGAIN;
++wait_on_recovery:
++	rpc_sleep_on(&mds_client->cl_rpcwaitq, task, NULL);
++	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
++		rpc_wake_up_queued_task(&mds_client->cl_rpcwaitq, task);
++	goto out;
 +
-+mark_dev_invalid:
-+	filelayout_mark_devid_invalid(devid);
-+	return NULL;
  }
+ 
+ /* NFS_PROTO call done callback routines */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1dad5c5..a58d02a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1072,6 +1072,7 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
+ 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+ 	nfs4_schedule_state_manager(clp);
+ }
++EXPORT_SYMBOL_GPL(nfs4_schedule_lease_recovery);
+ 
+ void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
+ {
+@@ -1109,6 +1110,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
+ 	nfs4_state_mark_reclaim_nograce(clp, state);
+ 	nfs4_schedule_state_manager(clp);
+ }
++EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
+ 
+ void nfs_inode_find_state_and_recover(struct inode *inode,
+ 		const nfs4_stateid *stateid)
 -- 
 1.7.6.4
 
