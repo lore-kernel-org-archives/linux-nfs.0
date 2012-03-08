@@ -1,131 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35772 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932969Ab2C2N6k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 09:58:40 -0400
-Date: Thu, 29 Mar 2012 09:58:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-next@vger.kernel.or, paul.gortmaker@windriver.com
-Subject: Re: [PATCH v2] nfsd: only register cld pipe notifier when
- CONFIG_NFSD_V4 is enabled
-Message-ID: <20120329135835.GF16938@fieldses.org>
-References: <1333021969-9119-1-git-send-email-jlayton@redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:21821 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753880Ab2CHKFZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 05:05:25 -0500
+Date: Thu, 8 Mar 2012 13:05:17 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: re: NFSv4.1 handle DS stateid errors
+Message-ID: <20120308100517.GA31881@elgon.mountain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1333021969-9119-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 07:52:49AM -0400, Jeff Layton wrote:
-> Otherwise, we get a warning or error similar to this when building with
-> CONFIG_NFSD_V4 disabled:
-> 
->     ERROR: "nfsd4_cld_block" [fs/nfsd/nfsd.ko] undefined!
-> 
-> Fix this by wrapping the calls to rpc_pipefs_notifier_register and
-> ..._unregister in another function and providing no-op replacements
-> when CONFIG_NFSD_V4 is disabled.
+Hello Andy Adamson,
 
-Thanks, applied this instead of the previous version, and pushed out.
+This is a semi-automatic email about new static checker warnings.
 
---b.
+The patch 9cb8196839ab: "NFSv4.1 handle DS stateid errors" from Mar 
+7, 2012, leads to the following Smatch complaint:
 
-> 
-> Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/netns.h       |    1 -
->  fs/nfsd/nfs4recover.c |   12 ++++++++++++
->  fs/nfsd/nfsctl.c      |    6 +++---
->  fs/nfsd/nfsd.h        |    7 ++++++-
->  4 files changed, 21 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 66eac33..12e0cff 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -31,5 +31,4 @@ struct nfsd_net {
->  };
->  
->  extern int nfsd_net_id;
-> -extern struct notifier_block nfsd4_cld_block;
->  #endif /* __NFSD_NETNS_H__ */
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index eaaf948..4767429 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1032,3 +1032,15 @@ rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
->  struct notifier_block nfsd4_cld_block = {
->  	.notifier_call = rpc_pipefs_event,
->  };
-> +
-> +int
-> +register_cld_notifier(void)
-> +{
-> +	return rpc_pipefs_notifier_register(&nfsd4_cld_block);
-> +}
-> +
-> +void
-> +unregister_cld_notifier(void)
-> +{
-> +	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +}
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index dee6c1b..2c53be6 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1137,7 +1137,7 @@ static int __init init_nfsd(void)
->  	int retval;
->  	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
->  
-> -	retval = rpc_pipefs_notifier_register(&nfsd4_cld_block);
-> +	retval = register_cld_notifier();
->  	if (retval)
->  		return retval;
->  	retval = register_pernet_subsys(&nfsd_net_ops);
-> @@ -1186,7 +1186,7 @@ out_free_slabs:
->  out_unregister_pernet:
->  	unregister_pernet_subsys(&nfsd_net_ops);
->  out_unregister_notifier:
-> -	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +	unregister_cld_notifier();
->  	return retval;
->  }
->  
-> @@ -1203,7 +1203,7 @@ static void __exit exit_nfsd(void)
->  	nfsd_fault_inject_cleanup();
->  	unregister_filesystem(&nfsd_fs_type);
->  	unregister_pernet_subsys(&nfsd_net_ops);
-> -	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
-> +	unregister_cld_notifier();
->  }
->  
->  MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 1d1e858..1671429 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -364,12 +364,17 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
->  	NFSD_WRITEABLE_ATTRS_WORD2
->  
->  extern int nfsd4_is_junction(struct dentry *dentry);
-> -#else
-> +extern int register_cld_notifier(void);
-> +extern void unregister_cld_notifier(void);
-> +#else /* CONFIG_NFSD_V4 */
->  static inline int nfsd4_is_junction(struct dentry *dentry)
->  {
->  	return 0;
->  }
->  
-> +#define register_cld_notifier() 0
-> +#define unregister_cld_notifier() do { } while(0)
-> +
->  #endif /* CONFIG_NFSD_V4 */
->  
->  #endif /* LINUX_NFSD_NFSD_H */
-> -- 
-> 1.7.7.6
-> 
+fs/nfs/nfs4filelayout.c:102 filelayout_async_handle_error()
+	 warn: variable dereferenced before check 'state' (see line 90)
+
+fs/nfs/nfs4filelayout.c
+    89	{
+    90		struct nfs_server *mds_server = NFS_SERVER(state->inode);
+                                                           ^^^^^^^^^^^^
+new dereference.
+
+    91		struct nfs_client *mds_client = mds_server->nfs_client;
+    92	
+    93		if (task->tk_status >= 0)
+    94			return 0;
+    95		*reset = 0;
+    96	
+    97		switch (task->tk_status) {
+    98		/* MDS state errors */
+    99		case -NFS4ERR_DELEG_REVOKED:
+   100		case -NFS4ERR_ADMIN_REVOKED:
+   101		case -NFS4ERR_BAD_STATEID:
+   102			if (state != NULL)
+                            ^^^^^^^^^^^^^
+
+new check.
+
+   103				nfs_remove_bad_delegation(state->inode);
+   104		case -NFS4ERR_OPENMODE:
+
+regards,
+dan carpenter
+
