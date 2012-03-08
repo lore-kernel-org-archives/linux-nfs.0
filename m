@@ -1,91 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ebox.rath.org ([173.255.235.238]:50099 "EHLO ebox.rath.org"
+Received: from fieldses.org ([174.143.236.118]:48876 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752920Ab2CLUan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 16:30:43 -0400
-Message-ID: <4F5E5CF2.50309@rath.org>
-Date: Mon, 12 Mar 2012 16:30:42 -0400
-From: Nikolaus Rath <Nikolaus@rath.org>
+	id S1750794Ab2CHUmI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 15:42:08 -0500
+Date: Thu, 8 Mar 2012 15:42:05 -0500
+To: Olga Kornievskaia <aglo@citi.umich.edu>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
+ NFS4ERR_OPENMODE
+Message-ID: <20120308204205.GB9273@fieldses.org>
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
+ <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+ <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+ <1331230525.2472.39.camel@lade.trondhjem.org>
+ <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org>
-In-Reply-To: <20120312201505.GC7203@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
-> On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
->> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
->>> On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
->>>> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
->>>>> The problem is that as soon as more than three clients are accessing the
->>>>> NFS shares, any operations on the NFS mountpoints by the clients hang.
->>>>> At the same time, CPU usage of the VPN processes becomes very high. If I
->>>>> run the VPN in debug mode, all I can see is that it is busy forwarding
->>>>> lots of packets. I also ran a packet sniffer which showed me that 90% of
->>>>> the packets were NFS related, but I am not familiar enough with NFS to
->>>>> be able to tell anything from the packets themselves. I can provide an
->>>>> example of the dump if that helps.
->>>>
->>>> I have put a screenshot of the dump on
->>>> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
->>>> not sure which parts are important).
->>>
->>> Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
->>> OPEN_CONFIRM repeatedly.
->>>
->>>> Any suggestions how I could further debug this?
->>>
->>> Could the clients be stepping on each others' state if they all think
->>> they have the same IP address (because of something to do with the VPN
->>> networking?)
->>
->> That sounds like promising path of investigation. What determines the IP
->> of a client as far as NFS is concerned?
+On Thu, Mar 08, 2012 at 03:23:34PM -0500, Olga Kornievskaia wrote:
+> On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
+> >> wouldn't it be better for you to proactively return a read delegation
+> >> then unnecessarily erroring?
+> >
+> > If nobody else holds a delegation, then the NFS client is actually
+> > allowed to keep its read delegation while writing to the file. It does
+> > admittedly need to request an OPEN stateid for write in that case...
+> > (See section 10.4 of RFC3530bis draft 16)
 > 
-> I don't remember where it gets the ip it uses to construct clientid's
-> from....  But there is a mount option (clientaddr=) that will let you
-> change what it uses.  So it *might* be worth checking whether using a
-> clientaddr= option on each client (giving it a different ipaddr on each
-> client) would change the behavior.
-
-I'll try that.
-
-Since there seems to be some problem with client identity: all the
-clients are generated using the same disk image. This image also
-includes some stuff in /var/lib/nfs. I already tried emptying this on
-every client and did not help, but maybe there is another directory with
-state data that could cause problems?
-
->>> It'd be interesting to know the fields of the setclientid call, and the
->>> errors that the server is responding with to these calls.  If you look
->>> at the packet details you'll probably see the same thing happening
->>> over and over again.
->>>
->>> Filtering to look at traffic between server and one client at a time
->>> might help to see the pattern.
->>
->> Hmm. I'm looking at the fields, but I just have no idea what any of
->> those mean. Would you possibly be willing to take a look? I uploaded a
->> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
+> If we both agree that there has to be a request for an open stateid for
+> a write, then instead of returning the read delegation if the client receives
+> err_openmode (when it send the request with read delegation stateid
+> as you said per 3560bis), can't the client resend the setattr with the open
+> stateid? The ordering of the stateid usage is a "should" and not a "must".
 > 
-> Looking at the packet details, under the client id field, the clients
-> are all using:
+> In rfc5661, it really doesn't make sense to ever send a setattr with
+> a read delegation stateid. According to 9.1.2, the server "MUST" return
+> err_open_mode" error in that case.
 > 
-> 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
+> I gather you are in this case dealing with 4.0 delegations. But I wonder
+> if you'll do something else for 4.1 delegation then?
 
-Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
-be there?
+3530bis has the same language ("...must verify that the access mode
+allows writing and return an NFS4ERR_OPENMODE error if it does not").
 
+--b.
 
-Thanks for your help!
-
-   -Nikolaus
-
--- 
- »Time flies like an arrow, fruit flies like a Banana.«
-
-  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
+> 
+> Another comment is that I was suggesting a return of delegation only
+> because (from what i recall) the 4.1 servers out there will recall the
+> previously
+> given read delegation in this case.
+> 
+> > That said, in either case we do need to deal with the fact that a new
+> > delegation may be granted after we return the old one. There is no
+> > locking around the setattr call to prevent this.
+> 
+> Can that really happen since we agreed that the client also has an open
+> stateid for write in this case?
+> 
+> >> i also don't understand how this error occurs. doing a setattr in this
+> >> case you must have used a non-special stateid. the server would only
+> >> return an err_openmode if you sent the setattr with a read delegation
+> >> stateid. i guess my question is what stateid would you use that from
+> >> client's perspective represent a write-type state id but yet a server
+> >> would flag as having wrong access type?
+> >
+> > The read delegation stateid is being sent as per the prescription in
+> > section 9.1.3.6 of RFC3530bis.
+> 
+> >> also i'm curious why would a server, instead of returning
+> >> err_openmode, would not first recall your read delegation?
+> >
+> > It could, but why do so when it can just return an error value? The
+> > presence of the delegation stateid in the SETATTR request allows it to
+> > communicate directly to the client what the problem is without the need
+> > for any callbacks.
+> 
+> > Trond Myklebust
+> > Linux NFS client maintainer
+> >
+> > NetApp
+> > Trond.Myklebust@netapp.com
+> > www.netapp.com
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
