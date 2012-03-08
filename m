@@ -1,47 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47726 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756821Ab2CIW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 17:29:37 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 7/7] locks: break delegations on any attribute modification
-Date: Fri,  9 Mar 2012 17:29:34 -0500
-Message-Id: <1331332174-22621-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120309222114.GA22423@fieldses.org>
-References: <20120309222114.GA22423@fieldses.org>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:63333 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754216Ab2CHV1j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 16:27:39 -0500
+MIME-Version: 1.0
+In-Reply-To: <1331239814.11759.1.camel@lade.trondhjem.org>
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
+	<1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+	<1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+	<CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+	<1331230525.2472.39.camel@lade.trondhjem.org>
+	<CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
+	<20120308204205.GB9273@fieldses.org>
+	<1331239814.11759.1.camel@lade.trondhjem.org>
+Date: Thu, 8 Mar 2012 16:27:37 -0500
+Message-ID: <CAN-5tyHBxnWQ_Yi1dGeBcAtq=PbSfqSRN0_dUY-gLcDVZWytWQ@mail.gmail.com>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns NFS4ERR_OPENMODE
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Mar 8, 2012 at 3:50 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-03-08 at 15:42 -0500, J. Bruce Fields wrote:
+>> On Thu, Mar 08, 2012 at 03:23:34PM -0500, Olga Kornievskaia wrote:
+>> > On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
+>> > <Trond.Myklebust@netapp.com> wrote:
+>> > > On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
+>> > >> wouldn't it be better for you to proactively return a read delegation
+>> > >> then unnecessarily erroring?
+>> > >
+>> > > If nobody else holds a delegation, then the NFS client is actually
+>> > > allowed to keep its read delegation while writing to the file. It does
+>> > > admittedly need to request an OPEN stateid for write in that case...
+>> > > (See section 10.4 of RFC3530bis draft 16)
+>> >
+>> > If we both agree that there has to be a request for an open stateid for
+>> > a write, then instead of returning the read delegation if the client receives
+>> > err_openmode (when it send the request with read delegation stateid
+>> > as you said per 3560bis), can't the client resend the setattr with the open
+>> > stateid? The ordering of the stateid usage is a "should" and not a "must".
+>> >
+>> > In rfc5661, it really doesn't make sense to ever send a setattr with
+>> > a read delegation stateid. According to 9.1.2, the server "MUST" return
+>> > err_open_mode" error in that case.
+>> >
+>> > I gather you are in this case dealing with 4.0 delegations. But I wonder
+>> > if you'll do something else for 4.1 delegation then?
+>>
+>> 3530bis has the same language ("...must verify that the access mode
+>> allows writing and return an NFS4ERR_OPENMODE error if it does not").
+>
+> OK, so we shouldn't send the delegation stateid either for v4 or v4.1.
+> However should we pre-emptively return the delegation? I've been
+> assuming not.
 
-NFSv4 uses leases to guarantee that clients can cache metadata as well
-as data.
-
-This covers chmod, chown, etc.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/attr.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/attr.c b/fs/attr.c
-index 95053ad..b8b5676 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -232,6 +232,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 	error = security_inode_setattr(dentry, attr);
- 	if (error)
- 		return error;
-+	error = break_deleg(inode, O_WRONLY);
-+	if (error)
-+		return error;
- 
- 	if (inode->i_op->setattr)
- 		error = inode->i_op->setattr(dentry, attr);
--- 
-1.7.5.4
-
+It would be nice not to pre-emptively return delegations but for that
+we need server implementors to get on board with the idea.
