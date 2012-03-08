@@ -1,97 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48544 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39237 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759426Ab2C2UoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 16:44:02 -0400
-Date: Thu, 29 Mar 2012 16:43:55 -0400
-From: Dr James Bruce Fields <bfields@fieldses.org>
+	id S1751370Ab2CHU5j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 15:57:39 -0500
+Date: Thu, 8 Mar 2012 15:57:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Message-ID: <20120329204355.GA21493@fieldses.org>
-References: <loom.20120329T182500-467@post.gmane.org>
- <1333040091.5547.32.camel@lade.trondhjem.org>
- <4F749CCA.3000400@cora.nwra.com>
- <1333042863.5547.37.camel@lade.trondhjem.org>
- <4F74A4D5.1040802@cora.nwra.com>
- <20120329193100.GA20329@fieldses.org>
- <1333052170.10318.6.camel@lade.trondhjem.org>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
+ NFS4ERR_OPENMODE
+Message-ID: <20120308205737.GC9273@fieldses.org>
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
+ <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+ <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+ <1331230525.2472.39.camel@lade.trondhjem.org>
+ <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
+ <20120308204205.GB9273@fieldses.org>
+ <1331239814.11759.1.camel@lade.trondhjem.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1333052170.10318.6.camel@lade.trondhjem.org>
+In-Reply-To: <1331239814.11759.1.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 29, 2012 at 08:16:05PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-03-29 at 15:31 -0400, Dr James Bruce Fields wrote:
-> > On Thu, Mar 29, 2012 at 12:07:17PM -0600, Orion Poplawski wrote:
-> > > On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
-> > > >>Going back to v4 on EL5.8 server: nfsv4el.log, nfsv4f18.log
-> > > >>
-> > > >>Both get NFS4ERR_EXIST in this case.
+On Thu, Mar 08, 2012 at 08:50:14PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-03-08 at 15:42 -0500, J. Bruce Fields wrote:
+> > On Thu, Mar 08, 2012 at 03:23:34PM -0500, Olga Kornievskaia wrote:
+> > > On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
+> > > <Trond.Myklebust@netapp.com> wrote:
+> > > > On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
+> > > >> wouldn't it be better for you to proactively return a read delegation
+> > > >> then unnecessarily erroring?
 > > > >
-> > > >Which is an obvious server bug: it should be sending NFS4ERR_SYMLINK in
-> > > >reply to that OPEN.
-> > > >
-> > > >Bruce?
-> > > >
+> > > > If nobody else holds a delegation, then the NFS client is actually
+> > > > allowed to keep its read delegation while writing to the file. It does
+> > > > admittedly need to request an OPEN stateid for write in that case...
+> > > > (See section 10.4 of RFC3530bis draft 16)
 > > > 
-> > > I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
+> > > If we both agree that there has to be a request for an open stateid for
+> > > a write, then instead of returning the read delegation if the client receives
+> > > err_openmode (when it send the request with read delegation stateid
+> > > as you said per 3560bis), can't the client resend the setattr with the open
+> > > stateid? The ordering of the stateid usage is a "should" and not a "must".
+> > > 
+> > > In rfc5661, it really doesn't make sense to ever send a setattr with
+> > > a read delegation stateid. According to 9.1.2, the server "MUST" return
+> > > err_open_mode" error in that case.
+> > > 
+> > > I gather you are in this case dealing with 4.0 delegations. But I wonder
+> > > if you'll do something else for 4.1 delegation then?
 > > 
-> > Hm.  So how about this?  (Untested.)
-> > 
-> > Probably there should be a pynfs test too.
-> > 
-> > I'm assuming it should still be ERR_EXIST in the exclusive,
-> > exclusive4_1, and guarded cases.
-> > 
-> > --b.
-> > 
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index 7423d71..2bfcad4 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -1457,9 +1457,12 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >  
-> >  		switch (createmode) {
-> >  		case NFS3_CREATE_UNCHECKED:
-> > -			if (! S_ISREG(dchild->d_inode->i_mode))
-> > -				err = nfserr_exist;
-> > -			else if (truncp) {
-> > +			if (! S_ISREG(dchild->d_inode->i_mode)) {
-> > +				if (rqstp->rq_vers == 4)
-> > +					err = nfserr_symlink;
-> > +				else
-> > +					err = nfserr_exist;
+> > 3530bis has the same language ("...must verify that the access mode
+> > allows writing and return an NFS4ERR_OPENMODE error if it does not").
 > 
-> No. This should _never_ return NFS4ERR_EXIST.
+> OK, so we shouldn't send the delegation stateid either for v4 or v4.1.
+> However should we pre-emptively return the delegation? I've been
+> assuming not.
 
-That "else" is the v3 CREATE case.  I don't see the alternative there?
+The server's only legal option is to recall it, so it seems odd not to
+pre-emptively return--but as you say there's nothing to prevent the
+server from then handing one right back, possibly before you get a
+chance to send the setattr.
 
-> It should return
->       * NFS4ERR_ISDIR if the object is a directory
->       * NFS4ERR_SYMLINK if it is symbolic link,
->       * either NFS4ERR_WRONG_TYPE (NFSv4.1) or NFS4ERR_SYMLINK (NFSv4.0)
->         if the object is any other non-regular file.
-
-Makes sense.
+(And the linux server might well do that--maybe it should have some
+heuristic not to hand out a delegation that was just returned--not so
+much for this case as just because a return is a sign that the
+delegation isn't useful to that client.)
 
 --b.
-
-> 
-> 
-> > +			} else if (truncp) {
-> >  				/* in nfsv4, we need to treat this case a little
-> >  				 * differently.  we don't want to truncate the
-> >  				 * file now; this would be wrong if the OPEN
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
