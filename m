@@ -1,208 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52794 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761271Ab2C3TCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 15:02:50 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 06/10] NFS: Create a single nfs_get_root()
-Date: Fri, 30 Mar 2012 15:02:33 -0400
-Message-Id: <1333134157-17141-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
-References: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+	id S1753386Ab2CHOhh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 09:37:37 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q28EbbpZ030176
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Mar 2012 09:37:37 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q28EbbLA026703
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Mar 2012 09:37:37 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] rpcbind: drop supplemental groups
+Date: Thu,  8 Mar 2012 09:37:30 -0500
+Message-Id: <1331217450-20798-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Drop out of the 'root' group to ensure the process does
+not have any access to writable or readable files
+to that group.
 
-NFS v4 was doing something slightly different, so the difference can
-become the new rpc_ops->getroot() function rather than existing on its
-own.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/getroot.c  |   83 -----------------------------------------------------
- fs/nfs/nfs4proc.c |   28 +++++++++++++++++-
- fs/nfs/super.c    |    6 ++--
- 3 files changed, 30 insertions(+), 87 deletions(-)
+ src/rpcbind.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 8a0f33e..8abfb19 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -178,87 +178,4 @@ out:
- 	return ret;
- }
- 
--/*
-- * get an NFS4 root dentry from the root filehandle
-- */
--struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
--			     const char *devname)
--{
--	struct nfs_server *server = NFS_SB(sb);
--	struct nfs_fattr *fattr = NULL;
--	struct dentry *ret;
--	struct inode *inode;
--	void *name = kstrdup(devname, GFP_KERNEL);
--	int error;
--
--	dprintk("--> nfs4_get_root()\n");
--
--	if (!name)
--		return ERR_PTR(-ENOMEM);
--
--	/* get the info about the server and filesystem */
--	error = nfs4_server_capabilities(server, mntfh);
--	if (error < 0) {
--		dprintk("nfs_get_root: getcaps error = %d\n",
--			-error);
--		kfree(name);
--		return ERR_PTR(error);
--	}
--
--	fattr = nfs_alloc_fattr();
--	if (fattr == NULL) {
--		kfree(name);
--		return ERR_PTR(-ENOMEM);
--	}
--
--	/* get the actual root for this mount */
--	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
--	if (error < 0) {
--		dprintk("nfs_get_root: getattr error = %d\n", -error);
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
--	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
--		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
--
--	inode = nfs_fhget(sb, mntfh, fattr);
--	if (IS_ERR(inode)) {
--		dprintk("nfs_get_root: get root inode failed\n");
--		ret = ERR_CAST(inode);
--		goto out;
--	}
--
--	error = nfs_superblock_set_dummy_root(sb, inode);
--	if (error != 0) {
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	/* root dentries normally start off anonymous and get spliced in later
--	 * if the dentry tree reaches them; however if the dentry already
--	 * exists, we'll pick it up at this point and use it as the root
--	 */
--	ret = d_obtain_alias(inode);
--	if (IS_ERR(ret)) {
--		dprintk("nfs_get_root: get root dentry failed\n");
--		goto out;
--	}
--
--	security_d_instantiate(ret, inode);
--	spin_lock(&ret->d_lock);
--	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
--		ret->d_fsdata = name;
--		name = NULL;
--	}
--	spin_unlock(&ret->d_lock);
--out:
--	if (name)
--		kfree(name);
--	nfs_free_fattr(fattr);
--	dprintk("<-- nfs4_get_root()\n");
--	return ret;
--}
--
- #endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bd00e10..e3ddebb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -80,6 +80,7 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
- static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
-+static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -2363,6 +2364,31 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return nfs4_map_errors(status);
- }
- 
-+static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
-+			      struct nfs_fsinfo *info)
-+{
-+	int error;
-+	struct nfs_fattr *fattr = info->fattr;
-+
-+	error = nfs4_server_capabilities(server, mntfh);
-+	if (error < 0) {
-+		dprintk("nfs4_get_root: getcaps error = %d\n", -error);
-+		return error;
-+	}
-+
-+	error = nfs4_proc_getattr(server, mntfh, fattr);
-+	if (error < 0) {
-+		dprintk("nfs4_get_root: getattr error = %d\n", -error);
-+		return error;
-+	}
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
-+	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
-+		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
-+
-+	return error;
-+}
-+
- /*
-  * Get locations and (maybe) other attributes of a referral.
-  * Note that we'll actually follow the referral later when
-@@ -6465,7 +6491,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.dir_inode_ops	= &nfs4_dir_inode_operations,
- 	.file_inode_ops	= &nfs4_file_inode_operations,
- 	.file_ops	= &nfs4_file_operations,
--	.getroot	= nfs4_proc_get_rootfh,
-+	.getroot	= nfs4_proc_get_root,
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
- 	.lookup		= nfs4_proc_lookup,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 11e25f9..d636bd2 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2694,7 +2694,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, data, NULL);
- 	}
- 
--	mntroot = nfs4_get_root(s, mntfh, dev_name);
-+	mntroot = nfs_get_root(s, mntfh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
-@@ -2954,7 +2954,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
--	mntroot = nfs4_get_root(s, data->fh, dev_name);
-+	mntroot = nfs_get_root(s, data->fh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
-@@ -3045,7 +3045,7 @@ nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 		nfs_fscache_get_super_cookie(s, NULL, data);
- 	}
- 
--	mntroot = nfs4_get_root(s, mntfh, dev_name);
-+	mntroot = nfs_get_root(s, mntfh, dev_name);
- 	if (IS_ERR(mntroot)) {
- 		error = PTR_ERR(mntroot);
- 		goto error_splat_super;
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index 24e069b..9a0504d 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -236,6 +236,10 @@ main(int argc, char *argv[])
+                         syslog(LOG_ERR, "setgid to '%s' (%d) failed: %m", id, p->pw_gid);
+                         exit(1);
+                 }
++		if (setgroups(0, NULL) == -1) {
++			syslog(LOG_ERR, "dropping supplemental groups failed: %m");
++			exit(1);
++		}
+ 		if (setuid(p->pw_uid) == -1) {
+ 			syslog(LOG_ERR, "setuid to '%s' (%d) failed: %m", id, p->pw_uid);
+ 			exit(1);
 -- 
-1.7.9.5
+1.7.7.6
 
