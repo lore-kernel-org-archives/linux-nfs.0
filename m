@@ -1,57 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43679 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753511Ab2CVV0S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 17:26:18 -0400
-Date: Thu, 22 Mar 2012 17:26:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Change the default setting of the
- nfs4_disable_idmapping parameter
-Message-ID: <20120322212616.GD23737@fieldses.org>
-References: <1326138354-8138-1-git-send-email-Trond.Myklebust@netapp.com>
- <20120322204705.GA23737@fieldses.org>
- <1332449607.8976.9.camel@lade.trondhjem.org>
- <1332450074.8976.13.camel@lade.trondhjem.org>
+Received: from natasha.panasas.com ([67.152.220.90]:43441 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752841Ab2CHVNH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 16:13:07 -0500
+Message-ID: <4F5920B0.4000403@panasas.com>
+Date: Thu, 8 Mar 2012 13:12:16 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332450074.8976.13.camel@lade.trondhjem.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Olga Kornievskaia <aglo@citi.umich.edu>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
+ NFS4ERR_OPENMODE
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu> <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com> <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com> <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com> <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com> <1331230525.2472.39.camel@lade.trondhjem.org> <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com> <20120308204205.GB9273@fieldses.org> <1331239814.11759.1.camel@lade.trondhjem.org> <20120308205737.GC9273@fieldses.org>
+In-Reply-To: <20120308205737.GC9273@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 22, 2012 at 09:01:12PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-03-22 at 16:53 -0400, Trond Myklebust wrote:
-> > Does the idmapper do the right thing for numeric ids these days? If the
-> > older clients are running a newer idmapper that can deal with numeric
-> > ids, then even the legacy clients should be able to work cleanly.
+On 03/08/2012 12:57 PM, J. Bruce Fields wrote:
+> On Thu, Mar 08, 2012 at 08:50:14PM +0000, Myklebust, Trond wrote:
+>> On Thu, 2012-03-08 at 15:42 -0500, J. Bruce Fields wrote:
+>>> On Thu, Mar 08, 2012 at 03:23:34PM -0500, Olga Kornievskaia wrote:
+>>>> On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
+>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>> On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
+>>>>>> wouldn't it be better for you to proactively return a read delegation
+>>>>>> then unnecessarily erroring?
+>>>>>
+>>>>> If nobody else holds a delegation, then the NFS client is actually
+>>>>> allowed to keep its read delegation while writing to the file. It does
+>>>>> admittedly need to request an OPEN stateid for write in that case...
+>>>>> (See section 10.4 of RFC3530bis draft 16)
+>>>>
+>>>> If we both agree that there has to be a request for an open stateid for
+>>>> a write, then instead of returning the read delegation if the client receives
+>>>> err_openmode (when it send the request with read delegation stateid
+>>>> as you said per 3560bis), can't the client resend the setattr with the open
+>>>> stateid? The ordering of the stateid usage is a "should" and not a "must".
+>>>>
+>>>> In rfc5661, it really doesn't make sense to ever send a setattr with
+>>>> a read delegation stateid. According to 9.1.2, the server "MUST" return
+>>>> err_open_mode" error in that case.
+>>>>
+>>>> I gather you are in this case dealing with 4.0 delegations. But I wonder
+>>>> if you'll do something else for 4.1 delegation then?
+>>>
+>>> 3530bis has the same language ("...must verify that the access mode
+>>> allows writing and return an NFS4ERR_OPENMODE error if it does not").
+>>
+>> OK, so we shouldn't send the delegation stateid either for v4 or v4.1.
+>> However should we pre-emptively return the delegation? I've been
+>> assuming not.
 > 
-> If this isn't the case, then the older clients are broken anyway. The
-> server has always had the option of returning numeric ids if it has no
-> mapping from a uid/gid into an owner/group string.
+> The server's only legal option is to recall it, so it seems odd not to
+> pre-emptively return--
 
-Hm, yes, but I was worried that the id<->name mapping might just be
-different on the two sides--but if that's so, and they were using
-auth_sys, then they likely already had problems.
+Also from the client that sent the setattr? I, as Trond, understood that
+the read delegation must be recalled from all clients but the one
+doing the setattr/write.
 
-So, maybe we could default this to on.
+other wise what does it mean:
+ "allowed to keep its read delegation while writing to the file"
 
-If that's the case then I'd rather not bother making this per export:
-just an option to get the server back to its previous behavior would
-seem enough.
+I think the server should filter out it's global recall to dis-include
+the caller.
 
---b.
+Though I agree that the client must get a writable stateid for
+setattr, and should not use it's  read-delegation-stateid
 
-> IOW: the only difference between older and newer clients should really
-> be that the newer ones handle numeric strings more efficiently without
-> requiring an upcall, and that the newer clients will also try to _send_
-> numeric ids in SETATTR calls.
+> but as you say there's nothing to prevent the
+> server from then handing one right back, possibly before you get a
+> chance to send the setattr.
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+
+The above recall filtering will solve that. I know that in layout recalls
+we have such facility, and we actually use it in RAID5 exofs.
+
+> (And the linux server might well do that--maybe it should have some
+> heuristic not to hand out a delegation that was just returned--not so
+> much for this case as just because a return is a sign that the
+> delegation isn't useful to that client.)
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+
+Thanks
+Boaz
+
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
