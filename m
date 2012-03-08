@@ -1,116 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31480 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57700 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932702Ab2CGUTz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 15:19:55 -0500
-Message-ID: <4F57C2ED.9020406@RedHat.com>
-Date: Wed, 07 Mar 2012 15:19:57 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752355Ab2CHOJE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 09:09:04 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH V2] NFSv4.1 handle DS stateid errors
+Date: Thu, 8 Mar 2012 14:09:02 +0000
+Message-ID: <1331215742.2472.10.camel@lade.trondhjem.org>
+References: <1331163873-2306-1-git-send-email-andros@netapp.com>
+	 <1331163873-2306-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1331163873-2306-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
-References: <1331150190-18401-1-git-send-email-steved@redhat.com> <8161FED5-1305-445B-AEFE-C182AA00A9DD@oracle.com>
-In-Reply-To: <8161FED5-1305-445B-AEFE-C182AA00A9DD@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/07/2012 03:07 PM, Chuck Lever wrote:
-> 
-> On Mar 7, 2012, at 2:56 PM, Steve Dickson wrote:
-> 
->> This problem can occur when multiple cluster services fail over
->> at the same time, causing missing high-available exports.
->> Having a lot of nfs-exports will trigger this issue easier.
-> 
-> Does this address https://bugzilla.linux-nfs.org/show_bug.cgi?id=224 ?
-Yes, I believe so. It also addresses 
-    https://bugzilla.redhat.com/show_bug.cgi?id=800335
-
-I guess I make this fix back in the RHEL4 days and the
-patch never made into upstream. 
-
-steved.
-
-> 
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> support/include/exportfs.h |    4 ++++
->> utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
->> 2 files changed, 28 insertions(+), 0 deletions(-)
->>
->> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
->> index 01e87dd..99916e5 100644
->> --- a/support/include/exportfs.h
->> +++ b/support/include/exportfs.h
->> @@ -32,6 +32,10 @@ enum {
->> 	FSLOC_STUB
->> };
->>
->> +#ifndef EXP_LOCKFILE
->> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
->> +#endif
->> +
->> typedef struct mclient {
->> 	struct mclient *	m_next;
->> 	char *			m_hostname;
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index 7432a65..769d438 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -16,6 +16,7 @@
->> #include <sys/stat.h>
->> #include <sys/vfs.h>
->> #include <sys/stat.h>
->> +#include <sys/file.h>
->> #include <unistd.h>
->> #include <stdbool.h>
->> #include <stdlib.h>
->> @@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
->> static int	matchhostname(const char *hostname1, const char *hostname2);
->> static void	export_d_read(const char *dname);
->>
->> +static const char *lockfile = EXP_LOCKFILE;
->> +static int _lockfd = -1;
->> +
->> +void 
->> +grab_lockfile()
->> +{
->> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
->> +	if (_lockfd != -1) 
->> +		lockf(_lockfd, F_LOCK, 0);
->> +}
->> +void 
->> +release_lockfile()
->> +{
->> +	if (_lockfd != -1)
->> +		lockf(_lockfd, F_ULOCK, 0);
->> +}
->> +
->> int
->> main(int argc, char **argv)
->> {
->> @@ -129,6 +147,12 @@ main(int argc, char **argv)
->> 			return 0;
->> 		}
->> 	}
->> +	/*
->> +	 * Serialize things as best we can
->> +	 */
->> +	grab_lockfile();
->> +	atexit(release_lockfile);
->> +
->> 	if (f_export && ! f_ignore) {
->> 		export_read(_PATH_EXPORTS);
->> 		export_d_read(_PATH_EXPORTS_D);
->> -- 
->> 1.7.7.6
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+T24gV2VkLCAyMDEyLTAzLTA3IGF0IDE4OjQ0IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IEhhbmRs
+ZSBEUyBSRUFEIGFuZCBXUklURSBzdGF0ZWlkIGVycm9ycyBieSByZWNvdmVyaW5nIHRoZSBzdGF0
+ZWlkIG9uIHRoZSBNRFMuDQo+IA0KPiBORlM0RVJSX09MRF9TVEFURUlEIGlzIGlnbm9yZWQgYXMg
+dGhlIGNsaWVudCBhbHdheXMgc2VuZHMgYQ0KPiBzdGF0ZSBzZXF1ZW5jZWlkIG9mIHplcm8gZm9y
+IERTIFJFQUQgYW5kIFdSSVRFIHN0YXRlaWRzLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5keSBB
+ZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVi
+dXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGVsZWdh
+dGlvbi5jICAgICB8ICAgIDEgKw0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgfCAgIDMzICsr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiAgZnMvbmZzL25mczRzdGF0ZS5jICAg
+ICAgfCAgICAyICsrDQo+ICAzIGZpbGVzIGNoYW5nZWQsIDM1IGluc2VydGlvbnMoKyksIDEgZGVs
+ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RlbGVnYXRpb24uYyBiL2ZzL25m
+cy9kZWxlZ2F0aW9uLmMNCj4gaW5kZXggODdmNzU0NC4uOTdkNTM1NyAxMDA2NDQNCj4gLS0tIGEv
+ZnMvbmZzL2RlbGVnYXRpb24uYw0KPiArKysgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+IEBAIC00
+NzQsNiArNDc0LDcgQEAgdm9pZCBuZnNfcmVtb3ZlX2JhZF9kZWxlZ2F0aW9uKHN0cnVjdCBpbm9k
+ZSAqaW5vZGUpDQo+ICAJCW5mc19mcmVlX2RlbGVnYXRpb24oZGVsZWdhdGlvbik7DQo+ICAJfQ0K
+PiAgfQ0KPiArRVhQT1JUX1NZTUJPTF9HUEwobmZzX3JlbW92ZV9iYWRfZGVsZWdhdGlvbik7DQo+
+ICANCj4gIC8qKg0KPiAgICogbmZzX2V4cGlyZV9hbGxfZGVsZWdhdGlvbl90eXBlcw0KPiBkaWZm
+IC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQu
+Yw0KPiBpbmRleCA0N2U4ZjM0Li5jZGFlZTYwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNGZp
+bGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiBAQCAtMzYsNiAr
+MzYsNyBAQA0KPiAgI2luY2x1ZGUgPGxpbnV4L3N1bnJwYy9tZXRyaWNzLmg+DQo+ICANCj4gICNp
+bmNsdWRlICJpbnRlcm5hbC5oIg0KPiArI2luY2x1ZGUgImRlbGVnYXRpb24uaCINCj4gICNpbmNs
+dWRlICJuZnM0ZmlsZWxheW91dC5oIg0KPiAgDQo+ICAjZGVmaW5lIE5GU0RCR19GQUNJTElUWSAg
+ICAgICAgIE5GU0RCR19QTkZTX0xEDQo+IEBAIC04NiwxMiArODcsMzUgQEAgc3RhdGljIGludCBm
+aWxlbGF5b3V0X2FzeW5jX2hhbmRsZV9lcnJvcihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssDQo+ICAJ
+CQkJCSBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLA0KPiAgCQkJCQkgaW50ICpyZXNldCkNCj4gIHsN
+Cj4gKwlzdHJ1Y3QgbmZzX3NlcnZlciAqbWRzX3NlcnZlcjsNCj4gKwlzdHJ1Y3QgbmZzX2NsaWVu
+dCAqbWRzX2NsaWVudDsNCj4gKw0KPiAgCWlmICh0YXNrLT50a19zdGF0dXMgPj0gMCkNCj4gIAkJ
+cmV0dXJuIDA7DQo+IC0NCj4gIAkqcmVzZXQgPSAwOw0KPiArCWlmIChzdGF0ZSAhPSBOVUxMKSB7
+DQoNCldoeSBpcyB0aGlzIHRlc3QgbmVjZXNzYXJ5IGluIHRoZSBmaXJzdCBwbGFjZSwgQlRXPyBX
+aGVuIGFyZSB5b3UgZXZlcg0KZ29pbmcgdG8gY2FsbCB0aGlzIGZ1bmN0aW9uIHdpdGggc3RhdGUg
+PT0gTlVMTD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
