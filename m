@@ -1,47 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tundra.namei.org ([65.99.196.166]:40644 "EHLO tundra.namei.org"
+Received: from fieldses.org ([174.143.236.118]:43549 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758307Ab2CVDAY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 23:00:24 -0400
-Date: Thu, 22 Mar 2012 14:00:00 +1100 (EST)
-From: James Morris <jmorris@namei.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-cc: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, keyrings@linux-nfs.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: Re: [PATCH 2/4] kmod: Convert two call sites to
- call_usermodehelper_fns()
-In-Reply-To: <4F691217.5070108@panasas.com>
-Message-ID: <alpine.LRH.2.02.1203221358470.13437@tundra.namei.org>
-References: <4F691059.30405@panasas.com> <4F691217.5070108@panasas.com>
+	id S1752890Ab2CHVJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 16:09:35 -0500
+Date: Thu, 8 Mar 2012 16:09:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
+ NFS4ERR_OPENMODE
+Message-ID: <20120308210933.GD9273@fieldses.org>
+References: <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+ <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+ <1331230525.2472.39.camel@lade.trondhjem.org>
+ <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
+ <20120308204205.GB9273@fieldses.org>
+ <1331239814.11759.1.camel@lade.trondhjem.org>
+ <20120308205737.GC9273@fieldses.org>
+ <1331240562.11759.5.camel@lade.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1331240562.11759.5.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 20 Mar 2012, Boaz Harrosh wrote:
-
+On Thu, Mar 08, 2012 at 09:02:43PM +0000, Myklebust, Trond wrote:
+> On Thu, 2012-03-08 at 15:57 -0500, J. Bruce Fields wrote:
+> > On Thu, Mar 08, 2012 at 08:50:14PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2012-03-08 at 15:42 -0500, J. Bruce Fields wrote:
+> > > > On Thu, Mar 08, 2012 at 03:23:34PM -0500, Olga Kornievskaia wrote:
+> > > > > On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
+> > > > > <Trond.Myklebust@netapp.com> wrote:
+> > > > > > On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
+> > > > > >> wouldn't it be better for you to proactively return a read delegation
+> > > > > >> then unnecessarily erroring?
+> > > > > >
+> > > > > > If nobody else holds a delegation, then the NFS client is actually
+> > > > > > allowed to keep its read delegation while writing to the file. It does
+> > > > > > admittedly need to request an OPEN stateid for write in that case...
+> > > > > > (See section 10.4 of RFC3530bis draft 16)
+> > > > > 
+> > > > > If we both agree that there has to be a request for an open stateid for
+> > > > > a write, then instead of returning the read delegation if the client receives
+> > > > > err_openmode (when it send the request with read delegation stateid
+> > > > > as you said per 3560bis), can't the client resend the setattr with the open
+> > > > > stateid? The ordering of the stateid usage is a "should" and not a "must".
+> > > > > 
+> > > > > In rfc5661, it really doesn't make sense to ever send a setattr with
+> > > > > a read delegation stateid. According to 9.1.2, the server "MUST" return
+> > > > > err_open_mode" error in that case.
+> > > > > 
+> > > > > I gather you are in this case dealing with 4.0 delegations. But I wonder
+> > > > > if you'll do something else for 4.1 delegation then?
+> > > > 
+> > > > 3530bis has the same language ("...must verify that the access mode
+> > > > allows writing and return an NFS4ERR_OPENMODE error if it does not").
+> > > 
+> > > OK, so we shouldn't send the delegation stateid either for v4 or v4.1.
+> > > However should we pre-emptively return the delegation? I've been
+> > > assuming not.
+> > 
+> > The server's only legal option is to recall it, so it seems odd not to
+> > pre-emptively return--but as you say there's nothing to prevent the
+> > server from then handing one right back, possibly before you get a
+> > chance to send the setattr.
 > 
-> Both   kernel/sys.c && security/keys/request_key.c where inlining the exact same
-> code as call_usermodehelper_fns(); So simply convert these sites to directly
-> use  call_usermodehelper_fns().
+> Why would it need to recall it if this is the only client holding a
+> delegation? I agree that for the case of NFSv4 once we don't send the
+> stateid, the server has no way to know that this is the same client, but
+> the NFSv4.1 server doesn't have that limitation.
 > 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> > (And the linux server might well do that--maybe it should have some
+> > heuristic not to hand out a delegation that was just returned--not so
+> > much for this case as just because a return is a sign that the
+> > delegation isn't useful to that client.)
+> 
+> Umm... An NFSv4.1 client could simply request a delegation. As I said
+> earlier, we don't keep tabs on what other processes are doing.
 
-Reviewed-by: James Morris <james.l.morris@oracle.com>
+You're right, I wasn't thinking about the 4.1 case: so in the 4.1 case,
+the server does know which client the setattr is coming from, and has
+the option not to recall.  And in 4.1 you have the option of asking for
+no delegation.
 
+So your question was whether to preemptively return in the 4.0 case?
 
--- 
-James Morris
-<jmorris@namei.org>
+--b.
