@@ -1,105 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20553 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753042Ab2CKOUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 Mar 2012 10:20:43 -0400
-Subject: [PATCH 1/2] NFS: replace global bl_mount_reply with per-net one
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Sun, 11 Mar 2012 18:20:23 +0400
-Message-ID: <20120311142023.17962.19833.stgit@localhost6.localdomain6>
-In-Reply-To: <20120311141528.17962.83828.stgit@localhost6.localdomain6>
-References: <20120311141528.17962.83828.stgit@localhost6.localdomain6>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:32859 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751563Ab2CHRwO convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 12:52:14 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
+	<1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+	<1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+Date: Thu, 8 Mar 2012 12:52:12 -0500
+Message-ID: <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns NFS4ERR_OPENMODE
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This global variable is used for blocklayout downcall and thus can be corrupted
-if case of existence of multiple networks namespaces.
+wouldn't it be better for you to proactively return a read delegation
+then unnecessarily erroring?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+i also don't understand how this error occurs. doing a setattr in this
+case you must have used a non-special stateid. the server would only
+return an err_openmode if you sent the setattr with a read delegation
+stateid. i guess my question is what stateid would you use that from
+client's perspective represent a write-type state id but yet a server
+would flag as having wrong access type?
 
----
- fs/nfs/blocklayout/blocklayout.h    |    5 -----
- fs/nfs/blocklayout/blocklayoutdev.c |    9 +++++----
- fs/nfs/netns.h                      |    6 ++++++
- 3 files changed, 11 insertions(+), 9 deletions(-)
+also i'm curious why would a server, instead of returning
+err_openmode, would not first recall your read delegation?
 
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 0966b39..58ac861 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -153,11 +153,6 @@ BLK_LSEG2EXT(struct pnfs_layout_segment *lseg)
- 	return BLK_LO2EXT(lseg->pls_layout);
- }
- 
--struct bl_dev_msg {
--	int32_t status;
--	uint32_t major, minor;
--};
--
- struct bl_msg_hdr {
- 	u8  type;
- 	u16 totallen; /* length of entire message, including hdr itself */
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index b48f782..1d58642 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -79,15 +79,16 @@ int nfs4_blkdev_put(struct block_device *bdev)
- 	return blkdev_put(bdev, FMODE_READ);
- }
- 
--static struct bl_dev_msg bl_mount_reply;
--
- ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
- 			 size_t mlen)
- {
-+	struct nfs_net *nn = net_generic(filp->f_dentry->d_sb->s_fs_info,
-+					 nfs_net_id);
-+
- 	if (mlen != sizeof (struct bl_dev_msg))
- 		return -EINVAL;
- 
--	if (copy_from_user(&bl_mount_reply, src, mlen) != 0)
-+	if (copy_from_user(&nn->bl_mount_reply, src, mlen) != 0)
- 		return -EFAULT;
- 
- 	wake_up(&bl_wq);
-@@ -118,10 +119,10 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	};
- 	uint8_t *dataptr;
- 	DECLARE_WAITQUEUE(wq, current);
--	struct bl_dev_msg *reply = &bl_mount_reply;
- 	int offset, len, i, rc;
- 	struct net *net = server->nfs_client->net;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
-+	struct bl_dev_msg *reply = &nn->bl_mount_reply;
- 
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
- 	dprintk("%s: deviceid: %s, mincount: %d\n", __func__, dev->dev_id.data,
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 7baad89..73425f5 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -4,9 +4,15 @@
- #include <net/net_namespace.h>
- #include <net/netns/generic.h>
- 
-+struct bl_dev_msg {
-+	int32_t status;
-+	uint32_t major, minor;
-+};
-+
- struct nfs_net {
- 	struct cache_detail *nfs_dns_resolve;
- 	struct rpc_pipe *bl_device_pipe;
-+	struct bl_dev_msg bl_mount_reply;
- 	struct list_head nfs_client_list;
- 	struct list_head nfs_volume_list;
- #ifdef CONFIG_NFS_V4
-
+On Wed, Mar 7, 2012 at 5:40 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> If a setattr() fails because of an NFS4ERR_OPENMODE error, it is
+> probably due to us holding a read delegation. Ensure that the
+> recovery routines return that delegation in this case.
+>
+> Reported-by: Miklos Szeredi <miklos@szeredi.hu>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/nfs/nfs4_fs.h  |    1 +
+>  fs/nfs/nfs4proc.c |   13 ++++++++++++-
+>  2 files changed, 13 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 5c9b20b..8ccaf24 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -193,6 +193,7 @@ struct nfs4_exception {
+>        long timeout;
+>        int retry;
+>        struct nfs4_state *state;
+> +       struct inode *inode;
+>  };
+>
+>  struct nfs4_state_recovery_ops {
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 3d26bab..bfcaa03 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -259,18 +259,28 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>  {
+>        struct nfs_client *clp = server->nfs_client;
+>        struct nfs4_state *state = exception->state;
+> +       struct inode *inode = exception->inode;
+>        int ret = errorcode;
+>
+>        exception->retry = 0;
+>        switch(errorcode) {
+>                case 0:
+>                        return 0;
+> +               case -NFS4ERR_OPENMODE:
+> +                       if (nfs_have_delegation(inode, FMODE_READ)) {
+> +                               nfs_inode_return_delegation(inode);
+> +                               exception->retry = 1;
+> +                               return 0;
+> +                       }
+> +                       if (state == NULL)
+> +                               break;
+> +                       nfs4_schedule_stateid_recovery(server, state);
+> +                       goto wait_on_recovery;
+>                case -NFS4ERR_DELEG_REVOKED:
+>                case -NFS4ERR_ADMIN_REVOKED:
+>                case -NFS4ERR_BAD_STATEID:
+>                        if (state != NULL)
+>                                nfs_remove_bad_delegation(state->inode);
+> -               case -NFS4ERR_OPENMODE:
+>                        if (state == NULL)
+>                                break;
+>                        nfs4_schedule_stateid_recovery(server, state);
+> @@ -1908,6 +1918,7 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+>        struct nfs_server *server = NFS_SERVER(inode);
+>        struct nfs4_exception exception = {
+>                .state = state,
+> +               .inode = inode,
+>        };
+>        int err;
+>        do {
+> --
+> 1.7.7.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
