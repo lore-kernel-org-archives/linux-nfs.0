@@ -1,70 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7445 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22693 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932461Ab2CFCI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 21:08:26 -0500
-Date: Mon, 5 Mar 2012 21:08:19 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "Ted Ts'o" <tytso@mit.edu>
-Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120306020819.GH31388@pad.fieldses.org>
-References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
- <20120306000837.GA17164@thunk.org>
+	id S1751370Ab2CHUzq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 15:55:46 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q28Kti9F000627
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Mar 2012 15:55:46 -0500
+Message-ID: <4F591CD5.7070102@RedHat.com>
+Date: Thu, 08 Mar 2012 15:55:49 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120306000837.GA17164@thunk.org>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] rpcbind: drop supplemental groups
+References: <1331217450-20798-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1331217450-20798-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 05, 2012 at 07:08:37PM -0500, Ted Ts'o wrote:
-> On Mon, Jan 09, 2012 at 02:21:53PM +0100, Bernd Schubert wrote:
-> > Just rename this variable, as the next patch will add a flag and
-> > 'access' as variable name would not be correct any more.
-> > 
-> > Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> > Acked-by: J. Bruce Fields<bfields@redhat.com>
-> > ---
-> >  fs/nfsd/vfs.c |   18 ++++++++++--------
-> >  1 files changed, 10 insertions(+), 8 deletions(-)
+
+
+On 03/08/2012 09:37 AM, Steve Dickson wrote:
+> Drop out of the 'root' group to ensure the process does
+> not have any access to writable or readable files
+> to that group.
 > 
-> On Mon, Jan 09, 2012 at 02:21:58PM +0100, Bernd Schubert wrote:
-> > Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-> > the NFS version. NFSv2 gets 32-bit hashes only.
-> > 
-> > NOTE: This patch got rather complex as Christoph asked to set the
-> > filp->f_mode flag in the open call or immediatly after dentry_open()
-> > in nfsd_open() to avoid races.
-> > Personally I still do not see a reason for that and in my opinion
-> > FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
-> > follows directly after nfsd_open() without a chance of races.
-> > 
-> > Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> > Acked-by: J. Bruce Fields<bfields@redhat.com>
-> > ---
-> >  fs/nfsd/vfs.c |   15 +++++++++++++--
-> >  fs/nfsd/vfs.h |    2 ++
-> >  2 files changed, 15 insertions(+), 2 deletions(-)
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed....
+
+steved.
+> ---
+>  src/rpcbind.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
 > 
-> NFS folks,
-> 
-> Since Bruce has ack'ed these patches I assume it will be OK if I carry
-> them in the ext4 tree for merging?  (They depend on changes in ext4
-> found in the first two patches of these patch series.)
-
-Yes, that would be fine.
-
-(There may well be some conflict: simplest might be if you can get that
-pushed out to a stable public branch somewhere, hopefully before the
-merge window opens, and that'll give me a chance to pull it and handle
-any merge conflicts.
-
-Then as long as your initial pull request goes in early (so that the
-ext4 changes don't get sucked in with mine), everything works.)
-
---b.
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 24e069b..9a0504d 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -236,6 +236,10 @@ main(int argc, char *argv[])
+>                          syslog(LOG_ERR, "setgid to '%s' (%d) failed: %m", id, p->pw_gid);
+>                          exit(1);
+>                  }
+> +		if (setgroups(0, NULL) == -1) {
+> +			syslog(LOG_ERR, "dropping supplemental groups failed: %m");
+> +			exit(1);
+> +		}
+>  		if (setuid(p->pw_uid) == -1) {
+>  			syslog(LOG_ERR, "setuid to '%s' (%d) failed: %m", id, p->pw_uid);
+>  			exit(1);
