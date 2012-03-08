@@ -1,40 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20774 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47637 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756909Ab2CIWwI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 17:52:08 -0500
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q29Mpu33019943
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:51:56 -0800 (PST)
+	id S1751993Ab2CHVCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Mar 2012 16:02:44 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 cleanup DS stateid error handling
-Date: Fri, 9 Mar 2012 22:51:55 +0000
-Message-ID: <1331333515.2763.63.camel@lade.trondhjem.org>
-References: <1331222633-2645-1-git-send-email-andros@netapp.com>
-	 <CADnza46qMiagwV39sJU7E4AKY0KMFyyHNTAis_+PO-0b8955Yg@mail.gmail.com>
-In-Reply-To: <CADnza46qMiagwV39sJU7E4AKY0KMFyyHNTAis_+PO-0b8955Yg@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Olga Kornievskaia <aglo@citi.umich.edu>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns
+ NFS4ERR_OPENMODE
+Date: Thu, 8 Mar 2012 21:02:43 +0000
+Message-ID: <1331240562.11759.5.camel@lade.trondhjem.org>
+References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
+	 <1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
+	 <1331230525.2472.39.camel@lade.trondhjem.org>
+	 <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
+	 <20120308204205.GB9273@fieldses.org>
+	 <1331239814.11759.1.camel@lade.trondhjem.org>
+	 <20120308205737.GC9273@fieldses.org>
+In-Reply-To: <20120308205737.GC9273@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTA5IGF0IDE0OjMxIC0wODAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gVGh1LCBNYXIgOCwgMjAxMiBhdCA4OjAzIEFNLCAgPGFuZHJvc0BuZXRhcHAuY29tPiB3cm90
-ZToNCj4gPiBGcm9tOiBBbmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+DQo+ID4g
-VGhlIGVycm9yIGhhbmRsZXIgbmZzNF9zdGF0ZSBwYXJhbWV0ZXIgaXMgbmV2ZXIgTlVMTCBpbiB0
-aGUgcE5GUyBjYXNlIGFzDQo+ID4gdGhlIG9wZW5fY29udGV4dCBtdXN0IGNhcnJ5IGFuIG5mc19z
-dGF0ZS4NCj4gPg0KPiANCj4gDQo+IE5vdGUgVHJvbmQncyBhcmd1bWVudCBpcyB0aGF0IHdpdGgg
-Y29tbWl0IHRoZSBzdGF0ZSBpcyBhdmFpbCBmb3IgdGhlDQo+IGNhbGxlciwgc28gaXQgbmVlZCBu
-b3QgYmUgTlVMTC4NCj4gQnV0IHRoZSBjYWxsZXIgZmlsZWxheW91dF9jb21taXRfZG9uZV9jYigp
-IG5lZWRzIHRvIGJlIGFkanVzdGVkLg0KPiBDdXJyZW50bHkgY29tbWl0IHRvIGRzIG9vcHNlcw0K
-PiBkdWUgdG8gdGhhdC4NCg0KQXJlIHlvdSBzdXJlPyBBcyBmYXIgYXMgSSBjYW4gc2VlLCBmaWxl
-bGF5b3V0X2NvbW1pdF9wYWdlbGlzdCBfZG9lc18NCmNhbGwgbmZzX2luaXRfY29tbWl0KCksIHdo
-aWNoIGFnYWluIHNldHMgdGhlIGRhdGEtPmFyZ3MuY29udGV4dC4NCkxhdGVyLCBmaWxlbGF5b3V0
-X2NvbW1pdF9kb25lX2NiIGNhbGxzIGZpbGVsYXlvdXRfYXN5bmNfaGFuZGxlX2Vycm9yKCkNCnVz
-aW5nIHRoZSBkYXRhLT5hcmdzLmNvbnRleHQtPnN0YXRlIGFyZ3VtZW50Lg0KDQpIb3cgaXMgdGhh
-dCBmYWlsaW5nIHRvIHByb3ZpZGUgYSB2YWxpZCBvcGVuIHN0YXRlIGFyZ3VtZW50Pw0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+T24gVGh1LCAyMDEyLTAzLTA4IGF0IDE1OjU3IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgTWFyIDA4LCAyMDEyIGF0IDA4OjUwOjE0UE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTAzLTA4IGF0IDE1OjQyIC0wNTAwLCBKLiBC
+cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIE1hciAwOCwgMjAxMiBhdCAwMzoyMzoz
+NFBNIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBNYXIg
+OCwgMjAxMiBhdCAxOjE1IFBNLCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4gPiA+IDxUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gPiA+ID4gT24gVGh1LCAyMDEyLTAzLTA4IGF0
+IDEyOjUyIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPj4gd291bGRu
+J3QgaXQgYmUgYmV0dGVyIGZvciB5b3UgdG8gcHJvYWN0aXZlbHkgcmV0dXJuIGEgcmVhZCBkZWxl
+Z2F0aW9uDQo+ID4gPiA+ID4+IHRoZW4gdW5uZWNlc3NhcmlseSBlcnJvcmluZz8NCj4gPiA+ID4g
+Pg0KPiA+ID4gPiA+IElmIG5vYm9keSBlbHNlIGhvbGRzIGEgZGVsZWdhdGlvbiwgdGhlbiB0aGUg
+TkZTIGNsaWVudCBpcyBhY3R1YWxseQ0KPiA+ID4gPiA+IGFsbG93ZWQgdG8ga2VlcCBpdHMgcmVh
+ZCBkZWxlZ2F0aW9uIHdoaWxlIHdyaXRpbmcgdG8gdGhlIGZpbGUuIEl0IGRvZXMNCj4gPiA+ID4g
+PiBhZG1pdHRlZGx5IG5lZWQgdG8gcmVxdWVzdCBhbiBPUEVOIHN0YXRlaWQgZm9yIHdyaXRlIGlu
+IHRoYXQgY2FzZS4uLg0KPiA+ID4gPiA+IChTZWUgc2VjdGlvbiAxMC40IG9mIFJGQzM1MzBiaXMg
+ZHJhZnQgMTYpDQo+ID4gPiA+IA0KPiA+ID4gPiBJZiB3ZSBib3RoIGFncmVlIHRoYXQgdGhlcmUg
+aGFzIHRvIGJlIGEgcmVxdWVzdCBmb3IgYW4gb3BlbiBzdGF0ZWlkIGZvcg0KPiA+ID4gPiBhIHdy
+aXRlLCB0aGVuIGluc3RlYWQgb2YgcmV0dXJuaW5nIHRoZSByZWFkIGRlbGVnYXRpb24gaWYgdGhl
+IGNsaWVudCByZWNlaXZlcw0KPiA+ID4gPiBlcnJfb3Blbm1vZGUgKHdoZW4gaXQgc2VuZCB0aGUg
+cmVxdWVzdCB3aXRoIHJlYWQgZGVsZWdhdGlvbiBzdGF0ZWlkDQo+ID4gPiA+IGFzIHlvdSBzYWlk
+IHBlciAzNTYwYmlzKSwgY2FuJ3QgdGhlIGNsaWVudCByZXNlbmQgdGhlIHNldGF0dHIgd2l0aCB0
+aGUgb3Blbg0KPiA+ID4gPiBzdGF0ZWlkPyBUaGUgb3JkZXJpbmcgb2YgdGhlIHN0YXRlaWQgdXNh
+Z2UgaXMgYSAic2hvdWxkIiBhbmQgbm90IGEgIm11c3QiLg0KPiA+ID4gPiANCj4gPiA+ID4gSW4g
+cmZjNTY2MSwgaXQgcmVhbGx5IGRvZXNuJ3QgbWFrZSBzZW5zZSB0byBldmVyIHNlbmQgYSBzZXRh
+dHRyIHdpdGgNCj4gPiA+ID4gYSByZWFkIGRlbGVnYXRpb24gc3RhdGVpZC4gQWNjb3JkaW5nIHRv
+IDkuMS4yLCB0aGUgc2VydmVyICJNVVNUIiByZXR1cm4NCj4gPiA+ID4gZXJyX29wZW5fbW9kZSIg
+ZXJyb3IgaW4gdGhhdCBjYXNlLg0KPiA+ID4gPiANCj4gPiA+ID4gSSBnYXRoZXIgeW91IGFyZSBp
+biB0aGlzIGNhc2UgZGVhbGluZyB3aXRoIDQuMCBkZWxlZ2F0aW9ucy4gQnV0IEkgd29uZGVyDQo+
+ID4gPiA+IGlmIHlvdSdsbCBkbyBzb21ldGhpbmcgZWxzZSBmb3IgNC4xIGRlbGVnYXRpb24gdGhl
+bj8NCj4gPiA+IA0KPiA+ID4gMzUzMGJpcyBoYXMgdGhlIHNhbWUgbGFuZ3VhZ2UgKCIuLi5tdXN0
+IHZlcmlmeSB0aGF0IHRoZSBhY2Nlc3MgbW9kZQ0KPiA+ID4gYWxsb3dzIHdyaXRpbmcgYW5kIHJl
+dHVybiBhbiBORlM0RVJSX09QRU5NT0RFIGVycm9yIGlmIGl0IGRvZXMgbm90IikuDQo+ID4gDQo+
+ID4gT0ssIHNvIHdlIHNob3VsZG4ndCBzZW5kIHRoZSBkZWxlZ2F0aW9uIHN0YXRlaWQgZWl0aGVy
+IGZvciB2NCBvciB2NC4xLg0KPiA+IEhvd2V2ZXIgc2hvdWxkIHdlIHByZS1lbXB0aXZlbHkgcmV0
+dXJuIHRoZSBkZWxlZ2F0aW9uPyBJJ3ZlIGJlZW4NCj4gPiBhc3N1bWluZyBub3QuDQo+IA0KPiBU
+aGUgc2VydmVyJ3Mgb25seSBsZWdhbCBvcHRpb24gaXMgdG8gcmVjYWxsIGl0LCBzbyBpdCBzZWVt
+cyBvZGQgbm90IHRvDQo+IHByZS1lbXB0aXZlbHkgcmV0dXJuLS1idXQgYXMgeW91IHNheSB0aGVy
+ZSdzIG5vdGhpbmcgdG8gcHJldmVudCB0aGUNCj4gc2VydmVyIGZyb20gdGhlbiBoYW5kaW5nIG9u
+ZSByaWdodCBiYWNrLCBwb3NzaWJseSBiZWZvcmUgeW91IGdldCBhDQo+IGNoYW5jZSB0byBzZW5k
+IHRoZSBzZXRhdHRyLg0KDQpXaHkgd291bGQgaXQgbmVlZCB0byByZWNhbGwgaXQgaWYgdGhpcyBp
+cyB0aGUgb25seSBjbGllbnQgaG9sZGluZyBhDQpkZWxlZ2F0aW9uPyBJIGFncmVlIHRoYXQgZm9y
+IHRoZSBjYXNlIG9mIE5GU3Y0IG9uY2Ugd2UgZG9uJ3Qgc2VuZCB0aGUNCnN0YXRlaWQsIHRoZSBz
+ZXJ2ZXIgaGFzIG5vIHdheSB0byBrbm93IHRoYXQgdGhpcyBpcyB0aGUgc2FtZSBjbGllbnQsIGJ1
+dA0KdGhlIE5GU3Y0LjEgc2VydmVyIGRvZXNuJ3QgaGF2ZSB0aGF0IGxpbWl0YXRpb24uDQoNCj4g
+KEFuZCB0aGUgbGludXggc2VydmVyIG1pZ2h0IHdlbGwgZG8gdGhhdC0tbWF5YmUgaXQgc2hvdWxk
+IGhhdmUgc29tZQ0KPiBoZXVyaXN0aWMgbm90IHRvIGhhbmQgb3V0IGEgZGVsZWdhdGlvbiB0aGF0
+IHdhcyBqdXN0IHJldHVybmVkLS1ub3Qgc28NCj4gbXVjaCBmb3IgdGhpcyBjYXNlIGFzIGp1c3Qg
+YmVjYXVzZSBhIHJldHVybiBpcyBhIHNpZ24gdGhhdCB0aGUNCj4gZGVsZWdhdGlvbiBpc24ndCB1
+c2VmdWwgdG8gdGhhdCBjbGllbnQuKQ0KDQpVbW0uLi4gQW4gTkZTdjQuMSBjbGllbnQgY291bGQg
+c2ltcGx5IHJlcXVlc3QgYSBkZWxlZ2F0aW9uLiBBcyBJIHNhaWQNCmVhcmxpZXIsIHdlIGRvbid0
+IGtlZXAgdGFicyBvbiB3aGF0IG90aGVyIHByb2Nlc3NlcyBhcmUgZG9pbmcuDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
