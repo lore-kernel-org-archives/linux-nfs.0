@@ -1,75 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54114 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933152Ab2C2U5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 16:57:05 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dr James Bruce Fields <bfields@fieldses.org>
-CC: Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Date: Thu, 29 Mar 2012 20:56:57 +0000
-Message-ID: <1333054622.10318.19.camel@lade.trondhjem.org>
-References: <loom.20120329T182500-467@post.gmane.org>
-	 <1333040091.5547.32.camel@lade.trondhjem.org>
-	 <4F749CCA.3000400@cora.nwra.com>
-	 <1333042863.5547.37.camel@lade.trondhjem.org>
-	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
-	 <1333052170.10318.6.camel@lade.trondhjem.org>
-	 <1333053750.10318.15.camel@lade.trondhjem.org>
-	 <20120329205035.GB21493@fieldses.org>
-In-Reply-To: <20120329205035.GB21493@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-we0-f174.google.com ([74.125.82.174]:33857 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755412Ab2CHOPx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 09:15:53 -0500
+Received: by wejx9 with SMTP id x9so344510wej.19
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Mar 2012 06:15:52 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1331215742.2472.10.camel@lade.trondhjem.org>
+References: <1331163873-2306-1-git-send-email-andros@netapp.com>
+	<1331163873-2306-2-git-send-email-andros@netapp.com>
+	<1331215742.2472.10.camel@lade.trondhjem.org>
+Date: Thu, 8 Mar 2012 09:15:52 -0500
+Message-ID: <CAHVgHyWEd0yNKug-umHoUmwjQwvS1UJyLajM0HfimAdiyvi9zA@mail.gmail.com>
+Subject: Re: [PATCH V2] NFSv4.1 handle DS stateid errors
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjUwIC0wNDAwLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMg
-d3JvdGU6DQo+IE9uIFRodSwgTWFyIDI5LCAyMDEyIGF0IDA4OjQyOjI0UE0gKzAwMDAsIE15a2xl
-YnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjE2IC0wNDAw
-LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIDIwMTItMDMtMjkgYXQgMTU6
-MzEgLTA0MDAsIERyIEphbWVzIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBN
-YXIgMjksIDIwMTIgYXQgMTI6MDc6MTdQTSAtMDYwMCwgT3Jpb24gUG9wbGF3c2tpIHdyb3RlOg0K
-PiA+ID4gPiA+IE9uIDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6
-DQo+ID4gPiA+ID4gPj5Hb2luZyBiYWNrIHRvIHY0IG9uIEVMNS44IHNlcnZlcjogbmZzdjRlbC5s
-b2csIG5mc3Y0ZjE4LmxvZw0KPiA+ID4gPiA+ID4+DQo+ID4gPiA+ID4gPj5Cb3RoIGdldCBORlM0
-RVJSX0VYSVNUIGluIHRoaXMgY2FzZS4NCj4gPiA+ID4gPiA+DQo+ID4gPiA+ID4gPldoaWNoIGlz
-IGFuIG9idmlvdXMgc2VydmVyIGJ1ZzogaXQgc2hvdWxkIGJlIHNlbmRpbmcgTkZTNEVSUl9TWU1M
-SU5LIGluDQo+ID4gPiA+ID4gPnJlcGx5IHRvIHRoYXQgT1BFTi4NCj4gPiA+ID4gPiA+DQo+ID4g
-PiA+ID4gPkJydWNlPw0KPiA+ID4gPiA+ID4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJIGNhbiBy
-ZXByb2R1Y2Ugd2l0aCBhIDMuNC4wLTAucmMwLmdpdDEuMi5mYzE4IHNlcnZlciBhcyB3ZWxsLg0K
-PiA+ID4gPiANCj4gPiA+ID4gSG0uICBTbyBob3cgYWJvdXQgdGhpcz8gIChVbnRlc3RlZC4pDQo+
-ID4gPiA+IA0KPiA+ID4gPiBQcm9iYWJseSB0aGVyZSBzaG91bGQgYmUgYSBweW5mcyB0ZXN0IHRv
-by4NCj4gPiA+ID4gDQo+ID4gPiA+IEknbSBhc3N1bWluZyBpdCBzaG91bGQgc3RpbGwgYmUgRVJS
-X0VYSVNUIGluIHRoZSBleGNsdXNpdmUsDQo+ID4gPiA+IGV4Y2x1c2l2ZTRfMSwgYW5kIGd1YXJk
-ZWQgY2FzZXMuDQo+ID4gPiA+IA0KPiA+ID4gPiAtLWIuDQo+ID4gPiA+IA0KPiA+ID4gPiBkaWZm
-IC0tZ2l0IGEvZnMvbmZzZC92ZnMuYyBiL2ZzL25mc2QvdmZzLmMNCj4gPiA+ID4gaW5kZXggNzQy
-M2Q3MS4uMmJmY2FkNCAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ID4g
-PiArKysgYi9mcy9uZnNkL3Zmcy5jDQo+ID4gPiA+IEBAIC0xNDU3LDkgKzE0NTcsMTIgQEAgZG9f
-bmZzZF9jcmVhdGUoc3RydWN0IHN2Y19ycXN0ICpycXN0cCwgc3RydWN0IHN2Y19maCAqZmhwLA0K
-PiA+ID4gPiAgDQo+ID4gPiA+ICAJCXN3aXRjaCAoY3JlYXRlbW9kZSkgew0KPiA+ID4gPiAgCQlj
-YXNlIE5GUzNfQ1JFQVRFX1VOQ0hFQ0tFRDoNCj4gPiA+ID4gLQkJCWlmICghIFNfSVNSRUcoZGNo
-aWxkLT5kX2lub2RlLT5pX21vZGUpKQ0KPiA+ID4gPiAtCQkJCWVyciA9IG5mc2Vycl9leGlzdDsN
-Cj4gPiA+ID4gLQkJCWVsc2UgaWYgKHRydW5jcCkgew0KPiA+ID4gPiArCQkJaWYgKCEgU19JU1JF
-RyhkY2hpbGQtPmRfaW5vZGUtPmlfbW9kZSkpIHsNCj4gPiA+ID4gKwkJCQlpZiAocnFzdHAtPnJx
-X3ZlcnMgPT0gNCkNCj4gPiA+ID4gKwkJCQkJZXJyID0gbmZzZXJyX3N5bWxpbms7DQo+ID4gPiA+
-ICsJCQkJZWxzZQ0KPiA+ID4gPiArCQkJCQllcnIgPSBuZnNlcnJfZXhpc3Q7DQo+ID4gPiANCj4g
-PiA+IE5vLiBUaGlzIHNob3VsZCBfbmV2ZXJfIHJldHVybiBORlM0RVJSX0VYSVNULg0KPiA+ID4g
-DQo+ID4gPiBJdCBzaG91bGQgcmV0dXJuDQo+ID4gPiAgICAgICAqIE5GUzRFUlJfSVNESVIgaWYg
-dGhlIG9iamVjdCBpcyBhIGRpcmVjdG9yeQ0KPiA+ID4gICAgICAgKiBORlM0RVJSX1NZTUxJTksg
-aWYgaXQgaXMgc3ltYm9saWMgbGluaywNCj4gPiA+ICAgICAgICogZWl0aGVyIE5GUzRFUlJfV1JP
-TkdfVFlQRSAoTkZTdjQuMSkgb3IgTkZTNEVSUl9TWU1MSU5LIChORlN2NC4wKQ0KPiA+ID4gICAg
-ICAgICBpZiB0aGUgb2JqZWN0IGlzIGFueSBvdGhlciBub24tcmVndWxhciBmaWxlLg0KPiA+IA0K
-PiA+IEJhc2ljYWxseSwgaWYgYW4gb2JqZWN0IGFscmVhZHkgZXhpc3RzIHdpdGggdGhhdCBuYW1l
-LCB0aGVuDQo+ID4gTkZTM19DUkVBVEVfVU5DSEVDS0VEIHNob3VsZCBiZSB0cmVhdGVkIGFzIGlm
-IGl0IGlzIGFuIG9yZGluYXJ5IE9QRU4gKGluDQo+ID4gdGhlIGNhc2Ugb2YgTkZTdjQpIG9yIExP
-T0tVUCAoaW4gdGhlIGNhc2Ugb2YgTkZTdjMpLg0KPiANCj4gT2gsIHNvIGluIHRoZSB2MyBjYXNl
-IHRoaXMgc2hvdWxkIGJlIG5mc19vaywgYW5kIGl0J3MgdXAgdG8gdGhlIGNsaWVudA0KPiB0byBj
-aGVjayBhdHRyaWJ1dGVzIG9uIHRoZSByZXN1bHQgYW5kIGRlY2lkZSB3aGF0IHRvIGRvPw0KPiAN
-Cj4gKElzIHRoaXMgd3JpdHRlbiBkb3duIHNvbWVwbGFjZT8pDQoNCkluIFJGQzE4MTM6ICJVTkNI
-RUNLRUQgbWVhbnMgdGhhdCB0aGUgZmlsZSBzaG91bGQgYmUgY3JlYXRlZCB3aXRob3V0DQpjaGVj
-a2luZyBmb3IgdGhlIGV4aXN0ZW5jZSBvZiBhIGR1cGxpY2F0ZSBmaWxlIGluIHRoZSBzYW1lIGRp
-cmVjdG9yeS4iDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg0K
+I believe that COMMIT can be called with state == NULL - but looking
+at the COMMIT errors, COMMIT should not return stateid errors.
+
+I'll remove the stateid == NULL checks.
+
+-->Andy
+
+On Thu, Mar 8, 2012 at 9:09 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2012-03-07 at 18:44 -0500, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Handle DS READ and WRITE stateid errors by recovering the stateid on the MDS.
+>>
+>> NFS4ERR_OLD_STATEID is ignored as the client always sends a
+>> state sequenceid of zero for DS READ and WRITE stateids.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> ---
+>>  fs/nfs/delegation.c     |    1 +
+>>  fs/nfs/nfs4filelayout.c |   33 ++++++++++++++++++++++++++++++++-
+>>  fs/nfs/nfs4state.c      |    2 ++
+>>  3 files changed, 35 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>> index 87f7544..97d5357 100644
+>> --- a/fs/nfs/delegation.c
+>> +++ b/fs/nfs/delegation.c
+>> @@ -474,6 +474,7 @@ void nfs_remove_bad_delegation(struct inode *inode)
+>>               nfs_free_delegation(delegation);
+>>       }
+>>  }
+>> +EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
+>>
+>>  /**
+>>   * nfs_expire_all_delegation_types
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 47e8f34..cdaee60 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -36,6 +36,7 @@
+>>  #include <linux/sunrpc/metrics.h>
+>>
+>>  #include "internal.h"
+>> +#include "delegation.h"
+>>  #include "nfs4filelayout.h"
+>>
+>>  #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+>> @@ -86,12 +87,35 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>>                                        struct nfs_client *clp,
+>>                                        int *reset)
+>>  {
+>> +     struct nfs_server *mds_server;
+>> +     struct nfs_client *mds_client;
+>> +
+>>       if (task->tk_status >= 0)
+>>               return 0;
+>> -
+>>       *reset = 0;
+>> +     if (state != NULL) {
+>
+> Why is this test necessary in the first place, BTW? When are you ever
+> going to call this function with state == NULL?
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
