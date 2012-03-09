@@ -1,73 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24470 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:47735 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756839Ab2CEMvb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 07:51:31 -0500
-Message-ID: <4F54B6B7.1010703@parallels.com>
-Date: Mon, 05 Mar 2012 16:51:03 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 5/6] nfsd: add the infrastructure to handle the cld
- upcall
-References: <1330720950-5872-1-git-send-email-jlayton@redhat.com>	<1330720950-5872-6-git-send-email-jlayton@redhat.com>	<4F547DF1.8090003@parallels.com> <20120305074256.6dc36fed@tlielax.poochiereds.net>
-In-Reply-To: <20120305074256.6dc36fed@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1757265Ab2CIW3i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 17:29:38 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/7] locks: introduce new FL_DELEG lock flag
+Date: Fri,  9 Mar 2012 17:29:29 -0500
+Message-Id: <1331332174-22621-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120309222114.GA22423@fieldses.org>
+References: <20120309222114.GA22423@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-05.03.2012 16:42, Jeff Layton пишет:
->>
->>
->> Would be great to replace hard-coded cld_pipe here with a passed one.
->> For example, put this cld_pipe on cld_msg structure.
->> And initialize this pointer (hard-coded value for now) below in
->> nfsd4_cld_create() and all other places where alloc_cld_upcall() is called.
->>
->> BTW, maybe allocate this struct cld_upcall per NFS client somehow? And thus get
->> rid of alloc-free calls?
->>
->>
->
-> Ok, I think I must have misunderstood what you meant when you said no
-> per-net ops required. I'll respin and see if I can get closer to what
-> you intended.
->
-> Since most of the upcalls are infrequent and come from nfsd threads,
-> the number of calls in flight will always be less than the order of the
-> number of nfsd threads. That value may be much less than the number of
-> nfs4_clients, so we're probably best off allocating these dynamically.
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
+change behavior.
 
-Sure, it's up to you. Only wanna note, that this dynamic allocation in several 
-places looks a little bit confusing to me.
+Next we'll modify break_lease to treat FL_DELEG leases differently, to
+account for the fact that NFSv4 delegations should be broken in more
+situations than Windows oplocks.
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c          |    2 +-
+ fs/nfsd/nfs4state.c |    2 +-
+ include/linux/fs.h  |    1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
 
-> Now that I've had some time to look, I think what you're probably going
-> to want to do eventually is to add a new per-namespace object for nfsd,
-> similar to struct nfs_net for the nfs client. This container will hold
-> the pointer to the upcall pipe as well as other objects.
->
-
-Exactly.
-
-> The nfs4_client objects for nfsd will then need to be per-namespace,
-> and will have a pointer back to "struct nfsd_net" or whatever you end up
-> calling it. From that they'll be able to get the rpc_pipe pointer.
->
-
-You most probably right (I'm not working on NFSd yet - so hard to be sure).
-
-> For now, I'll just hardcode init_net in the appropriate places under the
-> assumption that eventually you'll be able to get a rpc_pipe pointer
-> given a pointer to an nfs4_client struct.
->
-
-Yes, thank you, Jeff.
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 637694b..ea07a98 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -131,7 +131,7 @@
+ 
+ #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
+ #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
+-#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
++#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
+ 
+ static bool lease_breaking(struct file_lock *fl)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8670863..38562ee 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2838,7 +2838,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 		return NULL;
+ 	locks_init_lock(fl);
+ 	fl->fl_lmops = &nfsd_lease_mng_ops;
+-	fl->fl_flags = FL_LEASE;
++	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+ 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e537b67..9d7446e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1085,6 +1085,7 @@ static inline int file_check_writeable(struct file *filp)
+ 
+ #define FL_POSIX	1
+ #define FL_FLOCK	2
++#define FL_DELEG	4	/* NFSv4 delegation */
+ #define FL_ACCESS	8	/* not trying to lock, just looking */
+ #define FL_EXISTS	16	/* when unlocking, test for existence */
+ #define FL_LEASE	32	/* lease held on this file */
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.5.4
+
