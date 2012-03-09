@@ -1,45 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:19937 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755999Ab2CAWck (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:32:40 -0500
-Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS file handles
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1330640881.15828.9.camel@lade.trondhjem.org>
-Date: Thu, 1 Mar 2012 17:32:35 -0500
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <C63AE7A1-D21E-4222-9927-60D7B092CD58@oracle.com>
-References: <20120301215755.2138.73488.stgit@degas.1015granger.net> <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41940 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031146Ab2CITtz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:49:55 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JntQh020553
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:49:55 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 7/7] Kill SPKM3: Remove mentions of SPKM3 from README
+Date: Fri,  9 Mar 2012 14:49:46 -0500
+Message-Id: <1331322586-4631-8-git-send-email-simo@redhat.com>
+In-Reply-To: <1331322586-4631-1-git-send-email-simo@redhat.com>
+References: <1331322586-4631-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ README |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-On Mar 1, 2012, at 5:28 PM, Myklebust, Trond wrote:
-
-> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
->> For debugging, introduce a simplistic function to print NFS file
->> handles on the system console.  The main function is hooked into the
->> dprintk debugging facility, but you can directly call the helper,
->> _nfs_display_fhandle(), if you want to print a handle unconditionally.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
-> 
-> One of the things that I really like about wireshark is that it also
-> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
-> compare 2 filehandles _much_ faster than trying to look at the full
-> shebang.
-
-It should be easy to add a displayed hash in a subsequent patch.
-
+diff --git a/README b/README
+index e7588cfd9337257aef27a90471c0c6935e3bc990..5c86808d3628e30c665f87501a1cd465fda5c76d 100644
+--- a/README
++++ b/README
+@@ -80,7 +80,7 @@ scripts can be written to work correctly.
+        and starting the nfsd server is not important.
+        idmapd is only needed for NFSv4 support.
+        svcgssd is only needed if exportfs NFS filesystem with crypto-
+-       security (Kerberos or SPKM3).
++       security (Kerberos).
+ 
+    C/ exportfs -av ; rpc.mountd
+        It is important that exportfs be run before mountd so that
+@@ -130,7 +130,7 @@ scripts can be written to work correctly.
+    B/ gssd ; idmapd
+       idmapd should be started before mounting any NFSv4 filesystems.
+       gssd should be started before mounting any NFS filesystems
+-      securely (with Kerberos of SPKM3).
++      securely (with Kerberos).
+ 
+    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
+       mounted with remote locking (i.e. without -o nolock).
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
