@@ -1,139 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21534 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758946Ab2C3RUd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 13:20:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: Dr James Bruce Fields <bfields@fieldses.org>,
-        Orion Poplawski <orion@cora.nwra.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Date: Fri, 30 Mar 2012 17:20:24 +0000
-Message-ID: <1333128031.8099.20.camel@lade.trondhjem.org>
-References: <loom.20120329T182500-467@post.gmane.org>
-	 <1333040091.5547.32.camel@lade.trondhjem.org>
-	 <4F749CCA.3000400@cora.nwra.com>
-	 <1333042863.5547.37.camel@lade.trondhjem.org>
-	 <4F74A4D5.1040802@cora.nwra.com> <20120329193100.GA20329@fieldses.org>
-	 <1333052170.10318.6.camel@lade.trondhjem.org>
-	 <1333053750.10318.15.camel@lade.trondhjem.org>
-	 <20120329205035.GB21493@fieldses.org>
-	 <1333054622.10318.19.camel@lade.trondhjem.org>
-	 <20120329210838.GC21493@fieldses.org>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDCC@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDCC@IT-1874.Isys.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:49174 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030192Ab2CIWbG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Mar 2012 17:31:06 -0500
+Received: by vcqp1 with SMTP id p1so1845793vcq.19
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Mar 2012 14:31:06 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <1331222633-2645-1-git-send-email-andros@netapp.com>
+References: <1331222633-2645-1-git-send-email-andros@netapp.com>
+Date: Fri, 9 Mar 2012 14:31:05 -0800
+Message-ID: <CADnza46qMiagwV39sJU7E4AKY0KMFyyHNTAis_+PO-0b8955Yg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFSv4.1 cleanup DS stateid error handling
+From: Fred Isaman <iisaman@netapp.com>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTMwIGF0IDEzOjEyIC0wNDAwLCBQZXRlciBTdGF1YmFjaCB3cm90ZToN
-Cj4gSGkuDQo+IA0KPiBJIHRoaW5rIHRoYXQgdGhlIGNvZGUgdG8gYWxsb3cgQ1JFQVRFIG9wZXJh
-dGlvbnMgd2hpY2ggZW5kIHVwIG9wZW5pbmcgZXhpc3RpbmcsIG5vbi1yZWd1bGFyIGZpbGVzIGlz
-IHRoZXJlIGZvciBkaXNrbGVzcyBvcGVyYXRpb24uDQo+IA0KPiBJIHZhZ3VlbHkgcmVjYWxsIHNv
-bWUgYXBwbGljYXRpb25zIHNwZWNpZnlpbmcgT19DUkVBVEUgdG8gb3BlbiBhbmQgZXhwZWN0aW5n
-IHRoZSBvcGVuIG9mIGEgbm9uLXJlZ3VsYXIgZmlsZSwgd2hpY2ggZXhpc3RzIGFscmVhZHksIHRv
-IHN1Y2NlZWQuDQoNClllcywgYW5kIHRoaXMgaXMgd2hhdCBQT1NJWCBleHBlY3RzIHRvby4gVGhl
-IGV4Y2VwdGlvbiBpcyB3aGVuIHlvdSBvcGVuDQphIGRpcmVjdG9yeSB3aXRoIE9fQ1JFQVRFOiB0
-aGF0IHdpbGwgZW5kIHVwIHJldHVybmluZyBFSVNESVIgdG8gdGhlDQphcHBsaWNhdGlvbi4NCg0K
-Q2hlZXJzDQogIFRyb25kDQoNCj4gCQlwcw0KPiANCj4gDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
-ZS0tLS0tDQo+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzps
-aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgRHIgSmFtZXMgQnJ1
-Y2UgRmllbGRzDQo+IFNlbnQ6IFRodXJzZGF5LCBNYXJjaCAyOSwgMjAxMiA1OjA5IFBNDQo+IFRv
-OiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBPcmlvbiBQb3BsYXdza2k7IGxpbnV4LW5mc0B2Z2Vy
-Lmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IFtuZnN2NF0gb3BlbihPX0NSRUFUKSByZXR1cm5z
-IEVFWElTVFMgb24gc3ltYm9saWMgbGluayBjcmVhdGVkIG9uIGFub3RoZXIgc3lzdGVtIHVudGls
-IHN0YXQoKWVkDQo+IA0KPiBPbiBUaHUsIE1hciAyOSwgMjAxMiBhdCAwODo1Njo1N1BNICswMDAw
-LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxMi0wMy0yOSBhdCAxNjo1
-MCAtMDQwMCwgRHIgSmFtZXMgQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBNYXIg
-MjksIDIwMTIgYXQgMDg6NDI6MjRQTSArMDAwMCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-PiA+ID4gT24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjE2IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qg
-d3JvdGU6DQo+ID4gPiA+ID4gT24gVGh1LCAyMDEyLTAzLTI5IGF0IDE1OjMxIC0wNDAwLCBEciBK
-YW1lcyBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiA+ID4gPiBPbiBUaHUsIE1hciAyOSwgMjAx
-MiBhdCAxMjowNzoxN1BNIC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6DQo+ID4gPiA+ID4g
-PiA+IE9uIDAzLzI5LzIwMTIgMTE6NDAgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-PiA+ID4gPiA+ID4+R29pbmcgYmFjayB0byB2NCBvbiBFTDUuOCBzZXJ2ZXI6IG5mc3Y0ZWwubG9n
-LCANCj4gPiA+ID4gPiA+ID4gPj5uZnN2NGYxOC5sb2cNCj4gPiA+ID4gPiA+ID4gPj4NCj4gPiA+
-ID4gPiA+ID4gPj5Cb3RoIGdldCBORlM0RVJSX0VYSVNUIGluIHRoaXMgY2FzZS4NCj4gPiA+ID4g
-PiA+ID4gPg0KPiA+ID4gPiA+ID4gPiA+V2hpY2ggaXMgYW4gb2J2aW91cyBzZXJ2ZXIgYnVnOiBp
-dCBzaG91bGQgYmUgc2VuZGluZyANCj4gPiA+ID4gPiA+ID4gPk5GUzRFUlJfU1lNTElOSyBpbiBy
-ZXBseSB0byB0aGF0IE9QRU4uDQo+ID4gPiA+ID4gPiA+ID4NCj4gPiA+ID4gPiA+ID4gPkJydWNl
-Pw0KPiA+ID4gPiA+ID4gPiA+DQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiBJIGNhbiBy
-ZXByb2R1Y2Ugd2l0aCBhIDMuNC4wLTAucmMwLmdpdDEuMi5mYzE4IHNlcnZlciBhcyB3ZWxsLg0K
-PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBIbS4gIFNvIGhvdyBhYm91dCB0aGlzPyAgKFVudGVz
-dGVkLikNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gUHJvYmFibHkgdGhlcmUgc2hvdWxkIGJl
-IGEgcHluZnMgdGVzdCB0b28uDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEknbSBhc3N1bWlu
-ZyBpdCBzaG91bGQgc3RpbGwgYmUgRVJSX0VYSVNUIGluIHRoZSBleGNsdXNpdmUsIA0KPiA+ID4g
-PiA+ID4gZXhjbHVzaXZlNF8xLCBhbmQgZ3VhcmRlZCBjYXNlcy4NCj4gPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+ID4gLS1iLg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBkaWZmIC0tZ2l0IGEvZnMv
-bmZzZC92ZnMuYyBiL2ZzL25mc2QvdmZzLmMgaW5kZXggDQo+ID4gPiA+ID4gPiA3NDIzZDcxLi4y
-YmZjYWQ0IDEwMDY0NA0KPiA+ID4gPiA+ID4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiA+ID4gPiA+
-ID4gKysrIGIvZnMvbmZzZC92ZnMuYw0KPiA+ID4gPiA+ID4gQEAgLTE0NTcsOSArMTQ1NywxMiBA
-QCBkb19uZnNkX2NyZWF0ZShzdHJ1Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCANCj4gPiA+ID4gPiA+IHN0
-cnVjdCBzdmNfZmggKmZocCwNCj4gPiA+ID4gPiA+ICANCj4gPiA+ID4gPiA+ICAJCXN3aXRjaCAo
-Y3JlYXRlbW9kZSkgew0KPiA+ID4gPiA+ID4gIAkJY2FzZSBORlMzX0NSRUFURV9VTkNIRUNLRUQ6
-DQo+ID4gPiA+ID4gPiAtCQkJaWYgKCEgU19JU1JFRyhkY2hpbGQtPmRfaW5vZGUtPmlfbW9kZSkp
-DQo+ID4gPiA+ID4gPiAtCQkJCWVyciA9IG5mc2Vycl9leGlzdDsNCj4gPiA+ID4gPiA+IC0JCQll
-bHNlIGlmICh0cnVuY3ApIHsNCj4gPiA+ID4gPiA+ICsJCQlpZiAoISBTX0lTUkVHKGRjaGlsZC0+
-ZF9pbm9kZS0+aV9tb2RlKSkgew0KPiA+ID4gPiA+ID4gKwkJCQlpZiAocnFzdHAtPnJxX3ZlcnMg
-PT0gNCkNCj4gPiA+ID4gPiA+ICsJCQkJCWVyciA9IG5mc2Vycl9zeW1saW5rOw0KPiA+ID4gPiA+
-ID4gKwkJCQllbHNlDQo+ID4gPiA+ID4gPiArCQkJCQllcnIgPSBuZnNlcnJfZXhpc3Q7DQo+ID4g
-PiA+ID4gDQo+ID4gPiA+ID4gTm8uIFRoaXMgc2hvdWxkIF9uZXZlcl8gcmV0dXJuIE5GUzRFUlJf
-RVhJU1QuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSXQgc2hvdWxkIHJldHVybg0KPiA+ID4gPiA+
-ICAgICAgICogTkZTNEVSUl9JU0RJUiBpZiB0aGUgb2JqZWN0IGlzIGEgZGlyZWN0b3J5DQo+ID4g
-PiA+ID4gICAgICAgKiBORlM0RVJSX1NZTUxJTksgaWYgaXQgaXMgc3ltYm9saWMgbGluaywNCj4g
-PiA+ID4gPiAgICAgICAqIGVpdGhlciBORlM0RVJSX1dST05HX1RZUEUgKE5GU3Y0LjEpIG9yIE5G
-UzRFUlJfU1lNTElOSyAoTkZTdjQuMCkNCj4gPiA+ID4gPiAgICAgICAgIGlmIHRoZSBvYmplY3Qg
-aXMgYW55IG90aGVyIG5vbi1yZWd1bGFyIGZpbGUuDQo+ID4gPiA+IA0KPiA+ID4gPiBCYXNpY2Fs
-bHksIGlmIGFuIG9iamVjdCBhbHJlYWR5IGV4aXN0cyB3aXRoIHRoYXQgbmFtZSwgdGhlbiANCj4g
-PiA+ID4gTkZTM19DUkVBVEVfVU5DSEVDS0VEIHNob3VsZCBiZSB0cmVhdGVkIGFzIGlmIGl0IGlz
-IGFuIG9yZGluYXJ5IA0KPiA+ID4gPiBPUEVOIChpbiB0aGUgY2FzZSBvZiBORlN2NCkgb3IgTE9P
-S1VQIChpbiB0aGUgY2FzZSBvZiBORlN2MykuDQo+ID4gPiANCj4gPiA+IE9oLCBzbyBpbiB0aGUg
-djMgY2FzZSB0aGlzIHNob3VsZCBiZSBuZnNfb2ssIGFuZCBpdCdzIHVwIHRvIHRoZSANCj4gPiA+
-IGNsaWVudCB0byBjaGVjayBhdHRyaWJ1dGVzIG9uIHRoZSByZXN1bHQgYW5kIGRlY2lkZSB3aGF0
-IHRvIGRvPw0KPiA+ID4gDQo+ID4gPiAoSXMgdGhpcyB3cml0dGVuIGRvd24gc29tZXBsYWNlPykN
-Cj4gPiANCj4gPiBJbiBSRkMxODEzOiAiVU5DSEVDS0VEIG1lYW5zIHRoYXQgdGhlIGZpbGUgc2hv
-dWxkIGJlIGNyZWF0ZWQgd2l0aG91dCANCj4gPiBjaGVja2luZyBmb3IgdGhlIGV4aXN0ZW5jZSBv
-ZiBhIGR1cGxpY2F0ZSBmaWxlIGluIHRoZSBzYW1lIGRpcmVjdG9yeS4iDQo+IA0KPiBJIGRvbid0
-IHVuZGVyc3RhbmQgaG93IHRvIGFwcGx5IHRoYXQgc2VudGVuY2UgdG8gdGhlIGNhc2Ugb2YgYSBw
-cmVleGlzdGluZyBub24tcmVndWxhci1maWxlIGluIHRoZSBzYW1lIGRpcmVjdG9yeS4NCj4gDQo+
-IChBY3R1YWxseSwgSSBkb24ndCB1bmRlcnN0YW5kIGl0IGluIHRoZSBjYXNlIG9mIGFuIGV4aXN0
-aW5nIHJlZ3VsYXIgZmlsZSBlaXRoZXItLXRvIG1lICJjcmVhdGUgd2l0aG91dCBjaGVja2luZyBm
-b3IgZXhpc3RlbmNlIiBzb3VuZHMgbGlrZSAiZXZlbiBpZiBhIGZpbGUgYWxyZWFkeSBleGlzdHMs
-IHlvdSBzaG91bGQgY2xvYmJlciBpdCBhbmQgY3JlYXRlIGEgbmV3IG9uZQ0KPiBhbnl3YXkiLi4u
-LikNCj4gDQo+IEFueXdheSwgc29tZXRoaW5nIGxpa2UgdGhlIGZvbGxvd2luZyAodW50ZXN0ZWQp
-IHNob3VsZCBjaGFuZ2UgdjMgdG8gcmV0dXJuIG5mc19vayBpbiB0aGlzIGNhc2UsIGFuZCB2NCB0
-byByZXR1cm4gdGhlIHNhbWUgZXJyb3JzIGl0IHdvdWxkIG9uIGEgbm9uLWNyZWF0ZSBvcGVuLg0K
-PiANCj4gLS1iLg0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mc2QvbmZzNHByb2MuYyBiL2ZzL25m
-c2QvbmZzNHByb2MuYyBpbmRleCAyZWQxNGRmLi44MjU2ZWZkIDEwMDY0NA0KPiAtLS0gYS9mcy9u
-ZnNkL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzZC9uZnM0cHJvYy5jDQo+IEBAIC0yMzUsMTcg
-KzIzNSwxNyBAQCBkb19vcGVuX2xvb2t1cChzdHJ1Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCBzdHJ1Y3Qg
-c3ZjX2ZoICpjdXJyZW50X2ZoLCBzdHJ1Y3QgbmZzZDRfbw0KPiAgCQkgKi8NCj4gIAkJaWYgKG9w
-ZW4tPm9wX2NyZWF0ZW1vZGUgPT0gTkZTNF9DUkVBVEVfRVhDTFVTSVZFICYmIHN0YXR1cyA9PSAw
-KQ0KPiAgCQkJb3Blbi0+b3BfYm12YWxbMV0gPSAoRkFUVFI0X1dPUkQxX1RJTUVfQUNDRVNTIHwN
-Cj4gLQkJCQkJCUZBVFRSNF9XT1JEMV9USU1FX01PRElGWSk7DQo+ICsJCQkJCQkJRkFUVFI0X1dP
-UkQxX1RJTUVfTU9ESUZZKTsNCj4gIAl9IGVsc2Ugew0KPiAgCQlzdGF0dXMgPSBuZnNkX2xvb2t1
-cChycXN0cCwgY3VycmVudF9maCwNCj4gIAkJCQkgICAgIG9wZW4tPm9wX2ZuYW1lLmRhdGEsIG9w
-ZW4tPm9wX2ZuYW1lLmxlbiwgcmVzZmgpOw0KPiAgCQlmaF91bmxvY2soY3VycmVudF9maCk7DQo+
-IC0JCWlmIChzdGF0dXMpDQo+IC0JCQlnb3RvIG91dDsNCj4gLQkJc3RhdHVzID0gbmZzZF9jaGVj
-a19vYmpfaXNyZWcocmVzZmgpOw0KPiAgCX0NCj4gIAlpZiAoc3RhdHVzKQ0KPiAgCQlnb3RvIG91
-dDsNCj4gKwlzdGF0dXMgPSBuZnNkX2NoZWNrX29ial9pc3JlZyhyZXNmaCk7DQo+ICsJaWYgKHN0
-YXR1cykNCj4gKwkJZ290byBvdXQ7DQo+ICANCj4gIAlpZiAoaXNfY3JlYXRlX3dpdGhfYXR0cnMo
-b3BlbikgJiYgb3Blbi0+b3BfYWNsICE9IE5VTEwpDQo+ICAJCWRvX3NldF9uZnM0X2FjbChycXN0
-cCwgcmVzZmgsIG9wZW4tPm9wX2FjbCwgb3Blbi0+b3BfYm12YWwpOyBkaWZmIC0tZ2l0IGEvZnMv
-bmZzZC92ZnMuYyBiL2ZzL25mc2QvdmZzLmMgaW5kZXggNzQyM2Q3MS4uODkwZjQzOSAxMDA2NDQN
-Cj4gLS0tIGEvZnMvbmZzZC92ZnMuYw0KPiArKysgYi9mcy9uZnNkL3Zmcy5jDQo+IEBAIC0xNDU4
-LDcgKzE0NTgsNyBAQCBkb19uZnNkX2NyZWF0ZShzdHJ1Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCBzdHJ1
-Y3Qgc3ZjX2ZoICpmaHAsDQo+ICAJCXN3aXRjaCAoY3JlYXRlbW9kZSkgew0KPiAgCQljYXNlIE5G
-UzNfQ1JFQVRFX1VOQ0hFQ0tFRDoNCj4gIAkJCWlmICghIFNfSVNSRUcoZGNoaWxkLT5kX2lub2Rl
-LT5pX21vZGUpKQ0KPiAtCQkJCWVyciA9IG5mc2Vycl9leGlzdDsNCj4gKwkJCQlnb3RvIG91dDsN
-Cj4gIAkJCWVsc2UgaWYgKHRydW5jcCkgew0KPiAgCQkJCS8qIGluIG5mc3Y0LCB3ZSBuZWVkIHRv
-IHRyZWF0IHRoaXMgY2FzZSBhIGxpdHRsZQ0KPiAgCQkJCSAqIGRpZmZlcmVudGx5LiAgd2UgZG9u
-J3Qgd2FudCB0byB0cnVuY2F0ZSB0aGUNCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlz
-IGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4gdGhlIGJvZHkg
-b2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8g
-aW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
-DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Thu, Mar 8, 2012 at 8:03 AM,  <andros@netapp.com> wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> The error handler nfs4_state parameter is never NULL in the pNFS case as
+> the open_context must carry an nfs_state.
+>
+
+
+Note Trond's argument is that with commit the state is avail for the
+caller, so it need not be NULL.
+But the caller filelayout_commit_done_cb() needs to be adjusted.
+Currently commit to ds oopses
+due to that.
+
+Fred
+
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4filelayout.c |    9 ++-------
+>  1 files changed, 2 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index b2d3bb5..768f6f8 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -99,16 +99,12 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>        case -NFS4ERR_DELEG_REVOKED:
+>        case -NFS4ERR_ADMIN_REVOKED:
+>        case -NFS4ERR_BAD_STATEID:
+> -               if (state != NULL)
+> -                       nfs_remove_bad_delegation(state->inode);
+> +               nfs_remove_bad_delegation(state->inode);
+>        case -NFS4ERR_OPENMODE:
+> -               if (state == NULL)
+> -                       break;
+>                nfs4_schedule_stateid_recovery(mds_server, state);
+>                goto wait_on_recovery;
+>        case -NFS4ERR_EXPIRED:
+> -               if (state != NULL)
+> -                       nfs4_schedule_stateid_recovery(mds_server, state);
+> +               nfs4_schedule_stateid_recovery(mds_server, state);
+>                nfs4_schedule_lease_recovery(mds_client);
+>                goto wait_on_recovery;
+>        /* DS session errors */
+> @@ -145,7 +141,6 @@ wait_on_recovery:
+>        if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
+>                rpc_wake_up_queued_task(&mds_client->cl_rpcwaitq, task);
+>        goto out;
+> -
+>  }
+>
+>  /* NFS_PROTO call done callback routines */
+> --
+> 1.7.6.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
