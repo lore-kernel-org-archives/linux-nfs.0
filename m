@@ -1,51 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33057 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19655 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965011Ab2CSQ2z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 12:28:55 -0400
-Date: Mon, 19 Mar 2012 12:28:51 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org,
-        nfsv4@ietf.org
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Message-ID: <20120319162851.GA22336@fieldses.org>
-References: <87pqchn64e.fsf@inspiron.ap.columbia.edu>
- <20120312193115.GA7203@fieldses.org>
- <4F5E5241.7070008@rath.org>
- <20120312201505.GC7203@fieldses.org>
- <4F5E5CF2.50309@rath.org>
- <20120312204238.GA8991@fieldses.org>
- <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com>
- <20120312210414.GB8991@fieldses.org>
- <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
- <20120312212708.GC8991@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120312212708.GC8991@fieldses.org>
+	id S1754662Ab2CITel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:34:41 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYf7K013733
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:41 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 6/7] Kill SPKM3: Stop checking for spkm3.h in configure
+Date: Fri,  9 Mar 2012 14:34:31 -0500
+Message-Id: <1331321672-2111-7-git-send-email-simo@redhat.com>
+In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
+References: <1331321672-2111-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
-> On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
-> > IMO, the server should do a comparison of the nfs_client_id4 strings,
-> > and nothing else.
-> 
-> We're supposed to return CLID_INUSE when we see a setclientid from a
-> "different" client using the same string, to keep clients from doing
-> mischief with other clients' state (either maliciously or, as in this
-> case, accidentally).
-> 
-> "Different" here is defined as "not having the same principal".  I know
-> what that means in the krb5 case, but I'm less certain in the auth_sys
-> case.
+---
+ configure.ac |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-Cc'ing the ietf list.  Is it reasonable for a server to expect
-setclientid's to come from the same client IP address at least in the
-auth_sys case, or could that break multi-homed clients?
+diff --git a/configure.ac b/configure.ac
+index 920e8da0216c447c1c93a017f8dea6c17043d148..67e8d2d9a2c6ec4296c96bb243202bbfea0ab4e9 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -316,9 +316,6 @@ if test "$enable_gss" = yes; then
+   dnl 'gss' also depends on nfsidmap.h - at least for svcgssd_proc.c
+   AC_LIBNFSIDMAP
+ 
+-  AC_CHECK_HEADERS([spkm3.h], ,
+-                   [AC_MSG_WARN([Could not locate SPKM3 header; will not have SPKM3 support])])
+-
+   dnl Check for Kerberos V5
+   AC_KERBEROS_V5
+ 
+-- 
+1.7.7.6
 
-At least in the auth_sys case IP addresses are one of the only things we
-have left to go on when the client's identifier-generation is messed up
-(not that difficult).
-
---b.
