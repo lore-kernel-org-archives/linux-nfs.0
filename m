@@ -1,106 +1,301 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54409 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:42385 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757339Ab2CAU4l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Mar 2012 15:56:41 -0500
-Date: Thu, 1 Mar 2012 15:56:39 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: steve <steve@steve-ss.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX acls over nfs4
-Message-ID: <20120301205639.GC17433@fieldses.org>
-References: <4F466467.3030506@steve-ss.com>
- <4F489999.30909@steve-ss.com>
- <20120228200524.GE2723@fieldses.org>
- <4F4D61B6.5090304@steve-ss.com>
- <20120229124401.GA9160@fieldses.org>
- <4F4E306C.6030400@steve-ss.com>
- <20120229140903.GA3007@fieldses.org>
- <4F4E3599.2050209@steve-ss.com>
- <20120229143236.GB3007@fieldses.org>
- <4F4E38E7.6060308@steve-ss.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F4E38E7.6060308@steve-ss.com>
+	id S1754662Ab2CITei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:34:38 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYcqC029731
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:38 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 2/7] Kill SPKM3: Remove spkm3 support from gssd
+Date: Fri,  9 Mar 2012 14:34:27 -0500
+Message-Id: <1331321672-2111-3-git-send-email-simo@redhat.com>
+In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
+References: <1331321672-2111-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 29, 2012 at 03:40:39PM +0100, steve wrote:
-> On 02/29/2012 03:32 PM, J. Bruce Fields wrote:
-> >On Wed, Feb 29, 2012 at 03:26:33PM +0100, steve wrote:
-> >>On 02/29/2012 03:09 PM, J. Bruce Fields wrote:
-> >>>On Wed, Feb 29, 2012 at 03:04:28PM +0100, steve wrote:
-> >>>>On 29/02/12 13:44, J. Bruce Fields wrote:
-> >>>>>On Wed, Feb 29, 2012 at 12:22:30AM +0100, steve wrote:
-> >>>>>>We are authenticating against Samba4, so our domain user accounts
-> >>>>>>are under Kerberos.
-> >>>>>Kerberos works fine with v3.
-> >>>>>
-> >>>>>--b.
-> >>>>Hi
-> >>>>Unfortunately, it doesn't seem to. We just tried it, and anyone
-> >>>>(with or without a ticket) gets access:-(
-> >>>Could you give any more detail about your test?
-> >>>
-> >>>--b.
-> >>steve is a /etc/passwd user
-> >>
-> >>steve@hh3:~$ sudo su
-> >>[sudo] password for steve:
-> >>root@hh3:/home/steve# mount -t nfs4 hh3:/home /mnt -o sec=krb5
-> >>root@hh3:/home/steve# exit
-> >>exit
-> >>steve@hh3:~$ cd /mnt
-> >>bash: cd: /mnt: Permission denied
-> >>steve@hh3:~$ sudo su
-> >>root@hh3:/home/steve# umount /mnt
-> >>root@hh3:/home/steve# mount -t nfs hh3:/home /mnt -o sec=krb5
+---
+ utils/gssd/gss_oids.c       |    3 -
+ utils/gssd/gss_oids.h       |    1 -
+ utils/gssd/gssd.h           |    5 +--
+ utils/gssd/gssd_main_loop.c |   11 -----
+ utils/gssd/gssd_proc.c      |  106 +-----------------------------------------
+ 5 files changed, 4 insertions(+), 122 deletions(-)
 
-Careful: a recent client will negotiate v4 if you leave this
-unspecified.  You want -onfsversion=3,sec=krb5.
+diff --git a/utils/gssd/gss_oids.c b/utils/gssd/gss_oids.c
+index a59c4a6428859ea0229252b063e0bc14164df63d..4362de26fbdcf7d23288da1b712fbd1ab0b4607b 100644
+--- a/utils/gssd/gss_oids.c
++++ b/utils/gssd/gss_oids.c
+@@ -38,6 +38,3 @@
+ /* from kerberos source, gssapi_krb5.c */
+ gss_OID_desc krb5oid =
+    {9, "\052\206\110\206\367\022\001\002\002"};
+-
+-gss_OID_desc spkm3oid =
+-   {7, "\053\006\001\005\005\001\003"};
+diff --git a/utils/gssd/gss_oids.h b/utils/gssd/gss_oids.h
+index 8b0a35219430ffa7711bbbdbc7ff3c37ff4ff9a0..fde8532ab3b480e5c43cf5a91abc9265b96d80aa 100644
+--- a/utils/gssd/gss_oids.h
++++ b/utils/gssd/gss_oids.h
+@@ -34,7 +34,6 @@
+ #include <sys/types.h>
+ 
+ extern gss_OID_desc krb5oid;
+-extern gss_OID_desc spkm3oid;
+ 
+ #ifndef g_OID_equal
+ #define g_OID_equal(o1,o2) \
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index b1b57938c3490802ea659a5e54ca72218a806222..40f824cd19c2056f160c44764acb039a40df8f92 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -55,7 +55,7 @@
+ /*
+  * The gss mechanisms that we can handle
+  */
+-enum {AUTHTYPE_KRB5, AUTHTYPE_SPKM3, AUTHTYPE_LIPKEY};
++enum {AUTHTYPE_KRB5, AUTHTYPE_LIPKEY};
+ 
+ 
+ 
+@@ -80,8 +80,6 @@ struct clnt_info {
+ 	char			*protocol;
+ 	int			krb5_fd;
+ 	int			krb5_poll_index;
+-	int			spkm3_fd;
+-	int			spkm3_poll_index;
+ 	int                     gssd_fd;
+ 	int                     gssd_poll_index;
+ 	struct sockaddr_storage addr;
+@@ -98,7 +96,6 @@ struct topdirs_info {
+ void init_client_list(void);
+ int update_client_list(void);
+ void handle_krb5_upcall(struct clnt_info *clp);
+-void handle_spkm3_upcall(struct clnt_info *clp);
+ void handle_gssd_upcall(struct clnt_info *clp);
+ void gssd_run(void);
+ 
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index b06c223294f2f0aadc928ba8d73d6b711e164ba0..cec09ea5b218fa6d586f5d5798e0280d4dde4125 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -98,17 +98,6 @@ scan_poll_results(int ret)
+ 			if (!ret)
+ 				break;
+ 		}
+-		i = clp->spkm3_poll_index;
+-		if (i >= 0 && pollarray[i].revents) {
+-			if (pollarray[i].revents & POLLHUP)
+-				dir_changed = 1;
+-			if (pollarray[i].revents & POLLIN)
+-				handle_spkm3_upcall(clp);
+-			pollarray[clp->spkm3_poll_index].revents = 0;
+-			ret--;
+-			if (!ret)
+-				break;
+-		}
+ 	}
+ };
+ 
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 41328c9b18483e8f7f5d9a2edc8eb9bce9465e30..a51dbaeba3d06e8414356573418bf02b36a15d6c 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -299,15 +299,11 @@ destroy_client(struct clnt_info *clp)
+ 	if (clp->krb5_poll_index != -1)
+ 		memset(&pollarray[clp->krb5_poll_index], 0,
+ 					sizeof(struct pollfd));
+-	if (clp->spkm3_poll_index != -1)
+-		memset(&pollarray[clp->spkm3_poll_index], 0,
+-					sizeof(struct pollfd));
+ 	if (clp->gssd_poll_index != -1)
+ 		memset(&pollarray[clp->gssd_poll_index], 0,
+ 					sizeof(struct pollfd));
+ 	if (clp->dir_fd != -1) close(clp->dir_fd);
+ 	if (clp->krb5_fd != -1) close(clp->krb5_fd);
+-	if (clp->spkm3_fd != -1) close(clp->spkm3_fd);
+ 	if (clp->gssd_fd != -1) close(clp->gssd_fd);
+ 	free(clp->dirname);
+ 	free(clp->servicename);
+@@ -327,10 +323,8 @@ insert_new_clnt(void)
+ 		goto out;
+ 	}
+ 	clp->krb5_poll_index = -1;
+-	clp->spkm3_poll_index = -1;
+ 	clp->gssd_poll_index = -1;
+ 	clp->krb5_fd = -1;
+-	clp->spkm3_fd = -1;
+ 	clp->gssd_fd = -1;
+ 	clp->dir_fd = -1;
+ 
+@@ -355,30 +349,22 @@ process_clnt_dir_files(struct clnt_info * clp)
+ 			snprintf(name, sizeof(name), "%s/krb5", clp->dirname);
+ 			clp->krb5_fd = open(name, O_RDWR);
+ 		}
+-		if (clp->spkm3_fd == -1) {
+-			snprintf(name, sizeof(name), "%s/spkm3", clp->dirname);
+-			clp->spkm3_fd = open(name, O_RDWR);
+-		}
+ 
+ 		/* If we opened a gss-specific pipe, let's try opening
+ 		 * the new upcall pipe again. If we succeed, close
+ 		 * gss-specific pipe(s).
+ 		 */
+-		if (clp->krb5_fd != -1 || clp->spkm3_fd != -1) {
++		if (clp->krb5_fd != -1) {
+ 			clp->gssd_fd = open(gname, O_RDWR);
+ 			if (clp->gssd_fd != -1) {
+ 				if (clp->krb5_fd != -1)
+ 					close(clp->krb5_fd);
+ 				clp->krb5_fd = -1;
+-				if (clp->spkm3_fd != -1)
+-					close(clp->spkm3_fd);
+-				clp->spkm3_fd = -1;
+ 			}
+ 		}
+ 	}
+ 
+-	if ((clp->krb5_fd == -1) && (clp->spkm3_fd == -1) &&
+-			(clp->gssd_fd == -1))
++	if ((clp->krb5_fd == -1) && (clp->gssd_fd == -1))
+ 		return -1;
+ 	snprintf(info_file_name, sizeof(info_file_name), "%s/info",
+ 			clp->dirname);
+@@ -431,15 +417,6 @@ insert_clnt_poll(struct clnt_info *clp)
+ 		pollarray[clp->krb5_poll_index].events |= POLLIN;
+ 	}
+ 
+-	if ((clp->spkm3_fd != -1) && (clp->spkm3_poll_index == -1)) {
+-		if (get_poll_index(&clp->spkm3_poll_index)) {
+-			printerr(0, "ERROR: Too many spkm3 clients\n");
+-			return -1;
+-		}
+-		pollarray[clp->spkm3_poll_index].fd = clp->spkm3_fd;
+-		pollarray[clp->spkm3_poll_index].events |= POLLIN;
+-	}
+-
+ 	return 0;
+ }
+ 
+@@ -839,13 +816,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 		sec.mech = (gss_OID)&krb5oid;
+ 		sec.req_flags = GSS_C_MUTUAL_FLAG;
+ 	}
+-	else if (authtype == AUTHTYPE_SPKM3) {
+-		sec.mech = (gss_OID)&spkm3oid;
+-		/* XXX sec.req_flags = GSS_C_ANON_FLAG;
+-		 * Need a way to switch....
+-		 */
+-		sec.req_flags = GSS_C_MUTUAL_FLAG;
+-	}
+ 	else {
+ 		printerr(0, "ERROR: Invalid authentication type (%d) "
+ 			"in create_auth_rpc_client\n", authtype);
+@@ -919,9 +889,8 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
+ 	if (!auth) {
+ 		/* Our caller should print appropriate message */
+-		printerr(2, "WARNING: Failed to create %s context for "
++		printerr(2, "WARNING: Failed to create krb5 context for "
+ 			    "user with uid %d for server %s\n",
+-			(authtype == AUTHTYPE_KRB5 ? "krb5":"spkm3"),
+ 			 uid, clp->servername);
+ 		goto out_fail;
+ 	}
+@@ -1103,59 +1072,6 @@ out_return_error:
+ 	goto out;
+ }
+ 
+-/*
+- * this code uses the userland rpcsec gss library to create an spkm3
+- * context on behalf of the kernel
+- */
+-static void
+-process_spkm3_upcall(struct clnt_info *clp, uid_t uid, int fd)
+-{
+-	CLIENT			*rpc_clnt = NULL;
+-	AUTH			*auth = NULL;
+-	struct authgss_private_data pd;
+-	gss_buffer_desc		token;
+-
+-	printerr(2, "handling spkm3 upcall (%s)\n", clp->dirname);
+-
+-	token.length = 0;
+-	token.value = NULL;
+-
+-	if (create_auth_rpc_client(clp, &rpc_clnt, &auth, uid, AUTHTYPE_SPKM3)) {
+-		printerr(0, "WARNING: Failed to create spkm3 context for "
+-			    "user with uid %d\n", uid);
+-		goto out_return_error;
+-	}
+-
+-	if (!authgss_get_private_data(auth, &pd)) {
+-		printerr(0, "WARNING: Failed to obtain authentication "
+-			    "data for user with uid %d for server %s\n",
+-			 uid, clp->servername);
+-		goto out_return_error;
+-	}
+-
+-	if (serialize_context_for_kernel(pd.pd_ctx, &token, &spkm3oid, NULL)) {
+-		printerr(0, "WARNING: Failed to serialize spkm3 context for "
+-			    "user with uid %d for server\n",
+-			 uid, clp->servername);
+-		goto out_return_error;
+-	}
+-
+-	do_downcall(fd, uid, &pd, &token);
+-
+-out:
+-	if (token.value)
+-		free(token.value);
+-	if (auth)
+-		AUTH_DESTROY(auth);
+-	if (rpc_clnt)
+-		clnt_destroy(rpc_clnt);
+-	return;
+-
+-out_return_error:
+-	do_error_downcall(fd, uid, -1);
+-	goto out;
+-}
+-
+ void
+ handle_krb5_upcall(struct clnt_info *clp)
+ {
+@@ -1171,20 +1087,6 @@ handle_krb5_upcall(struct clnt_info *clp)
+ }
+ 
+ void
+-handle_spkm3_upcall(struct clnt_info *clp)
+-{
+-	uid_t			uid;
+-
+-	if (read(clp->spkm3_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+-		printerr(0, "WARNING: failed reading uid from spkm3 "
+-			 "upcall pipe: %s\n", strerror(errno));
+-		return;
+-	}
+-
+-	return process_spkm3_upcall(clp, uid, clp->spkm3_fd);
+-}
+-
+-void
+ handle_gssd_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+@@ -1292,8 +1194,6 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 
+ 	if (strcmp(mech, "krb5") == 0)
+ 		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
+-	else if (strcmp(mech, "spkm3") == 0)
+-		process_spkm3_upcall(clp, uid, clp->gssd_fd);
+ 	else
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "received unknown gss mech '%s'\n", mech);
+-- 
+1.7.7.6
 
-> >>root@hh3:/home/steve# exit
-> >>exit
-> >>steve@hh3:~$ cd /mnt
-> >>steve@hh3:/mnt$
-> >Why is that a problem?  You haven't actually accessed anything on the
-> >filesystem.
-> >
-> >--b.
-> Steve can access the mounted folder. I can live with that but the
-> acl still isn't working:
-> 
-> lynn2 has authinticated by Kerberos
-> 
-> root@hh3:~# setfacl -d -m g::rw /home/CACTUS/dropbox
-> root@hh3:~# mount -t nfs hh3:/home /mnt -o sec=krb5
-> lynn2@hh3:/mnt/CACTUS$ ls -la
-> total 28
-> drwxr-xr-x  6 root   root         4096 2012-02-27 14:24 .
-> drwxr-xr-x  4 root   root         4096 2012-02-18 18:52 ..
-> drwxrws---  3 root   debusers     4096 2012-02-29 15:31 dropbox
-> drwxr-xr-x 20 lynn2  debusers     4096 2012-02-26 16:43 lynn2
-> drwxrwxrwx  5 root   root         4096 2012-02-29 14:19 profiles
-> drwxr-xr-x  4 steve2 Domain Users 4096 2012-02-29 14:36 steve2
-> 
-> lynn2 then crates a file in the mount called l3:
-> 
-> lynn2@hh3:/mnt/CACTUS$ ls -la /home/CACTUS/dropbox/
-> total 20
-> drwxrws---+ 3 root  debusers 4096 2012-02-29 15:31 .
-> drwxr-xr-x  6 root  root     4096 2012-02-27 14:24 ..
-> -rw-r-----  1 lynn2 debusers    0 2012-02-29 15:31 a
-> drwxrwS---+ 2 root  debusers 4096 2012-02-29 14:28 adminfolder
-> -rw-rw----  1 lynn2 debusers    0 2012-02-25 23:23 l2
-> -rw-r-----  1 lynn2 debusers    0 2012-02-29 15:24 l3
-> -rw-rw----  1 lynn2 debusers    0 2012-02-26 16:20 lynn2-ubuntu.txt
-> -rw-rw----  1 lynn2 debusers   11 2012-02-26 00:46 lynnnautilus.txt
-> 
-> ??
-
-I would have expected the default acl on the parent to override any
-umask on v3.
-
-So if it's actually v3, then that looks like a bug to me.
-
---b.
