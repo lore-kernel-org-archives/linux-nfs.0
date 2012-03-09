@@ -1,113 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:51202 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755915Ab2CAWB6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:01:58 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z16so1389945iag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Mar 2012 14:01:58 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/15] NFS: Introduce NFS_ATTR_FATTR_V4_LOCATIONS
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 01 Mar 2012 17:01:57 -0500
-Message-ID: <20120301220156.2138.11207.stgit@degas.1015granger.net>
-In-Reply-To: <20120301215755.2138.73488.stgit@degas.1015granger.net>
-References: <20120301215755.2138.73488.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:65022 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759363Ab2CIUtq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 15:49:46 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29KnkE7017315
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 15:49:46 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 0/1] Kill SPKM3 auth method, addendum
+Date: Fri,  9 Mar 2012 15:49:31 -0500
+Message-Id: <1331326172-13296-1-git-send-email-simo@redhat.com>
+In-Reply-To: <1331322586-4631-1-git-send-email-simo@redhat.com>
+References: <1331322586-4631-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Linux NFS client must distinguish between referral events (which
-it currently supports) and migration events (which it does not yet
-support).
+Also kill the lipkey auth method which depends on the,
+now completely defunct, spkm3 auth method.
 
-In both types of events, an fs_locations array is returned.  But upper
-layers, not the XDR layer, should make the distinction between a
-referral and a migration.  There really isn't a way for an XDR decoder
-function to distinguish the two, in general.
+Simo Sorce (1):
+  Kill SPKM3: Remove also the dependent lipkey mechanism
 
-Slightly adjust the FATTR flags returned by decode_fs_locations()
-to set NFS_ATTR_FATTR_V4_LOCATIONS only if a non-empty locations
-array was returned from the server.  Then have logic in nfs4proc.c
-distinguish whether the locations array is for a referral or
-something else.
+ support/nfs/exports.c          |    3 ---
+ utils/gssd/svcgssd_mech2file.c |    1 -
+ utils/mount/nfs.man            |    7 ++-----
+ utils/mount/nfsmount.c         |    6 ------
+ 4 files changed, 2 insertions(+), 15 deletions(-)
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4proc.c       |    6 +++---
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |   11 ++++++-----
- 3 files changed, 10 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d43bcda..ced56d0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -79,6 +79,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
-+static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -2340,7 +2341,6 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return nfs4_map_errors(status);
- }
- 
--static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
- /*
-  * Get locations and (maybe) other attributes of a referral.
-  * Note that we'll actually follow the referral later when
-@@ -4797,11 +4797,11 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	if (!(((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID) ||
- 	       (fattr->valid & NFS_ATTR_FATTR_FILEID)) &&
- 	      (fattr->valid & NFS_ATTR_FATTR_FSID) &&
--	      (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)))
-+	      (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
- 		return;
- 
- 	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
--		NFS_ATTR_FATTR_NLINK;
-+		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_V4_REFERRAL;
- 	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
- 	fattr->nlink = 2;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 8cb35f2..bec7227 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3621,7 +3621,7 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 			res->nlocations++;
- 	}
- 	if (res->nlocations != 0)
--		status = NFS_ATTR_FATTR_V4_REFERRAL;
-+		status = NFS_ATTR_FATTR_V4_LOCATIONS;
- out:
- 	dprintk("%s: fs_locations done, error = %d\n", __func__, status);
- 	return status;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index adbc84a..07eb9c9 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -88,11 +88,12 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_PRECTIME		(1U << 16)
- #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
- #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
--#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
--#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
--#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID		(1U << 21)
--#define NFS_ATTR_FATTR_OWNER_NAME	(1U << 22)
--#define NFS_ATTR_FATTR_GROUP_NAME	(1U << 23)
-+#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 19)
-+#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 20)
-+#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 21)
-+#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
-+#define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
-+#define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
+-- 
+1.7.7.6
 
