@@ -1,54 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4379 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59696 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755491Ab2CFX3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 18:29:54 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: add crc hash to nfs_display_fhandle
-Date: Tue, 6 Mar 2012 23:29:53 +0000
-Message-ID: <1331076593.10560.51.camel@lade.trondhjem.org>
-References: <1331075875-20421-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1331075875-20421-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759363Ab2CIUtr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 15:49:47 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29KnkOS017319
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 15:49:47 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 1/1] Kill SPKM3: Remove also the dependent lipkey mechanism
+Date: Fri,  9 Mar 2012 15:49:32 -0500
+Message-Id: <1331326172-13296-2-git-send-email-simo@redhat.com>
+In-Reply-To: <1331326172-13296-1-git-send-email-simo@redhat.com>
+References: <1331322586-4631-1-git-send-email-simo@redhat.com>
+ <1331326172-13296-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTA2IGF0IDE4OjE3IC0wNTAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IE1hdGNoIHdpcmVzaGFyaydzIENSQy0zMiBoYXNoIGZvciBlYXNpZXIgZGVidWdn
-aW5nLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFuZHJvcyBBZGFtc29uIDxkcm9zQG5l
-dGFwcC5jb20+DQo+IC0tLQ0KPiBSZXF1ZXN0ZWQgYnkgQ2h1Y2sgYW5kIG90aGVycy4NCj4gDQo+
-IE5vdGhpbmcgaW4gdHJvbmQvbmZzLWZvci1uZXh0IHVzZXMgbmZzX2Rpc3BsYXlfZmhhbmRsZSgp
-IHlldC4NCj4gSSB0ZXN0ZWQgYnkgY2FsbGluZyBpdCBpbiBuZnM0eGRyLmM6ZW5jb2RlX3B1dGZo
-KCkuDQo+IA0KPiAgZnMvbmZzL2lub2RlLmMgfCAgICA4ICsrKysrKystDQo+ICAxIGZpbGVzIGNo
-YW5nZWQsIDcgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQg
-YS9mcy9uZnMvaW5vZGUuYyBiL2ZzL25mcy9pbm9kZS5jDQo+IGluZGV4IDk5YTRmNTIuLmMxZjQ0
-ZTkgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9pbm9kZS5jDQo+ICsrKyBiL2ZzL25mcy9pbm9kZS5j
-DQo+IEBAIC0zOSw2ICszOSw3IEBADQo+ICAjaW5jbHVkZSA8bGludXgvc2xhYi5oPg0KPiAgI2lu
-Y2x1ZGUgPGxpbnV4L2NvbXBhdC5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L2ZyZWV6ZXIuaD4NCj4g
-KyNpbmNsdWRlIDxsaW51eC9jcmMzMi5oPg0KPiAgDQo+ICAjaW5jbHVkZSA8YXNtL3N5c3RlbS5o
-Pg0KPiAgI2luY2x1ZGUgPGFzbS91YWNjZXNzLmg+DQo+IEBAIC0xMDU3LDEzICsxMDU4LDE4IEBA
-IHN0cnVjdCBuZnNfZmggKm5mc19hbGxvY19maGFuZGxlKHZvaWQpDQo+ICB2b2lkIF9uZnNfZGlz
-cGxheV9maGFuZGxlKGNvbnN0IHN0cnVjdCBuZnNfZmggKmZoLCBjb25zdCBjaGFyICpjYXB0aW9u
-KQ0KPiAgew0KPiAgCXVuc2lnbmVkIHNob3J0IGk7DQo+ICsJdTMyIGNyYzsNCj4gIA0KPiAgCWlm
-IChmaC0+c2l6ZSA9PSAwIHx8IGZoID09IE5VTEwpIHsNCj4gIAkJcHJpbnRrKEtFUk5fREVGQVVM
-VCAiJXMgYXQgJXAgaXMgZW1wdHlcbiIsIGNhcHRpb24sIGZoKTsNCj4gIAkJcmV0dXJuOw0KPiAg
-CX0NCj4gIA0KPiAtCXByaW50ayhLRVJOX0RFRkFVTFQgIiVzIGF0ICVwIGlzICV1IGJ5dGVzOlxu
-IiwgY2FwdGlvbiwgZmgsIGZoLT5zaXplKTsNCj4gKwkvKiBtYXRjaCB3aXJlc2hhcmsncyBDUkMt
-MzIgaGFzaCAqLw0KPiArCWNyYyA9IH5jcmMzMigweEZGRkZGRkZGLCAmZmgtPmRhdGFbMF0sIGZo
-LT5zaXplKTsNCj4gKw0KPiArCXByaW50ayhLRVJOX0RFRkFVTFQgIiVzIGF0ICVwIGlzICV1IGJ5
-dGVzLCBjcmM6IDB4JTA4eDpcbiIsDQo+ICsJICAgICAgICAgICAgICAgICAgICBjYXB0aW9uLCBm
-aCwgZmgtPnNpemUsIGNyYyk7DQo+ICAJZm9yIChpID0gMDsgaSA8IGZoLT5zaXplOyBpICs9IDE2
-KSB7DQo+ICAJCV9fYmUzMiAqcG9zID0gKF9fYmUzMiAqKSZmaC0+ZGF0YVtpXTsNCkNvdWxkIHdl
-IHNwbGl0IHRoaXMgaW50byAyIGZ1bmN0aW9uczoNCg0KbmZzX2Rpc3BsYXlfZmhhbmRsZV9oYXNo
-KCkgYW5kIG5mc19kaXNwbGF5X2ZoYW5kbGUoKSwgd2l0aCB0aGUgbGF0dGVyDQpjYWxsaW5nIHRo
-ZSBmb3JtZXI/DQoNClRoYXQgd2lsbCBhbGxvdyB1cyB0byBzZWxlY3QgYm90aCBhIHNob3J0IGZv
-cm0gYW5kIGEgZnVsbCBmb3JtLiBJIGNhbg0Kc2VlIHRoZSBmb3JtZXIgYmVpbmcgdXNlZCBpbiBz
-b21ldGhpbmcgbGlrZSBuZnNfZmhnZXQoKSwgb3IgdGhlDQpyZXZhbGlkYXRpb24gZnVuY3Rpb25z
-LCB3aGlsZSB0aGUgbGF0dGVyIHdvdWxkIGJlIHVzZWZ1bCBpbg0KKl9wcm9jX2xvb2t1cCgpIG9y
-IG5mc19pbnN0YW50aWF0ZSgpLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg0K
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ support/nfs/exports.c          |    3 ---
+ utils/gssd/svcgssd_mech2file.c |    1 -
+ utils/mount/nfs.man            |    7 ++-----
+ utils/mount/nfsmount.c         |    6 ------
+ 4 files changed, 2 insertions(+), 15 deletions(-)
+
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 6e7ed699dfda6863e1bb1c0ef7894d473232f834..84a2b08b1f3c69e1b9765e1e42a7aa90c9b3d082 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -39,9 +39,6 @@ struct flav_info flav_map[] = {
+ 	{ "krb5",	RPC_AUTH_GSS_KRB5	},
+ 	{ "krb5i",	RPC_AUTH_GSS_KRB5I	},
+ 	{ "krb5p",	RPC_AUTH_GSS_KRB5P	},
+-	{ "lipkey",	RPC_AUTH_GSS_LKEY	},
+-	{ "lipkey-i",	RPC_AUTH_GSS_LKEYI	},
+-	{ "lipkey-p",	RPC_AUTH_GSS_LKEYP	},
+ 	{ "unix",	AUTH_UNIX		},
+ 	{ "sys",	AUTH_SYS		},
+ 	{ "null",	AUTH_NULL		},
+diff --git a/utils/gssd/svcgssd_mech2file.c b/utils/gssd/svcgssd_mech2file.c
+index a3177f6ff8ab7e0ee5eef7c830ce2c2042553c3c..ecd908bc24b827b9553f6394b5bab6213359a711 100644
+--- a/utils/gssd/svcgssd_mech2file.c
++++ b/utils/gssd/svcgssd_mech2file.c
+@@ -53,7 +53,6 @@ struct mech2file {
+ 
+ struct mech2file m2f[] = {
+ 	{{9, "\052\206\110\206\367\022\001\002\002"}, "krb5"},
+-	{{7, "\053\006\001\005\005\001\009"}, "lipkey"},
+ 	{{0,0},""},
+ };
+ 
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 810bfc075cb2629beedb8738f60e3f5fdf771f1e..0d20cf0d190665178c28b9efa45f22680397f73b 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -372,11 +372,8 @@ Valid security flavors are
+ .BR sys ,
+ .BR krb5 ,
+ .BR krb5i ,
++and
+ .BR krb5p ,
+-.BR lkey ,
+-.BR lkeyi ,
+-and
+-.BR lkeyp ,
+ Refer to the SECURITY CONSIDERATIONS section for details.
+ .TP 1.5i
+ .BR sharecache " / " nosharecache
+@@ -1413,7 +1410,7 @@ security flavor encrypts every RPC request
+ to prevent data exposure during network transit; however,
+ expect some performance impact
+ when using integrity checking or encryption.
+-Similar support for other forms of cryptographic security (such as lipkey)
++Similar support for other forms of cryptographic security
+ is also available.
+ .P
+ The NFS version 4 protocol allows
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 7bd1c97b291eb585221452ba865036d25e7fa8ff..930622d94b57f6e4dd12497fb99277dc76580ecf 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -294,12 +294,6 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 					data->pseudoflavor = AUTH_GSS_KRB5I;
+ 				else if (!strcmp(secflavor, "krb5p"))
+ 					data->pseudoflavor = AUTH_GSS_KRB5P;
+-				else if (!strcmp(secflavor, "lipkey"))
+-					data->pseudoflavor = AUTH_GSS_LKEY;
+-				else if (!strcmp(secflavor, "lipkey-i"))
+-					data->pseudoflavor = AUTH_GSS_LKEYI;
+-				else if (!strcmp(secflavor, "lipkey-p"))
+-					data->pseudoflavor = AUTH_GSS_LKEYP;
+ 				else if (sloppy)
+ 					continue;
+ 				else {
+-- 
+1.7.7.6
+
