@@ -1,111 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:59282 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756063Ab2C0CCy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2012 22:02:54 -0400
-Message-ID: <4F711FAB.3020408@panasas.com>
-Date: Mon, 26 Mar 2012 19:02:19 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>, Oleg Nesterov <oleg@redhat.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        <linux-security-module@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Turner <pjt@google.com>,
-        Thomas Gleixner <tglx@linutronix.de>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>
-Subject: [PATCH 2/6] kmod: Convert two call sites to call_usermodehelper_fns()
-References: <4F691059.30405@panasas.com> <4F711EA2.4030608@panasas.com>
-In-Reply-To: <4F711EA2.4030608@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:30679 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758855Ab2CITek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:34:40 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYdQi023983
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:40 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 4/7] Kill SPKM3: Remove spkm3 support from nfs.mount
+Date: Fri,  9 Mar 2012 14:34:29 -0500
+Message-Id: <1331321672-2111-5-git-send-email-simo@redhat.com>
+In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
+References: <1331321672-2111-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Both   kernel/sys.c && security/keys/request_key.c where inlining the exact same
-code as call_usermodehelper_fns(); So simply convert these sites to directly
-use  call_usermodehelper_fns().
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- kernel/sys.c                |   19 ++++++++-----------
- security/keys/request_key.c |   13 +++----------
- 2 files changed, 11 insertions(+), 21 deletions(-)
+ utils/mount/nfs.man     |    7 ++-----
+ utils/mount/nfs_mount.h |    3 ---
+ utils/mount/nfsmount.c  |    6 ------
+ 3 files changed, 2 insertions(+), 14 deletions(-)
 
-diff --git a/kernel/sys.c b/kernel/sys.c
-index 9eb7fca..37b1971 100644
---- a/kernel/sys.c
-+++ b/kernel/sys.c
-@@ -2013,7 +2013,6 @@ int orderly_poweroff(bool force)
- 		NULL
- 	};
- 	int ret = -ENOMEM;
--	struct subprocess_info *info;
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 2ad92d1e55c7aab52c24fee64da11f6a25985999..810bfc075cb2629beedb8738f60e3f5fdf771f1e 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -375,11 +375,8 @@ Valid security flavors are
+ .BR krb5p ,
+ .BR lkey ,
+ .BR lkeyi ,
++and
+ .BR lkeyp ,
+-.BR spkm ,
+-.BR spkmi ,
+-and
+-.BR spkmp .
+ Refer to the SECURITY CONSIDERATIONS section for details.
+ .TP 1.5i
+ .BR sharecache " / " nosharecache
+@@ -1416,7 +1413,7 @@ security flavor encrypts every RPC request
+ to prevent data exposure during network transit; however,
+ expect some performance impact
+ when using integrity checking or encryption.
+-Similar support for other forms of cryptographic security (such as lipkey and SPKM3)
++Similar support for other forms of cryptographic security (such as lipkey)
+ is also available.
+ .P
+ The NFS version 4 protocol allows
+diff --git a/utils/mount/nfs_mount.h b/utils/mount/nfs_mount.h
+index 2becfb1a0d655093385f47571b026124218fcf46..ec30c9b62a6da09c8671e3b8b7c995e1ef7f7e3c 100644
+--- a/utils/mount/nfs_mount.h
++++ b/utils/mount/nfs_mount.h
+@@ -75,9 +75,6 @@ struct nfs_mount_data {
+ #define AUTH_GSS_LKEY		390006
+ #define AUTH_GSS_LKEYI		390007
+ #define AUTH_GSS_LKEYP		390008
+-#define AUTH_GSS_SPKM		390009
+-#define AUTH_GSS_SPKMI		390010
+-#define AUTH_GSS_SPKMP		390011
+ #endif
  
- 	if (argv == NULL) {
- 		printk(KERN_WARNING "%s failed to allocate memory for \"%s\"\n",
-@@ -2021,18 +2020,16 @@ int orderly_poweroff(bool force)
- 		goto out;
- 	}
- 
--	info = call_usermodehelper_setup(argv[0], argv, envp, GFP_ATOMIC);
--	if (info == NULL) {
--		argv_free(argv);
--		goto out;
--	}
--
--	call_usermodehelper_setfns(info, NULL, argv_cleanup, NULL);
-+	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT,
-+				      NULL, argv_cleanup, NULL);
-+out:
-+	if (likely(!ret))
-+		return 0;
- 
--	ret = call_usermodehelper_exec(info, UMH_NO_WAIT);
-+	if (ret == -ENOMEM)
-+		argv_free(argv);
- 
--  out:
--	if (ret && force) {
-+	if (force) {
- 		printk(KERN_WARNING "Failed to start orderly shutdown: "
- 		       "forcing the issue\n");
- 
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index cc37903..000e750 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -93,16 +93,9 @@ static void umh_keys_cleanup(struct subprocess_info *info)
- static int call_usermodehelper_keys(char *path, char **argv, char **envp,
- 					struct key *session_keyring, int wait)
- {
--	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
--	struct subprocess_info *info =
--		call_usermodehelper_setup(path, argv, envp, gfp_mask);
--
--	if (!info)
--		return -ENOMEM;
--
--	call_usermodehelper_setfns(info, umh_keys_init, umh_keys_cleanup,
--					key_get(session_keyring));
--	return call_usermodehelper_exec(info, wait);
-+	return call_usermodehelper_fns(path, argv, envp, wait,
-+				       umh_keys_init, umh_keys_cleanup,
-+				       key_get(session_keyring));
- }
- 
- /*
+ int	nfsmount(const char *, const char *, int , char **, int, int);
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 1298fe44485789bae59cc10cf7430c2599b4f5a5..7bd1c97b291eb585221452ba865036d25e7fa8ff 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -300,12 +300,6 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
+ 					data->pseudoflavor = AUTH_GSS_LKEYI;
+ 				else if (!strcmp(secflavor, "lipkey-p"))
+ 					data->pseudoflavor = AUTH_GSS_LKEYP;
+-				else if (!strcmp(secflavor, "spkm3"))
+-					data->pseudoflavor = AUTH_GSS_SPKM;
+-				else if (!strcmp(secflavor, "spkm3i"))
+-					data->pseudoflavor = AUTH_GSS_SPKMI;
+-				else if (!strcmp(secflavor, "spkm3p"))
+-					data->pseudoflavor = AUTH_GSS_SPKMP;
+ 				else if (sloppy)
+ 					continue;
+ 				else {
 -- 
-1.7.6.5
-
+1.7.7.6
 
