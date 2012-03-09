@@ -1,49 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e38.co.us.ibm.com ([32.97.110.159]:60949 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758099Ab2CFC0J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 21:26:09 -0500
-Received: from /spool/local
-	by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 5 Mar 2012 19:26:09 -0700
-Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id D8DAA19D8048
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 19:25:02 -0700 (MST)
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q262P7Nh116212
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:25:07 -0700
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q262P6T2000424
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:25:06 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av04.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q262P6Xi000402
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:25:06 -0700
-Date: Mon, 5 Mar 2012 20:25:05 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-Message-ID: <20120306022505.GA32281@us.ibm.com>
-References: <1330976165-19849-1-git-send-email-steved@redhat.com>
- <1330976165-19849-2-git-send-email-steved@redhat.com>
- <20120305212015.GA21904@us.ibm.com>
- <4F5559EA.7010206@RedHat.com>
- <1330993903.5407.3.camel@lade.trondhjem.org>
- <4F556007.2030603@RedHat.com>
- <1330995896.5407.8.camel@lade.trondhjem.org>
- <4F5569C5.1000100@RedHat.com>
- <20120306015230.GA4513@umich.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120306015230.GA4513@umich.edu>
+Received: from fieldses.org ([174.143.236.118]:47732 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757214Ab2CIW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 17:29:37 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/7] vfs: take i_mutex on renamed file
+Date: Fri,  9 Mar 2012 17:29:28 -0500
+Message-Id: <1331332174-22621-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120309222114.GA22423@fieldses.org>
+References: <20120309222114.GA22423@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jim Rees [rees@umich.edu] wrote:
-> I don't understand the backward compatibility issue.  Are there times when
-> you have a mount, and it's in /etc/mtab, but not in /proc/mounts?  I don't
-> see how that's possible.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-No, but that is what NFS umount thinks due to slight differences in
-those two files. Happens only in NFSv4 world. 
+A read delegation is used by NFSv4 as a guarantee that a client can
+perform local read opens without informing the server.
+
+The open operation takes the last component of the pathname as an
+argument, thus is also a lookup operation, and giving the client the
+above guarantee means informing the client before we allow anything that
+would change the set of names pointing to the inode.
+
+Therefore, we need to break delegations on rename, link, and unlink.
+
+We also need to prevent new delegations from being acquired while one of
+these operations is in progress.
+
+We could add some completely new locking for that purpose, but it's
+simpler to use the i_mutex, since that's already taken by all the
+operations we care about.
+
+The single exception is rename.  So, modify rename to take the i_mutex
+on the file that is being renamed.
+
+Also fix up lockdep and Documentation/filesystems/directory-locking to
+reflect the change.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ Documentation/filesystems/directory-locking |   11 ++++++-----
+ fs/namei.c                                  |    3 +++
+ include/linux/fs.h                          |    9 ++++++---
+ 3 files changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
+index ff7b611..9edbcd2 100644
+--- a/Documentation/filesystems/directory-locking
++++ b/Documentation/filesystems/directory-locking
+@@ -12,8 +12,8 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
+ locks victim and calls the method.
+ 
+ 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
+-the parent, finds source and target, if target already exists - locks it
+-and then calls the method.
++the parent, finds source and target, locks source, also locks target if
++it already exists, and then calls the method.
+ 
+ 5) link creation.  Locking rules:
+ 	* lock parent
+@@ -30,6 +30,7 @@ rules:
+ 		fail with -ENOTEMPTY
+ 	* if new parent is equal to or is a descendent of source
+ 		fail with -ELOOP
++	* lock source if it is not a directory.
+ 	* if target exists - lock it.
+ 	* call the method.
+ 
+@@ -56,9 +57,9 @@ objects - A < B iff A is an ancestor of B.
+     renames will be blocked on filesystem lock and we don't start changing
+     the order until we had acquired all locks).
+ 
+-(3) any operation holds at most one lock on non-directory object and
+-    that lock is acquired after all other locks.  (Proof: see descriptions
+-    of operations).
++(3) locks on non-directory objects are acquired only after taking locks
++    on their parents (which remain their parents until all locks are
++    acquired, by (1) and (2)).  (Proof: see descriptions of operations).
+ 
+ 	Now consider the minimal deadlock.  Each process is blocked on
+ attempt to acquire some lock and already holds at least one lock.  Let's
+diff --git a/fs/namei.c b/fs/namei.c
+index 208c6aa..d29b3c4 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3073,6 +3073,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 			    struct inode *new_dir, struct dentry *new_dentry)
+ {
+ 	struct inode *target = new_dentry->d_inode;
++	struct inode *source = old_dentry->d_inode;
+ 	int error;
+ 
+ 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+@@ -3080,6 +3081,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 		return error;
+ 
+ 	dget(new_dentry);
++	mutex_lock_nested(&source->i_mutex, I_MUTEX_RENAME_SOURCE);
+ 	if (target)
+ 		mutex_lock(&target->i_mutex);
+ 
+@@ -3098,6 +3100,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ out:
+ 	if (target)
+ 		mutex_unlock(&target->i_mutex);
++	mutex_unlock(&source->i_mutex);
+ 	dput(new_dentry);
+ 	return error;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 386da09..e537b67 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -855,10 +855,12 @@ static inline int inode_unhashed(struct inode *inode)
+  * 0: the object of the current VFS operation
+  * 1: parent
+  * 2: child/target
+- * 3: quota file
++ * 3: xattr
++ * 4: quota file
++ * 5: the file being renamed (used only in rename of a non-directory)
+  *
+  * The locking order between these classes is
+- * parent -> child -> normal -> xattr -> quota
++ * parent -> child -> rename_source -> normal -> xattr -> quota
+  */
+ enum inode_i_mutex_lock_class
+ {
+@@ -866,7 +868,8 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_PARENT,
+ 	I_MUTEX_CHILD,
+ 	I_MUTEX_XATTR,
+-	I_MUTEX_QUOTA
++	I_MUTEX_QUOTA,
++	I_MUTEX_RENAME_SOURCE
+ };
+ 
+ /*
+-- 
+1.7.5.4
 
