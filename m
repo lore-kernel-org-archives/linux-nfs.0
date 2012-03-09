@@ -1,53 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:46213 "EHLO
-	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750956Ab2C0PyF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2012 11:54:05 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.3) with ESMTP id q2RFs3iR029859
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2012 17:54:03 +0200
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id q2RFs33Z020138
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2012 17:54:03 +0200
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia2.esteban.ctsi (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.2) with SMTP id q2RFs3dV001962
-	for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2012 17:54:03 +0200
-Message-ID: <4F71E29B.70106@cea.fr>
-Date: Tue, 27 Mar 2012 17:54:03 +0200
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-MIME-Version: 1.0
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: Client says "Stale NFS file handle" but server does not return NFS3ERR_STALE
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:47788 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758855Ab2CITem (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:34:42 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYgBV023991
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:42 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 7/7] Kill SPKM3: Remove mentions of SPKM3 from README
+Date: Fri,  9 Mar 2012 14:34:32 -0500
+Message-Id: <1331321672-2111-8-git-send-email-simo@redhat.com>
+In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
+References: <1331321672-2111-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+---
+ README |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-I have the following issue:
-Client does a classical "mount -o vers=3,lock server:/path /mnt". The 
-server is my nfs-ganesha user space server.
-Then, a long time running "dd if=/dev/zero of=./foo..." is made inside a 
-directory in the mount point. No matter what the other parameters of dd 
-(like bs= or count=) are : I kill the daemon, and restart it a couple of 
-seconds later. Then I kill the dd (CTRL-C from the console). The dd 
-command returns an error (which is logical, it' sis IO error or Bad File 
-Descriptor), but I see something else that is quite strange:
-    - if I ls from the current directory (where I ran 'dd'), I got the 
-message "ls: cannot open directory .: Stale NFS file handle"
-    - In wireshark, I see no NFS3ERR_STALE
-The wireshark capture shows that the "server shutdown" was made between 
-a WRITE reply and the related COMMIT call (I received the COMMIT call as 
-the server rebooted).
-Apparently, the client decided to return "Stale NFS  file handle" to the 
-client, the server returns no error, all replies are NFS3_OK.
-What  should I be looking for to fix this bug ? (which is probably on my 
-side)
-
-    Regards
-   
-       Philippe
-
+diff --git a/README b/README
+index e7588cfd9337257aef27a90471c0c6935e3bc990..5c86808d3628e30c665f87501a1cd465fda5c76d 100644
+--- a/README
++++ b/README
+@@ -80,7 +80,7 @@ scripts can be written to work correctly.
+        and starting the nfsd server is not important.
+        idmapd is only needed for NFSv4 support.
+        svcgssd is only needed if exportfs NFS filesystem with crypto-
+-       security (Kerberos or SPKM3).
++       security (Kerberos).
+ 
+    C/ exportfs -av ; rpc.mountd
+        It is important that exportfs be run before mountd so that
+@@ -130,7 +130,7 @@ scripts can be written to work correctly.
+    B/ gssd ; idmapd
+       idmapd should be started before mounting any NFSv4 filesystems.
+       gssd should be started before mounting any NFS filesystems
+-      securely (with Kerberos of SPKM3).
++      securely (with Kerberos).
+ 
+    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
+       mounted with remote locking (i.e. without -o nolock).
+-- 
+1.7.7.6
 
