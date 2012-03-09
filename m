@@ -1,82 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33517 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753933Ab2CMU6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 16:58:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Peng Tao <bergwolf@gmail.com>, NeilBrown <neilb@suse.de>,
-        Al Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] vfs: stop d_splice_alias creating directory aliases
-Date: Tue, 13 Mar 2012 16:58:37 -0400
-Message-Id: <1331672318-23357-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120313205529.GC21991@fieldses.org>
-References: <20120313205529.GC21991@fieldses.org>
+Received: from li9-11.members.linode.com ([67.18.176.11]:45064 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754819Ab2CIUvy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 15:51:54 -0500
+Date: Fri, 9 Mar 2012 15:51:48 -0500
+From: "Ted Ts'o" <tytso@mit.edu>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120309205148.GB5635@thunk.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
+ <20120306020819.GH31388@pad.fieldses.org>
+ <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120306152842.GA8339@pad.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, Mar 06, 2012 at 10:28:43AM -0500, J. Bruce Fields wrote:
+> > If so, I'll do a quick test merge and see if there are
+> > any conflicts.  If so, I'll segregate out these patches into a
+> > separate pre-merge branch --- and then if you like you could pull them
+> > into your branch and we can deal with it that way.
+> 
+> That sounds like a good way to do it regardless?
 
-A directory should never have more than one dentry pointing to it.
+Linus in general doesn't like cross tree merges (or any extraneous
+merges) unless they are absolutely necessary; but then, he trusts git
+merges more than many of us do.  :-)
 
-But d_splice_alias() will add one if it finds a directory with an
-already-existing non-DISCONNECTED dentry.
+I've put the the patch series on a separate patch, with a signed tag, at:
 
-I can't find an obvious reproducer, but I also can't see what prevents
-d_splice_alias() from encountering such a case.
+     git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
 
-It therefore seems safest to allow d_splice_alias to use any dentry it
-finds.
+Can you confirm that you've pulled it into your tree and it's landed
+in linux-next?  I probably won't bother pulling it in mine unless
+there is definitely a merge conflict that I need to resolve.  (I've
+checked and there do not appear to be any against linux-next as of
+last night.)
 
-(Prior to the removal of dentry_unhash() from vfs_rmdir(), around v3.0,
-this could cause an nfsd deadlock like this:
 
-	- Somebody attempts to remove a non-empty directory.
-	- The dentry_unhash() in vfs_rmdir() unhashes the dentry
-	  pointing to the non-empty directory.
-	- ->rmdir() then fails with -ENOTEMPTY
-	- Before the vfs_rmdir() caller reaches dput(), an nfsd process
-	  in rename looks up the directory by filehandle; at the end of
-	  that lookup, this dentry is found by d_alloc_anon(), and a
-	  reference is taken on it, preventing dput() from removing it.
-	- A regular lookup of the directory calls d_splice_alias(),
-	  finds only an unhashed (not a DISCONNECTED) dentry, and
-	  insteads adds a new one, so the directory now has two
-	  dentries.
-	- The nfsd process in rename, which was previously looking up
-	  the source directory of the rename, now looks up the target
-	  directory (which is the same), and gets the dentry newly
-	  created by the previous lookup.
-	- The rename, seeing two different dentries, assumes this is a
-	  cross-directory rename and attempts to take the i_mutex on the
-	  directory twice.
-
-That reproducer no longer exists, but I don't think there was anything
-fundamentally incorrect about the vfs_rmdir() behavior there, so I think
-the real fault was here in d_splice_alias().)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 16a53cc..30f4236 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1587,9 +1587,8 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
- 
- 	if (inode && S_ISDIR(inode->i_mode)) {
- 		spin_lock(&inode->i_lock);
--		new = __d_find_alias(inode, 1);
-+		new = __d_find_any_alias(inode);
- 		if (new) {
--			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
- 			spin_unlock(&inode->i_lock);
- 			security_d_instantiate(new, inode);
- 			d_move(new, dentry);
--- 
-1.7.5.4
-
+					- Ted
