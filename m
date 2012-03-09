@@ -1,105 +1,302 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:6617 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1954 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933922Ab2C3Prp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 11:47:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "Ganesha NFS List" <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: RE: unlink within an open directory stream
-Date: Fri, 30 Mar 2012 15:46:35 +0000
-Message-ID: <1333122400.8099.17.camel@lade.trondhjem.org>
-References: <4F70B8DF.9000108@panasas.com>
-	 <1974178651.72.1332788099966.JavaMail.root@thunderbeast.private.linuxbox.com>
-	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDA9@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D6EBDA9@IT-1874.Isys.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1031079Ab2CITtv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 14:49:51 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29Jnpra029975
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:49:51 -0500
+From: Simo Sorce <simo@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 2/7] Kill SPKM3: Remove spkm3 support from gssd
+Date: Fri,  9 Mar 2012 14:49:41 -0500
+Message-Id: <1331322586-4631-3-git-send-email-simo@redhat.com>
+In-Reply-To: <1331322586-4631-1-git-send-email-simo@redhat.com>
+References: <1331322586-4631-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTMwIGF0IDExOjI0IC0wNDAwLCBQZXRlciBTdGF1YmFjaCB3cm90ZToN
-Cj4gWWVzLCBobW1tLCB1bW1tLi4uDQo+IA0KPiBBIGxvbmcgdGltZSwgSSB0aG91Z2h0IHRoYXQg
-dGhlIHJlYWRkaXIgY29va2llIHZlcmlmaWVyIHNvdW5kZWQgbGlrZSBhIGdvb2QgaWRlYS4gIEFm
-dGVyIGFsbCwgaWYgZGlyZWN0b3JpZXMgY2FuIGJlIGNvbXBhY3RlZCwgaXQgd291bGQgYmUgbmlj
-ZSB0byBiZSBhYmxlIHRvIHRlbGwgd2hlbiB0aGUgY29va2llIGhhcyBiZWNvbWUgaW52YWxpZCwg
-cmlnaHQ/ICBTbywgSSBhZGRlZCBpdCB0byB0aGUgTkZTdjMgcHJvdG9jb2wuDQo+IA0KPiBJdCB3
-YXMgb25seSBhZnRlcndhcmRzLCBpbiBhdHRlbXB0aW5nIHRvIGltcGxlbWVudCBpdCwgdGhhdCB0
-aGUgcmVhbCB0cnV0aCB3YXMgZGlzY292ZXJlZC4gIFRoaXMgaXMgdGhhdCB0aGUgaW50ZXJmYWNl
-cyBhcmUgbm90IHN1ZmZpY2llbnQgdG8gYmUgYWJsZSB0byBjb252ZXkgdGhpcyBpbmZvcm1hdGlv
-biBzdWZmaWNpZW50bHkgYW5kIHRvIGJlIGFibGUgdG8gcmVjb3ZlciBmcm9tIHRoZSBzaXR1YXRp
-b24uICBDdXJyZW50bHksIHJlY292ZXJ5IHJlcXVpcmUgYWN0aW9uIG9uIHRoZSBwYXJ0IG9mIHRo
-ZSBhcHBsaWNhdGlvbi4NCj4gDQo+IEluIHJldHJvc3BlY3QsIEkgd291bGRuJ3QgYWRkIHRoZSBj
-b29raWUgdmVyaWZpZXIgaWYgSSB3YXMgZG9pbmcgaXQgYWdhaW4uDQo+IA0KPiBUaGFua3MgZm9y
-IHRoZSBzdXBwb3J0LCB0aG91Z2guICA6LSkNCj4gDQo+IEkgZG8gZGlzYWdyZWUgd2l0aCBUcm9u
-ZCB0aG91Z2gsIGluIHRoYXQgYXBwbGljYXRpb25zIG11c3QgYmUgY29kZWQgdG8gYmUgYWJsZSB0
-byBoYW5kbGUgZGlyZWN0b3JpZXMgd2hlcmUgY29va2llcyBjYW4gYmVjb21lIGludmFsaWRhdGVk
-LiAgVGhhdCdzIHdoeSBybSBhbmQgc3VjaCBoYXZlIHRvIGJlIGNvZGVkIHRvIGtlZXAgdHJhY2sg
-b2YgdGhlaXIgbG9jYXRpb24gaW4gdGhlIGRpcmVjdG9yeSBieSBtb3JlIHRoYW4ganVzdCBkX29m
-Zi4NCg0KVGhlIHByb2JsZW0gd2l0aCB0aGF0IGlzIHRoYXQgdGhlcmUgaXMgbm8gc3RhbmRhcmQg
-Zm9yIGhvdyBhcHBsaWNhdGlvbnMNCnNob3VsZCBwcm9jZWVkIHRvIGRvIHRoaXMsIGFuZCBzbyB0
-aGVyZSBhcmUgbm8gZ3VpZGVsaW5lcyBmb3IgaG93IHRoZQ0KY2xpZW50IHNob3VsZCBiZWhhdmUu
-DQoNCldvcnNlLCBpZiB5b3UndmUgbG9va2VkIGF0IHRoZSBnbGliYyByZWFkZGlyIGxpYnJhcnkg
-Y29kZSwgeW91J2xsIGhhdmUNCm5vdGljZWQgdGhhdCBpdCBfZGVwZW5kc18gb24gYmVpbmcgYWJs
-ZSB0byB1c2UgYSBzdHJpY3RseQ0KUE9TSVgtY29uZm9ybWluZyB2ZXJzaW9uIG9mIHRlbGxkaXIo
-KS9zZWVrZGlyKCkuIElmIGl0IGNhbid0IHJld2luZCB0byBhDQpwcmV2aW91c2x5IHNhdmVkIG9m
-ZnNldCwgdGhlbiBpdCBjYW4gZW5kIHVwIHNraXBwaW5nIGVudHJpZXMuDQoNClNvIG5vLCBJIGNh
-bid0IHJlbHkgb24gYXBwbGljYXRpb25zIGVpdGhlci4uLg0KDQo+IAkJcHMNCj4gDQo+IA0KPiAt
-LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5r
-ZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVo
-YWxmIE9mIE1hdHQgVy4gQmVuamFtaW4NCj4gU2VudDogTW9uZGF5LCBNYXJjaCAyNiwgMjAxMiAy
-OjU1IFBNDQo+IFRvOiBCb2F6IEhhcnJvc2gNCj4gQ2M6IGxpbnV4LW5mczsgR2FuZXNoYSBORlMg
-TGlzdDsgVHJvbmQgTXlrbGVidXN0DQo+IFN1YmplY3Q6IFJlOiB1bmxpbmsgd2l0aGluIGFuIG9w
-ZW4gZGlyZWN0b3J5IHN0cmVhbQ0KPiANCj4gSGksDQo+IA0KPiBCb2F6OiAgd2UgZG8gbm90IGFu
-eSBsb25nZXIgc2VuZCBhIHJlYWRkaXIgaW5kZXguICBXZSBkbyBzZW5kIGEgY29va2lldmVyZi4N
-Cj4gDQo+IEZpc3Qgb2YgYWxsLCBJIGhhdmVuJ3QgZXN0YWJsaXNoZWQgdGhhdCB0aGUgaXNzdWUg
-d2UncmUgYWN0dWFsbHkgb2JzZXJ2aW5nIGlzIGNhdXNlZCBieSB0aGUgTGludXggY2xpZW50IHNl
-bmRpbmcgb2xkIGNvb2tpZXMgdG8gcmVhZGRpcihzb21ldGhpbmcpLiAgSG93ZXZlciwgaWYgaXQg
-aXMsIGl0J3MgaW4gbm8gd2F5IGJldHRlciB0byB0cnkgdG8gbWFrZSBjb29raWVzICJtb3JlIHBl
-cnNpc3RlbnQuIiAgTm9yIHNob3VsZCB0aGUgTGludXggY2xpZW50IGJlIGV4cGVjdGluZyBpdC4g
-IFRoZSBhc3N1bXB0aW9uIGlzIHNpbXBseSBmbGF3ZWQuICBUaGUgcHJvdG9jb2wgaW50cm9kdWNl
-ZCBjb29raWUgdmVyaWZpZXIgKGEgTE9ORyB0aW1lIGFnbykgZm9yIGEgcmVhc29uLg0KPiANCj4g
-TWF0dA0KPiAtLS0tLSAiQm9heiBIYXJyb3NoIiA8YmhhcnJvc2hAcGFuYXNhcy5jb20+IHdyb3Rl
-Og0KPiANCj4gPiBPbiAwMy8yNi8yMDEyIDExOjI1IEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
-Og0KPiA+IA0KPiA+ID4gT24gTW9uLCAyMDEyLTAzLTI2IGF0IDExOjE3IC0wNzAwLCBCb2F6IEhh
-cnJvc2ggd3JvdGU6DQo+ID4gPj4gT24gMDMvMjQvMjAxMiAxMDoxMiBBTSwgTXlrbGVidXN0LCBU
-cm9uZCB3cm90ZToNCj4gPiA+Pg0KPiA+ID4+DQo+ID4gPj4gSXQncyB0aGUgbmV3IChwb3N0IFJI
-RUwgNi4wIEtlcm5lbCkgTkZTIG5lZWQgZm9yIG9wZW5kaXIgYWZ0ZXIgYW4NCj4gPiB1bmxpbmsu
-DQo+ID4gPiANCj4gPiA+IFdoYXQ/DQo+ID4gPiANCj4gPiANCj4gPiANCj4gPiBUaGUgbGlua3Mg
-YmVsb3cgcmVwb3J0IG9uIHJlZ3Jlc3Npb24gaW4gUkhFTCA2LjIgd2hpY2ggaGF2ZSBhIG5ldyBO
-RlMgDQo+ID4gaW1wbGVtZW50YXRpb24gd2hlcmUgIDYuMCB1c2VkIHRvIGJlIGZpbmUuDQo+ID4g
-KE9yIGl0J3Mgd2hhdCBJIHVuZGVyc3Rvb2QgZnJvbSB0aGUgcmVwb3J0ZXJzKQ0KPiA+IA0KPiA+
-IDxzbmlwPg0KPiA+IA0KPiA+ID4gDQo+ID4gDQo+ID4gPiBOby4NCj4gPiA+IA0KPiA+ID4gSWYg
-dGhlIHNlcnZlciBzdXBwb3J0cyBwZXJtYW5lbnQgcmVhZGRpciBjb29raWVzLCB0aGVuIHRoZXJl
-IGlzIG5vDQo+ID4gbmVlZA0KPiA+ID4gZm9yIG9wZW5kaXIgYWZ0ZXIgdW5saW5rLg0KPiA+ID4g
-DQo+ID4gPiBJZiB0aGUgc2VydmVyIGRvZXMgbm90IGhhdmUgcGVybWFuZW50IHJlYWRkaXIgY29v
-a2llcywgdGhlbiBvdXINCj4gPiBjbGllbnQNCj4gPiA+IGhhcyBuZXZlciBzdXBwb3J0ZWQgaXQg
-YW55d2F5IChub3Igd2lsbCBpdCBldmVyIGRvIHNvKS4gVGhhdCB3aG9sZSANCj4gPiA+ICdjb29r
-aWV2ZXJmJyBSRUFERElSIGJ1bGxzaGl0IGhhcyBuZXZlciBwcm92aWRlZCBhIHdvcmthYmxlIG1v
-ZGVsDQo+ID4gZm9yIGENCj4gPiA+IFBPU0lYIGNsaWVudC4uLg0KPiA+IA0KPiA+IA0KPiA+IFRo
-YW5rcyBUcm9uZCBmb3IgdGhlIGV4cGxhbmF0aW9uLiBGb3JnaXZlIG15IHNsb3duZXNzLiBTbyB5
-b3UgYXJlIA0KPiA+IHNheWluZyB0aGF0IHdpdGgga25mc2QgaXQncyBhY3R1YWxseSBmaWxlc3lz
-dGVtIGRlcGVuZGVudCBhbmQgbWF5YmUgDQo+ID4gdGhlIHJlcG9ydGVycyBkaWQgbm90IGNvbXBh
-cmUgYXBwbGVzLXRvLWFwcGxlcyBhbmQgdGhlIGRpZmZlcmVuY2UgaXMgDQo+ID4gaW4gdGhlIGJl
-aGluZCBmaWxlIHN5c3RlbS4NCj4gPiANCj4gPiBNYXR0IEknbSBzdXJlIFRyb25kIGlzIHJpZ2h0
-IHdpdGggcmVnYXJkIHRvIEdhbmVzaGEsIGJlY2F1c2Ugd2Ugc2VuZCBhIA0KPiA+IHJlYWRkaXIg
-aW5kZXggYW5kIGEgY29va2lldmVyZiwgd2hpY2ggd2lsbCBjaGFuZ2UgYWZ0ZXIgdW5saW5rLiBT
-aW5jZSANCj4gPiB0aGUgYXBwbGljYXRpb24gZG9lcyBub3QgY2FsbCBvcGVuZGlyIGFnYWluIHRo
-ZSBjbGllbnQgd2lsbCBzZW5kIHRoZSANCj4gPiBvbGQgY29va2llcywgd2hpY2ggaXMgbm93IGEg
-ZGlmZmVyZW50IGZpbGUgb3IgbWlnaHQgZ2V0IG91dC1vZi1ib3VuZHMgDQo+ID4gZm9yIEdhbmVz
-aGEuDQo+ID4gDQo+ID4gTGV0IG1lIHRoaW5rIGFib3V0IGl0IGEgYml0LiBJJ20gc3VyZSB3ZSBj
-YW4gc2VuZCBhIEJldHRlciA2NGJpdCANCj4gPiBjb29raWUsIHdoaWNoIHdpbGwgYmUgbW9yZSBw
-ZXJzaXN0ZW50LCBldmVuIGFjcm9zcyB1bmxpbmtzLg0KPiA+IA0KPiA+ID4gDQo+ID4gPiANCj4g
-PiANCj4gPiANCj4gPiBUaGFua3MNCj4gPiBCb2F6DQo+IA0KPiAtLQ0KPiBNYXR0IEJlbmphbWlu
-DQo+IFRoZSBMaW51eCBCb3gNCj4gMjA2IFNvdXRoIEZpZnRoIEF2ZS4gU3VpdGUgMTUwDQo+IEFu
-biBBcmJvciwgTUkgIDQ4MTA0DQo+IA0KPiBodHRwOi8vbGludXhib3guY29tDQo+IA0KPiB0ZWwu
-IDczNC03NjEtNDY4OQ0KPiBmYXguIDczNC03NjktODkzOA0KPiBjZWwuIDczNC0yMTYtNTMwOQ0K
-PiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5z
-dWJzY3JpYmUgbGludXgtbmZzIiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21v
-QHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJu
-ZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/gss_oids.c       |    3 -
+ utils/gssd/gss_oids.h       |    1 -
+ utils/gssd/gssd.h           |    5 +--
+ utils/gssd/gssd_main_loop.c |   11 -----
+ utils/gssd/gssd_proc.c      |  106 +-----------------------------------------
+ 5 files changed, 4 insertions(+), 122 deletions(-)
+
+diff --git a/utils/gssd/gss_oids.c b/utils/gssd/gss_oids.c
+index a59c4a6428859ea0229252b063e0bc14164df63d..4362de26fbdcf7d23288da1b712fbd1ab0b4607b 100644
+--- a/utils/gssd/gss_oids.c
++++ b/utils/gssd/gss_oids.c
+@@ -38,6 +38,3 @@
+ /* from kerberos source, gssapi_krb5.c */
+ gss_OID_desc krb5oid =
+    {9, "\052\206\110\206\367\022\001\002\002"};
+-
+-gss_OID_desc spkm3oid =
+-   {7, "\053\006\001\005\005\001\003"};
+diff --git a/utils/gssd/gss_oids.h b/utils/gssd/gss_oids.h
+index 8b0a35219430ffa7711bbbdbc7ff3c37ff4ff9a0..fde8532ab3b480e5c43cf5a91abc9265b96d80aa 100644
+--- a/utils/gssd/gss_oids.h
++++ b/utils/gssd/gss_oids.h
+@@ -34,7 +34,6 @@
+ #include <sys/types.h>
+ 
+ extern gss_OID_desc krb5oid;
+-extern gss_OID_desc spkm3oid;
+ 
+ #ifndef g_OID_equal
+ #define g_OID_equal(o1,o2) \
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index b1b57938c3490802ea659a5e54ca72218a806222..40f824cd19c2056f160c44764acb039a40df8f92 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -55,7 +55,7 @@
+ /*
+  * The gss mechanisms that we can handle
+  */
+-enum {AUTHTYPE_KRB5, AUTHTYPE_SPKM3, AUTHTYPE_LIPKEY};
++enum {AUTHTYPE_KRB5, AUTHTYPE_LIPKEY};
+ 
+ 
+ 
+@@ -80,8 +80,6 @@ struct clnt_info {
+ 	char			*protocol;
+ 	int			krb5_fd;
+ 	int			krb5_poll_index;
+-	int			spkm3_fd;
+-	int			spkm3_poll_index;
+ 	int                     gssd_fd;
+ 	int                     gssd_poll_index;
+ 	struct sockaddr_storage addr;
+@@ -98,7 +96,6 @@ struct topdirs_info {
+ void init_client_list(void);
+ int update_client_list(void);
+ void handle_krb5_upcall(struct clnt_info *clp);
+-void handle_spkm3_upcall(struct clnt_info *clp);
+ void handle_gssd_upcall(struct clnt_info *clp);
+ void gssd_run(void);
+ 
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index b06c223294f2f0aadc928ba8d73d6b711e164ba0..cec09ea5b218fa6d586f5d5798e0280d4dde4125 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -98,17 +98,6 @@ scan_poll_results(int ret)
+ 			if (!ret)
+ 				break;
+ 		}
+-		i = clp->spkm3_poll_index;
+-		if (i >= 0 && pollarray[i].revents) {
+-			if (pollarray[i].revents & POLLHUP)
+-				dir_changed = 1;
+-			if (pollarray[i].revents & POLLIN)
+-				handle_spkm3_upcall(clp);
+-			pollarray[clp->spkm3_poll_index].revents = 0;
+-			ret--;
+-			if (!ret)
+-				break;
+-		}
+ 	}
+ };
+ 
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 41328c9b18483e8f7f5d9a2edc8eb9bce9465e30..a51dbaeba3d06e8414356573418bf02b36a15d6c 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -299,15 +299,11 @@ destroy_client(struct clnt_info *clp)
+ 	if (clp->krb5_poll_index != -1)
+ 		memset(&pollarray[clp->krb5_poll_index], 0,
+ 					sizeof(struct pollfd));
+-	if (clp->spkm3_poll_index != -1)
+-		memset(&pollarray[clp->spkm3_poll_index], 0,
+-					sizeof(struct pollfd));
+ 	if (clp->gssd_poll_index != -1)
+ 		memset(&pollarray[clp->gssd_poll_index], 0,
+ 					sizeof(struct pollfd));
+ 	if (clp->dir_fd != -1) close(clp->dir_fd);
+ 	if (clp->krb5_fd != -1) close(clp->krb5_fd);
+-	if (clp->spkm3_fd != -1) close(clp->spkm3_fd);
+ 	if (clp->gssd_fd != -1) close(clp->gssd_fd);
+ 	free(clp->dirname);
+ 	free(clp->servicename);
+@@ -327,10 +323,8 @@ insert_new_clnt(void)
+ 		goto out;
+ 	}
+ 	clp->krb5_poll_index = -1;
+-	clp->spkm3_poll_index = -1;
+ 	clp->gssd_poll_index = -1;
+ 	clp->krb5_fd = -1;
+-	clp->spkm3_fd = -1;
+ 	clp->gssd_fd = -1;
+ 	clp->dir_fd = -1;
+ 
+@@ -355,30 +349,22 @@ process_clnt_dir_files(struct clnt_info * clp)
+ 			snprintf(name, sizeof(name), "%s/krb5", clp->dirname);
+ 			clp->krb5_fd = open(name, O_RDWR);
+ 		}
+-		if (clp->spkm3_fd == -1) {
+-			snprintf(name, sizeof(name), "%s/spkm3", clp->dirname);
+-			clp->spkm3_fd = open(name, O_RDWR);
+-		}
+ 
+ 		/* If we opened a gss-specific pipe, let's try opening
+ 		 * the new upcall pipe again. If we succeed, close
+ 		 * gss-specific pipe(s).
+ 		 */
+-		if (clp->krb5_fd != -1 || clp->spkm3_fd != -1) {
++		if (clp->krb5_fd != -1) {
+ 			clp->gssd_fd = open(gname, O_RDWR);
+ 			if (clp->gssd_fd != -1) {
+ 				if (clp->krb5_fd != -1)
+ 					close(clp->krb5_fd);
+ 				clp->krb5_fd = -1;
+-				if (clp->spkm3_fd != -1)
+-					close(clp->spkm3_fd);
+-				clp->spkm3_fd = -1;
+ 			}
+ 		}
+ 	}
+ 
+-	if ((clp->krb5_fd == -1) && (clp->spkm3_fd == -1) &&
+-			(clp->gssd_fd == -1))
++	if ((clp->krb5_fd == -1) && (clp->gssd_fd == -1))
+ 		return -1;
+ 	snprintf(info_file_name, sizeof(info_file_name), "%s/info",
+ 			clp->dirname);
+@@ -431,15 +417,6 @@ insert_clnt_poll(struct clnt_info *clp)
+ 		pollarray[clp->krb5_poll_index].events |= POLLIN;
+ 	}
+ 
+-	if ((clp->spkm3_fd != -1) && (clp->spkm3_poll_index == -1)) {
+-		if (get_poll_index(&clp->spkm3_poll_index)) {
+-			printerr(0, "ERROR: Too many spkm3 clients\n");
+-			return -1;
+-		}
+-		pollarray[clp->spkm3_poll_index].fd = clp->spkm3_fd;
+-		pollarray[clp->spkm3_poll_index].events |= POLLIN;
+-	}
+-
+ 	return 0;
+ }
+ 
+@@ -839,13 +816,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 		sec.mech = (gss_OID)&krb5oid;
+ 		sec.req_flags = GSS_C_MUTUAL_FLAG;
+ 	}
+-	else if (authtype == AUTHTYPE_SPKM3) {
+-		sec.mech = (gss_OID)&spkm3oid;
+-		/* XXX sec.req_flags = GSS_C_ANON_FLAG;
+-		 * Need a way to switch....
+-		 */
+-		sec.req_flags = GSS_C_MUTUAL_FLAG;
+-	}
+ 	else {
+ 		printerr(0, "ERROR: Invalid authentication type (%d) "
+ 			"in create_auth_rpc_client\n", authtype);
+@@ -919,9 +889,8 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
+ 	if (!auth) {
+ 		/* Our caller should print appropriate message */
+-		printerr(2, "WARNING: Failed to create %s context for "
++		printerr(2, "WARNING: Failed to create krb5 context for "
+ 			    "user with uid %d for server %s\n",
+-			(authtype == AUTHTYPE_KRB5 ? "krb5":"spkm3"),
+ 			 uid, clp->servername);
+ 		goto out_fail;
+ 	}
+@@ -1103,59 +1072,6 @@ out_return_error:
+ 	goto out;
+ }
+ 
+-/*
+- * this code uses the userland rpcsec gss library to create an spkm3
+- * context on behalf of the kernel
+- */
+-static void
+-process_spkm3_upcall(struct clnt_info *clp, uid_t uid, int fd)
+-{
+-	CLIENT			*rpc_clnt = NULL;
+-	AUTH			*auth = NULL;
+-	struct authgss_private_data pd;
+-	gss_buffer_desc		token;
+-
+-	printerr(2, "handling spkm3 upcall (%s)\n", clp->dirname);
+-
+-	token.length = 0;
+-	token.value = NULL;
+-
+-	if (create_auth_rpc_client(clp, &rpc_clnt, &auth, uid, AUTHTYPE_SPKM3)) {
+-		printerr(0, "WARNING: Failed to create spkm3 context for "
+-			    "user with uid %d\n", uid);
+-		goto out_return_error;
+-	}
+-
+-	if (!authgss_get_private_data(auth, &pd)) {
+-		printerr(0, "WARNING: Failed to obtain authentication "
+-			    "data for user with uid %d for server %s\n",
+-			 uid, clp->servername);
+-		goto out_return_error;
+-	}
+-
+-	if (serialize_context_for_kernel(pd.pd_ctx, &token, &spkm3oid, NULL)) {
+-		printerr(0, "WARNING: Failed to serialize spkm3 context for "
+-			    "user with uid %d for server\n",
+-			 uid, clp->servername);
+-		goto out_return_error;
+-	}
+-
+-	do_downcall(fd, uid, &pd, &token);
+-
+-out:
+-	if (token.value)
+-		free(token.value);
+-	if (auth)
+-		AUTH_DESTROY(auth);
+-	if (rpc_clnt)
+-		clnt_destroy(rpc_clnt);
+-	return;
+-
+-out_return_error:
+-	do_error_downcall(fd, uid, -1);
+-	goto out;
+-}
+-
+ void
+ handle_krb5_upcall(struct clnt_info *clp)
+ {
+@@ -1171,20 +1087,6 @@ handle_krb5_upcall(struct clnt_info *clp)
+ }
+ 
+ void
+-handle_spkm3_upcall(struct clnt_info *clp)
+-{
+-	uid_t			uid;
+-
+-	if (read(clp->spkm3_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+-		printerr(0, "WARNING: failed reading uid from spkm3 "
+-			 "upcall pipe: %s\n", strerror(errno));
+-		return;
+-	}
+-
+-	return process_spkm3_upcall(clp, uid, clp->spkm3_fd);
+-}
+-
+-void
+ handle_gssd_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+@@ -1292,8 +1194,6 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 
+ 	if (strcmp(mech, "krb5") == 0)
+ 		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
+-	else if (strcmp(mech, "spkm3") == 0)
+-		process_spkm3_upcall(clp, uid, clp->gssd_fd);
+ 	else
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "received unknown gss mech '%s'\n", mech);
+-- 
+1.7.7.6
+
