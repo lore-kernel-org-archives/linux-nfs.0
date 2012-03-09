@@ -1,138 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18904 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47728 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755533Ab2CEQuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 11:50:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/16] NFSv4: Add a helper for encoding NFSv4 sequence ids
-Date: Mon,  5 Mar 2012 11:50:16 -0500
-Message-Id: <1330966221-17164-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330966221-17164-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-9-git-send-email-Trond.Myklebust@netapp.com>
- <1330966221-17164-10-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755862Ab2CIW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Mar 2012 17:29:37 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/7] locks: implement delegations
+Date: Fri,  9 Mar 2012 17:29:30 -0500
+Message-Id: <1331332174-22621-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <20120309222114.GA22423@fieldses.org>
+References: <20120309222114.GA22423@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 files changed, 28 insertions(+), 19 deletions(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d6e8306..3b38ca5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -901,6 +901,20 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
- 	xdr_encode_opaque(p, str, len);
+Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
+type.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c         |   49 +++++++++++++++++++++++++++++++++++++++----------
+ include/linux/fs.h |   18 +++++++++++++++---
+ 2 files changed, 54 insertions(+), 13 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index ea07a98..29f911c 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1185,28 +1185,40 @@ static void time_out_leases(struct inode *inode)
+ 	}
  }
  
-+static void encode_uint32(struct xdr_stream *xdr, u32 n)
++static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
 +{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(n);
++	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
++		return false;
++	return locks_conflict(breaker, lease);
 +}
 +
-+static void encode_nfs4_seqid(struct xdr_stream *xdr,
-+		const struct nfs_seqid *seqid)
-+{
-+	encode_uint32(xdr, seqid->sequence->counter);
-+}
-+
- static void encode_compound_hdr(struct xdr_stream *xdr,
- 				struct rpc_rqst *req,
- 				struct compound_hdr *hdr)
-@@ -1074,9 +1088,9 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8);
--	*p++ = cpu_to_be32(OP_CLOSE);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_CLOSE);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_nfs4_stateid(xdr, arg->stateid);
- 	hdr->nops++;
- 	hdr->replen += decode_close_maxsz;
-@@ -1264,17 +1278,14 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
- 	p = xdr_encode_hyper(p, nfs4_lock_length(args->fl));
- 	*p = cpu_to_be32(args->new_lock_owner);
- 	if (args->new_lock_owner){
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->open_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->open_seqid);
- 		encode_nfs4_stateid(xdr, args->open_stateid);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->lock_seqid);
- 		encode_lockowner(xdr, &args->lock_owner);
- 	}
- 	else {
- 		encode_nfs4_stateid(xdr, args->lock_stateid);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->lock_seqid);
- 	}
- 	hdr->nops++;
- 	hdr->replen += decode_lock_maxsz;
-@@ -1298,10 +1309,10 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 12);
-+	p = reserve_space(xdr, 8);
- 	*p++ = cpu_to_be32(OP_LOCKU);
--	*p++ = cpu_to_be32(nfs4_lock_type(args->fl, 0));
--	*p = cpu_to_be32(args->seqid->sequence->counter);
-+	*p = cpu_to_be32(nfs4_lock_type(args->fl, 0));
-+	encode_nfs4_seqid(xdr, args->seqid);
- 	encode_nfs4_stateid(xdr, args->stateid);
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, args->fl->fl_start);
-@@ -1360,9 +1371,9 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
-  * opcode 4, seqid 4, share_access 4, share_deny 4, clientid 8, ownerlen 4,
-  * owner 4 = 32
+ /**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+- *	@mode: the open mode (read or write)
++ *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
++ *	    break all leases
++ *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
++ *	    only delegations
+  *
+  *	break_lease (inlined for speed) has checked there already is at least
+  *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+  *	a call to open() or truncate().  This function can sleep unless you
+  *	specified %O_NONBLOCK to your open().
   */
--	p = reserve_space(xdr, 8);
--	*p++ = cpu_to_be32(OP_OPEN);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_OPEN);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- 	p = reserve_space(xdr, 32);
- 	p = xdr_encode_hyper(p, arg->clientid);
-@@ -1496,8 +1507,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_OPEN_CONFIRM);
- 	encode_nfs4_stateid(xdr, arg->stateid);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	hdr->nops++;
- 	hdr->replen += decode_open_confirm_maxsz;
+-int __break_lease(struct inode *inode, unsigned int mode)
++int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	int error = 0;
+ 	struct file_lock *new_fl, *flock;
+ 	struct file_lock *fl;
+ 	unsigned long break_time;
+ 	int i_have_this_lease = 0;
++	bool lease_conflict = false;
+ 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
+ 
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+ 		return PTR_ERR(new_fl);
++	new_fl->fl_flags = type;
+ 
+ 	lock_flocks();
+ 
+@@ -1216,13 +1228,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+ 		goto out;
+ 
+-	if (!locks_conflict(flock, new_fl))
++	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (leases_conflict(fl, new_fl)) {
++			lease_conflict = true;
++			if (fl->fl_owner == current->files)
++				i_have_this_lease = 1;
++		}
++	}
++	if (!lease_conflict)
+ 		goto out;
+ 
+-	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+-		if (fl->fl_owner == current->files)
+-			i_have_this_lease = 1;
+-
+ 	break_time = 0;
+ 	if (lease_break_time > 0) {
+ 		break_time = jiffies + lease_break_time * HZ;
+@@ -1231,6 +1246,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	}
+ 
+ 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (!leases_conflict(fl, new_fl))
++			continue;
+ 		if (want_write) {
+ 			if (fl->fl_flags & FL_UNLOCK_PENDING)
+ 				continue;
+@@ -1272,7 +1289,7 @@ restart:
+ 		 */
+ 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+ 				flock = flock->fl_next) {
+-			if (locks_conflict(new_fl, flock))
++			if (leases_conflict(new_fl, flock))
+ 				goto restart;
+ 		}
+ 		error = 0;
+@@ -1352,9 +1369,20 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+ 	int error;
+ 
+ 	lease = *flp;
++	/*
++	 * In the delegation case we need mutual exclusion with
++	 * a number of operations that take the i_mutex.  We trylock
++	 * because delegations are an optional optimization, and if
++	 * there's some chance of a conflict--we'd rather not
++	 * bother, maybe that's a sign this just isn't a good file to
++	 * hand out a delegation on.
++	 */
++	if (is_deleg && !mutex_trylock(&inode->i_mutex))
++		return -EAGAIN;
+ 
+ 	error = -EAGAIN;
+ 	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+@@ -1406,9 +1434,10 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 		goto out;
+ 
+ 	locks_insert_lock(before, lease);
+-	return 0;
+-
++	error = 0;
+ out:
++	if (is_deleg)
++		mutex_unlock(&inode->i_mutex);
+ 	return error;
  }
-@@ -1509,8 +1519,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_OPEN_DOWNGRADE);
- 	encode_nfs4_stateid(xdr, arg->stateid);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- 	hdr->nops++;
- 	hdr->replen += decode_open_downgrade_maxsz;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9d7446e..2cc1adf 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1207,7 +1207,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+-extern int __break_lease(struct inode *inode, unsigned int flags);
++extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+ extern int vfs_setlease(struct file *, long, struct file_lock **);
+@@ -1319,7 +1319,7 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int __break_lease(struct inode *inode, unsigned int mode)
++static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
+ }
+@@ -1972,9 +1972,17 @@ static inline int locks_verify_truncate(struct inode *inode,
+ static inline int break_lease(struct inode *inode, unsigned int mode)
+ {
+ 	if (inode->i_flock)
+-		return __break_lease(inode, mode);
++		return __break_lease(inode, mode, FL_LEASE);
+ 	return 0;
+ }
++
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	if (inode->i_flock)
++		return __break_lease(inode, mode, FL_DELEG);
++	return 0;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2014,6 +2022,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	return 0;
++}
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
 -- 
-1.7.7.6
+1.7.5.4
 
