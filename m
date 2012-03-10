@@ -1,47 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46554 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161913Ab2CST5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 15:57:55 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2JJvsnP024318
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Mar 2012 15:57:54 -0400
-Message-ID: <4F678FBE.8010206@RedHat.com>
-Date: Mon, 19 Mar 2012 15:57:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:49177 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755868Ab2CJCDI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Mar 2012 21:03:08 -0500
+Received: by vcqp1 with SMTP id p1so2020188vcq.19
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Mar 2012 18:03:06 -0800 (PST)
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] Makefile.am: install target in doc/Makefile.am doesn't
- honor sysconfdir
-References: <1332161508-20391-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1332161508-20391-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1331333515.2763.63.camel@lade.trondhjem.org>
+References: <1331222633-2645-1-git-send-email-andros@netapp.com>
+	<CADnza46qMiagwV39sJU7E4AKY0KMFyyHNTAis_+PO-0b8955Yg@mail.gmail.com>
+	<1331333515.2763.63.camel@lade.trondhjem.org>
+Date: Fri, 9 Mar 2012 18:03:06 -0800
+Message-ID: <CADnza4545qkLnZRKcQ0ozacG7F5JK2bEYn2Lgs+C2zhZH_c0wg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFSv4.1 cleanup DS stateid error handling
+From: Fred Isaman <faisaman4@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Mar 9, 2012 at 2:51 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Fri, 2012-03-09 at 14:31 -0800, Fred Isaman wrote:
+>> On Thu, Mar 8, 2012 at 8:03 AM,  <andros@netapp.com> wrote:
+>> > From: Andy Adamson <andros@netapp.com>
+>> >
+>> > The error handler nfs4_state parameter is never NULL in the pNFS case as
+>> > the open_context must carry an nfs_state.
+>> >
+>>
+>>
+>> Note Trond's argument is that with commit the state is avail for the
+>> caller, so it need not be NULL.
+>> But the caller filelayout_commit_done_cb() needs to be adjusted.
+>> Currently commit to ds oopses
+>> due to that.
+>
+> Are you sure? As far as I can see, filelayout_commit_pagelist _does_
+> call nfs_init_commit(), which again sets the data->args.context.
+> Later, filelayout_commit_done_cb calls filelayout_async_handle_error()
+> using the data->args.context->state argument.
+>
+> How is that failing to provide a valid open state argument?
+>
+> --
 
+Gah, sorry.  A rebase of some of my commit changes silently reverted
+it to a NULL argument.  I withdraw my complaint.
 
-On 03/19/2012 08:51 AM, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  doc/Makefile.am |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/doc/Makefile.am b/doc/Makefile.am
-> index cc4fa76..f8c88b5 100644
-> --- a/doc/Makefile.am
-> +++ b/doc/Makefile.am
-> @@ -1,5 +1,5 @@
->  
->  install: install-am
-> -	$(mkinstalldirs) $(DESTDIR)/etc
-> -	cp -p ./etc_netconfig $(DESTDIR)/etc/netconfig
-> -	chmod 0644 $(DESTDIR)/etc/netconfig
-> +	$(mkinstalldirs) $(DESTDIR)/$(sysconfdir)
-> +	cp -p ./etc_netconfig $(DESTDIR)/$(sysconfdir)/netconfig
-> +	chmod 0644 $(DESTDIR)/$(sysconfdir)/netconfig
-Committed...
-
-steved.
+Fred
