@@ -1,197 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.science-computing.de ([193.197.16.30]:27711 "EHLO
-	mx4.science-computing.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756584Ab2CLUML (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 16:12:11 -0400
-Date: Mon, 12 Mar 2012 21:02:21 +0100
-From: Michael Weiser <M.Weiser@science-computing.de>
+Received: from mx2.netapp.com ([216.240.18.37]:47834 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751191Ab2CJRW0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 10 Mar 2012 12:22:26 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: NFSv4 post-1.2.2 nfs-utils client fails to mount from pre-1.2.3
- nfs-utils server
-Message-ID: <20120312200221.GS29573@science-computing.de>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="PNTmBPCT7hxwcZjr"
+Subject: [PATCH] NFSv4.0: Re-establish the callback channel on NFS4ERR_CB_PATHDOWN
+Date: Sat, 10 Mar 2012 12:22:15 -0500
+Message-Id: <1331400135-17242-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When the NFSv4.0 server tells us that it can no-longer talk to us
+on the callback channel, we should attempt a new SETCLIENTID in
+order to re-transmit the callback channel information.
 
---PNTmBPCT7hxwcZjr
-Content-Disposition: inline
-MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Note that as long as we do not change the boot verifier, this is
+a safe procedure; the server is required to keep our state.
 
-Hi,
+Also move the function nfs_handle_cb_pathdown to fs/nfs/nfs4state.c,
+and change the name in order to mark it as being specific to NFSv4.0.
 
-from what I can gather, nfs-utils-1.2.3 introduced support for
-encryption other than Single DES for NFSv4: Previously, gssd would
-proactively limit Kerberos encryption types of session keys to
-des-cbc-crc (and perhaps -md5 and -md4). So while the actual ticket
-might be encrypted using something way stronger, the included session
-key would only be Single DES.
-
-Due to this self-limitation of the client, the server would never get
-anything else than Single DES session keys and therefore needed no
-mechanism of working around the problems caused by stronger session keys
-with a kernel that does not support them.
-
-Beginning with version 1.2.3 of nfs-utils, gssd does no longer limits
-itself to Single DES. Instead, it detects the encryption types supported
-by the *client's* kernel and limits the session key's encryption type to
-those reported as supported. This, however, ignores the fact, that the
-*server's* kernel might not support them. Since the userspace of the
-server (svcgssd) does not check what its kernel supports and has no
-mechanism of renegotiating with the client, it happily accepts stronger
-encryption types and tries to push them into the kernel.
-
-nfs-utils-1.2.4 includes a patch to svcgssd that uses
-/proc/fs/nfsd/supported_encryption_types of newer kernels (2.6.35+ ?) to
-determine the encryption types supported by the server's kernel and uses
-subkey negotiation of current MIT Kerberos versions (1.9.1+) to
-negotiate a possibly weaker encryption type with the client. While this
-is a good solution for future enhancements and backwards compatibility
-from now on it still leaves all the older installations with a problem.
-RHEL5 for example only has MIT Kerberos 1.6 and will therefore most
-likely never benefit from this fix.
-
-A direct workaround is to set the following options in /etc/krb5.conf of
-client and server:
-
-[libdefaults]
-default_tkt_enctypes =3D des-cbc-md5
-permitted_enctypes =3D des-cbc-md5
-
-, add des-cbc-md5 keys to the keytabs of both machines and allow Single
-DES for both machines' principals on the KDC (MS AD 2008r2 in particular
-wants it enabled explicitly). This however not only limits the
-encryption types of session keys but all tickets as well and applies to
-the whole machine not just the NFSv4 service. This has a needlessly high
-security impact on both machines.
-
-I quickly implemented a more self-contained fix that adds an option -l
-to rpc.gssd that effectively reverts it to legacy behaviour: It ignores
-its local kernel's capabilities and uses just Single DES. This option
-could be set in e.g. /etc/sysconfig/nfs:GSSDARGS on all RHEL6 clients
-that need to work with RHEL5 servers. It could possibly be enhanced to
-be configurable on a per-machine basis. Inclusion of this or a similar
-patch would be greatly appreciated.
-
-Obviously this is just a proof-of-concept and still needs some
-polishing. I was just wondering if my reasoning is sound and the
-solution acceptable.
-
-Thanks in advance,
--- =
-
-Michael Weiser                science + computing ag
-Senior Systems Engineer       Geschaeftsstelle Duesseldorf
-                              Martinstrasse 47-55, Haus A
-phone: +49 211 302 708 32     D-40223 Duesseldorf
-fax:   +49 211 302 708 50     www.science-computing.de
--- =
-
-Vorstandsvorsitzender/Chairman of the board of management:
-Gerd-Lothar Leonhart
-Vorstand/Board of Management:
-Dr. Bernd Finkbeiner, Michael Heinrichs, =
-
-Dr. Arno Steitz, Dr. Ingrid Zech
-Vorsitzender des Aufsichtsrats/
-Chairman of the Supervisory Board:
-Philippe Miltin
-Sitz/Registered Office: Tuebingen
-Registergericht/Registration Court: Stuttgart
-Registernummer/Commercial Register No.: HRB 382196
-
---PNTmBPCT7hxwcZjr
-Content-Type: text/x-diff; charset=iso-8859-1
-Content-Disposition: attachment; filename="0001-Add-l-option-to-gssd-to-force-legacy-behaviour.patch"
-
->From bd051cd3cc50d8d4695693c8f2d8cf78935c5711 Mon Sep 17 00:00:00 2001
-From: Michael Weiser <weiser@science-computing.de>
-Date: Mon, 12 Mar 2012 20:43:36 +0100
-Subject: [PATCH] Add -l option to gssd to force legacy behaviour
-
-A new option -l forces gssd to ignore its kernel's crypto capabilities
-and use just the Single DES legacy encryption types to be compatible
-with old servers without re-negotiation functionality.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- utils/gssd/gssd.c      |   12 +++++++++++-
- utils/gssd/krb5_util.c |    6 +++++-
- utils/gssd/krb5_util.h |    1 +
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ fs/nfs/delegation.c |   17 -----------------
+ fs/nfs/delegation.h |    1 -
+ fs/nfs/nfs4state.c  |   18 ++++++++++++++++--
+ 3 files changed, 16 insertions(+), 20 deletions(-)
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index ccadb07..fff9d21 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -100,9 +100,14 @@ main(int argc, char *argv[])
- 	int i;
- 	extern char *optarg;
- 	char *progname;
-+#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+ 	const char *opts = "fvrmnMp:k:d:t:R:l";
-+#else
-+ 	const char *opts = "fvrmnMp:k:d:t:R";
-+#endif
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index e27c097..12de883 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -453,11 +453,6 @@ static void nfs_client_mark_return_all_delegation_types(struct nfs_client *clp,
+ 	rcu_read_unlock();
+ }
  
- 	memset(ccachesearch, 0, sizeof(ccachesearch));
--	while ((opt = getopt(argc, argv, "fvrmnMp:k:d:t:R:")) != -1) {
-+	while ((opt = getopt(argc, argv, opts)) != -1) {
- 		switch (opt) {
- 			case 'f':
- 				fg = 1;
-@@ -143,6 +148,11 @@ main(int argc, char *argv[])
- 			case 'R':
- 				preferred_realm = strdup(optarg);
- 				break;
-+#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+			case 'l':
-+				limit_to_legacy_enctypes = 1;
-+				break;
-+#endif
- 			default:
- 				usage(argv[0]);
- 				break;
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 4b13fa1..887d118 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -129,6 +129,10 @@
- /* Global list of principals/cache file names for machine credentials */
- struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+-static void nfs_client_mark_return_all_delegations(struct nfs_client *clp)
+-{
+-	nfs_client_mark_return_all_delegation_types(clp, FMODE_READ|FMODE_WRITE);
+-}
+-
+ static void nfs_delegation_run_state_manager(struct nfs_client *clp)
+ {
+ 	if (test_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state))
+@@ -498,18 +493,6 @@ void nfs_expire_all_delegations(struct nfs_client *clp)
+ 	nfs_expire_all_delegation_types(clp, FMODE_READ|FMODE_WRITE);
+ }
  
-+#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+int limit_to_legacy_enctypes = 0;
-+#endif
+-/**
+- * nfs_handle_cb_pathdown - return all delegations after NFS4ERR_CB_PATH_DOWN
+- * @clp: client to process
+- *
+- */
+-void nfs_handle_cb_pathdown(struct nfs_client *clp)
+-{
+-	if (clp == NULL)
+-		return;
+-	nfs_client_mark_return_all_delegations(clp);
+-}
+-
+ static void nfs_mark_return_unreferenced_delegations(struct nfs_server *server)
+ {
+ 	struct nfs_delegation *delegation;
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index e193012..cd6a7a8 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -42,7 +42,6 @@ void nfs_super_return_all_delegations(struct super_block *sb);
+ void nfs_expire_all_delegations(struct nfs_client *clp);
+ void nfs_expire_all_delegation_types(struct nfs_client *clp, fmode_t flags);
+ void nfs_expire_unreferenced_delegations(struct nfs_client *clp);
+-void nfs_handle_cb_pathdown(struct nfs_client *clp);
+ int nfs_client_return_marked_delegations(struct nfs_client *clp);
+ int nfs_delegations_present(struct nfs_client *clp);
+ void nfs_remove_bad_delegation(struct inode *inode);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index de44804..5fa43cd 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1097,9 +1097,23 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
+ }
+ EXPORT_SYMBOL_GPL(nfs4_schedule_lease_recovery);
+ 
++/*
++ * nfs40_handle_cb_pathdown - return all delegations after NFS4ERR_CB_PATH_DOWN
++ * @clp: client to process
++ *
++ * Set the NFS4CLNT_LEASE_EXPIRED state in order to force a
++ * resend of the SETCLIENTID and hence re-establish the
++ * callback channel. Then return all existing delegations.
++ */
++static void nfs40_handle_cb_pathdown(struct nfs_client *clp)
++{
++	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++	nfs_expire_all_delegations(clp);
++}
 +
- /*==========================*/
- /*===  Internal routines ===*/
- /*==========================*/
-@@ -1342,7 +1346,7 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
- 	 * If we failed for any reason to produce global
- 	 * list of supported enctypes, use local default here.
- 	 */
--	if (krb5_enctypes == NULL)
-+	if (krb5_enctypes == NULL || limit_to_legacy_enctypes)
- 		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
- 					&krb5oid, num_enctypes, enctypes);
- 	else
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index b42b91e..cd6e107 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -36,6 +36,7 @@ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
- void gssd_k5_get_default_realm(char **def_realm);
+ void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
+ {
+-	nfs_handle_cb_pathdown(clp);
++	nfs40_handle_cb_pathdown(clp);
+ 	nfs4_schedule_state_manager(clp);
+ }
  
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+extern int limit_to_legacy_enctypes;
- int limit_krb5_enctypes(struct rpc_gss_sec *sec);
- #endif
- 
+@@ -1444,7 +1458,7 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
+ 		case 0:
+ 			break;
+ 		case -NFS4ERR_CB_PATH_DOWN:
+-			nfs_handle_cb_pathdown(clp);
++			nfs40_handle_cb_pathdown(clp);
+ 			break;
+ 		case -NFS4ERR_NO_GRACE:
+ 			nfs4_state_end_reclaim_reboot(clp);
 -- 
-1.7.3.4
-
-
---PNTmBPCT7hxwcZjr--
+1.7.7.6
 
