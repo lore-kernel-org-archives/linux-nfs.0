@@ -1,119 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:36864 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760510Ab2CUVf1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 17:35:27 -0400
-Subject: Re: [PATCH] RFC: export options for junctions
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120321212937.GG12309@fieldses.org>
-Date: Wed, 21 Mar 2012 17:35:17 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com>
-References: <20120302195451.18167.81861.stgit@degas.1015granger.net> <20120320195607.GD1431@fieldses.org> <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com> <20120321212937.GG12309@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:50307 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751082Ab2CJRWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 10 Mar 2012 12:22:25 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/2] NFSv4: Clean up nfs4_select_rw_stateid()
+Date: Sat, 10 Mar 2012 12:21:45 -0500
+Message-Id: <1331400105-17204-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1331400105-17204-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1331400105-17204-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Ensure that we select delegation stateids first, then
+lock stateids and then open stateids.
 
-On Mar 21, 2012, at 5:29 PM, J. Bruce Fields wrote:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+v2: Simplify the mode arguments. Use either FMODE_READ or FMODE_WRITE
+    depending on whether we're reading or writing.
 
-> On Wed, Mar 21, 2012 at 05:11:40PM -0400, Chuck Lever wrote:
->> Hi-
->> 
->> On Mar 20, 2012, at 3:56 PM, J. Bruce Fields wrote:
->> 
->>> On Fri, Mar 02, 2012 at 02:54:51PM -0500, Chuck Lever wrote:
->>>> At Connectathon, I ran my FedFS-enabled client in a guest environment
->>>> with NAT networking.  This made the source port for my NFS connections
->>>> unprivileged.
->>>> 
->>>> Attempting to access a junction on my test server failed with a
->>>> "client insecure" error on the server, even if I specified the
->>>> "insecure" export option on the parent export.  I added "insecure" to
->>>> the default junction export options, and this fixed the problem.
->>>> 
->>>> Bruce suggested, however, that the correct way to address this is to
->>>> have junctions inherit the export options of their parent.  I don't
->>>> see a direct way to do this, so I'm posting this patch as a
->>>> conversation starter.
->>> 
->>> I think you want to do something like the search in
->>> nfs-utils/utils/mountd/cache.c:lookup_export()--look for the export with
->>> the longest matching path, and copy options from that.
->> 
->> This still looks hopelessly complex.
-> 
-> I bet there's an easy way to do it if we just modify the right code.
-> Remind me where your nfs-utils patches live, and maybe I could take a
-> look?
+ fs/nfs/nfs4_fs.h   |    3 ++-
+ fs/nfs/nfs4proc.c  |    8 +++++---
+ fs/nfs/nfs4state.c |   45 +++++++++++++++++++++++++++++++++------------
+ fs/nfs/nfs4xdr.c   |   13 +++++++++----
+ 4 files changed, 49 insertions(+), 20 deletions(-)
 
-I admit to not being at all familiar with mountd's export cache, so I simply haven't found anything that appears to do what is needed.
-
-Steve has already taken the basic junction support patch, so you can just grab a copy of the current nfs-utils git repo.  Junction supported was added with commit ab74900f (according to my copy of his repo).
-
-Thanks very much for your time.
-
-> --b.
-> 
->> 
->>  1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
->> 
->>  2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
->> 
->>  3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
->> 
->>  4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
->> 
->> For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
->> 
->> Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
->> 
->>> --b.
->>> 
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> 
->>>> utils/mountd/cache.c |    2 +-
->>>> 1 files changed, 1 insertions(+), 1 deletions(-)
->>>> 
->>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
->>>> index ac9cdbd..35bc2e9 100644
->>>> --- a/utils/mountd/cache.c
->>>> +++ b/utils/mountd/cache.c
->>>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
->>>> 			ptr += len;
->>>> 		} else {
->>>> 			if (last_path == NULL)
->>>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
->>>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
->>>> 							rootpath, server);
->>>> 			else
->>>> 				len = snprintf(ptr, remaining, ":%s@%s",
->>>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index d1989e3..b47bdb9 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -330,7 +330,8 @@ extern void nfs41_handle_server_scope(struct nfs_client *,
+ 				      struct server_scope **);
+ extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
+ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+-extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t, pid_t);
++extern void nfs4_select_rw_stateid(nfs4_stateid *, struct nfs4_state *,
++		fmode_t, fl_owner_t, pid_t);
+ 
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3578ad3..3bf5593 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1929,10 +1929,12 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 
+ 	nfs_fattr_init(fattr);
+ 
+-	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, FMODE_WRITE)) {
++	if (state != NULL) {
++		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
++				current->files, current->tgid);
++	} else if (nfs4_copy_delegation_stateid(&arg.stateid, inode,
++				FMODE_WRITE)) {
+ 		/* Use that stateid */
+-	} else if (state != NULL) {
+-		nfs4_select_rw_stateid(&arg.stateid, state, current->files, current->tgid);
+ 	} else
+ 		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 7adc46b..de44804 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -886,28 +886,49 @@ int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl)
+ 	return 0;
+ }
+ 
+-/*
+- * Byte-range lock aware utility to initialize the stateid of read/write
+- * requests.
+- */
+-void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state, fl_owner_t fl_owner, pid_t fl_pid)
++static bool nfs4_copy_lock_stateid(nfs4_stateid *dst, struct nfs4_state *state,
++		fl_owner_t fl_owner, pid_t fl_pid)
+ {
+ 	struct nfs4_lock_state *lsp;
+-	int seq;
++	bool ret = false;
+ 
+-	do {
+-		seq = read_seqbegin(&state->seqlock);
+-		nfs4_stateid_copy(dst, &state->stateid);
+-	} while (read_seqretry(&state->seqlock, seq));
+ 	if (test_bit(LK_STATE_IN_USE, &state->flags) == 0)
+-		return;
++		goto out;
+ 
+ 	spin_lock(&state->state_lock);
+ 	lsp = __nfs4_find_lock_state(state, fl_owner, fl_pid, NFS4_ANY_LOCK_TYPE);
+-	if (lsp != NULL && (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
++	if (lsp != NULL && (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0) {
+ 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
++		ret = true;
++	}
+ 	spin_unlock(&state->state_lock);
+ 	nfs4_put_lock_state(lsp);
++out:
++	return ret;
++}
++
++static void nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
++{
++	int seq;
++
++	do {
++		seq = read_seqbegin(&state->seqlock);
++		nfs4_stateid_copy(dst, &state->stateid);
++	} while (read_seqretry(&state->seqlock, seq));
++}
++
++/*
++ * Byte-range lock aware utility to initialize the stateid of read/write
++ * requests.
++ */
++void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
++		fmode_t fmode, fl_owner_t fl_owner, pid_t fl_pid)
++{
++	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
++		return;
++	if (nfs4_copy_lock_stateid(dst, state, fl_owner, fl_pid))
++		return;
++	nfs4_copy_open_stateid(dst, state);
+ }
+ 
+ struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e4bb8e6..f7e064d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1491,12 +1491,17 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
+ }
+ 
+-static void encode_open_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
++static void encode_open_stateid(struct xdr_stream *xdr,
++		const struct nfs_open_context *ctx,
++		const struct nfs_lock_context *l_ctx,
++		fmode_t fmode,
++		int zero_seqid)
+ {
+ 	nfs4_stateid stateid;
+ 
+ 	if (ctx->state != NULL) {
+-		nfs4_select_rw_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		nfs4_select_rw_stateid(&stateid, ctx->state,
++				fmode, l_ctx->lockowner, l_ctx->pid);
+ 		if (zero_seqid)
+ 			stateid.seqid = 0;
+ 		encode_nfs4_stateid(xdr, &stateid);
+@@ -1510,7 +1515,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ 
+ 	encode_op_hdr(xdr, OP_READ, decode_read_maxsz, hdr);
+ 	encode_open_stateid(xdr, args->context, args->lock_context,
+-		       hdr->minorversion);
++			FMODE_READ, hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+@@ -1648,7 +1653,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 
+ 	encode_op_hdr(xdr, OP_WRITE, decode_write_maxsz, hdr);
+ 	encode_open_stateid(xdr, args->context, args->lock_context,
+-		       hdr->minorversion);
++			FMODE_WRITE, hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->offset);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
