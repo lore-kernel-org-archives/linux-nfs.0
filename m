@@ -1,59 +1,176 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1025 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44919 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758066Ab2CFBe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 20:34:58 -0500
-Message-ID: <4F5569C5.1000100@RedHat.com>
-Date: Mon, 05 Mar 2012 20:35:01 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-References: <1330976165-19849-1-git-send-email-steved@redhat.com>   <1330976165-19849-2-git-send-email-steved@redhat.com>   <20120305212015.GA21904@us.ibm.com> <4F5559EA.7010206@RedHat.com>  <1330993903.5407.3.camel@lade.trondhjem.org> <4F556007.2030603@RedHat.com> <1330995896.5407.8.camel@lade.trondhjem.org>
-In-Reply-To: <1330995896.5407.8.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1751734Ab2CKWVL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Mar 2012 18:21:11 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix a few sparse warnings
+Date: Sun, 11 Mar 2012 18:21:04 -0400
+Message-Id: <1331504464-3594-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+net/sunrpc/svcsock.c:412:22: warning: incorrect type in assignment
+(different address spaces)
+ - svc_partial_recvfrom now takes a struct kvec, so the variable
+   save_iovbase needs to be an ordinary (void *)
 
+Make a bunch of variables in net/sunrpc/xprtsock.c static
 
-On 03/05/2012 08:04 PM, Myklebust, Trond wrote:
->>> Is there any reason why we actually care about checking the crap
->>> in /etc/mtab on umount?
->>>
->> Yeah... its called backwards compatibility with older distros...
->> Believe, if I could bury mtab I would... in a New York minute! 
->> I just don't see it happening... 
-> 
-> Yes, but despite all your work, you are just replacing one broken model
-> by another.
->
-> 
-> At least with the current code, they can _see_ that the model is broken
-> and have an immediate incentive to move to the
-> mtab-is-a-symlink-to-/proc/mounts based model. The latter is in any case
-> the only one that is valid in the mount-namespace based world in which
-> we've been living for the past 5 years or so...
-> 
-I do not disagree with what you are saying... The fact the code/model
-is broken is unarguably true... Relying on info in the mtab verses 
-/proc/mounts is completely brain dead... But those bits are on the 
-street and need to be fixed... So the question is how to fix
-them...
+Fix a couple of "warning: symbol 'foo' was not declared. Should it be
+static?" reports.
 
-Sending out a patch that symbolically links mtab to /proc/mounts
-would solve this entire problem! But I just can't make major change
-like that in established worlds... Who know what people use mtab
-for... I certainly don't. Changing mtab to read-only is recipe for
-disaster... IMHO... 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/svcauth.h      |    3 +++
+ include/linux/sunrpc/xprtsock.h     |   12 ------------
+ net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_seal.c |    2 +-
+ net/sunrpc/backchannel_rqst.c       |    1 +
+ net/sunrpc/rpc_pipe.c               |    2 +-
+ net/sunrpc/sunrpc_syms.c            |    3 ---
+ net/sunrpc/svcsock.c                |    2 +-
+ net/sunrpc/xprtsock.c               |   10 +++++-----
+ 9 files changed, 13 insertions(+), 24 deletions(-)
 
-Now if we don't want to take a patch like this in upstream 
-that's a different story... This patch is basically meaningless 
-when  it comes to new Linux distros... I'm ok with that..
-But I do think its wise for us to at least try to be somewhat
-backwards compatible....
-
-steved.
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index 25d333c..fec14a8 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -135,6 +135,9 @@ extern void svcauth_unix_purge(void);
+ extern void svcauth_unix_info_release(struct svc_xprt *xpt);
+ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
  
++extern int unix_gid_cache_create(struct net *net);
++extern int unix_gid_cache_destroy(struct net *net);
++
+ static inline unsigned long hash_str(char *name, int bits)
+ {
+ 	unsigned long hash = 0;
+diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
+index 3f14a02..1ad36cc 100644
+--- a/include/linux/sunrpc/xprtsock.h
++++ b/include/linux/sunrpc/xprtsock.h
+@@ -12,18 +12,6 @@
+ int		init_socket_xprt(void);
+ void		cleanup_socket_xprt(void);
+ 
+-/*
+- * RPC slot table sizes for UDP, TCP transports
+- */
+-extern unsigned int xprt_udp_slot_table_entries;
+-extern unsigned int xprt_tcp_slot_table_entries;
+-
+-/*
+- * Parameters for choosing a free port
+- */
+-extern unsigned int xprt_min_resvport;
+-extern unsigned int xprt_max_resvport;
+-
+ #define RPC_MIN_RESVPORT	(1U)
+ #define RPC_MAX_RESVPORT	(65535U)
+ #define RPC_DEF_MIN_RESVPORT	(665U)
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 8c67890..8eff8c3 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -344,7 +344,7 @@ out_err:
+ 	return PTR_ERR(p);
+ }
+ 
+-struct crypto_blkcipher *
++static struct crypto_blkcipher *
+ context_v2_alloc_cipher(struct krb5_ctx *ctx, const char *cname, u8 *key)
+ {
+ 	struct crypto_blkcipher *cp;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index d7941ea..62ae327 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -159,7 +159,7 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
+ }
+ 
+-u32
++static u32
+ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 		struct xdr_netobj *token)
+ {
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 3ad435a..2805a30 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -25,6 +25,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <linux/slab.h>
+ #include <linux/sunrpc/xprt.h>
+ #include <linux/export.h>
++#include <sunrpc/bc_xprt.h>
+ 
+ #ifdef RPC_DEBUG
+ #define RPCDBG_FACILITY	RPCDBG_TRANS
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 7d96e3c..8584ec0 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1149,7 +1149,7 @@ rpc_mount(struct file_system_type *fs_type,
+ 	return mount_ns(fs_type, flags, current->nsproxy->net_ns, rpc_fill_super);
+ }
+ 
+-void rpc_kill_sb(struct super_block *sb)
++static void rpc_kill_sb(struct super_block *sb)
+ {
+ 	struct net *net = sb->s_fs_info;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 21d106e..8adfc88 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -27,9 +27,6 @@
+ int sunrpc_net_id;
+ EXPORT_SYMBOL_GPL(sunrpc_net_id);
+ 
+-extern int unix_gid_cache_create(struct net *net);
+-extern int unix_gid_cache_destroy(struct net *net);
+-
+ static __net_init int sunrpc_init_net(struct net *net)
+ {
+ 	int err;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e088b16..40ae884 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -396,7 +396,7 @@ static int svc_partial_recvfrom(struct svc_rqst *rqstp,
+ 				int buflen, unsigned int base)
+ {
+ 	size_t save_iovlen;
+-	void __user *save_iovbase;
++	void *save_iovbase;
+ 	unsigned int i;
+ 	int ret;
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 4c8281d..92bc518 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -53,12 +53,12 @@ static void xs_close(struct rpc_xprt *xprt);
+ /*
+  * xprtsock tunables
+  */
+-unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
+-unsigned int xprt_tcp_slot_table_entries = RPC_MIN_SLOT_TABLE;
+-unsigned int xprt_max_tcp_slot_table_entries = RPC_MAX_SLOT_TABLE;
++static unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
++static unsigned int xprt_tcp_slot_table_entries = RPC_MIN_SLOT_TABLE;
++static unsigned int xprt_max_tcp_slot_table_entries = RPC_MAX_SLOT_TABLE;
+ 
+-unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
+-unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
++static unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
++static unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
+ 
+ #define XS_TCP_LINGER_TO	(15U * HZ)
+ static unsigned int xs_tcp_fin_timeout __read_mostly = XS_TCP_LINGER_TO;
+-- 
+1.7.7.6
 
