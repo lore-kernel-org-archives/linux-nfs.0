@@ -1,160 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25292 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:61344 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933071Ab2C2OYI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 10:24:08 -0400
-Subject: [PATCH] Lockd: pass network namespace to creation and destruction
- routines
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jbottomley@parallels.com, bfields@fieldses.org, davem@davemloft.net,
-        devel@openvz.org
-Date: Thu, 29 Mar 2012 18:23:06 +0400
-Message-ID: <20120329142209.20506.43224.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751800Ab2CKWnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Mar 2012 18:43:31 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] SUNRPC: Fix a few sparse warnings
+Date: Sun, 11 Mar 2012 18:43:24 -0400
+Message-Id: <1331505804-9939-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These routines are called from locks reclaimer() kernel thread. This thread
-works in "init_net" network context and currently relays on presence on lockd
-thread and it's per-net resources. Thus lockd_up() and lockd_down() can't use
-current network context. So let's pass corrent one into them.
+net/sunrpc/svcsock.c:412:22: warning: incorrect type in assignment
+(different address spaces)
+ - svc_partial_recvfrom now takes a struct kvec, so the variable
+   save_iovbase needs to be an ordinary (void *)
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Make a bunch of variables in net/sunrpc/xprtsock.c static
 
+Fix a couple of "warning: symbol 'foo' was not declared. Should it be
+static?" reports.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/lockd/clntlock.c        |   10 +++++-----
- fs/lockd/svc.c             |    7 +++----
- fs/nfsd/nfssvc.c           |    6 +++---
- include/linux/lockd/bind.h |    4 ++--
- 4 files changed, 13 insertions(+), 14 deletions(-)
+v2: Fix an incorrect declaration for unix_gid_cache_destroy()
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index ba1dc2e..32b3c2b 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
- 	int status;
+
+ include/linux/sunrpc/svcauth.h      |    3 +++
+ include/linux/sunrpc/xprtsock.h     |   12 ------------
+ net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_seal.c |    2 +-
+ net/sunrpc/backchannel_rqst.c       |    1 +
+ net/sunrpc/rpc_pipe.c               |    2 +-
+ net/sunrpc/sunrpc_syms.c            |    3 ---
+ net/sunrpc/svcsock.c                |    2 +-
+ net/sunrpc/xprtsock.c               |   10 +++++-----
+ 9 files changed, 13 insertions(+), 24 deletions(-)
+
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index 25d333c..548790e 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -135,6 +135,9 @@ extern void svcauth_unix_purge(void);
+ extern void svcauth_unix_info_release(struct svc_xprt *xpt);
+ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
  
--	status = lockd_up();
-+	status = lockd_up(nlm_init->net);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
-@@ -65,7 +65,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 				   nlm_init->hostname, nlm_init->noresvport,
- 				   nlm_init->net);
- 	if (host == NULL) {
--		lockd_down();
-+		lockd_down(nlm_init->net);
- 		return ERR_PTR(-ENOLCK);
- 	}
- 
-@@ -81,7 +81,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
- void nlmclnt_done(struct nlm_host *host)
++extern int unix_gid_cache_create(struct net *net);
++extern void unix_gid_cache_destroy(struct net *net);
++
+ static inline unsigned long hash_str(char *name, int bits)
  {
- 	nlmclnt_release_host(host);
--	lockd_down();
-+	lockd_down(host->net);
+ 	unsigned long hash = 0;
+diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
+index 3f14a02..1ad36cc 100644
+--- a/include/linux/sunrpc/xprtsock.h
++++ b/include/linux/sunrpc/xprtsock.h
+@@ -12,18 +12,6 @@
+ int		init_socket_xprt(void);
+ void		cleanup_socket_xprt(void);
+ 
+-/*
+- * RPC slot table sizes for UDP, TCP transports
+- */
+-extern unsigned int xprt_udp_slot_table_entries;
+-extern unsigned int xprt_tcp_slot_table_entries;
+-
+-/*
+- * Parameters for choosing a free port
+- */
+-extern unsigned int xprt_min_resvport;
+-extern unsigned int xprt_max_resvport;
+-
+ #define RPC_MIN_RESVPORT	(1U)
+ #define RPC_MAX_RESVPORT	(65535U)
+ #define RPC_DEF_MIN_RESVPORT	(665U)
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 8c67890..8eff8c3 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -344,7 +344,7 @@ out_err:
+ 	return PTR_ERR(p);
  }
- EXPORT_SYMBOL_GPL(nlmclnt_done);
  
-@@ -224,7 +224,7 @@ reclaimer(void *ptr)
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
--	lockd_up();	/* note: this cannot fail as lockd is already running */
-+	lockd_up(host->net);	/* note: this cannot fail as lockd is already running */
- 
- 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
- 
-@@ -275,6 +275,6 @@ restart:
- 
- 	/* Release host handle after use */
- 	nlmclnt_release_host(host);
--	lockd_down();
-+	lockd_down(host->net);
- 	return 0;
+-struct crypto_blkcipher *
++static struct crypto_blkcipher *
+ context_v2_alloc_cipher(struct krb5_ctx *ctx, const char *cname, u8 *key)
+ {
+ 	struct crypto_blkcipher *cp;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index d7941ea..62ae327 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -159,7 +159,7 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	return (ctx->endtime < now) ? GSS_S_CONTEXT_EXPIRED : GSS_S_COMPLETE;
  }
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index b34100e..ce4c80e 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -295,11 +295,10 @@ static void lockd_down_net(struct net *net)
+ 
+-u32
++static u32
+ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 		struct xdr_netobj *token)
+ {
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 3ad435a..2805a30 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -25,6 +25,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <linux/slab.h>
+ #include <linux/sunrpc/xprt.h>
+ #include <linux/export.h>
++#include <sunrpc/bc_xprt.h>
+ 
+ #ifdef RPC_DEBUG
+ #define RPCDBG_FACILITY	RPCDBG_TRANS
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 7d96e3c..8584ec0 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1149,7 +1149,7 @@ rpc_mount(struct file_system_type *fs_type,
+ 	return mount_ns(fs_type, flags, current->nsproxy->net_ns, rpc_fill_super);
+ }
+ 
+-void rpc_kill_sb(struct super_block *sb)
++static void rpc_kill_sb(struct super_block *sb)
+ {
+ 	struct net *net = sb->s_fs_info;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 21d106e..8adfc88 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -27,9 +27,6 @@
+ int sunrpc_net_id;
+ EXPORT_SYMBOL_GPL(sunrpc_net_id);
+ 
+-extern int unix_gid_cache_create(struct net *net);
+-extern int unix_gid_cache_destroy(struct net *net);
+-
+ static __net_init int sunrpc_init_net(struct net *net)
+ {
+ 	int err;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index e088b16..40ae884 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -396,7 +396,7 @@ static int svc_partial_recvfrom(struct svc_rqst *rqstp,
+ 				int buflen, unsigned int base)
+ {
+ 	size_t save_iovlen;
+-	void __user *save_iovbase;
++	void *save_iovbase;
+ 	unsigned int i;
+ 	int ret;
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 4c8281d..92bc518 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -53,12 +53,12 @@ static void xs_close(struct rpc_xprt *xprt);
  /*
-  * Bring up the lockd process if it's not already up.
+  * xprtsock tunables
   */
--int lockd_up(void)
-+int lockd_up(struct net *net)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
--	struct net *net = current->nsproxy->net_ns;
+-unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
+-unsigned int xprt_tcp_slot_table_entries = RPC_MIN_SLOT_TABLE;
+-unsigned int xprt_max_tcp_slot_table_entries = RPC_MAX_SLOT_TABLE;
++static unsigned int xprt_udp_slot_table_entries = RPC_DEF_SLOT_TABLE;
++static unsigned int xprt_tcp_slot_table_entries = RPC_MIN_SLOT_TABLE;
++static unsigned int xprt_max_tcp_slot_table_entries = RPC_MAX_SLOT_TABLE;
  
- 	mutex_lock(&nlmsvc_mutex);
- 	/*
-@@ -377,12 +376,12 @@ EXPORT_SYMBOL_GPL(lockd_up);
-  * Decrement the user count and bring down lockd if we're the last.
-  */
- void
--lockd_down(void)
-+lockd_down(struct net *net)
- {
- 	mutex_lock(&nlmsvc_mutex);
- 	if (nlmsvc_users) {
- 		if (--nlmsvc_users) {
--			lockd_down_net(current->nsproxy->net_ns);
-+			lockd_down_net(net);
- 			goto out;
- 		}
- 	} else {
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index fce472f..0f3e35b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_init_socks(port);
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up();
-+	ret = lockd_up(&init_net);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-@@ -229,7 +229,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	nfsd_up = true;
- 	return 0;
- out_lockd:
--	lockd_down();
-+	lockd_down(&init_net);
- out_racache:
- 	nfsd_racache_shutdown();
- 	return ret;
-@@ -246,7 +246,7 @@ static void nfsd_shutdown(void)
- 	if (!nfsd_up)
- 		return;
- 	nfs4_state_shutdown();
--	lockd_down();
-+	lockd_down(&init_net);
- 	nfsd_racache_shutdown();
- 	nfsd_up = false;
- }
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 11a966e..4d24d64 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -54,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
+-unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
+-unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
++static unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
++static unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
  
- extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
- 					struct file_lock *fl);
--extern int	lockd_up(void);
--extern void	lockd_down(void);
-+extern int	lockd_up(struct net *net);
-+extern void	lockd_down(struct net *net);
- 
- #endif /* LINUX_LOCKD_BIND_H */
+ #define XS_TCP_LINGER_TO	(15U * HZ)
+ static unsigned int xs_tcp_fin_timeout __read_mostly = XS_TCP_LINGER_TO;
+-- 
+1.7.7.6
 
