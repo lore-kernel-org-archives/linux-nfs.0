@@ -1,95 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51740 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:30375 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752990Ab2CWQLz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 12:11:55 -0400
-Date: Fri, 23 Mar 2012 12:12:18 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323121218.74461807@corrin.poochiereds.net>
-In-Reply-To: <20120323115337.28bff808@corrin.poochiereds.net>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	<1332337929-18580-4-git-send-email-jlayton@redhat.com>
-	<20120323121208.GA3219@fieldses.org>
-	<20120323133111.GA2991@fieldses.org>
-	<1332516024.3087.1.camel@lade.trondhjem.org>
-	<20120323152220.GA4953@fieldses.org>
-	<1332516863.3087.10.camel@lade.trondhjem.org>
-	<20120323115337.28bff808@corrin.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751880Ab2CKWOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Mar 2012 18:14:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Kevin Coffman <kwc@citi.umich.edu>,
+        Dr James Bruce Fields <bfields@fieldses.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Bug in gss_krb5_crypto.c
+Date: Sun, 11 Mar 2012 22:14:44 +0000
+Message-ID: <1331504084.2792.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 23 Mar 2012 11:53:37 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Fri, 23 Mar 2012 15:34:21 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Fri, 2012-03-23 at 11:22 -0400, J. Bruce Fields wrote:
-> > > On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
-> > > > On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
-> > > > > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
-> > > > > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> > > > > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> > > > > > > upcall.
-> > > > > > 
-> > > > > > After applying this patch, my tests consistently hang.  The hang happens
-> > > > > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-> > > > > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-> > > > > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-> > > > > > delegation, so presumably that's what's causing the DELAY, though I'm
-> > > > > > not seeing the server send a recall.  That could be a krb5 bug.
-> > > > > > 
-> > > > > > Whatever bug there is here, it's hard to tell why this patch in
-> > > > > > particular would make it more likely.
-> > > > > > 
-> > > > > > So, still investigating!
-> > > > > 
-> > > > > Reproduceable by:
-> > > > > 
-> > > > > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
-> > > > > 	cp cthon04/special/excltest /mnt/
-> > > > > 	cd /mnt
-> > > > > 	./excltest
-> > > > 
-> > > > Umm... When would you ever get a DELAY in the above scenario? I can see
-> > > > getting an NFS4ERR_OPENMODE, but not DELAY.
-> > > 
-> > > There's a setattr for mode right after the open.  Is that unexpected?
-> > 
-> > Well yes, it is. The NFSv4.1 exclusive open should always be sending a
-> > full set of attributes as part of the OPEN operation. The session replay
-> > cache is now supposed to guarantee the only-once semantics that the
-> > verifier used to provide.
-> > 
-> > > The server doesn't really have to recall the delegation in that case (it
-> > > only needs to recall *other* clients' delegations) but I don't think
-> > > it's wrong to.
-> > 
-> > Then why isn't it allowing the operation? Any sane client would normally
-> > interpret NFS4ERR_DELAY to mean that the server is doing something to
-> > fix whatever situation is preventing the operation from completing
-> > (presumably by recalling delegations in this case). Just replying DELAY
-> > and doing nothing is not helpful...
-> > 
-> 
-> Yeah, this seems like a clear bug in the server code. I think it's
-> replying DELAY in order to recall the delegation, but the delegation
-> isn't getting recalled for some reason. We arguably don't actually need
-> to recall it here, but I don't see any recall go out at all either...
-> 
-> As to why this patch seems to uncover this bug -- that's a complete
-> mystery at this point...
-> 
-
-...and contrary to what Bruce has seen, I can also reproduce this when
-the server is running a stock (unpatched) 3.3.0 kernel from the Fedora
-rawhide repos.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+SGkgS2V2aW4gJiBCcnVjZSwNCg0KV2hlbiBydW5uaW5nIHNwYXJzZSBvbiB0aGUgc3VucnBjIGNv
+ZGUsIEknbSBzZWVpbmcgdGhlIGZvbGxvd2luZyBlcnJvcg0KbWVzc2FnZToNCiJuZXQvc3VucnBj
+L2F1dGhfZ3NzL2dzc19rcmI1X2NyeXB0by5jOjYwMzo1MjogZXJyb3I6IGJhZCBjb25zdGFudA0K
+ZXhwcmVzc2lvbiINCg0KVGhpcyBib2lscyBkb3duIHRvIHRoZSBsaW5lOg0KICAgICAgICB1OCBk
+YXRhW2NyeXB0b19ibGtjaXBoZXJfYmxvY2tzaXplKGNpcGhlcikgKiAyXTsNCg0Kd2hpY2ggaXMg
+dXNpbmcgYSBHTlUgQ2MtaXNtIGluIG9yZGVyIHRvIGRvIGR5bmFtaWMgYWxsb2NhdGlvbiBvbiB0
+aGUNCnN0YWNrLiBUaGlzIGlzIG5vdCBhY2NlcHRhYmxlIGluIGtlcm5lbCBjb2RlLCBhbmQgcmVh
+bGx5IG5lZWRzIHRvIGJlDQpjaGFuZ2VkLiBIb3cgc2hvdWxkIHdlIG1vdmUgZm9yd2FyZCB3aXRo
+IHRoaXM/IElzIHRoZXJlIGFuIHVwcGVyIGxpbWl0DQpvbiB0aGUgdmFsdWUgb2YgY3J5cHRvX2Js
+a2NpcGhlcl9ibG9ja3NpemUoY2lwaGVyKSB0aGF0IHdlIGNhbiB1c2U/DQoNCkNoZWVycw0KICBU
+cm9uZA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
+Cg==
