@@ -1,26 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:14933 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:28119 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389Ab2CKHqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 Mar 2012 03:46:22 -0400
-Message-ID: <4F5C582C.5080503@parallels.com>
-Date: Sun, 11 Mar 2012 11:45:48 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1753474Ab2CKRhq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Mar 2012 13:37:46 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Bug in the pNFS OSD layout driver
+Date: Sun, 11 Mar 2012 17:37:29 +0000
+Message-ID: <1331487447.2496.10.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v9 6/6] nfsd: add notifier to handle mount/unmount of
- rpc_pipefs sb
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com> <1331047733-1641-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1331047733-1641-7-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-
--- 
-Best regards,
-Stanislav Kinsbursky
+SGkgQm9heiwNCg0KV2hlbiBJIHJ1biAnc3BhcnNlJyBvbiB0aGUgb2JqZWN0IGxheW91dCBkcml2
+ZXIsIEkgZ2V0IHRoZSBmb2xsb3dpbmcNCmVycm9yczoNCg0KZnMvbmZzL29iamxheW91dC9vYmpp
+b19vc2QuYzoyMTA6Mzc6IGVycm9yOiBiYWQgY29uc3RhbnQgZXhwcmVzc2lvbg0KZnMvbmZzL29i
+amxheW91dC9vYmppb19vc2QuYzoyMTE6Mzk6IGVycm9yOiBiYWQgY29uc3RhbnQgZXhwcmVzc2lv
+bg0KZnMvbmZzL29iamxheW91dC9vYmppb19vc2QuYzozMTU6NTk6IGVycm9yOiBiYWQgY29uc3Rh
+bnQgZXhwcmVzc2lvbg0KDQp3aGljaCBib2lscyBkb3duIHRvIHRoZSBmb2xsb3dpbmcgc2VjdGlv
+biBvZiBjb2RlOg0KDQppbnQgX19hbGxvY19vYmppb19zZWcodW5zaWduZWQgbnVtZGV2cywgZ2Zw
+X3QgZ2ZwX2ZsYWdzLA0KICAgICAgICAgICAgICAgICAgICAgICBzdHJ1Y3Qgb2JqaW9fc2VnbWVu
+dCAqKnBzZWcpDQp7DQogICAgICAgIHN0cnVjdCBfX2FsbG9jX29iamlvX3NlZ21lbnQgew0KICAg
+ICAgICAgICAgICAgIHN0cnVjdCBvYmppb19zZWdtZW50IG9sc2VnOw0KICAgICAgICAgICAgICAg
+IHN0cnVjdCBvcmVfZGV2ICpvZHNbbnVtZGV2c107DQoJCV5eXl5eXl5eXl5eXl5eXl5eXl5eXl5e
+Xl5eXl5eDQogICAgICAgICAgICAgICAgc3RydWN0IG9yZV9jb21wIGNvbXBzW251bWRldnNdOw0K
+CQleXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eDQogICAgICAgIH0gKmFvbHNlZzsNCg0K
+ICAgICAgICBhb2xzZWcgPSBremFsbG9jKHNpemVvZigqYW9sc2VnKSwgZ2ZwX2ZsYWdzKTsNCg0K
+DQpEeW5hbWljYWxseSBhbGxvY2F0ZWQgYXJyYXlzIHN1Y2ggYXMgdGhlIGFib3ZlIGFyZSBhIEdO
+VSBDIGNvbXBpbGVyDQpmZWF0dXJlIHRoYXQgd2UgY2Fubm90IHVzZSBpbiBrZXJuZWwgY29kZS4g
+SWYgdGhlIGFib3ZlIGFycmF5IHNpemVzIG5lZWQNCnRvIGJlIGR5bmFtaWNhbGx5IGRldGVybWlu
+ZWQsIHRoZW4gcGxlYXNlIHVzZSB0aGUga2NhbGxvYygpIGludGVyZmFjZSB0bw0KYWxsb2NhdGUg
+dGhlbS4NCkkuZS4gc29tZXRoaW5nIGxpa2UNCg0KICAgICAgICBzdHJ1Y3QgX19hbGxvY19vYmpp
+b19zZWdtZW50IHsNCiAgICAgICAgICAgICAgICBzdHJ1Y3Qgb2JqaW9fc2VnbWVudCBvbHNlZzsN
+CiAgICAgICAgICAgICAgICBzdHJ1Y3Qgb3JlX2RldiAqKm9kczsNCiAgICAgICAgICAgICAgICBz
+dHJ1Y3Qgb3JlX2NvbXAgKmNvbXBzOw0KCQleXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5e
+DQogICAgICAgIH0gKmFvbHNlZzsNCg0KICAgICAgICBhb2xzZWcgPSBremFsbG9jKHNpemVvZigq
+YW9sc2VnKSwgZ2ZwX2ZsYWdzKTsNCglpZiAoYW9sc2VnKSB7DQoJCWFvbHNlZy0+b2RzID0ga2Nh
+bGxvYyhudW1kZXZzLCBzaXplb2Yoc3RydWN0IG9yZV9kZXYgKiksIGdmcF9mbGFncyk7DQoJCWFv
+bHNlZy0+b3JlX2NvbXAgPSBrY2FsbG9jKG51bWRldnMsIHNpemVvZihzdHJ1Y3Qgb3JlX2NvbXAp
+LCBnZnBfZmxhZ3MpOw0KCQlpZiAoIWFvbHNlZy0+b2RzIHx8ICFhb2xzZWctPm9yZV9jb21wKQ0K
+CQkJLi4uLiBjbGVhbiB1cCBhbmQgcmVwb3J0IGVycm9yLi4uDQoJfQ0KDQpDaGVlcnMNCiAgVHJv
+bmQNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
