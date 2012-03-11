@@ -1,86 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f174.google.com ([209.85.212.174]:38744 "EHLO
-	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030810Ab2CFOzy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 09:55:54 -0500
+Received: from ebox.rath.org ([173.255.235.238]:38905 "EHLO ebox.rath.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752146Ab2CKCCS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Mar 2012 21:02:18 -0500
+Received: from cpe-74-73-178-142.nyc.res.rr.com ([74.73.178.142] helo=vostro)
+	by ebox.rath.org with esmtps (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.71)
+	(envelope-from <Nikolaus@rath.org>)
+	id 1S6XgQ-0002hq-8D
+	for linux-nfs@vger.kernel.org; Sun, 11 Mar 2012 01:34:50 +0000
+From: Nikolaus Rath <Nikolaus@rath.org>
+To: linux-nfs@vger.kernel.org
+Subject: NFS4 over VPN hangs when connecting > 2 clients
+Date: Sat, 10 Mar 2012 20:34:44 -0500
+Message-ID: <878vj7x6mj.fsf@vostro.rath.org>
 MIME-Version: 1.0
-In-Reply-To: <1331045602.3260.7.camel@lade.trondhjem.org>
-References: <1331045205-3031-1-git-send-email-andros@netapp.com>
-	<1331045205-3031-4-git-send-email-andros@netapp.com>
-	<1331045602.3260.7.camel@lade.trondhjem.org>
-Date: Tue, 6 Mar 2012 09:55:52 -0500
-Message-ID: <CAHVgHyW=vs126WHjSWQYRG=-h76e4ruoYCBROP70QyM55PJrYg@mail.gmail.com>
-Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until stateid
- is tested
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 6, 2012 at 9:53 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Tue, 2012-03-06 at 09:46 -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> nfs41_open_expired() will test the delegation stateid based on
->> NFS_DELEGATED_STATE being set. If the stateid is bad, nfs4_open_recover
->> will clear the NFS_DELEGATED_STATE bit recovering the delegation.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Cc: stable@vger.kernel.org
->> ---
->>  fs/nfs/nfs4state.c |    5 ++++-
->>  1 files changed, 4 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 7bd9822..44fcd60 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -696,7 +696,10 @@ static void __nfs4_close(struct nfs4_state *state,
->>                       call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->>               }
->>               if (newstate == 0)
->> +{
->> +printk("%s CLEAR NFS_DELEGATED_STATE state %p\n", __func__, state);
->>                       clear_bit(NFS_DELEGATED_STATE, &state->flags);
->> +}\
->
-> Ewww.....
+Hello,
+
+I am experiencing system hangs when running NFSv4 over a tinc VPN. I
+don't know if the problem is with NFS or tinc and would appreciate any
+suggestions on how to narrow down the culprit. Unfortunately I cannot
+simply run NFS directly over TCP -- the participating systems are
+connected only over an open network.
+
+The configuration is as follows: I have a main server that exports the
+NFS shares and also acts as hub for the VPN. All other clients connect
+to the main server to establish the VPN, and then mount the NFS shares
+over the VPN.
+
+I am using kernel 3.0.0, 64bit Ubuntu 10.04 LTS on both server and
+clients.
+
+On the server:
+# cat /etc/exports
+/srv/nfs4 -ro,no_subtree_check,fsid=root 192.168.1.1/24
+/srv/nfs4/home -rw,async,no_subtree_check 192.168.1.1/24
+/srv/nfs4/opt -rw,async,no_subtree_check 192.168.1.1/24
+/srv/nfs4/hbt -rw,async,no_subtree_check 192.168.1.1/24
+
+On the clients:
+# cat /etc/hostconf/all/etc/fstab | grep -i nfs
+spitzer:/opt /opt        nfs4    bg 0  0
+spitzer:/home /home          nfs4    bg 0  0
+
+The problem is that as soon as more than three clients are accessing the
+NFS shares, any operations on the NFS mountpoints by the clients hang.
+At the same time, CPU usage of the VPN processes becomes very high. If I
+run the VPN in debug mode, all I can see is that it is busy forwarding
+lots of packets. I also ran a packet sniffer which showed me that 90% of
+the packets were NFS related, but I am not familiar enough with NFS to
+be able to tell anything from the packets themselves. I can provide an
+example of the dump if that helps.
 
 
-yep, still had stupid development messages -- resent immediately!
+Any suggestions how I could further debug this?
 
--->Andy
->
->>       }
->>       nfs4_state_set_mode_locked(state, newstate);
->>       spin_unlock(&owner->so_lock);
->> @@ -1097,7 +1100,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
->>  {
->>       struct nfs_client *clp = server->nfs_client;
->>
->> -     if (test_and_clear_bit(NFS_DELEGATED_STATE, &state->flags))
->> +     if (test_bit(NFS_DELEGATED_STATE, &state->flags))
->>               nfs_async_inode_return_delegation(state->inode, &state->stateid);
->>       nfs4_state_mark_reclaim_nograce(clp, state);
->>       nfs4_schedule_state_manager(clp);
->
-> Actually, the latest incarnation of the patch 2/3 removes the
-> async_inode_return_delegation from nfs4_schedule_stateid_recovery. We
-> don't need to return the delegation if all the stateids have been marked
-> for return, and we've thrown out the delegation itself.
->
-> Let's not hurry this into the stable tree yet...
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+
+Best,
+
+
+   -Nikolaus
+
+-- 
+ Â»Time flies like an arrow, fruit flies like a Banana.Â«
+
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
