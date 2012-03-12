@@ -1,78 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44367 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751865Ab2C1Mt3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 08:49:29 -0400
-Received: by iagz16 with SMTP id z16so1448649iag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 05:49:28 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-Date: Wed, 28 Mar 2012 21:49:28 +0900
-Message-ID: <CAKYAXd868TcdJandJbV5EWkXPaNVNUmKj-0pdK88CP21ZGB9qw@mail.gmail.com>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from fieldses.org ([174.143.236.118]:32951 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932089Ab2CLUmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 16:42:38 -0400
+Date: Mon, 12 Mar 2012 16:42:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nikolaus Rath <Nikolaus@rath.org>
 Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Message-ID: <20120312204238.GA8991@fieldses.org>
+References: <878vj7x6mj.fsf@vostro.rath.org>
+ <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+ <20120312193115.GA7203@fieldses.org>
+ <4F5E5241.7070008@rath.org>
+ <20120312201505.GC7203@fieldses.org>
+ <4F5E5CF2.50309@rath.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F5E5CF2.50309@rath.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. Trond.
+On Mon, Mar 12, 2012 at 04:30:42PM -0400, Nikolaus Rath wrote:
+> On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
+> > On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
+> >> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
+> >>> On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
+> >>>> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
+> >>>>> The problem is that as soon as more than three clients are accessing the
+> >>>>> NFS shares, any operations on the NFS mountpoints by the clients hang.
+> >>>>> At the same time, CPU usage of the VPN processes becomes very high. If I
+> >>>>> run the VPN in debug mode, all I can see is that it is busy forwarding
+> >>>>> lots of packets. I also ran a packet sniffer which showed me that 90% of
+> >>>>> the packets were NFS related, but I am not familiar enough with NFS to
+> >>>>> be able to tell anything from the packets themselves. I can provide an
+> >>>>> example of the dump if that helps.
+> >>>>
+> >>>> I have put a screenshot of the dump on
+> >>>> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
+> >>>> not sure which parts are important).
+> >>>
+> >>> Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
+> >>> OPEN_CONFIRM repeatedly.
+> >>>
+> >>>> Any suggestions how I could further debug this?
+> >>>
+> >>> Could the clients be stepping on each others' state if they all think
+> >>> they have the same IP address (because of something to do with the VPN
+> >>> networking?)
+> >>
+> >> That sounds like promising path of investigation. What determines the IP
+> >> of a client as far as NFS is concerned?
+> > 
+> > I don't remember where it gets the ip it uses to construct clientid's
+> > from....  But there is a mount option (clientaddr=) that will let you
+> > change what it uses.  So it *might* be worth checking whether using a
+> > clientaddr= option on each client (giving it a different ipaddr on each
+> > client) would change the behavior.
+> 
+> I'll try that.
+> 
+> Since there seems to be some problem with client identity: all the
+> clients are generated using the same disk image. This image also
+> includes some stuff in /var/lib/nfs. I already tried emptying this on
+> every client and did not help, but maybe there is another directory with
+> state data that could cause problems?
 
-Is it better if exception.retry set to zero instead goto ?
+The state in there is used by the v2/v3 client, and by the server with
+v4 as well, but not by the v4 client, so I wouldn't expect that to be an
+issue.
 
-Thanks.
+> >>> It'd be interesting to know the fields of the setclientid call, and the
+> >>> errors that the server is responding with to these calls.  If you look
+> >>> at the packet details you'll probably see the same thing happening
+> >>> over and over again.
+> >>>
+> >>> Filtering to look at traffic between server and one client at a time
+> >>> might help to see the pattern.
+> >>
+> >> Hmm. I'm looking at the fields, but I just have no idea what any of
+> >> those mean. Would you possibly be willing to take a look? I uploaded a
+> >> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
+> > 
+> > Looking at the packet details, under the client id field, the clients
+> > are all using:
+> > 
+> > 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
+> 
+> Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
+> be there?
 
-2012/3/28 Trond Myklebust <Trond.Myklebust@netapp.com>:
-> We can currently loop forever in nfs4_lookup_root() and in
-> nfs41_proc_secinfo_no_name(), if the first iteration returns a
-> NFS4ERR_DELAY or something else that causes exception.retry to get
-> set.
->
-> Reported-by: Dros Adamson <Weston.Adamson@netapp.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/nfs/nfs4proc.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 45df7d4..ee9ca19 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2290,11 +2290,12 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
->                switch (err) {
->                case 0:
->                case -NFS4ERR_WRONGSEC:
-> -                       break;
-> +                       goto out;
->                default:
->                        err = nfs4_handle_exception(server, err, &exception);
->                }
->        } while (exception.retry);
-> +out:
->        return err;
->  }
->
-> @@ -6229,11 +6230,12 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->                case 0:
->                case -NFS4ERR_WRONGSEC:
->                case -NFS4ERR_NOTSUPP:
-> -                       break;
-> +                       goto out;
->                default:
->                        err = nfs4_handle_exception(server, err, &exception);
->                }
->        } while (exception.retry);
-> +out:
->        return err;
->  }
->
-> --
-> 1.7.7.6
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes,and the first ip is usually the ip of the client, which does suggest
+the client is guessing it's ip wrong; so the "clientaddr=" option will
+likely help.
+
+Hm, perhaps the server should be rejecting these SETCLIENTID's with
+INUSE.  It used to do that, and the client would likely recover from
+that more easily.
+
+--b.
