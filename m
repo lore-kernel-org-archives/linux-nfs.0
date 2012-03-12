@@ -1,53 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14406 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58958 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758073Ab2CFA2L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 19:28:11 -0500
+	id S1756637Ab2CLTRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 15:17:37 -0400
 Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q260SBOd010164
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2CJHaTX021417
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:28:11 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q260SA73022873
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 19:28:11 -0500
-Message-ID: <4F555A1F.5090102@RedHat.com>
-Date: Mon, 05 Mar 2012 19:28:15 -0500
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 15:17:37 -0400
+Message-ID: <4F5E4BCF.5050908@RedHat.com>
+Date: Mon, 12 Mar 2012 15:17:35 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-References: <1330976165-19849-1-git-send-email-steved@redhat.com> <1330976165-19849-2-git-send-email-steved@redhat.com> <20120305212015.GA21904@us.ibm.com> <20120305213005.GB21904@us.ibm.com>
-In-Reply-To: <20120305213005.GB21904@us.ibm.com>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/1] exportfs: Stop racing exportfs on clusters
+References: <1331573020-28628-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1331573020-28628-1-git-send-email-steved@redhat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 03/05/2012 04:30 PM, Malahal Naineni wrote:
-> Malahal Naineni [malahal@us.ibm.com] wrote:
->>>  		while (pmc->m.mnt_fsname[nlen - 1] == '/')
->>>  			nlen--;
->>> -		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
->>> -			continue;
->>> +		/*
->>> +		 * When the mtab and /proc/mounts are not the same
->>> +		 * file, normalize the path in the mtab if needed.
->>> +		 */
->>> +		if (mtab_is_writable())
->>> +			normpath = normalize_path(mc->m.mnt_fsname);
->>> +
->>> +		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0) {
->>> +			/* Is there a normalized path, if so compare that one too */
->>> +			if (normpath == NULL)
->>> +				continue;
->>> +			if (strncmp(pmc->m.mnt_fsname, normpath, nlen) != 0)
->>> +				continue;
->>
->> You need to free normpath here before the "continue".
+On 03/12/2012 01:23 PM, Steve Dickson wrote:
+> This problem can occur when multiple cluster services fail over
+> at the same time, causing missing high-available exports.
+> Having a lot of nfs-exports will trigger this issue easier.
 > 
-> Better yet, you don't need to normalize the path inside the loop. The
-> path you normalize doesn't change, so keep it outside "do while" loop.
-Your are right... thank you!
+> https://bugzilla.linux-nfs.org/show_bug.cgi?id=224
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
 steved.
+
+> ---
+>  support/include/exportfs.h |    4 ++++
+>  utils/exportfs/exportfs.c  |   41 +++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 45 insertions(+), 0 deletions(-)
+> 
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index 01e87dd..99916e5 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -32,6 +32,10 @@ enum {
+>  	FSLOC_STUB
+>  };
+>  
+> +#ifndef EXP_LOCKFILE
+> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
+> +#endif
+> +
+>  typedef struct mclient {
+>  	struct mclient *	m_next;
+>  	char *			m_hostname;
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 7432a65..7326802 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -16,6 +16,7 @@
+>  #include <sys/stat.h>
+>  #include <sys/vfs.h>
+>  #include <sys/stat.h>
+> +#include <sys/file.h>
+>  #include <unistd.h>
+>  #include <stdbool.h>
+>  #include <stdlib.h>
+> @@ -44,6 +45,39 @@ static void	validate_export(nfs_export *exp);
+>  static int	matchhostname(const char *hostname1, const char *hostname2);
+>  static void	export_d_read(const char *dname);
+>  
+> +static const char *lockfile = EXP_LOCKFILE;
+> +static int _lockfd = -1;
+> +
+> +/*
+> + * If we aren't careful, changes made by exportfs can be lost
+> + * when multiple exports process run at once:
+> + *
+> + *	exportfs process 1	exportfs process 2
+> + *	------------------------------------------
+> + *	reads etab version A	reads etab version A
+> + *	adds new export B	adds new export C
+> + *	writes A+B		writes A+C
+> + *
+> + * The locking in support/export/xtab.c will prevent mountd from
+> + * seeing a partially written version of etab, and will prevent 
+> + * the two writers above from writing simultaneously and
+> + * corrupting etab, but to prevent problems like the above we
+> + * need these additional lockfile() routines.
+> + */
+> +void 
+> +grab_lockfile()
+> +{
+> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
+> +	if (_lockfd != -1) 
+> +		lockf(_lockfd, F_LOCK, 0);
+> +}
+> +void 
+> +release_lockfile()
+> +{
+> +	if (_lockfd != -1)
+> +		lockf(_lockfd, F_ULOCK, 0);
+> +}
+> +
+>  int
+>  main(int argc, char **argv)
+>  {
+> @@ -129,6 +163,13 @@ main(int argc, char **argv)
+>  			return 0;
+>  		}
+>  	}
+> +
+> +	/*
+> +	 * Serialize things as best we can
+> +	 */
+> +	grab_lockfile();
+> +	atexit(release_lockfile);
+> +
+>  	if (f_export && ! f_ignore) {
+>  		export_read(_PATH_EXPORTS);
+>  		export_d_read(_PATH_EXPORTS_D);
