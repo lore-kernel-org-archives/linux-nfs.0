@@ -1,44 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52265 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754958Ab2CWPUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 11:20:41 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Date: Fri, 23 Mar 2012 15:20:21 +0000
-Message-ID: <1332516024.3087.1.camel@lade.trondhjem.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	 <1332337929-18580-4-git-send-email-jlayton@redhat.com>
-	 <20120323121208.GA3219@fieldses.org> <20120323133111.GA2991@fieldses.org>
-In-Reply-To: <20120323133111.GA2991@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from postman.teamix.net ([194.150.191.120]:37699 "EHLO
+	rproxy.teamix.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755000Ab2CLN2C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 09:28:02 -0400
+From: Martin Steigerwald <ms@teamix.de>
+To: David Howells <dhowells@redhat.com>
+Subject: FS-Cache questions: Delayed writing / aliasing
+Date: Mon, 12 Mar 2012 14:18:06 +0100
+Cc: linux-fsdevel@vger.kernel.org, linux-cachefs@redhat.com,
+        linux-nfs@vger.kernel.org
 MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Message-Id: <201203121418.07100.ms@teamix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTIzIGF0IDA5OjMxIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgTWFyIDIzLCAyMDEyIGF0IDA4OjEyOjA4QU0gLTA0MDAsIEouIEJydWNlIEZp
-ZWxkcyB3cm90ZToNCj4gPiBPbiBXZWQsIE1hciAyMSwgMjAxMiBhdCAwOTo1MjowNEFNIC0wNDAw
-LCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+IEFkZCBhIG5ldyB0b3AtbGV2ZWwgZGlyIGluIHJw
-Y19waXBlZnMgdG8gaG9sZCB0aGUgcGlwZSBmb3IgdGhlIGNsaWVudGlkDQo+ID4gPiB1cGNhbGwu
-DQo+ID4gDQo+ID4gQWZ0ZXIgYXBwbHlpbmcgdGhpcyBwYXRjaCwgbXkgdGVzdHMgY29uc2lzdGVu
-dGx5IGhhbmcuICBUaGUgaGFuZyBoYXBwZW5zDQo+ID4gaW4gZXhjbHRlc3QgKG9mIHRoZSBzcGVj
-aWFsIGNvbm5lY3RhdG9uIHRlc3RzKSwgb3ZlciBuZnM0LjEgYW5kIGtyYjUuDQo+ID4gTG9va2lu
-ZyBhdCB0aGUgd2lyZSB0cmFmZmljLCBJJ20gc2VlaW5nIERFTEFZIHJldHVybmVkIGZyb20gYSBz
-ZXRhdHRyDQo+ID4gZm9yIG1vZGUgb24gYSBuZXdseS1jcmVhdGVkICh3aXRoIEVYQ0xVU0lWRTRf
-MSkgZmlsZS4gIFRoYXQgb3BlbiBnb3QgYQ0KPiA+IGRlbGVnYXRpb24sIHNvIHByZXN1bWFibHkg
-dGhhdCdzIHdoYXQncyBjYXVzaW5nIHRoZSBERUxBWSwgdGhvdWdoIEknbQ0KPiA+IG5vdCBzZWVp
-bmcgdGhlIHNlcnZlciBzZW5kIGEgcmVjYWxsLiAgVGhhdCBjb3VsZCBiZSBhIGtyYjUgYnVnLg0K
-PiA+IA0KPiA+IFdoYXRldmVyIGJ1ZyB0aGVyZSBpcyBoZXJlLCBpdCdzIGhhcmQgdG8gdGVsbCB3
-aHkgdGhpcyBwYXRjaCBpbg0KPiA+IHBhcnRpY3VsYXIgd291bGQgbWFrZSBpdCBtb3JlIGxpa2Vs
-eS4NCj4gPiANCj4gPiBTbywgc3RpbGwgaW52ZXN0aWdhdGluZyENCj4gDQo+IFJlcHJvZHVjZWFi
-bGUgYnk6DQo+IA0KPiAJbW91bnQgLW9zZWM9a3JiNSxtaW5vcnZlcnNpb249MSBzZXJ2ZXI6L2V4
-cG9ydC8gL21udC8NCj4gCWNwIGN0aG9uMDQvc3BlY2lhbC9leGNsdGVzdCAvbW50Lw0KPiAJY2Qg
-L21udA0KPiAJLi9leGNsdGVzdA0KDQpVbW0uLi4gV2hlbiB3b3VsZCB5b3UgZXZlciBnZXQgYSBE
-RUxBWSBpbiB0aGUgYWJvdmUgc2NlbmFyaW8/IEkgY2FuIHNlZQ0KZ2V0dGluZyBhbiBORlM0RVJS
-X09QRU5NT0RFLCBidXQgbm90IERFTEFZLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hi David, hi everyone,
+
+I am currently preparing some slides about FS-Cache regarding our Linux 
+Performance Analysis & Tuning training.
+
+I do have some questions:
+
+
+1) What kind of caching does FS-Cache do?
+
+I understand that FS-Cache does read caching.
+
+I understand that FS-Cache can do write-through caching and should do so via 
+NFS and CIFS. Thus when I write something into the NetFS it will be in the 
+cache (unless purged in the meanwhile). Does the AFS support support write-
+through caching?
+
+Does it also do delayed writing? I.e. writes go to the cache at cache writing 
+speed and are then synchronized with the NetFS in the background?
+
+I didn't found a definite answer in [1] or [2].
+
+
+2) Your paper about FS-Cache [2] mentions cache aliasing issues when accessing 
+the same cache through different NetFS like NFS / CIFS or withing NFS as well.
+
+What is the current status about this?
+
+I understand that it should be safe when I obey the following rules:
+
+- NFS: Each directory tree on the server is only mounted once on the client
+- NFS: Sub directories of an already mounted directory on the server are not 
+mounted on the client - i.e. no overlapping of server directory trees by the 
+client
+- Each directory tree is only mounted via one NetFS on the client
+
+Are all these still valid?
+
+Are there any other issues to consider?
+
+
+3) What is the current state of NFS, CIFS and AFS integration? Are these 
+suitable for production use in your oppinion? I have NFS FS-Cache via 
+Cachefiles in testing on my workstation since a week and it seems to work.
+
+
+4) What has happened to CacheFS? Is it still stalled? It does not seem to be 
+integrated in mainline kernel.
+
+
+I am willing to provide a patch for fscache.txt with includes some information 
+about these topics.
+
+[1] Documentation/filesystems/caching/fscache.txt
+[2] http://people.redhat.com/.../fscache/FS-Cache.pdf
+
+Thanks,
+-- 
+Martin Steigerwald - teamix GmbH - http://www.teamix.de
+gpg: 19E3 8D42 896F D004 08AC A0CA 1E10 C593 0399 AE90
