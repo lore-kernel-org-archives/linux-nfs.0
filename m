@@ -1,55 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37854 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21810 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031135Ab2CITtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 14:49:50 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29Jnou3027397
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:49:50 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 0/7] Kill SPKM3 auth method
-Date: Fri,  9 Mar 2012 14:49:39 -0500
-Message-Id: <1331322586-4631-1-git-send-email-simo@redhat.com>
+	id S1752721Ab2CLWQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 18:16:30 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rate-limiting state manager error messages?
+Date: Mon, 12 Mar 2012 22:16:28 +0000
+Message-ID: <1331590587.12005.15.camel@lade.trondhjem.org>
+References: <87ty1t4iy1.fsf@pip.fifthhorseman.net>
+In-Reply-To: <87ty1t4iy1.fsf@pip.fifthhorseman.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This authentication method is obsolete and it is time it dies for good.
-
-Sorry for spamming again, the first time I forgot to singoff the commits.
-
-Simo Sorce (7):
-  Kill SPKM3: Remove spkm3 references from svcgssd
-  Kill SPKM3: Remove spkm3 support from gssd
-  Kill SPKM3: remove spkm3 from common gssd code
-  Kill SPKM3: Remove spkm3 support from nfs.mount
-  Kill SPKM3: Remove spkm3 support from exports
-  Kill SPKM3: Stop checking for spkm3.h in configure
-  Kill SPKM3: Remove mentions of SPKM3 from README
-
- README                          |    4 +-
- configure.ac                    |    3 -
- support/include/pseudoflavors.h |    3 -
- support/nfs/exports.c           |    3 -
- utils/gssd/Makefile.am          |    1 -
- utils/gssd/context.c            |    4 -
- utils/gssd/context.h            |    2 -
- utils/gssd/context_spkm3.c      |  184 ---------------------------------------
- utils/gssd/gss_oids.c           |    3 -
- utils/gssd/gss_oids.h           |    1 -
- utils/gssd/gssd.h               |    5 +-
- utils/gssd/gssd_main_loop.c     |   11 ---
- utils/gssd/gssd_proc.c          |  106 +----------------------
- utils/gssd/svcgssd_mech2file.c  |    1 -
- utils/gssd/svcgssd_proc.c       |    8 +--
- utils/mount/nfs.man             |    7 +-
- utils/mount/nfs_mount.h         |    3 -
- utils/mount/nfsmount.c          |    6 --
- 18 files changed, 10 insertions(+), 345 deletions(-)
- delete mode 100644 utils/gssd/context_spkm3.c
-
--- 
-1.7.7.6
-
+T24gTW9uLCAyMDEyLTAzLTEyIGF0IDE3OjE4IC0wNDAwLCBEYW5pZWwgS2FobiBHaWxsbW9yIHdy
+b3RlOg0KPiBIaSBmb2xrcy0tDQo+IA0KPiB3aXRoIGtlcm5lbCAzLjIuMCwgaWYgc29tZXRoaW5n
+IGdvZXMgd3Jvbmcgd2l0aCB0aGUgTkZTdjQgaGFuZHNoYWtlLCBpJ20NCj4gc2VlaW5nIG92ZXIg
+YSB0aG91c2FuZCBtZXNzYWdlcyBhIHNlY29uZCBsaWtlIHRoaXM6DQo+IA0KPiBNYXIgIDUgMTI6
+MTA6MjEgY29jb251dCBrZXJuZWw6IFsxODI0Ni40MjcyNDZdIEVycm9yOiBzdGF0ZSBtYW5hZ2Vy
+IGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbW9sbHkgd2l0aCBlcnJvciAxMw0KPiBNYXIgIDUgMTI6
+MTA6MjEgY29jb251dCBrZXJuZWw6IFsxODI0Ni40MjgzMjldIEVycm9yOiBzdGF0ZSBtYW5hZ2Vy
+IGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbW9sbHkgd2l0aCBlcnJvciAxMw0KPiBNYXIgIDUgMTI6
+MTA6MjEgY29jb251dCBrZXJuZWw6IFsxODI0Ni40MjkzNzBdIEVycm9yOiBzdGF0ZSBtYW5hZ2Vy
+IGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbW9sbHkgd2l0aCBlcnJvciAxMw0KPiBNYXIgIDUgMTI6
+MTA6MjEgY29jb251dCBrZXJuZWw6IFsxODI0Ni40MzAyNjNdIEVycm9yOiBzdGF0ZSBtYW5hZ2Vy
+IGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbW9sbHkgd2l0aCBlcnJvciAxMw0KPiBNYXIgIDUgMTI6
+MTA6MjEgY29jb251dCBrZXJuZWw6IFsxODI0Ni40MzA5OTBdIEVycm9yOiBzdGF0ZSBtYW5hZ2Vy
+IGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbW9sbHkgd2l0aCBlcnJvciAxMw0KPiANCj4gDQo+IFRo
+aXMgY2FuIHZlcnkgcmFwaWRseSBmaWxsIHRoZSBsb2dzIG9uIGEgY2xpZW50IHdpdGggYSBzbWFs
+bCAvdmFyDQo+IGZpbGVzeXN0ZW0sIHdpdGhvdXQgcHJvdmlkaW5nIG11Y2ggaW4gdGhlIHdheSBv
+ZiB1c2VmdWwgZmVlZGJhY2sgdG8gdGhlDQo+IGFkbWluaXN0cmF0b3IuDQo+IA0KPiBDb3VsZCB0
+aGVzZSBwcmludGsncyBiZSByYXRlLWxpbWl0ZWQgPw0KDQpTdXJlLiBIb3cgYWJvdXQgdGhlIGZv
+bGxvd2luZyBwYXRjaD8NCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gOWEzYmE0MzIzMzBlNTA0YWM2MWZmMDA0M2RiZGFi
+YTdjZWEwZTM1YSBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVz
+dCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBNb24sIDEyIE1hciAyMDEyIDE4
+OjAxOjQ4IC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBSYXRlIGxpbWl0IHRoZSBzdGF0
+ZSBtYW5hZ2VyIHdhcm5pbmcgbWVzc2FnZXMNCg0KUHJldmVudCB0aGUgc3RhdGUgbWFuYWdlciBm
+cm9tIGZpbGxpbmcgdXAgc3lzdGVtIGxvZ3Mgd2hlbiByZWNvdmVyeQ0KZmFpbHMgb24gdGhlIHNl
+cnZlci4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4NCkNjOiBzdGFibGVAdmdlci5rZXJuZWwub3JnDQotLS0NCiBmcy9uZnMvY2Fs
+bGJhY2tfeGRyLmMgfCAgICA0ICsrKy0NCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgfCAgICAyICst
+DQogZnMvbmZzL25mczRzdGF0ZS5jICAgIHwgICAgNCArKy0tDQogMyBmaWxlcyBjaGFuZ2VkLCA2
+IGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvY2Fs
+bGJhY2tfeGRyLmMgYi9mcy9uZnMvY2FsbGJhY2tfeGRyLmMNCmluZGV4IGZkNmNmZGIuLjk1YmZj
+MjQgMTAwNjQ0DQotLS0gYS9mcy9uZnMvY2FsbGJhY2tfeGRyLmMNCisrKyBiL2ZzL25mcy9jYWxs
+YmFja194ZHIuYw0KQEAgLTksNiArOSw4IEBADQogI2luY2x1ZGUgPGxpbnV4L3N1bnJwYy9zdmMu
+aD4NCiAjaW5jbHVkZSA8bGludXgvbmZzNC5oPg0KICNpbmNsdWRlIDxsaW51eC9uZnNfZnMuaD4N
+CisjaW5jbHVkZSA8bGludXgvcmF0ZWxpbWl0Lmg+DQorI2luY2x1ZGUgPGxpbnV4L3ByaW50ay5o
+Pg0KICNpbmNsdWRlIDxsaW51eC9zbGFiLmg+DQogI2luY2x1ZGUgPGxpbnV4L3N1bnJwYy9iY194
+cHJ0Lmg+DQogI2luY2x1ZGUgIm5mczRfZnMuaCINCkBAIC0xNjcsNyArMTY5LDcgQEAgc3RhdGlj
+IF9fYmUzMiBkZWNvZGVfY29tcG91bmRfaGRyX2FyZyhzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBz
+dHJ1Y3QgY2JfY29tcG91bmQNCiAJaWYgKGhkci0+bWlub3J2ZXJzaW9uIDw9IDEpIHsNCiAJCWhk
+ci0+Y2JfaWRlbnQgPSBudG9obCgqcCsrKTsgLyogaWdub3JlZCBieSB2NC4xICovDQogCX0gZWxz
+ZSB7DQotCQlwcmludGsoS0VSTl9XQVJOSU5HICJORlM6ICVzOiBORlN2NCBzZXJ2ZXIgY2FsbGJh
+Y2sgd2l0aCAiDQorCQlwcl93YXJuX3JhdGVsaW1pdGVkKCJORlM6ICVzOiBORlN2NCBzZXJ2ZXIg
+Y2FsbGJhY2sgd2l0aCAiDQogCQkJImlsbGVnYWwgbWlub3IgdmVyc2lvbiAldSFcbiIsDQogCQkJ
+X19mdW5jX18sIGhkci0+bWlub3J2ZXJzaW9uKTsNCiAJCXJldHVybiBodG9ubChORlM0RVJSX01J
+Tk9SX1ZFUlNfTUlTTUFUQ0gpOw0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMv
+bmZzL25mczRwcm9jLmMNCmluZGV4IDM2YTdjZGEuLjVlMDk2MWEgMTAwNjQ0DQotLS0gYS9mcy9u
+ZnMvbmZzNHByb2MuYw0KKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCkBAIC0xODc2LDcgKzE4NzYs
+NyBAQCBzdGF0aWMgc3RydWN0IG5mczRfc3RhdGUgKm5mczRfZG9fb3BlbihzdHJ1Y3QgaW5vZGUg
+KmRpciwgc3RydWN0IGRlbnRyeSAqZGVudHJ5LA0KIAkJICogdGhlIHVzZXIgdGhvdWdoLi4uDQog
+CQkgKi8NCiAJCWlmIChzdGF0dXMgPT0gLU5GUzRFUlJfQkFEX1NFUUlEKSB7DQotCQkJcHJpbnRr
+KEtFUk5fV0FSTklORyAiTkZTOiB2NCBzZXJ2ZXIgJXMgIg0KKwkJCXByX3dhcm5fcmF0ZWxpbWl0
+ZWQoIk5GUzogdjQgc2VydmVyICVzICINCiAJCQkJCSIgcmV0dXJuZWQgYSBiYWQgc2VxdWVuY2Ut
+aWQgZXJyb3IhXG4iLA0KIAkJCQkJTkZTX1NFUlZFUihkaXIpLT5uZnNfY2xpZW50LT5jbF9ob3N0
+bmFtZSk7DQogCQkJZXhjZXB0aW9uLnJldHJ5ID0gMTsNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
+NHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCmluZGV4IDdjNTg2MDcuLmNiNzA4YjIgMTAw
+NjQ0DQotLS0gYS9mcy9uZnMvbmZzNHN0YXRlLmMNCisrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0K
+QEAgLTk4NCw3ICs5ODQsNyBAQCBzdGF0aWMgdm9pZCBuZnNfaW5jcmVtZW50X3NlcWlkKGludCBz
+dGF0dXMsIHN0cnVjdCBuZnNfc2VxaWQgKnNlcWlkKQ0KIAkJY2FzZSAtTkZTNEVSUl9CQURfU0VR
+SUQ6DQogCQkJaWYgKHNlcWlkLT5zZXF1ZW5jZS0+ZmxhZ3MgJiBORlNfU0VRSURfQ09ORklSTUVE
+KQ0KIAkJCQlyZXR1cm47DQotCQkJcHJpbnRrKEtFUk5fV0FSTklORyAiTkZTOiB2NCBzZXJ2ZXIg
+cmV0dXJuZWQgYSBiYWQiDQorCQkJcHJfd2Fybl9yYXRlbGltaXRlZCgiTkZTOiB2NCBzZXJ2ZXIg
+cmV0dXJuZWQgYSBiYWQiDQogCQkJCQkiIHNlcXVlbmNlLWlkIGVycm9yIG9uIGFuIg0KIAkJCQkJ
+IiB1bmNvbmZpcm1lZCBzZXF1ZW5jZSAlcCFcbiIsDQogCQkJCQlzZXFpZC0+c2VxdWVuY2UpOw0K
+QEAgLTE4NDAsNyArMTg0MCw3IEBAIHN0YXRpYyB2b2lkIG5mczRfc3RhdGVfbWFuYWdlcihzdHJ1
+Y3QgbmZzX2NsaWVudCAqY2xwKQ0KIAl9IHdoaWxlIChhdG9taWNfcmVhZCgmY2xwLT5jbF9jb3Vu
+dCkgPiAxKTsNCiAJcmV0dXJuOw0KIG91dF9lcnJvcjoNCi0JcHJpbnRrKEtFUk5fV0FSTklORyAi
+TkZTOiBzdGF0ZSBtYW5hZ2VyIGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgJXMiDQorCXByX3dhcm5f
+cmF0ZWxpbWl0ZWQoIk5GUzogc3RhdGUgbWFuYWdlciBmYWlsZWQgb24gTkZTdjQgc2VydmVyICVz
+Ig0KIAkJCSIgd2l0aCBlcnJvciAlZFxuIiwgY2xwLT5jbF9ob3N0bmFtZSwgLXN0YXR1cyk7DQog
+CW5mczRfZW5kX2RyYWluX3Nlc3Npb24oY2xwKTsNCiAJbmZzNF9jbGVhcl9zdGF0ZV9tYW5hZ2Vy
+X2JpdChjbHApOw0KLS0gDQoxLjcuNy42DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
