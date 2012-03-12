@@ -1,91 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:34197 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758137Ab2CSRrt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 13:47:49 -0400
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120319173656.GA23670@fieldses.org>
-Date: Mon, 19 Mar 2012 13:47:14 -0400
-Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Message-Id: <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com>
-References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:1616 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756110Ab2CLSM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 14:12:28 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Always use the same SETCLIENTID boot verifier
+Date: Mon, 12 Mar 2012 18:12:08 +0000
+Message-ID: <1331575925.8219.34.camel@lade.trondhjem.org>
+References: <20120309223445.4005.78869.stgit@degas.1015granger.net>
+	 <776DF26C-1223-42ED-B356-234A5C66E034@oracle.com>
+In-Reply-To: <776DF26C-1223-42ED-B356-234A5C66E034@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
-
-> On Mon, Mar 19, 2012 at 01:06:47PM -0400, Rick Macklem wrote:
->> I wrote:
->>> J. Bruce Fields wrote:
->>>> On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
->>>>> On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
->>>>>> IMO, the server should do a comparison of the nfs_client_id4
->>>>>> strings,
->>>>>> and nothing else.
->>>>> 
->>>>> We're supposed to return CLID_INUSE when we see a setclientid from
->>>>> a
->>>>> "different" client using the same string, to keep clients from
->>>>> doing
->>>>> mischief with other clients' state (either maliciously or, as in
->>>>> this
->>>>> case, accidentally).
->>>>> 
->>>>> "Different" here is defined as "not having the same principal". I
->>>>> know
->>>>> what that means in the krb5 case, but I'm less certain in the
->>>>> auth_sys
->>>>> case.
->>>> 
->>>> Cc'ing the ietf list. Is it reasonable for a server to expect
->>>> setclientid's to come from the same client IP address at least in
->>>> the
->>>> auth_sys case, or could that break multi-homed clients?
->>>> 
->>> I think that even a dhcp lease renewal might result in a different
->>> client
->>> IP, if the client has been partitioned from the dhcp server for a
->>> while.
-> 
-> Yeah, but by that point the client's v4 lease is probably expired anyway
-> so the client's not likely to be bothered by the NFS4ERR_INUSE.
-> 
->>> I'm not convinced that different client IP# implies different client.
->>> (Even "same ip# implies same client" might not be true, if the dhcp
->>> server assigned the IP# to another machine while the client was
->>> partitioned
->>> from the dhcp server, I think? I haven't looked at current dhcp
->>> implementations, but it seems conceivable to me.)
->>> 
->> Oh, and what about the case of 2 clients that are sitting behind
->> the same NAT gateway? (I think they'd both be seen as having the
->> client host ip# of the gateway, but with different TCP connections
->> on different client port#s.)
-> 
-> Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
-> case where we get setclientid's with the same client-provided id.
-> There'd be no change of behavior in the case of multiple clients sharing
-> an IP (which is fine, of course).
-
-The migration draft proposes that clients use the same nfs_client_id4 string for all of a server's IP addresses.  Would a server then be obliged to return NFS4ERR_CLID_IN_USE if a client attempts a SETCLIENTID with the same boot verifier and nfs_client_id4 on more than one IP address for the same server?
-
-IMO the server should not try to sort this situation out.
-
->>> For AUTH_SYS, all the FreeBSD server does is expect the same uid#.
-> 
-> Yeah, but that's probably usually the same between clients.
-
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+T24gTW9uLCAyMDEyLTAzLTEyIGF0IDEzOjM5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGktDQo+IA0KPiBPbiBNYXIgOSwgMjAxMiwgYXQgNTozNSBQTSwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
+DQo+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJv
+Yy5jDQo+ID4gaW5kZXggYzBkNzIyMC4uNzQ3YmY3YSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMv
+bmZzNHByb2MuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gQEAgLTM3NzMsMTMg
+KzM3NzMsMTIgQEAgd2FpdF9vbl9yZWNvdmVyeToNCj4gPiAJcmV0dXJuIC1FQUdBSU47DQo+ID4g
+fQ0KPiA+IA0KPiA+IC1zdGF0aWMgdm9pZCBuZnM0X2NvbnN0cnVjdF9ib290X3ZlcmlmaWVyKHN0
+cnVjdCBuZnNfY2xpZW50ICpjbHAsDQo+ID4gLQkJCQkJIG5mczRfdmVyaWZpZXIgKmJvb3R2ZXJm
+KQ0KPiA+ICtzdGF0aWMgdm9pZCBuZnM0X2dlbl9ib290X3ZlcmlmaWVyKG5mczRfdmVyaWZpZXIg
+KmJvb3R2ZXJmKQ0KPiA+IHsNCj4gPiAJX19iZTMyIHZlcmZbMl07DQo+ID4gDQo+ID4gLQl2ZXJm
+WzBdID0gaHRvbmwoKHUzMiljbHAtPmNsX2Jvb3RfdGltZS50dl9zZWMpOw0KPiA+IC0JdmVyZlsx
+XSA9IGh0b25sKCh1MzIpY2xwLT5jbF9ib290X3RpbWUudHZfbnNlYyk7DQo+ID4gKwl2ZXJmWzBd
+ID0gY3B1X3RvX2JlMzIoKHUzMiluZnNfYm9vdF90aW1lLnR2X3NlYyk7DQo+ID4gKwl2ZXJmWzFd
+ID0gY3B1X3RvX2JlMzIoKHUzMiluZnNfYm9vdF90aW1lLnR2X25zZWMpOw0KPiA+IAltZW1jcHko
+Ym9vdHZlcmYtPmRhdGEsIHZlcmYsIHNpemVvZihib290dmVyZi0+ZGF0YSkpOw0KPiA+IH0NCj4g
+PiANCj4gDQo+IA0KPiBPbmUgb3RoZXIgcXVlc3Rpb24gSSBoYWQgYWJvdXQgdGhpcy4gIERvIHdl
+IHJlYWxseSBuZWVkIHRvIHBlcmZvcm0gYnl0ZS1zd2FwcGluZyB3aGVuIGNvbnN0cnVjdGluZyBh
+IGJvb3QgdmVyaWZpZXI/ICBJdCdzIHN1cHBvc2VkIHRvIGJlIG9wYXF1ZS4NCg0KTm8gd2UgZG9u
+J3QgbmVlZCB0byBkbyB0aGF0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
+dy5uZXRhcHAuY29tDQoNCg==
