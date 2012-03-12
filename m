@@ -1,133 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30619 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757486Ab2CETgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 14:36:03 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q25Ja3Xm007022
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:03 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q25Ja1oB027125
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 14:36:02 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-Date: Mon,  5 Mar 2012 14:36:05 -0500
-Message-Id: <1330976165-19849-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1330976165-19849-1-git-send-email-steved@redhat.com>
-References: <1330976165-19849-1-git-send-email-steved@redhat.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:48107 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755862Ab2CLPYf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 11:24:35 -0400
+Subject: Re: [PATCH] NFSD: Fix nfs4_verifier memory alignment
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120312150408.GA17153@pad.fieldses.org>
+Date: Mon, 12 Mar 2012 11:24:18 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Message-Id: <5200DE52-1977-4A35-A32A-88F4D5B101A2@oracle.com>
+References: <20120302221251.13019.46002.stgit@degas.1015granger.net> <20120312142049.GB4752@fieldses.org> <2418988F-A737-42F6-8AA0-99E85B9B8C66@oracle.com> <20120312150408.GA17153@pad.fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So path names are found during umounts, normalize
-path names by removing any extra slashes and add
-a lead slash if one does not exist.
 
-This normalization only has to occur when the mtab
-and /proc/mounts are not the same file.
+On Mar 12, 2012, at 11:04 AM, J. Bruce Fields wrote:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/nfsumount.c |   64 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 62 insertions(+), 2 deletions(-)
+> On Mon, Mar 12, 2012 at 10:57:32AM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 12, 2012, at 10:20 AM, J. Bruce Fields wrote:
+>> 
+>>> On Fri, Mar 02, 2012 at 05:13:50PM -0500, Chuck Lever wrote:
+>>>> Clean up due to code review.
+>>>> 
+>>>> The nfs4_verifier's data field is not guaranteed to be u32-aligned.
+>>>> Casting an array of chars to a u32 * is considered generally
+>>>> hazardous.
+>>>> 
+>>>> We can fix most of this by using a __be32 array to generate the
+>>>> verifier's contents and then byte-copying it into the verifier field.
+>>>> 
+>>>> However, there is one spot where there is a backwards compatibility
+>>>> constraint: the do_nfsd_create() call expects a verifier which is
+>>>> 32-bit aligned.  Fix this spot by forcing the alignment of the create
+>>>> verifier in the nfsd4_open args structure.
+>>>> 
+>>>> Also, sizeof(nfs4_verifer) is the size of the in-core verifier data
+>>>> structure, but NFS4_VERIFIER_SIZE is the number of octets in an XDR'd
+>>>> verifier.  The two are not interchangeable, even if they happen to
+>>>> have the same value.
+>>>> 
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>> 
+>>>> Hi Bruce-
+>>>> 
+>>>> Compile-tested only.  Does this look reasonable?
+>>> 
+>>> Looks fine, but the setclientid verifier stuff belongs in a separate
+>>> patch.
+>> 
+>> Thanks for the review.  I'm not clear on exactly which hunks you would like split.
+> 
+> This:
+> 
+>>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>>> index c5cddd6..9f0e139 100644
+>>>> --- a/fs/nfsd/nfs4state.c
+>>>> +++ b/fs/nfsd/nfs4state.c
+>>>> @@ -1138,12 +1138,12 @@ static void gen_clid(struct nfs4_client *clp)
+>>>> 
+>>>> static void gen_confirm(struct nfs4_client *clp)
+>>>> {
+>>>> +	__be32 verf[2];
+>>>> 	static u32 i;
+>>>> -	u32 *p;
+>>>> 
+>>>> -	p = (u32 *)clp->cl_confirm.data;
+>>>> -	*p++ = get_seconds();
+>>>> -	*p++ = i++;
+>>>> +	verf[0] = (__be32)get_seconds();
+>>>> +	verf[1] = (__be32)i++;
+>>>> +	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+> 
+> This cl_confirm verifier really has nothing to do with the write
+> verifier (though maybe it has a similar problem).
 
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 3538d88..0f77261 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -140,6 +140,52 @@ static int del_mtab(const char *spec, const char *node)
- }
- 
- /*
-+ * To ensure the path is found during unmounts, strip
-+ * off the multiple '/' or add a '/' if one does not exist.
-+ */
-+static inline char *
-+normalize_path(char *spec) 
-+{
-+	char *colen, *ptr, *str, *dev;
-+
-+	if ((colen = strchr(spec, ':')) == NULL)
-+		return NULL;
-+
-+	if (*(colen + 1) != '/') {
-+		dev = str = malloc(strlen(spec) + 2);
-+		if (dev == NULL) 
-+			return NULL;
-+
-+		ptr = spec;
-+		while (ptr <= colen)
-+			*(str++) = *(ptr++);
-+		*str++='/';
-+		while (*ptr)
-+			*(str++) = *(ptr++);
-+		*str='\0';
-+
-+		return dev;
-+	}
-+
-+	if (strstr(spec, "//") != NULL) {
-+		dev = strdup(spec);
-+		if (dev == NULL)
-+			return NULL;
-+
-+		colen = strchr(dev, ':');
-+		ptr = (colen +1);
-+		while (*ptr && *(ptr+1) == '/')
-+			ptr++;
-+		while (*ptr)
-+			*(++colen) = *(ptr++);
-+		*(colen+1) = '\0';
-+
-+		return dev;
-+	} 
-+	return NULL;
-+}
-+
-+/*
-  * Detect NFSv4 mounts.
-  *
-  * Consult /proc/mounts to determine if the mount point
-@@ -154,6 +200,7 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
- 	struct mntentchn *pmc;
- 	struct mount_options *options;
- 	int retval;
-+	char *normpath=NULL;
- 
- 	retval = -1;
- 	pmc = getprocmntdirbackward(mc->m.mnt_dir, NULL);
-@@ -171,8 +218,20 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
- 		 */
- 		while (pmc->m.mnt_fsname[nlen - 1] == '/')
- 			nlen--;
--		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0)
--			continue;
-+		/*
-+		 * When the mtab and /proc/mounts are not the same
-+		 * file, normalize the path in the mtab if needed.
-+		 */
-+		if (mtab_is_writable())
-+			normpath = normalize_path(mc->m.mnt_fsname);
-+
-+		if (strncmp(pmc->m.mnt_fsname, mc->m.mnt_fsname, nlen) != 0) {
-+			/* Is there a normalized path, if so compare that one too */
-+			if (normpath == NULL)
-+				continue;
-+			if (strncmp(pmc->m.mnt_fsname, normpath, nlen) != 0)
-+				continue;
-+		}
- 
- 		if (strcmp(pmc->m.mnt_type, "nfs4") == 0)
- 			goto out_nfs4;
-@@ -209,6 +268,7 @@ out_nfs:
- 	retval = 0;
- 
- out:
-+	free(normpath);
- 	return retval;
- }
- 
+The patch fixes nfs4_verifiers, of which cl_confirm is one.  We can't guarantee access to an nfs4_verifier field, which is an array of char, using (u32 *).  It just happens to work now on architectures we test regularly.
+
+This seems perfectly relevant to the patch description to me.  Do you still want this hunk split into a separate patch?
+
 -- 
-1.7.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
