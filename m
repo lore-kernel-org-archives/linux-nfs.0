@@ -1,145 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:56872 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752843Ab2CNDoj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 23:44:39 -0400
-Message-ID: <4F60141A.709@panasas.com>
-Date: Tue, 13 Mar 2012 20:44:26 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake of
- the principle :-(
-Content-Type: text/plain; charset="UTF-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:38791 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757321Ab2CLVOt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 17:14:49 -0400
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120312210414.GB8991@fieldses.org>
+Date: Mon, 12 Mar 2012 17:14:16 -0400
+Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
+Message-Id: <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
+References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org> <4F5E5CF2.50309@rath.org> <20120312204238.GA8991@fieldses.org> <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com> <20120312210414.GB8991@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-At some past instance Linus Trovalds wrote:
-> From: Linus Torvalds <torvalds@linux-foundation.org>
-> commit a84a79e4d369a73c0130b5858199e949432da4c6 upstream.
->
-> The size is always valid, but variable-length arrays generate worse code
-> for no good reason (unless the function happens to be inlined and the
-> compiler sees the length for the simple constant it is).
->
-> Also, there seems to be some code generation problem on POWER, where
-> Henrik Bakken reports that register r28 can get corrupted under some
-> subtle circumstances (interrupt happening at the wrong time?).  That all
-> indicates some seriously broken compiler issues, but since variable
-> length arrays are bad regardless, there's little point in trying to
-> chase it down.
->
-> "Just don't do that, then".
+On Mar 12, 2012, at 5:04 PM, J. Bruce Fields wrote:
 
-Since then any use of "variable length arrays" has become blasphemous.
-Even in perfectly good, beautiful, perfectly safe code like the one
-below where the variable length arrays are only used as a sizeof()
-parameter, for type-safe dynamic structure allocations. GCC is not
-executing any stack allocation code.
+> On Mon, Mar 12, 2012 at 04:49:29PM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 12, 2012, at 4:42 PM, J. Bruce Fields wrote:
+>> 
+>>> On Mon, Mar 12, 2012 at 04:30:42PM -0400, Nikolaus Rath wrote:
+>>>> On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
+>>>>> Looking at the packet details, under the client id field, the clients
+>>>>> are all using:
+>>>>> 
+>>>>> 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
+>>>> 
+>>>> Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
+>>>> be there?
+>>> 
+>>> Yes,and the first ip is usually the ip of the client, which does suggest
+>>> the client is guessing it's ip wrong; so the "clientaddr=" option will
+>>> likely help.
+>> 
+>> I thought 0.0.0.0 was a legal callback address, and means "don't send me CB requests".
+> 
+> Yes, that part's fine, it's using it in the clientid that gets us into
+> trouble here....
+> 
+>> But if all the clients are using the same nfs_client_id4 string, then no, the server can't distinguish between them, and they will tromp on each other's state.
+> 
+> Yeah.
+> 
+>> 
+>> The question is why can't the clients tell what their own IP address is?  mount.nfs is supposed to figure that out automatically.  Could be a bug in mount.nfs.
+> 
+> You know that code better than me....  Looks like it does basically
+> gethostbyname(gethostname()) ?
 
-I have produced a small file which defines two functions main1(unsigned numdevs)
-and main2(unsigned numdevs). main1 uses code as before with call to malloc
-and main2 uses code as of after this patch. I compiled it as:
-	gcc -O2 -S see_asm.c
-and here is what I get:
+Nope, it does a connect(2) on a UDP socket, and then getsockname(2) on that socket.  See nfs_callback_address() in nfs-utils.
 
-<see_asm.s>
-main1:
-.LFB7:
-	.cfi_startproc
-	mov	%edi, %edi
-	leaq	4(%rdi,%rdi), %rdi
-	salq	$3, %rdi
-	jmp	malloc
-	.cfi_endproc
-.LFE7:
-	.size	main1, .-main1
-	.p2align 4,,15
-	.globl	main2
-	.type	main2, @function
-main2:
-.LFB8:
-	.cfi_startproc
-	mov	%edi, %edi
-	addq	$2, %rdi
-	salq	$4, %rdi
-	jmp	malloc
-	.cfi_endproc
-.LFE8:
-	.size	main2, .-main2
-	.section	.text.startup,"ax",@progbits
-	.p2align 4,,15
-</see_asm.s>
+> An strace -f of the mount from Nikolaus might help explain what happened
+> here.
 
-*Exact* same code !!!
+Agree.
 
-So please seriously consider not accepting this patch and leave the
-perfectly good code intact.
+> 
+>>> Hm, perhaps the server should be rejecting these SETCLIENTID's with
+>>> INUSE.  It used to do that, and the client would likely recover from
+>>> that more easily.
+>> 
+>> INUSE means the client is using multiple authentication flavors when performing RENEW or SETCLIENTID.  I can't think of a reason the server should reject these; it's not supposed to look at the contents of the nfs_client_id4 string.
+> 
+> Well, from the trace the requests do appear (from the server's point of
+> view) to be coming from different IP addresses.  We used to use that
+> fact to return INUSE in this sort of case, which I think would trigger
+> the client to increment its uniqufier and work around the problem.
+> 
+> In the commit where I changed that I said:
+> 
+> 	The spec allows clients to change ip address, so we shouldn't be
+> 	requiring that setclientid always come from the same address.
+> 	For example, a client could reboot and get a new dhcpd address,
+> 	but still present the same clientid to the server.  In that case
+> 	the server should revoke the client's previous state and allow
+> 	it to continue, instead of (as it currently does) returning a
+> 	CLID_INUSE error.
+> 
+> But maybe I should have applied that reasoning only in the krb5 case--in
+> the auth_sys case maybe the client ip address is really the only thing
+> we have to distinguish two clients.
 
-CC: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/objlayout/objio_osd.c |   39 +++++++++++++++++++++++++--------------
- 1 files changed, 25 insertions(+), 14 deletions(-)
+IMO, the server should do a comparison of the nfs_client_id4 strings, and nothing else.  The client IP addresses are unreliable.  Otherwise, why have an nfs_client_id4 string to begin with?  And how could a multi-homed client ever word?  Maybe I don't understand what you mean.
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 55d0128..37a9269 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -205,25 +205,36 @@ static void copy_single_comp(struct ore_components *oc, unsigned c,
- int __alloc_objio_seg(unsigned numdevs, gfp_t gfp_flags,
- 		       struct objio_segment **pseg)
- {
--	struct __alloc_objio_segment {
--		struct objio_segment olseg;
--		struct ore_dev *ods[numdevs];
--		struct ore_comp	comps[numdevs];
--	} *aolseg;
--
--	aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
--	if (unlikely(!aolseg)) {
-+/*	This is the in memory structure of the objio_segment
-+ *
-+ *	struct __alloc_objio_segment {
-+ *		struct objio_segment olseg;
-+ *		struct ore_dev *ods[numdevs];
-+ *		struct ore_comp	comps[numdevs];
-+ *	} *aolseg;
-+ *	NOTE: The code as above compiles and runs perfectly. It is elegant,
-+ *	type safe and compact. At some Past time Linus has decided he does not
-+ *	like variable length arrays, For the sake of this principal we uglify
-+ *	the code as below.
-+ */
-+	struct objio_segment *lseg;
-+	size_t lseg_size = sizeof(*lseg) +
-+			numdevs * sizeof(lseg->oc.ods[0]) +
-+			numdevs * sizeof(*lseg->oc.comps);
-+
-+	lseg = kzalloc(lseg_size, gfp_flags);
-+	if (unlikely(!lseg)) {
- 		dprintk("%s: Faild allocation numdevs=%d size=%zd\n", __func__,
--			numdevs, sizeof(*aolseg));
-+			numdevs, lseg_size);
- 		return -ENOMEM;
- 	}
- 
--	aolseg->olseg.oc.numdevs = numdevs;
--	aolseg->olseg.oc.single_comp = EC_MULTPLE_COMPS;
--	aolseg->olseg.oc.comps = aolseg->comps;
--	aolseg->olseg.oc.ods = aolseg->ods;
-+	lseg->oc.numdevs = numdevs;
-+	lseg->oc.single_comp = EC_MULTPLE_COMPS;
-+	lseg->oc.ods = (void *)(lseg + 1);
-+	lseg->oc.comps = (void *)(lseg->oc.ods + numdevs);
- 
--	*pseg = &aolseg->olseg;
-+	*pseg = lseg;
- 	return 0;
- }
- 
+But, anyway, if the clients are all using the same nfs_client_id4 string, that's going to cause no end of trouble, since the boot verifier for each of these clients is bound to be different.  When the server sees a boot verifier change, it will just drop all the client's state.  Each client's SETCLIENTID will trash the state of anything that came before attached to that nfs_client_id4.  That will result in the clients all constantly trying to recover state.  I suppose the server could watch for a boot verifier replay (cel ducks)
+
 -- 
-1.7.6.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
