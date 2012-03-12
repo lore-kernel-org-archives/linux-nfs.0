@@ -1,215 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51336 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25613 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1162159Ab2CSQtf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 12:49:35 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>,
+	id S1753282Ab2CLV6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 17:58:00 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Nikolaus Rath <Nikolaus@rath.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 1 08/11] SUNRPC: add rpc_drain_queue to empty an
- rpc_waitq
-Date: Mon, 19 Mar 2012 16:49:34 +0000
-Message-ID: <1BF4551A-75CC-4E5F-A39B-A8DE645653F3@netapp.com>
-References: <1331836850-5195-1-git-send-email-andros@netapp.com>
- <1331836850-5195-9-git-send-email-andros@netapp.com>
- <1331856643.24392.3.camel@lade.trondhjem.org>
- <CAHVgHyWPPu_+9-6mr__n3q-BP=0C+=_5SwTwzZqMiBqQJonp+A@mail.gmail.com>
- <1331911317.2518.14.camel@lade.trondhjem.org>
- <8587FE07-0E16-4E0B-BCBE-7B295B89062C@netapp.com>
- <69F651CF-0BAF-491F-B557-BC0607356E4F@netapp.com>
-In-Reply-To: <69F651CF-0BAF-491F-B557-BC0607356E4F@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Date: Mon, 12 Mar 2012 21:57:59 +0000
+Message-ID: <1331589478.12005.13.camel@lade.trondhjem.org>
+References: <878vj7x6mj.fsf@vostro.rath.org>
+	 <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+	 <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org>
+	 <20120312201505.GC7203@fieldses.org>
+	 <87mx7lms1y.fsf@inspiron.ap.columbia.edu>
+	 <683A9678-14CF-4F27-8CC9-DD569722EE39@oracle.com>
+	 <4F5E6CBF.4080608@rath.org>
+	 <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
+In-Reply-To: <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 19, 2012, at 12:44 PM, Andy Adamson wrote:
-
-> 
-> The reason rpc_wake_up() does not wake up all the tasks, is that it uses list_for_each_entry_safe which assigns the "next" task->u.tk_wait.lists pointer in it's for loop without taking into consideration the priority queue tasks hanging off the  task->u.tk_wait.links list (note "list" vrs "link") assigned in the for loop body by the call to rpc_wake_up_task_queue_locked.
-> 
-> Say we have a wait queue with the following: One task in the list (T1) and two priority tasks in T1's "links" list (T2, T3).
-> 
-> H -> T1 -> H    the next pointers in the "lists" list (T1->u.tk_wait.list) hanging off the list head "H"
-> 
-> T1 -> T2 -> T3->T1  the next pointers in the "links" list. (T1->u.tk_wait.links is the list head)
-> 
-> Here is what rpc_wake_up_task_queue_locked does (it calls __rpc_remove_wait_queue_priority on priority queues)
-> 
-> H -> T2 ->H
-> 
-> T2 -> T3 -> T2
-> 
-> with T1 removed.  This is exactly what should happen, T1 is removed, T1's u.tk_wait.links list is spliced onto T2's u.tk_wait.links, and T2 is moved to H's list of u.tk_wait.list tasks.
-> 
-> 
-> #define list_for_each_entry_safe(pos, n, head, member)                  \
->        for (pos = list_entry((head)->next, typeof(*pos), member),      \
->                n = list_entry(pos->member.next, typeof(*pos), member); \
->             &pos->member != (head);                                    \
->             pos = n, n = list_entry(n->member.next, typeof(*n), member))
-> 
-> 
-> BUT!  the for loop in  list_for_each_entry_safe(task, next, head, u.tk_wait.list)  does the following on the above example:
-> 
-> Start:
-> 
-> H-> T1 -> H
-> T1 -> T2 -> T3 -> T1
-> 
-> for loop Iniitializer:
-> 
-> task = list_entry((head)->next, typeof(*task), u.tk_wait.list): 
-> next = list_entry(task->u.tk_wait.list.next, typeof(*task), u.tk_wait.list)
-> 
-> so task = T1, next = H.
-> 
-> for loop test:
-> task != H. This is FALSE
-
-oops - got my TRUE/FALSE mixed ;)
- this is TRUE so execute body
-
-> 
-> for loop body:
-> call rpc_wake_up_task_queue_locked
-> 
-> H -> T2 -> H
-> T2 ->.T3 -> T2
-> 
-> for loop increment step
-> task = next; 
-> next = list_entry(next->u.tk_wait.list.next, typeof(*next), u.tk_wait.list);
-> 
-> so task = H, next = H.
-> 
-> for loop test
-> 
-> task != H  This is TRUE
-
-and this is FALSE do don't execute body
-
--->Andy
-> 
-> so stop.
-> 
-> Note that only T1 was processed - T2 and T3 are still on the queue.
-> 
-> So list_for_each_entry_safe will not process any u.tk_wait.links tasks, because the next pointer is assigned prior to the call to rpc_wake_up_task_queue_locked, so the for loop increment (or initialization) setting of:
-> 
-> task = next:
-> 
-> does NOT pick up the fact that (in our example) T1 was REPLACED by T2, not just removed.
-> 
-> On the other hand, the rpc_drain_queue() patch uses while(!list_empty()) instead of list_for_each_entry_safe() and happily processes all of the tasks on the queue:
-> 
-> H -> T1 -> H
-> 
-> lilst is not empty, so call rpc_wake_up_task_queue_locked.
-> 
-> H -> T2 -> H
-> 
-> list is not empty; so call rpc_wake_up _task_queue_locked.
-> 
-> H -> T3 -> H
-> 
-> list is not empty; so call rpc_wake_up_task_queue_locked
-> 
-> list is empty.
-> 
-> 
-> -->Andy
-> 
-> On Mar 16, 2012, at 11:25 AM, Adamson, Andy wrote:
-> 
->> 
->> On Mar 16, 2012, at 11:21 AM, Myklebust, Trond wrote:
->> 
->>> On Fri, 2012-03-16 at 11:13 -0400, Andy Adamson wrote:
->>>> On Thu, Mar 15, 2012 at 8:10 PM, Myklebust, Trond
->>>> <Trond.Myklebust@netapp.com> wrote:
->>>>> On Thu, 2012-03-15 at 14:40 -0400, andros@netapp.com wrote:
->>>>>> From: Andy Adamson <andros@netapp.com>
->>>>>> 
->>>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>>>> ---
->>>>>> include/linux/sunrpc/sched.h |    1 +
->>>>>> net/sunrpc/sched.c           |   27 +++++++++++++++++++++++++++
->>>>>> 2 files changed, 28 insertions(+), 0 deletions(-)
->>>>>> 
->>>>>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
->>>>>> index dc0c3cc..fce0873 100644
->>>>>> --- a/include/linux/sunrpc/sched.h
->>>>>> +++ b/include/linux/sunrpc/sched.h
->>>>>> @@ -235,6 +235,7 @@ void              rpc_sleep_on_priority(struct rpc_wait_queue *,
->>>>>> void         rpc_wake_up_queued_task(struct rpc_wait_queue *,
->>>>>>                                    struct rpc_task *);
->>>>>> void         rpc_wake_up(struct rpc_wait_queue *);
->>>>>> +void         rpc_drain_queue(struct rpc_wait_queue *);
->>>>>> struct rpc_task *rpc_wake_up_next(struct rpc_wait_queue *);
->>>>>> struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
->>>>>>                                    bool (*)(struct rpc_task *, void *),
->>>>>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->>>>>> index 1c570a8..11928ff 100644
->>>>>> --- a/net/sunrpc/sched.c
->>>>>> +++ b/net/sunrpc/sched.c
->>>>>> @@ -551,6 +551,33 @@ void rpc_wake_up(struct rpc_wait_queue *queue)
->>>>>> EXPORT_SYMBOL_GPL(rpc_wake_up);
->>>>>> 
->>>>>> /**
->>>>>> + * rpc_drain_queue - empty the queue and wake up all rpc_tasks
->>>>>> + * @queue: rpc_wait_queue on which the tasks are sleeping
->>>>>> + *
->>>>>> + * Grabs queue->lock
->>>>>> + */
->>>>>> +void rpc_drain_queue(struct rpc_wait_queue *queue)
->>>>>> +{
->>>>>> +     struct rpc_task *task;
->>>>>> +     struct list_head *head;
->>>>>> +
->>>>>> +     spin_lock_bh(&queue->lock);
->>>>>> +     head = &queue->tasks[queue->maxpriority];
->>>>>> +     for (;;) {
->>>>>> +             while (!list_empty(head)) {
->>>>>> +                     task = list_entry(head->next, struct rpc_task,
->>>>>> +                                       u.tk_wait.list);
->>>>>> +                     rpc_wake_up_task_queue_locked(queue, task);
->>>>>> +             }
->>>>>> +             if (head == &queue->tasks[0])
->>>>>> +                     break;
->>>>>> +             head--;
->>>>>> +     }
->>>>>> +     spin_unlock_bh(&queue->lock);
->>>>>> +}
->>>>>> +EXPORT_SYMBOL_GPL(rpc_drain_queue);
->>>>>> +
->>>>> 
->>>>> Confused... How is this function any different from rpc_wake_up()?
->>>> 
->>>> Because it actually drains the queues where rpc_wake_up does not.  See
->>>> the attached output where I added the same printks to both
->>>> rpc_drain_queue and rpc_wake_up.
->>> 
->>> So you are seeing a bug in rpc_wake_up()? I'm surprised; a bug of that
->>> magnitude should have caused a lot of hangs. Can you please look into
->>> what is happening.
->> 
->> OK. Didn't know it was a bug - just thought the comment was off...
->> 
->> -->Andy
->> 
->>> 
->>> -- 
->>> Trond Myklebust
->>> Linux NFS client maintainer
->>> 
->>> NetApp
->>> Trond.Myklebust@netapp.com
->>> www.netapp.com
->>> 
->> 
-> 
-
+T24gTW9uLCAyMDEyLTAzLTEyIGF0IDE3OjQ2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gTWFyIDEyLCAyMDEyLCBhdCA1OjM4IFBNLCBOaWtvbGF1cyBSYXRoIHdyb3RlOg0KPiANCj4g
+PiBPbiAwMy8xMi8yMDEyIDA1OjI3IFBNLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gDQo+ID4+
+IE9uIE1hciAxMiwgMjAxMiwgYXQgNToyNCBQTSwgTmlrb2xhdXMgUmF0aCB3cm90ZToNCj4gPj4g
+DQo+ID4+PiBBbHJpZ2h0LCBpdCBzZWVtcyB0aGF0IHRoaXMgd2FzIHRoZSBwcm9ibGVtLiBXaXRo
+IGNvcnJlY3QgY2xpZW50YWRkciwgSQ0KPiA+Pj4gaGF2ZW4ndCBiZWVuIGFibGUgdG8gcHJvZHVj
+ZSBhbnkgZnJlZXplcyBmb3IgdGhlIGxhc3QgMTUgbWludXRlcw0KPiA+Pj4gKHVzdWFsbHkgaXQg
+aGFwcGVucyBpbiB+MjAgc2Vjb25kcykuDQo+ID4+PiANCj4gPj4+IFRoZSB3ZWlyZCB0aGluZyBp
+cyB0aGF0IEkgY2Fubm90IHJlcHJvZHVjZSB0aGUgd3JvbmcgY2xpZW50YWRkcg0KPiA+Pj4gYXV0
+b2RldGVjdGlvbiB3aGVuIEkgbW91bnQgdGhlIE5GUyB2b2x1bWVzIGZyb20gdGhlIGNvbW1hbmQg
+bGluZS4gSXQNCj4gPj4+IHNlZW1zIHRvIGhhcHBlbiBvbmx5IHdoZW4gdGhlIG1vdW50aW5nIGlz
+IGRvbmUgYnkgbW91bnRhbGwgZHVyaW5nIHRoZQ0KPiA+Pj4gYm9vdCBzZXF1ZW5jZS4NCj4gPj4+
+IA0KPiA+Pj4gSW4gb3RoZXIgd29yZHMsIHRoaXMgZnN0YWIgZW50cnkgcmVzdWx0cyBpbiBmcmVl
+emVzIGFuZCBhIGNsaWVudGFkZHIgb2YgMC4wLjAuMDoNCj4gPj4+IA0KPiA+Pj4gc3BpdHplcjov
+b3B0IC9vcHQgICAgICAgIG5mczQgICAgYmcgMCAgMA0KPiA+Pj4gDQo+ID4+PiBXaGlsZSB0aGlz
+IG9uZSwgZm9sbG93ZWQgYnkgYSAibW91bnQgL29wdCIgb24gdGhlIGNvbnNvbGUgYXMgc29vbiBh
+cyBJJ20NCj4gPj4+IGFibGUgdG8gbG9nIGluLCB3b3JrcyBqdXN0IGZpbmUgKGFuZCBoYXMgYSBj
+b3JyZWN0IGNsaWVudGFkZHIpOg0KPiA+Pj4gDQo+ID4+PiBzcGl0emVyOi9vcHQgL29wdCAgICAg
+ICAgbmZzNCAgICBub2F1dG8gMCAgMA0KPiA+PiANCj4gPj4gVGhhdCdzIGFsbW9zdCBjZXJ0YWlu
+bHkgYmVjYXVzZSBuZXR3b3JraW5nIGlzbid0IHVwIGR1cmluZyBib290LiAgVGhlICJiZyIgb3B0
+aW9uIGtlZXBzIHRyeWluZyB0aGUgbW91bnQgdW50aWwgaXQgc3VjY2VlZHMsIGJ1dCB0aGUgc3lz
+dGVtIHN0YXJ0ZWQgdGhlIG1vdW50IHByb2Nlc3MgYmVmb3JlIHRoZXJlIHdhcyBhIHNvdXJjZSBh
+ZGRyZXNzIG9uIHRoZSBzeXN0ZW0uDQo+ID4gDQo+ID4gT2gsIHNvIHRoZSBjbGllbnRhZGRyIGRl
+dGVjdGlvbiB0YWtlcyBwbGFjZSBvbmx5IG9uY2UgYXQgdGhlIGJlZ2lubmluZywNCj4gPiBhbmQg
+aXMgbm90IHJlcGVhdGVkIGlmIHRoZSBtb3VudCBhdHRlbXB0cyBhcmUgcmVwZWF0ZWQ/DQo+ID4g
+DQo+ID4gVGhpcyB3b3VsZCBleHBsYWluIHdoYXQncyBoYXBwZW5pbmcuIFRoZSBWUE4gaXMgbm90
+IHlldCB1cCB3aGVuIHRoZQ0KPiA+IHN5c3RlbSBmaXJzdCBhdHRlbXB0cyB0byBtb3VudCB0aGUg
+c2hhcmUuDQo+ID4gDQo+ID4gSXMgdGhlcmUgYSByYXRpb25hbGUgYmVoaW5kIHRoaXM/IEl0IHNl
+ZW1zIHRvIG1lIHRoYXQgaWYgdGhlIG1vdW50IGlzDQo+ID4gcmV0cmllZCwgaXQgd291bGQgYmUg
+cmVhc29uYWJsZSB0byBleHBlY3QgdGhhdCB0aGUgY2xpZW50YWRkciBkZXRlY3Rpb24NCj4gPiBp
+cyByZXRyaWVkIGFzIHdlbGwuDQo+IA0KPiBUaGVyZSdzIG5vIHJlYXNvbiBJIGNhbiByZWNhbGwg
+cmVxdWlyaW5nIHRoYXQgdGhpcyBpcyBkb25lIG9ubHkgb25jZSwgb3RoZXIgdGhhbiBpdCdzIHRo
+ZSBzaW1wbGVzdCBpbXBsZW1lbnRhdGlvbiBmb3IgbW91bnQubmZzLiAgSGlzdG9yaWNhbGx5LCBO
+RlMgaXMgZGVwbG95ZWQgb24gc3lzdGVtcyB3aXRoIHN0YXRpYyBuZXR3b3JrIGNvbmZpZ3VyYXRp
+b25zIHRoYXQgYXJlIHN1cHBvc2VkIHRvIGJlIHNldCB1cCBiZWZvcmUgdGhlIE5GUyB1dGlsaXRp
+ZXMgY29tZSBpbnRvIHBsYXkuICBBcyBCcnVjZSBzdWdnZXN0ZWQsIHBlcmhhcHMgdGhpcyBkZXNp
+Z24gYXNzdW1wdGlvbiBuZWVkcyB0byBiZSByZXZpc2l0ZWQuDQo+IA0KPiBJIHN1cHBvc2UgSSBz
+aG91bGQgZmlsZSBhIGJ1Zy4NCg0KQ29uc2lkZXIgdGhlIHdob2xlICdiZycgb3B0aW9uIHRvIGJl
+IGEgYnVnIGF0IHRoaXMgcG9pbnQuDQoNCk5vdyB0aGF0IHdlIGhhdmUgd29ya2luZyBhdXRvZnMg
+c3VwcG9ydCBmb3IgZGlyZWN0IG1vdW50cywgdGhlcmUgaXMgbm8NCnJlYXNvbiB0byBrZWVwIHRo
+ZSAnYmcnIG1vdW50IG9wdGlvbiBvbiBsaWZlIHN1cHBvcnQgYW55IG1vcmUuDQoNCkNoZWVycw0K
+ICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+DQo=
