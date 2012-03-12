@@ -1,91 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43033 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756938Ab2CNSdL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 14:33:11 -0400
-Message-ID: <4F60E45C.4010603@panasas.com>
-Date: Wed, 14 Mar 2012 11:33:00 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:43360 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755943Ab2CLPNy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 11:13:54 -0400
+Received: by ghrr11 with SMTP id r11so2656745ghr.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 08:13:54 -0700 (PDT)
 MIME-Version: 1.0
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake
- of the principle :-(
-References: <4F60141A.709@panasas.com> <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
-In-Reply-To: <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20120311230249.GA1305@fieldses.org>
+References: <1331504084.2792.7.camel@lade.trondhjem.org>
+	<20120311230249.GA1305@fieldses.org>
+Date: Mon, 12 Mar 2012 11:13:53 -0400
+Message-ID: <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
+Subject: Re: Bug in gss_krb5_crypto.c
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Dr James Bruce Fields <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/13/2012 09:37 PM, Linus Torvalds wrote:
-> On Tue, Mar 13, 2012 at 8:44 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> Since then any use of "variable length arrays" has become blasphemous.
->> Even in perfectly good, beautiful, perfectly safe code like the one
->> below where the variable length arrays are only used as a sizeof()
->> parameter, for type-safe dynamic structure allocations. GCC is not
->> executing any stack allocation code.
-> 
-> If it's a compile-time constant, just make it one. Stop the whining.
-> No VLA's required. You could, for example, make a trivial wrapper
-> macro that just declares that array as a constant array in the caller,
-> and it really *is* a constant sized array with no questions asked.
-> 
+On Sun, Mar 11, 2012 at 7:02 PM, Dr James Bruce Fields
+<bfields@fieldses.org> wrote:
+> On Sun, Mar 11, 2012 at 10:14:44PM +0000, Myklebust, Trond wrote:
+>> Hi Kevin & Bruce,
+>>
+>> When running sparse on the sunrpc code, I'm seeing the following error
+>> message:
+>> "net/sunrpc/auth_gss/gss_krb5_crypto.c:603:52: error: bad constant
+>> expression"
+>>
+>> This boils down to the line:
+>>         u8 data[crypto_blkcipher_blocksize(cipher) * 2];
+>
+> Oops.
+>
+>> which is using a GNU Cc-ism in order to do dynamic allocation on the
+>> stack. This is not acceptable in kernel code, and really needs to be
+>> changed. How should we move forward with this? Is there an upper limit
+>> on the value of crypto_blkcipher_blocksize(cipher) that we can use?
+>
+> I think it's always either 8 or 16.
+>
+> --b.
+>
 
-You have not read the code. I do not have a "constant sized array"
-I have a function that receives num_entries as parameter.
+Yes, I think 16 is currently the upper blocksize limit.  I was
+thinking there was a constant defined in a header for the
+maxblocksize, but I'm not able to get to my machine to grep for it
+right now.
 
-In turn, the function declares an array *type* of variable size,
-just a type, not an actual array. Then uses that type as a
-sizeof() parameter to take the size and call kalloc for actual
-object allocation.
-
-So all I'm doing is using the compiler generated math to
-multiply the record size by num_entries. No other code is
-generated.
-
-The reason I like them a lot is because I'm now not doing any
-*casting* like I do with the new code. After I did the wrong
-math and stumped all over Kernel memory a couple of times I
-like the compiler to check me out.
-
-> Instead, you waste more time and effort *whining* than doing that
-> technical solution.
-> 
-
-Well I also did the change which is not that bad. So since I sent
-in a fix, I'm entitled to  a *whine*.
-
-Specially in light of the assembly proof I sent. Which you did
-not quote.
-
-> You do realize that VLA's have caused real problems, since you even
-> quote some of the background. Not to mention all the problems they
-> cause for semantics analysis and static checkers.
-> 
-
-Sure, that's true
-
-> VLA's really aren't a very good thing in the kernel. And the
-> work-around I suggest above is actually *simpler* than using them and
-> then spednign the effort explaining "but they are actually constants
-> at compile time after all, and aren't the bad kinds of VLAs".
-> 
-
-Again, I am actually using real VLAs but only as a type definition
-not as an object declaration. And that part works very well.
-
-(Again see assembler attached)
-
-> Just don't do them. They are a mistake.
-> 
-
-Yes! So I've sent in a patch. Assembler wise it's identical.
-static checkers should now be happy. So here it is.
-
-Just that I don't have to like it or agree with you.
-
->                   Linus
-
-Thanks for your reply, always a pleasure
-Boaz
+K.C.
