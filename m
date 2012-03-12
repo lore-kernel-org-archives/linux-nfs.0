@@ -1,41 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42609 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46362 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755569Ab2CIVys (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 16:54:48 -0500
-Date: Fri, 9 Mar 2012 16:54:46 -0500
-To: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Cc: Simo Sorce <simo@redhat.com>, steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] Kill SPKM3 auth method
-Message-ID: <20120309215446.GA22068@fieldses.org>
-References: <1331322586-4631-1-git-send-email-simo@redhat.com>
- <4F5A76CD.9080809@fifthhorseman.net>
+	id S1752136Ab2CLQSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 12:18:34 -0400
+Date: Mon, 12 Mar 2012 11:49:21 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120312154921.GB17153@pad.fieldses.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
+ <20120306020819.GH31388@pad.fieldses.org>
+ <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+ <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F5A76CD.9080809@fifthhorseman.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120312150912.GB12440@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 09, 2012 at 04:31:57PM -0500, Daniel Kahn Gillmor wrote:
-> On 03/09/2012 02:49 PM, Simo Sorce wrote:
-> >This authentication method is obsolete and it is time it dies for good.
+On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
+> On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
+> > 
+> > Linus in general doesn't like cross tree merges (or any extraneous
+> > merges) unless they are absolutely necessary; but then, he trusts git
+> > merges more than many of us do.  :-)
+> > 
+> > I've put the the patch series on a separate patch, with a signed tag, at:
+> > 
+> >      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
+> > 
+> > Can you confirm that you've pulled it into your tree and it's landed
+> > in linux-next?  I probably won't bother pulling it in mine unless
+> > there is definitely a merge conflict that I need to resolve.  (I've
+> > checked and there do not appear to be any against linux-next as of
+> > last night.)
 > 
-> Can i ask what it has been obsoleted by?
+> Ping?
 
-I think pku2u?  Someone who's following that effort will have to comment
-on how far along it is.
+Whoops, sorry.
 
-> Neither https://tools.ietf.org/html/rfc2025 [SPKM] nor
-> https://tools.ietf.org/html/rfc2847 [LIPKEY] seem to suggest an
-> inheritor, and kerberos5 does not provide direct public-key-based
-> authentication (it's still reliant on an active and trusted
-> third-party).
-> 
-> So it seems like SPKM and LIPKEY offer a cryptographic model that is
-> otherwise unavailable for authentication between NFS endpoints.
+Looks perfect, thanks for handling these!
 
-Understood that people would like such a thing, but alas spkm3 and
-lipkey never quite managed to provide it.
+I'm running them through my usual regression tests and then I'll push
+the result out soon, with a "here's why I'm merging this" comment on the
+merge commit.  (Though I can't see it would trigger Linus's usual
+back-merge rant anyway, as it's obviously quite targetted, not a case of
+"oh I think I'll update to -rc5 now".)
 
 --b.
