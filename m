@@ -1,39 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37196 "EHLO mx2.netapp.com"
+Received: from ebox.rath.org ([173.255.235.238]:50099 "EHLO ebox.rath.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757010Ab2CUT5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 15:57:06 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: krb5 failures in recent nfs-for-next
-Date: Wed, 21 Mar 2012 19:57:03 +0000
-Message-ID: <1332359824.12332.2.camel@lade.trondhjem.org>
-References: <20120321192448.GB11222@fieldses.org>
-	 <4F6A2DE8.6060403@netapp.com> <20120321194544.GC11222@fieldses.org>
-In-Reply-To: <20120321194544.GC11222@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1752920Ab2CLUan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 16:30:43 -0400
+Message-ID: <4F5E5CF2.50309@rath.org>
+Date: Mon, 12 Mar 2012 16:30:42 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org>
+In-Reply-To: <20120312201505.GC7203@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFdlZCwgTWFyIDIxLCAyMDEyIGF0IDAzOjM3OjEyUE0gLTA0MDAsIEJyeWFuIFNjaHVt
-YWtlciB3cm90ZToNCj4gPiBPbiAwMy8yMS8yMDEyIDAzOjI0IFBNLCBKLiBCcnVjZSBGaWVsZHMg
-d3JvdGU6DQo+ID4gDQo+ID4gPiBIYXZlIHlvdSBiZWVuIGRvaW5nIGFueSBrcmI1IHRlc3Rpbmc/
-DQo+ID4gDQo+ID4gDQo+ID4gTm90IHlldC4gIEl0J3Mgc3RpbGwgb24gbXkgSmVua2lucyB0b2Rv
-IGxpc3QsIGJ1dCBJIGhhdmVuJ3QgZ290dGVuIGFyb3VuZCB0byBpdCB5ZXQuICBTb3VuZHMgbGlr
-ZSB3ZSBuZWVkIGl0LCB0aG91Z2gsIHNvIEknbGwgdHJ5IHdvcmtpbmcgb24gaXQgc29vbi4NCj4g
-DQo+IEFjdHVhbGx5LCBJJ3ZlIHNpbmNlIHNlZW4gdGhlIGZhaWx1cmUgb3ZlciBuZnN2NCBhbmQg
-YXV0aF9zeXMuICBBbGwNCj4gdGhhdCdzIGxlZnQgb24gdGhlIGNvbnNvbGUgaXMgZW5vdWdoIHRv
-IHRlbGwgbWUgaXQncyBoYXBwZW5pbmcgaW4NCj4gbmZzNF9mcmVlX2xvY2tfc3RhdGUsIGNhbGxl
-ZCBmcm9tIF9fcnBjX2V4ZWN1dGUgaW4gYSBrdGhyZWFkLiAgKFdlbGwsDQo+IGFzc3VtaW5nIHRo
-YXQncyBhY3R1YWxseSB0aGUgZmlyc3QgYmFja3RyYWNlLikNCg0KSSd2ZSBqdXN0IGJlZW4gc2xv
-dyB0byB1cGRhdGUgbmZzLWZvci1uZXh0LiBUaGVyZSBoYXMgYmVlbiBhIGZpeCBmb3INCnRoaXMg
-aW4gdGhlICdkZXZlbCcgYW5kICdsaW51eC1uZXh0JyBicmFuY2hlcyBmb3IgYSB3aGlsZS4gUHVz
-aGVkIG91dA0Kbm93Li4uDQoNClRoZSBhY3R1YWwgY29tbWl0ZGlmZiBpcyBoZXJlOg0KICBodHRw
-Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMuZ2l0O2E9Y29tbWl0ZGlm
-ZjtoPTVhZTY3YzRmZWU4NjljOWIzYzg3YjcyN2E5ZWE1MTFiNjMyNmI4MzQNCg0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
+> On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
+>> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
+>>> On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
+>>>> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
+>>>>> The problem is that as soon as more than three clients are accessing the
+>>>>> NFS shares, any operations on the NFS mountpoints by the clients hang.
+>>>>> At the same time, CPU usage of the VPN processes becomes very high. If I
+>>>>> run the VPN in debug mode, all I can see is that it is busy forwarding
+>>>>> lots of packets. I also ran a packet sniffer which showed me that 90% of
+>>>>> the packets were NFS related, but I am not familiar enough with NFS to
+>>>>> be able to tell anything from the packets themselves. I can provide an
+>>>>> example of the dump if that helps.
+>>>>
+>>>> I have put a screenshot of the dump on
+>>>> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
+>>>> not sure which parts are important).
+>>>
+>>> Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
+>>> OPEN_CONFIRM repeatedly.
+>>>
+>>>> Any suggestions how I could further debug this?
+>>>
+>>> Could the clients be stepping on each others' state if they all think
+>>> they have the same IP address (because of something to do with the VPN
+>>> networking?)
+>>
+>> That sounds like promising path of investigation. What determines the IP
+>> of a client as far as NFS is concerned?
+> 
+> I don't remember where it gets the ip it uses to construct clientid's
+> from....  But there is a mount option (clientaddr=) that will let you
+> change what it uses.  So it *might* be worth checking whether using a
+> clientaddr= option on each client (giving it a different ipaddr on each
+> client) would change the behavior.
+
+I'll try that.
+
+Since there seems to be some problem with client identity: all the
+clients are generated using the same disk image. This image also
+includes some stuff in /var/lib/nfs. I already tried emptying this on
+every client and did not help, but maybe there is another directory with
+state data that could cause problems?
+
+>>> It'd be interesting to know the fields of the setclientid call, and the
+>>> errors that the server is responding with to these calls.  If you look
+>>> at the packet details you'll probably see the same thing happening
+>>> over and over again.
+>>>
+>>> Filtering to look at traffic between server and one client at a time
+>>> might help to see the pattern.
+>>
+>> Hmm. I'm looking at the fields, but I just have no idea what any of
+>> those mean. Would you possibly be willing to take a look? I uploaded a
+>> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
+> 
+> Looking at the packet details, under the client id field, the clients
+> are all using:
+> 
+> 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
+
+Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
+be there?
+
+
+Thanks for your help!
+
+   -Nikolaus
+
+-- 
+ »Time flies like an arrow, fruit flies like a Banana.«
+
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
