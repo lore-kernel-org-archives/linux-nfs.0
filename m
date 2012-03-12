@@ -1,77 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:64373 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755700Ab2CLRNR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 13:13:17 -0400
-Received: by ghrr11 with SMTP id r11so2791282ghr.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 10:13:16 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:4140 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755789Ab2CLPSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 11:18:34 -0400
+Date: Mon, 12 Mar 2012 11:04:08 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Fix nfs4_verifier memory alignment
+Message-ID: <20120312150408.GA17153@pad.fieldses.org>
+References: <20120302221251.13019.46002.stgit@degas.1015granger.net>
+ <20120312142049.GB4752@fieldses.org>
+ <2418988F-A737-42F6-8AA0-99E85B9B8C66@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <1331571865.8219.23.camel@lade.trondhjem.org>
-References: <1331504084.2792.7.camel@lade.trondhjem.org>
-	<20120311230249.GA1305@fieldses.org>
-	<CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
-	<1331571865.8219.23.camel@lade.trondhjem.org>
-Date: Mon, 12 Mar 2012 13:13:16 -0400
-Message-ID: <CAKnQG+f5VcD6OENTw=Lg_kquLYiyMtgjNtj8i28uMJ+Y6t1KeA@mail.gmail.com>
-Subject: Re: Bug in gss_krb5_crypto.c
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Dr James Bruce Fields <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2418988F-A737-42F6-8AA0-99E85B9B8C66@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 12, 2012 at 1:04 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2012-03-12 at 11:13 -0400, Kevin Coffman wrote:
->> On Sun, Mar 11, 2012 at 7:02 PM, Dr James Bruce Fields
->> <bfields@fieldses.org> wrote:
->> > On Sun, Mar 11, 2012 at 10:14:44PM +0000, Myklebust, Trond wrote:
->> >> Hi Kevin & Bruce,
->> >>
->> >> When running sparse on the sunrpc code, I'm seeing the following error
->> >> message:
->> >> "net/sunrpc/auth_gss/gss_krb5_crypto.c:603:52: error: bad constant
->> >> expression"
->> >>
->> >> This boils down to the line:
->> >>         u8 data[crypto_blkcipher_blocksize(cipher) * 2];
->> >
->> > Oops.
->> >
->> >> which is using a GNU Cc-ism in order to do dynamic allocation on the
->> >> stack. This is not acceptable in kernel code, and really needs to be
->> >> changed. How should we move forward with this? Is there an upper limit
->> >> on the value of crypto_blkcipher_blocksize(cipher) that we can use?
->> >
->> > I think it's always either 8 or 16.
->> >
->> > --b.
->> >
->>
->> Yes, I think 16 is currently the upper blocksize limit.  I was
->> thinking there was a constant defined in a header for the
->> maxblocksize, but I'm not able to get to my machine to grep for it
->> right now.
->
-> I can't see an absolute maximum for the blocksize. The biggest blocksize
-> that I can find in the sources now is SHA512_BLOCK_SIZE, with the value
-> 128. That looks a little large to be using in a stack variable.
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+On Mon, Mar 12, 2012 at 10:57:32AM -0400, Chuck Lever wrote:
+> 
+> On Mar 12, 2012, at 10:20 AM, J. Bruce Fields wrote:
+> 
+> > On Fri, Mar 02, 2012 at 05:13:50PM -0500, Chuck Lever wrote:
+> >> Clean up due to code review.
+> >> 
+> >> The nfs4_verifier's data field is not guaranteed to be u32-aligned.
+> >> Casting an array of chars to a u32 * is considered generally
+> >> hazardous.
+> >> 
+> >> We can fix most of this by using a __be32 array to generate the
+> >> verifier's contents and then byte-copying it into the verifier field.
+> >> 
+> >> However, there is one spot where there is a backwards compatibility
+> >> constraint: the do_nfsd_create() call expects a verifier which is
+> >> 32-bit aligned.  Fix this spot by forcing the alignment of the create
+> >> verifier in the nfsd4_open args structure.
+> >> 
+> >> Also, sizeof(nfs4_verifer) is the size of the in-core verifier data
+> >> structure, but NFS4_VERIFIER_SIZE is the number of octets in an XDR'd
+> >> verifier.  The two are not interchangeable, even if they happen to
+> >> have the same value.
+> >> 
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >> 
+> >> Hi Bruce-
+> >> 
+> >> Compile-tested only.  Does this look reasonable?
+> > 
+> > Looks fine, but the setclientid verifier stuff belongs in a separate
+> > patch.
+> 
+> Thanks for the review.  I'm not clear on exactly which hunks you would like split.
 
-Olga got my machine back online :-)
+This:
 
-GSS_KRB5_MAX_BLOCKSIZE is defined in include/linux/sunrpc/gss_krb5.h
+> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >> index c5cddd6..9f0e139 100644
+> >> --- a/fs/nfsd/nfs4state.c
+> >> +++ b/fs/nfsd/nfs4state.c
+> >> @@ -1138,12 +1138,12 @@ static void gen_clid(struct nfs4_client *clp)
+> >> 
+> >> static void gen_confirm(struct nfs4_client *clp)
+> >> {
+> >> +	__be32 verf[2];
+> >> 	static u32 i;
+> >> -	u32 *p;
+> >> 
+> >> -	p = (u32 *)clp->cl_confirm.data;
+> >> -	*p++ = get_seconds();
+> >> -	*p++ = i++;
+> >> +	verf[0] = (__be32)get_seconds();
+> >> +	verf[1] = (__be32)i++;
+> >> +	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
 
-The value above is in bytes (16).
+This cl_confirm verifier really has nothing to do with the write
+verifier (though maybe it has a similar problem).
 
-K.C.
+--b.
