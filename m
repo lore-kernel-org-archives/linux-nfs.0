@@ -1,88 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:54634 "EHLO
-	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758417Ab2C2SHW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 14:07:22 -0400
-Message-ID: <4F74A4D5.1040802@cora.nwra.com>
-Date: Thu, 29 Mar 2012 12:07:17 -0600
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from che.mayfirst.org ([209.234.253.108]:32958 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756950Ab2CLVSX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 17:18:23 -0400
+Received: from pip.fifthhorseman.net (dsl254-070-154.nyc1.dsl.speakeasy.net [216.254.70.154])
+	by che.mayfirst.org (Postfix) with ESMTPSA id 27BE0F970
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 17:18:21 -0400 (EDT)
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+To: linux-nfs@vger.kernel.org
+Subject: rate-limiting state manager error messages?
+Date: Mon, 12 Mar 2012 17:18:14 -0400
+Message-ID: <87ty1t4iy1.fsf@pip.fifthhorseman.net>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Dr James Bruce Fields <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-References: <loom.20120329T182500-467@post.gmane.org>  <1333040091.5547.32.camel@lade.trondhjem.org>  <4F749CCA.3000400@cora.nwra.com> <1333042863.5547.37.camel@lade.trondhjem.org>
-In-Reply-To: <1333042863.5547.37.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: multipart/signed; boundary="=-=-=";
+	micalg=pgp-sha512; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/29/2012 11:40 AM, Myklebust, Trond wrote:
-> On Thu, 2012-03-29 at 11:32 -0600, Orion Poplawski wrote:
->> On 03/29/2012 10:54 AM, Myklebust, Trond wrote:
->>> On Thu, 2012-03-29 at 16:28 +0000, Orion Poplawski wrote:
->>>> I filed a bug here: https://bugzilla.redhat.com/show_bug.cgi?id=808112
->>>>
->>>> Description of problem:
->>>>
->>>> client A:
->>>> touch blah
->>>> ln -s blah blahlink
->>>>
->>>> client B:
->>>> open("blahlink", O_RDONLY|O_CREAT, 0666) = -1 EEXIST (File exists)
->>>
->>> That sounds more like a server bug. It shouldn't be replying
->>> NFS4ERR_EXIST here, since this isn't an exclusive create; it should
->>> rather be replying with NFS4ERR_SYMLINK.
->>>
->>> Which server are you testing against, and what does the wireshark trace
->>> show?
->>>
->>
->> Well, I can reproduce it against an EL6.2 server with an EL6.2 client with v3.
->>    First tests were with and EL5.8 server.  I can't reproduce with Fedora
->> clients against the EL6.2 server with v3.
->>
->> The EL6.2 client/server exchange in nfsel.log, F15/EL6.2 exchange in nfsf15.log
->>
->> The EL6.2 client appears to be using a version 4 call even though I think it's
->> mounted v3:
->>
->> saga:/export/sw on /data/sw type nfs
->> (rw,noatime,intr,rsize=32768,wsize=32768,sloppy,addr=10.10.10.2)
->
->
-> It has got to be mounted v4. I'd check /proc/mounts.
->
+--=-=-=
+Content-Type: text/plain
 
-saga:/export/sw /data/sw nfs 
-rw,noatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.10.2,mountvers=3,mountport=51114,mountproto=udp,local_lock=none,addr=10.10.10.2 
-0 0
+Hi folks--
 
-But I see:
+with kernel 3.2.0, if something goes wrong with the NFSv4 handshake, i'm
+seeing over a thousand messages a second like this:
 
-Network File System, Ops(3): PUTFH ACCESS GETATTR
-     [Program Version: 4]
-     [V4 Procedure: COMP (1)]
+Mar  5 12:10:21 coconut kernel: [18246.427246] Error: state manager failed on NFSv4 server molly with error 13
+Mar  5 12:10:21 coconut kernel: [18246.428329] Error: state manager failed on NFSv4 server molly with error 13
+Mar  5 12:10:21 coconut kernel: [18246.429370] Error: state manager failed on NFSv4 server molly with error 13
+Mar  5 12:10:21 coconut kernel: [18246.430263] Error: state manager failed on NFSv4 server molly with error 13
+Mar  5 12:10:21 coconut kernel: [18246.430990] Error: state manager failed on NFSv4 server molly with error 13
 
 
->> Going back to v4 on EL5.8 server: nfsv4el.log, nfsv4f18.log
->>
->> Both get NFS4ERR_EXIST in this case.
->
-> Which is an obvious server bug: it should be sending NFS4ERR_SYMLINK in
-> reply to that OPEN.
->
-> Bruce?
->
+This can very rapidly fill the logs on a client with a small /var
+filesystem, without providing much in the way of useful feedback to the
+administrator.
 
-I can reproduce with a 3.4.0-0.rc0.git1.2.fc18 server as well.
+Could these printk's be rate-limited ?
 
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+      --dkg
+
+--=-=-=
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQJ8BAEBCgBmBQJPXmgYXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25zLm9w
+ZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQwRUU1QkU5NzkyODJEODBCOUY3NTQwRjFD
+Q0QyRUQ5NEQyMTczOUU5AAoJEMzS7ZTSFznpjvoP/jrOFOWiQDebH9P50sh2HUAE
+rFvJ/4QOcyYfx0jjZzdCQZvJ+PGFnTX6mk24FBgdT/7M6248ZoWk+MK2ExF/KUs/
+yXuiau1LAixY5AoGoImEC7+FBbzYpK7s4GtnhkqAdMuz/SRdVgpe6AUtwPdn1ln6
+tX9WAcHeeZ0uCLAV2b4ZS/lpoOAYplu5qTBD6P0bFx8b4FYm85MzivQCiT7Sop6A
+xusOs0ROXAL2ZXMtyUql3wdudGk0/UtOqpw6uNtWTsN7rWEjFzBtg9aXXfaftnrN
+NzY7ybqTL9JxbdEar1Rk5oZvepywrgTnoIYx0+V26Wn0GQo+h1VIKqcenMt8bP/2
+e6W9sGeN+c3b1Vy+52dBp8TwRae3UeY3Gh+GBJwDGF5unQuzgKG/REZggvXHjmPW
+LhjrjN6TMo7FaorVTvzHqlY5BYMeYiubt5mR3HOPt8ealPrhV1NuFzqSEGoOnGY0
+k5W1oUAJbzyN1KVPhg5nnu/UIp3mEy+H94JcryuG1ZPqygQGnUdYXUv6bVJEb0cn
+1WZwbnUJuhgLODqWZTHft1yX3c2Kj2aqAaZ8cKQIjnV2Ux+uwPqEhg4nErlKHbQe
+kRJzCw6uYuO09VjJ7b0J87G1afH1DKtOnogwFu+9PzNHWLlGl/6w8idpE+s/Twhv
+ZbNQOkrETuKbUfin9y+E
+=nABz
+-----END PGP SIGNATURE-----
+--=-=-=--
