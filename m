@@ -1,51 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30099 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3578 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932241Ab2CBSua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 13:50:30 -0500
-Message-ID: <4F511675.8000500@RedHat.com>
-Date: Fri, 02 Mar 2012 13:50:29 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755903Ab2CLPTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 11:19:51 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2CFJor3022450
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 08:19:50 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix a number of sparse warnings
+Date: Mon, 12 Mar 2012 15:19:49 +0000
+Message-ID: <1331565589.8219.19.camel@lade.trondhjem.org>
+References: <1331487939-12415-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <4F5E1372.4010809@netapp.com>
+In-Reply-To: <4F5E1372.4010809@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 09/15] NFS: Add a client-side function to display NFS
- file handles
-References: <20120301215755.2138.73488.stgit@degas.1015granger.net>  <20120301220131.2138.63609.stgit@degas.1015granger.net> <1330640881.15828.9.camel@lade.trondhjem.org> <4F51009E.6030906@RedHat.com> <A558B81B-F666-4783-8FC8-7C2929BBBCE8@oracle.com>
-In-Reply-To: <A558B81B-F666-4783-8FC8-7C2929BBBCE8@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/02/2012 12:19 PM, Chuck Lever wrote:
-> 
-> On Mar 2, 2012, at 12:17 PM, Steve Dickson wrote:
-> 
->>
->>
->> On 03/01/2012 05:28 PM, Myklebust, Trond wrote:
->>> On Thu, 2012-03-01 at 17:01 -0500, Chuck Lever wrote:
->>>> For debugging, introduce a simplistic function to print NFS file
->>>> handles on the system console.  The main function is hooked into the
->>>> dprintk debugging facility, but you can directly call the helper,
->>>> _nfs_display_fhandle(), if you want to print a handle unconditionally.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>>
->>>
->>> One of the things that I really like about wireshark is that it also
->>> displays a 32-bit hexadecimal hash of the filehandle. That allows you to
->>> compare 2 filehandles _much_ faster than trying to look at the full
->>> shebang.
->>>
->>>
->> +1 Being able to easily trace filehandle in both the kernel debug and
->> wireshark would be huge.... IMHO...
-> 
-> Dros mentioned a possible follow-on patch last night at the pub that would add exactly this functionality.
-> 
-And they say good things don't come out of debauchery!!! 8-)  
+T24gTW9uLCAyMDEyLTAzLTEyIGF0IDExOjE3IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDAzLzExLzIwMTIgMDE6NDUgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+
+ID4gRml4IGEgbnVtYmVyIG9mICJ3YXJuaW5nOiBzeW1ib2wgJ2Zvbycgd2FzIG5vdCBkZWNsYXJl
+ZC4gU2hvdWxkIGl0IGJlDQo+ID4gc3RhdGljPyIgY29uZGl0aW9ucy4NCj4gPiANCj4gPiBmcy9u
+ZnMvZGVsZWdhdGlvbi5jOjI2MzozMTogd2FybmluZzogcmVzdHJpY3RlZCBmbW9kZV90IGRlZ3Jh
+ZGVzIHRvIGludGVnZXINCj4gPiAgIC0gV2Ugd2FudCB0byBhbGxvdyB1cGdyYWRlcyB0byBhIFdS
+SVRFIGRlbGVnYXRpb24sIGJ1dCBzaG91bGQgb3RoZXJ3aXNlDQo+ID4gICAgIGNvbnNpZGVyIHNl
+cnZlcnMgdGhhdCBoYW5kIG91dCBkdXBsaWNhdGUgZGVsZWdhdGlvbnMgdG8gYmUgYm9ya2VuLg0K
+PiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9jYWxsYmFjay5jICAgICAgICAgICAg
+fCAgICA0ICsrLS0NCj4gPiAgZnMvbmZzL2NsaWVudC5jICAgICAgICAgICAgICB8ICAgIDUgKyst
+LS0NCj4gPiAgZnMvbmZzL2RlbGVnYXRpb24uYyAgICAgICAgICB8ICAgIDUgKysrKy0NCj4gPiAg
+ZnMvbmZzL2Ruc19yZXNvbHZlLmMgICAgICAgICB8ICAgIDEgKw0KPiA+ICBmcy9uZnMvaWRtYXAu
+YyAgICAgICAgICAgICAgIHwgICAgOCArKysrLS0tLQ0KPiA+ICBmcy9uZnMvbmZzNGZpbGVsYXlv
+dXQuYyAgICAgIHwgICAxMCArKysrKy0tLS0tDQo+ID4gIGZzL25mcy9uZnM0ZmlsZWxheW91dGRl
+di5jICAgfCAgICA0ICsrLS0NCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgICAgICAgICAgICB8ICAg
+MjMgKysrKysrKysrKysrLS0tLS0tLS0tLS0NCj4gPiAgZnMvbmZzL25mczRzdGF0ZS5jICAgICAg
+ICAgICB8ICAgIDMgKystDQo+ID4gIGZzL25mcy9vYmpsYXlvdXQvb2JqbGF5b3V0LmMgfCAgICAy
+ICstDQo+ID4gIGZzL25mcy9wbmZzX2Rldi5jICAgICAgICAgICAgfCAgICAyICstDQo+ID4gIGZz
+L25mcy91bmxpbmsuYyAgICAgICAgICAgICAgfCAgICAyICstDQo+ID4gIDEyIGZpbGVzIGNoYW5n
+ZWQsIDM3IGluc2VydGlvbnMoKyksIDMyIGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1n
+aXQgYS9mcy9uZnMvY2FsbGJhY2suYyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+ID4gaW5kZXggMmFm
+ZTIzMy4uZWI5NWY1MCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvY2FsbGJhY2suYw0KPiA+ICsr
+KyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+ID4gQEAgLTEwMSw3ICsxMDEsNyBAQCBuZnM0X2NhbGxi
+YWNrX3N2Yyh2b2lkICp2cnFzdHApDQo+ID4gIC8qDQo+ID4gICAqIFByZXBhcmUgdG8gYnJpbmcg
+dXAgdGhlIE5GU3Y0IGNhbGxiYWNrIHNlcnZpY2UNCj4gPiAgICovDQo+ID4gLXN0cnVjdCBzdmNf
+cnFzdCAqDQo+ID4gK3N0YXRpYyBzdHJ1Y3Qgc3ZjX3Jxc3QgKg0KPiA+ICBuZnM0X2NhbGxiYWNr
+X3VwKHN0cnVjdCBzdmNfc2VydiAqc2Vydiwgc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ICB7
+DQo+ID4gIAlpbnQgcmV0Ow0KPiA+IEBAIC0xNzIsNyArMTcyLDcgQEAgbmZzNDFfY2FsbGJhY2tf
+c3ZjKHZvaWQgKnZycXN0cCkNCj4gPiAgLyoNCj4gPiAgICogQnJpbmcgdXAgdGhlIE5GU3Y0LjEg
+Y2FsbGJhY2sgc2VydmljZQ0KPiA+ICAgKi8NCj4gPiAtc3RydWN0IHN2Y19ycXN0ICoNCj4gPiAr
+c3RhdGljIHN0cnVjdCBzdmNfcnFzdCAqDQo+ID4gIG5mczQxX2NhbGxiYWNrX3VwKHN0cnVjdCBz
+dmNfc2VydiAqc2Vydiwgc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ICB7DQo+ID4gIAlzdHJ1
+Y3Qgc3ZjX3Jxc3QgKnJxc3RwOw0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMgYi9m
+cy9uZnMvY2xpZW50LmMNCj4gPiBpbmRleCBkMzBkY2JmLi5mMWYwNDdjIDEwMDY0NA0KPiA+IC0t
+LSBhL2ZzL25mcy9jbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+IEBAIC00
+NDMsOSArNDQzLDggQEAgc3RhdGljIGludCBuZnNfc29ja2FkZHJfY21wKGNvbnN0IHN0cnVjdCBz
+b2NrYWRkciAqc2ExLA0KPiA+ICB9DQo+ID4gIA0KPiA+ICAvKiBDb21tb24gbWF0Y2ggcm91dGlu
+ZSBmb3IgdjQuMCBhbmQgdjQuMSBjYWxsYmFjayBzZXJ2aWNlcyAqLw0KPiA+IC1ib29sDQo+ID4g
+LW5mczRfY2JfbWF0Y2hfY2xpZW50KGNvbnN0IHN0cnVjdCBzb2NrYWRkciAqYWRkciwgc3RydWN0
+IG5mc19jbGllbnQgKmNscCwNCj4gPiAtCQkgICAgIHUzMiBtaW5vcnZlcnNpb24pDQo+ID4gK3N0
+YXRpYyBib29sIG5mczRfY2JfbWF0Y2hfY2xpZW50KGNvbnN0IHN0cnVjdCBzb2NrYWRkciAqYWRk
+ciwNCj4gPiArCQlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCB1MzIgbWlub3J2ZXJzaW9uKQ0KPiA+
+ICB7DQo+ID4gIAlzdHJ1Y3Qgc29ja2FkZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyICopJmNs
+cC0+Y2xfYWRkcjsNCj4gDQo+IA0KPiBOb3cgdGhhdCB0aGlzIGZ1bmN0aW9uIGlzIHN0YXRpYywg
+Z2NjIGdpdmVzIG1lIHRoaXMgd2FybmluZzogDQo+ICAgQ0MgW01dICBmcy9uZnMvY2xpZW50Lm8N
+Cj4gZnMvbmZzL2NsaWVudC5jOjQ0NjoxMzogd2FybmluZzogJ25mczRfY2JfbWF0Y2hfY2xpZW50
+JyBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dDQo+IA0KPiBJdCBsb29r
+cyBsaWtlIHRoZSBvbmx5IHVzZXIgb2YgdGhpcyBmdW5jdGlvbiBpcyBuZnM0X2ZpbmRfY2xpZW50
+X3Nlc3Npb25pZCwgc28gd2hlbiB2NC4xIGlzbid0IGVuYWJsZWQgdGhlIGZ1bmN0aW9uIGlzbid0
+IHVzZWQuICBXb3VsZCB5b3UgbGlrZSBtZSB0byBzZW5kIGluIGEgc2VwYXJhdGUgcGF0Y2ggZm9y
+IHRoaXM/DQo+IA0KDQpZZXMgcGxlYXNlIQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0KDQo=
