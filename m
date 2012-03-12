@@ -1,124 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53873 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754106Ab2CGPts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 10:49:48 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1 handle DS stateid errors
-Date: Wed,  7 Mar 2012 10:49:41 -0500
-Message-Id: <1331135381-2556-1-git-send-email-andros@netapp.com>
+Received: from inspiron.ap.columbia.edu ([128.59.145.39]:48136 "EHLO
+	inspiron.ap.columbia.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753468Ab2CLQ27 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 12:28:59 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+References: <878vj7x6mj.fsf@vostro.rath.org>
+Date: Mon, 12 Mar 2012 12:20:17 -0400
+In-Reply-To: <878vj7x6mj.fsf@vostro.rath.org> (Nikolaus Rath's message of
+	"Sat, 10 Mar 2012 20:34:44 -0500")
+Message-ID: <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
+> The problem is that as soon as more than three clients are accessing the
+> NFS shares, any operations on the NFS mountpoints by the clients hang.
+> At the same time, CPU usage of the VPN processes becomes very high. If I
+> run the VPN in debug mode, all I can see is that it is busy forwarding
+> lots of packets. I also ran a packet sniffer which showed me that 90% of
+> the packets were NFS related, but I am not familiar enough with NFS to
+> be able to tell anything from the packets themselves. I can provide an
+> example of the dump if that helps.
 
-Handle DS READ and WRITE stateid errors by recovering the stateid on the MDS.
+I have put a screenshot of the dump on
+http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
+not sure which parts are important).
 
-NFS4ERR_OLD_STATEID is ignored as the client always sends a
-state sequenceid of zero for DS READ and WRITE stateids.
+Any suggestions how I could further debug this?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/delegation.c     |    1 +
- fs/nfs/nfs4filelayout.c |   29 ++++++++++++++++++++++++++++-
- fs/nfs/nfs4state.c      |    2 ++
- 3 files changed, 31 insertions(+), 1 deletions(-)
+Best,
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 87f7544..97d5357 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -474,6 +474,7 @@ void nfs_remove_bad_delegation(struct inode *inode)
- 		nfs_free_delegation(delegation);
- 	}
- }
-+EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
- 
- /**
-  * nfs_expire_all_delegation_types
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 47e8f34..b2d3bb5 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -36,6 +36,7 @@
- #include <linux/sunrpc/metrics.h>
- 
- #include "internal.h"
-+#include "delegation.h"
- #include "nfs4filelayout.h"
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-@@ -86,12 +87,31 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs_client *clp,
- 					 int *reset)
- {
-+	struct nfs_server *mds_server = NFS_SERVER(state->inode);
-+	struct nfs_client *mds_client = mds_server->nfs_client;
-+
- 	if (task->tk_status >= 0)
- 		return 0;
--
- 	*reset = 0;
- 
- 	switch (task->tk_status) {
-+	/* MDS state errors */
-+	case -NFS4ERR_DELEG_REVOKED:
-+	case -NFS4ERR_ADMIN_REVOKED:
-+	case -NFS4ERR_BAD_STATEID:
-+		if (state != NULL)
-+			nfs_remove_bad_delegation(state->inode);
-+	case -NFS4ERR_OPENMODE:
-+		if (state == NULL)
-+			break;
-+		nfs4_schedule_stateid_recovery(mds_server, state);
-+		goto wait_on_recovery;
-+	case -NFS4ERR_EXPIRED:
-+		if (state != NULL)
-+			nfs4_schedule_stateid_recovery(mds_server, state);
-+		nfs4_schedule_lease_recovery(mds_client);
-+		goto wait_on_recovery;
-+	/* DS session errors */
- 	case -NFS4ERR_BADSESSION:
- 	case -NFS4ERR_BADSLOT:
- 	case -NFS4ERR_BAD_HIGH_SLOT:
-@@ -117,8 +137,15 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		*reset = 1;
- 		break;
- 	}
-+out:
- 	task->tk_status = 0;
- 	return -EAGAIN;
-+wait_on_recovery:
-+	rpc_sleep_on(&mds_client->cl_rpcwaitq, task, NULL);
-+	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &mds_client->cl_state) == 0)
-+		rpc_wake_up_queued_task(&mds_client->cl_rpcwaitq, task);
-+	goto out;
-+
- }
- 
- /* NFS_PROTO call done callback routines */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1dad5c5..a58d02a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1072,6 +1072,7 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
- 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 	nfs4_schedule_state_manager(clp);
- }
-+EXPORT_SYMBOL_GPL(nfs4_schedule_lease_recovery);
- 
- void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
- {
-@@ -1109,6 +1110,7 @@ void nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4
- 	nfs4_state_mark_reclaim_nograce(clp, state);
- 	nfs4_schedule_state_manager(clp);
- }
-+EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
- 
- void nfs_inode_find_state_and_recover(struct inode *inode,
- 		const nfs4_stateid *stateid)
+   -Nikolaus
+
 -- 
-1.7.6.4
+ »Time flies like an arrow, fruit flies like a Banana.«
 
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
