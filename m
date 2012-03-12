@@ -1,34 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22202 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28758 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932609Ab2C2ALj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 20:11:39 -0400
+	id S1754027Ab2CLREn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 13:04:43 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-Date: Thu, 29 Mar 2012 00:11:16 +0000
-Message-ID: <1332979882.19172.38.camel@lade.trondhjem.org>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
-	 <1332947296.11400.7.camel@lade.trondhjem.org>
-	 <74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
-	 <CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
-In-Reply-To: <CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: Dr James Bruce Fields <bfields@fieldses.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Bug in gss_krb5_crypto.c
+Date: Mon, 12 Mar 2012 17:04:25 +0000
+Message-ID: <1331571865.8219.23.camel@lade.trondhjem.org>
+References: <1331504084.2792.7.camel@lade.trondhjem.org>
+	 <20120311230249.GA1305@fieldses.org>
+	 <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
+In-Reply-To: <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDA4OjU1ICswOTAwLCBOYW1qYWUgSmVvbiB3cm90ZToNCj4g
-SGkuIFRyb25kLg0KPiANCj4gTm9ybWFsbHkgZ290byBzdGF0ZW1lbnQgaXMgbm90IHJlY29tbWVu
-ZGVkKHBpcGVsaW5lIGFuZCBicmFuY2gNCj4gcHJlZGljdGlvbikgaXQgaXMgb25seSByZWNvbW1l
-bmRlZCBhcyBhIGxhc3QgcmVzb3J0IGlmIHRoZXJlIGlzIG5vDQo+IG1ldGhvZCB0byBlc2NhcGUg
-dGhpcyBsb29wLg0KDQo/Pz8/Pz8/Pz8/Pz8/IEEgZ290byBpcyBhbiB1bmNvbmRpdGlvbmFsIGJy
-YW5jaDsgdGhlcmUgaXMgbm8gZnVydGhlcg0KYnJhbmNoIHByZWRpY3Rpb24gaW52b2x2ZWQgb25j
-ZSBvbmNlIHRoZSBwcm9jZXNzb3IgZ2V0cyB0aGUgdmFsdWUgb2YNCidlcnInIGluIHRoYXQgc3dp
-dGNoIHN0YXRlbWVudCBjb3JyZWN0LiBFeGFjdGx5IGhvdyB3b3VsZCBhZGRpbmcgYW4NCmV4dHJh
-IHNldCt0ZXN0IG9mIGV4Y2VwdGlvbi5yZXRyeSBhZnRlciB0aGUgc3dpdGNoKCkgaGVscCB0aGUg
-YnJhbmNoDQpwcmVkaWN0b3IgaW4gdGhpcyBzaXR1YXRpb24/DQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+T24gTW9uLCAyMDEyLTAzLTEyIGF0IDExOjEzIC0wNDAwLCBLZXZpbiBDb2ZmbWFuIHdyb3RlOg0K
+PiBPbiBTdW4sIE1hciAxMSwgMjAxMiBhdCA3OjAyIFBNLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMN
+Cj4gPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCj4gPiBPbiBTdW4sIE1hciAxMSwgMjAx
+MiBhdCAxMDoxNDo0NFBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBIaSBL
+ZXZpbiAmIEJydWNlLA0KPiA+Pg0KPiA+PiBXaGVuIHJ1bm5pbmcgc3BhcnNlIG9uIHRoZSBzdW5y
+cGMgY29kZSwgSSdtIHNlZWluZyB0aGUgZm9sbG93aW5nIGVycm9yDQo+ID4+IG1lc3NhZ2U6DQo+
+ID4+ICJuZXQvc3VucnBjL2F1dGhfZ3NzL2dzc19rcmI1X2NyeXB0by5jOjYwMzo1MjogZXJyb3I6
+IGJhZCBjb25zdGFudA0KPiA+PiBleHByZXNzaW9uIg0KPiA+Pg0KPiA+PiBUaGlzIGJvaWxzIGRv
+d24gdG8gdGhlIGxpbmU6DQo+ID4+ICAgICAgICAgdTggZGF0YVtjcnlwdG9fYmxrY2lwaGVyX2Js
+b2Nrc2l6ZShjaXBoZXIpICogMl07DQo+ID4NCj4gPiBPb3BzLg0KPiA+DQo+ID4+IHdoaWNoIGlz
+IHVzaW5nIGEgR05VIENjLWlzbSBpbiBvcmRlciB0byBkbyBkeW5hbWljIGFsbG9jYXRpb24gb24g
+dGhlDQo+ID4+IHN0YWNrLiBUaGlzIGlzIG5vdCBhY2NlcHRhYmxlIGluIGtlcm5lbCBjb2RlLCBh
+bmQgcmVhbGx5IG5lZWRzIHRvIGJlDQo+ID4+IGNoYW5nZWQuIEhvdyBzaG91bGQgd2UgbW92ZSBm
+b3J3YXJkIHdpdGggdGhpcz8gSXMgdGhlcmUgYW4gdXBwZXIgbGltaXQNCj4gPj4gb24gdGhlIHZh
+bHVlIG9mIGNyeXB0b19ibGtjaXBoZXJfYmxvY2tzaXplKGNpcGhlcikgdGhhdCB3ZSBjYW4gdXNl
+Pw0KPiA+DQo+ID4gSSB0aGluayBpdCdzIGFsd2F5cyBlaXRoZXIgOCBvciAxNi4NCj4gPg0KPiA+
+IC0tYi4NCj4gPg0KPiANCj4gWWVzLCBJIHRoaW5rIDE2IGlzIGN1cnJlbnRseSB0aGUgdXBwZXIg
+YmxvY2tzaXplIGxpbWl0LiAgSSB3YXMNCj4gdGhpbmtpbmcgdGhlcmUgd2FzIGEgY29uc3RhbnQg
+ZGVmaW5lZCBpbiBhIGhlYWRlciBmb3IgdGhlDQo+IG1heGJsb2Nrc2l6ZSwgYnV0IEknbSBub3Qg
+YWJsZSB0byBnZXQgdG8gbXkgbWFjaGluZSB0byBncmVwIGZvciBpdA0KPiByaWdodCBub3cuDQoN
+CkkgY2FuJ3Qgc2VlIGFuIGFic29sdXRlIG1heGltdW0gZm9yIHRoZSBibG9ja3NpemUuIFRoZSBi
+aWdnZXN0IGJsb2Nrc2l6ZQ0KdGhhdCBJIGNhbiBmaW5kIGluIHRoZSBzb3VyY2VzIG5vdyBpcyBT
+SEE1MTJfQkxPQ0tfU0laRSwgd2l0aCB0aGUgdmFsdWUNCjEyOC4gVGhhdCBsb29rcyBhIGxpdHRs
+ZSBsYXJnZSB0byBiZSB1c2luZyBpbiBhIHN0YWNrIHZhcmlhYmxlLg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
