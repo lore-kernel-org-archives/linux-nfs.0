@@ -1,49 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:34997 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753518Ab2CNEiA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 00:38:00 -0400
-Received: by wejx9 with SMTP id x9so1267256wej.19
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 21:37:59 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:59595 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757803Ab2CLWWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 18:22:53 -0400
+Date: Mon, 12 Mar 2012 18:22:50 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120312222250.GD8991@fieldses.org>
+References: <20120109132158.2616029.30467.stgit@localhost.localdomain>
+ <20120109132153.2616029.26302.stgit@localhost.localdomain>
+ <20120306000837.GA17164@thunk.org>
+ <20120306020819.GH31388@pad.fieldses.org>
+ <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+ <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
+ <20120312154921.GB17153@pad.fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <4F60141A.709@panasas.com>
-References: <4F60141A.709@panasas.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 13 Mar 2012 21:37:39 -0700
-Message-ID: <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
-Subject: Re: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake of
- the principle :-(
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120312154921.GB17153@pad.fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 13, 2012 at 8:44 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> Since then any use of "variable length arrays" has become blasphemous.
-> Even in perfectly good, beautiful, perfectly safe code like the one
-> below where the variable length arrays are only used as a sizeof()
-> parameter, for type-safe dynamic structure allocations. GCC is not
-> executing any stack allocation code.
+On Mon, Mar 12, 2012 at 11:49:21AM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
+> > On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
+> > > 
+> > > Linus in general doesn't like cross tree merges (or any extraneous
+> > > merges) unless they are absolutely necessary; but then, he trusts git
+> > > merges more than many of us do.  :-)
+> > > 
+> > > I've put the the patch series on a separate patch, with a signed tag, at:
+> > > 
+> > >      git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
+> > > 
+> > > Can you confirm that you've pulled it into your tree and it's landed
+> > > in linux-next?  I probably won't bother pulling it in mine unless
+> > > there is definitely a merge conflict that I need to resolve.  (I've
+> > > checked and there do not appear to be any against linux-next as of
+> > > last night.)
+> > 
+> > Ping?
+> 
+> Whoops, sorry.
+> 
+> Looks perfect, thanks for handling these!
+> 
+> I'm running them through my usual regression tests
 
-If it's a compile-time constant, just make it one. Stop the whining.
-No VLA's required. You could, for example, make a trivial wrapper
-macro that just declares that array as a constant array in the caller,
-and it really *is* a constant sized array with no questions asked.
+Urgh, I'm seeing a failure on the telldir test (part of the "special"
+connectathon tests).  I haven't looked at what it's trying to do yet.
+Reproduceable even just on a local filesystem without NFS involved.  If
+someone wants to look at it, you can just do:
 
-Instead, you waste more time and effort *whining* than doing that
-technical solution.
+	git clone git://linux-nfs.org/~bfields/cthon04.git
+	cd cthon04
+	make 
+	NFS_TESTDIR=/somewhere_on_an_ext4_fs/TMP ./runtests -s
 
-You do realize that VLA's have caused real problems, since you even
-quote some of the background. Not to mention all the problems they
-cause for semantics analysis and static checkers.
+(Or after running that, more specifically,
 
-VLA's really aren't a very good thing in the kernel. And the
-work-around I suggest above is actually *simpler* than using them and
-then spednign the effort explaining "but they are actually constants
-at compile time after all, and aren't the bad kinds of VLAs".
+	cd /somewhere_on_an_ext4_fs/TMP/
+	./telldir
 
-Just don't do them. They are a mistake.
+)
 
-                  Linus
+I'll look at it tomorrow.
+
+--b.
