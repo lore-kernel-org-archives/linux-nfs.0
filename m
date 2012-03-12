@@ -1,40 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:37140 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758027Ab2C2Bln (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2012 21:41:43 -0400
-Date: Wed, 28 Mar 2012 21:41:39 -0400
-From: Jim Rees <rees@umich.edu>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Namjae Jeon <linkinjeon@gmail.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-Message-ID: <20120329014139.GA29997@umich.edu>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
- <38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
- <1332947296.11400.7.camel@lade.trondhjem.org>
- <74BCDDD5-955E-4C06-9640-47D477A9FF8F@netapp.com>
- <CAKYAXd-eWRrja8bGqS7tTWehPNgAM4gtPALfAexRvTwkbbBOGw@mail.gmail.com>
- <1332979882.19172.38.camel@lade.trondhjem.org>
+Received: from fieldses.org ([174.143.236.118]:38400 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754812Ab2CLTbR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 15:31:17 -0400
+Date: Mon, 12 Mar 2012 15:31:16 -0400
+To: Nikolaus Rath <Nikolaus@rath.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Message-ID: <20120312193115.GA7203@fieldses.org>
+References: <878vj7x6mj.fsf@vostro.rath.org>
+ <87pqchn64e.fsf@inspiron.ap.columbia.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332979882.19172.38.camel@lade.trondhjem.org>
+In-Reply-To: <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond wrote:
+On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
+> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
+> > The problem is that as soon as more than three clients are accessing the
+> > NFS shares, any operations on the NFS mountpoints by the clients hang.
+> > At the same time, CPU usage of the VPN processes becomes very high. If I
+> > run the VPN in debug mode, all I can see is that it is busy forwarding
+> > lots of packets. I also ran a packet sniffer which showed me that 90% of
+> > the packets were NFS related, but I am not familiar enough with NFS to
+> > be able to tell anything from the packets themselves. I can provide an
+> > example of the dump if that helps.
+> 
+> I have put a screenshot of the dump on
+> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
+> not sure which parts are important).
 
-  On Thu, 2012-03-29 at 08:55 +0900, Namjae Jeon wrote:
-  > Hi. Trond.
-  > 
-  > Normally goto statement is not recommended(pipeline and branch
-  > prediction) it is only recommended as a last resort if there is no
-  > method to escape this loop.
-  
-  ????????????? A goto is an unconditional branch; there is no further
-  branch prediction involved once once the processor gets the value of
-  'err' in that switch statement correct. Exactly how would adding an
-  extra set+test of exception.retry after the switch() help the branch
-  predictor in this situation?
+Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
+OPEN_CONFIRM repeatedly.
 
-Besides which I see little point in optimizing this error path.
+> Any suggestions how I could further debug this?
+
+Could the clients be stepping on each others' state if they all think
+they have the same IP address (because of something to do with the VPN
+networking?)
+
+It'd be interesting to know the fields of the setclientid call, and the
+errors that the server is responding with to these calls.  If you look
+at the packet details you'll probably see the same thing happening
+over and over again.
+
+Filtering to look at traffic between server and one client at a time
+might help to see the pattern.
+
+--b.
