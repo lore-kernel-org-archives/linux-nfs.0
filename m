@@ -1,73 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34914 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:54096 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759210Ab2C3URt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 16:17:49 -0400
-Date: Fri, 30 Mar 2012 16:17:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Matt W. Benjamin" <matt@linuxbox.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unlink within an open directory stream
-Message-ID: <20120330161755.681e8924@corrin.poochiereds.net>
-In-Reply-To: <4F70B2AE.4000504@panasas.com>
-References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
-	<1332609149.25346.12.camel@lade.trondhjem.org>
-	<4F70B2AE.4000504@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1757095Ab2CLUPF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 16:15:05 -0400
+Date: Mon, 12 Mar 2012 16:15:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nikolaus Rath <Nikolaus@rath.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Message-ID: <20120312201505.GC7203@fieldses.org>
+References: <878vj7x6mj.fsf@vostro.rath.org>
+ <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+ <20120312193115.GA7203@fieldses.org>
+ <4F5E5241.7070008@rath.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F5E5241.7070008@rath.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 26 Mar 2012 11:17:18 -0700
-Boaz Harrosh <bharrosh@panasas.com> wrote:
-
-> On 03/24/2012 10:12 AM, Myklebust, Trond wrote:
-> 
-> > On Sat, 2012-03-24 at 12:53 -0400, Matt W. Benjamin wrote:
-> >> Hi,
+On Mon, Mar 12, 2012 at 03:45:05PM -0400, Nikolaus Rath wrote:
+> On 03/12/2012 03:31 PM, J. Bruce Fields wrote:
+> > On Mon, Mar 12, 2012 at 12:20:17PM -0400, Nikolaus Rath wrote:
+> >> Nikolaus Rath <Nikolaus-BTH8mxji4b0@public.gmane.org> writes:
+> >>> The problem is that as soon as more than three clients are accessing the
+> >>> NFS shares, any operations on the NFS mountpoints by the clients hang.
+> >>> At the same time, CPU usage of the VPN processes becomes very high. If I
+> >>> run the VPN in debug mode, all I can see is that it is busy forwarding
+> >>> lots of packets. I also ran a packet sniffer which showed me that 90% of
+> >>> the packets were NFS related, but I am not familiar enough with NFS to
+> >>> be able to tell anything from the packets themselves. I can provide an
+> >>> example of the dump if that helps.
 > >>
-> >> I don't think anything is.  Or, people originally reported the behavior against knfsd.
-> >>
-> >> Matt
+> >> I have put a screenshot of the dump on
+> >> http://www.rath.org/res/wireshark.png (the full dump is 18 MB, and I'm
+> >> not sure which parts are important).
 > > 
-> > There is a known issue with ext2/3/4 generating non-unique readdir
-> > cookies. It rarely hits you when you are creating small directories, but
-> > it frequently hits you with larger ones. A fix is underway that should
-> > significantly reduce the frequency of cookie collisions.
+> > Looks like they're doing SETCLIENTID, SETCLIENTID_CONFIRM, OPEN,
+> > OPEN_CONFIRM repeatedly.
 > > 
-> > Recent NFS clients will actually detect the presence of those cookie
-> > loops, and log them in the kernel syslog. That would therefore be the
-> > first thing that I'd check if confronted with this kind of problem.
+> >> Any suggestions how I could further debug this?
 > > 
-> > Cheers
-> >   Trond
+> > Could the clients be stepping on each others' state if they all think
+> > they have the same IP address (because of something to do with the VPN
+> > networking?)
+> 
+> That sounds like promising path of investigation. What determines the IP
+> of a client as far as NFS is concerned?
+
+I don't remember where it gets the ip it uses to construct clientid's
+from....  But there is a mount option (clientaddr=) that will let you
+change what it uses.  So it *might* be worth checking whether using a
+clientaddr= option on each client (giving it a different ipaddr on each
+client) would change the behavior.
+
+> > It'd be interesting to know the fields of the setclientid call, and the
+> > errors that the server is responding with to these calls.  If you look
+> > at the packet details you'll probably see the same thing happening
+> > over and over again.
 > > 
+> > Filtering to look at traffic between server and one client at a time
+> > might help to see the pattern.
 > 
-> 
-> Trond please look on the bug report links below. It's not the "cookie collisions" case.
-> 
-> It's the new (post RHEL 6.0 Kernel) NFS need for opendir after an unlink.
-> Now the POSIX man page *does* say that applications must re-opendir after
-> unlink, but there are some applications who did not read the manual, and since
-> it works with local filesystems and old nfs, (What Kernel RHEL 6.0 is based on?)
-> they never noticed the bug and never fixed it.
-> 
+> Hmm. I'm looking at the fields, but I just have no idea what any of
+> those mean. Would you possibly be willing to take a look? I uploaded a
+> pcap dump of a few packets to http://www.rath.org/res/sample.pcap.
 
-The RHEL6 kernel is 2.6.32 based, but we have (as always) done some
-fairly extensive backports from upstream.
+Looking at the packet details, under the client id field, the clients
+are all using:
 
-One of the things that was backported was the Bryan's work to clean up
-readdir and to eliminate the readdirplus limit. With that change, you
-get fewer entries per READDIRPLUS call, so you make more READDIRPLUS
-calls to the server in order to traverse an entire directory.
+	"0.0.0.0/192.168.1.2 tcp UNIX 0"
 
-Since you're unlinking as you go, then I suspect that you're just more
-likely to see this problem crop up, but I suspect Trond is correct and
-this is preexisting bug.
+And the server is returning STALE_CLIENTID to some SETCLIENTID_CONFIRMs
+(I wonder if that's a server bug, that doesn't sound like the right
+error--though this is a weird case), and NFS4ERR_EXPIRED to some OPENs
+(I think that's correct server behavior if it thinks another SETCLIENTID
+purged the state).
 
-One way to confirm this might be to have them mount with -o nordirplus.
-Does that make the problem go away?
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
