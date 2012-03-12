@@ -1,82 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:33202 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760147Ab2CaP1q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2012 11:27:46 -0400
-Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type fully matches
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=US-ASCII
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
-Date: Sat, 31 Mar 2012 11:27:33 -0400
-Cc: Jim Rees <rees@umich.edu>, Sasha Levin <levinsasha928@gmail.com>,
-        Lukas Razik <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>
-Message-Id: <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
-References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com> <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com> <20120107181221.GA3777@umich.edu> <1326111265.30169.5.camel@lappy> <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from ebox.rath.org ([173.255.235.238]:50487 "EHLO ebox.rath.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753784Ab2CLVyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Mar 2012 17:54:32 -0400
+Message-ID: <4F5E7098.9080607@rath.org>
+Date: Mon, 12 Mar 2012 17:54:32 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org> <87mx7lms1y.fsf@inspiron.ap.columbia.edu> <683A9678-14CF-4F27-8CC9-DD569722EE39@oracle.com> <4F5E6CBF.4080608@rath.org> <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
+In-Reply-To: <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Oops.  Trond?  This got dropped somewhere.
-
-
-On Mar 31, 2012, at 11:21 AM, Sasha Levin wrote:
-
-> ping? I saw that this one didn't get pulled into the tree.
+On 03/12/2012 05:46 PM, Chuck Lever wrote:
+>> Oh, so the clientaddr detection takes place only once at the beginning,
+>> and is not repeated if the mount attempts are repeated?
+>>
+>> This would explain what's happening. The VPN is not yet up when the
+>> system first attempts to mount the share.
+>>
+>> Is there a rationale behind this? It seems to me that if the mount is
+>> retried, it would be reasonable to expect that the clientaddr detection
+>> is retried as well.
 > 
-> On Mon, Jan 9, 2012 at 1:14 PM, Sasha Levin <levinsasha928@gmail.com> wrote:
->> On Sat, 2012-01-07 at 13:12 -0500, Jim Rees wrote:
->>> Chuck Lever wrote:
->>> 
->>>   On Jan 7, 2012, at 4:12 AM, Sasha Levin wrote:
->>> 
->>>   > Currently, we'll try mounting any device who's major device number is
->>>   > UNNAMED_MAJOR as NFS root. This would happen for non-NFS devices as well (such
->>>   > as 9p devices) but it wouldn't cause any issues since mounting the device
->>>   > as NFS would fail quickly and the code proceeded to doing the proper mount:
->>>   >
->>>   >   [  101.522716] VFS: Unable to mount root fs via NFS, trying floppy.
->>>   >   [  101.534499] VFS: Mounted root (9p filesystem) on device 0:18.
->>>   >
->>>   > Commit 6829a048 ("NFS: Retry mounting NFSROOT") has introduced retries when
->>>   > mounting NFS root, which means that now we don't immediately fail and instead
->>>   > it takes an additional 90+ seconds until we stop retrying.
->>>   >
->>>   > This meant that it would take an additional 90 seconds to boot when we're not
->>>   > using a device type which gets detected in order before NFS.
->>> 
->>>   The long timeouts are kind of irrelevant, in my view.  The real problem is
->>>   that NFS was tried at all in this case.  That behavior was not introduced
->>>   by 6829a058.
->>> 
->>> The comment does imply that 6829a048 introduced a bug, but that's not true.
->>> It uncovered a bug that was there before.
->>> 
->>> I would change the part about "now we don't immediately fail."  It didn't
->>> immediately fail before, but the timeout was short enough that you wouldn't
->>> notice it.
->> 
->> I tried to point out that 6829a048 changed the behavior which was
->> described in the first paragraph, I didn't try to imply that 6829a048 is
->> buggy on its own.
->> 
->> I'm fine with changing the changelog to whatever will make it clearer.
->> 
->> --
->> 
->> Sasha.
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> There's no reason I can recall requiring that this is done only once, other than it's the simplest implementation for mount.nfs.  Historically, NFS is deployed on systems with static network configurations that are supposed to be set up before the NFS utilities come into play.  As Bruce suggested, perhaps this design assumption needs to be revisited.
+> 
+> I suppose I should file a bug.
+
+Thanks! Let me know if you need someone for testing.
+
+
+Best,
+
+   -Nikolaus
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ »Time flies like an arrow, fruit flies like a Banana.«
 
-
-
-
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
