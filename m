@@ -1,122 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60896 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030572Ab2CBUk5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 15:40:57 -0500
-Message-ID: <4F51305A.7030101@RedHat.com>
-Date: Fri, 02 Mar 2012 15:40:58 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:59794 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751585Ab2CMVKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 17:10:13 -0400
+Date: Tue, 13 Mar 2012 17:10:09 -0400
+From: "Ted Ts'o" <tytso@mit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120313211009.GA11969@thunk.org>
+References: <20120306020819.GH31388@pad.fieldses.org>
+ <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+ <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
+ <20120312154921.GB17153@pad.fieldses.org>
+ <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFS: Consolidate the parsing of the '-ov4.x' and
- '-overs=4.x' mount options
-References: <1330715231-20650-1-git-send-email-Trond.Myklebust@netapp.com>  <1330715231-20650-2-git-send-email-Trond.Myklebust@netapp.com>  <1330715231-20650-3-git-send-email-Trond.Myklebust@netapp.com> <1330715866.12731.4.camel@lade.trondhjem.org>
-In-Reply-To: <1330715866.12731.4.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120313203446.GB21991@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 13, 2012 at 04:34:46PM -0400, J. Bruce Fields wrote:
+> > 
+> > Thanks! I'm also just going to work on it (just noticed your mail
+> > while on vacation ...).
 
+Brend, thanks!!
 
-On 03/02/2012 02:17 PM, Myklebust, Trond wrote:
-> Steve,
-> 
-> When testing this patch, I noticed that the 'mount' program seems to be
-> adding a 'vers=4' to my mount options.
-> 
-> IOW: when I tested the following mount command:
-> 
->         mount -t nfs -ov4.1 foo:/bar /mnt
-> 
-> the kernel ended up parsing
-> 
->    'v4.1,vers=4,addr=xxx.xxx.xxx.xxx, clientaddr=yyy.yyy.yyy.yyy'
-> 
-> which caused a bug in my original patches (where I had 'vers=4'
-> automatically set minorversion=0).
-> 
-> Any idea why we're adding that extra vers=4?
-Clearly... just to annoy you! 8-) it is Friday!! ;-)
+Bruce, random question --- do you know what the copyright and
+licensing terms are for the connectathon test suite?  It occurs to me
+that it might be good to get some of these tests into xfstests, given
+that you mentioned that the telldir test was failing even when run on
+a local file system.  That says to me this is a good file system level
+test that we should try to get into xfstests if possible.
 
-Well when a (known) version is not specified, the
-"vers=4" string is appended on the options line. I'm thinking
-the reason as twofold. One so its clean communicate to the kernel 
-this is a v4 mount and two, so "vers=4" shows up in /proc/mounts.
+Getting it into xfstests would also tend to reduce the chance of
+regressions, since I always run xfstests before I submit patches (and
+in fact I did run xfstests before sending you a pull request Bernd's
+patches --- and I'm glad your testing caught the problem when mine
+didn't!)
 
-steved.
+Thanks,
 
-> 
-> Cheers
->   Trond
-> 
-> On Fri, 2012-03-02 at 14:07 -0500, Trond Myklebust wrote:
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->>  fs/nfs/super.c |   31 +++----------------------------
->>  1 files changed, 3 insertions(+), 28 deletions(-)
->>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index 7f0c93f..f4ccdae 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -80,7 +80,6 @@ enum {
->>  	Opt_cto, Opt_nocto,
->>  	Opt_ac, Opt_noac,
->>  	Opt_lock, Opt_nolock,
->> -	Opt_v2, Opt_v3, Opt_v4, Opt_v4_0, Opt_v4_1,
->>  	Opt_udp, Opt_tcp, Opt_rdma,
->>  	Opt_acl, Opt_noacl,
->>  	Opt_rdirplus, Opt_nordirplus,
->> @@ -133,11 +132,6 @@ static const match_table_t nfs_mount_option_tokens = {
->>  	{ Opt_noac, "noac" },
->>  	{ Opt_lock, "lock" },
->>  	{ Opt_nolock, "nolock" },
->> -	{ Opt_v2, "v2" },
->> -	{ Opt_v3, "v3" },
->> -	{ Opt_v4, "v4" },
->> -	{ Opt_v4_0, "v4.0" },
->> -	{ Opt_v4_1, "v4.1" },
->>  	{ Opt_udp, "udp" },
->>  	{ Opt_tcp, "tcp" },
->>  	{ Opt_rdma, "rdma" },
->> @@ -183,6 +177,9 @@ static const match_table_t nfs_mount_option_tokens = {
->>  	{ Opt_fscache_uniq, "fsc=%s" },
->>  	{ Opt_local_lock, "local_lock=%s" },
->>  
->> +	/* The following needs to be listed after all other options */
->> +	{ Opt_nfsvers, "v%s" },
->> +
->>  	{ Opt_err, NULL }
->>  };
->>  
->> @@ -1228,28 +1225,6 @@ static int nfs_parse_mount_options(char *raw,
->>  			mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
->>  				       NFS_MOUNT_LOCAL_FCNTL);
->>  			break;
->> -		case Opt_v2:
->> -			mnt->flags &= ~NFS_MOUNT_VER3;
->> -			mnt->version = 2;
->> -			break;
->> -		case Opt_v3:
->> -			mnt->flags |= NFS_MOUNT_VER3;
->> -			mnt->version = 3;
->> -			break;
->> -		case Opt_v4:
->> -			mnt->flags &= ~NFS_MOUNT_VER3;
->> -			mnt->version = 4;
->> -			break;
->> -		case Opt_v4_0:
->> -			mnt->flags &= ~NFS_MOUNT_VER3;
->> -			mnt->version = 4;
->> -			mnt->minorversion = 0;
->> -			break;
->> -		case Opt_v4_1:
->> -			mnt->flags &= ~NFS_MOUNT_VER3;
->> -			mnt->version = 4;
->> -			mnt->minorversion = 1;
->> -			break;
->>  		case Opt_udp:
->>  			mnt->flags &= ~NFS_MOUNT_TCP;
->>  			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-> 
+     	       	      	       		- Ted
