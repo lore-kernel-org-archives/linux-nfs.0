@@ -1,77 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:58172 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754855Ab2CVATP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 20:19:15 -0400
-Message-ID: <4F6A6FB9.7010508@panasas.com>
-Date: Wed, 21 Mar 2012 17:18:01 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:11023 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753813Ab2CMV1x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 17:27:53 -0400
+Date: Tue, 13 Mar 2012 17:27:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Ted Ts'o" <tytso@mit.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120313212740.GJ31995@pad.fieldses.org>
+References: <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+ <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
+ <20120312154921.GB17153@pad.fieldses.org>
+ <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <20120313211009.GA11969@thunk.org>
 MIME-Version: 1.0
-To: Greg KH <gregkh@linuxfoundation.org>
-CC: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
-        <linux-security-module@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>
-Subject: Re: [PATCHSET 0/4] kmod: Optional timeout on the wait in call_usermodehelper_exec
-References: <4F691059.30405@panasas.com> <20120321153519.GB30250@kroah.com>
-In-Reply-To: <20120321153519.GB30250@kroah.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120313211009.GA11969@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/21/2012 08:35 AM, Greg KH wrote:
-> On Tue, Mar 20, 2012 at 04:18:49PM -0700, Boaz Harrosh wrote:
->> Andrew Hi
->>
->> I'm picking on you because I don't have any one else to pick on.
->> The 3 first patches here, are just good for today. Please see if
->> you would like to take them? or tell me who should take them?
->>
->> The 4th patch is an RFC, which got me looking into this.
->>
->> My motivation is that I added yet another Kernel dependency on the
->> call_usermodehelper() function and am not completely happy with the
->> error case of having the user-mode program stuck forever. In such
->> case I would like the Kernel part to timeout and properly error recover
->> and clean up. So therefor the proposed 4th patch.
+On Tue, Mar 13, 2012 at 05:10:09PM -0400, Ted Ts'o wrote:
+> On Tue, Mar 13, 2012 at 04:34:46PM -0400, J. Bruce Fields wrote:
+> > > 
+> > > Thanks! I'm also just going to work on it (just noticed your mail
+> > > while on vacation ...).
 > 
-> What is this new use of call_usermodhelper that you are doing this work
-> for?  Ideally, you never want to make this call, as it's slow and messy,
-> as you have found out.  Is there an in-kernel user that you have
-> recently added?
+> Brend, thanks!!
 > 
-> thanks,
+> Bruce, random question --- do you know what the copyright and
+> licensing terms are for the connectathon test suite?
+
+Alas.  Nobody does!
+
+I'ts unlikely there's any owner who would care enough to make a fuss--so
+we keep using the tests, but they don't really get any love.
+
+It's one of those annoyances we argue about once a year or so, and then
+forget till next time.
+
+So, maybe one way forward would be to reimplement the connectathon tests
+for xfstests?
+
+--b.
+
+> It occurs to me
+> that it might be good to get some of these tests into xfstests, given
+> that you mentioned that the telldir test was failing even when run on
+> a local file system.  That says to me this is a good file system level
+> test that we should try to get into xfstests if possible.
 > 
-> greg k-h
-
-I agree hence my comment in the 4th patch:
-	"In the blasphemous occasions that a the Kernel must call a user-mode program"
-
-I have added a new caller, to the nfs/objectlayoutdriver.ko that uses this
-facility for auto-login into osd-targets (iscsi-targets) when new are requested
-by the filesystem. This auto-login facility is mandated by the pnfs-objects
-standard because in a large cluster filesystems for which pnfs was invented, storage
-devices break and changed everyday, and a manual login by every client is not
-feasible.
-
-You can see this patch as posted to the mailing list here:
-	http://article.gmane.org/gmane.linux.nfs/48024/match=login
-	[title: pnfs-obj: autologin: Add support for protocol autologin]
-
-It works very well and was heavily tested, with all error scenarios, but
-the theoretical possibility that the user-mode program can be stuck forever
-bothers me and I would like to do something about it. With this patch the
-Kernel can recover cleanly and continue. I have actually tested this part
-and it works as expected.
-
-Thanks
-Boaz
+> Getting it into xfstests would also tend to reduce the chance of
+> regressions, since I always run xfstests before I submit patches (and
+> in fact I did run xfstests before sending you a pull request Bernd's
+> patches --- and I'm glad your testing caught the problem when mine
+> didn't!)
+> 
+> Thanks,
+> 
+>      	       	      	       		- Ted
