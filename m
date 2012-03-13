@@ -1,47 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:58590 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752797Ab2CEP7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 10:59:43 -0500
-Date: Mon, 5 Mar 2012 10:59:39 -0500
-From: "Ted Ts'o" <tytso@mit.edu>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-        bfields@redhat.com, sandeen@redhat.com,
-        Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to
- usage type
-Message-ID: <20120305155939.GE21356@thunk.org>
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain>
- <20120109132148.2616029.68798.stgit@localhost.localdomain>
+Received: from mx2.netapp.com ([216.240.18.37]:32853 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754677Ab2CMOur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 10:50:47 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Nikolaus Rath <Nikolaus@rath.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Date: Tue, 13 Mar 2012 14:50:45 +0000
+Message-ID: <1331650245.3419.14.camel@lade.trondhjem.org>
+References: <878vj7x6mj.fsf@vostro.rath.org>
+	 <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+	 <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org>
+	 <20120312201505.GC7203@fieldses.org>
+	 <87mx7lms1y.fsf@inspiron.ap.columbia.edu>
+	 <683A9678-14CF-4F27-8CC9-DD569722EE39@oracle.com>
+	 <4F5E6CBF.4080608@rath.org>
+	 <49F11491-C455-4592-804B-B7AFADB00F43@oracle.com>
+	 <1331589478.12005.13.camel@lade.trondhjem.org>
+	 <87haxsocrh.fsf@inspiron.ap.columbia.edu>
+In-Reply-To: <87haxsocrh.fsf@inspiron.ap.columbia.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120109132148.2616029.68798.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 09, 2012 at 02:21:48PM +0100, Bernd Schubert wrote:
-> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-> index ac8f168..fa8e491 100644
-> --- a/fs/ext4/hash.c
-> +++ b/fs/ext4/hash.c
-> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
->  		return -1;
->  	}
->  	hash = hash & ~1;
-> -	if (hash == (EXT4_HTREE_EOF << 1))
-> -		hash = (EXT4_HTREE_EOF-1) << 1;
-> +	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-> +		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
->  	hinfo->hash = hash;
->  	hinfo->minor_hash = minor_hash;
->  	return 0;
-
-Is there a reason why we don't need to avoid the collsion with the
-64-bit EOF value as well?  i.e., I think we also need to add:
-
-	if (hash == (EXT4_HTREE_EOF_64BIT << 1))
-		hash = (EXT4_HTREE_EOF_64BIT - 1) << 1;
-
-		       			       	  - Ted
+T24gVHVlLCAyMDEyLTAzLTEzIGF0IDA5OjIzIC0wNDAwLCBOaWtvbGF1cyBSYXRoIHdyb3RlOg0K
+PiAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdC1IZ092UXVCRUVnVFFUMGRaUitB
+bGZBQHB1YmxpYy5nbWFuZS5vcmc+IHdyaXRlczoNCj4gPj4gPiBPaCwgc28gdGhlIGNsaWVudGFk
+ZHIgZGV0ZWN0aW9uIHRha2VzIHBsYWNlIG9ubHkgb25jZSBhdCB0aGUgYmVnaW5uaW5nLA0KPiA+
+PiA+IGFuZCBpcyBub3QgcmVwZWF0ZWQgaWYgdGhlIG1vdW50IGF0dGVtcHRzIGFyZSByZXBlYXRl
+ZD8NCj4gPj4gPiANCj4gPj4gPiBUaGlzIHdvdWxkIGV4cGxhaW4gd2hhdCdzIGhhcHBlbmluZy4g
+VGhlIFZQTiBpcyBub3QgeWV0IHVwIHdoZW4gdGhlDQo+ID4+ID4gc3lzdGVtIGZpcnN0IGF0dGVt
+cHRzIHRvIG1vdW50IHRoZSBzaGFyZS4NCj4gPj4gPiANCj4gPj4gPiBJcyB0aGVyZSBhIHJhdGlv
+bmFsZSBiZWhpbmQgdGhpcz8gSXQgc2VlbXMgdG8gbWUgdGhhdCBpZiB0aGUgbW91bnQgaXMNCj4g
+Pj4gPiByZXRyaWVkLCBpdCB3b3VsZCBiZSByZWFzb25hYmxlIHRvIGV4cGVjdCB0aGF0IHRoZSBj
+bGllbnRhZGRyIGRldGVjdGlvbg0KPiA+PiA+IGlzIHJldHJpZWQgYXMgd2VsbC4NCj4gPj4gDQo+
+ID4+IFRoZXJlJ3Mgbm8gcmVhc29uIEkgY2FuIHJlY2FsbCByZXF1aXJpbmcgdGhhdCB0aGlzIGlz
+IGRvbmUgb25seSBvbmNlLCBvdGhlciB0aGFuIGl0J3MgdGhlIHNpbXBsZXN0IGltcGxlbWVudGF0
+aW9uIGZvciBtb3VudC5uZnMuICBIaXN0b3JpY2FsbHksIE5GUyBpcyBkZXBsb3llZCBvbiBzeXN0
+ZW1zIHdpdGggc3RhdGljIG5ldHdvcmsgY29uZmlndXJhdGlvbnMgdGhhdCBhcmUgc3VwcG9zZWQg
+dG8gYmUgc2V0IHVwIGJlZm9yZSB0aGUgTkZTIHV0aWxpdGllcyBjb21lIGludG8gcGxheS4gIEFz
+IEJydWNlIHN1Z2dlc3RlZCwgcGVyaGFwcyB0aGlzIGRlc2lnbiBhc3N1bXB0aW9uIG5lZWRzIHRv
+IGJlIHJldmlzaXRlZC4NCj4gPj4gDQo+ID4+IEkgc3VwcG9zZSBJIHNob3VsZCBmaWxlIGEgYnVn
+Lg0KPiA+DQo+ID4gQ29uc2lkZXIgdGhlIHdob2xlICdiZycgb3B0aW9uIHRvIGJlIGEgYnVnIGF0
+IHRoaXMgcG9pbnQuDQo+ID4NCj4gPiBOb3cgdGhhdCB3ZSBoYXZlIHdvcmtpbmcgYXV0b2ZzIHN1
+cHBvcnQgZm9yIGRpcmVjdCBtb3VudHMsIHRoZXJlIGlzIG5vDQo+ID4gcmVhc29uIHRvIGtlZXAg
+dGhlICdiZycgbW91bnQgb3B0aW9uIG9uIGxpZmUgc3VwcG9ydCBhbnkgbW9yZS4NCj4gDQo+IEkn
+bSBub3Qgc3VyZSB0aGF0IHRoaXMgd291bGQgYmUgYSBzb2x1dGlvbi4gV2hhdCBoYXBwZW5zIGlm
+IHNvbWUNCj4gcHJvZ3JhbSBhY2Nlc3NlcyB0aGUgYXV0b2ZzIG1vdW50cG9pbnQgYmVmb3JlIHRo
+ZSBWUE4gaXMgdXA/IFdvdWxkbid0DQo+IGF1dG9mcyB0cnkgdG8gbW91bnQgdGhlIE5GUyBzaGFy
+ZSByaWdodCBhd2F5IGFuZCB0aHVzIHdpdGggYSBicm9rZW4NCj4gY2xpZW50YWRkcj8NCg0KVW5s
+aWtlIHRoZSAnYmcnIGNhc2UsIHRoZSBtb3VudCBzaG91bGQgZmFpbCBpbW1lZGlhdGVseSwgYW5k
+IHlvdXINCnByb2dyYW0gZ2V0cyBhbiBFTk9FTlQgZXJyb3IuIFRoaXMgaXMgZXhhY3RseSB3aGF0
+IHNob3VsZCBoYXBwZW4gaWYgYQ0KcHJvZ3JhbSB0cmllcyB0byBhY2Nlc3MgYSBmaWxlc3lzdGVt
+IHRoYXQgaXNuJ3QgYXZhaWxhYmxlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
+Cnd3dy5uZXRhcHAuY29tDQoNCg==
