@@ -1,51 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63934 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5847 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751873Ab2C2RlF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 13:41:05 -0400
+	id S1758599Ab2CMR30 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 13:29:26 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>,
-        Dr James Bruce Fields <bfields@fieldses.org>
+To: Anton Starikov <ant.starikov@gmail.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] open(O_CREAT) returns EEXISTS on symbolic link created
- on another system until stat()ed
-Date: Thu, 29 Mar 2012 17:40:57 +0000
-Message-ID: <1333042863.5547.37.camel@lade.trondhjem.org>
-References: <loom.20120329T182500-467@post.gmane.org>
-	 <1333040091.5547.32.camel@lade.trondhjem.org>
-	 <4F749CCA.3000400@cora.nwra.com>
-In-Reply-To: <4F749CCA.3000400@cora.nwra.com>
+Subject: Re: NFS4 without id mapper
+Date: Tue, 13 Mar 2012 17:29:24 +0000
+Message-ID: <1331659764.3419.23.camel@lade.trondhjem.org>
+References: <66B6E4EA-A94C-4FD9-87C1-A110B0AB3D71@gmail.com>
+In-Reply-To: <66B6E4EA-A94C-4FD9-87C1-A110B0AB3D71@gmail.com>
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDExOjMyIC0wNjAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+IE9uIDAzLzI5LzIwMTIgMTA6NTQgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-T24gVGh1LCAyMDEyLTAzLTI5IGF0IDE2OjI4ICswMDAwLCBPcmlvbiBQb3BsYXdza2kgd3JvdGU6
-DQo+ID4+IEkgZmlsZWQgYSBidWcgaGVyZTogaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3No
-b3dfYnVnLmNnaT9pZD04MDgxMTINCj4gPj4NCj4gPj4gRGVzY3JpcHRpb24gb2YgcHJvYmxlbToN
-Cj4gPj4NCj4gPj4gY2xpZW50IEE6DQo+ID4+IHRvdWNoIGJsYWgNCj4gPj4gbG4gLXMgYmxhaCBi
-bGFobGluaw0KPiA+Pg0KPiA+PiBjbGllbnQgQjoNCj4gPj4gb3BlbigiYmxhaGxpbmsiLCBPX1JE
-T05MWXxPX0NSRUFULCAwNjY2KSA9IC0xIEVFWElTVCAoRmlsZSBleGlzdHMpDQo+ID4NCj4gPiBU
-aGF0IHNvdW5kcyBtb3JlIGxpa2UgYSBzZXJ2ZXIgYnVnLiBJdCBzaG91bGRuJ3QgYmUgcmVwbHlp
-bmcNCj4gPiBORlM0RVJSX0VYSVNUIGhlcmUsIHNpbmNlIHRoaXMgaXNuJ3QgYW4gZXhjbHVzaXZl
-IGNyZWF0ZTsgaXQgc2hvdWxkDQo+ID4gcmF0aGVyIGJlIHJlcGx5aW5nIHdpdGggTkZTNEVSUl9T
-WU1MSU5LLg0KPiA+DQo+ID4gV2hpY2ggc2VydmVyIGFyZSB5b3UgdGVzdGluZyBhZ2FpbnN0LCBh
-bmQgd2hhdCBkb2VzIHRoZSB3aXJlc2hhcmsgdHJhY2UNCj4gPiBzaG93Pw0KPiA+DQo+IA0KPiBX
-ZWxsLCBJIGNhbiByZXByb2R1Y2UgaXQgYWdhaW5zdCBhbiBFTDYuMiBzZXJ2ZXIgd2l0aCBhbiBF
-TDYuMiBjbGllbnQgd2l0aCB2My4gDQo+ICAgRmlyc3QgdGVzdHMgd2VyZSB3aXRoIGFuZCBFTDUu
-OCBzZXJ2ZXIuICBJIGNhbid0IHJlcHJvZHVjZSB3aXRoIEZlZG9yYSANCj4gY2xpZW50cyBhZ2Fp
-bnN0IHRoZSBFTDYuMiBzZXJ2ZXIgd2l0aCB2My4NCj4gDQo+IFRoZSBFTDYuMiBjbGllbnQvc2Vy
-dmVyIGV4Y2hhbmdlIGluIG5mc2VsLmxvZywgRjE1L0VMNi4yIGV4Y2hhbmdlIGluIG5mc2YxNS5s
-b2cNCj4gDQo+IFRoZSBFTDYuMiBjbGllbnQgYXBwZWFycyB0byBiZSB1c2luZyBhIHZlcnNpb24g
-NCBjYWxsIGV2ZW4gdGhvdWdoIEkgdGhpbmsgaXQncyANCj4gbW91bnRlZCB2MzoNCj4gDQo+IHNh
-Z2E6L2V4cG9ydC9zdyBvbiAvZGF0YS9zdyB0eXBlIG5mcyANCj4gKHJ3LG5vYXRpbWUsaW50cixy
-c2l6ZT0zMjc2OCx3c2l6ZT0zMjc2OCxzbG9wcHksYWRkcj0xMC4xMC4xMC4yKQ0KDQoNCkl0IGhh
-cyBnb3QgdG8gYmUgbW91bnRlZCB2NC4gSSdkIGNoZWNrIC9wcm9jL21vdW50cy4NCg0KPiBHb2lu
-ZyBiYWNrIHRvIHY0IG9uIEVMNS44IHNlcnZlcjogbmZzdjRlbC5sb2csIG5mc3Y0ZjE4LmxvZw0K
-PiANCj4gQm90aCBnZXQgTkZTNEVSUl9FWElTVCBpbiB0aGlzIGNhc2UuDQoNCldoaWNoIGlzIGFu
-IG9idmlvdXMgc2VydmVyIGJ1ZzogaXQgc2hvdWxkIGJlIHNlbmRpbmcgTkZTNEVSUl9TWU1MSU5L
-IGluDQpyZXBseSB0byB0aGF0IE9QRU4uDQoNCkJydWNlPw0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+T24gVHVlLCAyMDEyLTAzLTEzIGF0IDE3OjIxICswMTAwLCBBbnRvbiBTdGFyaWtvdiB3cm90ZToN
+Cj4gSGksDQo+IA0KPiBJIGhhdmUgcHJvYmFibHkgc3R1cGlkIHF1ZXN0aW9uLCBidXQgaXMgdGhl
+cmUgYSB3YXkgdG8gdXNlIE5GUy00IGluIG9sZC1mYXNob25lZCB3YXkgd2l0aG91dCBhbnkgaWRt
+YXBwZXIgaW52b2x2ZWQ/IEFzc3VtaW5nIHNldHVwIHdpdGggYXV0aD1zeXMvbm9uZSBhbmQgbm8g
+cm9vdCBzcXVhc2guDQoNClRoZSBMaW51eCBjbGllbnQgY2FuIGRvIGl0LCBidXQgbm90IHRoZSBM
+aW51eCBzZXJ2ZXIuIFNvcnJ5Li4uDQoNCkNoZWVycw0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWts
+ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
+YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
