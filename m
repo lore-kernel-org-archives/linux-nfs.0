@@ -1,47 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36954 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36584 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757677Ab2CFAbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 19:31:45 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] umount.nfs: normalize path names during umounts.
-Date: Tue, 6 Mar 2012 00:31:43 +0000
-Message-ID: <1330993903.5407.3.camel@lade.trondhjem.org>
-References: <1330976165-19849-1-git-send-email-steved@redhat.com>
-	 <1330976165-19849-2-git-send-email-steved@redhat.com>
-	 <20120305212015.GA21904@us.ibm.com> <4F5559EA.7010206@RedHat.com>
-In-Reply-To: <4F5559EA.7010206@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759219Ab2CMTTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 15:19:21 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/1] NFS4: remove erroneous BUG_ONs in file layout pg_init functions
+Date: Tue, 13 Mar 2012 15:19:19 -0400
+Message-Id: <1331666359-11534-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTA1IGF0IDE5OjI3IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMDMvMDUvMjAxMiAwNDoyMCBQTSwgTWFsYWhhbCBOYWluZW5pIHdyb3RlOg0KPiA+
-IFN0ZXZlIERpY2tzb24gW3N0ZXZlZEByZWRoYXQuY29tXSB3cm90ZToNCj4gPiANCj4gPiBBbHNv
-LCB3aGVuIHlvdSBub3JtYWxpemUsIHdoeSBub3QgZ28gdGhlIGV4dHJhIG1pbGUgb2YgZG9pbmcg
-aXQgYWxsIHRoZQ0KPiA+IHdheSBhcyB0aGUgcGF0Y2ggSSBwb3N0ZWQ/IEkgd2FudGVkIHRvIGNv
-dmVyIHNwZWNzIGxpa2UNCj4gPiAiaG9zdDovc2VydmVyLy4uL2hvbWUvLi9ibGFoIi4gVGhpcyBw
-YXRjaCBvbmx5IGRvZXMgcGFydGlhbA0KPiA+IG5vcm1hbGl6YXRpb24uIFRoZSBvcmlnaW5hbCBw
-YXRjaCBhbHNvIG5vcm1hbGl6ZXMgL3Byb2MvbW91bnQgZW50cnkncw0KPiA+IHBhdGhuYW1lICh0
-aGlzIGF2b2lkcyBkZWFsaW5nIHdpdGggdHJhaWxpbmcgJy8nIGhhY2sgdGhhdCBleGlzdHMgbm93
-KS4NCj4gSSBqdXN0IGRvIG5vdCBzZWUgdGhlIG5lZWQgZm9yIHRoYXQgdHlwZSBvZiBjb21wbGV4
-aXR5Li4uIE1heWJlIEknbQ0KPiBiZWluZyBhIGJpdCBuYWl2ZSwgYnV0IEkgc2VlIHR3byBwcm9i
-bGVtcyBoZXJlLiBPbmUsIHY0IG1vdW50cyANCj4gd2l0aCBtdWx0aXBsZSBzbGFzaGVzIGFuZCB0
-d28gdjQgbW91bnRzIHdpdGhvdXQgYW55IHNsYXNoZXMuLi4gDQo+IA0KPiBOb3cgYm90aCBvZiBv
-dXIgcGF0Y2hlcyBkbyBhZGRyZXNzIHRob3NlIGlzc3VlcyBidXQgbWluZSBvbmx5DQo+IGFkZHJl
-c3NlcyB0aG9zZSBpc3N1ZXMgYW5kIG5vLCBpdCBkb2VzIG5vdCBnbyB0aGUgImV4dHJhIG1pbGUi
-IA0KPiBvZiBhZGRyZXNzaW5nICcuLicgaW4gcGF0aCBuYW1lcywgYnV0IGRvZXMgaXQgbmVlZCB0
-bz8gSXMgDQo+IHRoZXJlIHJlYWxseSBhbiB1c2UgY2FzZSB3aGVyZSBwZW9wbGUgZXhwb3J0IHRo
-aW5ncyB3aXRoICIuLiINCj4gaW4gdGhlIHBhdGg/IA0KPiANCj4gU29tZXRpbWVzIGdvaW5nIHRo
-ZSBqdXN0IGV4dHJhIG1pbGUganVzdCBicmluZ3MgbW9yZSBwYWluLi4uIA0KPiBmb3Igbm8gcmVh
-c29uLi4uIGFuZCBiZWxpZXZlIG1lIEknbSBubyBydW5uZXIuLi4gIDgtKSANCg0KTm90ZSB0aGF0
-IHRoZSBORlN2NCBzZXJ2ZXIgbWF5IGhhdmUgc3ltbGlua3MgYW5kL29yIHJlZmVycmFscyBpbiB0
-aGUNCm1vdW50IHBhdGgsIGluIHdoaWNoIGNhc2UgaXQgaXMgZ2FtZSBvdmVyIGZvciB0aGlzIGtp
-bmQgb2YgYXBwcm9hY2gNCmFueXdheTogeW91IGNhbid0ICdub3JtYWxpc2UnIHlvdXIgd2F5IHRv
-IGludGVycHJldGluZyB0aGF0Li4uDQoNCklzIHRoZXJlIGFueSByZWFzb24gd2h5IHdlIGFjdHVh
-bGx5IGNhcmUgYWJvdXQgY2hlY2tpbmcgdGhlIGNyYXANCmluIC9ldGMvbXRhYiBvbiB1bW91bnQ/
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+These BUG_ONs assume that pg_init is called once per nfs_pageio_descriptor,
+yet it is actually called once per attempted RPC call.
+
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index c7496b6..3c2ee2f 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -757,7 +757,7 @@ void
+ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+ {
+-	BUG_ON(pgio->pg_lseg != NULL);
++	struct pnfs_layout_segment *old = pgio->pg_lseg;
+ 
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+@@ -765,6 +765,7 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 					   NFS4_MAX_UINT64,
+ 					   IOMODE_READ,
+ 					   GFP_KERNEL);
++	put_lseg(old);
+ 	/* If no lseg, fall back to read through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_read_mds(pgio);
+@@ -774,7 +775,7 @@ void
+ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			 struct nfs_page *req)
+ {
+-	BUG_ON(pgio->pg_lseg != NULL);
++	struct pnfs_layout_segment *old = pgio->pg_lseg;
+ 
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+@@ -782,6 +783,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 					   NFS4_MAX_UINT64,
+ 					   IOMODE_RW,
+ 					   GFP_NOFS);
++	put_lseg(old);
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		nfs_pageio_reset_write_mds(pgio);
+-- 
+1.7.2.1
+
