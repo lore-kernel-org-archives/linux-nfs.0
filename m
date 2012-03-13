@@ -1,253 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52222 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759493Ab2CTXco (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2012 19:32:44 -0400
-Message-ID: <4F691383.5040506@panasas.com>
-Date: Tue, 20 Mar 2012 16:32:19 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43933 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757635Ab2CMV3z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 17:29:55 -0400
+Date: Tue, 13 Mar 2012 17:29:48 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "Ted Ts'o" <tytso@mit.edu>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120313212947.GK31995@pad.fieldses.org>
+References: <20120306151816.GB32282@thunk.org>
+ <20120306152842.GA8339@pad.fieldses.org>
+ <20120309205148.GB5635@thunk.org>
+ <20120312150912.GB12440@thunk.org>
+ <20120312154921.GB17153@pad.fieldses.org>
+ <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <4F5FB771.9010805@fastmail.fm>
 MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
-        <linux-security-module@vger.kernel.org>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>
-Subject: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout() API
-References: <4F691059.30405@panasas.com>
-In-Reply-To: <4F691059.30405@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F5FB771.9010805@fastmail.fm>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 13, 2012 at 10:09:05PM +0100, Bernd Schubert wrote:
+> Hmm, there must have gone something wrong on merging,
 
-In the blasphemous occasions that a the Kernel must call a user-mode program
-half of the times it is more robust to not wait forever but limit the wait
-for a specified timeout.
+In that case one approach would be to rebase your last-sent patches on
+to the same base as Ted's versions, confirm that one still works and the
+other doesn't, and do a diff....
 
-So add a new  call_usermodehelper_timeout() that implements that.
-(Users of this new API will be added once this API is in mainline)
+> my own test
+> also fails
+> 
+> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
+> 
+> (Sorry, it does not say 'failure', but one needs to compare the file
+> names and telldir-offset numbers)
+> 
+> I think I will continue in the morning as its already 1 a.m. here.
 
-call_usermodehelper_fns() is added an extra timeout parameter which
-is then implemented in call_usermodehelper_exec. The few users of
-call_usermodehelper_fns() are also changed in this patch.
+OK, thanks for following up!
 
-Since now the executing threads might come back after the waiting
-thread has returned, do to a timeout. I used a simple kref pattern
-to govern the life time of the subprocess_info struct.
-
-Should some wait-forever callers today, be converted to this new
-schema?
-
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exec.c                   |    2 +-
- include/linux/kmod.h        |   15 +++++++++++++--
- kernel/kmod.c               |   29 +++++++++++++++++++++--------
- kernel/sys.c                |    2 +-
- security/keys/request_key.c |    2 +-
- 5 files changed, 37 insertions(+), 13 deletions(-)
-
-diff --git a/fs/exec.c b/fs/exec.c
-index 92ce83a..e696081 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -2197,7 +2197,7 @@ void do_coredump(long signr, int exit_code, struct pt_regs *regs)
- 		}
- 
- 		retval = call_usermodehelper_fns(helper_argv[0], helper_argv,
--					NULL, UMH_WAIT_EXEC, umh_pipe_setup,
-+					NULL, UMH_WAIT_EXEC, 0, umh_pipe_setup,
- 					NULL, &cprm);
- 		argv_free(helper_argv);
- 		if (retval) {
-diff --git a/include/linux/kmod.h b/include/linux/kmod.h
-index 5a89c00..eccc3f5 100644
---- a/include/linux/kmod.h
-+++ b/include/linux/kmod.h
-@@ -25,6 +25,7 @@
- #include <linux/compiler.h>
- #include <linux/workqueue.h>
- #include <linux/sysctl.h>
-+#include <linux/kref.h>
- 
- #define KMOD_PATH_LEN 256
- 
-@@ -55,12 +56,14 @@ enum umh_wait {
- };
- 
- struct subprocess_info {
-+	struct kref kref;
- 	struct work_struct work;
- 	struct completion *complete;
- 	char *path;
- 	char **argv;
- 	char **envp;
- 	enum umh_wait wait;
-+	unsigned long wait_timeout;
- 	int retval;
- 	int (*init)(struct subprocess_info *info, struct cred *new);
- 	void (*cleanup)(struct subprocess_info *info);
-@@ -69,14 +72,22 @@ struct subprocess_info {
- 
- extern int
- call_usermodehelper_fns(char *path, char **argv, char **envp,
--			enum umh_wait wait,
-+			enum umh_wait wait, unsigned long timeout,
- 			int (*init)(struct subprocess_info *info, struct cred *new),
- 			void (*cleanup)(struct subprocess_info *), void *data);
- 
- static inline int
- call_usermodehelper(char *path, char **argv, char **envp, enum umh_wait wait)
- {
--	return call_usermodehelper_fns(path, argv, envp, wait,
-+	return call_usermodehelper_fns(path, argv, envp, wait, 0,
-+				       NULL, NULL, NULL);
-+}
-+
-+static inline int
-+call_usermodehelper_timeout(char *path, char **argv, char **envp,
-+			    enum umh_wait wait, unsigned long timeout)
-+{
-+	return call_usermodehelper_fns(path, argv, envp, wait, timeout,
- 				       NULL, NULL, NULL);
- }
- 
-diff --git a/kernel/kmod.c b/kernel/kmod.c
-index 3cb7457..a72eefa 100644
---- a/kernel/kmod.c
-+++ b/kernel/kmod.c
-@@ -129,7 +129,7 @@ int __request_module(bool wait, const char *fmt, ...)
- 	trace_module_request(module_name, wait, _RET_IP_);
- 
- 	ret = call_usermodehelper_fns(modprobe_path, argv, envp,
--			wait ? UMH_WAIT_PROC : UMH_WAIT_EXEC,
-+			wait ? UMH_WAIT_PROC : UMH_WAIT_EXEC, 0,
- 			NULL, NULL, NULL);
- 
- 	atomic_dec(&kmod_concurrent);
-@@ -191,8 +191,11 @@ fail:
- 	do_exit(0);
- }
- 
--static void call_usermodehelper_freeinfo(struct subprocess_info *info)
-+static void call_usermodehelper_freeinfo(struct kref *kref)
- {
-+	struct subprocess_info *info =
-+		container_of(kref, struct subprocess_info, kref);
-+
- 	if (info->cleanup)
- 		(*info->cleanup)(info);
- 	kfree(info);
-@@ -235,6 +238,7 @@ static int wait_for_helper(void *data)
- 	}
- 
- 	complete(sub_info->complete);
-+	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
- 	return 0;
- }
- 
-@@ -258,7 +262,8 @@ static void __call_usermodehelper(struct work_struct *work)
- 
- 	switch (wait) {
- 	case UMH_NO_WAIT:
--		call_usermodehelper_freeinfo(sub_info);
-+		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
-+		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
- 		break;
- 
- 	case UMH_WAIT_PROC:
-@@ -269,6 +274,7 @@ static void __call_usermodehelper(struct work_struct *work)
- 		if (pid < 0)
- 			sub_info->retval = pid;
- 		complete(sub_info->complete);
-+		kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
- 	}
- }
- 
-@@ -387,6 +393,7 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
- 	if (!sub_info)
- 		goto out;
- 
-+	kref_init(&sub_info->kref);
- 	INIT_WORK(&sub_info->work, __call_usermodehelper);
- 	sub_info->path = path;
- 	sub_info->argv = argv;
-@@ -452,22 +459,27 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info,
- 
- 	sub_info->complete = &done;
- 	sub_info->wait = wait;
-+	if (!sub_info->wait_timeout)
-+		sub_info->wait_timeout = MAX_SCHEDULE_TIMEOUT;
- 
-+	/* Balanced in __call_usermodehelper or wait_for_helper */
-+	kref_get(&sub_info->kref);
- 	queue_work(khelper_wq, &sub_info->work);
- 	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
- 		goto unlock;
--	wait_for_completion(&done);
--	retval = sub_info->retval;
--
-+	if (likely(wait_for_completion_timeout(&done, sub_info->wait_timeout)))
-+		retval = sub_info->retval;
-+	else
-+		retval = -ETIMEDOUT;
- out:
--	call_usermodehelper_freeinfo(sub_info);
-+	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
- unlock:
- 	helper_unlock();
- 	return retval;
- }
- 
- int call_usermodehelper_fns(char *path, char **argv, char **envp,
--			enum umh_wait wait,
-+			enum umh_wait wait, unsigned long timeout,
- 			int (*init)(struct subprocess_info *info, struct cred *new),
- 			void (*cleanup)(struct subprocess_info *), void *data)
- {
-@@ -480,6 +492,7 @@ int call_usermodehelper_fns(char *path, char **argv, char **envp,
- 		return -ENOMEM;
- 
- 	call_usermodehelper_setfns(info, init, cleanup, data);
-+	info->wait_timeout = timeout;
- 
- 	return call_usermodehelper_exec(info, wait);
- }
-diff --git a/kernel/sys.c b/kernel/sys.c
-index 9947fb0..a9079d1 100644
---- a/kernel/sys.c
-+++ b/kernel/sys.c
-@@ -2013,7 +2013,7 @@ int orderly_poweroff(bool force)
- 		goto out;
- 	}
- 
--	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT,
-+	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT, 0,
- 				      NULL, argv_cleanup, NULL);
- 
-   out:
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index b8cc38c..28050ea 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -93,7 +93,7 @@ static void umh_keys_cleanup(struct subprocess_info *info)
- static int call_usermodehelper_keys(char *path, char **argv, char **envp,
- 			 struct key *session_keyring, enum umh_wait wait)
- {
--	return call_usermodehelper_fns(path, argv, envp, wait,
-+	return call_usermodehelper_fns(path, argv, envp, wait, 0,
- 				       umh_keys_init, umh_keys_cleanup,
- 				       key_get(session_keyring));
- }
--- 
-1.7.6.2
-
+--b.
