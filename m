@@ -1,192 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48804 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753020Ab2CBXOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 18:14:04 -0500
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1S3bfn-0007O0-95
-	for linux-nfs@vger.kernel.org; Fri, 02 Mar 2012 18:14:03 -0500
-Date: Fri, 2 Mar 2012 18:14:03 -0500
-To: linux-nfs@vger.kernel.org
-Subject: pynfs reboot recovery updates
-Message-ID: <20120302231402.GC26396@fieldses.org>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:38157 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755702Ab2CMVKX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 17:10:23 -0400
+Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 14AAB216A7
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 17:09:09 -0400 (EDT)
+Message-ID: <4F5FB771.9010805@fastmail.fm>
+Date: Tue, 13 Mar 2012 22:09:05 +0100
+From: Bernd Schubert <bernd.schubert@fastmail.fm>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "J. Bruce Fields" <bfields@redhat.com>, "Ted Ts'o" <tytso@mit.edu>,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
+        sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int may_flags'
+ in nfsd_open()
+References: <20120306000837.GA17164@thunk.org> <20120306020819.GH31388@pad.fieldses.org> <20120306151816.GB32282@thunk.org> <20120306152842.GA8339@pad.fieldses.org> <20120309205148.GB5635@thunk.org> <20120312150912.GB12440@thunk.org> <20120312154921.GB17153@pad.fieldses.org> <20120312222250.GD8991@fieldses.org> <20120313200117.GA21991@fieldses.org> <4F5FA827.8020606@itwm.fraunhofer.de> <20120313203446.GB21991@fieldses.org>
+In-Reply-To: <20120313203446.GB21991@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'll stop sending all my pynfs changes to the list; they're available
-at:
+On 03/13/2012 09:34 PM, J. Bruce Fields wrote:
+> On Tue, Mar 13, 2012 at 09:03:51PM +0100, Bernd Schubert wrote:
+>> On 03/13/2012 09:01 PM, J. Bruce Fields wrote:
+>>> On Mon, Mar 12, 2012 at 06:22:50PM -0400, bfields wrote:
+>>>> On Mon, Mar 12, 2012 at 11:49:21AM -0400, J. Bruce Fields wrote:
+>>>>> On Mon, Mar 12, 2012 at 11:09:12AM -0400, Ted Ts'o wrote:
+>>>>>> On Fri, Mar 09, 2012 at 03:51:48PM -0500, Ted Ts'o wrote:
+>>>>>>>
+>>>>>>> Linus in general doesn't like cross tree merges (or any extraneous
+>>>>>>> merges) unless they are absolutely necessary; but then, he trusts git
+>>>>>>> merges more than many of us do.  :-)
+>>>>>>>
+>>>>>>> I've put the the patch series on a separate patch, with a signed tag, at:
+>>>>>>>
+>>>>>>>       git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
+>>>>>>>
+>>>>>>> Can you confirm that you've pulled it into your tree and it's landed
+>>>>>>> in linux-next?  I probably won't bother pulling it in mine unless
+>>>>>>> there is definitely a merge conflict that I need to resolve.  (I've
+>>>>>>> checked and there do not appear to be any against linux-next as of
+>>>>>>> last night.)
+>>>>>>
+>>>>>> Ping?
+>>>>>
+>>>>> Whoops, sorry.
+>>>>>
+>>>>> Looks perfect, thanks for handling these!
+>>>>>
+>>>>> I'm running them through my usual regression tests
+>>>>
+>>>> Urgh, I'm seeing a failure on the telldir test (part of the "special"
+>>>> connectathon tests).  I haven't looked at what it's trying to do yet.
+>>>> Reproduceable even just on a local filesystem without NFS involved.  If
+>>>> someone wants to look at it, you can just do:
+>>>>
+>>>> 	git clone git://linux-nfs.org/~bfields/cthon04.git
+>>>> 	cd cthon04
+>>>> 	make
+>>>> 	NFS_TESTDIR=/somewhere_on_an_ext4_fs/TMP ./runtests -s
+>>>>
+>>>> (Or after running that, more specifically,
+>>>>
+>>>> 	cd /somewhere_on_an_ext4_fs/TMP/
+>>>> 	./telldir
+>>>>
+>>>> )
+>>>>
+>>>> I'll look at it tomorrow.
+>>>
+>>> Looks like seekdir is just not accepting an offset returned from
+>>> getdents:
+>>>
+>>> 	openat(AT_FDCWD, "telldir-test", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3
+>>> 	getdents(3, {...{d_ino=20386, d_off=5728083968307607285, d_reclen=24, d_name="192"}...} = 4848
+>>> 	lseek(3, 5728083968307607285, SEEK_SET) = -1 EINVAL (Invalid argument)
+>>>
+>>> Still investigating.
+>>
+>> Thanks! I'm also just going to work on it (just noticed your mail
+>> while on vacation ...).
+>
+> OK, good.  You can probably figure this out faster than me....
+>
 
-	git://linux-nfs.org/~bfields/pynfs.git
+Hmm, there must have gone something wrong on merging, my own test also 
+fails
 
-Most of these changes are to fix some reboot recovery tests, mainly 4.0
-tests, but I also got the 4.1 tests updated and running.
+http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
 
-I also modified by regular regression-test scripts to run the reboot
-tests by default again (git://linux-nfs.org/~bfields/testd.git).  I'm
-just stopping and starting the server instead of doing a full reboot, to
-make them a bit less of a hassle to run.
+(Sorry, it does not say 'failure', but one needs to compare the file 
+names and telldir-offset numbers)
 
-Also some minor changes to reduce the 4.0/4.1 diff in a few cases, and
-an extra close test; changes summarized below.
+I think I will continue in the morning as its already 1 a.m. here.
 
---b.
 
-commit 56cb89202241fc6f5ff5a89fa7487c879ab6d4fc
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 17:06:15 2012 -0500
-
-    4.1 server tests: generalize reboot helper script
-    
-    This is just bdea95dea8e9656357db937560dbcb4af62e3926 for the 4.1 side.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 7d478ce2db5a9946b245684570f9b3d2755a6b1d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 15:20:21 2012 -0500
-
-    4.0 server tests: fix a reboot typo
-
-commit da8558fcad1c0b3debcd013189076e63224c6c81
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 15:09:47 2012 -0500
-
-    4.0 server tests: don't let client expire in REBT11
-    
-    REBT11 has the same problem as REBT3 (see
-    0f1831a31124d677d711daee527ffa9d41a84c06).
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit c753542f55a18af2df33a899af516cfb050b1256
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 14:32:47 2012 -0500
-
-    4.0 server tests: 4.0 testserver.py updates from 4.1
-    
-    Miscellaneous (some trivial) changes to make testserver.py more similar
-    between 4.0 and 4.1 cases.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 099cd623bf621727cd488484c484817c2f651677
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 14:17:17 2012 -0500
-
-    4.0 server tests: fix indent typo
-
-commit eae978bc13e79e8999e5d998eb8a0694c20f9681
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 14:11:52 2012 -0500
-
-    testserver help file grammar fix
-    
-    1f130fa14e79ddfbf9a66da976fad7e8f68f2988 applies to 4.0 case as well.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit e22cc288abd8266cc2675382df1dae8f8f5e15e9
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 14:10:42 2012 -0500
-
-    Better error message when testserver gets socket error.
-    
-    Apply 26474d8e1453f9c134e7268e7f9ed14f524171e0 in 4.0 case as well.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-    r On branch master
-
-commit f5652e19ec9116b67848b68e58477b1d21f4c397
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Mar 2 13:43:14 2012 -0500
-
-    4.0 server tests: require python 2.5
-    
-    Actually I have no idea what python version's really required, but we
-    want to share more code here eventually so I'd rather take the higher
-    requirement.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 6689197487298c7c521dfb178a4a52cf674a26db
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 17:15:25 2012 -0500
-
-    4.0 server tests: REBT5,6 should expect BAD not CONFLICT
-    
-    The rfc 3530 language is rather skimpy.  Dave Noveck went into some more
-    detail in a May 2009 message to the ietf list:
-    
-    	http://old.nabble.com/NFS4ERR_REC-LAIM_BAD-td23765973.html
-    
-    My understanding is that RECLAIM_BAD was originally intended for the
-    case where a the reclaim does not match the server's stable storage
-    information.  Whereas RECLAIM_CONFLICT would happen if e.g. a client's
-    reclaim conflicts with a lock already reclaimed by another client on
-    this boot cycle.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit c3af6b834a8d73afa94dfd1c2284c3661c9e60f7
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 16:51:00 2012 -0500
-
-    4.0 server tests: remove incorrect REBT4
-    
-    The protocol does not require servers to remember individual opens.
-    It's the client's responsibility to get this right.
-    
-    (Though it might be interesting to keep around a few optional tests like
-    this for servers that do more bookkeeping.)
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 0f1831a31124d677d711daee527ffa9d41a84c06
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 16:46:48 2012 -0500
-
-    4.0 server tests: don't let client expire in REBT3
-    
-    The wait after the post-reboot setclientid is long enough to allow the
-    server to expire the client before we do the open, leading to spurious
-    test failures with NFS4ER_EXPIRED.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 5fb95c35e6784b78767fea468cd18c34af905f51
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 15:46:48 2012 -0500
-
-    more TODO's
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 497fc7bf844974e68f2956585275ed8960081f1e
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 15:46:48 2012 -0500
-
-    TODO file
-    
-    Just some notes for myself.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit 32be740af9e3d0daa6e3bb99488628ddb0adb78f
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 1 15:20:21 2012 -0500
-
-    4.1 server tests: test close with stateid.seqid = 0
-    
-    Before f435d212d9553add548720975e720d7cd5ae8eba, pynfs used to do a
-    close with stateid.seqid = 0 routinely in setup.  That seems the wrong
-    place to do it, but it is supposed to work (and we have seen servers
-    fail to do this), so we may as well have a test for it.
-    
-    Also, I mistakenly commented out that line in the previous fix when I
-    meant to remove it completely.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Cheers,
+Bernd
