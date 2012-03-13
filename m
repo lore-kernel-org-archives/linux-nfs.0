@@ -1,99 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60650 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751151Ab2CIXgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 18:36:10 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Always use the same SETCLIENTID boot verifier
-Date: Fri, 9 Mar 2012 23:35:53 +0000
-Message-ID: <1331336152.2763.88.camel@lade.trondhjem.org>
-References: <20120309223445.4005.78869.stgit@degas.1015granger.net>
-In-Reply-To: <20120309223445.4005.78869.stgit@degas.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from e36.co.us.ibm.com ([32.97.110.154]:47960 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758059Ab2CMReF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 13:34:05 -0400
+Received: from /spool/local
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
+	Tue, 13 Mar 2012 11:34:04 -0600
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id A7FA1C40001
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:56 -0600 (MDT)
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2DHXdIx109132
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:40 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2DHXJck001806
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:19 -0600
+Received: from linux.vnet.ibm.com (dhcp-9-56-115-247.pok.ibm.com [9.56.115.247])
+	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with SMTP id q2DHXI0q001472
+	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:18 -0600
+Date: Tue, 13 Mar 2012 13:33:16 -0400
+From: Matthew Treinish <treinish@linux.vnet.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC v3 00/10] Volatile File Handle Client-side Support
+Message-ID: <20120313173315.GA3580@Gelgoog.pok.ibm.com>
+References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTAzLTA5IGF0IDE3OjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiBpbmRleCAx
-MWIzODY0Li5lMjM2ZDBiIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvY2xpZW50LmMNCj4gKysrIGIv
-ZnMvbmZzL2NsaWVudC5jDQo+IEBAIC0xODAsNyArMTgwLDYgQEAgc3RhdGljIHN0cnVjdCBuZnNf
-Y2xpZW50ICpuZnNfYWxsb2NfY2xpZW50KGNvbnN0IHN0cnVjdCBuZnNfY2xpZW50X2luaXRkYXRh
-ICpjbF8NCj4gIAlzcGluX2xvY2tfaW5pdCgmY2xwLT5jbF9sb2NrKTsNCj4gIAlJTklUX0RFTEFZ
-RURfV09SSygmY2xwLT5jbF9yZW5ld2QsIG5mczRfcmVuZXdfc3RhdGUpOw0KPiAgCXJwY19pbml0
-X3dhaXRfcXVldWUoJmNscC0+Y2xfcnBjd2FpdHEsICJORlMgY2xpZW50Iik7DQo+IC0JY2xwLT5j
-bF9ib290X3RpbWUgPSBDVVJSRU5UX1RJTUU7DQo+ICAJY2xwLT5jbF9zdGF0ZSA9IDEgPDwgTkZT
-NENMTlRfTEVBU0VfRVhQSVJFRDsNCj4gIAljbHAtPmNsX21pbm9ydmVyc2lvbiA9IGNsX2luaXQt
-Pm1pbm9ydmVyc2lvbjsNCj4gIAljbHAtPmNsX212b3BzID0gbmZzX3Y0X21pbm9yX29wc1tjbF9p
-bml0LT5taW5vcnZlcnNpb25dOw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2lub2RlLmMgYi9mcy9u
-ZnMvaW5vZGUuYw0KPiBpbmRleCA2YzYxOWRlLi4xM2MyN2ZmIDEwMDY0NA0KPiAtLS0gYS9mcy9u
-ZnMvaW5vZGUuYw0KPiArKysgYi9mcy9uZnMvaW5vZGUuYw0KPiBAQCAtNjQsNiArNjQsOCBAQCBz
-dGF0aWMgaW50IG5mc191cGRhdGVfaW5vZGUoc3RydWN0IGlub2RlICosIHN0cnVjdCBuZnNfZmF0
-dHIgKik7DQo+ICANCj4gIHN0YXRpYyBzdHJ1Y3Qga21lbV9jYWNoZSAqIG5mc19pbm9kZV9jYWNo
-ZXA7DQo+ICANCj4gK3N0cnVjdCB0aW1lc3BlYyBuZnNfYm9vdF90aW1lIF9fcmVhZF9tb3N0bHk7
-DQoNCkNhbiB3ZSBtYWtlIHRoaXMgYSBwZXItbmV0LW5hbWVzcGFjZSBnbG9iYWwgdmFyaWFibGU/
-IElPVzogYWRkIGl0IHRvDQpzdHJ1Y3QgbmZzX25ldA0KDQpUaGF0IHdpbGwgYWxsb3cgaW5kaXZp
-ZHVhbCBjb250YWluZXJzIG9uIHRoZSBjbGllbnQgdG8gY3Jhc2ggb3IgcmVib290LA0KYW5kIGJl
-IGFibGUgdG8gdGVsbCB0aGUgc2VydmVyIHRvIGNsZWFyIG91dCB0aGVpciBvbGQgbGVhc2UgYW5k
-IHN0YXRlDQp3aGVuIHRoZXkgY29tZSBiYWNrIHVwIGFnYWluLg0KDQo+ICsNCj4gIHN0YXRpYyBp
-bmxpbmUgdW5zaWduZWQgbG9uZw0KPiAgbmZzX2ZhdHRyX3RvX2lub190KHN0cnVjdCBuZnNfZmF0
-dHIgKmZhdHRyKQ0KPiAgew0KPiBAQCAtMTY0OSw2ICsxNjUxLDggQEAgc3RhdGljIGludCBfX2lu
-aXQgaW5pdF9uZnNfZnModm9pZCkNCj4gICNlbmRpZg0KPiAgCWlmICgoZXJyID0gcmVnaXN0ZXJf
-bmZzX2ZzKCkpICE9IDApDQo+ICAJCWdvdG8gb3V0Ow0KPiArDQo+ICsJbmZzX2Jvb3RfdGltZSA9
-IENVUlJFTlRfVElNRTsNCj4gIAlyZXR1cm4gMDsNCj4gIG91dDoNCj4gICNpZmRlZiBDT05GSUdf
-UFJPQ19GUw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2ludGVybmFsLmggYi9mcy9uZnMvaW50ZXJu
-YWwuaA0KPiBpbmRleCA2MmZmZWZhLi40N2IzMzg0IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaW50
-ZXJuYWwuaA0KPiArKysgYi9mcy9uZnMvaW50ZXJuYWwuaA0KPiBAQCAtMjQ4LDYgKzI0OCw3IEBA
-IGV4dGVybiBpbnQgbmZzX2FjY2Vzc19jYWNoZV9zaHJpbmtlcihzdHJ1Y3Qgc2hyaW5rZXIgKnNo
-cmluaywNCj4gIAkJCQkJc3RydWN0IHNocmlua19jb250cm9sICpzYyk7DQo+ICANCj4gIC8qIGlu
-b2RlLmMgKi8NCj4gK2V4dGVybiBzdHJ1Y3QgdGltZXNwZWMgbmZzX2Jvb3RfdGltZTsNCj4gIGV4
-dGVybiBzdHJ1Y3Qgd29ya3F1ZXVlX3N0cnVjdCAqbmZzaW9kX3dvcmtxdWV1ZTsNCj4gIGV4dGVy
-biBzdHJ1Y3QgaW5vZGUgKm5mc19hbGxvY19pbm9kZShzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiKTsN
-Cj4gIGV4dGVybiB2b2lkIG5mc19kZXN0cm95X2lub2RlKHN0cnVjdCBpbm9kZSAqKTsNCj4gZGlm
-ZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXgg
-YzBkNzIyMC4uNzQ3YmY3YSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysr
-IGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTM3NzMsMTMgKzM3NzMsMTIgQEAgd2FpdF9vbl9y
-ZWNvdmVyeToNCj4gIAlyZXR1cm4gLUVBR0FJTjsNCj4gIH0NCj4gIA0KPiAtc3RhdGljIHZvaWQg
-bmZzNF9jb25zdHJ1Y3RfYm9vdF92ZXJpZmllcihzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLA0KPiAt
-CQkJCQkgbmZzNF92ZXJpZmllciAqYm9vdHZlcmYpDQo+ICtzdGF0aWMgdm9pZCBuZnM0X2dlbl9i
-b290X3ZlcmlmaWVyKG5mczRfdmVyaWZpZXIgKmJvb3R2ZXJmKQ0KDQpIb3cgYWJvdXQgbmZzNF9p
-bml0X2Jvb3RfdmVyaWZpZXI/ICdnZW4nIHNvdW5kcyBzbyBkeW5hbWljLg0KDQo+ICB7DQo+ICAJ
-X19iZTMyIHZlcmZbMl07DQo+ICANCj4gLQl2ZXJmWzBdID0gaHRvbmwoKHUzMiljbHAtPmNsX2Jv
-b3RfdGltZS50dl9zZWMpOw0KPiAtCXZlcmZbMV0gPSBodG9ubCgodTMyKWNscC0+Y2xfYm9vdF90
-aW1lLnR2X25zZWMpOw0KPiArCXZlcmZbMF0gPSBjcHVfdG9fYmUzMigodTMyKW5mc19ib290X3Rp
-bWUudHZfc2VjKTsNCj4gKwl2ZXJmWzFdID0gY3B1X3RvX2JlMzIoKHUzMiluZnNfYm9vdF90aW1l
-LnR2X25zZWMpOw0KPiAgCW1lbWNweShib290dmVyZi0+ZGF0YSwgdmVyZiwgc2l6ZW9mKGJvb3R2
-ZXJmLT5kYXRhKSk7DQo+ICB9DQo+ICANCj4gQEAgLTM4MDIsNyArMzgwMSw3IEBAIGludCBuZnM0
-X3Byb2Nfc2V0Y2xpZW50aWQoc3RydWN0IG5mc19jbGllbnQgKmNscCwgdTMyIHByb2dyYW0sDQo+
-ICAJaW50IGxvb3AgPSAwOw0KPiAgCWludCBzdGF0dXM7DQo+ICANCj4gLQluZnM0X2NvbnN0cnVj
-dF9ib290X3ZlcmlmaWVyKGNscCwgJnNjX3ZlcmlmaWVyKTsNCj4gKwluZnM0X2dlbl9ib290X3Zl
-cmlmaWVyKCZzY192ZXJpZmllcik7DQo+ICANCj4gIAlmb3IoOzspIHsNCj4gIAkJcmN1X3JlYWRf
-bG9jaygpOw0KPiBAQCAtNDg4OCw3ICs0ODg3LDcgQEAgaW50IG5mczRfcHJvY19leGNoYW5nZV9p
-ZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQpDQo+ICAJZHBy
-aW50aygiLS0+ICVzXG4iLCBfX2Z1bmNfXyk7DQo+ICAJQlVHX09OKGNscCA9PSBOVUxMKTsNCj4g
-IA0KPiAtCW5mczRfY29uc3RydWN0X2Jvb3RfdmVyaWZpZXIoY2xwLCAmdmVyaWZpZXIpOw0KPiAr
-CW5mczRfZ2VuX2Jvb3RfdmVyaWZpZXIoJnZlcmlmaWVyKTsNCj4gIA0KPiAgCWFyZ3MuaWRfbGVu
-ID0gc2NucHJpbnRmKGFyZ3MuaWQsIHNpemVvZihhcmdzLmlkKSwNCj4gIAkJCQkiJXMvJXMuJXMv
-JXUiLA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0
-ZS5jDQo+IGluZGV4IDRkYjMzMGQuLmEyYjdjNDcgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0
-c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gQEAgLTE1NzAsNyArMTU3MCw2
-IEBAIHZvaWQgbmZzNDFfaGFuZGxlX3JlY2FsbF9zbG90KHN0cnVjdCBuZnNfY2xpZW50ICpjbHAp
-DQo+ICBzdGF0aWMgdm9pZCBuZnM0X3Jlc2V0X2FsbF9zdGF0ZShzdHJ1Y3QgbmZzX2NsaWVudCAq
-Y2xwKQ0KPiAgew0KPiAgCWlmICh0ZXN0X2FuZF9zZXRfYml0KE5GUzRDTE5UX0xFQVNFX0VYUElS
-RUQsICZjbHAtPmNsX3N0YXRlKSA9PSAwKSB7DQo+IC0JCWNscC0+Y2xfYm9vdF90aW1lID0gQ1VS
-UkVOVF9USU1FOw0KPiAgCQluZnM0X3N0YXRlX3N0YXJ0X3JlY2xhaW1fbm9ncmFjZShjbHApOw0K
-Xl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXg0K
-VGhpcyBsaW5lIGlzIG5vdyBwcm9ibGVtYXRpYy4gSWYgd2UgZG9uJ3QgZGVjbGFyZSBhIHJlYm9v
-dCwgdGhlbiB3ZSBtYXkNCmVuZCB1cCB3aXRoIGFsbCBzb3J0cyBvZiBCQURfU0VRSUQgZXJyb3Jz
-IGFib3ZlLg0KDQpIbW0uLi4gVGhpbmtpbmcgYWJvdXQgdGhpcywgdGhlIGJlc3Qgc29sdXRpb24g
-bWlnaHQgYmUgc2ltcGx5IHRvIGRlY2xhcmUNCjIgcmVib290czoNCiAgICAgMS4gUmVib290IHVz
-aW5nIGEgQ1VSUkVOVF9USU1FIGJhc2VkIHZlcmlmaWVyDQogICAgIDIuIFJlYm9vdCBhZ2FpbiB1
-c2luZyB0aGUgbmZzX2Jvb3RfdGltZSBiYXNlZCB2ZXJpZmllci4NCg0KVGhhdCBndWFyYW50ZWVz
-IHRoYXQgdGhlIHNlcnZlciBjbGVhcnMgb3V0IGFsbCB0aGUgc3RhdGUgdGhhdCB3ZSB3ZXJlbid0
-DQppbnRlcmVzdGVkIGluIGtlZXBpbmcsIHdoaWxlIGVuc3VyaW5nIHRoYXQgaW4gdGhlIGVuZCwg
-d2UgY29udGludWUgdG8NCnVzZSB0aGUgbmZzX2Jvb3RfdGltZSB2ZXJpZmllciBmb3IgYWxsIGZ1
-dHVyZSBzdGF0ZSBnZW5lcmF0aW9uIGF0dGVtcHRzLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On Mon, Mar 05, 2012 at 03:26:41PM -0500, Matthew Treinish wrote:
+> This patch series implements client side support for volatile file handle
+> recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
+> test the client you either need a server that supports volatile file handles or
+> you can hard code the Linux server to output NFS4ERR_FHEXPIRED instead of
+> NFSERR_STALE.
+> 
+> The approach used here for recovery is to perform lookups for each file handle
+> that receives a FHEXPIRED error. If the lookup also fails with FHEXPIRED, using
+> the dcache, it will recursively walk back to the root of the mount, and recover
+> that using get_root.
+> 
+> The 2 key changes in this iteration are fixing recovery from getattr and 
+> adding support for VFH during migration/replication. Recovery from getattr is
+> accomplished by taking the file handle and searching for a match in the dcache.
+> I couldn't find a better way to get a dentry or inode from the filehandle,
+> since nfs_fhget() needs the fattr for the file. (Which clearly isn't accessible
+> or up to date if getattr is being called)
+> 
+> For migration/replication, if FH4_VOL_MIGRATION is set in FH_EXPIRE_TYPE, then
+> after the client migrates or replicates to another server we can assume that
+> all the file handles have expired. nfs4_vfh_replication() will traverse all
+> the dentries in the dcache for the NFS mount and perform a nfs4_proc_lookup()
+> on them to refresh the file handle. However, the VFH migration/replication 
+> recovery function is currently not being used. When migration and replication
+> are added to the tree I will add patches that will call it at the appropriate 
+> time. 
+> 
+> Also, when used for replication and migration, volatile file handles allows 
+> the client to switch between 2 servers that have file synced exports
+> but different filesystems. For example, if 2 read-only servers are synced
+> using rsync and then remain static the client should have no issues switching
+> between the servers with volatile file handles.
+> 
+> Volatile file handle support fulfills an actual need. The z/OS NFS server
+> currently uses volatile file handles and the Linux client can't handle them
+> preventing those who use the z/OS server from connecting with a Linux client.
+> Additionally, other clients, such as Solaris, AIX, z/OS, and possibly Windows,
+> can handle volatile file handles. So I think including support is necessary 
+> despite the flaws in the spec that were previously discussed. This is why I 
+> included a mount option that disables the recovery routines by default, so 
+> there is no risk to the user who doesn't understand what the potential issues
+> are when recovering from volatile file handles.
+> 
+> v3:
+> - Fixed recovery from nfs4_proc_getattr() which is only passed a file handle
+> - Added support for migration/replication file handle recovery
+> 
+> v2:
+> - Added rpc_cred passing to the vfh lookup and added handling of access errors
+>   on the lookup
+> 
+> Matthew Treinish (10):
+>   New mount option for volatile filehandle recovery
+>   Add support for FH_EXPIRE_TYPE attribute.
+>   Save root file handle in nfs_server.
+>   Store root dentry in server object
+>   Store objects in nfs4_exception to be used during FHEXPIRED recovery.
+>   Add nfs4_vfh_getdentry() for getattr recovery.
+>   Add VFH FHEXPIRED recovery functions.
+>   Perform recovery on both inodes for rename.
+>   Added error handling for NFS4ERR_FHEXPIRED
+>   VFH recovery from a replication/migration event.
+> 
+>  fs/nfs/client.c           |    3 +
+>  fs/nfs/getroot.c          |    8 +
+>  fs/nfs/nfs4_fs.h          |    5 +
+>  fs/nfs/nfs4proc.c         |  422 +++++++++++++++++++++++++++++++++++++++++----
+>  fs/nfs/nfs4xdr.c          |   27 +++
+>  fs/nfs/super.c            |    7 +
+>  include/linux/nfs_fs_sb.h |    3 +
+>  include/linux/nfs_mount.h |    1 +
+>  include/linux/nfs_xdr.h   |    1 +
+>  9 files changed, 447 insertions(+), 30 deletions(-)
+> 
+> -- 
+> 1.7.4.4
+> 
+
+Did anyone get a chance to take a look at these patches? I'd appreciate some
+feedback and opinions on it.
+
+Thanks,
+
+Matt Treinish
+
