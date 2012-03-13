@@ -1,83 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8813 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61376 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753179Ab2CDWqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 17:46:39 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-Date: Sun, 4 Mar 2012 22:46:36 +0000
-Message-ID: <1330901196.14357.7.camel@lade.trondhjem.org>
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
-	  <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>
-	  <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>
-	  <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>
-	  <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>
-	  <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>
-	 <1330801976.2781.19.camel@lade.trondhjem.org> <4F53ED3C.2020209@RedHat.com>
-In-Reply-To: <4F53ED3C.2020209@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753948Ab2CMUjC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Mar 2012 16:39:02 -0400
+Message-ID: <4F5FB04B.9040200@netapp.com>
+Date: Tue, 13 Mar 2012 16:38:35 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
+To: Rahul Katariya <katariya.rahul@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfs locking with cent os 6?
+References: <CANhbJ3XhN8r3hT9xpng44=pa18sx1jj_=p0_+Az+zV5F6WjAyw@mail.gmail.com>
+In-Reply-To: <CANhbJ3XhN8r3hT9xpng44=pa18sx1jj_=p0_+Az+zV5F6WjAyw@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTAzLTA0IGF0IDE3OjMxIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMDMvMDMvMjAxMiAwMjoxMiBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
-PiBPbiBTYXQsIDIwMTItMDMtMDMgYXQgMTI6MzkgLTA1MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6
-DQo+ID4+DQo+ID4+IE9uIDAzLzAyLzIwMTIgMDU6MDEgUE0sIE1hbGFoYWwgTmFpbmVuaSB3cm90
-ZToNCj4gPj4+IFN0ZXZlIERpY2tzb24gW1N0ZXZlREByZWRoYXQuY29tXSB3cm90ZToNCj4gPj4+
-PiBTbyB3aGF0IG15IHBhdGNoIGRvZXMgaXMgIm5vcm1hbGl6ZXMiIHRoZSBkZXZpY2UgbmFtZSBl
-YXJseQ0KPiA+Pj4+IG9uIGluIG1haW4sIHNvIHRoZSBjb3JyZWN0IG5hbWUgdXNlZCB1c2VkIHRo
-cm91Z2ggdGhlIG1vdW50DQo+ID4+Pj4gYW5kIHdoZW4gaXRzIHdyaXR0ZW4gdGhlIG10YWIuIFBs
-dXMsIGZvciBiZXR0ZXIgb3Igd29yc2VzLCANCj4gPj4+PiBzaW5jZSB0aGUgbmV3IGRldmljZSBu
-YW1lIHdpbGwgYWx3YXlzIGJlIHNob3J0ZXIsIEkganVzdCANCj4gPj4+PiByZXVzZS9yZXdyaXRl
-IHRoZSBtZW1vcnkgYWxsb2NhdGVkIGZvciB0aGUgYXJndiB2ZWN0b3IuLiANCj4gPj4+PiBNZWFu
-aW5nIHRoZXJlIGlzIG5vIGFsbG9jYXRpb24uLi4gDQo+ID4+Pg0KPiA+Pj4gTXkgcHJvYmxlbSBp
-cyBhIGJpdCBkaWZmZXJlbnQuDQo+ID4+Pg0KPiA+Pj4gIm1vdW50IC10IG5mczQgc2VydmVyOmV4
-cG9ydCAvbW50IiB3b3JrcyBidXQgdW1vdW50IGZhaWxzLg0KPiA+Pj4NCj4gPj4+IE5vdGljZSB0
-aGF0IHRoZXJlIGlzIG5vICcvJyBpbiB0aGUgcGF0aCENCj4gPj4+DQo+ID4+PiBOb3JtYWxpemlu
-ZyBvciBqdXN0IHN0cmlwcGluZyBsZWFkaW5nICcvJ3MgZWFybHkgd29uJ3QgaGVscCB3aXRoIHRo
-ZQ0KPiA+Pj4gYWJvdmUgcHJvYmxlbSBhbmQgc2luY2UgdGhlcmUgaXMgYWxyZWFkeSBhIGhhY2sg
-dG8gc3RyaXAgdGhlDQo+ID4+PiBfX3RyYWlsaW5nX18gJy8nIHRoYXQga2VybmVsIGFkZHMgdG8g
-L3Byb2MvbW91bnRzIGZpbGUsIEkganVzdCBtYWRlIHRoZQ0KPiA+Pj4gZXhpc3RpbmcgaGFjayBp
-dCBhIGJpdCBiZXR0ZXIgYnkgbm9ybWFsaXppbmcuDQo+ID4+Pg0KPiA+PiBIb3cgYWJvdXQgc29t
-ZXRoaW5nIGxpa2UgdGhpcy4uLiBJdCB0YWtlcyBvbiBib3RoIGNhc2UgZWFybHkgb24uLi4NCj4g
-Pj4NCj4gPj4gQXV0aG9yOiBTdGV2ZSBEaWNrc29uIDxzdGV2ZWRAcmVkaGF0LmNvbT4NCj4gPj4g
-RGF0ZTogICBTYXQgTWFyIDMgMTI6MzE6MjMgMjAxMiAtMDUwMA0KPiA+Pg0KPiA+PiAgICAgbW91
-bnQubmZzOiBWYWxpZGF0ZSBkZXZpY2UgbmFtZSBzeW50YXgNCj4gPj4gICAgIA0KPiA+PiAgICAg
-VG8gZW5zdXJlIHRoZSBkZXZpY2UgbmFtZSBpcyBmb3VuZCBhdCB1bm1vdW50IHRpbWUgc3RyaXAN
-Cj4gPj4gICAgIG9mZiB0aGUgbXVsdGlwbGUgJy8nIG9yIGFkZCBhICcvJyBpZiBvbmUgZG9lcyBu
-b3QgZXhpc3QuDQo+ID4+ICAgICANCj4gPj4gICAgIFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERpY2tz
-b24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPiA+IA0KPiA+IE5BQ0suDQo+ID4gDQo+ID4gTkZTdjQg
-aXMgdGhlIG9ubHkgcHJvdG9jb2wgdGhhdCBoYXMgYSBzdGFuZGFyZCBtb3VudCBwYXRoIHN5bnRh
-eCwgYW5kDQo+ID4gdGhhdCBpcyBiZWNhdXNlIHRoZSBjbGllbnQgcGVyZm9ybXMgdGhlIGpvYiBv
-ZiBpbnRlcnByZXRpbmcgdGhlIHBhdGgNCj4gPiBuYW1lIGFuZCB0cmFuc2xhdGluZyBpdCBpbnRv
-IFBVVFJPT1RGSCBmb2xsb3dlZCBieSBhIGJ1bmNoIG9mIExPT0tVUHMuDQo+ID4gSU9XOiB0aGUg
-c3RhbmRhcmQgc3ludGF4IHRoZXJlIGlzIHRoZSBvbmUgaW1wb3NlZCBieSB0aGUgY2xpZW50Lg0K
-PiA+IA0KPiA+IFRoZXJlIGlzIG5vdGhpbmcgaW4gdGhlIE5GU3YyL3YzIE1PVU5UIHNwZWMgdGhh
-dCBzdGF0ZXMgdGhhdCBhIHBhdGgNCj4gPiBuZWVkcyB0byBzdGFydCB3aXRoICcvJy4gTm9yIGlz
-IHRoZXJlIGV2ZW4gYW55dGhpbmcgaW4gdGhlIHNwZWMgdGhhdA0KPiA+IHN0YXRlcyB0aGF0ICcv
-JyBpcyByZXF1aXJlZCB0byBiZSB1c2VkIGFzIHRoZSBkaXJlY3RvcnkgY29tcG9uZW50DQo+ID4g
-c2VwYXJhdG9yLiBUaGUgWC9PUEVOIGRvY3Mgc3RhdGUgdGhhdCAnLycgaXMgcmVjb21tZW5kZWQg
-Zm9yDQo+ID4gcG9ydGFiaWxpdHksIGJ1dCBkbyBub3QgbWFrZSBpdCBhIHJlcXVpcmVtZW50LiBT
-ZWUNCj4gPiBodHRwOi8vcHVicy5vcGVuZ3JvdXAub3JnL29ubGluZXB1YnMvOTYyOTc5OS9jaGFw
-OC5odG0jdGFnY2poXzA5XzAyXzAyXzAzIA0KPiA+IA0KPiA+IElPVzogSSdtIHBlcmZlY3RseSBh
-bGxvd2VkIHRvIHNldCB1cCBhICdtb3VudGQnIHNlcnZlciB0aGF0IHVzZXMgJ1wnIG9yDQo+ID4g
-ZXZlbiBzb21ldGhpbmcgbGlrZSAnfCcgYXMgYSBwYXRoIGNvbXBvbmVudCBzZXBhcmF0b3IuIFRo
-aXMga2luZCBvZg0KPiA+IHBhdGNoIHdvdWxkIGJyZWFrIHRoZSBjbGllbnQncyBleGlzdGluZyBh
-YmlsaXR5IHRvIG1vdW50IGZyb20gc3VjaCBhDQo+ID4gc2VydmVyLg0KPiBBbmQgd2hlcmUgZG9l
-cyBhbiBzZXJ2ZXIgbGlrZSB0aGlzIGV4aXN0PyBPbmUgdGhhdCB1c2VzICd8JyBhcyBpdHMNCj4g
-cGF0aCBjb21wb25lbnQgc2VwYXJhdG9yPz8gOy0pDQoNCkl0IHJlYWxseSBkb2Vzbid0IG1hdHRl
-ci4gV2UncmUgc3VwcG9zZWQgdG8gYmUgY29kaW5nIHRoaXMgc29ydCBvZiB0aGluZw0KdG8gdGhl
-IHNwZWMsIG5vdCB0byBhbiBlc3RpbWF0ZSBvZiBleGlzdGVuY2UuDQoNCj4gSnVzdCB0byBiZSBj
-bGVhciwgeW91IGFyZSBvayB3aXRoIHN0cmlwaW5nIHRoZSBtdWx0aXBsZSBzbGFzaGVzLCBmb3IN
-Cj4gYWxsIHByb3RvY29sIHZlcnNpb25zLCBidXQgaXRzIG9ubHkga29zaGVyIHRvIGFkZGVkIHRo
-ZSBsZWFkaW5nIA0KPiBzbGFzaCBmb3IgdjQgbW91bnRzLiBDb3JyZWN0PyAgDQoNCk5vLiBQbGVh
-c2UgZG9uJ3Qgc3RyaXAgdGhlIG11bHRpcGxlIHNsYXNoZXMgZWl0aGVyLiBKdXN0IGxlYXZlIHRo
-ZSBwYXRoDQphbG9uZSBhZnRlciB5b3UndmUgc2VwYXJhdGVkIGl0IGZyb20gdGhlIGRldmljZW5h
-bWUuDQoNCkl0IGlzIHF1aXRlIE9LIHRvIG5vcm1hbGl6ZSB0aGUgcGF0aCBvbiB0aGUgX2NsaWVu
-dF8gc2lkZSAoaS5lLg0KY2hhbmdlIC8vbW50IHRvIC9tbnQgb3Igd2hhdGV2ZXIpIGJ1dCBkb24n
-dCB0b3VjaCB0aGUgc2VydmVyIHNpZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+On 03/13/2012 04:21 PM, Rahul Katariya wrote:
+
+>  Hi ,
+> 
+> I am using Cent OS 6 64 bit which supports NFS version 4.
+
+
+A few questions:
+
+- What kernel version is Cent OS 6 using?  I'm running 3.2.7 (on Archlinux, though) and those tests pass...
+- Is the server Cent OS 6, too?
+- Do you still get the warnings if you run with -f instead of -t?
+- Have you tried increasing your "timeo" value?  7 seems somewhat low...
+
+My `mount` output looks like this:
+davros:/home/bjschuma/ on /nfs type nfs (rw,relatime,vers=3,rsize=8192,wsize=8192,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.122.1,mountvers=3,mountport=20048,mountproto=udp,local_lock=none,addr=192.168.122.1)
+
+
+- Bryan
+
+> 
+> I ran cthon-nfs-tests on it.
+> 
+> Although NFS version is 4 supported, I am using NFS 3 for mounting NFS share.
+> 
+> Following are packages installed.
+> # rpm -qa |grep nfs
+> nfs-utils-1.2.2-7.el6.x86_64
+>  nfs-utils-lib-1.1.5-1.el6.x86_64
+> 
+>  Mount shows following
+>  # mount
+>  nfs-server:/export/share/connectathon on /nfstestdir1 type nfs
+> (rw,intr,retrans=5,timeo=7,tcp,nfsvers=3,rsize=8192,wsize=8192,addr=10.10.10.1)
+> 
+> Following is a nfs locking testcase result:
+> 
+> [lock]$  ./runtests   -t /nfstestdir1
+> Starting LOCKING tests: test directory  (arg: -t)
+> 
+>  Testing native post-LFS locking
+> 
+>  Creating parent/child synchronization pipes.
+>  =======================================================
+>  Test #1 - Test regions of an unlocked file.
+>          Parent: 1.1  - F_TEST  [       0,       1] PASSED.
+>          Parent: 1.2  - F_TEST  [       0,  ENDING] PASSED.
+>          Parent: 1.3  - F_TEST  [       0,7fffffff] PASSED.
+>          Parent: 1.4  - F_TEST  [       1,       1] PASSED.
+>          Parent: 1.5  - F_TEST  [       1,  ENDING] PASSED.
+>          Parent: 1.6  - F_TEST  [       1,7fffffff] PASSED.
+>          Parent: 1.7  - F_TEST  [7fffffff,       1] PASSED.
+>          Parent: 1.8  - F_TEST  [7fffffff,  ENDING] PASSED.
+>          Parent: 1.9  - F_TEST  [7fffffff,7fffffff] WARNING!
+>          Parent: **** Expected EOVERFLOW, returned success...
+> 
+>  Test #2 - Try to lock the whole file.
+>          Parent: 2.0  - F_TLOCK [       0,  ENDING] PASSED.
+>          Child:  2.1  - F_TEST  [       0,       1] PASSED.
+>          Child:  2.2  - F_TEST  [       0,  ENDING] PASSED.
+>          Child:  2.3  - F_TEST  [       0,7fffffff] PASSED.
+>          Child:  2.4  - F_TEST  [       1,       1] PASSED.
+>          Child:  2.5  - F_TEST  [       1,  ENDING] PASSED.
+>          Child:  2.6  - F_TEST  [       1,7fffffff] PASSED.
+>          Child:  2.7  - F_TEST  [7fffffff,       1] PASSED.
+>          Child:  2.8  - F_TEST  [7fffffff,  ENDING] PASSED.
+>          Child:  2.9  - F_TEST  [7fffffff,7fffffff] WARNING!
+>          Child:  **** Expected EOVERFLOW, returned EACCES...
+>          Parent: 2.10 - F_ULOCK [       0,  ENDING] PASSED.
+> 
+>  Test #6 - Try to lock the MAXEOF byte.
+>          Parent: 6.0  - F_TLOCK [7fffffff,       1] PASSED.
+>          Child:  6.1  - F_TEST  [7ffffffe,       1] PASSED.
+>          Child:  6.2  - F_TEST  [7ffffffe,       2] PASSED.
+>          Child:  6.3  - F_TEST  [7ffffffe,  ENDING] PASSED.
+>          Child:  6.4  - F_TEST  [7fffffff,       1] PASSED.
+>          Child:  6.5  - F_TEST  [7fffffff,       2] WARNING!
+>          Child:  **** Expected EOVERFLOW, returned EACCES...
+>          Child:  6.6  - F_TEST  [7fffffff,  ENDING] PASSED.
+>          Child:  6.7  - F_TEST  [80000000,  ENDING] PASSED.
+>          Child:  6.8  - F_TEST  [80000000,       1] PASSED.
+>          Child:  6.9  - F_TEST  [80000000,7fffffff] PASSED.
+>          Child:  6.10 - F_TEST  [80000000,80000000] PASSED.
+>          Parent: 6.11 - F_ULOCK [7fffffff,       1] PASSED.
+> 
+>  =======================================================
+> 
+>   Test#1 , Test#2  and Test#6  Shows warning in locking .. i.e.
+> Expected .something. and returned some-other-thing ..
+> 
+> Are these locking well-known issues?
+> 
+> Are there any patch available for the same?  Are these serious warnings?
+> 
+> Thanks,
+> Rahul
+> ¢éì¹»®&Þ~º&¶¬-+-±éÝ¶¥Sw®zË>±Êâmébzìg~È§¶>¡Ü¨}©z²Æ zÚ&j:+v?¨¾«'êçzZ+?Ê+zf£¢·hs^§~?­?Ûiÿûàz¹®w¥¢¸?T¨è­Ú&¢)ß¢f
+
+
