@@ -1,44 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:34482 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757002Ab2CNQs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Mar 2012 12:48:58 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@almaden.ibm.com>;
-	Wed, 14 Mar 2012 12:48:55 -0400
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 169C06E805C
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 12:47:57 -0400 (EDT)
-Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2EGluNk263788
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 12:47:56 -0400
-Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
-	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2EGlhEC020956
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 12:47:43 -0400
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q2EGlh3w020952
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 12:47:43 -0400
-In-Reply-To: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com>
-References: <OF9A3BDB9C.189BECD1-ON882579B3.007FE19E-882579B3.0080227A@us.ibm.com>
-To: linux-nfs@vger.kernel.org
+Received: from natasha.panasas.com ([67.152.220.90]:43033 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756938Ab2CNSdL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 14:33:11 -0400
+Message-ID: <4F60E45C.4010603@panasas.com>
+Date: Wed, 14 Mar 2012 11:33:00 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Subject: Linux pNFS status meeting 03/15/12
-Message-ID: <OFA0CA5439.45832AAD-ON882579C1.005C1459-882579C1.005C3D51@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Wed, 14 Mar 2012 09:47:35 -0700
-Content-Type: text/plain; charset="US-ASCII"
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake
+ of the principle :-(
+References: <4F60141A.709@panasas.com> <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
+In-Reply-To: <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 03/15/12 at 9:30 AM PST (12:30 PM EST)
+On 03/13/2012 09:37 PM, Linus Torvalds wrote:
+> On Tue, Mar 13, 2012 at 8:44 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> Since then any use of "variable length arrays" has become blasphemous.
+>> Even in perfectly good, beautiful, perfectly safe code like the one
+>> below where the variable length arrays are only used as a sizeof()
+>> parameter, for type-safe dynamic structure allocations. GCC is not
+>> executing any stack allocation code.
+> 
+> If it's a compile-time constant, just make it one. Stop the whining.
+> No VLA's required. You could, for example, make a trivial wrapper
+> macro that just declares that array as a constant array in the caller,
+> and it really *is* a constant sized array with no questions asked.
+> 
 
+You have not read the code. I do not have a "constant sized array"
+I have a function that receives num_entries as parameter.
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+In turn, the function declares an array *type* of variable size,
+just a type, not an actual array. Then uses that type as a
+sizeof() parameter to take the size and call kalloc for actual
+object allocation.
 
-Israel Toll-Free: 1-809-417-783
+So all I'm doing is using the compiler generated math to
+multiply the record size by num_entries. No other code is
+generated.
 
-Participant Code: 8792872
+The reason I like them a lot is because I'm now not doing any
+*casting* like I do with the new code. After I did the wrong
+math and stumped all over Kernel memory a couple of times I
+like the compiler to check me out.
 
+> Instead, you waste more time and effort *whining* than doing that
+> technical solution.
+> 
 
+Well I also did the change which is not that bad. So since I sent
+in a fix, I'm entitled to  a *whine*.
+
+Specially in light of the assembly proof I sent. Which you did
+not quote.
+
+> You do realize that VLA's have caused real problems, since you even
+> quote some of the background. Not to mention all the problems they
+> cause for semantics analysis and static checkers.
+> 
+
+Sure, that's true
+
+> VLA's really aren't a very good thing in the kernel. And the
+> work-around I suggest above is actually *simpler* than using them and
+> then spednign the effort explaining "but they are actually constants
+> at compile time after all, and aren't the bad kinds of VLAs".
+> 
+
+Again, I am actually using real VLAs but only as a type definition
+not as an object declaration. And that part works very well.
+
+(Again see assembler attached)
+
+> Just don't do them. They are a mistake.
+> 
+
+Yes! So I've sent in a patch. Assembler wise it's identical.
+static checkers should now be happy. So here it is.
+
+Just that I don't have to like it or agree with you.
+
+>                   Linus
+
+Thanks for your reply, always a pleasure
+Boaz
