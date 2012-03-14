@@ -1,55 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e34.co.us.ibm.com ([32.97.110.152]:53602 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754558Ab2CBT2Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 14:28:16 -0500
-Received: from /spool/local
-	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 2 Mar 2012 12:28:16 -0700
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 913293E4004F
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Mar 2012 12:28:11 -0700 (MST)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q22JRxcq116208
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:28:00 -0700
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q22JRxHR019557
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:27:59 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q22JRxxY019545
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 12:27:59 -0700
-Date: Fri, 2 Mar 2012 13:27:58 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-Message-ID: <20120302192758.GA28389@us.ibm.com>
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
- <4F2BC1C0.8070900@panasas.com>
- <20120203231623.442fefde@notabene.brown>
- <20120203142945.GA31805@us.ibm.com>
- <4F2E620F.5090100@panasas.com>
- <20120207204401.GA31752@us.ibm.com>
- <4F511B21.1020907@RedHat.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:34997 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753518Ab2CNEiA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 00:38:00 -0400
+Received: by wejx9 with SMTP id x9so1267256wej.19
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 21:37:59 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F511B21.1020907@RedHat.com>
+In-Reply-To: <4F60141A.709@panasas.com>
+References: <4F60141A.709@panasas.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 13 Mar 2012 21:37:39 -0700
+Message-ID: <CA+55aFzCuDCo1tJvgetOVhwnO_W+FaYBDZiuZTGYD+YA4iwp0Q@mail.gmail.com>
+Subject: Re: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake of
+ the principle :-(
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson [SteveD@redhat.com] wrote:
-> Hello,
-> 
-> First of all my apologizes for dropping this... I saw Boaz's
-> NACK and never got back to it.. More comments in-line. 
+On Tue, Mar 13, 2012 at 8:44 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> Since then any use of "variable length arrays" has become blasphemous.
+> Even in perfectly good, beautiful, perfectly safe code like the one
+> below where the variable length arrays are only used as a sizeof()
+> parameter, for type-safe dynamic structure allocations. GCC is not
+> executing any stack allocation code.
 
-No need for them.
+If it's a compile-time constant, just make it one. Stop the whining.
+No VLA's required. You could, for example, make a trivial wrapper
+macro that just declares that array as a constant array in the caller,
+and it really *is* a constant sized array with no questions asked.
 
-> Question, How does this patch stop the mtab from getting polluted with
-> the device name with multiple "/"? 
+Instead, you waste more time and effort *whining* than doing that
+technical solution.
 
-It doesn't. Is that a problem? It only matches entries in /etc/mtab and
-/proc/mounts correctly for unmount to work.
+You do realize that VLA's have caused real problems, since you even
+quote some of the background. Not to mention all the problems they
+cause for semantics analysis and static checkers.
 
-Regards, Malahal.
+VLA's really aren't a very good thing in the kernel. And the
+work-around I suggest above is actually *simpler* than using them and
+then spednign the effort explaining "but they are actually constants
+at compile time after all, and aren't the bad kinds of VLAs".
 
+Just don't do them. They are a mistake.
+
+                  Linus
