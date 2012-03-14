@@ -1,58 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:39036 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965048Ab2CVTTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 15:19:45 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 08/11] NFSv4.1 wake up all tasks on un-connected DS slot table waitq
-Date: Thu, 22 Mar 2012 15:19:36 -0400
-Message-Id: <1332443979-2302-9-git-send-email-andros@netapp.com>
-In-Reply-To: <1332443979-2302-1-git-send-email-andros@netapp.com>
-References: <1332443979-2302-1-git-send-email-andros@netapp.com>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:42475 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760586Ab2CNXZp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 19:25:45 -0400
+Received: by lahj13 with SMTP id j13so1924530lah.19
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 16:25:43 -0700 (PDT)
+MIME-Version: 1.0
+Date: Wed, 14 Mar 2012 19:25:43 -0400
+Message-ID: <CAP=VYLoNpAU7YAvy+3KrqpBErbJtE9i4_3uCyv-QaMgHiD6evw@mail.gmail.com>
+Subject: NFS related randconfig failure on powerpc ('nfs_debug' undeclared)
+From: Paul Gortmaker <paul.gortmaker@windriver.com>
+To: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Just a heads up that linux-next builds found this;
 
-The DS has a connection error (invalid deviceid). Drain the fore channel
-slot table waitq.
+fs/nfs/nfs4xdr.c:3443:27: error: 'nfs_debug' undeclared (first use in
+this function)
+make[3]: *** [fs/nfs/nfs4xdr.o] Error 1
+make[2]: *** [fs/nfs] Error 2
+make[1]: *** [fs] Error 2
+make: *** [sub-make] Error 2
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Full build log at:
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index faba987..ce8734d 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -120,6 +120,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- {
- 	struct nfs_server *mds_server = NFS_SERVER(state->inode);
- 	struct nfs_client *mds_client = mds_server->nfs_client;
-+	struct nfs4_slot_table *tbl = &clp->cl_session->fc_slot_table;
- 
- 	if (task->tk_status >= 0)
- 		return 0;
-@@ -168,6 +169,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		dprintk("%s DS connection error %d\n", __func__,
- 			task->tk_status);
- 		filelayout_mark_devid_invalid(devid);
-+		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		/* fall through */
- 	default:
- 		dprintk("%s Retry through MDS. Error %d\n", __func__,
-@@ -192,8 +194,6 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
- 	int err;
- 
--	dprintk("%s DS read\n", __func__);
--
- 	err = filelayout_async_handle_error(task, data->args.context->state,
- 					  data->ds_clp, devid);
- 
--- 
-1.7.6.4
+http://kisskb.ellerman.id.au/kisskb/buildresult/5871973/
 
+Paul.
