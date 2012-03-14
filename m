@@ -1,130 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:23182 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757792Ab2CEXXv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 18:23:51 -0500
-Subject: Re: nfs3 lockd: cannot monitor errors
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=US-ASCII
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4F554954.9050901@steve-ss.com>
-Date: Mon, 5 Mar 2012 18:23:35 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <52BCED70-81F8-454E-BD01-3261B1E76931@oracle.com>
-References: <4F520CB4.1030203@steve-ss.com> <4F554954.9050901@steve-ss.com>
-To: steve <steve@steve-ss.com>
+Received: from natasha.panasas.com ([67.152.220.90]:56872 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752843Ab2CNDoj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 23:44:39 -0400
+Message-ID: <4F60141A.709@panasas.com>
+Date: Tue, 13 Mar 2012 20:44:26 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake of
+ the principle :-(
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 5, 2012, at 6:16 PM, steve wrote:
+At some past instance Linus Trovalds wrote:
+> From: Linus Torvalds <torvalds@linux-foundation.org>
+> commit a84a79e4d369a73c0130b5858199e949432da4c6 upstream.
+>
+> The size is always valid, but variable-length arrays generate worse code
+> for no good reason (unless the function happens to be inlined and the
+> compiler sees the length for the simple constant it is).
+>
+> Also, there seems to be some code generation problem on POWER, where
+> Henrik Bakken reports that register r28 can get corrupted under some
+> subtle circumstances (interrupt happening at the wrong time?).  That all
+> indicates some seriously broken compiler issues, but since variable
+> length arrays are bad regardless, there's little point in trying to
+> chase it down.
+>
+> "Just don't do that, then".
 
-> On 03/03/12 13:21, steve wrote:
->> Hi
->> We recently switched to nfs3 from nfs4 and now we're getting lots of
->> lockd errors. We can remove the error by mounting with:
->> -o local_lock=posix
->> 
->> We had to switch to be able to use the posix acl we had set on the share.
->> 
->> What problems may we face by setting the local_lock?
->> Thanks,
->> Steve
->> 
-> 
-> Hi
-> Sorry to bump
-> This is openSUSE 12.1. All the references to lockd probs seem to come from 10 or so years ago.
-> 
-> Could anyone give me a one liner as to where to start looking? I've gone through all the usual channels.
-> 
-> Cheers,
-> Steve
-> 
-> Server:
-> Mar  5 16:24:46 hh3 kernel: [16760.656609] lockd: cannot monitor hh6
+Since then any use of "variable length arrays" has become blasphemous.
+Even in perfectly good, beautiful, perfectly safe code like the one
+below where the variable length arrays are only used as a sizeof()
+parameter, for type-safe dynamic structure allocations. GCC is not
+executing any stack allocation code.
 
-This error message means "hh3" cannot monitor "hh6".  Usually that's a sign that rpc.statd on hh3 is having trouble getting a clean DNS lookup of hh6.  Maybe enabling debugging on statd would produce a little more diagnostic information.
+I have produced a small file which defines two functions main1(unsigned numdevs)
+and main2(unsigned numdevs). main1 uses code as before with call to malloc
+and main2 uses code as of after this patch. I compiled it as:
+	gcc -O2 -S see_asm.c
+and here is what I get:
 
-> ps aux | grep rpc
-> root      1214  0.0  0.1   2356   656 ?        Ss   Mar05   0:00 /sbin/rpcbind
-> root      1821  0.0  0.0      0     0 ?        S<   Mar05   0:00 [rpciod]
-> root      4649  0.0  0.0   2416   416 ?        Ss   Mar05   0:00 /usr/sbin/rpc.idmapd
-> root      4668  0.0  0.3   4092  1508 ?        Ss   Mar05   0:00 rpc.gssd
-> root      5192  0.0  0.2   3840  1096 ?        Ss   Mar05   0:00 /usr/sbin/rpc.svcgssd
-> root      5206  0.0  0.1   3032   568 ?        Ss   Mar05   0:00 /usr/sbin/rpc.mountd --no-nfs-version 4
-> statd     5243  0.0  0.1   2584   652 ?        Ss   Mar05   0:00 /usr/sbin/rpc.statd --no-notify
-> 
-> 
-> rpcinfo
->   program version netid     address                service    owner
->    100000    4    tcp6      ::.0.111               portmapper superuser
->    100000    3    tcp6      ::.0.111               portmapper superuser
->    100000    4    udp6      ::.0.111               portmapper superuser
->    100000    3    udp6      ::.0.111               portmapper superuser
->    100000    4    tcp       0.0.0.0.0.111          portmapper superuser
->    100000    3    tcp       0.0.0.0.0.111          portmapper superuser
->    100000    2    tcp       0.0.0.0.0.111          portmapper superuser
->    100000    4    udp       0.0.0.0.0.111          portmapper superuser
->    100000    3    udp       0.0.0.0.0.111          portmapper superuser
->    100000    2    udp       0.0.0.0.0.111          portmapper superuser
->    100000    4    local     /var/run/rpcbind.sock  portmapper superuser
->    100000    3    local     /var/run/rpcbind.sock  portmapper superuser
->    100005    1    udp       0.0.0.0.178.110        mountd     superuser
->    100005    1    tcp       0.0.0.0.136.30         mountd     superuser
->    100005    1    udp6      ::.145.115             mountd     superuser
->    100005    1    tcp6      ::.220.209             mountd     superuser
->    100005    2    udp       0.0.0.0.163.232        mountd     superuser
->    100003    2    tcp       0.0.0.0.8.1            nfs        superuser
->    100003    3    tcp       0.0.0.0.8.1            nfs        superuser
->    100227    2    tcp       0.0.0.0.8.1            nfs_acl    superuser
->    100227    3    tcp       0.0.0.0.8.1            nfs_acl    superuser
->    100003    2    udp       0.0.0.0.8.1            nfs        superuser
->    100003    3    udp       0.0.0.0.8.1            nfs        superuser
->    100227    2    udp       0.0.0.0.8.1            nfs_acl    superuser
->    100227    3    udp       0.0.0.0.8.1            nfs_acl    superuser
->    100005    2    tcp       0.0.0.0.210.206        mountd     superuser
->    100005    2    udp6      ::.150.240             mountd     superuser
->    100003    2    tcp6      ::.8.1                 nfs        superuser
->    100003    3    tcp6      ::.8.1                 nfs        superuser
->    100227    2    tcp6      ::.8.1                 nfs_acl    superuser
->    100227    3    tcp6      ::.8.1                 nfs_acl    superuser
->    100003    2    udp6      ::.8.1                 nfs        superuser
->    100003    3    udp6      ::.8.1                 nfs        superuser
->    100227    2    udp6      ::.8.1                 nfs_acl    superuser
->    100227    3    udp6      ::.8.1                 nfs_acl    superuser
->    100021    1    udp       0.0.0.0.141.165        nlockmgr   superuser
->    100021    3    udp       0.0.0.0.141.165        nlockmgr   superuser
->    100021    4    udp       0.0.0.0.141.165        nlockmgr   superuser
->    100021    1    tcp       0.0.0.0.173.52         nlockmgr   superuser
->    100021    3    tcp       0.0.0.0.173.52         nlockmgr   superuser
->    100021    4    tcp       0.0.0.0.173.52         nlockmgr   superuser
->    100021    1    udp6      ::.208.135             nlockmgr   superuser
->    100021    3    udp6      ::.208.135             nlockmgr   superuser
->    100021    4    udp6      ::.208.135             nlockmgr   superuser
->    100021    1    tcp6      ::.175.226             nlockmgr   superuser
->    100021    3    tcp6      ::.175.226             nlockmgr   superuser
->    100021    4    tcp6      ::.175.226             nlockmgr   superuser
->    100005    2    tcp6      ::.200.118             mountd     superuser
->    100005    3    udp       0.0.0.0.217.9          mountd     superuser
->    100005    3    tcp       0.0.0.0.185.184        mountd     superuser
->    100005    3    udp6      ::.226.152             mountd     superuser
->    100005    3    tcp6      ::.204.113             mountd     superuser
->    100024    1    udp       0.0.0.0.131.53         status     103
->    100024    1    tcp       0.0.0.0.130.61         status     103
->    100024    1    udp6      ::.140.153             status     103
->    100024    1    tcp6      ::.179.31              status     103
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+<see_asm.s>
+main1:
+.LFB7:
+	.cfi_startproc
+	mov	%edi, %edi
+	leaq	4(%rdi,%rdi), %rdi
+	salq	$3, %rdi
+	jmp	malloc
+	.cfi_endproc
+.LFE7:
+	.size	main1, .-main1
+	.p2align 4,,15
+	.globl	main2
+	.type	main2, @function
+main2:
+.LFB8:
+	.cfi_startproc
+	mov	%edi, %edi
+	addq	$2, %rdi
+	salq	$4, %rdi
+	jmp	malloc
+	.cfi_endproc
+.LFE8:
+	.size	main2, .-main2
+	.section	.text.startup,"ax",@progbits
+	.p2align 4,,15
+</see_asm.s>
 
+*Exact* same code !!!
+
+So please seriously consider not accepting this patch and leave the
+perfectly good code intact.
+
+CC: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ fs/nfs/objlayout/objio_osd.c |   39 +++++++++++++++++++++++++--------------
+ 1 files changed, 25 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 55d0128..37a9269 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -205,25 +205,36 @@ static void copy_single_comp(struct ore_components *oc, unsigned c,
+ int __alloc_objio_seg(unsigned numdevs, gfp_t gfp_flags,
+ 		       struct objio_segment **pseg)
+ {
+-	struct __alloc_objio_segment {
+-		struct objio_segment olseg;
+-		struct ore_dev *ods[numdevs];
+-		struct ore_comp	comps[numdevs];
+-	} *aolseg;
+-
+-	aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
+-	if (unlikely(!aolseg)) {
++/*	This is the in memory structure of the objio_segment
++ *
++ *	struct __alloc_objio_segment {
++ *		struct objio_segment olseg;
++ *		struct ore_dev *ods[numdevs];
++ *		struct ore_comp	comps[numdevs];
++ *	} *aolseg;
++ *	NOTE: The code as above compiles and runs perfectly. It is elegant,
++ *	type safe and compact. At some Past time Linus has decided he does not
++ *	like variable length arrays, For the sake of this principal we uglify
++ *	the code as below.
++ */
++	struct objio_segment *lseg;
++	size_t lseg_size = sizeof(*lseg) +
++			numdevs * sizeof(lseg->oc.ods[0]) +
++			numdevs * sizeof(*lseg->oc.comps);
++
++	lseg = kzalloc(lseg_size, gfp_flags);
++	if (unlikely(!lseg)) {
+ 		dprintk("%s: Faild allocation numdevs=%d size=%zd\n", __func__,
+-			numdevs, sizeof(*aolseg));
++			numdevs, lseg_size);
+ 		return -ENOMEM;
+ 	}
+ 
+-	aolseg->olseg.oc.numdevs = numdevs;
+-	aolseg->olseg.oc.single_comp = EC_MULTPLE_COMPS;
+-	aolseg->olseg.oc.comps = aolseg->comps;
+-	aolseg->olseg.oc.ods = aolseg->ods;
++	lseg->oc.numdevs = numdevs;
++	lseg->oc.single_comp = EC_MULTPLE_COMPS;
++	lseg->oc.ods = (void *)(lseg + 1);
++	lseg->oc.comps = (void *)(lseg->oc.ods + numdevs);
+ 
+-	*pseg = &aolseg->olseg;
++	*pseg = lseg;
+ 	return 0;
+ }
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.6.5
 
