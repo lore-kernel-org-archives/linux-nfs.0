@@ -1,56 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:48724 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752932Ab2CUPfY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 11:35:24 -0400
-Received: by yenl12 with SMTP id l12so1030337yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 08:35:23 -0700 (PDT)
-Date: Wed, 21 Mar 2012 08:35:19 -0700
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, keyrings@linux-nfs.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>
-Subject: Re: [PATCHSET 0/4] kmod: Optional timeout on the wait in
- call_usermodehelper_exec
-Message-ID: <20120321153519.GB30250@kroah.com>
-References: <4F691059.30405@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F691059.30405@panasas.com>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:63336 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758550Ab2CNU6z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 16:58:55 -0400
+Received: by wibhj6 with SMTP id hj6so7820557wib.1
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Mar 2012 13:58:53 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pnfsd: verify minlength and range as per RFC5661
+Date: Wed, 14 Mar 2012 22:58:49 +0200
+Message-Id: <1331758729-4317-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 20, 2012 at 04:18:49PM -0700, Boaz Harrosh wrote:
-> Andrew Hi
-> 
-> I'm picking on you because I don't have any one else to pick on.
-> The 3 first patches here, are just good for today. Please see if
-> you would like to take them? or tell me who should take them?
-> 
-> The 4th patch is an RFC, which got me looking into this.
-> 
-> My motivation is that I added yet another Kernel dependency on the
-> call_usermodehelper() function and am not completely happy with the
-> error case of having the user-mode program stuck forever. In such
-> case I would like the Kernel part to timeout and properly error recover
-> and clean up. So therefor the proposed 4th patch.
+Implement verification logic for loga_minlength and loga_length
+specified in RFC5661, Section 18.43.3.
 
-What is this new use of call_usermodhelper that you are doing this work
-for?  Ideally, you never want to make this call, as it's slow and messy,
-as you have found out.  Is there an in-kernel user that you have
-recently added?
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c |   19 +++++++++++++++++++
+ 1 files changed, 19 insertions(+), 0 deletions(-)
 
-thanks,
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index dfb41e6..bd80ef4 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -703,6 +703,25 @@ struct super_block *
+ 
+ 	dprintk("NFSD: %s Begin\n", __func__);
+ 
++	/* verify minlength and range as per RFC5661:
++	 *  o  If loga_length is less than loga_minlength,
++	 *     the metadata server MUST return NFS4ERR_INVAL.
++	 *  o  If the sum of loga_offset and loga_minlength exceeds
++	 *     NFS4_UINT64_MAX, and loga_minlength is not
++	 *     NFS4_UINT64_MAX, the error NFS4ERR_INVAL MUST result.
++	 *  o  If the sum of loga_offset and loga_length exceeds
++	 *     NFS4_UINT64_MAX, and loga_length is not NFS4_UINT64_MAX,
++	 *     the error NFS4ERR_INVAL MUST result.
++	 */
++	if ((lgp->lg_seg.length < lgp->lg_minlength) ||
++	    (lgp->lg_minlength != NFS4_MAX_UINT64 &&
++	     lgp->lg_minlength > NFS4_MAX_UINT64 - lgp->lg_seg.offset) ||
++	    (lgp->lg_seg.length != NFS4_MAX_UINT64 &&
++	     lgp->lg_seg.length > NFS4_MAX_UINT64 - lgp->lg_seg.offset)) {
++		nfserr = nfserr_inval;
++		goto out;
++	}
++
+ 	args.lg_sbid = find_create_sbid(sb);
+ 	if (!args.lg_sbid) {
+ 		nfserr = nfserr_layouttrylater;
+-- 
+1.7.6.5
 
-greg k-h
