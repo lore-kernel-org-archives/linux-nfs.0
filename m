@@ -1,48 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16344 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758463Ab2C1XRL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 19:17:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
-Date: Wed, 28 Mar 2012 23:16:49 +0000
-Message-ID: <1332976613.19172.25.camel@lade.trondhjem.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-	 <1332337929-18580-4-git-send-email-jlayton@redhat.com>
-	 <20120323121208.GA3219@fieldses.org> <20120323133111.GA2991@fieldses.org>
-	 <1332516024.3087.1.camel@lade.trondhjem.org>
-	 <20120323152220.GA4953@fieldses.org>
-	 <1332516863.3087.10.camel@lade.trondhjem.org>
-	 <20120323115337.28bff808@corrin.poochiereds.net>
-	 <20120323121218.74461807@corrin.poochiereds.net>
-	 <20120323170405.GA6089@fieldses.org> <20120328230931.GA13231@fieldses.org>
-In-Reply-To: <20120328230931.GA13231@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1032043Ab2COSk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:40:58 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 03/11] NFSv4.1 cleanup filelayout invalid layout handling
+Date: Thu, 15 Mar 2012 14:40:42 -0400
+Message-Id: <1331836850-5195-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTI4IGF0IDE5OjA5IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IFRoaXMgaXMgYSBiYW5kYWlkLg0KPiANCj4gSSBoYXZlIGEgc2VyaWVzIG9mIHBhdGNoZXMg
-dGhhdCBhY3R1YWxseSBpbXBsZW1lbnQgdGhlIGNvcnJlY3QgYmVoYXZpb3IsDQo+IGJ1dCB0aGF0
-IG1heSBub3QgcXVpdGUgYmUgcmVhZHkgZm9yIDMuNC4NCj4gDQo+IC0tYi4NCj4gDQo+IGNvbW1p
-dCAyZjAyNjg2N2M3NjE3MWQyNmYwMDNiMjExMDYzZmYwNTYyMDk3ZDVlDQo+IEF1dGhvcjogSi4g
-QnJ1Y2UgRmllbGRzIDxiZmllbGRzQHJlZGhhdC5jb20+DQo+IERhdGU6ICAgV2VkIE1hciAyOCAx
-NDoxODoxNiAyMDEyIC0wNDAwDQo+IA0KPiAgICAgbmZzZDQ6IHVzZSBhdXRoX3VuaXggdW5jb25k
-aXRpb25hbGx5IG9uIGJhY2tjaGFubmVsDQo+ICAgICANCj4gICAgIFRoaXMgaXNuJ3QgYWN0dWFs
-bHkgY29ycmVjdCwgYnV0IGl0IHdvcmtzIHdpdGggdGhlIExpbnV4IGNsaWVudCwgYW5kDQo+ICAg
-ICBhZ3JlZXMgd2l0aCB0aGUgYmVoYXZpb3Igd2UgdXNlZCB0byBoYXZlIGJlZm9yZSBjb21taXQg
-ODBmYzAxNWJkZmUuDQoNClF1ZXN0aW9uOiBkb2VzIHRoZSBMaW51eCBjbGllbnQgZXZlciBzZW5k
-IHlvdSBhbnl0aGluZyBvdGhlciB0aGFuDQpBVVRIX1NZUyBjcmVkZW50aWFscyBmb3IgdGhlIGNz
-YV9zZWNfcGFybXMgYXJndW1lbnQgaW4gQ1JFQVRFX1NFU1NJT04/DQpBbnl0aGluZyBvdGhlciB0
-aGFuIHRoYXQgd291bGQgYmUgYSBidWcsIHNpbmNlIG91ciBjbGllbnQgZG9lc24ndA0KYWN0dWFs
-bHkgc3VwcG9ydCBSUENTRUNfR1NTIGluIHRoZSBjYWxsYmFjayBjaGFubmVsLg0KDQo+ICAgICBM
-YXRlciBwYXRjaGVzIHdpbGwgaW1wbGVtZW50IHRoZSBzcGVjLW1hbmRhdGVkIGJlaGF2aW9yICh3
-aGljaCBpcyB0byB1c2UNCj4gICAgIHRoZSBzZWN1cml0eSBwYXJhbWV0ZXJzIGV4cGxpY2l0bHkg
-Z2l2ZW4gYnkgdGhlIGNsaWVudCBpbiBjcmVhdGVfc2Vzc2lvbg0KPiAgICAgb3IgYmFja2NoYW5u
-ZWxfY3RsKS4NCj4gICAgIA0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg0K
+From: Andy Adamson <andros@netapp.com>
+
+The invalid layout bits are should only be used to block LAYOUTGETs.
+
+Do not invalidate a layout on deviceid invalidation.
+Do not invalidate a layout on un-handled READ, WRITE, COMMIT errors.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   26 ++++++--------------------
+ 1 files changed, 6 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e1c0670..b0b775c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -187,10 +187,8 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 					  data->ds_clp, &reset) == -EAGAIN) {
+ 		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+-		if (reset) {
+-			pnfs_set_lo_fail(data->lseg);
++		if (reset)
+ 			filelayout_reset_read(task, data);
+-		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+@@ -267,10 +265,8 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 					  data->ds_clp, &reset) == -EAGAIN) {
+ 		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+-		if (reset) {
+-			pnfs_set_lo_fail(data->lseg);
++		if (reset)
+ 			filelayout_reset_write(task, data);
+-		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+@@ -299,10 +295,9 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 					  data->ds_clp, &reset) == -EAGAIN) {
+ 		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+-		if (reset) {
++		if (reset)
+ 			prepare_to_resend_writes(data);
+-			pnfs_set_lo_fail(data->lseg);
+-		} else
++		else
+ 			rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	}
+@@ -393,12 +388,8 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+-	if (!ds) {
+-		/* Either layout fh index faulty, or ds connect failed */
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	}
+ 	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
+ 
+ 	/* No multipath support. Use first DS */
+@@ -432,11 +423,8 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+-	if (!ds) {
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	}
+ 	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+ 		data->inode->i_ino, sync, (size_t) data->args.count, offset,
+ 		ds->ds_remotestr);
+@@ -890,8 +878,6 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		prepare_to_resend_writes(data);
+ 		data->mds_ops->rpc_release(data);
+ 		return -EAGAIN;
+-- 
+1.7.6.4
+
