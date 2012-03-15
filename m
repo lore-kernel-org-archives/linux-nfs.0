@@ -1,30 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30375 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751880Ab2CKWOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 Mar 2012 18:14:46 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Kevin Coffman <kwc@citi.umich.edu>,
-        Dr James Bruce Fields <bfields@fieldses.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Bug in gss_krb5_crypto.c
-Date: Sun, 11 Mar 2012 22:14:44 +0000
-Message-ID: <1331504084.2792.7.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:52958 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752873Ab2COS3d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 14:29:33 -0400
+From: Vivek Trivedi <vtrivedi018@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Vivek Trivedi <vtrivedi018@gmail.com>, Namjae Jeon <linkinjeon@gmail.com>
+Subject: [PATCH 1/1] NFS: fix sb->s_id in nfs debug prints
+Date: Thu, 15 Mar 2012 23:58:52 +0530
+Message-Id: <1331836132-2053-1-git-send-email-vtrivedi018@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgS2V2aW4gJiBCcnVjZSwNCg0KV2hlbiBydW5uaW5nIHNwYXJzZSBvbiB0aGUgc3VucnBjIGNv
-ZGUsIEknbSBzZWVpbmcgdGhlIGZvbGxvd2luZyBlcnJvcg0KbWVzc2FnZToNCiJuZXQvc3VucnBj
-L2F1dGhfZ3NzL2dzc19rcmI1X2NyeXB0by5jOjYwMzo1MjogZXJyb3I6IGJhZCBjb25zdGFudA0K
-ZXhwcmVzc2lvbiINCg0KVGhpcyBib2lscyBkb3duIHRvIHRoZSBsaW5lOg0KICAgICAgICB1OCBk
-YXRhW2NyeXB0b19ibGtjaXBoZXJfYmxvY2tzaXplKGNpcGhlcikgKiAyXTsNCg0Kd2hpY2ggaXMg
-dXNpbmcgYSBHTlUgQ2MtaXNtIGluIG9yZGVyIHRvIGRvIGR5bmFtaWMgYWxsb2NhdGlvbiBvbiB0
-aGUNCnN0YWNrLiBUaGlzIGlzIG5vdCBhY2NlcHRhYmxlIGluIGtlcm5lbCBjb2RlLCBhbmQgcmVh
-bGx5IG5lZWRzIHRvIGJlDQpjaGFuZ2VkLiBIb3cgc2hvdWxkIHdlIG1vdmUgZm9yd2FyZCB3aXRo
-IHRoaXM/IElzIHRoZXJlIGFuIHVwcGVyIGxpbWl0DQpvbiB0aGUgdmFsdWUgb2YgY3J5cHRvX2Js
-a2NpcGhlcl9ibG9ja3NpemUoY2lwaGVyKSB0aGF0IHdlIGNhbiB1c2U/DQoNCkNoZWVycw0KICBU
-cm9uZA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
-Cg==
+NFS bdi flush thread in ps output is printed like "flush-<major number
+in decimal>:<minor number in decimal>"
+For example:
+$ ps aux | grep flush
+ 2079 root         0 SW   [flush-0:18]
+                                 ^^^^
+
+nfs_bdi_register()
+==> bdi_register_dev()
+==> bdi_register(bdi, NULL, "%u:%u", MAJOR(dev), MINOR(dev));
+                             ^^^^^
+
+However, NFS sb->s_id store major:minor number in hex:
+
+nfs_initialise_sb()
+==>         snprintf(sb->s_id, sizeof(sb->s_id),
+                 "%x:%x", MAJOR(sb->s_dev), MINOR(sb->s_dev));
+                  ^^^^^
+
+If we enable nfs debug prints using command:
+$ rpcdebug -m nfs -s all
+
+write to a file:
+$ dd if=/dev/zero of=<NFS Mount>/testfile.txt bs=32768 count=1
+
+Without Patch:
+[ 2431.032000] NFS:     0 initiated write call (req 0:12/40, 32768 bytes
+@ offset 0)                                         ^^^^
+
+With Patch:
+[ 2431.032000] NFS:     0 initiated write call (req 0:18/40, 32768 bytes
+@ offset 0)                                         ^^^^
+
+We should store NFS "s->s_id" in decimal to avoid confusion between NFS
+flush thread name(in ps output) and NFS debug prints.
+
+Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
+Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+---
+ fs/nfs/super.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 3dfa4f1..d64bc3c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2047,7 +2047,7 @@ static inline void nfs_initialise_sb(struct super_block *sb)
+ 
+ 	/* We probably want something more informative here */
+ 	snprintf(sb->s_id, sizeof(sb->s_id),
+-		 "%x:%x", MAJOR(sb->s_dev), MINOR(sb->s_dev));
++		 "%u:%u", MAJOR(sb->s_dev), MINOR(sb->s_dev));
+ 
+ 	if (sb->s_blocksize == 0)
+ 		sb->s_blocksize = nfs_block_bits(server->wsize,
+-- 
+1.7.8.4
+
