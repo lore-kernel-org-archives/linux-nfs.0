@@ -1,163 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11369 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44113 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216Ab2CBTEz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 2 Mar 2012 14:04:55 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: Extend the -overs= mount option to allow 4.x minorversions
-Date: Fri,  2 Mar 2012 14:04:44 -0500
-Message-Id: <1330715086-13871-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1030581Ab2COSlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:41:04 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 10/11] NFSv4.1 ref count nfs_client across filelayout data server io
+Date: Thu, 15 Mar 2012 14:40:49 -0400
+Message-Id: <1331836850-5195-11-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the user to mount an NFSv4.0 or NFSv4.1 partition using a
-standard syntax of '-overs=4.0', or '-overs=4.1' rather than the
-more cumbersome '-overs=4,minorversion=1'.
+From: Andy Adamson <andros@netapp.com>
 
-See also the earlier patch by Dros Adamson, which added the
-Linux-specific syntax '-ov4.0', '-ov4.1'.
+Prepare to put a dis-connected DS client record.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/super.c |   84 +++++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 62 insertions(+), 22 deletions(-)
+ fs/nfs/nfs4filelayout.c |   22 +++++++++++++++++-----
+ 1 files changed, 17 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 8154acc..ab58bb9 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -98,10 +98,10 @@ enum {
- 	Opt_namelen,
- 	Opt_mountport,
- 	Opt_mountvers,
--	Opt_nfsvers,
- 	Opt_minorversion,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index a67a137..4c846cb 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -88,6 +88,8 @@ void filelayout_reset_write(struct rpc_task *task, struct nfs_write_data *data)
+ 	dprintk("%s Reset task for i/o through\n", __func__);
+ 	put_lseg(data->lseg);
+ 	data->lseg          = NULL;
++	/* balance nfs_get_client in filelayout_write_pagelist */
++	nfs_put_client(data->ds_clp);
+ 	data->ds_clp        = NULL;
+ 	data->write_done_cb = nfs4_write_done_cb;
+ 	data->args.fh       = NFS_FH(data->inode);
+@@ -106,6 +108,8 @@ void filelayout_reset_read(struct rpc_task *task, struct nfs_read_data *data)
+ 	data->lseg         = NULL;
+ 	/* offsets will differ in the dense stripe case */
+ 	data->args.offset  = data->mds_offset;
++	/* balance nfs_get_client in filelayout_read_pagelist */
++	nfs_put_client(data->ds_clp);
+ 	data->ds_clp       = NULL;
+ 	data->args.fh      = NFS_FH(data->inode);
+ 	data->read_done_cb = nfs4_read_done_cb;
+@@ -288,6 +292,7 @@ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
  
- 	/* Mount options that take string arguments */
-+	Opt_nfsvers,
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
- 	Opt_lookupcache,
-@@ -166,9 +166,10 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_namelen, "namlen=%s" },
- 	{ Opt_mountport, "mountport=%s" },
- 	{ Opt_mountvers, "mountvers=%s" },
-+	{ Opt_minorversion, "minorversion=%s" },
-+
- 	{ Opt_nfsvers, "nfsvers=%s" },
- 	{ Opt_nfsvers, "vers=%s" },
--	{ Opt_minorversion, "minorversion=%s" },
- 
- 	{ Opt_sec, "sec=%s" },
- 	{ Opt_proto, "proto=%s" },
-@@ -262,6 +263,22 @@ static match_table_t nfs_local_lock_tokens = {
- 	{ Opt_local_lock_err, NULL }
- };
- 
-+enum {
-+	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
-+	Opt_vers_4_1,
-+
-+	Opt_vers_err
-+};
-+
-+static match_table_t nfs_vers_tokens = {
-+	{ Opt_vers_2, "2" },
-+	{ Opt_vers_3, "3" },
-+	{ Opt_vers_4, "4" },
-+	{ Opt_vers_4_0, "4.0" },
-+	{ Opt_vers_4_1, "4.1" },
-+
-+	{ Opt_vers_err, NULL }
-+};
- 
- static void nfs_umount_begin(struct super_block *);
- static int  nfs_statfs(struct dentry *, struct kstatfs *);
-@@ -1064,6 +1081,40 @@ static int nfs_parse_security_flavors(char *value,
- 	return 1;
++	nfs_put_client(rdata->ds_clp);
+ 	rdata->mds_ops->rpc_release(data);
  }
  
-+static int nfs_parse_version_string(char *string,
-+		struct nfs_parsed_mount_data *mnt,
-+		substring_t *args)
-+{
-+	mnt->flags &= ~NFS_MOUNT_VER3;
-+	switch (match_token(string, nfs_vers_tokens, args)) {
-+	case Opt_vers_2:
-+		mnt->version = 2;
-+		break;
-+	case Opt_vers_3:
-+		mnt->flags |= NFS_MOUNT_VER3;
-+		mnt->version = 3;
-+		break;
-+	case Opt_vers_4:
-+		/* Backward compatibility option. In future,
-+		 * the mount program should always supply
-+		 * a NFSv4 minor version number.
-+		 */
-+		mnt->version = 4;
-+		break;
-+	case Opt_vers_4_0:
-+		mnt->version = 4;
-+		mnt->minorversion = 0;
-+		break;
-+	case Opt_vers_4_1:
-+		mnt->version = 4;
-+		mnt->minorversion = 1;
-+		break;
-+	default:
-+		return 0;
-+	}
-+	return 1;
-+}
-+
- static int nfs_get_option_str(substring_t args[], char **option)
+@@ -402,6 +407,7 @@ static void filelayout_write_release(void *data)
  {
- 	kfree(*option);
-@@ -1317,26 +1368,6 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_invalid_value;
- 			mnt->mount_server.version = option;
- 			break;
--		case Opt_nfsvers:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			switch (option) {
--			case NFS2_VERSION:
--				mnt->flags &= ~NFS_MOUNT_VER3;
--				mnt->version = 2;
--				break;
--			case NFS3_VERSION:
--				mnt->flags |= NFS_MOUNT_VER3;
--				mnt->version = 3;
--				break;
--			case NFS4_VERSION:
--				mnt->flags &= ~NFS_MOUNT_VER3;
--				mnt->version = 4;
--				break;
--			default:
--				goto out_invalid_value;
--			}
--			break;
- 		case Opt_minorversion:
- 			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
-@@ -1348,6 +1379,15 @@ static int nfs_parse_mount_options(char *raw,
- 		/*
- 		 * options that take text values
- 		 */
-+		case Opt_nfsvers:
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			rc = nfs_parse_version_string(string, mnt, args);
-+			kfree(string);
-+			if (!rc)
-+				goto out_invalid_value;
-+			break;
- 		case Opt_sec:
- 			string = match_strdup(args);
- 			if (string == NULL)
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
++	nfs_put_client(wdata->ds_clp);
+ 	wdata->mds_ops->rpc_release(data);
+ }
+ 
+@@ -409,6 +415,7 @@ static void filelayout_commit_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
++	nfs_put_client(wdata->ds_clp);
+ 	nfs_commit_release_pages(wdata);
+ 	if (atomic_dec_and_test(&NFS_I(wdata->inode)->commits_outstanding))
+ 		nfs_commit_clear_lock(NFS_I(wdata->inode));
+@@ -456,9 +463,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
++	dprintk("%s USE DS: %s cl_count %d\n", __func__,
++		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	/* No multipath support. Use first DS */
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -491,11 +500,12 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+-		data->inode->i_ino, sync, (size_t) data->args.count, offset,
+-		ds->ds_remotestr);
++	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
++		__func__, data->inode->i_ino, sync, (size_t) data->args.count,
++		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	data->write_done_cb = filelayout_write_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -953,8 +963,10 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 		data->mds_ops->rpc_release(data);
+ 		return -EAGAIN;
+ 	}
+-	dprintk("%s ino %lu, how %d\n", __func__, data->inode->i_ino, how);
++	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
++		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+ 	data->write_done_cb = filelayout_commit_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
 -- 
-1.7.7.6
+1.7.6.4
 
