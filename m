@@ -1,54 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:35117 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751031Ab2CLRjk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 13:39:40 -0400
-Subject: Re: [PATCH] NFS: Always use the same SETCLIENTID boot verifier
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120309223445.4005.78869.stgit@degas.1015granger.net>
-Date: Mon, 12 Mar 2012 13:39:31 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <776DF26C-1223-42ED-B356-234A5C66E034@oracle.com>
-References: <20120309223445.4005.78869.stgit@degas.1015granger.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1032160Ab2COSlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:41:04 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 11/11] NFSv4.1 de reference a disconnected data server client record
+Date: Thu, 15 Mar 2012 14:40:50 -0400
+Message-Id: <1331836850-5195-12-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+From: Andy Adamson <andros@netapp.com>
 
-On Mar 9, 2012, at 5:35 PM, Chuck Lever wrote:
+When the last DS io is processed, the data server client record will be
+freed.
 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index c0d7220..747bf7a 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3773,13 +3773,12 @@ wait_on_recovery:
-> 	return -EAGAIN;
-> }
-> 
-> -static void nfs4_construct_boot_verifier(struct nfs_client *clp,
-> -					 nfs4_verifier *bootverf)
-> +static void nfs4_gen_boot_verifier(nfs4_verifier *bootverf)
-> {
-> 	__be32 verf[2];
-> 
-> -	verf[0] = htonl((u32)clp->cl_boot_time.tv_sec);
-> -	verf[1] = htonl((u32)clp->cl_boot_time.tv_nsec);
-> +	verf[0] = cpu_to_be32((u32)nfs_boot_time.tv_sec);
-> +	verf[1] = cpu_to_be32((u32)nfs_boot_time.tv_nsec);
-> 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
-> }
-> 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    4 ++++
+ fs/nfs/nfs4filelayout.h    |    1 +
+ fs/nfs/nfs4filelayoutdev.c |   17 +++++++++++++++++
+ 3 files changed, 22 insertions(+), 0 deletions(-)
 
-
-One other question I had about this.  Do we really need to perform byte-swapping when constructing a boot verifier?  It's supposed to be opaque.
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4c846cb..28b71bf 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -209,10 +209,12 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 			reset, data->ds_clp, data->ds_clp->cl_session);
+ 
+ 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
++			struct nfs_client *clp = data->ds_clp;
+ 			filelayout_reset_read(task, data);
+ 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+ 				filelayout_mark_devid_invalid(devid);
+ 				rpc_drain_queue(&tbl->slot_tbl_waitq);
++				nfs4_ds_disconnect(clp);
+ 			}
+ 		}
+ 		rpc_restart_call_prepare(task);
+@@ -310,10 +312,12 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 			reset, data->ds_clp, data->ds_clp->cl_session);
+ 
+ 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
++			struct nfs_client *clp = data->ds_clp;
+ 			filelayout_reset_write(task, data);
+ 			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+ 				filelayout_mark_devid_invalid(devid);
+ 				rpc_drain_queue(&tbl->slot_tbl_waitq);
++				nfs4_ds_disconnect(clp);
+ 			}
+ 		}
+ 		rpc_restart_call_prepare(task);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 08b667a..3abf7d9 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -138,5 +138,6 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
++void nfs4_ds_disconnect(struct nfs_client *clp);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 2b8ae96..025275f 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -145,6 +145,23 @@ _data_server_lookup_locked(const struct list_head *dsaddrs)
+ }
+ 
+ /*
++ * Lookup DS by nfs_client pointer. Zero data server client pointer
++ */
++void nfs4_ds_disconnect(struct nfs_client *clp)
++{
++	struct nfs4_pnfs_ds *ds;
++
++	dprintk("%s clp %p\n", __func__, clp);
++	spin_lock(&nfs4_ds_cache_lock);
++	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
++		if (ds->ds_clp && ds->ds_clp == clp) {
++			nfs_put_client(clp);
++			ds->ds_clp = NULL;
++	}
++	spin_unlock(&nfs4_ds_cache_lock);
++}
++
++/*
+  * Create an rpc connection to the nfs4_pnfs_ds data server
+  * Currently only supports IPv4 and IPv6 addresses
+  */
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.6.4
 
