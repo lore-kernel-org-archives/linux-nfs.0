@@ -1,62 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from www262.sakura.ne.jp ([202.181.97.72]:56163 "EHLO
-	www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752966Ab2CVLuG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 07:50:06 -0400
-To: bharrosh@panasas.com
-Cc: akpm@linux-foundation.org, oleg@redhat.com, rjw@sisk.pl,
-        keyrings@linux-nfs.org, linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        sbhamare@panasas.com, dhowells@redhat.com, eparis@redhat.com,
-        srivatsa.bhat@linux.vnet.ibm.com, kay.sievers@vrfy.org,
-        jmorris@namei.org, ebiederm@xmission.com, gregkh@linuxfoundation.org,
-        rusty@rustcorp.com.au, tj@kernel.org, rientjes@google.com
-Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout()API
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-References: <4F691059.30405@panasas.com>
-	<4F691383.5040506@panasas.com>
-	<4F6A92FC.6060702@panasas.com>
-In-Reply-To: <4F6A92FC.6060702@panasas.com>
-Message-Id: <201203222048.HDB56245.JFOMVHQFSOOtLF@I-love.SAKURA.ne.jp>
-Date: Thu, 22 Mar 2012 20:48:31 +0900
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1032153Ab2COSlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:41:04 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 09/11] NFSv4.1 wake up all tasks on un-connected DS slot table waitq
+Date: Thu, 15 Mar 2012 14:40:48 -0400
+Message-Id: <1331836850-5195-10-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Boaz Harrosh wrote:
-> > @@ -452,22 +459,27 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info,
-> >  
-> >  	sub_info->complete = &done;
-> >  	sub_info->wait = wait;
-> > +	if (!sub_info->wait_timeout)
-> > +		sub_info->wait_timeout = MAX_SCHEDULE_TIMEOUT;
-> >  
-> > +	/* Balanced in __call_usermodehelper or wait_for_helper */
-> > +	kref_get(&sub_info->kref);
-> >  	queue_work(khelper_wq, &sub_info->work);
-> >  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
-> >  		goto unlock;
-> > -	wait_for_completion(&done);
-> > -	retval = sub_info->retval;
-> > -
-> > +	if (likely(wait_for_completion_timeout(&done, sub_info->wait_timeout)))
-> > +		retval = sub_info->retval;
-> > +	else
-> > +		retval = -ETIMEDOUT;
+From: Andy Adamson <andros@netapp.com>
 
-This patch is incomplete because sub_info->complete refers on-stack variable.
-Returning without waiting for completion will overwrite stack memory later.
+The DS has a connection error (invalid deviceid). Drain the fore channel
+slot table waitq.
 
-> Anyway I thought that we are not
-> suppose to use xhcg() since it is not portable to all ARCHs. ;-)
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
 
-Don't worry. xchg() is used in many places. ;-)
-http://tomoyo.sourceforge.jp/cgi-bin/lxr/ident?i=xchg
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 8531161..a67a137 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -193,6 +193,7 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 				struct nfs_read_data *data)
+ {
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
++	struct nfs4_slot_table *tbl = &data->ds_clp->cl_session->fc_slot_table;
+ 	unsigned long reset = 0;
+ 
+ 	dprintk("%s DS read\n", __func__);
+@@ -205,8 +206,10 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 
+ 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
+ 			filelayout_reset_read(task, data);
+-			if (test_bit(NFS4_RESET_DEVICEID, &reset))
++			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+ 				filelayout_mark_devid_invalid(devid);
++				rpc_drain_queue(&tbl->slot_tbl_waitq);
++			}
+ 		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -292,6 +295,7 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 				struct nfs_write_data *data)
+ {
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
++	struct nfs4_slot_table *tbl = &data->ds_clp->cl_session->fc_slot_table;
+ 	unsigned long reset = 0;
+ 
+ 	if (filelayout_async_handle_error(task, data->args.context->state,
+@@ -302,8 +306,10 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 
+ 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
+ 			filelayout_reset_write(task, data);
+-			if (test_bit(NFS4_RESET_DEVICEID, &reset))
++			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+ 				filelayout_mark_devid_invalid(devid);
++				rpc_drain_queue(&tbl->slot_tbl_waitq);
++			}
+ 		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -328,6 +334,7 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 				     struct nfs_write_data *data)
+ {
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(data->lseg);
++	struct nfs4_slot_table *tbl = &data->ds_clp->cl_session->fc_slot_table;
+ 	unsigned long reset = 0;
+ 
+ 	if (filelayout_async_handle_error(task, data->args.context->state,
+@@ -338,8 +345,10 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 
+ 		if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
+ 			prepare_to_resend_writes(data);
+-			if (test_bit(NFS4_RESET_DEVICEID, &reset))
++			if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+ 				filelayout_mark_devid_invalid(devid);
++				rpc_drain_queue(&tbl->slot_tbl_waitq);
++			}
+ 		} else {
+ 			rpc_restart_call_prepare(task);
+ 		}
+-- 
+1.7.6.4
 
-> But basically we both need support for the waiter to be returning before
-> the child has completed.
-
-I think basically we should not give up unless fatal events (e.g. SIGKILL or
-TIF_MEMDIE) occur. Thus, I feel UMH_KILLABLE is sufficient.
