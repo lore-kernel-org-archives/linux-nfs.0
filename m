@@ -1,951 +1,636 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:32155 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760527Ab2C3Pot (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 11:44:49 -0400
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
-        Dave Kleikamp <dave.kleikamp@oracle.com>,
-        v9fs-developer@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com
-Subject: [RFC PATCH v2 09/21] dio: Convert direct_IO to use iov_iter
-Date: Fri, 30 Mar 2012 10:43:36 -0500
-Message-Id: <1333122228-13633-10-git-send-email-dave.kleikamp@oracle.com>
-In-Reply-To: <1333122228-13633-1-git-send-email-dave.kleikamp@oracle.com>
-References: <1333122228-13633-1-git-send-email-dave.kleikamp@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:16283 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755998Ab2COX7v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 19:59:51 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH] NFSv4.1: Clean ups and bugfixes for the pNFS read/writeback/commit code
+Date: Thu, 15 Mar 2012 19:59:43 -0400
+Message-Id: <1331855983-24264-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the direct_IO aop to take an iov_iter argument rather than an iovec.
-This will get passed down through most filesystems so that only the
-__blockdev_direct_IO helper need be aware of whether user or kernel memory
-is being passed to the function.
+Move more pnfs-isms out of the generic commit code.
 
-Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc: Zach Brown <zab@zabbo.net>
-Cc: v9fs-developer@lists.sourceforge.net
-Cc: linux-btrfs@vger.kernel.org
-Cc: ceph-devel@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org
-Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Cc: jfs-discussion@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-nilfs@vger.kernel.org
-Cc: ocfs2-devel@oss.oracle.com
-Cc: reiserfs-devel@vger.kernel.org
-Cc: xfs@oss.sgi.com
+Bugfixes:
+
+- filelayout_scan_commit_lists doesn't need to get/put the lseg.
+  In fact since it is run under the inode->i_lock, the lseg_put()
+  can deadlock.
+
+- Ensure that we distinguish between what needs to be done for
+  commit-to-data server and what needs to be done for commit-to-MDS
+  using the new flag PG_COMMIT_TO_DS. Otherwise we may end up calling
+  put_lseg() on a bucket for a struct nfs_page that got written
+  through the MDS.
+
+- Fix a case where we were using list_del() on an nfs_page->wb_list
+  instead of list_del_init().
+
+Cleanups:
+
+- Let the files layout manage the commit lists for the pNFS case.
+  Don't expose stuff like pnfs_choose_commit_list, and the fact
+  that the commit buckets hold references to the layout segment
+  in common code.
+
+- Cast out the put_lseg() calls for the struct nfs_read/write_data->lseg
+  into the pNFS layer from whence they came.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- Documentation/filesystems/Locking |    4 +--
- Documentation/filesystems/vfs.txt |    4 +--
- fs/9p/vfs_addr.c                  |    8 ++---
- fs/block_dev.c                    |    8 ++---
- fs/btrfs/inode.c                  |   70 ++++++++++++++++++++++---------------
- fs/ceph/addr.c                    |    3 +-
- fs/direct-io.c                    |   19 +++++-----
- fs/ext2/inode.c                   |    8 ++---
- fs/ext3/inode.c                   |   15 ++++----
- fs/ext4/ext4.h                    |    3 +-
- fs/ext4/indirect.c                |   16 ++++-----
- fs/ext4/inode.c                   |   23 ++++++------
- fs/fat/inode.c                    |   10 +++---
- fs/gfs2/aops.c                    |    7 ++--
- fs/hfs/inode.c                    |    7 ++--
- fs/hfsplus/inode.c                |    6 ++--
- fs/jfs/inode.c                    |    7 ++--
- fs/nfs/direct.c                   |    8 ++---
- fs/nilfs2/inode.c                 |    8 ++---
- fs/ocfs2/aops.c                   |    8 ++---
- fs/reiserfs/inode.c               |    7 ++--
- fs/xfs/xfs_aops.c                 |   11 +++---
- include/linux/fs.h                |   18 +++++-----
- include/linux/nfs_fs.h            |    3 +-
- mm/filemap.c                      |   13 +++++--
- 25 files changed, 144 insertions(+), 150 deletions(-)
+ fs/nfs/internal.h        |    4 +-
+ fs/nfs/nfs4filelayout.c  |   77 ++++++++++++++++++++++++-------
+ fs/nfs/pnfs.c            |    3 +
+ fs/nfs/pnfs.h            |   43 ++++++++---------
+ fs/nfs/read.c            |    1 -
+ fs/nfs/write.c           |  113 +++++++++++++++++++++++++++++-----------------
+ include/linux/nfs_page.h |   11 +++++
+ 7 files changed, 168 insertions(+), 84 deletions(-)
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index 4fca82e..1e725f7 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -194,8 +194,8 @@ prototypes:
- 	int (*invalidatepage) (struct page *, unsigned long);
- 	int (*releasepage) (struct page *, int);
- 	void (*freepage)(struct page *);
--	int (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
--			loff_t offset, unsigned long nr_segs);
-+	int (*direct_IO)(int, struct kiocb *, struct iov_iter *iter,
-+			loff_t offset);
- 	int (*get_xip_mem)(struct address_space *, pgoff_t, int, void **,
- 				unsigned long *);
- 	int (*migratepage)(struct address_space *, struct page *, struct page *);
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 3d9393b..0029302 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -573,8 +573,8 @@ struct address_space_operations {
- 	int (*invalidatepage) (struct page *, unsigned long);
- 	int (*releasepage) (struct page *, int);
- 	void (*freepage)(struct page *);
--	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
--			loff_t offset, unsigned long nr_segs);
-+	ssize_t (*direct_IO)(int, struct kiocb *, struct iov_iter *iter,
-+			loff_t offset);
- 	struct page* (*get_xip_page)(struct address_space *, sector_t,
- 			int);
- 	/* migrate the contents of a page to the specified target */
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index 0ad61c6..e70f239 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -239,9 +239,8 @@ static int v9fs_launder_page(struct page *page)
-  * v9fs_direct_IO - 9P address space operation for direct I/O
-  * @rw: direction (read or write)
-  * @iocb: target I/O control block
-- * @iov: array of vectors that define I/O buffer
-+ * @iter: array of vectors that define I/O buffer
-  * @pos: offset in file to begin the operation
-- * @nr_segs: size of iovec array
-  *
-  * The presence of v9fs_direct_IO() in the address space ops vector
-  * allowes open() O_DIRECT flags which would have failed otherwise.
-@@ -255,8 +254,7 @@ static int v9fs_launder_page(struct page *page)
-  *
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 04a9147..2476dc6 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -308,8 +308,6 @@ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ extern void nfs_readdata_release(struct nfs_read_data *rdata);
+ 
+ /* write.c */
+-extern int nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
+-				int max);
+ extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+ 		struct list_head *head);
+ extern void nfs_pageio_init_write_mds(struct nfs_pageio_descriptor *pgio,
+@@ -334,6 +332,8 @@ void nfs_retry_commit(struct list_head *page_list,
+ void nfs_commit_clear_lock(struct nfs_inode *nfsi);
+ void nfs_commitdata_release(void *data);
+ void nfs_commit_release_pages(struct nfs_write_data *data);
++void nfs_request_add_commit_list(struct nfs_page *req, struct list_head *head);
++void nfs_request_remove_commit_list(struct nfs_page *req);
+ 
+ #ifdef CONFIG_MIGRATION
+ extern int nfs_migrate_page(struct address_space *,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 379a085..c210f02 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -224,6 +224,7 @@ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
+ 
++	put_lseg(rdata->lseg);
+ 	rdata->mds_ops->rpc_release(data);
+ }
+ 
+@@ -310,6 +311,7 @@ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
++	put_lseg(wdata->lseg);
+ 	wdata->mds_ops->rpc_release(data);
+ }
+ 
+@@ -320,6 +322,7 @@ static void filelayout_commit_release(void *data)
+ 	nfs_commit_release_pages(wdata);
+ 	if (atomic_dec_and_test(&NFS_I(wdata->inode)->commits_outstanding))
+ 		nfs_commit_clear_lock(NFS_I(wdata->inode));
++	put_lseg(wdata->lseg);
+ 	nfs_commitdata_release(wdata);
+ }
+ 
+@@ -781,9 +784,15 @@ static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
+  * If this will make the bucket empty, it will need to put the lseg reference.
+  * Note inode lock is held, so we can't do the put here.
   */
- static ssize_t
--v9fs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
--	       loff_t pos, unsigned long nr_segs)
-+v9fs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter, loff_t pos)
+-static struct pnfs_layout_segment *
+-filelayout_remove_commit_req(struct nfs_page *req)
++static void
++filelayout_clear_request_commit(struct nfs_page *req)
  {
- 	/*
- 	 * FIXME
-@@ -265,7 +263,7 @@ v9fs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
- 	 */
- 	p9_debug(P9_DEBUG_VFS, "v9fs_direct_IO: v9fs_direct_IO (%s) off/no(%lld/%lu) EINVAL\n",
- 		 iocb->ki_filp->f_path.dentry->d_name.name,
--		 (long long)pos, nr_segs);
-+		 (long long)pos, iter->nr_segs);
- 
- 	return -EINVAL;
- }
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 5e9f198..da889ae 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -209,14 +209,14 @@ blkdev_get_blocks(struct inode *inode, sector_t iblock,
- }
- 
- static ssize_t
--blkdev_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
--			loff_t offset, unsigned long nr_segs)
-+blkdev_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
-+			loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
- 
--	return __blockdev_direct_IO(rw, iocb, inode, I_BDEV(inode), iov, offset,
--				    nr_segs, blkdev_get_blocks, NULL, NULL, 0);
-+	return __blockdev_direct_IO(rw, iocb, inode, I_BDEV(inode), iter,
-+				    offset, blkdev_get_blocks, NULL, NULL, 0);
- }
- 
- int __sync_blockdev(struct block_device *bdev, int wait)
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index 892b347..2d2bb2a 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -6139,8 +6139,7 @@ free_ordered:
- }
- 
- static ssize_t check_direct_IO(struct btrfs_root *root, int rw, struct kiocb *iocb,
--			const struct iovec *iov, loff_t offset,
--			unsigned long nr_segs)
-+			struct iov_iter *iter, loff_t offset)
- {
- 	int seg;
- 	int i;
-@@ -6154,34 +6153,49 @@ static ssize_t check_direct_IO(struct btrfs_root *root, int rw, struct kiocb *io
- 		goto out;
- 
- 	/* Check the memory alignment.  Blocks cannot straddle pages */
--	for (seg = 0; seg < nr_segs; seg++) {
--		addr = (unsigned long)iov[seg].iov_base;
--		size = iov[seg].iov_len;
--		end += size;
--		if ((addr & blocksize_mask) || (size & blocksize_mask))
--			goto out;
-+	if (iov_iter_has_iovec(iter)) {
-+		const struct iovec *iov = iov_iter_iovec(iter);
++	struct pnfs_layout_segment *freeme = NULL;
++	struct inode *inode = req->wb_context->dentry->d_inode;
 +
-+		for (seg = 0; seg < iter->nr_segs; seg++) {
-+			addr = (unsigned long)iov[seg].iov_base;
-+			size = iov[seg].iov_len;
-+			end += size;
-+			if ((addr & blocksize_mask) || (size & blocksize_mask))
-+				goto out;
- 
--		/* If this is a write we don't need to check anymore */
--		if (rw & WRITE)
--			continue;
-+			/* If this is a write we don't need to check anymore */
-+			if (rw & WRITE)
-+				continue;
- 
--		/*
--		 * Check to make sure we don't have duplicate iov_base's in this
--		 * iovec, if so return EINVAL, otherwise we'll get csum errors
--		 * when reading back.
--		 */
--		for (i = seg + 1; i < nr_segs; i++) {
--			if (iov[seg].iov_base == iov[i].iov_base)
-+			/*
-+			 * Check to make sure we don't have duplicate iov_base's
-+			 * in this iovec, if so return EINVAL, otherwise we'll
-+			 * get csum errors when reading back.
-+			 */
-+			for (i = seg + 1; i < iter->nr_segs; i++) {
-+				if (iov[seg].iov_base == iov[i].iov_base)
-+					goto out;
++	spin_lock(&inode->i_lock);
++	if (!test_and_clear_bit(PG_COMMIT_TO_DS, &req->wb_flags))
++		goto out;
+ 	if (list_is_singular(&req->wb_list)) {
+ 		struct inode *inode = req->wb_context->dentry->d_inode;
+ 		struct pnfs_layout_segment *lseg;
+@@ -792,11 +801,16 @@ filelayout_remove_commit_req(struct nfs_page *req)
+ 		 * since there is only one relevant lseg...
+ 		 */
+ 		list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
+-			if (lseg->pls_range.iomode == IOMODE_RW)
+-				return lseg;
++			if (lseg->pls_range.iomode == IOMODE_RW) {
++				freeme = lseg;
++				break;
 +			}
+ 		}
+ 	}
+-	return NULL;
++out:
++	nfs_request_remove_commit_list(req);
++	spin_unlock(&inode->i_lock);
++	put_lseg(freeme);
+ }
+ 
+ static struct list_head *
+@@ -829,9 +843,20 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 		 */
+ 		get_lseg(lseg);
+ 	}
++	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+ 	return list;
+ }
+ 
++static void
++filelayout_mark_request_commit(struct nfs_page *req,
++		struct pnfs_layout_segment *lseg)
++{
++	struct list_head *list;
++
++	list = filelayout_choose_commit_list(req, lseg);
++	nfs_request_add_commit_list(req, list);
++}
++
+ static u32 calc_ds_index_from_commit(struct pnfs_layout_segment *lseg, u32 i)
+ {
+ 	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
+@@ -895,7 +920,7 @@ find_only_write_lseg_locked(struct inode *inode)
+ 
+ 	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list)
+ 		if (lseg->pls_range.iomode == IOMODE_RW)
+-			return get_lseg(lseg);
++			return lseg;
+ 	return NULL;
+ }
+ 
+@@ -905,10 +930,33 @@ static struct pnfs_layout_segment *find_only_write_lseg(struct inode *inode)
+ 
+ 	spin_lock(&inode->i_lock);
+ 	rv = find_only_write_lseg_locked(inode);
++	if (rv)
++		get_lseg(rv);
+ 	spin_unlock(&inode->i_lock);
+ 	return rv;
+ }
+ 
++static int
++filelayout_scan_ds_commit_list(struct nfs4_fl_commit_bucket *bucket, int max)
++{
++	struct list_head *src = &bucket->written;
++	struct list_head *dst = &bucket->committing;
++	struct nfs_page *req, *tmp;
++	int ret = 0;
++
++	list_for_each_entry_safe(req, tmp, src, wb_list) {
++		if (!nfs_lock_request(req))
++			continue;
++		nfs_request_remove_commit_list(req);
++		clear_bit(PG_COMMIT_TO_DS, &req->wb_flags);
++		nfs_list_add_request(req, dst);
++		ret++;
++		if (ret == max)
++			break;
++	}
++	return ret;
++}
++
+ /* Move reqs from written to committing lists, returning count of number moved.
+  * Note called with i_lock held.
+  */
+@@ -920,21 +968,16 @@ static int filelayout_scan_commit_lists(struct inode *inode, int max)
+ 
+ 	lseg = find_only_write_lseg_locked(inode);
+ 	if (!lseg)
+-		return 0;
++		goto out_done;
+ 	fl = FILELAYOUT_LSEG(lseg);
+ 	if (fl->commit_through_mds)
+-		goto out_put;
++		goto out_done;
+ 	for (i = 0; i < fl->number_of_buckets; i++) {
+-		if (list_empty(&fl->commit_buckets[i].written))
+-			continue;
+-		cnt = nfs_scan_commit_list(&fl->commit_buckets[i].written,
+-					   &fl->commit_buckets[i].committing,
+-					   max);
++		cnt = filelayout_scan_ds_commit_list(&fl->commit_buckets[i], max);
+ 		max -= cnt;
+ 		rv += cnt;
+ 	}
+-out_put:
+-	put_lseg(lseg);
++out_done:
+ 	return rv;
+ }
+ 
+@@ -1033,8 +1076,8 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.free_lseg		= filelayout_free_lseg,
+ 	.pg_read_ops		= &filelayout_pg_read_ops,
+ 	.pg_write_ops		= &filelayout_pg_write_ops,
+-	.choose_commit_list	= filelayout_choose_commit_list,
+-	.remove_commit_req	= filelayout_remove_commit_req,
++	.mark_request_commit	= filelayout_mark_request_commit,
++	.clear_request_commit	= filelayout_clear_request_commit,
+ 	.scan_commit_lists	= filelayout_scan_commit_lists,
+ 	.commit_pagelist	= filelayout_commit_pagelist,
+ 	.read_pagelist		= filelayout_read_pagelist,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6f1c1e3..b5d4515 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1210,6 +1210,7 @@ void pnfs_ld_write_done(struct nfs_write_data *data)
+ 		}
+ 		data->task.tk_status = pnfs_write_done_resend_to_mds(data->inode, &data->pages);
+ 	}
++	put_lseg(data->lseg);
+ 	data->mds_ops->rpc_release(data);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
+@@ -1223,6 +1224,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_list_add_request(data->req, &desc->pg_list);
+ 	nfs_pageio_reset_write_mds(desc);
+ 	desc->pg_recoalesce = 1;
++	put_lseg(data->lseg);
+ 	nfs_writedata_release(data);
+ }
+ 
+@@ -1323,6 +1325,7 @@ void pnfs_ld_read_done(struct nfs_read_data *data)
+ 		data->mds_ops->rpc_call_done(&data->task, data);
+ 	} else
+ 		pnfs_ld_handle_read_error(data);
++	put_lseg(data->lseg);
+ 	data->mds_ops->rpc_release(data);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index ef92f67..bdcf77c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -94,9 +94,9 @@ struct pnfs_layoutdriver_type {
+ 	const struct nfs_pageio_ops *pg_read_ops;
+ 	const struct nfs_pageio_ops *pg_write_ops;
+ 
+-	struct list_head * (*choose_commit_list) (struct nfs_page *req,
++	void (*mark_request_commit) (struct nfs_page *req,
+ 					struct pnfs_layout_segment *lseg);
+-	struct pnfs_layout_segment *(*remove_commit_req) (struct nfs_page *req);
++	void (*clear_request_commit) (struct nfs_page *req);
+ 	int (*scan_commit_lists) (struct inode *inode, int max);
+ 	int (*commit_pagelist)(struct inode *inode, struct list_head *mds_pages, int how);
+ 
+@@ -269,29 +269,28 @@ pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
+ 	return NFS_SERVER(inode)->pnfs_curr_ld->commit_pagelist(inode, mds_pages, how);
+ }
+ 
+-static inline struct list_head *
+-pnfs_choose_commit_list(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++static inline bool
++pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
+-	struct list_head *rv;
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
+ 
+-	if (lseg && NFS_SERVER(inode)->pnfs_curr_ld->choose_commit_list)
+-		rv = NFS_SERVER(inode)->pnfs_curr_ld->choose_commit_list(req, lseg);
+-	else
+-		rv = &NFS_I(inode)->commit_list;
+-	return rv;
++	if (lseg == NULL || ld->mark_request_commit == NULL)
++		return false;
++	ld->mark_request_commit(req, lseg);
++	return true;
+ }
+ 
+-static inline struct pnfs_layout_segment *
++static inline bool
+ pnfs_clear_request_commit(struct nfs_page *req)
+ {
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
+ 
+-	if (NFS_SERVER(inode)->pnfs_curr_ld &&
+-	    NFS_SERVER(inode)->pnfs_curr_ld->remove_commit_req)
+-		return NFS_SERVER(inode)->pnfs_curr_ld->remove_commit_req(req);
+-	else
+-		return NULL;
++	if (ld == NULL || ld->clear_request_commit == NULL)
++		return false;
++	ld->clear_request_commit(req);
++	return true;
+ }
+ 
+ static inline int
+@@ -403,18 +402,16 @@ pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
+-static inline struct list_head *
+-pnfs_choose_commit_list(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++static inline bool
++pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
+ {
+-	struct inode *inode = req->wb_context->dentry->d_inode;
+-
+-	return &NFS_I(inode)->commit_list;
++	return false;
+ }
+ 
+-static inline struct pnfs_layout_segment *
++static inline bool
+ pnfs_clear_request_commit(struct nfs_page *req)
+ {
+-	return NULL;
++	return false;
+ }
+ 
+ static inline int
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 3c2540d..2662c02 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -66,7 +66,6 @@ void nfs_readdata_free(struct nfs_read_data *p)
+ 
+ void nfs_readdata_release(struct nfs_read_data *rdata)
+ {
+-	put_lseg(rdata->lseg);
+ 	put_nfs_open_context(rdata->args.context);
+ 	nfs_readdata_free(rdata);
+ }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index a630ad6..6f55281 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -100,7 +100,6 @@ void nfs_writedata_free(struct nfs_write_data *p)
+ 
+ void nfs_writedata_release(struct nfs_write_data *wdata)
+ {
+-	put_lseg(wdata->lseg);
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_writedata_free(wdata);
+ }
+@@ -393,8 +392,6 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	spin_unlock(&inode->i_lock);
+ }
+ 
+-static struct pnfs_layout_segment *nfs_clear_request_commit(struct nfs_page *req);
+-
+ /*
+  * Remove a write request from an inode
+  */
+@@ -402,18 +399,15 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ {
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct pnfs_layout_segment *lseg;
+ 
+ 	BUG_ON (!NFS_WBACK_BUSY(req));
+ 
+ 	spin_lock(&inode->i_lock);
+-	lseg = nfs_clear_request_commit(req);
+ 	set_page_private(req->wb_page, 0);
+ 	ClearPagePrivate(req->wb_page);
+ 	clear_bit(PG_MAPPED, &req->wb_flags);
+ 	nfsi->npages--;
+ 	spin_unlock(&inode->i_lock);
+-	put_lseg(lseg);
+ 	nfs_release_request(req);
+ }
+ 
+@@ -424,26 +418,68 @@ nfs_mark_request_dirty(struct nfs_page *req)
+ }
+ 
+ #if defined(CONFIG_NFS_V3) || defined(CONFIG_NFS_V4)
+-/*
+- * Add a request to the inode's commit list.
++/**
++ * nfs_request_add_commit_list - add request to a commit list
++ * @req: pointer to a struct nfs_page
++ * @head: commit list head
++ *
++ * This sets the PG_CLEAN bit, updates the inode global count of
++ * number of outstanding requests requiring a commit as well as
++ * the MM page stats.
++ *
++ * The caller must _not_ hold the inode->i_lock.
+  */
+-static void
+-nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++void
++nfs_request_add_commit_list(struct nfs_page *req, struct list_head *head)
+ {
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct list_head *clist;
+ 
+-	clist = pnfs_choose_commit_list(req, lseg);
+-	spin_lock(&inode->i_lock);
+ 	set_bit(PG_CLEAN, &(req)->wb_flags);
+-	nfs_list_add_request(req, clist);
+-	nfsi->ncommit++;
++	spin_lock(&inode->i_lock);
++	nfs_list_add_request(req, head);
++	NFS_I(inode)->ncommit++;
+ 	spin_unlock(&inode->i_lock);
+ 	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+ 	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
+ 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+ }
++EXPORT_SYMBOL_GPL(nfs_request_add_commit_list);
++
++/**
++ * nfs_request_remove_commit_list - Remove request from a commit list
++ * @req: pointer to a nfs_page
++ *
++ * This clears the PG_CLEAN bit, and updates the inode global count of
++ * number of outstanding requests requiring a commit
++ * It does not update the MM page stats.
++ *
++ * The caller _must_ hold the inode->i_lock.
++ */
++void
++nfs_request_remove_commit_list(struct nfs_page *req)
++{
++	struct inode *inode = req->wb_context->dentry->d_inode;
++
++	if (!test_and_clear_bit(PG_CLEAN, &(req)->wb_flags))
++		return;
++	nfs_list_remove_request(req);
++	NFS_I(inode)->ncommit--;
++}
++EXPORT_SYMBOL_GPL(nfs_request_remove_commit_list);
++
++
++/*
++ * Add a request to the inode's commit list.
++ */
++static void
++nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++{
++	struct inode *inode = req->wb_context->dentry->d_inode;
++
++	if (pnfs_mark_request_commit(req, lseg))
++		return;
++	nfs_request_add_commit_list(req, &NFS_I(inode)->commit_list);
++}
+ 
+ static void
+ nfs_clear_page_commit(struct page *page)
+@@ -452,18 +488,19 @@ nfs_clear_page_commit(struct page *page)
+ 	dec_bdi_stat(page->mapping->backing_dev_info, BDI_RECLAIMABLE);
+ }
+ 
+-static struct pnfs_layout_segment *
++static void
+ nfs_clear_request_commit(struct nfs_page *req)
+ {
+-	struct pnfs_layout_segment *lseg = NULL;
++	if (test_bit(PG_CLEAN, &req->wb_flags)) {
++		struct inode *inode = req->wb_context->dentry->d_inode;
+ 
+-	if (test_and_clear_bit(PG_CLEAN, &(req)->wb_flags)) {
++		if (!pnfs_clear_request_commit(req)) {
++			spin_lock(&inode->i_lock);
++			nfs_request_remove_commit_list(req);
++			spin_unlock(&inode->i_lock);
 +		}
-+	} else if (iov_iter_has_bvec(iter)) {
-+		struct bio_vec *bvec = iov_iter_bvec(iter);
-+
-+		for (seg = 0; seg < iter->nr_segs; seg++) {
-+			addr = (unsigned long)bvec[seg].bv_offset;
-+			size = bvec[seg].bv_len;
-+			end += size;
-+			if ((addr & blocksize_mask) || (size & blocksize_mask))
- 				goto out;
- 		}
--	}
-+	} else
-+		BUG();
-+
- 	retval = 0;
- out:
- 	return retval;
- }
- static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
--			const struct iovec *iov, loff_t offset,
--			unsigned long nr_segs)
-+			struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -6191,12 +6205,10 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
- 	ssize_t ret;
- 	int writing = rw & WRITE;
- 	int write_bits = 0;
--	size_t count = iov_length(iov, nr_segs);
-+	size_t count = iov_iter_count(iter);
- 
--	if (check_direct_IO(BTRFS_I(inode)->root, rw, iocb, iov,
--			    offset, nr_segs)) {
-+	if (check_direct_IO(BTRFS_I(inode)->root, rw, iocb, iter, offset))
- 		return 0;
--	}
- 
- 	lockstart = offset;
- 	lockend = offset + count - 1;
-@@ -6248,21 +6260,21 @@ static ssize_t btrfs_direct_IO(int rw, struct kiocb *iocb,
- 
- 	ret = __blockdev_direct_IO(rw, iocb, inode,
- 		   BTRFS_I(inode)->root->fs_info->fs_devices->latest_bdev,
--		   iov, offset, nr_segs, btrfs_get_blocks_direct, NULL,
-+		   iter, offset, btrfs_get_blocks_direct, NULL,
- 		   btrfs_submit_direct, 0);
- 
- 	if (ret < 0 && ret != -EIOCBQUEUED) {
- 		clear_extent_bit(&BTRFS_I(inode)->io_tree, offset,
--			      offset + iov_length(iov, nr_segs) - 1,
-+			      offset + iov_iter_count(iter) - 1,
- 			      EXTENT_LOCKED | write_bits, 1, 0,
- 			      &cached_state, GFP_NOFS);
--	} else if (ret >= 0 && ret < iov_length(iov, nr_segs)) {
-+	} else if (ret >= 0 && ret < iov_iter_count(iter)) {
- 		/*
- 		 * We're falling back to buffered, unlock the section we didn't
- 		 * do IO on.
- 		 */
- 		clear_extent_bit(&BTRFS_I(inode)->io_tree, offset + ret,
--			      offset + iov_length(iov, nr_segs) - 1,
-+			      offset + iov_iter_count(iter) - 1,
- 			      EXTENT_LOCKED | write_bits, 1, 0,
- 			      &cached_state, GFP_NOFS);
+ 		nfs_clear_page_commit(req->wb_page);
+-		lseg = pnfs_clear_request_commit(req);
+-		NFS_I(req->wb_context->dentry->d_inode)->ncommit--;
+-		list_del(&req->wb_list);
  	}
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index 173b1d2..fce6738 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -1144,8 +1144,7 @@ static int ceph_write_end(struct file *file, struct address_space *mapping,
-  * never get called.
-  */
- static ssize_t ceph_direct_io(int rw, struct kiocb *iocb,
--			      const struct iovec *iov,
--			      loff_t pos, unsigned long nr_segs)
-+			      struct iov_iter *iter, loff_t pos)
- {
- 	WARN_ON(1);
- 	return -EINVAL;
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index d1ee42b..b8bdfba 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -1123,9 +1123,9 @@ static int dio_aligned(unsigned long offset, unsigned *blkbits,
-  */
- static inline ssize_t
- do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
--	struct block_device *bdev, const struct iovec *iov, loff_t offset, 
--	unsigned long nr_segs, get_block_t get_block, dio_iodone_t end_io,
--	dio_submit_t submit_io,	int flags)
-+	struct block_device *bdev, struct iov_iter *iter, loff_t offset,
-+	get_block_t get_block, dio_iodone_t end_io, dio_submit_t submit_io,
-+	int flags)
- {
- 	int seg;
- 	size_t size;
-@@ -1138,6 +1138,8 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 	unsigned long user_addr;
- 	size_t bytes;
- 	struct buffer_head map_bh = { 0, };
-+	const struct iovec *iov = iov_iter_iovec(iter);
-+	unsigned long nr_segs = iter->nr_segs;
- 
- 	if (rw & WRITE)
- 		rw = WRITE_ODIRECT;
-@@ -1335,9 +1337,9 @@ out:
- 
- ssize_t
- __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
--	struct block_device *bdev, const struct iovec *iov, loff_t offset,
--	unsigned long nr_segs, get_block_t get_block, dio_iodone_t end_io,
--	dio_submit_t submit_io,	int flags)
-+	struct block_device *bdev, struct iov_iter *iter, loff_t offset,
-+	get_block_t get_block, dio_iodone_t end_io, dio_submit_t submit_io,
-+	int flags)
- {
- 	/*
- 	 * The block device state is needed in the end to finally
-@@ -1351,9 +1353,8 @@ __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 	prefetch(bdev->bd_queue);
- 	prefetch((char *)bdev->bd_queue + SMP_CACHE_BYTES);
- 
--	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iov, offset,
--				     nr_segs, get_block, end_io,
--				     submit_io, flags);
-+	return do_blockdev_direct_IO(rw, iocb, inode, bdev, iter, offset,
-+				     get_block, end_io, submit_io, flags);
+-	return lseg;
  }
  
- EXPORT_SYMBOL(__blockdev_direct_IO);
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 740cad8..3c44aab 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -830,18 +830,16 @@ static sector_t ext2_bmap(struct address_space *mapping, sector_t block)
- }
- 
- static ssize_t
--ext2_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
--			loff_t offset, unsigned long nr_segs)
-+ext2_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct address_space *mapping = file->f_mapping;
- 	struct inode *inode = mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
--				 ext2_get_block);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, ext2_get_block);
- 	if (ret < 0 && (rw & WRITE))
--		ext2_write_failed(mapping, offset + iov_length(iov, nr_segs));
-+		ext2_write_failed(mapping, offset + iov_iter_count(iter));
- 	return ret;
- }
- 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 2d0afec..c2b49b5 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1863,8 +1863,7 @@ static int ext3_releasepage(struct page *page, gfp_t wait)
-  * VFS code falls back into buffered path in that case so we are safe.
-  */
- static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
--			const struct iovec *iov, loff_t offset,
--			unsigned long nr_segs)
-+			struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -1872,10 +1871,10 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- 	handle_t *handle;
- 	ssize_t ret;
- 	int orphan = 0;
--	size_t count = iov_length(iov, nr_segs);
-+	size_t count = iov_iter_count(iter);
- 	int retries = 0;
- 
--	trace_ext3_direct_IO_enter(inode, offset, iov_length(iov, nr_segs), rw);
-+	trace_ext3_direct_IO_enter(inode, offset, count, rw);
- 
- 	if (rw == WRITE) {
- 		loff_t final_size = offset + count;
-@@ -1899,15 +1898,14 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
- 	}
- 
- retry:
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
--				 ext3_get_block);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, ext3_get_block);
- 	/*
- 	 * In case of error extending write may have instantiated a few
- 	 * blocks outside i_size. Trim these off again.
- 	 */
- 	if (unlikely((rw & WRITE) && ret < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + count;
- 
- 		if (end > isize)
- 			ext3_truncate_failed_direct_write(inode);
-@@ -1950,8 +1948,7 @@ retry:
- 			ret = err;
- 	}
- out:
--	trace_ext3_direct_IO_exit(inode, offset,
--				iov_length(iov, nr_segs), rw, ret);
-+	trace_ext3_direct_IO_exit(inode, offset, count, rw, ret);
- 	return ret;
- }
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 513004f..b680581 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1903,8 +1903,7 @@ extern void ext4_da_update_reserve_space(struct inode *inode,
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 				struct ext4_map_blocks *map, int flags);
- extern ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
--				const struct iovec *iov, loff_t offset,
--				unsigned long nr_segs);
-+				struct iov_iter *iter, loff_t offset);
- extern int ext4_ind_calc_metadata_amount(struct inode *inode, sector_t lblock);
- extern int ext4_ind_trans_blocks(struct inode *inode, int nrblocks, int chunk);
- extern void ext4_ind_truncate(struct inode *inode);
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 830e1b2..d6ee840 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -772,8 +772,7 @@ out:
-  * VFS code falls back into buffered path in that case so we are safe.
-  */
- ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
--			   const struct iovec *iov, loff_t offset,
--			   unsigned long nr_segs)
-+			   struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -781,7 +780,7 @@ ssize_t ext4_ind_direct_IO(int rw, struct kiocb *iocb,
- 	handle_t *handle;
- 	ssize_t ret;
- 	int orphan = 0;
--	size_t count = iov_length(iov, nr_segs);
-+	size_t count = iov_iter_count(iter);
- 	int retries = 0;
- 
- 	if (rw == WRITE) {
-@@ -813,16 +812,15 @@ retry:
- 			mutex_unlock(&inode->i_mutex);
- 		}
- 		ret = __blockdev_direct_IO(rw, iocb, inode,
--				 inode->i_sb->s_bdev, iov,
--				 offset, nr_segs,
--				 ext4_get_block, NULL, NULL, 0);
-+				 inode->i_sb->s_bdev, iter,
-+				 offset, ext4_get_block, NULL, NULL, 0);
- 	} else {
--		ret = blockdev_direct_IO(rw, iocb, inode, iov,
--				 offset, nr_segs, ext4_get_block);
-+		ret = blockdev_direct_IO(rw, iocb, inode, iter,
-+				 offset, ext4_get_block);
- 
- 		if (unlikely((rw & WRITE) && ret < 0)) {
- 			loff_t isize = i_size_read(inode);
--			loff_t end = offset + iov_length(iov, nr_segs);
-+			loff_t end = offset + iov_iter_count(iter);
- 
- 			if (end > isize)
- 				ext4_truncate_failed_write(inode);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index feaa82f..db86d11 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2888,13 +2888,12 @@ retry:
-  *
-  */
- static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
--			      const struct iovec *iov, loff_t offset,
--			      unsigned long nr_segs)
-+			      struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
--	size_t count = iov_length(iov, nr_segs);
-+	size_t count = iov_iter_count(iter);
- 
- 	loff_t final_size = offset + count;
- 	if (rw == WRITE && final_size <= inode->i_size) {
-@@ -2935,8 +2934,8 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 		}
- 
- 		ret = __blockdev_direct_IO(rw, iocb, inode,
--					 inode->i_sb->s_bdev, iov,
--					 offset, nr_segs,
-+					 inode->i_sb->s_bdev, iter,
-+					 offset,
- 					 ext4_get_block_write,
- 					 ext4_end_io_dio,
- 					 NULL,
-@@ -2977,12 +2976,11 @@ static ssize_t ext4_ext_direct_IO(int rw, struct kiocb *iocb,
- 	}
- 
- 	/* for write the the end of file case, we fall back to old way */
--	return ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
-+	return ext4_ind_direct_IO(rw, iocb, iter, offset);
- }
- 
- static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
--			      const struct iovec *iov, loff_t offset,
--			      unsigned long nr_segs)
-+			      struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -2994,13 +2992,12 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 	if (ext4_should_journal_data(inode))
- 		return 0;
- 
--	trace_ext4_direct_IO_enter(inode, offset, iov_length(iov, nr_segs), rw);
-+	trace_ext4_direct_IO_enter(inode, offset, iov_iter_count(iter), rw);
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		ret = ext4_ext_direct_IO(rw, iocb, iov, offset, nr_segs);
-+		ret = ext4_ext_direct_IO(rw, iocb, iter, offset);
- 	else
--		ret = ext4_ind_direct_IO(rw, iocb, iov, offset, nr_segs);
--	trace_ext4_direct_IO_exit(inode, offset,
--				iov_length(iov, nr_segs), rw, ret);
-+		ret = ext4_ind_direct_IO(rw, iocb, iter, offset);
-+	trace_ext4_direct_IO_exit(inode, offset, iov_iter_count(iter), rw, ret);
- 	return ret;
- }
- 
-diff --git a/fs/fat/inode.c b/fs/fat/inode.c
-index 3ab8410..22cfb80 100644
---- a/fs/fat/inode.c
-+++ b/fs/fat/inode.c
-@@ -184,8 +184,7 @@ static int fat_write_end(struct file *file, struct address_space *mapping,
- }
- 
- static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
--			     const struct iovec *iov,
--			     loff_t offset, unsigned long nr_segs)
-+			     struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct address_space *mapping = file->f_mapping;
-@@ -202,7 +201,7 @@ static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
- 		 *
- 		 * Return 0, and fallback to normal buffered write.
- 		 */
--		loff_t size = offset + iov_length(iov, nr_segs);
-+		loff_t size = offset + iov_iter_count(iter);
- 		if (MSDOS_I(inode)->mmu_private < size)
- 			return 0;
- 	}
-@@ -211,10 +210,9 @@ static ssize_t fat_direct_IO(int rw, struct kiocb *iocb,
- 	 * FAT need to use the DIO_LOCKING for avoiding the race
- 	 * condition of fat_get_block() and ->truncate().
- 	 */
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
--				 fat_get_block);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, fat_get_block);
- 	if (ret < 0 && (rw & WRITE))
--		fat_write_failed(mapping, offset + iov_length(iov, nr_segs));
-+		fat_write_failed(mapping, offset + iov_iter_count(iter));
- 
- 	return ret;
- }
-diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
-index 501e5cb..cb0c19f 100644
---- a/fs/gfs2/aops.c
-+++ b/fs/gfs2/aops.c
-@@ -1007,8 +1007,7 @@ static int gfs2_ok_for_dio(struct gfs2_inode *ip, int rw, loff_t offset)
- 
- 
- static ssize_t gfs2_direct_IO(int rw, struct kiocb *iocb,
--			      const struct iovec *iov, loff_t offset,
--			      unsigned long nr_segs)
-+			      struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -1032,8 +1031,8 @@ static ssize_t gfs2_direct_IO(int rw, struct kiocb *iocb,
- 	if (rv != 1)
- 		goto out; /* dio not valid, fall back to buffered i/o */
- 
--	rv = __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				  offset, nr_segs, gfs2_get_block_direct,
-+	rv = __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iter,
-+				  offset, gfs2_get_block_direct,
- 				  NULL, NULL, 0);
- out:
- 	gfs2_glock_dq_m(1, &gh);
-diff --git a/fs/hfs/inode.c b/fs/hfs/inode.c
-index 737dbeb..96650e7 100644
---- a/fs/hfs/inode.c
-+++ b/fs/hfs/inode.c
-@@ -117,14 +117,13 @@ static int hfs_releasepage(struct page *page, gfp_t mask)
- }
- 
- static ssize_t hfs_direct_IO(int rw, struct kiocb *iocb,
--		const struct iovec *iov, loff_t offset, unsigned long nr_segs)
-+		struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_path.dentry->d_inode->i_mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
--				 hfs_get_block);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, hfs_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
-@@ -132,7 +131,7 @@ static ssize_t hfs_direct_IO(int rw, struct kiocb *iocb,
- 	 */
- 	if (unlikely((rw & WRITE) && ret < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + iov_iter_count(iter);
- 
- 		if (end > isize)
- 			vmtruncate(inode, isize);
-diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
-index 6643b24..76e3f8e 100644
---- a/fs/hfsplus/inode.c
-+++ b/fs/hfsplus/inode.c
-@@ -113,13 +113,13 @@ static int hfsplus_releasepage(struct page *page, gfp_t mask)
- }
- 
- static ssize_t hfsplus_direct_IO(int rw, struct kiocb *iocb,
--		const struct iovec *iov, loff_t offset, unsigned long nr_segs)
-+		struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_path.dentry->d_inode->i_mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset,
- 				 hfsplus_get_block);
- 
- 	/*
-@@ -128,7 +128,7 @@ static ssize_t hfsplus_direct_IO(int rw, struct kiocb *iocb,
- 	 */
- 	if (unlikely((rw & WRITE) && ret < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + iov_iter_count(iter);
- 
- 		if (end > isize)
- 			vmtruncate(inode, isize);
-diff --git a/fs/jfs/inode.c b/fs/jfs/inode.c
-index 77b69b2..3dabfc9 100644
---- a/fs/jfs/inode.c
-+++ b/fs/jfs/inode.c
-@@ -323,14 +323,13 @@ static sector_t jfs_bmap(struct address_space *mapping, sector_t block)
- }
- 
- static ssize_t jfs_direct_IO(int rw, struct kiocb *iocb,
--	const struct iovec *iov, loff_t offset, unsigned long nr_segs)
-+			     struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
--				 jfs_get_block);
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset, jfs_get_block);
- 
- 	/*
- 	 * In case of error extending write may have instantiated a few
-@@ -338,7 +337,7 @@ static ssize_t jfs_direct_IO(int rw, struct kiocb *iocb,
- 	 */
- 	if (unlikely((rw & WRITE) && ret < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + iov_iter_count(iter);
- 
- 		if (end > isize)
- 			vmtruncate(inode, isize);
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 1940f1a..9d0f3c2 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -107,20 +107,20 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
-  * nfs_direct_IO - NFS address space operation for direct I/O
-  * @rw: direction (read or write)
-  * @iocb: target I/O control block
-- * @iov: array of vectors that define I/O buffer
-+ * @iter: array of vectors that define I/O buffer
-  * @pos: offset in file to begin the operation
-- * @nr_segs: size of iovec array
-  *
-  * The presence of this routine in the address space ops vector means
-  * the NFS client supports direct I/O.  However, we shunt off direct
-  * read and write requests before the VFS gets them, so this method
-  * should never be called.
-  */
--ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov, loff_t pos, unsigned long nr_segs)
-+ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
-+		      loff_t pos)
- {
- 	dprintk("NFS: nfs_direct_IO (%s) off/no(%Ld/%lu) EINVAL\n",
- 			iocb->ki_filp->f_path.dentry->d_name.name,
--			(long long) pos, nr_segs);
-+			(long long) pos, iter->nr_segs);
- 
- 	return -EINVAL;
- }
-diff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c
-index 8f7b95a..882159f 100644
---- a/fs/nilfs2/inode.c
-+++ b/fs/nilfs2/inode.c
-@@ -248,8 +248,8 @@ static int nilfs_write_end(struct file *file, struct address_space *mapping,
- }
- 
- static ssize_t
--nilfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
--		loff_t offset, unsigned long nr_segs)
-+nilfs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
-+		loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-@@ -259,7 +259,7 @@ nilfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
- 		return 0;
- 
- 	/* Needs synchronization with the cleaner */
--	size = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+	size = blockdev_direct_IO(rw, iocb, inode, iter, offset,
- 				  nilfs_get_block);
- 
- 	/*
-@@ -268,7 +268,7 @@ nilfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
- 	 */
- 	if (unlikely((rw & WRITE) && size < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + iov_iter_count(iter);
- 
- 		if (end > isize)
- 			vmtruncate(inode, isize);
-diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-index 78b68af..f4f2c1e 100644
---- a/fs/ocfs2/aops.c
-+++ b/fs/ocfs2/aops.c
-@@ -621,9 +621,8 @@ static int ocfs2_releasepage(struct page *page, gfp_t wait)
- 
- static ssize_t ocfs2_direct_IO(int rw,
- 			       struct kiocb *iocb,
--			       const struct iovec *iov,
--			       loff_t offset,
--			       unsigned long nr_segs)
-+			       struct iov_iter *iter,
-+			       loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_path.dentry->d_inode->i_mapping->host;
-@@ -640,8 +639,7 @@ static ssize_t ocfs2_direct_IO(int rw,
- 		return 0;
- 
- 	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev,
--				    iov, offset, nr_segs,
--				    ocfs2_direct_IO_get_blocks,
-+				    iter, offset, ocfs2_direct_IO_get_blocks,
- 				    ocfs2_dio_end_io, NULL, 0);
- }
- 
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index 9e8cd5a..3142d40 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -3066,14 +3066,13 @@ static int reiserfs_releasepage(struct page *page, gfp_t unused_gfp_flags)
- /* We thank Mingming Cao for helping us understand in great detail what
-    to do in this section of the code. */
- static ssize_t reiserfs_direct_IO(int rw, struct kiocb *iocb,
--				  const struct iovec *iov, loff_t offset,
--				  unsigned long nr_segs)
-+				  struct iov_iter *iter, loff_t offset)
- {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
- 	ssize_t ret;
- 
--	ret = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
-+	ret = blockdev_direct_IO(rw, iocb, inode, iter, offset,
- 				  reiserfs_get_blocks_direct_io);
- 
- 	/*
-@@ -3082,7 +3081,7 @@ static ssize_t reiserfs_direct_IO(int rw, struct kiocb *iocb,
- 	 */
- 	if (unlikely((rw & WRITE) && ret < 0)) {
- 		loff_t isize = i_size_read(inode);
--		loff_t end = offset + iov_length(iov, nr_segs);
-+		loff_t end = offset + iov_iter_count(iter);
- 
- 		if (end > isize)
- 			vmtruncate(inode, isize);
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 74b9baf..053a213 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -1308,9 +1308,8 @@ STATIC ssize_t
- xfs_vm_direct_IO(
- 	int			rw,
- 	struct kiocb		*iocb,
--	const struct iovec	*iov,
--	loff_t			offset,
--	unsigned long		nr_segs)
-+	struct iov_iter		*iter,
-+	loff_t			offset)
- {
- 	struct inode		*inode = iocb->ki_filp->f_mapping->host;
- 	struct block_device	*bdev = xfs_find_bdev_for_inode(inode);
-@@ -1319,15 +1318,13 @@ xfs_vm_direct_IO(
- 	if (rw & WRITE) {
- 		iocb->private = xfs_alloc_ioend(inode, IO_DIRECT);
- 
--		ret = __blockdev_direct_IO(rw, iocb, inode, bdev, iov,
--					    offset, nr_segs,
-+		ret = __blockdev_direct_IO(rw, iocb, inode, bdev, iter, offset,
- 					    xfs_get_blocks_direct,
- 					    xfs_end_io_direct_write, NULL, 0);
- 		if (ret != -EIOCBQUEUED && iocb->private)
- 			xfs_destroy_ioend(iocb->private);
- 	} else {
--		ret = __blockdev_direct_IO(rw, iocb, inode, bdev, iov,
--					    offset, nr_segs,
-+		ret = __blockdev_direct_IO(rw, iocb, inode, bdev, iter, offset,
- 					    xfs_get_blocks_direct,
- 					    NULL, NULL, 0);
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5b69020..86ac246 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -690,8 +690,8 @@ struct address_space_operations {
- 	void (*invalidatepage) (struct page *, unsigned long);
- 	int (*releasepage) (struct page *, gfp_t);
- 	void (*freepage)(struct page *);
--	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
--			loff_t offset, unsigned long nr_segs);
-+	ssize_t (*direct_IO)(int, struct kiocb *, struct iov_iter *iter,
-+			loff_t offset);
- 	int (*get_xip_mem)(struct address_space *, pgoff_t, int,
- 						void **, unsigned long *);
- 	/*
-@@ -2518,16 +2518,16 @@ void inode_dio_wait(struct inode *inode);
- void inode_dio_done(struct inode *inode);
- 
- ssize_t __blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
--	struct block_device *bdev, const struct iovec *iov, loff_t offset,
--	unsigned long nr_segs, get_block_t get_block, dio_iodone_t end_io,
--	dio_submit_t submit_io,	int flags);
-+	struct block_device *bdev, struct iov_iter *iter, loff_t offset,
-+	get_block_t get_block, dio_iodone_t end_io, dio_submit_t submit_io,
-+	int flags);
- 
- static inline ssize_t blockdev_direct_IO(int rw, struct kiocb *iocb,
--		struct inode *inode, const struct iovec *iov, loff_t offset,
--		unsigned long nr_segs, get_block_t get_block)
-+		struct inode *inode, struct iov_iter *iter, loff_t offset,
-+		get_block_t get_block)
- {
--	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
--				    offset, nr_segs, get_block, NULL, NULL,
-+	return __blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iter,
-+				    offset, get_block, NULL, NULL,
- 				    DIO_LOCKING | DIO_SKIP_HOLES);
+ static inline
+@@ -490,15 +527,14 @@ int nfs_reschedule_unstable_write(struct nfs_page *req,
+ 	return 0;
  }
  #else
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 8c29950..50fd8ca 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -451,8 +451,7 @@ extern int nfs3_removexattr (struct dentry *, const char *name);
+-static inline void
++static void
+ nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
+-static inline struct pnfs_layout_segment *
++static void
+ nfs_clear_request_commit(struct nfs_page *req)
+ {
+-	return NULL;
+ }
+ 
+ static inline
+@@ -523,25 +559,23 @@ nfs_need_commit(struct nfs_inode *nfsi)
+ }
+ 
+ /* i_lock held by caller */
+-int
++static int
+ nfs_scan_commit_list(struct list_head *src, struct list_head *dst, int max)
+ {
+ 	struct nfs_page *req, *tmp;
+ 	int ret = 0;
+ 
+ 	list_for_each_entry_safe(req, tmp, src, wb_list) {
+-		if (nfs_lock_request_dontget(req)) {
+-			kref_get(&req->wb_kref);
+-			list_move_tail(&req->wb_list, dst);
+-			clear_bit(PG_CLEAN, &(req)->wb_flags);
+-			ret++;
+-			if (ret == max)
+-				break;
+-		}
++		if (!nfs_lock_request(req))
++			continue;
++		nfs_request_remove_commit_list(req);
++		nfs_list_add_request(req, dst);
++		ret++;
++		if (ret == max)
++			break;
+ 	}
+ 	return ret;
+ }
+-EXPORT_SYMBOL_GPL(nfs_scan_commit_list);
+ 
  /*
-  * linux/fs/nfs/direct.c
-  */
--extern ssize_t nfs_direct_IO(int, struct kiocb *, const struct iovec *, loff_t,
--			unsigned long);
-+extern ssize_t nfs_direct_IO(int, struct kiocb *, struct iov_iter *, loff_t);
- extern ssize_t nfs_file_direct_read(struct kiocb *iocb,
- 			const struct iovec *iov, unsigned long nr_segs,
- 			loff_t pos);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 0533a71..b6f45b4 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1418,14 +1418,18 @@ generic_file_aio_read(struct kiocb *iocb, const struct iovec *iov,
- 			goto out; /* skip atime */
- 		size = i_size_read(inode);
- 		if (pos < size) {
-+			size_t bytes = iov_length(iov, nr_segs);
- 			retval = filemap_write_and_wait_range(mapping, pos,
--					pos + iov_length(iov, nr_segs) - 1);
-+					pos + bytes - 1);
- 			if (!retval) {
- 				struct blk_plug plug;
-+				struct iov_iter iter;
-+
-+				iov_iter_init(&iter, iov, nr_segs, bytes, 0);
+  * nfs_scan_commit - Scan an inode for commit requests
+@@ -601,7 +635,6 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	unsigned int rqend;
+ 	unsigned int end;
+ 	int error;
+-	struct pnfs_layout_segment *lseg = NULL;
  
- 				blk_start_plug(&plug);
- 				retval = mapping->a_ops->direct_IO(READ, iocb,
--							iov, pos, nr_segs);
-+							&iter, pos);
- 				blk_finish_plug(&plug);
- 			}
- 			if (retval > 0) {
-@@ -2126,6 +2130,7 @@ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	ssize_t		written;
- 	size_t		write_len;
- 	pgoff_t		end;
-+	struct iov_iter iter;
- 
- 	if (count != ocount)
- 		*nr_segs = iov_shorten((struct iovec *)iov, *nr_segs, count);
-@@ -2157,7 +2162,9 @@ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 		}
+ 	if (!PagePrivate(page))
+ 		return NULL;
+@@ -637,8 +670,6 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		spin_lock(&inode->i_lock);
  	}
  
--	written = mapping->a_ops->direct_IO(WRITE, iocb, iov, pos, *nr_segs);
-+	iov_iter_init(&iter, iov, *nr_segs, write_len, 0);
-+
-+	written = mapping->a_ops->direct_IO(WRITE, iocb, &iter, pos);
+-	lseg = nfs_clear_request_commit(req);
+-
+ 	/* Okay, the request matches. Update the region */
+ 	if (offset < req->wb_offset) {
+ 		req->wb_offset = offset;
+@@ -650,7 +681,7 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 		req->wb_bytes = rqend - req->wb_offset;
+ out_unlock:
+ 	spin_unlock(&inode->i_lock);
+-	put_lseg(lseg);
++	nfs_clear_request_commit(req);
+ 	return req;
+ out_flushme:
+ 	spin_unlock(&inode->i_lock);
+@@ -1337,7 +1368,6 @@ void nfs_commitdata_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
  
- 	/*
- 	 * Finally, try again to invalidate clean pages which might have been
+-	put_lseg(wdata->lseg);
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_commit_free(wdata);
+ }
+@@ -1647,6 +1677,7 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+ 		if (req == NULL)
+ 			break;
+ 		if (nfs_lock_request_dontget(req)) {
++			nfs_clear_request_commit(req);
+ 			nfs_inode_remove_request(req);
+ 			/*
+ 			 * In case nfs_inode_remove_request has marked the
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 50856e9..eac30d6 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -28,6 +28,7 @@ enum {
+ 	PG_NEED_COMMIT,
+ 	PG_NEED_RESCHED,
+ 	PG_PARTIAL_READ_FAILED,
++	PG_COMMIT_TO_DS,
+ };
+ 
+ struct nfs_inode;
+@@ -104,6 +105,16 @@ nfs_lock_request_dontget(struct nfs_page *req)
+ 	return !test_and_set_bit(PG_BUSY, &req->wb_flags);
+ }
+ 
++static inline int
++nfs_lock_request(struct nfs_page *req)
++{
++	if (test_and_set_bit(PG_BUSY, &req->wb_flags))
++		return 0;
++	kref_get(&req->wb_kref);
++	return 1;
++}
++
++
+ /**
+  * nfs_list_add_request - Insert a request into a list
+  * @req: request
 -- 
-1.7.9.5
+1.7.7.6
 
