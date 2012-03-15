@@ -1,58 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24005 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51981 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750712Ab2C2EJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Mar 2012 00:09:01 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Boaz Harrosh <bharrosh@panasas.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
-Date: Thu, 29 Mar 2012 04:08:39 +0000
-Message-ID: <1332994124.30608.5.camel@lade.trondhjem.org>
-References: <1332986348.19172.43.camel@lade.trondhjem.org>
-	 <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
-	 <1332986928.19172.45.camel@lade.trondhjem.org>
-	 <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
-	 <1332988097.19172.51.camel@lade.trondhjem.org>
-	 <4F73D44C.5090604@panasas.com>
-	 <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com>
-In-Reply-To: <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1161383Ab2COUp7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 16:45:59 -0400
+Message-ID: <4F6254FA.5000209@RedHat.com>
+Date: Thu, 15 Mar 2012 16:45:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Peter Staubach <pstaubach@exagrid.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] nfsd: Warn when no servers are specified on the command
+ line
+References: <1331832223-20737-1-git-send-email-steved@redhat.com> <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C800D@IT-1874.Isys.com> <4F6232CF.7010509@RedHat.com> <20120315184005.GB9848@fieldses.org>
+In-Reply-To: <20120315184005.GB9848@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTI4IGF0IDIwOjQ0IC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
-Cj4gT24gV2VkLCBNYXIgMjgsIDIwMTIgYXQgODoxNyBQTSwgQm9heiBIYXJyb3NoIDxiaGFycm9z
-aEBwYW5hc2FzLmNvbT4gd3JvdGU6DQo+ID4NCj4gPiBUaGFuayB5b3UgVHJvbmQgZm9yIHNoYXJp
-bmcsIGhlcmUgaXMgYSBuZXcgdXNlcg0KPiANCj4gT2gsICpwbGVhc2UqIHVzZSBnaXQgcHVsbC1y
-ZXF1ZXN0IGluc3RlYWQuIEl0IGRvZXMgYSBsb3Qgb2YgdGhpbmdzDQo+IG11Y2ggYmV0dGVyLCBp
-bmNsdWRpbmcgdGhlIGRpZmZzdGF0L3Nob3J0bG9nIGFuZCB0aGUgdGFnIG1lc3NhZ2UsIG5vbmUN
-Cj4gb2Ygd2hpY2ggVHJvbmQncyBkb2VzLg0KPiANCj4gICAgICAgICAgICAgICAgICAgICAgIExp
-bnVzDQoNCk1heWJlIEknbSBydW5uaW5nIGFuIG9sZGVyIHZlcnNpb24gb2YgZ2l0IChGZWRvcmEg
-MTYgbGF0ZXN0IHVwZGF0ZSksIGJ1dA0Kd2hlbiBJIGRvDQoNCmdpdCByZXF1ZXN0LXB1bGwgdjMu
-MyBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQg
-bmZzLWZvci0zLjQtMQ0KDQpJIGdldDoNCg0KICAgICAgICAgICAgICAgIFRoZSBmb2xsb3dpbmcg
-Y2hhbmdlcyBzaW5jZSBjb21taXQgYzE2ZmE0ZjJhZDE5OTA4YTQ3YzYzZDhmYTQzNmExMTc4NDM4
-YzdlNzoNCiAgICAgICAgICAgICAgICANCiAgICAgICAgICAgICAgICAgIExpbnV4IDMuMyAoMjAx
-Mi0wMy0xOCAxNjoxNTozNCAtMDcwMCkNCiAgICAgICAgICAgICAgICANCiAgICAgICAgICAgICAg
-ICBhcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3NpdG9yeSBhdDoNCiAgICAgICAgICAgICAg
-ICAgIGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdp
-dCAuLkJSQU5DSC5OT1QuVkVSSUZJRUQuLg0KICAgICAgICAgICAgICAgIA0KICAgICAgICAgICAg
-ICAgIEFuZHkgQWRhbXNvbiAoNCk6DQogICAgICAgICAgICAgICAgICAgICAgU1VOUlBDOiBhZGQg
-c2VuZGluZyxwZW5kaW5nIHF1ZXVlIGFuZCBtYXggc2xvdCB0byB4cHJ0IHN0YXRzDQogICAgICAg
-ICAgICAgICAgICAgICAgTkZTdjQuMSBzZXQgaGlnaGVzdF91c2VkX3Nsb3RpZCB0byBORlM0X05P
-X1NMT1QNCiAgICAgICAgICAgICAgICAgICAgICBORlN2NC4xIGhhbmRsZSBEUyBzdGF0ZWlkIGVy
-cm9ycw0KICAgICAgICAgICAgICAgICAgICAgIE5GU3Y0LjEgY2xlYW51cCBEUyBzdGF0ZWlkIGVy
-cm9yIGhhbmRsaW5nDQogICAgICAgICAgICAgICAgDQogICAgICAgICAgICAgICAgLi4uLg0KICAg
-ICAgICAgICAgICAgIGxvdHMgb2Ygc2hvcnRsb2cgc3R1ZmYgZm9sbG93ZWQgYnkgdGhlIGRpZmZz
-dGF0Lg0KICAgICAgICAgICAgICAgIC4uLi4NCg0KYW5kIHRoYXQncyBhbGwuLi4NCg0KDQpJJ20g
-cHJldHR5IHN1cmUgdGhhdCBhIHJlcXVlc3QgdG8gcHVsbCBmcm9tICIuLkJSQU5DSC5OT1QuVkVS
-SUZJRUQuLiINCndvdWxkIHBpc3MgeW91IG9mZiwgd2hpY2ggaXMgd2h5IEknbGwgc3RpY2sgdG8g
-bXkgc2NyaXB0IGZvciBub3cuIEl0DQphbHJlYWR5IGhhcyBhICctcycgb3B0aW9uIHRvIGdpdmUg
-eW91IHRoZSBzaG9ydGxvZywgYW5kIGl0IHdpbGwgZ2l2ZSB5b3UNCnRoZSBkaWZmc3RhdCBieSBk
-ZWZhdWx0LiBBbGwgaXQgaXMgbWlzc2luZyBpcyB0aGUgdGFnIG1lc3NhZ2UuLi4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+
+
+On 03/15/2012 02:40 PM, J. Bruce Fields wrote:
+> On Thu, Mar 15, 2012 at 02:19:59PM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 03/15/2012 02:01 PM, Peter Staubach wrote:
+>>> I am curious why such a message is required?  
+>> To let people know their NFS server may not be configured as expected.
+>>
+>>> Isn't the reason for having a default is so that the option does not need to specified?
+>> I guess... but starting one nfsd is probably not what people
+> 
+> That's strange--when did the default get changed to 1?
+> 
+> Let's please just fix the default and not warn about something that's
+> not really a bug....
+Will do... I'll just change the default from 1 to 8.
+
+BTW, the context for all this is
+   https://bugzilla.redhat.com/show_bug.cgi?id=757452
+
+steved.
+
+> 
+> --b.
+> 
+>> want to do... Maybe bumping the default up to a more reasonable 
+>> number could work... 
+>>
+>> steved.
+>>
+>>>
+>>> 	Thanx...
+>>>
+>>> 		ps
+>>>
+>>>
+>>> -----Original Message-----
+>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Steve Dickson
+>>> Sent: Thursday, March 15, 2012 1:24 PM
+>>> To: Linux NFS Mailing list
+>>> Subject: [PATCH 1/1] nfsd: Warn when no servers are specified on the command line
+>>>
+>>> When the number of servers are not specified on the command, log a warning message that the default number of services will be started
+>>>
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>>  utils/nfsd/nfsd.c |    7 +++++--
+>>>  1 files changed, 5 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c index 8bc5d3a..c744ee1 100644
+>>> --- a/utils/nfsd/nfsd.c
+>>> +++ b/utils/nfsd/nfsd.c
+>>> @@ -188,6 +188,8 @@ main(int argc, char **argv)
+>>>  		}
+>>>  	}
+>>>  
+>>> +	xlog_open(progname);
+>>> +
+>>>  	if (optind < argc) {
+>>>  		if ((count = atoi(argv[optind])) < 0) {
+>>>  			/* insane # of servers */
+>>> @@ -203,10 +205,11 @@ main(int argc, char **argv)
+>>>  			socket_up = 1;
+>>>  			goto set_threads;
+>>>  		}
+>>> +	} else {
+>>> +		xlog(L_WARNING, "No server number specified. '%d' nfsd will be started",
+>>> +			count);
+>>>  	}
+>>>  
+>>> -	xlog_open(progname);
+>>> -
+>>>  	nfsd_enable_protos(&proto4, &proto6);
+>>>  
+>>>  	if (!NFSCTL_TCPISSET(protobits)) {
+>>> --
+>>> 1.7.7.6
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
