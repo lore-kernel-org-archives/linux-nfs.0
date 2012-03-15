@@ -1,143 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:58733 "EHLO e9.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44113 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757496Ab2CEU1E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 15:27:04 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Mon, 5 Mar 2012 15:27:04 -0500
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id F191338C8065
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 15:27:00 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25KQwE62527358
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:26:58 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25KQvYs010574
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 15:26:58 -0500
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Cc: treinish@linux.vnet.ibm.com
-Subject: [PATCH/RFC v3 09/10] VFH recovery from a replication/migration event.
-Date: Mon,  5 Mar 2012 15:26:50 -0500
-Message-Id: <1330979211-894-10-git-send-email-treinish@linux.vnet.ibm.com>
-In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
-References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+	id S1030581Ab2COSk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:40:58 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 02/11] NFSv4.1: cleanup filelayout invalid deviceid handling
+Date: Thu, 15 Mar 2012 14:40:41 -0400
+Message-Id: <1331836850-5195-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implements a refreshing file handles after a successful migration
-or replication event. After the client changes to using a different
-server if FH4_VOL_MIGRATION is set by the server it is assumed
-that the file handles have all expired during migration or
-replication.
+From: Andy Adamson <andros@netapp.com>
 
-nfs4_vfh_replication uses the dcache to find each file handle that
-is currently cached and refreshes it using an nfs4 lookup.
+Move the invalid deviceid test into nfs4_fl_prepare_ds, called by the
+filelayout read, write, and commit routines. NFS4_DEVICE_ID_NEG_ENTRY
+is no longer needed.
+Remove redundant printk's - filelayout_mark_devid_invalid prints a KERN_WARNING.
 
-Signed-off-by: Matthew Treinish <treinish@linux.vnet.ibm.com>
+An invalid device prevents pNFS io.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |   73 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 74 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4filelayout.c    |   10 ----------
+ fs/nfs/nfs4filelayout.h    |   21 +++++++++++++++++----
+ fs/nfs/nfs4filelayoutdev.c |   37 +++++++++++--------------------------
+ 3 files changed, 28 insertions(+), 40 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 52d7f94..b4ca67f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -218,6 +218,7 @@ extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, boo
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
- extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
-+extern int nfs4_vfh_replication(struct dentry *d_root);
- extern void nfs4_release_lockowner(const struct nfs4_lock_state *);
- extern const struct xattr_handler *nfs4_xattr_handlers[];
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 447c2c9..e1c0670 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -389,9 +389,6 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 		__func__, data->inode->i_ino,
+ 		data->args.pgbase, (size_t)data->args.count, offset);
  
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78ed5c5..f9484c3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2558,6 +2558,79 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 	return err;
+-	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
+-		return PNFS_NOT_ATTEMPTED;
+-
+ 	/* Retrieve the correct rpc_client for the byte range */
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+@@ -431,16 +428,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	struct nfs_fh *fh;
+ 	int status;
+ 
+-	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
+-		return PNFS_NOT_ATTEMPTED;
+-
+ 	/* Retrieve the correct rpc_client for the byte range */
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
+-			__func__);
+ 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+@@ -898,8 +890,6 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
+-			__func__);
+ 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		prepare_to_resend_writes(data);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 21190bb..b54b389 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -62,12 +62,8 @@ struct nfs4_pnfs_ds {
+ 	atomic_t		ds_count;
+ };
+ 
+-/* nfs4_file_layout_dsaddr flags */
+-#define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
+-
+ struct nfs4_file_layout_dsaddr {
+ 	struct nfs4_deviceid_node	id_node;
+-	unsigned long			flags;
+ 	u32				stripe_count;
+ 	u8				*stripe_indices;
+ 	u32				ds_num;
+@@ -107,6 +103,23 @@ FILELAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg)
+ 	return &FILELAYOUT_LSEG(lseg)->dsaddr->id_node;
  }
  
-+int nfs4_vfh_replication(struct dentry *d_root)
++static inline void
++filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
 +{
-+	struct nfs_fsinfo info;
-+	int err = 0;
-+	struct nfs_fattr *fattr = NULL;
-+	struct dentry *this_parent;
-+	struct list_head *next;
-+	struct nfs_server *server = NFS_SB(d_root->d_sb);
-+	fattr = nfs_alloc_fattr();
-+	if (fattr == NULL)
-+		return -ENOMEM;
-+	info.fattr = fattr;
-+	/* Check if we need to refresh filehandles */
-+	if ((server->fhexpiretype & NFS4_FH_VOL_MIGRATION
-+		|| server->fhexpiretype & NFS4_FH_VOLATILE_ANY)
-+		&& server->flags & NFS_MOUNT_VFHRETRY) {
-+		/* Update root dentry */
-+		err = nfs4_proc_get_root(server, NFS_FH(d_root->d_inode),
-+					&info);
-+		if (!err) {
-+			if (NFS_FILEID(d_root->d_inode) != info.fattr->fileid)
-+				set_nfs_fileid(d_root->d_inode,
-+							info.fattr->fileid);
-+			nfs_copy_fh(server->rootfh, NFS_FH(d_root->d_inode));
-+			/* Only needed if fsid changes on server */
-+			memcpy(&server->fsid, &info.fattr->fsid,
-+				sizeof(server->fsid));
-+		} else
-+			return err;
-+		/* Loop over dcache entries */
-+		this_parent = d_root;
-+repeat:
-+		next = this_parent->d_subdirs.next;
-+resume:
-+		while (next != &this_parent->d_subdirs) {
-+			struct list_head *tmp = next;
-+			struct dentry *dentry = list_entry(tmp, struct dentry,
-+								d_u.d_child);
-+			next = tmp->next;
-+			/* Perform NFS lookup on dentry */
-+			if (dentry->d_parent->d_inode && dentry->d_inode &&
-+								&dentry->d_name)
-+				nfs4_proc_lookup(server->client,
-+					dentry->d_parent->d_inode,
-+					&dentry->d_name,
-+					NFS_FH(dentry->d_inode),
-+					fattr);
-+			if (!list_empty(&dentry->d_subdirs)) {
-+				this_parent = dentry;
-+				goto repeat;
-+			}
-+		}
-+		if (this_parent != d_root) {
-+			struct dentry *child = this_parent;
-+			struct dentry *new = this_parent->d_parent;
-+		/*
-+		* might go back up the wrong parent if we have had a rename
-+		* or deletion return ESTALE if it is renamed or deleted
-+		*/
-+			if (new != this_parent->d_parent ||
-+			(this_parent->d_flags & DCACHE_DISCONNECTED)) {
-+				return -ESTALE;
-+			}
-+			this_parent = new;
-+			next = child->d_u.d_child.next;
-+			goto resume;
-+		}
-+		return 0;
++	u32 *p = (u32 *)&node->deviceid;
 +
-+	} else
-+		return 0;
++	printk(KERN_WARNING "NFS: Deviceid [%x%x%x%x] marked out of use.\n",
++		p[0], p[1], p[2], p[3]);
++
++	set_bit(NFS_DEVICEID_INVALID, &node->flags);
 +}
 +
- /* In the case of gettattr only a fh is given, and we need a VFS object to do
-  * vfh recovery. This function traverses the dcache to find the dentry with
-  * a matching fh
++static inline bool
++filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
++{
++	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
++}
++
+ extern struct nfs_fh *
+ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index a866bbd..2b8ae96 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -791,48 +791,33 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+ 	return flseg->fh_array[i];
+ }
+ 
+-static void
+-filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+-			       int err, const char *ds_remotestr)
+-{
+-	u32 *p = (u32 *)&dsaddr->id_node.deviceid;
+-
+-	printk(KERN_ERR "NFS: data server %s connection error %d."
+-		" Deviceid [%x%x%x%x] marked out of use.\n",
+-		ds_remotestr, err, p[0], p[1], p[2], p[3]);
+-
+-	spin_lock(&nfs4_ds_cache_lock);
+-	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
+-	spin_unlock(&nfs4_ds_cache_lock);
+-}
+-
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+ 	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
+ 	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
++	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
++
++	if (filelayout_test_devid_invalid(devid))
++		return NULL;
+ 
+ 	if (ds == NULL) {
+ 		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
+ 			__func__, ds_idx);
+-		return NULL;
++		goto mark_dev_invalid;
+ 	}
+ 
+ 	if (!ds->ds_clp) {
+ 		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 		int err;
+ 
+-		if (dsaddr->flags & NFS4_DEVICE_ID_NEG_ENTRY) {
+-			/* Already tried to connect, don't try again */
+-			dprintk("%s Deviceid marked out of use\n", __func__);
+-			return NULL;
+-		}
+ 		err = nfs4_ds_connect(s, ds);
+-		if (err) {
+-			filelayout_mark_devid_negative(dsaddr, err,
+-						       ds->ds_remotestr);
+-			return NULL;
+-		}
++		if (err)
++			goto mark_dev_invalid;
+ 	}
+ 	return ds;
++
++mark_dev_invalid:
++	filelayout_mark_devid_invalid(devid);
++	return NULL;
+ }
 -- 
-1.7.4.4
+1.7.6.4
 
