@@ -1,62 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e36.co.us.ibm.com ([32.97.110.154]:51343 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754720Ab2CBWB1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 17:01:27 -0500
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 2 Mar 2012 15:01:26 -0700
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 0E74519D804C
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Mar 2012 15:01:19 -0700 (MST)
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q22M19P0062676
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:10 -0700
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q22M19JQ020494
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:09 -0700
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q22M18dm020472
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 15:01:08 -0700
-Date: Fri, 2 Mar 2012 16:01:08 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-Message-ID: <20120302220108.GA17119@us.ibm.com>
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>
- <4F2BC1C0.8070900@panasas.com>
- <20120203231623.442fefde@notabene.brown>
- <20120203142945.GA31805@us.ibm.com>
- <4F2E620F.5090100@panasas.com>
- <20120207204401.GA31752@us.ibm.com>
- <4F511B21.1020907@RedHat.com>
- <20120302192758.GA28389@us.ibm.com>
- <4F513429.1050209@RedHat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:30786 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755663Ab2CORMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 13:12:18 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Anton Starikov <ant.starikov@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS4 without id mapper
+Date: Thu, 15 Mar 2012 17:12:15 +0000
+Message-ID: <1331831535.6874.1.camel@lade.trondhjem.org>
+References: <66B6E4EA-A94C-4FD9-87C1-A110B0AB3D71@gmail.com>
+	 <1331659764.3419.23.camel@lade.trondhjem.org>
+	 <1B997EC7-7E1B-4508-9DFC-5AF491CF348E@gmail.com>
+In-Reply-To: <1B997EC7-7E1B-4508-9DFC-5AF491CF348E@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F513429.1050209@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson [SteveD@redhat.com] wrote:
-> So what my patch does is "normalizes" the device name early
-> on in main, so the correct name used used through the mount
-> and when its written the mtab. Plus, for better or worses, 
-> since the new device name will always be shorter, I just 
-> reuse/rewrite the memory allocated for the argv vector.. 
-> Meaning there is no allocation... 
-
-My problem is a bit different.
-
-"mount -t nfs4 server:export /mnt" works but umount fails.
-
-Notice that there is no '/' in the path!
-
-Normalizing or just stripping leading '/'s early won't help with the
-above problem and since there is already a hack to strip the
-__trailing__ '/' that kernel adds to /proc/mounts file, I just made the
-existing hack it a bit better by normalizing.
-
-Regards, Malahal.
-
+T24gVGh1LCAyMDEyLTAzLTE1IGF0IDE3OjAyICswMTAwLCBBbnRvbiBTdGFyaWtvdiB3cm90ZToN
+Cj4gT24gTWFyIDEzLCAyMDEyLCBhdCA2OjI5IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
+PiANCj4gPiBPbiBUdWUsIDIwMTItMDMtMTMgYXQgMTc6MjEgKzAxMDAsIEFudG9uIFN0YXJpa292
+IHdyb3RlOg0KPiA+PiBIaSwNCj4gPj4gDQo+ID4+IEkgaGF2ZSBwcm9iYWJseSBzdHVwaWQgcXVl
+c3Rpb24sIGJ1dCBpcyB0aGVyZSBhIHdheSB0byB1c2UgTkZTLTQgaW4gb2xkLWZhc2hvbmVkIHdh
+eSB3aXRob3V0IGFueSBpZG1hcHBlciBpbnZvbHZlZD8gQXNzdW1pbmcgc2V0dXAgd2l0aCBhdXRo
+PXN5cy9ub25lIGFuZCBubyByb290IHNxdWFzaC4NCj4gPiANCj4gPiBUaGUgTGludXggY2xpZW50
+IGNhbiBkbyBpdCwgYnV0IG5vdCB0aGUgTGludXggc2VydmVyLiBTb3JyeS4uLg0KPiANCj4gDQo+
+IEhtLCBjYW4geW91IHBvaW50IG1lLCB3aGVyZSBjYW4gSSBmaW5kIGluZm9ybWF0aW9uIGFib3V0
+IGRpc2FibGluZyBpZG1hcHBlcj8NCg0KU2VlIHRoZSBlbnRyeSBmb3IgdGhlIG5mcy5uZnM0X2Rp
+c2FibGVfaWRtYXBwaW5nIHBhcmFtZXRlciBpbg0KRG9jdW1lbnRhdGlvbi9rZXJuZWwtcGFyYW1l
+dGVycy50eHQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0KDQo=
