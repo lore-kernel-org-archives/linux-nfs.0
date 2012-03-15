@@ -1,76 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3578 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755903Ab2CLPTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 11:19:51 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2CFJor3022450
-	for <linux-nfs@vger.kernel.org>; Mon, 12 Mar 2012 08:19:50 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Fix a number of sparse warnings
-Date: Mon, 12 Mar 2012 15:19:49 +0000
-Message-ID: <1331565589.8219.19.camel@lade.trondhjem.org>
-References: <1331487939-12415-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <4F5E1372.4010809@netapp.com>
-In-Reply-To: <4F5E1372.4010809@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1032108Ab2COSlC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:41:02 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 07/11] NFSv4.1 Check invalid deviceid upon slot table waitq wakeup
+Date: Thu, 15 Mar 2012 14:40:46 -0400
+Message-Id: <1331836850-5195-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTEyIGF0IDExOjE3IC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDAzLzExLzIwMTIgMDE6NDUgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+
-ID4gRml4IGEgbnVtYmVyIG9mICJ3YXJuaW5nOiBzeW1ib2wgJ2Zvbycgd2FzIG5vdCBkZWNsYXJl
-ZC4gU2hvdWxkIGl0IGJlDQo+ID4gc3RhdGljPyIgY29uZGl0aW9ucy4NCj4gPiANCj4gPiBmcy9u
-ZnMvZGVsZWdhdGlvbi5jOjI2MzozMTogd2FybmluZzogcmVzdHJpY3RlZCBmbW9kZV90IGRlZ3Jh
-ZGVzIHRvIGludGVnZXINCj4gPiAgIC0gV2Ugd2FudCB0byBhbGxvdyB1cGdyYWRlcyB0byBhIFdS
-SVRFIGRlbGVnYXRpb24sIGJ1dCBzaG91bGQgb3RoZXJ3aXNlDQo+ID4gICAgIGNvbnNpZGVyIHNl
-cnZlcnMgdGhhdCBoYW5kIG91dCBkdXBsaWNhdGUgZGVsZWdhdGlvbnMgdG8gYmUgYm9ya2VuLg0K
-PiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9jYWxsYmFjay5jICAgICAgICAgICAg
-fCAgICA0ICsrLS0NCj4gPiAgZnMvbmZzL2NsaWVudC5jICAgICAgICAgICAgICB8ICAgIDUgKyst
-LS0NCj4gPiAgZnMvbmZzL2RlbGVnYXRpb24uYyAgICAgICAgICB8ICAgIDUgKysrKy0NCj4gPiAg
-ZnMvbmZzL2Ruc19yZXNvbHZlLmMgICAgICAgICB8ICAgIDEgKw0KPiA+ICBmcy9uZnMvaWRtYXAu
-YyAgICAgICAgICAgICAgIHwgICAgOCArKysrLS0tLQ0KPiA+ICBmcy9uZnMvbmZzNGZpbGVsYXlv
-dXQuYyAgICAgIHwgICAxMCArKysrKy0tLS0tDQo+ID4gIGZzL25mcy9uZnM0ZmlsZWxheW91dGRl
-di5jICAgfCAgICA0ICsrLS0NCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgICAgICAgICAgICB8ICAg
-MjMgKysrKysrKysrKysrLS0tLS0tLS0tLS0NCj4gPiAgZnMvbmZzL25mczRzdGF0ZS5jICAgICAg
-ICAgICB8ICAgIDMgKystDQo+ID4gIGZzL25mcy9vYmpsYXlvdXQvb2JqbGF5b3V0LmMgfCAgICAy
-ICstDQo+ID4gIGZzL25mcy9wbmZzX2Rldi5jICAgICAgICAgICAgfCAgICAyICstDQo+ID4gIGZz
-L25mcy91bmxpbmsuYyAgICAgICAgICAgICAgfCAgICAyICstDQo+ID4gIDEyIGZpbGVzIGNoYW5n
-ZWQsIDM3IGluc2VydGlvbnMoKyksIDMyIGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvY2FsbGJhY2suYyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+ID4gaW5kZXggMmFm
-ZTIzMy4uZWI5NWY1MCAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvY2FsbGJhY2suYw0KPiA+ICsr
-KyBiL2ZzL25mcy9jYWxsYmFjay5jDQo+ID4gQEAgLTEwMSw3ICsxMDEsNyBAQCBuZnM0X2NhbGxi
-YWNrX3N2Yyh2b2lkICp2cnFzdHApDQo+ID4gIC8qDQo+ID4gICAqIFByZXBhcmUgdG8gYnJpbmcg
-dXAgdGhlIE5GU3Y0IGNhbGxiYWNrIHNlcnZpY2UNCj4gPiAgICovDQo+ID4gLXN0cnVjdCBzdmNf
-cnFzdCAqDQo+ID4gK3N0YXRpYyBzdHJ1Y3Qgc3ZjX3Jxc3QgKg0KPiA+ICBuZnM0X2NhbGxiYWNr
-X3VwKHN0cnVjdCBzdmNfc2VydiAqc2Vydiwgc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ICB7
-DQo+ID4gIAlpbnQgcmV0Ow0KPiA+IEBAIC0xNzIsNyArMTcyLDcgQEAgbmZzNDFfY2FsbGJhY2tf
-c3ZjKHZvaWQgKnZycXN0cCkNCj4gPiAgLyoNCj4gPiAgICogQnJpbmcgdXAgdGhlIE5GU3Y0LjEg
-Y2FsbGJhY2sgc2VydmljZQ0KPiA+ICAgKi8NCj4gPiAtc3RydWN0IHN2Y19ycXN0ICoNCj4gPiAr
-c3RhdGljIHN0cnVjdCBzdmNfcnFzdCAqDQo+ID4gIG5mczQxX2NhbGxiYWNrX3VwKHN0cnVjdCBz
-dmNfc2VydiAqc2Vydiwgc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ICB7DQo+ID4gIAlzdHJ1
-Y3Qgc3ZjX3Jxc3QgKnJxc3RwOw0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMgYi9m
-cy9uZnMvY2xpZW50LmMNCj4gPiBpbmRleCBkMzBkY2JmLi5mMWYwNDdjIDEwMDY0NA0KPiA+IC0t
-LSBhL2ZzL25mcy9jbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+IEBAIC00
-NDMsOSArNDQzLDggQEAgc3RhdGljIGludCBuZnNfc29ja2FkZHJfY21wKGNvbnN0IHN0cnVjdCBz
-b2NrYWRkciAqc2ExLA0KPiA+ICB9DQo+ID4gIA0KPiA+ICAvKiBDb21tb24gbWF0Y2ggcm91dGlu
-ZSBmb3IgdjQuMCBhbmQgdjQuMSBjYWxsYmFjayBzZXJ2aWNlcyAqLw0KPiA+IC1ib29sDQo+ID4g
-LW5mczRfY2JfbWF0Y2hfY2xpZW50KGNvbnN0IHN0cnVjdCBzb2NrYWRkciAqYWRkciwgc3RydWN0
-IG5mc19jbGllbnQgKmNscCwNCj4gPiAtCQkgICAgIHUzMiBtaW5vcnZlcnNpb24pDQo+ID4gK3N0
-YXRpYyBib29sIG5mczRfY2JfbWF0Y2hfY2xpZW50KGNvbnN0IHN0cnVjdCBzb2NrYWRkciAqYWRk
-ciwNCj4gPiArCQlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCB1MzIgbWlub3J2ZXJzaW9uKQ0KPiA+
-ICB7DQo+ID4gIAlzdHJ1Y3Qgc29ja2FkZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyICopJmNs
-cC0+Y2xfYWRkcjsNCj4gDQo+IA0KPiBOb3cgdGhhdCB0aGlzIGZ1bmN0aW9uIGlzIHN0YXRpYywg
-Z2NjIGdpdmVzIG1lIHRoaXMgd2FybmluZzogDQo+ICAgQ0MgW01dICBmcy9uZnMvY2xpZW50Lm8N
-Cj4gZnMvbmZzL2NsaWVudC5jOjQ0NjoxMzogd2FybmluZzogJ25mczRfY2JfbWF0Y2hfY2xpZW50
-JyBkZWZpbmVkIGJ1dCBub3QgdXNlZCBbLVd1bnVzZWQtZnVuY3Rpb25dDQo+IA0KPiBJdCBsb29r
-cyBsaWtlIHRoZSBvbmx5IHVzZXIgb2YgdGhpcyBmdW5jdGlvbiBpcyBuZnM0X2ZpbmRfY2xpZW50
-X3Nlc3Npb25pZCwgc28gd2hlbiB2NC4xIGlzbid0IGVuYWJsZWQgdGhlIGZ1bmN0aW9uIGlzbid0
-IHVzZWQuICBXb3VsZCB5b3UgbGlrZSBtZSB0byBzZW5kIGluIGEgc2VwYXJhdGUgcGF0Y2ggZm9y
-IHRoaXM/DQo+IA0KDQpZZXMgcGxlYXNlIQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
-DQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Andy Adamson <andros@netapp.com>
+
+Register a new filelayout DS rpc_action callback for sleeping on the fore
+channel slot table waitq.  Avoid any additional RPC FSM states
+(such as timeout) when waking up to an invalid deviceid and reset
+the task for io to the MDS.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   26 ++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c       |    4 ++--
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 26c83b0..8531161 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -232,6 +232,18 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
+ 		(unsigned long) NFS_I(wdata->inode)->layout->plh_lwb);
+ }
+ 
++static void filelayout_read_sleepon_cb(struct rpc_task *task)
++{
++	struct nfs_read_data *rd = (struct nfs_read_data *)task->tk_calldata;
++
++	if (rd->lseg &&
++	    filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(rd->lseg))) {
++		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
++		filelayout_reset_read(task, rd);
++		rpc_restart_call_prepare(task);
++	}
++}
++
+ /*
+  * Call ops for the async read/write cases
+  * In the case of dense layouts, the offset needs to be reset to its
+@@ -241,6 +253,7 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
+ 
++	rdata->args.seq_args.sa_action = &filelayout_read_sleepon_cb;
+ 	rdata->read_done_cb = filelayout_read_done_cb;
+ 
+ 	if (nfs41_setup_sequence(rdata->ds_clp->cl_session,
+@@ -336,10 +349,23 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 	return 0;
+ }
+ 
++static void filelayout_write_sleepon_cb(struct rpc_task *task)
++{
++	struct nfs_write_data *wd = (struct nfs_write_data *)task->tk_calldata;
++
++	if (wd->lseg &&
++	    filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(wd->lseg))) {
++		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
++		filelayout_reset_write(task, wd);
++		rpc_restart_call_prepare(task);
++	}
++}
++
+ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
++	wdata->args.seq_args.sa_action = &filelayout_write_sleepon_cb;
+ 	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
+ 				&wdata->args.seq_args, &wdata->res.seq_res,
+ 				task))
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 45b67d8..e5e651e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -590,7 +590,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 
+ 	if (!rpc_queue_empty(&tbl->slot_tbl_waitq) &&
+ 	    !rpc_task_has_priority(task, RPC_PRIORITY_PRIVILEGED)) {
+-		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
++		rpc_sleep_on(&tbl->slot_tbl_waitq, task, args->sa_action);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		dprintk("%s enforce FIFO order\n", __func__);
+ 		return -EAGAIN;
+@@ -598,7 +598,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 
+ 	slotid = nfs4_find_slot(tbl);
+ 	if (slotid == NFS4_NO_SLOT) {
+-		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
++		rpc_sleep_on(&tbl->slot_tbl_waitq, task, args->sa_action);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		dprintk("<-- %s: no free slots\n", __func__);
+ 		return -EAGAIN;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c1cf86c..2d86f6e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -182,6 +182,7 @@ struct nfs4_slot {
+ 
+ struct nfs4_sequence_args {
+ 	struct nfs4_session	*sa_session;
++	rpc_action		sa_action;	/* for slot_tbl_waitq wakeup */
+ 	u32			sa_slotid;
+ 	u8			sa_cache_this;
+ };
+-- 
+1.7.6.4
+
