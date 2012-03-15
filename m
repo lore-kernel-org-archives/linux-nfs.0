@@ -1,183 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58708 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44111 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757773Ab2CUPVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 11:21:12 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 01/23] NFS: Relocate the stat_to_errno() function
-Date: Wed, 21 Mar 2012 11:20:31 -0400
-Message-Id: <1332343253-24970-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+	id S1031675Ab2COSk5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 14:40:57 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 1 01/11] NFSv4.1 move nfs4_reset_read and nfs_reset_write
+Date: Thu, 15 Mar 2012 14:40:40 -0400
+Message-Id: <1331836850-5195-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-1-git-send-email-andros@netapp.com>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: Andy Adamson <andros@netapp.com>
 
-This was located in a file belonging to NFS v2, but it is also used by
-v3.  I moved it to a generic NFS client file to keep it from
-disappearing once v2 becomes a module.
+Only called by the file layout code
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/client.c  |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs2xdr.c |   64 ----------------------------------------------------
- 2 files changed, 66 insertions(+), 64 deletions(-)
+ fs/nfs/internal.h       |    5 +++--
+ fs/nfs/nfs4filelayout.c |   35 +++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4proc.c       |   39 ++++-----------------------------------
+ 3 files changed, 40 insertions(+), 39 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 2f37848..08e7f24 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -2072,6 +2072,72 @@ void nfs_fs_proc_exit(void)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 04a9147..44066d9 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -344,13 +344,14 @@ extern int nfs_migrate_page(struct address_space *,
  
- #endif /* CONFIG_PROC_FS */
- 
-+/* Mapping from NFS error code to "errno" error code. */
-+#define errno_NFSERR_IO		EIO
-+
-+/*
-+ * We need to translate between nfs status return values and
-+ * the local errno values which may not be the same.
-+ */
-+static const struct {
-+	int stat;
-+	int errno;
-+} nfs_errtbl[] = {
-+	{ NFS_OK,		0		},
-+	{ NFSERR_PERM,		-EPERM		},
-+	{ NFSERR_NOENT,		-ENOENT		},
-+	{ NFSERR_IO,		-errno_NFSERR_IO},
-+	{ NFSERR_NXIO,		-ENXIO		},
-+/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
-+	{ NFSERR_ACCES,		-EACCES		},
-+	{ NFSERR_EXIST,		-EEXIST		},
-+	{ NFSERR_XDEV,		-EXDEV		},
-+	{ NFSERR_NODEV,		-ENODEV		},
-+	{ NFSERR_NOTDIR,	-ENOTDIR	},
-+	{ NFSERR_ISDIR,		-EISDIR		},
-+	{ NFSERR_INVAL,		-EINVAL		},
-+	{ NFSERR_FBIG,		-EFBIG		},
-+	{ NFSERR_NOSPC,		-ENOSPC		},
-+	{ NFSERR_ROFS,		-EROFS		},
-+	{ NFSERR_MLINK,		-EMLINK		},
-+	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
-+	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
-+	{ NFSERR_DQUOT,		-EDQUOT		},
-+	{ NFSERR_STALE,		-ESTALE		},
-+	{ NFSERR_REMOTE,	-EREMOTE	},
-+#ifdef EWFLUSH
-+	{ NFSERR_WFLUSH,	-EWFLUSH	},
-+#endif
-+	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
-+	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
-+	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
-+	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
-+	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
-+	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
-+	{ NFSERR_BADTYPE,	-EBADTYPE	},
-+	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
-+	{ -1,			-EIO		}
-+};
-+
-+/**
-+ * nfs_stat_to_errno - convert an NFS status code to a local errno
-+ * @status: NFS status code to convert
-+ *
-+ * Returns a local errno value, or -EIO if the NFS status code is
-+ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-+ */
-+int nfs_stat_to_errno(enum nfs_stat status)
-+{
-+	int i;
-+
-+	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
-+		if (nfs_errtbl[i].stat == (int)status)
-+			return nfs_errtbl[i].errno;
-+	}
-+	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
-+	return nfs_errtbl[i].errno;
-+}
-+
- module_param(nfs4_disable_idmapping, bool, 0644);
- MODULE_PARM_DESC(nfs4_disable_idmapping,
- 		"Turn off NFSv4 idmapping when using 'sec=sys'");
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 1f56000..a01084d 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -1057,70 +1057,6 @@ out_default:
- 	return nfs_stat_to_errno(status);
+ /* nfs4proc.c */
+ extern void __nfs4_read_done_cb(struct nfs_read_data *);
+-extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
++extern int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data);
++extern int nfs4_write_done_cb(struct rpc_task *task,
++			      struct nfs_write_data *data);
+ extern int nfs4_init_client(struct nfs_client *clp,
+ 			    const struct rpc_timeout *timeparms,
+ 			    const char *ip_addr,
+ 			    rpc_authflavor_t authflavour,
+ 			    int noresvport);
+-extern void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data);
+ extern int _nfs4_call_sync(struct rpc_clnt *clnt,
+ 			   struct nfs_server *server,
+ 			   struct rpc_message *msg,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 379a085..447c2c9 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -82,6 +82,37 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+ 	BUG();
  }
  
--
--/*
-- * We need to translate between nfs status return values and
-- * the local errno values which may not be the same.
-- */
--static const struct {
--	int stat;
--	int errno;
--} nfs_errtbl[] = {
--	{ NFS_OK,		0		},
--	{ NFSERR_PERM,		-EPERM		},
--	{ NFSERR_NOENT,		-ENOENT		},
--	{ NFSERR_IO,		-errno_NFSERR_IO},
--	{ NFSERR_NXIO,		-ENXIO		},
--/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
--	{ NFSERR_ACCES,		-EACCES		},
--	{ NFSERR_EXIST,		-EEXIST		},
--	{ NFSERR_XDEV,		-EXDEV		},
--	{ NFSERR_NODEV,		-ENODEV		},
--	{ NFSERR_NOTDIR,	-ENOTDIR	},
--	{ NFSERR_ISDIR,		-EISDIR		},
--	{ NFSERR_INVAL,		-EINVAL		},
--	{ NFSERR_FBIG,		-EFBIG		},
--	{ NFSERR_NOSPC,		-ENOSPC		},
--	{ NFSERR_ROFS,		-EROFS		},
--	{ NFSERR_MLINK,		-EMLINK		},
--	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
--	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
--	{ NFSERR_DQUOT,		-EDQUOT		},
--	{ NFSERR_STALE,		-ESTALE		},
--	{ NFSERR_REMOTE,	-EREMOTE	},
--#ifdef EWFLUSH
--	{ NFSERR_WFLUSH,	-EWFLUSH	},
--#endif
--	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
--	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
--	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
--	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
--	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
--	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
--	{ NFSERR_BADTYPE,	-EBADTYPE	},
--	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
--	{ -1,			-EIO		}
--};
--
--/**
-- * nfs_stat_to_errno - convert an NFS status code to a local errno
-- * @status: NFS status code to convert
-- *
-- * Returns a local errno value, or -EIO if the NFS status code is
-- * not recognized.  This function is used jointly by NFSv2 and NFSv3.
-- */
--int nfs_stat_to_errno(enum nfs_stat status)
++/* Reset the the nfs_write_data to send the write to the MDS. */
++void filelayout_reset_write(struct rpc_task *task, struct nfs_write_data *data)
++{
++	dprintk("%s Reset task for i/o through\n", __func__);
++	put_lseg(data->lseg);
++	data->lseg          = NULL;
++	data->ds_clp        = NULL;
++	data->write_done_cb = nfs4_write_done_cb;
++	data->args.fh       = NFS_FH(data->inode);
++	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
++	data->args.offset   = data->mds_offset;
++	data->res.fattr     = &data->fattr;
++	task->tk_ops        = data->mds_ops;
++	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
++}
++
++/* Reset the the nfs_read_data to send the read to the MDS. */
++void filelayout_reset_read(struct rpc_task *task, struct nfs_read_data *data)
++{
++	dprintk("%s Reset task for i/o through\n", __func__);
++	put_lseg(data->lseg);
++	data->lseg         = NULL;
++	/* offsets will differ in the dense stripe case */
++	data->args.offset  = data->mds_offset;
++	data->ds_clp       = NULL;
++	data->args.fh      = NFS_FH(data->inode);
++	data->read_done_cb = nfs4_read_done_cb;
++	task->tk_ops = data->mds_ops;
++	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
++}
++
+ static int filelayout_async_handle_error(struct rpc_task *task,
+ 					 struct nfs4_state *state,
+ 					 struct nfs_client *clp,
+@@ -158,7 +189,7 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+ 		if (reset) {
+ 			pnfs_set_lo_fail(data->lseg);
+-			nfs4_reset_read(task, data);
++			filelayout_reset_read(task, data);
+ 		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+@@ -238,7 +269,7 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+ 			__func__, data->ds_clp, data->ds_clp->cl_session);
+ 		if (reset) {
+ 			pnfs_set_lo_fail(data->lseg);
+-			nfs4_reset_write(task, data);
++			filelayout_reset_write(task, data);
+ 		}
+ 		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5e0961a..45b67d8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3264,7 +3264,7 @@ void __nfs4_read_done_cb(struct nfs_read_data *data)
+ 	nfs_invalidate_atime(data->inode);
+ }
+ 
+-static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
++int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+ 
+@@ -3278,6 +3278,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ 		renew_lease(server, data->timestamp);
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs4_read_done_cb);
+ 
+ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+ {
+@@ -3299,23 +3300,7 @@ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message
+ 	nfs41_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+ }
+ 
+-/* Reset the the nfs_read_data to send the read to the MDS. */
+-void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data)
 -{
--	int i;
--
--	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
--		if (nfs_errtbl[i].stat == (int)status)
--			return nfs_errtbl[i].errno;
--	}
--	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
--	return nfs_errtbl[i].errno;
+-	dprintk("%s Reset task for i/o through\n", __func__);
+-	put_lseg(data->lseg);
+-	data->lseg = NULL;
+-	/* offsets will differ in the dense stripe case */
+-	data->args.offset = data->mds_offset;
+-	data->ds_clp = NULL;
+-	data->args.fh     = NFS_FH(data->inode);
+-	data->read_done_cb = nfs4_read_done_cb;
+-	task->tk_ops = data->mds_ops;
+-	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
 -}
+-EXPORT_SYMBOL_GPL(nfs4_reset_read);
 -
- #define PROC(proc, argtype, restype, timer)				\
- [NFSPROC_##proc] = {							\
- 	.p_proc	    =  NFSPROC_##proc,					\
+-static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
++int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+ 	
+@@ -3329,6 +3314,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ 	}
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs4_write_done_cb);
+ 
+ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+@@ -3338,23 +3324,6 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		nfs4_write_done_cb(task, data);
+ }
+ 
+-/* Reset the the nfs_write_data to send the write to the MDS. */
+-void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data)
+-{
+-	dprintk("%s Reset task for i/o through\n", __func__);
+-	put_lseg(data->lseg);
+-	data->lseg          = NULL;
+-	data->ds_clp        = NULL;
+-	data->write_done_cb = nfs4_write_done_cb;
+-	data->args.fh       = NFS_FH(data->inode);
+-	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
+-	data->args.offset   = data->mds_offset;
+-	data->res.fattr     = &data->fattr;
+-	task->tk_ops        = data->mds_ops;
+-	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
+-}
+-EXPORT_SYMBOL_GPL(nfs4_reset_write);
+-
+ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
 -- 
-1.7.9.4
+1.7.6.4
 
