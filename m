@@ -1,47 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28758 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:58513 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754027Ab2CLREn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 13:04:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-CC: Dr James Bruce Fields <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Bug in gss_krb5_crypto.c
-Date: Mon, 12 Mar 2012 17:04:25 +0000
-Message-ID: <1331571865.8219.23.camel@lade.trondhjem.org>
-References: <1331504084.2792.7.camel@lade.trondhjem.org>
-	 <20120311230249.GA1305@fieldses.org>
-	 <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
-In-Reply-To: <CAKnQG+fCO83KTjQZoqW7RqUn7NerhudEUPD+5-WBEQe=9RSZzg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1750810Ab2CPUfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 16:35:22 -0400
+Date: Fri, 16 Mar 2012 16:35:21 -0400
+To: Alexandre Depoutovitch <adepoutovitch@vmware.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: About Direct I/O
+Message-ID: <20120316203521.GA22929@fieldses.org>
+References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
+ <6866525b.00001bd8.0000023d@aldep-VC.vmware.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <6866525b.00001bd8.0000023d@aldep-VC.vmware.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTEyIGF0IDExOjEzIC0wNDAwLCBLZXZpbiBDb2ZmbWFuIHdyb3RlOg0K
-PiBPbiBTdW4sIE1hciAxMSwgMjAxMiBhdCA3OjAyIFBNLCBEciBKYW1lcyBCcnVjZSBGaWVsZHMN
-Cj4gPGJmaWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCj4gPiBPbiBTdW4sIE1hciAxMSwgMjAx
-MiBhdCAxMDoxNDo0NFBNICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiBIaSBL
-ZXZpbiAmIEJydWNlLA0KPiA+Pg0KPiA+PiBXaGVuIHJ1bm5pbmcgc3BhcnNlIG9uIHRoZSBzdW5y
-cGMgY29kZSwgSSdtIHNlZWluZyB0aGUgZm9sbG93aW5nIGVycm9yDQo+ID4+IG1lc3NhZ2U6DQo+
-ID4+ICJuZXQvc3VucnBjL2F1dGhfZ3NzL2dzc19rcmI1X2NyeXB0by5jOjYwMzo1MjogZXJyb3I6
-IGJhZCBjb25zdGFudA0KPiA+PiBleHByZXNzaW9uIg0KPiA+Pg0KPiA+PiBUaGlzIGJvaWxzIGRv
-d24gdG8gdGhlIGxpbmU6DQo+ID4+ICAgICAgICAgdTggZGF0YVtjcnlwdG9fYmxrY2lwaGVyX2Js
-b2Nrc2l6ZShjaXBoZXIpICogMl07DQo+ID4NCj4gPiBPb3BzLg0KPiA+DQo+ID4+IHdoaWNoIGlz
-IHVzaW5nIGEgR05VIENjLWlzbSBpbiBvcmRlciB0byBkbyBkeW5hbWljIGFsbG9jYXRpb24gb24g
-dGhlDQo+ID4+IHN0YWNrLiBUaGlzIGlzIG5vdCBhY2NlcHRhYmxlIGluIGtlcm5lbCBjb2RlLCBh
-bmQgcmVhbGx5IG5lZWRzIHRvIGJlDQo+ID4+IGNoYW5nZWQuIEhvdyBzaG91bGQgd2UgbW92ZSBm
-b3J3YXJkIHdpdGggdGhpcz8gSXMgdGhlcmUgYW4gdXBwZXIgbGltaXQNCj4gPj4gb24gdGhlIHZh
-bHVlIG9mIGNyeXB0b19ibGtjaXBoZXJfYmxvY2tzaXplKGNpcGhlcikgdGhhdCB3ZSBjYW4gdXNl
-Pw0KPiA+DQo+ID4gSSB0aGluayBpdCdzIGFsd2F5cyBlaXRoZXIgOCBvciAxNi4NCj4gPg0KPiA+
-IC0tYi4NCj4gPg0KPiANCj4gWWVzLCBJIHRoaW5rIDE2IGlzIGN1cnJlbnRseSB0aGUgdXBwZXIg
-YmxvY2tzaXplIGxpbWl0LiAgSSB3YXMNCj4gdGhpbmtpbmcgdGhlcmUgd2FzIGEgY29uc3RhbnQg
-ZGVmaW5lZCBpbiBhIGhlYWRlciBmb3IgdGhlDQo+IG1heGJsb2Nrc2l6ZSwgYnV0IEknbSBub3Qg
-YWJsZSB0byBnZXQgdG8gbXkgbWFjaGluZSB0byBncmVwIGZvciBpdA0KPiByaWdodCBub3cuDQoN
-CkkgY2FuJ3Qgc2VlIGFuIGFic29sdXRlIG1heGltdW0gZm9yIHRoZSBibG9ja3NpemUuIFRoZSBi
-aWdnZXN0IGJsb2Nrc2l6ZQ0KdGhhdCBJIGNhbiBmaW5kIGluIHRoZSBzb3VyY2VzIG5vdyBpcyBT
-SEE1MTJfQkxPQ0tfU0laRSwgd2l0aCB0aGUgdmFsdWUNCjEyOC4gVGhhdCBsb29rcyBhIGxpdHRs
-ZSBsYXJnZSB0byBiZSB1c2luZyBpbiBhIHN0YWNrIHZhcmlhYmxlLg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Fri, Mar 16, 2012 at 11:14:04AM -0700, Alexandre Depoutovitch wrote:
+> Hello,
+> I am trying to do random sector aligned writes to an NFS mounted disk. The
+> performance is order of magnitude worse than 4K (file system block size)
+> aligned I/O.
+> The reason is that NFS demon (Linux kernel 2.6.32) on the server side
+> always does buffered I/O, which behaves poorly for block unaligned
+> requests.
+> Is there a way to tell NFS daemon to use direct I/O? 
+
+No.
+
+> If not, is it an implementation limitation or there is a fundamental
+> problem with using direct I/O in NFS server?
+
+I'm shamefully ignorant of Direct IO....
+
+If we supported Direct IO, are there heuristics that would let the
+server figure out on its own when it helped and when it didn't?  Or
+would the administrator be stuck trying to figure that out?
+
+Is Direct IO possible from kernel buffers these days?  Are there
+alignment restrictions?
+
+--b.
