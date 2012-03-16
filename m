@@ -1,104 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o145.mxlogic.net ([208.65.144.78]:51304 "EHLO
-	p02c11o145.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754050Ab2COSay convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 14:30:54 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 15 Mar 2012 14:29:07 -0400
-Subject: RE: [PATCH 1/1] nfsd: Warn when no servers are specified on the
- command line
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C8012@IT-1874.Isys.com>
-References: <1331832223-20737-1-git-send-email-steved@redhat.com>
- <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C800D@IT-1874.Isys.com>
- <4F6232CF.7010509@RedHat.com>
-In-Reply-To: <4F6232CF.7010509@RedHat.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:36389 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755697Ab2CPTDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 15:03:34 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2GJ3Y07015581
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 12:03:34 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Error: state manager encountered RPCSEC_GSS session expired
+ against NFSv4 server
+Date: Fri, 16 Mar 2012 19:03:33 +0000
+Message-ID: <1331924613.12136.1.camel@lade.trondhjem.org>
+References: <1331912791.2336.3.camel@localhost>
+	 <1331919386.2518.44.camel@lade.trondhjem.org>
+	 <4F637B68.2000202@fifthhorseman.net>
+In-Reply-To: <4F637B68.2000202@fifthhorseman.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I suspect that no arguments are being specified by nfsd, then they didn't do much configuration.  :-)
-
-Hmmm, I guess, without having checked, I had assumed that the default was 8.  1 seems like a pretty questionable default.
-
-	Thanx...
-
-		ps
-
-
------Original Message-----
-From: Steve Dickson [mailto:SteveD@redhat.com] 
-Sent: Thursday, March 15, 2012 2:20 PM
-To: Peter Staubach
-Cc: Linux NFS Mailing list
-Subject: Re: [PATCH 1/1] nfsd: Warn when no servers are specified on the command line
-
-
-
-On 03/15/2012 02:01 PM, Peter Staubach wrote:
-> I am curious why such a message is required?  
-To let people know their NFS server may not be configured as expected.
-
-> Isn't the reason for having a default is so that the option does not need to specified?
-I guess... but starting one nfsd is probably not what people want to do... Maybe bumping the default up to a more reasonable number could work... 
-
-steved.
-
-> 
-> 	Thanx...
-> 
-> 		ps
-> 
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Steve Dickson
-> Sent: Thursday, March 15, 2012 1:24 PM
-> To: Linux NFS Mailing list
-> Subject: [PATCH 1/1] nfsd: Warn when no servers are specified on the 
-> command line
-> 
-> When the number of servers are not specified on the command, log a 
-> warning message that the default number of services will be started
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/nfsd/nfsd.c |    7 +++++--
->  1 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c index 
-> 8bc5d3a..c744ee1 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -188,6 +188,8 @@ main(int argc, char **argv)
->  		}
->  	}
->  
-> +	xlog_open(progname);
-> +
->  	if (optind < argc) {
->  		if ((count = atoi(argv[optind])) < 0) {
->  			/* insane # of servers */
-> @@ -203,10 +205,11 @@ main(int argc, char **argv)
->  			socket_up = 1;
->  			goto set_threads;
->  		}
-> +	} else {
-> +		xlog(L_WARNING, "No server number specified. '%d' nfsd will be started",
-> +			count);
->  	}
->  
-> -	xlog_open(progname);
-> -
->  	nfsd_enable_protos(&proto4, &proto6);
->  
->  	if (!NFSCTL_TCPISSET(protobits)) {
-> --
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
+T24gRnJpLCAyMDEyLTAzLTE2IGF0IDEzOjQyIC0wNDAwLCBEYW5pZWwgS2FobiBHaWxsbW9yIHdy
+b3RlOg0KPiBPbiAwMy8xNi8yMDEyIDAxOjM2IFBNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0K
+PiA+IFRoZSBwcm9ibGVtIGlzIHRoYXQgaWYgdGhlIGNsaWVudCBkb2Vzbid0IGhhdmUgYSBtYWNo
+aW5lIGNyZWQsIHRoZW4geW91DQo+ID4gZW5kIHVwIHRha2luZyBhIHJhbmRvbSB1c2VyIGNyZWRl
+bnRpYWwgdGhhdCBtYXkgbm90IGN1cnJlbnRseSBiZSBob2xkaW5nDQo+ID4gYW55IE9QRU4gZmls
+ZXMuIEluIHRoYXQgY2FzZSB0b28gdGhlIFJFTkVXIHdpbGwgZmFpbC4NCj4gDQo+IFNvIGlmIGkn
+bSB1bmRlcnN0YW5kaW5nIHRoaXMgcmlnaHQ6DQo+IA0KPiBTYWNoaW4ncyBwcm9wb3NhbCBmYWls
+cyB3aGVuIHRoZSBtYWNoaW5lIGhhcyBubyBtYWNoaW5lIGNyZWRzLg0KPiANCj4gVGhlIGN1cnJl
+bnQgaW1wbGVtZW50YXRpb24gZmFpbHMgd2hlbiB0aGUgbG9nZ2VkLWluIHVzZXIncyBjcmVkZW50
+aWFscyANCj4gYXJlIGV4cGlyZWQuDQo+IA0KPiBDYW4gdGhlIE5GUyBjbGllbnQncyBsb2dpYyB0
+ZXN0IGZvciB0aG9zZSBkaWZmZXJlbnQgY2FzZXMsIHVzZSB0aGUgDQo+IGFwcHJvcHJpYXRlIGNy
+ZWRzIGZvciBSRU5FVyBpbiB0aGVpciBkaWZmZXJlbmNlLCBhbmQgcmVkdWNlIHRoZSBmYWlsdXJl
+IA0KPiBjYXNlIHRvIHRoZWlyIGludGVyc2VjdGlvbj8NCg0KU2ltcGxlciBzb2x1dGlvbjogYWRk
+IHRoZSBjYWxsIHRvIGdldCBtYWNoaW5lIGNyZWRzIHRvIHRoZSBleGlzdGluZw0KZ2V0X3JlbmV3
+X2NyZWRzIGZ1bmN0aW9uLg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
