@@ -1,44 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:44709 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755526Ab2CNS5U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Mar 2012 14:57:20 -0400
-Message-ID: <4F60EA07.5040008@panasas.com>
-Date: Wed, 14 Mar 2012 11:57:11 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Al Viro <viro@ZenIV.linux.org.uk>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs-obj: Uglify objio_segment allocation for the sake
- of the principle :-(
-References: <4F60141A.709@panasas.com> <20120314051509.GH23916@ZenIV.linux.org.uk>
-In-Reply-To: <20120314051509.GH23916@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:30436 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1031249Ab2CPNla (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 09:41:30 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2GDfUKd016531
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 09:41:30 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q2GDfUIH021229
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 09:41:30 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] nfsd: Bump up the default to 8 nprocs
+Date: Fri, 16 Mar 2012 09:40:56 -0400
+Message-Id: <1331905256-21639-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/13/2012 10:15 PM, Al Viro wrote:
-> On Tue, Mar 13, 2012 at 08:44:26PM -0700, Boaz Harrosh wrote:
->> +/*	This is the in memory structure of the objio_segment
->> + *
->> + *	struct __alloc_objio_segment {
->> + *		struct objio_segment olseg;
->> + *		struct ore_dev *ods[numdevs];
->> + *		struct ore_comp	comps[numdevs];
->> + *	} *aolseg;
->> + *	NOTE: The code as above compiles and runs perfectly. It is elegant,
->> + *	type safe and compact.
-> 
-> In which type system?  Not C99 - there variably-modified types are not
-> allowed as structure or union members...
+When the nproc argument is not given the rpc.nfsd
+a default number of processes is created. This
+patch bumps that default up from 1 to 8.
 
-Yes. It's not C99. It's a GCC extension that's also supported by
-some other compilers.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsd/nfsd.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-But the Kernel is full of GCC extensions. Not like this is the
-first one.
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 8bc5d3a..2a3f5cc 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -27,6 +27,10 @@
+ #include "nfssvc.h"
+ #include "xlog.h"
+ 
++#ifndef NFSD_NPROC
++#define NFSD_NPROC 8
++#endif
++
+ static void	usage(const char *);
+ 
+ static struct option longopts[] =
+@@ -90,7 +94,7 @@ nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
+ int
+ main(int argc, char **argv)
+ {
+-	int	count = 1, c, error = 0, portnum = 0, fd, found_one;
++	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
+ 	char *p, *progname, *port;
+ 	char *haddr = NULL;
+ 	int	socket_up = 0;
+-- 
+1.7.7.6
 
-Thanks
-Boaz
