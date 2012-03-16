@@ -1,72 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25462 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965153Ab2CFPSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 10:18:08 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1 do not clear NFS_DELEAGED_STATE until
- stateid is tested
-Date: Tue, 6 Mar 2012 15:17:51 +0000
-Message-ID: <1331047071.3260.10.camel@lade.trondhjem.org>
-References: <1331045205-3031-1-git-send-email-andros@netapp.com>
-	 <1331045205-3031-4-git-send-email-andros@netapp.com>
-	 <1331045602.3260.7.camel@lade.trondhjem.org>
-	 <CAHVgHyXMqqP9UDumwdAzQyZAS2o-JoLrzYUMkgs0xNtz3X3Xvw@mail.gmail.com>
-In-Reply-To: <CAHVgHyXMqqP9UDumwdAzQyZAS2o-JoLrzYUMkgs0xNtz3X3Xvw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:38036 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1031833Ab2CPHqE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 03:46:04 -0400
 MIME-Version: 1.0
+In-Reply-To: <1331859549.25523.5.camel@lade.trondhjem.org>
+References: <1331836132-2053-1-git-send-email-vtrivedi018@gmail.com>
+	<1331859549.25523.5.camel@lade.trondhjem.org>
+Date: Fri, 16 Mar 2012 13:16:01 +0530
+Message-ID: <CAKX=r8D3iYvvf8T+yK6VDHEzdY9zGtPHK5-0xm8ZaBU2aLKWhw@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFS: fix sb->s_id in nfs debug prints
+From: Vivek Trivedi <vtrivedi018@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Namjae Jeon <linkinjeon@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTAzLTA2IGF0IDEwOjEyIC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIFR1ZSwgTWFyIDYsIDIwMTIgYXQgOTo1MyBBTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIFR1ZSwgMjAxMi0wMy0wNiBh
-dCAwOTo0NiAtMDUwMCwgYW5kcm9zQG5ldGFwcC5jb20gd3JvdGU6DQo+ID4+IEZyb206IEFuZHkg
-QWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+ID4+DQo+ID4+IG5mczQxX29wZW5fZXhwaXJl
-ZCgpIHdpbGwgdGVzdCB0aGUgZGVsZWdhdGlvbiBzdGF0ZWlkIGJhc2VkIG9uDQo+ID4+IE5GU19E
-RUxFR0FURURfU1RBVEUgYmVpbmcgc2V0LiBJZiB0aGUgc3RhdGVpZCBpcyBiYWQsIG5mczRfb3Bl
-bl9yZWNvdmVyDQo+ID4+IHdpbGwgY2xlYXIgdGhlIE5GU19ERUxFR0FURURfU1RBVEUgYml0IHJl
-Y292ZXJpbmcgdGhlIGRlbGVnYXRpb24uDQo+ID4+DQo+ID4+IFNpZ25lZC1vZmYtYnk6IEFuZHkg
-QWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+ID4+IENjOiBzdGFibGVAdmdlci5rZXJuZWwu
-b3JnDQo+ID4+IC0tLQ0KPiA+PiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgICAgNSArKysrLQ0KPiA+
-PiAgMSBmaWxlcyBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pDQo+ID4+
-DQo+ID4+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRl
-LmMNCj4gPj4gaW5kZXggN2JkOTgyMi4uNDRmY2Q2MCAxMDA2NDQNCj4gPj4gLS0tIGEvZnMvbmZz
-L25mczRzdGF0ZS5jDQo+ID4+ICsrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiA+PiBAQCAtNjk2
-LDcgKzY5NiwxMCBAQCBzdGF0aWMgdm9pZCBfX25mczRfY2xvc2Uoc3RydWN0IG5mczRfc3RhdGUg
-KnN0YXRlLA0KPiA+PiAgICAgICAgICAgICAgICAgICAgICAgY2FsbF9jbG9zZSB8PSB0ZXN0X2Jp
-dChORlNfT19SRFdSX1NUQVRFLCAmc3RhdGUtPmZsYWdzKTsNCj4gPj4gICAgICAgICAgICAgICB9
-DQo+ID4+ICAgICAgICAgICAgICAgaWYgKG5ld3N0YXRlID09IDApDQo+ID4+ICt7DQo+ID4+ICtw
-cmludGsoIiVzIENMRUFSIE5GU19ERUxFR0FURURfU1RBVEUgc3RhdGUgJXBcbiIsIF9fZnVuY19f
-LCBzdGF0ZSk7DQo+ID4+ICAgICAgICAgICAgICAgICAgICAgICBjbGVhcl9iaXQoTkZTX0RFTEVH
-QVRFRF9TVEFURSwgJnN0YXRlLT5mbGFncyk7DQo+ID4+ICt9XA0KPiA+DQo+ID4gRXd3dy4uLi4u
-DQo+ID4NCj4gPj4gICAgICAgfQ0KPiA+PiAgICAgICBuZnM0X3N0YXRlX3NldF9tb2RlX2xvY2tl
-ZChzdGF0ZSwgbmV3c3RhdGUpOw0KPiA+PiAgICAgICBzcGluX3VubG9jaygmb3duZXItPnNvX2xv
-Y2spOw0KPiA+PiBAQCAtMTA5Nyw3ICsxMTAwLDcgQEAgdm9pZCBuZnM0X3NjaGVkdWxlX3N0YXRl
-aWRfcmVjb3ZlcnkoY29uc3Qgc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mczQN
-Cj4gPj4gIHsNCj4gPj4gICAgICAgc3RydWN0IG5mc19jbGllbnQgKmNscCA9IHNlcnZlci0+bmZz
-X2NsaWVudDsNCj4gPj4NCj4gPj4gLSAgICAgaWYgKHRlc3RfYW5kX2NsZWFyX2JpdChORlNfREVM
-RUdBVEVEX1NUQVRFLCAmc3RhdGUtPmZsYWdzKSkNCj4gPj4gKyAgICAgaWYgKHRlc3RfYml0KE5G
-U19ERUxFR0FURURfU1RBVEUsICZzdGF0ZS0+ZmxhZ3MpKQ0KPiA+PiAgICAgICAgICAgICAgIG5m
-c19hc3luY19pbm9kZV9yZXR1cm5fZGVsZWdhdGlvbihzdGF0ZS0+aW5vZGUsICZzdGF0ZS0+c3Rh
-dGVpZCk7DQo+ID4+ICAgICAgIG5mczRfc3RhdGVfbWFya19yZWNsYWltX25vZ3JhY2UoY2xwLCBz
-dGF0ZSk7DQo+ID4+ICAgICAgIG5mczRfc2NoZWR1bGVfc3RhdGVfbWFuYWdlcihjbHApOw0KPiA+
-DQo+ID4gQWN0dWFsbHksIHRoZSBsYXRlc3QgaW5jYXJuYXRpb24gb2YgdGhlIHBhdGNoIDIvMyBy
-ZW1vdmVzIHRoZQ0KPiA+IGFzeW5jX2lub2RlX3JldHVybl9kZWxlZ2F0aW9uIGZyb20gbmZzNF9z
-Y2hlZHVsZV9zdGF0ZWlkX3JlY292ZXJ5Lg0KPiANCj4gT0sgLSBidXQgSSB0aGluayB3ZSBzdGls
-bCBuZWVkIHRvIHBvc3Rwb25lIGNsZWFyaW5nIHRoZQ0KPiBORlNfREVMRUdBVEVEX1NUQVRFIGJp
-dCB1bnRpbCBhZnRlciBjYWxsaW5nIG5mczQxX29wZW5fZXhwaXJlZC4NCj4gT3RoZXJ3aXNlIG5m
-czQxX2NoZWNrX2V4cGlyZWRfc3RhdGVpZCB3aWxsIG5vdCB0ZXN0IHRoZSBkZWxlZ2F0aW9uDQo+
-IHN0YXRlaWQsIGFuZCBuZnM0X29wZW5fcmVjb3ZlciB3aWxsIG5vdCBiZSBjYWxsZWQsIGFzIG5v
-IHN0YXRlaWQgaXMNCj4gZGVlbWVkIGJhZCwgYW5kIHRoZSBPUEVOIHdpdGggQ0xBSU1fTlVMTCB0
-byAocG90ZW50aWFsbHkpIHJlY292ZXIgdGhlDQo+IGRlbGVnYXRpb24gd2lsbCBub3QgYmUgc2Vu
-dC4gSW4gdGhpcyBjYXNlLCB0aGUgb2xkIGJhZCBkZWxlZ2F0aW9uDQo+IHN0YXRlaWQgd2lsbCBi
-ZSByZXNlbnQuDQoNCkFncmVlZC4gUGxlYXNlIHNlZSB0aGUgJ3YyJyBwYXRjaCB0aGF0IEkgc2Vu
-dCB5b3U6IGl0IHJlbW92ZXMgX2JvdGhfDQpsaW5lcyBhYm92ZSAodGhlIHRlc3QvY2xlYXJpbmcg
-b2YgdGhlIGJpdCBhbmQgdGhlIGRlbGVnYXRpb24gcmV0dXJuKS4NCg0KLS0gDQpUcm9uZCBNeWts
-ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+Trond,
+I agree that s_id is fs specific.
+
+If a NFS client is connected to multiple NFS servers and we want to
+analyse NFS IO using rpcdebug prints, ps and top ..
+If we store s_id in decimal, it will be a little easier to relate NFS
+debug prints with *each* NFS flusher thread activity.
+
+AFIK, In NFS, s_id is mainly used in debug prints, so storing s_id in
+decimal may increase readability in NFS debug prints.
+
+Is there any harm if we store NFS s_id in decimal ?
+Please let me know your opinion.
+
+Thanks,
+Vivek
+
+On Fri, Mar 16, 2012 at 6:29 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-03-15 at 23:58 +0530, Vivek Trivedi wrote:
+>> NFS bdi flush thread in ps output is printed like "flush-<major number
+>> in decimal>:<minor number in decimal>"
+>> For example:
+>> $ ps aux | grep flush
+>>  2079 root         0 SW   [flush-0:18]
+>>                                  ^^^^
+>>
+>> nfs_bdi_register()
+>> ==> bdi_register_dev()
+>> ==> bdi_register(bdi, NULL, "%u:%u", MAJOR(dev), MINOR(dev));
+>>                              ^^^^^
+>>
+>> However, NFS sb->s_id store major:minor number in hex:
+>>
+>> nfs_initialise_sb()
+>> ==>         snprintf(sb->s_id, sizeof(sb->s_id),
+>>                  "%x:%x", MAJOR(sb->s_dev), MINOR(sb->s_dev));
+>>                   ^^^^^
+>>
+>> If we enable nfs debug prints using command:
+>> $ rpcdebug -m nfs -s all
+>>
+>> write to a file:
+>> $ dd if=/dev/zero of=<NFS Mount>/testfile.txt bs=32768 count=1
+>>
+>> Without Patch:
+>> [ 2431.032000] NFS:     0 initiated write call (req 0:12/40, 32768 bytes
+>> @ offset 0)                                         ^^^^
+>>
+>> With Patch:
+>> [ 2431.032000] NFS:     0 initiated write call (req 0:18/40, 32768 bytes
+>> @ offset 0)                                         ^^^^
+>>
+>> We should store NFS "s->s_id" in decimal to avoid confusion between NFS
+>> flush thread name(in ps output) and NFS debug prints.
+>
+> Why do we care? The s_id is entirely filesystem-specific so it shouldn't
+> be compared to the properties of VFS objects anyway.
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
