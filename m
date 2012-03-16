@@ -1,103 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58614 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758843Ab2C1XoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 19:44:02 -0400
-From: Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, dchinner@redhat.com, sandeen@redhat.com,
-        Kamal Mostafa <kamal@canonical.com>, Jan Kara <jack@suse.cz>,
-        Alex Elder <elder@kernel.org>, Anton Altaparmakov <anton@tuxera.com>,
-        Ben Myers <bpm@sgi.com>, Chris Mason <chris.mason@oracle.com>,
-        cluster-devel@redhat.com, "David S. Miller" <davem@davemloft.net>,
-        fuse-devel@lists.sourceforge.net,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Joel Becker <jlbec@evilplan.org>,
-        KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, Mark Fasheh <mfasheh@suse.com>,
-        Miklos Szeredi <miklos@szeredi.hu>, ocfs2-devel@oss.oracle.com,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, xfs@oss.sgi.com
-Subject: [PATCH 00/19 v4] Fix filesystem freezing deadlocks
-Date: Thu, 29 Mar 2012 01:43:15 +0200
-Message-Id: <1332978214-15535-1-git-send-email-jack@suse.cz>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:52255 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760812Ab2CPPFS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 11:05:18 -0400
+Received: by wejx9 with SMTP id x9so4001947wej.19
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 08:05:17 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1331858152.24392.12.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	<1331836850-5195-12-git-send-email-andros@netapp.com>
+	<1331858152.24392.12.camel@lade.trondhjem.org>
+Date: Fri, 16 Mar 2012 11:05:17 -0400
+Message-ID: <CAHVgHyWxfH=9hbp0-NecBjbgfAwCMKBzv4oa5NOy_cJC8Pa6RQ@mail.gmail.com>
+Subject: Re: [PATCH Version 1 11/11] NFSv4.1 de reference a disconnected data
+ server client record
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  Hello,
+On Thu, Mar 15, 2012 at 8:35 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-03-15 at 14:40 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> When the last DS io is processed, the data server client record will be
+>> freed.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/nfs4filelayout.c    |    4 ++++
+>>  fs/nfs/nfs4filelayout.h    |    1 +
+>>  fs/nfs/nfs4filelayoutdev.c |   17 +++++++++++++++++
+>>  3 files changed, 22 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 4c846cb..28b71bf 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -209,10 +209,12 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+>>                       reset, data->ds_clp, data->ds_clp->cl_session);
+>>
+>>               if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
+>> +                     struct nfs_client *clp = data->ds_clp;
+>>                       filelayout_reset_read(task, data);
+>>                       if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+>>                               filelayout_mark_devid_invalid(devid);
+>>                               rpc_drain_queue(&tbl->slot_tbl_waitq);
+>> +                             nfs4_ds_disconnect(clp);
+>>                       }
+>>               }
+>>               rpc_restart_call_prepare(task);
+>> @@ -310,10 +312,12 @@ static int filelayout_write_done_cb(struct rpc_task *task,
+>>                       reset, data->ds_clp, data->ds_clp->cl_session);
+>>
+>>               if (test_bit(NFS4_RESET_TO_MDS, &reset)) {
+>> +                     struct nfs_client *clp = data->ds_clp;
+>>                       filelayout_reset_write(task, data);
+>>                       if (test_bit(NFS4_RESET_DEVICEID, &reset)) {
+>>                               filelayout_mark_devid_invalid(devid);
+>>                               rpc_drain_queue(&tbl->slot_tbl_waitq);
+>> +                             nfs4_ds_disconnect(clp);
+>
+> What guarantees at this point that all the RPC calls have terminated?
 
-  here is the fourth iteration of my patches to improve filesystem freezing.
-Filesystem freezing is currently racy and thus we can end up with dirty data on
-frozen filesystem (see changelog patch 06 for detailed race description). This
-patch series aims at fixing this.
+That is not the intention of the call to nfs4_ds_disconnect.
 
-To be able to block all places where inodes get dirtied, I've moved filesystem
-freeze handling in mnt_want_write() / mnt_drop_write(). This however required
-some code shuffling and changes to kern_path_create() (see patches 02-05). I
-think the result is OK but opinions may differ ;). The advantage of this change
-also is that all filesystems get freeze protection almost for free - even ext2
-can handle freezing well now.
+What is guaranteed is:
 
-Another potential contention point might be patch 19. In that patch we make
-freeze_super() refuse to freeze the filesystem when there are open but unlinked
-files which may be impractical in some cases. The main reason for this is the
-problem with handling of file deletion from fput() called with mmap_sem held
-(e.g. from munmap(2)), and then there's the fact that we cannot really force
-such filesystem into a consistent state... But if people think that freezing
-with open but unlinked files should happen, then I have some possible
-solutions in mind (maybe as a separate patchset since this is large enough).
+1) there are no more new calls using the DS session due to the invalid deviceid.
+2) all calls (including outstanding calls) have a reference to the DS nfs_client
+3) once the last outstanding call has been processed and it's
+nfs_put_client has been called, because of the nfs_put_client call in
+nfs4_ds_disconnect, the DS nfs_client is freed.
 
-I'm not able to hit any deadlocks, lockdep warnings, or dirty data on frozen
-filesystem despite beating it with fsstress and bash-shared-mapping while
-freezing and unfreezing for several hours (using ext4 and xfs) so I'm
-reasonably confident this could finally be the right solution.
 
-And for people wanting to test - this patchset is based on patch series
-"Push file_update_time() into .page_mkwrite" so you'll need to pull that one
-in as well.
-
-Changes since v3:
-  * added third level of freezing for fs internal purposes - hooked some
-    filesystems to use it (XFS, nilfs2)
-  * removed racy i_size check from filemap_mkwrite()
-
-Changes since v2:
-  * completely rewritten
-  * freezing is now blocked at VFS entry points
-  * two stage freezing to handle both mmapped writes and other IO
-
-The biggest changes since v1:
-  * have two counters to provide safe state transitions for SB_FREEZE_WRITE
-    and SB_FREEZE_TRANS states
-  * use percpu counters instead of own percpu structure
-  * added documentation fixes from the old fs freezing series
-  * converted XFS to use SB_FREEZE_TRANS counter instead of its private
-    m_active_trans counter
-
-								Honza
-
-CC: Alex Elder <elder@kernel.org>
-CC: Anton Altaparmakov <anton@tuxera.com>
-CC: Ben Myers <bpm@sgi.com>
-CC: Chris Mason <chris.mason@oracle.com>
-CC: cluster-devel@redhat.com
-CC: "David S. Miller" <davem@davemloft.net>
-CC: fuse-devel@lists.sourceforge.net
-CC: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Joel Becker <jlbec@evilplan.org>
-CC: KONISHI Ryusuke <konishi.ryusuke@lab.ntt.co.jp>
-CC: linux-btrfs@vger.kernel.org
-CC: linux-ext4@vger.kernel.org
-CC: linux-nfs@vger.kernel.org
-CC: linux-nilfs@vger.kernel.org
-CC: linux-ntfs-dev@lists.sourceforge.net
-CC: Mark Fasheh <mfasheh@suse.com>
-CC: Miklos Szeredi <miklos@szeredi.hu>
-CC: ocfs2-devel@oss.oracle.com
-CC: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-CC: Steven Whitehouse <swhiteho@redhat.com>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: xfs@oss.sgi.com
+>
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
