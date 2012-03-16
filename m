@@ -1,43 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51419 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:35145 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755789Ab2CLPRI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 11:17:08 -0400
-Date: Mon, 12 Mar 2012 11:17:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: lsf-pc@lists.linux-foundation.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [bfields: [LSF/MM TOPIC] fileservers' filesystem wishlist]
-Message-ID: <20120312151707.GD4752@fieldses.org>
+	id S1161824Ab2CPAKp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 20:10:45 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2G0AiXW021988
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Mar 2012 17:10:44 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 1 08/11] SUNRPC: add rpc_drain_queue to empty an
+ rpc_waitq
+Date: Fri, 16 Mar 2012 00:10:43 +0000
+Message-ID: <1331856643.24392.3.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	 <1331836850-5195-9-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-9-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apologies, this is late for a topic proposal--and I'm not really certain
-whether it merits a separate "topic" or whether it's really just an
-add-on to Ric's "linux servers as a storage server - what's missing?".
-
-In any case, I'd love to have a slot to run through a file servers'
-filesystem wishlist; probably a slide or two each for features such as:
-
-	- change attributes
-	- delegations/opLocks
-	- share locks
-	- deleted-file recovery/server-side sillyrename
-	- lock recovery
-
-with a brief summary of each (and of current status in cases where we
-have a partial solution already).
-
-Plus a little time to discuss each feature, depending on interest.
-
-My main interest is knfsd, but I'd also like to look at what we could do
-for userspace (SMB and NFS) servers.
-
-I recall doing something like this (five years ago?) at the first LSF,
-and it was quite helpful (though some of the same problems remain).
-
---b.
-
-(Resent to correct cc: list, sorry!)
+T24gVGh1LCAyMDEyLTAzLTE1IGF0IDE0OjQwIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgaW5j
+bHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCB8ICAgIDEgKw0KPiAgbmV0L3N1bnJwYy9zY2hlZC5j
+ICAgICAgICAgICB8ICAgMjcgKysrKysrKysrKysrKysrKysrKysrKysrKysrDQo+ICAyIGZpbGVz
+IGNoYW5nZWQsIDI4IGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0t
+Z2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCBiL2luY2x1ZGUvbGludXgvc3VucnBj
+L3NjaGVkLmgNCj4gaW5kZXggZGMwYzNjYy4uZmNlMDg3MyAxMDA2NDQNCj4gLS0tIGEvaW5jbHVk
+ZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hl
+ZC5oDQo+IEBAIC0yMzUsNiArMjM1LDcgQEAgdm9pZAkJcnBjX3NsZWVwX29uX3ByaW9yaXR5KHN0
+cnVjdCBycGNfd2FpdF9xdWV1ZSAqLA0KPiAgdm9pZAkJcnBjX3dha2VfdXBfcXVldWVkX3Rhc2so
+c3RydWN0IHJwY193YWl0X3F1ZXVlICosDQo+ICAJCQkJCXN0cnVjdCBycGNfdGFzayAqKTsNCj4g
+IHZvaWQJCXJwY193YWtlX3VwKHN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqKTsNCj4gK3ZvaWQJCXJw
+Y19kcmFpbl9xdWV1ZShzdHJ1Y3QgcnBjX3dhaXRfcXVldWUgKik7DQo+ICBzdHJ1Y3QgcnBjX3Rh
+c2sgKnJwY193YWtlX3VwX25leHQoc3RydWN0IHJwY193YWl0X3F1ZXVlICopOw0KPiAgc3RydWN0
+IHJwY190YXNrICpycGNfd2FrZV91cF9maXJzdChzdHJ1Y3QgcnBjX3dhaXRfcXVldWUgKiwNCj4g
+IAkJCQkJYm9vbCAoKikoc3RydWN0IHJwY190YXNrICosIHZvaWQgKiksDQo+IGRpZmYgLS1naXQg
+YS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4gaW5kZXggMWM1NzBh
+OC4uMTE5MjhmZiAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9zY2hlZC5jDQo+ICsrKyBiL25l
+dC9zdW5ycGMvc2NoZWQuYw0KPiBAQCAtNTUxLDYgKzU1MSwzMyBAQCB2b2lkIHJwY193YWtlX3Vw
+KHN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqcXVldWUpDQo+ICBFWFBPUlRfU1lNQk9MX0dQTChycGNf
+d2FrZV91cCk7DQo+ICANCj4gIC8qKg0KPiArICogcnBjX2RyYWluX3F1ZXVlIC0gZW1wdHkgdGhl
+IHF1ZXVlIGFuZCB3YWtlIHVwIGFsbCBycGNfdGFza3MNCj4gKyAqIEBxdWV1ZTogcnBjX3dhaXRf
+cXVldWUgb24gd2hpY2ggdGhlIHRhc2tzIGFyZSBzbGVlcGluZw0KPiArICoNCj4gKyAqIEdyYWJz
+IHF1ZXVlLT5sb2NrDQo+ICsgKi8NCj4gK3ZvaWQgcnBjX2RyYWluX3F1ZXVlKHN0cnVjdCBycGNf
+d2FpdF9xdWV1ZSAqcXVldWUpDQo+ICt7DQo+ICsJc3RydWN0IHJwY190YXNrICp0YXNrOw0KPiAr
+CXN0cnVjdCBsaXN0X2hlYWQgKmhlYWQ7DQo+ICsNCj4gKwlzcGluX2xvY2tfYmgoJnF1ZXVlLT5s
+b2NrKTsNCj4gKwloZWFkID0gJnF1ZXVlLT50YXNrc1txdWV1ZS0+bWF4cHJpb3JpdHldOw0KPiAr
+CWZvciAoOzspIHsNCj4gKwkJd2hpbGUgKCFsaXN0X2VtcHR5KGhlYWQpKSB7DQo+ICsJCQl0YXNr
+ID0gbGlzdF9lbnRyeShoZWFkLT5uZXh0LCBzdHJ1Y3QgcnBjX3Rhc2ssDQo+ICsJCQkJCSAgdS50
+a193YWl0Lmxpc3QpOw0KPiArCQkJcnBjX3dha2VfdXBfdGFza19xdWV1ZV9sb2NrZWQocXVldWUs
+IHRhc2spOw0KPiArCQl9DQo+ICsJCWlmIChoZWFkID09ICZxdWV1ZS0+dGFza3NbMF0pDQo+ICsJ
+CQlicmVhazsNCj4gKwkJaGVhZC0tOw0KPiArCX0NCj4gKwlzcGluX3VubG9ja19iaCgmcXVldWUt
+PmxvY2spOw0KPiArfQ0KPiArRVhQT1JUX1NZTUJPTF9HUEwocnBjX2RyYWluX3F1ZXVlKTsNCj4g
+Kw0KDQpDb25mdXNlZC4uLiBIb3cgaXMgdGhpcyBmdW5jdGlvbiBhbnkgZGlmZmVyZW50IGZyb20g
+cnBjX3dha2VfdXAoKT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
