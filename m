@@ -1,119 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e36.co.us.ibm.com ([32.97.110.154]:47960 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758059Ab2CMReF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2012 13:34:05 -0400
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <treinish@linux.vnet.ibm.com>;
-	Tue, 13 Mar 2012 11:34:04 -0600
-Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id A7FA1C40001
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:56 -0600 (MDT)
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q2DHXdIx109132
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:40 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q2DHXJck001806
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:19 -0600
-Received: from linux.vnet.ibm.com (dhcp-9-56-115-247.pok.ibm.com [9.56.115.247])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with SMTP id q2DHXI0q001472
-	for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2012 11:33:18 -0600
-Date: Tue, 13 Mar 2012 13:33:16 -0400
-From: Matthew Treinish <treinish@linux.vnet.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC v3 00/10] Volatile File Handle Client-side Support
-Message-ID: <20120313173315.GA3580@Gelgoog.pok.ibm.com>
-References: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:31344 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1032485Ab2CPA2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 20:28:05 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2G0S0C9015897
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Mar 2012 17:28:00 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 1 07/11] NFSv4.1 Check invalid deviceid upon
+ slot table waitq wakeup
+Date: Fri, 16 Mar 2012 00:27:59 +0000
+Message-ID: <1331857679.24392.9.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	 <1331836850-5195-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-8-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1330979211-894-1-git-send-email-treinish@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 05, 2012 at 03:26:41PM -0500, Matthew Treinish wrote:
-> This patch series implements client side support for volatile file handle
-> recovery (RFC 3530 section 4.2 and 4.3) with walk back using the dcache. To
-> test the client you either need a server that supports volatile file handles or
-> you can hard code the Linux server to output NFS4ERR_FHEXPIRED instead of
-> NFSERR_STALE.
-> 
-> The approach used here for recovery is to perform lookups for each file handle
-> that receives a FHEXPIRED error. If the lookup also fails with FHEXPIRED, using
-> the dcache, it will recursively walk back to the root of the mount, and recover
-> that using get_root.
-> 
-> The 2 key changes in this iteration are fixing recovery from getattr and 
-> adding support for VFH during migration/replication. Recovery from getattr is
-> accomplished by taking the file handle and searching for a match in the dcache.
-> I couldn't find a better way to get a dentry or inode from the filehandle,
-> since nfs_fhget() needs the fattr for the file. (Which clearly isn't accessible
-> or up to date if getattr is being called)
-> 
-> For migration/replication, if FH4_VOL_MIGRATION is set in FH_EXPIRE_TYPE, then
-> after the client migrates or replicates to another server we can assume that
-> all the file handles have expired. nfs4_vfh_replication() will traverse all
-> the dentries in the dcache for the NFS mount and perform a nfs4_proc_lookup()
-> on them to refresh the file handle. However, the VFH migration/replication 
-> recovery function is currently not being used. When migration and replication
-> are added to the tree I will add patches that will call it at the appropriate 
-> time. 
-> 
-> Also, when used for replication and migration, volatile file handles allows 
-> the client to switch between 2 servers that have file synced exports
-> but different filesystems. For example, if 2 read-only servers are synced
-> using rsync and then remain static the client should have no issues switching
-> between the servers with volatile file handles.
-> 
-> Volatile file handle support fulfills an actual need. The z/OS NFS server
-> currently uses volatile file handles and the Linux client can't handle them
-> preventing those who use the z/OS server from connecting with a Linux client.
-> Additionally, other clients, such as Solaris, AIX, z/OS, and possibly Windows,
-> can handle volatile file handles. So I think including support is necessary 
-> despite the flaws in the spec that were previously discussed. This is why I 
-> included a mount option that disables the recovery routines by default, so 
-> there is no risk to the user who doesn't understand what the potential issues
-> are when recovering from volatile file handles.
-> 
-> v3:
-> - Fixed recovery from nfs4_proc_getattr() which is only passed a file handle
-> - Added support for migration/replication file handle recovery
-> 
-> v2:
-> - Added rpc_cred passing to the vfh lookup and added handling of access errors
->   on the lookup
-> 
-> Matthew Treinish (10):
->   New mount option for volatile filehandle recovery
->   Add support for FH_EXPIRE_TYPE attribute.
->   Save root file handle in nfs_server.
->   Store root dentry in server object
->   Store objects in nfs4_exception to be used during FHEXPIRED recovery.
->   Add nfs4_vfh_getdentry() for getattr recovery.
->   Add VFH FHEXPIRED recovery functions.
->   Perform recovery on both inodes for rename.
->   Added error handling for NFS4ERR_FHEXPIRED
->   VFH recovery from a replication/migration event.
-> 
->  fs/nfs/client.c           |    3 +
->  fs/nfs/getroot.c          |    8 +
->  fs/nfs/nfs4_fs.h          |    5 +
->  fs/nfs/nfs4proc.c         |  422 +++++++++++++++++++++++++++++++++++++++++----
->  fs/nfs/nfs4xdr.c          |   27 +++
->  fs/nfs/super.c            |    7 +
->  include/linux/nfs_fs_sb.h |    3 +
->  include/linux/nfs_mount.h |    1 +
->  include/linux/nfs_xdr.h   |    1 +
->  9 files changed, 447 insertions(+), 30 deletions(-)
-> 
-> -- 
-> 1.7.4.4
-> 
-
-Did anyone get a chance to take a look at these patches? I'd appreciate some
-feedback and opinions on it.
-
-Thanks,
-
-Matt Treinish
-
+T24gVGh1LCAyMDEyLTAzLTE1IGF0IDE0OjQwIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFJlZ2lz
+dGVyIGEgbmV3IGZpbGVsYXlvdXQgRFMgcnBjX2FjdGlvbiBjYWxsYmFjayBmb3Igc2xlZXBpbmcg
+b24gdGhlIGZvcmUNCj4gY2hhbm5lbCBzbG90IHRhYmxlIHdhaXRxLiAgQXZvaWQgYW55IGFkZGl0
+aW9uYWwgUlBDIEZTTSBzdGF0ZXMNCj4gKHN1Y2ggYXMgdGltZW91dCkgd2hlbiB3YWtpbmcgdXAg
+dG8gYW4gaW52YWxpZCBkZXZpY2VpZCBhbmQgcmVzZXQNCj4gdGhlIHRhc2sgZm9yIGlvIHRvIHRo
+ZSBNRFMuDQoNCldoeSBjYW4ndCB5b3Ugc2ltcGx5IHB1dCB0aGlzIGNhbGwgdG8gZmlsZWxheW91
+dF93cml0ZV9zbGVlcG9uX2NiIGluDQpmaWxlbGF5b3V0X3dyaXRlX3ByZXBhcmUgKGJlZm9yZSBj
+YWxsaW5nIG5mczQxX3NldHVwX3NlcXVlbmNlKCkpPw0KDQpTaW5jZSBub3RoaW5nIGlzIGdvaW5n
+IHRvIGNoYW5nZSB0aGUgdGFzay0+dGtfYWN0aW9uIGlmDQpuZnM0MV9zZXR1cF9zZXF1ZW5jZSgp
+IHB1dHMgeW91IHRvIHNsZWVwLCB3aGF0IHZhbHVlIGRvZXMgdGhlIGNhbGxiYWNrDQphZGQ/DQoN
+Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
+QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
