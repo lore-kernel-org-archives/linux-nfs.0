@@ -1,90 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52066 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759260Ab2CTX0r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2012 19:26:47 -0400
-Message-ID: <4F691217.5070108@panasas.com>
-Date: Tue, 20 Mar 2012 16:26:15 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:22558 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752512Ab2CPRgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 13:36:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Error: state manager encountered RPCSEC_GSS session expired
+ against NFSv4 server
+Date: Fri, 16 Mar 2012 17:36:30 +0000
+Message-ID: <1331919386.2518.44.camel@lade.trondhjem.org>
+References: <1331912791.2336.3.camel@localhost>
+In-Reply-To: <1331912791.2336.3.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
-        <linux-security-module@vger.kernel.org>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>,
-        Paul Gortmaker <paul.gortmaker@windriver.com>
-Subject: [PATCH 2/4] kmod: Convert two call sites to call_usermodehelper_fns()
-References: <4F691059.30405@panasas.com>
-In-Reply-To: <4F691059.30405@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Both   kernel/sys.c && security/keys/request_key.c where inlining the exact same
-code as call_usermodehelper_fns(); So simply convert these sites to directly
-use  call_usermodehelper_fns().
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- kernel/sys.c                |   11 ++---------
- security/keys/request_key.c |   13 +++----------
- 2 files changed, 5 insertions(+), 19 deletions(-)
-
-diff --git a/kernel/sys.c b/kernel/sys.c
-index 4070153..9947fb0 100644
---- a/kernel/sys.c
-+++ b/kernel/sys.c
-@@ -2013,15 +2013,8 @@ int orderly_poweroff(bool force)
- 		goto out;
- 	}
- 
--	info = call_usermodehelper_setup(argv[0], argv, envp, GFP_ATOMIC);
--	if (info == NULL) {
--		argv_free(argv);
--		goto out;
--	}
--
--	call_usermodehelper_setfns(info, NULL, argv_cleanup, NULL);
--
--	ret = call_usermodehelper_exec(info, UMH_NO_WAIT);
-+	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT,
-+				      NULL, argv_cleanup, NULL);
- 
-   out:
- 	if (ret && force) {
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 8246532..b8cc38c 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -93,16 +93,9 @@ static void umh_keys_cleanup(struct subprocess_info *info)
- static int call_usermodehelper_keys(char *path, char **argv, char **envp,
- 			 struct key *session_keyring, enum umh_wait wait)
- {
--	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
--	struct subprocess_info *info =
--		call_usermodehelper_setup(path, argv, envp, gfp_mask);
--
--	if (!info)
--		return -ENOMEM;
--
--	call_usermodehelper_setfns(info, umh_keys_init, umh_keys_cleanup,
--					key_get(session_keyring));
--	return call_usermodehelper_exec(info, wait);
-+	return call_usermodehelper_fns(path, argv, envp, wait,
-+				       umh_keys_init, umh_keys_cleanup,
-+				       key_get(session_keyring));
- }
- 
- /*
--- 
-1.7.6.2
-
+T24gRnJpLCAyMDEyLTAzLTE2IGF0IDE1OjQ2ICswMDAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBXZSBoYXZlIGEgdXNlciByZXBvcnQgdGhhdCB0aGV5IHNlZSB0aGUgZm9sbG93aW5nIG1lc3Nh
+Z2VzDQo+IGluIC92YXIvbG9nL21lc3NhZ2VzIGFuZCB0aGUgTkZTIHNoYXJlIGhhbmdzIHdoZW4g
+YSB1c2VyJ3Mga2VyYmVyb3MNCj4gY3JlZGVudGlhbHMgZXhwaXJlLg0KPiANCj4ga2VybmVsOiBF
+cnJvcjogc3RhdGUgbWFuYWdlciBlbmNvdW50ZXJlZCBSUENTRUNfR1NTIHNlc3Npb24gZXhwaXJl
+ZA0KPiBhZ2FpbnN0IE5GU3Y0IHNlcnZlciB2bTE0MC0zMS4NCj4gDQo+IFRoZSByZXByb2R1Y2Vy
+IGlzIGFzIGZvbGxvd3MNCj4gDQo+IDEuIENvbmZpZ3VyZSBORlM0ICsgS2VyYmVyb3MsIG1vdW50
+IG5mczQgc2hhcmUgb24gdGhlIGNsaWVudCBzaWRlIHVzaW5nDQo+IHNlYz1rcmI1Lg0KPiANCj4g
+Mi4gQ3JlYXRlIDIgbmZzdXNlcnMsIGxvZ2luIGFzIHVzZXIxLCBvYnRhaW4gYSBrZXJiZXJvcyB0
+aWNrZXQgd2l0aCBhDQo+IHNob3J0IGR1cmF0aW9uIGFuZCBvcGVuIGEgZmlsZSBvbiB0aGUgbmZz
+IHNoYXJlLiBMZWF2ZSB0aGlzIGZpbGUgb3Blbg0KPiAjIHN1IC0gdXNlcjENCj4gJCBraW5pdCAt
+bCA1bQ0KPiAkIGNkIC9ob21lL3VzZXIxDQo+ICQgdG91Y2ggZmlsZTEudHh0DQo+ICQgc2xlZXAg
+MTAwMDAwIDwgZmlsZTEudHh0ICYNCj4gDQo+IDMuIEFmdGVyIDMwMCBzZWNvbmRzLCBvbiBhIGRp
+ZmZlcmVudCB0ZXJtaW5hbCwgbG9naW4gYXMgdXNlcjIsIG9idGFpbiBhDQo+IGtlcmJlcm9zIHRp
+Y2tldCBhbmQgYXR0ZW1wdCB0byBvcGVuIGEgZmlsZS4NCj4gIyBzdSAtIHVzZXIyDQo+ICQga2lu
+aXQNCj4gJCBjZCAvaG9tZS91c2VyMg0KPiAkIHRvdWNoIG15ZmlsZTEudHh0DQo+IC4NCj4gLg0K
+PiBBdCB0aGlzIHBvaW50LCB0aGUgcHJvY2VzcyBoYW5ncyBhbmQgL3Zhci9sb2cvbWVzc2FnZXMg
+YXJlIGZpbGxlZCB1cA0KPiB3aXRoIHRoZSBmb2xsb3dpbmcgbWVzc2FnZXMuDQo+IGtlcm5lbDog
+RXJyb3I6IHN0YXRlIG1hbmFnZXIgZW5jb3VudGVyZWQgUlBDU0VDX0dTUyBzZXNzaW9uIGV4cGly
+ZWQNCj4gYWdhaW5zdCBORlN2NCBzZXJ2ZXIgJChob3N0bmFtZSkNCj4gDQo+IE9uIGZ1cnRoZXIg
+ZGVidWdnaW5nLCB3ZSBmb3VuZCB0aGUgY2F1c2UgdG8gYmUgdGhlIHRoYXQgdGhlIHN0YXRlDQo+
+IG1hbmFnZXIgdXNlcyB0aGUgY3JlZGVudGlhbHMgb2YgdGhlIGZpcnN0IHN0YXRlb3duZXIgd2l0
+aCBvcGVuIGZpbGVzIGl0DQo+IGZpbmRzLiBUaGVzZSBhcmUgcmV0dXJuZWQgYnkgbmZzNF9nZXRf
+cmVuZXdfY3JlZF9sb2NrZWQoKSAtPg0KPiBuZnM0X2dldF9yZW5ld19jcmVkX3NlcnZlcl9sb2Nr
+ZWQoKSB0byBjYWxsIHRoZSBSRU5FVy4NCj4gDQo+IDEpIFRoZSBzZXJ2ZXIgYmVmb3JlIGl0IG9w
+ZW5zIGEgZmlsZSBuZWVkcyB0byBzZXQgYSBjbGllbnQgaWQuIEl0IGRvZXMNCj4gdGhpcyBieSBj
+YWxsaW5nIHRoZSBTRVRfQ0xJRU5USUQgY2FsbC4gVGhlIHNlcnZlciBpbiByZXNwb25zZSByZXR1
+cm5zIGENCj4gY2xpZW50IGlkLiANCj4gU2luY2Uga2VybmVsIDIuNi4yOShjb21taXQgYTdiNzIx
+MDM3Zjg5OGIyOWE4MDgzZGE1OWIxZGNjZDNkYTM4NWIwNykgdGhlDQo+IFNFVF9DTElFTlRJRCBj
+YWxsIGlzIG1hZGUgdXNpbmcgdGhlIG1hY2hpbmUgY3JlZGVudGlhbHMuIA0KPiANCj4gMikgSG93
+ZXZlciBhbGwgc3Vic2VxdWVudCBSRU5FVyBjYWxscyBmb3IgdGhhdCBjbGllbnRpZCwgdGhlIHNl
+cnZlciB1c2VzDQo+IHRoZSBmaXJzdCBjcmVkZW50aWFsIGl0IGZpbmRzIHdoaWNoIGlzIHVzZWQg
+YnkgYW4gb3BlbiBmaWxlIG9uIHRoYXQNCj4gbWFjaGluZS4gIEluIG91ciB0ZXN0IGNhc2UsIGl0
+IGlzIHRoZSB1c2VyIHdpdGggdGhlIGV4cGlyZWQgdGlja2V0LiANCj4gV2hlbiB0aGUgdGlja2V0
+IGV4cGlyZXMsIHRoZSBjYWxsIHRvIHJlZnJlc2ggdGhlIGNyZWRlbnRpYWxzLCBtYWRlIGF0DQo+
+IGNhbGxfcmVmcmVzaCAtPiBycGNhdXRoX3JlZnJlc2hjcmVkIC0+IGdzc19yZWZyZXNoKCkNCj4g
+cmV0dXJucyBFS0VZRVhQSVJFRC4NCj4gVGhpcyBtZWFucyB0aGF0IHRoZSBSRU5FVyBjYWxsIGZh
+aWxzIGJlZm9yZSBpdCBjb3VsZCBiZSBzZW50IG92ZXIgdGhlDQo+IHdpcmUuIA0KPiBUaGUgY2xp
+ZW50aWQgb24gdGhlIHNlcnZlciBldmVudHVhbGx5IGV4cGlyZXMuDQo+IA0KPiAzKSBXaGVuIHRo
+ZSB1c2VyIHdpdGggdGhlIHZhbGlkIHRpY2tldCB0aGVuIGF0dGVtcHRzIHRvIG9wZW4gYSBmaWxl
+LCB0aGUNCj4gc2VydmVyIHJldHVybnMgYSBORlM0RVJSX0VYUElSRUQgd2hpY2ggaW5kaWNhdGVz
+IHRoYXQgY2xpZW50aWQgYXQgdGhlDQo+IHNlcnZlciBpcyBubyBsb25nZXIgdmFsaWQuIEEgd2Fy
+bmluZyBtZXNzYWdlIGlzIHByaW50ZWQgb3V0IGF0IHRoaXMNCj4gdGltZS4gVG8gZml4IHRoaXMs
+IHRoZSBjbGllbnQgYXR0ZW1wdHMgdG8gUkVORVcuIFRoaXMgaGl0cyB0aGUgcHJvYmxlbQ0KPiBp
+biBzdGVwIDIuDQo+IA0KPiBTdGVwIDIgYW5kIDMgbm93IHJ1biBjb250aW5vdXNseSBhbmQgbm8g
+UkVORVcgY2FsbHMgYXJlIHNlbnQgb3ZlciB0aGUNCj4gd2lyZS4NCj4gDQo+IFRoZSBTRVRfQ0xJ
+RU5USUQgY2FsbHMgYXJlIG1hZGUgdXNpbmcgdGhlIG1hY2hpbmUgY3JlZHMuIFdoeSBkb24ndCB3
+ZQ0KPiBzaW1wbHkgdXNlIHRoZSBtYWNoaW5lIGNyZWRzIHRvIHJlbmV3IHRoZSBjbGllbnRpZD8N
+Cg0KVGhlIHByb2JsZW0gaXMgdGhhdCBpZiB0aGUgY2xpZW50IGRvZXNuJ3QgaGF2ZSBhIG1hY2hp
+bmUgY3JlZCwgdGhlbiB5b3UNCmVuZCB1cCB0YWtpbmcgYSByYW5kb20gdXNlciBjcmVkZW50aWFs
+IHRoYXQgbWF5IG5vdCBjdXJyZW50bHkgYmUgaG9sZGluZw0KYW55IE9QRU4gZmlsZXMuIEluIHRo
+YXQgY2FzZSB0b28gdGhlIFJFTkVXIHdpbGwgZmFpbC4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
