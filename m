@@ -1,70 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o143.mxlogic.net ([208.65.144.76]:47801 "EHLO
-	p02c11o143.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754597Ab2COSDN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 14:03:13 -0400
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 15 Mar 2012 14:01:31 -0400
-Subject: RE: [PATCH 1/1] nfsd: Warn when no servers are specified on the
- command line
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C800D@IT-1874.Isys.com>
-References: <1331832223-20737-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1331832223-20737-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from natasha.panasas.com ([67.152.220.90]:57977 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755717Ab2CPGWG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 02:22:06 -0400
+Message-ID: <4F62DC04.4090603@panasas.com>
+Date: Thu, 15 Mar 2012 23:21:56 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>
+CC: Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: [PATCH 2/4] pnfs-obj: Remove unused variable from objlayout_get_deviceinfo().
+References: <4F62DADD.3010502@panasas.com>
+In-Reply-To: <4F62DADD.3010502@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I am curious why such a message is required?  Isn't the reason for having a default is so that the option does not need to specified?
+From: Sachin Bhamare <sbhamare@panasas.com>
 
-	Thanx...
+Local variable 'sb' was not being used in objlayout_get_deviceinfo().
 
-		ps
-
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Steve Dickson
-Sent: Thursday, March 15, 2012 1:24 PM
-To: Linux NFS Mailing list
-Subject: [PATCH 1/1] nfsd: Warn when no servers are specified on the command line
-
-When the number of servers are not specified on the command, log a warning message that the default number of services will be started
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- utils/nfsd/nfsd.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfs/objlayout/objlayout.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c index 8bc5d3a..c744ee1 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -188,6 +188,8 @@ main(int argc, char **argv)
- 		}
- 	}
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index b3c2903..71047c9 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -601,7 +601,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
+ {
+ 	struct objlayout_deviceinfo *odi;
+ 	struct pnfs_device pd;
+-	struct super_block *sb;
+ 	struct page *page, **pages;
+ 	u32 *p;
+ 	int err;
+@@ -620,7 +619,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
+ 	pd.pglen = PAGE_SIZE;
+ 	pd.mincount = 0;
  
-+	xlog_open(progname);
-+
- 	if (optind < argc) {
- 		if ((count = atoi(argv[optind])) < 0) {
- 			/* insane # of servers */
-@@ -203,10 +205,11 @@ main(int argc, char **argv)
- 			socket_up = 1;
- 			goto set_threads;
- 		}
-+	} else {
-+		xlog(L_WARNING, "No server number specified. '%d' nfsd will be started",
-+			count);
- 	}
- 
--	xlog_open(progname);
--
- 	nfsd_enable_protos(&proto4, &proto6);
- 
- 	if (!NFSCTL_TCPISSET(protobits)) {
---
-1.7.7.6
+-	sb = pnfslay->plh_inode->i_sb;
+ 	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
+ 	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
+ 	if (err)
+-- 
+1.7.6.2
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
