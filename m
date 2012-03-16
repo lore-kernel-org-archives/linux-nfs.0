@@ -1,26 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.mail.umich.edu ([141.211.14.82]:58106 "EHLO
-	hellskitchen.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1032236Ab2CPAQv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 20:16:51 -0400
-Date: Thu, 15 Mar 2012 20:16:47 -0400
-From: Jim Rees <rees@umich.edu>
-To: Bruno Silva <bs@cin.ufpe.br>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: About pNFS installation process.
-Message-ID: <20120316001647.GA25426@umich.edu>
-References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:45259 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1032236Ab2CPASO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Mar 2012 20:18:14 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2G0IEDj010222
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Mar 2012 17:18:14 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 1 06/11] NFSv4.1: send filelayout DS commits to
+ the MDS on invalid deviceid
+Date: Fri, 16 Mar 2012 00:18:12 +0000
+Message-ID: <1331857092.24392.4.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	 <1331836850-5195-7-git-send-email-andros@netapp.com>
+In-Reply-To: <1331836850-5195-7-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruno Silva wrote:
-
-  The steps 1, 2 and 3 i did to all machines (data servers, metadata
-  server and client).
-
-You only need blkmapd on the client.  Client setup instructions are at
-http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup .  I added
-a link to that page.
+SG93IGRvZXMgc2VuZGluZyB0aGUgY29tbWl0IHRvIHRoZSBNRFMgaGVscCBpZiB0aGlzIGlzIGEg
+Y29tbWl0LXRvLURTDQpzZXR1cD8gQUZBSUNTIHdlIG5lZWQgdG8gcmVzZW5kIGFsbCB0aGUgd3Jp
+dGVzIHRocm91Z2ggdGhlIE1EUy4NCg0KT24gVGh1LCAyMDEyLTAzLTE1IGF0IDE0OjQwIC0wNDAw
+LCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NA
+bmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5l
+dGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgfCAgIDExICsrKysr
+KysrKystDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDEwIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25z
+KC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgYi9mcy9uZnMv
+bmZzNGZpbGVsYXlvdXQuYw0KPiBpbmRleCAyNTI4Y2IyLi4yNmM4M2IwIDEwMDY0NA0KPiAtLS0g
+YS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQu
+Yw0KPiBAQCAtODQ3LDEyICs4NDcsMTYgQEAgZmlsZWxheW91dF9jaG9vc2VfY29tbWl0X2xpc3Qo
+c3RydWN0IG5mc19wYWdlICpyZXEsDQo+ICAJCQkgICAgICBzdHJ1Y3QgcG5mc19sYXlvdXRfc2Vn
+bWVudCAqbHNlZykNCj4gIHsNCj4gIAlzdHJ1Y3QgbmZzNF9maWxlbGF5b3V0X3NlZ21lbnQgKmZs
+ID0gRklMRUxBWU9VVF9MU0VHKGxzZWcpOw0KPiArCXN0cnVjdCBuZnM0X2RldmljZWlkX25vZGUg
+KmRldmlkID0gRklMRUxBWU9VVF9ERVZJRF9OT0RFKGxzZWcpOw0KPiAgCXUzMiBpLCBqOw0KPiAg
+CXN0cnVjdCBsaXN0X2hlYWQgKmxpc3Q7DQo+ICANCj4gIAlpZiAoZmwtPmNvbW1pdF90aHJvdWdo
+X21kcykNCj4gIAkJcmV0dXJuICZORlNfSShyZXEtPndiX2NvbnRleHQtPmRlbnRyeS0+ZF9pbm9k
+ZSktPmNvbW1pdF9saXN0Ow0KPiAgDQo+ICsJaWYgKGZpbGVsYXlvdXRfdGVzdF9kZXZpZF9pbnZh
+bGlkKGRldmlkKSkNCj4gKwkJcmV0dXJuIE5VTEw7IC8qIFJlc2VuZCBJL08gKHdyaXRlcyBhbmQg
+Y29tbWl0cykgdG8gTURTICovDQo+ICsNCj4gIAkvKiBOb3RlIHRoYXQgd2UgYXJlIGNhbGxpbmcg
+bmZzNF9mbF9jYWxjX2pfaW5kZXggb24gZWFjaCBwYWdlDQo+ICAJICogdGhhdCBlbmRzIHVwIGJl
+aW5nIGNvbW1pdHRlZCB0byBhIGRhdGEgc2VydmVyLiAgQW4gYXR0cmFjdGl2ZQ0KPiAgCSAqIGFs
+dGVybmF0aXZlIGlzIHRvIGFkZCBhIGZpZWxkIHRvIG5mc193cml0ZV9kYXRhIGFuZCBuZnNfcGFn
+ZQ0KPiBAQCAtOTMzLDkgKzkzNywxNCBAQCBmaW5kX29ubHlfd3JpdGVfbHNlZ19sb2NrZWQoc3Ry
+dWN0IGlub2RlICppbm9kZSkNCj4gIHsNCj4gIAlzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAq
+bHNlZzsNCj4gIA0KPiAtCWxpc3RfZm9yX2VhY2hfZW50cnkobHNlZywgJk5GU19JKGlub2RlKS0+
+bGF5b3V0LT5wbGhfc2VncywgcGxzX2xpc3QpDQo+ICsJbGlzdF9mb3JfZWFjaF9lbnRyeShsc2Vn
+LCAmTkZTX0koaW5vZGUpLT5sYXlvdXQtPnBsaF9zZWdzLCBwbHNfbGlzdCkgew0KPiArCQlzdHJ1
+Y3QgbmZzNF9kZXZpY2VpZF9ub2RlICpkZXZpZCA9IEZJTEVMQVlPVVRfREVWSURfTk9ERShsc2Vn
+KTsNCj4gKwkJaWYgKGZpbGVsYXlvdXRfdGVzdF9kZXZpZF9pbnZhbGlkKGRldmlkKSkNCj4gKwkJ
+CS8qIFJlc2VuZCBJL08gKHdyaXRlcyBhbmQgY29tbWl0cykgdG8gTURTICovDQo+ICsJCQlyZXR1
+cm4gTlVMTDsNCj4gIAkJaWYgKGxzZWctPnBsc19yYW5nZS5pb21vZGUgPT0gSU9NT0RFX1JXKQ0K
+PiAgCQkJcmV0dXJuIGdldF9sc2VnKGxzZWcpOw0KPiArCX0NCj4gIAlyZXR1cm4gTlVMTDsNCj4g
+IH0NCj4gIA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
+DQoNCg==
