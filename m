@@ -1,61 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:40150 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965243Ab2CAW1e convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Mar 2012 17:27:34 -0500
-Subject: Re: [PATCH 07/15] SUNRPC: Add API to acquire source address
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120301220918.GA3778@umich.edu>
-Date: Thu, 1 Mar 2012 17:27:27 -0500
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <51C34EC1-1EF2-4106-A2D9-3963C1C00A5C@oracle.com>
-References: <20120301215755.2138.73488.stgit@degas.1015granger.net> <20120301220114.2138.67690.stgit@degas.1015granger.net> <20120301220918.GA3778@umich.edu>
-To: Jim Rees <rees@umich.edu>
+Received: from natasha.panasas.com ([67.152.220.90]:58093 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965212Ab2CPG2H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 02:28:07 -0400
+Message-ID: <4F62DD6C.4040504@panasas.com>
+Date: Thu, 15 Mar 2012 23:27:56 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>, Steve Dickson <steved@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@tonian.com>, "Welch, Brent" <welch@panasas.com>
+Subject: [PATCH 4/4] osd_login: Add autologin script for objlayoutdriver
+References: <4F62DADD.3010502@panasas.com>
+In-Reply-To: <4F62DADD.3010502@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Sachin Bhamare <sbhamare@panasas.com>
 
-On Mar 1, 2012, at 5:09 PM, Jim Rees wrote:
+This script is part of the autologin feature mandated by the
+pnfs-objects standard.
+It is called from objlayoutdriver.ko in the kernel.
 
-> Chuck Lever wrote:
-> 
->  NFSv4.0 clients must send endpoint information for their callback
->  service to NFSv4.0 servers during their first contact with a server.
->  Traditionally on Linux, user space provides the callback endpoint IP
->  address via the "clientaddr=" mount option.
-> 
->  During an NFSv4 migration event, it is possible that an FSID may be
->  migrated to a destination server that is accessible via a different
->  source IP address than the source server was.  The client must update
->  callback endpoint information on the destination server so that it can
->  maintain leases and allow delegation.
-> 
->  Without a new "clientaddr=" option from user space, however, the
->  kernel itself must construct an appropriate IP address for the
->  callback update.  Provide an API in the RPC client for upper layer
->  RPC consumers to acquire a source address for a remote.
-> 
->  The mechanism used by the mount.nfs command is copied: set up a
->  connected UDP socket to the designated remote, then scrape the source
->  address off the socket.  We are careful to select the correct network
->  namespace when setting up the temporary UDP socket.
-> 
-> That seems like a lot of work.  On OpenBSD it's a one-liner, a call into the
-> routing system to get the device and source address that would be used to
-> talk to a given destination.
+Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ configure.ac                |    1 +
+ utils/Makefile.am           |    1 +
+ utils/osd_login/Makefile.am |   13 +++++
+ utils/osd_login/osd_login   |  102 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 117 insertions(+), 0 deletions(-)
+ create mode 100644 utils/osd_login/Makefile.am
+ create mode 100755 utils/osd_login/osd_login
 
-The goal here is to emulate exactly what is done in user space so that the result is the same whether the address is obtained in the kernel or by the mount.nfs command.
-
-> Is there no equivalent in linux?
-
-No idea.
-
+diff --git a/configure.ac b/configure.ac
+index 67e8d2d..011a2bf 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -467,6 +467,7 @@ AC_CONFIG_FILES([
+ 	utils/nfsidmap/Makefile
+ 	utils/showmount/Makefile
+ 	utils/statd/Makefile
++	utils/osd_login/Makefile
+ 	tests/Makefile
+ 	tests/nsm_client/Makefile])
+ AC_OUTPUT
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index d074b85..c7e5d27 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -28,6 +28,7 @@ SUBDIRS = \
+ 	nfsstat \
+ 	showmount \
+ 	statd \
++	osd_login \
+ 	$(OPTDIRS)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/utils/osd_login/Makefile.am b/utils/osd_login/Makefile.am
+new file mode 100644
+index 0000000..e931e36
+--- /dev/null
++++ b/utils/osd_login/Makefile.am
+@@ -0,0 +1,13 @@
++## Process this file with automake to produce Makefile.in
++
++OSD_LOGIN_FILES= osd_login
++
++EXTRA_DIST= $(OSD_LOGIN_FILES)
++
++all-local: $(OSD_LOGIN_FILES)
++
++install-data-hook:
++	$(INSTALL) --mode 755 osd_login $(DESTDIR)/sbin/osd_login
++
++MAINTAINERCLEANFILES = Makefile.in
++
+diff --git a/utils/osd_login/osd_login b/utils/osd_login/osd_login
+new file mode 100755
+index 0000000..161a487
+--- /dev/null
++++ b/utils/osd_login/osd_login
+@@ -0,0 +1,102 @@
++#!/bin/bash
++#
++# osd_login : This script is part of the autologin feature
++#             mandated by the pnfs-objects standard.
++# It is called from objlayoutdriver.ko in the kernel.
++
++# Copyright (C) 2012, Sachin Bhamare <sbhamare@panasas.com>
++# Copyright (C) 2012, Boaz Harrosh <bharrosh@panasas.com>
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License version 2 as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
++# MA 02110-1301 USA
++
++umask 022
++
++PATH="/sbin:/usr/sbin:/bin:/usr/bin"
++
++iscsiadm=/sbin/iscsiadm
++
++protocol=""
++portal=""
++uri=""
++osdname=""
++systemid=""
++
++usage()
++{
++	echo "Usage: $0 -u <URI> -o <OSDNAME> -s <SYSTEMID>"
++	echo "Options:"
++	echo  "-u		target uri e.g. iscsi://<ip>:<port>"
++	echo  "-o		osdname of the target OSD"
++	echo  "-s 		systemid of the target OSD"
++}
++
++parse_cmdline()
++{
++	argc=$#
++	if [ $# -lt 3 ]; then
++		usage
++		exit 1
++	fi
++
++	# parse the input arguments
++	while getopts "u:o:s:" options; do
++	    case $options in
++		u ) uri=$OPTARG;;
++		o ) osdname=$OPTARG;;
++		s ) systemid=$OPTARG;;
++		\? ) usage
++			exit 1;;
++		* )  usage
++			exit 1;;
++	    esac
++	done
++
++	echo "-u : $uri"
++	echo "-o : $osdname"
++	echo "-s : $systemid"
++
++	protocol=`echo $uri | awk -F ':' '{print $1}'`
++	portal=`echo $uri | awk -F '//' '{print $2}'`
++}
++
++do_cmd()
++{
++	$* 2>&1 | logger &
++}
++
++login_iscsi_osd()
++{
++	echo "osd_login: login into: $1"
++	if ! $iscsiadm -m discovery -o nonpersistent -t sendtargets -p $1 --login; then
++		echo "$iscsiadm -m discovery -t sendtargets -p $1 --login returned error $? !"
++		sleep 1;
++	fi
++}
++
++ echo "============= osd_login ========="
++ echo "progname : $0"
++parse_cmdline "$@"
++echo "protocol: $protocol"
++echo "portal: $portal"
++
++case $protocol in
++iscsi)
++	login_iscsi_osd $portal |& logger
++	;;
++*)
++	echo "osd_login: Error: protocol $protocol not supported !" | logger
++	;;
++esac
++
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+1.7.6.2
 
 
