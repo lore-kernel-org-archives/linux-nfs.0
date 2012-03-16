@@ -1,138 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52274 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757832Ab2CEXVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:12 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 11/16] NFSv4: Add a helper for encoding NFSv4 sequence ids
-Date: Mon,  5 Mar 2012 18:20:49 -0500
-Message-Id: <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-9-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
+	id S1760859Ab2CPN4D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 09:56:03 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2GDu2Ur018837
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 09:56:03 -0400
+Message-ID: <4F63466E.3020603@RedHat.com>
+Date: Fri, 16 Mar 2012 09:55:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] rpc.idmap: Hide global symbols from libidmap plugins
+References: <1331830642-18908-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1331830642-18908-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   47 ++++++++++++++++++++++++++++-------------------
- 1 files changed, 28 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d6e8306..3b38ca5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -901,6 +901,20 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
- 	xdr_encode_opaque(p, str, len);
- }
- 
-+static void encode_uint32(struct xdr_stream *xdr, u32 n)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(n);
-+}
-+
-+static void encode_nfs4_seqid(struct xdr_stream *xdr,
-+		const struct nfs_seqid *seqid)
-+{
-+	encode_uint32(xdr, seqid->sequence->counter);
-+}
-+
- static void encode_compound_hdr(struct xdr_stream *xdr,
- 				struct rpc_rqst *req,
- 				struct compound_hdr *hdr)
-@@ -1074,9 +1088,9 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 8);
--	*p++ = cpu_to_be32(OP_CLOSE);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_CLOSE);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_nfs4_stateid(xdr, arg->stateid);
- 	hdr->nops++;
- 	hdr->replen += decode_close_maxsz;
-@@ -1264,17 +1278,14 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
- 	p = xdr_encode_hyper(p, nfs4_lock_length(args->fl));
- 	*p = cpu_to_be32(args->new_lock_owner);
- 	if (args->new_lock_owner){
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->open_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->open_seqid);
- 		encode_nfs4_stateid(xdr, args->open_stateid);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->lock_seqid);
- 		encode_lockowner(xdr, &args->lock_owner);
- 	}
- 	else {
- 		encode_nfs4_stateid(xdr, args->lock_stateid);
--		p = reserve_space(xdr, 4);
--		*p = cpu_to_be32(args->lock_seqid->sequence->counter);
-+		encode_nfs4_seqid(xdr, args->lock_seqid);
- 	}
- 	hdr->nops++;
- 	hdr->replen += decode_lock_maxsz;
-@@ -1298,10 +1309,10 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 12);
-+	p = reserve_space(xdr, 8);
- 	*p++ = cpu_to_be32(OP_LOCKU);
--	*p++ = cpu_to_be32(nfs4_lock_type(args->fl, 0));
--	*p = cpu_to_be32(args->seqid->sequence->counter);
-+	*p = cpu_to_be32(nfs4_lock_type(args->fl, 0));
-+	encode_nfs4_seqid(xdr, args->seqid);
- 	encode_nfs4_stateid(xdr, args->stateid);
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, args->fl->fl_start);
-@@ -1360,9 +1371,9 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
-  * opcode 4, seqid 4, share_access 4, share_deny 4, clientid 8, ownerlen 4,
-  * owner 4 = 32
-  */
--	p = reserve_space(xdr, 8);
--	*p++ = cpu_to_be32(OP_OPEN);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(OP_OPEN);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- 	p = reserve_space(xdr, 32);
- 	p = xdr_encode_hyper(p, arg->clientid);
-@@ -1496,8 +1507,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_OPEN_CONFIRM);
- 	encode_nfs4_stateid(xdr, arg->stateid);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	hdr->nops++;
- 	hdr->replen += decode_open_confirm_maxsz;
- }
-@@ -1509,8 +1519,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_OPEN_DOWNGRADE);
- 	encode_nfs4_stateid(xdr, arg->stateid);
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(arg->seqid->sequence->counter);
-+	encode_nfs4_seqid(xdr, arg->seqid);
- 	encode_share_access(xdr, arg->fmode);
- 	hdr->nops++;
- 	hdr->replen += decode_open_downgrade_maxsz;
--- 
-1.7.7.6
 
+On 03/15/2012 12:57 PM, Steve Dickson wrote:
+> From: Noah Friedman <friedman@splode.com>
+> 
+> This patch limits the visibility of the symbols in the nfs-utils
+> conffile.c so that they are only visible to programs linked directly to
+> it.  This forces the objects dynamically loaded via libnfsidmap to use
+> the functions defined in that shared library instead.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
+
+steved.
+> ---
+>  support/nfs/conffile.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 2f1e235..5015e94 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -49,6 +49,8 @@
+>  #include "conffile.h"
+>  #include "xlog.h"
+>  
+> +#pragma GCC visibility push(hidden)
+> +
+>  static void conf_load_defaults(void);
+>  static int conf_set(int , char *, char *, char *, 
+>  	char *, int , int );
