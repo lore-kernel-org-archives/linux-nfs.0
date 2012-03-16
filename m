@@ -1,78 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34033 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12666 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932687Ab2C1XJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 19:09:35 -0400
-Date: Wed, 28 Mar 2012 19:09:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	id S1161197Ab2CPU6Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 16:58:16 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Alexandre Depoutovitch <adepoutovitch@vmware.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
-Message-ID: <20120328230931.GA13231@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <1332337929-18580-4-git-send-email-jlayton@redhat.com>
- <20120323121208.GA3219@fieldses.org>
- <20120323133111.GA2991@fieldses.org>
- <1332516024.3087.1.camel@lade.trondhjem.org>
- <20120323152220.GA4953@fieldses.org>
- <1332516863.3087.10.camel@lade.trondhjem.org>
- <20120323115337.28bff808@corrin.poochiereds.net>
- <20120323121218.74461807@corrin.poochiereds.net>
- <20120323170405.GA6089@fieldses.org>
+Subject: Re: About Direct I/O
+Date: Fri, 16 Mar 2012 20:58:14 +0000
+Message-ID: <1331931494.13255.1.camel@lade.trondhjem.org>
+References: <CAAJC9VbxAcE+DqjqaZ-9K4HKpAWKgg0_B9_QFk64b5V-QdotQA@mail.gmail.com>
+	 <6866525b.00001bd8.0000023d@aldep-VC.vmware.com>
+	 <20120316203521.GA22929@fieldses.org>
+In-Reply-To: <20120316203521.GA22929@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120323170405.GA6089@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a bandaid.
-
-I have a series of patches that actually implement the correct behavior,
-but that may not quite be ready for 3.4.
-
---b.
-
-commit 2f026867c76171d26f003b211063ff0562097d5e
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Mar 28 14:18:16 2012 -0400
-
-    nfsd4: use auth_unix unconditionally on backchannel
-    
-    This isn't actually correct, but it works with the Linux client, and
-    agrees with the behavior we used to have before commit 80fc015bdfe.
-    
-    Later patches will implement the spec-mandated behavior (which is to use
-    the security parameters explicitly given by the client in create_session
-    or backchannel_ctl).
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 0840fc4..c8e9f63 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -645,7 +645,6 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		.timeout	= &timeparms,
- 		.program	= &cb_program,
- 		.version	= 0,
--		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
- 	};
- 	struct rpc_clnt *client;
-@@ -656,6 +655,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		args.client_name = clp->cl_principal;
- 		args.prognumber	= conn->cb_prog,
- 		args.protocol = XPRT_TRANSPORT_TCP;
-+		args.authflavor = clp->cl_flavor;
- 		clp->cl_cb_ident = conn->cb_ident;
- 	} else {
- 		if (!conn->cb_xprt)
-@@ -665,6 +665,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		args.bc_xprt = conn->cb_xprt;
- 		args.prognumber = clp->cl_cb_session->se_cb_prog;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
-+		args.authflavor = RPC_AUTH_UNIX;
- 	}
- 	/* Create RPC client */
- 	client = rpc_create(&args);
+T24gRnJpLCAyMDEyLTAzLTE2IGF0IDE2OjM1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgTWFyIDE2LCAyMDEyIGF0IDExOjE0OjA0QU0gLTA3MDAsIEFsZXhhbmRyZSBE
+ZXBvdXRvdml0Y2ggd3JvdGU6DQo+ID4gSGVsbG8sDQo+ID4gSSBhbSB0cnlpbmcgdG8gZG8gcmFu
+ZG9tIHNlY3RvciBhbGlnbmVkIHdyaXRlcyB0byBhbiBORlMgbW91bnRlZCBkaXNrLiBUaGUNCj4g
+PiBwZXJmb3JtYW5jZSBpcyBvcmRlciBvZiBtYWduaXR1ZGUgd29yc2UgdGhhbiA0SyAoZmlsZSBz
+eXN0ZW0gYmxvY2sgc2l6ZSkNCj4gPiBhbGlnbmVkIEkvTy4NCj4gPiBUaGUgcmVhc29uIGlzIHRo
+YXQgTkZTIGRlbW9uIChMaW51eCBrZXJuZWwgMi42LjMyKSBvbiB0aGUgc2VydmVyIHNpZGUNCj4g
+PiBhbHdheXMgZG9lcyBidWZmZXJlZCBJL08sIHdoaWNoIGJlaGF2ZXMgcG9vcmx5IGZvciBibG9j
+ayB1bmFsaWduZWQNCj4gPiByZXF1ZXN0cy4NCj4gPiBJcyB0aGVyZSBhIHdheSB0byB0ZWxsIE5G
+UyBkYWVtb24gdG8gdXNlIGRpcmVjdCBJL08/IA0KPiANCj4gTm8uDQo+IA0KPiA+IElmIG5vdCwg
+aXMgaXQgYW4gaW1wbGVtZW50YXRpb24gbGltaXRhdGlvbiBvciB0aGVyZSBpcyBhIGZ1bmRhbWVu
+dGFsDQo+ID4gcHJvYmxlbSB3aXRoIHVzaW5nIGRpcmVjdCBJL08gaW4gTkZTIHNlcnZlcj8NCj4g
+DQo+IEknbSBzaGFtZWZ1bGx5IGlnbm9yYW50IG9mIERpcmVjdCBJTy4uLi4NCj4gDQo+IElmIHdl
+IHN1cHBvcnRlZCBEaXJlY3QgSU8sIGFyZSB0aGVyZSBoZXVyaXN0aWNzIHRoYXQgd291bGQgbGV0
+IHRoZQ0KPiBzZXJ2ZXIgZmlndXJlIG91dCBvbiBpdHMgb3duIHdoZW4gaXQgaGVscGVkIGFuZCB3
+aGVuIGl0IGRpZG4ndD8gIE9yDQo+IHdvdWxkIHRoZSBhZG1pbmlzdHJhdG9yIGJlIHN0dWNrIHRy
+eWluZyB0byBmaWd1cmUgdGhhdCBvdXQ/DQo+IA0KPiBJcyBEaXJlY3QgSU8gcG9zc2libGUgZnJv
+bSBrZXJuZWwgYnVmZmVycyB0aGVzZSBkYXlzPyAgQXJlIHRoZXJlDQo+IGFsaWdubWVudCByZXN0
+cmljdGlvbnM/DQoNCldvcmsgaXMgb24gaXRzIHdheSB0byBhbGxvdyBkaXJlY3QgaS9vIGZyb20g
+a2VybmVsIGJ1ZmZlcnMsIGJ1dCBpdCBpcw0Kbm90IHBvc3NpYmxlIHdpdGggZXhpc3Rpbmcga2Vy
+bmVscy4NCg0KSGF2ZSBwYXRpZW5jZS4NCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg0K
