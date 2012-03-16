@@ -1,69 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:39954 "EHLO
+Received: from natasha.panasas.com ([67.152.220.90]:57915 "EHLO
 	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965852Ab2C3VvW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Mar 2012 17:51:22 -0400
-Message-ID: <4F762AD1.2090306@panasas.com>
-Date: Fri, 30 Mar 2012 14:51:13 -0700
+	with ESMTP id S1754416Ab2CPGRP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2012 02:17:15 -0400
+Message-ID: <4F62DADD.3010502@panasas.com>
+Date: Thu, 15 Mar 2012 23:17:01 -0700
 From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
 To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
         NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Subject: Re: [osd-dev] [PATCH] pnfs-obj: Remove unused variable from objlayout_get_deviceinfo()
-References: <4F7625D7.8070801@panasas.com>
-In-Reply-To: <4F7625D7.8070801@panasas.com>
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+CC: "Welch, Brent" <welch@panasas.com>
+Subject: [PATCHSET 0/4] Auto-login support for the pnfs-objects protocol
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/30/2012 02:29 PM, Boaz Harrosh wrote:
 
-> From: Sachin Bhamare <sbhamare@panasas.com>
-> 
-> Local variable 'sb' was not being used in objlayout_get_deviceinfo().
-> 
-> Signed-off-by: Sachin Bhamare <sbhamare@panasas.com>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+I'm happy to submit the auto-login support to pnfs-objects protocol.
+Please see individual patches for explanations.
 
+It was heavily tested and performs very well.
 
-I was transitioning all my tree's to the 3.4-rc0 Kernel and noticed
-we forgot this patch, Please add it to what ever next-kernel branch you
-have.
+Submitted, as usual, a patch to pnfsd-exofs that enables this in the pnfs Server
+Then follows a modest patch to the pnfs-obj client layout-driver.
+And last a patch to the nfs-utils package with a script that executes the
+login.
 
-Benny could you please make a pnfs-all-3.3 branch? It should be identical
-to the 3.3-rc6, probably, but just for completeness.
+We currently only support the iscsi://ip_addr:ip_port URI protocol.
+But other are easy to add by modifying the script, as the Kernel part
+is just a transparent pass through between the Server and the osd_login
+script.
 
-Tell me if you also want to add the autologin patches to it I can help
-out with that. Else the client side went into 3.4-rc0 so I'll send you
-the exofs side for your future 3.4-rc1 tree.
+Benny: As the editor of the STD please review and confirm
+
+List of Patches:
+[PATCH 1/4] pnfsd-exofs:  Add autologin support to exofs
+	
+	This patch is for Benny's pnfsd tree. Thanks
+
+[PATCH 2/4] pnfs-obj: Remove unused variable from objlayout_get_deviceinfo().
+
+	Trond: This is not important just something found when coding.
+	
+[PATCH 3/4] pnfs-obj: autologin: Add support for protocol autologin
+
+	Trond: If at all possible to make the merge window with this one
+	It would be great. Thanks.
+
+[PATCH 4/4] osd_login: Add autologin script for objlayoutdriver.
+
+	Steve D: This patch is for you. Thanks a million man, it
+	made the complete code Kernel and user-mode 1/7 the size
+	Cheers
 
 Thanks
-Boaz
-
-> ---
->  fs/nfs/objlayout/objlayout.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-> index 1ae53eb..b158d1b 100644
-> --- a/fs/nfs/objlayout/objlayout.c
-> +++ b/fs/nfs/objlayout/objlayout.c
-> @@ -604,7 +604,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
->  {
->  	struct objlayout_deviceinfo *odi;
->  	struct pnfs_device pd;
-> -	struct super_block *sb;
->  	struct page *page, **pages;
->  	u32 *p;
->  	int err;
-> @@ -623,7 +622,6 @@ int objlayout_get_deviceinfo(struct pnfs_layout_hdr *pnfslay,
->  	pd.pglen = PAGE_SIZE;
->  	pd.mincount = 0;
->  
-> -	sb = pnfslay->plh_inode->i_sb;
->  	err = nfs4_proc_getdeviceinfo(NFS_SERVER(pnfslay->plh_inode), &pd);
->  	dprintk("%s nfs_getdeviceinfo returned %d\n", __func__, err);
->  	if (err)
-
-
+Sachin & Boaz
