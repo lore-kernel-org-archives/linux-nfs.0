@@ -1,68 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25293 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:41364 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755562Ab2CAHbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Mar 2012 02:31:36 -0500
-Message-ID: <4F4F25C4.2080307@parallels.com>
-Date: Thu, 01 Mar 2012 11:31:16 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
+	id S1032852Ab2CPPV7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 11:21:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 5/5] nfsd: add the infrastructure to handle the cld
- upcall
-References: <1330535757-24925-1-git-send-email-jlayton@redhat.com> <1330535757-24925-6-git-send-email-jlayton@redhat.com> <4F4E70C5.9030608@parallels.com> <20120229144512.37de84e7@tlielax.poochiereds.net> <20120229214400.GA6506@fieldses.org>
-In-Reply-To: <20120229214400.GA6506@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: [PATCH Version 1 08/11] SUNRPC: add rpc_drain_queue to empty an
+ rpc_waitq
+Date: Fri, 16 Mar 2012 15:21:57 +0000
+Message-ID: <1331911317.2518.14.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	 <1331836850-5195-9-git-send-email-andros@netapp.com>
+	 <1331856643.24392.3.camel@lade.trondhjem.org>
+	 <CAHVgHyWPPu_+9-6mr__n3q-BP=0C+=_5SwTwzZqMiBqQJonp+A@mail.gmail.com>
+In-Reply-To: <CAHVgHyWPPu_+9-6mr__n3q-BP=0C+=_5SwTwzZqMiBqQJonp+A@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-01.03.2012 01:44, bfields@fieldses.org пишет:
-> On Wed, Feb 29, 2012 at 02:45:12PM -0500, Jeff Layton wrote:
->> On Wed, 29 Feb 2012 22:39:01 +0400
->> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->>
->>> Hi, Jeff.
->>> I'll try to explain, how all this namespaces-aware SUNRPC PipeFS works.
->>> The main idea is, that today we have 2 types of independently created and
->>> destroyed but linked objects:
->>> 1) pipe data itself. This object is created whenever kernel requires (on mount,
->>> module install, whatever)
->>> 2) dentry/inode for this pipe. This object is created on PipeFS superblock creation.
->>> This means, any kernel user of SUNRPC pipes have to provide two mechanisms:
->>> 1) Safe call (in per-net operations, if the object is global your case) for
->>> PipeFS dentry/inode pair. This is done this in nfsd4_init_cld_pipe().
->>>
->>> 2) Notifier callback for PipeFS mount/umount operations. Note: this callback is
->>> done from SUNRPC module (i.e. you have to get nfsd module); this callback is
->>> safe - i.e you can be sure, that superblock is valid.
->>>
->>
->> This is the part I'm having a hard time with. IIUC, the existing
->> examples are fairly clear since you have a 1:1 ratio of objects: a
->> per-net object (the pipe data) that is hooked up to a dentry/inode in a
->> per-net sb.
->>
->> Here though, we don't really have that. We have a global pipe object
->> and I don't see how you can hook that up to multiple dentries/inodes.
->>
->> One possibility is to completely "namespacify" this code -- don't use a
->> global rpc_pipe object and make it per-net instead. If I do that though,
->> then I suppose I'll also need to make all of the
->> nfsd4_client_tracking_ops take a struct net arg as well?
->
-> That does sound like what we'll want eventually.
->
-> And callers will use pass svc_rqst->rq_xprt->xpt_net there, I assume.
->
-> (Or actually we may need a pointer to the netns from the nfs4 client?)
->
-
-Hi, Bruce. I haven't think about the whole structure yet. But I'm going to work 
-on NFSd containerization soon.
-Hope for your assistance.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gRnJpLCAyMDEyLTAzLTE2IGF0IDExOjEzIC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
+IE9uIFRodSwgTWFyIDE1LCAyMDEyIGF0IDg6MTAgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTItMDMtMTUg
+YXQgMTQ6NDAgLTA0MDAsIGFuZHJvc0BuZXRhcHAuY29tIHdyb3RlOg0KPiA+PiBGcm9tOiBBbmR5
+IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+Pg0KPiA+PiBTaWduZWQtb2ZmLWJ5OiBB
+bmR5IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+PiAtLS0NCj4gPj4gIGluY2x1ZGUv
+bGludXgvc3VucnBjL3NjaGVkLmggfCAgICAxICsNCj4gPj4gIG5ldC9zdW5ycGMvc2NoZWQuYyAg
+ICAgICAgICAgfCAgIDI3ICsrKysrKysrKysrKysrKysrKysrKysrKysrKw0KPiA+PiAgMiBmaWxl
+cyBjaGFuZ2VkLCAyOCBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQ0KPiA+Pg0KPiA+PiBk
+aWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCBiL2luY2x1ZGUvbGludXgv
+c3VucnBjL3NjaGVkLmgNCj4gPj4gaW5kZXggZGMwYzNjYy4uZmNlMDg3MyAxMDA2NDQNCj4gPj4g
+LS0tIGEvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiA+PiArKysgYi9pbmNsdWRlL2xp
+bnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4+IEBAIC0yMzUsNiArMjM1LDcgQEAgdm9pZCAgICAgICAg
+ICAgICAgcnBjX3NsZWVwX29uX3ByaW9yaXR5KHN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqLA0KPiA+
+PiAgdm9pZCAgICAgICAgIHJwY193YWtlX3VwX3F1ZXVlZF90YXNrKHN0cnVjdCBycGNfd2FpdF9x
+dWV1ZSAqLA0KPiA+PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHN0cnVj
+dCBycGNfdGFzayAqKTsNCj4gPj4gIHZvaWQgICAgICAgICBycGNfd2FrZV91cChzdHJ1Y3QgcnBj
+X3dhaXRfcXVldWUgKik7DQo+ID4+ICt2b2lkICAgICAgICAgcnBjX2RyYWluX3F1ZXVlKHN0cnVj
+dCBycGNfd2FpdF9xdWV1ZSAqKTsNCj4gPj4gIHN0cnVjdCBycGNfdGFzayAqcnBjX3dha2VfdXBf
+bmV4dChzdHJ1Y3QgcnBjX3dhaXRfcXVldWUgKik7DQo+ID4+ICBzdHJ1Y3QgcnBjX3Rhc2sgKnJw
+Y193YWtlX3VwX2ZpcnN0KHN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqLA0KPiA+PiAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvb2wgKCopKHN0cnVjdCBycGNfdGFzayAqLCB2
+b2lkICopLA0KPiA+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9zY2hlZC5jIGIvbmV0L3N1bnJw
+Yy9zY2hlZC5jDQo+ID4+IGluZGV4IDFjNTcwYTguLjExOTI4ZmYgMTAwNjQ0DQo+ID4+IC0tLSBh
+L25ldC9zdW5ycGMvc2NoZWQuYw0KPiA+PiArKysgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4gPj4g
+QEAgLTU1MSw2ICs1NTEsMzMgQEAgdm9pZCBycGNfd2FrZV91cChzdHJ1Y3QgcnBjX3dhaXRfcXVl
+dWUgKnF1ZXVlKQ0KPiA+PiAgRVhQT1JUX1NZTUJPTF9HUEwocnBjX3dha2VfdXApOw0KPiA+Pg0K
+PiA+PiAgLyoqDQo+ID4+ICsgKiBycGNfZHJhaW5fcXVldWUgLSBlbXB0eSB0aGUgcXVldWUgYW5k
+IHdha2UgdXAgYWxsIHJwY190YXNrcw0KPiA+PiArICogQHF1ZXVlOiBycGNfd2FpdF9xdWV1ZSBv
+biB3aGljaCB0aGUgdGFza3MgYXJlIHNsZWVwaW5nDQo+ID4+ICsgKg0KPiA+PiArICogR3JhYnMg
+cXVldWUtPmxvY2sNCj4gPj4gKyAqLw0KPiA+PiArdm9pZCBycGNfZHJhaW5fcXVldWUoc3RydWN0
+IHJwY193YWl0X3F1ZXVlICpxdWV1ZSkNCj4gPj4gK3sNCj4gPj4gKyAgICAgc3RydWN0IHJwY190
+YXNrICp0YXNrOw0KPiA+PiArICAgICBzdHJ1Y3QgbGlzdF9oZWFkICpoZWFkOw0KPiA+PiArDQo+
+ID4+ICsgICAgIHNwaW5fbG9ja19iaCgmcXVldWUtPmxvY2spOw0KPiA+PiArICAgICBoZWFkID0g
+JnF1ZXVlLT50YXNrc1txdWV1ZS0+bWF4cHJpb3JpdHldOw0KPiA+PiArICAgICBmb3IgKDs7KSB7
+DQo+ID4+ICsgICAgICAgICAgICAgd2hpbGUgKCFsaXN0X2VtcHR5KGhlYWQpKSB7DQo+ID4+ICsg
+ICAgICAgICAgICAgICAgICAgICB0YXNrID0gbGlzdF9lbnRyeShoZWFkLT5uZXh0LCBzdHJ1Y3Qg
+cnBjX3Rhc2ssDQo+ID4+ICsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB1
+LnRrX3dhaXQubGlzdCk7DQo+ID4+ICsgICAgICAgICAgICAgICAgICAgICBycGNfd2FrZV91cF90
+YXNrX3F1ZXVlX2xvY2tlZChxdWV1ZSwgdGFzayk7DQo+ID4+ICsgICAgICAgICAgICAgfQ0KPiA+
+PiArICAgICAgICAgICAgIGlmIChoZWFkID09ICZxdWV1ZS0+dGFza3NbMF0pDQo+ID4+ICsgICAg
+ICAgICAgICAgICAgICAgICBicmVhazsNCj4gPj4gKyAgICAgICAgICAgICBoZWFkLS07DQo+ID4+
+ICsgICAgIH0NCj4gPj4gKyAgICAgc3Bpbl91bmxvY2tfYmgoJnF1ZXVlLT5sb2NrKTsNCj4gPj4g
+K30NCj4gPj4gK0VYUE9SVF9TWU1CT0xfR1BMKHJwY19kcmFpbl9xdWV1ZSk7DQo+ID4+ICsNCj4g
+Pg0KPiA+IENvbmZ1c2VkLi4uIEhvdyBpcyB0aGlzIGZ1bmN0aW9uIGFueSBkaWZmZXJlbnQgZnJv
+bSBycGNfd2FrZV91cCgpPw0KPiANCj4gQmVjYXVzZSBpdCBhY3R1YWxseSBkcmFpbnMgdGhlIHF1
+ZXVlcyB3aGVyZSBycGNfd2FrZV91cCBkb2VzIG5vdC4gIFNlZQ0KPiB0aGUgYXR0YWNoZWQgb3V0
+cHV0IHdoZXJlIEkgYWRkZWQgdGhlIHNhbWUgcHJpbnRrcyB0byBib3RoDQo+IHJwY19kcmFpbl9x
+dWV1ZSBhbmQgcnBjX3dha2VfdXAuDQoNClNvIHlvdSBhcmUgc2VlaW5nIGEgYnVnIGluIHJwY193
+YWtlX3VwKCk/IEknbSBzdXJwcmlzZWQ7IGEgYnVnIG9mIHRoYXQNCm1hZ25pdHVkZSBzaG91bGQg
+aGF2ZSBjYXVzZWQgYSBsb3Qgb2YgaGFuZ3MuIENhbiB5b3UgcGxlYXNlIGxvb2sgaW50bw0Kd2hh
+dCBpcyBoYXBwZW5pbmcuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg0K
