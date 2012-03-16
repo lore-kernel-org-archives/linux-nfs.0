@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36140 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:36882 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758657Ab2CMR0T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 13:26:19 -0400
-Message-ID: <4F5F8324.30608@parallels.com>
-Date: Tue, 13 Mar 2012 21:25:56 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1759245Ab2CPN4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 09:56:33 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2GDuHX0026422
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2012 06:56:17 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: Clean ups and bugfixes for the pNFS
+ read/writeback/commit code
+Date: Fri, 16 Mar 2012 13:56:16 +0000
+Message-ID: <1331906176.2518.6.camel@lade.trondhjem.org>
+References: <1331855983-24264-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <CADnza47r+qd_jWLMBA3LP_U9cBfiUh=gPBMvHX_q8EG88_B=fQ@mail.gmail.com>
+In-Reply-To: <CADnza47r+qd_jWLMBA3LP_U9cBfiUh=gPBMvHX_q8EG88_B=fQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Dan Carpenter <dan.carpenter@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        Weston Andros Adamson <dros@netapp.com>, Peng Tao <peng_tao@emc.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>
-Subject: Re: [patch] NFS: null dereference in dev_remove()
-References: <20120313171848.GA31808@elgon.mountain>
-In-Reply-To: <20120313171848.GA31808@elgon.mountain>
-Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-13.03.2012 21:18, Dan Carpenter пишет:
-> In commit 5ffaf85541 "NFS: replace global bl_wq with per-net one" we
-> made "msg" a pointer instead of a struct stored in stack memory.  But we
-> forgot to change the memset() here so we're still clearing stack memory
-> instead clearing the struct like we intended.  It will lead to a kernel
-> crash.
->
-> Signed-off-by: Dan Carpenter<dan.carpenter@oracle.com>
->
-> diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
-> index 30fc22a..737d839 100644
-> --- a/fs/nfs/blocklayout/blocklayoutdm.c
-> +++ b/fs/nfs/blocklayout/blocklayoutdm.c
-> @@ -54,7 +54,7 @@ static void dev_remove(struct net *net, dev_t dev)
->   	dprintk("Entering %s\n", __func__);
->
->   	bl_pipe_msg.bl_wq =&nn->bl_wq;
-> -	memset(&msg, 0, sizeof(*msg));
-> +	memset(msg, 0, sizeof(*msg));
->   	msg->data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
->   	if (!msg->data)
->   		goto out;
-
-Thanks, Dan!
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gRnJpLCAyMDEyLTAzLTE2IGF0IDA5OjQ4IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+T24gVGh1LCBNYXIgMTUsIDIwMTIgYXQgNzo1OSBQTSwgVHJvbmQgTXlrbGVidXN0DQo+IDxUcm9u
+ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gTW92ZSBtb3JlIHBuZnMtaXNtcyBv
+dXQgb2YgdGhlIGdlbmVyaWMgY29tbWl0IGNvZGUuDQoNCj4gPiBAQCAtNzgxLDkgKzc4NCwxNSBA
+QCBzdGF0aWMgdTMyIHNlbGVjdF9idWNrZXRfaW5kZXgoc3RydWN0IG5mczRfZmlsZWxheW91dF9z
+ZWdtZW50ICpmbCwgdTMyIGopDQo+ID4gICogSWYgdGhpcyB3aWxsIG1ha2UgdGhlIGJ1Y2tldCBl
+bXB0eSwgaXQgd2lsbCBuZWVkIHRvIHB1dCB0aGUgbHNlZyByZWZlcmVuY2UuDQo+ID4gICogTm90
+ZSBpbm9kZSBsb2NrIGlzIGhlbGQsIHNvIHdlIGNhbid0IGRvIHRoZSBwdXQgaGVyZS4NCj4gPiAg
+Ki8NCj4gDQo+IFRoZSB3aG9sZSBjb21tZW50IGFib3ZlIHNob3VsZCBwcm9iYWJseSBiZSByZW1v
+dmVkLg0KDQpXaWxsIGRvIQ0KDQoNCj4gPiArLyoqDQo+ID4gKyAqIG5mc19yZXF1ZXN0X2FkZF9j
+b21taXRfbGlzdCAtIGFkZCByZXF1ZXN0IHRvIGEgY29tbWl0IGxpc3QNCj4gPiArICogQHJlcTog
+cG9pbnRlciB0byBhIHN0cnVjdCBuZnNfcGFnZQ0KPiA+ICsgKiBAaGVhZDogY29tbWl0IGxpc3Qg
+aGVhZA0KPiA+ICsgKg0KPiA+ICsgKiBUaGlzIHNldHMgdGhlIFBHX0NMRUFOIGJpdCwgdXBkYXRl
+cyB0aGUgaW5vZGUgZ2xvYmFsIGNvdW50IG9mDQo+ID4gKyAqIG51bWJlciBvZiBvdXRzdGFuZGlu
+ZyByZXF1ZXN0cyByZXF1aXJpbmcgYSBjb21taXQgYXMgd2VsbCBhcw0KPiA+ICsgKiB0aGUgTU0g
+cGFnZSBzdGF0cy4NCj4gPiArICoNCj4gPiArICogVGhlIGNhbGxlciBtdXN0IF9ub3RfIGhvbGQg
+dGhlIGlub2RlLT5pX2xvY2suDQo+ID4gICovDQo+ID4gLXN0YXRpYyB2b2lkDQo+ID4gLW5mc19t
+YXJrX3JlcXVlc3RfY29tbWl0KHN0cnVjdCBuZnNfcGFnZSAqcmVxLCBzdHJ1Y3QgcG5mc19sYXlv
+dXRfc2VnbWVudCAqbHNlZykNCj4gPiArdm9pZA0KPiA+ICtuZnNfcmVxdWVzdF9hZGRfY29tbWl0
+X2xpc3Qoc3RydWN0IG5mc19wYWdlICpyZXEsIHN0cnVjdCBsaXN0X2hlYWQgKmhlYWQpDQo+ID4g
+IHsNCj4gPiAgICAgICAgc3RydWN0IGlub2RlICppbm9kZSA9IHJlcS0+d2JfY29udGV4dC0+ZGVu
+dHJ5LT5kX2lub2RlOw0KPiA+IC0gICAgICAgc3RydWN0IG5mc19pbm9kZSAqbmZzaSA9IE5GU19J
+KGlub2RlKTsNCj4gPiAtICAgICAgIHN0cnVjdCBsaXN0X2hlYWQgKmNsaXN0Ow0KPiA+DQo+ID4g
+LSAgICAgICBjbGlzdCA9IHBuZnNfY2hvb3NlX2NvbW1pdF9saXN0KHJlcSwgbHNlZyk7DQo+ID4g
+LSAgICAgICBzcGluX2xvY2soJmlub2RlLT5pX2xvY2spOw0KPiA+ICAgICAgICBzZXRfYml0KFBH
+X0NMRUFOLCAmKHJlcSktPndiX2ZsYWdzKTsNCj4gDQo+IHNob3VsZG4ndCB0aGlzIHN0YXkgaW5z
+aWRlIHRoZSBzcGlubG9jaz8NCj4gDQo+IEZyZWQNCg0KVGhlIHNldF9iaXQ/IFdlIHNob3VsZCBh
+bHdheXMgYmUgaG9sZGluZyB0aGUgUEdfQlVTWSBsb2NrIGFueSB0aW1lIHRoYXQNCndlIHRlc3Qg
+b3IgbW9kaWZ5IHRoZSBvdGhlciB3Yl9mbGFncyAobWF5YmUgSSBzaG91bGQgcHV0IHRoYXQgaW4g
+dGhlDQpjb21tZW50IGFib3ZlKSwgYW5kIHNvIGNoYW5naW5nIHRoZW0gb3V0c2lkZSB0aGUgaW5v
+ZGUtPmlfbG9jayBzaG91bGQgYmUNCnNhZmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
+eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
