@@ -1,51 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20829 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37961 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932150Ab2CEPDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 10:03:37 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q25F3bhZ018313
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 10:03:37 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-9-158.rdu.redhat.com [10.11.9.158])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q25F3amD014728
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 10:03:37 -0500
-Message-ID: <4F54D5CC.5050402@RedHat.com>
-Date: Mon, 05 Mar 2012 10:03:40 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-References: <4F513429.1050209@RedHat.com> <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com> <1330801976.2781.19.camel@lade.trondhjem.org> <4F53ED3C.2020209@RedHat.com> <4F53F39E.9050802@RedHat.com> <1330903600.14357.10.camel@lade.trondhjem.org> <4F5402E4.4030506@RedHat.com> <1330913047.14357.19.camel@lade.trondhjem.org> <4F54A9BD.4020702@RedHat.com> <20120305144743.GA31639@us.ibm.com>
-In-Reply-To: <20120305144743.GA31639@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754503Ab2CPT06 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Mar 2012 15:26:58 -0400
+Message-ID: <1331926004.2336.6.camel@localhost>
+Subject: Re: Error: state manager encountered RPCSEC_GSS session expired
+ against NFSv4 server
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Fri, 16 Mar 2012 19:26:44 +0000
+In-Reply-To: <1331924613.12136.1.camel@lade.trondhjem.org>
+References: <1331912791.2336.3.camel@localhost>
+	 <1331919386.2518.44.camel@lade.trondhjem.org>
+	 <4F637B68.2000202@fifthhorseman.net>
+	 <1331924613.12136.1.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/05/2012 09:47 AM, Malahal Naineni wrote:
-> Steve Dickson [SteveD@redhat.com] wrote:
->>
->>> Which is why I'm asking you if you can't copy from /proc/mounts. Distros
->>> which already have a symlink betweek /etc/mtab and /proc/mounts don't
->>> have any of these problems...
->>>
->> Personally I think it simpler to just normalize the paths before 
->> writing it to the mtab verses open up and searching /proc/mounts
->> esp on client where there is large amount of mounts...  
+On Fri, 2012-03-16 at 19:03 +0000, Myklebust, Trond wrote:
+> On Fri, 2012-03-16 at 13:42 -0400, Daniel Kahn Gillmor wrote:
+> > On 03/16/2012 01:36 PM, Myklebust, Trond wrote:
+> > > The problem is that if the client doesn't have a machine cred, then you
+> > > end up taking a random user credential that may not currently be holding
+> > > any OPEN files. In that case too the RENEW will fail.
+> > 
+> > So if i'm understanding this right:
+> > 
+> > Sachin's proposal fails when the machine has no machine creds.
+> > 
+> > The current implementation fails when the logged-in user's credentials 
+> > are expired.
+> > 
+> > Can the NFS client's logic test for those different cases, use the 
+> > appropriate creds for RENEW in their difference, and reduce the failure 
+> > case to their intersection?
 > 
-> We always open up and search /proc/mounts today for the matching
-> mountpoint to know the exact version of nfs, right? 
-Yes, we open up /proc/mount to get the authoritative version.
+> Simpler solution: add the call to get machine creds to the existing
+> get_renew_creds function.
 
-> The umount time normalization is going to cost us? 
-Nothing... but I thought it might be easier to do the 
-normalization after a successful v4 iff the the mtab
-is writable.
- 
-> Or you proposing a patch that is going to avoid opening up /proc/mounts altogether?
-No... umount has to open /proc/mounts...
+Hello Trond, 
 
-steved.
+I've sent a patch to the Mailing list using your suggestion above. 
+
+Thanks
+Sachin Prabhu
 
