@@ -1,50 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41940 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5233 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1031146Ab2CITtz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 14:49:55 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JntQh020553
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:49:55 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 7/7] Kill SPKM3: Remove mentions of SPKM3 from README
-Date: Fri,  9 Mar 2012 14:49:46 -0500
-Message-Id: <1331322586-4631-8-git-send-email-simo@redhat.com>
-In-Reply-To: <1331322586-4631-1-git-send-email-simo@redhat.com>
-References: <1331322586-4631-1-git-send-email-simo@redhat.com>
+	id S1753285Ab2CQPQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 Mar 2012 11:16:04 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2HFFlpk014134
+	for <linux-nfs@vger.kernel.org>; Sat, 17 Mar 2012 08:15:47 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/2] NFSv4.1: Clean ups and bugfixes for the pNFS
+ read/writeback/commit code
+Date: Sat, 17 Mar 2012 15:15:46 +0000
+Message-ID: <1331997345.2974.6.camel@lade.trondhjem.org>
+References: <1331932941-15034-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <7725B048-5E76-477A-8C4E-052DB43A1F84@netapp.com>
+In-Reply-To: <7725B048-5E76-477A-8C4E-052DB43A1F84@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- README |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/README b/README
-index e7588cfd9337257aef27a90471c0c6935e3bc990..5c86808d3628e30c665f87501a1cd465fda5c76d 100644
---- a/README
-+++ b/README
-@@ -80,7 +80,7 @@ scripts can be written to work correctly.
-        and starting the nfsd server is not important.
-        idmapd is only needed for NFSv4 support.
-        svcgssd is only needed if exportfs NFS filesystem with crypto-
--       security (Kerberos or SPKM3).
-+       security (Kerberos).
- 
-    C/ exportfs -av ; rpc.mountd
-        It is important that exportfs be run before mountd so that
-@@ -130,7 +130,7 @@ scripts can be written to work correctly.
-    B/ gssd ; idmapd
-       idmapd should be started before mounting any NFSv4 filesystems.
-       gssd should be started before mounting any NFS filesystems
--      securely (with Kerberos of SPKM3).
-+      securely (with Kerberos).
- 
-    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
-       mounted with remote locking (i.e. without -o nolock).
--- 
-1.7.7.6
-
+T24gU2F0LCAyMDEyLTAzLTE3IGF0IDEwOjU1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+T24gTWFyIDE2LCAyMDEyLCBhdCA1OjIyIFBNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4g
+DQo+ID4gK3N0YXRpYyBpbnQNCj4gPiArZmlsZWxheW91dF9zY2FuX2RzX2NvbW1pdF9saXN0KHN0
+cnVjdCBuZnM0X2ZsX2NvbW1pdF9idWNrZXQgKmJ1Y2tldCwgaW50IG1heCkNCj4gPiArew0KPiA+
+ICsJc3RydWN0IGxpc3RfaGVhZCAqc3JjID0gJmJ1Y2tldC0+d3JpdHRlbjsNCj4gPiArCXN0cnVj
+dCBsaXN0X2hlYWQgKmRzdCA9ICZidWNrZXQtPmNvbW1pdHRpbmc7DQo+ID4gKwlzdHJ1Y3QgbmZz
+X3BhZ2UgKnJlcSwgKnRtcDsNCj4gPiArCWludCByZXQgPSAwOw0KPiA+ICsNCj4gDQo+IG5lZWQg
+c29tZXRoaW5nIGhlcmUgbGlrZToNCj4gDQo+IGlmIChtYXggPT0gMCkNCj4gICAgcmV0dXJuIDA7
+DQoNCkknbGwgcHV0IHRoYXQgaW4gdGhlIGNhbGxlciBpbnN0ZWFkLg0KDQo+ID4gKwlsaXN0X2Zv
+cl9lYWNoX2VudHJ5X3NhZmUocmVxLCB0bXAsIHNyYywgd2JfbGlzdCkgew0KPiA+ICsJCWlmICgh
+bmZzX2xvY2tfcmVxdWVzdChyZXEpKQ0KPiA+ICsJCQljb250aW51ZTsNCj4gPiArCQluZnNfcmVx
+dWVzdF9yZW1vdmVfY29tbWl0X2xpc3QocmVxKTsNCj4gPiArCQljbGVhcl9iaXQoUEdfQ09NTUlU
+X1RPX0RTLCAmcmVxLT53Yl9mbGFncyk7DQo+ID4gKwkJbmZzX2xpc3RfYWRkX3JlcXVlc3QocmVx
+LCBkc3QpOw0KPiA+ICsJCXJldCsrOw0KPiA+ICsJCWlmIChyZXQgPT0gbWF4KQ0KPiA+ICsJCQli
+cmVhazsNCj4gPiArCX0NCj4gPiArCXJldHVybiByZXQ7DQo+ID4gK30NCj4gPiArDQo+ID4gLyog
+TW92ZSByZXFzIGZyb20gd3JpdHRlbiB0byBjb21taXR0aW5nIGxpc3RzLCByZXR1cm5pbmcgY291
+bnQgb2YgbnVtYmVyIG1vdmVkLg0KPiA+ICogTm90ZSBjYWxsZWQgd2l0aCBpX2xvY2sgaGVsZC4N
+Cj4gPiAqLw0KPiA+IEBAIC05MjAsMjEgKzk2NywxNiBAQCBzdGF0aWMgaW50IGZpbGVsYXlvdXRf
+c2Nhbl9jb21taXRfbGlzdHMoc3RydWN0IGlub2RlICppbm9kZSwgaW50IG1heCkNCj4gPiANCj4g
+PiAJbHNlZyA9IGZpbmRfb25seV93cml0ZV9sc2VnX2xvY2tlZChpbm9kZSk7DQo+ID4gCWlmICgh
+bHNlZykNCj4gPiAtCQlyZXR1cm4gMDsNCj4gPiArCQlnb3RvIG91dF9kb25lOw0KPiA+IAlmbCA9
+IEZJTEVMQVlPVVRfTFNFRyhsc2VnKTsNCj4gPiAJaWYgKGZsLT5jb21taXRfdGhyb3VnaF9tZHMp
+DQo+ID4gLQkJZ290byBvdXRfcHV0Ow0KPiA+ICsJCWdvdG8gb3V0X2RvbmU7DQo+ID4gCWZvciAo
+aSA9IDA7IGkgPCBmbC0+bnVtYmVyX29mX2J1Y2tldHM7IGkrKykgew0KPiA+IC0JCWlmIChsaXN0
+X2VtcHR5KCZmbC0+Y29tbWl0X2J1Y2tldHNbaV0ud3JpdHRlbikpDQo+ID4gLQkJCWNvbnRpbnVl
+Ow0KPiA+IC0JCWNudCA9IG5mc19zY2FuX2NvbW1pdF9saXN0KCZmbC0+Y29tbWl0X2J1Y2tldHNb
+aV0ud3JpdHRlbiwNCj4gPiAtCQkJCQkgICAmZmwtPmNvbW1pdF9idWNrZXRzW2ldLmNvbW1pdHRp
+bmcsDQo+ID4gLQkJCQkJICAgbWF4KTsNCj4gPiArCQljbnQgPSBmaWxlbGF5b3V0X3NjYW5fZHNf
+Y29tbWl0X2xpc3QoJmZsLT5jb21taXRfYnVja2V0c1tpXSwgbWF4KTsNCj4gPiAJCW1heCAtPSBj
+bnQ7DQo+ID4gCQlydiArPSBjbnQ7DQo+ID4gCX0NCj4gPiAtb3V0X3B1dDoNCj4gPiAtCXB1dF9s
+c2VnKGxzZWcpOw0KPiA+ICtvdXRfZG9uZToNCj4gPiAJcmV0dXJuIHJ2Ow0KPiA+IH0NCg0KDQoN
+Cj4gPiAvKiBpX2xvY2sgaGVsZCBieSBjYWxsZXIgKi8NCj4gPiAtaW50DQo+ID4gK3N0YXRpYyBp
+bnQNCj4gPiBuZnNfc2Nhbl9jb21taXRfbGlzdChzdHJ1Y3QgbGlzdF9oZWFkICpzcmMsIHN0cnVj
+dCBsaXN0X2hlYWQgKmRzdCwgaW50IG1heCkNCj4gPiB7DQo+ID4gCXN0cnVjdCBuZnNfcGFnZSAq
+cmVxLCAqdG1wOw0KPiA+IAlpbnQgcmV0ID0gMDsNCj4gPiANCj4gDQo+IGFnYWluIGhlcmUgbmVl
+ZA0KPiANCj4gaWYgKG1heCA9PSAwKQ0KPiAgICByZXR1cm4gMDsNCj4gDQoNCk5haC4uLiBUaGlz
+IG9uZSBpcyBvdmVyZGVzaWduLiBXZSBvbmx5IGhhdmUgb25lIGNhbGxlciwgYW5kIGl0IHVzZXMN
+Cm1heD1JTlRfTUFYLg0KSWYgd2UgZXZlciBnZXQgYSBzZWNvbmQgY2FsbGVyLCB0aGVuIHdlIGNh
+biBwdXQgYSB0ZXN0IGluIHRoZSBuZXcgY2FsbGVyDQooaWYgb25lIGlzIG5lZWRlZCkuLi4NCg0K
+Q2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg0K
