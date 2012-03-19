@@ -1,122 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63970 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753292Ab2CVNf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 09:35:57 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service
- unavailable"
-To: torvalds@linux-foundation.com
-Cc: linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-kernel@vger.kernel.org,
-        libc-alpha@sourceware.org, David Howells <dhowells@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Steve Dickson <steved@redhat.com>
-Date: Thu, 22 Mar 2012 13:35:32 +0000
-Message-ID: <20120322133531.23390.95890.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from acsinet15.oracle.com ([141.146.126.227]:36164 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1032496Ab2CSTB3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 15:01:29 -0400
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120319185421.GD23670@fieldses.org>
+Date: Mon, 19 Mar 2012 15:00:57 -0400
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Message-Id: <2B0656CB-C28D-411C-A2DD-5FA573498380@oracle.com>
+References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org> <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com> <20120319183955.GC23670@fieldses.org> <C14ACD08-1D43-44F8-8504-46DCB98359BB@oracle.com> <20120319185421.GD23670@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As the kernel has or will have filesystems (and possibly other services) that
-want to obtain authentication tokens and/or encryption data on demand (via
-GSSAPI for example), it would seem useful to provide an additional error code
-to indicate a problem with the lookup, rather than overloading some other error
-code.
 
-We already have EKEYREJECTED, EKEYREVOKED and EKEYEXPIRED to indicate problems
-with a token that we already have, but what if the authentication server just
-isn't available?
+On Mar 19, 2012, at 2:54 PM, J. Bruce Fields wrote:
 
-Define ENOAUTHSERVICE to indicate "Authentication service unavailable".  This
-can be used to indicate, for example, that an attempt was made by request_key()
-to retrieve a key, but the authentication server (e.g. a KDC) it is supposed to
-contact didn't answer or that it couldn't determine the location of a suitable
-server.
+> On Mon, Mar 19, 2012 at 02:42:30PM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 19, 2012, at 2:39 PM, J. Bruce Fields wrote:
+>> 
+>>> On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
+>>>> 
+>>>> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
+>>>>> That's also not this case, sorry, this time with all the conditions:
+>>>>> 
+>>>>> 	- if the nfs_client_id4 is the same, and
+>>>>> 	- if the flavor is auth_sys, and
+>>>>> 	- if the client IP address is different,
+>>>>> 	- then return NFS4ERR_INUSE.
+>>>> 
+>>>> This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
+>>> 
+>>> OK.  So probably there's nothing we can do to help here.
+>>> 
+>>> As a bandaid maybe a rate-limited log message ("clientid X now in use
+>>> from IP Y") might help debug these things....
+>> 
+>> Hm, OK.  That implies your server implementation assumes that a clientid4 maps to exactly one client IP address at a time.
+> 
+> OK, agreed.  So how about something like "state for client X previously
+> established from IP Y now cleared from IP Z"  ??
+> 
+> (Assuming it's only the I-just-rebooted setclientid case that's likely
+> to be the sign of a problem.)
 
-One way this can be used is that the user of a network filesystem could get a
-TGT from the KDC and stash it in their session keyring, then the filesystem can
-attempt to automatically get a ticket for accessing the filesystem - but if the
-server is uncontactable then the ticket can be negatively instantiated with
-KEYCTL_REJECT, giving the error to be handed to future requests as
-ENOAUTHSERVICE and a small timeout so that the key will expire from the cache
-and allow a retry after a short while to prevent thrashing.
+We would see that only in the case where the boot verifier and the client IP change at the same time.  That can happen legitimately, too, if the client has a dynamically assigned IP address.  Maybe this event is only interesting if it happens more than once during the same second.
 
-I envision that this error would primarily be generated by a kernel upcall for
-the kernel to then pass back to the original userspace caller.  The kernel
-itself might not actually pay any attention to it, except as a hint as to
-whether to retry.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
-Acked-by: Steve Dickson <steved@redhat.com>
-Liked-by: Simo Sorce <simo@redhat.com>
----
 
- arch/alpha/include/asm/errno.h  |    2 ++
- arch/mips/include/asm/errno.h   |    1 +
- arch/parisc/include/asm/errno.h |    1 +
- arch/sparc/include/asm/errno.h  |    1 +
- include/asm-generic/errno.h     |    1 +
- 5 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index e5f29ca..dce5fc9 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -124,4 +124,6 @@
- 
- #define EHWPOISON	139	/* Memory page has hardware error */
- 
-+#define	ENOAUTHSERVICE	140	/* Authentication service not available */
-+
- #endif
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index 6dcd358..67c46bd 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -122,6 +122,7 @@
- #define	ERFKILL		167	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	168	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	169	/* Authentication service not available */
- 
- #define EDQUOT		1133	/* Quota exceeded */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 135ad60..3a6ffcd 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -123,5 +123,6 @@
- #define	ERFKILL		256	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	257	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	258	/* Authentication service not available */
- 
- #endif
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index c351aba..94a878f 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -113,5 +113,6 @@
- #define	ERFKILL		134	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	135	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	136	/* Authentication service not available */
- 
- #endif
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index a1331ce..5e2b296 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -109,5 +109,6 @@
- #define ERFKILL		132	/* Operation not possible due to RF-kill */
- 
- #define EHWPOISON	133	/* Memory page has hardware error */
-+#define	ENOAUTHSERVICE	134	/* Authentication service not available */
- 
- #endif
 
