@@ -1,68 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53263 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33057 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755623Ab2CSVcs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 17:32:48 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 1 07/11] NFSv4.1 Check invalid deviceid upon
- slot table waitq wakeup
-Date: Mon, 19 Mar 2012 21:32:45 +0000
-Message-ID: <110373F8-CDA5-416C-85D3-F31775667D03@netapp.com>
-References: <1331836850-5195-1-git-send-email-andros@netapp.com>
- <1331836850-5195-8-git-send-email-andros@netapp.com>
- <1331857679.24392.9.camel@lade.trondhjem.org>
- <CAHVgHyVvKPgD6hCqAH3k6Da=U1mkYYZ+fGr+99yWTGT04Hb6nA@mail.gmail.com>
-In-Reply-To: <CAHVgHyVvKPgD6hCqAH3k6Da=U1mkYYZ+fGr+99yWTGT04Hb6nA@mail.gmail.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S965011Ab2CSQ2z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 12:28:55 -0400
+Date: Mon, 19 Mar 2012 12:28:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org,
+        nfsv4@ietf.org
+Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
+Message-ID: <20120319162851.GA22336@fieldses.org>
+References: <87pqchn64e.fsf@inspiron.ap.columbia.edu>
+ <20120312193115.GA7203@fieldses.org>
+ <4F5E5241.7070008@rath.org>
+ <20120312201505.GC7203@fieldses.org>
+ <4F5E5CF2.50309@rath.org>
+ <20120312204238.GA8991@fieldses.org>
+ <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com>
+ <20120312210414.GB8991@fieldses.org>
+ <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
+ <20120312212708.GC8991@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120312212708.GC8991@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 16, 2012, at 11:12 AM, Andy Adamson wrote:
-
-> On Thu, Mar 15, 2012 at 8:27 PM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
->> On Thu, 2012-03-15 at 14:40 -0400, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>> 
->>> Register a new filelayout DS rpc_action callback for sleeping on the fore
->>> channel slot table waitq.  Avoid any additional RPC FSM states
->>> (such as timeout) when waking up to an invalid deviceid and reset
->>> the task for io to the MDS.
->> 
->> Why can't you simply put this call to filelayout_write_sleepon_cb in
->> filelayout_write_prepare (before calling nfs41_setup_sequence())?
+On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
+> > IMO, the server should do a comparison of the nfs_client_id4 strings,
+> > and nothing else.
 > 
-> I guess I can. Will do.
-
-Actually, I that won't work.
-
+> We're supposed to return CLID_INUSE when we see a setclientid from a
+> "different" client using the same string, to keep clients from doing
+> mischief with other clients' state (either maliciously or, as in this
+> case, accidentally).
 > 
-> -->Andy
-> 
->> 
->> Since nothing is going to change the task->tk_action if
->> nfs41_setup_sequence() puts you to sleep, what value does the callback
->> add?
+> "Different" here is defined as "not having the same principal".  I know
+> what that means in the krb5 case, but I'm less certain in the auth_sys
+> case.
 
-The rpc_action remains rpc_call_prepare. But! We want the tasks coming off the failed DS fore channel slot table queue to be redirected to the MDS nfs_XXX_prepare, not the filelayout_xxx_prepare.
+Cc'ing the ietf list.  Is it reasonable for a server to expect
+setclientid's to come from the same client IP address at least in the
+auth_sys case, or could that break multi-homed clients?
 
-Note that filelayout_reset_read and filelayout_reset_write set the data->ds_clp to NULL which makes the call to nfs41_setup_sequence() in filelayout_write/read_prepare Oops…..
+At least in the auth_sys case IP addresses are one of the only things we
+have left to go on when the client's identifier-generation is messed up
+(not that difficult).
 
-So, I'll keep this patch as is.
-
--->Andy
-
-> 
->> Linux NFS client maintainer
->> 
->> NetApp
->> Trond.Myklebust@netapp.com
->> www.netapp.com
->> 
-
+--b.
