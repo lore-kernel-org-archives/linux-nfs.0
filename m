@@ -1,52 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43933 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757635Ab2CMV3z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Mar 2012 17:29:55 -0400
-Date: Tue, 13 Mar 2012 17:29:48 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "Ted Ts'o" <tytso@mit.edu>, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120313212947.GK31995@pad.fieldses.org>
-References: <20120306151816.GB32282@thunk.org>
- <20120306152842.GA8339@pad.fieldses.org>
- <20120309205148.GB5635@thunk.org>
- <20120312150912.GB12440@thunk.org>
- <20120312154921.GB17153@pad.fieldses.org>
- <20120312222250.GD8991@fieldses.org>
- <20120313200117.GA21991@fieldses.org>
- <4F5FA827.8020606@itwm.fraunhofer.de>
- <20120313203446.GB21991@fieldses.org>
- <4F5FB771.9010805@fastmail.fm>
+Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:40362 "EHLO
+	esa-annu.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758422Ab2CSRGs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 13:06:48 -0400
+Date: Mon, 19 Mar 2012 13:06:47 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org,
+        nfsv4@ietf.org
+Message-ID: <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca>
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F5FB771.9010805@fastmail.fm>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 13, 2012 at 10:09:05PM +0100, Bernd Schubert wrote:
-> Hmm, there must have gone something wrong on merging,
-
-In that case one approach would be to rebase your last-sent patches on
-to the same base as Ted's versions, confirm that one still works and the
-other doesn't, and do a diff....
-
-> my own test
-> also fails
+I wrote:
+> J. Bruce Fields wrote:
+> > On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
+> > > On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
+> > > > IMO, the server should do a comparison of the nfs_client_id4
+> > > > strings,
+> > > > and nothing else.
+> > >
+> > > We're supposed to return CLID_INUSE when we see a setclientid from
+> > > a
+> > > "different" client using the same string, to keep clients from
+> > > doing
+> > > mischief with other clients' state (either maliciously or, as in
+> > > this
+> > > case, accidentally).
+> > >
+> > > "Different" here is defined as "not having the same principal". I
+> > > know
+> > > what that means in the krb5 case, but I'm less certain in the
+> > > auth_sys
+> > > case.
+> >
+> > Cc'ing the ietf list. Is it reasonable for a server to expect
+> > setclientid's to come from the same client IP address at least in
+> > the
+> > auth_sys case, or could that break multi-homed clients?
+> >
+> I think that even a dhcp lease renewal might result in a different
+> client
+> IP, if the client has been partitioned from the dhcp server for a
+> while.
 > 
-> http://www.pci.uni-heidelberg.de/tc/usr/bernd/downloads/test_seekdir/
+> I'm not convinced that different client IP# implies different client.
+> (Even "same ip# implies same client" might not be true, if the dhcp
+> server assigned the IP# to another machine while the client was
+> partitioned
+> from the dhcp server, I think? I haven't looked at current dhcp
+> implementations, but it seems conceivable to me.)
 > 
-> (Sorry, it does not say 'failure', but one needs to compare the file
-> names and telldir-offset numbers)
+Oh, and what about the case of 2 clients that are sitting behind
+the same NAT gateway? (I think they'd both be seen as having the
+client host ip# of the gateway, but with different TCP connections
+on different client port#s.)
+
+> For AUTH_SYS, all the FreeBSD server does is expect the same uid#.
 > 
-> I think I will continue in the morning as its already 1 a.m. here.
-
-OK, thanks for following up!
-
---b.
+> rick
+> > At least in the auth_sys case IP addresses are one of the only
+> > things
+> > we
+> > have left to go on when the client's identifier-generation is messed
+> > up
+> > (not that difficult).
+> >
+> > --b.
+> > _______________________________________________
+> > nfsv4 mailing list
+> > nfsv4@ietf.org
+> > https://www.ietf.org/mailman/listinfo/nfsv4
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
