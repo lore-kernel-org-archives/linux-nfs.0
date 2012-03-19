@@ -1,78 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55164 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758843Ab2C1XqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 19:46:20 -0400
-Date: Wed, 28 Mar 2012 19:46:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd4: use auth_unix unconditionally on backchannel
-Message-ID: <20120328234617.GB13231@fieldses.org>
-References: <20120323121208.GA3219@fieldses.org>
- <20120323133111.GA2991@fieldses.org>
- <1332516024.3087.1.camel@lade.trondhjem.org>
- <20120323152220.GA4953@fieldses.org>
- <1332516863.3087.10.camel@lade.trondhjem.org>
- <20120323115337.28bff808@corrin.poochiereds.net>
- <20120323121218.74461807@corrin.poochiereds.net>
- <20120323170405.GA6089@fieldses.org>
- <20120328230931.GA13231@fieldses.org>
- <1332976613.19172.25.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332976613.19172.25.camel@lade.trondhjem.org>
+Received: from acsinet15.oracle.com ([141.146.126.227]:39941 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030705Ab2CSRn6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 13:43:58 -0400
+Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last realm
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4F676E95.3090409@RedHat.com>
+Date: Mon, 19 Mar 2012 13:43:52 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5295E5C7-2AD7-4D52-B3C1-8C24D964DCEF@oracle.com>
+References: <1332160616-4522-1-git-send-email-steved@redhat.com> <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com> <4F676E95.3090409@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 28, 2012 at 11:16:49PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-03-28 at 19:09 -0400, J. Bruce Fields wrote:
-> > This is a bandaid.
-> > 
-> > I have a series of patches that actually implement the correct behavior,
-> > but that may not quite be ready for 3.4.
-> > 
-> > --b.
-> > 
-> > commit 2f026867c76171d26f003b211063ff0562097d5e
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Wed Mar 28 14:18:16 2012 -0400
-> > 
-> >     nfsd4: use auth_unix unconditionally on backchannel
-> >     
-> >     This isn't actually correct, but it works with the Linux client, and
-> >     agrees with the behavior we used to have before commit 80fc015bdfe.
-> 
-> Question: does the Linux client ever send you anything other than
-> AUTH_SYS credentials for the csa_sec_parms argument in CREATE_SESSION?
-> Anything other than that would be a bug, since our client doesn't
-> actually support RPCSEC_GSS in the callback channel.
 
-Right, I've never seen anything else, so I think the client's behaving
-as expected.
-
-But the server needs to be fixed to deal with the range of possible
-csa_sec_parms possibilities regardless.
-
-The only thing I find odd about the client behavior is why it even
-bothers with auth_sys when auth_null would work just as well and be even
-slightly simpler.
-
---b.
+On Mar 19, 2012, at 1:36 PM, Steve Dickson wrote:
 
 > 
-> >     Later patches will implement the spec-mandated behavior (which is to use
-> >     the security parameters explicitly given by the client in create_session
-> >     or backchannel_ctl).
-> >     
 > 
+> On 03/19/2012 10:05 AM, Chuck Lever wrote:
+>> 
+>> On Mar 19, 2012, at 8:36 AM, Steve Dickson wrote:
+>> 
+>>> From: Juno Krahn <Juno.Krahn@gmail.com>
+>>> 
+>>> The list of local realms can be logged with a massage like the following:
+>>>  rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
+>>> Instead of printing a list of realms, only the last realm in the list is shown.
+>>> 
+>>> https://bugzilla.redhat.com/show_bug.cgi?id=804152
+>>> 
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> 
+>> The patch says "From: Juno Krahn" but the sign-off is from you. 
+> The patch came from:
+>    http://sourceforge.net/tracker/?func=detail&atid=903784&aid=3507122&group_id=183075 
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> Now in the past I have asked people to post patches to this list with
+> the appropriate format, but with a no-brainier like this patch, I
+> thought that would have been a waste time on both ends.
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+>> Should you also have an SOB from Juno?
+> Juno gets credit for authoring the patch and I'm taking 
+> responsibility for the patch with my SOB... Does there
+> have to be any more process than that?? 
+
+My understanding is that SOB is not about responsibility, but about the provenance of the work.  It doesn't matter how large or small the patch is.  The SOB is a public declaration of Juno's desire to pass the patch to you.  Otherwise it looks like you didn't ask permission, even if you did.
+
+I've never seen another project maintainer drop an SOB like this, so I'm just asking (and copying the list for other opinions).  No objection, just want to make sure we are dotting our open-source "i"s and so on.
+
+> steved. 
 > 
+>> 
+>>> ---
+>>> libnfsidmap.c |    3 ++-
+>>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>>> 
+>>> diff --git a/libnfsidmap.c b/libnfsidmap.c
+>>> index 57bb6c3..641d766 100644
+>>> --- a/libnfsidmap.c
+>>> +++ b/libnfsidmap.c
+>>> @@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
+>>> 			}
+>>> 			buf = malloc(siz);
+>>> 			if (buf) {
+>>> +				*buf = 0;
+>>> 				TAILQ_FOREACH(r, &local_realms->fields, link) {
+>>> -					sprintf(buf, "'%s' ", r->field);
+>>> +					sprintf(buf+strlen(buf), "'%s' ", r->field);
+>>> 				}
+>>> 				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
+>>> 				free(buf);
+>>> -- 
+>>> 1.7.7.5
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
