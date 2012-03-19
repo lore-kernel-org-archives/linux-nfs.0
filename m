@@ -1,115 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:45757 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758615Ab2CBV7l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:59:41 -0500
-Received: by mail-iy0-f174.google.com with SMTP id z16so2853208iag.19
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Mar 2012 13:59:41 -0800 (PST)
+Received: from acsinet15.oracle.com ([141.146.126.227]:47352 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758819Ab2CSSnD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 14:43:03 -0400
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/12] NFS: Add a client-side function to display NFS file
- handles
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 02 Mar 2012 16:59:40 -0500
-Message-ID: <20120302215939.12758.77566.stgit@degas.1015granger.net>
-In-Reply-To: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-References: <20120302215559.12758.39526.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20120319183955.GC23670@fieldses.org>
+Date: Mon, 19 Mar 2012 14:42:30 -0400
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Message-Id: <C14ACD08-1D43-44F8-8504-46DCB98359BB@oracle.com>
+References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org> <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com> <20120319183955.GC23670@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For debugging, introduce a simplistic function to print NFS file
-handles on the system console.  The main function is hooked into the
-dprintk debugging facility, but you can directly call the helper,
-_nfs_display_fhandle(), if you want to print a handle unconditionally.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Mar 19, 2012, at 2:39 PM, J. Bruce Fields wrote:
 
- fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h |   14 ++++++++++++++
- 2 files changed, 59 insertions(+), 0 deletions(-)
+> On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
+>> 
+>>> On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
+>>>> 
+>>>> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
+>>>>> Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
+>>>>> case where we get setclientid's with the same client-provided id.
+>>>>> There'd be no change of behavior in the case of multiple clients sharing
+>>>>> an IP (which is fine, of course).
+>>>> 
+>>>> The migration draft proposes that clients use the same nfs_client_id4 string for all of a server's IP addresses.  Would a server then be obliged to return NFS4ERR_CLID_IN_USE if a client attempts a SETCLIENTID with the same boot verifier and nfs_client_id4 on more than one IP address for the same server?
+>>> 
+>>> That's also not this case, sorry, this time with all the conditions:
+>>> 
+>>> 	- if the nfs_client_id4 is the same, and
+>>> 	- if the flavor is auth_sys, and
+>>> 	- if the client IP address is different,
+>>> 	- then return NFS4ERR_INUSE.
+>> 
+>> This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
+> 
+> OK.  So probably there's nothing we can do to help here.
+> 
+> As a bandaid maybe a rate-limited log message ("clientid X now in use
+> from IP Y") might help debug these things....
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 6c66259..99a4f52 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1046,6 +1046,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
- }
- 
- /**
-+ * _nfs_display_fhandle - display an NFS file handle on the console
-+ *
-+ * @fh: file handle to display
-+ * @caption: display caption
-+ *
-+ * For debugging only.
-+ */
-+#ifdef RPC_DEBUG
-+void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
-+{
-+	unsigned short i;
-+
-+	if (fh->size == 0 || fh == NULL) {
-+		printk(KERN_DEFAULT "%s at %p is empty\n", caption, fh);
-+		return;
-+	}
-+
-+	printk(KERN_DEFAULT "%s at %p is %u bytes:\n", caption, fh, fh->size);
-+	for (i = 0; i < fh->size; i += 16) {
-+		__be32 *pos = (__be32 *)&fh->data[i];
-+
-+		switch ((fh->size - i - 1) >> 2) {
-+		case 0:
-+			printk(KERN_DEFAULT " %08x\n",
-+				be32_to_cpup(pos));
-+			break;
-+		case 1:
-+			printk(KERN_DEFAULT " %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1));
-+			break;
-+		case 2:
-+			printk(KERN_DEFAULT " %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2));
-+			break;
-+		default:
-+			printk(KERN_DEFAULT " %08x %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
-+		}
-+	}
-+}
-+#endif
-+
-+/**
-  * nfs_inode_attrs_need_update - check if the inode attributes need updating
-  * @inode - pointer to inode
-  * @fattr - attributes
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 8c29950..c07a757 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -395,6 +395,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
- 	kfree(fh);
- }
- 
-+#ifdef RPC_DEBUG
-+extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
-+#define nfs_display_fhandle(fh, caption)			\
-+	do {							\
-+		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
-+			_nfs_display_fhandle(fh, caption);	\
-+	} while (0)
-+#else
-+static inline void nfs_display_fhandle(const struct nfs_fh *fh,
-+				       const char *caption)
-+{
-+}
-+#endif
-+
- /*
-  * linux/fs/nfs/nfsroot.c
-  */
+Hm, OK.  That implies your server implementation assumes that a clientid4 maps to exactly one client IP address at a time.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
