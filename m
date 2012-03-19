@@ -1,35 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4648 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752384Ab2CUQDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 12:03:40 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2LG3dGH004637
-	for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 09:03:39 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 03/23] NFS: Add version registering framework
-Date: Wed, 21 Mar 2012 16:03:36 +0000
-Message-ID: <1332345817.5779.9.camel@lade.trondhjem.org>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-	 <1332343253-24970-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-4-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:45945 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750927Ab2CSMiQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 08:38:16 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1S9bqn-0000W7-P7
+	for linux-nfs@vger.kernel.org; Mon, 19 Mar 2012 08:38:14 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last realm
+Date: Mon, 19 Mar 2012 08:36:56 -0400
+Message-Id: <1332160616-4522-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTIxIGF0IDExOjIwIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiAgDQo+ICtzdGF0aWMgaW50IGZpbmRfbmZzX3ZlcnNpb24oc3RydWN0IG5mc19zdWJ2
-ZXJzaW9uICoqbmZzLCB1bnNpZ25lZCBpbnQgdmVyc2lvbikNCj4gK3sNCj4gKwlzdHJ1Y3QgbmZz
-X3N1YnZlcnNpb24gKnRtcDsNCj4gKwlzcGluX2xvY2soJm5mc192ZXJzaW9uX2xvY2spOw0KPiAr
-DQo+ICsJbGlzdF9mb3JfZWFjaF9lbnRyeV9zYWZlKCgqbmZzKSwgdG1wLCAmbmZzX3ZlcnNpb25z
-LCBsaXN0KSB7DQo+ICsJCWlmICgoKm5mcyktPnZlcnNpb24gPT0gdmVyc2lvbikgew0KPiArCQkJ
-c3Bpbl91bmxvY2soJm5mc192ZXJzaW9uX2xvY2spOw0KPiArCQkJcmV0dXJuIDE7DQo+ICsJCX0N
-Cj4gKwl9Ow0KPiArDQoNCkJUVzogVGhlIGFib3ZlIGZ1bmN0aW9uIG5lZWRzIHRvIGNhbGwgdHJ5
-X21vZHVsZV9nZXQoKSB1bmRlciB0aGUNCm5mc192ZXJzaW9uX2xvY2suIE90aGVyd2lzZSB5b3Ug
-d2lsbCBub3QgYmUgZ3VhcmFudGVlZCB0aGF0IHRoZSBtb2R1bGUNCnN0aWxsIGV4aXN0cyBhbmQg
-aXMgbGl2ZSB3aGVuIHlvdSB0cnkgdG8gdXNlIHRoZSBwb2ludGVyICcqbmZzJy4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+From: Juno Krahn <Juno.Krahn@gmail.com>
+
+The list of local realms can be logged with a massage like the following:
+   rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
+Instead of printing a list of realms, only the last realm in the list is shown.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=804152
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ libnfsidmap.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/libnfsidmap.c b/libnfsidmap.c
+index 57bb6c3..641d766 100644
+--- a/libnfsidmap.c
++++ b/libnfsidmap.c
+@@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
+ 			}
+ 			buf = malloc(siz);
+ 			if (buf) {
++				*buf = 0;
+ 				TAILQ_FOREACH(r, &local_realms->fields, link) {
+-					sprintf(buf, "'%s' ", r->field);
++					sprintf(buf+strlen(buf), "'%s' ", r->field);
+ 				}
+ 				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
+ 				free(buf);
+-- 
+1.7.7.5
+
