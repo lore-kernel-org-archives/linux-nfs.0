@@ -1,53 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from g5t0009.atlanta.hp.com ([15.192.0.46]:23047 "EHLO
-	g5t0009.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754449Ab2CSU6t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 16:58:49 -0400
-Message-ID: <4F679E07.1010100@hp.com>
-Date: Mon, 19 Mar 2012 21:58:47 +0100
-From: Martin Rusko <martin.rusko@hp.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:47128 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1162186Ab2CSQxx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 12:53:53 -0400
+Date: Mon, 19 Mar 2012 12:44:20 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org,
+        nfsv4@ietf.org, Chuck Lever <chuck.lever@oracle.com>
+Message-ID: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <20120319162851.GA22336@fieldses.org>
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: =?ISO-8859-1?Q?Olle_R=E4msberg_XX?= <olle.xx.ramsberg@ericsson.com>
-Subject: "ls -l" hangs again since 2.6.34
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+J. Bruce Fields wrote:
+> On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
+> > On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
+> > > IMO, the server should do a comparison of the nfs_client_id4
+> > > strings,
+> > > and nothing else.
+> >
+> > We're supposed to return CLID_INUSE when we see a setclientid from a
+> > "different" client using the same string, to keep clients from doing
+> > mischief with other clients' state (either maliciously or, as in
+> > this
+> > case, accidentally).
+> >
+> > "Different" here is defined as "not having the same principal". I
+> > know
+> > what that means in the krb5 case, but I'm less certain in the
+> > auth_sys
+> > case.
+> 
+> Cc'ing the ietf list. Is it reasonable for a server to expect
+> setclientid's to come from the same client IP address at least in the
+> auth_sys case, or could that break multi-homed clients?
+> 
+I think that even a dhcp lease renewal might result in a different client
+IP, if the client has been partitioned from the dhcp server for a while.
 
-originally before 2.6.34 kernel there were two lines in nfs_getattr()
-function in inode.c file which suspended/resumed process dirtying pages
-to allow flush cached changes to NFS server to get mtime/ctime values
-set ...
+I'm not convinced that different client IP# implies different client.
+(Even "same ip# implies same client" might not be true, if the dhcp
+ server assigned the IP# to another machine while the client was partitioned
+ from the dhcp server, I think? I haven't looked at current dhcp
+ implementations, but it seems conceivable to me.)
 
-/*
- * Flush out writes to the server in order to update c/mtime.
- *
- * Hold the i_mutex to suspend application writes temporarily;
- * this prevents long-running writing applications from blocking
- * nfs_wb_nocommit.
- */
-if (S_ISREG(inode->i_mode)) {
-        mutex_lock(&inode->i_mutex);
-        nfs_wb_nocommit(inode);
-        mutex_unlock(&inode->i_mutex);
-}
+For AUTH_SYS, all the FreeBSD server does is expect the same uid#.
 
-
-... however this has been replaced in this commit
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux.git;a=commit;h=3fa04ecd72780da31ba8b329e148179bc24a9c7d
-and since then again process writing heavily into files on NFS can block
-stat calls on these for dozens of seconds.
-
-Is this case, when one process is writing into a file and thus blocking
-another process from doing a stat call on it (which means that RPC
-GETATTR must be sent and this can't be done before dirty pages are
-written to NFS server) handled somewhere in the code, please?
-
-Best Regards,
-Martin
-
-PS: Please, Cc me for any reply as I'm not subscribed. Thanks!
-
-
+rick
+> At least in the auth_sys case IP addresses are one of the only things
+> we
+> have left to go on when the client's identifier-generation is messed
+> up
+> (not that difficult).
+> 
+> --b.
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
