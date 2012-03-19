@@ -1,107 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:49140 "EHLO
+Received: from rcsinet15.oracle.com ([148.87.113.117]:47783 "EHLO
 	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757048Ab2CGUH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2012 15:07:26 -0500
-Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
+	with ESMTP id S965009Ab2CSSaU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 14:30:20 -0400
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
 Mime-Version: 1.0 (Apple Message framework v1257)
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1331150190-18401-1-git-send-email-steved@redhat.com>
-Date: Wed, 7 Mar 2012 15:07:22 -0500
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <8161FED5-1305-445B-AEFE-C182AA00A9DD@oracle.com>
-References: <1331150190-18401-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20120319182712.GB23670@fieldses.org>
+Date: Mon, 19 Mar 2012 14:29:46 -0400
+Cc: Rick Macklem <rmacklem@uoguelph.ca>, Nikolaus Rath <Nikolaus@rath.org>,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Message-Id: <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com>
+References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 7, 2012, at 2:56 PM, Steve Dickson wrote:
+On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
 
-> This problem can occur when multiple cluster services fail over
-> at the same time, causing missing high-available exports.
-> Having a lot of nfs-exports will trigger this issue easier.
+> On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
+>> 
+>>> On Mon, Mar 19, 2012 at 01:06:47PM -0400, Rick Macklem wrote:
+>>>> I wrote:
+>>>>> J. Bruce Fields wrote:
+>>>>>> On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
+>>>>>>> On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
+>>>>>>>> IMO, the server should do a comparison of the nfs_client_id4
+>>>>>>>> strings,
+>>>>>>>> and nothing else.
+>>>>>>> 
+>>>>>>> We're supposed to return CLID_INUSE when we see a setclientid from
+>>>>>>> a
+>>>>>>> "different" client using the same string, to keep clients from
+>>>>>>> doing
+>>>>>>> mischief with other clients' state (either maliciously or, as in
+>>>>>>> this
+>>>>>>> case, accidentally).
+>>>>>>> 
+>>>>>>> "Different" here is defined as "not having the same principal". I
+>>>>>>> know
+>>>>>>> what that means in the krb5 case, but I'm less certain in the
+>>>>>>> auth_sys
+>>>>>>> case.
+>>>>>> 
+>>>>>> Cc'ing the ietf list. Is it reasonable for a server to expect
+>>>>>> setclientid's to come from the same client IP address at least in
+>>>>>> the
+>>>>>> auth_sys case, or could that break multi-homed clients?
+>>>>>> 
+>>>>> I think that even a dhcp lease renewal might result in a different
+>>>>> client
+>>>>> IP, if the client has been partitioned from the dhcp server for a
+>>>>> while.
+>>> 
+>>> Yeah, but by that point the client's v4 lease is probably expired anyway
+>>> so the client's not likely to be bothered by the NFS4ERR_INUSE.
+>>> 
+>>>>> I'm not convinced that different client IP# implies different client.
+>>>>> (Even "same ip# implies same client" might not be true, if the dhcp
+>>>>> server assigned the IP# to another machine while the client was
+>>>>> partitioned
+>>>>> from the dhcp server, I think? I haven't looked at current dhcp
+>>>>> implementations, but it seems conceivable to me.)
+>>>>> 
+>>>> Oh, and what about the case of 2 clients that are sitting behind
+>>>> the same NAT gateway? (I think they'd both be seen as having the
+>>>> client host ip# of the gateway, but with different TCP connections
+>>>> on different client port#s.)
+>>> 
+>>> Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
+>>> case where we get setclientid's with the same client-provided id.
+>>> There'd be no change of behavior in the case of multiple clients sharing
+>>> an IP (which is fine, of course).
+>> 
+>> The migration draft proposes that clients use the same nfs_client_id4 string for all of a server's IP addresses.  Would a server then be obliged to return NFS4ERR_CLID_IN_USE if a client attempts a SETCLIENTID with the same boot verifier and nfs_client_id4 on more than one IP address for the same server?
+> 
+> That's also not this case, sorry, this time with all the conditions:
+> 
+> 	- if the nfs_client_id4 is the same, and
+> 	- if the flavor is auth_sys, and
+> 	- if the client IP address is different,
+> 	- then return NFS4ERR_INUSE.
 
-Does this address https://bugzilla.linux-nfs.org/show_bug.cgi?id=224 ?
-
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> support/include/exportfs.h |    4 ++++
-> utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
-> 2 files changed, 28 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 01e87dd..99916e5 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -32,6 +32,10 @@ enum {
-> 	FSLOC_STUB
-> };
-> 
-> +#ifndef EXP_LOCKFILE
-> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
-> +#endif
-> +
-> typedef struct mclient {
-> 	struct mclient *	m_next;
-> 	char *			m_hostname;
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 7432a65..769d438 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -16,6 +16,7 @@
-> #include <sys/stat.h>
-> #include <sys/vfs.h>
-> #include <sys/stat.h>
-> +#include <sys/file.h>
-> #include <unistd.h>
-> #include <stdbool.h>
-> #include <stdlib.h>
-> @@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
-> static int	matchhostname(const char *hostname1, const char *hostname2);
-> static void	export_d_read(const char *dname);
-> 
-> +static const char *lockfile = EXP_LOCKFILE;
-> +static int _lockfd = -1;
-> +
-> +void 
-> +grab_lockfile()
-> +{
-> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
-> +	if (_lockfd != -1) 
-> +		lockf(_lockfd, F_LOCK, 0);
-> +}
-> +void 
-> +release_lockfile()
-> +{
-> +	if (_lockfd != -1)
-> +		lockf(_lockfd, F_ULOCK, 0);
-> +}
-> +
-> int
-> main(int argc, char **argv)
-> {
-> @@ -129,6 +147,12 @@ main(int argc, char **argv)
-> 			return 0;
-> 		}
-> 	}
-> +	/*
-> +	 * Serialize things as best we can
-> +	 */
-> +	grab_lockfile();
-> +	atexit(release_lockfile);
-> +
-> 	if (f_export && ! f_ignore) {
-> 		export_read(_PATH_EXPORTS);
-> 		export_d_read(_PATH_EXPORTS_D);
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This still breaks for multi-homed servers and UCS clients.  The client IP address can be different depending on what server IP address the client is accessing, but all the other parameters are the same.
 
 -- 
 Chuck Lever
