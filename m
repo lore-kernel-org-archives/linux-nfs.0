@@ -1,121 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45446 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54993 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756722Ab2CVNoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 09:44:24 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2MDiNAJ003697
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2012 06:44:23 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 05/12] NFSv4.1: mark deviceid invalid on
- filelayout DS connection errors
-Date: Thu, 22 Mar 2012 13:44:20 +0000
-Message-ID: <1332423862.2985.7.camel@lade.trondhjem.org>
-References: <1332359184-1887-1-git-send-email-andros@netapp.com>
-	 <1332359184-1887-6-git-send-email-andros@netapp.com>
-	 <1332362355.12332.8.camel@lade.trondhjem.org>
-	 <7121AA63-B59E-40B4-85DF-96C763929E23@netapp.com>
-In-Reply-To: <7121AA63-B59E-40B4-85DF-96C763929E23@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932528Ab2CSRg2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 13:36:28 -0400
+Message-ID: <4F676E95.3090409@RedHat.com>
+Date: Mon, 19 Mar 2012 13:36:21 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last
+ realm
+References: <1332160616-4522-1-git-send-email-steved@redhat.com> <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com>
+In-Reply-To: <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTIyIGF0IDEzOjIzICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBNYXIgMjEsIDIwMTIsIGF0IDQ6MzkgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-IA0KPiA+IE9uIFdlZCwgMjAxMi0wMy0yMSBhdCAxNTo0NiAtMDQwMCwgYW5kcm9zQG5ldGFwcC5j
-b20gd3JvdGU6DQo+ID4+IEZyb206IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+
-ID4+IA0KPiA+PiBUaGlzIHByZXZlbnRzIHRoZSB1c2Ugb2YgYW55IGxheW91dCBmb3IgaS9vIHRo
-YXQgcmVmZXJlbmNlcyB0aGUgZGV2aWNlaWQuDQo+ID4+IEkvTyBpcyByZWRpcmVjdGVkIHRocm91
-Z2ggdGhlIE1EUy4NCj4gPj4gDQo+ID4+IFJlZGlyZWN0IHRoZSB1bmhhbmRsZWQgZmFpbGVkIEkv
-TyB0byB0aGUgTURTIHdpdGhvdXQgbWFya2luZyBlaXRoZXIgdGhlDQo+ID4+IGxheW91dCBvciB0
-aGUgZGV2aWNlaWQgaW52YWxpZC4NCj4gPj4gDQo+ID4+IFNpZ25lZC1vZmYtYnk6IEFuZHkgQWRh
-bXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+ID4+IC0tLQ0KPiA+PiBmcy9uZnMvbmZzNGZpbGVs
-YXlvdXQuYyB8ICAgNjUgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0t
-LS0tLQ0KPiA+PiBmcy9uZnMvbmZzNGZpbGVsYXlvdXQuaCB8ICAgIDYgKysrKw0KPiA+PiAyIGZp
-bGVzIGNoYW5nZWQsIDU0IGluc2VydGlvbnMoKyksIDE3IGRlbGV0aW9ucygtKQ0KPiA+PiANCj4g
-Pj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jIGIvZnMvbmZzL25mczRmaWxl
-bGF5b3V0LmMNCj4gPj4gaW5kZXggMzgwMjkzNy4uMWYxYmUyNiAxMDA2NDQNCj4gPj4gLS0tIGEv
-ZnMvbmZzL25mczRmaWxlbGF5b3V0LmMNCj4gPj4gKysrIGIvZnMvbmZzL25mczRmaWxlbGF5b3V0
-LmMNCj4gPj4gQEAgLTExNiw3ICsxMTYsNyBAQCB2b2lkIGZpbGVsYXlvdXRfcmVzZXRfcmVhZChz
-dHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHN0cnVjdCBuZnNfcmVhZF9kYXRhICpkYXRhKQ0KPiA+PiBz
-dGF0aWMgaW50IGZpbGVsYXlvdXRfYXN5bmNfaGFuZGxlX2Vycm9yKHN0cnVjdCBycGNfdGFzayAq
-dGFzaywNCj4gPj4gCQkJCQkgc3RydWN0IG5mczRfc3RhdGUgKnN0YXRlLA0KPiA+PiAJCQkJCSBz
-dHJ1Y3QgbmZzX2NsaWVudCAqY2xwLA0KPiA+PiAtCQkJCQkgaW50ICpyZXNldCkNCj4gPj4gKwkJ
-CQkJIHVuc2lnbmVkIGxvbmcgKnJlc2V0KQ0KPiA+PiB7DQo+ID4+IAlzdHJ1Y3QgbmZzX3NlcnZl
-ciAqbWRzX3NlcnZlciA9IE5GU19TRVJWRVIoc3RhdGUtPmlub2RlKTsNCj4gPj4gCXN0cnVjdCBu
-ZnNfY2xpZW50ICptZHNfY2xpZW50ID0gbWRzX3NlcnZlci0+bmZzX2NsaWVudDsNCj4gPj4gQEAg
-LTE1OCwxMCArMTU4LDIzIEBAIHN0YXRpYyBpbnQgZmlsZWxheW91dF9hc3luY19oYW5kbGVfZXJy
-b3Ioc3RydWN0IHJwY190YXNrICp0YXNrLA0KPiA+PiAJCWJyZWFrOw0KPiA+PiAJY2FzZSAtTkZT
-NEVSUl9SRVRSWV9VTkNBQ0hFRF9SRVA6DQo+ID4+IAkJYnJlYWs7DQo+ID4+ICsJLyogUlBDIGNv
-bm5lY3Rpb24gZXJyb3JzICovDQo+ID4+ICsJY2FzZSAtRUNPTk5SRUZVU0VEOg0KPiA+PiArCWNh
-c2UgLUVIT1NURE9XTjoNCj4gPj4gKwljYXNlIC1FSE9TVFVOUkVBQ0g6DQo+ID4+ICsJY2FzZSAt
-RU5FVFVOUkVBQ0g6DQo+ID4+ICsJY2FzZSAtRUlPOg0KPiA+PiArCWNhc2UgLUVUSU1FRE9VVDoN
-Cj4gPj4gKwljYXNlIC1FUElQRToNCj4gPj4gKwkJZHByaW50aygiJXMgRFMgY29ubmVjdGlvbiBl
-cnJvci4gUmV0cnkgdGhyb3VnaCBNRFMgJWRcbiIsDQo+ID4+ICsJCQlfX2Z1bmNfXywgdGFzay0+
-dGtfc3RhdHVzKTsNCj4gPj4gKwkJc2V0X2JpdChORlM0X1JFU0VUX0RFVklDRUlELCByZXNldCk7
-DQo+ID4+ICsJCXNldF9iaXQoTkZTNF9SRVNFVF9UT19NRFMsIHJlc2V0KTsNCj4gPj4gKwkJYnJl
-YWs7DQo+ID4+IAlkZWZhdWx0Og0KPiA+PiAtCQlkcHJpbnRrKCIlcyBEUyBlcnJvci4gUmV0cnkg
-dGhyb3VnaCBNRFMgJWRcbiIsIF9fZnVuY19fLA0KPiA+PiAtCQkJdGFzay0+dGtfc3RhdHVzKTsN
-Cj4gPj4gLQkJKnJlc2V0ID0gMTsNCj4gPj4gKwkJZHByaW50aygiJXMgVW5oYW5kbGVkIERTIGVy
-cm9yLiBSZXRyeSB0aHJvdWdoIE1EUyAlZFxuIiwNCj4gPj4gKwkJCV9fZnVuY19fLCB0YXNrLT50
-a19zdGF0dXMpOw0KPiA+PiArCQlzZXRfYml0KE5GUzRfUkVTRVRfVE9fTURTLCByZXNldCk7DQo+
-ID4+IAkJYnJlYWs7DQo+ID4+IAl9DQo+ID4+IG91dDoNCj4gPj4gQEAgLTE3OSwxNiArMTkyLDIy
-IEBAIHdhaXRfb25fcmVjb3Zlcnk6DQo+ID4+IHN0YXRpYyBpbnQgZmlsZWxheW91dF9yZWFkX2Rv
-bmVfY2Ioc3RydWN0IHJwY190YXNrICp0YXNrLA0KPiA+PiAJCQkJc3RydWN0IG5mc19yZWFkX2Rh
-dGEgKmRhdGEpDQo+ID4+IHsNCj4gPj4gLQlpbnQgcmVzZXQgPSAwOw0KPiA+PiArCXN0cnVjdCBu
-ZnM0X2RldmljZWlkX25vZGUgKmRldmlkID0gRklMRUxBWU9VVF9ERVZJRF9OT0RFKGRhdGEtPmxz
-ZWcpOw0KPiA+PiArCXVuc2lnbmVkIGxvbmcgcmVzZXQgPSAwOw0KPiA+PiANCj4gPj4gCWRwcmlu
-dGsoIiVzIERTIHJlYWRcbiIsIF9fZnVuY19fKTsNCj4gPj4gDQo+ID4+IAlpZiAoZmlsZWxheW91
-dF9hc3luY19oYW5kbGVfZXJyb3IodGFzaywgZGF0YS0+YXJncy5jb250ZXh0LT5zdGF0ZSwNCj4g
-Pj4gCQkJCQkgIGRhdGEtPmRzX2NscCwgJnJlc2V0KSA9PSAtRUFHQUlOKSB7DQo+ID4+IC0JCWRw
-cmludGsoIiVzIGNhbGxpbmcgcmVzdGFydCBkc19jbHAgJXAgZHNfY2xwLT5jbF9zZXNzaW9uICVw
-XG4iLA0KPiA+PiAtCQkJX19mdW5jX18sIGRhdGEtPmRzX2NscCwgZGF0YS0+ZHNfY2xwLT5jbF9z
-ZXNzaW9uKTsNCj4gPj4gLQkJaWYgKHJlc2V0KQ0KPiA+PiArDQo+ID4+ICsJCWRwcmludGsoIiVz
-IHJlc2V0IDB4JWx4IGRzX2NscCAlcCBzZXNzaW9uICVwXG4iLCBfX2Z1bmNfXywNCj4gPj4gKwkJ
-CXJlc2V0LCBkYXRhLT5kc19jbHAsIGRhdGEtPmRzX2NscC0+Y2xfc2Vzc2lvbik7DQo+ID4+ICsN
-Cj4gPj4gKwkJaWYgKHRlc3RfYml0KE5GUzRfUkVTRVRfVE9fTURTLCAmcmVzZXQpKSB7DQo+ID4+
-IAkJCWZpbGVsYXlvdXRfcmVzZXRfcmVhZCh0YXNrLCBkYXRhKTsNCj4gPj4gKwkJCWlmICh0ZXN0
-X2JpdChORlM0X1JFU0VUX0RFVklDRUlELCAmcmVzZXQpKQ0KPiA+PiArCQkJCWZpbGVsYXlvdXRf
-bWFya19kZXZpZF9pbnZhbGlkKGRldmlkKTsNCj4gPiANCj4gPiBJcyB0aGVyZSBhbnkgcmVhc29u
-IHdoeSB3ZSBzaG91bGRuJ3QganVzdCBkbyB0aGUNCj4gPiBmaWxlbGF5b3V0X21hcmtfZGV2aWRf
-aW52YWxpZCgpIHdpdGhpbiBmaWxlbGF5b3V0X2FzeW5jX2hhbmRsZV9lcnJvcigpDQo+ID4gaW5z
-dGVhZCBvZiBoYXZpbmcgdGhlIGNhbGxlciBkbyBpdD8NCj4gDQo+IFdlIHdvdWxkIGhhdmUgdG8g
-cGFzcyBpbiB0aGUgbHNlZyBhcmd1bWVudC4NCg0KTm8uIFlvdSdkIG9ubHkgaGF2ZSB0byBwYXNz
-IGluIHRoZSBkZXZpY2UgaWQuDQoNCj4gPiANCj4gPiBUaGF0IHNob3VsZCBhbHNvIGVuYWJsZSB1
-cyB0byBnZXQgcmlkIG9mIHRoZSB3aG9sZSAncmVzZXQnIGFyZ3VtZW50IGFuZA0KPiA+IHJlcGxh
-Y2UgaXQgd2l0aCBhIHJldHVybiB2YWx1ZSAhPSAwICYmICE9IC1FQUdBSU4uDQo+IA0KPiBXZSB3
-b3VsZCBuZWVkIHRvIHBhc3MgaW4gdGhlIG9wZXJhdGlvbiBiZWNhdXNlIFJFQUQvV1JJVEUvQ09N
-TUlUIGNhbGwgZGlmZmVyZW50IHJlc2V0IGZ1bmN0aW9ucy4NCg0KTm8uIFRoZSBjYWxsZXIgd291
-bGQgc3RpbGwgZG8gdGhlIHJlc2V0LiBJdCdzIGp1c3QgdGhhdCB5b3Ugd291bGQgaGF2ZSBhDQpz
-cGVjaWFsIHJldHVybiB2YWx1ZSB0byBpbmRpY2F0ZSBpdC4NCg0KPiBJIGNob3NlIHRoZSAncmVz
-ZXQnIGFyZ3VtZW50IG1ldGhvZCBpbnN0ZWFkIG9mIHBhc3NpbmcgaW4gdGhlIG9wZXJhdGlvbiBi
-ZWNhdXNlIEkgdGhvdWdodCBpdCBjbGVhbmVyIHRvIGtlZXAgdGhlIHBlciBvcGVyYXRpb24gbG9n
-aWMgaW4gdGhlIHBlciBvcGVyYXRpb24gcnBjIGZ1bmN0aW9ucyBpbnN0ZWFkIG9mIGhhdmluZyBh
-IHN3aXRjaChvcGVyYXRpb24pIHN0YXRlbWVudCBpbiB0aGUgYXN5bmMgaGFuZGxlciBmb3IgZWFj
-aCBncm91cCBvZiBlcnJvcnMuDQoNCk15IHBvaW50IGlzIHRoYXQgeW91IGRvbid0IG5lZWQgYW4g
-ZXh0cmEgcGFyYW1ldGVyIHRvIGRvIHRoaXMuIFlvdSBqdXN0DQpuZWVkIGEgc3BlY2lhbCByZXR1
-cm4gdmFsdWUuDQoNCj4gPiANCj4gPj4gKwkJfQ0KPiA+PiAJCXJwY19yZXN0YXJ0X2NhbGxfcHJl
-cGFyZSh0YXNrKTsNCj4gPiANCj4gPiBUaGlzIGNhbiBwcm9iYWJseSBhbHNvIGJlIGRvbmUgaW5z
-aWRlIGZpbGVsYXlvdXRfYXN5bmNfaGFuZGxlX2Vycm9yKCksDQo+ID4gQlRXLg0KPiANCj4gQ09N
-TUlUIGRvZXMgbm90IGNhbGwgcnBjX3Jlc3RhcnRfY2FsbF9wcmVwYXJlIG9uIHJlc2V0ICBvciBp
-bnZhbGlkIGRldmljZWlkIGVycm9ycyBiZWNhdXNlIHdlIHdhbnQgdGhlIHJlbGVhc2UgZnVuY3Rp
-b24gdG8gZmFpbCB3aXRoIGEgdmVyaWZpZXIgbWlzbWF0Y2guDQoNCldoaWNoIGlzIGEgZ3JvdGVz
-cXVlIGhhY2sgaW4gaXRzZWxmLi4uICh0aGUgdmVyaWZpZXIgaGFjaywgdGhhdCBpcykuIEknbQ0K
-aG9waW5nIHRoYXQgRnJlZCB3aWxsIGZpeCB0aGF0IGluIHRoZSBuZXcgY29kZS4gSXQgZG9lc24n
-dCB0YWtlIG11Y2g6DQpqdXN0IGZsYWcgaW4gdGhlIHN0cnVjdCBuZnNfd3JpdGVfZGF0YSAob3Ig
-aW4gaGlzIGNhc2U6IHN0cnVjdA0KbmZzX2NvbW1pdF9kYXRhKS4NCg0KPiBTbyBpdCdzIHVwIHRv
-IHlvdTogSSBjb3VsZCBtb3ZlIGFsbCB0aGUgcGVyIG9wZXJhdGlvbiBsb2dpYyBpbnRvIHRoZSBh
-c3luYyBoYW5kbGVyIGJ5IHBhc3NpbmcgaW4gdGhlIG9wZXJhdGlvbiBhbmQgdXNpbmcgaXQgdG8g
-ZGVyZWZlcmVuY2luZyB0aGUgdGtfY2FsbGJhY2sgdG8gZ2V0IHRoZSBsc2VnIGFuZCBvdGhlciBu
-ZWVkZWQgcGFyYW1ldGVycyAtIHRoZW4gbW92aW5nIHRoZSBjb2RlIGZyb20gdGhlIGRvbmVfY2Ig
-cm91dGluZXMgaW50byB0aGUgYXN5bmMgaGFuZGxlciB1bmRlciBhIHN3aXRjaChvcGVyYXRpb24p
-IGZvciBib3RoIHRoZSBkZWZhdWx0IHJlc2V0IHRvIG1kcyBhbmQgZm9yIHRoZSBpbnZhbGlkIGRl
-dmljZWQuDQoNClRoZW4gbGV0J3Mga2VlcCB0aGUgcnBjX3Jlc3RhcnRfY2FsbF9wcmVwYXJlIGlu
-IHRoZSBjYWxsZXIsIGJ1dCBtb3ZlIHRoZQ0KZGV2aWNlaWQgaW52YWxpZGF0aW9uIGludG8gdGhl
-IGFzeW5jX2hhbmRlci4gTGV0J3MgYWxzbyByZXBsYWNlIHRoZQ0KcmVzZXQgYXJndW1lbnQgd2l0
-aCBhIHJldHVybiB2YWx1ZS4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
-dy5uZXRhcHAuY29tDQoNCg==
+
+
+On 03/19/2012 10:05 AM, Chuck Lever wrote:
+> 
+> On Mar 19, 2012, at 8:36 AM, Steve Dickson wrote:
+> 
+>> From: Juno Krahn <Juno.Krahn@gmail.com>
+>>
+>> The list of local realms can be logged with a massage like the following:
+>>   rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
+>> Instead of printing a list of realms, only the last realm in the list is shown.
+>>
+>> https://bugzilla.redhat.com/show_bug.cgi?id=804152
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> The patch says "From: Juno Krahn" but the sign-off is from you. 
+The patch came from:
+    http://sourceforge.net/tracker/?func=detail&atid=903784&aid=3507122&group_id=183075 
+
+Now in the past I have asked people to post patches to this list with
+the appropriate format, but with a no-brainier like this patch, I
+thought that would have been a waste time on both ends.    
+
+>  Should you also have an SOB from Juno?
+Juno gets credit for authoring the patch and I'm taking 
+responsibility for the patch with my SOB... Does there
+have to be any more process than that?? 
+
+steved. 
+ 
+> 
+>> ---
+>> libnfsidmap.c |    3 ++-
+>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/libnfsidmap.c b/libnfsidmap.c
+>> index 57bb6c3..641d766 100644
+>> --- a/libnfsidmap.c
+>> +++ b/libnfsidmap.c
+>> @@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
+>> 			}
+>> 			buf = malloc(siz);
+>> 			if (buf) {
+>> +				*buf = 0;
+>> 				TAILQ_FOREACH(r, &local_realms->fields, link) {
+>> -					sprintf(buf, "'%s' ", r->field);
+>> +					sprintf(buf+strlen(buf), "'%s' ", r->field);
+>> 				}
+>> 				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
+>> 				free(buf);
+>> -- 
+>> 1.7.7.5
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
