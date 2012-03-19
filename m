@@ -1,140 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:41202 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752721Ab2CLWPR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 18:15:17 -0400
-Message-ID: <4F5E7568.1020407@panasas.com>
-Date: Mon, 12 Mar 2012 15:15:04 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from ebox.rath.org ([173.255.235.238]:36547 "EHLO ebox.rath.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753951Ab2CSSvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 14:51:05 -0400
+Message-ID: <4F678016.9050803@rath.org>
+Date: Mon, 19 Mar 2012 14:51:02 -0400
+From: Nikolaus Rath <Nikolaus@rath.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: Bug in the pNFS OSD layout driver
-References: <1331487447.2496.10.camel@lade.trondhjem.org>  <4F5E5400.3000800@panasas.com> <1331589143.12005.11.camel@lade.trondhjem.org>
-In-Reply-To: <1331589143.12005.11.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, Rick Macklem <rmacklem@uoguelph.ca>,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
+References: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca> <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca> <20120319173656.GA23670@fieldses.org> <126867CF-7CAA-4E3D-A9D6-2A5FE30A7DB4@oracle.com> <20120319182712.GB23670@fieldses.org> <A39DDC79-274A-427F-9887-28DD74BA56ED@oracle.com> <20120319183955.GC23670@fieldses.org>
+In-Reply-To: <20120319183955.GC23670@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2012 02:52 PM, Myklebust, Trond wrote:
-> On Mon, 2012-03-12 at 12:52 -0700, Boaz Harrosh wrote:
->> On 03/11/2012 10:37 AM, Myklebust, Trond wrote:
->>> Hi Boaz,
->>>
->>> When I run 'sparse' on the object layout driver, I get the following
->>> errors:
->>>
->>> fs/nfs/objlayout/objio_osd.c:210:37: error: bad constant expression
->>> fs/nfs/objlayout/objio_osd.c:211:39: error: bad constant expression
->>> fs/nfs/objlayout/objio_osd.c:315:59: error: bad constant expression
->>>
->>
->> Then sparse is broken
->>
->>> which boils down to the following section of code:
->>>
->>> int __alloc_objio_seg(unsigned numdevs, gfp_t gfp_flags,
->>>                        struct objio_segment **pseg)
->>> {
->>>         struct __alloc_objio_segment {
->>>                 struct objio_segment olseg;
->>>                 struct ore_dev *ods[numdevs];
->>> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->>>                 struct ore_comp comps[numdevs];
->>> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->>>         } *aolseg;
->>>
->>>         aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
->>>
->>>
->>> Dynamically allocated arrays such as the above are a GNU C compiler
->>> feature that we cannot use in kernel code. If the above array sizes need
->>> to be dynamically determined, then please use the kcalloc() interface to
->>> allocate them.
->>
->> I am using kzalloc to do a single allocation. The *ods[numdevs] is only
->> used for the sizeof() expression it does not allocate anything actually.
->>
->> We use gcc extensions all over the place. From the simple __func__ to
->> the famous typeof().
-> 
-> __func__ is actually valid C99.
-> 
->> I don't understand why you decide to pick on this one in particular.
-> 
-> It has been shown to be troublesome previously. See for instance
-> 
-> http://lkml.org/lkml/2011/10/23/25
-> 
+"J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org> writes:
+> > On Mon, Mar 19, 2012 at 01:06:47PM -0400, Rick Macklem wrote:
+>> >> I wrote:
+>>> >> > J. Bruce Fields wrote:
+>>>> >> > > On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
+>>>>> >> > > > On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
+>>>>>> >> > > > > IMO, the server should do a comparison of the nfs_client_id4
+>>>>>> >> > > > > strings, and nothing else.
+>>>>> >> > > >
+>>>>> >> > > > We're supposed to return CLID_INUSE when we see a setclientid
+>>>>> >> > > > from a "different" client using the same string, to keep
+>>>>> >> > > > clients from doing mischief with other clients' state (either
+>>>>> >> > > > maliciously or, as in this case, accidentally).
+>>>>> >> > > >
+>>>>> >> > > > "Different" here is defined as "not having the same principal".
+>>>>> >> > > > I know what that means in the krb5 case, but I'm less certain
+>>>>> >> > > > in the auth_sys case.
+>>>> >> > >
+>>>> >> > > Cc'ing the ietf list. Is it reasonable for a server to expect
+>>>> >> > > setclientid's to come from the same client IP address at least in
+>>>> >> > > the auth_sys case, or could that break multi-homed clients?
+>>>> >> > >
+>>> >> > I think that even a dhcp lease renewal might result in a different
+>>> >> > client IP, if the client has been partitioned from the dhcp server
+>>> >> > for a while.
+> >
+> > Yeah, but by that point the client's v4 lease is probably expired
+> > anyway so the client's not likely to be bothered by the NFS4ERR_INUSE.
+> >
+>>> >> > I'm not convinced that different client IP# implies different
+>>> >> > client. (Even "same ip# implies same client" might not be true, if
+>>> >> > the dhcp server assigned the IP# to another machine while the
+>>> >> > client was partitioned from the dhcp server, I think? I haven't
+>>> >> > looked at current dhcp implementations, but it seems conceivable to
+>>> >> > me.)
+>>> >> > 
+>> >> Oh, and what about the case of 2 clients that are sitting behind the
+>> >> same NAT gateway? (I think they'd both be seen as having the client
+>> >> host ip# of the gateway, but with different TCP connections on
+>> >> different client port#s.)
+> >
+> > Well, sure, but all I'm proposing here is returning NFS4ERR_INUSE in the
+> > case where we get setclientid's with the same client-provided id.
 
-Again I do not actually use the Compiler generated code at all and I do
-not use/access this struct in any way. All I do is use it's sizeof()
-calculation which just simply does the right thing. Actually all it
-does, I checked the assembly multiple times, is exactly the below 
-	+ numdevs * sizeof(struct ore_dev *) thing
+At least in the case that sparked this discussion, it would already be
+enough to return NFS4ERR_INUSE only if the client id is being reassigned
+*and* has a 0.0.0.0 (aka autodetection failed) value.
 
-> Then there is the issue that alternative compilers such as clang barf
-> all over it.
-> 
 
-Is that supported?
+Best,
 
->>> I.e. something like
->>>
->>>         struct __alloc_objio_segment {
->>>                 struct objio_segment olseg;
->>>                 struct ore_dev **ods;
->>>                 struct ore_comp *comps;
->>> 		^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
->>>         } *aolseg;
->>>
->>>         aolseg = kzalloc(sizeof(*aolseg), gfp_flags);
->>> 	if (aolseg) {
->>> 		aolseg->ods = kcalloc(numdevs, sizeof(struct ore_dev *), gfp_flags);
->>> 		aolseg->ore_comp = kcalloc(numdevs, sizeof(struct ore_comp), gfp_flags);
->>
->> This is not the same code. It is three allocations instead of one. And it is an
->> extra pointer reference instead of just pointer offsetting.
->>
->> If it would change it would change to:
->>
->>          aolseg = kzalloc(sizeof(*aolseg) + 
->> 		          numdevs * sizeof(struct ore_dev *),
->> 			  numdevs * sizeof(struct ore_comp), 
->> 			  gfp_flags);
-> 
-> That is broken, since it doesn't take into account alignment issues
-> within the structure. 
+   -Nikolaus
 
-That's not true. sizeof() will always, by definition, return aligned
-size. .i.e It will return a byte size, such as, when in an array will
-return the next element in the array. We use this pattern a lot in the
-Kernel.
+-- 
+ »Time flies like an arrow, fruit flies like a Banana.«
 
-> I also don't see how you would express the above
-> as a single structure without using variable length arrays.
-> 
-
-That's easy. Actually that code used to be the old style for a long time
-until recently when I moved it to ORE types. It is basically just the same
-as I had before. only I like this style because of type safety. (No casts)
-
->> And all the pointer arithmetic that follow. But why the very ugly code
->> when there is an elegant, type-safe, and self documenting way. It's
->> beautifully clear this way what is the in memory structure of the
->> allocation.
-> 
-> While it may look beautiful, it has been proven to be immature and to
-> generate ugly code.
-> 
-
-Again, not in my case. Because this structure is private to that function
-which never accesses that structure. It is completely safe in all ARCHs.
-
-But that said. I'm not going to fight it. Give me 1/2 a day and I'll send
-you a fixing (uglifying) patch
-
-Sigh
-Boaz
+  PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6  02CF A9AD B7F8 AE4E 425C
