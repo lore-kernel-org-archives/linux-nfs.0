@@ -1,57 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42119 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53187 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759297Ab2CSTpr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Mar 2012 15:45:47 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2JJjkLa005476
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Mar 2012 15:45:46 -0400
-Message-ID: <4F678CE6.8080703@RedHat.com>
-Date: Mon, 19 Mar 2012 15:45:42 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756345Ab2CSVt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 17:49:26 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Andy Adamson <androsadamson@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 1 07/11] NFSv4.1 Check invalid deviceid upon
+ slot table waitq wakeup
+Date: Mon, 19 Mar 2012 21:49:09 +0000
+Message-ID: <1332193750.17930.14.camel@lade.trondhjem.org>
+References: <1331836850-5195-1-git-send-email-andros@netapp.com>
+	 <1331836850-5195-8-git-send-email-andros@netapp.com>
+	 <1331857679.24392.9.camel@lade.trondhjem.org>
+	 <CAHVgHyVvKPgD6hCqAH3k6Da=U1mkYYZ+fGr+99yWTGT04Hb6nA@mail.gmail.com>
+	 <110373F8-CDA5-416C-85D3-F31775667D03@netapp.com>
+In-Reply-To: <110373F8-CDA5-416C-85D3-F31775667D03@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last
- realm
-References: <1332160616-4522-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1332160616-4522-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/19/2012 08:36 AM, Steve Dickson wrote:
-> From: Juno Krahn <Juno.Krahn@gmail.com>
-> 
-> The list of local realms can be logged with a massage like the following:
->    rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
-> Instead of printing a list of realms, only the last realm in the list is shown.
-> 
-> https://bugzilla.redhat.com/show_bug.cgi?id=804152
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
-
-steved
-> ---
->  libnfsidmap.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/libnfsidmap.c b/libnfsidmap.c
-> index 57bb6c3..641d766 100644
-> --- a/libnfsidmap.c
-> +++ b/libnfsidmap.c
-> @@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
->  			}
->  			buf = malloc(siz);
->  			if (buf) {
-> +				*buf = 0;
->  				TAILQ_FOREACH(r, &local_realms->fields, link) {
-> -					sprintf(buf, "'%s' ", r->field);
-> +					sprintf(buf+strlen(buf), "'%s' ", r->field);
->  				}
->  				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
->  				free(buf);
+T24gTW9uLCAyMDEyLTAzLTE5IGF0IDIxOjMyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBNYXIgMTYsIDIwMTIsIGF0IDExOjEyIEFNLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+IA0K
+PiA+IE9uIFRodSwgTWFyIDE1LCAyMDEyIGF0IDg6MjcgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4g
+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+PiBPbiBUaHUsIDIwMTIt
+MDMtMTUgYXQgMTQ6NDAgLTA0MDAsIGFuZHJvc0BuZXRhcHAuY29tIHdyb3RlOg0KPiA+Pj4gRnJv
+bTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4+IA0KPiA+Pj4gUmVnaXN0
+ZXIgYSBuZXcgZmlsZWxheW91dCBEUyBycGNfYWN0aW9uIGNhbGxiYWNrIGZvciBzbGVlcGluZyBv
+biB0aGUgZm9yZQ0KPiA+Pj4gY2hhbm5lbCBzbG90IHRhYmxlIHdhaXRxLiAgQXZvaWQgYW55IGFk
+ZGl0aW9uYWwgUlBDIEZTTSBzdGF0ZXMNCj4gPj4+IChzdWNoIGFzIHRpbWVvdXQpIHdoZW4gd2Fr
+aW5nIHVwIHRvIGFuIGludmFsaWQgZGV2aWNlaWQgYW5kIHJlc2V0DQo+ID4+PiB0aGUgdGFzayBm
+b3IgaW8gdG8gdGhlIE1EUy4NCj4gPj4gDQo+ID4+IFdoeSBjYW4ndCB5b3Ugc2ltcGx5IHB1dCB0
+aGlzIGNhbGwgdG8gZmlsZWxheW91dF93cml0ZV9zbGVlcG9uX2NiIGluDQo+ID4+IGZpbGVsYXlv
+dXRfd3JpdGVfcHJlcGFyZSAoYmVmb3JlIGNhbGxpbmcgbmZzNDFfc2V0dXBfc2VxdWVuY2UoKSk/
+DQo+ID4gDQo+ID4gSSBndWVzcyBJIGNhbi4gV2lsbCBkby4NCj4gDQo+IEFjdHVhbGx5LCBJIHRo
+YXQgd29uJ3Qgd29yay4NCj4gDQo+ID4gDQo+ID4gLS0+QW5keQ0KPiA+IA0KPiA+PiANCj4gPj4g
+U2luY2Ugbm90aGluZyBpcyBnb2luZyB0byBjaGFuZ2UgdGhlIHRhc2stPnRrX2FjdGlvbiBpZg0K
+PiA+PiBuZnM0MV9zZXR1cF9zZXF1ZW5jZSgpIHB1dHMgeW91IHRvIHNsZWVwLCB3aGF0IHZhbHVl
+IGRvZXMgdGhlIGNhbGxiYWNrDQo+ID4+IGFkZD8NCj4gDQo+IFRoZSBycGNfYWN0aW9uIHJlbWFp
+bnMgcnBjX2NhbGxfcHJlcGFyZS4gQnV0ISBXZSB3YW50IHRoZSB0YXNrcyBjb21pbmcgb2ZmIHRo
+ZSBmYWlsZWQgRFMgZm9yZSBjaGFubmVsIHNsb3QgdGFibGUgcXVldWUgdG8gYmUgcmVkaXJlY3Rl
+ZCB0byB0aGUgTURTIG5mc19YWFhfcHJlcGFyZSwgbm90IHRoZSBmaWxlbGF5b3V0X3h4eF9wcmVw
+YXJlLg0KDQpTbz8gQ2FsbGluZyBycGNfcmVzdGFydF9jYWxsX3ByZXBhcmUoKSB3aWxsIGhhdmUg
+ZXhhY3RseSB0aGUgc2FtZSBlZmZlY3QNCmlmIHlvdSBkbyBpdCB3aXRoaW4gZmlsZWxheW91dF94
+eHhfcHJlcGFyZSBhcyBpdCB3aWxsIHdpdGhpbiBhIGNhbGxiYWNrLg0KDQo+IE5vdGUgdGhhdCBm
+aWxlbGF5b3V0X3Jlc2V0X3JlYWQgYW5kIGZpbGVsYXlvdXRfcmVzZXRfd3JpdGUgc2V0IHRoZSBk
+YXRhLT5kc19jbHAgdG8gTlVMTCB3aGljaCBtYWtlcyB0aGUgY2FsbCB0byBuZnM0MV9zZXR1cF9z
+ZXF1ZW5jZSgpIGluIGZpbGVsYXlvdXRfd3JpdGUvcmVhZF9wcmVwYXJlIE9vcHPigKYuLg0KPiAN
+Cj4gU28sIEknbGwga2VlcCB0aGlzIHBhdGNoIGFzIGlzLg0KDQpOQUNLLiBBZGRpbmcgYSBwYXJh
+bWV0ZXIgdG8gdGhlIHNlcXVlbmNlIGFyZ3VtZW50cyBpcyB3YXkgdG9vIHVnbHkgYQ0KaGFjay4g
+VGhpcyBoYXMgbm90aGluZyB0byBkbyB3aXRoIHRoZSBzZXF1ZW5jZSBvcC4NCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
