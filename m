@@ -1,71 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44778 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756493Ab2CWRGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 13:06:31 -0400
-Date: Fri, 23 Mar 2012 13:06:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 0/8] nfsd: overhaul the client name tracking code
-Message-ID: <20120323170630.GB6089@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:3674 "EHLO
+	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757722Ab2CSWZe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 18:25:34 -0400
+Date: Mon, 19 Mar 2012 18:25:33 -0400 (EDT)
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Nikolaus Rath <Nikolaus@rath.org>
+Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Message-ID: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <4F677E63.90300@rath.org>
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 09:52:01AM -0400, Jeff Layton wrote:
-> This is the tenth iteration of this patchset. The primary motivation
-> of this respin is to fix up some merge conflicts with some fixes that
-> Bruce merged recently.
+Nikolaus Rath wrote:
+> On 03/19/2012 02:39 PM, J. Bruce Fields wrote:
+> > On Mon, Mar 19, 2012 at 02:29:46PM -0400, Chuck Lever wrote:
+> >>
+> >> On Mar 19, 2012, at 2:27 PM, J. Bruce Fields wrote:
+> >>
+> >>> On Mon, Mar 19, 2012 at 01:47:14PM -0400, Chuck Lever wrote:
+> >>>>
+> >>>> On Mar 19, 2012, at 1:36 PM, J. Bruce Fields wrote:
+> >>>>> Well, sure, but all I'm proposing here is returning
+> >>>>> NFS4ERR_INUSE in the
+> >>>>> case where we get setclientid's with the same client-provided
+> >>>>> id.
+> >>>>> There'd be no change of behavior in the case of multiple clients
+> >>>>> sharing
+> >>>>> an IP (which is fine, of course).
+> >>>>
+> >>>> The migration draft proposes that clients use the same
+> >>>> nfs_client_id4 string for all of a server's IP addresses. Would a
+> >>>> server then be obliged to return NFS4ERR_CLID_IN_USE if a client
+> >>>> attempts a SETCLIENTID with the same boot verifier and
+> >>>> nfs_client_id4 on more than one IP address for the same server?
+> >>>
+> >>> That's also not this case, sorry, this time with all the
+> >>> conditions:
+> >>>
+> >>> 	- if the nfs_client_id4 is the same, and
+> >>> 	- if the flavor is auth_sys, and
+> >>> 	- if the client IP address is different,
+> >>> 	- then return NFS4ERR_INUSE.
+> >>
+> >> This still breaks for multi-homed servers and UCS clients. The
+> >> client IP address can be different depending on what server IP
+> >> address the client is accessing, but all the other parameters are
+> >> the same.
+> >
+> > OK. So probably there's nothing we can do to help here.
+> >
+> > As a bandaid maybe a rate-limited log message ("clientid X now in
+> > use
+> > from IP Y") might help debug these things....
+> 
+> Since you guys keep Cc'ing me, I'll chime in with a rather naive
+> suggestion: if all that's required is a unique id for every client,
+> why
+> not use the MAC of the first network interface, independent of it
+> being
+> used for communication with the server?
+> 
+I think this works fairly well for "real hardware", but I'm not so sure
+about clients running in VMs. (I don't really know how the VMs assign
+MAC addresses to their fake net interfaces and what uniqueness guarantees
+those have. I remember the old freebie VMware client for Windows just
+had a config file that assigned the MAC. I bet half the installations
+on the planet had the same MAC as the default config file:-)
 
-Thanks, these look fine.  I'm intending to merge for 3.4.  But I going
-want to spend some more time investigating the callback bug that
-excltest is triggering before committing to my for-3.4 branch.
+rick
+ps: Also, although it's not very relevant, getting the MAC address of
+    the first ethernet interface isn't easy in FreeBSD. I have no idea
+    if the same is true of Linux. (I'd also be worried that "first"
+    might not be fixed?)
 
---b.
-
 > 
-> For those who haven't followed along on the last few iterations, this
-> patchset also begins the "containerization" of nfsd. It introduces a
-> per-ns object that I envision growing over time as we make more of the
-> nfsd code namespace aware.
+> Best,
 > 
-> I've also rolled in the patch to convert the cl_cb_flags to a generic
-> flags field since that's a prerequisite, and added a patch to ensure
-> that no one tries to use the legacy client tracking code in anything but
-> the init_net namespace.
+> -Nikolaus
 > 
-> I'd like to see this go into 3.4 if possible...
+> --
+> »Time flies like an arrow, fruit flies like a Banana.«
 > 
-> Thanks,
-> 
-> Jeff Layton (8):
->   nfsd: convert nfs4_client->cl_cb_flags to a generic flags field
->   nfsd: add nfsd4_client_tracking_ops struct and a way to set it
->   sunrpc: create nfsd dir in rpc_pipefs
->   nfsd: add a per-net-namespace struct for nfsd
->   nfsd: add a header describing upcall to nfsdcld
->   nfsd: add the infrastructure to handle the cld upcall
->   nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
->   nfsd: don't allow legacy client tracker init for anything but
->     init_net
-> 
->  fs/nfsd/netns.h          |   35 +++
->  fs/nfsd/nfs4callback.c   |   14 +-
->  fs/nfsd/nfs4proc.c       |    3 +-
->  fs/nfsd/nfs4recover.c    |  636 +++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfsd/nfs4state.c      |   74 +++---
->  fs/nfsd/nfsctl.c         |   22 ++-
->  fs/nfsd/state.h          |   26 ++-
->  include/linux/nfsd/cld.h |   56 ++++
->  net/sunrpc/rpc_pipe.c    |    5 +
->  9 files changed, 796 insertions(+), 75 deletions(-)
->  create mode 100644 fs/nfsd/netns.h
->  create mode 100644 include/linux/nfsd/cld.h
-> 
-> -- 
-> 1.7.7.6
-> 
+> PGP fingerprint: 5B93 61F8 4EA2 E279 ABF6 02CF A9AD B7F8 AE4E 425C
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
