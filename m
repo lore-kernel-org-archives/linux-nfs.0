@@ -1,76 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:1238 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756249Ab2CTTL0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Mar 2012 15:11:26 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org, Bruce Fields <bfields@fieldses.org>
-Subject: [PATCH] NFSD: Fix warnings when NFSD_DEBUG is not defined
-Date: Tue, 20 Mar 2012 15:11:17 -0400
-Message-Id: <1332270677-19044-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:40700 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750882Ab2CSCy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 18 Mar 2012 22:54:58 -0400
+Date: Sun, 18 Mar 2012 22:54:55 -0400
+From: "Ted Ts'o" <tytso@mit.edu>
+To: Bernd Schubert <bernd.schubert@fastmail.fm>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120319025455.GD31682@thunk.org>
+References: <20120312154921.GB17153@pad.fieldses.org>
+ <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <4F5FB771.9010805@fastmail.fm>
+ <20120313212947.GK31995@pad.fieldses.org>
+ <4F60AC0D.9020204@itwm.fraunhofer.de>
+ <20120314160529.GB31194@fieldses.org>
+ <4F63AF2B.5080307@fastmail.fm>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4F63AF2B.5080307@fastmail.fm>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfsd/nfs4proc.c  |    4 ++++
- fs/nfsd/nfs4state.c |    8 ++++++++
- 2 files changed, 12 insertions(+), 0 deletions(-)
+On Fri, Mar 16, 2012 at 10:22:51PM +0100, Bernd Schubert wrote:
+> On 03/14/2012 05:05 PM, J. Bruce Fields wrote:
+> >On Wed, Mar 14, 2012 at 03:32:45PM +0100, Bernd Schubert wrote:
+> >>shall I sent an updated version of the previous ext4 patch
+> >>or is this patch sufficient?
+> >
+> >Up to Ted.
+> >
+> >Ted, I haven't published my merge of your branch, so at least for my
+> >purposes I don't care whether you fold this in or pop another patch on
+> >top.
+> 
+> Ted, could you please tell me how to proceed?
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 896da74..a62aa4f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1037,7 +1037,9 @@ struct nfsd4_operation {
- 
- static struct nfsd4_operation nfsd4_ops[];
- 
-+#ifdef NFSD_DEBUG
- static const char *nfsd4_op_name(unsigned opnum);
-+#endif
- 
- /*
-  * Enforce NFSv4.1 COMPOUND ordering rules:
-@@ -1674,12 +1676,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- };
- 
-+#ifdef NFSD_DEBUG
- static const char *nfsd4_op_name(unsigned opnum)
- {
- 	if (opnum < ARRAY_SIZE(nfsd4_ops))
- 		return nfsd4_ops[opnum].op_name;
- 	return "unknown_operation";
- }
-+#endif
- 
- #define nfsd4_voidres			nfsd4_voidargs
- struct nfsd4_voidargs { int dummy; };
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c5cddd6..813de8f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -605,12 +605,20 @@ hash_sessionid(struct nfs4_sessionid *sessionid)
- 	return sid->sequence % SESSION_HASH_SIZE;
- }
- 
-+#ifdef NFSD_DEBUG
- static inline void
- dump_sessionid(const char *fn, struct nfs4_sessionid *sessionid)
- {
- 	u32 *ptr = (u32 *)(&sessionid->data[0]);
- 	dprintk("%s: %u:%u:%u:%u\n", fn, ptr[0], ptr[1], ptr[2], ptr[3]);
- }
-+#else
-+static inline void
-+dump_sessionid(const char *fn, struct nfs4_sessionid *sessionid)
-+{
-+}
-+#endif
-+
- 
- static void
- gen_sessionid(struct nfsd4_session *ses)
--- 
-1.7.7.6
+I've merged it in.
 
+Bruce, I have an updated tag and branch at:
+
+   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
+
+Can you give it a try and pull it in if it passes your tests?
+
+    	     	      	       	     	- Ted
