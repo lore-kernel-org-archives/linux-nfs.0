@@ -1,47 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47724 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7367 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755376Ab2CIW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 17:29:37 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/7] locks: break delegations on rename
-Date: Fri,  9 Mar 2012 17:29:32 -0500
-Message-Id: <1331332174-22621-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <20120309222114.GA22423@fieldses.org>
-References: <20120309222114.GA22423@fieldses.org>
+	id S1755519Ab2CSPjM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 11:39:12 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20120319104432.56fe1e66@redhat.com>
+References: <20120319104432.56fe1e66@redhat.com> <20120208110254.4050.8856.stgit@warthog.procyon.org.uk> <20120208110400.4050.11565.stgit@warthog.procyon.org.uk>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: dhowells@redhat.com, steved@redhat.com, jmorris@namei.org,
+        linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [Keyrings] [PATCH 7/9] KEYS: Permit in-place link replacement in keyring list
+Date: Mon, 19 Mar 2012 15:39:00 +0000
+Message-ID: <14790.1332171540@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
+> Why is it safe to use key_put(rcu_access_pointer(...)) ? Clearly that
+> pointer will end up being dereferenced, right?
 
-diff --git a/fs/namei.c b/fs/namei.c
-index eb4166f..21a1d65 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3092,6 +3092,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = break_deleg(source, O_WRONLY);
-+	if (error)
-+		goto out;
-+	if (target) {
-+		error = break_deleg(target, O_WRONLY);
-+		if (error)
-+			goto out;
-+	}
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
--- 
-1.7.5.4
+Simple.  This key_put() is called from within keyring_destroy() and that is
+only ever called from the garbage collector - which is non-reentrant.  Add to
+that that key_put() never actually destroys a now-unused key, but merely
+schedules the gc for a future run, and it's *that* that searches out unused
+keys and deletes them.
 
+David
