@@ -1,427 +1,290 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:35527 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030589Ab2CFP27 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 10:28:59 -0500
-Received: by yenl12 with SMTP id l12so2272564yen.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Mar 2012 07:28:58 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:43925 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758942Ab2CSSse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 14:48:34 -0400
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        Paul Gortmaker <paul.gortmaker@windriver.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: _nfs_display_fhandle_hash: undefined reference to `crc32_le'
+Date: Mon, 19 Mar 2012 18:48:15 +0000
+Message-ID: <370D7412-07DA-4668-B78E-CC73CC982BDB@netapp.com>
+References: <20120318181304.GA2095@windriver.com>
+ <194578ED-EA46-479D-A61A-08D1A92FF80C@netapp.com>
+ <1332181221.2636.12.camel@lade.trondhjem.org>
+In-Reply-To: <1332181221.2636.12.camel@lade.trondhjem.org>
+Content-Type: multipart/signed;
+	boundary="Apple-Mail=_D9F3C859-8F03-4C1C-974B-C635F67979EA";
+	protocol="application/pkcs7-signature"; micalg=sha1
 MIME-Version: 1.0
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, skinsbursky@parallels.com
-Subject: [PATCH v9 1/6] nfsd: add nfsd4_client_tracking_ops struct and a way to set it
-Date: Tue,  6 Mar 2012 10:28:48 -0500
-Message-Id: <1331047733-1641-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Abstract out the mechanism that we use to track clients into a set of
-client name tracking functions.
+--Apple-Mail=_D9F3C859-8F03-4C1C-974B-C635F67979EA
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This gives us a mechanism to plug in a new set of client tracking
-functions without disturbing the callers. It also gives us a way to
-decide on what tracking scheme to use at runtime.
+I like this solution.
 
-For now, this just looks like pointless abstraction, but later we'll
-add a new alternate scheme for tracking clients on stable storage.
+-dros
 
-Note too that this patch anticipates the eventual containerization
-of this code by passing in struct net pointers in places. No attempt
-is made to containerize the legacy client tracker however.
+On Mar 19, 2012, at 2:20 PM, Myklebust, Trond wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c |  131 ++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c   |   57 +++++++--------------
- fs/nfsd/state.h       |   14 +++--
- 3 files changed, 147 insertions(+), 55 deletions(-)
+> On Mon, 2012-03-19 at 15:35 +0000, Adamson, Dros wrote:
+>> Oops!  The fix is ok, in that it will work, but I'm not sure we want =
+to pull in that type of dependency for a debug message.
+>>=20
+>> Maybe it'd be more appropriate to do something like this:
+>>=20
+>> =46rom 371ebd38717cd34a58d167909b56a216db288f83 Mon Sep 17 00:00:00 =
+2001
+>> From: Weston Andros Adamson <dros@netapp.com>
+>> Date: Mon, 19 Mar 2012 11:31:12 -0400
+>> Subject: [PATCH] if CRC32 isn't defined just return 0 for fh hash
+>>=20
+>>=20
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> fs/nfs/inode.c |    4 ++++
+>> 1 files changed, 4 insertions(+), 0 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 1a19f8d..0c1ca6a 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -1060,7 +1060,11 @@ u32 _nfs_display_fhandle_hash(const struct =
+nfs_fh *fh)
+>> {
+>>        /* wireshark uses 32-bit AUTODIN crc and does a bitwise
+>>         * not on the result */
+>> +#ifdef CONFIG_CRC32
+>>        return ~crc32(0xFFFFFFFF, &fh->data[0], fh->size);
+>> +#else
+>> +       return 0;
+>> +#endif
+>> }
+>>=20
+>> /*
+>=20
+> That was my first thought, but the problem with the above is that it
+> hides the CRC32 dependency deep down in the bowels of the NFS code.
+>=20
+> OK. What say we just bite the bullet, and add the dprintk() interface =
+to
+> Kbuild. That will allow distros that don't ship the 'rpcdebug' utility
+> to turn off dprintk() and will allow us to select CRC32 if and only if
+> we really need it.
+> IOW: Something like the following:
+>=20
+>=20
+> 8<--------------------------------------------------------------------
+> =46rom 855fa894a2b24b9872b535b75b04b82121f93b73 Mon Sep 17 00:00:00 =
+2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Sun, 18 Mar 2012 14:07:42 -0400
+> Subject: [PATCH] SUNRPC/NFS: Add Kbuild dependencies for =
+NFS_DEBUG/RPC_DEBUG
+>=20
+> This allows us to turn on/off the dprintk() debugging interfaces for
+> those distributions that don't ship the 'rpcdebug' utility.
+> It also allows us to add Kbuild dependencies. Specifically, we already
+> know that dprintk() in general relies on CONFIG_SYSCTL. Now it turns =
+out
+> that the NFS dprintks depend on CONFIG_CRC32 after we added support
+> for the filehandle hash.
+>=20
+> Reported-by: Paul Gortmaker <paul.gortmaker@windriver.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/Kconfig               |    6 ++++++
+> fs/nfs/inode.c               |    2 +-
+> fs/nfs/mount_clnt.c          |    2 +-
+> fs/nfs/nfsroot.c             |    2 +-
+> include/linux/nfs_fs.h       |   17 ++++++++---------
+> include/linux/sunrpc/debug.h |    2 +-
+> net/sunrpc/Kconfig           |   13 +++++++++++++
+> 7 files changed, 31 insertions(+), 13 deletions(-)
+>=20
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index 7bce64c..2a0e6c5 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -144,3 +144,9 @@ config NFS_USE_KERNEL_DNS
+> 	depends on NFS_V4 && !NFS_USE_LEGACY_DNS
+> 	select DNS_RESOLVER
+> 	default y
+> +
+> +config NFS_DEBUG
+> +	bool
+> +	depends on NFS_FS && SUNRPC_DEBUG
+> +	select CRC32
+> +	default y
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 1a19f8d..7bb4d13 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1047,7 +1047,7 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+> 	return fh;
+> }
+>=20
+> -#ifdef RPC_DEBUG
+> +#ifdef NFS_DEBUG
+> /*
+>  * _nfs_display_fhandle_hash - calculate the crc32 hash for the =
+filehandle
+>  *                             in the same way that wireshark does
+> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+> index b37ca34..8e65c7f 100644
+> --- a/fs/nfs/mount_clnt.c
+> +++ b/fs/nfs/mount_clnt.c
+> @@ -16,7 +16,7 @@
+> #include <linux/nfs_fs.h>
+> #include "internal.h"
+>=20
+> -#ifdef RPC_DEBUG
+> +#ifdef NFS_DEBUG
+> # define NFSDBG_FACILITY	NFSDBG_MOUNT
+> #endif
+>=20
+> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+> index c4744e1..cd3c910 100644
+> --- a/fs/nfs/nfsroot.c
+> +++ b/fs/nfs/nfsroot.c
+> @@ -104,7 +104,7 @@ static char nfs_export_path[NFS_MAXPATHLEN + 1] =
+__initdata =3D "";
+> /* server:export path string passed to super.c */
+> static char nfs_root_device[NFS_MAXPATHLEN + 1] __initdata =3D "";
+>=20
+> -#ifdef RPC_DEBUG
+> +#ifdef NFS_DEBUG
+> /*
+>  * When the "nfsrootdebug" kernel command line option is specified,
+>  * enable debugging messages for NFSROOT.
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 0a63ab2..8f27c2e 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -38,6 +38,13 @@
+>=20
+> #ifdef __KERNEL__
+>=20
+> +/*
+> + * Enable dprintk() debugging support for nfs client.
+> + */
+> +#ifdef CONFIG_NFS_DEBUG
+> +# define NFS_DEBUG
+> +#endif
+> +
+> #include <linux/in.h>
+> #include <linux/mm.h>
+> #include <linux/pagemap.h>
+> @@ -391,7 +398,7 @@ static inline void nfs_free_fhandle(const struct =
+nfs_fh *fh)
+> 	kfree(fh);
+> }
+>=20
+> -#ifdef RPC_DEBUG
+> +#ifdef NFS_DEBUG
+> extern u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh);
+> static inline u32 nfs_display_fhandle_hash(const struct nfs_fh *fh)
+> {
+> @@ -650,14 +657,6 @@ nfs_fileid_to_ino_t(u64 fileid)
+>=20
+> #ifdef __KERNEL__
+>=20
+> -/*
+> - * Enable debugging support for nfs client.
+> - * Requires RPC_DEBUG.
+> - */
+> -#ifdef RPC_DEBUG
+> -# define NFS_DEBUG
+> -#endif
+> -
+> # undef ifdebug
+> # ifdef NFS_DEBUG
+> #  define ifdebug(fac)		if (unlikely(nfs_debug & =
+NFSDBG_##fac))
+> diff --git a/include/linux/sunrpc/debug.h =
+b/include/linux/sunrpc/debug.h
+> index 6cb2517..9448eb5 100644
+> --- a/include/linux/sunrpc/debug.h
+> +++ b/include/linux/sunrpc/debug.h
+> @@ -31,7 +31,7 @@
+> /*
+>  * Enable RPC debugging/profiling.
+>  */
+> -#ifdef CONFIG_SYSCTL
+> +#ifdef CONFIG_SUNRPC_DEBUG
+> #define  RPC_DEBUG
+> #endif
+> #ifdef CONFIG_TRACEPOINTS
+> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+> index ffd243d..9fe8857 100644
+> --- a/net/sunrpc/Kconfig
+> +++ b/net/sunrpc/Kconfig
+> @@ -39,3 +39,16 @@ config RPCSEC_GSS_KRB5
+> 	  Kerberos support should be installed.
+>=20
+> 	  If unsure, say Y.
+> +
+> +config SUNRPC_DEBUG
+> +	bool "RPC: Enable dprintk debugging"
+> +	depends on SUNRPC && SYSCTL
+> +	help
+> +	  This option enables a sysctl-based debugging interface
+> +	  that is be used by the 'rpcdebug' utility to turn on or off
+> +	  logging of different aspects of the kernel RPC activity.
+> +
+> +	  Disabling this option will make your kernel slightly smaller,
+> +	  but makes troubleshooting NFS issues significantly harder.
+> +
+> +	  If unsure, say Y.
+> --=20
+> 1.7.7.6
+>=20
+>=20
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer
+>=20
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>=20
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 6523809..bade4a0 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -43,9 +43,20 @@
- 
- #define NFSDDBG_FACILITY                NFSDDBG_PROC
- 
-+/* Declarations */
-+struct nfsd4_client_tracking_ops {
-+	int (*init)(struct net *);
-+	void (*exit)(struct net *);
-+	void (*create)(struct nfs4_client *);
-+	void (*remove)(struct nfs4_client *);
-+	int (*check)(struct nfs4_client *);
-+	void (*grace_done)(struct net *, time_t);
-+};
-+
- /* Globals */
- static struct file *rec_file;
- static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
-+static struct nfsd4_client_tracking_ops *client_tracking_ops;
- 
- static int
- nfs4_save_creds(const struct cred **original_creds)
-@@ -117,7 +128,8 @@ out_no_tfm:
- 	return status;
- }
- 
--void nfsd4_create_clid_dir(struct nfs4_client *clp)
-+static void
-+nfsd4_create_clid_dir(struct nfs4_client *clp)
- {
- 	const struct cred *original_cred;
- 	char *dname = clp->cl_recdir;
-@@ -264,7 +276,7 @@ out_unlock:
- 	return status;
- }
- 
--void
-+static void
- nfsd4_remove_clid_dir(struct nfs4_client *clp)
- {
- 	const struct cred *original_cred;
-@@ -291,7 +303,6 @@ out:
- 	if (status)
- 		printk("NFSD: Failed to remove expired client state directory"
- 				" %.*s\n", HEXDIR_LEN, clp->cl_recdir);
--	return;
- }
- 
- static int
-@@ -310,8 +321,9 @@ purge_old(struct dentry *parent, struct dentry *child)
- 	return 0;
- }
- 
--void
--nfsd4_recdir_purge_old(void) {
-+static void
-+nfsd4_recdir_purge_old(struct net *net, time_t boot_time)
-+{
- 	int status;
- 
- 	if (!rec_file)
-@@ -342,7 +354,7 @@ load_recdir(struct dentry *parent, struct dentry *child)
- 	return 0;
- }
- 
--int
-+static int
- nfsd4_recdir_load(void) {
- 	int status;
- 
-@@ -360,8 +372,8 @@ nfsd4_recdir_load(void) {
-  * Hold reference to the recovery directory.
-  */
- 
--void
--nfsd4_init_recdir()
-+static int
-+nfsd4_init_recdir(void)
- {
- 	const struct cred *original_cred;
- 	int status;
-@@ -376,21 +388,38 @@ nfsd4_init_recdir()
- 		printk("NFSD: Unable to change credentials to find recovery"
- 		       " directory: error %d\n",
- 		       status);
--		return;
-+		return status;
- 	}
- 
- 	rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
- 	if (IS_ERR(rec_file)) {
- 		printk("NFSD: unable to find recovery directory %s\n",
- 				user_recovery_dirname);
-+		status = PTR_ERR(rec_file);
- 		rec_file = NULL;
- 	}
- 
- 	nfs4_reset_creds(original_cred);
-+	return status;
- }
- 
--void
--nfsd4_shutdown_recdir(void)
-+static int
-+nfsd4_load_reboot_recovery_data(struct net *net)
-+{
-+	int status;
-+
-+	nfs4_lock_state();
-+	status = nfsd4_init_recdir();
-+	if (!status)
-+		status = nfsd4_recdir_load();
-+	nfs4_unlock_state();
-+	if (status)
-+		printk(KERN_ERR "NFSD: Failure reading reboot recovery data\n");
-+	return status;
-+}
-+
-+static void
-+nfsd4_shutdown_recdir(struct net *net)
- {
- 	if (!rec_file)
- 		return;
-@@ -424,3 +453,83 @@ nfs4_recoverydir(void)
- {
- 	return user_recovery_dirname;
- }
-+
-+static int
-+nfsd4_check_legacy_client(struct nfs4_client *clp)
-+{
-+	/* did we already find that this client is stable? */
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return 0;
-+
-+	/* look for it in the reclaim hashtable otherwise */
-+	if (nfsd4_find_reclaim_client(clp)) {
-+		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+		return 0;
-+	}
-+
-+	return -ENOENT;
-+}
-+
-+static struct nfsd4_client_tracking_ops nfsd4_legacy_tracking_ops = {
-+	.init		= nfsd4_load_reboot_recovery_data,
-+	.exit		= nfsd4_shutdown_recdir,
-+	.create		= nfsd4_create_clid_dir,
-+	.remove		= nfsd4_remove_clid_dir,
-+	.check		= nfsd4_check_legacy_client,
-+	.grace_done	= nfsd4_recdir_purge_old,
-+};
-+
-+int
-+nfsd4_client_tracking_init(struct net *net)
-+{
-+	int status;
-+
-+	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-+
-+	status = client_tracking_ops->init(net);
-+	if (status) {
-+		printk(KERN_WARNING "NFSD: Unable to initialize client "
-+				    "recovery tracking! (%d)\n", status);
-+		client_tracking_ops = NULL;
-+	}
-+	return status;
-+}
-+
-+void
-+nfsd4_client_tracking_exit(struct net *net)
-+{
-+	if (client_tracking_ops) {
-+		client_tracking_ops->exit(net);
-+		client_tracking_ops = NULL;
-+	}
-+}
-+
-+void
-+nfsd4_client_record_create(struct nfs4_client *clp)
-+{
-+	if (client_tracking_ops)
-+		client_tracking_ops->create(clp);
-+}
-+
-+void
-+nfsd4_client_record_remove(struct nfs4_client *clp)
-+{
-+	if (client_tracking_ops)
-+		client_tracking_ops->remove(clp);
-+}
-+
-+int
-+nfsd4_client_record_check(struct nfs4_client *clp)
-+{
-+	if (client_tracking_ops)
-+		return client_tracking_ops->check(clp);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+void
-+nfsd4_record_grace_done(struct net *net, time_t boot_time)
-+{
-+	if (client_tracking_ops)
-+		client_tracking_ops->grace_done(net, boot_time);
-+}
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1198fe8..8f42a07 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2046,7 +2046,7 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		goto out;
- 
- 	status = nfs_ok;
--	nfsd4_create_clid_dir(cstate->session->se_client);
-+	nfsd4_client_record_create(cstate->session->se_client);
- out:
- 	nfs4_unlock_state();
- 	return status;
-@@ -2241,7 +2241,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			conf = find_confirmed_client_by_str(unconf->cl_recdir,
- 							    hash);
- 			if (conf) {
--				nfsd4_remove_clid_dir(conf);
-+				nfsd4_client_record_remove(conf);
- 				expire_client(conf);
- 			}
- 			move_to_confirmed(unconf);
-@@ -3066,7 +3066,7 @@ static void
- nfsd4_end_grace(void)
- {
- 	dprintk("NFSD: end of grace period\n");
--	nfsd4_recdir_purge_old();
-+	nfsd4_record_grace_done(&init_net, boot_time);
- 	locks_end_grace(&nfsd4_manager);
- 	/*
- 	 * Now that every NFSv4 client has had the chance to recover and
-@@ -3115,7 +3115,7 @@ nfs4_laundromat(void)
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
- 		dprintk("NFSD: purging unused client (clientid %08x)\n",
- 			clp->cl_clientid.cl_id);
--		nfsd4_remove_clid_dir(clp);
-+		nfsd4_client_record_remove(clp);
- 		expire_client(clp);
- 	}
- 	spin_lock(&recall_lock);
-@@ -3539,7 +3539,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	dprintk("NFSD: %s: success, seqid=%d stateid=" STATEID_FMT "\n",
- 		__func__, oc->oc_seqid, STATEID_VAL(&stp->st_stid.sc_stateid));
- 
--	nfsd4_create_clid_dir(oo->oo_owner.so_client);
-+	nfsd4_client_record_create(oo->oo_owner.so_client);
- 	status = nfs_ok;
- out:
- 	if (!cstate->replay_owner)
-@@ -4397,7 +4397,7 @@ nfs4_release_reclaim(void)
- 
- /*
-  * called from OPEN, CLAIM_PREVIOUS with a new clientid. */
--static struct nfs4_client_reclaim *
-+struct nfs4_client_reclaim *
- nfsd4_find_reclaim_client(struct nfs4_client *clp)
- {
- 	unsigned int strhashval;
-@@ -4417,22 +4417,6 @@ nfsd4_find_reclaim_client(struct nfs4_client *clp)
- 	return NULL;
- }
- 
--static int
--nfsd4_client_record_check(struct nfs4_client *clp)
--{
--	/* did we already find that this client is stable? */
--	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
--		return 0;
--
--	/* look for it in the reclaim hashtable otherwise */
--	if (nfsd4_find_reclaim_client(clp)) {
--		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
--		return 0;
--	}
--
--	return -ENOENT;
--}
--
- /*
- * Called from OPEN. Look for clientid in reclaim list.
- */
-@@ -4593,19 +4577,6 @@ nfs4_state_init(void)
- 	reclaim_str_hashtbl_size = 0;
- }
- 
--static void
--nfsd4_load_reboot_recovery_data(void)
--{
--	int status;
--
--	nfs4_lock_state();
--	nfsd4_init_recdir();
--	status = nfsd4_recdir_load();
--	nfs4_unlock_state();
--	if (status)
--		printk("NFSD: Failure reading reboot recovery data\n");
--}
--
- /*
-  * Since the lifetime of a delegation isn't limited to that of an open, a
-  * client may quite reasonably hang on to a delegation as long as it has
-@@ -4634,7 +4605,15 @@ nfs4_state_start(void)
- {
- 	int ret;
- 
--	nfsd4_load_reboot_recovery_data();
-+	/*
-+	 * FIXME: For now, we hang most of the pernet global stuff off of
-+	 * init_net until nfsd is fully containerized. Eventually, we'll
-+	 * need to pass a net pointer into this function, take a reference
-+	 * to that instead and then do most of the rest of this on a per-net
-+	 * basis.
-+	 */
-+	get_net(&init_net);
-+	nfsd4_client_tracking_init(&init_net);
- 	boot_time = get_seconds();
- 	locks_start_grace(&nfsd4_manager);
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
-@@ -4658,7 +4637,8 @@ nfs4_state_start(void)
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
--	nfsd4_shutdown_recdir();
-+	nfsd4_client_tracking_exit(&init_net);
-+	put_net(&init_net);
- 	return ret;
- }
- 
-@@ -4692,7 +4672,8 @@ __nfs4_state_shutdown(void)
- 		unhash_delegation(dp);
- 	}
- 
--	nfsd4_shutdown_recdir();
-+	nfsd4_client_tracking_exit(&init_net);
-+	put_net(&init_net);
- }
- 
- void
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index b9c036d..81d2e63 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -466,6 +466,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
- extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
- extern int nfs4_in_grace(void);
-+extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(struct nfs4_client *crp);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
- extern void nfs4_free_openowner(struct nfs4_openowner *);
- extern void nfs4_free_lockowner(struct nfs4_lockowner *);
-@@ -480,16 +481,17 @@ extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
--extern void nfsd4_init_recdir(void);
--extern int nfsd4_recdir_load(void);
--extern void nfsd4_shutdown_recdir(void);
- extern int nfs4_client_to_reclaim(const char *name);
- extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
--extern void nfsd4_recdir_purge_old(void);
--extern void nfsd4_create_clid_dir(struct nfs4_client *clp);
--extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
- extern void release_session_client(struct nfsd4_session *);
- extern __be32 nfs4_validate_stateid(struct nfs4_client *, stateid_t *);
- extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
- 
-+/* nfs4recover operations */
-+extern int nfsd4_client_tracking_init(struct net *net);
-+extern void nfsd4_client_tracking_exit(struct net *net);
-+extern void nfsd4_client_record_create(struct nfs4_client *clp);
-+extern void nfsd4_client_record_remove(struct nfs4_client *clp);
-+extern int nfsd4_client_record_check(struct nfs4_client *clp);
-+extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
- #endif   /* NFSD4_STATE_H */
--- 
-1.7.7.6
 
+--Apple-Mail=_D9F3C859-8F03-4C1C-974B-C635F67979EA
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIDTzCCA0sw
+ggIzoAMCAQICAQEwCwYJKoZIhvcNAQEFMEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYD
+VQQGEwJVUzEeMBwGCSqGSIb3DQEJARYPZHJvc0BuZXRhcHAuY29tMB4XDTExMDYwODIyMDc0NloX
+DTEyMDYwNzIyMDc0NlowRjEXMBUGA1UEAwwOV2VzdG9uIEFkYW1zb24xCzAJBgNVBAYTAlVTMR4w
+HAYJKoZIhvcNAQkBFg9kcm9zQG5ldGFwcC5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQC8/tJxtovJEXYRfSsrFOWKHxIZGY7/2mBee1DpWuoGDbVNapefCC7WXe+Nqxz609w2J/Mk
+/k3trZ3Ge2NXK0tGnP9NzjkzpGA7rSpM3wUFsvbLMUEGfQpvV24/nYvcLHTvOOEUaDPpHduN94bD
+dwvyowzDIRIpF2MeRnOzBNeHkrGHlZdzPmGjm8tkhrDRRkDYHhlxaiG4z30KCfAazxomuINiy1kj
+vbndXooYMDoh9H63hgW4NkOedtLdflLa322DXQ3nFU7YbyOIjHVl1tgWJLDWf7WT3lsAB8KvuJZ5
+zhsUB+fqxCKPJVRPDO1gjChvvtGiG1tGUUZz0H9Wx00zAgMBAAGjRjBEMA4GA1UdDwEB/wQEAwIH
+gDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDBDAaBgNVHREEEzARgQ9kcm9zQG5ldGFwcC5jb20wDQYJ
+KoZIhvcNAQEFBQADggEBACv0niZSmW+psB1sJXULh3mecDbN2mj0bFpN1YNdjcV7BiOLJ1Rs1ibV
+f13h73z8C7SBsPXTM5si8gmJtOnXM5jsgtlql44h/RrjUr8+mtK5DPCZls9J7iz3cGthzwOPvxUj
+nMSv3BpRX5oJom5ESgCM9Nn4u/ECTlLMhEIOYnBFiN0eDxcxz+r1cpbHg3r0otIKyxLpeaCjP6AH
+F93EHp4T8Rb63y3CcDgxrQGHlTdVi3QvxaMUexUXD81fiA+UqsB/MKmRxB1Hs4Vf3Q/+ejcm78K1
+ROF8TNPmNWRlKg3Y7cSFjZGzLuzXsvSsCbw4HLn0oZe/OfgSbarTAxttL5IxggHRMIIBzQIBATBL
+MEYxFzAVBgNVBAMMDldlc3RvbiBBZGFtc29uMQswCQYDVQQGEwJVUzEeMBwGCSqGSIb3DQEJARYP
+ZHJvc0BuZXRhcHAuY29tAgEBMAkGBSsOAwIaBQCgXTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+MBwGCSqGSIb3DQEJBTEPFw0xMjAzMTkxODQ4MTZaMCMGCSqGSIb3DQEJBDEWBBRqfqCpwKP1Y/if
+gKAz91aJPkDM2TANBgkqhkiG9w0BAQEFAASCAQBGdjhn3J3EoKGW/KPgHO7o4BEZsGRpiOAqbkcs
+ugcIZjbi3Wgt7RT3AHSAJr4AnDF2UBQMIkRPADhnfKEHLCCADbWPeb4FoRPdEsWo+hwIhEXigl10
+ON89WiVLz/fuOfvPE0CyR1PjuywFE2OURqtjHunMazQWwqVDPkqdqaQgsc7GN3fyfehTqqdZ3qWh
+IO0LAwJj2iqsutDw71w55KCNDe4GwZPnSje6/BQHazxpPUyCLkV2qICaK0RpeSUB2l0vw3KYbDmS
+37ryevz8zcp5k/+CmY3sHyWAbIrSBaAdOwyVHzih39XiBVtQhcjmU+hUEj1Tt7hyHM8oieIR9gFe
+AAAAAAAA
+
+--Apple-Mail=_D9F3C859-8F03-4C1C-974B-C635F67979EA--
