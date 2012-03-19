@@ -1,67 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33233 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41856 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932530Ab2CZSZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Mar 2012 14:25:48 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unlink within an open directory stream
-Date: Mon, 26 Mar 2012 18:25:41 +0000
-Message-ID: <1332786347.17253.33.camel@lade.trondhjem.org>
-References: <275611967.8.1332608027370.JavaMail.root@thunderbeast.private.linuxbox.com>
-	 <1332609149.25346.12.camel@lade.trondhjem.org>
-	 <4F70B2AE.4000504@panasas.com>
-In-Reply-To: <4F70B2AE.4000504@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+	id S965127Ab2CSTd4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 15:33:56 -0400
+Date: Mon, 19 Mar 2012 15:33:54 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the
+ last realm
+Message-ID: <20120319193354.GG23670@fieldses.org>
+References: <1332160616-4522-1-git-send-email-steved@redhat.com>
+ <51B1F466-FB87-4764-850E-3936DA71F637@oracle.com>
+ <4F676E95.3090409@RedHat.com>
+ <5295E5C7-2AD7-4D52-B3C1-8C24D964DCEF@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5295E5C7-2AD7-4D52-B3C1-8C24D964DCEF@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTI2IGF0IDExOjE3IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
-IE9uIDAzLzI0LzIwMTIgMTA6MTIgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+IA0KPiA+
-IE9uIFNhdCwgMjAxMi0wMy0yNCBhdCAxMjo1MyAtMDQwMCwgTWF0dCBXLiBCZW5qYW1pbiB3cm90
-ZToNCj4gPj4gSGksDQo+ID4+DQo+ID4+IEkgZG9uJ3QgdGhpbmsgYW55dGhpbmcgaXMuICBPciwg
-cGVvcGxlIG9yaWdpbmFsbHkgcmVwb3J0ZWQgdGhlIGJlaGF2aW9yIGFnYWluc3Qga25mc2QuDQo+
-ID4+DQo+ID4+IE1hdHQNCj4gPiANCj4gPiBUaGVyZSBpcyBhIGtub3duIGlzc3VlIHdpdGggZXh0
-Mi8zLzQgZ2VuZXJhdGluZyBub24tdW5pcXVlIHJlYWRkaXINCj4gPiBjb29raWVzLiBJdCByYXJl
-bHkgaGl0cyB5b3Ugd2hlbiB5b3UgYXJlIGNyZWF0aW5nIHNtYWxsIGRpcmVjdG9yaWVzLCBidXQN
-Cj4gPiBpdCBmcmVxdWVudGx5IGhpdHMgeW91IHdpdGggbGFyZ2VyIG9uZXMuIEEgZml4IGlzIHVu
-ZGVyd2F5IHRoYXQgc2hvdWxkDQo+ID4gc2lnbmlmaWNhbnRseSByZWR1Y2UgdGhlIGZyZXF1ZW5j
-eSBvZiBjb29raWUgY29sbGlzaW9ucy4NCj4gPiANCj4gPiBSZWNlbnQgTkZTIGNsaWVudHMgd2ls
-bCBhY3R1YWxseSBkZXRlY3QgdGhlIHByZXNlbmNlIG9mIHRob3NlIGNvb2tpZQ0KPiA+IGxvb3Bz
-LCBhbmQgbG9nIHRoZW0gaW4gdGhlIGtlcm5lbCBzeXNsb2cuIFRoYXQgd291bGQgdGhlcmVmb3Jl
-IGJlIHRoZQ0KPiA+IGZpcnN0IHRoaW5nIHRoYXQgSSdkIGNoZWNrIGlmIGNvbmZyb250ZWQgd2l0
-aCB0aGlzIGtpbmQgb2YgcHJvYmxlbS4NCj4gPiANCj4gPiBDaGVlcnMNCj4gPiAgIFRyb25kDQo+
-ID4gDQo+IA0KPiANCj4gVHJvbmQgcGxlYXNlIGxvb2sgb24gdGhlIGJ1ZyByZXBvcnQgbGlua3Mg
-YmVsb3cuIEl0J3Mgbm90IHRoZSAiY29va2llIGNvbGxpc2lvbnMiIGNhc2UuDQo+IA0KPiBJdCdz
-IHRoZSBuZXcgKHBvc3QgUkhFTCA2LjAgS2VybmVsKSBORlMgbmVlZCBmb3Igb3BlbmRpciBhZnRl
-ciBhbiB1bmxpbmsuDQoNCldoYXQ/DQoNCj4gTm93IHRoZSBQT1NJWCBtYW4gcGFnZSAqZG9lcyog
-c2F5IHRoYXQgYXBwbGljYXRpb25zIG11c3QgcmUtb3BlbmRpciBhZnRlcg0KPiB1bmxpbmssIGJ1
-dCB0aGVyZSBhcmUgc29tZSBhcHBsaWNhdGlvbnMgd2hvIGRpZCBub3QgcmVhZCB0aGUgbWFudWFs
-LCBhbmQgc2luY2UNCj4gaXQgd29ya3Mgd2l0aCBsb2NhbCBmaWxlc3lzdGVtcyBhbmQgb2xkIG5m
-cywgKFdoYXQgS2VybmVsIFJIRUwgNi4wIGlzIGJhc2VkIG9uPykNCj4gdGhleSBuZXZlciBub3Rp
-Y2VkIHRoZSBidWcgYW5kIG5ldmVyIGZpeGVkIGl0Lg0KPiANCj4gQ291bGQgd2UgZWFzaWx5IHN1
-cHBvcnQgdGhlIGJyb2tlbiBhcHBsaWNhdGlvbiBieSBiZWluZyBidWcgY29tcGF0aWJsZSB0bw0K
-PiBvbGQgTkZTIHZlcnNpb25zPw0KPiAuaS5lIERvbid0IHJlcXVpcmUgcmUtb3BlbmRpciBhZnRl
-ciB1bmxpbmsgb2YgYSBmaWxlLg0KPiANCj4gVGhlcmUgYXJlIG1vcmUgZXhhbXBsZXMgaW4gdGhl
-IGJ1ZyByZXBvcnRzIGJlbG93IGJ1dCBiYXNpY2FsbHkgYm9ubmllKysNCj4gZG9lcyB0aGUgZm9s
-bG93aW5nOg0KPiAJRElSICpkID0gb3BlbmRpcigiLiIpOw0KPiAJZGlyZW50ICpmaWxlX2VudDsN
-Cj4gCXdoaWxlKChmaWxlX2VudCA9IHJlYWRkaXIoZCkpICE9IE5VTEwpIHsNCj4gCQl1bmxpbmso
-IGZpbGVfZW50LT5kX25hbWUpKQ0KPiAJfQ0KPiAJY2xvc2VkaXIoZCk7DQo+IA0KPiB3aGVyZSBp
-dCBhY3R1YWxseSBuZWVkcyB0byBkbzoNCj4gDQo+IAlESVIgKmQgPSBvcGVuZGlyKCIuIik7DQo+
-IAlkaXJlbnQgKmZpbGVfZW50Ow0KPiAJd2hpbGUoKGZpbGVfZW50ID0gcmVhZGRpcihkKSkgIT0g
-TlVMTCkgew0KPiAJCXVubGluayggZmlsZV9lbnQtPmRfbmFtZSkpDQo+IA0KPiAJCWNsb3NlZGly
-KGQpOw0KPiAJCWQgPSBvcGVuZGlyKCIuIik7DQo+IAl9DQo+IAljbG9zZWRpcihkKTsNCj4gDQo+
-IEJ1dCBhZ2FpbiBjYXNlIG9uZSB1c2VkIHRvIHdvcmsgd2l0aCBvbGQgTkZTLiBBbmQgaXQgbG9v
-a3MgbGlrZQ0KPiBpdCBpcyBub3QgU2VydmVyIGRlcGVuZGVudC4gV2Ugc2F3IHRoaXMgYm90aCB3
-aXRoIEdhbmVzaGEgYXMgd2VsbA0KPiBhcyBrbmZzZA0KDQpOby4NCg0KSWYgdGhlIHNlcnZlciBz
-dXBwb3J0cyBwZXJtYW5lbnQgcmVhZGRpciBjb29raWVzLCB0aGVuIHRoZXJlIGlzIG5vIG5lZWQN
-CmZvciBvcGVuZGlyIGFmdGVyIHVubGluay4NCg0KSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBoYXZl
-IHBlcm1hbmVudCByZWFkZGlyIGNvb2tpZXMsIHRoZW4gb3VyIGNsaWVudA0KaGFzIG5ldmVyIHN1
-cHBvcnRlZCBpdCBhbnl3YXkgKG5vciB3aWxsIGl0IGV2ZXIgZG8gc28pLiBUaGF0IHdob2xlDQon
-Y29va2lldmVyZicgUkVBRERJUiBidWxsc2hpdCBoYXMgbmV2ZXIgcHJvdmlkZWQgYSB3b3JrYWJs
-ZSBtb2RlbCBmb3IgYQ0KUE9TSVggY2xpZW50Li4uDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Mon, Mar 19, 2012 at 01:43:52PM -0400, Chuck Lever wrote:
+> My understanding is that SOB is not about responsibility, but about
+> the provenance of the work.  It doesn't matter how large or small the
+> patch is.
+
+Well, it can matter in some ways.  For purposes of copyright, e.g., this
+patch isn't likely to raise any issues.
+
+> I've never seen another project maintainer drop an SOB like this, so
+> I'm just asking (and copying the list for other opinions).  No
+> objection, just want to make sure we are dotting our open-source "i"s
+> and so on.
+
+I have, for small stuff.  Or e.g. when a patch was written by a student
+working with me and I saw previous revisions of it, so I'm willing to
+vounch for it being their work.
+
+And agreed with Steved on process--make it easy for the new and drive-by
+contributors when it doesn't make extra work for the rest of us, and
+they'll figure out the rest of the process later if they need to.
+
+--b.
