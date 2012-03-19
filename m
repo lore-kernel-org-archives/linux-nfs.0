@@ -1,75 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out5-smtp.messagingengine.com ([66.111.4.29]:38548 "EHLO
-	out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932349Ab2CFAkH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2012 19:40:07 -0500
-Received: from compute5.internal (compute5.nyi.mail.srv.osa [10.202.2.45])
-	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id 646C720B30
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 19:40:07 -0500 (EST)
-Message-ID: <4F555CE5.7050401@itwm.fraunhofer.de>
-Date: Tue, 06 Mar 2012 01:40:05 +0100
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
+Received: from mx1.redhat.com ([209.132.183.28]:42119 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759297Ab2CSTpr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 15:45:47 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q2JJjkLa005476
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 19 Mar 2012 15:45:46 -0400
+Message-ID: <4F678CE6.8080703@RedHat.com>
+Date: Mon, 19 Mar 2012 15:45:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "Ted Ts'o" <tytso@mit.edu>
-CC: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Fan Yong <yong.fan@whamcloud.com>,
-        bfields@redhat.com, sandeen@redhat.com,
-        Andreas Dilger <adilger@whamcloud.com>
-Subject: Re: [PATCH 5 2/4] Return 32/64-bit dir name hash according to usage
- type
-References: <20120109132137.2616029.76288.stgit@localhost.localdomain> <20120109132148.2616029.68798.stgit@localhost.localdomain> <20120305155939.GE21356@thunk.org>
-In-Reply-To: <20120305155939.GE21356@thunk.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] idmapd: logging of Local-Realms only lists the last
+ realm
+References: <1332160616-4522-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1332160616-4522-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/05/2012 04:59 PM, Ted Ts'o wrote:
-> On Mon, Jan 09, 2012 at 02:21:48PM +0100, Bernd Schubert wrote:
->> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
->> index ac8f168..fa8e491 100644
->> --- a/fs/ext4/hash.c
->> +++ b/fs/ext4/hash.c
->> @@ -200,8 +200,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
->>   		return -1;
->>   	}
->>   	hash = hash&  ~1;
->> -	if (hash == (EXT4_HTREE_EOF<<  1))
->> -		hash = (EXT4_HTREE_EOF-1)<<  1;
->> +	if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
->> +		hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
->>   	hinfo->hash = hash;
->>   	hinfo->minor_hash = minor_hash;
->>   	return 0;
->
-> Is there a reason why we don't need to avoid the collsion with the
-> 64-bit EOF value as well?  i.e., I think we also need to add:
->
-> 	if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
-> 		hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
->
-> 		       			       	  - Ted
 
 
-Thanks for looking into it, really appreciated!
+On 03/19/2012 08:36 AM, Steve Dickson wrote:
+> From: Juno Krahn <Juno.Krahn@gmail.com>
+> 
+> The list of local realms can be logged with a massage like the following:
+>    rpc.idmapd: libnfsidmap: Realms list: 'EXAMPLE2.COM'
+> Instead of printing a list of realms, only the last realm in the list is shown.
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=804152
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-Yeah, you are right, we also should check for 64-bit EOF. But wouldn't 
-be something like this be better?
-
-	/* check for hash collision */
-	if(is_32bit_api() ) {
-		if (hash == (EXT4_HTREE_EOF_32BIT<<  1))
-			hash = (EXT4_HTREE_EOF_32BIT - 1)<<  1;
-	} else {
-		if (hash == (EXT4_HTREE_EOF_64BIT<<  1))
-			hash = (EXT4_HTREE_EOF_64BIT - 1)<<  1;
-	}
-
-
-
-Or am I over engineering?
-
-
-Thanks,
-Bernd
-
-
+steved
+> ---
+>  libnfsidmap.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/libnfsidmap.c b/libnfsidmap.c
+> index 57bb6c3..641d766 100644
+> --- a/libnfsidmap.c
+> +++ b/libnfsidmap.c
+> @@ -285,8 +285,9 @@ int nfs4_init_name_mapping(char *conffile)
+>  			}
+>  			buf = malloc(siz);
+>  			if (buf) {
+> +				*buf = 0;
+>  				TAILQ_FOREACH(r, &local_realms->fields, link) {
+> -					sprintf(buf, "'%s' ", r->field);
+> +					sprintf(buf+strlen(buf), "'%s' ", r->field);
+>  				}
+>  				IDMAP_LOG(1, ("libnfsidmap: Realms list: %s", buf));
+>  				free(buf);
