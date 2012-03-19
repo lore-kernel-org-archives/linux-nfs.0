@@ -1,87 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:63897 "EHLO
-	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758587Ab2CHUXg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2012 15:23:36 -0500
+Received: from natasha.panasas.com ([67.152.220.90]:45385 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754039Ab2CSU64 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 16:58:56 -0400
+Message-ID: <4F679DEF.3040002@panasas.com>
+Date: Mon, 19 Mar 2012 13:58:23 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-In-Reply-To: <1331230525.2472.39.camel@lade.trondhjem.org>
-References: <87k42yjb0c.fsf@tucsk.pomaz.szeredi.hu>
-	<1331160049-3842-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1331160049-3842-2-git-send-email-Trond.Myklebust@netapp.com>
-	<1331160049-3842-3-git-send-email-Trond.Myklebust@netapp.com>
-	<CAN-5tyG-w+ie3sxTwNA6e9x=CojxyDaJScJuCbS+9VE=yTmJNA@mail.gmail.com>
-	<1331230525.2472.39.camel@lade.trondhjem.org>
-Date: Thu, 8 Mar 2012 15:23:34 -0500
-Message-ID: <CAN-5tyFYE5ECtv__C9S_GMT1gBMQ4+6WPS-1BjmSE7vHoRAQdw@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFSv4: Return the delegation if the server returns NFS4ERR_OPENMODE
-From: Olga Kornievskaia <aglo@citi.umich.edu>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Miklos Szeredi <miklos@szeredi.hu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: Re: [PATCH 3/4] pnfs-obj: autologin: Add support for protocol autologin
+References: <4F62DADD.3010502@panasas.com> <4F62DC6A.5080709@panasas.com> <1331934052.13255.7.camel@lade.trondhjem.org>
+In-Reply-To: <1331934052.13255.7.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 8, 2012 at 1:15 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-03-08 at 12:52 -0500, Olga Kornievskaia wrote:
->> wouldn't it be better for you to proactively return a read delegation
->> then unnecessarily erroring?
->
-> If nobody else holds a delegation, then the NFS client is actually
-> allowed to keep its read delegation while writing to the file. It does
-> admittedly need to request an OPEN stateid for write in that case...
-> (See section 10.4 of RFC3530bis draft 16)
+On 03/16/2012 02:40 PM, Myklebust, Trond wrote:
+> On Thu, 2012-03-15 at 23:23 -0700, Boaz Harrosh wrote:
+>> From: Sachin Bhamare <sbhamare@panasas.com>
+>>
+>> The pnfs-objects protocol mandates that we autologin into devices not
+>> present in the system, according to information specified in the
+>> get_device_info returned from the server.
+>>
+>> The Protocol specifies two login hints.
+>> 1. An IP address:port combination
+>> 2. A string URI which is constructed as a URL with a protocol prefix
+>>    followed by :// and a string as address. For each  protocol prefix
+>>    the string-address format might be different.
+>>
+>> We only support the second option. The first option is just redundant
+>> to the second one.
+>> NOTE: The Kernel part of autologin does not parse the URI string. It
+>> just channels it to a user-mode script. So any new login protocols should
+>> only update the user-mode script which is a part of the nfs-utils package,
+>> but the Kernel need not change.
+>>
+>> We implement the autologin by using the call_usermodehelper() API.
+>> (Thanks to Steve Dickson <steved@redhat.com> for pointing it out)
+>> So there is no running daemon needed, and or special setup.
+>>
+>> All is needed is that "/sbin/osd_login" script exists.
+>> TODO:
+>>   "osd_login" is an hard coded name. If not present we will rate_limit
+>>   print to dmsg and keep failing. In such cases we should stop trying
+>>   and provide sysfs interface for re-enabling autologin. For example,
+>>   we could ZERO out the script name and let user-mode set a new script
+>>   name.
+>>   [Q] Where in sysfs should a layout-driver put its things?
+> 
+> Please see fs/nfs/cache_lib.c, which already does this sort of thing.
+> The right thing to do is not sysfs, but a kernel module parameter.
+> 
 
-If we both agree that there has to be a request for an open stateid for
-a write, then instead of returning the read delegation if the client receives
-err_openmode (when it send the request with read delegation stateid
-as you said per 3560bis), can't the client resend the setattr with the open
-stateid? The ordering of the stateid usage is a "should" and not a "must".
+I have a question about the "kernel module parameter" is that an hot
+affair. I mean if the module is loaded, does it have to be unloaded
+before I can specify a new "module parameter" on load. Or it will
+update globally even if the module is already loaded?
 
-In rfc5661, it really doesn't make sense to ever send a setattr with
-a read delegation stateid. According to 9.1.2, the server "MUST" return
-err_open_mode" error in that case.
+The reason I'm asking is because the layout-driver is referenced
+by nfs-core on mount. And will not release until unmount, of the
+last pnf-objects mount-point.
 
-I gather you are in this case dealing with 4.0 delegations. But I wonder
-if you'll do something else for 4.1 delegation then?
+That's why I thought of a /sys so all mount-points need not be unmounted
+before admin can fix the problem.
 
-Another comment is that I was suggesting a return of delegation only
-because (from what i recall) the 4.1 servers out there will recall the
-previously
-given read delegation in this case.
+> 
 
-> That said, in either case we do need to deal with the fact that a new
-> delegation may be granted after we return the old one. There is no
-> locking around the setattr call to prevent this.
-
-Can that really happen since we agreed that the client also has an open
-stateid for write in this case?
-
->> i also don't understand how this error occurs. doing a setattr in this
->> case you must have used a non-special stateid. the server would only
->> return an err_openmode if you sent the setattr with a read delegation
->> stateid. i guess my question is what stateid would you use that from
->> client's perspective represent a write-type state id but yet a server
->> would flag as having wrong access type?
->
-> The read delegation stateid is being sent as per the prescription in
-> section 9.1.3.6 of RFC3530bis.
-
->> also i'm curious why would a server, instead of returning
->> err_openmode, would not first recall your read delegation?
->
-> It could, but why do so when it can just return an error value? The
-> presence of the delegation stateid in the SETATTR request allows it to
-> communicate directly to the client what the problem is without the need
-> for any callbacks.
-
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+Thanks
+Boaz
