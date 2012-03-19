@@ -1,32 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52478 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57135 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751623Ab2CVRRA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 13:17:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: DENIEL Philippe <philippe.deniel@cea.fr>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: READDIRPLUS3 and NFS3ERR_BAD_COOKIE
-Date: Thu, 22 Mar 2012 17:16:57 +0000
-Message-ID: <1332436619.8976.3.camel@lade.trondhjem.org>
-References: <4F6B1EF3.2000200@cea.fr>
-	 <1332436029.8976.2.camel@lade.trondhjem.org> <4F6B5DE7.5070900@cea.fr>
-In-Reply-To: <4F6B5DE7.5070900@cea.fr>
-Content-Type: text/plain; charset="utf-8"
+	id S1030574Ab2CSUAq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 16:00:46 -0400
+Date: Mon, 19 Mar 2012 16:00:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Ted Ts'o" <tytso@mit.edu>
+Cc: Bernd Schubert <bernd.schubert@fastmail.fm>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        yong.fan@whamcloud.com, sandeen@redhat.com, adilger@whamcloud.com
+Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
+ may_flags' in nfsd_open()
+Message-ID: <20120319200041.GA25161@fieldses.org>
+References: <20120312222250.GD8991@fieldses.org>
+ <20120313200117.GA21991@fieldses.org>
+ <4F5FA827.8020606@itwm.fraunhofer.de>
+ <20120313203446.GB21991@fieldses.org>
+ <4F5FB771.9010805@fastmail.fm>
+ <20120313212947.GK31995@pad.fieldses.org>
+ <4F60AC0D.9020204@itwm.fraunhofer.de>
+ <20120314160529.GB31194@fieldses.org>
+ <4F63AF2B.5080307@fastmail.fm>
+ <20120319025455.GD31682@thunk.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120319025455.GD31682@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTIyIGF0IDE4OjE0ICswMTAwLCBERU5JRUwgUGhpbGlwcGUgd3JvdGU6
-DQo+IE15a2xlYnVzdCwgVHJvbmQgYSDDqWNyaXQgOg0KPiA+DQo+ID4gRG9lcyBib25uaWUrKyBj
-aGVjayB0aGUgcmV0dXJuIHZhbHVlIG9mIHJlYWRkaXI/IFRoZXJlIGlzIG5vIGVhc3kgd2F5DQo+
-ID4gZm9yIHRoZSBjbGllbnQgdG8gcmVjb3ZlciB3aGVuIHRoZSBzZXJ2ZXIgcmV0dXJucyBCQURf
-Q09PS0lFLCBzbyB3ZQ0KPiA+IHNob3VsZCBiZSBwYXNzaW5nIHRoYXQgZXJyb3IgYmFjayB0byB0
-aGUgYXBwbGljYXRpb24NCj4gVGhhbmtzIGZvciB5b3VyIHJlcGx5LCBUcm9uZC4NCj4gTm8sIGl0
-IGRvZXMgbm90LiBJdCB1c2VzIHRoZSByZWFkZGlyKCkgY2FsbCB0aGF0IHRha2VzIGEgZGlyZWN0
-b3J5IGFzIA0KPiBhcmd1bWVudCBhbmQgcmV0dXJucyBhIHBvaW50ZXIgdG8gYW4gYXJyYXkgb2Yg
-c3RydWN0IGRpcmVudHMuDQo+IFdoZW4gYmFkIGNvb2tpZSBpcyBzZW50IGJhY2sgdG8gdGhlIGFw
-cGxpY2F0aW9uLCB3aGljaCBlcnJvciB3aWxsIGl0IGJlLiANCj4gSSBzYXcgZXJybm8gPSA1MjMg
-PyBJcyB0aGlzIGNvcnJlY3QgPw0KDQpZZXMsIHRoYXQgc291bmRzIHJpZ2h0Lg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Sun, Mar 18, 2012 at 10:54:55PM -0400, Ted Ts'o wrote:
+> On Fri, Mar 16, 2012 at 10:22:51PM +0100, Bernd Schubert wrote:
+> > On 03/14/2012 05:05 PM, J. Bruce Fields wrote:
+> > >On Wed, Mar 14, 2012 at 03:32:45PM +0100, Bernd Schubert wrote:
+> > >>shall I sent an updated version of the previous ext4 patch
+> > >>or is this patch sufficient?
+> > >
+> > >Up to Ted.
+> > >
+> > >Ted, I haven't published my merge of your branch, so at least for my
+> > >purposes I don't care whether you fold this in or pop another patch on
+> > >top.
+> > 
+> > Ted, could you please tell me how to proceed?
+> 
+> I've merged it in.
+> 
+> Bruce, I have an updated tag and branch at:
+> 
+>    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git nfs-ext4-premerge
+> 
+> Can you give it a try and pull it in if it passes your tests?
+
+Looks good.
+
+(Merged and pushed out to my git://linux-nfs.org/~bfields/linux.git.)
+
+Sorry that was more of a hassle than it could have been....  It would be
+nice to try rewriting the cthon tests for xfstests, if that would help
+catch nfs-related bugs sooner.  I don't have the time for now, though.
+
+Merging a topic branch like this looks like it should work fine, anyway.
+
+Thanks!
+
+--b.
+
+commit 62b9510cb373d5722fdaba71d961d8f695acfcd5
+Merge: 8546ee5 06effdb
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Mar 19 12:34:39 2012 -0400
+
+    nfsd: merge cookie collision fixes from ext4 tree
+    
+    These changes fix readdir loops on ext4 filesystems with dir_index
+    turned on.  I'm pulling them from Ted's tree as I'd like to give them
+    some extra nfsd testing, and expect to be applying (potentially
+    conflicting) patches to the same code before the next merge window.
+    
+    From the nfs-ext4-premerge branch of
+    
+    	git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
