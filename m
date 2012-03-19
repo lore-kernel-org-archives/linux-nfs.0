@@ -1,85 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47817 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11120 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752791Ab2CWQAG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 12:00:06 -0400
-Date: Fri, 23 Mar 2012 12:00:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323160003.GA5675@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <1332337929-18580-4-git-send-email-jlayton@redhat.com>
- <20120323121208.GA3219@fieldses.org>
- <20120323133111.GA2991@fieldses.org>
- <1332516024.3087.1.camel@lade.trondhjem.org>
- <20120323152220.GA4953@fieldses.org>
- <1332516863.3087.10.camel@lade.trondhjem.org>
+	id S1752810Ab2CSVM7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Mar 2012 17:12:59 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: Re: [PATCH 3/4] pnfs-obj: autologin: Add support for protocol
+ autologin
+Date: Mon, 19 Mar 2012 21:12:40 +0000
+Message-ID: <1332191559.2636.34.camel@lade.trondhjem.org>
+References: <4F62DADD.3010502@panasas.com> <4F62DC6A.5080709@panasas.com>
+	 <1331934052.13255.7.camel@lade.trondhjem.org>
+	 <4F679DEF.3040002@panasas.com>
+In-Reply-To: <4F679DEF.3040002@panasas.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332516863.3087.10.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 23, 2012 at 03:34:21PM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-03-23 at 11:22 -0400, J. Bruce Fields wrote:
-> > On Fri, Mar 23, 2012 at 03:20:21PM +0000, Myklebust, Trond wrote:
-> > > On Fri, 2012-03-23 at 09:31 -0400, J. Bruce Fields wrote:
-> > > > On Fri, Mar 23, 2012 at 08:12:08AM -0400, J. Bruce Fields wrote:
-> > > > > On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> > > > > > Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> > > > > > upcall.
-> > > > > 
-> > > > > After applying this patch, my tests consistently hang.  The hang happens
-> > > > > in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-> > > > > Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-> > > > > for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-> > > > > delegation, so presumably that's what's causing the DELAY, though I'm
-> > > > > not seeing the server send a recall.  That could be a krb5 bug.
-> > > > > 
-> > > > > Whatever bug there is here, it's hard to tell why this patch in
-> > > > > particular would make it more likely.
-> > > > > 
-> > > > > So, still investigating!
-> > > > 
-> > > > Reproduceable by:
-> > > > 
-> > > > 	mount -osec=krb5,minorversion=1 server:/export/ /mnt/
-> > > > 	cp cthon04/special/excltest /mnt/
-> > > > 	cd /mnt
-> > > > 	./excltest
-> > > 
-> > > Umm... When would you ever get a DELAY in the above scenario? I can see
-> > > getting an NFS4ERR_OPENMODE, but not DELAY.
-> > 
-> > There's a setattr for mode right after the open.  Is that unexpected?
-> 
-> Well yes, it is. The NFSv4.1 exclusive open should always be sending a
-> full set of attributes as part of the OPEN operation. The session replay
-> cache is now supposed to guarantee the only-once semantics that the
-> verifier used to provide.
-
-Looking at the trace.... The client is passing a zero attribute set on
-the EXCLUSIVE4_1 open.
-
-Hm, I wonder if our support for suppattr_exclreat has a bug.  On a quick
-check, the code looks like it should do the right thing.
-
-> > The server doesn't really have to recall the delegation in that case (it
-> > only needs to recall *other* clients' delegations) but I don't think
-> > it's wrong to.
-> 
-> Then why isn't it allowing the operation?  Any sane client would normally
-> interpret NFS4ERR_DELAY to mean that the server is doing something to
-> fix whatever situation is preventing the operation from completing
-> (presumably by recalling delegations in this case). Just replying DELAY
-> and doing nothing is not helpful...
-
-Yes, there's a backchannel bug of some kind.
-
-Actually I doubt the server's 4.1 krb5 implementation handles the
-backchannel correctly at all.
-
---b.
+T24gTW9uLCAyMDEyLTAzLTE5IGF0IDEzOjU4IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
+IE9uIDAzLzE2LzIwMTIgMDI6NDAgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
+VGh1LCAyMDEyLTAzLTE1IGF0IDIzOjIzIC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+ID4+
+IEZyb206IFNhY2hpbiBCaGFtYXJlIDxzYmhhbWFyZUBwYW5hc2FzLmNvbT4NCj4gPj4NCj4gPj4g
+VGhlIHBuZnMtb2JqZWN0cyBwcm90b2NvbCBtYW5kYXRlcyB0aGF0IHdlIGF1dG9sb2dpbiBpbnRv
+IGRldmljZXMgbm90DQo+ID4+IHByZXNlbnQgaW4gdGhlIHN5c3RlbSwgYWNjb3JkaW5nIHRvIGlu
+Zm9ybWF0aW9uIHNwZWNpZmllZCBpbiB0aGUNCj4gPj4gZ2V0X2RldmljZV9pbmZvIHJldHVybmVk
+IGZyb20gdGhlIHNlcnZlci4NCj4gPj4NCj4gPj4gVGhlIFByb3RvY29sIHNwZWNpZmllcyB0d28g
+bG9naW4gaGludHMuDQo+ID4+IDEuIEFuIElQIGFkZHJlc3M6cG9ydCBjb21iaW5hdGlvbg0KPiA+
+PiAyLiBBIHN0cmluZyBVUkkgd2hpY2ggaXMgY29uc3RydWN0ZWQgYXMgYSBVUkwgd2l0aCBhIHBy
+b3RvY29sIHByZWZpeA0KPiA+PiAgICBmb2xsb3dlZCBieSA6Ly8gYW5kIGEgc3RyaW5nIGFzIGFk
+ZHJlc3MuIEZvciBlYWNoICBwcm90b2NvbCBwcmVmaXgNCj4gPj4gICAgdGhlIHN0cmluZy1hZGRy
+ZXNzIGZvcm1hdCBtaWdodCBiZSBkaWZmZXJlbnQuDQo+ID4+DQo+ID4+IFdlIG9ubHkgc3VwcG9y
+dCB0aGUgc2Vjb25kIG9wdGlvbi4gVGhlIGZpcnN0IG9wdGlvbiBpcyBqdXN0IHJlZHVuZGFudA0K
+PiA+PiB0byB0aGUgc2Vjb25kIG9uZS4NCj4gPj4gTk9URTogVGhlIEtlcm5lbCBwYXJ0IG9mIGF1
+dG9sb2dpbiBkb2VzIG5vdCBwYXJzZSB0aGUgVVJJIHN0cmluZy4gSXQNCj4gPj4ganVzdCBjaGFu
+bmVscyBpdCB0byBhIHVzZXItbW9kZSBzY3JpcHQuIFNvIGFueSBuZXcgbG9naW4gcHJvdG9jb2xz
+IHNob3VsZA0KPiA+PiBvbmx5IHVwZGF0ZSB0aGUgdXNlci1tb2RlIHNjcmlwdCB3aGljaCBpcyBh
+IHBhcnQgb2YgdGhlIG5mcy11dGlscyBwYWNrYWdlLA0KPiA+PiBidXQgdGhlIEtlcm5lbCBuZWVk
+IG5vdCBjaGFuZ2UuDQo+ID4+DQo+ID4+IFdlIGltcGxlbWVudCB0aGUgYXV0b2xvZ2luIGJ5IHVz
+aW5nIHRoZSBjYWxsX3VzZXJtb2RlaGVscGVyKCkgQVBJLg0KPiA+PiAoVGhhbmtzIHRvIFN0ZXZl
+IERpY2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPiBmb3IgcG9pbnRpbmcgaXQgb3V0KQ0KPiA+PiBT
+byB0aGVyZSBpcyBubyBydW5uaW5nIGRhZW1vbiBuZWVkZWQsIGFuZCBvciBzcGVjaWFsIHNldHVw
+Lg0KPiA+Pg0KPiA+PiBBbGwgaXMgbmVlZGVkIGlzIHRoYXQgIi9zYmluL29zZF9sb2dpbiIgc2Ny
+aXB0IGV4aXN0cy4NCj4gPj4gVE9ETzoNCj4gPj4gICAib3NkX2xvZ2luIiBpcyBhbiBoYXJkIGNv
+ZGVkIG5hbWUuIElmIG5vdCBwcmVzZW50IHdlIHdpbGwgcmF0ZV9saW1pdA0KPiA+PiAgIHByaW50
+IHRvIGRtc2cgYW5kIGtlZXAgZmFpbGluZy4gSW4gc3VjaCBjYXNlcyB3ZSBzaG91bGQgc3RvcCB0
+cnlpbmcNCj4gPj4gICBhbmQgcHJvdmlkZSBzeXNmcyBpbnRlcmZhY2UgZm9yIHJlLWVuYWJsaW5n
+IGF1dG9sb2dpbi4gRm9yIGV4YW1wbGUsDQo+ID4+ICAgd2UgY291bGQgWkVSTyBvdXQgdGhlIHNj
+cmlwdCBuYW1lIGFuZCBsZXQgdXNlci1tb2RlIHNldCBhIG5ldyBzY3JpcHQNCj4gPj4gICBuYW1l
+Lg0KPiA+PiAgIFtRXSBXaGVyZSBpbiBzeXNmcyBzaG91bGQgYSBsYXlvdXQtZHJpdmVyIHB1dCBp
+dHMgdGhpbmdzPw0KPiA+IA0KPiA+IFBsZWFzZSBzZWUgZnMvbmZzL2NhY2hlX2xpYi5jLCB3aGlj
+aCBhbHJlYWR5IGRvZXMgdGhpcyBzb3J0IG9mIHRoaW5nLg0KPiA+IFRoZSByaWdodCB0aGluZyB0
+byBkbyBpcyBub3Qgc3lzZnMsIGJ1dCBhIGtlcm5lbCBtb2R1bGUgcGFyYW1ldGVyLg0KPiA+IA0K
+PiANCj4gSSBoYXZlIGEgcXVlc3Rpb24gYWJvdXQgdGhlICJrZXJuZWwgbW9kdWxlIHBhcmFtZXRl
+ciIgaXMgdGhhdCBhbiBob3QNCj4gYWZmYWlyLiBJIG1lYW4gaWYgdGhlIG1vZHVsZSBpcyBsb2Fk
+ZWQsIGRvZXMgaXQgaGF2ZSB0byBiZSB1bmxvYWRlZA0KPiBiZWZvcmUgSSBjYW4gc3BlY2lmeSBh
+IG5ldyAibW9kdWxlIHBhcmFtZXRlciIgb24gbG9hZC4gT3IgaXQgd2lsbA0KPiB1cGRhdGUgZ2xv
+YmFsbHkgZXZlbiBpZiB0aGUgbW9kdWxlIGlzIGFscmVhZHkgbG9hZGVkPw0KPiANCj4gVGhlIHJl
+YXNvbiBJJ20gYXNraW5nIGlzIGJlY2F1c2UgdGhlIGxheW91dC1kcml2ZXIgaXMgcmVmZXJlbmNl
+ZA0KPiBieSBuZnMtY29yZSBvbiBtb3VudC4gQW5kIHdpbGwgbm90IHJlbGVhc2UgdW50aWwgdW5t
+b3VudCwgb2YgdGhlDQo+IGxhc3QgcG5mLW9iamVjdHMgbW91bnQtcG9pbnQuDQo+IA0KPiBUaGF0
+J3Mgd2h5IEkgdGhvdWdodCBvZiBhIC9zeXMgc28gYWxsIG1vdW50LXBvaW50cyBuZWVkIG5vdCBi
+ZSB1bm1vdW50ZWQNCj4gYmVmb3JlIGFkbWluIGNhbiBmaXggdGhlIHByb2JsZW0uDQoNClllcy4g
+SWYgeW91IGRlc2lnbiB0aGluZ3MgY29ycmVjdGx5LCB5b3UgY2FuIG1ha2UgdGhlIGtlcm5lbCBw
+YXJhbWV0ZXINCndyaXRlYWJsZSBieSBzZXR0aW5nIHRoZSBtb2RlIGluIHRoZSBtb2R1bGVfcGFy
+YW1fc3RyaW5nKCkuIEFnYWluLA0KcGxlYXNlIHNlZSBmcy9uZnMvY2FjaGVfbGliLmMuDQoNClRo
+ZSBhZHZhbnRhZ2Ugb2YgdGhlIGtlcm5lbCBwYXJhbWV0ZXIgaGVyZSBpcyB0aGF0IHlvdSBjYW4g
+aW5pdGlhbGlzZSBpdA0KZGlyZWN0bHkgaW4gL2V0Yy9tb2Rwcm9iZS5jb25mIHVzaW5nIHRoZSAn
+b3B0aW9ucycgY29tbWFuZCwgYnV0IHlvdSBjYW4NCmxhdGVyIGNoYW5nZSBpdCBkeW5hbWljYWxs
+eSAod2l0aG91dCByZW1vdmluZyB0aGUgbW9kdWxlKSB1c2luZyB0aGUNCnBzZXVkb2ZpbGUgaW4g
+L3N5cy9tb2R1bGUvb2JqbGF5b3V0LWRyaXZlci9wYXJhbWV0ZXJzDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
