@@ -1,75 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2097 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:31117 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753104Ab2CaVJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 31 Mar 2012 17:09:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Jim Rees <rees@umich.edu>, Sasha Levin <levinsasha928@gmail.com>,
-        "Lukas Razik" <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type
- fully matches
-Date: Sat, 31 Mar 2012 21:09:29 +0000
-Message-ID: <1333228179.2719.14.camel@lade.trondhjem.org>
-References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
-	 <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com>
-	 <20120107181221.GA3777@umich.edu> <1326111265.30169.5.camel@lappy>
-	 <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
-	 <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
-In-Reply-To: <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1030590Ab2CTQZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Mar 2012 12:25:50 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 2/2] NFS: ncommit count is being double decremented
+Date: Tue, 20 Mar 2012 12:25:46 -0400
+Message-Id: <1332260746-8351-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
+References: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTAzLTMxIGF0IDExOjI3IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T29wcy4gIFRyb25kPyAgVGhpcyBnb3QgZHJvcHBlZCBzb21ld2hlcmUuDQoNCkkgZG9uJ3Qgb3du
-IHRoZSAnaW5pdCcgZGlyZWN0b3J5LCBhbmQgc2luY2UgcXVpdGUgZnJhbmtseSB0aGlzIGlzbid0
-DQpyZWxhdGVkIHRvIE5GUyBhdCBhbGwsIGl0IHNob3VsZCBiZSBzZW50IHRvIExpbnVzIGRpcmVj
-dGx5Lg0KDQpJJ20gcXVpdGUgaGFwcHkgdG8gYWNrIHRoZSBwYXRjaCBpZiB0aGF0IHdvdWxkIGhl
-bHAuDQoNCkNoZWVycw0KICBUcm9uZA0KDQo+IE9uIE1hciAzMSwgMjAxMiwgYXQgMTE6MjEgQU0s
-IFNhc2hhIExldmluIHdyb3RlOg0KPiANCj4gPiBwaW5nPyBJIHNhdyB0aGF0IHRoaXMgb25lIGRp
-ZG4ndCBnZXQgcHVsbGVkIGludG8gdGhlIHRyZWUuDQo+ID4gDQo+ID4gT24gTW9uLCBKYW4gOSwg
-MjAxMiBhdCAxOjE0IFBNLCBTYXNoYSBMZXZpbiA8bGV2aW5zYXNoYTkyOEBnbWFpbC5jb20+IHdy
-b3RlOg0KPiA+PiBPbiBTYXQsIDIwMTItMDEtMDcgYXQgMTM6MTIgLTA1MDAsIEppbSBSZWVzIHdy
-b3RlOg0KPiA+Pj4gQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4+PiANCj4gPj4+ICAgT24gSmFuIDcs
-IDIwMTIsIGF0IDQ6MTIgQU0sIFNhc2hhIExldmluIHdyb3RlOg0KPiA+Pj4gDQo+ID4+PiAgID4g
-Q3VycmVudGx5LCB3ZSdsbCB0cnkgbW91bnRpbmcgYW55IGRldmljZSB3aG8ncyBtYWpvciBkZXZp
-Y2UgbnVtYmVyIGlzDQo+ID4+PiAgID4gVU5OQU1FRF9NQUpPUiBhcyBORlMgcm9vdC4gVGhpcyB3
-b3VsZCBoYXBwZW4gZm9yIG5vbi1ORlMgZGV2aWNlcyBhcyB3ZWxsIChzdWNoDQo+ID4+PiAgID4g
-YXMgOXAgZGV2aWNlcykgYnV0IGl0IHdvdWxkbid0IGNhdXNlIGFueSBpc3N1ZXMgc2luY2UgbW91
-bnRpbmcgdGhlIGRldmljZQ0KPiA+Pj4gICA+IGFzIE5GUyB3b3VsZCBmYWlsIHF1aWNrbHkgYW5k
-IHRoZSBjb2RlIHByb2NlZWRlZCB0byBkb2luZyB0aGUgcHJvcGVyIG1vdW50Og0KPiA+Pj4gICA+
-DQo+ID4+PiAgID4gICBbICAxMDEuNTIyNzE2XSBWRlM6IFVuYWJsZSB0byBtb3VudCByb290IGZz
-IHZpYSBORlMsIHRyeWluZyBmbG9wcHkuDQo+ID4+PiAgID4gICBbICAxMDEuNTM0NDk5XSBWRlM6
-IE1vdW50ZWQgcm9vdCAoOXAgZmlsZXN5c3RlbSkgb24gZGV2aWNlIDA6MTguDQo+ID4+PiAgID4N
-Cj4gPj4+ICAgPiBDb21taXQgNjgyOWEwNDggKCJORlM6IFJldHJ5IG1vdW50aW5nIE5GU1JPT1Qi
-KSBoYXMgaW50cm9kdWNlZCByZXRyaWVzIHdoZW4NCj4gPj4+ICAgPiBtb3VudGluZyBORlMgcm9v
-dCwgd2hpY2ggbWVhbnMgdGhhdCBub3cgd2UgZG9uJ3QgaW1tZWRpYXRlbHkgZmFpbCBhbmQgaW5z
-dGVhZA0KPiA+Pj4gICA+IGl0IHRha2VzIGFuIGFkZGl0aW9uYWwgOTArIHNlY29uZHMgdW50aWwg
-d2Ugc3RvcCByZXRyeWluZy4NCj4gPj4+ICAgPg0KPiA+Pj4gICA+IFRoaXMgbWVhbnQgdGhhdCBp
-dCB3b3VsZCB0YWtlIGFuIGFkZGl0aW9uYWwgOTAgc2Vjb25kcyB0byBib290IHdoZW4gd2UncmUg
-bm90DQo+ID4+PiAgID4gdXNpbmcgYSBkZXZpY2UgdHlwZSB3aGljaCBnZXRzIGRldGVjdGVkIGlu
-IG9yZGVyIGJlZm9yZSBORlMuDQo+ID4+PiANCj4gPj4+ICAgVGhlIGxvbmcgdGltZW91dHMgYXJl
-IGtpbmQgb2YgaXJyZWxldmFudCwgaW4gbXkgdmlldy4gIFRoZSByZWFsIHByb2JsZW0gaXMNCj4g
-Pj4+ICAgdGhhdCBORlMgd2FzIHRyaWVkIGF0IGFsbCBpbiB0aGlzIGNhc2UuICBUaGF0IGJlaGF2
-aW9yIHdhcyBub3QgaW50cm9kdWNlZA0KPiA+Pj4gICBieSA2ODI5YTA1OC4NCj4gPj4+IA0KPiA+
-Pj4gVGhlIGNvbW1lbnQgZG9lcyBpbXBseSB0aGF0IDY4MjlhMDQ4IGludHJvZHVjZWQgYSBidWcs
-IGJ1dCB0aGF0J3Mgbm90IHRydWUuDQo+ID4+PiBJdCB1bmNvdmVyZWQgYSBidWcgdGhhdCB3YXMg
-dGhlcmUgYmVmb3JlLg0KPiA+Pj4gDQo+ID4+PiBJIHdvdWxkIGNoYW5nZSB0aGUgcGFydCBhYm91
-dCAibm93IHdlIGRvbid0IGltbWVkaWF0ZWx5IGZhaWwuIiAgSXQgZGlkbid0DQo+ID4+PiBpbW1l
-ZGlhdGVseSBmYWlsIGJlZm9yZSwgYnV0IHRoZSB0aW1lb3V0IHdhcyBzaG9ydCBlbm91Z2ggdGhh
-dCB5b3Ugd291bGRuJ3QNCj4gPj4+IG5vdGljZSBpdC4NCj4gPj4gDQo+ID4+IEkgdHJpZWQgdG8g
-cG9pbnQgb3V0IHRoYXQgNjgyOWEwNDggY2hhbmdlZCB0aGUgYmVoYXZpb3Igd2hpY2ggd2FzDQo+
-ID4+IGRlc2NyaWJlZCBpbiB0aGUgZmlyc3QgcGFyYWdyYXBoLCBJIGRpZG4ndCB0cnkgdG8gaW1w
-bHkgdGhhdCA2ODI5YTA0OCBpcw0KPiA+PiBidWdneSBvbiBpdHMgb3duLg0KPiA+PiANCj4gPj4g
-SSdtIGZpbmUgd2l0aCBjaGFuZ2luZyB0aGUgY2hhbmdlbG9nIHRvIHdoYXRldmVyIHdpbGwgbWFr
-ZSBpdCBjbGVhcmVyLg0KPiA+PiANCj4gPj4gLS0NCj4gPj4gDQo+ID4+IFNhc2hhLg0KPiA+PiAN
-Cj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
-ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRv
-IG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBo
-dHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9u
-ZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+The decrement is handled by each call to nfs_request_remove_commit_list,
+no need to do it again in nfs_scan_commit.
+
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0de19f4..e39ddfd 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -595,12 +595,9 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst)
+ 	spin_lock(&inode->i_lock);
+ 	if (nfsi->ncommit > 0) {
+ 		const int max = INT_MAX;
+-		int pnfs_ret;
+ 
+ 		ret = nfs_scan_commit_list(&nfsi->commit_list, dst, max);
+-		pnfs_ret = pnfs_scan_commit_lists(inode, max - ret);
+-		ret += pnfs_ret;
+-		nfsi->ncommit -= ret;
++		pnfs_scan_commit_lists(inode, max - ret);
+ 	}
+ 	spin_unlock(&inode->i_lock);
+ 	return ret;
+-- 
+1.7.2.1
+
