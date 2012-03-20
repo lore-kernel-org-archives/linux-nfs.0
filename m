@@ -1,405 +1,277 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53728 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758315Ab2CUPVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 11:21:16 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 07/23] NFS: Version specific xdev mounting
-Date: Wed, 21 Mar 2012 11:20:37 -0400
-Message-Id: <1332343253-24970-8-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:50794 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753741Ab2CTBQ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 21:16:58 -0400
+Message-ID: <4F67DA7E.80307@panasas.com>
+Date: Mon, 19 Mar 2012 18:16:46 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>
+CC: NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        Benny Halevy <bhalevy@tonian.com>, Steve Dickson <steved@redhat.com>,
+        "Welch, Brent" <welch@panasas.com>
+Subject: Re: [PATCH 3/4] pnfs-obj: autologin: Add support for protocol autologin
+References: <4F62DADD.3010502@panasas.com> <4F62DC6A.5080709@panasas.com>  <1331934052.13255.7.camel@lade.trondhjem.org>  <4F679DEF.3040002@panasas.com> <1332191559.2636.34.camel@lade.trondhjem.org> <4F67BFE9.5040809@panasas.com>
+In-Reply-To: <4F67BFE9.5040809@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Sachin hi
 
-I set up a common _nfs_xdev_mount() function that can be called by v2,
-v3 and v4 with different parameters.  This also gives each version a
-chance to do their own thing both before and after the call.
+I'm sending in the SQUASHME to this patch which changes the code
+according to Trond's comments. (See comments below)
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Trond don't submit as is, wait for the [version 2] patch that should be
+submitted instead of the previous one. I'm only sending this one for
+comments.
+
+I'm in the middle of heavy testing, once done I'll send the revised
+patch
+
+Thanks
+Boaz
+
 ---
- fs/nfs/nfs.h       |    4 ++
- fs/nfs/nfs2super.c |   10 ++++-
- fs/nfs/nfs3super.c |    8 ++++
- fs/nfs/nfs4_fs.h   |    1 +
- fs/nfs/nfs4super.c |   11 +++++
- fs/nfs/super.c     |  126 ++++++++++------------------------------------------
- 6 files changed, 56 insertions(+), 104 deletions(-)
+From: Boaz Harrosh <bharrosh@panasas.com>
+Date: Mon, 19 Mar 2012 17:59:08 -0700
+Subject: [PATCH] SQUASHME: pnf-obj: Fix as according to Trond's comments
 
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index a7a08b3..a5e6a63 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -12,6 +12,7 @@
- #include <linux/nfs_xdr.h>
+* Add the osd_login_prog and osd_login_upcall_timeout module parameters
+* Disable any farther upcalls in case the osd_login user-mode program was not
+   found. Until Admin re-enables it by setting the osd_login_prog parameter.
+* Don't wait for ever for osd_login to finish, only wait osd_login_upcall_timeout
+    number of seconds, else fail.
+* HOME environment should be "/" not "/root" because "/" will always exist
+* Add text to Documentation/filesystems/nfs/pnfs.txt about the API to
+   osd_login
+* Add Documentation of the new  osd_login_prog and osd_login_upcall_timeout
+   to Documentation/kernel-parameters.txt
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ Documentation/filesystems/nfs/pnfs.txt |   54 ++++++++++++++++++++++
+ Documentation/kernel-parameters.txt    |   12 +++++
+ fs/nfs/objlayout/objlayout.c           |   77 +++++++++++++++++++++++++++----
+ 3 files changed, 133 insertions(+), 10 deletions(-)
+
+diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
+index 983e14a..cc08e53 100644
+--- a/Documentation/filesystems/nfs/pnfs.txt
++++ b/Documentation/filesystems/nfs/pnfs.txt
+@@ -53,3 +53,57 @@ lseg maintains an extra reference corresponding to the NFS_LSEG_VALID
+ bit which holds it in the pnfs_layout_hdr's list.  When the final lseg
+ is removed from the pnfs_layout_hdr's list, the NFS_LAYOUT_DESTROYED
+ bit is set, preventing any new lsegs from being added.
++
++layout drivers
++--------------
++
++PNFS utilizes what is called layout drivers. The STD defines 3 basic
++layout types: "files" "objects" and "blocks". For each of these types
++there is a layout-driver with a common function-vectors table which
++are called by the nfs-client pnfs-core to implement the different layout
++types.
++
++Files-layout-driver code is in: fs/nfs/nfs4filelayout.c && nfs4filelayoutdev.c
++Objects-layout-deriver code is in: fs/nfs/objlayout/.. directory
++Blocks-layout-deriver code is in: fs/nfs/blocklayout/.. directory
++
++objects-layout setup
++--------------------
++
++As part of the full STD implementation the objlayoutdriver.ko needs, at times,
++to automatically login to yet undiscovered iscsi/osd devices. For this the
++driver makes up-calles to a user-mode script called *osd_login*
++
++The path_name of the script to use is by default:
++	/sbin/osd_login.
++This name can be overridden by the Kernel module parameter:
++	objlayoutdriver.osd_login_prog
++The command, if fails to return in a timely manner will fail. The:
++	objlayoutdriver.osd_login_upcall_timeout
++Governs the time to wait, it defaults to 15 seconds.
++
++If Kernel does not find the osd_login_prog path it will zero it out
++and will not attempt farther logins. An admin can then write new value
++to the objlayoutdriver.osd_login_prog Kernel parameter to re-enable it.
++
++The API to the login script is as follows:
++	Usage: $0 -u <URI> -o <OSDNAME> -s <SYSTEMID>
++	Options:
++		-u		target uri e.g. iscsi://<ip>:<port>
++				(allways exists)
++				(More protocols can be defined in the future.
++				 The client does not interpret this string it is
++				 passed unchanged as recieved from the Server)
++		-o		osdname of the requested target OSD
++				(Might be empty)
++				(A string which denotes the OSD name, there is a
++				 limit of 64 chars on this string)
++		-s 		systemid of the requested target OSD
++				(Might be empty)
++				(This string, if not empty is always an hex
++				 representation of the 20 bytes osd_system_id)
++
++blocks-layout setup
++-------------------
++
++TODO: Document the setup needs of the blocks layout driver
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index 033d4e6..4b298cf 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -1670,6 +1670,18 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			back to using the idmapper.
+ 			To turn off this behaviour, set the value to '0'.
  
- struct nfs_parsed_mount_data;
-+struct nfs_clone_mount;
- 
- struct nfs_subversion {
- 	unsigned int version;		/* Protocol number */
-@@ -23,6 +24,7 @@ struct nfs_subversion {
- 	void (*unreference)(void);	/* Also for reference counting */
- 	struct dentry *(*fs_mount)(struct file_system_type *, int, const char *,
- 				   struct nfs_fh *, struct nfs_parsed_mount_data *);
-+	struct dentry *(*xdev_mount)(int, const char *, struct nfs_clone_mount *);
- };
- 
- void nfs_register_versions(void);
-@@ -39,9 +41,11 @@ void unregister_nfs_version(struct nfs_subversion *);
- struct nfs_server *nfs_create_server(const struct nfs_parsed_mount_data *, struct nfs_fh *);
- 
- /* Exported in super.c */
-+extern struct file_system_type nfs_fs_type;
- struct dentry *_nfs_fs_mount(struct file_system_type *, struct nfs_server *,
- 			     int, const char *, struct nfs_fh *,
- 			     struct nfs_parsed_mount_data *);
-+struct dentry *_nfs_xdev_mount(struct file_system_type *, int, const char *, void *, int);
- 
- 
- #endif /* __LINUX_INTERNAL_NFS_H */
-diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
-index 8f92f5d..d1074a9 100644
---- a/fs/nfs/nfs2super.c
-+++ b/fs/nfs/nfs2super.c
-@@ -1,10 +1,11 @@
- /*
-  * Copyright (c) 2012 Netapp, Inc. All rights reserved.
-  *
-- * Initialize the NFS v2 module
-+ Initialize[* Initialize the NFS v2 module
++	objlayoutdriver.osd_login_prog=
++			[NFS] [OBJLAYOUT] sets the pathname to the program which
++			is used to automatically discover and login into new
++			osd-targets. Please see:
++			Documentation/filesystems/pnfs.txt for more explanations
++
++	objlayoutdriver.osd_login_upcall_timeout=
++			[NFS] [OBJLAYOUT] sets the timeout after which an
++			attempt to auto-osd-login is deemed to have failed.
++			Please see:
++			Documentation/filesystems/pnfs.txt for more explanations
++
+ 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
+ 			when a NMI is triggered.
+ 			Format: [state][,regs][,debounce][,die]
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index d953948..5789206 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -38,6 +38,7 @@
   */
- #include <linux/module.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_mount.h>
- #include "nfs.h"
  
- static void nfs2_reference(void)
-@@ -28,6 +29,12 @@ static struct dentry *nfs2_fs_mount(struct file_system_type *fs_type,
- 	return _nfs_fs_mount(fs_type, server, flags, dev_name, mntfh, data);
+ #include <linux/kmod.h>
++#include <linux/moduleparam.h>
+ #include <linux/ratelimit.h>
+ #include <scsi/osd_initiator.h>
+ #include "objlayout.h"
+@@ -652,33 +653,79 @@ void objlayout_put_deviceinfo(struct pnfs_osd_deviceaddr *deviceaddr)
+ 	kfree(odi);
  }
  
-+static struct dentry *nfs2_xdev_mount(int flags, const char *dev_name,
-+				      struct nfs_clone_mount *data)
+-static const char osd_login_prog[] = "/sbin/osd_login";
+-
+ enum {
+ 	OBJLAYOUT_MAX_URI_LEN = 256, OBJLAYOUT_MAX_OSDNAME_LEN = 64,
+ 	OBJLAYOUT_MAX_SYSID_HEX_LEN = OSD_SYSTEMID_LEN * 2 + 1,
++	OSD_LOGIN_UPCALL_PATHLEN  = 256, OSD_LOGIN_UPCALL_TIMEOUT = 15,
+ };
+ 
++static char osd_login_prog[OSD_LOGIN_UPCALL_PATHLEN] = "/sbin/osd_login";
++
++static unsigned long osd_login_upcall_timeout = OSD_LOGIN_UPCALL_TIMEOUT;
++
++module_param_string(osd_login_prog, osd_login_prog, sizeof(osd_login_prog),
++		    0600);
++MODULE_PARM_DESC(osd_login_prog, "Path to the osd_login upcall program");
++module_param_named(osd_login_upcall_timeout, osd_login_upcall_timeout, ulong,
++		   0600);
++MODULE_PARM_DESC(osd_login_upcall_timeout, "Timeout (in seconds) after which "
++		"the osd_login is assumed to have failed");
++
+ struct __auto_login {
+ 	char uri[OBJLAYOUT_MAX_URI_LEN];
+ 	char osdname[OBJLAYOUT_MAX_OSDNAME_LEN];
+ 	char systemid_hex[OBJLAYOUT_MAX_SYSID_HEX_LEN];
+ };
+ 
++struct __upcall_wait {
++	struct kref kref;
++	struct completion wait;
++};
++
++static void __upcall_wait_release(struct kref *kref)
 +{
-+	return _nfs_xdev_mount(&nfs_fs_type, flags, dev_name, data, NFS_MOUNT_UNSHARED);
++	struct __upcall_wait *uw = container_of(kref, struct __upcall_wait,
++						kref);
++
++	kfree(uw);
 +}
 +
- static struct nfs_subversion nfs_v2 = {
- 	.version  = 2,
- 	.rpc_vers = &nfs_version2,
-@@ -36,6 +43,7 @@ static struct nfs_subversion nfs_v2 = {
- 	.reference = nfs2_reference,
- 	.unreference = nfs2_unreference,
- 	.fs_mount = nfs2_fs_mount,
-+	.xdev_mount = nfs2_xdev_mount,
- };
- 
- static int __init init_nfs_v2(void)
-diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
-index 2048460..7bdd388 100644
---- a/fs/nfs/nfs3super.c
-+++ b/fs/nfs/nfs3super.c
-@@ -3,6 +3,7 @@
-  */
- #include <linux/module.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_mount.h>
- #include "nfs.h"
- 
- static void nfs3_reference(void)
-@@ -26,6 +27,12 @@ struct dentry *nfs3_fs_mount(struct file_system_type *fs_type,
- 	return _nfs_fs_mount(fs_type, server, flags, dev_name, mntfh, data);
- }
- 
-+static struct dentry *nfs3_xdev_mount(int flags, const char *dev_name,
-+				      struct nfs_clone_mount *data)
++static void __upcall_cleanup(struct subprocess_info *si)
 +{
-+	return _nfs_xdev_mount(&nfs_fs_type, flags, dev_name, data, NFS_MOUNT_UNSHARED);
++	struct __upcall_wait *uw = si->data;
++
++	complete(&uw->wait);
++	kref_put(&uw->kref, __upcall_wait_release);
 +}
 +
- static struct nfs_subversion nfs_v3 = {
- 	.version  = 3,
- 	.rpc_vers = &nfs_version3,
-@@ -34,6 +41,7 @@ static struct nfs_subversion nfs_v3 = {
- 	.reference = nfs3_reference,
- 	.unreference = nfs3_unreference,
- 	.fs_mount = nfs3_fs_mount,
-+	.xdev_mount = nfs3_xdev_mount,
- };
- 
- int __init init_nfs_v3(void)
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index cb2f14c..6786c4f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -207,6 +207,7 @@ extern const struct dentry_operations nfs4_dentry_operations;
- extern const struct inode_operations nfs4_dir_inode_operations;
- 
- /* super.c */
-+extern struct file_system_type nfs4_fs_type;
- struct dentry *nfs4_try_mount(int flags, const char *dev_name, struct nfs_parsed_mount_data *);
- 
- /* nfs4proc.c */
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 0cc67b6..8a297c5 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -3,6 +3,7 @@
-  */
- #include <linux/module.h>
- #include <linux/nfs_fs.h>
-+#include <linux/nfs4_mount.h>
- #include "nfs4_fs.h"
- #include "nfs.h"
- 
-@@ -24,6 +25,15 @@ struct dentry *nfs4_fs_mount(struct file_system_type *fs_type,
- 	return nfs4_try_mount(flags, dev_name, data);
- }
- 
-+/*
-+ * Clone an NFS4 server record on xdev traversal (FSID-change)
-+ */
-+struct dentry *nfs4_xdev_mount(int flags, const char *dev_name,
-+			       struct nfs_clone_mount *data)
-+{
-+	return _nfs_xdev_mount(&nfs4_fs_type, flags, dev_name, data, NFS4_MOUNT_UNSHARED);
-+}
-+
- static struct nfs_subversion nfs_v4 = {
- 	.version  = 4,
- 	.rpc_vers = &nfs_version4,
-@@ -32,6 +42,7 @@ static struct nfs_subversion nfs_v4 = {
- 	.reference = nfs4_reference,
- 	.unreference = nfs4_unreference,
- 	.fs_mount = nfs4_fs_mount,
-+	.xdev_mount = nfs4_xdev_mount,
- };
- 
- int __init init_nfs_v4(void)
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 16ceae3..994a0cc 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -293,13 +293,14 @@ static void nfs_put_super(struct super_block *);
- static void nfs_kill_super(struct super_block *);
- static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- 
--static struct file_system_type nfs_fs_type = {
-+struct file_system_type nfs_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfs",
- 	.mount		= nfs_fs_mount,
- 	.kill_sb	= nfs_kill_super,
- 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
- };
-+EXPORT_SYMBOL_GPL(nfs_fs_type);
- 
- struct file_system_type nfs_xdev_fs_type = {
- 	.owner		= THIS_MODULE,
-@@ -333,15 +334,13 @@ static struct dentry *nfs4_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
--static struct dentry *nfs4_xdev_mount(struct file_system_type *fs_type,
--	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data);
- static void nfs4_kill_super(struct super_block *sb);
- 
--static struct file_system_type nfs4_fs_type = {
-+struct file_system_type nfs4_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfs4",
- 	.mount		= nfs4_mount,
-@@ -360,7 +359,7 @@ static struct file_system_type nfs4_remote_fs_type = {
- struct file_system_type nfs4_xdev_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfs4",
--	.mount		= nfs4_xdev_mount,
-+	.mount		= nfs_xdev_mount,
- 	.kill_sb	= nfs4_kill_super,
- 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
- };
-@@ -2437,9 +2436,9 @@ static void nfs_kill_super(struct super_block *s)
- /*
-  * Clone an NFS2/3 server record on xdev traversal (FSID-change)
-  */
--static struct dentry *
--nfs_xdev_mount(struct file_system_type *fs_type, int flags,
--		const char *dev_name, void *raw_data)
-+struct dentry *
-+_nfs_xdev_mount(struct file_system_type *fs_type, int flags,
-+		const char *dev_name, void *raw_data, int unshared_flag)
+ static int __objlayout_upcall(struct __auto_login *login)
  {
- 	struct nfs_clone_mount *data = raw_data;
- 	struct super_block *s;
-@@ -2451,7 +2450,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+-	static char *envp[] = { "HOME=/root",
++	static char *envp[] = { "HOME=/",
+ 		"TERM=linux",
+ 		"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
+ 		NULL
  	};
- 	int error;
+ 	char *argv[8];
++	struct __upcall_wait *uw;
+ 	int ret;
  
--	dprintk("--> nfs_xdev_mount()\n");
-+	dprintk("--> _nfs_xdev_mount()\n");
+ 	dprintk("%s uri: %s\n", __func__, login->uri);
+ 	dprintk("%s osdname %s\n", __func__, login->osdname);
+ 	dprintk("%s systemid_hex %s\n", __func__, login->systemid_hex);
  
- 	/* create a new volume representation */
- 	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
-@@ -2461,7 +2460,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	}
- 	sb_mntdata.server = server;
- 
--	if (server->flags & NFS_MOUNT_UNSHARED)
-+	if (server->flags & unshared_flag)
- 		compare_super = NULL;
- 
- 	/* -o noac implies -o sync */
-@@ -2469,7 +2468,7 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
- 
- 	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs_fs_type, compare_super, nfs_set_super, &sb_mntdata);
-+	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
- 	if (IS_ERR(s)) {
- 		error = PTR_ERR(s);
- 		goto out_err_nosb;
-@@ -2506,13 +2505,13 @@ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 	/* clone any lsm security options from the parent to the new sb */
- 	security_sb_clone_mnt_opts(data->sb, s);
- 
--	dprintk("<-- nfs_xdev_mount() = 0\n");
-+	dprintk("<-- _nfs_xdev_mount() = 0\n");
- 	return mntroot;
- 
- out_err_nosb:
- 	nfs_free_server(server);
- out_err_noserver:
--	dprintk("<-- nfs_xdev_mount() = %d [error]\n", error);
-+	dprintk("<-- _nfs_xdev_mount() = %d [error]\n", error);
- 	return ERR_PTR(error);
- 
- error_splat_super:
-@@ -2520,9 +2519,19 @@ error_splat_super:
- 		nfs_unregister(server);
- error_splat_bdi:
- 	deactivate_locked_super(s);
--	dprintk("<-- nfs_xdev_mount() = %d [splat]\n", error);
-+	dprintk("<-- _nfs_xdev_mount() = %d [splat]\n", error);
- 	return ERR_PTR(error);
- }
-+EXPORT_SYMBOL_GPL(_nfs_xdev_mount);
++	if (unlikely(!osd_login_prog[0])) {
++		dprintk("%s: osd_login_prog is disabled\n", __func__);
++		return -EACCES;
++	}
 +
-+static struct dentry *
-+nfs_xdev_mount(struct file_system_type *fs_type, int flags,
-+	       const char *dev_name, void *raw_data)
-+{
-+	struct nfs_clone_mount *data = raw_data;
-+	struct nfs_subversion *nfs_mod = get_nfs_server_version(NFS_SB(data->sb));
-+	return nfs_mod->xdev_mount(flags, dev_name, data);
-+}
++	uw = kzalloc(sizeof(*uw), GFP_KERNEL);
++	if (unlikely(!uw)) {
++		dprintk("%s: allocation of __upcall_wait failed\n", __func__);
++		return -ENOMEM;
++	}
++	kref_init(&uw->kref);
++	init_completion(&uw->wait);
++
+ 	argv[0] = (char *)osd_login_prog;
+ 	argv[1] = "-u";
+ 	argv[2] = login->uri;
+@@ -688,16 +735,26 @@ static int __objlayout_upcall(struct __auto_login *login)
+ 	argv[6] = login->systemid_hex;
+ 	argv[7] = NULL;
  
- #ifdef CONFIG_NFS_V4
+-	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
++	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_WAIT_EXEC, NULL,
++				      __upcall_cleanup, uw);
+ 	/*
+-	 * TODO: Disable the upcall mechanism if we're getting an ENOENT or
++	 * Disable the upcall mechanism if we're getting an ENOENT or
+ 	 * EACCES error. The admin can re-enable it on the fly by using
+-	 * sysfs to set the parameter once the problem has been fixed.
++	 * sysfs to set the objlayoutdriver.osd_login_prog module parameter once
++	 * the problem has been fixed.
+ 	 */
+-	if (ret == -ENOENT || ret == -EACCES)
+-		pr_warn_ratelimited("PNFS-OBJ:: %s: %s "
+-			"was not found please install new nfs-utils pkg!\n",
+-			__func__, osd_login_prog);
++	if (ret == -ENOENT || ret == -EACCES) {
++		printk(KERN_ERR "PNFS-OBJ: %s was not found please set "
++			"objlayoutdriver.osd_login_prog kernel parameter!\n",
++			osd_login_prog);
++		osd_login_prog[0] = '\0';
++		goto out;
++	}
++	ret = wait_for_completion_timeout(&uw->wait,
++					  osd_login_upcall_timeout * HZ) ?
++						0 : -ETIMEDOUT;
++out:
++	kref_put(&uw->kref, __upcall_wait_release);
+ 	dprintk("%s %s return value: %d\n", __func__, osd_login_prog, ret);
  
-@@ -2937,95 +2946,6 @@ static void nfs4_kill_super(struct super_block *sb)
- 	dprintk("<-- %s\n", __func__);
- }
- 
--/*
-- * Clone an NFS4 server record on xdev traversal (FSID-change)
-- */
--static struct dentry *
--nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
--		 const char *dev_name, void *raw_data)
--{
--	struct nfs_clone_mount *data = raw_data;
--	struct super_block *s;
--	struct nfs_server *server;
--	struct dentry *mntroot;
--	int (*compare_super)(struct super_block *, void *) = nfs_compare_super;
--	struct nfs_sb_mountdata sb_mntdata = {
--		.mntflags = flags,
--	};
--	int error;
--
--	dprintk("--> nfs4_xdev_mount()\n");
--
--	/* create a new volume representation */
--	server = nfs_clone_server(NFS_SB(data->sb), data->fh, data->fattr);
--	if (IS_ERR(server)) {
--		error = PTR_ERR(server);
--		goto out_err_noserver;
--	}
--	sb_mntdata.server = server;
--
--	if (server->flags & NFS4_MOUNT_UNSHARED)
--		compare_super = NULL;
--
--	/* -o noac implies -o sync */
--	if (server->flags & NFS_MOUNT_NOAC)
--		sb_mntdata.mntflags |= MS_SYNCHRONOUS;
--
--	/* Get a superblock - note that we may end up sharing one that already exists */
--	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
--	if (IS_ERR(s)) {
--		error = PTR_ERR(s);
--		goto out_err_nosb;
--	}
--
--	if (s->s_fs_info != server) {
--		nfs_free_server(server);
--		server = NULL;
--	} else {
--		error = nfs_register(server);
--		if (error)
--			goto error_splat_bdi;
--	}
--
--	if (!s->s_root) {
--		/* initial superblock/root creation */
--		nfs_clone_super(s, data->sb);
--		nfs_fscache_get_super_cookie(s, NULL, data);
--	}
--
--	mntroot = nfs4_get_root(s, data->fh, dev_name);
--	if (IS_ERR(mntroot)) {
--		error = PTR_ERR(mntroot);
--		goto error_splat_super;
--	}
--	if (mntroot->d_inode->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
--		dput(mntroot);
--		error = -ESTALE;
--		goto error_splat_super;
--	}
--
--	s->s_flags |= MS_ACTIVE;
--
--	security_sb_clone_mnt_opts(data->sb, s);
--
--	dprintk("<-- nfs4_xdev_mount() = 0\n");
--	return mntroot;
--
--out_err_nosb:
--	nfs_free_server(server);
--out_err_noserver:
--	dprintk("<-- nfs4_xdev_mount() = %d [error]\n", error);
--	return ERR_PTR(error);
--
--error_splat_super:
--	if (server && !s->s_root)
--		nfs_unregister(server);
--error_splat_bdi:
--	deactivate_locked_super(s);
--	dprintk("<-- nfs4_xdev_mount() = %d [splat]\n", error);
--	return ERR_PTR(error);
--}
--
- static struct dentry *
- nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
+ 	return ret;
 -- 
-1.7.9.4
+1.7.6.5
+
 
