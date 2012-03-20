@@ -1,43 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:62437 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753128Ab2CaVVd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2012 17:21:33 -0400
+Received: from fieldses.org ([174.143.236.118]:36883 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754528Ab2CTT4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Mar 2012 15:56:09 -0400
+Date: Tue, 20 Mar 2012 15:56:07 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] RFC: export options for junctions
+Message-ID: <20120320195607.GD1431@fieldses.org>
+References: <20120302195451.18167.81861.stgit@degas.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1333228179.2719.14.camel@lade.trondhjem.org>
-References: <1325927523-30103-1-git-send-email-levinsasha928@gmail.com>
- <5FF522E0-132E-4A6A-A40F-5CCD08AF800A@oracle.com> <20120107181221.GA3777@umich.edu>
- <1326111265.30169.5.camel@lappy> <CA+1xoqdQPi53GYr_Q6RtECJJcrz0TVVp4uNQX6jkfbQWQSNF7g@mail.gmail.com>
- <D3642511-B29B-4CA7-A133-C99B711954C1@oracle.com> <1333228179.2719.14.camel@lade.trondhjem.org>
-From: Sasha Levin <levinsasha928@gmail.com>
-Date: Sat, 31 Mar 2012 23:21:12 +0200
-Message-ID: <CA+1xoqfv82ngQ4oc5uozZQjN7PipWVjVu670-uUGC5o_3Nec9A@mail.gmail.com>
-Subject: Re: [PATCH] nfs: Don't try mounting device as nfs root unless type
- fully matches
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
-        Lukas Razik <linux@razik.name>, Pekka Enberg <penberg@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        Ingo Molnar <mingo@elte.hu>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120302195451.18167.81861.stgit@degas.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 31, 2012 at 11:09 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Sat, 2012-03-31 at 11:27 -0400, Chuck Lever wrote:
->> Oops.  Trond?  This got dropped somewhere.
->
-> I don't own the 'init' directory, and since quite frankly this isn't
-> related to NFS at all, it should be sent to Linus directly.
->
-> I'm quite happy to ack the patch if that would help.
+On Fri, Mar 02, 2012 at 02:54:51PM -0500, Chuck Lever wrote:
+> At Connectathon, I ran my FedFS-enabled client in a guest environment
+> with NAT networking.  This made the source port for my NFS connections
+> unprivileged.
+> 
+> Attempting to access a junction on my test server failed with a
+> "client insecure" error on the server, even if I specified the
+> "insecure" export option on the parent export.  I added "insecure" to
+> the default junction export options, and this fixed the problem.
+> 
+> Bruce suggested, however, that the correct way to address this is to
+> have junctions inherit the export options of their parent.  I don't
+> see a direct way to do this, so I'm posting this patch as a
+> conversation starter.
 
-The patch which has triggered this whole story (6829a048 ("NFS: Retry
-mounting NFSROOT")) modified init/ as well, and went in through the
-NFS tree. Can't this patch follow the same path?
+I think you want to do something like the search in
+nfs-utils/utils/mountd/cache.c:lookup_export()--look for the export with
+the longest matching path, and copy options from that.
 
-Anyhow, I've Cc'ed Linus in hopes that this patch can somehow find
-it's way into 3.4.
+--b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  utils/mountd/cache.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index ac9cdbd..35bc2e9 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+>  			ptr += len;
+>  		} else {
+>  			if (last_path == NULL)
+> -				len = snprintf(ptr, remaining, "refer=%s@%s",
+> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+>  							rootpath, server);
+>  			else
+>  				len = snprintf(ptr, remaining, ":%s@%s",
+> 
