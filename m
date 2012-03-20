@@ -1,47 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:44711 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757010Ab2CUNwY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 09:52:24 -0400
-Received: by mail-gy0-f174.google.com with SMTP id r11so921107ghr.19
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 06:52:24 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v10 8/8] nfsd: don't allow legacy client tracker init for anything but init_net
-Date: Wed, 21 Mar 2012 09:52:09 -0400
-Message-Id: <1332337929-18580-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:48892 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753952Ab2CTQth (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Mar 2012 12:49:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Nikolaus Rath <Nikolaus@rath.org>
+CC: Rick Macklem <rmacklem@uoguelph.ca>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
+Date: Tue, 20 Mar 2012 16:49:34 +0000
+Message-ID: <1332262174.2963.55.camel@lade.trondhjem.org>
+References: <716104306.1267694.1332195933869.JavaMail.root@erie.cs.uoguelph.ca>
+		 <4F688655.1090703@rath.org> <1332251753.2963.17.camel@lade.trondhjem.org>
+	 <4F6895EE.8090609@rath.org>
+In-Reply-To: <4F6895EE.8090609@rath.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This code isn't set up for containers, so don't allow it to be
-used for anything but init_net.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 6f13281..21b53d5 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -416,6 +416,13 @@ nfsd4_load_reboot_recovery_data(struct net *net)
- {
- 	int status;
- 
-+	/* XXX: The legacy code won't work in a container */
-+	if (net != &init_net) {
-+		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
-+			"tracking in a container!\n");
-+		return -EINVAL;
-+	}
-+
- 	nfs4_lock_state();
- 	status = nfsd4_init_recdir();
- 	if (!status)
--- 
-1.7.7.6
-
+T24gVHVlLCAyMDEyLTAzLTIwIGF0IDEwOjM2IC0wNDAwLCBOaWtvbGF1cyBSYXRoIHdyb3RlOg0K
+PiBPbiAwMy8yMC8yMDEyIDA5OjU1IEFNLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9u
+IFR1ZSwgMjAxMi0wMy0yMCBhdCAwOToyOSAtMDQwMCwgTmlrb2xhdXMgUmF0aCB3cm90ZToNCj4g
+Pj4gT24gMDMvMTkvMjAxMiAwNjoyNSBQTSwgUmljayBNYWNrbGVtIHdyb3RlOg0KPiA+Pj4gTmlr
+b2xhdXMgUmF0aCB3cm90ZToNCj4gPj4+IHBzOiBBbHNvLCBhbHRob3VnaCBpdCdzIG5vdCB2ZXJ5
+IHJlbGV2YW50LCBnZXR0aW5nIHRoZSBNQUMgYWRkcmVzcyBvZg0KPiA+Pj4gICAgIHRoZSBmaXJz
+dCBldGhlcm5ldCBpbnRlcmZhY2UgaXNuJ3QgZWFzeSBpbiBGcmVlQlNELiBJIGhhdmUgbm8gaWRl
+YQ0KPiA+Pj4gICAgIGlmIHRoZSBzYW1lIGlzIHRydWUgb2YgTGludXguIChJJ2QgYWxzbyBiZSB3
+b3JyaWVkIHRoYXQgImZpcnN0Ig0KPiA+Pj4gICAgIG1pZ2h0IG5vdCBiZSBmaXhlZD8pDQo+ID4+
+DQo+ID4+IEl0IGRvZXNuJ3QgbmVlZCB0byBiZSB0aGUgc2FtZSBpbnRlcmZhY2UgYWxsIHRoZSB0
+aW1lLCBJIGp1c3QgbWVhbnQgdGhlDQo+ID4+IGZpcnN0IGFzIGluIG5vdCBhIHNwZWNpZmljIG9u
+ZS4NCj4gPiANCj4gPiBZZXMgaXQgZG9lcyBoYXZlIHRvIGJlIHRoZSBzYW1lIGludGVyZmFjZSBh
+bGwgdGhlIHRpbWUuIE90aGVyd2lzZSB0aGUNCj4gPiBzZXJ2ZXIgY2Fubm90IHRlbGwgdGhhdCB0
+aGlzIGlzIHRoZSBzYW1lIGNsaWVudCBib290aW5nIHVwIGFnYWluLg0KPiANCj4gVGhlIGxpa2Vs
+aWhvb2Qgb2YgdGhlIGludGVyZmFjZSBvcmRlciBjaGFuZ2luZyBpcyBjZXJ0YWlubHkgbXVjaCBs
+b3dlcg0KPiB0aGFuIHRoZSBsaWtlbGlob29kIG9mIHRoZSBJUCBhZGRyZXNzIGNoYW5naW5nICh3
+aGljaCBJIHVuZGVyc3RhbmQgaXMNCj4gY3VycmVudGx5IHVzZWQgZm9yIHRoZSBjbGllbnRpZCks
+IHNvIHRoZSBzaXR1YXRpb24gd291bGQgc3RpbGwgaW1wcm92ZS4NCg0KSXQgaXMgc3RpbGwgZWFz
+eSB0byBmaW5kIGV4YW1wbGVzIG9mIHN5c3RlbXMgZm9yIHdoaWNoIHRoaXMgYnJlYWtzOg0KDQpX
+aGF0IGRvIHlvdSBkbyBmb3IgYm94ZXMgdGhhdCBvbmx5IGhhdmUgYW4gaW5maW5pYmFuZCBjb25u
+ZWN0aW9uLCBmb3INCmluc3RhbmNlPyBBRkFJSywgYSBsb3Qgb2YgSVBvSUIgaW1wbG1lbnRhdGlv
+bnMgZG9uJ3QgaGF2ZSByZWJvb3Qtc2FmZQ0KTUFDIGFkZHJlc3Nlcy4NClRoZW4gdGhlcmUgaXMg
+dGhlIGZhY3QgdGhhdCBzb21lIG9mIHRoZSBjaGVhcGVyIE5JQ3MgZG9uJ3QgaGF2ZQ0KcGVybWFu
+ZW50IE1BQyBhZGRyZXNzZXMuIFRoZSBNQUMgYWRkcmVzcyB1c3VhbGx5IGdldHMgc2V0IGFzIHBh
+cnQgb2YgdGhlDQpib290IHByb2Nlc3MuDQoNCkZpbmFsbHksIHRoZXJlIGlzIHRoZSBpc3N1ZSB0
+aGF0IHRoZSBOSUMgaXMgYSBnbG9iYWxseSBzaGFyZWQgaGFyZHdhcmUNCmNvbXBvbmVudC4gSWYg
+SSBhbSBydW5uaW5nIHZpcnR1YWwgbWFjaGluZXMgaW4gY29udGFpbmVyaXNlZA0KZW52aXJvbm1l
+bnRzIChhbmQgeWVzLCBJIGFtIGFib3V0IHRvIG1lcmdlIHRoZSBORlMgc3VwcG9ydCBmb3INCmNv
+bnRhaW5lcnMgaW50byBMaW51eC0zLjQpIHRoZW4gaGF2aW5nIHRoZSBORlMgY2xpZW50cyBpbiBh
+bGwgdGhlDQpkaWZmZXJlbnQgY29udGFpbmVycyBpZGVudGlmeSB0aGVtc2VsdmVzIHVzaW5nIHRo
+ZSBzYW1lIE1BQyBhZGRyZXNzIHdpbGwNCnRvIGxlYWQgdG8gc29tZSBzZXJpb3VzIGJyb2tlbm5l
+c3MuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
