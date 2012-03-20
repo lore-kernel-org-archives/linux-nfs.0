@@ -1,79 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52593 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754397Ab2CLVw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Mar 2012 17:52:29 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Bug in the pNFS OSD layout driver
-Date: Mon, 12 Mar 2012 21:52:23 +0000
-Message-ID: <1331589143.12005.11.camel@lade.trondhjem.org>
-References: <1331487447.2496.10.camel@lade.trondhjem.org>
-	 <4F5E5400.3000800@panasas.com>
-In-Reply-To: <4F5E5400.3000800@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from natasha.panasas.com ([67.152.220.90]:52066 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759260Ab2CTX0r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2012 19:26:47 -0400
+Message-ID: <4F691217.5070108@panasas.com>
+Date: Tue, 20 Mar 2012 16:26:15 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Andrew Morton <akpm@linux-foundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
+        <linux-security-module@vger.kernel.org>
+CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>,
+        Paul Gortmaker <paul.gortmaker@windriver.com>
+Subject: [PATCH 2/4] kmod: Convert two call sites to call_usermodehelper_fns()
+References: <4F691059.30405@panasas.com>
+In-Reply-To: <4F691059.30405@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTAzLTEyIGF0IDEyOjUyIC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
-IE9uIDAzLzExLzIwMTIgMTA6MzcgQU0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gSGkg
-Qm9heiwNCj4gPiANCj4gPiBXaGVuIEkgcnVuICdzcGFyc2UnIG9uIHRoZSBvYmplY3QgbGF5b3V0
-IGRyaXZlciwgSSBnZXQgdGhlIGZvbGxvd2luZw0KPiA+IGVycm9yczoNCj4gPiANCj4gPiBmcy9u
-ZnMvb2JqbGF5b3V0L29iamlvX29zZC5jOjIxMDozNzogZXJyb3I6IGJhZCBjb25zdGFudCBleHBy
-ZXNzaW9uDQo+ID4gZnMvbmZzL29iamxheW91dC9vYmppb19vc2QuYzoyMTE6Mzk6IGVycm9yOiBi
-YWQgY29uc3RhbnQgZXhwcmVzc2lvbg0KPiA+IGZzL25mcy9vYmpsYXlvdXQvb2JqaW9fb3NkLmM6
-MzE1OjU5OiBlcnJvcjogYmFkIGNvbnN0YW50IGV4cHJlc3Npb24NCj4gPiANCj4gDQo+IFRoZW4g
-c3BhcnNlIGlzIGJyb2tlbg0KPiANCj4gPiB3aGljaCBib2lscyBkb3duIHRvIHRoZSBmb2xsb3dp
-bmcgc2VjdGlvbiBvZiBjb2RlOg0KPiA+IA0KPiA+IGludCBfX2FsbG9jX29iamlvX3NlZyh1bnNp
-Z25lZCBudW1kZXZzLCBnZnBfdCBnZnBfZmxhZ3MsDQo+ID4gICAgICAgICAgICAgICAgICAgICAg
-ICBzdHJ1Y3Qgb2JqaW9fc2VnbWVudCAqKnBzZWcpDQo+ID4gew0KPiA+ICAgICAgICAgc3RydWN0
-IF9fYWxsb2Nfb2JqaW9fc2VnbWVudCB7DQo+ID4gICAgICAgICAgICAgICAgIHN0cnVjdCBvYmpp
-b19zZWdtZW50IG9sc2VnOw0KPiA+ICAgICAgICAgICAgICAgICBzdHJ1Y3Qgb3JlX2RldiAqb2Rz
-W251bWRldnNdOw0KPiA+IAkJXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl4NCj4gPiAgICAg
-ICAgICAgICAgICAgc3RydWN0IG9yZV9jb21wIGNvbXBzW251bWRldnNdOw0KPiA+IAkJXl5eXl5e
-Xl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXg0KPiA+ICAgICAgICAgfSAqYW9sc2VnOw0KPiA+IA0K
-PiA+ICAgICAgICAgYW9sc2VnID0ga3phbGxvYyhzaXplb2YoKmFvbHNlZyksIGdmcF9mbGFncyk7
-DQo+ID4gDQo+ID4gDQo+ID4gRHluYW1pY2FsbHkgYWxsb2NhdGVkIGFycmF5cyBzdWNoIGFzIHRo
-ZSBhYm92ZSBhcmUgYSBHTlUgQyBjb21waWxlcg0KPiA+IGZlYXR1cmUgdGhhdCB3ZSBjYW5ub3Qg
-dXNlIGluIGtlcm5lbCBjb2RlLiBJZiB0aGUgYWJvdmUgYXJyYXkgc2l6ZXMgbmVlZA0KPiA+IHRv
-IGJlIGR5bmFtaWNhbGx5IGRldGVybWluZWQsIHRoZW4gcGxlYXNlIHVzZSB0aGUga2NhbGxvYygp
-IGludGVyZmFjZSB0bw0KPiA+IGFsbG9jYXRlIHRoZW0uDQo+IA0KPiBJIGFtIHVzaW5nIGt6YWxs
-b2MgdG8gZG8gYSBzaW5nbGUgYWxsb2NhdGlvbi4gVGhlICpvZHNbbnVtZGV2c10gaXMgb25seQ0K
-PiB1c2VkIGZvciB0aGUgc2l6ZW9mKCkgZXhwcmVzc2lvbiBpdCBkb2VzIG5vdCBhbGxvY2F0ZSBh
-bnl0aGluZyBhY3R1YWxseS4NCj4gDQo+IFdlIHVzZSBnY2MgZXh0ZW5zaW9ucyBhbGwgb3ZlciB0
-aGUgcGxhY2UuIEZyb20gdGhlIHNpbXBsZSBfX2Z1bmNfXyB0bw0KPiB0aGUgZmFtb3VzIHR5cGVv
-ZigpLg0KDQpfX2Z1bmNfXyBpcyBhY3R1YWxseSB2YWxpZCBDOTkuDQoNCj4gSSBkb24ndCB1bmRl
-cnN0YW5kIHdoeSB5b3UgZGVjaWRlIHRvIHBpY2sgb24gdGhpcyBvbmUgaW4gcGFydGljdWxhci4N
-Cg0KSXQgaGFzIGJlZW4gc2hvd24gdG8gYmUgdHJvdWJsZXNvbWUgcHJldmlvdXNseS4gU2VlIGZv
-ciBpbnN0YW5jZQ0KDQpodHRwOi8vbGttbC5vcmcvbGttbC8yMDExLzEwLzIzLzI1DQoNClRoZW4g
-dGhlcmUgaXMgdGhlIGlzc3VlIHRoYXQgYWx0ZXJuYXRpdmUgY29tcGlsZXJzIHN1Y2ggYXMgY2xh
-bmcgYmFyZg0KYWxsIG92ZXIgaXQuDQoNCj4gPiBJLmUuIHNvbWV0aGluZyBsaWtlDQo+ID4gDQo+
-ID4gICAgICAgICBzdHJ1Y3QgX19hbGxvY19vYmppb19zZWdtZW50IHsNCj4gPiAgICAgICAgICAg
-ICAgICAgc3RydWN0IG9iamlvX3NlZ21lbnQgb2xzZWc7DQo+ID4gICAgICAgICAgICAgICAgIHN0
-cnVjdCBvcmVfZGV2ICoqb2RzOw0KPiA+ICAgICAgICAgICAgICAgICBzdHJ1Y3Qgb3JlX2NvbXAg
-KmNvbXBzOw0KPiA+IAkJXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXl5eXg0KPiA+ICAgICAg
-ICAgfSAqYW9sc2VnOw0KPiA+IA0KPiA+ICAgICAgICAgYW9sc2VnID0ga3phbGxvYyhzaXplb2Yo
-KmFvbHNlZyksIGdmcF9mbGFncyk7DQo+ID4gCWlmIChhb2xzZWcpIHsNCj4gPiAJCWFvbHNlZy0+
-b2RzID0ga2NhbGxvYyhudW1kZXZzLCBzaXplb2Yoc3RydWN0IG9yZV9kZXYgKiksIGdmcF9mbGFn
-cyk7DQo+ID4gCQlhb2xzZWctPm9yZV9jb21wID0ga2NhbGxvYyhudW1kZXZzLCBzaXplb2Yoc3Ry
-dWN0IG9yZV9jb21wKSwgZ2ZwX2ZsYWdzKTsNCj4gDQo+IFRoaXMgaXMgbm90IHRoZSBzYW1lIGNv
-ZGUuIEl0IGlzIHRocmVlIGFsbG9jYXRpb25zIGluc3RlYWQgb2Ygb25lLiBBbmQgaXQgaXMgYW4N
-Cj4gZXh0cmEgcG9pbnRlciByZWZlcmVuY2UgaW5zdGVhZCBvZiBqdXN0IHBvaW50ZXIgb2Zmc2V0
-dGluZy4NCj4gDQo+IElmIGl0IHdvdWxkIGNoYW5nZSBpdCB3b3VsZCBjaGFuZ2UgdG86DQo+IA0K
-PiAgICAgICAgICBhb2xzZWcgPSBremFsbG9jKHNpemVvZigqYW9sc2VnKSArIA0KPiAJCSAgICAg
-ICAgICBudW1kZXZzICogc2l6ZW9mKHN0cnVjdCBvcmVfZGV2ICopLA0KPiAJCQkgIG51bWRldnMg
-KiBzaXplb2Yoc3RydWN0IG9yZV9jb21wKSwgDQo+IAkJCSAgZ2ZwX2ZsYWdzKTsNCg0KVGhhdCBp
-cyBicm9rZW4sIHNpbmNlIGl0IGRvZXNuJ3QgdGFrZSBpbnRvIGFjY291bnQgYWxpZ25tZW50IGlz
-c3Vlcw0Kd2l0aGluIHRoZSBzdHJ1Y3R1cmUuIEkgYWxzbyBkb24ndCBzZWUgaG93IHlvdSB3b3Vs
-ZCBleHByZXNzIHRoZSBhYm92ZQ0KYXMgYSBzaW5nbGUgc3RydWN0dXJlIHdpdGhvdXQgdXNpbmcg
-dmFyaWFibGUgbGVuZ3RoIGFycmF5cy4NCg0KPiBBbmQgYWxsIHRoZSBwb2ludGVyIGFyaXRobWV0
-aWMgdGhhdCBmb2xsb3cuIEJ1dCB3aHkgdGhlIHZlcnkgdWdseSBjb2RlDQo+IHdoZW4gdGhlcmUg
-aXMgYW4gZWxlZ2FudCwgdHlwZS1zYWZlLCBhbmQgc2VsZiBkb2N1bWVudGluZyB3YXkuIEl0J3MN
-Cj4gYmVhdXRpZnVsbHkgY2xlYXIgdGhpcyB3YXkgd2hhdCBpcyB0aGUgaW4gbWVtb3J5IHN0cnVj
-dHVyZSBvZiB0aGUNCj4gYWxsb2NhdGlvbi4NCg0KV2hpbGUgaXQgbWF5IGxvb2sgYmVhdXRpZnVs
-LCBpdCBoYXMgYmVlbiBwcm92ZW4gdG8gYmUgaW1tYXR1cmUgYW5kIHRvDQpnZW5lcmF0ZSB1Z2x5
-IGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg0K
+
+Both   kernel/sys.c && security/keys/request_key.c where inlining the exact same
+code as call_usermodehelper_fns(); So simply convert these sites to directly
+use  call_usermodehelper_fns().
+
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+---
+ kernel/sys.c                |   11 ++---------
+ security/keys/request_key.c |   13 +++----------
+ 2 files changed, 5 insertions(+), 19 deletions(-)
+
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 4070153..9947fb0 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -2013,15 +2013,8 @@ int orderly_poweroff(bool force)
+ 		goto out;
+ 	}
+ 
+-	info = call_usermodehelper_setup(argv[0], argv, envp, GFP_ATOMIC);
+-	if (info == NULL) {
+-		argv_free(argv);
+-		goto out;
+-	}
+-
+-	call_usermodehelper_setfns(info, NULL, argv_cleanup, NULL);
+-
+-	ret = call_usermodehelper_exec(info, UMH_NO_WAIT);
++	ret = call_usermodehelper_fns(argv[0], argv, envp, UMH_NO_WAIT,
++				      NULL, argv_cleanup, NULL);
+ 
+   out:
+ 	if (ret && force) {
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index 8246532..b8cc38c 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -93,16 +93,9 @@ static void umh_keys_cleanup(struct subprocess_info *info)
+ static int call_usermodehelper_keys(char *path, char **argv, char **envp,
+ 			 struct key *session_keyring, enum umh_wait wait)
+ {
+-	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
+-	struct subprocess_info *info =
+-		call_usermodehelper_setup(path, argv, envp, gfp_mask);
+-
+-	if (!info)
+-		return -ENOMEM;
+-
+-	call_usermodehelper_setfns(info, umh_keys_init, umh_keys_cleanup,
+-					key_get(session_keyring));
+-	return call_usermodehelper_exec(info, wait);
++	return call_usermodehelper_fns(path, argv, envp, wait,
++				       umh_keys_init, umh_keys_cleanup,
++				       key_get(session_keyring));
+ }
+ 
+ /*
+-- 
+1.7.6.2
+
