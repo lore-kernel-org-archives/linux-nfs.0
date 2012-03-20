@@ -1,81 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-annu.mail.uoguelph.ca ([131.104.91.36]:40362 "EHLO
-	esa-annu.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758422Ab2CSRGs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2012 13:06:48 -0400
-Date: Mon, 19 Mar 2012 13:06:47 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org,
-        nfsv4@ietf.org
-Message-ID: <1802632483.1230802.1332176807484.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <1085412836.1228438.1332175460830.JavaMail.root@erie.cs.uoguelph.ca>
-Subject: Re: [nfsv4] NFS4 over VPN hangs when connecting > 2 clients
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mx2.netapp.com ([216.240.18.37]:31117 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030562Ab2CTQZu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Mar 2012 12:25:50 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/2] NFS4.1: filelayout_commit_pagelist needs to pass back error
+Date: Tue, 20 Mar 2012 12:25:45 -0400
+Message-Id: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I wrote:
-> J. Bruce Fields wrote:
-> > On Mon, Mar 12, 2012 at 05:27:08PM -0400, J. Bruce Fields wrote:
-> > > On Mon, Mar 12, 2012 at 05:14:16PM -0400, Chuck Lever wrote:
-> > > > IMO, the server should do a comparison of the nfs_client_id4
-> > > > strings,
-> > > > and nothing else.
-> > >
-> > > We're supposed to return CLID_INUSE when we see a setclientid from
-> > > a
-> > > "different" client using the same string, to keep clients from
-> > > doing
-> > > mischief with other clients' state (either maliciously or, as in
-> > > this
-> > > case, accidentally).
-> > >
-> > > "Different" here is defined as "not having the same principal". I
-> > > know
-> > > what that means in the krb5 case, but I'm less certain in the
-> > > auth_sys
-> > > case.
-> >
-> > Cc'ing the ietf list. Is it reasonable for a server to expect
-> > setclientid's to come from the same client IP address at least in
-> > the
-> > auth_sys case, or could that break multi-homed clients?
-> >
-> I think that even a dhcp lease renewal might result in a different
-> client
-> IP, if the client has been partitioned from the dhcp server for a
-> while.
-> 
-> I'm not convinced that different client IP# implies different client.
-> (Even "same ip# implies same client" might not be true, if the dhcp
-> server assigned the IP# to another machine while the client was
-> partitioned
-> from the dhcp server, I think? I haven't looked at current dhcp
-> implementations, but it seems conceivable to me.)
-> 
-Oh, and what about the case of 2 clients that are sitting behind
-the same NAT gateway? (I think they'd both be seen as having the
-client host ip# of the gateway, but with different TCP connections
-on different client port#s.)
+It was reporting success even if it did nothing.
 
-> For AUTH_SYS, all the FreeBSD server does is expect the same uid#.
-> 
-> rick
-> > At least in the auth_sys case IP addresses are one of the only
-> > things
-> > we
-> > have left to go on when the client's identifier-generation is messed
-> > up
-> > (not that difficult).
-> >
-> > --b.
-> > _______________________________________________
-> > nfsv4 mailing list
-> > nfsv4@ietf.org
-> > https://www.ietf.org/mailman/listinfo/nfsv4
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+Note this is still not right.  Caller nfs_commit_unstable_pages
+assumes this is all or none, and count is going to be off.
+
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e0bdbf4..08625a8 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -1027,6 +1027,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	struct nfs_write_data	*data, *tmp;
+ 	LIST_HEAD(list);
+ 	unsigned int nreq = 0;
++	int status = PNFS_ATTEMPTED;
+ 
+ 	if (!list_empty(mds_pages)) {
+ 		data = nfs_commitdata_alloc();
+@@ -1042,6 +1043,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 
+ 	if (nreq == 0) {
+ 		nfs_commit_clear_lock(NFS_I(inode));
++		status = -ENOMEM;
+ 		goto out;
+ 	}
+ 
+@@ -1059,7 +1061,7 @@ filelayout_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 		}
+ 	}
+ out:
+-	return PNFS_ATTEMPTED;
++	return status;
+ }
+ 
+ static void
+-- 
+1.7.2.1
+
