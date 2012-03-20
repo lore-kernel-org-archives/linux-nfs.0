@@ -1,38 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48028 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16215 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755430Ab2CEADp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 4 Mar 2012 19:03:45 -0500
-Message-ID: <4F5402E4.4030506@RedHat.com>
-Date: Sun, 04 Mar 2012 19:03:48 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1757919Ab2CTQ5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Mar 2012 12:57:03 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2KGulks028613
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2012 09:56:47 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Isaman, Fred" <Fred.Isaman@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Get normalized paths for comparing NFS export paths
-References: <1328233332-26020-1-git-send-email-malahal@us.ibm.com>   <4F2BC1C0.8070900@panasas.com> <20120203231623.442fefde@notabene.brown>   <20120203142945.GA31805@us.ibm.com> <4F2E620F.5090100@panasas.com>   <20120207204401.GA31752@us.ibm.com> <4F511B21.1020907@RedHat.com>   <20120302192758.GA28389@us.ibm.com> <4F513429.1050209@RedHat.com>   <20120302220108.GA17119@us.ibm.com> <4F525741.2060404@RedHat.com>  <1330801976.2781.19.camel@lade.trondhjem.org> <4F53ED3C.2020209@RedHat.com>  <4F53F39E.9050802@RedHat.com> <1330903600.14357.10.camel@lade.trondhjem.org>
-In-Reply-To: <1330903600.14357.10.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH 1/2] NFS4.1: filelayout_commit_pagelist needs to pass
+ back error
+Date: Tue, 20 Mar 2012 16:56:45 +0000
+Message-ID: <1332262605.2963.61.camel@lade.trondhjem.org>
+References: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1332260746-8351-1-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/04/2012 06:26 PM, Myklebust, Trond wrote:
-> On Sun, 2012-03-04 at 17:58 -0500, Steve Dickson wrote:
->> So to restate... this normalizing of the path names (aka striping 
->> multiple slashes or added the leading slash) only need to occur on 
->> (successful) v4 mounts... Although the former would not be an 
->> problem with v2/v3 mounts but its not needed....
-> 
-> Normalising for v4 only is OK as far as I'm concerned, but as an
-> alternative: is there any reason why you can't just grab the path from
-> '/proc/mounts'?
-> 
-Well in some distros /etc/mtab is symbolically linked to /proc/mounts
-so this problem does not exist. But from what I've been told not
-all distros do that. Plus being backward compatible with older 
-release of distro is a good thing... IMHO...
-
-steved.
-  
+T24gVHVlLCAyMDEyLTAzLTIwIGF0IDEyOjI1IC0wNDAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+SXQgd2FzIHJlcG9ydGluZyBzdWNjZXNzIGV2ZW4gaWYgaXQgZGlkIG5vdGhpbmcuDQo+IA0KPiBO
+b3RlIHRoaXMgaXMgc3RpbGwgbm90IHJpZ2h0LiAgQ2FsbGVyIG5mc19jb21taXRfdW5zdGFibGVf
+cGFnZXMNCj4gYXNzdW1lcyB0aGlzIGlzIGFsbCBvciBub25lLCBhbmQgY291bnQgaXMgZ29pbmcg
+dG8gYmUgb2ZmLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0
+YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyB8ICAgIDQgKysrLQ0K
+PiAgMSBmaWxlcyBjaGFuZ2VkLCAzIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pDQo+IA0K
+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgYi9mcy9uZnMvbmZzNGZpbGVs
+YXlvdXQuYw0KPiBpbmRleCBlMGJkYmY0Li4wODYyNWE4IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMv
+bmZzNGZpbGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiBAQCAt
+MTAyNyw2ICsxMDI3LDcgQEAgZmlsZWxheW91dF9jb21taXRfcGFnZWxpc3Qoc3RydWN0IGlub2Rl
+ICppbm9kZSwgc3RydWN0IGxpc3RfaGVhZCAqbWRzX3BhZ2VzLA0KPiAgCXN0cnVjdCBuZnNfd3Jp
+dGVfZGF0YQkqZGF0YSwgKnRtcDsNCj4gIAlMSVNUX0hFQUQobGlzdCk7DQo+ICAJdW5zaWduZWQg
+aW50IG5yZXEgPSAwOw0KPiArCWludCBzdGF0dXMgPSBQTkZTX0FUVEVNUFRFRDsNCj4gIA0KPiAg
+CWlmICghbGlzdF9lbXB0eShtZHNfcGFnZXMpKSB7DQo+ICAJCWRhdGEgPSBuZnNfY29tbWl0ZGF0
+YV9hbGxvYygpOw0KPiBAQCAtMTA0Miw2ICsxMDQzLDcgQEAgZmlsZWxheW91dF9jb21taXRfcGFn
+ZWxpc3Qoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IGxpc3RfaGVhZCAqbWRzX3BhZ2VzLA0K
+PiAgDQo+ICAJaWYgKG5yZXEgPT0gMCkgew0KPiAgCQluZnNfY29tbWl0X2NsZWFyX2xvY2soTkZT
+X0koaW5vZGUpKTsNCj4gKwkJc3RhdHVzID0gLUVOT01FTTsNCg0KV2hhdCBpZiBucmVxICE9IDAs
+IGJ1dCBzb21lIG9mIHRoZSBhbGxvY2F0aW9ucyBzdGlsbCBmYWlsZWQ/DQoNClRoZW4gdGhlcmUn
+cyB0aGUgaXNzdWUgb2Ygd2hhdCBpZiB0aGUgb25lIG9yIG1vcmUgb2YgdGhlIGNhbGxzIHRvDQpu
+ZnNfaW5pdGlhdGVfY29tbWl0KCkgZmFpbD8NCg0KRmluYWxseSwgdGhlcmUgaXMgdGhlIHF1ZXN0
+aW9uIG9mIHdoYXQgaWYgdGhlIGNvbW1pdCBSUEMgY2FsbHMNCnRoZW1zZWx2ZXMgZmFpbCwgb3Ig
+Y2F1c2UgYSByZXRyYW5zbWlzc2lvbj8NCg0KSU9XOiBXaHkgZG8gd2Ugc2luZ2xlIG91dCBzb21l
+IG9mIHRoZXNlIGVycm9ycyBhcyB3b3J0aHkgb2YgcmVwb3J0aW5nLA0KYnV0IG5vdCBvdGhlcnM/
+IFRoZSBjbGVhbnVwIHNlZW1zIHRvIGJlIHRoZSBzYW1lIGluIGFsbCBjYXNlcyBhYm92ZQ0KKG1h
+cmsgdGhlIHJlcXVlc3RzIGZvciByZXRyYW5zbWlzc2lvbiBhbmQgbWFyayB0aGUgaW5vZGUgZGly
+dHkpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
+Cg==
