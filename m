@@ -1,101 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59696 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36490 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759363Ab2CIUtr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 15:49:47 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29KnkOS017319
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 15:49:47 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/1] Kill SPKM3: Remove also the dependent lipkey mechanism
-Date: Fri,  9 Mar 2012 15:49:32 -0500
-Message-Id: <1331326172-13296-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1331326172-13296-1-git-send-email-simo@redhat.com>
-References: <1331322586-4631-1-git-send-email-simo@redhat.com>
- <1331326172-13296-1-git-send-email-simo@redhat.com>
+	id S1756123Ab2CUTqx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:46:53 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 00/12] NFSv4.1 file layout data server quick failover
+Date: Wed, 21 Mar 2012 15:46:12 -0400
+Message-Id: <1332359184-1887-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- support/nfs/exports.c          |    3 ---
- utils/gssd/svcgssd_mech2file.c |    1 -
- utils/mount/nfs.man            |    7 ++-----
- utils/mount/nfsmount.c         |    6 ------
- 4 files changed, 2 insertions(+), 15 deletions(-)
+From: Andy Adamson <andros@netapp.com>
 
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 6e7ed699dfda6863e1bb1c0ef7894d473232f834..84a2b08b1f3c69e1b9765e1e42a7aa90c9b3d082 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -39,9 +39,6 @@ struct flav_info flav_map[] = {
- 	{ "krb5",	RPC_AUTH_GSS_KRB5	},
- 	{ "krb5i",	RPC_AUTH_GSS_KRB5I	},
- 	{ "krb5p",	RPC_AUTH_GSS_KRB5P	},
--	{ "lipkey",	RPC_AUTH_GSS_LKEY	},
--	{ "lipkey-i",	RPC_AUTH_GSS_LKEYI	},
--	{ "lipkey-p",	RPC_AUTH_GSS_LKEYP	},
- 	{ "unix",	AUTH_UNIX		},
- 	{ "sys",	AUTH_SYS		},
- 	{ "null",	AUTH_NULL		},
-diff --git a/utils/gssd/svcgssd_mech2file.c b/utils/gssd/svcgssd_mech2file.c
-index a3177f6ff8ab7e0ee5eef7c830ce2c2042553c3c..ecd908bc24b827b9553f6394b5bab6213359a711 100644
---- a/utils/gssd/svcgssd_mech2file.c
-+++ b/utils/gssd/svcgssd_mech2file.c
-@@ -53,7 +53,6 @@ struct mech2file {
- 
- struct mech2file m2f[] = {
- 	{{9, "\052\206\110\206\367\022\001\002\002"}, "krb5"},
--	{{7, "\053\006\001\005\005\001\009"}, "lipkey"},
- 	{{0,0},""},
- };
- 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 810bfc075cb2629beedb8738f60e3f5fdf771f1e..0d20cf0d190665178c28b9efa45f22680397f73b 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -372,11 +372,8 @@ Valid security flavors are
- .BR sys ,
- .BR krb5 ,
- .BR krb5i ,
-+and
- .BR krb5p ,
--.BR lkey ,
--.BR lkeyi ,
--and
--.BR lkeyp ,
- Refer to the SECURITY CONSIDERATIONS section for details.
- .TP 1.5i
- .BR sharecache " / " nosharecache
-@@ -1413,7 +1410,7 @@ security flavor encrypts every RPC request
- to prevent data exposure during network transit; however,
- expect some performance impact
- when using integrity checking or encryption.
--Similar support for other forms of cryptographic security (such as lipkey)
-+Similar support for other forms of cryptographic security
- is also available.
- .P
- The NFS version 4 protocol allows
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 7bd1c97b291eb585221452ba865036d25e7fa8ff..930622d94b57f6e4dd12497fb99277dc76580ecf 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -294,12 +294,6 @@ parse_options(char *old_opts, struct nfs_mount_data *data,
- 					data->pseudoflavor = AUTH_GSS_KRB5I;
- 				else if (!strcmp(secflavor, "krb5p"))
- 					data->pseudoflavor = AUTH_GSS_KRB5P;
--				else if (!strcmp(secflavor, "lipkey"))
--					data->pseudoflavor = AUTH_GSS_LKEY;
--				else if (!strcmp(secflavor, "lipkey-i"))
--					data->pseudoflavor = AUTH_GSS_LKEYI;
--				else if (!strcmp(secflavor, "lipkey-p"))
--					data->pseudoflavor = AUTH_GSS_LKEYP;
- 				else if (sloppy)
- 					continue;
- 				else {
+Changes from Version 1:
+
+Patch removed as rpc_wake_up is now fixed.
+-SUNRPC-add-rpc_drain_queue-to-empty-an-rpc_waitq.patch
+
+Patch changed; the forechannel rpc_sleep_on slot_tbl_waitq action is
+removed and it's functionality is moved into the rpc_call_prepare
+routines.
+- NFSv4.1-Check-invalid-deviceid-upon-slot-table-waitq.patch
+
+Responded to the changes in the filelayout commit code:
+Patch is simplified.
+-NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
+
+A bug fix and a cleanup.
+- NFSv4.1 check for NULL pnfs_layout_hdr in pnfs scan commit lists
+- NFSv4.1 have filelayout_initiate_commit return void
+
+Currently, when a data server connection goes down due to a network partion,
+a data server failure, or an administrative action, RPC tasks in various
+stages of the RPC finite state machine (FSM) need to transmit and timeout
+(or other failure) before being redirected towards an alternative server
+(MDS or another DS).
+This can take a very long time if the connection goes down during a heavy
+I/O load where the data server fore channel session slot_tbl_waitq and the
+transport sending/pending waitqs are populated with many requests.
+(see RedHat Bugzilla 756212 "Redirecting I/O through the MDS after a data
+server network partition is very slow")
+The current code also keeps the client structure and the session to the failed
+data server until umount.
+
+These patches address this problem by setting data server RPC tasks to
+RPC_TASK_SOFTCONN and handling the resultant connection errors as follows:
+
+ * The pNFS deviceid is marked invalid which blocks any new pNFS io using that
+deviceid.
+ * The RPC done routines for READ, WRITE and COMMIT redirect the requests
+to the new server (MDS) and send the request back through the RPC FSM.
+ * An rpc_action which also redirects the request to the MDS on an invalid
+deviceid is registered with the data server session fore channel
+slot_tbl_waitq rpc_sleep_on calls and is executed upon wake up.
+ * The data server session fore channel slot_tbl_waitq is drained using a
+new rpc_drain_queue method.
+ * All data server io requests reference the data server client structure
+across io calls, and the client is dereferenced upon deviceid invalidation so
+that the client (and the session) is freed upon the last (failed) redirected io.
+
+Testing:
+I use a pynfs file layout server with a DS to test. The pynfs server and DS
+is modified to use the local host for MDS to DS communication. I add a
+second ipv4 address to the single machine interface for the DS to client
+communication. While a "dd" or a read/write heavy Connectathon test is
+running, the DS ip address is removed from the ethernet interface, and the
+client recovers io to the MDS.
+I have tested READ and WRITE recovery multiple times, and have managed to
+time the removal of the DS ip address during a DS COMMIT and have seen it
+recover as well. :)
+
+
+Comments welcome
+
+--> Andy
+
+
+Andy Adamson (12):
+  NFSv4.1 move nfs4_reset_read and nfs_reset_write
+  NFSv4.1: cleanup filelayout invalid deviceid handling
+  NFSv4.1 cleanup filelayout invalid layout handling
+  NFSv4.1 set RPC_TASK_SOFTCONN for filelayout DS RPC calls
+  NFSv4.1: mark deviceid invalid on filelayout DS connection errors
+  NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
+  NFSv4.1 Check invalid deviceid upon slot table waitq wakeup
+  NFSv4.1 wake up all tasks on un-connected DS slot table waitq
+  NFSv4.1 ref count nfs_client across filelayout data server io
+  NFSv4.1 de reference a disconnected data server client record
+  NFSv4.1 check for NULL pnfs_layout_hdr in pnfs scan commit lists
+  NFSv4.1 have filelayout_initiate_commit return void
+
+ fs/nfs/internal.h          |   11 ++-
+ fs/nfs/nfs4filelayout.c    |  204 +++++++++++++++++++++++++++++++------------
+ fs/nfs/nfs4filelayout.h    |   28 +++++-
+ fs/nfs/nfs4filelayoutdev.c |   54 ++++++------
+ fs/nfs/nfs4proc.c          |   39 +--------
+ fs/nfs/pnfs.h              |    3 +-
+ fs/nfs/read.c              |    6 +-
+ fs/nfs/write.c             |   13 ++--
+ 8 files changed, 221 insertions(+), 137 deletions(-)
+
 -- 
-1.7.7.6
+1.7.6.4
 
