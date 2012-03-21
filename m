@@ -1,82 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25732 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760507Ab2COSWF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Mar 2012 14:22:05 -0400
-Message-ID: <4F6232CF.7010509@RedHat.com>
-Date: Thu, 15 Mar 2012 14:19:59 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] nfsd: Warn when no servers are specified on the command
- line
-References: <1331832223-20737-1-git-send-email-steved@redhat.com> <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C800D@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC062D5C800D@IT-1874.Isys.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:44711 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965004Ab2CUNwU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 09:52:20 -0400
+Received: by ghrr11 with SMTP id r11so921107ghr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 06:52:20 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v10 5/8] nfsd: add a header describing upcall to nfsdcld
+Date: Wed, 21 Mar 2012 09:52:06 -0400
+Message-Id: <1332337929-18580-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The daemon takes a versioned binary struct. Hopefully this should allow
+us to revise the struct later if it becomes necessary.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/nfsd/cld.h |   56 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 56 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfsd/cld.h
 
-On 03/15/2012 02:01 PM, Peter Staubach wrote:
-> I am curious why such a message is required?  
-To let people know their NFS server may not be configured as expected.
+diff --git a/include/linux/nfsd/cld.h b/include/linux/nfsd/cld.h
+new file mode 100644
+index 0000000..f14a9ab
+--- /dev/null
++++ b/include/linux/nfsd/cld.h
+@@ -0,0 +1,56 @@
++/*
++ * Upcall description for nfsdcld communication
++ *
++ * Copyright (c) 2012 Red Hat, Inc.
++ * Author(s): Jeff Layton <jlayton@redhat.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#ifndef _NFSD_CLD_H
++#define _NFSD_CLD_H
++
++/* latest upcall version available */
++#define CLD_UPCALL_VERSION 1
++
++/* defined by RFC3530 */
++#define NFS4_OPAQUE_LIMIT 1024
++
++enum cld_command {
++	Cld_Create,		/* create a record for this cm_id */
++	Cld_Remove,		/* remove record of this cm_id */
++	Cld_Check,		/* is this cm_id allowed? */
++	Cld_GraceDone,		/* grace period is complete */
++};
++
++/* representation of long-form NFSv4 client ID */
++struct cld_name {
++	uint16_t	cn_len;				/* length of cm_id */
++	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
++} __attribute__((packed));
++
++/* message struct for communication with userspace */
++struct cld_msg {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++	union {
++		int64_t		cm_gracetime;	/* grace period start time */
++		struct cld_name	cm_name;
++	} __attribute__((packed)) cm_u;
++} __attribute__((packed));
++
++#endif /* !_NFSD_CLD_H */
+-- 
+1.7.7.6
 
-> Isn't the reason for having a default is so that the option does not need to specified?
-I guess... but starting one nfsd is probably not what people
-want to do... Maybe bumping the default up to a more reasonable 
-number could work... 
-
-steved.
-
-> 
-> 	Thanx...
-> 
-> 		ps
-> 
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Steve Dickson
-> Sent: Thursday, March 15, 2012 1:24 PM
-> To: Linux NFS Mailing list
-> Subject: [PATCH 1/1] nfsd: Warn when no servers are specified on the command line
-> 
-> When the number of servers are not specified on the command, log a warning message that the default number of services will be started
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/nfsd/nfsd.c |    7 +++++--
->  1 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c index 8bc5d3a..c744ee1 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -188,6 +188,8 @@ main(int argc, char **argv)
->  		}
->  	}
->  
-> +	xlog_open(progname);
-> +
->  	if (optind < argc) {
->  		if ((count = atoi(argv[optind])) < 0) {
->  			/* insane # of servers */
-> @@ -203,10 +205,11 @@ main(int argc, char **argv)
->  			socket_up = 1;
->  			goto set_threads;
->  		}
-> +	} else {
-> +		xlog(L_WARNING, "No server number specified. '%d' nfsd will be started",
-> +			count);
->  	}
->  
-> -	xlog_open(progname);
-> -
->  	nfsd_enable_protos(&proto4, &proto6);
->  
->  	if (!NFSCTL_TCPISSET(protobits)) {
-> --
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
