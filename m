@@ -1,52 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e31.co.us.ibm.com ([32.97.110.149]:60287 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751519Ab2CBVwX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2012 16:52:23 -0500
-Received: from /spool/local
-	by e31.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 2 Mar 2012 14:52:18 -0700
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by d01dlp03.pok.ibm.com (Postfix) with ESMTP id DA648C90050
-	for <linux-nfs@vger.kernel.org>; Fri,  2 Mar 2012 16:51:27 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q22Lor9F434756
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 16:50:54 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q22LorTj004395
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 16:50:53 -0500
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q22LorVu004381
-	for <linux-nfs@vger.kernel.org>; Fri, 2 Mar 2012 16:50:53 -0500
-Date: Fri, 2 Mar 2012 15:50:52 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] mount.nfs: strip of extra slashes in device name
-Message-ID: <20120302215052.GA17475@us.ibm.com>
-References: <1330707221-4005-1-git-send-email-steved@redhat.com>
- <20120302184556.GA6880@us.ibm.com>
- <4F511C95.2040806@RedHat.com>
- <20120302194655.GB28389@us.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:37196 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757010Ab2CUT5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:57:06 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: krb5 failures in recent nfs-for-next
+Date: Wed, 21 Mar 2012 19:57:03 +0000
+Message-ID: <1332359824.12332.2.camel@lade.trondhjem.org>
+References: <20120321192448.GB11222@fieldses.org>
+	 <4F6A2DE8.6060403@netapp.com> <20120321194544.GC11222@fieldses.org>
+In-Reply-To: <20120321194544.GC11222@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120302194655.GB28389@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Malahal Naineni [malahal@us.ibm.com] wrote:
-> > as well... What kernel are you using?
-> 
-> Using 3.3.0-rc1+ kernel.
-> [root@elm3c105 ~]# grep mnt /proc/mounts 
-> elm3c104:///server/ /mnt nfs rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=9.47.69.104,mountvers=3,mountport=929,mountproto=udp,local_lock=none,addr=9.47.69.104 0 0
-> 
-> I must be missing something, I see the same thing in RHEL6.2 version of
-> Linux.
-
-I rebooted my server with an older distro and you can see above that it
-is mounting NFSv3. Sorry, my bad. Kernel does strip extra leading '/'s
-when I mount NFSv4.
-
-Regards, Malahal.
-
+T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgTWFyIDIxLCAyMDEyIGF0IDAzOjM3OjEyUE0gLTA0MDAsIEJyeWFuIFNjaHVt
+YWtlciB3cm90ZToNCj4gPiBPbiAwMy8yMS8yMDEyIDAzOjI0IFBNLCBKLiBCcnVjZSBGaWVsZHMg
+d3JvdGU6DQo+ID4gDQo+ID4gPiBIYXZlIHlvdSBiZWVuIGRvaW5nIGFueSBrcmI1IHRlc3Rpbmc/
+DQo+ID4gDQo+ID4gDQo+ID4gTm90IHlldC4gIEl0J3Mgc3RpbGwgb24gbXkgSmVua2lucyB0b2Rv
+IGxpc3QsIGJ1dCBJIGhhdmVuJ3QgZ290dGVuIGFyb3VuZCB0byBpdCB5ZXQuICBTb3VuZHMgbGlr
+ZSB3ZSBuZWVkIGl0LCB0aG91Z2gsIHNvIEknbGwgdHJ5IHdvcmtpbmcgb24gaXQgc29vbi4NCj4g
+DQo+IEFjdHVhbGx5LCBJJ3ZlIHNpbmNlIHNlZW4gdGhlIGZhaWx1cmUgb3ZlciBuZnN2NCBhbmQg
+YXV0aF9zeXMuICBBbGwNCj4gdGhhdCdzIGxlZnQgb24gdGhlIGNvbnNvbGUgaXMgZW5vdWdoIHRv
+IHRlbGwgbWUgaXQncyBoYXBwZW5pbmcgaW4NCj4gbmZzNF9mcmVlX2xvY2tfc3RhdGUsIGNhbGxl
+ZCBmcm9tIF9fcnBjX2V4ZWN1dGUgaW4gYSBrdGhyZWFkLiAgKFdlbGwsDQo+IGFzc3VtaW5nIHRo
+YXQncyBhY3R1YWxseSB0aGUgZmlyc3QgYmFja3RyYWNlLikNCg0KSSd2ZSBqdXN0IGJlZW4gc2xv
+dyB0byB1cGRhdGUgbmZzLWZvci1uZXh0LiBUaGVyZSBoYXMgYmVlbiBhIGZpeCBmb3INCnRoaXMg
+aW4gdGhlICdkZXZlbCcgYW5kICdsaW51eC1uZXh0JyBicmFuY2hlcyBmb3IgYSB3aGlsZS4gUHVz
+aGVkIG91dA0Kbm93Li4uDQoNClRoZSBhY3R1YWwgY29tbWl0ZGlmZiBpcyBoZXJlOg0KICBodHRw
+Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMuZ2l0O2E9Y29tbWl0ZGlm
+ZjtoPTVhZTY3YzRmZWU4NjljOWIzYzg3YjcyN2E5ZWE1MTFiNjMyNmI4MzQNCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
