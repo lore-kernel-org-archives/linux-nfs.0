@@ -1,116 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10295 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58708 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751092Ab2CGUxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Mar 2012 15:53:04 -0500
-Message-ID: <4F57CAB4.2050500@RedHat.com>
-Date: Wed, 07 Mar 2012 15:53:08 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] exportfs: Stop racing exportfs on clusters
-References: <1331150190-18401-1-git-send-email-steved@redhat.com> <20120307203649.GA582@fieldses.org>
-In-Reply-To: <20120307203649.GA582@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757773Ab2CUPVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 11:21:12 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 01/23] NFS: Relocate the stat_to_errno() function
+Date: Wed, 21 Mar 2012 11:20:31 -0400
+Message-Id: <1332343253-24970-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
+This was located in a file belonging to NFS v2, but it is also used by
+v3.  I moved it to a generic NFS client file to keep it from
+disappearing once v2 becomes a module.
 
-On 03/07/2012 03:36 PM, J. Bruce Fields wrote:
-> On Wed, Mar 07, 2012 at 02:56:30PM -0500, Steve Dickson wrote:
->> This problem can occur when multiple cluster services fail over
->> at the same time, causing missing high-available exports.
->> Having a lot of nfs-exports will trigger this issue easier.
-> 
-> Isn't the locking in support/export/xtab.c supposed to take care of
-> this?
-> 
-> I may be confused--I forget what all these files are for....
-hmm... your right... those do take out flock()s during I/O..
-There must be a hole somewhere they can get corrupted... 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c  |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs2xdr.c |   64 ----------------------------------------------------
+ 2 files changed, 66 insertions(+), 64 deletions(-)
 
-steved.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 2f37848..08e7f24 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -2072,6 +2072,72 @@ void nfs_fs_proc_exit(void)
+ 
+ #endif /* CONFIG_PROC_FS */
+ 
++/* Mapping from NFS error code to "errno" error code. */
++#define errno_NFSERR_IO		EIO
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++int nfs_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
+ module_param(nfs4_disable_idmapping, bool, 0644);
+ MODULE_PARM_DESC(nfs4_disable_idmapping,
+ 		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..a01084d 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -1057,70 +1057,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
+ 
+-
+-/*
+- * We need to translate between nfs status return values and
+- * the local errno values which may not be the same.
+- */
+-static const struct {
+-	int stat;
+-	int errno;
+-} nfs_errtbl[] = {
+-	{ NFS_OK,		0		},
+-	{ NFSERR_PERM,		-EPERM		},
+-	{ NFSERR_NOENT,		-ENOENT		},
+-	{ NFSERR_IO,		-errno_NFSERR_IO},
+-	{ NFSERR_NXIO,		-ENXIO		},
+-/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
+-	{ NFSERR_ACCES,		-EACCES		},
+-	{ NFSERR_EXIST,		-EEXIST		},
+-	{ NFSERR_XDEV,		-EXDEV		},
+-	{ NFSERR_NODEV,		-ENODEV		},
+-	{ NFSERR_NOTDIR,	-ENOTDIR	},
+-	{ NFSERR_ISDIR,		-EISDIR		},
+-	{ NFSERR_INVAL,		-EINVAL		},
+-	{ NFSERR_FBIG,		-EFBIG		},
+-	{ NFSERR_NOSPC,		-ENOSPC		},
+-	{ NFSERR_ROFS,		-EROFS		},
+-	{ NFSERR_MLINK,		-EMLINK		},
+-	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
+-	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
+-	{ NFSERR_DQUOT,		-EDQUOT		},
+-	{ NFSERR_STALE,		-ESTALE		},
+-	{ NFSERR_REMOTE,	-EREMOTE	},
+-#ifdef EWFLUSH
+-	{ NFSERR_WFLUSH,	-EWFLUSH	},
+-#endif
+-	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
+-	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
+-	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
+-	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
+-	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
+-	{ NFSERR_BADTYPE,	-EBADTYPE	},
+-	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
+-	{ -1,			-EIO		}
+-};
+-
+-/**
+- * nfs_stat_to_errno - convert an NFS status code to a local errno
+- * @status: NFS status code to convert
+- *
+- * Returns a local errno value, or -EIO if the NFS status code is
+- * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+- */
+-int nfs_stat_to_errno(enum nfs_stat status)
+-{
+-	int i;
+-
+-	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
+-		if (nfs_errtbl[i].stat == (int)status)
+-			return nfs_errtbl[i].errno;
+-	}
+-	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
+-	return nfs_errtbl[i].errno;
+-}
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
+-- 
+1.7.9.4
 
-> 
-> --b.
-> 
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  support/include/exportfs.h |    4 ++++
->>  utils/exportfs/exportfs.c  |   24 ++++++++++++++++++++++++
->>  2 files changed, 28 insertions(+), 0 deletions(-)
->>
->> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
->> index 01e87dd..99916e5 100644
->> --- a/support/include/exportfs.h
->> +++ b/support/include/exportfs.h
->> @@ -32,6 +32,10 @@ enum {
->>  	FSLOC_STUB
->>  };
->>  
->> +#ifndef EXP_LOCKFILE
->> +#define EXP_LOCKFILE "/var/lib/nfs/export-lock"
->> +#endif
->> +
->>  typedef struct mclient {
->>  	struct mclient *	m_next;
->>  	char *			m_hostname;
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index 7432a65..769d438 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -16,6 +16,7 @@
->>  #include <sys/stat.h>
->>  #include <sys/vfs.h>
->>  #include <sys/stat.h>
->> +#include <sys/file.h>
->>  #include <unistd.h>
->>  #include <stdbool.h>
->>  #include <stdlib.h>
->> @@ -44,6 +45,23 @@ static void	validate_export(nfs_export *exp);
->>  static int	matchhostname(const char *hostname1, const char *hostname2);
->>  static void	export_d_read(const char *dname);
->>  
->> +static const char *lockfile = EXP_LOCKFILE;
->> +static int _lockfd = -1;
->> +
->> +void 
->> +grab_lockfile()
->> +{
->> +	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
->> +	if (_lockfd != -1) 
->> +		lockf(_lockfd, F_LOCK, 0);
->> +}
->> +void 
->> +release_lockfile()
->> +{
->> +	if (_lockfd != -1)
->> +		lockf(_lockfd, F_ULOCK, 0);
->> +}
->> +
->>  int
->>  main(int argc, char **argv)
->>  {
->> @@ -129,6 +147,12 @@ main(int argc, char **argv)
->>  			return 0;
->>  		}
->>  	}
->> +	/*
->> +	 * Serialize things as best we can
->> +	 */
->> +	grab_lockfile();
->> +	atexit(release_lockfile);
->> +
->>  	if (f_export && ! f_ignore) {
->>  		export_read(_PATH_EXPORTS);
->>  		export_d_read(_PATH_EXPORTS_D);
->> -- 
->> 1.7.7.6
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
