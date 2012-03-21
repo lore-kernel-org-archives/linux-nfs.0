@@ -1,98 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:38791 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757321Ab2CLVOt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 17:14:49 -0400
-Subject: Re: NFS4 over VPN hangs when connecting > 2 clients
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120312210414.GB8991@fieldses.org>
-Date: Mon, 12 Mar 2012 17:14:16 -0400
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
-Message-Id: <D62C59BB-D68B-42FD-A916-78B86C1133F7@oracle.com>
-References: <878vj7x6mj.fsf@vostro.rath.org> <87pqchn64e.fsf@inspiron.ap.columbia.edu> <20120312193115.GA7203@fieldses.org> <4F5E5241.7070008@rath.org> <20120312201505.GC7203@fieldses.org> <4F5E5CF2.50309@rath.org> <20120312204238.GA8991@fieldses.org> <7C4C12AF-5820-4BF3-8262-3BF5C201DA8C@oracle.com> <20120312210414.GB8991@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:34461 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964786Ab2CUNwX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 09:52:23 -0400
+Received: by gghe5 with SMTP id e5so917199ggh.19
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 06:52:23 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v10 7/8] nfsd: add notifier to handle mount/unmount of rpc_pipefs sb
+Date: Wed, 21 Mar 2012 09:52:08 -0400
+Message-Id: <1332337929-18580-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In the event that rpc_pipefs isn't mounted when nfsd starts, we
+must register a notifier to handle creating the dentry once it
+is mounted, and to remove the dentry on unmount.
 
-On Mar 12, 2012, at 5:04 PM, J. Bruce Fields wrote:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/netns.h       |    1 +
+ fs/nfsd/nfs4recover.c |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsctl.c      |    9 ++++++++-
+ 3 files changed, 53 insertions(+), 1 deletions(-)
 
-> On Mon, Mar 12, 2012 at 04:49:29PM -0400, Chuck Lever wrote:
->> 
->> On Mar 12, 2012, at 4:42 PM, J. Bruce Fields wrote:
->> 
->>> On Mon, Mar 12, 2012 at 04:30:42PM -0400, Nikolaus Rath wrote:
->>>> On 03/12/2012 04:15 PM, J. Bruce Fields wrote:
->>>>> Looking at the packet details, under the client id field, the clients
->>>>> are all using:
->>>>> 
->>>>> 	"0.0.0.0/192.168.1.2 tcp UNIX 0"
->>>> 
->>>> Hmm. 192.168.1.2 is the server's address on the VPN. Is that supposed to
->>>> be there?
->>> 
->>> Yes,and the first ip is usually the ip of the client, which does suggest
->>> the client is guessing it's ip wrong; so the "clientaddr=" option will
->>> likely help.
->> 
->> I thought 0.0.0.0 was a legal callback address, and means "don't send me CB requests".
-> 
-> Yes, that part's fine, it's using it in the clientid that gets us into
-> trouble here....
-> 
->> But if all the clients are using the same nfs_client_id4 string, then no, the server can't distinguish between them, and they will tromp on each other's state.
-> 
-> Yeah.
-> 
->> 
->> The question is why can't the clients tell what their own IP address is?  mount.nfs is supposed to figure that out automatically.  Could be a bug in mount.nfs.
-> 
-> You know that code better than me....  Looks like it does basically
-> gethostbyname(gethostname()) ?
-
-Nope, it does a connect(2) on a UDP socket, and then getsockname(2) on that socket.  See nfs_callback_address() in nfs-utils.
-
-> An strace -f of the mount from Nikolaus might help explain what happened
-> here.
-
-Agree.
-
-> 
->>> Hm, perhaps the server should be rejecting these SETCLIENTID's with
->>> INUSE.  It used to do that, and the client would likely recover from
->>> that more easily.
->> 
->> INUSE means the client is using multiple authentication flavors when performing RENEW or SETCLIENTID.  I can't think of a reason the server should reject these; it's not supposed to look at the contents of the nfs_client_id4 string.
-> 
-> Well, from the trace the requests do appear (from the server's point of
-> view) to be coming from different IP addresses.  We used to use that
-> fact to return INUSE in this sort of case, which I think would trigger
-> the client to increment its uniqufier and work around the problem.
-> 
-> In the commit where I changed that I said:
-> 
-> 	The spec allows clients to change ip address, so we shouldn't be
-> 	requiring that setclientid always come from the same address.
-> 	For example, a client could reboot and get a new dhcpd address,
-> 	but still present the same clientid to the server.  In that case
-> 	the server should revoke the client's previous state and allow
-> 	it to continue, instead of (as it currently does) returning a
-> 	CLID_INUSE error.
-> 
-> But maybe I should have applied that reasoning only in the krb5 case--in
-> the auth_sys case maybe the client ip address is really the only thing
-> we have to distinguish two clients.
-
-IMO, the server should do a comparison of the nfs_client_id4 strings, and nothing else.  The client IP addresses are unreliable.  Otherwise, why have an nfs_client_id4 string to begin with?  And how could a multi-homed client ever word?  Maybe I don't understand what you mean.
-
-But, anyway, if the clients are all using the same nfs_client_id4 string, that's going to cause no end of trouble, since the boot verifier for each of these clients is bound to be different.  When the server sees a boot verifier change, it will just drop all the client's state.  Each client's SETCLIENTID will trash the state of anything that came before attached to that nfs_client_id4.  That will result in the clients all constantly trying to recover state.  I suppose the server could watch for a boot verifier replay (cel ducks)
-
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 12e0cff..66eac33 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -31,4 +31,5 @@ struct nfsd_net {
+ };
+ 
+ extern int nfsd_net_id;
++extern struct notifier_block nfsd4_cld_block;
+ #endif /* __NFSD_NETNS_H__ */
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index cec62ed..6f13281 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -38,6 +38,7 @@
+ #include <linux/crypto.h>
+ #include <linux/sched.h>
+ #include <linux/fs.h>
++#include <linux/module.h>
+ #include <net/net_namespace.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/clnt.h>
+@@ -982,3 +983,46 @@ nfsd4_record_grace_done(struct net *net, time_t boot_time)
+ 	if (client_tracking_ops)
+ 		client_tracking_ops->grace_done(net, boot_time);
+ }
++
++static int
++rpc_pipefs_event(struct notifier_block *nb, unsigned long event, void *ptr)
++{
++	struct super_block *sb = ptr;
++	struct net *net = sb->s_fs_info;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct cld_net *cn = nn->cld_net;
++	struct dentry *dentry;
++	int ret = 0;
++
++	if (!try_module_get(THIS_MODULE))
++		return 0;
++
++	if (!cn) {
++		module_put(THIS_MODULE);
++		return 0;
++	}
++
++	switch (event) {
++	case RPC_PIPEFS_MOUNT:
++		dentry = nfsd4_cld_register_sb(sb, cn->cn_pipe);
++		if (IS_ERR(dentry)) {
++			ret = PTR_ERR(dentry);
++			break;
++		}
++		cn->cn_pipe->dentry = dentry;
++		break;
++	case RPC_PIPEFS_UMOUNT:
++		if (cn->cn_pipe->dentry)
++			nfsd4_cld_unregister_sb(cn->cn_pipe);
++		break;
++	default:
++		ret = -ENOTSUPP;
++		break;
++	}
++	module_put(THIS_MODULE);
++	return ret;
++}
++
++struct notifier_block nfsd4_cld_block = {
++	.notifier_call = rpc_pipefs_event,
++};
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 141197e..dee6c1b 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -13,6 +13,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/gss_api.h>
+ #include <linux/sunrpc/gss_krb5_enctypes.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/module.h>
+ 
+ #include "idmap.h"
+@@ -1136,9 +1137,12 @@ static int __init init_nfsd(void)
+ 	int retval;
+ 	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
+ 
++	retval = rpc_pipefs_notifier_register(&nfsd4_cld_block);
++	if (retval)
++		return retval;
+ 	retval = register_pernet_subsys(&nfsd_net_ops);
+ 	if (retval < 0)
+-		return retval;
++		goto out_unregister_notifier;
+ 	retval = nfsd4_init_slabs();
+ 	if (retval)
+ 		goto out_unregister_pernet;
+@@ -1181,6 +1185,8 @@ out_free_slabs:
+ 	nfsd4_free_slabs();
+ out_unregister_pernet:
+ 	unregister_pernet_subsys(&nfsd_net_ops);
++out_unregister_notifier:
++	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
+ 	return retval;
+ }
+ 
+@@ -1197,6 +1203,7 @@ static void __exit exit_nfsd(void)
+ 	nfsd_fault_inject_cleanup();
+ 	unregister_filesystem(&nfsd_fs_type);
+ 	unregister_pernet_subsys(&nfsd_net_ops);
++	rpc_pipefs_notifier_unregister(&nfsd4_cld_block);
+ }
+ 
+ MODULE_AUTHOR("Olaf Kirch <okir@monad.swb.de>");
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.7.6
 
