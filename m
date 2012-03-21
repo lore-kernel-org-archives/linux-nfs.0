@@ -1,48 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:51778 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1031096Ab2COQCN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Mar 2012 12:02:13 -0400
-Received: by eekc41 with SMTP id c41so1690812eek.19
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Mar 2012 09:02:12 -0700 (PDT)
-Subject: Re: NFS4 without id mapper
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Anton Starikov <ant.starikov@gmail.com>
-In-Reply-To: <1331659764.3419.23.camel@lade.trondhjem.org>
-Date: Thu, 15 Mar 2012 17:02:10 +0100
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <1B997EC7-7E1B-4508-9DFC-5AF491CF348E@gmail.com>
-References: <66B6E4EA-A94C-4FD9-87C1-A110B0AB3D71@gmail.com> <1331659764.3419.23.camel@lade.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:7584 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752886Ab2CUUrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 16:47:52 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (vmwexceht05-prd.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2LKlaGV004395
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 13:47:37 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 12/12] NFSv4.1 have filelayout_initiate_commit
+ return void
+Date: Wed, 21 Mar 2012 20:47:34 +0000
+Message-ID: <1332362855.12332.11.camel@lade.trondhjem.org>
+References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	 <1332359184-1887-13-git-send-email-andros@netapp.com>
+In-Reply-To: <1332359184-1887-13-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 13, 2012, at 6:29 PM, Myklebust, Trond wrote:
-
-> On Tue, 2012-03-13 at 17:21 +0100, Anton Starikov wrote:
->> Hi,
->> 
->> I have probably stupid question, but is there a way to use NFS-4 in old-fashoned way without any idmapper involved? Assuming setup with auth=sys/none and no root squash.
-> 
-> The Linux client can do it, but not the Linux server. Sorry...
-
-
-Hm, can you point me, where can I find information about disabling idmapper?
-
-Thanks, 
-Anton
-
-> 
-> Cheers
->  Trond
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ2IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZSBy
+ZXR1cm4gaXMgaWdub3JlZC4NCg0KWWVzLCBidXQgc2hvdWxkIGl0IGJlPyBTZWUgdGhlIGRpc2N1
+c3Npb24gYmV0d2VlbiBGcmVkIGFuZCBteXNlbGYgb24gdGhlDQpsaXN0IHllc3RlcmRheS4gSSBz
+dGlsbCBkb24ndCBzZWUgd2h5IHdlIHNob3VsZCByZXBvcnQgc29tZSBlcnJvcnMgYW5kDQppZ25v
+cmUgb3RoZXJzLi4uDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0KDQo=
