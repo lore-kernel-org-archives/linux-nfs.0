@@ -1,59 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28851 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38761 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754662Ab2CITej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 14:34:39 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q29JYbCA013706
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 9 Mar 2012 14:34:37 -0500
-From: Simo Sorce <simo@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
-Subject: [PATCH 1/7] Kill SPKM3: Remove spkm3 references from svcgssd
-Date: Fri,  9 Mar 2012 14:34:26 -0500
-Message-Id: <1331321672-2111-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
-References: <1331321672-2111-1-git-send-email-simo@redhat.com>
+	id S1751308Ab2CUTeM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:34:12 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFS: Relocate the stat_to_errno() function
+Date: Wed, 21 Mar 2012 15:34:08 -0400
+Message-Id: <1332358449-16082-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332358449-16082-1-git-send-email-bjschuma@netapp.com>
+References: <1332358449-16082-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- utils/gssd/svcgssd_mech2file.c |    1 -
- utils/gssd/svcgssd_proc.c      |    8 ++------
- 2 files changed, 2 insertions(+), 7 deletions(-)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-diff --git a/utils/gssd/svcgssd_mech2file.c b/utils/gssd/svcgssd_mech2file.c
-index 65de8d01fedba026f35b11c4bd689f634579ef8d..a3177f6ff8ab7e0ee5eef7c830ce2c2042553c3c 100644
---- a/utils/gssd/svcgssd_mech2file.c
-+++ b/utils/gssd/svcgssd_mech2file.c
-@@ -53,7 +53,6 @@ struct mech2file {
+This was located in a file belonging to NFS v2, but it is also used by
+v3.  I moved it to a generic NFS client file to keep it from
+disappearing once v2 becomes configurable.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c  |   66 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs2xdr.c |   67 ------------------------------------------------------
+ fs/nfs/nfs3xdr.c |    3 ---
+ 3 files changed, 66 insertions(+), 70 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 2f37848..08e7f24 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -2072,6 +2072,72 @@ void nfs_fs_proc_exit(void)
  
- struct mech2file m2f[] = {
- 	{{9, "\052\206\110\206\367\022\001\002\002"}, "krb5"},
--	{{7, "\053\006\001\005\005\001\003"}, "spkm3"},
- 	{{7, "\053\006\001\005\005\001\009"}, "lipkey"},
- 	{{0,0},""},
- };
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index c714d99dd654aaff3b3369bebcbc0df0946284dd..0d4f78d9668396aaebb05ab97804cfb1e8d5ed5a 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -369,12 +369,8 @@ get_hostbased_client_name(gss_name_t client_name, gss_OID mech,
- 	if (g_OID_equal(&krb5oid, mech)) {
- 		if (get_krb5_hostbased_name(&name, &cname) == 0)
- 			*hostbased_name = cname;
--	}
+ #endif /* CONFIG_PROC_FS */
+ 
++/* Mapping from NFS error code to "errno" error code. */
++#define errno_NFSERR_IO		EIO
++
++/*
++ * We need to translate between nfs status return values and
++ * the local errno values which may not be the same.
++ */
++static const struct {
++	int stat;
++	int errno;
++} nfs_errtbl[] = {
++	{ NFS_OK,		0		},
++	{ NFSERR_PERM,		-EPERM		},
++	{ NFSERR_NOENT,		-ENOENT		},
++	{ NFSERR_IO,		-errno_NFSERR_IO},
++	{ NFSERR_NXIO,		-ENXIO		},
++/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
++	{ NFSERR_ACCES,		-EACCES		},
++	{ NFSERR_EXIST,		-EEXIST		},
++	{ NFSERR_XDEV,		-EXDEV		},
++	{ NFSERR_NODEV,		-ENODEV		},
++	{ NFSERR_NOTDIR,	-ENOTDIR	},
++	{ NFSERR_ISDIR,		-EISDIR		},
++	{ NFSERR_INVAL,		-EINVAL		},
++	{ NFSERR_FBIG,		-EFBIG		},
++	{ NFSERR_NOSPC,		-ENOSPC		},
++	{ NFSERR_ROFS,		-EROFS		},
++	{ NFSERR_MLINK,		-EMLINK		},
++	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
++	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
++	{ NFSERR_DQUOT,		-EDQUOT		},
++	{ NFSERR_STALE,		-ESTALE		},
++	{ NFSERR_REMOTE,	-EREMOTE	},
++#ifdef EWFLUSH
++	{ NFSERR_WFLUSH,	-EWFLUSH	},
++#endif
++	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
++	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
++	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
++	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
++	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
++	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
++	{ NFSERR_BADTYPE,	-EBADTYPE	},
++	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
++	{ -1,			-EIO		}
++};
++
++/**
++ * nfs_stat_to_errno - convert an NFS status code to a local errno
++ * @status: NFS status code to convert
++ *
++ * Returns a local errno value, or -EIO if the NFS status code is
++ * not recognized.  This function is used jointly by NFSv2 and NFSv3.
++ */
++int nfs_stat_to_errno(enum nfs_stat status)
++{
++	int i;
++
++	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
++		if (nfs_errtbl[i].stat == (int)status)
++			return nfs_errtbl[i].errno;
++	}
++	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
++	return nfs_errtbl[i].errno;
++}
++
+ module_param(nfs4_disable_idmapping, bool, 0644);
+ MODULE_PARM_DESC(nfs4_disable_idmapping,
+ 		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 1f56000..0d4c504 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -25,9 +25,6 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
+-/* Mapping from NFS error code to "errno" error code. */
+-#define errno_NFSERR_IO		EIO
 -
--	/* No support for SPKM3, just print a warning (for now) */
--	if (g_OID_equal(&spkm3oid, mech)) {
--		printerr(1, "WARNING: get_hostbased_client_name: "
--			 "no hostbased_name support for SPKM3\n");
-+	} else {
-+		printerr(1, "WARNING: unknown/unsupport mech OID\n");
- 	}
+ /*
+  * Declare the space requirements for NFS arguments and replies as
+  * number of 32bit-words
+@@ -1057,70 +1054,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
  
- 	res = 0;
+-
+-/*
+- * We need to translate between nfs status return values and
+- * the local errno values which may not be the same.
+- */
+-static const struct {
+-	int stat;
+-	int errno;
+-} nfs_errtbl[] = {
+-	{ NFS_OK,		0		},
+-	{ NFSERR_PERM,		-EPERM		},
+-	{ NFSERR_NOENT,		-ENOENT		},
+-	{ NFSERR_IO,		-errno_NFSERR_IO},
+-	{ NFSERR_NXIO,		-ENXIO		},
+-/*	{ NFSERR_EAGAIN,	-EAGAIN		}, */
+-	{ NFSERR_ACCES,		-EACCES		},
+-	{ NFSERR_EXIST,		-EEXIST		},
+-	{ NFSERR_XDEV,		-EXDEV		},
+-	{ NFSERR_NODEV,		-ENODEV		},
+-	{ NFSERR_NOTDIR,	-ENOTDIR	},
+-	{ NFSERR_ISDIR,		-EISDIR		},
+-	{ NFSERR_INVAL,		-EINVAL		},
+-	{ NFSERR_FBIG,		-EFBIG		},
+-	{ NFSERR_NOSPC,		-ENOSPC		},
+-	{ NFSERR_ROFS,		-EROFS		},
+-	{ NFSERR_MLINK,		-EMLINK		},
+-	{ NFSERR_NAMETOOLONG,	-ENAMETOOLONG	},
+-	{ NFSERR_NOTEMPTY,	-ENOTEMPTY	},
+-	{ NFSERR_DQUOT,		-EDQUOT		},
+-	{ NFSERR_STALE,		-ESTALE		},
+-	{ NFSERR_REMOTE,	-EREMOTE	},
+-#ifdef EWFLUSH
+-	{ NFSERR_WFLUSH,	-EWFLUSH	},
+-#endif
+-	{ NFSERR_BADHANDLE,	-EBADHANDLE	},
+-	{ NFSERR_NOT_SYNC,	-ENOTSYNC	},
+-	{ NFSERR_BAD_COOKIE,	-EBADCOOKIE	},
+-	{ NFSERR_NOTSUPP,	-ENOTSUPP	},
+-	{ NFSERR_TOOSMALL,	-ETOOSMALL	},
+-	{ NFSERR_SERVERFAULT,	-EREMOTEIO	},
+-	{ NFSERR_BADTYPE,	-EBADTYPE	},
+-	{ NFSERR_JUKEBOX,	-EJUKEBOX	},
+-	{ -1,			-EIO		}
+-};
+-
+-/**
+- * nfs_stat_to_errno - convert an NFS status code to a local errno
+- * @status: NFS status code to convert
+- *
+- * Returns a local errno value, or -EIO if the NFS status code is
+- * not recognized.  This function is used jointly by NFSv2 and NFSv3.
+- */
+-int nfs_stat_to_errno(enum nfs_stat status)
+-{
+-	int i;
+-
+-	for (i = 0; nfs_errtbl[i].stat != -1; i++) {
+-		if (nfs_errtbl[i].stat == (int)status)
+-			return nfs_errtbl[i].errno;
+-	}
+-	dprintk("NFS: Unrecognized nfs status value: %u\n", status);
+-	return nfs_errtbl[i].errno;
+-}
+-
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index a77cc9a..cee070a 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -24,9 +24,6 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_XDR
+ 
+-/* Mapping from NFS error code to "errno" error code. */
+-#define errno_NFSERR_IO		EIO
+-
+ /*
+  * Declare the space requirements for NFS arguments and replies as
+  * number of 32bit-words
 -- 
-1.7.7.6
+1.7.9.4
 
