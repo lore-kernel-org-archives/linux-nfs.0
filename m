@@ -1,57 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:41757 "EHLO
-	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758017Ab2CFAIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 19:08:42 -0500
-Date: Mon, 5 Mar 2012 19:08:37 -0500
-From: "Ted Ts'o" <tytso@mit.edu>
-To: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-Cc: linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, yong.fan@whamcloud.com,
-        "J. Bruce Fields" <bfields@redhat.com>, sandeen@redhat.com,
-        adilger@whamcloud.com
-Subject: Re: [PATCH 5 3/4] nfsd_open(): rename 'int access' to 'int
- may_flags' in nfsd_open()
-Message-ID: <20120306000837.GA17164@thunk.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120109132158.2616029.30467.stgit@localhost.localdomain>
- <20120109132153.2616029.26302.stgit@localhost.localdomain>
+Received: from mx2.netapp.com ([216.240.18.37]:46134 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754409Ab2CUTq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:46:57 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 12/12] NFSv4.1 have filelayout_initiate_commit return void
+Date: Wed, 21 Mar 2012 15:46:24 -0400
+Message-Id: <1332359184-1887-13-git-send-email-andros@netapp.com>
+In-Reply-To: <1332359184-1887-1-git-send-email-andros@netapp.com>
+References: <1332359184-1887-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 09, 2012 at 02:21:53PM +0100, Bernd Schubert wrote:
-> Just rename this variable, as the next patch will add a flag and
-> 'access' as variable name would not be correct any more.
-> 
-> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> Acked-by: J. Bruce Fields<bfields@redhat.com>
-> ---
->  fs/nfsd/vfs.c |   18 ++++++++++--------
->  1 files changed, 10 insertions(+), 8 deletions(-)
+From: Andy Adamson <andros@netapp.com>
 
-On Mon, Jan 09, 2012 at 02:21:58PM +0100, Bernd Schubert wrote:
-> Use 32-bit or 64-bit llseek() hashes for directory offsets depending on
-> the NFS version. NFSv2 gets 32-bit hashes only.
-> 
-> NOTE: This patch got rather complex as Christoph asked to set the
-> filp->f_mode flag in the open call or immediatly after dentry_open()
-> in nfsd_open() to avoid races.
-> Personally I still do not see a reason for that and in my opinion
-> FMODE_32BITHASH/FMODE_64BITHASH flags could be set nfsd_readdir(), as it
-> follows directly after nfsd_open() without a chance of races.
-> 
-> Signed-off-by: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-> Acked-by: J. Bruce Fields<bfields@redhat.com>
-> ---
->  fs/nfsd/vfs.c |   15 +++++++++++++--
->  fs/nfsd/vfs.h |    2 ++
->  2 files changed, 15 insertions(+), 2 deletions(-)
+The return is ignored.
 
-NFS folks,
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-Since Bruce has ack'ed these patches I assume it will be OK if I carry
-them in the ext4 tree for merging?  (They depend on changes in ext4
-found in the first two patches of these patch series.)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index ee0159b..9df7c17 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -972,7 +972,7 @@ select_ds_fh_from_commit(struct pnfs_layout_segment *lseg, u32 i)
+ 	return flseg->fh_array[i];
+ }
+ 
+-static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
++static void filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ {
+ 	struct pnfs_layout_segment *lseg = data->lseg;
+ 	struct nfs4_pnfs_ds *ds;
+@@ -984,7 +984,7 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 	if (!ds) {
+ 		prepare_to_resend_writes(data);
+ 		filelayout_commit_release(data);
+-		return -EAGAIN;
++		return;
+ 	}
+ 	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
+ 		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+@@ -994,9 +994,9 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
+ 		data->args.fh = fh;
+-	return nfs_initiate_commit(data, ds->ds_clp->cl_rpcclient,
+-				   &filelayout_commit_call_ops, how,
+-				    RPC_TASK_SOFTCONN);
++	nfs_initiate_commit(data, ds->ds_clp->cl_rpcclient,
++			    &filelayout_commit_call_ops, how,
++			    RPC_TASK_SOFTCONN);
+ }
+ 
+ /*
+-- 
+1.7.6.4
 
-						- Ted
