@@ -1,58 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24394 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51033 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756323Ab2CAQS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Mar 2012 11:18:27 -0500
-Received: from vmwexceht01-prd.hq.netapp.com ([10.106.76.239])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q21GIR9x025388
-	for <linux-nfs@vger.kernel.org>; Thu, 1 Mar 2012 08:18:27 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.1: Get rid of redundant NFS4CLNT_LAYOUTRECALL
- tests
-Date: Thu, 1 Mar 2012 16:18:25 +0000
-Message-ID: <1330618704.9416.1.camel@lade.trondhjem.org>
-References: <1330558445-4583-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <4F4F9828.9040808@netapp.com>
-In-Reply-To: <4F4F9828.9040808@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752881Ab2CUX70 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 19:59:26 -0400
+Date: Wed, 21 Mar 2012 19:59:46 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v10 2/8] nfsd: add nfsd4_client_tracking_ops struct and
+ a way to set it
+Message-ID: <20120321195946.67c88cf9@redhat.com>
+In-Reply-To: <1332337929-18580-3-git-send-email-jlayton@redhat.com>
+References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
+	<1332337929-18580-3-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTAzLTAxIGF0IDEwOjM5IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDAyLzI5LzIwMTIgMDY6MzQgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+
-ID4gVGhlIE5GUzRDTE5UX0xBWU9VVFJFQ0FMTCB0ZXN0cyBpbiBwbmZzX2xheW91dF9wcm9jZXNz
-IGFuZA0KPiA+IHBuZnNfdXBkYXRlX2xheW91dCBhcmUgcmVkdW5kYW50Lg0KPiA+IA0KPiA+IElu
-IHRoZSBjYXNlIG9mIGEgYnVsayBsYXlvdXQgcmVjYWxsLCB3ZSdyZSBhbHdheXMgdGVzdGluZyBm
-b3INCj4gPiB0aGUgTkZTX0xBWU9VVF9CVUxLX1JFQ0FMTCBmbGF5IGFueXdheS4NCj4gPiBJbiB0
-aGUgY2FzZSBvZiBhIGZpbGUgb3Igc2VnbWVudCByZWNhbGwsIHRoZSBjYWxsIHRvDQo+ID4gcG5m
-c19zZXRfbGF5b3V0X3N0YXRlaWQoKSB1cGRhdGVzIHRoZSBsYXlvdXRfaGVhZGVyICdiYXJyaWVy
-Jw0KPiA+IHNlcXVlbmNlIGlkLCB3aGljaCB0cmlnZ2VycyB0aGUgdGVzdCBpbiBwbmZzX2xheW91
-dGdldHNfYmxvY2tlZCgpDQo+ID4gYW5kIGlzIGxlc3MgcmFjZS1wcm9uZSB0aGFuIE5GUzRDTE5U
-X0xBWU9VVFJFQ0FMTCBhbnl3YXkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
-bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZz
-L3BuZnMuYyB8ICAgIDYgKystLS0tDQo+ID4gIDEgZmlsZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25z
-KCspLCA0IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvcG5mcy5j
-IGIvZnMvbmZzL3BuZnMuYw0KPiA+IGluZGV4IGE1MzQyMTYuLjljMTlmOTIgMTAwNjQ0DQo+ID4g
-LS0tIGEvZnMvbmZzL3BuZnMuYw0KPiA+ICsrKyBiL2ZzL25mcy9wbmZzLmMNCj4gPiBAQCAtOTY2
-LDggKzk2Niw3IEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywNCj4gPiAg
-CX0NCj4gPiAgDQo+ID4gIAkvKiBEbyB3ZSBldmVuIG5lZWQgdG8gYm90aGVyIHdpdGggdGhpcz8g
-Ki8NCj4gPiAtCWlmICh0ZXN0X2JpdChORlM0Q0xOVF9MQVlPVVRSRUNBTEwsICZjbHAtPmNsX3N0
-YXRlKSB8fA0KPiA+IC0JICAgIHRlc3RfYml0KE5GU19MQVlPVVRfQlVMS19SRUNBTEwsICZsby0+
-cGxoX2ZsYWdzKSkgew0KPiA+ICsJaWYgKHRlc3RfYml0KE5GU19MQVlPVVRfQlVMS19SRUNBTEws
-ICZsby0+cGxoX2ZsYWdzKSkgew0KPiA+ICAJCWRwcmludGsoIiVzIG1hdGNoZXMgcmVjYWxsLCB1
-c2UgTURTXG4iLCBfX2Z1bmNfXyk7DQo+ID4gIAkJZ290byBvdXRfdW5sb2NrOw0KPiA+ICAJfQ0K
-PiA+IEBAIC0xMDQ4LDggKzEwNDcsNyBAQCBwbmZzX2xheW91dF9wcm9jZXNzKHN0cnVjdCBuZnM0
-X2xheW91dGdldCAqbGdwKQ0KPiA+ICAJfQ0KPiA+ICANCj4gPiAgCXNwaW5fbG9jaygmaW5vLT5p
-X2xvY2spOw0KPiA+IC0JaWYgKHRlc3RfYml0KE5GUzRDTE5UX0xBWU9VVFJFQ0FMTCwgJmNscC0+
-Y2xfc3RhdGUpIHx8DQo+ID4gLQkgICAgdGVzdF9iaXQoTkZTX0xBWU9VVF9CVUxLX1JFQ0FMTCwg
-JmxvLT5wbGhfZmxhZ3MpKSB7DQo+IA0KPiANCj4gVGhpcyB3YXMgdGhlIG9ubHkgcGxhY2UgdGhh
-dCB0aGUgY2xwIHN0cnVjdHVyZSB3YXMgdXNlZCwgc28geW91IGNvdWxkIHByb2JhYmx5IHJlbW92
-ZSBpdCB0byBhdm9pZCB0aGlzIHdhcm5pbmc6DQo+IA0KPiBmcy9uZnMvcG5mcy5jOiBJbiBmdW5j
-dGlvbiAncG5mc19sYXlvdXRfcHJvY2Vzcyc6DQo+IGZzL25mcy9wbmZzLmM6MTA1ODoyMTogd2Fy
-bmluZzogdW51c2VkIHZhcmlhYmxlICdjbHAnIFstV3VudXNlZC12YXJpYWJsZV0NCg0KRG9uZS4g
-VGhhbmtzIGZvciBzcG90dGluZyB0aGF0IQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Wed, 21 Mar 2012 09:52:03 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> Abstract out the mechanism that we use to track clients into a set of
+> client name tracking functions.
+> 
+> This gives us a mechanism to plug in a new set of client tracking
+> functions without disturbing the callers. It also gives us a way to
+> decide on what tracking scheme to use at runtime.
+> 
+> For now, this just looks like pointless abstraction, but later we'll
+> add a new alternate scheme for tracking clients on stable storage.
+> 
+> Note too that this patch anticipates the eventual containerization
+> of this code by passing in struct net pointers in places. No attempt
+> is made to containerize the legacy client tracker however.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4recover.c |  136 +++++++++++++++++++++++++++++++++++++++++++++----
+>  fs/nfsd/nfs4state.c   |   61 +++++++---------------
+>  fs/nfsd/state.h       |   15 +++--
+>  3 files changed, 155 insertions(+), 57 deletions(-)
+> 
+
+Bruce pointed out that I missed converting a spot in the new fault
+injection code, so I've followed this up with a v11 patch that fixes
+that problem.
+
+Cheers!
+-- 
+Jeff Layton <jlayton@redhat.com>
