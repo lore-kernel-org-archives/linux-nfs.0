@@ -1,69 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44676 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:58708 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752787Ab2CWMMJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Mar 2012 08:12:09 -0400
-Date: Fri, 23 Mar 2012 08:12:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v10 3/8] sunrpc: create nfsd dir in rpc_pipefs
-Message-ID: <20120323121208.GA3219@fieldses.org>
-References: <1332337929-18580-1-git-send-email-jlayton@redhat.com>
- <1332337929-18580-4-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1332337929-18580-4-git-send-email-jlayton@redhat.com>
+	id S1758173Ab2CUPVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 11:21:15 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 06/23] NFS: Create a single nfs_clone_super() function
+Date: Wed, 21 Mar 2012 11:20:36 -0400
+Message-Id: <1332343253-24970-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 21, 2012 at 09:52:04AM -0400, Jeff Layton wrote:
-> Add a new top-level dir in rpc_pipefs to hold the pipe for the clientid
-> upcall.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-After applying this patch, my tests consistently hang.  The hang happens
-in excltest (of the special connectaton tests), over nfs4.1 and krb5.
-Looking at the wire traffic, I'm seeing DELAY returned from a setattr
-for mode on a newly-created (with EXCLUSIVE4_1) file.  That open got a
-delegation, so presumably that's what's causing the DELAY, though I'm
-not seeing the server send a recall.  That could be a krb5 bug.
+v2 and v3 shared a function for this, but v4 implemented something
+different.  When I looked closer at the v4 implementation, I found it
+was basically doing the same thing as v3.  Might as well share the code
+whenever possible...
 
-Whatever bug there is here, it's hard to tell why this patch in
-particular would make it more likely.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |   33 +++++++--------------------------
+ 1 file changed, 7 insertions(+), 26 deletions(-)
 
-So, still investigating!
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index de9b4f4..16ceae3 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2153,7 +2153,7 @@ static void nfs_fill_super(struct super_block *sb,
+ }
+ 
+ /*
+- * Finish setting up a cloned NFS2/3 superblock
++ * Finish setting up a cloned NFS2/3/4 superblock
+  */
+ static void nfs_clone_super(struct super_block *sb,
+ 			    const struct super_block *old_sb)
+@@ -2163,17 +2163,18 @@ static void nfs_clone_super(struct super_block *sb,
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+ 	sb->s_blocksize = old_sb->s_blocksize;
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
++	sb->s_xattr = old_sb->s_xattr;
++	sb->s_op = old_sb->s_op;
++	sb->s_time_gran = 1;
+ 
+-	if (server->nfs_client->rpc_ops->version == 3) {
++	if (server->nfs_client->rpc_ops->version != 2) {
+ 		/* The VFS shouldn't apply the umask to mode bits. We will do
+ 		 * so ourselves when necessary.
+ 		 */
+ 		sb->s_flags |= MS_POSIXACL;
+-		sb->s_time_gran = 1;
+ 	}
+ 
+-	sb->s_op = old_sb->s_op;
+- 	nfs_initialise_sb(sb);
++	nfs_initialise_sb(sb);
+ }
+ 
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+@@ -2526,26 +2527,6 @@ error_splat_bdi:
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+- * Finish setting up a cloned NFS4 superblock
+- */
+-static void nfs4_clone_super(struct super_block *sb,
+-			    const struct super_block *old_sb)
+-{
+-	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+-	sb->s_blocksize = old_sb->s_blocksize;
+-	sb->s_maxbytes = old_sb->s_maxbytes;
+-	sb->s_time_gran = 1;
+-	sb->s_op = old_sb->s_op;
+-	/*
+-	 * The VFS shouldn't apply the umask to mode bits. We will do
+-	 * so ourselves when necessary.
+-	 */
+-	sb->s_flags  |= MS_POSIXACL;
+-	sb->s_xattr  = old_sb->s_xattr;
+-	nfs_initialise_sb(sb);
+-}
+-
+-/*
+  * Set up an NFS4 superblock
+  */
+ static void nfs4_fill_super(struct super_block *sb)
+@@ -3008,7 +2989,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
+ 
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs4_clone_super(s, data->sb);
++		nfs_clone_super(s, data->sb);
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
+ 
+-- 
+1.7.9.4
 
---b.
-
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/rpc_pipe.c |    5 +++++
->  1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index 8584ec0..e651e1b 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -1014,6 +1014,7 @@ enum {
->  	RPCAUTH_statd,
->  	RPCAUTH_nfsd4_cb,
->  	RPCAUTH_cache,
-> +	RPCAUTH_nfsd,
->  	RPCAUTH_RootEOF
->  };
->  
-> @@ -1046,6 +1047,10 @@ static const struct rpc_filelist files[] = {
->  		.name = "cache",
->  		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
->  	},
-> +	[RPCAUTH_nfsd] = {
-> +		.name = "nfsd",
-> +		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-> +	},
->  };
->  
->  /*
-> -- 
-> 1.7.7.6
-> 
