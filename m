@@ -1,166 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:52125 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759517Ab2CTX3F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2012 19:29:05 -0400
-Message-ID: <4F6912A4.1000502@panasas.com>
-Date: Tue, 20 Mar 2012 16:28:36 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Andrew Morton <akpm@linux-foundation.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, <keyrings@linux-nfs.org>,
-        <linux-security-module@vger.kernel.org>
-CC: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg Kroah-Hartman <gregkh@suse.de>
-Subject: [PATCH 3/4] kmod: Move call_usermodehelper_fns() to .c file and unexport
- it's helpers
-References: <4F691059.30405@panasas.com>
-In-Reply-To: <4F691059.30405@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from 178.141.211.66.inaddr.G4.NET ([66.211.141.178]:46529 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1750966Ab2CUVAR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 17:00:17 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20] helo=tophat.home.4dicksons.org.home.4dicksons.org)
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1SASdi-0003nW-DY
+	for linux-nfs@vger.kernel.org; Wed, 21 Mar 2012 17:00:15 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] gssd: Look for user creds in user defined directory
+Date: Wed, 21 Mar 2012 17:00:13 -0400
+Message-Id: <1332363613-9930-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The user credential cache currently is kept in /tmp.
+In upcoming Kerberos release that will be moved to
+/run/user/<username>/. This patch enables gssd to
+look in both the old and new caches
 
-If we move call_usermodehelper_fns() to kmod.c file and EXPORT_SYMBOL it
-we can avoid exporting all it's helper functions:
-	call_usermodehelper_setup
-	call_usermodehelper_setfns
-	call_usermodehelper_exec
-And make all of them static to kmod.c
-
-Since the optimizer will see all these as a single call site it will inline them
-inside call_usermodehelper_fns(). So we loose the call to _fns but gain 3
-calls to the helpers. (Not that it matters)
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- include/linux/kmod.h |   30 ++----------------------------
- kernel/kmod.c        |   25 ++++++++++++++++++++++---
- 2 files changed, 24 insertions(+), 31 deletions(-)
+ utils/gssd/gssd.c      |    2 +-
+ utils/gssd/gssd.h      |    1 +
+ utils/gssd/gssd_proc.c |   36 ++++++++++++++++++++++++++++++++++--
+ 3 files changed, 36 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/kmod.h b/include/linux/kmod.h
-index 936d197..5a89c00 100644
---- a/include/linux/kmod.h
-+++ b/include/linux/kmod.h
-@@ -67,37 +67,11 @@ struct subprocess_info {
- 	void *data;
- };
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index ccadb07..d53795e 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -57,7 +57,7 @@
  
--/* Allocate a subprocess_info structure */
--struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
--						  char **envp, gfp_t gfp_mask);
--
--/* Set various pieces of state into the subprocess_info structure */
--void call_usermodehelper_setfns(struct subprocess_info *info,
--		    int (*init)(struct subprocess_info *info, struct cred *new),
--		    void (*cleanup)(struct subprocess_info *info),
--		    void *data);
--
--/* Actually execute the sub-process */
--int call_usermodehelper_exec(struct subprocess_info *info, enum umh_wait wait);
--
--static inline int
-+extern int
- call_usermodehelper_fns(char *path, char **argv, char **envp,
- 			enum umh_wait wait,
- 			int (*init)(struct subprocess_info *info, struct cred *new),
--			void (*cleanup)(struct subprocess_info *), void *data)
--{
--	struct subprocess_info *info;
--	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
--
--	info = call_usermodehelper_setup(path, argv, envp, gfp_mask);
--
--	if (info == NULL)
--		return -ENOMEM;
--
--	call_usermodehelper_setfns(info, init, cleanup, data);
--
--	return call_usermodehelper_exec(info, wait);
--}
-+			void (*cleanup)(struct subprocess_info *), void *data);
+ char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+ char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+-char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
++char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR ":" GSSD_USER_CRED_DIR;
+ char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
+ int  use_memcache = 0;
+ int  root_uses_machine_creds = 1;
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index 40f824c..28a8206 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -45,6 +45,7 @@
+ #define DNOTIFY_SIGNAL		(SIGRTMIN + 3)
  
- static inline int
- call_usermodehelper(char *path, char **argv, char **envp, enum umh_wait wait)
-diff --git a/kernel/kmod.c b/kernel/kmod.c
-index c268f34..3cb7457 100644
---- a/kernel/kmod.c
-+++ b/kernel/kmod.c
-@@ -378,6 +378,7 @@ static void helper_unlock(void)
-  * structure.  This should be passed to call_usermodehelper_exec to
-  * exec the process and free the structure.
-  */
-+static
- struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
- 						  char **envp, gfp_t gfp_mask)
- {
-@@ -393,7 +394,6 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
-   out:
- 	return sub_info;
+ #define GSSD_DEFAULT_CRED_DIR			"/tmp"
++#define GSSD_USER_CRED_DIR			"/run/user"
+ #define GSSD_DEFAULT_CRED_PREFIX		"krb5cc_"
+ #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+ #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index a51dbae..aa39435 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -918,6 +918,23 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	goto out;
  }
--EXPORT_SYMBOL(call_usermodehelper_setup);
  
- /**
-  * call_usermodehelper_setfns - set a cleanup/init function
-@@ -411,6 +411,7 @@ EXPORT_SYMBOL(call_usermodehelper_setup);
-  * Function must be runnable in either a process context or the
-  * context in which call_usermodehelper_exec is called.
-  */
-+static
- void call_usermodehelper_setfns(struct subprocess_info *info,
- 		    int (*init)(struct subprocess_info *info, struct cred *new),
- 		    void (*cleanup)(struct subprocess_info *info),
-@@ -420,7 +421,6 @@ void call_usermodehelper_setfns(struct subprocess_info *info,
- 	info->init = init;
- 	info->data = data;
- }
--EXPORT_SYMBOL(call_usermodehelper_setfns);
- 
- /**
-  * call_usermodehelper_exec - start a usermode application
-@@ -434,6 +434,7 @@ EXPORT_SYMBOL(call_usermodehelper_setfns);
-  * asynchronously if wait is not set, and runs as a child of keventd.
-  * (ie. it runs with full root capabilities).
-  */
-+static
- int call_usermodehelper_exec(struct subprocess_info *sub_info,
- 			     enum umh_wait wait)
- {
-@@ -464,7 +465,25 @@ unlock:
- 	helper_unlock();
- 	return retval;
- }
--EXPORT_SYMBOL(call_usermodehelper_exec);
-+
-+int call_usermodehelper_fns(char *path, char **argv, char **envp,
-+			enum umh_wait wait,
-+			int (*init)(struct subprocess_info *info, struct cred *new),
-+			void (*cleanup)(struct subprocess_info *), void *data)
++static char *
++user_cachedir(char *dirname, uid_t uid)
 +{
-+	struct subprocess_info *info;
-+	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
++	struct passwd *pw;
++	char *ptr;
 +
-+	info = call_usermodehelper_setup(path, argv, envp, gfp_mask);
++	if ((pw = getpwuid(uid)) == NULL) {
++		printerr(0, "user_cachedir: Failed to find '%d' uid"
++			    " for cache directory\n");
++		return NULL;
++	}
++	ptr = malloc(strlen(dirname)+strlen(pw->pw_name)+2);
++	if (ptr)
++		sprintf(ptr, "%s/%s", dirname, pw->pw_name);
 +
-+	if (info == NULL)
-+		return -ENOMEM;
-+
-+	call_usermodehelper_setfns(info, init, cleanup, data);
-+
-+	return call_usermodehelper_exec(info, wait);
++	return ptr;
 +}
-+EXPORT_SYMBOL(call_usermodehelper_fns);
+ /*
+  * this code uses the userland rpcsec gss library to create a krb5
+  * context on behalf of the kernel
+@@ -932,7 +949,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 	gss_buffer_desc		token;
+ 	char			**credlist = NULL;
+ 	char			**ccname;
+-	char			**dirname;
++	char			**dirname, *dir, *userdir;
+ 	int			create_resp = -1;
+ 	int			err, downcall_err = -EACCES;
  
- static int proc_cap_handler(struct ctl_table *table, int write,
- 			 void __user *buffer, size_t *lenp, loff_t *ppos)
+@@ -975,7 +992,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 				service == NULL)) {
+ 		/* Tell krb5 gss which credentials cache to use */
+ 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+-			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
++			/* See if the user name is needed */
++			if (strncmp(*dirname, GSSD_USER_CRED_DIR, 
++					strlen(GSSD_USER_CRED_DIR)) == 0) {
++				userdir = user_cachedir(*dirname, uid);
++				if (userdir == NULL) 
++					continue;
++				dir = userdir;
++			} else
++				dir = *dirname;
++
++			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, dir);
++
++			if (userdir) {
++				free(userdir);
++				userdir = NULL;
++			}
+ 			if (err == -EKEYEXPIRED)
+ 				downcall_err = -EKEYEXPIRED;
+ 			else if (!err)
 -- 
-1.7.6.2
+1.7.7.5
 
