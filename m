@@ -1,365 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53728 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:23382 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758826Ab2CUPVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 11:21:20 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 16/23] NFS: Move the v4 getroot code to nfs4getroot.c
-Date: Wed, 21 Mar 2012 11:20:46 -0400
-Message-Id: <1332343253-24970-17-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+	id S1760226Ab2CUUjR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 16:39:17 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2LKdG89024695
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Mar 2012 13:39:17 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 05/12] NFSv4.1: mark deviceid invalid on
+ filelayout DS connection errors
+Date: Wed, 21 Mar 2012 20:39:14 +0000
+Message-ID: <1332362355.12332.8.camel@lade.trondhjem.org>
+References: <1332359184-1887-1-git-send-email-andros@netapp.com>
+	 <1332359184-1887-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1332359184-1887-6-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Makefile      |    3 +-
- fs/nfs/getroot.c     |  135 +-------------------------------------------------
- fs/nfs/nfs.h         |    3 ++
- fs/nfs/nfs4getroot.c |  135 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 141 insertions(+), 135 deletions(-)
- create mode 100644 fs/nfs/nfs4getroot.c
-
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index cf8b669..8028e09 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -12,7 +12,8 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   nfs4super.o delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
--			   nfs4namespace.o nfs4sysctl.o nfs4client.o
-+			   nfs4namespace.o nfs4sysctl.o nfs4client.o \
-+			   nfs4getroot.o
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index dcb6154..f6a14a6 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -23,11 +23,9 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_mount.h>
--#include <linux/nfs4_mount.h>
- #include <linux/lockd/bind.h>
- #include <linux/seq_file.h>
- #include <linux/mount.h>
--#include <linux/nfs_idmap.h>
- #include <linux/vfs.h>
- #include <linux/namei.h>
- #include <linux/security.h>
-@@ -35,17 +33,13 @@
- #include <asm/system.h>
- #include <asm/uaccess.h>
- 
--#include "nfs4_fs.h"
--#include "delegation.h"
--#include "internal.h"
--
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- /*
-  * Set the superblock root dentry.
-  * Note that this function frees the inode in case of error.
-  */
--static int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *inode)
-+int nfs_superblock_set_dummy_root(struct super_block *sb, struct inode *inode)
- {
- 	/* The mntroot acts as the dummy root dentry for this superblock */
- 	if (sb->s_root == NULL) {
-@@ -138,130 +132,3 @@ out:
- 	nfs_free_fattr(fsinfo.fattr);
- 	return ret;
- }
--
--#ifdef CONFIG_NFS_V4
--
--int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
--{
--	struct nfs_fsinfo fsinfo;
--	int ret = -ENOMEM;
--
--	dprintk("--> nfs4_get_rootfh()\n");
--
--	fsinfo.fattr = nfs_alloc_fattr();
--	if (fsinfo.fattr == NULL)
--		goto out;
--
--	/* Start by getting the root filehandle from the server */
--	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
--	if (ret < 0) {
--		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
--		goto out;
--	}
--
--	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
--			|| !S_ISDIR(fsinfo.fattr->mode)) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot encountered non-directory\n");
--		ret = -ENOTDIR;
--		goto out;
--	}
--
--	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
--		printk(KERN_ERR "nfs4_get_rootfh:"
--		       " getroot obtained referral\n");
--		ret = -EREMOTE;
--		goto out;
--	}
--
--	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
--out:
--	nfs_free_fattr(fsinfo.fattr);
--	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
--	return ret;
--}
--
--/*
-- * get an NFS4 root dentry from the root filehandle
-- */
--struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
--			     const char *devname)
--{
--	struct nfs_server *server = NFS_SB(sb);
--	struct nfs_fattr *fattr = NULL;
--	struct dentry *ret;
--	struct inode *inode;
--	void *name = kstrdup(devname, GFP_KERNEL);
--	int error;
--
--	dprintk("--> nfs4_get_root()\n");
--
--	if (!name)
--		return ERR_PTR(-ENOMEM);
--
--	/* get the info about the server and filesystem */
--	error = nfs4_server_capabilities(server, mntfh);
--	if (error < 0) {
--		dprintk("nfs_get_root: getcaps error = %d\n",
--			-error);
--		kfree(name);
--		return ERR_PTR(error);
--	}
--
--	fattr = nfs_alloc_fattr();
--	if (fattr == NULL) {
--		kfree(name);
--		return ERR_PTR(-ENOMEM);
--	}
--
--	/* get the actual root for this mount */
--	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
--	if (error < 0) {
--		dprintk("nfs_get_root: getattr error = %d\n", -error);
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
--	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
--		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
--
--	inode = nfs_fhget(sb, mntfh, fattr);
--	if (IS_ERR(inode)) {
--		dprintk("nfs_get_root: get root inode failed\n");
--		ret = ERR_CAST(inode);
--		goto out;
--	}
--
--	error = nfs_superblock_set_dummy_root(sb, inode);
--	if (error != 0) {
--		ret = ERR_PTR(error);
--		goto out;
--	}
--
--	/* root dentries normally start off anonymous and get spliced in later
--	 * if the dentry tree reaches them; however if the dentry already
--	 * exists, we'll pick it up at this point and use it as the root
--	 */
--	ret = d_obtain_alias(inode);
--	if (IS_ERR(ret)) {
--		dprintk("nfs_get_root: get root dentry failed\n");
--		goto out;
--	}
--
--	security_d_instantiate(ret, inode);
--	spin_lock(&ret->d_lock);
--	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
--		ret->d_fsdata = name;
--		name = NULL;
--	}
--	spin_unlock(&ret->d_lock);
--out:
--	if (name)
--		kfree(name);
--	nfs_free_fattr(fattr);
--	dprintk("<-- nfs4_get_root()\n");
--	return ret;
--}
--
--#endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
-index d53f350..877ca24 100644
---- a/fs/nfs/nfs.h
-+++ b/fs/nfs/nfs.h
-@@ -83,6 +83,9 @@ int nfs_link(struct dentry *, struct inode *, struct dentry *);
- int nfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- int nfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
- 
-+/* Exported in getroot.c */
-+int nfs_superblock_set_dummy_root(struct super_block *, struct inode *);
-+
- /* Exported in namespace.c */
- struct vfsmount *_nfs_do_submount(struct file_system_type *, struct dentry *,
- 				  struct nfs_fh *, struct nfs_fattr *, rpc_authflavor_t);
-diff --git a/fs/nfs/nfs4getroot.c b/fs/nfs/nfs4getroot.c
-new file mode 100644
-index 0000000..14eea8d
---- /dev/null
-+++ b/fs/nfs/nfs4getroot.c
-@@ -0,0 +1,135 @@
-+/*
-+ * Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+#include <linux/sunrpc/sched.h>
-+#include <linux/dcache.h>
-+#include <linux/nfs_fs.h>
-+#include <linux/nfs_xdr.h>
-+
-+#include "nfs4_fs.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_CLIENT
-+
-+int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh)
-+{
-+	struct nfs_fsinfo fsinfo;
-+	int ret = -ENOMEM;
-+
-+	dprintk("--> nfs4_get_rootfh()\n");
-+
-+	fsinfo.fattr = nfs_alloc_fattr();
-+	if (fsinfo.fattr == NULL)
-+		goto out;
-+
-+	/* Start by getting the root filehandle from the server */
-+	ret = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
-+	if (ret < 0) {
-+		dprintk("nfs4_get_rootfh: getroot error = %d\n", -ret);
-+		goto out;
-+	}
-+
-+	if (!(fsinfo.fattr->valid & NFS_ATTR_FATTR_TYPE)
-+			|| !S_ISDIR(fsinfo.fattr->mode)) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot encountered non-directory\n");
-+		ret = -ENOTDIR;
-+		goto out;
-+	}
-+
-+	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-+		printk(KERN_ERR "nfs4_get_rootfh:"
-+		       " getroot obtained referral\n");
-+		ret = -EREMOTE;
-+		goto out;
-+	}
-+
-+	memcpy(&server->fsid, &fsinfo.fattr->fsid, sizeof(server->fsid));
-+out:
-+	nfs_free_fattr(fsinfo.fattr);
-+	dprintk("<-- nfs4_get_rootfh() = %d\n", ret);
-+	return ret;
-+}
-+
-+/*
-+ * get an NFS4 root dentry from the root filehandle
-+ */
-+struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh,
-+			     const char *devname)
-+{
-+	struct nfs_server *server = NFS_SB(sb);
-+	struct nfs_fattr *fattr = NULL;
-+	struct dentry *ret;
-+	struct inode *inode;
-+	void *name = kstrdup(devname, GFP_KERNEL);
-+	int error;
-+
-+	dprintk("--> nfs4_get_root()\n");
-+
-+	if (!name)
-+		return ERR_PTR(-ENOMEM);
-+
-+	/* get the info about the server and filesystem */
-+	error = nfs4_server_capabilities(server, mntfh);
-+	if (error < 0) {
-+		dprintk("nfs_get_root: getcaps error = %d\n",
-+			-error);
-+		kfree(name);
-+		return ERR_PTR(error);
-+	}
-+
-+	fattr = nfs_alloc_fattr();
-+	if (fattr == NULL) {
-+		kfree(name);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
-+	/* get the actual root for this mount */
-+	error = server->nfs_client->rpc_ops->getattr(server, mntfh, fattr);
-+	if (error < 0) {
-+		dprintk("nfs_get_root: getattr error = %d\n", -error);
-+		ret = ERR_PTR(error);
-+		goto out;
-+	}
-+
-+	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
-+	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
-+		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
-+
-+	inode = nfs_fhget(sb, mntfh, fattr);
-+	if (IS_ERR(inode)) {
-+		dprintk("nfs_get_root: get root inode failed\n");
-+		ret = ERR_CAST(inode);
-+		goto out;
-+	}
-+
-+	error = nfs_superblock_set_dummy_root(sb, inode);
-+	if (error != 0) {
-+		ret = ERR_PTR(error);
-+		goto out;
-+	}
-+
-+	/* root dentries normally start off anonymous and get spliced in later
-+	 * if the dentry tree reaches them; however if the dentry already
-+	 * exists, we'll pick it up at this point and use it as the root
-+	 */
-+	ret = d_obtain_alias(inode);
-+	if (IS_ERR(ret)) {
-+		dprintk("nfs_get_root: get root dentry failed\n");
-+		goto out;
-+	}
-+
-+	security_d_instantiate(ret, inode);
-+	spin_lock(&ret->d_lock);
-+	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
-+		ret->d_fsdata = name;
-+		name = NULL;
-+	}
-+	spin_unlock(&ret->d_lock);
-+out:
-+	if (name)
-+		kfree(name);
-+	nfs_free_fattr(fattr);
-+	dprintk("<-- nfs4_get_root()\n");
-+	return ret;
-+}
--- 
-1.7.9.4
-
+T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ2IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoaXMg
+cHJldmVudHMgdGhlIHVzZSBvZiBhbnkgbGF5b3V0IGZvciBpL28gdGhhdCByZWZlcmVuY2VzIHRo
+ZSBkZXZpY2VpZC4NCj4gSS9PIGlzIHJlZGlyZWN0ZWQgdGhyb3VnaCB0aGUgTURTLg0KPiANCj4g
+UmVkaXJlY3QgdGhlIHVuaGFuZGxlZCBmYWlsZWQgSS9PIHRvIHRoZSBNRFMgd2l0aG91dCBtYXJr
+aW5nIGVpdGhlciB0aGUNCj4gbGF5b3V0IG9yIHRoZSBkZXZpY2VpZCBpbnZhbGlkLg0KPiANCj4g
+U2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+
+ICBmcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyB8ICAgNjUgKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKy0tLS0tLS0tLS0tLQ0KPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmggfCAgICA2
+ICsrKysNCj4gIDIgZmlsZXMgY2hhbmdlZCwgNTQgaW5zZXJ0aW9ucygrKSwgMTcgZGVsZXRpb25z
+KC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgYi9mcy9uZnMv
+bmZzNGZpbGVsYXlvdXQuYw0KPiBpbmRleCAzODAyOTM3Li4xZjFiZTI2IDEwMDY0NA0KPiAtLS0g
+YS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvbmZzNGZpbGVsYXlvdXQu
+Yw0KPiBAQCAtMTE2LDcgKzExNiw3IEBAIHZvaWQgZmlsZWxheW91dF9yZXNldF9yZWFkKHN0cnVj
+dCBycGNfdGFzayAqdGFzaywgc3RydWN0IG5mc19yZWFkX2RhdGEgKmRhdGEpDQo+ICBzdGF0aWMg
+aW50IGZpbGVsYXlvdXRfYXN5bmNfaGFuZGxlX2Vycm9yKHN0cnVjdCBycGNfdGFzayAqdGFzaywN
+Cj4gIAkJCQkJIHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwNCj4gIAkJCQkJIHN0cnVjdCBuZnNf
+Y2xpZW50ICpjbHAsDQo+IC0JCQkJCSBpbnQgKnJlc2V0KQ0KPiArCQkJCQkgdW5zaWduZWQgbG9u
+ZyAqcmVzZXQpDQo+ICB7DQo+ICAJc3RydWN0IG5mc19zZXJ2ZXIgKm1kc19zZXJ2ZXIgPSBORlNf
+U0VSVkVSKHN0YXRlLT5pbm9kZSk7DQo+ICAJc3RydWN0IG5mc19jbGllbnQgKm1kc19jbGllbnQg
+PSBtZHNfc2VydmVyLT5uZnNfY2xpZW50Ow0KPiBAQCAtMTU4LDEwICsxNTgsMjMgQEAgc3RhdGlj
+IGludCBmaWxlbGF5b3V0X2FzeW5jX2hhbmRsZV9lcnJvcihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ss
+DQo+ICAJCWJyZWFrOw0KPiAgCWNhc2UgLU5GUzRFUlJfUkVUUllfVU5DQUNIRURfUkVQOg0KPiAg
+CQlicmVhazsNCj4gKwkvKiBSUEMgY29ubmVjdGlvbiBlcnJvcnMgKi8NCj4gKwljYXNlIC1FQ09O
+TlJFRlVTRUQ6DQo+ICsJY2FzZSAtRUhPU1RET1dOOg0KPiArCWNhc2UgLUVIT1NUVU5SRUFDSDoN
+Cj4gKwljYXNlIC1FTkVUVU5SRUFDSDoNCj4gKwljYXNlIC1FSU86DQo+ICsJY2FzZSAtRVRJTUVE
+T1VUOg0KPiArCWNhc2UgLUVQSVBFOg0KPiArCQlkcHJpbnRrKCIlcyBEUyBjb25uZWN0aW9uIGVy
+cm9yLiBSZXRyeSB0aHJvdWdoIE1EUyAlZFxuIiwNCj4gKwkJCV9fZnVuY19fLCB0YXNrLT50a19z
+dGF0dXMpOw0KPiArCQlzZXRfYml0KE5GUzRfUkVTRVRfREVWSUNFSUQsIHJlc2V0KTsNCj4gKwkJ
+c2V0X2JpdChORlM0X1JFU0VUX1RPX01EUywgcmVzZXQpOw0KPiArCQlicmVhazsNCj4gIAlkZWZh
+dWx0Og0KPiAtCQlkcHJpbnRrKCIlcyBEUyBlcnJvci4gUmV0cnkgdGhyb3VnaCBNRFMgJWRcbiIs
+IF9fZnVuY19fLA0KPiAtCQkJdGFzay0+dGtfc3RhdHVzKTsNCj4gLQkJKnJlc2V0ID0gMTsNCj4g
+KwkJZHByaW50aygiJXMgVW5oYW5kbGVkIERTIGVycm9yLiBSZXRyeSB0aHJvdWdoIE1EUyAlZFxu
+IiwNCj4gKwkJCV9fZnVuY19fLCB0YXNrLT50a19zdGF0dXMpOw0KPiArCQlzZXRfYml0KE5GUzRf
+UkVTRVRfVE9fTURTLCByZXNldCk7DQo+ICAJCWJyZWFrOw0KPiAgCX0NCj4gIG91dDoNCj4gQEAg
+LTE3OSwxNiArMTkyLDIyIEBAIHdhaXRfb25fcmVjb3Zlcnk6DQo+ICBzdGF0aWMgaW50IGZpbGVs
+YXlvdXRfcmVhZF9kb25lX2NiKHN0cnVjdCBycGNfdGFzayAqdGFzaywNCj4gIAkJCQlzdHJ1Y3Qg
+bmZzX3JlYWRfZGF0YSAqZGF0YSkNCj4gIHsNCj4gLQlpbnQgcmVzZXQgPSAwOw0KPiArCXN0cnVj
+dCBuZnM0X2RldmljZWlkX25vZGUgKmRldmlkID0gRklMRUxBWU9VVF9ERVZJRF9OT0RFKGRhdGEt
+PmxzZWcpOw0KPiArCXVuc2lnbmVkIGxvbmcgcmVzZXQgPSAwOw0KPiAgDQo+ICAJZHByaW50aygi
+JXMgRFMgcmVhZFxuIiwgX19mdW5jX18pOw0KPiAgDQo+ICAJaWYgKGZpbGVsYXlvdXRfYXN5bmNf
+aGFuZGxlX2Vycm9yKHRhc2ssIGRhdGEtPmFyZ3MuY29udGV4dC0+c3RhdGUsDQo+ICAJCQkJCSAg
+ZGF0YS0+ZHNfY2xwLCAmcmVzZXQpID09IC1FQUdBSU4pIHsNCj4gLQkJZHByaW50aygiJXMgY2Fs
+bGluZyByZXN0YXJ0IGRzX2NscCAlcCBkc19jbHAtPmNsX3Nlc3Npb24gJXBcbiIsDQo+IC0JCQlf
+X2Z1bmNfXywgZGF0YS0+ZHNfY2xwLCBkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24pOw0KPiAtCQlp
+ZiAocmVzZXQpDQo+ICsNCj4gKwkJZHByaW50aygiJXMgcmVzZXQgMHglbHggZHNfY2xwICVwIHNl
+c3Npb24gJXBcbiIsIF9fZnVuY19fLA0KPiArCQkJcmVzZXQsIGRhdGEtPmRzX2NscCwgZGF0YS0+
+ZHNfY2xwLT5jbF9zZXNzaW9uKTsNCj4gKw0KPiArCQlpZiAodGVzdF9iaXQoTkZTNF9SRVNFVF9U
+T19NRFMsICZyZXNldCkpIHsNCj4gIAkJCWZpbGVsYXlvdXRfcmVzZXRfcmVhZCh0YXNrLCBkYXRh
+KTsNCj4gKwkJCWlmICh0ZXN0X2JpdChORlM0X1JFU0VUX0RFVklDRUlELCAmcmVzZXQpKQ0KPiAr
+CQkJCWZpbGVsYXlvdXRfbWFya19kZXZpZF9pbnZhbGlkKGRldmlkKTsNCg0KSXMgdGhlcmUgYW55
+IHJlYXNvbiB3aHkgd2Ugc2hvdWxkbid0IGp1c3QgZG8gdGhlDQpmaWxlbGF5b3V0X21hcmtfZGV2
+aWRfaW52YWxpZCgpIHdpdGhpbiBmaWxlbGF5b3V0X2FzeW5jX2hhbmRsZV9lcnJvcigpDQppbnN0
+ZWFkIG9mIGhhdmluZyB0aGUgY2FsbGVyIGRvIGl0Pw0KDQpUaGF0IHNob3VsZCBhbHNvIGVuYWJs
+ZSB1cyB0byBnZXQgcmlkIG9mIHRoZSB3aG9sZSAncmVzZXQnIGFyZ3VtZW50IGFuZA0KcmVwbGFj
+ZSBpdCB3aXRoIGEgcmV0dXJuIHZhbHVlICE9IDAgJiYgIT0gLUVBR0FJTi4NCg0KPiArCQl9DQo+
+ICAJCXJwY19yZXN0YXJ0X2NhbGxfcHJlcGFyZSh0YXNrKTsNCg0KVGhpcyBjYW4gcHJvYmFibHkg
+YWxzbyBiZSBkb25lIGluc2lkZSBmaWxlbGF5b3V0X2FzeW5jX2hhbmRsZV9lcnJvcigpLA0KQlRX
+Lg0KDQo+ICAJCXJldHVybiAtRUFHQUlOOw0KPiAgCX0NCj4gQEAgLTI2MCwxNCArMjc5LDIwIEBA
+IHN0YXRpYyB2b2lkIGZpbGVsYXlvdXRfcmVhZF9yZWxlYXNlKHZvaWQgKmRhdGEpDQo+ICBzdGF0
+aWMgaW50IGZpbGVsYXlvdXRfd3JpdGVfZG9uZV9jYihzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssDQo+
+ICAJCQkJc3RydWN0IG5mc193cml0ZV9kYXRhICpkYXRhKQ0KPiAgew0KPiAtCWludCByZXNldCA9
+IDA7DQo+ICsJc3RydWN0IG5mczRfZGV2aWNlaWRfbm9kZSAqZGV2aWQgPSBGSUxFTEFZT1VUX0RF
+VklEX05PREUoZGF0YS0+bHNlZyk7DQo+ICsJdW5zaWduZWQgbG9uZyByZXNldCA9IDA7DQo+ICAN
+Cj4gIAlpZiAoZmlsZWxheW91dF9hc3luY19oYW5kbGVfZXJyb3IodGFzaywgZGF0YS0+YXJncy5j
+b250ZXh0LT5zdGF0ZSwNCj4gIAkJCQkJICBkYXRhLT5kc19jbHAsICZyZXNldCkgPT0gLUVBR0FJ
+Tikgew0KPiAtCQlkcHJpbnRrKCIlcyBjYWxsaW5nIHJlc3RhcnQgZHNfY2xwICVwIGRzX2NscC0+
+Y2xfc2Vzc2lvbiAlcFxuIiwNCj4gLQkJCV9fZnVuY19fLCBkYXRhLT5kc19jbHAsIGRhdGEtPmRz
+X2NscC0+Y2xfc2Vzc2lvbik7DQo+IC0JCWlmIChyZXNldCkNCj4gKw0KPiArCQlkcHJpbnRrKCIl
+cyByZXNldCAweCVseCBkc19jbHAgJXAgc2Vzc2lvbiAlcFxuIiwgX19mdW5jX18sDQo+ICsJCQly
+ZXNldCwgZGF0YS0+ZHNfY2xwLCBkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24pOw0KPiArDQo+ICsJ
+CWlmICh0ZXN0X2JpdChORlM0X1JFU0VUX1RPX01EUywgJnJlc2V0KSkgew0KPiAgCQkJZmlsZWxh
+eW91dF9yZXNldF93cml0ZSh0YXNrLCBkYXRhKTsNCj4gKwkJCWlmICh0ZXN0X2JpdChORlM0X1JF
+U0VUX0RFVklDRUlELCAmcmVzZXQpKQ0KPiArCQkJCWZpbGVsYXlvdXRfbWFya19kZXZpZF9pbnZh
+bGlkKGRldmlkKTsNCj4gKwkJfQ0KPiAgCQlycGNfcmVzdGFydF9jYWxsX3ByZXBhcmUodGFzayk7
+DQo+ICAJCXJldHVybiAtRUFHQUlOOw0KPiAgCX0NCj4gQEAgLTI5MCwxNiArMzE1LDIyIEBAIHN0
+YXRpYyB2b2lkIHByZXBhcmVfdG9fcmVzZW5kX3dyaXRlcyhzdHJ1Y3QgbmZzX3dyaXRlX2RhdGEg
+KmRhdGEpDQo+ICBzdGF0aWMgaW50IGZpbGVsYXlvdXRfY29tbWl0X2RvbmVfY2Ioc3RydWN0IHJw
+Y190YXNrICp0YXNrLA0KPiAgCQkJCSAgICAgc3RydWN0IG5mc193cml0ZV9kYXRhICpkYXRhKQ0K
+PiAgew0KPiAtCWludCByZXNldCA9IDA7DQo+ICsJc3RydWN0IG5mczRfZGV2aWNlaWRfbm9kZSAq
+ZGV2aWQgPSBGSUxFTEFZT1VUX0RFVklEX05PREUoZGF0YS0+bHNlZyk7DQo+ICsJdW5zaWduZWQg
+bG9uZyByZXNldCA9IDA7DQo+ICANCj4gIAlpZiAoZmlsZWxheW91dF9hc3luY19oYW5kbGVfZXJy
+b3IodGFzaywgZGF0YS0+YXJncy5jb250ZXh0LT5zdGF0ZSwNCj4gIAkJCQkJICBkYXRhLT5kc19j
+bHAsICZyZXNldCkgPT0gLUVBR0FJTikgew0KPiAtCQlkcHJpbnRrKCIlcyBjYWxsaW5nIHJlc3Rh
+cnQgZHNfY2xwICVwIGRzX2NscC0+Y2xfc2Vzc2lvbiAlcFxuIiwNCj4gLQkJCV9fZnVuY19fLCBk
+YXRhLT5kc19jbHAsIGRhdGEtPmRzX2NscC0+Y2xfc2Vzc2lvbik7DQo+IC0JCWlmIChyZXNldCkN
+Cj4gKw0KPiArCQlkcHJpbnRrKCIlcyByZXNldCAweCVseCBkc19jbHAgJXAgc2Vzc2lvbiAlcFxu
+IiwgX19mdW5jX18sDQo+ICsJCQlyZXNldCwgZGF0YS0+ZHNfY2xwLCBkYXRhLT5kc19jbHAtPmNs
+X3Nlc3Npb24pOw0KPiArDQo+ICsJCWlmICh0ZXN0X2JpdChORlM0X1JFU0VUX1RPX01EUywgJnJl
+c2V0KSkgew0KPiAgCQkJcHJlcGFyZV90b19yZXNlbmRfd3JpdGVzKGRhdGEpOw0KPiAtCQllbHNl
+DQo+ICsJCQlpZiAodGVzdF9iaXQoTkZTNF9SRVNFVF9ERVZJQ0VJRCwgJnJlc2V0KSkNCj4gKwkJ
+CQlmaWxlbGF5b3V0X21hcmtfZGV2aWRfaW52YWxpZChkZXZpZCk7DQo+ICsJCX0gZWxzZSB7DQo+
+ICAJCQlycGNfcmVzdGFydF9jYWxsX3ByZXBhcmUodGFzayk7DQo+ICsJCX0NCj4gIAkJcmV0dXJu
+IC1FQUdBSU47DQo+ICAJfQ0KPiAgDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlv
+dXQuaCBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5oDQo+IGluZGV4IGI1NGIzODkuLjA4YjY2N2Eg
+MTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5oDQo+ICsrKyBiL2ZzL25mcy9u
+ZnM0ZmlsZWxheW91dC5oDQo+IEBAIC00MSw2ICs0MSwxMiBAQA0KPiAgI2RlZmluZSBORlM0X1BO
+RlNfTUFYX1NUUklQRV9DTlQgNDA5Ng0KPiAgI2RlZmluZSBORlM0X1BORlNfTUFYX01VTFRJX0NO
+VCAgMjU2IC8qIDI1NiBmaXQgaW50byBhIHU4IHN0cmlwZV9pbmRleCAqLw0KPiAgDQo+ICsvKiBp
+bnRlcm5hbCB1c2UgKi8NCj4gK2VudW0gbmZzNF9mbF9yZXNldF9zdGF0ZSB7DQo+ICsJTkZTNF9S
+RVNFVF9UT19NRFMgPSAwLA0KPiArCU5GUzRfUkVTRVRfREVWSUNFSUQsDQo+ICt9Ow0KPiArDQo+
+ICBlbnVtIHN0cmlwZXR5cGU0IHsNCj4gIAlTVFJJUEVfU1BBUlNFID0gMSwNCj4gIAlTVFJJUEVf
+REVOU0UgPSAyDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
+b20NCg0K
