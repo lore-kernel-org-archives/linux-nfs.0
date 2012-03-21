@@ -1,51 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51498 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11826 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752923Ab2C3TCr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Mar 2012 15:02:47 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 00/10] Clean up mount functions
-Date: Fri, 30 Mar 2012 15:02:27 -0400
-Message-Id: <1333134157-17141-1-git-send-email-bjschuma@netapp.com>
+	id S1753474Ab2CUUxs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 16:53:48 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: krb5 failures in recent nfs-for-next
+Date: Wed, 21 Mar 2012 20:53:45 +0000
+Message-ID: <1332363225.12332.13.camel@lade.trondhjem.org>
+References: <20120321192448.GB11222@fieldses.org>
+	 <4F6A2DE8.6060403@netapp.com> <20120321194544.GC11222@fieldses.org>
+	 <1332359824.12332.2.camel@lade.trondhjem.org>
+	 <20120321205023.GC12309@fieldses.org>
+In-Reply-To: <20120321205023.GC12309@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-I noticed that we had 5 almost identical mount functions in super.c.  I
-collapsed them all into one common function to make everything easier to
-maintain and work with.  The first few patches are basic cleanups, the last
-four drop us down to one common mount path.
-
-I also hope these patches will simplify my modules changes, but I won't
-know for sure until I update everything.
-
-Comments or suggestions are appreciated!
-
-- Bryan
-
-Bryan Schumaker (10):
-  NFS: Create a single nfs_fill_super() function
-  NFS: Create a single nfs_clone_super() function
-  NFS: Fix whitespace errors
-  NFS: Consistent arguments to nfs_fscache_get_super_cookie()
-  NFS: Rename nfs4_proc_get_root()
-  NFS: Create a single nfs_get_root()
-  NFS: Create a common fs_mount() function
-  NFS: Create a common xdev_mount() function
-  NFS: Use nfs_fs_mount_common() for xdev mounts
-  NFS: Use nfs_fs_mount_common() for remote referral mounts
-
- fs/nfs/fscache.c  |   13 +-
- fs/nfs/fscache.h  |    2 +-
- fs/nfs/getroot.c  |   85 +------
- fs/nfs/nfs4_fs.h  |    1 +
- fs/nfs/nfs4proc.c |   30 ++-
- fs/nfs/super.c    |  664 +++++++++++++----------------------------------------
- 6 files changed, 196 insertions(+), 599 deletions(-)
-
--- 
-1.7.9.5
-
+T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE2OjUwIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgTWFyIDIxLCAyMDEyIGF0IDA3OjU3OjAzUE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTAzLTIxIGF0IDE1OjQ1IC0wNDAwLCBKLiBC
+cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBXZWQsIE1hciAyMSwgMjAxMiBhdCAwMzozNzox
+MlBNIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6DQo+ID4gPiA+IE9uIDAzLzIxLzIwMTIg
+MDM6MjQgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+ID4gSGF2
+ZSB5b3UgYmVlbiBkb2luZyBhbnkga3JiNSB0ZXN0aW5nPw0KPiA+ID4gPiANCj4gPiA+ID4gDQo+
+ID4gPiA+IE5vdCB5ZXQuICBJdCdzIHN0aWxsIG9uIG15IEplbmtpbnMgdG9kbyBsaXN0LCBidXQg
+SSBoYXZlbid0IGdvdHRlbiBhcm91bmQgdG8gaXQgeWV0LiAgU291bmRzIGxpa2Ugd2UgbmVlZCBp
+dCwgdGhvdWdoLCBzbyBJJ2xsIHRyeSB3b3JraW5nIG9uIGl0IHNvb24uDQo+ID4gPiANCj4gPiA+
+IEFjdHVhbGx5LCBJJ3ZlIHNpbmNlIHNlZW4gdGhlIGZhaWx1cmUgb3ZlciBuZnN2NCBhbmQgYXV0
+aF9zeXMuICBBbGwNCj4gPiA+IHRoYXQncyBsZWZ0IG9uIHRoZSBjb25zb2xlIGlzIGVub3VnaCB0
+byB0ZWxsIG1lIGl0J3MgaGFwcGVuaW5nIGluDQo+ID4gPiBuZnM0X2ZyZWVfbG9ja19zdGF0ZSwg
+Y2FsbGVkIGZyb20gX19ycGNfZXhlY3V0ZSBpbiBhIGt0aHJlYWQuICAoV2VsbCwNCj4gPiA+IGFz
+c3VtaW5nIHRoYXQncyBhY3R1YWxseSB0aGUgZmlyc3QgYmFja3RyYWNlLikNCj4gPiANCj4gPiBJ
+J3ZlIGp1c3QgYmVlbiBzbG93IHRvIHVwZGF0ZSBuZnMtZm9yLW5leHQuIFRoZXJlIGhhcyBiZWVu
+IGEgZml4IGZvcg0KPiA+IHRoaXMgaW4gdGhlICdkZXZlbCcgYW5kICdsaW51eC1uZXh0JyBicmFu
+Y2hlcyBmb3IgYSB3aGlsZS4gUHVzaGVkIG91dA0KPiA+IG5vdy4uLg0KPiA+IA0KPiA+IFRoZSBh
+Y3R1YWwgY29tbWl0ZGlmZiBpcyBoZXJlOg0KPiA+ICAgaHR0cDovL2dpdC5saW51eC1uZnMub3Jn
+Lz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPWNvbW1pdGRpZmY7aD01YWU2N2M0ZmVlODY5Yzli
+M2M4N2I3MjdhOWVhNTExYjYzMjZiODM0DQo+IA0KPiBUaGFua3MhDQo+IA0KPiBBbmQgdGhhdCB0
+cmVlJ3Mgc3RhYmxlLCByaWdodD8NCg0KWWVzLiBUaGF0J3Mgd2h5IEkgd2FzIHNsb3cgdG8gbWVy
+Z2U6IEkgd2FudGVkIGFtcGxlIHRlc3RpbmcgZmlyc3QuDQoNCj4gSW4gd2hpY2ggY2FzZSBpZiB5
+b3UndmUgbm8gb2JqZWN0aW9uIEknbGwgbGlrZWx5IG1lcmdlIGl0IHdpdGggYSBub3RlDQo+IHRo
+YXQgSSBuZWVkIGl0ICh3ZWxsLCBzb21lIG9mIHRoZSBjb250YWluZXIgY2hhbmdlcykgZm9yIGps
+YXl0b24ncw0KPiByZWJvb3QgcmVjb3ZlcnkgcGF0Y2hlcy4NCg0KT0suIEknbGwgbGlrZWx5IGJl
+IHNlbmRpbmcgdGhlIG1lcmdlIHJlcXVlc3QgdG8gTGludXMgb24gb3IgYmVmb3JlDQpGcmlkYXku
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
