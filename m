@@ -1,189 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17556 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45406 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964964Ab2CVTTk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 15:19:40 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 01/11] NFSv4.1 move nfs4_reset_read and nfs_reset_write
-Date: Thu, 22 Mar 2012 15:19:29 -0400
-Message-Id: <1332443979-2302-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1332443979-2302-1-git-send-email-andros@netapp.com>
-References: <1332443979-2302-1-git-send-email-andros@netapp.com>
+	id S1754445Ab2CUTYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:24:51 -0400
+Date: Wed, 21 Mar 2012 15:24:49 -0400
+To: Bryan Schumaker <bjschuma@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: krb5 failures in recent nfs-for-next
+Message-ID: <20120321192448.GB11222@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Have you been doing any krb5 testing?
 
-Only called by the file layout code
+I'm seeing the client crash as of nfs-for-next, and haven't been able to
+get any debugging out of it so far.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/internal.h       |    5 +++--
- fs/nfs/nfs4filelayout.c |   35 +++++++++++++++++++++++++++++++++--
- fs/nfs/nfs4proc.c       |   39 ++++-----------------------------------
- 3 files changed, 40 insertions(+), 39 deletions(-)
-
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 2476dc6..f9ac1f0 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -344,13 +344,14 @@ extern int nfs_migrate_page(struct address_space *,
- 
- /* nfs4proc.c */
- extern void __nfs4_read_done_cb(struct nfs_read_data *);
--extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
-+extern int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data);
-+extern int nfs4_write_done_cb(struct rpc_task *task,
-+			      struct nfs_write_data *data);
- extern int nfs4_init_client(struct nfs_client *clp,
- 			    const struct rpc_timeout *timeparms,
- 			    const char *ip_addr,
- 			    rpc_authflavor_t authflavour,
- 			    int noresvport);
--extern void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data);
- extern int _nfs4_call_sync(struct rpc_clnt *clnt,
- 			   struct nfs_server *server,
- 			   struct rpc_message *msg,
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 634c0bc..36a65ce 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -82,6 +82,37 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
- 	BUG();
- }
- 
-+/* Reset the the nfs_write_data to send the write to the MDS. */
-+void filelayout_reset_write(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	dprintk("%s Reset task for i/o through MDS\n", __func__);
-+	put_lseg(data->lseg);
-+	data->lseg          = NULL;
-+	data->ds_clp        = NULL;
-+	data->write_done_cb = nfs4_write_done_cb;
-+	data->args.fh       = NFS_FH(data->inode);
-+	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
-+	data->args.offset   = data->mds_offset;
-+	data->res.fattr     = &data->fattr;
-+	task->tk_ops        = data->mds_ops;
-+	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
-+}
-+
-+/* Reset the the nfs_read_data to send the read to the MDS. */
-+void filelayout_reset_read(struct rpc_task *task, struct nfs_read_data *data)
-+{
-+	dprintk("%s Reset task for i/o through MDS\n", __func__);
-+	put_lseg(data->lseg);
-+	data->lseg         = NULL;
-+	/* offsets will differ in the dense stripe case */
-+	data->args.offset  = data->mds_offset;
-+	data->ds_clp       = NULL;
-+	data->args.fh      = NFS_FH(data->inode);
-+	data->read_done_cb = nfs4_read_done_cb;
-+	task->tk_ops = data->mds_ops;
-+	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
-+}
-+
- static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs4_state *state,
- 					 struct nfs_client *clp,
-@@ -158,7 +189,7 @@ static int filelayout_read_done_cb(struct rpc_task *task,
- 			__func__, data->ds_clp, data->ds_clp->cl_session);
- 		if (reset) {
- 			pnfs_set_lo_fail(data->lseg);
--			nfs4_reset_read(task, data);
-+			filelayout_reset_read(task, data);
- 		}
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
-@@ -239,7 +270,7 @@ static int filelayout_write_done_cb(struct rpc_task *task,
- 			__func__, data->ds_clp, data->ds_clp->cl_session);
- 		if (reset) {
- 			pnfs_set_lo_fail(data->lseg);
--			nfs4_reset_write(task, data);
-+			filelayout_reset_write(task, data);
- 		}
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b76dd0e..f3c67db 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3284,7 +3284,7 @@ void __nfs4_read_done_cb(struct nfs_read_data *data)
- 	nfs_invalidate_atime(data->inode);
- }
- 
--static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
-+int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
-@@ -3298,6 +3298,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
- 		renew_lease(server, data->timestamp);
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs4_read_done_cb);
- 
- static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- {
-@@ -3329,23 +3330,7 @@ static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_da
- 	rpc_call_start(task);
- }
- 
--/* Reset the the nfs_read_data to send the read to the MDS. */
--void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data)
--{
--	dprintk("%s Reset task for i/o through\n", __func__);
--	put_lseg(data->lseg);
--	data->lseg = NULL;
--	/* offsets will differ in the dense stripe case */
--	data->args.offset = data->mds_offset;
--	data->ds_clp = NULL;
--	data->args.fh     = NFS_FH(data->inode);
--	data->read_done_cb = nfs4_read_done_cb;
--	task->tk_ops = data->mds_ops;
--	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
--}
--EXPORT_SYMBOL_GPL(nfs4_reset_read);
--
--static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
-+int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->inode;
- 	
-@@ -3359,6 +3344,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
- 	}
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs4_write_done_cb);
- 
- static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
-@@ -3368,23 +3354,6 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- 		nfs4_write_done_cb(task, data);
- }
- 
--/* Reset the the nfs_write_data to send the write to the MDS. */
--void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data)
--{
--	dprintk("%s Reset task for i/o through\n", __func__);
--	put_lseg(data->lseg);
--	data->lseg          = NULL;
--	data->ds_clp        = NULL;
--	data->write_done_cb = nfs4_write_done_cb;
--	data->args.fh       = NFS_FH(data->inode);
--	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
--	data->args.offset   = data->mds_offset;
--	data->res.fattr     = &data->fattr;
--	task->tk_ops        = data->mds_ops;
--	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
--}
--EXPORT_SYMBOL_GPL(nfs4_reset_write);
--
- static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
--- 
-1.7.6.4
-
+--b.
