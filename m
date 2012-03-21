@@ -1,78 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61077 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58800 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757794Ab2CEXVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 18:21:13 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 14/16] NFSv4: Cleanup - convert more functions to use encode_op_hdr
-Date: Mon,  5 Mar 2012 18:20:52 -0500
-Message-Id: <1330989654-4694-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1330989654-4694-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1330989654-4694-1-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-2-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-3-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-4-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-5-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-6-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-7-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-8-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-9-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-10-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-11-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-12-git-send-email-Trond.Myklebust@netapp.com>
- <1330989654-4694-13-git-send-email-Trond.Myklebust@netapp.com>
+	id S1760081Ab2CUUKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 16:10:32 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH] NFS: Create a single nfs_clone_super() function
+Date: Wed, 21 Mar 2012 16:10:15 -0400
+Message-Id: <1332360615-2714-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c |   11 ++---------
- 1 files changed, 2 insertions(+), 9 deletions(-)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 62effaf..f958849 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1644,8 +1644,7 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
- {
- 	__be32 *p;
- 
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_SETCLIENTID);
-+	encode_op_hdr(xdr, OP_SETCLIENTID, decode_setclientid_maxsz, hdr);
- 	encode_nfs4_verifier(xdr, setclientid->sc_verifier);
- 
- 	encode_string(xdr, setclientid->sc_name_len, setclientid->sc_name);
-@@ -1655,8 +1654,6 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
- 	encode_string(xdr, setclientid->sc_uaddr_len, setclientid->sc_uaddr);
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(setclientid->sc_cb_ident);
--	hdr->nops++;
--	hdr->replen += decode_setclientid_maxsz;
+v2 and v3 shared a function for this, but v4 implemented something very
+slightly different.  Might as well share code whenever possible...
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/super.c |   33 +++++++--------------------------
+ 1 file changed, 7 insertions(+), 26 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ccc4cdb..e6e40fe 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2152,7 +2152,7 @@ static void nfs_fill_super(struct super_block *sb,
  }
  
- static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs4_setclientid_res *arg, struct compound_hdr *hdr)
-@@ -1709,8 +1706,7 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 	char impl_name[NFS4_OPAQUE_LIMIT];
- 	int len = 0;
+ /*
+- * Finish setting up a cloned NFS2/3 superblock
++ * Finish setting up a cloned NFS2/3/4 superblock
+  */
+ static void nfs_clone_super(struct super_block *sb,
+ 			    const struct super_block *old_sb)
+@@ -2162,17 +2162,18 @@ static void nfs_clone_super(struct super_block *sb,
+ 	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+ 	sb->s_blocksize = old_sb->s_blocksize;
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
++	sb->s_xattr = old_sb->s_xattr;
++	sb->s_op = old_sb->s_op;
++	sb->s_time_gran = 1;
  
--	p = reserve_space(xdr, 4);
--	*p = cpu_to_be32(OP_EXCHANGE_ID);
-+	encode_op_hdr(xdr, OP_EXCHANGE_ID, decode_exchange_id_maxsz, hdr);
- 	encode_nfs4_verifier(xdr, args->verifier);
+-	if (server->nfs_client->rpc_ops->version == 3) {
++	if (server->nfs_client->rpc_ops->version != 2) {
+ 		/* The VFS shouldn't apply the umask to mode bits. We will do
+ 		 * so ourselves when necessary.
+ 		 */
+ 		sb->s_flags |= MS_POSIXACL;
+-		sb->s_time_gran = 1;
+ 	}
  
- 	encode_string(xdr, args->id_len, args->id);
-@@ -1740,9 +1736,6 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 		*p = cpu_to_be32(0);
- 	} else
- 		*p = cpu_to_be32(0);	/* implementation id array length=0 */
+-	sb->s_op = old_sb->s_op;
+- 	nfs_initialise_sb(sb);
++	nfs_initialise_sb(sb);
+ }
+ 
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+@@ -2502,26 +2503,6 @@ error_splat_bdi:
+ #ifdef CONFIG_NFS_V4
+ 
+ /*
+- * Finish setting up a cloned NFS4 superblock
+- */
+-static void nfs4_clone_super(struct super_block *sb,
+-			    const struct super_block *old_sb)
+-{
+-	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
+-	sb->s_blocksize = old_sb->s_blocksize;
+-	sb->s_maxbytes = old_sb->s_maxbytes;
+-	sb->s_time_gran = 1;
+-	sb->s_op = old_sb->s_op;
+-	/*
+-	 * The VFS shouldn't apply the umask to mode bits. We will do
+-	 * so ourselves when necessary.
+-	 */
+-	sb->s_flags  |= MS_POSIXACL;
+-	sb->s_xattr  = old_sb->s_xattr;
+-	nfs_initialise_sb(sb);
+-}
 -
--	hdr->nops++;
--	hdr->replen += decode_exchange_id_maxsz;
- }
+-/*
+  * Set up an NFS4 superblock
+  */
+ static void nfs4_fill_super(struct super_block *sb)
+@@ -2984,7 +2965,7 @@ nfs4_xdev_mount(struct file_system_type *fs_type, int flags,
  
- static void encode_create_session(struct xdr_stream *xdr,
+ 	if (!s->s_root) {
+ 		/* initial superblock/root creation */
+-		nfs4_clone_super(s, data->sb);
++		nfs_clone_super(s, data->sb);
+ 		nfs_fscache_get_super_cookie(s, NULL, data);
+ 	}
+ 
 -- 
-1.7.7.6
+1.7.9.4
 
