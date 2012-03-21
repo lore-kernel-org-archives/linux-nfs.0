@@ -1,62 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:36073 "EHLO e8.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38761 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753577Ab2CEVmr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Mar 2012 16:42:47 -0500
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 5 Mar 2012 16:42:46 -0500
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 550B538C803A
-	for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2012 16:42:42 -0500 (EST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q25Lgfrt336038
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:41 -0500
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q25LgdDO030054
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:39 -0500
-Received: from malahal (malahal.austin.ibm.com [9.53.40.203])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q25Lgaw2029857
-	for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2012 16:42:36 -0500
-Date: Mon, 5 Mar 2012 15:42:35 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: How does the client manage NFS3ERR_NOSPC ?
-Message-ID: <20120305214235.GC21904@us.ibm.com>
-References: <4F54F4F0.108@cea.fr>
- <1330981266.2509.18.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1330981266.2509.18.camel@lade.trondhjem.org>
+	id S1751021Ab2CUTeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 15:34:13 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 2/2] NFS: Make v2 configurable
+Date: Wed, 21 Mar 2012 15:34:09 -0400
+Message-Id: <1332358449-16082-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332358449-16082-1-git-send-email-bjschuma@netapp.com>
+References: <1332358449-16082-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
-> On Mon, 2012-03-05 at 18:16 +0100, DENIEL Philippe wrote:
-> > Hi List,
-> > 
-> > I ran a stupid test (using the kernel's knfsd) : I filled up completely 
-> > a filesystem with a few big file. When it was 100% full (no free block 
-> > at all), I ran a dd on it.
-> > The dd said it could write 793 blocks of size 1mb  and failed on IO 
-> > error. At the end, I could see an empty file in the NFS exported tree.
-> > Question is :
-> >     - why did I get EIO and not ENOSPC ?
-> 
-> Did the server actually return NFS3ERR_NOSPC, or did it return something
-> else? If the server returns NFS3ERR_NOSPC, then I'd expect the client to
-> translate that as ENOSPC.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-AFAIR, the server returns ENOSPC but the Linux client has a bug under
-certain cases that returns it as EIO. Filed a bug and Neil sent a patch
-but I have not tested it yet.
+With this patch NFS v2 will no longer be automatically compiled in.
+Instead, users will have to select NFS_V2 during Kconfig if they want to
+use it.
 
-I tried with various versions and they gave some differing results. I
-think in one case fsync() got ENOSPC but close() got EIO (or the other
-way around?)
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Kconfig  |    9 +++++++++
+ fs/nfs/Makefile |    5 +++--
+ fs/nfs/client.c |   11 ++++++++++-
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
-Regards, Malahal.
-PS: Easy way to reproduce the problem, just run the following:
-dd if=/dev/zero of=./testfile conv=fdatasync
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2a0e6c5..4995b24 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -29,6 +29,15 @@ config NFS_FS
+ 
+ 	  If unsure, say N.
+ 
++config NFS_V2
++	bool "NFS client support for NFS version 2"
++	depends on NFS_FS
++	help
++	  This option enables support for version 2 of the NFS protocol
++	  (RFC 1094) in the kernel's NFS client.
++
++	  If unsure, say Y.
++
+ config NFS_V3
+ 	bool "NFS client support for NFS version 3"
+ 	depends on NFS_FS
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index b58613d..7ddd45d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -4,11 +4,12 @@
+ 
+ obj-$(CONFIG_NFS_FS) += nfs.o
+ 
+-nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+-			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
++nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
++			   direct.o pagelist.o read.o symlink.o unlink.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
++nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 08e7f24..4d793b2 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
+  * RPC cruft for NFS
+  */
+ static const struct rpc_version *nfs_version[5] = {
++#ifdef CONFIG_NFS_V2
+ 	[2]			= &nfs_version2,
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	[3]			= &nfs_version3,
+ #endif
+@@ -847,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
+-		.rpc_ops = &nfs_v2_clientops,
++		.rpc_ops = NULL,
+ 		.proto = data->nfs_server.protocol,
+ 		.net = data->net,
+ 	};
+@@ -857,10 +859,17 @@ static int nfs_init_server(struct nfs_server *server,
+ 
+ 	dprintk("--> nfs_init_server()\n");
+ 
++
++#ifdef CONFIG_NFS_V2
++	if (data->version == 2)
++		cl_init.rpc_ops = &nfs_v2_clientops;
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	if (data->version == 3)
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
+ #endif
++	if (cl_init.rpc_ops == NULL)
++		return -EPROTONOSUPPORT;
+ 
+ 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+ 			data->timeo, data->retrans);
+-- 
+1.7.9.4
 
