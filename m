@@ -1,111 +1,342 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46283 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751241Ab2CGU6M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2012 15:58:12 -0500
-Message-ID: <4F57CBD8.5020306@panasas.com>
-Date: Wed, 7 Mar 2012 12:58:00 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Paul Anderson <pha@umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: new (to us) kernel panic nfsv4 linux 3.0.12
-References: <CAOO4vO4HRwcQsOm+y7TKzsxaSpALfN5+cj3Y7fKUb1njWhqzQQ@mail.gmail.com> <1331153346.13896.1.camel@lade.trondhjem.org>
-In-Reply-To: <1331153346.13896.1.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx2.netapp.com ([216.240.18.37]:53728 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758607Ab2CUPVR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 11:21:17 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 10/23] NFS: Initialize NFS v4 from nfs4super.c
+Date: Wed, 21 Mar 2012 11:20:40 -0400
+Message-Id: <1332343253-24970-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I had a recent patch to @stable and got a response it was added
-both to 3.2 and 3.0
+This includes starting the idmapper, registering sysctls and registering
+the nfs_subversion struct with the generic NFS client.  I also added in
+a call to exit_nfs_v4() when the NFS module exits to undo everything
+before exiting.
 
-So I think it's 3.1 which is not maintained. But 3.0 and of course
-3.2 are still maintained
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Makefile                   |    2 +-
+ fs/nfs/client.c                   |   12 ----------
+ fs/nfs/inode.c                    |   14 +++++------
+ fs/nfs/nfs.h                      |    2 +-
+ fs/nfs/nfs4_fs.h                  |    9 +++++++
+ fs/nfs/nfs4super.c                |   23 ++++++++++++++++++
+ fs/nfs/{sysctl.c => nfs4sysctl.c} |   47 ++++++++++++++-----------------------
+ fs/nfs/sysctl.c                   |   26 --------------------
+ 8 files changed, 57 insertions(+), 78 deletions(-)
+ copy fs/nfs/{sysctl.c => nfs4sysctl.c} (51%)
 
-Cheers
-Boaz 
-
-On 03/07/2012 12:49 PM, Myklebust, Trond wrote:
-> On Wed, 2012-03-07 at 14:41 -0500, Paul Anderson wrote:
->> The following kernel panic occurred on at least 4 compute nodes nearly
->> simultaneously.  It was during unattended operation, so no clue as to
->> what the server was doing.
->>
->> The client node was under very heavy CPU load (12 core plus HT with
->> 50-100 jobs running).  No swapping, unknown I/O but probably low,
->> except for the set of slurm jobs that stopped in D state probably due
->> to the kernel panic.
->>
->> uname -> Linux c09 3.0.12 #1 SMP Wed Nov 30 19:42:40 EST 2011 x86_64 GNU/Linux
->>
->> Please let me know what additional information I can provide - thanks!
->>
->> Paul Anderson
->> University of Michigan
->>
->> [1411404.724301] nfs4_reclaim_open_state: Lock reclaim failed!
->> [1412738.175791] nfs4_reclaim_open_state: Lock reclaim failed!
->> [1412738.175805] general protection fault: 0000 [#1] SMP
->> [1412738.176036] CPU 3
->> [1412738.176112] Modules linked in: binfmt_misc ipmi_msghandler
->> ipt_ULOG x_tables autofs4 mptctl mptbase dlm configfs dm_crypt nfsd
->> nfs lockd xfs auth_rpcgss n
->> [1412738.177205]
->> [1412738.177297] Pid: 10473, comm: 192.168.1.16-ma Not tainted 3.0.12
->> #1 Dell     C6100       /0D61XP
->> [1412738.177683] RIP: 0010:[<ffffffffa02a8e00>]  [<ffffffffa02a8e00>]
->> nfs4_do_reclaim+0x1c0/0x560 [nfs]
->> [1412738.178074] RSP: 0018:ffff88100e651e00  EFLAGS: 00010287
->> [1412738.178296] RAX: 0000000000000042 RBX: ffff88080dff5380 RCX:
->> 000000000003ffff
->> [1412738.178606] RDX: ffff88080dff53a0 RSI: 0000000000000082 RDI:
->> 0000000000000246
->> [1412738.178917] RBP: ffff88100e651e80 R08: 0000000000000000 R09:
->> 0000000000000000
->> [1412738.179227] R10: 0000000000000006 R11: 0000000000000000 R12:
->> ffffffffa02b9c00
->> [1412738.179537] R13: dead000000100100 R14: ffff88100e762a58 R15:
->> ffff88100e762a00
->> [1412738.179848] FS:  0000000000000000(0000) GS:ffff88083fc60000(0000)
->> knlGS:0000000000000000
->> [1412738.180192] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [1412738.180428] CR2: 0000000001c89068 CR3: 000000100534f000 CR4:
->> 00000000000006e0
->> [1412738.180739] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->> 0000000000000000
->> [1412738.181049] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
->> 0000000000000400
->> [1412738.181360] Process 192.168.1.16-ma (pid: 10473, threadinfo
->> ffff88100e650000, task ffff8809a7ca8000)
->> [1412738.181739] Stack:
->> [1412738.181847]  ffff88080dff53a0 ffff88080dff53c0 ffff8808055cf4b0
->> ffff8808055cf400
->> [1412738.182192]  ffff88100e762a50 ffff88054ab0b2b0 ffff8808055cf4f8
->> ffff88100e762a48
->> [1412738.182538]  ffffffffa02b9ec8 ffff880ac2296008 ffff88100e651e80
->> ffff8808055cf4f0
->> [1412738.182882] Call Trace:
->> [1412738.183015]  [<ffffffffa02a9424>] nfs4_run_state_manager+0x284/0x420 [nfs]
->> [1412738.183298]  [<ffffffffa02a91a0>] ? nfs4_do_reclaim+0x560/0x560 [nfs]
->> [1412738.183562]  [<ffffffff81080a96>] kthread+0x96/0xa0
->> [1412738.183771]  [<ffffffff815ac124>] kernel_thread_helper+0x4/0x10
->> [1412738.184927]  [<ffffffff81080a00>] ? kthread_worker_fn+0x190/0x190
->> [1412738.185177]  [<ffffffff815ac120>] ? gs_change+0x13/0x13
->> [1412738.185395] Code: 48 74 50 4d 8b 6d 00 4d 85 ed 75 df e8 2a a5 ee
->> e0 48 8b 7d a8 e8 41 cf dd e0 4c 8b 6b 20 48 8d 53 20 49 39 d5 74 18
->> 0f 1f 40 00
->> [1412738.186187]  f6 45 18 01 0f 84 6a 03 00 00 4d 8b 6d 00 49 39 d5 75 ec 48
->> [1412738.186646] RIP  [<ffffffffa02a8e00>] nfs4_do_reclaim+0x1c0/0x560 [nfs]
->> [1412738.186926]  RSP <ffff88100e651e00>
->> [1412738.187353] ---[ end trace 4dbb732d1756f6b1 ]---
-> 
-> 3.0 kernels are no longer supported as part of the stable kernel series,
-> and are therefore missing a number of bugfixes. Please see if you can
-> reproduce this using a newer kernel.
-> 
-> Cheers
->   Trond
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index e155299..7c8a7a0 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -12,7 +12,7 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   nfs4super.o delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+-			   nfs4namespace.o
++			   nfs4namespace.o nfs4sysctl.o
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 66d4875..adc548c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -179,18 +179,6 @@ void unregister_nfs_version(struct nfs_subversion *nfs)
+ EXPORT_SYMBOL_GPL(unregister_nfs_version);
+ 
+ /*
+- * Preload all configured NFS versions during module init.
+- * This function should be edited after each protocol is converted,
+- * and eventually removed.
+- */
+-void __init nfs_register_versions(void)
+-{
+-#ifdef CONFIG_NFS_V4
+-	init_nfs_v4();
+-#endif
+-}
+-
+-/*
+  * Allocate a shared client record
+  *
+  * Since these are allocated/deallocated very rarely, we don't
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 88da7cd..30c7103 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1660,10 +1660,6 @@ static int __init init_nfs_fs(void)
+ {
+ 	int err;
+ 
+-	err = nfs_idmap_init();
+-	if (err < 0)
+-		goto out10;
+-
+ 	err = nfs_dns_resolver_init();
+ 	if (err < 0)
+ 		goto out9;
+@@ -1709,7 +1705,9 @@ static int __init init_nfs_fs(void)
+ #endif
+ 	if ((err = register_nfs_fs()) != 0)
+ 		goto out;
+-	nfs_register_versions();
++#ifdef CONFIG_NFS_V4
++	init_nfs_v4();
++#endif
+ 	return 0;
+ out:
+ #ifdef CONFIG_PROC_FS
+@@ -1735,13 +1733,14 @@ out7:
+ out8:
+ 	nfs_dns_resolver_destroy();
+ out9:
+-	nfs_idmap_quit();
+-out10:
+ 	return err;
+ }
+ 
+ static void __exit exit_nfs_fs(void)
+ {
++#ifdef CONFIG_NFS_V4
++	exit_nfs_v4();
++#endif
+ 	nfs_destroy_directcache();
+ 	nfs_destroy_writepagecache();
+ 	nfs_destroy_readpagecache();
+@@ -1750,7 +1749,6 @@ static void __exit exit_nfs_fs(void)
+ 	nfs_fscache_unregister();
+ 	unregister_pernet_subsys(&nfs_net_ops);
+ 	nfs_dns_resolver_destroy();
+-	nfs_idmap_quit();
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_unregister(&init_net, "nfs");
+ #endif
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 9caae33..1f93181 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -27,8 +27,8 @@ struct nfs_subversion {
+ 	struct dentry *(*xdev_mount)(int, const char *, struct nfs_clone_mount *);
+ };
+ 
+-void nfs_register_versions(void);
+ int init_nfs_v4(void);
++void exit_nfs_v4(void);
+ 
+ struct nfs_subversion *get_nfs_version(unsigned int);
+ struct nfs_subversion *get_nfs_client_version(struct nfs_client *);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 6786c4f..0652352 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -350,6 +350,15 @@ extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_sta
+ 
+ extern const nfs4_stateid zero_stateid;
+ 
++/* nfs4sysctl.h */
++#ifdef CONFIG_SYSCTL
++int nfs4_register_sysctl(void);
++void nfs4_unregister_sysctl(void);
++#else
++inline int nfs4_register_sysctl(void) { return 0; }
++inline void nfs4_unregister_sysctl(void) { }
++#endif /* CONFIG_SYSCTL */
++
+ /* nfs4xdr.c */
+ extern struct rpc_procinfo nfs4_procedures[];
+ 
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index f6c8f9f..9dc0c37 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -4,6 +4,7 @@
+ #include <linux/module.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs4_mount.h>
++#include <linux/nfs_idmap.h>
+ #include "internal.h"
+ #include "nfs4_fs.h"
+ #include "nfs.h"
+@@ -51,6 +52,28 @@ static struct nfs_subversion nfs_v4 = {
+ 
+ int __init init_nfs_v4(void)
+ {
++	int err;
++
++	err = nfs_idmap_init();
++	if (err < 0)
++		goto out_1;
++
++	err = nfs4_register_sysctl();
++	if (err < 0)
++		goto out_0;
++
+ 	register_nfs_version(&nfs_v4);
+ 	return 0;
++
++out_0:
++	nfs_idmap_quit();
++out_1:
++	return err;
++}
++
++void __exit exit_nfs_v4(void)
++{
++	unregister_nfs_version(&nfs_v4);
++	nfs4_unregister_sysctl();
++	nfs_idmap_quit();
+ }
+diff --git a/fs/nfs/sysctl.c b/fs/nfs/nfs4sysctl.c
+similarity index 51%
+copy from fs/nfs/sysctl.c
+copy to fs/nfs/nfs4sysctl.c
+index ad4d2e7..07b67bb 100644
+--- a/fs/nfs/sysctl.c
++++ b/fs/nfs/nfs4sysctl.c
+@@ -3,6 +3,9 @@
+  *
+  * Sysctl interface to NFS parameters
+  */
++
++#ifdef CONFIG_SYSCTL
++
+ #include <linux/types.h>
+ #include <linux/linkage.h>
+ #include <linux/ctype.h>
+@@ -15,14 +18,11 @@
+ 
+ #include "callback.h"
+ 
+-#ifdef CONFIG_NFS_V4
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+-#endif
+-static struct ctl_table_header *nfs_callback_sysctl_table;
++static struct ctl_table_header *nfs4_callback_sysctl_table;
+ 
+-static ctl_table nfs_cb_sysctls[] = {
+-#ifdef CONFIG_NFS_V4
++static ctl_table nfs4_cb_sysctls[] = {
+ 	{
+ 		.procname = "nfs_callback_tcpport",
+ 		.data = &nfs_callback_set_tcpport,
+@@ -39,52 +39,39 @@ static ctl_table nfs_cb_sysctls[] = {
+ 		.mode = 0644,
+ 		.proc_handler = proc_dointvec_jiffies,
+ 	},
+-#endif
+-	{
+-		.procname	= "nfs_mountpoint_timeout",
+-		.data		= &nfs_mountpoint_expiry_timeout,
+-		.maxlen		= sizeof(nfs_mountpoint_expiry_timeout),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_jiffies,
+-	},
+-	{
+-		.procname	= "nfs_congestion_kb",
+-		.data		= &nfs_congestion_kb,
+-		.maxlen		= sizeof(nfs_congestion_kb),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec,
+-	},
+ 	{ }
+ };
+ 
+-static ctl_table nfs_cb_sysctl_dir[] = {
++static ctl_table nfs4_cb_sysctl_dir[] = {
+ 	{
+ 		.procname = "nfs",
+ 		.mode = 0555,
+-		.child = nfs_cb_sysctls,
++		.child = nfs4_cb_sysctls,
+ 	},
+ 	{ }
+ };
+ 
+-static ctl_table nfs_cb_sysctl_root[] = {
++static ctl_table nfs4_cb_sysctl_root[] = {
+ 	{
+ 		.procname = "fs",
+ 		.mode = 0555,
+-		.child = nfs_cb_sysctl_dir,
++		.child = nfs4_cb_sysctl_dir,
+ 	},
+ 	{ }
+ };
+ 
+-int nfs_register_sysctl(void)
++int nfs4_register_sysctl(void)
+ {
+-	nfs_callback_sysctl_table = register_sysctl_table(nfs_cb_sysctl_root);
+-	if (nfs_callback_sysctl_table == NULL)
++	nfs4_callback_sysctl_table = register_sysctl_table(nfs4_cb_sysctl_root);
++	if (nfs4_callback_sysctl_table == NULL)
+ 		return -ENOMEM;
+ 	return 0;
+ }
+ 
+-void nfs_unregister_sysctl(void)
++void nfs4_unregister_sysctl(void)
+ {
+-	unregister_sysctl_table(nfs_callback_sysctl_table);
+-	nfs_callback_sysctl_table = NULL;
++	unregister_sysctl_table(nfs4_callback_sysctl_table);
++	nfs4_callback_sysctl_table = NULL;
+ }
++
++#endif /* CONFIG_SYSCTL */
+diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+index ad4d2e7..6b3f253 100644
+--- a/fs/nfs/sysctl.c
++++ b/fs/nfs/sysctl.c
+@@ -9,37 +9,11 @@
+ #include <linux/fs.h>
+ #include <linux/sysctl.h>
+ #include <linux/module.h>
+-#include <linux/nfs4.h>
+-#include <linux/nfs_idmap.h>
+ #include <linux/nfs_fs.h>
+ 
+-#include "callback.h"
+-
+-#ifdef CONFIG_NFS_V4
+-static const int nfs_set_port_min = 0;
+-static const int nfs_set_port_max = 65535;
+-#endif
+ static struct ctl_table_header *nfs_callback_sysctl_table;
+ 
+ static ctl_table nfs_cb_sysctls[] = {
+-#ifdef CONFIG_NFS_V4
+-	{
+-		.procname = "nfs_callback_tcpport",
+-		.data = &nfs_callback_set_tcpport,
+-		.maxlen = sizeof(int),
+-		.mode = 0644,
+-		.proc_handler = proc_dointvec_minmax,
+-		.extra1 = (int *)&nfs_set_port_min,
+-		.extra2 = (int *)&nfs_set_port_max,
+-	},
+-	{
+-		.procname = "idmap_cache_timeout",
+-		.data = &nfs_idmap_cache_timeout,
+-		.maxlen = sizeof(int),
+-		.mode = 0644,
+-		.proc_handler = proc_dointvec_jiffies,
+-	},
+-#endif
+ 	{
+ 		.procname	= "nfs_mountpoint_timeout",
+ 		.data		= &nfs_mountpoint_expiry_timeout,
+-- 
+1.7.9.4
 
