@@ -1,112 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58708 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758173Ab2CUPVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Mar 2012 11:21:13 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH v4 02/23] NFS: Make v2 configurable
-Date: Wed, 21 Mar 2012 11:20:32 -0400
-Message-Id: <1332343253-24970-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
-References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:34051 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753642Ab2CUVLu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 17:11:50 -0400
+Subject: Re: [PATCH] RFC: export options for junctions
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120320195607.GD1431@fieldses.org>
+Date: Wed, 21 Mar 2012 17:11:40 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com>
+References: <20120302195451.18167.81861.stgit@degas.1015granger.net> <20120320195607.GD1431@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Hi-
 
-With this patch NFS v2 will no longer be automatically compiled in.
-Instead, users will have to select NFS_V2 during Kconfig if they want to
-use v2.
+On Mar 20, 2012, at 3:56 PM, J. Bruce Fields wrote:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/Kconfig  |    9 +++++++++
- fs/nfs/Makefile |    5 +++--
- fs/nfs/client.c |   11 ++++++++++-
- 3 files changed, 22 insertions(+), 3 deletions(-)
+> On Fri, Mar 02, 2012 at 02:54:51PM -0500, Chuck Lever wrote:
+>> At Connectathon, I ran my FedFS-enabled client in a guest environment
+>> with NAT networking.  This made the source port for my NFS connections
+>> unprivileged.
+>> 
+>> Attempting to access a junction on my test server failed with a
+>> "client insecure" error on the server, even if I specified the
+>> "insecure" export option on the parent export.  I added "insecure" to
+>> the default junction export options, and this fixed the problem.
+>> 
+>> Bruce suggested, however, that the correct way to address this is to
+>> have junctions inherit the export options of their parent.  I don't
+>> see a direct way to do this, so I'm posting this patch as a
+>> conversation starter.
+> 
+> I think you want to do something like the search in
+> nfs-utils/utils/mountd/cache.c:lookup_export()--look for the export with
+> the longest matching path, and copy options from that.
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 2a0e6c5..4995b24 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -29,6 +29,15 @@ config NFS_FS
- 
- 	  If unsure, say N.
- 
-+config NFS_V2
-+	bool "NFS client support for NFS version 2"
-+	depends on NFS_FS
-+	help
-+	  This option enables support for version 2 of the NFS protocol
-+	  (RFC 1094) in the kernel's NFS client.
-+
-+	  If unsure, say Y.
-+
- config NFS_V3
- 	bool "NFS client support for NFS version 3"
- 	depends on NFS_FS
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index b58613d..7ddd45d 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -4,11 +4,12 @@
- 
- obj-$(CONFIG_NFS_FS) += nfs.o
- 
--nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
--			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
-+nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
-+			   direct.o pagelist.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
- 			   dns_resolve.o cache_lib.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
-+nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
- nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
- nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
- nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 08e7f24..4d793b2 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
-  * RPC cruft for NFS
-  */
- static const struct rpc_version *nfs_version[5] = {
-+#ifdef CONFIG_NFS_V2
- 	[2]			= &nfs_version2,
-+#endif
- #ifdef CONFIG_NFS_V3
- 	[3]			= &nfs_version3,
- #endif
-@@ -847,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
- 		.hostname = data->nfs_server.hostname,
- 		.addr = (const struct sockaddr *)&data->nfs_server.address,
- 		.addrlen = data->nfs_server.addrlen,
--		.rpc_ops = &nfs_v2_clientops,
-+		.rpc_ops = NULL,
- 		.proto = data->nfs_server.protocol,
- 		.net = data->net,
- 	};
-@@ -857,10 +859,17 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	dprintk("--> nfs_init_server()\n");
- 
-+
-+#ifdef CONFIG_NFS_V2
-+	if (data->version == 2)
-+		cl_init.rpc_ops = &nfs_v2_clientops;
-+#endif
- #ifdef CONFIG_NFS_V3
- 	if (data->version == 3)
- 		cl_init.rpc_ops = &nfs_v3_clientops;
- #endif
-+	if (cl_init.rpc_ops == NULL)
-+		return -EPROTONOSUPPORT;
- 
- 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
- 			data->timeo, data->retrans);
+This still looks hopelessly complex.
+
+  1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
+
+  2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
+
+  3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
+
+  4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
+
+For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
+
+Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
+
+> --b.
+> 
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> utils/mountd/cache.c |    2 +-
+>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>> 
+>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+>> index ac9cdbd..35bc2e9 100644
+>> --- a/utils/mountd/cache.c
+>> +++ b/utils/mountd/cache.c
+>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+>> 			ptr += len;
+>> 		} else {
+>> 			if (last_path == NULL)
+>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
+>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+>> 							rootpath, server);
+>> 			else
+>> 				len = snprintf(ptr, remaining, ":%s@%s",
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.9.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
