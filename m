@@ -1,56 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63593 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7579 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757702Ab2C1PIR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Mar 2012 11:08:17 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q2SF8HVm026155
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2012 08:08:17 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] NFSv4: Fix two infinite loops in the mount code
-Date: Wed, 28 Mar 2012 15:08:11 +0000
-Message-ID: <1332947296.11400.7.camel@lade.trondhjem.org>
-References: <1332887744-4222-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
-In-Reply-To: <38AF6CFC-8017-4D08-8DB0-A80BA724E54A@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755503Ab2CUPVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 11:21:25 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 21/23] NFS: Give modules a custom set / unset layoutdriver functions
+Date: Wed, 21 Mar 2012 11:20:51 -0400
+Message-Id: <1332343253-24970-22-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAzLTI4IGF0IDE1OjA3ICswMDAwLCBBZGFtc29uLCBEcm9zIHdyb3RlOg0K
-PiBUaGlzIHNob3VsZCBwcm9iYWJseSBiZSBzZW50IHRvIHN0YWJsZS4NCg0KU2VlIGJlbG93LiA6
-LSkNCg0KPiAtZHJvcw0KPiANCj4gT24gTWFyIDI3LCAyMDEyLCBhdCA2OjM1IFBNLCBUcm9uZCBN
-eWtsZWJ1c3Qgd3JvdGU6DQo+IA0KPiA+IFdlIGNhbiBjdXJyZW50bHkgbG9vcCBmb3JldmVyIGlu
-IG5mczRfbG9va3VwX3Jvb3QoKSBhbmQgaW4NCj4gPiBuZnM0MV9wcm9jX3NlY2luZm9fbm9fbmFt
-ZSgpLCBpZiB0aGUgZmlyc3QgaXRlcmF0aW9uIHJldHVybnMgYQ0KPiA+IE5GUzRFUlJfREVMQVkg
-b3Igc29tZXRoaW5nIGVsc2UgdGhhdCBjYXVzZXMgZXhjZXB0aW9uLnJldHJ5IHRvIGdldA0KPiA+
-IHNldC4NCj4gPiANCj4gPiBSZXBvcnRlZC1ieTogRHJvcyBBZGFtc29uIDxXZXN0b24uQWRhbXNv
-bkBuZXRhcHAuY29tPg0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNCj4g
-PiAtLS0NCj4gPiBmcy9uZnMvbmZzNHByb2MuYyB8ICAgIDYgKysrKy0tDQo+ID4gMSBmaWxlcyBj
-aGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+ID4gDQo+ID4gZGlmZiAt
-LWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBpbmRleCA0
-NWRmN2Q0Li5lZTljYTE5IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4g
-KysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtMjI5MCwxMSArMjI5MCwxMiBAQCBzdGF0
-aWMgaW50IG5mczRfbG9va3VwX3Jvb3Qoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0
-IG5mc19maCAqZmhhbmRsZSwNCj4gPiAJCXN3aXRjaCAoZXJyKSB7DQo+ID4gCQljYXNlIDA6DQo+
-ID4gCQljYXNlIC1ORlM0RVJSX1dST05HU0VDOg0KPiA+IC0JCQlicmVhazsNCj4gPiArCQkJZ290
-byBvdXQ7DQo+ID4gCQlkZWZhdWx0Og0KPiA+IAkJCWVyciA9IG5mczRfaGFuZGxlX2V4Y2VwdGlv
-bihzZXJ2ZXIsIGVyciwgJmV4Y2VwdGlvbik7DQo+ID4gCQl9DQo+ID4gCX0gd2hpbGUgKGV4Y2Vw
-dGlvbi5yZXRyeSk7DQo+ID4gK291dDoNCj4gPiAJcmV0dXJuIGVycjsNCj4gPiB9DQo+ID4gDQo+
-ID4gQEAgLTYyMjksMTEgKzYyMzAsMTIgQEAgbmZzNDFfcHJvY19zZWNpbmZvX25vX25hbWUoc3Ry
-dWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mc19maCAqZmhhbmRsZSwNCj4gPiAJCWNh
-c2UgMDoNCj4gPiAJCWNhc2UgLU5GUzRFUlJfV1JPTkdTRUM6DQo+ID4gCQljYXNlIC1ORlM0RVJS
-X05PVFNVUFA6DQo+ID4gLQkJCWJyZWFrOw0KPiA+ICsJCQlnb3RvIG91dDsNCj4gPiAJCWRlZmF1
-bHQ6DQo+ID4gCQkJZXJyID0gbmZzNF9oYW5kbGVfZXhjZXB0aW9uKHNlcnZlciwgZXJyLCAmZXhj
-ZXB0aW9uKTsNCj4gPiAJCX0NCj4gPiAJfSB3aGlsZSAoZXhjZXB0aW9uLnJldHJ5KTsNCj4gPiAr
-b3V0Og0KPiA+IAlyZXR1cm4gZXJyOw0KPiA+IH0NCj4gPiANCj4gPiAtLSANCj4gPiAxLjcuNy42
-DQo+ID4gDQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0
-aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVz
-c2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5m
-byBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+Used to set or clear the pnfs layoutdriver when pnfs is in use.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/client.c    |    6 ++++--
+ fs/nfs/nfs.h       |    2 ++
+ fs/nfs/nfs2super.c |   12 ++++++++++++
+ fs/nfs/nfs3super.c |   12 ++++++++++++
+ fs/nfs/nfs4super.c |    2 ++
+ 5 files changed, 32 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 32a9a54..96de872 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -877,6 +877,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 				  struct nfs_fsinfo *fsinfo)
+ {
+ 	unsigned long max_rpc_payload;
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
+ 
+ 	/* Work out a lot of parameters */
+ 	if (server->rsize == 0)
+@@ -905,7 +906,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+ 	server->pnfs_blksize = fsinfo->blksize;
+-	set_pnfs_layoutdriver(server, mntfh, fsinfo->layouttype);
++	nfs_mod->set_layoutdriver(server, mntfh, fsinfo->layouttype);
+ 
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+@@ -1065,10 +1066,11 @@ struct nfs_server *nfs_alloc_server(void)
+  */
+ void nfs_free_server(struct nfs_server *server)
+ {
++	struct nfs_subversion *nfs_mod = get_nfs_server_version(server);
+ 	dprintk("--> nfs_free_server()\n");
+ 
+ 	nfs_server_remove_lists(server);
+-	unset_pnfs_layoutdriver(server);
++	nfs_mod->unset_layoutdriver(server);
+ 
+ 	if (server->destroy != NULL)
+ 		server->destroy(server);
+diff --git a/fs/nfs/nfs.h b/fs/nfs/nfs.h
+index 21bc52b..fe8152f 100644
+--- a/fs/nfs/nfs.h
++++ b/fs/nfs/nfs.h
+@@ -43,6 +43,8 @@ struct nfs_subversion {
+ 	int (*return_delegation)(struct inode *);
+ 	void (*init_read)(struct nfs_pageio_descriptor *, struct inode *);
+ 	void (*init_write)(struct nfs_pageio_descriptor *, struct inode *, int);
++	void (*set_layoutdriver)(struct nfs_server *, const struct nfs_fh *, u32);
++	void (*unset_layoutdriver)(struct nfs_server *);
+ };
+ 
+ struct nfs_sb_mountdata {
+diff --git a/fs/nfs/nfs2super.c b/fs/nfs/nfs2super.c
+index a9a1a0b..88d772d 100644
+--- a/fs/nfs/nfs2super.c
++++ b/fs/nfs/nfs2super.c
+@@ -47,6 +47,16 @@ static struct vfsmount *nfs2_do_submount(struct dentry *dentry,
+ 	return _nfs_do_submount(&nfs_xdev_fs_type, dentry, fh, fattr, authflavor);
+ }
+ 
++static void nfs2_set_layoutdriver(struct nfs_server *server,
++				  const struct nfs_fh *mntfh,
++				  u32 id)
++{
++}
++
++static void nfs2_unset_layoutdriver(struct nfs_server *server)
++{
++}
++
+ static struct nfs_subversion nfs_v2 = {
+ 	.version  = 2,
+ 	.rpc_vers = &nfs_version2,
+@@ -61,6 +71,8 @@ static struct nfs_subversion nfs_v2 = {
+ 	.submount = nfs2_do_submount,
+ 	.init_read = nfs_pageio_init_read_mds,
+ 	.init_write = nfs_pageio_init_write_mds,
++	.set_layoutdriver = nfs2_set_layoutdriver,
++	.unset_layoutdriver = nfs2_unset_layoutdriver,
+ };
+ 
+ static int __init init_nfs_v2(void)
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index c84ffe3..28f56e7 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -49,6 +49,16 @@ static struct vfsmount *nfs3_do_submount(struct dentry *dentry,
+ 	return _nfs_do_submount(&nfs_xdev_fs_type, dentry, fh, fattr, authflavor);
+ }
+ 
++static void nfs3_set_layoutdriver(struct nfs_server *server,
++				  const struct nfs_fh *mntfh,
++				  u32 id)
++{
++}
++
++static void nfs3_unset_layoutdriver(struct nfs_server *server)
++{
++}
++
+ const struct inode_operations nfs3_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+@@ -92,6 +102,8 @@ static struct nfs_subversion nfs_v3 = {
+ 	.submount = nfs3_do_submount,
+ 	.init_read = nfs_pageio_init_read_mds,
+ 	.init_write = nfs_pageio_init_write_mds,
++	.set_layoutdriver = nfs3_set_layoutdriver,
++	.unset_layoutdriver = nfs3_unset_layoutdriver,
+ };
+ 
+ static int __init init_nfs_v3(void)
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 6bf44e3..7b8e79b 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -658,6 +658,8 @@ static struct nfs_subversion nfs_v4 = {
+ 	.submount = nfs4_do_submount,
+ 	.init_read = pnfs_pageio_init_read,
+ 	.init_write = pnfs_pageio_init_write,
++	.set_layoutdriver = set_pnfs_layoutdriver,
++	.unset_layoutdriver = unset_pnfs_layoutdriver,
+ };
+ 
+ int __init init_nfs_v4(void)
+-- 
+1.7.9.4
+
