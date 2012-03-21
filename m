@@ -1,76 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57937 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58708 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758289Ab2CFTIZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2012 14:08:25 -0500
-Date: Tue, 6 Mar 2012 13:31:24 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v9 3/6] nfsd: add a per-net-namespace struct for nfsd
-Message-ID: <20120306133124.5dbef60c@tlielax.poochiereds.net>
-In-Reply-To: <4F564CCD.9040708@parallels.com>
-References: <1331047733-1641-1-git-send-email-jlayton@redhat.com>
-	<1331047733-1641-4-git-send-email-jlayton@redhat.com>
-	<4F564CCD.9040708@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1758173Ab2CUPVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 11:21:13 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v4 02/23] NFS: Make v2 configurable
+Date: Wed, 21 Mar 2012 11:20:32 -0400
+Message-Id: <1332343253-24970-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
+References: <1332343253-24970-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 06 Mar 2012 21:43:41 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> 06.03.2012 19:28, Jeff Layton пишет:
-> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > index 64c24af..141197e 100644
-> > --- a/fs/nfsd/nfsctl.c
-> > +++ b/fs/nfsd/nfsctl.c
-> > @@ -19,6 +19,7 @@
-> >   #include "nfsd.h"
-> >   #include "cache.h"
-> >   #include "fault_inject.h"
-> > +#include "netns.h"
-> >
-> >   /*
-> >    *	We have a single directory with several nodes in it.
-> > @@ -1124,14 +1125,23 @@ static int create_proc_exports_entry(void)
-> >   }
-> >   #endif
-> >
-> > +int nfsd_net_id;
-> > +static struct pernet_operations nfsd_net_ops = {
-> > +	.id   =&nfsd_net_id,
-> > +	.size = sizeof(struct nfsd_net),
-> > +};
-> > +
-> >   static int __init init_nfsd(void)
-> >   {
-> >   	int retval;
-> >   	printk(KERN_INFO "Installing knfsd (copyright (C) 1996 okir@monad.swb.de).\n");
-> >
-> > +	retval = register_pernet_subsys(&nfsd_net_ops);
-> 
-> Hi, Jeff.
-> You've created per-net structure and operations and that's cool.
-> But why don't you move nfsd client tracking control into per-net operations?
-> I.e. add init-exit callbacks in struct pernet_operations and call 
-> nfsd4_client_tracking_init() and nfsd4_client_tracking_exit() respectively in there?
-> And since we don't support any other networks namesapce except init_net, then 
-> just skip all others in these callbacks.
-> 
+With this patch NFS v2 will no longer be automatically compiled in.
+Instead, users will have to select NFS_V2 during Kconfig if they want to
+use v2.
 
-Well...the way I had envisioned it is that you'd create a new net
-namespace container and would then start up nfsd within that container.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/Kconfig  |    9 +++++++++
+ fs/nfs/Makefile |    5 +++--
+ fs/nfs/client.c |   11 ++++++++++-
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
-Just because we're spawning a new namespace doesn't mean that we'll
-necessarily want to serve nfs from it, right? If we do it this way,
-then we don't end up allocating resources for containers that aren't
-going to use it.
-
-...or do I not understand the "vision" of how all of this is going to
-eventually work?
-
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 2a0e6c5..4995b24 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -29,6 +29,15 @@ config NFS_FS
+ 
+ 	  If unsure, say N.
+ 
++config NFS_V2
++	bool "NFS client support for NFS version 2"
++	depends on NFS_FS
++	help
++	  This option enables support for version 2 of the NFS protocol
++	  (RFC 1094) in the kernel's NFS client.
++
++	  If unsure, say Y.
++
+ config NFS_V3
+ 	bool "NFS client support for NFS version 3"
+ 	depends on NFS_FS
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index b58613d..7ddd45d 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -4,11 +4,12 @@
+ 
+ obj-$(CONFIG_NFS_FS) += nfs.o
+ 
+-nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o nfs2xdr.o \
+-			   direct.o pagelist.o proc.o read.o symlink.o unlink.o \
++nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
++			   direct.o pagelist.o read.o symlink.o unlink.o \
+ 			   write.o namespace.o mount_clnt.o \
+ 			   dns_resolve.o cache_lib.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
++nfs-$(CONFIG_NFS_V2)	+= proc.o nfs2xdr.o
+ nfs-$(CONFIG_NFS_V3)	+= nfs3proc.o nfs3xdr.o
+ nfs-$(CONFIG_NFS_V3_ACL)	+= nfs3acl.o
+ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 08e7f24..4d793b2 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -90,7 +90,9 @@ static bool nfs4_disable_idmapping = true;
+  * RPC cruft for NFS
+  */
+ static const struct rpc_version *nfs_version[5] = {
++#ifdef CONFIG_NFS_V2
+ 	[2]			= &nfs_version2,
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	[3]			= &nfs_version3,
+ #endif
+@@ -847,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 		.hostname = data->nfs_server.hostname,
+ 		.addr = (const struct sockaddr *)&data->nfs_server.address,
+ 		.addrlen = data->nfs_server.addrlen,
+-		.rpc_ops = &nfs_v2_clientops,
++		.rpc_ops = NULL,
+ 		.proto = data->nfs_server.protocol,
+ 		.net = data->net,
+ 	};
+@@ -857,10 +859,17 @@ static int nfs_init_server(struct nfs_server *server,
+ 
+ 	dprintk("--> nfs_init_server()\n");
+ 
++
++#ifdef CONFIG_NFS_V2
++	if (data->version == 2)
++		cl_init.rpc_ops = &nfs_v2_clientops;
++#endif
+ #ifdef CONFIG_NFS_V3
+ 	if (data->version == 3)
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
+ #endif
++	if (cl_init.rpc_ops == NULL)
++		return -EPROTONOSUPPORT;
+ 
+ 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+ 			data->timeo, data->retrans);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.9.4
+
