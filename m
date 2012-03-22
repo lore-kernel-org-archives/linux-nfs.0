@@ -1,147 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17920 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47237 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932353Ab2CFRPs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 12:15:48 -0500
-Message-ID: <4F564642.5020404@netapp.com>
-Date: Tue, 06 Mar 2012 12:15:46 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1751900Ab2CVAbV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Mar 2012 20:31:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Greg KH <gregkh@linuxfoundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>,
+        "linux-security-module@vger.kernel.org"
+	<linux-security-module@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>
+Subject: Re: [PATCHSET 0/4] kmod: Optional timeout on the wait in
+ call_usermodehelper_exec
+Date: Thu, 22 Mar 2012 00:31:17 +0000
+Message-ID: <1332376277.12332.22.camel@lade.trondhjem.org>
+References: <4F691059.30405@panasas.com> <20120321153519.GB30250@kroah.com>
+	 <4F6A6FB9.7010508@panasas.com>
+In-Reply-To: <4F6A6FB9.7010508@panasas.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4: parse and display server implementation ids
-References: <1329510026-30403-1-git-send-email-dros@netapp.com> <1329510026-30403-3-git-send-email-dros@netapp.com> <4F522623.3070709@netapp.com> <1330904007.14357.13.camel@lade.trondhjem.org> <F2EBB85C-C7D1-44BF-8863-7CA5FC5203C5@netapp.com>
-In-Reply-To: <F2EBB85C-C7D1-44BF-8863-7CA5FC5203C5@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/06/2012 12:08 PM, Adamson, Dros wrote:
-
-> 
-> On Mar 4, 2012, at 6:33 PM, Myklebust, Trond wrote:
-> 
->> On Sat, 2012-03-03 at 09:09 -0500, Bryan Schumaker wrote:
->>> Hi Dros,
->>>
->>> On 02/17/2012 03:20 PM, Weston Andros Adamson wrote:
->>>
->>>> Shows the implementation ids in /proc/self/mountstats.  This doesn't break
->>>> the nfs-utils mountstats tool.
->>>>
->>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>> ---
->>>> fs/nfs/client.c           |    1 +
->>>> fs/nfs/nfs4proc.c         |   21 +++++++++++++++++++++
->>>> fs/nfs/nfs4xdr.c          |   42 +++++++++++++++++++++++++++++++++++++-----
->>>> fs/nfs/super.c            |    8 ++++++++
->>>> include/linux/nfs_fs_sb.h |    2 ++
->>>> include/linux/nfs_xdr.h   |   15 +++++++--------
->>>> 6 files changed, 76 insertions(+), 13 deletions(-)
->>>>
->>>
->>> <snip>
->>>
->>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>>> index d05024a..5462225 100644
->>>> --- a/fs/nfs/super.c
->>>> +++ b/fs/nfs/super.c
->>>> @@ -809,6 +809,14 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
->>>>
->>>> 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
->>>>
->>>> +	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
->>>> +		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
->>>
->>>
->>> "struct nfs41_impl_id" is only defined when CONFIG_NFS_V4_1 is enabled, so if I compile without NFS 4.1 enabled I get this error:
->>>
->>>  CC [M]  fs/nfs/super.o
->>> /home/bjschuma/linux/modules/fs/nfs/super.c: In function 'nfs_show_stats':
->>> /home/bjschuma/linux/modules/fs/nfs/super.c:843:14: error: dereferencing pointer to incomplete type
->>> /home/bjschuma/linux/modules/fs/nfs/super.c:843:29: error: dereferencing pointer to incomplete type
->>> /home/bjschuma/linux/modules/fs/nfs/super.c:844:14: error: dereferencing pointer to incomplete type
->>> /home/bjschuma/linux/modules/fs/nfs/super.c:844:37: error: dereferencing pointer to incomplete type
->>> make[3]: *** [fs/nfs/super.o] Error 1
-> 
-> Oops!  Good catch Bryan!
-> 
->>
->> Hi Bryan & Dros
->>
->> I've applied the following patch to fix this issue. Please advise if
->> you're still seeing compile problems when it is applied.
->>
->> 8<----------------------------------------------------------------------------
->> From d032769b833d8fbaaa620a54300979dd5881d493 Mon Sep 17 00:00:00 2001
->> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date: Sun, 4 Mar 2012 18:12:57 -0500
->> Subject: [PATCH] NFS: Fix a compile issue when !CONFIG_NFS_V4_1
->>
->> The attempt to display the implementation ID needs to be conditional on
->> whether or not CONFIG_NFS_V4_1 is defined
->>
->> Reported-by: Bryan Schumaker <Bryan.Schumaker@netapp.com>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->> fs/nfs/super.c |   22 +++++++++++++++-------
->> 1 files changed, 15 insertions(+), 7 deletions(-)
->>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index 3935a37..61419c9 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -785,8 +785,22 @@ static void show_pnfs(struct seq_file *m, struct nfs_server *server)
->> 	else
->> 		seq_printf(m, "not configured");
->> }
->> +
->> +static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
->> +{
->> +	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
->> +		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
->> +		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
->> +			   "date='%llu,%u'",
->> +			   impl_id->name, impl_id->domain,
->> +			   impl_id->date.seconds, impl_id->date.nseconds);
->> +	}
->> +}
->> #else
->> static void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
->> +static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
->> +{
->> +}
->> #endif
->> #endif
->>
->> @@ -836,13 +850,7 @@ static int nfs_show_stats(struct seq_file *m, struct dentry *root)
->>
->> 	seq_printf(m, "\n\tage:\t%lu", (jiffies - nfss->mount_time) / HZ);
->>
->> -	if (nfss->nfs_client && nfss->nfs_client->impl_id) {
->> -		struct nfs41_impl_id *impl_id = nfss->nfs_client->impl_id;
->> -		seq_printf(m, "\n\timpl_id:\tname='%s',domain='%s',"
->> -			   "date='%llu,%u'",
->> -			   impl_id->name, impl_id->domain,
->> -			   impl_id->date.seconds, impl_id->date.nseconds);
->> -	}
->> +	show_implementation_id(m, nfss);
->>
->> 	seq_printf(m, "\n\tcaps:\t");
->> 	seq_printf(m, "caps=0x%x", nfss->caps);
->> -- 
->> 1.7.7.6
-> 
-> Works for me.  I need to test with different CONFIG opts more often!
-
-
-That's actually how I found this.  I set up Jenkins to change all the nfs CONFIG options to make sure I had everything covered for my modules patches.  I've added compile testing to my normal nightly tests now, so these issuse should be caught faster.
-
-- Bryan
-
-> 
-> -dros
-
-
+T24gV2VkLCAyMDEyLTAzLTIxIGF0IDE3OjE4IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
+IE9uIDAzLzIxLzIwMTIgMDg6MzUgQU0sIEdyZWcgS0ggd3JvdGU6DQo+ID4gT24gVHVlLCBNYXIg
+MjAsIDIwMTIgYXQgMDQ6MTg6NDlQTSAtMDcwMCwgQm9heiBIYXJyb3NoIHdyb3RlOg0KPiA+PiBB
+bmRyZXcgSGkNCj4gPj4NCj4gPj4gSSdtIHBpY2tpbmcgb24geW91IGJlY2F1c2UgSSBkb24ndCBo
+YXZlIGFueSBvbmUgZWxzZSB0byBwaWNrIG9uLg0KPiA+PiBUaGUgMyBmaXJzdCBwYXRjaGVzIGhl
+cmUsIGFyZSBqdXN0IGdvb2QgZm9yIHRvZGF5LiBQbGVhc2Ugc2VlIGlmDQo+ID4+IHlvdSB3b3Vs
+ZCBsaWtlIHRvIHRha2UgdGhlbT8gb3IgdGVsbCBtZSB3aG8gc2hvdWxkIHRha2UgdGhlbT8NCj4g
+Pj4NCj4gPj4gVGhlIDR0aCBwYXRjaCBpcyBhbiBSRkMsIHdoaWNoIGdvdCBtZSBsb29raW5nIGlu
+dG8gdGhpcy4NCj4gPj4NCj4gPj4gTXkgbW90aXZhdGlvbiBpcyB0aGF0IEkgYWRkZWQgeWV0IGFu
+b3RoZXIgS2VybmVsIGRlcGVuZGVuY3kgb24gdGhlDQo+ID4+IGNhbGxfdXNlcm1vZGVoZWxwZXIo
+KSBmdW5jdGlvbiBhbmQgYW0gbm90IGNvbXBsZXRlbHkgaGFwcHkgd2l0aCB0aGUNCj4gPj4gZXJy
+b3IgY2FzZSBvZiBoYXZpbmcgdGhlIHVzZXItbW9kZSBwcm9ncmFtIHN0dWNrIGZvcmV2ZXIuIElu
+IHN1Y2gNCj4gPj4gY2FzZSBJIHdvdWxkIGxpa2UgdGhlIEtlcm5lbCBwYXJ0IHRvIHRpbWVvdXQg
+YW5kIHByb3Blcmx5IGVycm9yIHJlY292ZXINCj4gPj4gYW5kIGNsZWFuIHVwLiBTbyB0aGVyZWZv
+ciB0aGUgcHJvcG9zZWQgNHRoIHBhdGNoLg0KPiA+IA0KPiA+IFdoYXQgaXMgdGhpcyBuZXcgdXNl
+IG9mIGNhbGxfdXNlcm1vZGhlbHBlciB0aGF0IHlvdSBhcmUgZG9pbmcgdGhpcyB3b3JrDQo+ID4g
+Zm9yPyAgSWRlYWxseSwgeW91IG5ldmVyIHdhbnQgdG8gbWFrZSB0aGlzIGNhbGwsIGFzIGl0J3Mg
+c2xvdyBhbmQgbWVzc3ksDQo+ID4gYXMgeW91IGhhdmUgZm91bmQgb3V0LiAgSXMgdGhlcmUgYW4g
+aW4ta2VybmVsIHVzZXIgdGhhdCB5b3UgaGF2ZQ0KPiA+IHJlY2VudGx5IGFkZGVkPw0KPiA+IA0K
+PiA+IHRoYW5rcywNCj4gPiANCj4gPiBncmVnIGstaA0KPiANCj4gSSBhZ3JlZSBoZW5jZSBteSBj
+b21tZW50IGluIHRoZSA0dGggcGF0Y2g6DQo+IAkiSW4gdGhlIGJsYXNwaGVtb3VzIG9jY2FzaW9u
+cyB0aGF0IGEgdGhlIEtlcm5lbCBtdXN0IGNhbGwgYSB1c2VyLW1vZGUgcHJvZ3JhbSINCj4gDQo+
+IEkgaGF2ZSBhZGRlZCBhIG5ldyBjYWxsZXIsIHRvIHRoZSBuZnMvb2JqZWN0bGF5b3V0ZHJpdmVy
+LmtvIHRoYXQgdXNlcyB0aGlzDQo+IGZhY2lsaXR5IGZvciBhdXRvLWxvZ2luIGludG8gb3NkLXRh
+cmdldHMgKGlzY3NpLXRhcmdldHMpIHdoZW4gbmV3IGFyZSByZXF1ZXN0ZWQNCj4gYnkgdGhlIGZp
+bGVzeXN0ZW0uIFRoaXMgYXV0by1sb2dpbiBmYWNpbGl0eSBpcyBtYW5kYXRlZCBieSB0aGUgcG5m
+cy1vYmplY3RzDQo+IHN0YW5kYXJkIGJlY2F1c2UgaW4gYSBsYXJnZSBjbHVzdGVyIGZpbGVzeXN0
+ZW1zIGZvciB3aGljaCBwbmZzIHdhcyBpbnZlbnRlZCwgc3RvcmFnZQ0KPiBkZXZpY2VzIGJyZWFr
+IGFuZCBjaGFuZ2VkIGV2ZXJ5ZGF5LCBhbmQgYSBtYW51YWwgbG9naW4gYnkgZXZlcnkgY2xpZW50
+IGlzIG5vdA0KPiBmZWFzaWJsZS4NCj4gDQo+IFlvdSBjYW4gc2VlIHRoaXMgcGF0Y2ggYXMgcG9z
+dGVkIHRvIHRoZSBtYWlsaW5nIGxpc3QgaGVyZToNCj4gCWh0dHA6Ly9hcnRpY2xlLmdtYW5lLm9y
+Zy9nbWFuZS5saW51eC5uZnMvNDgwMjQvbWF0Y2g9bG9naW4NCj4gCVt0aXRsZTogcG5mcy1vYmo6
+IGF1dG9sb2dpbjogQWRkIHN1cHBvcnQgZm9yIHByb3RvY29sIGF1dG9sb2dpbl0NCj4gDQo+IEl0
+IHdvcmtzIHZlcnkgd2VsbCBhbmQgd2FzIGhlYXZpbHkgdGVzdGVkLCB3aXRoIGFsbCBlcnJvciBz
+Y2VuYXJpb3MsIGJ1dA0KPiB0aGUgdGhlb3JldGljYWwgcG9zc2liaWxpdHkgdGhhdCB0aGUgdXNl
+ci1tb2RlIHByb2dyYW0gY2FuIGJlIHN0dWNrIGZvcmV2ZXINCj4gYm90aGVycyBtZSBhbmQgSSB3
+b3VsZCBsaWtlIHRvIGRvIHNvbWV0aGluZyBhYm91dCBpdC4gV2l0aCB0aGlzIHBhdGNoIHRoZQ0K
+PiBLZXJuZWwgY2FuIHJlY292ZXIgY2xlYW5seSBhbmQgY29udGludWUuIEkgaGF2ZSBhY3R1YWxs
+eSB0ZXN0ZWQgdGhpcyBwYXJ0DQo+IGFuZCBpdCB3b3JrcyBhcyBleHBlY3RlZC4NCg0KSGkgQm9h
+eiwNCg0KQXMgYW4gYWx0ZXJuYXRpdmUgc3VnZ2VzdGlvbjogc2luY2UgeW91IGFyZSBhbHdheXMg
+Y2FsbGluZyB0aGUNCnNhbWUgL3NiaW4vb3NkX2xvZ2luIHVzZXJzcGFjZSBwcm9ncmFtLCB3b3Vs
+ZG4ndCBpdCBiZSBlYXNpZXIgdG8gYWRkIHRoZQ0KdGltZW91dCBzbWFydHMgaW50byB0aGF0IHBy
+b2dyYW0/IElmIHlvdSBjYW4ndCBtb2RpZnkgdGhlIG9zZF9sb2dpbg0KcHJvZ3JhbSBpdHNlbGYs
+IHRoZW4gaXQgc2hvdWxkIHN0aWxsIGJlIHRyaXZpYWwgdG8gd3JhcCBpdCB3aXRoIGEgc2NyaXB0
+DQp0aGF0IGFkZHMgdGhlICd0aW1lb3V0JyBjb21tYW5kIHByZWZpeC4NCg0KQ2hlZXJzDQogIFRy
+b25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoN
+Ck5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
