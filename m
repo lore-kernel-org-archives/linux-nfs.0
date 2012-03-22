@@ -1,92 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:48107 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755862Ab2CLPYf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2012 11:24:35 -0400
-Subject: Re: [PATCH] NFSD: Fix nfs4_verifier memory alignment
-Mime-Version: 1.0 (Apple Message framework v1257)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120312150408.GA17153@pad.fieldses.org>
-Date: Mon, 12 Mar 2012 11:24:18 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Message-Id: <5200DE52-1977-4A35-A32A-88F4D5B101A2@oracle.com>
-References: <20120302221251.13019.46002.stgit@degas.1015granger.net> <20120312142049.GB4752@fieldses.org> <2418988F-A737-42F6-8AA0-99E85B9B8C66@oracle.com> <20120312150408.GA17153@pad.fieldses.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:39036 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030243Ab2CVTTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 15:19:45 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 09/11] NFSv4.1 ref count nfs_client across filelayout data server io
+Date: Thu, 22 Mar 2012 15:19:37 -0400
+Message-Id: <1332443979-2302-10-git-send-email-andros@netapp.com>
+In-Reply-To: <1332443979-2302-1-git-send-email-andros@netapp.com>
+References: <1332443979-2302-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
-On Mar 12, 2012, at 11:04 AM, J. Bruce Fields wrote:
+Prepare to put a dis-connected DS client record.
 
-> On Mon, Mar 12, 2012 at 10:57:32AM -0400, Chuck Lever wrote:
->> 
->> On Mar 12, 2012, at 10:20 AM, J. Bruce Fields wrote:
->> 
->>> On Fri, Mar 02, 2012 at 05:13:50PM -0500, Chuck Lever wrote:
->>>> Clean up due to code review.
->>>> 
->>>> The nfs4_verifier's data field is not guaranteed to be u32-aligned.
->>>> Casting an array of chars to a u32 * is considered generally
->>>> hazardous.
->>>> 
->>>> We can fix most of this by using a __be32 array to generate the
->>>> verifier's contents and then byte-copying it into the verifier field.
->>>> 
->>>> However, there is one spot where there is a backwards compatibility
->>>> constraint: the do_nfsd_create() call expects a verifier which is
->>>> 32-bit aligned.  Fix this spot by forcing the alignment of the create
->>>> verifier in the nfsd4_open args structure.
->>>> 
->>>> Also, sizeof(nfs4_verifer) is the size of the in-core verifier data
->>>> structure, but NFS4_VERIFIER_SIZE is the number of octets in an XDR'd
->>>> verifier.  The two are not interchangeable, even if they happen to
->>>> have the same value.
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> 
->>>> Hi Bruce-
->>>> 
->>>> Compile-tested only.  Does this look reasonable?
->>> 
->>> Looks fine, but the setclientid verifier stuff belongs in a separate
->>> patch.
->> 
->> Thanks for the review.  I'm not clear on exactly which hunks you would like split.
-> 
-> This:
-> 
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index c5cddd6..9f0e139 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -1138,12 +1138,12 @@ static void gen_clid(struct nfs4_client *clp)
->>>> 
->>>> static void gen_confirm(struct nfs4_client *clp)
->>>> {
->>>> +	__be32 verf[2];
->>>> 	static u32 i;
->>>> -	u32 *p;
->>>> 
->>>> -	p = (u32 *)clp->cl_confirm.data;
->>>> -	*p++ = get_seconds();
->>>> -	*p++ = i++;
->>>> +	verf[0] = (__be32)get_seconds();
->>>> +	verf[1] = (__be32)i++;
->>>> +	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
-> 
-> This cl_confirm verifier really has nothing to do with the write
-> verifier (though maybe it has a similar problem).
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   22 +++++++++++++++++-----
+ 1 files changed, 17 insertions(+), 5 deletions(-)
 
-The patch fixes nfs4_verifiers, of which cl_confirm is one.  We can't guarantee access to an nfs4_verifier field, which is an array of char, using (u32 *).  It just happens to work now on architectures we test regularly.
-
-This seems perfectly relevant to the patch description to me.  Do you still want this hunk split into a separate patch?
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index ce8734d..acf6226 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -88,6 +88,8 @@ void filelayout_reset_write(struct rpc_task *task, struct nfs_write_data *data)
+ 	dprintk("%s Reset task for i/o through MDS\n", __func__);
+ 	put_lseg(data->lseg);
+ 	data->lseg          = NULL;
++	/* balance nfs_get_client in filelayout_write_pagelist */
++	nfs_put_client(data->ds_clp);
+ 	data->ds_clp        = NULL;
+ 	data->write_done_cb = nfs4_write_done_cb;
+ 	data->args.fh       = NFS_FH(data->inode);
+@@ -106,6 +108,8 @@ void filelayout_reset_read(struct rpc_task *task, struct nfs_read_data *data)
+ 	data->lseg         = NULL;
+ 	/* offsets will differ in the dense stripe case */
+ 	data->args.offset  = data->mds_offset;
++	/* balance nfs_get_client in filelayout_read_pagelist */
++	nfs_put_client(data->ds_clp);
+ 	data->ds_clp       = NULL;
+ 	data->args.fh      = NFS_FH(data->inode);
+ 	data->read_done_cb = nfs4_read_done_cb;
+@@ -273,6 +277,7 @@ static void filelayout_read_release(void *data)
+ 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
+ 
+ 	put_lseg(rdata->lseg);
++	nfs_put_client(rdata->ds_clp);
+ 	rdata->mds_ops->rpc_release(data);
+ }
+ 
+@@ -369,6 +374,7 @@ static void filelayout_write_release(void *data)
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
+ 	put_lseg(wdata->lseg);
++	nfs_put_client(wdata->ds_clp);
+ 	wdata->mds_ops->rpc_release(data);
+ }
+ 
+@@ -388,6 +394,7 @@ static void filelayout_commit_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
+ 
++	nfs_put_client(wdata->ds_clp);
+ 	nfs_commit_release_pages(wdata);
+ 	if (atomic_dec_and_test(&NFS_I(wdata->inode)->commits_outstanding))
+ 		nfs_commit_clear_lock(NFS_I(wdata->inode));
+@@ -436,9 +443,11 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s USE DS: %s\n", __func__, ds->ds_remotestr);
++	dprintk("%s USE DS: %s cl_count %d\n", __func__,
++		ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	/* No multipath support. Use first DS */
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -471,11 +480,12 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds)
+ 		return PNFS_NOT_ATTEMPTED;
+-	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s\n", __func__,
+-		data->inode->i_ino, sync, (size_t) data->args.count, offset,
+-		ds->ds_remotestr);
++	dprintk("%s ino %lu sync %d req %Zu@%llu DS: %s cl_count %d\n",
++		__func__, data->inode->i_ino, sync, (size_t) data->args.count,
++		offset, ds->ds_remotestr, atomic_read(&ds->ds_clp->cl_count));
+ 
+ 	data->write_done_cb = filelayout_write_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+@@ -951,8 +961,10 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 		filelayout_commit_release(data);
+ 		return -EAGAIN;
+ 	}
+-	dprintk("%s ino %lu, how %d\n", __func__, data->inode->i_ino, how);
++	dprintk("%s ino %lu, how %d cl_count %d\n", __func__,
++		data->inode->i_ino, how, atomic_read(&ds->ds_clp->cl_count));
+ 	data->write_done_cb = filelayout_commit_done_cb;
++	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
+ 	fh = select_ds_fh_from_commit(lseg, data->ds_commit_index);
+ 	if (fh)
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.6.4
 
