@@ -1,108 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5903 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754847Ab2CVOfo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Mar 2012 10:35:44 -0400
-Date: Thu, 22 Mar 2012 15:27:58 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, keyrings@linux-nfs.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "Bhamare, Sachin" <sbhamare@panasas.com>,
-        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
-        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
-        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Rusty Russell <rusty@rustcorp.com.au>, Tejun Heo <tj@kernel.org>,
-        David Rientjes <rientjes@google.com>
-Subject: Re: [RFC 4/4] {RFC} kmod.c: Add new call_usermodehelper_timeout()
-	API
-Message-ID: <20120322142758.GA12370@redhat.com>
-References: <4F691059.30405@panasas.com> <4F691383.5040506@panasas.com> <4F6A92FC.6060702@panasas.com>
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:25619 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758026Ab2CVT2Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 15:28:24 -0400
+Subject: Re: [PATCH] RFC: export options for junctions
+Mime-Version: 1.0 (Apple Message framework v1257)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4F6A92FC.6060702@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120322105938.GB17569@fieldses.org>
+Date: Thu, 22 Mar 2012 15:28:15 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D513613A-0CA8-4011-8371-2F2957A87317@oracle.com>
+References: <20120302195451.18167.81861.stgit@degas.1015granger.net> <20120320195607.GD1431@fieldses.org> <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com> <20120321212937.GG12309@fieldses.org> <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com> <20120322105938.GB17569@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/21, Boaz Harrosh wrote:
->
-> > @@ -258,7 +262,8 @@ static void __call_usermodehelper(struct work_struct *work)
-> >
-> >  	switch (wait) {
-> >  	case UMH_NO_WAIT:
-> > -		call_usermodehelper_freeinfo(sub_info);
-> > +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
-> > +		kref_put(&sub_info->kref,  call_usermodehelper_freeinfo);
-> >  		break;
 
-This doesn't look very nice. If you add the refcounting, it should be
-consistent. Imho it is better to change call_usermodehelper_exec() so
-that UMH_NO_WAIT does kref_put() too. Just s/goto unlock/goto out/ afaics.
+On Mar 22, 2012, at 6:59 AM, J. Bruce Fields wrote:
 
-> > @@ -452,22 +459,27 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info,
-> >
-> >  	sub_info->complete = &done;
-> >  	sub_info->wait = wait;
-> > +	if (!sub_info->wait_timeout)
-> > +		sub_info->wait_timeout = MAX_SCHEDULE_TIMEOUT;
-> >
-> > +	/* Balanced in __call_usermodehelper or wait_for_helper */
-> > +	kref_get(&sub_info->kref);
-> >  	queue_work(khelper_wq, &sub_info->work);
-> >  	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
-> >  		goto unlock;
-> > -	wait_for_completion(&done);
-> > -	retval = sub_info->retval;
-> > -
-> > +	if (likely(wait_for_completion_timeout(&done, sub_info->wait_timeout)))
-> > +		retval = sub_info->retval;
-> > +	else
-> > +		retval = -ETIMEDOUT;
-> >  out:
-> > -	call_usermodehelper_freeinfo(sub_info);
-> > +	kref_put(&sub_info->kref, call_usermodehelper_freeinfo);
-> >  unlock:
-> >  	helper_unlock();
-> >  	return retval;
-> >  }
+> On Wed, Mar 21, 2012 at 05:35:17PM -0400, Chuck Lever wrote:
+>> 
+>> On Mar 21, 2012, at 5:29 PM, J. Bruce Fields wrote:
+>> 
+>>> On Wed, Mar 21, 2012 at 05:11:40PM -0400, Chuck Lever wrote:
+>>>> 1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
+>>>> 
+>>>> 2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
+>>>> 
+>>>> 3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
+> 
+> You should be able to skip steps 2 and 3 and use dupexportent.
+> 
+> Does that sound doable?
 
-This looks obviously wrong. You also need to move *sub_info->complete
-into subprocess_info.
+The current junction lookup logic uses mkexportent(), which returns a statically allocated exportent that doesn't need to be freed.  That makes the lookup_junction() call site simple, but that's too clever by half.  Using dupexportent() unchanged would require some reworking there in order to free the duplicated exportent.
 
-> Author: Oleg Nesterov <oleg@redhat.com>
-> Date:   Wed Mar 21 10:57:41 2012 +1100
->
->     usermodehelper: implement UMH_KILLABLE
->
->     Implement UMH_KILLABLE, should be used along with UMH_WAIT_EXEC/PROC.  The
->     caller must ensure that subprocess_info->path/etc can not go away until
->     call_usermodehelper_freeinfo().
-> ...
->
-> I think that my patch above does a much better/cleaner lifetime management of the
-> subprocess_info struct, with the use of a kref.
+Also I'm not quite sure how to safely combine the use of mkexportent(), which parses the referral options we just created, and dupexportent(), which would duplicate the options from the parent, but would walk on e_hostname.
 
-This is subjective, you know ;) I specially tried to avoid the
-refcounting.
+I could address both those problems by constructing a new function which was an amalgam of the two.
 
-In any case. I do not know why do we need timeout, but this is
-orthogonal to KILLABLE. Please redo your patches on top of -mm
-tree? Please note that in this case the change becomes trivial.
+I still have to play with the lookup_export() logic to see how to find a junction's parent export.
 
-And please explain the use-case for the new API.
+> --b.
+> 
+>>>> 
+>>>> 4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
+>>>> 
+>>>> For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
+>>>> 
+>>>> Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
+>>>> 
+>>>>> --b.
+>>>>> 
+>>>>>> 
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>> 
+>>>>>> utils/mountd/cache.c |    2 +-
+>>>>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>>>>> 
+>>>>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+>>>>>> index ac9cdbd..35bc2e9 100644
+>>>>>> --- a/utils/mountd/cache.c
+>>>>>> +++ b/utils/mountd/cache.c
+>>>>>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+>>>>>> 			ptr += len;
+>>>>>> 		} else {
+>>>>>> 			if (last_path == NULL)
+>>>>>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
+>>>>>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+>>>>>> 							rootpath, server);
+>>>>>> 			else
+>>>>>> 				len = snprintf(ptr, remaining, ":%s@%s",
+>>>>>> 
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>>> -- 
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> Anyway I thought that we are not
-> suppose to use xhcg() since it is not portable to all ARCHs. ;-)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Hmm. For example, exit_mm() does xchg().
 
-Oleg.
+
 
