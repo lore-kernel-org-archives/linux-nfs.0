@@ -1,85 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50875 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932682Ab2CGATv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Mar 2012 19:19:51 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "xemul@parallels.com" <xemul@parallels.com>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jbottomley@parallels.com" <jbottomley@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH] SUNRPC: set desired file system root before connecting
- local transports
-Date: Wed, 7 Mar 2012 00:19:48 +0000
-Message-ID: <1331079588.10560.55.camel@lade.trondhjem.org>
-References: <20120229145915.24030.31551.stgit@localhost6.localdomain6>
-In-Reply-To: <20120229145915.24030.31551.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:35997 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759266Ab2CVTe1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2012 15:34:27 -0400
+Subject: Re: [PATCH] RFC: export options for junctions
+Mime-Version: 1.0 (Apple Message framework v1257)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <D513613A-0CA8-4011-8371-2F2957A87317@oracle.com>
+Date: Thu, 22 Mar 2012 15:34:18 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9C3B5489-2045-4D14-9FEE-81E831C56EA8@oracle.com>
+References: <20120302195451.18167.81861.stgit@degas.1015granger.net> <20120320195607.GD1431@fieldses.org> <FD566AE0-4B3E-413B-AA04-AD3BDB97A6E9@oracle.com> <20120321212937.GG12309@fieldses.org> <0F4CD350-9CAE-47B8-9FA3-FE80C5742A7F@oracle.com> <20120322105938.GB17569@fieldses.org> <D513613A-0CA8-4011-8371-2F2957A87317@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTAyLTI5IGF0IDE4OjU5ICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gVG9kYXksIHRoZXJlIGlzIGEgcHJvYmxlbSBpbiBjb25uZWN0aW5nIG9mIGxvY2Fs
-IFNVTlJQQyB0aGFuc3BvcnRzLiBUaGVzZQ0KPiB0cmFuc3BvcnRzIHVzZXMgVU5JWCBzb2NrZXRz
-IGFuZCBjb25uZWN0aW9uIGl0c2VsZiBpcyBkb25lIGJ5IHJwY2lvZCB3b3JrcXVldWUuDQo+IEJ1
-dCBVTklYIHNvY2tldHMgbG9va3VwIGlzIGRvbmUgaW4gY29udGV4dCBvZiBwcm9jZXNzIGZpbGUg
-c3lzdGVtIHJvb3QuIEkuZS4NCj4gYWxsIGxvY2FsIHRodW5zcG9ydHMgYXJlIGNvbm5lY3Rpbmcg
-aW4gcnBjaW9kIGNvbnRleHQuDQo+IFRoaXMgd29ya3MgbmljZSB1bnRpbCB3ZSB3aWxsIHRyeSB0
-byBtb3VudCBORlMgZnJvbSBwcm9jZXNzIHdpdGggb3RoZXIgcm9vdCAtDQo+IGZvciBleGFtcGxl
-IGluIGNvbnRhaW5lci4gVGhpcyBjb250YWluZXIgY2FuIGhhdmUgaXQncyBvd24gKG5lc3RlZCkg
-cm9vdCBhbmQNCj4gcmNwYmluZCBwcm9jZXNzLCBsaXN0ZW5pbmcgb24gaXQncyBvd24gdW5peCBz
-b2NrZXRzLiBCdXQgTkZTIG1vdW50IGF0dGVtcHQgaW4NCj4gdGhpcyBjb250YWluZXIgd2lsbCBy
-ZWdpc3RlciBuZXcgc2VydmljZSAoTG9ja2QgZm9yIGV4YW1wbGUpIGluIGdsb2JhbCBycGNiaW5k
-DQo+IC0gbm90IGNvbnRhaW5lcnMncyBvbmUuDQo+IFRoaXMgcGF0Y2ggc29sdmVzIHRoZSBwcm9i
-bGVtIGJ5IHN3aXRjaGluZyBycGNpb2Qga2VybmVsIHRocmVhZCdzIGZpbGUgc3lzdGVtDQo+IHJv
-b3QgdG8gcmlnaHQgb25lIChzdG9yZWQgb24gdHJhbnNwb3J0KSB3aGlsZSBjb25uZWN0aW5nIG9m
-IGxvY2FsIHRyYW5zcG9ydHMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1
-cnNreSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4NCj4gDQo+IC0tLQ0KPiAgZnMvZnNfc3Ry
-dWN0LmMgICAgICAgIHwgICAgMSArDQo+ICBuZXQvc3VucnBjL3hwcnRzb2NrLmMgfCAgIDMyICsr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+ICAyIGZpbGVzIGNoYW5nZWQsIDMxIGlu
-c2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvZnNfc3Ry
-dWN0LmMgYi9mcy9mc19zdHJ1Y3QuYw0KPiBpbmRleCA3OGI1MTljLi4wZjk4NGMzIDEwMDY0NA0K
-PiAtLS0gYS9mcy9mc19zdHJ1Y3QuYw0KPiArKysgYi9mcy9mc19zdHJ1Y3QuYw0KPiBAQCAtMzYs
-NiArMzYsNyBAQCB2b2lkIHNldF9mc19yb290KHN0cnVjdCBmc19zdHJ1Y3QgKmZzLCBzdHJ1Y3Qg
-cGF0aCAqcGF0aCkNCj4gIAlpZiAob2xkX3Jvb3QuZGVudHJ5KQ0KPiAgCQlwYXRoX3B1dF9sb25n
-dGVybSgmb2xkX3Jvb3QpOw0KPiAgfQ0KPiArRVhQT1JUX1NZTUJPTF9HUEwoc2V0X2ZzX3Jvb3Qp
-Ow0KPiAgDQo+ICAvKg0KPiAgICogUmVwbGFjZSB0aGUgZnMtPntwd2RtbnQscHdkfSB3aXRoIHtt
-bnQsZGVudHJ5fS4gUHV0IHRoZSBvbGQgdmFsdWVzLg0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJw
-Yy94cHJ0c29jay5jIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQo+IGluZGV4IDRjODI4MWQuLmM5
-NGMxODEgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0KPiArKysgYi9uZXQv
-c3VucnBjL3hwcnRzb2NrLmMNCj4gQEAgLTM3LDYgKzM3LDcgQEANCj4gICNpbmNsdWRlIDxsaW51
-eC9zdW5ycGMvc3Zjc29jay5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L3N1bnJwYy94cHJ0c29jay5o
-Pg0KPiAgI2luY2x1ZGUgPGxpbnV4L2ZpbGUuaD4NCj4gKyNpbmNsdWRlIDxsaW51eC9mc19zdHJ1
-Y3QuaD4NCj4gICNpZmRlZiBDT05GSUdfU1VOUlBDX0JBQ0tDSEFOTkVMDQo+ICAjaW5jbHVkZSA8
-bGludXgvc3VucnBjL2JjX3hwcnQuaD4NCj4gICNlbmRpZg0KPiBAQCAtMjU1LDYgKzI1NiwxMSBA
-QCBzdHJ1Y3Qgc29ja194cHJ0IHsNCj4gIAl2b2lkCQkJKCpvbGRfc3RhdGVfY2hhbmdlKShzdHJ1
-Y3Qgc29jayAqKTsNCj4gIAl2b2lkCQkJKCpvbGRfd3JpdGVfc3BhY2UpKHN0cnVjdCBzb2NrICop
-Ow0KPiAgCXZvaWQJCQkoKm9sZF9lcnJvcl9yZXBvcnQpKHN0cnVjdCBzb2NrICopOw0KPiArDQo+
-ICsJLyoNCj4gKwkgKiBTYXZlZCB0cmFuc3BvcnQgY3JlYXRvciByb290LiBSZXF1aXJlZCBmb3Ig
-bG9jYWwgdHJhbnNwb3J0cyBvbmx5Lg0KPiArCSAqLw0KPiArCXN0cnVjdCBwYXRoCQlyb290Ow0K
-PiAgfTsNCj4gIA0KPiAgLyoNCj4gQEAgLTE4OTEsNiArMTg5Nyw3IEBAIHN0YXRpYyB2b2lkIHhz
-X2xvY2FsX3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQo+ICAJc3RydWN0
-IHJwY194cHJ0ICp4cHJ0ID0gJnRyYW5zcG9ydC0+eHBydDsNCj4gIAlzdHJ1Y3Qgc29ja2V0ICpz
-b2NrOw0KPiAgCWludCBzdGF0dXMgPSAtRUlPOw0KPiArCXN0cnVjdCBwYXRoIHJvb3Q7DQo+ICAN
-Cj4gIAlpZiAoeHBydC0+c2h1dGRvd24pDQo+ICAJCWdvdG8gb3V0Ow0KPiBAQCAtMTkwOCw3ICsx
-OTE1LDE0IEBAIHN0YXRpYyB2b2lkIHhzX2xvY2FsX3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19z
-dHJ1Y3QgKndvcmspDQo+ICAJZHByaW50aygiUlBDOiAgICAgICB3b3JrZXIgY29ubmVjdGluZyB4
-cHJ0ICVwIHZpYSBBRl9MT0NBTCB0byAlc1xuIiwNCj4gIAkJCXhwcnQsIHhwcnQtPmFkZHJlc3Nf
-c3RyaW5nc1tSUENfRElTUExBWV9BRERSXSk7DQo+ICANCj4gKwlnZXRfZnNfcm9vdChjdXJyZW50
-LT5mcywgJnJvb3QpOw0KPiArCXNldF9mc19yb290KGN1cnJlbnQtPmZzLCAmdHJhbnNwb3J0LT5y
-b290KTsNCj4gKw0KPiAgCXN0YXR1cyA9IHhzX2xvY2FsX2ZpbmlzaF9jb25uZWN0aW5nKHhwcnQs
-IHNvY2spOw0KPiArDQo+ICsJc2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsICZyb290KTsNCj4gKwlw
-YXRoX3B1dCgmcm9vdCk7DQo+ICsNCj4gIAlzd2l0Y2ggKHN0YXR1cykgew0KPiAgCWNhc2UgMDoN
-Cg0KSGkgU3RhbmlzbGF2LA0KDQpXaGF0IGhhcHBlbnMgaGVyZSBpZiB0aGUgbW91bnQgbmFtZXNw
-YWNlIG9mIHRoZSBwcm9jZXNzIHRoYXQgb3JpZ2luYWxseQ0KY3JlYXRlZCB0aGUgc29ja194cHJ0
-IG5vIGxvbmdlciBleGlzdHM/IFNob3VsZCB3ZSBjYXJlIGFib3V0IHRoYXQgY2FzZT8NCg0KQ2hl
-ZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0K
+
+On Mar 22, 2012, at 3:28 PM, Chuck Lever wrote:
+
+> 
+> On Mar 22, 2012, at 6:59 AM, J. Bruce Fields wrote:
+> 
+>> On Wed, Mar 21, 2012 at 05:35:17PM -0400, Chuck Lever wrote:
+>>> 
+>>> On Mar 21, 2012, at 5:29 PM, J. Bruce Fields wrote:
+>>> 
+>>>> On Wed, Mar 21, 2012 at 05:11:40PM -0400, Chuck Lever wrote:
+>>>>> 1.  We have to create a version of lookup_export() that does exactly what's needed to find the junction's parent.
+>>>>> 
+>>>>> 2.  Once we find the parent's exportent, we have to reverse parse the data in that exportent to get an options string, and concatenate that to the options string we're building for the junction itself.
+>>>>> 
+>>>>> 3.  Once we have the full options string for the junction, we use mkexportent() to convert it all back into another exportent.  (or is there a simple way to merge the exportents?)
+>> 
+>> You should be able to skip steps 2 and 3 and use dupexportent.
+>> 
+>> Does that sound doable?
+> 
+> The current junction lookup logic uses mkexportent(), which returns a statically allocated exportent that doesn't need to be freed.  That makes the lookup_junction() call site simple, but that's too clever by half.  Using dupexportent() unchanged would require some reworking there in order to free the duplicated exportent.
+> 
+> Also I'm not quite sure how to safely combine the use of mkexportent(), which parses the referral options we just created, and dupexportent(), which would duplicate the options from the parent, but would walk on e_hostname.
+> 
+> I could address both those problems by constructing a new function which was an amalgam of the two.
+
+updateexportent() might do the trick.
+
+> I still have to play with the lookup_export() logic to see how to find a junction's parent export.
+> 
+>> --b.
+>> 
+>>>>> 
+>>>>> 4.  Then, we send the referral data to the kernel by converting that exportent back into a string with dump_to_cache().
+>>>>> 
+>>>>> For the time being, though a kludge, it seems easiest by far to simply stick the "insecure" option on all junctions.  I don't think this is otherwise terribly risky.
+>>>>> 
+>>>>> Maybe at some later point we can think of a cleaner way to approach this?  Is there a possible kernel solution for this (ie something that can be done in the kernel's export cache only for referrals)?
+>>>>> 
+>>>>>> --b.
+>>>>>> 
+>>>>>>> 
+>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>>> ---
+>>>>>>> 
+>>>>>>> utils/mountd/cache.c |    2 +-
+>>>>>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>>>>>> 
+>>>>>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+>>>>>>> index ac9cdbd..35bc2e9 100644
+>>>>>>> --- a/utils/mountd/cache.c
+>>>>>>> +++ b/utils/mountd/cache.c
+>>>>>>> @@ -853,7 +853,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+>>>>>>> 			ptr += len;
+>>>>>>> 		} else {
+>>>>>>> 			if (last_path == NULL)
+>>>>>>> -				len = snprintf(ptr, remaining, "refer=%s@%s",
+>>>>>>> +				len = snprintf(ptr, remaining, "insecure,refer=%s@%s",
+>>>>>>> 							rootpath, server);
+>>>>>>> 			else
+>>>>>>> 				len = snprintf(ptr, remaining, ":%s@%s",
+>>>>>>> 
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>> 
+>>>>> -- 
+>>>>> Chuck Lever
+>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>>> -- 
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>> 
+>>> 
+>>> 
+>>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
