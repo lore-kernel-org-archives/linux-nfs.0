@@ -1,51 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13112 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17556 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751207Ab2C2Eiw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2012 00:38:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client bugfixes for Linux 3.4...
-Date: Thu, 29 Mar 2012 04:38:44 +0000
-Message-ID: <3379B519-55A9-41F5-AFDA-EBB5BFF891B7@netapp.com>
-References: <1332986348.19172.43.camel@lade.trondhjem.org>
- <CA+55aFwVzhgsw005P3+BkLw_=noJwkQB3G=Q4GqhfLL1WyPHfg@mail.gmail.com>
- <1332986928.19172.45.camel@lade.trondhjem.org>
- <CA+55aFyQ0r5mN9=3DUVENCtdj8VMLRjiXTc5Xd4o+F=s9B8xMg@mail.gmail.com>
- <1332988097.19172.51.camel@lade.trondhjem.org>
- <4F73D44C.5090604@panasas.com>
- <CA+55aFyHmQBXw3ik3qv81_3Zp+4r-VUt_TNBs-M19b6Zt7PDeQ@mail.gmail.com>
- <1332994124.30608.5.camel@lade.trondhjem.org>
- <CA+55aFwxkWpH1WyBnE1Lg9eRAfPsfcyoZev7-O9TGrPKTB1pOg@mail.gmail.com>
-In-Reply-To: <CA+55aFwxkWpH1WyBnE1Lg9eRAfPsfcyoZev7-O9TGrPKTB1pOg@mail.gmail.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1759359Ab2CVTTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 15:19:39 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 00/11] NFSv4.1 file layout data server quick failover
+Date: Thu, 22 Mar 2012 15:19:28 -0400
+Message-Id: <1332443979-2302-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
-On Mar 29, 2012, at 12:20 AM, Linus Torvalds wrote:
+Changes from Version 2:
 
-> On Wed, Mar 28, 2012 at 9:08 PM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
->> 
->> Maybe I'm running an older version of git (Fedora 16 latest update), but
->> when I do
-> 
-> Yeah, you need git 1.7.9 to get the tag content support.
-> 
-> With older git versions, spell out "tags/xyz" instead of just "xyz",
-> and it will all work, but it still won't actually show the tag
-> content.
+- refactored filelayout_async_handle errors responding to comments.
+- removed NFSv4.1-have-filelayout_initiate_commit-return-void.patch
+  as per comments.
 
-When I do the tags/nfs-for-3.4-1, it still gives me that ..BRANCH.NOT.VERIFIED.. crap in the pull message.
-Furthermore, it fails to actually push the tag to my upstream repository, meaning that I'm still prone to the 'Linus tried to pull, and the commit wasn't there" syndrome.
+Currently, when a data server connection goes down due to a network partion,
+a data server failure, or an administrative action, RPC tasks in various
+stages of the RPC finite state machine (FSM) need to transmit and timeout
+(or other failure) before being redirected towards an alternative server
+(MDS or another DS).
+This can take a very long time if the connection goes down during a heavy
+I/O load where the data server fore channel session slot_tbl_waitq and the
+transport sending/pending waitqs are populated with many requests.
+(see RedHat Bugzilla 756212 "Redirecting I/O through the MDS after a data
+server network partition is very slow")
+The current code also keeps the client structure and the session to the failed
+data server until umount.
 
-Could we perhaps set up a best practices webpage/wiki for this sort of thing with a pointer to that webpage in Documentations/SubmittingPatches? That way maintainers would have a source of information for which versions of 'git' that they need to use in order to provide you with the information that you want.
+These patches address this problem by setting data server RPC tasks to
+RPC_TASK_SOFTCONN and handling the resultant connection errors as follows:
 
-Cheers
-  Trond
+ * The pNFS deviceid is marked invalid which blocks any new pNFS io using that
+deviceid.
+ * The RPC done routines for READ, WRITE and COMMIT redirect the requests
+to the new server (MDS) and send the request back through the RPC FSM.
+ * The data server session fore channel slot_tbl_waitq is drained using
+the debugged rpc_wake_up
+ * Code is added to the filelayout read/write prepare routines to reset
+the task for io to MDS upon invalid deviceid. This is called when the
+session fore channel slot table is drained.
+ * All data server io requests reference the data server client structure
+across io calls, and the client is dereferenced upon deviceid invalidation so
+that the client (and the session) is freed upon the last (failed) redirected io.
+
+Testing:
+I use a pynfs file layout server with a DS to test. The pynfs server and DS
+is modified to use the local host for MDS to DS communication. I add a
+second ipv4 address to the single machine interface for the DS to client
+communication. While a "dd" or a read/write heavy Connectathon test is
+running, the DS ip address is removed from the ethernet interface, and the
+client recovers io to the MDS.
+I have tested READ and WRITE recovery multiple times, and have managed to
+time the removal of the DS ip address during a DS COMMIT and have seen it
+recover as well. :)
+
+
+Comments welcome
+
+--> Andy
+
+
+
+Andy Adamson (11):
+  NFSv4.1 move nfs4_reset_read and nfs_reset_write
+  NFSv4.1: cleanup filelayout invalid deviceid handling
+  NFSv4.1 cleanup filelayout invalid layout handling
+  NFSv4.1 set RPC_TASK_SOFTCONN for filelayout DS RPC calls
+  NFSv4.1: mark deviceid invalid on filelayout DS connection errors
+  NFSv4.1: send filelayout DS commits to the MDS on invalid deviceid
+  NFSv4.1 Check invalid deviceid upon slot table waitq wakeup
+  NFSv4.1 wake up all tasks on un-connected DS slot table waitq
+  NFSv4.1 ref count nfs_client across filelayout data server io
+  NFSv4.1 de reference a disconnected data server client record
+  NFSv4.1 check for NULL pnfs_layout_hdr in pnfs scan commit lists
+
+ fs/nfs/internal.h          |   11 ++-
+ fs/nfs/nfs4filelayout.c    |  202 +++++++++++++++++++++++++++++---------------
+ fs/nfs/nfs4filelayout.h    |   25 +++++-
+ fs/nfs/nfs4filelayoutdev.c |   54 ++++++------
+ fs/nfs/nfs4proc.c          |   39 +--------
+ fs/nfs/pnfs.h              |    3 +-
+ fs/nfs/read.c              |    6 +-
+ fs/nfs/write.c             |   13 ++--
+ 8 files changed, 205 insertions(+), 148 deletions(-)
+
+-- 
+1.7.6.4
+
