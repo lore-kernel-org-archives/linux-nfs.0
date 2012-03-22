@@ -1,67 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39203 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:2091 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759137Ab2CIULm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Mar 2012 15:11:42 -0500
-Date: Fri, 9 Mar 2012 15:11:41 -0500
-To: Simo Sorce <simo@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/7] Kill SPKM3 auth method
-Message-ID: <20120309201141.GA20153@fieldses.org>
-References: <1331321672-2111-1-git-send-email-simo@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1331321672-2111-1-git-send-email-simo@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1759359Ab2CVTTk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Mar 2012 15:19:40 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 02/11] NFSv4.1: cleanup filelayout invalid deviceid handling
+Date: Thu, 22 Mar 2012 15:19:30 -0400
+Message-Id: <1332443979-2302-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1332443979-2302-1-git-send-email-andros@netapp.com>
+References: <1332443979-2302-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 09, 2012 at 02:34:25PM -0500, Simo Sorce wrote:
-> This authentication method is obsolete and it is time it dies for good.
+From: Andy Adamson <andros@netapp.com>
 
-Yes, the kernel no longer supports it, it was never really used, and
-it's now deprecated.
+Move the invalid deviceid test into nfs4_fl_prepare_ds, called by the
+filelayout read, write, and commit routines. NFS4_DEVICE_ID_NEG_ENTRY
+is no longer needed.
+Remove redundant printk's - filelayout_mark_devid_invalid prints a KERN_WARNING.
 
-It might have some historical value, but someone that needs to go look
-at that code can find it in the git history.
+An invalid device prevents pNFS io.
 
-So, ACK from me.--b.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |   10 ----------
+ fs/nfs/nfs4filelayout.h    |   21 +++++++++++++++++----
+ fs/nfs/nfs4filelayoutdev.c |   37 +++++++++++--------------------------
+ 3 files changed, 28 insertions(+), 40 deletions(-)
 
-> 
-> Simo Sorce (7):
->   Kill SPKM3: Remove spkm3 references from svcgssd
->   Kill SPKM3: Remove spkm3 support from gssd
->   Kill SPKM3: remove spkm3 from common gssd code
->   Kill SPKM3: Remove spkm3 support from nfs.mount
->   Kill SPKM3: Remove spkm3 support from exports
->   Kill SPKM3: Stop checking for spkm3.h in configure
->   Kill SPKM3: Remove mentions of SPKM3 from README
-> 
->  README                          |    4 +-
->  configure.ac                    |    3 -
->  support/include/pseudoflavors.h |    3 -
->  support/nfs/exports.c           |    3 -
->  utils/gssd/Makefile.am          |    1 -
->  utils/gssd/context.c            |    4 -
->  utils/gssd/context.h            |    2 -
->  utils/gssd/context_spkm3.c      |  184 ---------------------------------------
->  utils/gssd/gss_oids.c           |    3 -
->  utils/gssd/gss_oids.h           |    1 -
->  utils/gssd/gssd.h               |    5 +-
->  utils/gssd/gssd_main_loop.c     |   11 ---
->  utils/gssd/gssd_proc.c          |  106 +----------------------
->  utils/gssd/svcgssd_mech2file.c  |    1 -
->  utils/gssd/svcgssd_proc.c       |    8 +--
->  utils/mount/nfs.man             |    7 +-
->  utils/mount/nfs_mount.h         |    3 -
->  utils/mount/nfsmount.c          |    6 --
->  18 files changed, 10 insertions(+), 345 deletions(-)
->  delete mode 100644 utils/gssd/context_spkm3.c
-> 
-> -- 
-> 1.7.7.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 36a65ce..cb9ea7e 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -392,9 +392,6 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 		__func__, data->inode->i_ino,
+ 		data->args.pgbase, (size_t)data->args.count, offset);
+ 
+-	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
+-		return PNFS_NOT_ATTEMPTED;
+-
+ 	/* Retrieve the correct rpc_client for the byte range */
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+@@ -434,16 +431,11 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	struct nfs_fh *fh;
+ 	int status;
+ 
+-	if (test_bit(NFS_DEVICEID_INVALID, &FILELAYOUT_DEVID_NODE(lseg)->flags))
+-		return PNFS_NOT_ATTEMPTED;
+-
+ 	/* Retrieve the correct rpc_client for the byte range */
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
+-			__func__);
+ 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+@@ -922,8 +914,6 @@ static int filelayout_initiate_commit(struct nfs_write_data *data, int how)
+ 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "NFS: %s: prepare_ds failed, use MDS\n",
+-			__func__);
+ 		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+ 		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		prepare_to_resend_writes(data);
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 21190bb..b54b389 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -62,12 +62,8 @@ struct nfs4_pnfs_ds {
+ 	atomic_t		ds_count;
+ };
+ 
+-/* nfs4_file_layout_dsaddr flags */
+-#define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
+-
+ struct nfs4_file_layout_dsaddr {
+ 	struct nfs4_deviceid_node	id_node;
+-	unsigned long			flags;
+ 	u32				stripe_count;
+ 	u8				*stripe_indices;
+ 	u32				ds_num;
+@@ -107,6 +103,23 @@ FILELAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg)
+ 	return &FILELAYOUT_LSEG(lseg)->dsaddr->id_node;
+ }
+ 
++static inline void
++filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
++{
++	u32 *p = (u32 *)&node->deviceid;
++
++	printk(KERN_WARNING "NFS: Deviceid [%x%x%x%x] marked out of use.\n",
++		p[0], p[1], p[2], p[3]);
++
++	set_bit(NFS_DEVICEID_INVALID, &node->flags);
++}
++
++static inline bool
++filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
++{
++	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
++}
++
+ extern struct nfs_fh *
+ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
+ 
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index a866bbd..2b8ae96 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -791,48 +791,33 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+ 	return flseg->fh_array[i];
+ }
+ 
+-static void
+-filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
+-			       int err, const char *ds_remotestr)
+-{
+-	u32 *p = (u32 *)&dsaddr->id_node.deviceid;
+-
+-	printk(KERN_ERR "NFS: data server %s connection error %d."
+-		" Deviceid [%x%x%x%x] marked out of use.\n",
+-		ds_remotestr, err, p[0], p[1], p[2], p[3]);
+-
+-	spin_lock(&nfs4_ds_cache_lock);
+-	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
+-	spin_unlock(&nfs4_ds_cache_lock);
+-}
+-
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+ 	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
+ 	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
++	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
++
++	if (filelayout_test_devid_invalid(devid))
++		return NULL;
+ 
+ 	if (ds == NULL) {
+ 		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
+ 			__func__, ds_idx);
+-		return NULL;
++		goto mark_dev_invalid;
+ 	}
+ 
+ 	if (!ds->ds_clp) {
+ 		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 		int err;
+ 
+-		if (dsaddr->flags & NFS4_DEVICE_ID_NEG_ENTRY) {
+-			/* Already tried to connect, don't try again */
+-			dprintk("%s Deviceid marked out of use\n", __func__);
+-			return NULL;
+-		}
+ 		err = nfs4_ds_connect(s, ds);
+-		if (err) {
+-			filelayout_mark_devid_negative(dsaddr, err,
+-						       ds->ds_remotestr);
+-			return NULL;
+-		}
++		if (err)
++			goto mark_dev_invalid;
+ 	}
+ 	return ds;
++
++mark_dev_invalid:
++	filelayout_mark_devid_invalid(devid);
++	return NULL;
+ }
+-- 
+1.7.6.4
+
