@@ -1,72 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:45498 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755367Ab2CAH3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Mar 2012 02:29:43 -0500
-Message-ID: <4F4F2551.6080003@parallels.com>
-Date: Thu, 01 Mar 2012 11:29:21 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from natasha.panasas.com ([67.152.220.90]:59084 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751335Ab2CVBTE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2012 21:19:04 -0400
+Message-ID: <4F6A7DE9.8080401@panasas.com>
+Date: Wed, 21 Mar 2012 18:18:33 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 5/5] nfsd: add the infrastructure to handle the cld
- upcall
-References: <1330535757-24925-1-git-send-email-jlayton@redhat.com>	<1330535757-24925-6-git-send-email-jlayton@redhat.com>	<4F4E70C5.9030608@parallels.com> <20120229144512.37de84e7@tlielax.poochiereds.net>
-In-Reply-To: <20120229144512.37de84e7@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Greg KH <gregkh@linuxfoundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        "keyrings@linux-nfs.org" <keyrings@linux-nfs.org>,
+        "linux-security-module@vger.kernel.org"
+	<linux-security-module@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        "Bhamare, Sachin" <sbhamare@panasas.com>,
+        David Howells <dhowells@redhat.com>, Eric Paris <eparis@redhat.com>,
+        "Srivatsa S. Bhat" <srivatsa.bhat@linux.vnet.ibm.com>,
+        Kay Sievers <kay.sievers@vrfy.org>, James Morris <jmorris@namei.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Greg Kroah-Hartman <gregkh@suse.de>
+Subject: Re: [PATCHSET 0/4] kmod: Optional timeout on the wait in call_usermodehelper_exec
+References: <4F691059.30405@panasas.com> <20120321153519.GB30250@kroah.com>  <4F6A6FB9.7010508@panasas.com> <1332376277.12332.22.camel@lade.trondhjem.org>
+In-Reply-To: <1332376277.12332.22.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-29.02.2012 23:45, Jeff Layton пишет:
-> On Wed, 29 Feb 2012 22:39:01 +0400
-> Stanislav Kinsbursky<skinsbursky@parallels.com>  wrote:
->
->> Hi, Jeff.
->> I'll try to explain, how all this namespaces-aware SUNRPC PipeFS works.
->> The main idea is, that today we have 2 types of independently created and
->> destroyed but linked objects:
->> 1) pipe data itself. This object is created whenever kernel requires (on mount,
->> module install, whatever)
->> 2) dentry/inode for this pipe. This object is created on PipeFS superblock creation.
->> This means, any kernel user of SUNRPC pipes have to provide two mechanisms:
->> 1) Safe call (in per-net operations, if the object is global your case) for
->> PipeFS dentry/inode pair. This is done this in nfsd4_init_cld_pipe().
+On 03/21/2012 05:31 PM, Myklebust, Trond wrote:
+> On Wed, 2012-03-21 at 17:18 -0700, Boaz Harrosh wrote:
+>> On 03/21/2012 08:35 AM, Greg KH wrote:
+>>> On Tue, Mar 20, 2012 at 04:18:49PM -0700, Boaz Harrosh wrote:
+>>>> Andrew Hi
+>>>>
+>>>> I'm picking on you because I don't have any one else to pick on.
+>>>> The 3 first patches here, are just good for today. Please see if
+>>>> you would like to take them? or tell me who should take them?
+>>>>
+>>>> The 4th patch is an RFC, which got me looking into this.
+>>>>
+>>>> My motivation is that I added yet another Kernel dependency on the
+>>>> call_usermodehelper() function and am not completely happy with the
+>>>> error case of having the user-mode program stuck forever. In such
+>>>> case I would like the Kernel part to timeout and properly error recover
+>>>> and clean up. So therefor the proposed 4th patch.
+>>>
+>>> What is this new use of call_usermodhelper that you are doing this work
+>>> for?  Ideally, you never want to make this call, as it's slow and messy,
+>>> as you have found out.  Is there an in-kernel user that you have
+>>> recently added?
+>>>
+>>> thanks,
+>>>
+>>> greg k-h
 >>
->> 2) Notifier callback for PipeFS mount/umount operations. Note: this callback is
->> done from SUNRPC module (i.e. you have to get nfsd module); this callback is
->> safe - i.e you can be sure, that superblock is valid.
+>> I agree hence my comment in the 4th patch:
+>> 	"In the blasphemous occasions that a the Kernel must call a user-mode program"
 >>
->
-> This is the part I'm having a hard time with. IIUC, the existing
-> examples are fairly clear since you have a 1:1 ratio of objects: a
-> per-net object (the pipe data) that is hooked up to a dentry/inode in a
-> per-net sb.
->
-> Here though, we don't really have that. We have a global pipe object
-> and I don't see how you can hook that up to multiple dentries/inodes.
->
-> One possibility is to completely "namespacify" this code -- don't use a
-> global rpc_pipe object and make it per-net instead. If I do that though,
-> then I suppose I'll also need to make all of the
-> nfsd4_client_tracking_ops take a struct net arg as well?
->
-> Thanks for the help so far...
+>> I have added a new caller, to the nfs/objectlayoutdriver.ko that uses this
+>> facility for auto-login into osd-targets (iscsi-targets) when new are requested
+>> by the filesystem. This auto-login facility is mandated by the pnfs-objects
+>> standard because in a large cluster filesystems for which pnfs was invented, storage
+>> devices break and changed everyday, and a manual login by every client is not
+>> feasible.
+>>
+>> You can see this patch as posted to the mailing list here:
+>> 	http://article.gmane.org/gmane.linux.nfs/48024/match=login
+>> 	[title: pnfs-obj: autologin: Add support for protocol autologin]
+>>
+>> It works very well and was heavily tested, with all error scenarios, but
+>> the theoretical possibility that the user-mode program can be stuck forever
+>> bothers me and I would like to do something about it. With this patch the
+>> Kernel can recover cleanly and continue. I have actually tested this part
+>> and it works as expected.
+> 
+> Hi Boaz,
+> 
+> As an alternative suggestion: since you are always calling the
+> same /sbin/osd_login userspace program, wouldn't it be easier to add the
+> timeout smarts into that program? If you can't modify the osd_login
+> program itself, then it should still be trivial to wrap it with a script
+> that adds the 'timeout' command prefix.
+> 
 
-There is no problem at all.
-Would be great (for me - eventially I'll update it to namespace aware code) if 
-you'll convert you code into something like this:
-1) Safe and unsafe dentry creation routines, parametrized by net. Don't use 
-per-net data - hard-code your global pointer.
-2) Pipe data creation routine, parametrized by net. Call this one only for 
-"init_net" for far - no per-net ops required. Also call safe dentry creation 
-routine here.
-3) Notifier callback - just ignore any callbacks from not init_net. Otherwise 
-call unsafe dentry creation routine.
+That's a good idea. The osd_login is a script supplied by us. And should
+be submitted to nfs-utils by Steve. See the 4th patch sent as part of the
+login patchset. I will change it to fork and timeout properly.
 
-If you'll do so, then it will be very easy to convert this feature to network 
-namespace aware.
+Regardless, for the long run I would like to pursue the Kernel-side timeout
+as well, since that would be the more robust thing to do. Also in the light
+that we provide root with the means to register a new osd_login program.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> Cheers
+>   Trond
+
+Thanks
+Boaz
